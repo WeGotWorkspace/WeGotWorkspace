@@ -84,6 +84,17 @@ export function meetCallInviteStartOptions(audioOnly: boolean): { video: false }
   return audioOnly ? { video: false } : undefined;
 }
 
+/**
+ * Mesh `call-active` audio-only flag for a conversation.
+ * Sticky chrome and sidebar live overlay share this lookup.
+ */
+export function meetCallLiveAudioOnly(
+  channelId: string | null | undefined,
+  callAudioOnlyByChannel?: Record<string, boolean>,
+): boolean {
+  return Boolean(channelId && callAudioOnlyByChannel?.[channelId]);
+}
+
 /** ViewHeader Start — only when no meeting is live on this channel. */
 export function meetCallHeaderStartVisible(meetingLive: boolean): boolean {
   return !meetingLive;

@@ -1,6 +1,6 @@
 import { isMeetRoomCode } from "@/calendar-core/src/calendar-meet-link";
 import { parseRtcDebugFlag } from "@/lib/rtc/debug";
-import { meetPublicChannelId } from "@/meet-core/src/meet-public-id";
+import { meetCollectionIdFromPublic, meetPublicChannelId } from "@/meet-core/src/meet-public-id";
 
 export type MeetRouteSearch = {
   room?: string;
@@ -48,18 +48,43 @@ export function meetSearchFromRoom(roomCode: string | null): MeetRouteSearch {
 export type MeetCallExitMode = "end" | "leave";
 
 /**
- * True when this navigation is an ad-hoc invite landing. `/meet/channels/{id}`
- * and persisted `/meet/meetings/{id}` (collection slug) are workspace paths.
- * Only leftover `{xxxx-xxxx-xxxx}` meeting ids, `/meet/guest`, `/meet/join`,
- * and `/meet?room=` are invite landings.
+ * True when this navigation is a `/meet/meetings/{id}` invite (slug or
+ * `xxxx-xxxx-xxxx`), `/meet/guest`, `/meet/join`, or leftover `?room=`.
+ * `/meet/channels/{id}` stays a workspace path.
  */
 export function meetIsJoinRoute(pathname: string, room?: string | null): boolean {
   if (pathname.startsWith("/meet/guest") || pathname.startsWith("/meet/join")) {
     return true;
   }
-  const meetingId = meetMeetingIdFromPathname(pathname);
-  if (meetingId) return isMeetRoomCode(meetingId);
+  if (meetMeetingIdFromPathname(pathname)) return true;
   return /^\/meet\/?$/.test(pathname) && Boolean(room?.trim());
+}
+
+/** Path already encodes the public invite id — do not append or honor `?room=`. */
+export function meetPathOwnsInviteRoom(pathname: string): boolean {
+  return Boolean(meetMeetingIdFromPathname(pathname) || meetChannelIdFromPathname(pathname));
+}
+
+/**
+ * RTC room encoded by the current Meet URL. `/meet/meetings/{id}` and
+ * `/meet/channels/{id}` share one lookup: leftover codes stay as-is;
+ * collection slugs map onto `chat-{slug}` (the meeting channel room).
+ * When the path owns the id, leftover `?room=` is ignored so the internal
+ * collection id never becomes the public URL.
+ */
+export function meetInvitedRoomFromRoute(input: {
+  pathname: string;
+  search?: MeetRouteSearch;
+  meetingId?: string | null;
+  channelId?: string | null;
+}): string | null {
+  const meetingId = input.meetingId?.trim() || meetMeetingIdFromPathname(input.pathname);
+  if (meetingId) {
+    return isMeetRoomCode(meetingId) ? meetingId : meetCollectionIdFromPublic(meetingId);
+  }
+  const channelId = input.channelId?.trim() || meetChannelIdFromPathname(input.pathname);
+  if (channelId) return meetCollectionIdFromPublic(channelId);
+  return meetRoomFromSearch(input.search ?? {});
 }
 
 /** Channel id from `/meet/channels/{id}` (invite and workspace share the path). */

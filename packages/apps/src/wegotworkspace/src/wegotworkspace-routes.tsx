@@ -270,17 +270,14 @@ function MeetLiveRoute() {
     });
   }, [meetingId, navigate, onConversationRoute, parsedSearch, roomFromSearch]);
 
-  // Ad-hoc leftover `{xxxx-xxxx-xxxx}` only. Persisted meeting collections stay
-  // in MeetWorkspace on `/meet/meetings/{id}` — same UI as a channel click.
-  if (adHocMeeting || (!onConversationRoute && inviteRoom)) {
-    return <MeetInviteGate room={inviteRoom} />;
+  // One `/meet/meetings/{id}` pipeline: leftover codes and collection slugs.
+  // Signed-out → guest lobby; signed-in → MeetWorkspace.
+  if (meetingId || (!onConversationRoute && inviteRoom)) {
+    return (
+      <MeetInviteGate room={adHocMeeting ? meetingId : inviteRoom} channelId={persistedMeetingId} />
+    );
   }
-  return (
-    <MeetChannelDeepLinkGate
-      channelId={channelId ?? persistedMeetingId}
-      workspace={<AuthenticatedMeetChatApp />}
-    />
-  );
+  return <MeetChannelDeepLinkGate channelId={channelId} workspace={<AuthenticatedMeetChatApp />} />;
 }
 
 function buildRouteTree(mode: WeGotWorkspaceRouteMode) {

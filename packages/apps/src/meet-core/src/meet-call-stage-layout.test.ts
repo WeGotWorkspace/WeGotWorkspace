@@ -6,6 +6,7 @@ import {
   meetCallInviteAction,
   meetCallInviteStartOptions,
   meetCallIsActive,
+  meetCallLiveAudioOnly,
   meetCallStageShowsBar,
   meetCallStageShowsChat,
   meetCallStageShowsStage,
@@ -117,6 +118,14 @@ describe("meetCallStage layout", () => {
   it("joins an audio-only meeting with video off", () => {
     expect(meetCallInviteStartOptions(true)).toEqual({ video: false });
     expect(meetCallInviteStartOptions(false)).toBeUndefined();
+  });
+
+  it("reads audio-only from the mesh call-active map for a conversation", () => {
+    expect(meetCallLiveAudioOnly("chat-general", { "chat-general": true })).toBe(true);
+    expect(meetCallLiveAudioOnly("chat-general", { "chat-general": false })).toBe(false);
+    expect(meetCallLiveAudioOnly("dm:bob", { "chat-general": true })).toBe(false);
+    expect(meetCallLiveAudioOnly(null, { "chat-general": true })).toBe(false);
+    expect(meetCallLiveAudioOnly("chat-general")).toBe(false);
   });
 
   it("shows ViewHeader Start only when no meeting is live", () => {

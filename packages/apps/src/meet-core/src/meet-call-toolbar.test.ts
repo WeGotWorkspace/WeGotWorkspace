@@ -9,11 +9,15 @@ const toolbar = readFileSync(join(here, "meet-call-toolbar.tsx"), "utf8");
 describe("MeetCallToolbar", () => {
   it("keeps settings with media controls and leave last after the divider", () => {
     expect(toolbar).toMatch(/MeetDevicePopover/);
+    expect(toolbar).toMatch(/MeetKnockBadge/);
     expect(toolbar).not.toMatch(/hideDevices/);
     expect(toolbar.indexOf("icon={<MonitorUp />}")).toBeLessThan(
       toolbar.indexOf("<MeetDevicePopover"),
     );
     expect(toolbar.indexOf("<MeetDevicePopover")).toBeLessThan(
+      toolbar.indexOf("meet-workspace__toolbar-divider"),
+    );
+    expect(toolbar.indexOf("<MeetKnockBadge")).toBeLessThan(
       toolbar.indexOf("meet-workspace__toolbar-divider"),
     );
     expect(toolbar.indexOf("meet-workspace__toolbar-divider")).toBeLessThan(

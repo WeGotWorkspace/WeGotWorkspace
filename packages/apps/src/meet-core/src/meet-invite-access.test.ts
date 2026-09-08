@@ -54,6 +54,11 @@ describe("meetInviteChannelIdForRoom", () => {
 });
 
 describe("resolveMeetInviteDestination", () => {
+  it("sends a signed-out visitor on a persisted meeting slug to the lobby", async () => {
+    const result = await resolveMeetInviteDestination({ room: null, channelId: "test" }, io());
+    expect(result).toEqual({ access: "anonymous", channelId: "chat-test" });
+  });
+
   it("returns anonymous without probing ACL when there is no session", async () => {
     const getChannel = vi.fn(async () => CHANNELS[0]!);
     const result = await resolveMeetInviteDestination({ room: "chat-general" }, io({ getChannel }));

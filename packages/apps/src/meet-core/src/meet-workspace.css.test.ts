@@ -7,6 +7,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const tsx = readFileSync(join(here, "meet-workspace.tsx"), "utf8");
 const css = readFileSync(join(here, "meet-workspace.css"), "utf8");
 const guestChannel = readFileSync(join(here, "meet-guest-channel.tsx"), "utf8");
+const guestLobby = readFileSync(join(here, "meet-guest-lobby.tsx"), "utf8");
+const guestLobbyCss = readFileSync(join(here, "meet-guest-lobby.css"), "utf8");
 const inviteGate = readFileSync(join(here, "meet-invite-gate.tsx"), "utf8");
 const meetApp = readFileSync(join(here, "meet-app.tsx"), "utf8");
 const layoutCss = readFileSync(
@@ -44,6 +46,10 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).not.toMatch(/Video className="meet-workspace__header-kind-icon"/);
     expect(tsx).toMatch(/meet-workspace__live/);
     expect(tsx).toMatch(/meet-workspace__live-icon/);
+    expect(tsx).toMatch(/meetCallLiveIcon\(Boolean\(audioOnly\)\)/);
+    expect(tsx).toMatch(/audioOnly=\{channelCallAudioOnly/);
+    expect(tsx).toMatch(/meetCallLiveAudioOnly\(selectedId, callAudioOnlyByChannel\)/);
+    expect(tsx).not.toMatch(/<Video className="meet-workspace__live-icon"/);
     expect(tsx).toMatch(/meetLabels\.liveCall/);
     expect(tsx).toMatch(/role="img"/);
     expect(tsx).not.toMatch(/<UserAvatar/);
@@ -334,15 +340,23 @@ describe("meet guest invite lobby chrome", () => {
     expect(lobby).toMatch(/--meet-text:\s*var\(--color-ink\)/);
     expect(lobby).toMatch(/background-color:\s*var\(--meet-surface\)/);
     expect(lobby).not.toMatch(/#1b1d3a/);
-    expect(title).toMatch(/font-family:\s*var\(--font-sans\)/);
+    expect(title).toMatch(/font-family:\s*var\(--font-serif\)/);
     expect(title).toMatch(/color:\s*var\(--color-ink\)/);
     expect(title).not.toMatch(/#ffffff/);
+    expect(lobby).toMatch(/--button-primary-bg:\s*var\(--meet-accent\)/);
   });
 
   it("keeps live guest/invite mounts off MeetLobbyPane and MeetCallWorkspace", () => {
     expect(guestChannel).not.toMatch(/import \{ MeetLobbyPane /);
+    expect(guestChannel).not.toMatch(/<MeetCallKnockWaiting/);
+    expect(guestChannel).toMatch(
+      /if \(input\.waitingForAdmission\) return "knocking";\s*if \(input\.inCall\) return "in-channel";/,
+    );
     expect(guestChannel).toMatch(/MeetGuestChannelFrame/);
-    expect(guestChannel).toMatch(/MeetCallKnockWaiting/);
+    expect(guestChannel).toMatch(/MeetGuestLobby/);
+    expect(guestLobby).not.toMatch(/MeetCallKnockWaiting/);
+    expect(guestLobby).toMatch(/meet-guest-lobby__knock--waiting/);
+    expect(guestLobby).toMatch(/meetLabels.cancelKnock/);
     expect(inviteGate).toMatch(/MeetGuestChannelFrame/);
     expect(inviteGate).toMatch(/sessionHint \|\| !channelId \|\| access === "member"/);
     expect(inviteGate).toContain("meetNavigateTargetFromSelection");
@@ -351,5 +365,51 @@ describe("meet guest invite lobby chrome", () => {
     expect(meetApp).toMatch(/MeetGuestChannel/);
     expect(meetApp).toMatch(/meetGuestChannelPhase/);
     expect(meetApp).not.toMatch(/<MeetCallWorkspace/);
+  });
+
+  it("reuses call-tile camera-off surface, bordered device selects, and no invite ViewHeader", () => {
+    const preview = css.match(/\.meet-guest-lobby__preview \{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(preview).toMatch(/background-color:\s*var\(--meet-call-empty\)/);
+    expect(preview).not.toMatch(/#000000/);
+    expect(css).toMatch(
+      /\.meet-guest-channel__lobby \{[\s\S]*--meet-call-empty:\s*color-mix\(in oklab,\s*var\(--meet-accent\) 6%/,
+    );
+    expect(guestLobby).not.toMatch(/presence=/);
+    expect(css).toMatch(
+      /\.meet-guest-channel__lobby \.meet-guest-lobby__devices \.meet-device-row__trigger \{[\s\S]*@apply h-9 min-h-9 border px-3/,
+    );
+    const frameStart = guestChannel.indexOf("export function MeetGuestChannelFrame");
+    const nextFn = guestChannel.indexOf("export function MeetGuestChannel(", frameStart + 1);
+    const frame = guestChannel.slice(frameStart, nextFn);
+    expect(frame).not.toMatch(/ViewHeader/);
+    expect(frame).not.toMatch(/mainHeader/);
+    expect(inviteGate).not.toMatch(/channelName=\{meetLabels\.productName\}/);
+    expect(css).not.toMatch(
+      /\.meet-guest-lobby__preview \.icon-button:not\(\.icon-button--active\)/,
+    );
+    expect(css).toMatch(
+      /:is\(\.meet-call-bar,\s*\.meet-call-stage,\s*\.meet-call-expanded,\s*\.meet-guest-lobby__preview\)[\s\S]*icon-button--active/,
+    );
+    expect(guestLobby).toMatch(/meet-workspace__title meet-workspace__title--lg/);
+    expect(guestLobby).toMatch(/variant="switch-trigger"/);
+    expect(css).toMatch(/\.meet-guest-lobby__preview-idle \{[\s\S]*@apply[\s\S]*pb-16/);
+    expect(css).toMatch(/grid-template-areas:[\s\S]*"heading"[\s\S]*"media"[\s\S]*"invite"/);
+    expect(guestLobby).toMatch(/meet-guest-lobby__heading/);
+    expect(guestLobbyCss).toMatch(
+      /\.meet-guest-channel__lobby \.meet-guest-lobby__mark\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-bg:\s*var\(--meet-accent\)/,
+    );
+    expect(guestLobbyCss).toMatch(
+      /\.meet-guest-channel__lobby \.meet-guest-lobby__knock\.button--variant-primary \{[\s\S]*--button-primary-bg:\s*var\(--meet-accent\)/,
+    );
+    expect(guestLobbyCss).toMatch(/font-family:\s*var\(--font-serif\)/);
+    expect(guestLobbyCss).toMatch(/meet-guest-lobby-knock/);
+    expect(guestLobbyCss).toMatch(/\.meet-guest-lobby__cancel \{[\s\S]*@apply mt-2 w-full/);
+    expect(css).not.toMatch(/meet-call-knock-wait--guest/);
+    const micFill = css.match(/\.meet-guest-lobby__mic-level-fill \{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(micFill).toMatch(/background-color:\s*var\(--meet-accent\)/);
+    expect(micFill).not.toMatch(/--meet-live/);
+    expect(css).toMatch(
+      /prefers-reduced-motion: no-preference[\s\S]*\.meet-guest-lobby__mic-level-fill \{[\s\S]*transition-\[width\]/,
+    );
   });
 });

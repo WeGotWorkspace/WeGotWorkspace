@@ -14,12 +14,8 @@ export type MeetCallKnockQueueProps = {
 };
 
 /**
- * Member-side knock notifications for the new Meet call chrome (chunk I): a
- * compact banner listing everyone waiting on the chunk-H knock path, with
- * per-knocker admit / deny. Reuses the `meet-knock-row` styling the legacy
- * `MeetKnockBadge` popover uses; admit / deny ride the same control-message
- * plumbing (`admitKnocker` / `denyKnocker` on the controller — the server
- * records the admission for the knocker's rename-rejoin).
+ * Compact admit/deny rows for waiting knockers. Host chrome mounts these in
+ * the `MeetKnockBadge` popover (action-row icon), not as a floating banner.
  */
 export function MeetCallKnockQueue({
   knockers,
@@ -29,19 +25,13 @@ export function MeetCallKnockQueue({
 }: MeetCallKnockQueueProps) {
   if (knockers.length === 0) return null;
   return (
-    <section
-      className={cn("meet-call-knock-queue", className)}
-      role="alert"
-      aria-label={meetLabels.waitingToJoin(knockers.length)}
-    >
+    <div className={cn("meet-knock-list", className)}>
       {knockers.map((knocker) => (
         <div key={knocker.id} className="meet-knock-row">
           <UserAvatar displayName={knocker.name} compact size="sm" />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium">{knocker.name}</div>
-            <div className="text-[11px]" style={{ color: "var(--meet-muted)" }}>
-              {meetLabels.wantsToJoin}
-            </div>
+          <div className="meet-knock-row__copy">
+            <div className="meet-knock-row__name">{knocker.name}</div>
+            <div className="meet-knock-row__hint">{meetLabels.wantsToJoin}</div>
           </div>
           <IconButton
             onClick={() => onDeny(knocker.id)}
@@ -63,7 +53,7 @@ export function MeetCallKnockQueue({
           />
         </div>
       ))}
-    </section>
+    </div>
   );
 }
 
@@ -71,7 +61,7 @@ export type MeetCallKnockWaitingProps = {
   /** Channel title shown in the copy (e.g. `#general`). */
   channelTitle?: string;
   onCancel?: () => void;
-  /** `bar` = compact banner above the chat column; `stage` = centered card on the expanded stage. */
+  /** `bar` = compact banner above the chat column; `stage` = centered card. */
   variant?: "bar" | "stage";
   className?: string;
 };

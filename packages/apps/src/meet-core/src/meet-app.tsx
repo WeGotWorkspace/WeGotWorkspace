@@ -3,6 +3,7 @@ import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import type { MeetAppProps } from "@/meet-core/src/meet-app-props";
 import { MeetChatPane } from "@/meet-core/src/meet-chat-pane";
 import { MeetGuestChannel, meetGuestChannelPhase } from "@/meet-core/src/meet-guest-channel";
+import { meetGuestInviteChannel } from "@/meet-core/src/meet-guest-invite-channel";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 import type { MeetCallWorkspaceProps } from "@/meet-core/src/meet-call-workspace-props";
@@ -17,7 +18,8 @@ import { useMeetWorkspaceShell } from "@/meet-core/src/use-meet-workspace-shell"
 export function MeetApp({ source }: MeetAppProps = {}) {
   const { phase, error, retry, successVersion, listLoading, data, session, operations } =
     useMeetAPI(source);
-  const { invitedRoom, isJoinRoute, buildCallLink, onRoomChange } = useMeetRouteSync();
+  const { invitedRoom, isJoinRoute, buildCallLink, onRoomChange, channelId, meetingId } =
+    useMeetRouteSync();
 
   return (
     <WorkspaceLiveAppShell
@@ -35,6 +37,8 @@ export function MeetApp({ source }: MeetAppProps = {}) {
           listLoading={listLoading}
           invitedRoom={invitedRoom}
           isJoinRoute={isJoinRoute}
+          channelId={channelId}
+          meetingId={meetingId}
           buildCallLink={buildCallLink}
           onRoomChange={onRoomChange}
         />
@@ -50,6 +54,8 @@ function MeetGuestChannelLive({
   listLoading = false,
   invitedRoom = null,
   isJoinRoute = false,
+  channelId = null,
+  meetingId = null,
   buildCallLink,
   onRoomChange,
 }: Pick<
@@ -62,7 +68,10 @@ function MeetGuestChannelLive({
   | "isJoinRoute"
   | "buildCallLink"
   | "onRoomChange"
->) {
+> & {
+  channelId?: string | null;
+  meetingId?: string | null;
+}) {
   const shell = useMeetWorkspaceShell({
     data,
     session,
@@ -74,7 +83,13 @@ function MeetGuestChannelLive({
     onRoomChange,
   });
   const [callLayout, setCallLayout] = useState<MeetCallStageLayout>("side-by-side");
-  const channelName = meetLabels.productName;
+  const invite = meetGuestInviteChannel({
+    channels: data.channels,
+    invitedRoom,
+    channelId,
+    meetingId,
+    fallbackName: meetLabels.productName,
+  });
   const phase = meetGuestChannelPhase({
     inCall: shell.inCall,
     showInviteCheckingScreen: shell.lobby.showInviteCheckingScreen,
@@ -98,7 +113,9 @@ function MeetGuestChannelLive({
 
   return (
     <MeetGuestChannel
-      channelName={channelName}
+      channelName={invite.name}
+      channelTopic={invite.topic}
+      channelKind={invite.kind}
       phase={phase}
       lobby={{
         controller: shell.controller,

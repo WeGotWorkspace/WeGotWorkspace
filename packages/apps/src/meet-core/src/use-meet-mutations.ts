@@ -12,6 +12,7 @@ import {
 } from "@/meet-core/src/meet-invite-status";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { sendMeetLeaveBeacon } from "@/meet-core/src/meet-leave-beacon";
+import { meetJoinAlreadyEngaged } from "@/meet-core/src/meet-join-reuse";
 import { createMeetPeerId, createMeetRoomCode } from "@/meet-core/src/meet-room-id";
 import type { MeetCallSessionState } from "@/meet-core/src/use-meet-call-session";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
@@ -60,6 +61,7 @@ export function useMeetMutations({
       room.resetPeerMaps();
       room.roomCodeRef.current = null;
       room.selfIdRef.current = null;
+      if (room.joinInFlightRef) room.joinInFlightRef.current = null;
     },
     // Room setters/refs are stable; omit the room object to avoid recreating leave every render.
     [meetRtc, stopLocalMedia],
@@ -79,44 +81,71 @@ export function useMeetMutations({
     }
   }, [room.remoteCallActiveRef]);
 
+  const runSerializedJoin = useCallback(
+    async (work: () => Promise<void>) => {
+      const slot = room.joinInFlightRef ?? { current: null };
+      const previous = slot.current;
+      let release = (): void => {};
+      const current = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      slot.current = current;
+      try {
+        if (previous) await previous.catch(() => undefined);
+        await work();
+      } finally {
+        release();
+        if (slot.current === current) slot.current = null;
+      }
+    },
+    [room.joinInFlightRef],
+  );
+
   const joinRoom = useCallback(
     async (roomCode?: string, options?: { video?: boolean }) => {
       warnIfCallActiveElsewhere();
       if (options?.video === false) room.setVideoOn(false);
       const target = (roomCode ?? createMeetRoomCode()).trim().toLowerCase();
-      const peerId = createMeetPeerId(10);
-      room.setError(null);
-      room.setStatus("preparing");
-      room.setRoomCode(target);
-      room.setSelfId(peerId);
-      room.selfIdRef.current = peerId;
-      room.roomCodeRef.current = target;
-      room.setChatMessages([]);
-      room.setWaitingForAdmission(false);
-      room.setKnockers([]);
-      room.setEndedMessage(null);
-      room.resetPeerMaps();
 
-      try {
-        debugRtc("join-room-start", { room: target, peerId });
-        await ensureLocalMedia();
-        await meetRtc.join({
-          room: target,
-          peerId,
-          name: room.displayNameRef.current.trim() || "Guest",
-        });
-        room.setStatus("in-call");
-        room.setStartedAt(Date.now());
-        debugRtc("join-room-success", { room: target, peerId });
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Could not join meeting.";
-        debugRtc("join-room-failed", { room: target, peerId, message });
-        room.setStatus("failed");
-        room.setError(message);
-        throw e;
-      }
+      await runSerializedJoin(async () => {
+        if (meetJoinAlreadyEngaged(room.statusRef.current, room.roomCodeRef.current, target)) {
+          debugRtc("join-room-reuse", { room: target, peerId: room.selfIdRef.current });
+          return;
+        }
+        const peerId = createMeetPeerId(10);
+        room.setError(null);
+        room.setStatus("preparing");
+        room.setRoomCode(target);
+        room.setSelfId(peerId);
+        room.selfIdRef.current = peerId;
+        room.roomCodeRef.current = target;
+        room.setChatMessages([]);
+        room.setWaitingForAdmission(false);
+        room.setKnockers([]);
+        room.setEndedMessage(null);
+        room.resetPeerMaps();
+
+        try {
+          debugRtc("join-room-start", { room: target, peerId });
+          await ensureLocalMedia();
+          await meetRtc.join({
+            room: target,
+            peerId,
+            name: room.displayNameRef.current.trim() || "Guest",
+          });
+          room.setStatus("in-call");
+          room.setStartedAt(Date.now());
+          debugRtc("join-room-success", { room: target, peerId });
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Could not join meeting.";
+          debugRtc("join-room-failed", { room: target, peerId, message });
+          room.setStatus("failed");
+          room.setError(message);
+          throw e;
+        }
+      });
     },
-    [debugRtc, ensureLocalMedia, meetRtc, room, warnIfCallActiveElsewhere],
+    [debugRtc, ensureLocalMedia, meetRtc, room, runSerializedJoin, warnIfCallActiveElsewhere],
   );
 
   const requestJoin = useCallback(
@@ -124,48 +153,54 @@ export function useMeetMutations({
       const target = roomCode.trim().toLowerCase();
       if (!target) return;
       warnIfCallActiveElsewhere();
-      const peerId = createMeetPeerId(10);
-      room.setError(null);
-      room.setStatus("preparing");
-      room.setRoomCode(target);
-      room.setSelfId(peerId);
-      room.selfIdRef.current = peerId;
-      room.roomCodeRef.current = target;
-      room.setChatMessages([]);
-      room.setWaitingForAdmission(true);
-      room.setKnockers([]);
-      room.setEndedMessage(null);
-      room.resetPeerMaps();
 
-      try {
-        await ensureLocalMedia();
-        await meetRtc.join({
-          room: target,
-          peerId,
-          name: encodeMeetKnockerName(room.displayNameRef.current),
-        });
-        if (operationsRef.current) {
-          await operationsRef.current.chat({
-            room: target,
-            from: peerId,
-            text: buildMeetControlMessage({
-              kind: "knock",
-              peerId,
-              name: room.displayNameRef.current.trim() || "Guest",
-            }),
-            sessionKey: meetRtc.getSessionKey() ?? undefined,
-          });
+      await runSerializedJoin(async () => {
+        if (meetJoinAlreadyEngaged(room.statusRef.current, room.roomCodeRef.current, target)) {
+          return;
         }
-        room.setStatus("waiting");
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Could not request to join.";
-        room.setStatus("failed");
-        room.setError(message);
-        room.setWaitingForAdmission(false);
-        throw e;
-      }
+        const peerId = createMeetPeerId(10);
+        room.setError(null);
+        room.setWaitingForAdmission(true);
+        room.setStatus("preparing");
+        room.setRoomCode(target);
+        room.setSelfId(peerId);
+        room.selfIdRef.current = peerId;
+        room.roomCodeRef.current = target;
+        room.setChatMessages([]);
+        room.setKnockers([]);
+        room.setEndedMessage(null);
+        room.resetPeerMaps();
+
+        try {
+          await ensureLocalMedia();
+          await meetRtc.join({
+            room: target,
+            peerId,
+            name: encodeMeetKnockerName(room.displayNameRef.current),
+          });
+          if (operationsRef.current) {
+            await operationsRef.current.chat({
+              room: target,
+              from: peerId,
+              text: buildMeetControlMessage({
+                kind: "knock",
+                peerId,
+                name: room.displayNameRef.current.trim() || "Guest",
+              }),
+              sessionKey: meetRtc.getSessionKey() ?? undefined,
+            });
+          }
+          room.setStatus("waiting");
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Could not request to join.";
+          room.setStatus("failed");
+          room.setError(message);
+          room.setWaitingForAdmission(false);
+          throw e;
+        }
+      });
     },
-    [ensureLocalMedia, meetRtc, operationsRef, room, warnIfCallActiveElsewhere],
+    [ensureLocalMedia, meetRtc, operationsRef, room, runSerializedJoin, warnIfCallActiveElsewhere],
   );
 
   const admitKnocker = useCallback(

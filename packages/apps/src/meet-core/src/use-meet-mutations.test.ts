@@ -11,4 +11,10 @@ describe("useMeetMutations joinRoom", () => {
     expect(ts).toContain("if (options?.video === false) room.setVideoOn(false)");
     expect(ts.indexOf("setVideoOn(false)")).toBeLessThan(ts.indexOf("await ensureLocalMedia()"));
   });
+
+  it("reuses an in-room signaling peer instead of minting a second identity", () => {
+    expect(ts).toContain("meetJoinAlreadyEngaged");
+    expect(ts).toContain("join-room-reuse");
+    expect(ts).toContain("joinInFlightRef");
+  });
 });

@@ -4,6 +4,7 @@ import type { HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
 import { parseMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { buildMeetChatLineFromPoll, type MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { completeMeetKnockAdmission } from "@/meet-core/src/meet-knock-admission";
 import {
   buildActiveMeetRoster,
   listKnockersFromRoster,
@@ -143,13 +144,22 @@ export function useMeetPollHandler({
           if (control.kind !== "admit" && control.kind !== "deny") continue;
           if (control.peerId !== selfPeerId) continue;
           if (control.kind === "admit") {
-            if (waitingForAdmissionRef.current && roomCodeRef.current && selfPeerId) {
-              await meetRtcRef.current?.updateJoinName(displayNameRef.current.trim() || "Guest");
-              setWaitingForAdmission(false);
-              setStatus("in-call");
-              setStartedAt(Date.now());
-              toast.success("You were let in.");
-            }
+            await completeMeetKnockAdmission({
+              waiting: waitingForAdmissionRef.current,
+              roomCode: roomCodeRef.current,
+              selfPeerId,
+              displayName: displayNameRef.current,
+              updateJoinName: meetRtcRef.current
+                ? (name) => meetRtcRef.current!.updateJoinName(name)
+                : undefined,
+              setWaitingForAdmission: (value) => {
+                waitingForAdmissionRef.current = value;
+                setWaitingForAdmission(value);
+              },
+              setStatus: (status) => setStatus(status),
+              setStartedAt: (value) => setStartedAt(value),
+              onAdmitted: () => toast.success("You were let in."),
+            });
           } else if (control.kind === "deny") {
             toast.error("The host denied your request to join.");
             await leaveRef.current?.();

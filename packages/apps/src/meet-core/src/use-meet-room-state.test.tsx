@@ -95,3 +95,40 @@ describe("useMeetRoomState display identity", () => {
     expect(result.current.displayName).toBe("Admin User");
   });
 });
+
+describe("useMeetRoomState invite URL", () => {
+  it("does not leak the internal RTC room as ?room= on /meet/meetings/{id}", () => {
+    window.history.replaceState({}, "", "/meet/meetings/test");
+    const callStore = createMeetCallStore();
+    const { result } = renderRoomState({
+      defaultDisplayName: "Guest",
+      sessionDisplayName: "Guest",
+      identityReady: true,
+      callStore,
+    });
+
+    act(() => {
+      result.current.setRoomCode("chat-test");
+    });
+
+    expect(window.location.pathname).toBe("/meet/meetings/test");
+    expect(window.location.search).toBe("");
+  });
+
+  it("still writes ?room= on bare /meet", () => {
+    window.history.replaceState({}, "", "/meet");
+    const callStore = createMeetCallStore();
+    const { result } = renderRoomState({
+      defaultDisplayName: "Guest",
+      sessionDisplayName: "Guest",
+      identityReady: true,
+      callStore,
+    });
+
+    act(() => {
+      result.current.setRoomCode("h8y8-ewp6-al8n");
+    });
+
+    expect(window.location.search).toBe("?room=h8y8-ewp6-al8n");
+  });
+});

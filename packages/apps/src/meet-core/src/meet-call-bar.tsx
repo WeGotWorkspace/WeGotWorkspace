@@ -1,8 +1,11 @@
 import { Maximize2, Mic, MicOff, PhoneOff, Video, VideoOff } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
+import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import type { MeetCallInvite } from "@/meet-core/src/meet-call-stage-layout";
+import type { MeetCallKnocker } from "@/meet-core/src/meet-call-knock";
 import { MeetDevicePopover } from "@/meet-core/src/meet-device-popover";
 import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
+import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
 import {
   meetCallBarMeta,
   meetCallBarRoster,
@@ -52,6 +55,10 @@ export type MeetCallBarProps = {
   onInvite?: () => void;
   /** Meeting was started as Meet (Audio Only) — mark and Join use audio chrome. */
   audioOnly?: boolean;
+  /** Host: waiting knockers. Shown as an action-row icon (production MeetKnockBadge). */
+  knockers?: readonly MeetCallKnocker[];
+  onAdmitKnocker?: (peerId: string) => void;
+  onDenyKnocker?: (peerId: string) => void;
   className?: string;
 };
 
@@ -89,8 +96,12 @@ export function MeetCallBar({
   invite = null,
   onInvite,
   audioOnly = false,
+  knockers = [],
+  onAdmitKnocker,
+  onDenyKnocker,
   className,
 }: MeetCallBarProps) {
+  const LiveIcon = meetCallLiveIcon(audioOnly);
   const roster = meetCallBarRoster({
     joined,
     self: { id: selfId, name: selfName, stream: selfStream },
@@ -106,11 +117,7 @@ export function MeetCallBar({
       <div className="meet-call-bar__row">
         <div className="meet-call-bar__start">
           <span className="meet-call-bar__mark" aria-hidden>
-            {audioOnly ? (
-              <Mic className="meet-workspace__header-kind-icon" />
-            ) : (
-              <Video className="meet-workspace__header-kind-icon" />
-            )}
+            <LiveIcon className="meet-workspace__header-kind-icon" />
           </span>
           <div className="meet-call-bar__copy">
             <p className="meet-call-bar__title">{meetLabels.meetingStarted}</p>
@@ -134,7 +141,7 @@ export function MeetCallBar({
             <Button
               className="meet-call-bar__invite-button"
               label={meetLabels.join}
-              icon={audioOnly ? <Mic /> : <Video />}
+              icon={<LiveIcon />}
               size="sm"
               variant="subtle"
               onClick={onInvite}
@@ -144,7 +151,7 @@ export function MeetCallBar({
         {joined ? (
           <div className="meet-call-bar__actions">
             <IconButton
-              label={micOn ? meetLabels.mute : meetLabels.unmute}
+              label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
               icon={micOn ? <Mic /> : <MicOff />}
               size="sm"
               variant="subtle"
@@ -153,7 +160,7 @@ export function MeetCallBar({
               onClick={onToggleMic}
             />
             <IconButton
-              label={videoOn ? meetLabels.stopVideo : meetLabels.startVideo}
+              label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
               icon={videoOn ? <Video /> : <VideoOff />}
               size="sm"
               variant="subtle"
@@ -172,6 +179,9 @@ export function MeetCallBar({
               onMicrophone={onMicrophoneChange}
               onSpeaker={onSpeakerChange}
             />
+            {onAdmitKnocker && onDenyKnocker ? (
+              <MeetKnockBadge knockers={knockers} onAdmit={onAdmitKnocker} onDeny={onDenyKnocker} />
+            ) : null}
             <IconButton
               label={meetLabels.expandCall}
               icon={<Maximize2 />}
@@ -196,6 +206,7 @@ export function MeetCallBar({
             name={meetLabels.youLabel}
             stream={selfStream}
             compact
+            muted
             disclosedMedia={{ camera: videoOn, mic: micOn }}
             micOn={micOn}
             onToggleMic={onToggleMic}

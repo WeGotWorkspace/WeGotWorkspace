@@ -2,14 +2,13 @@ import { useCallback, useMemo } from "react";
 import { useNavigate, useParams, useRouterState, useSearch } from "@tanstack/react-router";
 import {
   buildMeetInviteCallLink,
-  meetChannelIdFromPathname,
+  meetInvitedRoomFromRoute,
   meetIsJoinRoute,
-  meetMeetingIdFromPathname,
+  meetPathOwnsInviteRoom,
   meetRoomFromSearch,
   meetSearchFromRoom,
   parseMeetRouteSearch,
 } from "@/meet-core/src/meet-route-search";
-import { meetCollectionIdFromPublic } from "@/meet-core/src/meet-public-id";
 
 /** App-layer meet routing: read `?room=` / `/meet/channels/{id}` and sync active room back. */
 export function useMeetRouteSync() {
@@ -18,14 +17,16 @@ export function useMeetRouteSync() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const params = useParams({ strict: false }) as { channelId?: string; meetingId?: string };
 
-  const invitedRoom = useMemo(() => {
-    const fromSearch = meetRoomFromSearch(parseMeetRouteSearch(search as Record<string, unknown>));
-    if (fromSearch) return fromSearch;
-    const meetingId = params.meetingId?.trim() || meetMeetingIdFromPathname(pathname);
-    if (meetingId) return meetingId;
-    const channelId = params.channelId?.trim() || meetChannelIdFromPathname(pathname);
-    return channelId ? meetCollectionIdFromPublic(channelId) : null;
-  }, [params.channelId, params.meetingId, pathname, search]);
+  const invitedRoom = useMemo(
+    () =>
+      meetInvitedRoomFromRoute({
+        pathname,
+        search: parseMeetRouteSearch(search as Record<string, unknown>),
+        meetingId: params.meetingId,
+        channelId: params.channelId,
+      }),
+    [params.channelId, params.meetingId, pathname, search],
+  );
 
   const isJoinRoute = useMemo(
     () => meetIsJoinRoute(pathname, invitedRoom),
@@ -41,7 +42,7 @@ export function useMeetRouteSync() {
     (roomCode: string | null) => {
       if (typeof window === "undefined") return;
       // Channel/meeting invite URLs encode the room in the path — do not append ?room=.
-      if (meetChannelIdFromPathname(pathname) || meetMeetingIdFromPathname(pathname)) return;
+      if (meetPathOwnsInviteRoom(pathname)) return;
       // Match useMeetRoomState history.replaceState: only sync when a call room is active.
       // Skipping null avoids stripping ?room= from invite links on initial mount.
       if (!roomCode) return;
@@ -59,5 +60,12 @@ export function useMeetRouteSync() {
     [navigate, pathname, search],
   );
 
-  return { invitedRoom, isJoinRoute, buildCallLink, onRoomChange };
+  return {
+    invitedRoom,
+    isJoinRoute,
+    buildCallLink,
+    onRoomChange,
+    channelId: params.channelId ?? null,
+    meetingId: params.meetingId ?? null,
+  };
 }

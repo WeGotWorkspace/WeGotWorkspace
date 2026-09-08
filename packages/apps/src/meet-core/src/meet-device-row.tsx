@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
 
 type MeetDeviceRowProps = {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   label: string;
   value: string;
   onChange: (value: string) => void;

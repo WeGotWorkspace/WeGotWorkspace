@@ -10,7 +10,7 @@ import { meetStoryParameters } from "@/meet-core/stories/meet-story-shared";
 
 /**
  * Guest stripped channel: no sidebar, cream/dusk lobby, then chat + call stage.
- * Start/Join is a stub that admits into the in-channel layout.
+ * Ready to knock and Waiting after knock share the two-column invite card.
  */
 const meta = {
   title: "Apps/Meet/Panes/MeetGuestChannel",
@@ -20,9 +20,11 @@ const meta = {
     layout: "fullscreen",
     ...meetStoryParameters({
       componentDescription:
-        "Guest landing: ViewHeader only (hideSidebarToggle). Checking / waiting / missing / lobby / knocking use the split product lobby; in-channel is chat + MeetCallStage.",
+        "Guest landing: no ViewHeader on invite/lobby (preview + invite card only). Checking / waiting-for-host / missing stay status cards; Ready and Waiting after knock share the two-column lobby card (knock disables with a hand icon + cancel); in-channel is chat + MeetCallStage.",
       snippet: `<MeetGuestChannel
-  channelName="Standup"
+  channelName="Design"
+  channelTopic="Pixels, prototypes and critiques"
+  channelKind="channel"
   phase="lobby"
   lobby={lobby}
   stage={stage}
@@ -85,6 +87,8 @@ export const Waiting: Story = {
     expect(canvasElement.querySelector(".meet-workspace--split")).toBeTruthy();
     expect(canvasElement.querySelector(".meet-guest-channel__lobby")).toBeTruthy();
     expect(canvasElement.querySelector(".meet-workspace__lobby")).toBeNull();
+    expect(canvasElement.querySelector(".workspace-app-layout__main-header")).toBeNull();
+    await expect(canvas.queryByRole("heading", { name: "Design" })).not.toBeInTheDocument();
   },
 };
 
@@ -112,36 +116,82 @@ export const InviteError: Story = {
 };
 
 export const Knocking: Story = {
-  name: "Knocking",
+  name: "Waiting after knock",
   tags: ["vitest-ci"],
   args: {
     phase: "knocking",
     callLayout: "side-by-side",
+    displayName: "Wouter",
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(meetLabels.knockWaitTitle("Standup"))).toBeInTheDocument();
-    await expect(canvas.getByText(meetLabels.knockWaitHint)).toBeInTheDocument();
     await expect(
-      canvas.getByRole("button", { name: meetLabels.cancelRequest }),
+      canvas.getByRole("heading", { name: meetLabels.invitedTitle }),
     ).toBeInTheDocument();
-    await expect(canvas.queryByText(`${meetLabels.knocking}..`)).not.toBeInTheDocument();
+    await expect(canvas.getByDisplayValue("Wouter")).toBeInTheDocument();
+    const knock = canvas.getByRole("button", { name: meetLabels.knockToJoin });
+    await expect(knock).toBeDisabled();
+    expect(knock.className).toContain("meet-guest-lobby__knock--waiting");
+    await expect(canvas.getByRole("button", { name: meetLabels.cancelKnock })).toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.knockNoAccount)).not.toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.knockWaitHint)).not.toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.knockingHint)).not.toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.knockWaitTitle("Design"))).not.toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.cameraOff)).toBeInTheDocument();
+    await expect(canvas.queryByText("design")).not.toBeInTheDocument();
+    await expect(canvas.queryByText(/Pixels, prototypes and critiques/)).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("heading", { name: "Design" })).not.toBeInTheDocument();
+    expect(canvasElement.querySelector(".workspace-app-layout__main-header")).toBeNull();
+    expect(canvasElement.querySelector(".user-avatar__presence")).toBeNull();
+    const disableAudio = canvas.getByRole("button", { name: meetLabels.disableAudio });
+    await expect(disableAudio).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(disableAudio);
+    const enableAudio = canvas.getByRole("button", { name: meetLabels.enableAudio });
+    await expect(enableAudio).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(enableAudio);
+    await expect(canvas.getByRole("button", { name: meetLabels.disableAudio })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await userEvent.click(canvas.getByRole("button", { name: meetLabels.cancelKnock }));
+    await expect(canvas.getByRole("button", { name: meetLabels.knockToJoin })).toBeEnabled();
+    await expect(canvas.getByText(meetLabels.knockNoAccount)).toBeInTheDocument();
   },
 };
 
 export const Lobby: Story = {
-  name: "Lobby",
+  name: "Ready to knock",
   tags: ["vitest-ci"],
   args: {
     phase: "lobby",
     callLayout: "side-by-side",
+    displayName: "Wouter",
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("heading", { name: "Ready to join?" })).toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("button", { name: "Ask to join" }));
-    await expect(canvas.getByText(/Standup in five/i)).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "Collapse call" })).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("heading", { name: meetLabels.invitedTitle }),
+    ).toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.knockNoAccount)).toBeInTheDocument();
+    await expect(canvas.queryByText("design")).not.toBeInTheDocument();
+    await expect(canvas.queryByText(/Pixels, prototypes and critiques/)).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("heading", { name: "Design" })).not.toBeInTheDocument();
+    expect(canvasElement.querySelector(".workspace-app-layout__main-header")).toBeNull();
+    expect(canvasElement.querySelector(".user-avatar__presence")).toBeNull();
+    const name = canvas.getByDisplayValue("Wouter");
+    await expect(name).toBeInTheDocument();
+    await expect(name).toBeEnabled();
+    await userEvent.clear(name);
+    await userEvent.type(name, "Ada");
+    await expect(canvas.getByDisplayValue("Ada")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.knockToJoin })).toBeEnabled();
+    await userEvent.click(canvas.getByRole("button", { name: meetLabels.knockToJoin }));
+    await expect(canvas.getByRole("button", { name: meetLabels.knockToJoin })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: meetLabels.cancelKnock })).toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.knockNoAccount)).not.toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.knockWaitHint)).not.toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.knockingHint)).not.toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.knockWaitTitle("Design"))).not.toBeInTheDocument();
   },
 };
 
@@ -157,9 +207,11 @@ export const SignedInUnauthorized: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("heading", { name: "Ready to join?" })).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("heading", { name: meetLabels.invitedTitle }),
+    ).toBeInTheDocument();
     await expect(canvas.getByDisplayValue("Ada Lovelace")).toBeDisabled();
-    await expect(canvas.getByRole("button", { name: "Ask to join" })).toBeEnabled();
+    await expect(canvas.getByRole("button", { name: meetLabels.knockToJoin })).toBeEnabled();
   },
 };
 

@@ -12,8 +12,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/ui/alert-dialog";
+import type { MeetCallKnocker } from "@/meet-core/src/meet-call-knock";
 import { MeetDevicePopover } from "@/meet-core/src/meet-device-popover";
 import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
+import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 
 type MeetCallToolbarProps = {
@@ -42,6 +44,10 @@ type MeetCallToolbarProps = {
    */
   confirmExit?: boolean;
   extraActions?: ReactNode;
+  /** Host: waiting knockers. Shown as an action-row icon (production MeetKnockBadge). */
+  knockers?: readonly MeetCallKnocker[];
+  onAdmitKnocker?: (peerId: string) => void;
+  onDenyKnocker?: (peerId: string) => void;
 };
 
 export function MeetCallToolbar({
@@ -66,6 +72,9 @@ export function MeetCallToolbar({
   onConfirmExit,
   confirmExit = true,
   extraActions,
+  knockers = [],
+  onAdmitKnocker,
+  onDenyKnocker,
 }: MeetCallToolbarProps) {
   return (
     <div className="meet-workspace__toolbar">
@@ -73,7 +82,7 @@ export function MeetCallToolbar({
         <IconButton
           onClick={onToggleMic}
           icon={micOn ? <Mic /> : <MicOff />}
-          label={micOn ? meetLabels.mute : meetLabels.unmute}
+          label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
           size="sm"
           variant="subtle"
           active={micOn}
@@ -82,7 +91,7 @@ export function MeetCallToolbar({
         <IconButton
           onClick={onToggleVideo}
           icon={videoOn ? <Video /> : <VideoOff />}
-          label={videoOn ? meetLabels.stopVideo : meetLabels.startVideo}
+          label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
           size="sm"
           variant="subtle"
           active={videoOn}
@@ -109,6 +118,9 @@ export function MeetCallToolbar({
           onSpeaker={onSpeakerChange}
         />
         {extraActions}
+        {onAdmitKnocker && onDenyKnocker ? (
+          <MeetKnockBadge knockers={knockers} onAdmit={onAdmitKnocker} onDeny={onDenyKnocker} />
+        ) : null}
         <div className="meet-workspace__toolbar-divider" aria-hidden />
         {confirmExit ? (
           <AlertDialog>

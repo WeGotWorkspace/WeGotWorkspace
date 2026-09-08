@@ -25,8 +25,10 @@ function createRoomStub(): MeetRoomState {
     resetPeerMaps: vi.fn(),
     roomCodeRef: { current: "abc123" },
     selfIdRef: { current: "peer-1" },
+    joinInFlightRef: { current: null },
     statusRef: { current: "in-call" as const },
     displayNameRef: { current: "Guest" },
+    setVideoOn: vi.fn(),
   } as unknown as MeetRoomState;
 }
 
@@ -47,6 +49,71 @@ function createSessionStub(operations?: {
     stopLocalMedia: vi.fn(),
   } as unknown as MeetCallSessionState;
 }
+
+describe("useMeetMutations joinRoom", () => {
+  it("does not mint a second signaling peer when the same room is already live", async () => {
+    const session = createSessionStub();
+    const room = createRoomStub();
+    room.statusRef.current = "in-call";
+    room.roomCodeRef.current = "chat-general";
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room,
+        session,
+        canModerateKnocks: false,
+        leaveRef,
+        persistentCall: true,
+      }),
+    );
+
+    await result.current.joinRoom("chat-general");
+    await result.current.joinRoom("chat-general");
+
+    expect(session.meetRtc.join).not.toHaveBeenCalled();
+    expect(room.setSelfId).not.toHaveBeenCalled();
+  });
+
+  it("joins once when two startCalls overlap on an idle room", async () => {
+    const session = createSessionStub();
+    const room = createRoomStub();
+    room.status = "idle";
+    room.statusRef.current = "idle";
+    room.roomCodeRef.current = null;
+    room.selfIdRef.current = null;
+    room.setStatus = vi.fn((status: string) => {
+      room.statusRef.current = status as typeof room.statusRef.current;
+    });
+    let releaseJoin: (() => void) | undefined;
+    session.meetRtc.join = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseJoin = resolve;
+        }),
+    );
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room,
+        session,
+        canModerateKnocks: false,
+        leaveRef,
+        persistentCall: true,
+      }),
+    );
+
+    const first = result.current.joinRoom("chat-general");
+    const second = result.current.joinRoom("chat-general");
+    await vi.waitFor(() => {
+      expect(session.meetRtc.join).toHaveBeenCalledTimes(1);
+    });
+    releaseJoin?.();
+    await Promise.all([first, second]);
+    expect(session.meetRtc.join).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("useMeetMutations", () => {
   it("does not leave on rerender when the room object identity changes", () => {

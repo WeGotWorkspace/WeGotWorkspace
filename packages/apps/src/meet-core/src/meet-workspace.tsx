@@ -60,7 +60,8 @@ import {
 import { useMeetNowClock } from "@/meet-core/src/use-meet-now-clock";
 import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
 import { meetCallBarShownCount, meetCallPreviewPeers } from "@/meet-core/src/meet-call-bar-roster";
-import { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
+import { MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
+import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
@@ -72,6 +73,7 @@ import {
   meetCallInviteAction,
   meetCallInviteStartOptions,
   meetCallIsActive,
+  meetCallLiveAudioOnly,
   meetCallStageShowsStage,
   meetChannelMeetingLive,
   meetSelectedConversationLive,
@@ -153,13 +155,22 @@ function channelDotColor(channel: MeetChannel): string {
   return channel.color?.trim() || DEFAULT_MEET_CHANNEL_COLOR;
 }
 
-function MeetSidebarRowMeta({ live, unreadCount }: { live?: boolean; unreadCount?: number }) {
+function MeetSidebarRowMeta({
+  live,
+  audioOnly,
+  unreadCount,
+}: {
+  live?: boolean;
+  audioOnly?: boolean;
+  unreadCount?: number;
+}) {
   if (!live && !unreadCount) return undefined;
+  const LiveIcon = meetCallLiveIcon(Boolean(audioOnly));
   return (
     <span className="meet-workspace__row-meta">
       {live ? (
         <span className="meet-workspace__live" role="img" aria-label={meetLabels.liveCall}>
-          <Video className="meet-workspace__live-icon" aria-hidden />
+          <LiveIcon className="meet-workspace__live-icon" aria-hidden />
         </span>
       ) : null}
       {unreadCount ? <span className="meet-workspace__unread">{unreadCount}</span> : null}
@@ -173,12 +184,14 @@ function MeetDirectMessageRows({
   authorPresence,
   onSelect,
   channelHasLiveCall,
+  channelCallAudioOnly,
 }: {
   people: MeetDirectMessagePerson[];
   selectedId: string | null;
   authorPresence?: MeetWorkspaceProps["data"]["authorPresence"];
   onSelect: (channelId: string) => void;
   channelHasLiveCall: (channelId: string) => boolean;
+  channelCallAudioOnly: (channelId: string) => boolean;
 }) {
   return (
     <>
@@ -195,6 +208,7 @@ function MeetDirectMessageRows({
           trailing={
             <MeetSidebarRowMeta
               live={channelHasLiveCall(person.channelId)}
+              audioOnly={channelCallAudioOnly(person.channelId)}
               unreadCount={person.unreadCount}
             />
           }
@@ -245,12 +259,14 @@ function MeetSidebarRows({
   selectedId,
   onSelect,
   channelHasLiveCall,
+  channelCallAudioOnly,
   startLabelForChannel,
 }: {
   channels: MeetChannel[];
   selectedId: string | null;
   onSelect: (channelId: string) => void;
   channelHasLiveCall: (channelId: string) => boolean;
+  channelCallAudioOnly: (channelId: string) => boolean;
   startLabelForChannel?: (channel: MeetChannel) => string | null;
 }) {
   return (
@@ -278,6 +294,7 @@ function MeetSidebarRows({
                 ) : null}
                 <MeetSidebarRowMeta
                   live={channelHasLiveCall(channel.id)}
+                  audioOnly={channelCallAudioOnly(channel.id)}
                   unreadCount={channel.unreadCount}
                 />
               </>
@@ -829,7 +846,7 @@ export function MeetWorkspace({
     localCallActive: resolvedCallActive,
   });
   const callInvite = meetCallInviteAction(meetingLive, resolvedCallActive);
-  const callAudioOnly = Boolean(selectedId && callAudioOnlyByChannel?.[selectedId]);
+  const callAudioOnly = meetCallLiveAudioOnly(selectedId, callAudioOnlyByChannel);
   const showHeaderStart = conversationOpen && meetCallHeaderStartVisible(meetingLive);
   const markChannelMeetingLive = useCallback((channelId: string | null) => {
     if (!channelId) return;
@@ -847,7 +864,10 @@ export function MeetWorkspace({
     },
     [call.startCall, markChannelMeetingLive, resolvedStageLayout, selectedId],
   );
+  const autoJoinSelectedIdRef = useRef(selectedId);
   useEffect(() => {
+    if (autoJoinSelectedIdRef.current === selectedId) return;
+    autoJoinSelectedIdRef.current = selectedId;
     autoJoinedMeetingRef.current = null;
   }, [selectedId]);
   useEffect(() => {
@@ -967,6 +987,10 @@ export function MeetWorkspace({
       }),
     [call.isChannelJoined, callActive, callActiveByChannel, callChannelId, channels],
   );
+  const channelCallAudioOnly = useCallback(
+    (channelId: string) => meetCallLiveAudioOnly(channelId, callAudioOnlyByChannel),
+    [callAudioOnlyByChannel],
+  );
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -1075,6 +1099,7 @@ export function MeetWorkspace({
                   selectedId={selectedId}
                   onSelect={setSelectedId}
                   channelHasLiveCall={channelHasLiveCall}
+                  channelCallAudioOnly={channelCallAudioOnly}
                 />
               </SidebarSection>
             ) : null}
@@ -1085,6 +1110,7 @@ export function MeetWorkspace({
                   selectedId={selectedId}
                   onSelect={setSelectedId}
                   channelHasLiveCall={channelHasLiveCall}
+                  channelCallAudioOnly={channelCallAudioOnly}
                 />
               </SidebarSection>
             ) : null}
@@ -1096,6 +1122,7 @@ export function MeetWorkspace({
                     selectedId={selectedId}
                     onSelect={setSelectedId}
                     channelHasLiveCall={channelHasLiveCall}
+                    channelCallAudioOnly={channelCallAudioOnly}
                     startLabelForChannel={meetingStartLabel}
                   />
                 ) : null}
@@ -1117,6 +1144,7 @@ export function MeetWorkspace({
                   authorPresence={data.authorPresence}
                   onSelect={setSelectedId}
                   channelHasLiveCall={channelHasLiveCall}
+                  channelCallAudioOnly={channelCallAudioOnly}
                 />
               </SidebarSection>
             ) : null}
@@ -1202,7 +1230,7 @@ export function MeetWorkspace({
               >
                 {/* Chunk-I knock chrome (chunk-H join policy): the compact bar
                     swaps to a knock-wait banner while this user waits to be let
-                    in; joined members see the admit/deny queue under the bar. */}
+                    in; joined members admit waiting guests from the action row. */}
                 {(showCallBar || keepCallChrome) && callRoom?.controller.waitingForAdmission ? (
                   <MeetCallKnockWaiting channelTitle={headerTitle} onCancel={callToggle} />
                 ) : showCallBar || keepCallChrome ? (
@@ -1268,16 +1296,21 @@ export function MeetWorkspace({
                     invite={callInvite}
                     audioOnly={callAudioOnly}
                     onInvite={() => onCallInvite(meetCallInviteStartOptions(callAudioOnly))}
-                  />
-                ) : null}
-                {showCallChrome &&
-                callRoom &&
-                !callRoom.controller.waitingForAdmission &&
-                callRoom.controller.knockers.length > 0 ? (
-                  <MeetCallKnockQueue
-                    knockers={callRoom.controller.knockers}
-                    onAdmit={(peerId) => void callRoom.controller.admitKnocker(peerId)}
-                    onDeny={(peerId) => void callRoom.controller.denyKnocker(peerId)}
+                    knockers={
+                      showCallChrome && callRoom?.hasSignedInIdentity
+                        ? callRoom.controller.knockers
+                        : []
+                    }
+                    onAdmitKnocker={
+                      showCallChrome && callRoom
+                        ? (peerId) => void callRoom.controller.admitKnocker(peerId)
+                        : undefined
+                    }
+                    onDenyKnocker={
+                      showCallChrome && callRoom
+                        ? (peerId) => void callRoom.controller.denyKnocker(peerId)
+                        : undefined
+                    }
                   />
                 ) : null}
                 {resolvedChat}

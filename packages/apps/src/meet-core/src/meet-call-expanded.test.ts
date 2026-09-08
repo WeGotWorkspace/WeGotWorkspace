@@ -54,6 +54,9 @@ describe("MeetCallExpanded", () => {
     expect(expanded).not.toMatch(/extraActions/);
     expect(expanded).not.toMatch(/Maximize2/);
     expect(expanded).not.toMatch(/meetLabels\.devices/);
+    expect(expanded).not.toMatch(/MeetCallKnockQueue/);
+    expect(expanded).toMatch(/knockers=\{knockers\}/);
+    expect(expanded).toMatch(/MeetCallKnockWaiting/);
   });
 
   it("keeps the ViewHeader-slot sidebar toggle on the expanded header", () => {

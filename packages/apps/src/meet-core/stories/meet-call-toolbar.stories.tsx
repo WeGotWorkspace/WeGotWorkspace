@@ -5,6 +5,7 @@ import { MeetCallToolbar } from "@/meet-core/src/meet-call-toolbar";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
   STORY_MEET_DEVICES,
+  STORY_MEET_KNOCKERS,
   STORY_MEET_MICROPHONES,
   STORY_MEET_SPEAKERS,
 } from "@/meet-core/stories/meet-pane-stories.fixtures";
@@ -21,6 +22,7 @@ type MeetCallToolbarStoryArgs = {
   callExitLabel: string;
   callExitTitle: string;
   callExitDescription: string;
+  showKnockers: boolean;
 };
 
 function MeetCallToolbarStory({
@@ -30,6 +32,7 @@ function MeetCallToolbarStory({
   callExitLabel,
   callExitTitle,
   callExitDescription,
+  showKnockers,
 }: MeetCallToolbarStoryArgs) {
   const [camera, setCamera] = useState(STORY_MEET_DEVICES[0]!.id);
   const [microphone, setMicrophone] = useState(STORY_MEET_MICROPHONES[0]!.id);
@@ -56,6 +59,9 @@ function MeetCallToolbarStory({
         onMicrophoneChange={setMicrophone}
         onSpeakerChange={setSpeaker}
         onConfirmExit={STORY_NOOP}
+        knockers={showKnockers ? STORY_MEET_KNOCKERS : []}
+        onAdmitKnocker={showKnockers ? STORY_NOOP : undefined}
+        onDenyKnocker={showKnockers ? STORY_NOOP : undefined}
       />
     </div>
   );
@@ -95,6 +101,7 @@ const meta = {
     callExitLabel: { table: { disable: true } },
     callExitTitle: { table: { disable: true } },
     callExitDescription: { table: { disable: true } },
+    showKnockers: storyBooleanControl,
   },
 } satisfies Meta<MeetCallToolbarStoryArgs>;
 
@@ -108,6 +115,7 @@ const baseArgs: MeetCallToolbarStoryArgs = {
   callExitLabel: meetLabels.endCall,
   callExitTitle: meetLabels.endCallTitle,
   callExitDescription: meetLabels.endCallDescription,
+  showKnockers: false,
 };
 
 export const Default: Story = {
@@ -144,5 +152,18 @@ export const LeaveCall: Story = {
     callExitLabel: meetLabels.leaveCall,
     callExitTitle: meetLabels.leaveCallTitle,
     callExitDescription: meetLabels.leaveCallDescription,
+  },
+};
+
+export const WaitingToJoin: Story = {
+  name: "Waiting to join",
+  args: { ...baseArgs, showKnockers: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: meetLabels.waitingToJoin(2) }));
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(
+      body.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
+    ).toBeInTheDocument();
   },
 };

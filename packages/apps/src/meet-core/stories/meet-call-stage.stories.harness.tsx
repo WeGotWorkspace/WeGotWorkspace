@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Button } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
@@ -15,6 +23,7 @@ import type { MeetControllerState } from "@/meet-core/src/meet-controller-state"
 import type { MeetLobbyPaneProps } from "@/meet-core/src/meet-lobby-pane";
 import { MeetGuestChannel, type MeetGuestChannelPhase } from "@/meet-core/src/meet-guest-channel";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { meetLocalMediaGumConstraints } from "@/meet-core/src/meet-media-constraints";
 import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
 import {
   createMeetStoryController,
@@ -26,7 +35,157 @@ import {
 import { MeetStoryScope } from "@/meet-core/stories/meet-story-scope";
 import { STORY_NOOP } from "@/meet-core/stories/meet-story-shared";
 
-const GUEST_CHANNEL_NAME = "Standup";
+type MeetStoryLobbyPreviewMedia = {
+  localVideoRef: RefObject<HTMLVideoElement | null>;
+  micOn: boolean;
+  videoOn: boolean;
+  toggleMic: () => void;
+  toggleVideo: () => void;
+  getLocalStream: () => MediaStream | null;
+};
+
+/** Story-only local preview: GUM when mic or camera is on; deny keeps camera-off + avatar. */
+function useMeetStoryLobbyPreviewMedia(): MeetStoryLobbyPreviewMedia {
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const micWantedRef = useRef(true);
+  const videoWantedRef = useRef(false);
+  const [micOn, setMicOn] = useState(true);
+  const [videoOn, setVideoOn] = useState(false);
+  const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
+  const [previewEpoch, setPreviewEpoch] = useState(0);
+
+  const getLocalStream = useCallback(() => {
+    // Epoch changes when tracks are added to the same MediaStream object.
+    void previewEpoch;
+    return streamRef.current;
+  }, [previewEpoch]);
+
+  const syncTracks = useCallback((stream: MediaStream) => {
+    stream.getAudioTracks().forEach((track) => {
+      track.enabled = micWantedRef.current;
+    });
+    stream.getVideoTracks().forEach((track) => {
+      track.enabled = videoWantedRef.current;
+    });
+  }, []);
+
+  const adoptPreviewStream = useCallback(
+    (stream: MediaStream) => {
+      streamRef.current = stream;
+      syncTracks(stream);
+      setPreviewStream(stream);
+      setPreviewEpoch((epoch) => epoch + 1);
+    },
+    [syncTracks],
+  );
+
+  const ensurePreviewMedia = useCallback(async (): Promise<MediaStream | null> => {
+    if (!navigator.mediaDevices?.getUserMedia) return null;
+    const wantMic = micWantedRef.current;
+    const wantVideo = videoWantedRef.current;
+    if (!wantMic && !wantVideo) return streamRef.current;
+    try {
+      let stream = streamRef.current;
+      if (!stream) {
+        stream = await navigator.mediaDevices.getUserMedia(
+          meetLocalMediaGumConstraints({
+            micOn: wantMic,
+            videoOn: wantVideo,
+            micId: null,
+            camId: null,
+          }),
+        );
+        adoptPreviewStream(stream);
+        return stream;
+      }
+      if (wantVideo && stream.getVideoTracks().length === 0) {
+        const extra = await navigator.mediaDevices.getUserMedia(
+          meetLocalMediaGumConstraints({
+            micOn: false,
+            videoOn: true,
+            micId: null,
+            camId: null,
+          }),
+        );
+        extra.getVideoTracks().forEach((track) => stream!.addTrack(track));
+      }
+      if (wantMic && stream.getAudioTracks().length === 0) {
+        const extra = await navigator.mediaDevices.getUserMedia(
+          meetLocalMediaGumConstraints({
+            micOn: true,
+            videoOn: false,
+            micId: null,
+            camId: null,
+          }),
+        );
+        extra.getAudioTracks().forEach((track) => stream!.addTrack(track));
+      }
+      adoptPreviewStream(stream);
+      return stream;
+    } catch {
+      return null;
+    }
+  }, [adoptPreviewStream]);
+
+  const toggleMic = useCallback(() => {
+    const next = !micWantedRef.current;
+    micWantedRef.current = next;
+    setMicOn(next);
+    streamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = next;
+    });
+    if (next && (streamRef.current?.getAudioTracks().length ?? 0) === 0) {
+      void ensurePreviewMedia();
+    }
+  }, [ensurePreviewMedia]);
+
+  const toggleVideo = useCallback(() => {
+    const next = !videoWantedRef.current;
+    videoWantedRef.current = next;
+    setVideoOn(next);
+    if (!next) {
+      streamRef.current?.getVideoTracks().forEach((track) => {
+        track.enabled = false;
+      });
+      return;
+    }
+    void ensurePreviewMedia().then((stream) => {
+      if (stream || !videoWantedRef.current) return;
+      videoWantedRef.current = false;
+      setVideoOn(false);
+    });
+  }, [ensurePreviewMedia]);
+
+  useEffect(() => {
+    if (!micOn && !videoOn) return;
+    void ensurePreviewMedia();
+  }, [ensurePreviewMedia, micOn, videoOn]);
+
+  useEffect(() => {
+    const video = localVideoRef.current;
+    if (!video || !videoOn || !previewStream) return;
+    video.srcObject = previewStream;
+    video.muted = true;
+    void video.play().catch(() => {});
+    return () => {
+      video.srcObject = null;
+    };
+  }, [previewStream, videoOn]);
+
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    };
+  }, []);
+
+  return { localVideoRef, micOn, videoOn, toggleMic, toggleVideo, getLocalStream };
+}
+
+const GUEST_CHANNEL_NAME = "Design";
+const GUEST_CHANNEL_TOPIC = "Pixels, prototypes and critiques";
+const GUEST_CHANNEL_KIND = "channel" as const;
 const GUEST_ROOM_CODE = "h8y8-ewp6-al8n";
 
 function buildStoryRoomSlice(
@@ -178,25 +337,48 @@ export function MeetCallStageStoryHarness({
 
 function buildStoryLobbySlice(
   localVideoRef: RefObject<HTMLVideoElement | null>,
-  onAdmit: () => void,
+  handlers: { onKnock: () => void; onCancelKnock: () => void },
   activeSpeaker: string,
   onSpeakerChange: (value: string) => void,
-  identity: { displayName: string; hasSignedInIdentity: boolean; displayNameLocked: boolean } = {
+  identity: {
+    displayName: string;
+    hasSignedInIdentity: boolean;
+    displayNameLocked: boolean;
+    setDisplayName: (value: string) => void;
+  } = {
     displayName: "Guest",
     hasSignedInIdentity: false,
     displayNameLocked: false,
+    setDisplayName: () => {},
   },
+  media: Pick<
+    MeetStoryLobbyPreviewMedia,
+    "micOn" | "videoOn" | "toggleMic" | "toggleVideo" | "getLocalStream"
+  >,
 ): MeetLobbyPaneProps {
-  const join = async () => {
-    onAdmit();
+  const knock = async () => {
+    handlers.onKnock();
   };
   const controller = createMeetStoryController(localVideoRef, {
     status: "idle",
     inCall: false,
+    videoOn: media.videoOn,
+    micOn: media.micOn,
     displayName: identity.displayName,
-    startMeeting: join,
-    joinRoom: join,
-    requestJoin: join,
+    setDisplayName: (value) => {
+      if (identity.displayNameLocked) return;
+      const next = typeof value === "function" ? value(identity.displayName) : value;
+      identity.setDisplayName(next);
+    },
+    startMeeting: knock,
+    joinRoom: knock,
+    requestJoin: knock,
+    toggleMic: media.toggleMic,
+    toggleVideo: media.toggleVideo,
+    getLocalStream: media.getLocalStream,
+    leave: async () => {
+      handlers.onCancelKnock();
+    },
   });
 
   return {
@@ -239,36 +421,56 @@ export function MeetGuestChannelStoryHarness({
   hasSignedInIdentity = false,
   displayNameLocked = false,
 }: MeetGuestChannelStoryArgs) {
-  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const preview = useMeetStoryLobbyPreviewMedia();
   const [phase, setPhase] = useState<MeetGuestChannelPhase>(phaseInitial);
   const [callLayout, setCallLayout] = useState<MeetCallStageLayout>(callLayoutInitial);
+  const [guestName, setGuestName] = useState(displayName);
 
   useEffect(() => {
     setPhase(phaseInitial);
     setCallLayout(callLayoutInitial);
   }, [phaseInitial, callLayoutInitial]);
+  useEffect(() => {
+    setGuestName(displayName);
+  }, [displayName]);
   const [activeSpeaker, setActiveSpeaker] = useState(STORY_MEET_SPEAKERS[0]!.id);
   const [activeCamera, setActiveCamera] = useState(STORY_MEET_DEVICES[0]!.id);
   const [activeMic, setActiveMic] = useState(STORY_MEET_MICROPHONES[0]!.id);
   const lobby = buildStoryLobbySlice(
-    localVideoRef,
-    () => {
-      setPhase("in-channel");
-      setCallLayout("side-by-side");
+    preview.localVideoRef,
+    {
+      onKnock: () => {
+        setPhase("knocking");
+      },
+      onCancelKnock: () => {
+        setPhase("lobby");
+      },
     },
     activeSpeaker,
     setActiveSpeaker,
-    { displayName, hasSignedInIdentity, displayNameLocked },
+    {
+      displayName: guestName,
+      hasSignedInIdentity,
+      displayNameLocked,
+      setDisplayName: setGuestName,
+    },
+    {
+      micOn: preview.micOn,
+      videoOn: preview.videoOn,
+      toggleMic: preview.toggleMic,
+      toggleVideo: preview.toggleVideo,
+      getLocalStream: preview.getLocalStream,
+    },
   );
   const stage = buildStoryRoomSlice(
-    localVideoRef,
+    preview.localVideoRef,
     activeCamera,
     activeMic,
     activeSpeaker,
     setActiveSpeaker,
     {
       peers: STORY_MEET_PEERS,
-      displayName: displayName,
+      displayName: guestName,
       switchCamera: async (deviceId) => setActiveCamera(deviceId),
       switchMic: async (deviceId) => setActiveMic(deviceId),
     },
@@ -313,14 +515,18 @@ export function MeetGuestChannelStoryHarness({
   );
 
   return (
-    <MeetGuestChannel
-      channelName={GUEST_CHANNEL_NAME}
-      phase={phase}
-      lobby={lobby}
-      stage={{ ...stage, displayName, hasSignedInIdentity }}
-      callLayout={callLayout}
-      chat={chat}
-      onLayoutChange={setCallLayout}
-    />
+    <MeetStoryScope>
+      <MeetGuestChannel
+        channelName={GUEST_CHANNEL_NAME}
+        channelTopic={GUEST_CHANNEL_TOPIC}
+        channelKind={GUEST_CHANNEL_KIND}
+        phase={phase}
+        lobby={lobby}
+        stage={{ ...stage, displayName: guestName, hasSignedInIdentity }}
+        callLayout={callLayout}
+        chat={chat}
+        onLayoutChange={setCallLayout}
+      />
+    </MeetStoryScope>
   );
 }

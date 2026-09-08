@@ -151,14 +151,14 @@ export function MeetLobbyPane({
             onClick={controller.toggleMic}
             OnIcon={Mic}
             OffIcon={MicOff}
-            label={controller.micOn ? "Mute" : "Unmute"}
+            label={controller.micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
           />
           <MeetCircleToggle
             on={controller.videoOn}
             onClick={controller.toggleVideo}
             OnIcon={Video}
             OffIcon={VideoOff}
-            label={controller.videoOn ? "Stop video" : "Start video"}
+            label={controller.videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
           />
         </div>
         {waitingForAdmission ? (

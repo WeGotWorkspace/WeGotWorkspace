@@ -14,10 +14,7 @@ import {
 import { MeetApp } from "@/meet-core/src/meet-app";
 import { MeetChatApp } from "@/meet-core/src/meet-chat-app";
 import { createWgwMeetGuestOrHostApiSource } from "@/meet-core/src/meet-api-source";
-import {
-  MEET_CHANNELS_ROUTE,
-  meetNavigateTargetFromSelection,
-} from "@/meet-core/src/meet-chat-route";
+import { meetNavigateTargetFromSelection } from "@/meet-core/src/meet-chat-route";
 import {
   meetChannelIdsEqual,
   meetCollectionIdCandidates,
@@ -103,7 +100,7 @@ export type MeetChannelDeepLinkGateProps = {
 
 function InviteCheckingScreen() {
   return (
-    <MeetGuestChannelFrame channelName={meetLabels.productName}>
+    <MeetGuestChannelFrame>
       <MeetLobbyStatusCard
         title={meetLabels.checkingInviteTitle}
         body={meetLabels.checkingInviteBody}
@@ -149,10 +146,8 @@ export function MeetInviteGate({
 
   useEffect(() => {
     if (access !== "member" || !resolvedChannelId) return;
+    if (meetChannelIdsEqual(channelId, resolvedChannelId)) return;
     const target = meetNavigateTargetFromSelection(resolvedChannelId, { kind: resolvedKind });
-    if (target.to === MEET_CHANNELS_ROUTE && meetChannelIdsEqual(channelId, resolvedChannelId)) {
-      return;
-    }
     void navigate({
       ...target,
       replace: true,

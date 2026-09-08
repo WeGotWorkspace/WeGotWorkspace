@@ -93,8 +93,8 @@ export const HostReady: Story = {
     await expect(canvas.getByRole("heading", { name: "Ready when you are." })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Start meeting" })).toBeEnabled();
     await expect(canvas.getByDisplayValue("Demo User")).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "Mute" })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "Stop video" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Disable audio" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Disable video" })).toBeInTheDocument();
   },
 };
 

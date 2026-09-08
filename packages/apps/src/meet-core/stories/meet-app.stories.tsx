@@ -50,7 +50,9 @@ export const Default: Story = {
     await expect(
       canvas.queryByRole("button", { name: meetLabels.devices }),
     ).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: meetLabels.mute })).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.disableAudio }),
+    ).not.toBeInTheDocument();
     const join = canvas.getByRole("button", { name: meetLabels.join });
     await expect(join).toBeInTheDocument();
     await expect(join.className).toContain("meet-call-bar__invite-button");
@@ -207,7 +209,7 @@ export const CallBar: Story = {
     await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: meetLabels.startVideo })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.enableVideo })).toBeInTheDocument();
     const devices = canvas.getByRole("button", { name: meetLabels.devices });
     const leave = canvas.getByRole("button", { name: meetLabels.leave });
     await expect(devices).toBeInTheDocument();
@@ -321,19 +323,47 @@ export const KnockQueue: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // Member side: knockers surface as an alert queue in the stage chrome with
-    // per-person admit/deny (role queries skip the parked aria-hidden copy).
-    await expect(canvas.getByRole("alert")).toBeInTheDocument();
-    await expect(canvas.getByRole("alert").getAttribute("aria-label")).toBe(
-      meetLabels.waitingToJoin(2),
-    );
+    // Member side: knockers surface as an action-row icon (production
+    // MeetKnockBadge). Role queries skip the parked aria-hidden copy.
+    const admitTrigger = canvas.getByRole("button", {
+      name: meetLabels.waitingToJoin(2),
+    });
+    await expect(admitTrigger).toBeInTheDocument();
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+    await userEvent.click(admitTrigger);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(body.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }));
+    await expect(
+      canvas.getByRole("button", { name: meetLabels.waitingToJoin(1) }),
+    ).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: meetLabels.waitingToJoin(1) }));
     await userEvent.click(
-      canvas.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
+      within(canvasElement.ownerDocument.body).getByRole("button", {
+        name: meetLabels.denyName("Jamie Lee"),
+      }),
     );
     await expect(
-      canvas.queryByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
+      canvas.queryByRole("button", { name: meetLabels.waitingToJoin(1) }),
     ).not.toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("button", { name: meetLabels.denyName("Jamie Lee") }));
+  },
+};
+
+export const KnockQueueCompact: Story = {
+  name: "Knock queue (compact)",
+  args: {
+    initialChannelId: "channel-general",
+    initialCallLayout: "compact",
+    initialKnockers: [
+      { id: "guest-1", name: "Alex Morgan" },
+      { id: "guest-2", name: "Jamie Lee" },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("button", { name: meetLabels.waitingToJoin(2) }),
+    ).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.expandCall })).toBeInTheDocument();
     await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
   },
 };

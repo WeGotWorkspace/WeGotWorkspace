@@ -32,11 +32,11 @@ describe("wegotworkspace meet invite routes", () => {
     expect(routesSource).toMatch(/path: "\/meet\/join"/);
   });
 
-  it("keeps persisted /meet/meetings/{slug} in the workspace, not the invite gate", () => {
+  it("uses MeetInviteGate for leftover codes and persisted meeting slugs", () => {
     expect(routesSource).toContain("meetIsAdHocMeetingId");
     expect(routesSource).toContain("persistedMeetingId");
-    expect(routesSource).toMatch(/adHocMeeting \|\| \(!onConversationRoute && inviteRoom\)/);
-    expect(routesSource).toContain("channelId ?? persistedMeetingId");
+    expect(routesSource).toContain("MeetInviteGate");
+    expect(routesSource).toMatch(/meetingId \|\| \(!onConversationRoute && inviteRoom\)/);
   });
 
   it("uses MeetInviteGate on /meet and only redirects old guest/join paths", () => {

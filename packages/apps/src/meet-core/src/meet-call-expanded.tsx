@@ -2,7 +2,7 @@ import { type ReactNode, useCallback, useState } from "react";
 import { MessageSquare, Minimize2, Video } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { meetCallBarMeta } from "@/meet-core/src/meet-call-bar";
-import { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
+import { MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
 import { defaultMeetCallChatOpen } from "@/meet-core/src/meet-call-chat-panel";
 import {
   meetCallGivenName,
@@ -95,7 +95,7 @@ export function MeetCallExpanded({
   const remotes = room.controller.peers;
   const sharing = room.controller.screenOn;
   // Chunk-I knock chrome: knocker-side wait state on the stage; member-side
-  // admit/deny queue in the chrome (guests never moderate knocks).
+  // admit/deny lives on the action-row icon (guests never moderate knocks).
   const waitingForAdmission = room.controller.waitingForAdmission;
   const knockers = room.hasSignedInIdentity && !waitingForAdmission ? room.controller.knockers : [];
   const cancelKnock = useCallback(() => {
@@ -151,14 +151,6 @@ export function MeetCallExpanded({
           </div>
         </header>
 
-        {knockers.length > 0 ? (
-          <MeetCallKnockQueue
-            knockers={knockers}
-            onAdmit={(peerId) => void room.controller.admitKnocker(peerId)}
-            onDeny={(peerId) => void room.controller.denyKnocker(peerId)}
-          />
-        ) : null}
-
         {waitingForAdmission ? (
           <div className="meet-call-stage__body">
             <MeetCallKnockWaiting
@@ -175,6 +167,7 @@ export function MeetCallExpanded({
               ) : sharing && room.controller.screenPreviewStream ? (
                 <MeetStreamVideo
                   stream={room.controller.screenPreviewStream}
+                  muted
                   className="meet-call-stage__screen"
                 />
               ) : (
@@ -182,6 +175,7 @@ export function MeetCallExpanded({
                   name={spotlight.name}
                   stream={spotlight.stream ?? null}
                   userId={spotlight.id}
+                  muted={spotlight.id === self.id}
                   spotlight
                   speaking={
                     !sharing && spotlight.id !== self.id && !meetCallPeerScreenSharing(spotlight)
@@ -212,6 +206,7 @@ export function MeetCallExpanded({
                       name={peer.name}
                       stream={peer.stream ?? null}
                       userId={peer.id}
+                      muted={isSelf}
                       compact
                       caption={
                         isSelf && room.controller.videoOn && !peer.stream
@@ -270,6 +265,9 @@ export function MeetCallExpanded({
               void room.controller.switchMic(deviceId);
             }}
             onSpeakerChange={room.onSpeakerChange}
+            knockers={knockers}
+            onAdmitKnocker={(peerId) => void room.controller.admitKnocker(peerId)}
+            onDenyKnocker={(peerId) => void room.controller.denyKnocker(peerId)}
             // Members leave without ceremony (rejoining is one click); guests
             // and end-call-for-all keep the confirmation dialog.
             confirmExit={!room.hasSignedInIdentity || room.callExitLabel === meetLabels.endCall}

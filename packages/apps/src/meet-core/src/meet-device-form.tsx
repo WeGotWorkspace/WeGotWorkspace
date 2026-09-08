@@ -26,6 +26,8 @@ export type MeetDeviceFormProps = {
   className?: string;
   /** Portaled select menu surface. Lobby stays dark; the in-call sheet is paper. */
   menuClassName?: string;
+  /** Guest lobby card lays the three pickers in a row (mic / camera / speaker). */
+  deviceLayout?: "stack" | "row";
 };
 
 export function MeetDeviceForm({
@@ -42,8 +44,10 @@ export function MeetDeviceForm({
   children,
   className,
   menuClassName,
+  deviceLayout = "stack",
 }: MeetDeviceFormProps) {
   const displayNameId = useId();
+  const row = deviceLayout === "row";
   return (
     <div className={cn("meet-workspace__form", className)}>
       {displayName ? (
@@ -60,31 +64,61 @@ export function MeetDeviceForm({
           </FieldLabelRow>
         </div>
       ) : null}
-      <div className="meet-workspace__form-devices">
-        <MeetDeviceRow
-          icon={<Video />}
-          label={meetLabels.cameraLabel}
-          value={camera}
-          onChange={onCameraChange}
-          options={cameras}
-          menuClassName={menuClassName}
-        />
-        <MeetDeviceRow
-          icon={<Mic />}
-          label={meetLabels.microphoneLabel}
-          value={microphone}
-          onChange={onMicrophoneChange}
-          options={microphones}
-          menuClassName={menuClassName}
-        />
-        <MeetDeviceRow
-          icon={<Volume2 />}
-          label={meetLabels.speakerLabel}
-          value={speaker}
-          onChange={onSpeakerChange}
-          options={speakers}
-          menuClassName={menuClassName}
-        />
+      <div
+        className={cn("meet-workspace__form-devices", row && "meet-workspace__form-devices--row")}
+      >
+        {row ? (
+          <>
+            <MeetDeviceRow
+              label={meetLabels.microphoneLabel}
+              value={microphone}
+              onChange={onMicrophoneChange}
+              options={microphones}
+              menuClassName={menuClassName}
+            />
+            <MeetDeviceRow
+              label={meetLabels.cameraLabel}
+              value={camera}
+              onChange={onCameraChange}
+              options={cameras}
+              menuClassName={menuClassName}
+            />
+            <MeetDeviceRow
+              label={meetLabels.speakerLabel}
+              value={speaker}
+              onChange={onSpeakerChange}
+              options={speakers}
+              menuClassName={menuClassName}
+            />
+          </>
+        ) : (
+          <>
+            <MeetDeviceRow
+              icon={<Video />}
+              label={meetLabels.cameraLabel}
+              value={camera}
+              onChange={onCameraChange}
+              options={cameras}
+              menuClassName={menuClassName}
+            />
+            <MeetDeviceRow
+              icon={<Mic />}
+              label={meetLabels.microphoneLabel}
+              value={microphone}
+              onChange={onMicrophoneChange}
+              options={microphones}
+              menuClassName={menuClassName}
+            />
+            <MeetDeviceRow
+              icon={<Volume2 />}
+              label={meetLabels.speakerLabel}
+              value={speaker}
+              onChange={onSpeakerChange}
+              options={speakers}
+              menuClassName={menuClassName}
+            />
+          </>
+        )}
       </div>
       {children}
     </div>

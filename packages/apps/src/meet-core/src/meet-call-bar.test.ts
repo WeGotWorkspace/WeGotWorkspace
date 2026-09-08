@@ -98,13 +98,22 @@ describe("MeetCallBar", () => {
   it("keeps settings in the media cluster before the leave divider", () => {
     expect(tsx).toMatch(/MeetDevicePopover/);
     expect(tsx).toMatch(/meet-call-bar__divider/);
-    expect(tsx.indexOf("meetLabels.stopVideo")).toBeLessThan(tsx.indexOf("<MeetDevicePopover"));
-    expect(tsx.indexOf("<MeetDevicePopover")).toBeLessThan(
+    expect(tsx.indexOf("meetLabels.disableVideo")).toBeLessThan(tsx.indexOf("<MeetDevicePopover"));
+    expect(tsx.indexOf("<MeetDevicePopover")).toBeLessThan(tsx.indexOf("<MeetKnockBadge"));
+    expect(tsx.indexOf("<MeetKnockBadge")).toBeLessThan(
       tsx.indexOf('className="meet-call-bar__divider"'),
     );
     expect(tsx.indexOf('className="meet-call-bar__divider"')).toBeLessThan(
       tsx.indexOf("icon={<PhoneOff />}"),
     );
+  });
+
+  it("puts waiting knockers on the action row, not a floating admit banner", () => {
+    expect(tsx).toMatch(/MeetKnockBadge/);
+    expect(tsx).toMatch(/knockers = \[\]/);
+    expect(tsx).not.toMatch(/MeetCallKnockQueue/);
+    expect(workspaceTsx).not.toMatch(/MeetCallKnockQueue/);
+    expect(workspaceTsx).toMatch(/knockers=\{/);
   });
 
   it("hides the IconButton cluster until the local user has joined", () => {
@@ -122,8 +131,11 @@ describe("MeetCallBar", () => {
 
   it("uses an audio mark when audioOnly and keeps the Join label", () => {
     expect(tsx).toMatch(/audioOnly = false/);
-    expect(tsx).toMatch(/meet-call-bar__mark[\s\S]*audioOnly \? \([\s\S]*<Mic[\s\S]*<Video/);
-    expect(tsx).toMatch(/icon=\{audioOnly \? <Mic \/> : <Video \/>\}/);
+    expect(tsx).toMatch(/const LiveIcon = meetCallLiveIcon\(audioOnly\)/);
+    expect(tsx).toMatch(
+      /meet-call-bar__mark[\s\S]*<LiveIcon className="meet-workspace__header-kind-icon"/,
+    );
+    expect(tsx).toMatch(/icon=\{<LiveIcon \/>\}/);
     expect(tsx).toMatch(/label=\{meetLabels\.join\}/);
     expect(tsx).not.toMatch(/joinAudioOnly/);
     expect(tsx).not.toMatch(/Join \(Audio Only\)/);

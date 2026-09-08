@@ -4,6 +4,7 @@ import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
   STORY_MEET_DEVICES,
+  STORY_MEET_KNOCKERS,
   STORY_MEET_MICROPHONES,
   STORY_MEET_PEERS,
   STORY_MEET_SPEAKERS,
@@ -22,9 +23,17 @@ type MeetCallBarStoryArgs = {
   videoOn: boolean;
   invite: "join" | null;
   audioOnly: boolean;
+  showKnockers: boolean;
 };
 
-function MeetCallBarStory({ joined, micOn, videoOn, invite, audioOnly }: MeetCallBarStoryArgs) {
+function MeetCallBarStory({
+  joined,
+  micOn,
+  videoOn,
+  invite,
+  audioOnly,
+  showKnockers,
+}: MeetCallBarStoryArgs) {
   const [camera, setCamera] = useState(STORY_MEET_DEVICES[0]!.id);
   const [microphone, setMicrophone] = useState(STORY_MEET_MICROPHONES[0]!.id);
   const [speaker, setSpeaker] = useState(STORY_MEET_SPEAKERS[0]!.id);
@@ -67,6 +76,9 @@ function MeetCallBarStory({ joined, micOn, videoOn, invite, audioOnly }: MeetCal
         invite={invite}
         audioOnly={audioOnly}
         onInvite={invite ? STORY_NOOP : undefined}
+        knockers={showKnockers ? STORY_MEET_KNOCKERS : []}
+        onAdmitKnocker={showKnockers ? STORY_NOOP : undefined}
+        onDenyKnocker={showKnockers ? STORY_NOOP : undefined}
       />
     </MeetStoryScope>
   );
@@ -101,6 +113,7 @@ const meta = {
     videoOn: storyBooleanControl,
     invite: { control: "select", options: [null, "join"] as const },
     audioOnly: storyBooleanControl,
+    showKnockers: storyBooleanControl,
   },
 } satisfies Meta<MeetCallBarStoryArgs>;
 
@@ -115,16 +128,17 @@ export const Joined: Story = {
     videoOn: true,
     invite: null,
     audioOnly: false,
+    showKnockers: false,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: meetLabels.expandCall })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
-    const muteControls = canvas.getAllByRole("button", { name: meetLabels.mute });
+    const muteControls = canvas.getAllByRole("button", { name: meetLabels.disableAudio });
     await userEvent.click(muteControls[0]!);
-    await expect(canvas.getAllByRole("button", { name: meetLabels.unmute }).length).toBeGreaterThan(
-      0,
-    );
+    await expect(
+      canvas.getAllByRole("button", { name: meetLabels.enableAudio }).length,
+    ).toBeGreaterThan(0);
   },
 };
 
@@ -136,6 +150,7 @@ export const InviteToJoin: Story = {
     videoOn: false,
     invite: "join",
     audioOnly: false,
+    showKnockers: false,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -159,6 +174,7 @@ export const InviteToJoinAudioOnly: Story = {
     videoOn: false,
     invite: "join",
     audioOnly: true,
+    showKnockers: false,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -169,5 +185,28 @@ export const InviteToJoinAudioOnly: Story = {
     await expect(
       canvas.queryByRole("button", { name: meetLabels.expandCall }),
     ).not.toBeInTheDocument();
+  },
+};
+
+export const WaitingToJoin: Story = {
+  name: "Waiting to join",
+  args: {
+    joined: true,
+    micOn: true,
+    videoOn: true,
+    invite: null,
+    audioOnly: false,
+    showKnockers: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole("button", { name: meetLabels.waitingToJoin(2) });
+    await expect(trigger).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.expandCall })).toBeInTheDocument();
+    await userEvent.click(trigger);
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(
+      body.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
+    ).toBeInTheDocument();
   },
 };
