@@ -11,7 +11,7 @@ Improve WebRTC connection behavior across the suite in ordered phases: (0) close
 ## Non-goals
 
 - Accepting external share-session tokens (`DriveShareSessionsController`) on collab join — documented later iteration.
-- Cross-room connection reuse (phase 3b) and cross-window leadership (phase 4) — separate go/no-go.
+- Cross-room connection reuse (phase 3b) and cross-window leadership (phase 4) — phase 3b landed in #690; phase 4 tracked as #695 / `.agents/specs/695-rtc-cross-window-leader/`.
 - SFU/TURN infra, media renegotiation (`addTrack`), shared/rotated poller.
 - New REST endpoints for phase 0 (enforcement happens inside the existing join flow).
 

@@ -73,7 +73,9 @@ export function restartCalendarRangeTransition(
   const settle = () => {
     if (settled) return;
     settled = true;
-    window.clearTimeout(fallback);
+    globalThis.clearTimeout(fallback);
+    // Vitest may tear down jsdom before the fallback timer fires.
+    if (typeof window === "undefined") return;
     clearCalendarRangeTransition(node);
     node.removeEventListener("animationend", onEnd);
     node.dispatchEvent(
@@ -85,7 +87,7 @@ export function restartCalendarRangeTransition(
     settle();
   };
   node.addEventListener("animationend", onEnd);
-  const fallback = window.setTimeout(settle, RANGE_ANIMATION_MS + 50);
+  const fallback = globalThis.setTimeout(settle, RANGE_ANIMATION_MS + 50);
 }
 
 /**

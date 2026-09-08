@@ -18,6 +18,8 @@ Optional header line (not hashed): `Goal: #M` for product context only.
 
 Humans can keep working from GitHub issues alone. Specs are optional infrastructure for agent-driven implementation — required only on `feat/` branches (see below). Product Goals: [GOVERNANCE.md](../../GOVERNANCE.md). Filing: [developer/issue-filing.md](../skills/developer/issue-filing.md).
 
+**Language:** `spec.md`, `plan.md`, and `tasks.md` are **English** even when the user prompt is Dutch. Same for the Source issue. [english-only.md](../skills/developer/english-only.md).
+
 ## Folder convention
 
 Map name: **`<issue-number>-<slug>`**

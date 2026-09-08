@@ -18,6 +18,7 @@ Issue AC verification and done-checklist are both required; neither replaces the
 - [ ] Changes match the relevant domain skill (`api`, `apps-ui`, `workspace`, `meet`, …)
 - [ ] No unrelated refactors or markdown the user did not ask for
 - [ ] [clean-code/smells.md](../clean-code/smells.md) scan on touched files
+- [ ] **English-only** — specs, plans, docs, and any GitHub issue/PR text you wrote are English even if the user prompt was Dutch ([english-only.md](english-only.md)). `pnpm run check:agent-docs` (also part of `ci:quality:apps`)
 - [ ] `git status` clean for intended scope (no accidental `.env`, secrets, debug logs)
 
 ## API (`packages/api`)

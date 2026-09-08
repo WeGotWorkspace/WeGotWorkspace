@@ -21,7 +21,7 @@ Source plan: [plan.md](./plan.md)
 - Chunk `id` values match `plan.md`.
 - Update **status** as chunks complete (`pending` → `done`).
 - Full done gates (`pnpm test:api-done-gate` / `pnpm test:apps-done-gate`) run by the final verification agent, not per chunk.
-- Phase 4 (cross-window leadership) is tracked separately as #695 — out of scope here.
+- Phase 4 (cross-window leadership) is tracked separately as #695 — see `.agents/specs/695-rtc-cross-window-leader/` (`feat/rtc-cross-window-leader`).
 
 ## Phase 3b live + test verification (all passed)
 

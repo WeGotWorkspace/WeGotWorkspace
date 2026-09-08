@@ -11,6 +11,8 @@ Issue-linked work needs **three** gates:
 2. **Issue AC** — this skill: each acceptance criterion verified with evidence.
 3. **Repo quality** — [developer/done-checklist.md](../developer/done-checklist.md) + [code-review](../code-review/SKILL.md): tests, done gates, policy, smells.
 
+Write the AC report in **English**. The Source issue and spec must also be English ([english-only.md](../developer/english-only.md)).
+
 Do not skip (2) or (3) after (1). Do not declare an issue done based on green CI alone if AC were never mapped.
 
 ## Goal vs Task / Epic modes

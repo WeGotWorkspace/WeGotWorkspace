@@ -21,6 +21,7 @@ Policies agents should follow for **new work**. Backlog gaps are tracked on GitH
 | **No auto-commits / PRs** | Always | User instruction | [git-workflow/SKILL.md](skills/git-workflow/SKILL.md) |
 | **Signed commits on `main`** | Required for merge | Branch protection | [git-workflow/pull-requests.md](skills/git-workflow/pull-requests.md) |
 | **Agent verification** | Run done gates before handoff | MCP `wgw-verify` tools (`run_*_done_gate`, `run_ci_quality`); bash fallback | [developer/mcp-verification.md](skills/developer/mcp-verification.md) |
+| **English-only artifacts** | Specs, plans, docs, GitHub issues/Goals/comments, PRs — English even if the user writes Dutch | CI: `pnpm run check:agent-docs` (prose scan); review + this policy for GitHub text CI cannot see | [developer/english-only.md](skills/developer/english-only.md) |
 | **Product intent** | User outcomes live in Goal issues (`type:goal`) on the [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) (start at [0.9 Roadmap](https://github.com/orgs/WeGotWorkspace/projects/1/views/4)); [docs/product/](../docs/product/) is process only. `feat/` `Source:` / `fixes #` is Task/Epic only (never Goal alone) | Review + [verify-issue](skills/verify-issue/SKILL.md) Goal vs Task modes | [GOVERNANCE.md](../GOVERNANCE.md), [issue-filing.md](skills/developer/issue-filing.md), [specs/README.md](specs/README.md) |
 
 **Domain skills override** generic rows when more specific ([clean-code](skills/clean-code/SKILL.md), [api/layers.md](skills/api/layers.md), etc.).

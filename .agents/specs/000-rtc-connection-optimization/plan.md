@@ -8,7 +8,8 @@ Phased RTC improvements: collab-join authorization (security, first), Meet call 
 
 ## Non-goals
 
-- External share-session tokens on collab join; phase 4 cross-window leadership (#695); SFU/TURN infra.
+- External share-session tokens on collab join; SFU/TURN infra.
+- Phase 4 cross-window leadership (#695) — active under `.agents/specs/695-rtc-cross-window-leader/`.
 
 ## Affected packages
 

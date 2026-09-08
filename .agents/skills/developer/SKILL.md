@@ -13,8 +13,8 @@ Context-loading skill for AI agents and developers working in the WeGotWorkspace
 
 | Task | Skill | Key docs |
 |------|-------|----------|
-| Starting work / skill routing | `developer` | [multitask.md](multitask.md), [done-checklist.md](done-checklist.md), [mcp-verification.md](mcp-verification.md), [POLICY.md](../../POLICY.md) |
-| Handoff / verify before PR | `developer` | [mcp-verification.md](mcp-verification.md), [done-checklist.md](done-checklist.md) |
+| Starting work / skill routing | `developer` | [multitask.md](multitask.md), [done-checklist.md](done-checklist.md), [mcp-verification.md](mcp-verification.md), [english-only.md](english-only.md), [POLICY.md](../../POLICY.md) |
+| Handoff / verify before PR | `developer` | [mcp-verification.md](mcp-verification.md), [done-checklist.md](done-checklist.md), [english-only.md](english-only.md) |
 | Dev env / Docker / ports | [dev-environment](../dev-environment/SKILL.md) | `docs/dev-layout.md` |
 | API / Laravel / REST / WebDAV | [api](../api/SKILL.md) | [layers.md](../api/layers.md), [testing.md](../api/testing.md) |
 | Plugins / wgw-plugins | [plugins](../plugins/SKILL.md) | [storage-flysystem.md](../api/storage-flysystem.md) |
@@ -22,7 +22,7 @@ Context-loading skill for AI agents and developers working in the WeGotWorkspace
 | UI primitives / CSS / styling | [apps-ui](../apps-ui/SKILL.md) | [components.md](../apps-ui/components.md), [typescript.md](../apps-ui/typescript.md) |
 | Workspace shell / *App / *Workspace | [workspace](../workspace/SKILL.md) | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md), [feature-blueprint.md](../workspace/feature-blueprint.md), [collab-hooks.md](../workspace/collab-hooks.md), [apps-done-gate.md](../testing/apps-done-gate.md) |
 | Collab / text-editor hooks (`docs-collab/`) | [workspace](../workspace/SKILL.md) | [collab-hooks.md](../workspace/collab-hooks.md), [clean-code/smells.md](../clean-code/smells.md) (React hooks) |
-| Filing Goals / Epics / Tasks / Chores | [issue-filing.md](issue-filing.md) | [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md) |
+| Filing Goals / Epics / Tasks / Chores | [issue-filing.md](issue-filing.md) | [english-only.md](english-only.md), [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md) |
 | Planning a feature | [plan-feature](../plan-feature/SKILL.md) | [issue-filing.md](issue-filing.md) |
 | Issue acceptance criteria / "is #N done?" | [verify-issue](../verify-issue/SKILL.md) | Goal vs Task modes in that skill |
 | Writing or running tests | [testing](../testing/SKILL.md) | [test-first.md](../testing/test-first.md), [ui-architecture.md](../testing/ui-architecture.md) |
@@ -45,6 +45,7 @@ See [dev-environment](../dev-environment/SKILL.md) for commands, URLs, and troub
 4. **File I/O via Flysystem** — single storage layer for REST and WebDAV → [storage-flysystem.md](../api/storage-flysystem.md)
 5. **Hook structure is a handoff gate** — when a feature adds multiple concerns to one hook, run a structure pass before handoff (split per [clean-code/smells.md](../clean-code/smells.md) React hooks section; collab layout in [collab-hooks.md](../workspace/collab-hooks.md)). Not optional nit — [code-review](../code-review/SKILL.md) blocks merge-ready work that violates thresholds without a documented exception.
 6. **New top-level SPA routes need API allowlist** — adding `/share`, `/tasks`, or any new first path segment in `wegotworkspace-routes.tsx` requires the same prefix on `UiStaticServer` + `FrontRoutingTest` (otherwise production falls through to SabreDAV). Architecture test `SpaShellRouteAllowlistTest` enforces the contract; Playwright e2e stays out of done gates.
+7. **English-only artifacts** — specs, plans, docs, GitHub issues/Goals/comments are English even when the user writes Dutch → [english-only.md](english-only.md)
 
 ## Multitask
 

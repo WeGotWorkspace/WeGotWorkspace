@@ -24,7 +24,7 @@
     "lint": "tools/with-root-env.sh -- turbo run lint --filter=@wgw/api --filter=@wgw/apps",
     "format:check": "tools/with-root-env.sh -- turbo run format:check --filter=@wgw/api --filter=@wgw/apps",
     "check:licenses": "node tools/check-licenses.mjs",
-    "check:agent-docs": "node tools/check-agent-doc-links.mjs",
+    "check:agent-docs": "node tools/check-agent-doc-links.mjs && node tools/check-english-docs.mjs",
     "check:storybook-coverage": "pnpm --filter @wgw/apps run check:storybook-coverage",
     "typecheck": "tools/with-root-env.sh -- turbo run typegen typecheck --filter=@wgw/apps",
     "test": "tools/with-root-env.sh -- turbo run test --filter=@wgw/api",

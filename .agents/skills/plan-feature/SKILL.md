@@ -30,11 +30,13 @@ Goal (product, optional) → Epic/Task (AC) → spec.md → plan.md → tasks.md
 
 **When required:** `feat/` branches — see [specs/README.md](../../specs/README.md). `fix/` / `chore/` / `docs/` — optional.
 
+**Language:** `spec.md`, `plan.md`, `tasks.md`, and the delivery issue are **English** even if the user prompt is Dutch — [english-only.md](../developer/english-only.md).
+
 Skeletons: [specs/_template/](../../specs/_template/). On scope change: update the **delivery** issue first, then re-sync all three files + body-hash.
 
 ## Filing issues first
 
-If the delivery issue does not exist yet, file it before writing `spec.md`. Short checklist: [developer/issue-filing.md](../developer/issue-filing.md).
+If the delivery issue does not exist yet, file it before writing `spec.md`. Short checklist: [developer/issue-filing.md](../developer/issue-filing.md). **English** title and body — [english-only.md](../developer/english-only.md).
 
 1. Classify: Goal | Epic | Task | Chore | Bug
 2. Goal → product language; `type:goal`; Product Project at Status **Identified** (or **Adopted** if already committing); **no milestone**; never sole `fixes #` / `Source:`

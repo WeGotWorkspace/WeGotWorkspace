@@ -11,6 +11,7 @@ body:
         for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
 
         Epics are **engineering** work under a product Goal. Link the parent Goal.
+        **Write the entire issue in English**, even if the conversation that produced it was in another language.
         Do not put epics on the Product roadmap Project.
 
   - type: textarea
