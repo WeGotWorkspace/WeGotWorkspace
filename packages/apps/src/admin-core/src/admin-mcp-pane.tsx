@@ -18,7 +18,7 @@ import { McpEndpointUrlRow } from "@/settings-core/src/mcp-endpoint-url-row";
 
 export type AdminMcpPaneProps = {
   controller: AdminControllerState;
-  /** Override for Storybook. Live defaults to current origin + `/mcp`. */
+  /** Storybook / API override. Live falls back to current origin + `/mcp`. */
   mcpEndpointUrl?: string;
 };
 

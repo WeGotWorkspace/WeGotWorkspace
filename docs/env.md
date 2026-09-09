@@ -33,6 +33,7 @@ WeGotWorkspace **runtime** data uses `WGW_*` keys in `packages/api/.env` (loaded
 |--------|---------|
 | `WGW_DATA_DIR`, `WGW_DB_*`, `WGW_UPDATE_FEED_URL` | Post-install runtime (written by installer or legacy migrator) |
 | `WGW_INSTALL_*` | Pre-install wizard / headless install autofill (Docker `api.env` seed) |
+| `WGW_MCP_PUBLIC_ORIGIN` | **Local only.** Public tunnel origin for MCP OAuth discovery and Admin Connection URL (no trailing slash). Ignored when `APP_ENV=production`. Each developer uses their own ngrok (or similar) host — do not commit a live URL. |
 | `DB_*` | Laravel default connection (sessions, cache, queue — not WGW app data) |
 
 ### Apache / shared hosting

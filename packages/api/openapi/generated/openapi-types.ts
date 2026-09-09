@@ -10774,6 +10774,8 @@ export interface components {
         };
         AdminMcpSettings: {
             enabled: boolean;
+            /** @description Public MCP URL to paste into assistants (`origin/mcp`). Set from WGW_MCP_PUBLIC_ORIGIN when APP_ENV is not production; null in production so the Admin UI uses the current site origin. */
+            endpointUrl?: string | null;
         };
         SettingsMcpGrant: {
             clientId: string;

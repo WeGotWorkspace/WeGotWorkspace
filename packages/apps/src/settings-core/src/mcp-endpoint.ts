@@ -3,7 +3,8 @@ export const MCP_ENDPOINT_PATH = "/mcp";
 
 /**
  * MCP URL to paste in Claude / ChatGPT.
- * Uses the current origin the same way public share links do (`buildPublicShareUrl`).
+ * Live Admin uses `mcp.endpointUrl` from GET /admin/state when `WGW_MCP_PUBLIC_ORIGIN`
+ * is set locally; otherwise the current site origin (`window.location.origin`).
  */
 export function buildMcpEndpointUrl(
   origin: string | undefined = typeof window !== "undefined" ? window.location?.origin : undefined,

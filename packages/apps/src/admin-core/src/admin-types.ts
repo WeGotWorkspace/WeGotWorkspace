@@ -103,6 +103,8 @@ export type AdminWebdavSettings = {
 
 export type AdminMcpSettings = {
   enabled: boolean;
+  /** Public `/mcp` URL from `WGW_MCP_PUBLIC_ORIGIN` (local only). Null in production. */
+  endpointUrl?: string | null;
 };
 
 export type AdminUpdateRelease = {

@@ -8,7 +8,20 @@ WeGotWorkspace can expose a remote MCP server so Claude, ChatGPT, Mistral, Curso
 - An account on the instance.
 - The **Connected assistants** kill-switch enabled (Admin → Connected assistants). It is off by default.
 
-LAN-only installs can use a tunnel (ngrok, Tailscale Funnel, Cloudflare Tunnel, or similar) so the assistant can complete HTTPS OAuth. **ngrok’s free interstitial page will fail some vendors’ server checks** (often shown as HTTP 500 / “Not found”). Authenticate ngrok (`ngrok config add-authtoken`) so that warning is skipped. Do **not** rewrite the `Host` header to `wegotworkspace.localhost`: OAuth discovery must advertise the public tunnel origin (`/oauth/token` is called from the vendor’s servers).
+LAN-only **local Docker** installs can use a tunnel (ngrok, Tailscale Funnel, Cloudflare Tunnel, or similar) so the assistant can complete HTTPS OAuth. Production already has a public site origin — **do not set a tunnel URL there.**
+
+**ngrok’s free interstitial page will fail some vendors’ server checks** (often shown as HTTP 500 / “Not found”). Authenticate ngrok (`ngrok config add-authtoken`) so that warning is skipped.
+
+Each developer uses **their own** tunnel host (personal ngrok account). Set it in `packages/api/.env` only (never commit a live host):
+
+```bash
+# Local Docker / host PHP. Ignored when APP_ENV=production.
+WGW_MCP_PUBLIC_ORIGIN=https://YOUR-SUBDOMAIN.ngrok-free.dev
+```
+
+Restart the API after changing `.env`. Admin → Connected assistants then copies `https://YOUR-SUBDOMAIN.ngrok-free.dev/mcp`. OAuth discovery (`issuer`, `authorization_endpoint`, `resource`) uses that origin instead of `wegotworkspace.localhost`.
+
+Do **not** rewrite the `Host` header to `wegotworkspace.localhost`. If the tunnel still overwrites `Host`, `WGW_MCP_PUBLIC_ORIGIN` is the source of truth for advertised OAuth URLs in local/dev.
 
 You will **sign in again** on the instance when you connect. Being signed in to the WeGotWorkspace web app in another tab is not enough: granting an assistant is a high-trust action and always asks for your username and password.
 
@@ -80,6 +93,10 @@ Use the origin of your site, for example `https://workspace.example.com` — not
 
 MCP endpoint: `https://workspace.example.com/mcp`
 
+**Production:** paste the real public origin + `/mcp`. No ngrok.
+
+**Local Docker:** paste the Admin Connection URL (from `WGW_MCP_PUBLIC_ORIGIN` + `/mcp`), for example `https://YOUR-SUBDOMAIN.ngrok-free.dev/mcp`. Each developer uses their own tunnel.
+
 OAuth discovery is at the **origin root**:
 
 - `https://workspace.example.com/.well-known/oauth-authorization-server`
@@ -105,11 +122,11 @@ Do **not** click Next to configure the connector manually. This instance require
 That warning means Claude’s probe to `/mcp` failed. Typical causes:
 
 1. **The URL is not reachable from the public internet.** `https://wegotworkspace.localhost/mcp` and `http://127.0.0.1:9080/mcp` work for Cursor / Claude Code on your machine. They never work for claude.ai.
-2. **ngrok Host rewrite.** If discovery JSON lists `https://wegotworkspace.localhost/oauth/token`, the tunnel is overwriting `Host`. Do **not** use `--host-header=wegotworkspace.localhost`. Restart ngrok so Host stays public, for example:
+2. **ngrok Host rewrite.** If discovery JSON lists `https://wegotworkspace.localhost/oauth/token`, the tunnel is overwriting `Host`. Set `WGW_MCP_PUBLIC_ORIGIN=https://YOUR-SUBDOMAIN.ngrok-free.dev` in `packages/api/.env` (ignored when `APP_ENV=production`) and restart the API so Admin Connection URL and OAuth metadata use the tunnel. Also restart ngrok so Host stays public — do **not** use `--host-header=wegotworkspace.localhost`:
    ```bash
    ngrok http https://localhost:443 --url=https://YOUR-SUBDOMAIN.ngrok-free.dev --host-header=YOUR-SUBDOMAIN.ngrok-free.dev
    ```
-   Paste that same origin — `https://YOUR-SUBDOMAIN.ngrok-free.dev/mcp` — into ChatGPT/Claude. Copying Connection URL while the admin UI is on `wegotworkspace.localhost` sends assistants to localhost.
+   Paste that same origin — `https://YOUR-SUBDOMAIN.ngrok-free.dev/mcp` — into ChatGPT/Claude.
 3. **Connected assistants is off.** Admin → Connected assistants must be on and saved. When it is off, `/mcp` returns 403.
 4. **Authorize URL shows the workspace 404 page** (“Page not found” / “Go to Drive”). The PWA service worker served the SPA instead of Laravel. Unregister service workers for this origin (DevTools → Application → Service Workers) and retry. A rebuilt worker ignores `/oauth`, `/mcp`, and `/.well-known/oauth-*`.
 5. **Sign-in and consent succeed, then the assistant shows “Authorization with … failed.”** The browser completed `/oauth/authorize`; the vendor’s **servers** then call `/oauth/token` and `/mcp`. They cannot reach `https://wegotworkspace.localhost`. Re-add the connector using the public tunnel origin — not `localhost`.

@@ -41,6 +41,7 @@ export function useAdminAPI(source?: AdminApiSource) {
       },
       mcp: {
         enabled: false,
+        endpointUrl: null,
       },
       plugins: [],
       updates: {

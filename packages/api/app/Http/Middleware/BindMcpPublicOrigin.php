@@ -17,6 +17,10 @@ final class BindMcpPublicOrigin
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if (! $this->isMcpPublicSurface($request)) {
+            return $next($request);
+        }
+
         $origin = McpPublicOrigin::for($request);
         if (! McpPublicOrigin::isPublicOrigin($origin)) {
             return $next($request);
@@ -29,5 +33,19 @@ final class BindMcpPublicOrigin
         }
 
         return $next($request);
+    }
+
+    private function isMcpPublicSurface(Request $request): bool
+    {
+        return $request->is([
+            'mcp',
+            'mcp/*',
+            'oauth',
+            'oauth/*',
+            '.well-known/oauth-authorization-server',
+            '.well-known/oauth-authorization-server/*',
+            '.well-known/oauth-protected-resource',
+            '.well-known/oauth-protected-resource/*',
+        ]);
     }
 }

@@ -134,7 +134,12 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
               />
             ) : null}
             {controller.section === "search" ? <AdminSearchPane controller={controller} /> : null}
-            {controller.section === "mcp" ? <AdminMcpPane controller={controller} /> : null}
+            {controller.section === "mcp" ? (
+              <AdminMcpPane
+                controller={controller}
+                mcpEndpointUrl={data.mcp.endpointUrl ?? undefined}
+              />
+            ) : null}
           </>
         }
       />

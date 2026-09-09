@@ -11,12 +11,52 @@ final class McpPublicOrigin
 {
     public static function for(Request $request): string
     {
+        $configured = self::configuredOrigin();
+        if ($configured !== null) {
+            return $configured;
+        }
+
         $forwarded = self::forwardedPublicOrigin($request);
         if ($forwarded !== null) {
             return $forwarded;
         }
 
         return rtrim($request->getSchemeAndHttpHost(), '/');
+    }
+
+    /**
+     * Local-tunnel origin from {@code WGW_MCP_PUBLIC_ORIGIN}. Null in production
+     * and when the value is missing or not a public http(s) origin.
+     */
+    public static function configuredOrigin(): ?string
+    {
+        if (self::isProduction()) {
+            return null;
+        }
+        $raw = config('wgw.mcp.public_origin');
+        if (! is_string($raw)) {
+            return null;
+        }
+        $origin = rtrim(trim($raw), '/');
+        if ($origin === '') {
+            return null;
+        }
+        $scheme = strtolower((string) parse_url($origin, PHP_URL_SCHEME));
+        if ($scheme !== 'https' && $scheme !== 'http') {
+            return null;
+        }
+        if (! self::isPublicOrigin($origin)) {
+            return null;
+        }
+
+        return $origin;
+    }
+
+    public static function configuredEndpointUrl(): ?string
+    {
+        $origin = self::configuredOrigin();
+
+        return $origin === null ? null : $origin.'/mcp';
     }
 
     public static function isPublicOrigin(string $origin): bool
@@ -49,6 +89,12 @@ final class McpPublicOrigin
                 'message' => 'Unauthorized.',
             ],
         ], 401)->header('WWW-Authenticate', self::wwwAuthenticate($request));
+    }
+
+    private static function isProduction(): bool
+    {
+        return app()->environment('production')
+            || (string) config('app.env') === 'production';
     }
 
     private static function forwardedPublicOrigin(Request $request): ?string

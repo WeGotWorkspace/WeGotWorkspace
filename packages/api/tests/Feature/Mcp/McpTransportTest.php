@@ -153,7 +153,7 @@ final class McpTransportTest extends WgwDatabaseTestCase
     public function test_ngrok_host_wins_over_app_url_localhost(): void
     {
         config(['app.url' => 'https://wegotworkspace.localhost']);
-        $host = 'sheep-nutmeg-zodiac.ngrok-free.dev';
+        $host = 'example.ngrok-free.dev';
         $origin = 'https://'.$host;
 
         $this->getJson($origin.'/.well-known/oauth-authorization-server')
