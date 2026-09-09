@@ -26,8 +26,8 @@ describe("MeetCallToolbar", () => {
   });
 
   it("omits Share screen when display capture is unavailable", () => {
-    expect(toolbar).toMatch(/canShareScreen = true/);
-    expect(toolbar).toMatch(/canShareScreen \|\| screenOn/);
+    expect(toolbar).toMatch(/isDisplayCaptureSupported/);
+    expect(toolbar).toMatch(/shareAvailable \|\| screenOn/);
     expect(toolbar).toMatch(/meetLabels\.shareScreen/);
   });
 

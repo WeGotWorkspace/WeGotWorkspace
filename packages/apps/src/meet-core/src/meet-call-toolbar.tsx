@@ -15,6 +15,7 @@ import {
 import type { MeetCallKnocker } from "@/meet-core/src/meet-call-knock";
 import { MeetDevicePopover } from "@/meet-core/src/meet-device-popover";
 import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
+import { isDisplayCaptureSupported } from "@/meet-core/src/meet-display-capture";
 import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 
@@ -35,8 +36,8 @@ type MeetCallToolbarProps = {
   onToggleVideo: () => void;
   onToggleScreenShare: () => void;
   /**
-   * When false, Share screen is omitted so the user is not offered a broken
-   * action (iOS Safari/WebKit cannot capture the display).
+   * Override getDisplayMedia feature detection. When false, Share screen is
+   * omitted so the user is not offered a broken action.
    */
   canShareScreen?: boolean;
   onCameraChange: (optionId: string) => void;
@@ -71,7 +72,7 @@ export function MeetCallToolbar({
   onToggleMic,
   onToggleVideo,
   onToggleScreenShare,
-  canShareScreen = true,
+  canShareScreen,
   onCameraChange,
   onMicrophoneChange,
   onSpeakerChange,
@@ -82,6 +83,7 @@ export function MeetCallToolbar({
   onAdmitKnocker,
   onDenyKnocker,
 }: MeetCallToolbarProps) {
+  const shareAvailable = canShareScreen ?? isDisplayCaptureSupported();
   return (
     <div className="meet-workspace__toolbar">
       <div className="meet-workspace__toolbar-inner">
@@ -103,7 +105,7 @@ export function MeetCallToolbar({
           active={videoOn}
           aria-pressed={videoOn}
         />
-        {canShareScreen || screenOn ? (
+        {shareAvailable || screenOn ? (
           <IconButton
             onClick={onToggleScreenShare}
             icon={<MonitorUp />}
