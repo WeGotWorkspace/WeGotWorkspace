@@ -47,6 +47,7 @@ final class SettingsEndpointsTest extends WgwDatabaseTestCase
         $state->assertOk();
         $state->assertJsonPath('user.username', 'alice');
         $state->assertJsonPath('mail.imapHasPassword', false);
+        $state->assertJsonPath('mcpEnabled', false);
 
         $profile = $this->withBearer($token)->putJson('/api/v1/settings/profile', [
             'displayName' => 'Alice Updated',

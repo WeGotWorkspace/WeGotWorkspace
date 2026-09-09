@@ -238,3 +238,12 @@
 :is(.admin-workspace, .admin-dialog-surface) .admin-email-delivery-pane__actions {
   @apply flex flex-wrap justify-end gap-3;
 }
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-mcp-pane__lead {
+  @apply mb-4 text-sm;
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-mcp-pane__endpoint {
+  @apply mt-4;
+}

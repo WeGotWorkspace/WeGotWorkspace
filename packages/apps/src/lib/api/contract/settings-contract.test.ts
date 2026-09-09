@@ -28,6 +28,7 @@ const settingsStateFixture = {
     smtpSecurity: "starttls",
   },
   logoutUrl: "/api/v1/auth/logout",
+  mcpEnabled: true,
 } satisfies SettingsStateResponse;
 
 describe("settings UI ↔ OpenAPI contract", () => {
@@ -61,6 +62,12 @@ describe("settings UI ↔ OpenAPI contract", () => {
         SettingsStateResponse["logoutUrl"]
       >();
     });
+
+    it("includes mcpEnabled from SettingsStateResponse on SettingsUIData", () => {
+      expectTypeOf<SettingsUIData["mcpEnabled"]>().toEqualTypeOf<
+        SettingsStateResponse["mcpEnabled"]
+      >();
+    });
   });
 
   describe("adapter round-trip", () => {
@@ -88,6 +95,7 @@ describe("settings UI ↔ OpenAPI contract", () => {
         },
         { path: "mailServer", api: settingsStateFixture.mailServer, ui: ui.mailServer },
         { path: "logoutUrl", api: settingsStateFixture.logoutUrl, ui: ui.logoutUrl },
+        { path: "mcpEnabled", api: settingsStateFixture.mcpEnabled, ui: ui.mcpEnabled },
       ]);
     });
 

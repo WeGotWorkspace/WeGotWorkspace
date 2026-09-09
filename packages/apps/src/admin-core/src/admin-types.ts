@@ -7,7 +7,8 @@ export type AdminSection =
   | "plugins"
   | "backups"
   | "updates"
-  | "search";
+  | "search"
+  | "mcp";
 
 export type AdminMailDeliveryTransport = "auto" | "smtp" | "php" | "sendmail";
 
@@ -98,6 +99,12 @@ export type AdminWebdavSettings = {
   timezone: string;
   baseUri: string;
   authRealm: string;
+};
+
+export type AdminMcpSettings = {
+  enabled: boolean;
+  /** Public `/mcp` URL from `WGW_MCP_PUBLIC_ORIGIN` (local only). Null in production. */
+  endpointUrl?: string | null;
 };
 
 export type AdminUpdateRelease = {
@@ -203,6 +210,7 @@ export type AdminUIData = {
   rtc: AdminRtcSettings;
   apps: AdminAppsSettings;
   webdav: AdminWebdavSettings;
+  mcp: AdminMcpSettings;
   plugins: {
     id: string;
     name: string;

@@ -44,6 +44,7 @@
             <file>tests/Unit/Tasks/DefaultMixedCalendarMigratorTest.php</file>
             <file>tests/Architecture/WgwSchemaParityTest.php</file>
             <file>tests/Architecture/RoleAccessMatrixTest.php</file>
+            <file>tests/Unit/Auth/SabreUserProviderTest.php</file>
         </testsuite>
     </testsuites>
     <php>

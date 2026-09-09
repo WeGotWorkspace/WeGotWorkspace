@@ -511,6 +511,68 @@ export async function wgwLoginWithCredentials(username: string, password: string
   applyTokens(tokens);
 }
 
+/** Origin-root Passport login. Relative `/api/v1` stays same-origin (Vite proxy). */
+export function wgwOAuthSessionUrl(): string {
+  const base = wgwApiBaseUrl();
+  if (/^https?:\/\//i.test(base)) {
+    try {
+      return new URL("/oauth/session", base).toString();
+    } catch {
+      return "/oauth/session";
+    }
+  }
+  return "/oauth/session";
+}
+
+/**
+ * Establish the Laravel web session Passport `/oauth/authorize` requires.
+ * SPA JWT in localStorage does not count.
+ */
+export async function wgwEstablishMcpWebSession(
+  username: string,
+  password: string,
+  intent?: string | null,
+): Promise<string | null> {
+  const normalized = username.trim();
+  if (!normalized || !password) {
+    throw new Error("Username and password are required.");
+  }
+  if (!wgwLiveApiEnabled()) {
+    return null;
+  }
+  const body: Record<string, string> = { username: normalized, password };
+  const token = intent?.trim();
+  if (token) body.intent = token;
+  const res = await fetch(wgwOAuthSessionUrl(), {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let payload: unknown;
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    throw new AuthHttpError(res.status, `Auth response was not JSON (${res.status})`);
+  }
+  if (!res.ok) {
+    const err =
+      payload && typeof payload === "object" && "error" in payload
+        ? String((payload as { error: unknown }).error)
+        : text;
+    throw new AuthHttpError(res.status, err || `HTTP ${res.status}`);
+  }
+  if (payload && typeof payload === "object" && "redirect" in payload) {
+    const redirect = (payload as { redirect: unknown }).redirect;
+    return typeof redirect === "string" && redirect.startsWith("/") ? redirect : null;
+  }
+  return null;
+}
+
 export async function wgwFetchPasswordRecoveryEnabled(): Promise<boolean> {
   if (!wgwLiveApiEnabled()) return true;
   try {

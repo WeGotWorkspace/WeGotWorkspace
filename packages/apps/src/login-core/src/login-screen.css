@@ -24,6 +24,11 @@
   @apply text-balance;
 }
 
+.login-screen__eyebrow {
+  color: color-mix(in oklab, #ffffff 72%, transparent);
+  @apply mb-3 text-xs font-medium uppercase tracking-widest;
+}
+
 .login-screen__hint {
   color: color-mix(in oklab, #ffffff 72%, transparent);
   @apply pt-4 text-sm;

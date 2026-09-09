@@ -22,4 +22,5 @@ export type {
   AdminUser,
   AdminRtcSettings,
   AdminWebdavSettings,
+  AdminMcpSettings,
 } from "./admin-types";

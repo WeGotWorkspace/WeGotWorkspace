@@ -6,6 +6,7 @@ namespace App\Services\Settings;
 
 use App\Models\Principal;
 use App\Services\Mail\MailCredentialService;
+use App\Services\Mcp\McpEnabled;
 use App\Support\ApiUrlBuilder;
 use App\Support\WgwSettings;
 
@@ -15,6 +16,7 @@ final class SettingsStateService
         private GroupDirectoryService $groups,
         private MailCredentialService $mailCredentials,
         private ApiUrlBuilder $urls,
+        private McpEnabled $mcp,
     ) {}
 
     /**
@@ -49,6 +51,7 @@ final class SettingsStateService
                 'smtpSecurity' => (string) ($cfg[WgwSettings::MAIL_SMTP_SECURITY] ?? 'starttls'),
             ],
             'logoutUrl' => $this->urls->logout(),
+            'mcpEnabled' => $this->mcp->isOn(),
         ];
     }
 }

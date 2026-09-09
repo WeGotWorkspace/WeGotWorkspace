@@ -66,6 +66,8 @@ export type UserAvatarProps = {
   decoding?: "async" | "auto" | "sync";
   onClick?: () => void;
   className?: string;
+  /** Overrides the default “{name} avatar” accessible name. */
+  ariaLabel?: string;
   /** Runtime CSS variables (e.g. a per-collection `--contacts-book-color`). */
   style?: CSSProperties;
 };
@@ -93,6 +95,7 @@ export function UserAvatar({
   decoding,
   onClick,
   className,
+  ariaLabel,
   style,
 }: UserAvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -134,9 +137,9 @@ export function UserAvatar({
         : presence === "offline"
           ? "offline"
           : null;
-  const avatarLabel = presenceLabel
-    ? `${resolvedName} avatar, ${presenceLabel}`
-    : `${resolvedName} avatar`;
+  const avatarLabel =
+    ariaLabel ??
+    (presenceLabel ? `${resolvedName} avatar, ${presenceLabel}` : `${resolvedName} avatar`);
 
   const circle = onClick ? (
     <button type="button" onClick={onClick} aria-label={avatarLabel} className="user-avatar__mark">

@@ -52,6 +52,7 @@ use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
 use App\Http\Controllers\Api\V1\Settings\MailController as SettingsMailController;
+use App\Http\Controllers\Api\V1\Settings\McpGrantsController as SettingsMcpGrantsController;
 use App\Http\Controllers\Api\V1\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\Api\V1\Settings\StateController as SettingsStateController;
 use App\Http\Controllers\Api\V1\System\CapabilitiesController;
@@ -175,6 +176,9 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('settings/state', SettingsStateController::class);
     Route::put('settings/profile', SettingsProfileController::class);
     Route::put('settings/mail', SettingsMailController::class);
+    Route::get('settings/mcp-grants', [SettingsMcpGrantsController::class, 'index']);
+    Route::delete('settings/mcp-grants/{clientId}', [SettingsMcpGrantsController::class, 'destroy'])
+        ->where('clientId', '[A-Za-z0-9-]+');
 
     Route::get('mail/status', [MailController::class, 'status']);
     Route::get('mail/folders', [MailController::class, 'foldersIndex']);

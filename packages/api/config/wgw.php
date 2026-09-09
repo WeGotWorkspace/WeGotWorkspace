@@ -90,4 +90,16 @@ return [
      */
     'public_web_url' => env('WGW_PUBLIC_WEB_URL'),
     'vite_dev_port' => env('WGW_VITE_DEV_PORT'),
+
+    /**
+     * Public MCP / OAuth origin for local tunnels (ngrok, Tailscale Funnel, …).
+     * Honored only when {@code APP_ENV} is not production. Production already has a
+     * public site origin and ignores this even if set. No trailing slash.
+     * Each developer uses their own tunnel — do not commit a live ngrok host.
+     *
+     * @see docs/env.md
+     */
+    'mcp' => [
+        'public_origin' => env('WGW_MCP_PUBLIC_ORIGIN'),
+    ],
 ];

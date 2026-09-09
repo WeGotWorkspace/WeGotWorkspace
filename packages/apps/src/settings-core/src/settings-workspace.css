@@ -115,6 +115,63 @@
   --user-avatar-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
 }
 
+.settings-workspace .settings-connected-assistants-pane,
+.settings-workspace .settings-assistants-pane {
+  @apply flex flex-col gap-4 max-w-xl;
+}
+
+.settings-workspace .settings-connected-assistants-pane--empty {
+  @apply gap-4;
+}
+
+.settings-workspace .settings-connected-assistants-pane--connected {
+  @apply gap-12;
+}
+
+.settings-workspace .settings-assistants-pane__empty {
+  @apply text-sm text-muted-foreground;
+}
+
+.settings-workspace .settings-assistants-pane a {
+  @apply underline underline-offset-2;
+  color: var(--settings-accent);
+}
+
+.settings-workspace .settings-assistants-pane__error {
+  @apply text-sm text-destructive;
+}
+
+.settings-workspace .settings-assistants-pane__grants {
+  @apply flex flex-col gap-16;
+}
+
+.settings-workspace .settings-assistants-pane__grant {
+  @apply flex flex-col gap-4;
+}
+
+.settings-workspace .settings-assistants-pane__grant-header {
+  @apply relative pr-10;
+}
+
+.settings-workspace .settings-assistants-pane__grant-identity {
+  @apply flex min-w-0 flex-col items-start gap-1;
+}
+
+.settings-workspace .settings-assistants-pane__grant-name {
+  @apply m-0 text-4xl font-normal leading-none;
+  font-family: var(--font-serif);
+  color: var(--color-ink);
+}
+
+.settings-workspace .settings-assistants-pane__grant-origin {
+  @apply m-0 text-base font-normal leading-normal;
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+}
+
+.settings-workspace .settings-assistants-pane__grant-revoke {
+  @apply absolute top-0 right-0;
+}
+
 /* Storybook scopes — mirror workspace chrome without inline presets */
 .settings-story-scope {
   min-height: 100dvh;

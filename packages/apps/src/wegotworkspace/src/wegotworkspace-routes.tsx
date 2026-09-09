@@ -35,6 +35,7 @@ import { NotesApp } from "@/notes-core/src/notes-app";
 import { createDefaultTasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksApp } from "@/tasks-core/src/tasks-app";
 import { SettingsApp } from "@/settings-core/src/settings-app";
+import { useSettingsRouteSync } from "@/settings-core/src/use-settings-route-sync";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
@@ -173,7 +174,15 @@ function MockDriveRoute() {
 function MockSettingsRoute() {
   const onLogout = useWeGotWorkspaceLogout();
   const bootstrap = useMemo(() => createSettingsAppBootstrap(), []);
-  return <SettingsWorkspace {...bootstrap} onLogout={onLogout} />;
+  const { section, onSectionChange } = useSettingsRouteSync(bootstrap.data.mcpEnabled);
+  return (
+    <SettingsWorkspace
+      {...bootstrap}
+      section={section}
+      onSectionChange={onSectionChange}
+      onLogout={onLogout}
+    />
+  );
 }
 
 function MockMeetRoute() {
@@ -290,6 +299,8 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     head: loginPwaHead,
     validateSearch: (search: Record<string, unknown>): LoginSearch => ({
       return: typeof search.return === "string" ? search.return : undefined,
+      intent: typeof search.intent === "string" ? search.intent : undefined,
+      error: typeof search.error === "string" ? search.error : undefined,
     }),
     beforeLoad: loginRouteBeforeLoad,
     component: () => <Outlet />,
@@ -461,6 +472,13 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
   const settingsRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/settings",
+    head: settingsPwaHead,
+    component: isLive ? withWeGotWorkspaceAuth(SettingsApp) : MockSettingsRoute,
+  });
+
+  const settingsSectionRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/settings/$section",
     head: settingsPwaHead,
     component: isLive ? withWeGotWorkspaceAuth(SettingsApp) : MockSettingsRoute,
   });
@@ -758,6 +776,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     driveRoute,
     docsRoute,
     settingsRoute,
+    settingsSectionRoute,
     meetRoute.addChildren([
       meetChannelsRoute,
       meetMeetingsRoute,

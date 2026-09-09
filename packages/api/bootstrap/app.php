@@ -4,16 +4,25 @@ declare(strict_types=1);
 
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
+use App\Http\Middleware\BindMcpPublicOrigin;
 use App\Http\Middleware\EnsureCalendarsEnabled;
 use App\Http\Middleware\EnsureContactsEnabled;
+use App\Http\Middleware\EnsureMcpEnabled;
 use App\Http\Middleware\EnsureTasksEnabled;
+use App\Http\Middleware\FilterMcpConsentScopes;
+use App\Http\Middleware\McpCors;
+use App\Http\Middleware\ProtectMcpConsent;
+use App\Http\Middleware\RejectSpaJwtOnMcp;
 use App\Http\Middleware\RequireWgwRole;
+use App\Http\Middleware\ResolveCimdClient;
 use App\Http\Middleware\WgwSecurityHeaders;
 use App\Http\Support\WgwOversizedPost;
 use App\Services\Collab\CollabResponseException;
 use App\Services\Mail\MailResponseException;
+use App\Services\Mcp\McpPublicOrigin;
 use App\Services\Meet\MeetResponseException;
 use App\Services\Principal\PrincipalResponseException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -32,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api/v1',
         then: function (): void {
             require __DIR__.'/../routes/docs.php';
+            require __DIR__.'/../routes/ai.php';
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -44,10 +54,22 @@ return Application::configure(basePath: dirname(__DIR__))
             'wgw.contacts' => EnsureContactsEnabled::class,
             'wgw.calendars' => EnsureCalendarsEnabled::class,
             'wgw.tasks' => EnsureTasksEnabled::class,
+            'mcp.enabled' => EnsureMcpEnabled::class,
+            'mcp.cimd' => ResolveCimdClient::class,
+            'mcp.consent' => ProtectMcpConsent::class,
+            'mcp.consent.scopes' => FilterMcpConsentScopes::class,
+            'mcp.reject-spa-jwt' => RejectSpaJwtOnMcp::class,
         ]);
         $middleware->appendToGroup('web', [
             WgwSecurityHeaders::class,
+            ProtectMcpConsent::class,
+            FilterMcpConsentScopes::class,
         ]);
+        $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
+        $middleware->append(BindMcpPublicOrigin::class);
+        $middleware->append(McpCors::class);
+        $middleware->append(EnsureMcpEnabled::class);
+        $middleware->append(ResolveCimdClient::class);
         $middleware->validateCsrfTokens(except: [
             '*',
         ]);
@@ -83,6 +105,13 @@ return Application::configure(basePath: dirname(__DIR__))
         });
         $exceptions->render(function (PostTooLargeException $e) {
             return response()->json(WgwOversizedPost::payload(), 413);
+        });
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if (! $request->is('mcp') && ! $request->is('mcp/*')) {
+                return null;
+            }
+
+            return McpPublicOrigin::unauthorized($request);
         });
         $exceptions->render(function (MethodNotAllowedHttpException $e, Request $request) {
             if (! $request->is('api/*')) {

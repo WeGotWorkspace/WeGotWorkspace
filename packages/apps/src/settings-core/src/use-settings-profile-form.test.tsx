@@ -27,6 +27,7 @@ function createSaveProfileMock() {
     },
     groups: [],
     logoutUrl: "/logout",
+    mcpEnabled: true,
   } satisfies SettingsUIData;
 
   return vi.fn().mockResolvedValue(nextData);

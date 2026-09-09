@@ -1137,6 +1137,9 @@
                     "updates": {
                         "$ref": "#/components/schemas/UpdateStateResponse"
                     },
+                    "mcp": {
+                        "$ref": "#/components/schemas/AdminMcpSettings"
+                    },
                     "currentUser": {
                         "type": "string"
                     },
@@ -1153,6 +1156,7 @@
                     "apps",
                     "webdav",
                     "updates",
+                    "mcp",
                     "currentUser",
                     "logoutUrl"
                 ]
@@ -1327,6 +1331,10 @@
                     },
                     "logoutUrl": {
                         "type": "string"
+                    },
+                    "mcpEnabled": {
+                        "type": "boolean",
+                        "description": "Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs."
                     }
                 },
                 "required": [
@@ -1334,7 +1342,8 @@
                     "groups",
                     "mail",
                     "mailServer",
-                    "logoutUrl"
+                    "logoutUrl",
+                    "mcpEnabled"
                 ]
             },
             "SettingsProfileRequest": {
@@ -11191,6 +11200,74 @@
                         "description": "Target username — an internal workspace user other than the caller (no groups, guests, or external addresses)."
                     }
                 }
+            },
+            "AdminMcpSettings": {
+                "type": "object",
+                "required": [
+                    "enabled"
+                ],
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "endpointUrl": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Public MCP URL to paste into assistants (`origin/mcp`). Set from WGW_MCP_PUBLIC_ORIGIN when APP_ENV is not production; null in production so the Admin UI uses the current site origin."
+                    }
+                }
+            },
+            "SettingsMcpGrant": {
+                "type": "object",
+                "required": [
+                    "clientId",
+                    "clientName",
+                    "clientOrigin",
+                    "connectedAt",
+                    "scopes"
+                ],
+                "properties": {
+                    "clientId": {
+                        "type": "string"
+                    },
+                    "clientName": {
+                        "type": "string"
+                    },
+                    "clientOrigin": {
+                        "type": "string"
+                    },
+                    "connectedAt": {
+                        "type": "string"
+                    },
+                    "scopes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "lastUsedAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                }
+            },
+            "SettingsMcpGrantList": {
+                "type": "object",
+                "required": [
+                    "grants"
+                ],
+                "properties": {
+                    "grants": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SettingsMcpGrant"
+                        }
+                    }
+                }
             }
         },
         "responses": {
@@ -11674,7 +11751,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Settings state"
+                        "description": "Settings state",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsStateResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -11693,7 +11777,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Updated settings state"
+                        "description": "Updated settings state",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsStateResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -11712,7 +11803,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Updated settings state"
+                        "description": "Updated settings state",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsStateResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -17903,6 +18001,78 @@
                         "$ref": "#/components/responses/JmapForbidden"
                     }
                 }
+            }
+        },
+        "/settings/mcp-grants": {
+            "get": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "List connected assistant OAuth grants",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Connected assistant grants",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsMcpGrantList"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/settings/mcp-grants/{clientId}": {
+            "delete": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Revoke a connected assistant grant",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "clientId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Grant revoked",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Grant not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
             }
         }
     }

@@ -92,7 +92,15 @@ function unwrapAuthReturnChain(raw: string, depth = 0): string {
   return "/";
 }
 
+/** Passport consent only — not `/oauth/session` (would loop the login redirect). */
+export function isWgwOAuthAuthorizeReturnPath(returnPath: string): boolean {
+  const url = parseRelativePath(returnPath);
+  if (!url) return false;
+  return normalizePathname(url.pathname || "/") === "/oauth/authorize";
+}
+
 function isAllowedReturnPath(pathname: string): boolean {
+  if (pathname === "/oauth/authorize") return true;
   return ALLOWED_RETURN_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

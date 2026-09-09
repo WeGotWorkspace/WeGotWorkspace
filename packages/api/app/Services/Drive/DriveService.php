@@ -281,6 +281,114 @@ final class DriveService
         }
     }
 
+    /**
+     * @param  array{username: string, role: string}  $principal
+     * @return array{path: string, mime: string, size: int, truncated: bool, text: string}
+     */
+    public function readTextPreview(array $principal, string $path, int $maxBytes = 65536): array
+    {
+        $this->assertReadableFile($principal, $path);
+        $virtual = $this->paths->normalizeVirtualPath($path);
+        $disk = $this->disk();
+        $key = $this->paths->virtualToStorageKey($virtual);
+        $size = (int) ($disk->fileSize($key) ?: 0);
+        $mime = (string) ($disk->mimeType($key) ?: 'application/octet-stream');
+        $allowed = str_starts_with($mime, 'text/')
+            || in_array($mime, [
+                'application/json',
+                'application/xml',
+                'application/javascript',
+                'application/x-yaml',
+                'application/yaml',
+            ], true)
+            || str_ends_with(strtolower($virtual), '.md')
+            || str_ends_with(strtolower($virtual), '.txt');
+        if (! $allowed) {
+            throw new \InvalidArgumentException('File type is not available as a text preview.');
+        }
+        if ($size > $maxBytes) {
+            throw new \InvalidArgumentException('File is too large to preview via MCP.');
+        }
+        $contents = (string) $disk->read($key);
+
+        return [
+            'path' => $virtual,
+            'mime' => $mime,
+            'size' => $size,
+            'truncated' => false,
+            'text' => $contents,
+        ];
+    }
+
+    /**
+     * Small text write for MCP. Does not use chunked {@see handleUpload}.
+     *
+     * @param  array{username: string, role: string}  $principal
+     * @return array{ok: true, path: string, size: int}
+     */
+    public function writeText(array $principal, string $path, string $text, int $maxBytes = 65536): array
+    {
+        $this->assertFilesEnabled();
+        if (strlen($text) > $maxBytes) {
+            throw new \InvalidArgumentException('File is too large to write via MCP.');
+        }
+
+        $virtual = $this->paths->normalizeVirtualPath($path);
+        $disk = $this->disk();
+        $key = $this->paths->virtualToStorageKey($virtual);
+        if ($disk->fileExists($key)) {
+            $this->authorizer->assertMayEditContent($virtual, $principal);
+        } else {
+            $this->authorizer->assertMayManageStructure($virtual, $principal);
+            $parent = $this->paths->normalizeVirtualPath(dirname($virtual));
+            $parentKey = $this->paths->virtualToStorageKey($parent);
+            if ($parent !== '/' && $parentKey !== '' && ! $disk->directoryExists($parentKey)) {
+                throw new \InvalidArgumentException('Parent directory not found.');
+            }
+        }
+
+        $disk->put($key, $text);
+        $this->search->indexFileStorageKey($key);
+        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($key, hash('sha256', $text)));
+
+        return [
+            'ok' => true,
+            'path' => $virtual,
+            'size' => strlen($text),
+        ];
+    }
+
+    /**
+     * @param  array{username: string, role: string}  $principal
+     * @return array{ok: true, path: string}
+     */
+    public function mkdir(array $principal, string $path): array
+    {
+        $virtual = $this->paths->normalizeVirtualPath($path);
+        if ($virtual === '/' || $virtual === '') {
+            throw new \InvalidArgumentException('Invalid directory path.');
+        }
+        $name = basename($virtual);
+        $parent = $this->paths->normalizeVirtualPath(dirname($virtual));
+        $this->createItem($principal, $name, 'dir', $parent);
+
+        return ['ok' => true, 'path' => $virtual];
+    }
+
+    /**
+     * @param  array{username: string, role: string}  $principal
+     * @return array{ok: true, from: string, to: string}
+     */
+    public function movePath(array $principal, string $from, string $to): array
+    {
+        $fromPath = $this->paths->normalizeVirtualPath($from);
+        $toPath = $this->paths->normalizeVirtualPath($to);
+        $destination = $this->paths->normalizeVirtualPath(dirname($toPath));
+        $this->renameItem($principal, $destination, $fromPath, basename($toPath));
+
+        return ['ok' => true, 'from' => $fromPath, 'to' => $toPath];
+    }
+
     public function downloadResponse(array $principal, string $path): StreamedResponse
     {
         $this->assertReadableFile($principal, $path);

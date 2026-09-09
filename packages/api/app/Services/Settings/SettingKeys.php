@@ -24,6 +24,8 @@ final class SettingKeys
 
     public const MAIL_ENABLED = 'mail_enabled';
 
+    public const MCP_ENABLED = 'mcp_enabled';
+
     public const RTC_STUN_URL = 'rtc_stun_url';
 
     public const RTC_TURN_URL = 'rtc_turn_url';
@@ -75,6 +77,7 @@ final class SettingKeys
             self::CONTACTS_ENABLED,
             self::TASKS_ENABLED,
             self::MAIL_ENABLED,
+            self::MCP_ENABLED,
             self::RTC_STUN_URL,
             self::RTC_TURN_URL,
             self::RTC_TURN_USERNAME,

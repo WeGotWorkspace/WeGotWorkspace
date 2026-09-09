@@ -18,6 +18,7 @@ services:
       - "${WGW_DOCKER_HTTP_PORT:-9080}:80"
     environment:
       WGW_APP_ROOT: /var/www/install
+      WGW_API_ROOT: /var/www/packages/api
       WGW_DEV_DOMAIN: ${WGW_DEV_DOMAIN:-wegotworkspace.localhost}
     volumes:
       - ./apps/wegotworkspace:/var/www/install

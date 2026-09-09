@@ -1,0 +1,9 @@
+@import "../../styles.css" reference;
+
+.mcp-endpoint-url-row {
+  --field-label-color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+}
+
+.mcp-endpoint-url-row.share-dialog {
+  @apply max-w-none;
+}

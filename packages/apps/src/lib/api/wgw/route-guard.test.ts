@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildWgwLoginHref,
   isWgwAuthRoutePathname,
+  isWgwOAuthAuthorizeReturnPath,
   isWgwPublicRoutePathname,
   requireWgwAuth,
   resolveWgwSameOriginHref,
@@ -58,6 +59,17 @@ describe("sanitizeWgwReturnPath", () => {
     expect(sanitizeWgwReturnPath("//evil.com/phish")).toBe("/");
     expect(sanitizeWgwReturnPath("/unknown-app")).toBe("/");
     expect(sanitizeWgwReturnPath(null)).toBe("/");
+  });
+
+  it("allows Passport authorize return paths and preserves query", () => {
+    expect(sanitizeWgwReturnPath("/oauth/authorize")).toBe("/oauth/authorize");
+    expect(sanitizeWgwReturnPath("/oauth/authorize?client_id=abc&state=1")).toBe(
+      "/oauth/authorize?client_id=abc&state=1",
+    );
+    expect(sanitizeWgwReturnPath("/oauth/session")).toBe("/");
+    expect(isWgwOAuthAuthorizeReturnPath("/oauth/authorize?client_id=abc")).toBe(true);
+    expect(isWgwOAuthAuthorizeReturnPath("/oauth/session")).toBe(false);
+    expect(isWgwOAuthAuthorizeReturnPath("/docs")).toBe(false);
   });
 
   it("unwraps nested login return chains", () => {

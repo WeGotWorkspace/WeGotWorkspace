@@ -9,6 +9,8 @@ export type SettingsPaths = {
 
 export type OkResponse = components["schemas"]["OkResponse"];
 export type SettingsMailRequest = components["schemas"]["SettingsMailRequest"];
+export type SettingsMcpGrant = components["schemas"]["SettingsMcpGrant"];
+export type SettingsMcpGrantList = components["schemas"]["SettingsMcpGrantList"];
 export type SettingsProfileRequest = components["schemas"]["SettingsProfileRequest"];
 export type SettingsStateResponse = components["schemas"]["SettingsStateResponse"];
 export type SettingsUserGroup = components["schemas"]["SettingsUserGroup"];

@@ -25,6 +25,7 @@ export type AdminSettingsFormState = {
   mailDeliverySmtpSecurity: string;
   mailDeliverySmtpUsername: string;
   mailDeliverySmtpPassword: string;
+  mcpEnabled: boolean;
 };
 
 /** Keep the progress card visible during POST /apply while merging poll snapshots. */
@@ -84,6 +85,7 @@ export function buildAdminSettingsFormState(
     ),
     mailDeliverySmtpUsername: data.mailDelivery.config.smtpUsername,
     mailDeliverySmtpPassword: "",
+    mcpEnabled: data.mcp.enabled,
   };
 }
 
@@ -113,6 +115,7 @@ export function adminSettingsFormToMap(
     mail_delivery_smtp_port: state.mailDeliverySmtpPort,
     mail_delivery_smtp_security: state.mailDeliverySmtpSecurity,
     mail_delivery_smtp_username: state.mailDeliverySmtpUsername,
+    mcp_enabled: state.mcpEnabled,
   };
   if (state.mailDeliverySmtpPassword.trim() !== "") {
     values.mail_delivery_smtp_password = state.mailDeliverySmtpPassword;

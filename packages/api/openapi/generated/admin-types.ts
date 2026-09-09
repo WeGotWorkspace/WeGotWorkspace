@@ -22,6 +22,7 @@ export type AdminMailDeliveryTestRequest = components["schemas"]["AdminMailDeliv
 export type AdminMailDeliveryTestResponse = components["schemas"]["AdminMailDeliveryTestResponse"];
 export type AdminMailDeliveryTransport = components["schemas"]["AdminMailDeliveryTransport"];
 export type AdminMailSettings = components["schemas"]["AdminMailSettings"];
+export type AdminMcpSettings = components["schemas"]["AdminMcpSettings"];
 export type AdminRtcSettings = components["schemas"]["AdminRtcSettings"];
 export type AdminSavedSettingKeyList = components["schemas"]["AdminSavedSettingKeyList"];
 export type AdminSettingsSaveRequest = components["schemas"]["AdminSettingsSaveRequest"];

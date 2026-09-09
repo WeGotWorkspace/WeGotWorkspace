@@ -58,6 +58,13 @@
 }
 
 .callout .menu-item__label {
-  @apply whitespace-normal break-words;
+  @apply overflow-visible whitespace-normal break-words;
   overflow-wrap: anywhere;
+  text-overflow: unset;
+}
+
+.callout .menu-item__description {
+  @apply overflow-visible whitespace-normal break-words;
+  overflow-wrap: anywhere;
+  text-overflow: unset;
 }

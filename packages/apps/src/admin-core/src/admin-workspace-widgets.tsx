@@ -33,7 +33,7 @@ export function FeatureRow({
   onChange,
 }: {
   label: string;
-  desc: string;
+  desc?: string;
   value: boolean;
   onChange: (next: boolean) => void;
 }) {
@@ -41,7 +41,7 @@ export function FeatureRow({
     <div className="admin-feature-row">
       <div className="min-w-0">
         <div className="admin-feature-row__title">{label}</div>
-        <div className="admin-feature-row__desc">{desc}</div>
+        {desc ? <div className="admin-feature-row__desc">{desc}</div> : null}
       </div>
       <BooleanSegmentedControl value={value} onChange={onChange} aria-label={`${label} enabled`} />
     </div>

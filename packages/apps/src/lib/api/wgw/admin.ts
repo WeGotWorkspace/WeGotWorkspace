@@ -164,6 +164,10 @@ export function mapWgwAdminStateToUI(
       baseUri: state.webdav.baseUri,
       authRealm: state.webdav.authRealm,
     },
+    mcp: {
+      enabled: state.mcp?.enabled ?? false,
+      endpointUrl: state.mcp?.endpointUrl ?? null,
+    },
     plugins: plugins.map((plugin) => ({
       id: plugin.id,
       name: plugin.name,

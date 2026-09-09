@@ -35,4 +35,10 @@ describe("adminSettingsFormToMap", () => {
     const form = buildAdminSettingsFormState(data);
     expect(form.mailDeliverySmtpHost).toBe(data.mail.smtpHost);
   });
+
+  it("includes mcp_enabled from the form", () => {
+    const { data } = createAdminAppBootstrap();
+    const values = adminSettingsFormToMap(buildAdminSettingsFormState(data));
+    expect(values.mcp_enabled).toBe(false);
+  });
 });

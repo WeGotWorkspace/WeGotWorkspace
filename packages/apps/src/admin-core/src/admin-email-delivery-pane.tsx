@@ -203,7 +203,11 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
       </Card>
 
       <div className="admin-email-delivery-pane__actions">
-        <Button label="Save changes" variant="primary" onClick={controller.actions.saveSettings} />
+        <Button
+          label="Save changes"
+          variant="primary"
+          onClick={() => void controller.actions.saveSettings()}
+        />
         <Button
           label="Send test email"
           variant="subtle"

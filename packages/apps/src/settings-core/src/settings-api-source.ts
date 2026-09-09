@@ -6,6 +6,8 @@ import {
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import {
   fetchSettingsLiveBootstrap,
+  listSettingsMcpGrants,
+  revokeSettingsMcpGrant,
   saveSettingsMail,
   saveSettingsProfile,
 } from "@/lib/api/wgw/settings";
@@ -20,6 +22,8 @@ function createWgwOperations(): SettingsAPIOperations {
   return {
     saveProfile: (input, opts) => saveSettingsProfile(input, opts),
     saveMail: (input, opts) => saveSettingsMail(input, opts),
+    listMcpGrants: (opts) => listSettingsMcpGrants(opts),
+    revokeMcpGrant: (clientId, opts) => revokeSettingsMcpGrant(clientId, opts),
   };
 }
 

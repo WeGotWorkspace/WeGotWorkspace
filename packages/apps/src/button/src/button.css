@@ -76,6 +76,33 @@
   );
 }
 
+.button--variant-destructive-outline {
+  color: var(
+    --button-destructive-outline-color,
+    var(--button-destructive-bg, var(--color-red-500, #dc2626))
+  );
+  background-color: transparent;
+  border: 1px solid
+    var(
+      --button-destructive-outline-border-color,
+      var(
+        --button-destructive-outline-color,
+        var(--button-destructive-bg, var(--color-red-500, #dc2626))
+      )
+    );
+}
+
+.button--variant-destructive-outline:hover {
+  background-color: var(
+    --button-destructive-outline-hover-background,
+    color-mix(
+      in oklab,
+      var(--button-destructive-bg, var(--color-red-500, #dc2626)) 12%,
+      transparent
+    )
+  );
+}
+
 .button--variant-outline {
   color: var(--button-outline-color, var(--color-ink));
   background-color: transparent;

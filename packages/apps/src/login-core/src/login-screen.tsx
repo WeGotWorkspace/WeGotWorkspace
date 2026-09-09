@@ -2,8 +2,12 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/button/src/button";
 import { AuthenticationPage } from "@/login-core/src/authentication-page";
-import { wgwFetchPasswordRecoveryEnabled, wgwLoginWithCredentials } from "@/lib/api/wgw/http";
-import { sanitizeWgwReturnPath } from "@/lib/api/wgw/route-guard";
+import {
+  wgwEstablishMcpWebSession,
+  wgwFetchPasswordRecoveryEnabled,
+  wgwLoginWithCredentials,
+} from "@/lib/api/wgw/http";
+import { isWgwOAuthAuthorizeReturnPath, sanitizeWgwReturnPath } from "@/lib/api/wgw/route-guard";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 
@@ -66,14 +70,29 @@ export function LoginScreen({
 
     setSubmitting(true);
     try {
+      const oauthConnect = isWgwOAuthAuthorizeReturnPath(resolvedReturnPath);
+      if (oauthConnect) {
+        const intent = search.get("intent");
+        await wgwEstablishMcpWebSession(normalizedUsername, password, intent);
+        try {
+          await wgwLoginWithCredentials(normalizedUsername, password);
+        } catch {
+          // Passport authorize needs the web session; SPA JWT is optional.
+        }
+        window.location.assign(resolvedReturnPath);
+        return;
+      }
       await wgwLoginWithCredentials(normalizedUsername, password);
       await navigate({ to: resolvedReturnPath });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message.trim() : "Could not sign in.";
       const normalized = message.toLowerCase();
-      if (normalized.includes("invalid credentials")) {
+      if (normalized.includes("invalid credentials") || normalized.includes("not recognized")) {
         setRuntimeError("That username or password does not match this server.");
-      } else if (normalized.includes("too many login attempts")) {
+      } else if (
+        normalized.includes("too many login attempts") ||
+        normalized.includes("too many sign-in attempts")
+      ) {
         setRuntimeError("Too many sign-in attempts. Wait a few minutes and try again.");
       } else {
         setRuntimeError(message || "Could not sign in.");
@@ -83,8 +102,13 @@ export function LoginScreen({
     }
   };
 
+  const oauthConnect = isWgwOAuthAuthorizeReturnPath(resolvedReturnPath);
+
   return (
-    <AuthenticationPage title="Welcome back.">
+    <AuthenticationPage
+      title="Welcome back."
+      eyebrow={oauthConnect ? "Connect assistant" : undefined}
+    >
       {errorMessage ? (
         <p className="login-screen__error" role="alert">
           {errorMessage}

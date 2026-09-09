@@ -20,6 +20,26 @@ export const Default: Story = {
   render: () => <LoginScreen passwordRecoveryEnabled />,
 };
 
+export const ConnectAssistant: Story = {
+  name: "Connect assistant",
+  parameters: {
+    routerPath: "/login?return=%2Foauth%2Fauthorize",
+    docs: {
+      description: {
+        story:
+          "Same login screen as Default, with `return=/oauth/authorize` (MCP assistant connect). Live `/oauth/session` redirects here.",
+      },
+    },
+  },
+  render: () => <LoginScreen returnPath="/oauth/authorize" passwordRecoveryEnabled />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Connect assistant")).toBeTruthy();
+    await expect(canvas.getByText("Welcome back.")).toBeTruthy();
+    await expect(canvas.getByRole("button", { name: "Sign in" })).toBeTruthy();
+  },
+};
+
 export const RecoveryOff: Story = {
   name: "Recovery off",
   render: () => <LoginScreen passwordRecoveryEnabled={false} />,

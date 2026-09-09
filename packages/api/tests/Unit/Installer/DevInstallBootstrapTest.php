@@ -7,6 +7,7 @@ namespace Tests\Unit\Installer;
 use App\Services\Installer\DevInstallBootstrap;
 use App\Support\AppPaths;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\Support\WgwInstallFixture;
 use Tests\TestCase;
 
@@ -55,6 +56,7 @@ final class DevInstallBootstrapTest extends TestCase
         $this->assertFileExists($this->installRoot.'/wgw-content/keys/api-jwt-private.pem');
 
         WgwInstallFixture::syncDatabaseConnection();
+        $this->assertTrue(Schema::connection('wgw')->hasTable('oauth_clients'));
         $this->assertSame(1, DB::connection('wgw')->table('users')->where('username', 'admin')->count());
         $this->assertSame('SabreDAV', DB::connection('wgw')->table('app_settings')->where('name', 'auth_realm')->value('value'));
         $seeded = DB::connection('wgw')->table('calendarobjects')->where('uri', 'like', 'dev-seed-%')->count();
