@@ -59,6 +59,8 @@
   },
   "pnpm": {
     "overrides": {
+      "@tiptap/core": "3.30.5",
+      "@tiptap/pm": "3.30.5",
       "esbuild": "0.28.1",
       "linkify-it": "5.0.2",
       "nanoid": "3.3.18",
