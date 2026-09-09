@@ -10,6 +10,10 @@ import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-l
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import {
+  meetCallStatusEngaged,
+  meetResumeLiveCallChannelId,
+} from "@/meet-core/src/meet-call-resume";
+import {
   meetUpcomingJoinTarget,
   upcomingMeetingsForSidebar,
 } from "@/meet-core/src/meet-calendar-meeting";
@@ -133,6 +137,7 @@ function MeetChatLiveWorkspace({
     });
   }, [channels, listLoading, navigate, params.channelId]);
 
+  const suiteCallStore = useMeetCallStoreContext();
   const { operations, callStageRoom, liveCallChannelId, joinedRoomCode } = useMeetChatCall({
     session,
     data,
@@ -141,6 +146,11 @@ function MeetChatLiveWorkspace({
     meetOperations,
     chatOperations,
     selectedChannelId,
+  });
+  const resumeLiveCallChannelId = meetResumeLiveCallChannelId({
+    computed: liveCallChannelId,
+    persisted: suiteCallStore?.getSnapshot().liveCallChannelId ?? null,
+    callEngaged: Boolean(joinedRoomCode),
   });
 
   const calendarApi = useCalendarAPI();
@@ -202,7 +212,7 @@ function MeetChatLiveWorkspace({
     operations: operationsWithMesh,
   } = useMeetMeshSync({
     operations,
-    liveCallChannelId,
+    liveCallChannelId: resumeLiveCallChannelId,
     username: session.user.username ?? null,
     selfUsername: session.user.username,
     channels,
@@ -300,22 +310,28 @@ function MeetChatLiveWorkspace({
   });
   const callActiveByChannel = mergeMeetCallLive(meshCallParticipants, polledCallActive);
 
-  // Mini-player title: the live call's channel/meeting title or DM peer name.
-  const suiteCallStore = useMeetCallStoreContext();
+  // Persist the live call's channel so a remount (app switcher → /meet) can
+  // restore chrome. Do not clear the mapping while the call is still engaged
+  // but this mount cannot resolve the room yet (lost DM/ad-hoc refs).
   useEffect(() => {
     if (!suiteCallStore) return;
-    if (!liveCallChannelId) {
-      suiteCallStore.setCallLabel(null);
+    if (liveCallChannelId) {
+      suiteCallStore.setLiveCallChannelId(liveCallChannelId);
+      const dmPrincipal = meetDirectMessagePrincipalId(liveCallChannelId);
+      if (dmPrincipal) {
+        const person = data.directory?.find((principal) => principal.id === dmPrincipal);
+        suiteCallStore.setLiveCallChannelKind("dm");
+        suiteCallStore.setCallLabel(person?.displayName?.trim() || dmPrincipal);
+        return;
+      }
+      const channel = channels.find((row) => row.id === liveCallChannelId);
+      suiteCallStore.setLiveCallChannelKind(channel?.kind ?? "channel");
+      suiteCallStore.setCallLabel(channel ? meetChannelTitle(channel) : null);
       return;
     }
-    const dmPrincipal = meetDirectMessagePrincipalId(liveCallChannelId);
-    if (dmPrincipal) {
-      const person = data.directory?.find((principal) => principal.id === dmPrincipal);
-      suiteCallStore.setCallLabel(person?.displayName?.trim() || dmPrincipal);
-      return;
+    if (!meetCallStatusEngaged(suiteCallStore.getSnapshot().status)) {
+      suiteCallStore.clearLiveCallResume();
     }
-    const channel = channels.find((row) => row.id === liveCallChannelId);
-    suiteCallStore.setCallLabel(channel ? meetChannelTitle(channel) : null);
   }, [channels, data.directory, liveCallChannelId, suiteCallStore]);
 
   const workspaceData = useMemo<MeetUIData>(() => {
@@ -345,9 +361,9 @@ function MeetChatLiveWorkspace({
       onLogout={onLogout}
       callStageRoom={callStageRoom}
       // Deep link wins; otherwise returning to /meet mid-call lands on the call.
-      initialChannelId={routeChannelId ?? liveCallChannelId ?? undefined}
+      initialChannelId={routeChannelId ?? resumeLiveCallChannelId ?? undefined}
       routeChannelId={routeChannelId}
-      liveCallChannelId={liveCallChannelId}
+      liveCallChannelId={resumeLiveCallChannelId}
       onSelectedChannelChange={handleSelectedChannelChange}
       typingByChannel={typingByChannel}
       onComposerTyping={onComposerTyping}

@@ -63,6 +63,11 @@ import { meetCallBarShownCount, meetCallPreviewPeers } from "@/meet-core/src/mee
 import { MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
 import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
+import {
+  meetCallStatusEngaged,
+  meetCallUiParkedOnWorkspaceUnmount,
+  meetShouldSelectLiveCallOnBareMeet,
+} from "@/meet-core/src/meet-call-resume";
 import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
 import { MeetCallStage } from "@/meet-core/src/meet-call-stage";
@@ -401,10 +406,13 @@ export function MeetWorkspace({
 
   // Follow route changes (deep link, back/forward). Selection → URL runs the
   // other way via onSelectedChannelChange, so equal values settle immediately.
+  // Bare `/meet` (app switcher) restores the live call instead of the default channel.
   useEffect(() => {
-    if (routeChannelId == null) return;
-    setSelectedId((current) => (current === routeChannelId ? current : routeChannelId));
-  }, [routeChannelId]);
+    const next =
+      routeChannelId ?? meetShouldSelectLiveCallOnBareMeet({ routeChannelId, liveCallChannelId });
+    if (next == null) return;
+    setSelectedId((current) => (current === next ? current : next));
+  }, [liveCallChannelId, routeChannelId]);
 
   const sections = useMemo(() => partitionMeetChannels(channels), [channels]);
   const leftoverUpcoming = useMemo(
@@ -963,7 +971,9 @@ export function MeetWorkspace({
   }, [liveCallChannelId, suiteCallStore]);
   useEffect(
     () => () => {
-      suiteCallStore?.setCallUiParked(false);
+      if (!suiteCallStore) return;
+      const engaged = meetCallStatusEngaged(suiteCallStore.getSnapshot().status);
+      suiteCallStore.setCallUiParked(meetCallUiParkedOnWorkspaceUnmount(engaged));
     },
     [suiteCallStore],
   );

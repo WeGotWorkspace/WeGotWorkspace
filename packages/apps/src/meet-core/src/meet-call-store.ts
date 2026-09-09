@@ -34,8 +34,9 @@ export type MeetCallSnapshot = {
   remoteCallActive: boolean;
   /**
    * The Meet chat workspace is mounted but the live call's channel is not on
-   * screen (another channel selected). Lets the mini-player show inside `/meet`;
-   * legacy shells never set this, so their full-screen call keeps hiding it.
+   * screen (another channel selected, or Meet unmounted while the call
+   * continues). Lets the mini-player show inside `/meet`; legacy shells never
+   * set this, so their full-screen call keeps hiding it.
    */
   callUiParked: boolean;
   /**
@@ -43,6 +44,13 @@ export type MeetCallSnapshot = {
    * Null for ad-hoc/legacy rooms — the mini-player falls back to "Meet".
    */
   callLabel: string | null;
+  /**
+   * Workspace selection key for the live call (`chat-…`, `dm:{peer}`). Survives
+   * Meet unmount so returning via the app switcher can restore the in-call view.
+   */
+  liveCallChannelId: string | null;
+  /** Channel kind for `liveCallChannelId` (meeting vs channel). Unused for DMs. */
+  liveCallChannelKind: string | null;
 };
 
 function createInitialSnapshot(): MeetCallSnapshot {
@@ -65,6 +73,8 @@ function createInitialSnapshot(): MeetCallSnapshot {
     remoteCallActive: false,
     callUiParked: false,
     callLabel: null,
+    liveCallChannelId: null,
+    liveCallChannelKind: null,
   };
 }
 
@@ -196,6 +206,9 @@ export class MeetCallStore {
 
   setStatus = (value: Updater<MeetCallStatus>): void => {
     this.set("status", value, this.statusRef);
+    if (this.statusRef.current === "idle" || this.statusRef.current === "failed") {
+      this.clearLiveCallResume();
+    }
   };
 
   setError = (value: Updater<string | null>): void => {
@@ -274,6 +287,22 @@ export class MeetCallStore {
 
   setCallLabel = (value: Updater<string | null>): void => {
     this.set("callLabel", value);
+  };
+
+  setLiveCallChannelId = (value: Updater<string | null>): void => {
+    this.set("liveCallChannelId", value);
+  };
+
+  setLiveCallChannelKind = (value: Updater<string | null>): void => {
+    this.set("liveCallChannelKind", value);
+  };
+
+  /** Hang-up / failure: drop resume keys so a later `/meet` visit is not hijacked. */
+  clearLiveCallResume = (): void => {
+    this.setLiveCallChannelId(null);
+    this.setLiveCallChannelKind(null);
+    this.setCallLabel(null);
+    this.setCallUiParked(false);
   };
 
   resetPeerMaps = (): void => {

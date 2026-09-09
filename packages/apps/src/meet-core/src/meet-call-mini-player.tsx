@@ -4,10 +4,13 @@ import { Maximize2, Mic, MicOff, PhoneOff, Users, Video, VideoOff } from "lucide
 import { IconButton } from "@/button/src/button";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
+import {
+  meetCallMiniPlayerVisible,
+  meetResumeCallNavigateTarget,
+} from "@/meet-core/src/meet-call-resume";
 import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { MeetRemoteAudio, remoteParticipantHasAudio } from "@/meet-core/src/meet-remote-audio";
-import { meetSearchFromRoom } from "@/meet-core/src/meet-route-search";
 import "@/meet-core/src/meet-call-mini-player.css";
 
 function formatElapsed(startedAt: number | null): string {
@@ -41,8 +44,13 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
   const callEngaged = snapshot.status === "in-call" || snapshot.status === "waiting";
   // Outside /meet the card always accompanies an engaged call. Inside /meet it
   // only shows when the chat workspace parked the call (another channel on
-  // screen); legacy shells (/meet/join guest flow) never park, keeping it hidden.
-  const visible = callEngaged && (!pathname.startsWith("/meet") || snapshot.callUiParked);
+  // screen, or Meet unmounted while the call continues). Legacy shells never
+  // park, keeping it hidden over the full-screen guest stage.
+  const visible = meetCallMiniPlayerVisible({
+    callEngaged,
+    onMeetPath: pathname.startsWith("/meet"),
+    callUiParked: snapshot.callUiParked,
+  });
   const showVideo = visible && snapshot.videoOn && !snapshot.screenOn;
   const remoteAudioPeers = visible
     ? snapshot.participants.flatMap((peer) =>
@@ -90,7 +98,13 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
       focusCallChannel();
       return;
     }
-    void navigate({ to: "/meet", search: meetSearchFromRoom(snapshot.roomCode) });
+    void navigate(
+      meetResumeCallNavigateTarget({
+        liveCallChannelId: snapshot.liveCallChannelId,
+        liveCallChannelKind: snapshot.liveCallChannelKind,
+        roomCode: snapshot.roomCode,
+      }),
+    );
   };
 
   return (

@@ -515,6 +515,15 @@ describe("meet host admit knock popover", () => {
   });
 });
 
+describe("meet in-call overlay resume", () => {
+  it("selects the live call on bare /meet and keeps the mini-player parked on unmount", () => {
+    expect(tsx).toContain("meetShouldSelectLiveCallOnBareMeet");
+    expect(tsx).toContain("meetCallUiParkedOnWorkspaceUnmount");
+    expect(tsx).toContain("meetCallStatusEngaged");
+    expect(tsx).not.toMatch(/suiteCallStore\?\.setCallUiParked\(false\)/);
+  });
+});
+
 describe("meet leave/end call dialog", () => {
   it("paints cream/dusk call chrome, not the lobby dark island", () => {
     const dialog = css.match(/\.meet-call-dialog \{[\s\S]*?\n\}/)?.[0] ?? "";

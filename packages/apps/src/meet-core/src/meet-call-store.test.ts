@@ -187,4 +187,39 @@ describe("MeetCallStore", () => {
     store.toggleMicRef.current();
     expect(store.getSnapshot().micOn).toBe(true);
   });
+
+  it("persists the live call channel so a remount can restore in-call chrome", () => {
+    const store = createMeetCallStore();
+    store.setStatus("in-call");
+    store.setLiveCallChannelId("chat-design");
+    store.setLiveCallChannelKind("channel");
+    store.setCallLabel("Design");
+    store.setCallUiParked(true);
+
+    expect(store.getSnapshot()).toMatchObject({
+      liveCallChannelId: "chat-design",
+      liveCallChannelKind: "channel",
+      callLabel: "Design",
+      callUiParked: true,
+    });
+  });
+
+  it("clears resume keys when the call returns to idle (hang up outside /meet)", () => {
+    const store = createMeetCallStore();
+    store.setStatus("in-call");
+    store.setLiveCallChannelId("dm:alice");
+    store.setLiveCallChannelKind("dm");
+    store.setCallLabel("Alice");
+    store.setCallUiParked(true);
+
+    store.setStatus("idle");
+
+    expect(store.getSnapshot()).toMatchObject({
+      status: "idle",
+      liveCallChannelId: null,
+      liveCallChannelKind: null,
+      callLabel: null,
+      callUiParked: false,
+    });
+  });
 });
