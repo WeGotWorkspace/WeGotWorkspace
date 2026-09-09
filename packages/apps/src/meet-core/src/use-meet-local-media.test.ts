@@ -13,6 +13,12 @@ describe("useMeetLocalMedia ensureLocalMedia", () => {
     expect(ts).not.toContain("audio: buildMeetAudioConstraints(selectedMicId ?? undefined)");
   });
 
+  it("exposes force mute and unmute for host remote-mute controls", () => {
+    expect(ts).toMatch(/const muteMic = useCallback\(\(\): boolean =>/);
+    expect(ts).toMatch(/const unmuteMic = useCallback\(\(\): boolean =>/);
+    expect(ts).toContain("unmuteMic,");
+  });
+
   it("does not offer getDisplayMedia when the browser cannot capture the display", () => {
     expect(ts).toContain("isDisplayCaptureSupported()");
     expect(ts).toContain("meetLabels.shareScreenUnsupported");

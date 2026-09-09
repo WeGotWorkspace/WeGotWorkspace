@@ -505,13 +505,27 @@
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__name {
-  @apply absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1 text-[11px] text-white backdrop-blur;
+  @apply absolute bottom-2 left-2 z-10 flex items-center gap-1.5 rounded-full border-0 bg-black/45 px-2.5 py-1 text-left text-[11px] text-white backdrop-blur;
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__mute {
-  @apply absolute right-2 top-2 rounded-md;
-  background-color: color-mix(in oklab, var(--meet-call-empty, #ffffff) 72%, transparent);
-  backdrop-filter: blur(6px);
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) button.meet-peer-tile__name {
+  @apply appearance-none cursor-pointer;
+}
+
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface)
+  button.meet-peer-tile__name:hover {
+  background-color: rgb(0 0 0 / 0.62);
+}
+
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface)
+  button.meet-peer-tile__name:focus-visible {
+  outline: 2px solid var(--meet-live, #fff);
+  outline-offset: 2px;
+}
+
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface)
+  button.meet-peer-tile__name--mic-muted:hover {
+  background-color: color-mix(in oklab, rgb(127 29 29) 70%, rgb(0 0 0));
 }
 
 @media (min-width: 768px) {

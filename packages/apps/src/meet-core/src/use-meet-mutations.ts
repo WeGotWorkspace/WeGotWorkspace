@@ -249,19 +249,31 @@ export function useMeetMutations({
   );
 
   const mutePeer = useCallback(
-    async (peerId: string) => {
+    async (peerId: string, muted = true) => {
       if (!canModerateKnocks) return;
       if (!operationsRef.current || !room.roomCodeRef.current || !room.selfIdRef.current) return;
       if (peerId === room.selfIdRef.current) return;
+      const kind = muted ? "mute" : "unmute";
       try {
         await operationsRef.current.chat({
           room: room.roomCodeRef.current,
           from: room.selfIdRef.current,
-          text: buildMeetControlMessage({ kind: "mute", peerId }),
+          text: buildMeetControlMessage({ kind, peerId }),
           sessionKey: meetRtc.getSessionKey() ?? undefined,
         });
+        const name = room.peerNamesRef.current.get(peerId)?.trim() || "participant";
+        toast.show(
+          muted ? meetLabels.mutedParticipant(name) : meetLabels.unmutedParticipant(name),
+          { severity: "info" },
+        );
       } catch (e) {
-        toast.showError(e instanceof Error ? e.message : meetLabels.couldNotMuteParticipant);
+        toast.showError(
+          e instanceof Error
+            ? e.message
+            : muted
+              ? meetLabels.couldNotMuteParticipant
+              : meetLabels.couldNotUnmuteParticipant,
+        );
       }
     },
     [canModerateKnocks, meetRtc, operationsRef, room, toast],

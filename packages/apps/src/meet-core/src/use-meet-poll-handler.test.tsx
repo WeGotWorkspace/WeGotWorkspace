@@ -33,6 +33,7 @@ function createPollHandler(
   } = {},
 ) {
   const muteMic = vi.fn(() => true);
+  const unmuteMic = vi.fn(() => true);
   const setWaitingForAdmission = (overrides.setWaitingForAdmission ?? vi.fn()) as Dispatch<
     SetStateAction<boolean>
   >;
@@ -59,6 +60,7 @@ function createPollHandler(
       leaveRef: { current: vi.fn() },
       meetRtcRef: { current: { updateJoinName, retryRoomPeerConnections } as never },
       muteMicRef: { current: muteMic },
+      unmuteMicRef: { current: unmuteMic },
       setKnockers,
       setEndedMessage,
       setStatus,
@@ -70,6 +72,7 @@ function createPollHandler(
   return {
     handlePoll: result.current,
     muteMic,
+    unmuteMic,
     setWaitingForAdmission,
     setStatus,
     setEndedMessage,
@@ -122,6 +125,63 @@ describe("useMeetPollHandler mute", () => {
     });
 
     expect(muteMic).not.toHaveBeenCalled();
+  });
+
+  it("unmutes the local mic when an unmute control targets this peer", async () => {
+    const { handlePoll, unmuteMic } = createPollHandler();
+
+    await handlePoll({
+      peers: [{ id: "host-1", name: "Admin" }],
+      messages: [
+        {
+          from: "host-1",
+          type: "chat",
+          payload: {
+            text: buildMeetControlMessage({ kind: "unmute", peerId: "self-1" }),
+          },
+        },
+      ],
+    });
+
+    expect(unmuteMic).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores unmute controls aimed at someone else", async () => {
+    const { handlePoll, unmuteMic } = createPollHandler();
+
+    await handlePoll({
+      peers: [{ id: "host-1", name: "Admin" }],
+      messages: [
+        {
+          from: "host-1",
+          type: "chat",
+          payload: {
+            text: buildMeetControlMessage({ kind: "unmute", peerId: "peer-other" }),
+          },
+        },
+      ],
+    });
+
+    expect(unmuteMic).not.toHaveBeenCalled();
+  });
+
+  it("toasts through useAppToast when this peer is unmuted", async () => {
+    const { handlePoll } = createPollHandler();
+
+    await handlePoll({
+      peers: [{ id: "host-1", name: "Admin" }],
+      messages: [
+        {
+          from: "host-1",
+          type: "chat",
+          payload: {
+            text: buildMeetControlMessage({ kind: "unmute", peerId: "self-1" }),
+          },
+        },
+      ],
+    });
+
+    expect(toastApi.show).toHaveBeenCalledWith(meetLabels.unmutedByHost, { severity: "info" });
   });
 });
 

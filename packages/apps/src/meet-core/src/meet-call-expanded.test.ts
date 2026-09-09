@@ -87,10 +87,11 @@ describe("Meet call/chat IconButton chrome", () => {
     expect(toolbar).toMatch(/variant="subtle"/);
     expect(toolbar).toMatch(/variant="destructive"/);
     expect(toolbar).not.toMatch(/size="lg"/);
-    expect(peerTile).toMatch(/variant="subtle"/);
     expect(peerTile).not.toMatch(/variant="ghost"/);
-    expect(peerTile).toMatch(/meet-peer-tile__mute/);
+    expect(peerTile).not.toMatch(/meet-peer-tile__mute/);
+    expect(peerTile).toMatch(/meet-peer-tile__name/);
     expect(peerTile).toMatch(/onToggleMic/);
+    expect(peerTile).toMatch(/unmuteParticipant/);
     expect(peerTile).not.toMatch(/onMuteSoon/);
     expect(peerTile).not.toMatch(/DropdownMenu/);
     expect(peerTile).not.toMatch(/MoreVertical/);
