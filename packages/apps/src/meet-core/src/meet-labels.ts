@@ -12,6 +12,8 @@ export const meetLabels = {
   lobbyJoinTitle: "Ready to join?",
   lobbyHostTitle: "Ready when you are.",
   invitedTitle: "You're invited to a meet",
+  guestLobbyRegion: "Meeting lobby",
+  guestLobbyMediaRegion: "Camera preview and devices",
   yourNameLabel: "Your name",
   displayNameLabel: "Display name",
   cameraLabel: "Camera",

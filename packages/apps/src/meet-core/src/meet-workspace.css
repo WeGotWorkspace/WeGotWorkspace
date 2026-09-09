@@ -829,6 +829,16 @@
   @apply mx-0 flex h-full min-h-0 min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
 }
 
+/*
+ * Guest lobby is taller than a typical iPhone visual viewport (preview +
+ * devices + Knock). Meet's main-scroll stays overflow-hidden for the in-call
+ * stage; the lobby itself is the scrollport so Knock stays reachable.
+ * `svh` matches Safari chrome (URL bar shown) instead of the larger `dvh`.
+ */
+.workspace-columns.meet-guest-channel:not(.meet-workspace--call-active) {
+  max-height: 100svh;
+}
+
 .meet-workspace--split .app-sidebar {
   @apply h-full min-h-0 self-stretch;
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
@@ -1435,7 +1445,7 @@
 }
 
 .meet-guest-channel__lobby {
-  @apply flex flex-1 items-center justify-center px-6 py-12;
+  @apply flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto;
   /*
    * Guest invite landing uses the same cream/dusk product chrome as
    * `.meet-workspace--split`. Do not re-paint the navy lobby slab.
@@ -1460,6 +1470,12 @@
   --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #ffffff));
   background-color: var(--meet-surface);
   color: var(--color-ink);
+  padding-top: max(1.5rem, calc(env(safe-area-inset-top, 0px) + 0.75rem));
+  padding-right: max(1.5rem, calc(env(safe-area-inset-right, 0px) + 1rem));
+  padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem));
+  padding-left: max(1.5rem, calc(env(safe-area-inset-left, 0px) + 1rem));
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .meet-guest-channel__lobby .meet-workspace__title {
@@ -1468,7 +1484,9 @@
 }
 
 .meet-guest-lobby__card {
-  @apply mb-0 grid w-full max-w-5xl gap-8;
+  /* my-auto centers short status cards; when the card is taller than the
+   * lobby, auto margins collapse so the lobby can scroll from the top. */
+  @apply my-auto grid w-full max-w-5xl shrink-0 gap-8;
   grid-template-areas:
     "heading"
     "media"
@@ -1487,7 +1505,7 @@
     "invite";
 }
 
-@media (min-width: 768px) {
+@container workspace-columns (min-width: 768px) {
   .meet-guest-lobby__card {
     grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 0.9fr);
     grid-template-rows: auto 1fr;
@@ -1504,6 +1522,41 @@
       "heading"
       "invite";
     align-items: start;
+  }
+}
+
+/*
+ * Phone: pin name + Knock at the bottom of the visual viewport (clear of the
+ * home indicator). Preview / devices scroll in the remaining space.
+ * `@container workspace-columns` matches a 390px shell in Storybook and a
+ * real iPhone visual viewport.
+ */
+@container workspace-columns (max-width: 767px) {
+  .meet-guest-channel__lobby {
+    overflow: hidden;
+  }
+
+  .meet-guest-lobby__card:not(.meet-guest-lobby__card--status) {
+    display: flex;
+    @apply my-0 max-h-full min-h-0 w-full flex-1 flex-col gap-4;
+    overflow: hidden;
+  }
+
+  .meet-guest-lobby__card:not(.meet-guest-lobby__card--status) .meet-guest-lobby__heading {
+    @apply shrink-0;
+  }
+
+  .meet-guest-lobby__card:not(.meet-guest-lobby__card--status) .meet-guest-lobby__media {
+    min-height: 0;
+    flex: 1 1 0%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .meet-guest-lobby__card:not(.meet-guest-lobby__card--status) .meet-guest-lobby__invite {
+    @apply shrink-0;
+    padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem));
   }
 }
 
