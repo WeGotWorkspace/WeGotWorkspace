@@ -47,7 +47,7 @@
 }
 
 .meet-mini-player__meta {
-  @apply flex items-center gap-1 text-[11px];
+  @apply truncate text-[11px] tabular-nums;
   color: var(--meet-mini-player-muted, rgb(255 255 255 / 0.65));
 }
 

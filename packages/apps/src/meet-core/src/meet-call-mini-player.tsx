@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Maximize2, Mic, MicOff, PhoneOff, Users, Video, VideoOff } from "lucide-react";
+import { Maximize2, Mic, MicOff, PhoneOff, Video, VideoOff } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
@@ -236,10 +236,7 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
             {snapshot.callLabel?.trim() || meetLabels.miniPlayerTitle}
           </span>
         </span>
-        <span className="meet-mini-player__meta">
-          <Users className="size-3 shrink-0" />
-          <span className="truncate">{meta}</span>
-        </span>
+        <span className="meet-mini-player__meta">{meta}</span>
       </div>
       <div className="meet-mini-player__actions">
         <IconButton

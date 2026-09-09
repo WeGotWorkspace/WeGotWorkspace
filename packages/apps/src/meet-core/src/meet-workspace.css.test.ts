@@ -520,7 +520,14 @@ describe("meet in-call overlay resume", () => {
     expect(tsx).toContain("meetShouldSelectLiveCallOnBareMeet");
     expect(tsx).toContain("meetCallUiParkedOnWorkspaceUnmount");
     expect(tsx).toContain("meetCallStatusEngaged");
+    expect(tsx).toContain("meetResumeCallLayout");
+    expect(tsx).toContain("setCallUiLayout");
     expect(tsx).not.toMatch(/suiteCallStore\?\.setCallUiParked\(false\)/);
+  });
+
+  it("uses tabular nums for in-call timer copy", () => {
+    expect(css).toMatch(/\.meet-call-bar__meta[\s\S]*tabular-nums/);
+    expect(css).toMatch(/\.meet-call-stage__meta[\s\S]*tabular-nums/);
   });
 });
 
