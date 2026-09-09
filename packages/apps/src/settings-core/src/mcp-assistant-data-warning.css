@@ -1,0 +1,10 @@
+@import "../../styles.css" reference;
+
+.mcp-assistant-data-warning.callout .menu-item__label,
+.mcp-assistant-data-warning.callout .menu-item__description {
+  @apply overflow-visible whitespace-normal break-words;
+  color: var(--color-ink);
+  opacity: 1;
+  overflow-wrap: anywhere;
+  text-overflow: unset;
+}

@@ -115,11 +115,19 @@
   --user-avatar-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
 }
 
+.settings-workspace .settings-connected-assistants-pane,
 .settings-workspace .settings-assistants-pane {
   @apply flex flex-col gap-4 max-w-xl;
 }
 
-.settings-workspace .settings-assistants-pane__lead,
+.settings-workspace .settings-connected-assistants-pane--empty {
+  @apply gap-4;
+}
+
+.settings-workspace .settings-connected-assistants-pane--connected {
+  @apply gap-12;
+}
+
 .settings-workspace .settings-assistants-pane__empty {
   @apply text-sm text-muted-foreground;
 }
@@ -133,48 +141,35 @@
   @apply text-sm text-destructive;
 }
 
-.settings-workspace .settings-assistants-pane__meta {
-  @apply grid gap-2 mb-4 text-sm;
-}
-
-.settings-workspace .settings-assistants-pane__meta dt {
-  @apply text-muted-foreground;
-}
-
-.settings-workspace .settings-assistants-pane__meta dd {
-  @apply m-0;
-}
-
 .settings-workspace .settings-assistants-pane__grants {
-  @apply mb-4;
+  @apply flex flex-col gap-16;
 }
 
-.settings-workspace .settings-assistants-pane__grants-label {
-  @apply m-0 mb-2 text-sm text-muted-foreground;
+.settings-workspace .settings-assistants-pane__grant {
+  @apply flex flex-col gap-4;
 }
 
-.settings-workspace .settings-assistants-pane__apps {
-  @apply m-0 flex list-none flex-col gap-3 p-0;
+.settings-workspace .settings-assistants-pane__grant-header {
+  @apply relative pr-10;
 }
 
-.settings-workspace .settings-assistants-pane__app-name {
-  @apply text-sm font-medium;
+.settings-workspace .settings-assistants-pane__grant-identity {
+  @apply flex min-w-0 flex-col items-start gap-1;
 }
 
-.settings-workspace .settings-assistants-pane__actions {
-  @apply m-0 mt-1 flex list-none flex-col gap-1 p-0;
+.settings-workspace .settings-assistants-pane__grant-name {
+  @apply m-0 text-4xl font-normal leading-none;
+  font-family: var(--font-serif);
+  color: var(--color-ink);
 }
 
-.settings-workspace .settings-assistants-pane__actions li {
-  @apply flex flex-wrap items-baseline gap-2 text-sm;
+.settings-workspace .settings-assistants-pane__grant-origin {
+  @apply m-0 text-base font-normal leading-normal;
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
 }
 
-.settings-workspace .settings-assistants-pane__action {
-  @apply font-medium;
-}
-
-.settings-workspace .settings-assistants-pane__scope-id {
-  @apply text-xs text-muted-foreground;
+.settings-workspace .settings-assistants-pane__grant-revoke {
+  @apply absolute top-0 right-0;
 }
 
 /* Storybook scopes — mirror workspace chrome without inline presets */

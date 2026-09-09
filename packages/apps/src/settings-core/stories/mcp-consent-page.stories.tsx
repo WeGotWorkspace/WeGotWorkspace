@@ -1,5 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
+import {
+  MCP_ASSISTANT_DATA_WARNING_CONSENT_MESSAGE,
+  MCP_ASSISTANT_DATA_WARNING_TITLE,
+} from "@/settings-core/src/mcp-assistant-data-warning";
 import "@/settings-core/src/settings-workspace.css";
 import { McpConsentPageMock } from "./mcp-consent-page-mock";
 import {
@@ -45,6 +49,10 @@ export const Default: Story = {
     await expect(canvas.queryByText("Connection")).toBeNull();
     await expect(canvas.queryByText(/signed in as/i)).toBeNull();
     await expect(canvas.getByRole("img", { name: "Signed in as bob" })).toBeTruthy();
+    await expect(canvas.getByText("Permissions")).toBeTruthy();
+    await expect(canvas.getByText("Choose what this assistant may do.")).toBeTruthy();
+    await expect(canvas.getByText(MCP_ASSISTANT_DATA_WARNING_TITLE)).toBeTruthy();
+    await expect(canvas.getByText(MCP_ASSISTANT_DATA_WARNING_CONSENT_MESSAGE)).toBeTruthy();
     await expect(canvas.getByRole("button", { name: "Deny" })).toBeTruthy();
     await userEvent.click(canvas.getByRole("button", { name: "Allow" }));
     await expect(canvas.getByRole("status")).toHaveTextContent(/Allow \(mock\)/i);

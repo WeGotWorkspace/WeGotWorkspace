@@ -1,0 +1,65 @@
+@import "../../styles.css" reference;
+
+.mcp-consent-permissions-card {
+  @apply relative w-full mb-0;
+  --mcp-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --switch-on-bg: var(--button-primary-bg, var(--workspace-home-bg, #1b1d3a));
+}
+
+.mcp-consent-permissions-card--plain {
+  @apply rounded-none border-0 bg-transparent p-0 shadow-none;
+}
+
+.mcp-consent-permissions-card .mcp-assistant-data-warning {
+  @apply mt-3 mb-0;
+}
+
+.mcp-consent-permissions-card__permissions {
+  @apply m-0 mb-2 text-2xl font-normal leading-none;
+  font-family: var(--font-serif);
+  color: var(--color-ink);
+}
+
+.mcp-consent-permissions-card__hint {
+  @apply m-0 text-sm;
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+}
+
+.mcp-consent-permissions-card__groups {
+  @apply mt-8 flex flex-col;
+}
+
+.mcp-consent-permissions-card__group {
+  @apply m-0 min-w-0 border-0 p-0;
+  min-inline-size: 0;
+  background-color: transparent;
+}
+
+.mcp-consent-permissions-card__group + .mcp-consent-permissions-card__group {
+  @apply mt-5 pt-5;
+  border-top: 1px solid var(--mcp-border);
+}
+
+.mcp-consent-permissions-card__heading {
+  @apply m-0 mb-1 flex items-center gap-2.5 text-base font-semibold leading-tight;
+  color: var(--color-ink);
+}
+
+.mcp-consent-permissions-card__app-icon {
+  @apply inline-flex size-7 shrink-0 overflow-hidden rounded-md;
+}
+
+.mcp-consent-permissions-card__app-icon svg {
+  @apply block size-full;
+}
+
+.mcp-consent-permissions-card__scope {
+  @apply flex items-center justify-between gap-4 py-2;
+  min-height: 2.5rem;
+}
+
+.mcp-consent-permissions-card__desc {
+  @apply min-w-0 flex-1 text-sm font-normal leading-snug;
+  color: var(--color-ink);
+  cursor: default;
+}

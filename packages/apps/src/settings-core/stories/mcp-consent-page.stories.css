@@ -8,7 +8,6 @@
   --button-primary-fg: #ffffff;
   --switch-on-bg: var(--workspace-home-bg, #1b1d3a);
   --card-surface-bg: var(--color-cream, #ffffff);
-  --mcp-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
 }
 
 .mcp-consent-page__column {
@@ -42,75 +41,8 @@
   color: var(--color-ink);
 }
 
-.mcp-consent-page .callout {
-  @apply mt-3 mb-0;
-}
-
-.mcp-consent-page .callout .menu-item__label,
-.mcp-consent-page .callout .menu-item__description {
-  @apply overflow-visible whitespace-normal break-words;
-  color: var(--color-ink);
-  opacity: 1;
-  overflow-wrap: anywhere;
-  text-overflow: unset;
-}
-
 .mcp-consent-page__form {
   @apply mt-0;
-}
-
-.mcp-consent-page__card {
-  @apply relative w-full mb-0;
-}
-
-.mcp-consent-page__permissions {
-  @apply m-0 mb-2 text-2xl font-normal leading-none;
-  font-family: var(--font-serif);
-  color: var(--color-ink);
-}
-
-.mcp-consent-page__hint {
-  @apply m-0 text-sm;
-  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
-}
-
-.mcp-consent-page__groups {
-  @apply mt-8 flex flex-col;
-}
-
-.mcp-consent-page__group {
-  @apply m-0 min-w-0 border-0 p-0;
-  min-inline-size: 0;
-  background-color: transparent;
-}
-
-.mcp-consent-page__group + .mcp-consent-page__group {
-  @apply mt-5 pt-5;
-  border-top: 1px solid var(--mcp-border);
-}
-
-.mcp-consent-page__heading {
-  @apply m-0 mb-1 flex items-center gap-2.5 text-base font-semibold leading-tight;
-  color: var(--color-ink);
-}
-
-.mcp-consent-page__app-icon {
-  @apply inline-flex size-7 shrink-0 overflow-hidden rounded-md;
-}
-
-.mcp-consent-page__app-icon svg {
-  @apply block size-full;
-}
-
-.mcp-consent-page__scope {
-  @apply flex items-center justify-between gap-4 py-2;
-  min-height: 2.5rem;
-}
-
-.mcp-consent-page__desc {
-  @apply min-w-0 flex-1 text-sm font-normal leading-snug;
-  color: var(--color-ink);
-  cursor: default;
 }
 
 .mcp-consent-page__actions {

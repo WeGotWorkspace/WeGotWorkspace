@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  filterMcpConsentGroupsToGranted,
+  formatGrantDate,
   groupMcpScopeIds,
   MCP_CONSENT_GROUP_APP_ID,
+  mcpConsentGroupsFor,
   mcpScopeActionLabel,
 } from "@/settings-core/src/mcp-scope-labels";
 
@@ -29,6 +32,23 @@ describe("groupMcpScopeIds", () => {
   });
 });
 
+describe("filterMcpConsentGroupsToGranted", () => {
+  it("keeps only granted rows and drops apps with nothing granted", () => {
+    const filtered = filterMcpConsentGroupsToGranted(
+      mcpConsentGroupsFor(["calendar.read", "calendar.write", "drive.read", "drive.write"]),
+      ["drive.read"],
+    );
+    expect(filtered.map((group) => group.label)).toEqual(["Drive"]);
+    expect(filtered[0]?.scopes.map((scope) => scope.id)).toEqual(["drive.read"]);
+  });
+
+  it("returns no groups when nothing was granted", () => {
+    expect(
+      filterMcpConsentGroupsToGranted(mcpConsentGroupsFor(["drive.read", "settings"]), []),
+    ).toEqual([]);
+  });
+});
+
 describe("mcpScopeActionLabel", () => {
   it("uses Send for mail.send", () => {
     expect(mcpScopeActionLabel("mail.send")).toBe("Send");
@@ -44,5 +64,19 @@ describe("MCP_CONSENT_GROUP_APP_ID", () => {
     expect(MCP_CONSENT_GROUP_APP_ID.Calendar).toBe("calendar");
     expect(MCP_CONSENT_GROUP_APP_ID.Profile).toBe("settings");
     expect(MCP_CONSENT_GROUP_APP_ID.Connection).toBeUndefined();
+  });
+});
+
+describe("formatGrantDate", () => {
+  it("formats a date with medium date style and no time", () => {
+    expect(formatGrantDate("2026-09-07T09:00:00Z")).toBe(
+      new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+        new Date("2026-09-07T09:00:00Z"),
+      ),
+    );
+  });
+
+  it("uses Never used when the instant is missing", () => {
+    expect(formatGrantDate(null)).toBe("Never used");
   });
 });

@@ -1,12 +1,9 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
-import { Card } from "@/card/src/card";
-import { Callout } from "@/callout/src/callout";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
-import { Switch } from "@/ui/switch";
-import { workspaceAppIconInlineMarkup } from "@/lib/workspace-app-icon-svgs";
-import { MCP_CONSENT_GROUP_APP_ID } from "@/settings-core/src/mcp-scope-labels";
-import { MCP_CONSENT_CATALOG, type McpConsentGroup } from "./mcp-consent-page.stories.fixtures";
+import { displayOriginHost } from "@/settings-core/src/display-origin-host";
+import { McpConsentPermissionsCard } from "@/settings-core/src/mcp-consent-permissions-card";
+import type { McpConsentGroup } from "@/settings-core/src/mcp-scope-labels";
 
 import "./mcp-consent-page.stories.css";
 
@@ -15,19 +12,6 @@ export type McpConsentPageMockProps = {
   username: string;
   groups: McpConsentGroup[];
 };
-
-function scopeInputId(scopeId: string): string {
-  return `mcp-consent-${scopeId.replace(/[^A-Za-z0-9_-]/g, "-")}`;
-}
-
-function displayOriginHost(origin: string): string {
-  try {
-    const url = origin.includes("://") ? new URL(origin) : new URL(`https://${origin}`);
-    return url.port !== "" ? `${url.hostname}:${url.port}` : url.hostname;
-  } catch {
-    return origin.replace(/^https?:\/\//i, "").replace(/\/$/, "");
-  }
-}
 
 /**
  * Catalog mock of the Passport consent page (`mcp/authorize.blade.php`).
@@ -81,63 +65,13 @@ export function McpConsentPageMock({
           </p>
         </header>
         <form className="mcp-consent-page__form" onSubmit={onApprove}>
-          <Card className="mcp-consent-page__card">
-            <p className="mcp-consent-page__permissions" id="mcp-consent-permissions-heading">
-              Permissions
-            </p>
-            <p className="mcp-consent-page__hint" id="mcp-consent-permissions-hint">
-              Choose what this assistant may do.
-            </p>
-            <Callout
-              severity="warning"
-              title="Content you allow here leaves this instance"
-              message="It is sent to the assistant vendor’s model. You can revoke access later in Settings → Connected assistants."
-            />
-            <div
-              className="mcp-consent-page__groups"
-              role="group"
-              aria-labelledby="mcp-consent-permissions-heading"
-              aria-describedby="mcp-consent-permissions-hint"
-            >
-              {groups.map((group) => {
-                const appId = MCP_CONSENT_GROUP_APP_ID[group.label];
-                return (
-                  <section key={group.label} className="mcp-consent-page__group">
-                    <h2 className="mcp-consent-page__heading">
-                      {appId ? (
-                        <span
-                          className="mcp-consent-page__app-icon"
-                          aria-hidden
-                          dangerouslySetInnerHTML={{ __html: workspaceAppIconInlineMarkup(appId) }}
-                        />
-                      ) : null}
-                      {group.label}
-                    </h2>
-                    {group.scopes.map((scope) => {
-                      const inputId = scopeInputId(scope.id);
-                      const descId = `${inputId}-desc`;
-                      const description = MCP_CONSENT_CATALOG[scope.id] ?? scope.description;
-                      return (
-                        <div key={scope.id} className="mcp-consent-page__scope">
-                          <span className="mcp-consent-page__desc" id={descId}>
-                            {description}
-                          </span>
-                          <Switch
-                            id={inputId}
-                            checked={Boolean(checked[scope.id])}
-                            aria-labelledby={descId}
-                            onCheckedChange={(value) =>
-                              setChecked((prev) => ({ ...prev, [scope.id]: value }))
-                            }
-                          />
-                        </div>
-                      );
-                    })}
-                  </section>
-                );
-              })}
-            </div>
-          </Card>
+          <McpConsentPermissionsCard
+            groups={groups}
+            checked={checked}
+            onCheckedChange={(scopeId, value) =>
+              setChecked((prev) => ({ ...prev, [scopeId]: value }))
+            }
+          />
           <div className="mcp-consent-page__actions">
             <Button type="button" variant="outline" label="Deny" onClick={onDeny} />
             <Button type="submit" variant="primary" label="Allow" />

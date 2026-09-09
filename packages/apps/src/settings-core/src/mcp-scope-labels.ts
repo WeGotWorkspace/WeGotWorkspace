@@ -10,6 +10,16 @@ export type McpScopeGroup = {
   scopes: { id: string; actionLabel: string }[];
 };
 
+export type McpConsentScope = {
+  id: string;
+  description: string;
+};
+
+export type McpConsentGroup = {
+  label: string;
+  scopes: McpConsentScope[];
+};
+
 export const MCP_CONSENT_GROUP_APP_ID: Record<string, WorkspaceAppId | undefined> = {
   Calendar: "calendar",
   Notes: "notes",
@@ -111,11 +121,41 @@ export function groupMcpScopeIds(ids: string[]): McpScopeGroup[] {
   return groups;
 }
 
-export function formatGrantInstant(value: string | null | undefined, empty = "Never"): string {
+/** Advertised consent rows (no legacy aliases, no `offline_access`). */
+export function mcpConsentCatalogScopeIds(): string[] {
+  return GROUP_IDS.flatMap((def) => def.ids);
+}
+
+export function mcpConsentGroupsFor(ids: readonly string[]): McpConsentGroup[] {
+  return groupMcpScopeIds([...ids]).map((group) => ({
+    label: group.label,
+    scopes: group.scopes.map((scope) => ({
+      id: scope.id,
+      description: MCP_SCOPE_CATALOG[scope.id] ?? scope.id,
+    })),
+  }));
+}
+
+/**
+ * Drop ungranted rows and empty apps. Used by the permissions card in `readOnly`
+ * so Settings does not show off-switches for scopes the assistant never received.
+ */
+export function filterMcpConsentGroupsToGranted(
+  groups: McpConsentGroup[],
+  grantedScopeIds: readonly string[],
+): McpConsentGroup[] {
+  const granted = new Set(grantedScopeIds);
+  return groups
+    .map((group) => ({
+      ...group,
+      scopes: group.scopes.filter((scope) => granted.has(scope.id)),
+    }))
+    .filter((group) => group.scopes.length > 0);
+}
+
+export function formatGrantDate(value: string | null | undefined, empty = "Never used"): string {
   if (!value) return empty;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
-    date,
-  );
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
 }

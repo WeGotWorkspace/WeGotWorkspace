@@ -40,6 +40,11 @@ export const Ghost: StoryObj<typeof IconButton> = {
   args: { ...Default.args, variant: "ghost" },
 };
 
+export const DestructiveOutline: StoryObj<typeof IconButton> = {
+  ...Default,
+  args: { ...Default.args, variant: "destructive-outline" },
+};
+
 export const Disabled: StoryObj<typeof IconButton> = {
   ...Default,
   args: { ...Default.args, disabled: true },
