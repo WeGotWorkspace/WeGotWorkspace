@@ -47,19 +47,22 @@ if [ "$had_ref" -eq 0 ]; then
 fi
 
 if [ "$apps_changed" -eq 1 ]; then
+  gate_log="$(mktemp -t wgw-apps-done-gate.XXXXXX)"
   echo "pre-push: packages/apps changed — running pnpm test:apps-done-gate"
-  # Do not let Vitest inherit git's pre-push stdin (the ref list pipe).
+  echo "pre-push: log ${gate_log}"
+  # Vitest must not inherit git's pre-push stdin (the ref list). Gate logs must
+  # not stream on the hook pipe — ~128KB fills it and git dies with SIGPIPE.
   exec < /dev/null
   set +e
-  pnpm test:apps-done-gate
+  pnpm test:apps-done-gate >"${gate_log}" 2>&1
   gate_status=$?
   set -e
-  # Storybook/Vitest leftover workers can SIGPIPE (141) after a green gate.
-  if [ "$gate_status" -eq 141 ]; then
-    echo "pre-push: apps done-gate passed; ignoring leftover worker SIGPIPE"
-    exit 0
+  if [ "$gate_status" -ne 0 ] && [ "$gate_status" -ne 141 ]; then
+    tail -n 40 "${gate_log}" >&2 || true
+    exit "$gate_status"
   fi
-  exit "$gate_status"
+  echo "pre-push: apps done-gate passed"
+  exit 0
 else
   echo "pre-push: no packages/apps changes — running typecheck"
   pnpm --filter @wgw/apps typecheck
