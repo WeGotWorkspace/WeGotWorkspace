@@ -38,7 +38,7 @@ final class ContactsSearchTool extends WgwMcpTool
 
     protected function requiredScope(): ?string
     {
-        return McpScopes::CONTACTS;
+        return McpScopes::CONTACTS_READ;
     }
 
     protected function accessMode(): string

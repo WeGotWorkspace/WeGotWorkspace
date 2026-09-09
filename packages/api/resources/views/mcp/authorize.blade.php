@@ -13,6 +13,8 @@
         .mcp-name { color: #78716c; font-size: 0.9rem; }
         .mcp-warn { background: #fff7ed; border: 1px solid #fed7aa; padding: 0.75rem; border-radius: 0.4rem; }
         .mcp-scope { display: flex; gap: 0.5rem; align-items: flex-start; margin: 0.4rem 0; }
+        .mcp-scope-group { border: 0; margin: 0.9rem 0 0; padding: 0; }
+        .mcp-scope-group legend { font-weight: 700; font-size: 0.95rem; padding: 0; margin: 0 0 0.2rem; }
         .mcp-actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
         button, .mcp-deny { flex: 1; padding: 0.6rem; border-radius: 0.4rem; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; }
         button[type=submit] { border: 0; background: #44403c; color: #fff; }
@@ -32,14 +34,19 @@
             <input type="hidden" name="intent" value="{{ $intent }}">
             <input type="hidden" name="client_id" value="{{ $client->id }}">
             <p>Permissions (uncheck any you do not want to grant):</p>
-            @foreach ($scopes as $scope)
-                <label class="mcp-scope">
-                    <input type="checkbox" name="scope[]" value="{{ $scope->id }}" checked>
-                    <span>
-                        <strong>{{ $scope->id }}</strong>
-                        — {{ $scopeCatalog[$scope->id] ?? $scope->description }}
-                    </span>
-                </label>
+            @foreach ($scopeGroups as $group)
+                <fieldset class="mcp-scope-group">
+                    <legend>{{ $group['label'] }}</legend>
+                    @foreach ($group['scopes'] as $scope)
+                        <label class="mcp-scope">
+                            <input type="checkbox" name="scope[]" value="{{ $scope->id }}" checked>
+                            <span>
+                                <strong>{{ $scope->id }}</strong>
+                                — {{ $scopeCatalog[$scope->id] ?? $scope->description }}
+                            </span>
+                        </label>
+                    @endforeach
+                </fieldset>
             @endforeach
             <div class="mcp-actions">
                 <button type="submit">Approve</button>

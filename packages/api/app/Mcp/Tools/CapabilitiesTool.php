@@ -52,7 +52,7 @@ final class CapabilitiesTool extends WgwMcpTool
     {
         $user = $this->user();
         $granted = [];
-        foreach (McpScopes::ids() as $scope) {
+        foreach (McpScopes::allRecognizedIds() as $scope) {
             if ($user->tokenCan($scope)) {
                 $granted[] = $scope;
             }
@@ -60,7 +60,7 @@ final class CapabilitiesTool extends WgwMcpTool
 
         return $this->json([
             'tools' => array_map(
-                static fn (string $class): string => (new \ReflectionClass($class))->getShortName(),
+                static fn (string $class): string => app($class)->name(),
                 $this->catalog->enabledTools(),
             ),
             'scopes' => $granted,

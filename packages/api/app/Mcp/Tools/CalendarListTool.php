@@ -35,7 +35,7 @@ final class CalendarListTool extends WgwMcpTool
 
     protected function requiredScope(): ?string
     {
-        return McpScopes::CALENDAR;
+        return McpScopes::CALENDAR_READ;
     }
 
     protected function accessMode(): string

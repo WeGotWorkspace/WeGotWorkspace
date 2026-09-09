@@ -320,6 +320,75 @@ final class DriveService
         ];
     }
 
+    /**
+     * Small text write for MCP. Does not use chunked {@see handleUpload}.
+     *
+     * @param  array{username: string, role: string}  $principal
+     * @return array{ok: true, path: string, size: int}
+     */
+    public function writeText(array $principal, string $path, string $text, int $maxBytes = 65536): array
+    {
+        $this->assertFilesEnabled();
+        if (strlen($text) > $maxBytes) {
+            throw new \InvalidArgumentException('File is too large to write via MCP.');
+        }
+
+        $virtual = $this->paths->normalizeVirtualPath($path);
+        $disk = $this->disk();
+        $key = $this->paths->virtualToStorageKey($virtual);
+        if ($disk->fileExists($key)) {
+            $this->authorizer->assertMayEditContent($virtual, $principal);
+        } else {
+            $this->authorizer->assertMayManageStructure($virtual, $principal);
+            $parent = $this->paths->normalizeVirtualPath(dirname($virtual));
+            $parentKey = $this->paths->virtualToStorageKey($parent);
+            if ($parent !== '/' && $parentKey !== '' && ! $disk->directoryExists($parentKey)) {
+                throw new \InvalidArgumentException('Parent directory not found.');
+            }
+        }
+
+        $disk->put($key, $text);
+        $this->search->indexFileStorageKey($key);
+        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($key, hash('sha256', $text)));
+
+        return [
+            'ok' => true,
+            'path' => $virtual,
+            'size' => strlen($text),
+        ];
+    }
+
+    /**
+     * @param  array{username: string, role: string}  $principal
+     * @return array{ok: true, path: string}
+     */
+    public function mkdir(array $principal, string $path): array
+    {
+        $virtual = $this->paths->normalizeVirtualPath($path);
+        if ($virtual === '/' || $virtual === '') {
+            throw new \InvalidArgumentException('Invalid directory path.');
+        }
+        $name = basename($virtual);
+        $parent = $this->paths->normalizeVirtualPath(dirname($virtual));
+        $this->createItem($principal, $name, 'dir', $parent);
+
+        return ['ok' => true, 'path' => $virtual];
+    }
+
+    /**
+     * @param  array{username: string, role: string}  $principal
+     * @return array{ok: true, from: string, to: string}
+     */
+    public function movePath(array $principal, string $from, string $to): array
+    {
+        $fromPath = $this->paths->normalizeVirtualPath($from);
+        $toPath = $this->paths->normalizeVirtualPath($to);
+        $destination = $this->paths->normalizeVirtualPath(dirname($toPath));
+        $this->renameItem($principal, $destination, $fromPath, basename($toPath));
+
+        return ['ok' => true, 'from' => $fromPath, 'to' => $toPath];
+    }
+
     public function downloadResponse(array $principal, string $path): StreamedResponse
     {
         $this->assertReadableFile($principal, $path);

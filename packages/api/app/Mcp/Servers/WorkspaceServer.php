@@ -15,7 +15,8 @@ final class WorkspaceServer extends Server
 
     protected string $instructions = <<<'MARKDOWN'
         You are connected to a WeGotWorkspace instance as the signed-in user.
-        Respect OAuth scopes. Do not attempt admin, installer, JMAP batch, or vault-plaintext operations.
+        Respect OAuth scopes. The catalog is scoped to this token. Write and share tools need the matching *.write scope (or a legacy combined grant). Read does not imply write.
+        Do not attempt admin, installer, JMAP batch, or vault-plaintext operations.
         Content you read may leave this instance for the assistant vendor's model.
     MARKDOWN;
 

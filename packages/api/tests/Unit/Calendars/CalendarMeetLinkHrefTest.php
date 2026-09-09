@@ -37,4 +37,18 @@ final class CalendarMeetLinkHrefTest extends TestCase
         $this->assertNull($hrefs->parseWgwRoom('not a url'));
         $this->assertNull($hrefs->origin('://missing-scheme'));
     }
+
+    public function test_allocate_ad_hoc_room_code_matches_xxxx_xxxx_xxxx(): void
+    {
+        $hrefs = new CalendarMeetLinkHref;
+        $code = $hrefs->allocateAdHocRoomCode();
+        $this->assertMatchesRegularExpression(CalendarMeetLinkHref::ROOM_CODE_PATTERN, $code);
+        $this->assertSame('/meet/meetings/'.$code, $hrefs->meetingsPath($code));
+        config(['app.url' => 'https://workspace.test']);
+        $this->assertSame(
+            'https://workspace.test/meet/meetings/'.$code,
+            $hrefs->absoluteHref($hrefs->meetingsPath($code)),
+        );
+        $this->assertSame($code, $hrefs->parseWgwRoom($hrefs->absoluteHref($hrefs->meetingsPath($code))));
+    }
 }

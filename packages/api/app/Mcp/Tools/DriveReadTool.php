@@ -37,7 +37,7 @@ final class DriveReadTool extends WgwMcpTool
 
     protected function requiredScope(): ?string
     {
-        return McpScopes::DRIVE;
+        return McpScopes::DRIVE_READ;
     }
 
     protected function accessMode(): string

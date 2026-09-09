@@ -30,7 +30,7 @@ describe("SettingsAssistantsPane", () => {
               clientName: "Claude",
               clientOrigin: "https://claude.ai",
               connectedAt: "2026-09-08T10:00:00Z",
-              scopes: ["drive"],
+              scopes: ["drive.read"],
               lastUsedAt: null,
             },
           ],
@@ -43,6 +43,7 @@ describe("SettingsAssistantsPane", () => {
       />,
     );
     expect(screen.getByText("https://claude.ai")).toBeTruthy();
+    expect(screen.getByText("drive.read")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Revoke access" })).toBeTruthy();
   });
 });

@@ -18,7 +18,7 @@ final class NotesSearchTool extends WgwMcpTool
 {
     protected string $name = 'notes_search';
 
-    protected string $description = 'Search Docs and Notes the signed-in user can access.';
+    protected string $description = 'Search notes the signed-in user can access.';
 
     public function __construct(
         McpAuditLogger $audit,
@@ -38,7 +38,7 @@ final class NotesSearchTool extends WgwMcpTool
 
     protected function requiredScope(): ?string
     {
-        return McpScopes::DOCS;
+        return McpScopes::NOTES_READ;
     }
 
     protected function accessMode(): string

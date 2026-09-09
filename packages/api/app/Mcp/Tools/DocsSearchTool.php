@@ -14,11 +14,11 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-final class DriveSearchTool extends WgwMcpTool
+final class DocsSearchTool extends WgwMcpTool
 {
-    protected string $name = 'drive_search';
+    protected string $name = 'docs_search';
 
-    protected string $description = 'Search Drive files the signed-in user can access.';
+    protected string $description = 'Search collaborative Docs (.md files on Drive) the signed-in user can access.';
 
     public function __construct(
         McpAuditLogger $audit,
@@ -38,7 +38,7 @@ final class DriveSearchTool extends WgwMcpTool
 
     protected function requiredScope(): ?string
     {
-        return McpScopes::DRIVE_READ;
+        return McpScopes::DOCS_READ;
     }
 
     protected function accessMode(): string
@@ -58,10 +58,30 @@ final class DriveSearchTool extends WgwMcpTool
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        return $this->json($this->drive->search(
+        $found = $this->drive->search(
             (string) $this->user()->username,
             (string) $validated['query'],
-            (int) ($validated['limit'] ?? 20),
-        ));
+            (int) ($validated['limit'] ?? 20) * 4,
+        );
+        $files = [];
+        foreach ($found['files'] as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+            $path = (string) ($entry['path'] ?? '');
+            $type = (string) ($entry['type'] ?? '');
+            if ($type === 'dir' || ! str_ends_with(strtolower($path), '.md')) {
+                continue;
+            }
+            $files[] = $entry;
+            if (count($files) >= (int) ($validated['limit'] ?? 20)) {
+                break;
+            }
+        }
+
+        return $this->json([
+            'location' => $found['location'] ?? '/',
+            'files' => $files,
+        ]);
     }
 }

@@ -9,7 +9,7 @@ const sampleGrants: SettingsMcpGrant[] = [
     clientName: "Claude",
     clientOrigin: "https://claude.ai",
     connectedAt: "2026-09-08T10:00:00Z",
-    scopes: ["drive", "docs", "mail.read"],
+    scopes: ["drive.read", "docs.read", "mail.read"],
     lastUsedAt: "2026-09-08T11:00:00Z",
   },
 ];

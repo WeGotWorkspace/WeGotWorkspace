@@ -44,7 +44,7 @@ final class OAuthRegisterController
         );
         $client->forceFill([
             'provider' => 'users',
-            'scopes' => McpScopes::ids(),
+            'scopes' => McpScopes::clientAllowlist(),
             'cimd_origin' => McpRedirectUris::originOf((string) $uris[0]),
         ])->save();
 

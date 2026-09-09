@@ -60,12 +60,14 @@ class AppServiceProvider extends ServiceProvider
                 }
             }
             $username = is_object($user) ? (string) ($user->username ?? '') : '';
+            $scopes = $data['scopes'] ?? [];
             $view->with([
                 'clientOrigin' => $origin !== '' ? $origin : $clientName,
                 'clientName' => $clientName,
                 'username' => $username,
                 'intent' => $this->app->make(ConsentIntent::class)->issue($username, $clientId),
                 'scopeCatalog' => McpScopes::descriptions(),
+                'scopeGroups' => McpScopes::groupConsentScopes(is_iterable($scopes) ? $scopes : []),
             ]);
         });
     }

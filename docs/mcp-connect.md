@@ -14,6 +14,65 @@ You will **sign in again** on the instance when you connect. Being signed in to 
 
 Content the assistant reads may leave this instance for the vendor’s model. Uncheck any permission you do not want on the consent page. You can revoke a single assistant later in **Settings → Connected assistants**.
 
+## Permissions (read vs write)
+
+Consent is grouped by app. Each suite app has a **read** scope and a **write** scope. **Read does not include write.** Search and list tools use `*.read`. Create, update, delete, and share tools use `*.write` (there is no separate `*.share` or `*.search` OAuth id).
+
+| App | Read | Write |
+|-----|------|-------|
+| Calendar | `calendar.read` | `calendar.write` |
+| Notes | `notes.read` | `notes.write` |
+| Contacts | `contacts.read` | `contacts.write` |
+| Tasks | `tasks.read` | `tasks.write` |
+| Docs | `docs.read` | `docs.write` |
+| Drive | `drive.read` | `drive.write` |
+| Meet | `meet.read` | `meet.write` |
+
+Unchanged:
+
+- `mail.read` — read mailboxes and messages
+- `mail.send` — send mail as you
+- `settings` — profile (`whoami`)
+- `offline_access` — refresh token so the assistant stays connected
+
+`docs.read` does **not** grant Notes. Notes needs `notes.read` / `notes.write`.
+
+### Legacy grants
+
+Existing assistants that already hold a **bare** scope keep working. Bare ids are not the default consent set:
+
+| Legacy id | Grants |
+|-----------|--------|
+| `calendar` | `calendar.read` and `calendar.write` |
+| `drive` | `drive.read` and `drive.write` |
+| `tasks` | `tasks.read` and `tasks.write` |
+| `contacts` | `contacts.read` and `contacts.write` |
+| `docs` | `docs.read` + `docs.write` **and** `notes.read` + `notes.write` |
+
+## Tools
+
+The `capabilities` tool lists **MCP names** (not PHP class names). Tools for a domain appear only when that app is enabled (Admin kill-switches: Files, Calendar, Contacts, Tasks, Notes; Mail via mail enabled). Meet has no separate Admin kill-switch; its tools stay in the catalog when Connected assistants is on.
+
+Search is `*.read`. Share is `*.write`.
+
+| App | Read | Write / share |
+|-----|------|----------------|
+| Calendar | `calendar_list`, `calendar_events` | `calendar_write`, `calendar_event_write`, `calendar_share` |
+| Notes | `notes_search`, `notebook_list`, `notes_query` | `notebook_write`, `note_write`, `notebook_share` |
+| Contacts | `contacts_search`, `addressbook_list`, `contact_query` | `addressbook_write` (description / sharee dismiss only — **no** owner create/rename/delete), `contact_write`, `addressbook_share` |
+| Tasks | `tasks_list` | `tasklist_write`, `task_write`, `tasklist_share` |
+| Docs | `docs_search`, `docs_read` | `docs_write`, `docs_share` (Drive `**.md` text, not collaborative Yjs) |
+| Drive | `drive_search`, `drive_list`, `drive_read` | `drive_write` (mkdir / write_text / move / delete), `drive_share` |
+| Meet | `meet_channel_list`, `meet_message_list` | `meet_channel_write`, `meet_message_write`, `meet_create_scheduled` |
+
+Always available when MCP is on: `whoami`, `capabilities`.
+
+`meet_create_scheduled` needs `meet.write`. Creating the calendar event half also needs `calendar.write`; without it the tool still creates the meeting-kind channel and returns the href.
+
+**Not MCP apps:** Mail, Admin, and Settings are not exposed as suite apps on MCP. Keep using `whoami` (scope `settings`) and `mail_status` / `mail_send`. There are no Admin tools and no Settings CRUD tools.
+
+**Meet** has no join, call, or RTC/signaling tools. Channel and message CRUD only.
+
 ## Instance URL to paste
 
 Use the origin of your site, for example `https://workspace.example.com` — not a path under `/api`.
@@ -54,6 +113,7 @@ That warning means Claude’s probe to `/mcp` failed. Typical causes:
 4. **Authorize URL shows the workspace 404 page** (“Page not found” / “Go to Drive”). The PWA service worker served the SPA instead of Laravel. Unregister service workers for this origin (DevTools → Application → Service Workers) and retry. A rebuilt worker ignores `/oauth`, `/mcp`, and `/.well-known/oauth-*`.
 5. **Sign-in and consent succeed, then the assistant shows “Authorization with … failed.”** The browser completed `/oauth/authorize`; the vendor’s **servers** then call `/oauth/token` and `/mcp`. They cannot reach `https://wegotworkspace.localhost`. Re-add the connector using the public tunnel origin — not `localhost`.
 6. **Sign-in succeeds, then “your account was authorized, but … returned an error when connecting.”** The vendor stored the token, then `POST /mcp` (initialize) failed. Confirm the connector URL is the public `/mcp` origin, then retry — a UI rebuild is not required. On this instance that handshake is an authenticated JSON-RPC `initialize`; HTTP 500 here is a server bug, not a missing frontend build.
+7. **Consent succeeds, but Settings → Connected assistants only lists `mail.read` / `mail.send` / `settings` / `offline_access`.** Claude requested the advertised `*.read` / `*.write` catalog; the stored OAuth client was still snapshotted on the older combined ids (`calendar`, `drive`, …). Passport then dropped every non-overlapping scope. Reconnect after this instance refreshes the client allowlist (revoke the assistant, then add the connector again) so the new authorize can grant Calendar, Drive, Notes, and the rest.
 
 From a second machine (or a phone on cellular), confirm:
 
@@ -82,6 +142,38 @@ Both should be JSON `200` (not the SPA, not Apache’s default page).
 
 1. Add a custom MCP / connector pointing at this instance.
 2. Sign in on the consent page and approve scopes.
+
+## Verify connect (Claude, ChatGPT, Mistral)
+
+Use this checklist after a code change that touches MCP OAuth scopes, CIMD, or `/mcp`. Automated coverage lives in `packages/api/tests/Feature/Mcp/` (run `cd packages/api && composer test -- --filter Mcp`). Vendor UIs are not in CI.
+
+**ChatGPT and Mistral are manual.** Do not mark those vendors done from PHPUnit or from a Claude-only pass.
+
+Shared steps (every vendor):
+
+1. **Revoke** any existing grant for that vendor in Settings → Connected assistants.
+2. **Reconnect** using the **public** `https://<host>/mcp` URL. Do **not** rewrite the tunnel `Host` header to `wegotworkspace.localhost`.
+3. On consent, grant **Read** and (if you intend to write) **Write** per app. Confirm the page lists `calendar.read` / `calendar.write` (and the other apps), not only `mail.read` / `mail.send` / `settings` / `offline_access`.
+4. After consent, Settings → Connected assistants must show `*.read` / `*.write` ids (for the apps you approved), **not** only `mail.read` + `mail.send` + `settings` + `offline_access`.
+5. Smoke tools: `whoami`, `capabilities`, then one read tool for an app you granted (`calendar_list`, `drive_list`, or `notes_search`).
+6. Call a write tool **only if** that app’s `*.write` (or the matching legacy alias) was granted. A read-only grant must refuse write.
+7. **CIMD stale-scope trap:** if Settings shows only mail + settings + offline after a catalog change, the OAuth client was snapshotted on the old combined ids (`calendar`, `drive`, …). Revoke, reconnect, and complete consent again so the client allowlist can include `*.read` / `*.write`. See Claude troubleshooting item 7 above.
+
+### Claude (claude.ai)
+
+- [ ] Shared steps 1–7 against a public `/mcp` URL (Claude.ai cannot reach localhost).
+- [ ] GET `/mcp` from a public network is **401** with `WWW-Authenticate` (not empty 405).
+- [ ] Do **not** skip OAuth discovery (“configure the connector manually”).
+
+### ChatGPT (manual)
+
+- [ ] Shared steps 1–7 in ChatGPT’s custom MCP / remote MCP connector UI.
+- [ ] Consent and Settings scopes match what ChatGPT requested (Read/Write per app).
+
+### Mistral Le Chat (manual)
+
+- [ ] Shared steps 1–7 in Mistral’s custom MCP / connector UI.
+- [ ] Consent and Settings scopes match what Mistral requested (Read/Write per app).
 
 ## Local clients (Claude Code, Cursor)
 

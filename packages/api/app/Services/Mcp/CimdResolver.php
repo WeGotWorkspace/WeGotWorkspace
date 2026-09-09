@@ -41,9 +41,10 @@ final class CimdResolver
         $existing = Passport::client()->newQuery()->where('cimd_url', $clientId)->first();
         $ttlHours = (int) config('mcp.cimd.client_ttl_hours', 24);
         if ($existing instanceof Client) {
+            $this->stampClientScopes($existing);
             $fetchedAt = $existing->getAttribute('cimd_fetched_at');
             if ($fetchedAt !== null && $fetchedAt->gt(now()->subHours(max(1, $ttlHours)))) {
-                return $existing;
+                return $existing->refresh();
             }
         }
 
@@ -61,6 +62,7 @@ final class CimdResolver
                 'cimd_origin' => $origin,
                 'cimd_fetched_at' => now(),
                 'provider' => 'users',
+                'scopes' => McpScopes::clientAllowlist(),
             ])->save();
 
             return $existing->refresh();
@@ -77,7 +79,7 @@ final class CimdResolver
             'cimd_origin' => $origin,
             'cimd_fetched_at' => now(),
             'provider' => 'users',
-            'scopes' => McpScopes::ids(),
+            'scopes' => McpScopes::clientAllowlist(),
         ])->save();
 
         return $client->refresh();
@@ -217,5 +219,19 @@ final class CimdResolver
         }
 
         return $out;
+    }
+
+    /**
+     * Refresh Passport's per-client scope snapshot even when CIMD metadata is still cached.
+     */
+    private function stampClientScopes(Client $client): void
+    {
+        $wanted = McpScopes::clientAllowlist();
+        $current = $client->scopes;
+        $currentList = is_array($current) ? array_values($current) : [];
+        if ($currentList === $wanted) {
+            return;
+        }
+        $client->forceFill(['scopes' => $wanted])->save();
     }
 }

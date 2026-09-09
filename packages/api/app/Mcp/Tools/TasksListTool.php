@@ -39,7 +39,7 @@ final class TasksListTool extends WgwMcpTool
 
     protected function requiredScope(): ?string
     {
-        return McpScopes::TASKS;
+        return McpScopes::TASKS_READ;
     }
 
     protected function accessMode(): string
