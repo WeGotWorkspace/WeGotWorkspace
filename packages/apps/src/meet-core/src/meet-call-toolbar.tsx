@@ -34,6 +34,11 @@ type MeetCallToolbarProps = {
   onToggleMic: () => void;
   onToggleVideo: () => void;
   onToggleScreenShare: () => void;
+  /**
+   * When false, Share screen is omitted so the user is not offered a broken
+   * action (iOS Safari/WebKit cannot capture the display).
+   */
+  canShareScreen?: boolean;
   onCameraChange: (optionId: string) => void;
   onMicrophoneChange: (optionId: string) => void;
   onSpeakerChange: (optionId: string) => void;
@@ -66,6 +71,7 @@ export function MeetCallToolbar({
   onToggleMic,
   onToggleVideo,
   onToggleScreenShare,
+  canShareScreen = true,
   onCameraChange,
   onMicrophoneChange,
   onSpeakerChange,
@@ -97,15 +103,17 @@ export function MeetCallToolbar({
           active={videoOn}
           aria-pressed={videoOn}
         />
-        <IconButton
-          onClick={onToggleScreenShare}
-          icon={<MonitorUp />}
-          label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
-          size="sm"
-          variant="subtle"
-          active={screenOn}
-          aria-pressed={screenOn}
-        />
+        {canShareScreen || screenOn ? (
+          <IconButton
+            onClick={onToggleScreenShare}
+            icon={<MonitorUp />}
+            label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
+            size="sm"
+            variant="subtle"
+            active={screenOn}
+            aria-pressed={screenOn}
+          />
+        ) : null}
         <MeetDevicePopover
           cameras={cameras}
           microphones={microphones}

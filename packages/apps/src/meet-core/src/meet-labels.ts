@@ -54,6 +54,8 @@ export const meetLabels = {
   toggleChatHide: "Hide chat",
   shareScreen: "Share screen",
   stopSharing: "Stop sharing",
+  shareScreenUnsupported: "Screen sharing isn't available in this browser.",
+  shareScreenFailed: "Could not share your screen.",
   devices: "Devices",
   shareLink: "Share link",
   signOut: "Sign out",
