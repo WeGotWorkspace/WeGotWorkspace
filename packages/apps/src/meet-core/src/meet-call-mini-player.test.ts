@@ -26,6 +26,8 @@ describe("MeetCallMiniPlayer return to call", () => {
 
   it("uses tabular nums for the timer line and does not show a group icon", () => {
     expect(miniPlayer).not.toMatch(/<Users\b/);
+    expect(miniPlayer).not.toContain("participantsShort");
+    expect(miniPlayer).not.toContain("in call");
     expect(miniPlayerCss).toMatch(/\.meet-mini-player__meta[\s\S]*tabular-nums/);
   });
 });

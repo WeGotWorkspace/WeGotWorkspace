@@ -112,13 +112,10 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
 
   if (!visible) return null;
 
-  const participantCount = snapshot.participants.length + 1;
   const meta =
     snapshot.status === "waiting"
       ? meetLabels.miniPlayerWaiting
-      : [formatElapsed(snapshot.startedAt), meetLabels.participantsShort(participantCount)]
-          .filter(Boolean)
-          .join(" · ");
+      : formatElapsed(snapshot.startedAt);
 
   const position = snapshot.miniPlayerPosition;
 
