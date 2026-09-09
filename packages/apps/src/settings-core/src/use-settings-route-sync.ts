@@ -1,17 +1,23 @@
 import { useCallback, useEffect } from "react";
-import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { useLocation, useRouter } from "@tanstack/react-router";
 import type { SettingsSection } from "@/settings-core/src/settings-types";
 import {
   isSettingsPathname,
-  isSettingsSection,
   resolveSettingsSection,
-  SETTINGS_DEFAULT_SECTION,
+  settingsNavigateTarget,
   settingsPathFor,
+  settingsSectionFromLocation,
 } from "@/settings-core/src/settings-section";
 
-type SettingsRouteParams = {
-  section?: string;
-};
+function navigateSettings(
+  router: ReturnType<typeof useRouter>,
+  section: SettingsSection,
+  replace: boolean,
+): void {
+  void router.navigate({ ...settingsNavigateTarget(section), replace }).then(() => {
+    router.history.flush?.();
+  });
+}
 
 /**
  * Sync Settings section with `/settings` and `/settings/:section`.
@@ -22,28 +28,32 @@ export function useSettingsRouteSync(mcpEnabled: boolean | null): {
   section: SettingsSection;
   onSectionChange: (section: SettingsSection) => void;
 } {
-  const navigate = useNavigate();
+  const router = useRouter();
   const location = useLocation();
-  const params = useParams({ strict: false }) as SettingsRouteParams;
-  const requested = isSettingsSection(params.section) ? params.section : SETTINGS_DEFAULT_SECTION;
+  const requested = settingsSectionFromLocation(location.pathname);
   const section = mcpEnabled === null ? requested : resolveSettingsSection(requested, mcpEnabled);
 
   useEffect(() => {
-    if (mcpEnabled === null || !isSettingsPathname(location.pathname)) return;
+    if (mcpEnabled === null) return;
+    const livePath = router.state.location.pathname;
+    if (!isSettingsPathname(livePath)) return;
     const target = settingsPathFor(section);
-    if (location.pathname === target) return;
-    void navigate({ to: target, replace: true });
-  }, [location.pathname, mcpEnabled, navigate, section]);
+    if (livePath === target) return;
+    navigateSettings(router, section, true);
+  }, [location.pathname, mcpEnabled, router, section]);
 
   const onSectionChange = useCallback(
     (next: SettingsSection) => {
       if (mcpEnabled === null) return;
+      const livePath = router.state.location.pathname;
+      if (!isSettingsPathname(livePath)) return;
       const resolved = resolveSettingsSection(next, mcpEnabled);
       const target = settingsPathFor(resolved);
-      if (!isSettingsPathname(location.pathname) || location.pathname === target) return;
-      void navigate({ to: target, replace: true });
+      if (livePath === target) return;
+      // Push so Back/Forward moves between Settings sections.
+      navigateSettings(router, resolved, false);
     },
-    [location.pathname, mcpEnabled, navigate],
+    [mcpEnabled, router],
   );
 
   return { section, onSectionChange };
