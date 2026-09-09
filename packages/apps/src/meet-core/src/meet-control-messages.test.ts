@@ -59,6 +59,12 @@ describe("meet control messages", () => {
       kind: "mute",
       peerId: "peer-2",
     });
+    expect(
+      parseMeetControlMessage(buildMeetControlMessage({ kind: "unmute", peerId: "peer-2" })),
+    ).toEqual({
+      kind: "unmute",
+      peerId: "peer-2",
+    });
   });
 
   it("recognizes the chunk-H join-policy error codes from the signaling client", () => {

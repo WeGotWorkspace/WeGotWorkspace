@@ -39,6 +39,7 @@ export type UseMeetPollHandlerArgs = {
   leaveRef: MutableRefObject<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)>;
   meetRtcRef: MutableRefObject<MeetRtc | null>;
   muteMicRef: MutableRefObject<null | (() => boolean)>;
+  unmuteMicRef: MutableRefObject<null | (() => boolean)>;
   setKnockers: Dispatch<SetStateAction<MeetKnocker[]>>;
   setEndedMessage: Dispatch<SetStateAction<string | null>>;
   setStatus: Dispatch<SetStateAction<CallStatus>>;
@@ -61,6 +62,7 @@ export function useMeetPollHandler({
   leaveRef,
   meetRtcRef,
   muteMicRef,
+  unmuteMicRef,
   setKnockers,
   setEndedMessage,
   setStatus,
@@ -136,9 +138,14 @@ export function useMeetPollHandler({
             }
             continue;
           }
-          if (control.kind === "mute") {
-            if (control.peerId === selfPeerId && muteMicRef.current?.()) {
-              toast.show(meetLabels.mutedByHost, { severity: "info" });
+          if (control.kind === "mute" || control.kind === "unmute") {
+            if (control.peerId === selfPeerId) {
+              if (control.kind === "mute" && muteMicRef.current?.()) {
+                toast.show(meetLabels.mutedByHost, { severity: "info" });
+              }
+              if (control.kind === "unmute" && unmuteMicRef.current?.()) {
+                toast.show(meetLabels.unmutedByHost, { severity: "info" });
+              }
             }
             continue;
           }
@@ -180,6 +187,7 @@ export function useMeetPollHandler({
       leaveRef,
       meetRtcRef,
       muteMicRef,
+      unmuteMicRef,
       participantRosterDiffReadyRef,
       peerDisclosedMediaRef,
       peerNamesRef,

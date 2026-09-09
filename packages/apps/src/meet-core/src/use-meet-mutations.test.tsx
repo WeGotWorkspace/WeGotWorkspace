@@ -2,10 +2,22 @@
  * @vitest-environment jsdom
  */
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { meetLabels } from "@/meet-core/src/meet-labels";
 import type { MeetCallSessionState } from "@/meet-core/src/use-meet-call-session";
 import { useMeetMutations } from "@/meet-core/src/use-meet-mutations";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
+
+const toastApi = {
+  show: vi.fn(),
+  showSuccess: vi.fn(),
+  showError: vi.fn(),
+  dismiss: vi.fn(),
+};
+
+vi.mock("@/hooks/use-app-toast", () => ({
+  useAppToast: () => toastApi,
+}));
 
 function createRoomStub(): MeetRoomState {
   return {
@@ -29,6 +41,7 @@ function createRoomStub(): MeetRoomState {
     statusRef: { current: "in-call" as const },
     displayNameRef: { current: "Guest" },
     waitingForAdmissionRef: { current: false },
+    peerNamesRef: { current: new Map([["peer-2", "Alex"]]) },
     setVideoOn: vi.fn(),
   } as unknown as MeetRoomState;
 }
@@ -217,6 +230,13 @@ describe("useMeetMutations", () => {
     expect(reserved.room).toMatch(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
     expect(session.meetRtc.join).toHaveBeenCalled();
   });
+});
+
+describe("useMeetMutations mutePeer", () => {
+  beforeEach(() => {
+    toastApi.show.mockClear();
+    toastApi.showError.mockClear();
+  });
 
   it("sends a mute control for another peer when the caller can moderate", async () => {
     const chat = vi.fn().mockResolvedValue({ ok: true, delivered: 1 });
@@ -240,6 +260,34 @@ describe("useMeetMutations", () => {
     expect(sent.from).toBe("peer-1");
     expect(sent.text).toContain('"kind":"mute"');
     expect(sent.text).toContain('"peerId":"peer-2"');
+    expect(toastApi.show).toHaveBeenCalledWith(meetLabels.mutedParticipant("Alex"), {
+      severity: "info",
+    });
+  });
+
+  it("sends an unmute control for another peer when the caller can moderate", async () => {
+    const chat = vi.fn().mockResolvedValue({ ok: true, delivered: 1 });
+    const session = createSessionStub({ chat });
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room: createRoomStub(),
+        session,
+        canModerateKnocks: true,
+        leaveRef,
+      }),
+    );
+
+    await result.current.mutePeer("peer-2", false);
+
+    expect(chat).toHaveBeenCalledTimes(1);
+    const sent = chat.mock.calls[0]?.[0] as { text: string };
+    expect(sent.text).toContain('"kind":"unmute"');
+    expect(sent.text).toContain('"peerId":"peer-2"');
+    expect(toastApi.show).toHaveBeenCalledWith(meetLabels.unmutedParticipant("Alex"), {
+      severity: "info",
+    });
   });
 
   it("does not send mute when the caller cannot moderate", async () => {
@@ -259,5 +307,6 @@ describe("useMeetMutations", () => {
     await result.current.mutePeer("peer-2");
 
     expect(chat).not.toHaveBeenCalled();
+    expect(toastApi.show).not.toHaveBeenCalled();
   });
 });

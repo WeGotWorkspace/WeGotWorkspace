@@ -4,6 +4,7 @@ export type MeetControlMessage =
   | { kind: "deny"; peerId: string }
   | { kind: "end"; by: string }
   | { kind: "mute"; peerId: string }
+  | { kind: "unmute"; peerId: string }
   | { kind: "media"; mic: boolean; camera: boolean; screen?: boolean };
 
 export const MEET_KNOCK_NAME_PREFIX = "__wgw_knock__:";
@@ -59,8 +60,12 @@ export function parseMeetControlMessage(text: string): MeetControlMessage | null
     if (parsed.kind === "end" && typeof parsed.by === "string") {
       return { kind: "end", by: parsed.by };
     }
-    if (parsed.kind === "mute" && typeof parsed.peerId === "string" && parsed.peerId !== "") {
-      return { kind: "mute", peerId: parsed.peerId };
+    if (
+      (parsed.kind === "mute" || parsed.kind === "unmute") &&
+      typeof parsed.peerId === "string" &&
+      parsed.peerId !== ""
+    ) {
+      return { kind: parsed.kind, peerId: parsed.peerId };
     }
     if (
       parsed.kind === "media" &&

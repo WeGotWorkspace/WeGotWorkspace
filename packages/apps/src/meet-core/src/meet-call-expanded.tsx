@@ -192,7 +192,7 @@ export function MeetCallExpanded({
                   onMuteParticipant={
                     spotlight.id === self.id || !room.hasSignedInIdentity
                       ? undefined
-                      : () => void room.controller.mutePeer(spotlight.id)
+                      : (muted) => void room.controller.mutePeer(spotlight.id, muted)
                   }
                 />
               )}
@@ -224,7 +224,7 @@ export function MeetCallExpanded({
                       onMuteParticipant={
                         isSelf || !room.hasSignedInIdentity
                           ? undefined
-                          : () => void room.controller.mutePeer(peer.id)
+                          : (muted) => void room.controller.mutePeer(peer.id, muted)
                       }
                     />
                     <p className="meet-call-stage__strip-caption">

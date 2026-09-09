@@ -187,6 +187,17 @@ export function useMeetLocalMedia({
     return true;
   }, [announceMediaPresence, localStreamRef, micOnRef, setMicOn, videoOnRef]);
 
+  /** Host remote-unmute: restore the local mic. No-op when already live. */
+  const unmuteMic = useCallback((): boolean => {
+    if (micOnRef.current) return false;
+    localStreamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = true;
+    });
+    setMicOn(true);
+    void announceMediaPresence(true, videoOnRef.current);
+    return true;
+  }, [announceMediaPresence, localStreamRef, micOnRef, setMicOn, videoOnRef]);
+
   const toggleVideo = useCallback(() => {
     setVideoOn((prev) => {
       const next = !prev;
@@ -351,6 +362,7 @@ export function useMeetLocalMedia({
     stopLocalMedia,
     toggleMic,
     muteMic,
+    unmuteMic,
     toggleVideo,
     toggleScreenShare,
     switchMic,

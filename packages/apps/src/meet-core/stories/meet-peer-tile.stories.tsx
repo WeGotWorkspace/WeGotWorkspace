@@ -32,6 +32,7 @@ export const NoVideo: Story = {
     name: "Alex Morgan",
     stream: null,
     compact: false,
+    disclosedMedia: { camera: true, mic: true },
     onMuteParticipant: STORY_NOOP,
   },
 };
@@ -42,6 +43,7 @@ export const CompactStrip: Story = {
     name: "Jamie Lee",
     stream: null,
     compact: true,
+    disclosedMedia: { camera: true, mic: true },
     onMuteParticipant: STORY_NOOP,
   },
 };
@@ -53,6 +55,40 @@ export const Speaking: Story = {
     stream: null,
     speaking: true,
     spotlight: true,
+    disclosedMedia: { camera: true, mic: true },
+    onMuteParticipant: STORY_NOOP,
+  },
+};
+
+export const SelfLive: Story = {
+  name: "Self mic on",
+  args: {
+    name: "You",
+    stream: null,
+    compact: true,
+    micOn: true,
+    onToggleMic: STORY_NOOP,
+  },
+};
+
+export const SelfMuted: Story = {
+  name: "Self mic off",
+  args: {
+    name: "You",
+    stream: null,
+    compact: true,
+    micOn: false,
+    onToggleMic: STORY_NOOP,
+  },
+};
+
+export const PeerMuted: Story = {
+  name: "Peer muted",
+  args: {
+    name: "Jamie Lee",
+    stream: null,
+    compact: true,
+    disclosedMedia: { camera: true, mic: false },
     onMuteParticipant: STORY_NOOP,
   },
 };

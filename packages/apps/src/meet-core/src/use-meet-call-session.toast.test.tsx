@@ -41,6 +41,7 @@ vi.mock("@/meet-core/src/use-meet-local-media", () => ({
     stopLocalMedia: vi.fn(),
     toggleMic: vi.fn(),
     muteMic: vi.fn(),
+    unmuteMic: vi.fn(),
     toggleVideo: vi.fn(),
     toggleScreenShare: vi.fn(),
     switchMic: vi.fn(),

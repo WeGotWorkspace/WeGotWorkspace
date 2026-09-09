@@ -1308,7 +1308,7 @@ export function MeetWorkspace({
                     onLeave={callToggle}
                     onMuteParticipant={
                       callRoom?.hasSignedInIdentity
-                        ? (peerId) => void callRoom.controller.mutePeer(peerId)
+                        ? (peerId, muted) => void callRoom.controller.mutePeer(peerId, muted)
                         : undefined
                     }
                     joined={showCallChrome}
