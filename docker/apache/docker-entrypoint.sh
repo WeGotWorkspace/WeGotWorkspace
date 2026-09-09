@@ -2,7 +2,8 @@
 set -eu
 
 INSTALL_ROOT="${WGW_APP_ROOT:-/var/www/install}"
-API_ROOT="/var/www/packages/api"
+API_ROOT="${WGW_API_ROOT:-/var/www/packages/api}"
+export WGW_API_ROOT="${API_ROOT}"
 DOMAIN="${WGW_DEV_DOMAIN:-wegotworkspace.localhost}"
 CERT_PEM="/etc/apache2/certs/${DOMAIN}.pem"
 CERT_KEY="/etc/apache2/certs/${DOMAIN}-key.pem"
