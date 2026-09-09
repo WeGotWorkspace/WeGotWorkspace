@@ -78,7 +78,7 @@ export function useAdminSidebarModel(): AdminSectionDescriptor[] {
     {
       id: "mcp",
       label: "Connected assistants",
-      description: "MCP access for Claude, ChatGPT, and Mistral",
+      description: "Claude, ChatGPT, and Mistral",
       icon: <Sparkles className="size-3.5" />,
     },
   ];
