@@ -2,6 +2,8 @@
 # Husky pre-push: run apps done gate when packages/apps/** changed in the push range.
 # Otherwise keep the lightweight typecheck that pre-push ran before #250.
 set -euo pipefail
+# Leftover Vitest/Storybook workers can SIGPIPE the hook after a green gate.
+trap '' PIPE
 
 apps_changed=0
 had_ref=0
