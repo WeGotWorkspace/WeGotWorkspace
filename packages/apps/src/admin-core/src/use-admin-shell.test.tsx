@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
+import type { AdminSection } from "@/admin-core/src/admin-types";
 import { useAdminShell } from "@/admin-core/src/use-admin-shell";
 
 function mockMatchMedia(matches = false) {
@@ -41,9 +42,8 @@ describe("useAdminShell section routing", () => {
     const { data } = createAdminAppBootstrap();
     const onSectionChange = vi.fn();
     const { result, rerender } = renderHook(
-      ({ section }: { section: "users" | "mail" }) =>
-        useAdminShell({ data, section, onSectionChange }),
-      { initialProps: { section: "users" as const } },
+      ({ section }: { section: AdminSection }) => useAdminShell({ data, section, onSectionChange }),
+      { initialProps: { section: "users" as AdminSection } },
     );
 
     expect(result.current.section).toBe("users");
