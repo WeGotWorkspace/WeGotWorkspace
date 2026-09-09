@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
+import {
+  isDisplayCaptureSupported,
+  isDisplayCaptureUnsupportedError,
+  isDisplayCaptureUserCancel,
+} from "@/meet-core/src/meet-display-capture";
+import { meetLabels } from "@/meet-core/src/meet-labels";
 import { syncMeetLocalTrackEnabled } from "@/meet-core/src/meet-local-track-enabled";
 import {
   buildMeetAudioConstraints,
@@ -217,6 +223,11 @@ export function useMeetLocalMedia({
       return;
     }
 
+    if (!isDisplayCaptureSupported()) {
+      setError(meetLabels.shareScreenUnsupported);
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       screenStreamRef.current = stream;
@@ -238,8 +249,13 @@ export function useMeetLocalMedia({
       };
       setScreenOn(true);
       void announceMediaPresence(micOnRef.current, videoOnRef.current, true);
-    } catch {
-      // User canceled picker.
+    } catch (e) {
+      if (isDisplayCaptureUserCancel(e)) return;
+      if (isDisplayCaptureUnsupportedError(e)) {
+        setError(meetLabels.shareScreenUnsupported);
+        return;
+      }
+      setError(e instanceof Error ? e.message : meetLabels.shareScreenFailed);
     }
   }, [
     announceMediaPresence,
@@ -248,6 +264,7 @@ export function useMeetLocalMedia({
     replaceVideoTrackOnAllPeers,
     screenOn,
     screenStreamRef,
+    setError,
     setScreenOn,
     videoOnRef,
   ]);

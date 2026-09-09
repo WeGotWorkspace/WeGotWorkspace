@@ -20,6 +20,7 @@ type MeetCallToolbarStoryArgs = {
   micOn: boolean;
   videoOn: boolean;
   screenOn: boolean;
+  canShareScreen: boolean;
   callExitLabel: string;
   callExitTitle: string;
   callExitDescription: string;
@@ -30,6 +31,7 @@ function MeetCallToolbarStory({
   micOn,
   videoOn,
   screenOn,
+  canShareScreen,
   callExitLabel,
   callExitTitle,
   callExitDescription,
@@ -59,6 +61,7 @@ function MeetCallToolbarStory({
         onToggleMic={STORY_NOOP}
         onToggleVideo={STORY_NOOP}
         onToggleScreenShare={STORY_NOOP}
+        canShareScreen={canShareScreen}
         onCameraChange={setCamera}
         onMicrophoneChange={setMicrophone}
         onSpeakerChange={setSpeaker}
@@ -92,6 +95,7 @@ const meta = {
   onToggleMic={toggleMic}
   onToggleVideo={toggleVideo}
   onToggleScreenShare={toggleScreenShare}
+  canShareScreen
   onCameraChange={setCameraId}
   onMicrophoneChange={setMicId}
   onSpeakerChange={setSpeakerId}
@@ -102,6 +106,7 @@ const meta = {
     micOn: storyBooleanControl,
     videoOn: storyBooleanControl,
     screenOn: storyBooleanControl,
+    canShareScreen: storyBooleanControl,
     callExitLabel: { table: { disable: true } },
     callExitTitle: { table: { disable: true } },
     callExitDescription: { table: { disable: true } },
@@ -116,6 +121,7 @@ const baseArgs: MeetCallToolbarStoryArgs = {
   micOn: true,
   videoOn: true,
   screenOn: false,
+  canShareScreen: true,
   callExitLabel: meetLabels.endCall,
   callExitTitle: meetLabels.endCallTitle,
   callExitDescription: meetLabels.endCallDescription,
@@ -130,6 +136,7 @@ export const Default: Story = {
     const leave = canvas.getByRole("button", { name: meetLabels.endCall });
     await expect(devices).toBeInTheDocument();
     await expect(leave).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.shareScreen })).toBeInTheDocument();
     expect(devices.compareDocumentPosition(leave) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await userEvent.click(devices);
     const body = within(canvasElement.ownerDocument.body);
@@ -142,6 +149,20 @@ export const Default: Story = {
 export const ScreenSharing: Story = {
   name: "Screen sharing",
   args: { ...baseArgs, screenOn: true },
+};
+
+export const ScreenShareUnavailable: Story = {
+  name: "Screen share unavailable",
+  tags: ["vitest-ci"],
+  args: { ...baseArgs, canShareScreen: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.shareScreen }),
+    ).not.toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.disableAudio })).toBeInTheDocument();
+  },
 };
 
 export const MediaOff: Story = {
