@@ -975,7 +975,7 @@
 }
 
 .meet-call-bar__meta {
-  @apply truncate text-xs;
+  @apply truncate text-xs tabular-nums;
   color: var(--meet-call-ink-muted);
 }
 
@@ -1242,7 +1242,7 @@
 }
 
 .meet-call-stage__meta {
-  @apply truncate text-xs;
+  @apply truncate text-xs tabular-nums;
   color: var(--meet-call-ink-muted);
 }
 
