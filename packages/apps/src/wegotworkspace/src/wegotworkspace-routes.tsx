@@ -299,6 +299,8 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     head: loginPwaHead,
     validateSearch: (search: Record<string, unknown>): LoginSearch => ({
       return: typeof search.return === "string" ? search.return : undefined,
+      intent: typeof search.intent === "string" ? search.intent : undefined,
+      error: typeof search.error === "string" ? search.error : undefined,
     }),
     beforeLoad: loginRouteBeforeLoad,
     component: () => <Outlet />,

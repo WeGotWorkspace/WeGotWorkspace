@@ -364,11 +364,6 @@
         border-color: var(--mcp-focus);
     }
 
-    .mcp-login-submit {
-        margin-top: 1rem;
-        width: 100%;
-    }
-
     @media (prefers-reduced-motion: reduce) {
         .mcp-btn, .mcp-scope, .mcp-switch__track, .mcp-switch__track::after { transition: none; }
     }

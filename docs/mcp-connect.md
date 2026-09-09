@@ -23,7 +23,7 @@ Restart the API after changing `.env`. Admin → Connected assistants then copie
 
 Do **not** rewrite the `Host` header to `wegotworkspace.localhost`. If the tunnel still overwrites `Host`, `WGW_MCP_PUBLIC_ORIGIN` is the source of truth for advertised OAuth URLs in local/dev.
 
-You will **sign in again** on the instance when you connect. Being signed in to the WeGotWorkspace web app in another tab is not enough: granting an assistant is a high-trust action and always asks for your username and password.
+You will sign in on the instance when you connect. The assistant uses the same WeGotWorkspace login screen as the web app. A Passport **web session** is required for consent — a tab that is already signed in with a SPA JWT is not enough, and that JWT is never accepted on `/mcp`. If this browser already has a valid web session from a previous assistant connect, you skip the form and go to consent.
 
 Content the assistant reads may leave this instance for the vendor’s model. Uncheck any permission you do not want on the consent page. You can revoke a single assistant later in **Settings → Connected assistants**.
 

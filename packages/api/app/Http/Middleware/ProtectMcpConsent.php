@@ -26,12 +26,22 @@ final class ProtectMcpConsent
             return $this->reject($request, 'Invalid request origin.');
         }
 
-        $token = (string) $request->input('intent', '');
+        $token = $this->intentToken($request);
         if ($token === '' || ! $this->intentMatches($request, $token)) {
             return $this->reject($request, 'Invalid or expired consent token.');
         }
 
         return $next($request);
+    }
+
+    private function intentToken(Request $request): string
+    {
+        $token = (string) $request->input('intent', '');
+        if ($token !== '' || ! $request->is('oauth/session')) {
+            return $token;
+        }
+
+        return (string) $request->session()->get('mcp_login_intent', '');
     }
 
     private function intentMatches(Request $request, string $token): bool
@@ -84,10 +94,6 @@ final class ProtectMcpConsent
             return response()->json(['error' => 'invalid_request', 'error_description' => $message], 403);
         }
 
-        return response()->view('mcp.login', [
-            'error' => $message,
-            'intent' => $this->intent->issue('_login', 'session'),
-            'username' => '',
-        ], 403);
+        return response($message, 403);
     }
 }

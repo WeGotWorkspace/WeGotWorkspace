@@ -27,4 +27,13 @@ describe("loginRouteBeforeLoad", () => {
 
     expect(() => loginRouteBeforeLoad({ search: { return: "/docs" } })).not.toThrow();
   });
+
+  it("does not skip the form for oauth authorize when only a SPA JWT exists", () => {
+    vi.mocked(wgwLiveApiEnabled).mockReturnValue(true);
+    vi.mocked(wgwHasAuthenticatedSession).mockReturnValue(true);
+
+    expect(() =>
+      loginRouteBeforeLoad({ search: { return: "/oauth/authorize?client_id=abc" } }),
+    ).not.toThrow();
+  });
 });
