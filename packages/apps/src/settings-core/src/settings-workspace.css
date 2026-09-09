@@ -116,7 +116,7 @@
 }
 
 .settings-workspace .settings-assistants-pane {
-  @apply flex flex-col gap-4 max-w-lg;
+  @apply flex flex-col gap-4 max-w-xl;
 }
 
 .settings-workspace .settings-assistants-pane__lead,
@@ -143,6 +143,38 @@
 
 .settings-workspace .settings-assistants-pane__meta dd {
   @apply m-0;
+}
+
+.settings-workspace .settings-assistants-pane__grants {
+  @apply mb-4;
+}
+
+.settings-workspace .settings-assistants-pane__grants-label {
+  @apply m-0 mb-2 text-sm text-muted-foreground;
+}
+
+.settings-workspace .settings-assistants-pane__apps {
+  @apply m-0 flex list-none flex-col gap-3 p-0;
+}
+
+.settings-workspace .settings-assistants-pane__app-name {
+  @apply text-sm font-medium;
+}
+
+.settings-workspace .settings-assistants-pane__actions {
+  @apply m-0 mt-1 flex list-none flex-col gap-1 p-0;
+}
+
+.settings-workspace .settings-assistants-pane__actions li {
+  @apply flex flex-wrap items-baseline gap-2 text-sm;
+}
+
+.settings-workspace .settings-assistants-pane__action {
+  @apply font-medium;
+}
+
+.settings-workspace .settings-assistants-pane__scope-id {
+  @apply text-xs text-muted-foreground;
 }
 
 /* Storybook scopes — mirror workspace chrome without inline presets */

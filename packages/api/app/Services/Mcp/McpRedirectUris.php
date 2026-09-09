@@ -55,4 +55,22 @@ final class McpRedirectUris
 
         return $origin;
     }
+
+    /** Host (+ port) for consent copy — no scheme. */
+    public static function displayHost(string $origin): string
+    {
+        $parts = parse_url($origin);
+        if (is_array($parts) && isset($parts['host']) && is_string($parts['host']) && $parts['host'] !== '') {
+            $host = trim($parts['host'], '[]');
+            if (isset($parts['port'])) {
+                return $host.':'.$parts['port'];
+            }
+
+            return $host;
+        }
+
+        $stripped = preg_replace('#^https?://#i', '', $origin) ?? $origin;
+
+        return rtrim($stripped, '/');
+    }
 }

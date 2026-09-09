@@ -33,7 +33,8 @@ Unchanged:
 - `mail.read` — read mailboxes and messages
 - `mail.send` — send mail as you
 - `settings` — profile (`whoami`)
-- `offline_access` — refresh token so the assistant stays connected
+
+Refresh tokens are always issued so the assistant stays connected without repeating consent. `offline_access` is still listed in OAuth `scopes_supported` (MCP clients look for that literal id) but it is **not** a consent toggle and is **not** shown in Settings.
 
 `docs.read` does **not** grant Notes. Notes needs `notes.read` / `notes.write`.
 
@@ -95,7 +96,7 @@ OAuth discovery is at the **origin root**:
 1. Open Claude → custom connectors / MCP.
 2. Add a connector with the **public** `/mcp` URL (a hostname Anthropic’s servers can resolve — not `localhost`).
 3. Complete the browser sign-in and consent pages on your instance. The page shows the **client origin** (for example `https://claude.ai`) as the identity — treat that origin as the real client, not a self-asserted name.
-4. Approve the scopes you want. Leave **offline access** checked if you want the assistant to stay connected without signing in every hour.
+4. Approve the app permissions you want (Read / Write per app). Staying connected is not a checkbox: refresh tokens are always issued.
 
 ### “Couldn’t determine the server settings”
 
@@ -113,7 +114,7 @@ That warning means Claude’s probe to `/mcp` failed. Typical causes:
 4. **Authorize URL shows the workspace 404 page** (“Page not found” / “Go to Drive”). The PWA service worker served the SPA instead of Laravel. Unregister service workers for this origin (DevTools → Application → Service Workers) and retry. A rebuilt worker ignores `/oauth`, `/mcp`, and `/.well-known/oauth-*`.
 5. **Sign-in and consent succeed, then the assistant shows “Authorization with … failed.”** The browser completed `/oauth/authorize`; the vendor’s **servers** then call `/oauth/token` and `/mcp`. They cannot reach `https://wegotworkspace.localhost`. Re-add the connector using the public tunnel origin — not `localhost`.
 6. **Sign-in succeeds, then “your account was authorized, but … returned an error when connecting.”** The vendor stored the token, then `POST /mcp` (initialize) failed. Confirm the connector URL is the public `/mcp` origin, then retry — a UI rebuild is not required. On this instance that handshake is an authenticated JSON-RPC `initialize`; HTTP 500 here is a server bug, not a missing frontend build.
-7. **Consent succeeds, but Settings → Connected assistants only lists `mail.read` / `mail.send` / `settings` / `offline_access`.** Claude requested the advertised `*.read` / `*.write` catalog; the stored OAuth client was still snapshotted on the older combined ids (`calendar`, `drive`, …). Passport then dropped every non-overlapping scope. Reconnect after this instance refreshes the client allowlist (revoke the assistant, then add the connector again) so the new authorize can grant Calendar, Drive, Notes, and the rest.
+7. **Consent succeeds, but Settings → Connected assistants only lists `mail.read` / `mail.send` / `settings`.** Claude requested the advertised `*.read` / `*.write` catalog; the stored OAuth client was still snapshotted on the older combined ids (`calendar`, `drive`, …). Passport then dropped every non-overlapping scope. Reconnect after this instance refreshes the client allowlist (revoke the assistant, then add the connector again) so the new authorize can grant Calendar, Drive, Notes, and the rest.
 
 From a second machine (or a phone on cellular), confirm:
 
@@ -153,11 +154,11 @@ Shared steps (every vendor):
 
 1. **Revoke** any existing grant for that vendor in Settings → Connected assistants.
 2. **Reconnect** using the **public** `https://<host>/mcp` URL. Do **not** rewrite the tunnel `Host` header to `wegotworkspace.localhost`.
-3. On consent, grant **Read** and (if you intend to write) **Write** per app. Confirm the page lists `calendar.read` / `calendar.write` (and the other apps), not only `mail.read` / `mail.send` / `settings` / `offline_access`.
-4. After consent, Settings → Connected assistants must show `*.read` / `*.write` ids (for the apps you approved), **not** only `mail.read` + `mail.send` + `settings` + `offline_access`.
+3. On consent, grant **Read** and (if you intend to write) **Write** per app. Confirm the page lists `calendar.read` / `calendar.write` (and the other apps), not only `mail.read` / `mail.send` / `settings`. Staying connected is not a permission on this page.
+4. After consent, Settings → Connected assistants must show `*.read` / `*.write` ids (for the apps you approved), **not** only `mail.read` + `mail.send` + `settings`. `offline_access` is not listed there.
 5. Smoke tools: `whoami`, `capabilities`, then one read tool for an app you granted (`calendar_list`, `drive_list`, or `notes_search`).
 6. Call a write tool **only if** that app’s `*.write` (or the matching legacy alias) was granted. A read-only grant must refuse write.
-7. **CIMD stale-scope trap:** if Settings shows only mail + settings + offline after a catalog change, the OAuth client was snapshotted on the old combined ids (`calendar`, `drive`, …). Revoke, reconnect, and complete consent again so the client allowlist can include `*.read` / `*.write`. See Claude troubleshooting item 7 above.
+7. **CIMD stale-scope trap:** if Settings shows only mail + settings after a catalog change, the OAuth client was snapshotted on the old combined ids (`calendar`, `drive`, …). Revoke, reconnect, and complete consent again so the client allowlist can include `*.read` / `*.write`. See Claude troubleshooting item 7 above.
 
 ### Claude (claude.ai)
 

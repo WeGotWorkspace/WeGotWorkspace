@@ -68,23 +68,25 @@ final class McpScopes
     {
         return [
             self::CALENDAR_READ => 'Read calendars and events',
-            self::CALENDAR_WRITE => 'Create, update, and delete calendars and events',
-            self::NOTES_READ => 'Read notes and notebooks',
-            self::NOTES_WRITE => 'Create, update, and delete notes and notebooks',
-            self::CONTACTS_READ => 'Read contacts and address books',
-            self::CONTACTS_WRITE => 'Create, update, and delete contacts',
+            self::CALENDAR_WRITE => 'Create, update, delete, and share calendars and events',
+            self::NOTES_READ => 'Read and search notes and notebooks',
+            self::NOTES_WRITE => 'Create, update, delete, and share notes and notebooks',
+            self::CONTACTS_READ => 'Read and search contacts and address books',
+            self::CONTACTS_WRITE => 'Create, update, delete, and share contacts',
             self::TASKS_READ => 'Read tasks and task lists',
-            self::TASKS_WRITE => 'Create, update, and delete tasks and task lists',
-            self::DOCS_READ => 'Read Docs files',
-            self::DOCS_WRITE => 'Create, update, and delete Docs files',
-            self::DRIVE_READ => 'Read Drive files',
-            self::DRIVE_WRITE => 'Create, update, move, and delete Drive files',
+            self::TASKS_WRITE => 'Create, update, delete, and share tasks and task lists',
+            self::DOCS_READ => 'Read and search Docs files',
+            self::DOCS_WRITE => 'Create, update, delete, and share Docs files',
+            self::DRIVE_READ => 'Read and search Drive files and folders',
+            self::DRIVE_WRITE => 'Create, update, move, delete, and share Drive files and folders',
             self::MEET_READ => 'Read Meet channels and messages',
             self::MEET_WRITE => 'Create, update, and delete Meet channels and messages',
             self::MAIL_READ => 'Read mailboxes and messages',
             self::MAIL_SEND => 'Send mail as you',
             self::SETTINGS => 'Read your profile and user settings',
-            self::OFFLINE_ACCESS => 'Stay connected when you are offline (refresh token)',
+            // Advertised so MCP clients that look for this literal id can request
+            // it. Not a consent toggle; refresh tokens are always issued.
+            self::OFFLINE_ACCESS => 'Refresh token (always issued)',
         ];
     }
 
@@ -97,7 +99,7 @@ final class McpScopes
     {
         return [
             self::CALENDAR => 'Read and write calendars and events (legacy grant)',
-            self::DRIVE => 'Read and write Drive files (legacy grant)',
+            self::DRIVE => 'Read and write Drive files and folders (legacy grant)',
             self::TASKS => 'Read and write tasks and task lists (legacy grant)',
             self::CONTACTS => 'Read and write contacts (legacy grant)',
             self::DOCS => 'Read and write Docs and Notes (legacy grant)',
@@ -167,7 +169,6 @@ final class McpScopes
             ['label' => 'Meet', 'scopes' => [self::MEET_READ, self::MEET_WRITE]],
             ['label' => 'Mail', 'scopes' => [self::MAIL_READ, self::MAIL_SEND]],
             ['label' => 'Profile', 'scopes' => [self::SETTINGS]],
-            ['label' => 'Connection', 'scopes' => [self::OFFLINE_ACCESS]],
         ];
     }
 
@@ -213,11 +214,67 @@ final class McpScopes
                 $groups[] = ['label' => $def['label'], 'scopes' => $items];
             }
         }
+        unset($byId[self::OFFLINE_ACCESS]);
         if ($byId !== []) {
             $groups[] = ['label' => 'Other', 'scopes' => array_values($byId)];
         }
 
         return $groups;
+    }
+
+    /**
+     * Scopes shown on consent and Settings grant cards.
+     * `offline_access` stays in {@see advertisedDescriptions()} / `scopes_supported`.
+     *
+     * @param  list<string>  $ids
+     * @return list<string>
+     */
+    public static function userFacingIds(array $ids): array
+    {
+        return array_values(array_filter(
+            $ids,
+            static fn (string $id): bool => $id !== self::OFFLINE_ACCESS,
+        ));
+    }
+
+    /**
+     * Workspace app icon id for a consent group legend (`/app-icons/{id}.svg`), or null.
+     */
+    public static function consentAppIcon(string $groupLabel): ?string
+    {
+        return match ($groupLabel) {
+            'Calendar' => 'calendar',
+            'Notes' => 'notes',
+            'Contacts' => 'contacts',
+            'Tasks' => 'tasks',
+            'Docs' => 'docs',
+            'Drive' => 'drive',
+            'Meet' => 'meet',
+            'Mail' => 'mail',
+            'Profile' => 'settings',
+            default => null,
+        };
+    }
+
+    /**
+     * Short consent caption (Read / Write / Send). Group legend carries the app name.
+     */
+    public static function consentActionLabel(string $id): string
+    {
+        if (str_ends_with($id, '.read')) {
+            return 'Read';
+        }
+        if (str_ends_with($id, '.write')) {
+            return 'Write';
+        }
+
+        return match ($id) {
+            self::MAIL_SEND => 'Send',
+            self::SETTINGS => 'Read',
+            self::OFFLINE_ACCESS => 'Stay connected', // fallback; not shown on consent
+            self::CALENDAR, self::DRIVE, self::TASKS, self::CONTACTS, self::DOCS => 'Read and write',
+            default => $id,
+        };
     }
 
     /**

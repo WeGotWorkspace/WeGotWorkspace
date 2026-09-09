@@ -16,17 +16,11 @@ final class McpOAuthSubscriber
 {
     public function __construct(private McpAuditLogger $audit) {}
 
-    public function handleRefreshTokenCreated(RefreshTokenCreated $event): void
+    public function handleRefreshTokenCreated(RefreshTokenCreated $_event): void
     {
-        $access = Passport::token()->newQuery()->find($event->accessTokenId);
-        if ($access === null) {
-            return;
-        }
-        $scopes = $access->getAttribute('scopes');
-        if (is_array($scopes) && in_array(McpScopes::OFFLINE_ACCESS, $scopes, true)) {
-            return;
-        }
-        Passport::refreshToken()->newQuery()->where('id', $event->refreshTokenId)->delete();
+        // Intentionally empty: refresh tokens are always kept, even when the
+        // access token has no offline_access scope. The listener stays
+        // registered so this policy stays explicit.
     }
 
     public function handleAccessTokenCreated(AccessTokenCreated $event): void

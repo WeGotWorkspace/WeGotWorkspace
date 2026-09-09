@@ -43,7 +43,38 @@ describe("SettingsAssistantsPane", () => {
       />,
     );
     expect(screen.getByText("https://claude.ai")).toBeTruthy();
+    expect(screen.getByText("Drive")).toBeTruthy();
+    expect(screen.getByText("Read")).toBeTruthy();
     expect(screen.getByText("drive.read")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Revoke access" })).toBeTruthy();
+  });
+
+  it("does not list offline_access on grant cards", () => {
+    render(
+      <SettingsAssistantsPane
+        assistants={{
+          grants: [
+            {
+              clientId: "abc",
+              clientName: "Claude",
+              clientOrigin: "https://claude.ai",
+              connectedAt: "2026-09-08T10:00:00Z",
+              scopes: ["drive.read", "offline_access", "settings"],
+              lastUsedAt: null,
+            },
+          ],
+          loading: false,
+          revokingId: null,
+          error: null,
+          refresh: async () => {},
+          revoke: async () => {},
+        }}
+      />,
+    );
+    expect(screen.getByText("Drive")).toBeTruthy();
+    expect(screen.getByText("Profile")).toBeTruthy();
+    expect(screen.queryByText("offline_access")).toBeNull();
+    expect(screen.queryByText("Stay connected")).toBeNull();
+    expect(screen.queryByText("Connection")).toBeNull();
   });
 });

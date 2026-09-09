@@ -3,8 +3,8 @@ import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { useAdminPaneStoryController } from "@/admin-core/stories/admin-pane-stories.harness";
 import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
 
-function McpPaneHarness() {
-  const controller = useAdminPaneStoryController();
+function McpPaneHarness({ enabled = false }: { enabled?: boolean }) {
+  const controller = useAdminPaneStoryController(enabled ? { mcp: { enabled: true } } : undefined);
   return (
     <AdminStoryScope>
       <AdminMcpPane controller={controller} />
@@ -25,4 +25,8 @@ type Story = StoryObj<typeof AdminMcpPane>;
 
 export const Default: Story = {
   render: () => <McpPaneHarness />,
+};
+
+export const Enabled: Story = {
+  render: () => <McpPaneHarness enabled />,
 };

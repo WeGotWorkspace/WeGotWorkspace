@@ -18,6 +18,9 @@ describe("import dialog error layout", () => {
   it("wraps long callout titles so URLs stay inside the dialog", () => {
     expect(calloutCss).toMatch(/\.callout \{[\s\S]*min-w-0/);
     expect(calloutCss).toMatch(/\.callout \.menu-item__label \{[\s\S]*overflow-wrap:\s*anywhere/);
+    expect(calloutCss).toMatch(
+      /\.callout \.menu-item__description \{[\s\S]*overflow-wrap:\s*anywhere/,
+    );
     expect(modalCss).toMatch(/\.ui-modal-surface \{[\s\S]*overflow-x-hidden/);
   });
 });

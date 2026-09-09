@@ -89,4 +89,40 @@ final class McpScopesTest extends TestCase
             $calendarIds,
         );
     }
+
+    public function test_group_consent_scopes_hides_offline_access(): void
+    {
+        $scopes = array_map(
+            static fn (string $id): object => (object) ['id' => $id, 'description' => $id],
+            [McpScopes::DRIVE_READ, McpScopes::OFFLINE_ACCESS, McpScopes::SETTINGS],
+        );
+        $groups = McpScopes::groupConsentScopes($scopes);
+        $this->assertSame(['Drive', 'Profile'], array_column($groups, 'label'));
+        $ids = [];
+        foreach ($groups as $group) {
+            foreach ($group['scopes'] as $scope) {
+                $ids[] = $scope->id;
+            }
+        }
+        $this->assertNotContains(McpScopes::OFFLINE_ACCESS, $ids);
+        $this->assertSame(
+            [McpScopes::DRIVE_READ, McpScopes::SETTINGS],
+            McpScopes::userFacingIds([McpScopes::DRIVE_READ, McpScopes::OFFLINE_ACCESS, McpScopes::SETTINGS]),
+        );
+    }
+
+    public function test_consent_action_labels_are_read_write_or_send(): void
+    {
+        $this->assertSame('Read', McpScopes::consentActionLabel(McpScopes::CALENDAR_READ));
+        $this->assertSame('Write', McpScopes::consentActionLabel(McpScopes::CALENDAR_WRITE));
+        $this->assertSame('Send', McpScopes::consentActionLabel(McpScopes::MAIL_SEND));
+        $this->assertSame('Read', McpScopes::consentActionLabel(McpScopes::SETTINGS));
+        $this->assertSame('Stay connected', McpScopes::consentActionLabel(McpScopes::OFFLINE_ACCESS));
+        $this->assertSame('Read and write', McpScopes::consentActionLabel(McpScopes::CALENDAR));
+        $this->assertSame('Read', McpScopes::consentActionLabel(McpScopes::NOTES_READ));
+        $this->assertSame('Write', McpScopes::consentActionLabel(McpScopes::DRIVE_WRITE));
+        $this->assertSame('calendar', McpScopes::consentAppIcon('Calendar'));
+        $this->assertSame('settings', McpScopes::consentAppIcon('Profile'));
+        $this->assertNull(McpScopes::consentAppIcon('Connection'));
+    }
 }

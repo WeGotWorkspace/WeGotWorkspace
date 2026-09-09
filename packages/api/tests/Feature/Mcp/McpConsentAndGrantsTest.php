@@ -75,11 +75,61 @@ final class McpConsentAndGrantsTest extends WgwDatabaseTestCase
         ])->assertForbidden();
     }
 
+    public function test_list_grants_omits_expired_access_token_without_refresh(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient('Claude', 'https://claude.ai');
+        $accessId = $this->issueMcpGrant($user, $client, [McpScopes::DRIVE]);
+        Passport::token()->newQuery()->whereKey($accessId)->update([
+            'expires_at' => now()->subHour(),
+        ]);
+
+        $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/settings/mcp-grants')
+            ->assertOk()
+            ->assertJsonPath('grants', []);
+    }
+
+    public function test_list_grants_includes_expired_access_token_with_valid_refresh(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient('Claude', 'https://claude.ai');
+        $accessId = $this->issueMcpGrant($user, $client, [McpScopes::DRIVE, McpScopes::OFFLINE_ACCESS]);
+        Passport::token()->newQuery()->whereKey($accessId)->update([
+            'expires_at' => now()->subHour(),
+        ]);
+        Passport::refreshToken()->newQuery()->create([
+            'id' => bin2hex(random_bytes(40)),
+            'access_token_id' => $accessId,
+            'revoked' => false,
+            'expires_at' => now()->addDays(30),
+        ]);
+
+        $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/settings/mcp-grants')
+            ->assertOk()
+            ->assertJsonPath('grants.0.clientOrigin', 'https://claude.ai')
+            ->assertJsonPath('grants.0.clientName', 'Claude');
+    }
+
+    public function test_list_grants_omits_offline_access_from_scopes(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient('Claude', 'https://claude.ai');
+        $this->issueMcpGrant($user, $client, [McpScopes::DRIVE, McpScopes::OFFLINE_ACCESS]);
+
+        $list = $this->withBearer($this->userBearerToken())->getJson('/api/v1/settings/mcp-grants');
+        $list->assertOk()
+            ->assertJsonPath('grants.0.clientOrigin', 'https://claude.ai');
+        $this->assertContains(McpScopes::DRIVE, $list->json('grants.0.scopes'));
+        $this->assertNotContains(McpScopes::OFFLINE_ACCESS, $list->json('grants.0.scopes'));
+    }
+
     public function test_list_and_revoke_grants(): void
     {
         $user = $this->mcpUser('bob');
         $client = $this->mcpClient('Claude', 'https://claude.ai');
-        $this->issueMcpGrant($user, $client, [McpScopes::DRIVE, McpScopes::MAIL_READ]);
+        $this->issueMcpGrant($user, $client, [McpScopes::DRIVE, McpScopes::MAIL_READ, McpScopes::OFFLINE_ACCESS]);
 
         $token = $this->userBearerToken();
         $list = $this->withBearer($token)->getJson('/api/v1/settings/mcp-grants');
@@ -87,6 +137,7 @@ final class McpConsentAndGrantsTest extends WgwDatabaseTestCase
             ->assertJsonPath('grants.0.clientOrigin', 'https://claude.ai')
             ->assertJsonPath('grants.0.clientName', 'Claude');
         $this->assertContains(McpScopes::DRIVE, $list->json('grants.0.scopes'));
+        $this->assertNotContains(McpScopes::OFFLINE_ACCESS, $list->json('grants.0.scopes'));
 
         $clientId = $list->json('grants.0.clientId');
         $this->withBearer($token)
@@ -105,7 +156,7 @@ final class McpConsentAndGrantsTest extends WgwDatabaseTestCase
         );
     }
 
-    public function test_offline_access_is_required_to_keep_refresh_tokens(): void
+    public function test_refresh_tokens_are_kept_without_offline_access_scope(): void
     {
         $user = $this->mcpUser('bob');
         $client = $this->mcpClient();
@@ -119,18 +170,7 @@ final class McpConsentAndGrantsTest extends WgwDatabaseTestCase
         ]);
 
         app(McpOAuthSubscriber::class)->handleRefreshTokenCreated(new RefreshTokenCreated($refreshId, $accessId));
-        $this->assertNull(Passport::refreshToken()->newQuery()->find($refreshId));
-
-        $accessWithOffline = $this->issueMcpGrant($user, $client, [McpScopes::DRIVE, McpScopes::OFFLINE_ACCESS]);
-        $keepId = bin2hex(random_bytes(40));
-        Passport::refreshToken()->newQuery()->create([
-            'id' => $keepId,
-            'access_token_id' => $accessWithOffline,
-            'revoked' => false,
-            'expires_at' => now()->addDays(30),
-        ]);
-        app(McpOAuthSubscriber::class)->handleRefreshTokenCreated(new RefreshTokenCreated($keepId, $accessWithOffline));
-        $this->assertNotNull(Passport::refreshToken()->newQuery()->find($keepId));
+        $this->assertNotNull(Passport::refreshToken()->newQuery()->find($refreshId));
     }
 
     public function test_access_token_created_is_audited(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Services\Mcp\McpScopes;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Passport\Bridge\Client;
@@ -46,13 +47,33 @@ final class FilterMcpConsentScopes
         $allowed = array_values(array_filter($submitted, is_string(...)));
         $filtered = [];
         foreach ($authRequest->getScopes() as $scope) {
-            if (in_array($scope->getIdentifier(), $allowed, true)) {
+            $id = $scope->getIdentifier();
+            // Keep offline_access if the client requested it (do not 400). Users
+            // never see or uncheck it; inject it when the client omitted it.
+            if ($id === McpScopes::OFFLINE_ACCESS || in_array($id, $allowed, true)) {
                 $filtered[] = $scope;
             }
+        }
+        if (! self::containsScope($filtered, McpScopes::OFFLINE_ACCESS)) {
+            $filtered[] = new Scope(McpScopes::OFFLINE_ACCESS);
         }
         $authRequest->setScopes($filtered);
         $request->session()->put('authRequest', serialize($authRequest));
 
         return $next($request);
+    }
+
+    /**
+     * @param  list<Scope>  $scopes
+     */
+    private static function containsScope(array $scopes, string $id): bool
+    {
+        foreach ($scopes as $scope) {
+            if ($scope->getIdentifier() === $id) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -14,6 +14,7 @@ import {
 import { buttonVariants } from "@/ui/button";
 import type { SettingsMcpGrant } from "@/settings-core/src/settings-types";
 import type { SettingsMcpGrantsState } from "@/settings-core/src/use-settings-mcp-grants";
+import { formatGrantInstant, groupMcpScopeIds } from "@/settings-core/src/mcp-scope-labels";
 
 export const MCP_CONNECT_GUIDE_HREF =
   "https://github.com/WeGotWorkspace/WeGotWorkspace/blob/main/docs/mcp-connect.md";
@@ -29,8 +30,8 @@ export function SettingsAssistantsPane({ assistants }: SettingsAssistantsPanePro
   return (
     <div className="settings-assistants-pane">
       <p className="settings-assistants-pane__lead">
-        Assistants you connect can act as you on this instance. You sign in again on the consent
-        page. Content they read may leave this instance for the vendor’s model.{" "}
+        Assistants you connect can act as you on this instance. Content they read may leave this
+        instance for the vendor’s model. To change permissions, revoke access and connect again.{" "}
         <a href={MCP_CONNECT_GUIDE_HREF} target="_blank" rel="noreferrer">
           Connect guide
         </a>
@@ -56,34 +57,12 @@ export function SettingsAssistantsPane({ assistants }: SettingsAssistantsPanePro
         </Card>
       ) : null}
       {grants.map((grant) => (
-        <Card key={grant.clientId} title={grant.clientOrigin || grant.clientName}>
-          <dl className="settings-assistants-pane__meta">
-            <div>
-              <dt>Client</dt>
-              <dd>{grant.clientName}</dd>
-            </div>
-            <div>
-              <dt>Connected</dt>
-              <dd>{grant.connectedAt}</dd>
-            </div>
-            <div>
-              <dt>Last used</dt>
-              <dd>{grant.lastUsedAt ?? "Never"}</dd>
-            </div>
-            <div>
-              <dt>Scopes</dt>
-              <dd>{grant.scopes.join(", ")}</dd>
-            </div>
-          </dl>
-          <Button
-            variant="subtle"
-            size="sm"
-            disabled={revokingId === grant.clientId}
-            onClick={() => setPending(grant)}
-          >
-            Revoke access
-          </Button>
-        </Card>
+        <GrantCard
+          key={grant.clientId}
+          grant={grant}
+          revoking={revokingId === grant.clientId}
+          onRevoke={() => setPending(grant)}
+        />
       ))}
 
       <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
@@ -111,5 +90,60 @@ export function SettingsAssistantsPane({ assistants }: SettingsAssistantsPanePro
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function GrantCard({
+  grant,
+  revoking,
+  onRevoke,
+}: {
+  grant: SettingsMcpGrant;
+  revoking: boolean;
+  onRevoke: () => void;
+}) {
+  const title = grant.clientOrigin || grant.clientName;
+  const showName = Boolean(grant.clientName && grant.clientName !== grant.clientOrigin);
+  const groups = groupMcpScopeIds(grant.scopes);
+
+  return (
+    <Card title={title} description={showName ? grant.clientName : undefined}>
+      <dl className="settings-assistants-pane__meta">
+        <div>
+          <dt>Connected</dt>
+          <dd>{formatGrantInstant(grant.connectedAt, grant.connectedAt)}</dd>
+        </div>
+        <div>
+          <dt>Last used</dt>
+          <dd>{formatGrantInstant(grant.lastUsedAt)}</dd>
+        </div>
+      </dl>
+      <div className="settings-assistants-pane__grants">
+        <p className="settings-assistants-pane__grants-label" id={`mcp-grant-${grant.clientId}`}>
+          Permissions
+        </p>
+        <ul
+          className="settings-assistants-pane__apps"
+          aria-labelledby={`mcp-grant-${grant.clientId}`}
+        >
+          {groups.map((group) => (
+            <li key={group.label} className="settings-assistants-pane__app">
+              <span className="settings-assistants-pane__app-name">{group.label}</span>
+              <ul className="settings-assistants-pane__actions">
+                {group.scopes.map((scope) => (
+                  <li key={scope.id}>
+                    <span className="settings-assistants-pane__action">{scope.actionLabel}</span>
+                    <code className="settings-assistants-pane__scope-id">{scope.id}</code>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <Button variant="subtle" size="sm" disabled={revoking} onClick={onRevoke}>
+        Revoke access
+      </Button>
+    </Card>
   );
 }

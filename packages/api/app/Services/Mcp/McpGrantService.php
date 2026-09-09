@@ -28,9 +28,6 @@ final class McpGrantService
         $tokens = Passport::token()->newQuery()
             ->where('user_id', $user->getAuthIdentifier())
             ->where('revoked', false)
-            ->where(function ($query): void {
-                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
             ->orderByDesc('created_at')
             ->get();
 
@@ -38,6 +35,9 @@ final class McpGrantService
         foreach ($tokens as $token) {
             $clientId = (string) $token->getAttribute('client_id');
             if ($clientId === '' || isset($byClient[$clientId])) {
+                continue;
+            }
+            if (! $this->grantIsActive($token)) {
                 continue;
             }
             $client = Passport::client()->newQuery()->find($clientId);
@@ -48,12 +48,13 @@ final class McpGrantService
                 $name = (string) $client->name;
             }
             $scopes = $token->getAttribute('scopes');
+            $scopeIds = is_array($scopes) ? array_values(array_filter($scopes, is_string(...))) : [];
             $byClient[$clientId] = [
                 'clientId' => $clientId,
                 'clientName' => $name,
                 'clientOrigin' => $origin,
                 'connectedAt' => optional($token->getAttribute('created_at'))?->toIso8601String() ?? now()->toIso8601String(),
-                'scopes' => is_array($scopes) ? array_values($scopes) : [],
+                'scopes' => McpScopes::userFacingIds($scopeIds),
                 'lastUsedAt' => $this->lastUsedAt((string) $user->username, $clientId),
             ];
         }
@@ -84,6 +85,22 @@ final class McpGrantService
         );
 
         return true;
+    }
+
+    private function grantIsActive(object $token): bool
+    {
+        $expiresAt = $token->getAttribute('expires_at');
+        if ($expiresAt === null || $expiresAt > now()) {
+            return true;
+        }
+
+        return Passport::refreshToken()->newQuery()
+            ->where('access_token_id', $token->getKey())
+            ->where('revoked', false)
+            ->where(function ($query): void {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->exists();
     }
 
     private function lastUsedAt(string $username, string $clientId): ?string

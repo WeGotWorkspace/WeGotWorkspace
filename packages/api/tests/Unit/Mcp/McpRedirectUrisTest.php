@@ -13,6 +13,8 @@ final class McpRedirectUrisTest extends TestCase
     {
         $this->assertTrue(McpRedirectUris::isAllowed('https://claude.ai/oauth/callback'));
         $this->assertSame('https://claude.ai', McpRedirectUris::originOf('https://claude.ai/oauth/callback'));
+        $this->assertSame('claude.ai', McpRedirectUris::displayHost('https://claude.ai'));
+        $this->assertSame('claude.ai', McpRedirectUris::displayHost('https://claude.ai/oauth/callback'));
     }
 
     public function test_loopback_ip_literals_are_allowed(): void

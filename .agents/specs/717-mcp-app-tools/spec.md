@@ -30,7 +30,7 @@ Least-privilege MCP: each suite app (Calendar, Notes, Contacts, Tasks, Docs, Dri
 ## Technical constraints
 
 - Work on the MCP branch worktree (`cursor/mcp-assistant-access-0a47` or a follow-up `feat/` from it), rebased onto `origin/main` so Calendar Meet channel vs ad-hoc href helpers are present.
-- **Advertised scopes:** `calendar|notes|contacts|tasks|docs|drive|meet` × `.read`/`.write`, plus `mail.read`, `mail.send`, `settings`, `offline_access`.
+- **Advertised scopes:** `calendar|notes|contacts|tasks|docs|drive|meet` × `.read`/`.write`, plus `mail.read`, `mail.send`, `settings`, `offline_access` (kept in `scopes_supported` for MCP clients; not a consent toggle; refresh tokens are always issued).
 - **Legacy aliases** (existing grants): bare `calendar|drive|tasks|contacts` = read+write for that app; bare `docs` = docs **and** notes read+write. `docs.read` does not grant Notes. Read does not imply write.
 - Helper on `WgwMcpTool` (via `McpScopes`) replaces a single `tokenCan($scope)` check.
 - Search is `*.read`, not a third OAuth id. Share CRUD uses `*.write` (no `*.share`).

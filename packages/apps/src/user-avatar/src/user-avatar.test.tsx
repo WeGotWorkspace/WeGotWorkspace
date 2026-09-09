@@ -34,6 +34,12 @@ describe("UserAvatar", () => {
     expect(screen.getByRole("img", { name: "Unknown avatar" }).textContent).toBe("U");
   });
 
+  it("uses an explicit accessible name when ariaLabel is set", () => {
+    render(<UserAvatar displayName="bob" compact ariaLabel="Signed in as bob" />);
+
+    expect(screen.getByRole("img", { name: "Signed in as bob" }).textContent).toBe("B");
+  });
+
   it("renders a custom fallback instead of initials", () => {
     render(
       <UserAvatar
