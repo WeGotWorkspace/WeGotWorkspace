@@ -1,41 +1,49 @@
 import { useCallback, useEffect } from "react";
-import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { useLocation, useRouter } from "@tanstack/react-router";
 import type { AdminSection } from "@/admin-core/src/admin-types";
-import { adminPathFor, isAdminPathname, resolveAdminSection } from "@/admin-core/src/admin-section";
-
-type AdminRouteParams = {
-  section?: string;
-};
+import {
+  adminNavigateTarget,
+  adminPathFor,
+  adminSectionFromPathname,
+  isAdminPathname,
+  resolveAdminSection,
+} from "@/admin-core/src/admin-section";
 
 /**
  * Sync Admin section with `/admin` and `/admin/:section`.
- * Canonicalize unknown paths with replace; push on sidebar selection so
- * browser back/forward moves between panes.
+ * Section is read from the pathname (not `useParams`) so a still-mounted
+ * `/admin` route cannot canonicalize `/admin/mail` back to `/admin`.
  */
 export function useAdminRouteSync(): {
   section: AdminSection;
   onSectionChange: (section: AdminSection) => void;
 } {
-  const navigate = useNavigate();
+  const router = useRouter();
   const location = useLocation();
-  const params = useParams({ strict: false }) as AdminRouteParams;
-  const section = resolveAdminSection(params.section);
+  const section = resolveAdminSection(adminSectionFromPathname(location.pathname));
 
   useEffect(() => {
-    if (!isAdminPathname(location.pathname)) return;
-    const target = adminPathFor(section);
-    if (location.pathname === target) return;
-    void navigate({ to: target, replace: true });
-  }, [location.pathname, navigate, section]);
+    const path = router.state.location.pathname;
+    if (!isAdminPathname(path)) return;
+    const resolved = resolveAdminSection(adminSectionFromPathname(path));
+    const target = adminPathFor(resolved);
+    if (path === target) return;
+    void router.navigate({ ...adminNavigateTarget(resolved), replace: true }).then(() => {
+      router.history.flush?.();
+    });
+  }, [location.pathname, router]);
 
   const onSectionChange = useCallback(
     (next: AdminSection) => {
+      const path = router.state.location.pathname;
       const resolved = resolveAdminSection(next);
       const target = adminPathFor(resolved);
-      if (!isAdminPathname(location.pathname) || location.pathname === target) return;
-      void navigate({ to: target });
+      if (!isAdminPathname(path) || path === target) return;
+      void router.navigate(adminNavigateTarget(resolved)).then(() => {
+        router.history.flush?.();
+      });
     },
-    [location.pathname, navigate],
+    [router],
   );
 
   return { section, onSectionChange };

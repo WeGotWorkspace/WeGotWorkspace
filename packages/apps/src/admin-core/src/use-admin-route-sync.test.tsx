@@ -2,8 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const navigate = vi.fn(async (_opts?: unknown) => undefined);
+const flush = vi.fn();
 let mockPathname = "/admin/plugins";
-let mockParams: Record<string, string> = { section: "plugins" };
 
 vi.mock("@tanstack/react-router", async () => {
   const actual =
@@ -11,8 +11,11 @@ vi.mock("@tanstack/react-router", async () => {
   return {
     ...actual,
     useLocation: () => ({ pathname: mockPathname }),
-    useParams: () => ({ ...mockParams }),
-    useNavigate: () => navigate,
+    useRouter: () => ({
+      state: { location: { pathname: mockPathname } },
+      navigate,
+      history: { flush },
+    }),
   };
 });
 
@@ -21,8 +24,8 @@ import { useAdminRouteSync } from "@/admin-core/src/use-admin-route-sync";
 describe("useAdminRouteSync", () => {
   beforeEach(() => {
     navigate.mockClear();
+    flush.mockClear();
     mockPathname = "/admin/plugins";
-    mockParams = { section: "plugins" };
   });
 
   it("keeps a named admin section from the URL", () => {
@@ -33,7 +36,6 @@ describe("useAdminRouteSync", () => {
 
   it("treats /admin as the users pane", () => {
     mockPathname = "/admin";
-    mockParams = {};
     const { result } = renderHook(() => useAdminRouteSync());
     expect(result.current.section).toBe("users");
     expect(navigate).not.toHaveBeenCalled();
@@ -41,7 +43,6 @@ describe("useAdminRouteSync", () => {
 
   it("canonicalizes unknown sections to /admin", () => {
     mockPathname = "/admin/not-a-pane";
-    mockParams = { section: "not-a-pane" };
     const { result } = renderHook(() => useAdminRouteSync());
     expect(result.current.section).toBe("users");
     expect(navigate).toHaveBeenCalledWith({ to: "/admin", replace: true });
@@ -49,7 +50,6 @@ describe("useAdminRouteSync", () => {
 
   it("canonicalizes /admin/users to /admin", () => {
     mockPathname = "/admin/users";
-    mockParams = { section: "users" };
     const { result } = renderHook(() => useAdminRouteSync());
     expect(result.current.section).toBe("users");
     expect(navigate).toHaveBeenCalledWith({ to: "/admin", replace: true });
@@ -57,13 +57,15 @@ describe("useAdminRouteSync", () => {
 
   it("pushes a history entry when the user picks a section", () => {
     mockPathname = "/admin";
-    mockParams = {};
     const { result } = renderHook(() => useAdminRouteSync());
 
     act(() => {
       result.current.onSectionChange("mail");
     });
 
-    expect(navigate).toHaveBeenCalledWith({ to: "/admin/mail" });
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/admin/$section",
+      params: { section: "mail" },
+    });
   });
 });
