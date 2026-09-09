@@ -4,7 +4,9 @@ import {
   isSettingsSection,
   resolveSettingsSection,
   SETTINGS_DEFAULT_SECTION,
+  settingsNavigateTarget,
   settingsPathFor,
+  settingsSectionFromLocation,
   settingsSectionIsReachable,
 } from "@/settings-core/src/settings-section";
 
@@ -29,5 +31,24 @@ describe("settings-section", () => {
     expect(isSettingsPathname("/settings")).toBe(true);
     expect(isSettingsPathname("/settings/assistants")).toBe(true);
     expect(isSettingsPathname("/admin")).toBe(false);
+  });
+
+  it("reads the section from the path; bare /settings is Profile", () => {
+    expect(settingsSectionFromLocation("/settings")).toBe("profile");
+    expect(settingsSectionFromLocation("/settings/mail")).toBe("mail");
+    expect(settingsSectionFromLocation("/settings/offline")).toBe("offline");
+    expect(settingsSectionFromLocation("/admin")).toBe("profile");
+  });
+
+  it("builds TanStack navigate targets with $section params", () => {
+    expect(settingsNavigateTarget("profile")).toEqual({ to: "/settings", params: {} });
+    expect(settingsNavigateTarget("mail")).toEqual({
+      to: "/settings/$section",
+      params: { section: "mail" },
+    });
+    expect(settingsNavigateTarget("assistants")).toEqual({
+      to: "/settings/$section",
+      params: { section: "assistants" },
+    });
   });
 });
