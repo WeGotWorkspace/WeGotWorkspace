@@ -63,6 +63,12 @@ import { meetCallBarShownCount, meetCallPreviewPeers } from "@/meet-core/src/mee
 import { MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
 import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
+import {
+  meetCallStatusEngaged,
+  meetCallUiParkedOnWorkspaceUnmount,
+  meetResumeCallLayout,
+  meetShouldSelectLiveCallOnBareMeet,
+} from "@/meet-core/src/meet-call-resume";
 import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
 import { MeetCallStage } from "@/meet-core/src/meet-call-stage";
@@ -401,10 +407,13 @@ export function MeetWorkspace({
 
   // Follow route changes (deep link, back/forward). Selection → URL runs the
   // other way via onSelectedChannelChange, so equal values settle immediately.
+  // Bare `/meet` (app switcher) restores the live call instead of the default channel.
   useEffect(() => {
-    if (routeChannelId == null) return;
-    setSelectedId((current) => (current === routeChannelId ? current : routeChannelId));
-  }, [routeChannelId]);
+    const next =
+      routeChannelId ?? meetShouldSelectLiveCallOnBareMeet({ routeChannelId, liveCallChannelId });
+    if (next == null) return;
+    setSelectedId((current) => (current === next ? current : next));
+  }, [liveCallChannelId, routeChannelId]);
 
   const sections = useMemo(() => partitionMeetChannels(channels), [channels]);
   const leftoverUpcoming = useMemo(
@@ -655,11 +664,14 @@ export function MeetWorkspace({
     directory: mentionPrincipals,
     initialThreadId,
   });
+  const suiteCallStore = useMeetCallStoreContext();
+  const resumeCallLayout = meetResumeCallLayout(suiteCallStore?.getSnapshot().callUiLayout);
   const call = useMeetCallLayout({
     initialLayout: initialCallLayout ?? (callActive ? "side-by-side" : "collapsed"),
     operations,
     channelId: selectedId,
     liveCallChannelId,
+    resumeLayout: liveCallChannelId ? resumeCallLayout : undefined,
   });
   const sidebarCloseFrame = useRef<number | null>(null);
   const handleCallLayoutChange = useCallback(
@@ -947,13 +959,18 @@ export function MeetWorkspace({
   // Mini-player handshake: while the live call's channel is not on screen the
   // call is "parked" here, so the suite mini-player may show inside `/meet`.
   // Null store (mock/Storybook trees) makes this a no-op.
-  const suiteCallStore = useMeetCallStoreContext();
   const liveCallParked = Boolean(
     liveCallChannelId && !(selectedId === liveCallChannelId && showCallChrome),
   );
   useEffect(() => {
     suiteCallStore?.setCallUiParked(liveCallParked);
   }, [liveCallParked, suiteCallStore]);
+  useEffect(() => {
+    if (!suiteCallStore || !liveCallChannelId) return;
+    if (selectedId !== liveCallChannelId) return;
+    if (!meetCallIsActive(call.callLayout)) return;
+    suiteCallStore.setCallUiLayout(call.callLayout);
+  }, [call.callLayout, liveCallChannelId, selectedId, suiteCallStore]);
   useEffect(() => {
     if (!suiteCallStore || !liveCallChannelId) return;
     suiteCallStore.focusCallChannelRef.current = () => setSelectedId(liveCallChannelId);
@@ -963,7 +980,9 @@ export function MeetWorkspace({
   }, [liveCallChannelId, suiteCallStore]);
   useEffect(
     () => () => {
-      suiteCallStore?.setCallUiParked(false);
+      if (!suiteCallStore) return;
+      const engaged = meetCallStatusEngaged(suiteCallStore.getSnapshot().status);
+      suiteCallStore.setCallUiParked(meetCallUiParkedOnWorkspaceUnmount(engaged));
     },
     [suiteCallStore],
   );

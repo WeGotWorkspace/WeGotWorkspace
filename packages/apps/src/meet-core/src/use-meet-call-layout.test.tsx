@@ -115,12 +115,26 @@ describe("useMeetCallLayout", () => {
     expect(result.current.callLayout).toBe("collapsed");
   });
 
-  it("restores the stage for an already-running live session (route remount)", () => {
+  it("restores compact chrome for an already-running live session (route remount)", () => {
     const { result } = renderHook(() =>
       useMeetCallLayout({
         initialLayout: "collapsed",
         channelId: "channel-general",
         liveCallChannelId: "channel-general",
+      }),
+    );
+
+    expect(result.current.callActive).toBe(true);
+    expect(result.current.callLayout).toBe("compact");
+  });
+
+  it("restores the expanded stage when that was the last chrome", () => {
+    const { result } = renderHook(() =>
+      useMeetCallLayout({
+        initialLayout: "collapsed",
+        channelId: "channel-general",
+        liveCallChannelId: "channel-general",
+        resumeLayout: "side-by-side",
       }),
     );
 
