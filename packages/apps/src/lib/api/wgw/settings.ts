@@ -54,6 +54,7 @@ export function mapWgwSettingsStateToUI(state: WgwSettingsStateResponse): Settin
     mail: toMail(state.mail),
     mailServer: toMailServer(state.mailServer),
     logoutUrl: state.logoutUrl,
+    mcpEnabled: state.mcpEnabled === true,
   };
 }
 

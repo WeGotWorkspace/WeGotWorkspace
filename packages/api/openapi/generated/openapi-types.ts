@@ -537,7 +537,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SettingsStateResponse"];
+                    };
                 };
             };
         };
@@ -572,7 +574,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SettingsStateResponse"];
+                    };
                 };
             };
         };
@@ -606,7 +610,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SettingsStateResponse"];
+                    };
                 };
             };
         };
@@ -7435,6 +7441,8 @@ export interface components {
             mail: components["schemas"]["SettingsUserMail"];
             mailServer: components["schemas"]["SettingsUserMailServer"];
             logoutUrl: string;
+            /** @description Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs. */
+            mcpEnabled: boolean;
         };
         /**
          * @example {

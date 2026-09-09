@@ -1331,6 +1331,10 @@
                     },
                     "logoutUrl": {
                         "type": "string"
+                    },
+                    "mcpEnabled": {
+                        "type": "boolean",
+                        "description": "Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs."
                     }
                 },
                 "required": [
@@ -1338,7 +1342,8 @@
                     "groups",
                     "mail",
                     "mailServer",
-                    "logoutUrl"
+                    "logoutUrl",
+                    "mcpEnabled"
                 ]
             },
             "SettingsProfileRequest": {
@@ -11746,7 +11751,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Settings state"
+                        "description": "Settings state",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsStateResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -11765,7 +11777,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Updated settings state"
+                        "description": "Updated settings state",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsStateResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -11784,7 +11803,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Updated settings state"
+                        "description": "Updated settings state",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsStateResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"

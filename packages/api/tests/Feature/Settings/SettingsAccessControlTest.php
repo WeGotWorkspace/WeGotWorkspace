@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\Settings;
 
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\ConfiguresMcp;
 use Tests\Support\SettingsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class SettingsAccessControlTest extends WgwDatabaseTestCase
 {
+    use ConfiguresMcp;
     use SettingsTestFixtures;
 
     protected function setUp(): void
@@ -79,5 +81,21 @@ final class SettingsAccessControlTest extends WgwDatabaseTestCase
 
         $bobState = $this->withBearer($this->userBearerToken())->getJson('/api/v1/settings/state');
         $bobState->assertOk()->assertJsonPath('user.displayName', 'Bob');
+    }
+
+    public function test_regular_user_settings_state_includes_mcp_enabled_without_admin_api(): void
+    {
+        $token = $this->userBearerToken();
+
+        $this->disableMcp();
+        $this->withBearer($token)->getJson('/api/v1/settings/state')
+            ->assertOk()
+            ->assertJsonPath('user.username', 'bob')
+            ->assertJsonPath('mcpEnabled', false);
+
+        $this->enableMcp();
+        $this->withBearer($token)->getJson('/api/v1/settings/state')
+            ->assertOk()
+            ->assertJsonPath('mcpEnabled', true);
     }
 }

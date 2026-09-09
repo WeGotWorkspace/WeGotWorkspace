@@ -5085,7 +5085,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Updated settings state"
+            "description": "Updated settings state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsStateResponse"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"
@@ -5104,7 +5111,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Updated settings state"
+            "description": "Updated settings state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsStateResponse"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"
@@ -5123,7 +5137,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Settings state"
+            "description": "Settings state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsStateResponse"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"

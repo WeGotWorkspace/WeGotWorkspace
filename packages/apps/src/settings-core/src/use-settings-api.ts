@@ -23,6 +23,7 @@ export function useSettingsAPI(source?: SettingsApiSource) {
         smtpSecurity: "",
       },
       logoutUrl: "/logout",
+      mcpEnabled: false,
     }),
     [],
   );

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SettingsAPIOperations, SettingsMcpGrant } from "@/settings-core/src/settings-types";
 
-export function useSettingsMcpGrants(operations?: SettingsAPIOperations) {
+export function useSettingsMcpGrants(operations?: SettingsAPIOperations, enabled = true) {
   const [grants, setGrants] = useState<SettingsMcpGrant[]>([]);
   const [loading, setLoading] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
@@ -10,8 +10,9 @@ export function useSettingsMcpGrants(operations?: SettingsAPIOperations) {
   const revokeMcpGrant = operations?.revokeMcpGrant;
 
   const refresh = useCallback(async () => {
-    if (!listMcpGrants) {
+    if (!enabled || !listMcpGrants) {
       setGrants([]);
+      setLoading(false);
       return;
     }
     setLoading(true);
@@ -23,7 +24,7 @@ export function useSettingsMcpGrants(operations?: SettingsAPIOperations) {
     } finally {
       setLoading(false);
     }
-  }, [listMcpGrants]);
+  }, [enabled, listMcpGrants]);
 
   useEffect(() => {
     void refresh();

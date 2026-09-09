@@ -8,6 +8,8 @@ import {
 import { MCP_ASSISTANT_DATA_WARNING_TITLE } from "@/settings-core/src/mcp-assistant-data-warning";
 import { STORY_MCP_ENDPOINT_URL } from "@/settings-core/src/mcp-endpoint";
 import { shareLabels } from "@/share-ui/share-labels";
+import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
+import { SettingsWorkspace } from "@/settings-core/src/settings-workspace";
 import { SettingsStoryScope } from "./settings-story-scope";
 import type { SettingsMcpGrant } from "@/settings-core/src/settings-types";
 
@@ -124,4 +126,21 @@ export const Loading: Story = {
 
 export const LoadError: Story = {
   render: () => <AssistantsHarness grants={[]} error="Could not load connected assistants." />,
+};
+
+export const DisabledByAdmin: Story = {
+  parameters: { layout: "fullscreen" },
+  render: () => {
+    const bootstrap = createSettingsAppBootstrap({
+      data: { ...createSettingsAppBootstrap().data, mcpEnabled: false },
+    });
+    return <SettingsWorkspace {...bootstrap} initialSection="assistants" />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole("button", { name: "Connected assistants" })).toBeNull();
+    await expect(canvas.queryByRole("textbox", { name: "Connection URL" })).toBeNull();
+    await expect(canvas.queryByText("No assistants connected")).toBeNull();
+    await expect(canvas.getByRole("button", { name: "Profile" })).toBeTruthy();
+  },
 };

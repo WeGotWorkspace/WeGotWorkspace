@@ -106,6 +106,7 @@ final class FrontRoutingTest extends TestCase
             'meet' => ['/meet'],
             'notes' => ['/notes'],
             'settings' => ['/settings'],
+            'settings nested' => ['/settings/assistants'],
             'share' => ['/share/a4ce06285e2e44adb3c55ef3beddf65e'],
             'share trailing slash' => ['/share/'],
             'tasks' => ['/tasks'],

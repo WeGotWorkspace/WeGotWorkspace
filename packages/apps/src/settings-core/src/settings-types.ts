@@ -51,6 +51,8 @@ export type SettingsUIData = {
   mail: SettingsMailCredentials;
   mailServer: SettingsMailServer;
   logoutUrl: string;
+  /** Admin MCP kill-switch. Settings hides Connected assistants when false. */
+  mcpEnabled: boolean;
 };
 
 export type SettingsAPIOperations = {

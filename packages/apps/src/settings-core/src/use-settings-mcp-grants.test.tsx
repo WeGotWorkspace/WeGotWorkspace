@@ -63,4 +63,25 @@ describe("useSettingsMcpGrants", () => {
     expect(revokeMcpGrant).toHaveBeenCalledWith("abc");
     expect(result.current.grants).toEqual([]);
   });
+
+  it("does not load grants when MCP is disabled", async () => {
+    const listMcpGrants = vi.fn().mockResolvedValue([]);
+    const { result } = renderHook(() =>
+      useSettingsMcpGrants(
+        {
+          saveProfile: vi.fn(),
+          saveMail: vi.fn(),
+          listMcpGrants,
+          revokeMcpGrant: vi.fn(),
+        },
+        false,
+      ),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(listMcpGrants).not.toHaveBeenCalled();
+    expect(result.current.grants).toEqual([]);
+  });
 });

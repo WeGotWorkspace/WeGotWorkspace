@@ -22,8 +22,23 @@ import { cn } from "@/lib/utils";
 import "@/settings-core/src/settings-workspace.css";
 
 export function SettingsWorkspace(props: SettingsWorkspaceProps) {
-  const { data, session, operations, className, onLogout } = props;
-  const controller = useSettingsController({ data, operations });
+  const {
+    data,
+    session,
+    operations,
+    section,
+    initialSection,
+    onSectionChange,
+    className,
+    onLogout,
+  } = props;
+  const controller = useSettingsController({
+    data,
+    operations,
+    section,
+    initialSection,
+    onSectionChange,
+  });
 
   useDocumentTitle(controller.currentSection.label);
 
@@ -78,15 +93,15 @@ function MainHeader({ controller }: { controller: SettingsControllerState }) {
 function MainContent({ controller }: { controller: SettingsControllerState }) {
   return (
     <>
-      {controller.section === "profile" ? (
+      {controller.currentSection.id === "profile" ? (
         <SettingsProfilePane profile={controller.profile} />
       ) : null}
-      {controller.section === "memberships" ? (
+      {controller.currentSection.id === "memberships" ? (
         <SettingsMembershipsPane groups={controller.memberships} />
       ) : null}
-      {controller.section === "mail" ? <SettingsMailPane mail={controller.mail} /> : null}
-      {controller.section === "offline" ? <SettingsOfflinePane /> : null}
-      {controller.section === "assistants" ? (
+      {controller.currentSection.id === "mail" ? <SettingsMailPane mail={controller.mail} /> : null}
+      {controller.currentSection.id === "offline" ? <SettingsOfflinePane /> : null}
+      {controller.currentSection.id === "assistants" ? (
         <SettingsAssistantsPane assistants={controller.assistants} />
       ) : null}
     </>
