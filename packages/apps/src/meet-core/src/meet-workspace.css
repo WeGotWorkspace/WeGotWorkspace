@@ -822,8 +822,7 @@
  * `svh` matches Safari chrome (URL bar shown) instead of the larger `dvh`.
  */
 .workspace-columns.meet-guest-channel:not(.meet-workspace--call-active) {
-  height: 100svh;
-  max-height: 100dvh;
+  max-height: 100svh;
 }
 
 .meet-workspace--split .app-sidebar {
@@ -1515,19 +1514,18 @@
 /*
  * Phone: pin name + Knock at the bottom of the visual viewport (clear of the
  * home indicator). Preview / devices scroll in the remaining space.
- * Container query (not @media) so a 390px shell in Storybook matches iPhone.
+ * `@container workspace-columns` matches a 390px shell in Storybook and a
+ * real iPhone visual viewport.
  */
 @container workspace-columns (max-width: 767px) {
   .meet-guest-channel__lobby {
-    @apply overflow-hidden;
-    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
-    padding-right: max(1rem, calc(env(safe-area-inset-right, 0px) + 0.75rem));
-    padding-bottom: 0;
-    padding-left: max(1rem, calc(env(safe-area-inset-left, 0px) + 0.75rem));
+    overflow: hidden;
   }
 
   .meet-guest-lobby__card:not(.meet-guest-lobby__card--status) {
-    @apply my-0 flex max-h-full min-h-0 w-full flex-1 flex-col gap-4 overflow-hidden;
+    display: flex;
+    @apply my-0 max-h-full min-h-0 w-full flex-1 flex-col gap-4;
+    overflow: hidden;
   }
 
   .meet-guest-lobby__card:not(.meet-guest-lobby__card--status) .meet-guest-lobby__heading {
@@ -1535,7 +1533,10 @@
   }
 
   .meet-guest-lobby__card:not(.meet-guest-lobby__card--status) .meet-guest-lobby__media {
-    @apply min-h-0 flex-1 overflow-x-hidden overflow-y-auto;
+    min-height: 0;
+    flex: 1 1 0%;
+    overflow-x: hidden;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 

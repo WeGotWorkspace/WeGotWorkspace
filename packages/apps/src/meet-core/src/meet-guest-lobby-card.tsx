@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Card } from "@/card/src/card";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
 import { cn } from "@/lib/utils";
+import { meetLabels } from "@/meet-core/src/meet-labels";
 import "@/meet-core/src/meet-guest-lobby.css";
 
 export type MeetGuestLobbyCardProps = {
@@ -25,7 +26,15 @@ export function MeetGuestLobbyCard({
       )}
     >
       <div className="meet-guest-lobby__heading">{heading}</div>
-      {media ? <div className="meet-guest-lobby__media">{media}</div> : null}
+      {media ? (
+        <div
+          className="meet-guest-lobby__media"
+          tabIndex={0}
+          aria-label={meetLabels.guestLobbyMediaRegion}
+        >
+          {media}
+        </div>
+      ) : null}
       <div className="meet-guest-lobby__invite">{invite}</div>
     </Card>
   );

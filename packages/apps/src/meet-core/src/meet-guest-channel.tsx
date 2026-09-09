@@ -78,7 +78,15 @@ export function MeetGuestChannelFrame({ children, className }: MeetGuestChannelF
       <WorkspaceAppLayout
         className={cn("meet-workspace meet-workspace--split meet-guest-channel", className)}
         sidebar={null}
-        main={<div className="meet-guest-channel__lobby">{children}</div>}
+        main={
+          <div
+            className="meet-guest-channel__lobby"
+            tabIndex={0}
+            aria-label={meetLabels.guestLobbyRegion}
+          >
+            {children}
+          </div>
+        }
       />
     </TooltipProvider>
   );

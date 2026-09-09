@@ -247,20 +247,35 @@ async function assertKnockFitsIphoneShell(canvasElement: HTMLElement) {
   const shell = canvasElement.querySelector(".meet-guest-channel");
   expect(shell).toBeTruthy();
   const frame = shell as HTMLElement;
+  const parent = frame.parentElement;
+  if (parent) {
+    parent.style.width = IPHONE_SAFARI_VIEWPORT.width;
+    parent.style.height = IPHONE_SAFARI_VIEWPORT.height;
+    parent.style.maxHeight = IPHONE_SAFARI_VIEWPORT.height;
+    parent.style.overflow = "hidden";
+  }
   frame.style.width = IPHONE_SAFARI_VIEWPORT.width;
   frame.style.height = IPHONE_SAFARI_VIEWPORT.height;
   frame.style.maxHeight = IPHONE_SAFARI_VIEWPORT.height;
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  });
+  frame.style.flex = "none";
+  frame.style.alignSelf = "start";
   const canvas = within(canvasElement);
   const knock = canvas.getByRole("button", { name: meetLabels.knockToJoin });
   const media = canvasElement.querySelector(".meet-guest-lobby__media");
   expect(media).toBeTruthy();
-  const overflowY = getComputedStyle(media as HTMLElement).overflowY;
+  let overflowY = "";
+  for (let i = 0; i < 20; i += 1) {
+    overflowY = getComputedStyle(media as HTMLElement).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") break;
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 50);
+    });
+  }
   expect(["auto", "scroll"]).toContain(overflowY);
   const knockBox = knock.getBoundingClientRect();
   const shellBox = frame.getBoundingClientRect();
+  expect(shellBox.width).toBeLessThanOrEqual(391);
+  expect(shellBox.height).toBeLessThanOrEqual(668);
   expect(knockBox.height).toBeGreaterThan(20);
   expect(knockBox.top).toBeGreaterThanOrEqual(shellBox.top - 1);
   expect(knockBox.bottom).toBeLessThanOrEqual(shellBox.bottom + 1);
