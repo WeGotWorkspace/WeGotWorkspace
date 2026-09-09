@@ -241,6 +241,60 @@ export const Lobby: Story = {
   },
 };
 
+const IPHONE_SAFARI_VIEWPORT = { width: "390px", height: "667px" } as const;
+
+async function assertKnockFitsIphoneShell(canvasElement: HTMLElement) {
+  const shell = canvasElement.querySelector(".meet-guest-channel");
+  expect(shell).toBeTruthy();
+  const frame = shell as HTMLElement;
+  frame.style.width = IPHONE_SAFARI_VIEWPORT.width;
+  frame.style.height = IPHONE_SAFARI_VIEWPORT.height;
+  frame.style.maxHeight = IPHONE_SAFARI_VIEWPORT.height;
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+  const canvas = within(canvasElement);
+  const knock = canvas.getByRole("button", { name: meetLabels.knockToJoin });
+  const media = canvasElement.querySelector(".meet-guest-lobby__media");
+  expect(media).toBeTruthy();
+  const overflowY = getComputedStyle(media as HTMLElement).overflowY;
+  expect(["auto", "scroll"]).toContain(overflowY);
+  const knockBox = knock.getBoundingClientRect();
+  const shellBox = frame.getBoundingClientRect();
+  expect(knockBox.height).toBeGreaterThan(20);
+  expect(knockBox.top).toBeGreaterThanOrEqual(shellBox.top - 1);
+  expect(knockBox.bottom).toBeLessThanOrEqual(shellBox.bottom + 1);
+  expect(knockBox.left).toBeGreaterThanOrEqual(shellBox.left - 1);
+  expect(knockBox.right).toBeLessThanOrEqual(shellBox.right + 1);
+}
+
+export const LobbyIphone: Story = {
+  name: "Ready to knock (iPhone)",
+  tags: ["vitest-ci"],
+  args: {
+    phase: "lobby",
+    callLayout: "side-by-side",
+    displayName: "Wouter",
+  },
+  parameters: {
+    viewport: {
+      options: {
+        iphoneSafari: {
+          name: "iPhone Safari 390×667",
+          styles: IPHONE_SAFARI_VIEWPORT,
+          type: "mobile",
+        },
+      },
+    },
+  },
+  globals: {
+    viewport: { value: "iphoneSafari", isRotated: false },
+  },
+  play: async ({ canvasElement }) => {
+    await assertKnockFitsIphoneShell(canvasElement);
+  },
+};
+
 export const SignedInUnauthorized: Story = {
   name: "Signed-in unauthorized",
   tags: ["vitest-ci"],

@@ -347,6 +347,30 @@ describe("meet workspace sidebar chrome", () => {
 });
 
 describe("meet guest invite lobby chrome", () => {
+  it("lets the guest lobby scroll on short iOS viewports and keeps Knock on-screen", () => {
+    expect(css).toMatch(
+      /\.workspace-columns\.meet-guest-channel:not\(\.meet-workspace--call-active\) \{[\s\S]*height:\s*100svh/,
+    );
+    expect(css).toMatch(/\.meet-guest-channel__lobby \{[\s\S]*@apply[^;]*overflow-y-auto/);
+    expect(css).toMatch(/\.meet-guest-channel__lobby \{[\s\S]*env\(safe-area-inset-bottom/);
+    expect(css).toMatch(/\.meet-guest-lobby__card \{[\s\S]*@apply[^;]*my-auto/);
+    const lobbyRule = css.match(/\.meet-guest-channel__lobby \{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(lobbyRule).not.toMatch(/items-center justify-center/);
+    expect(lobbyRule).toMatch(/overflow-y-auto/);
+    expect(css).toMatch(
+      /@container workspace-columns \(max-width: 767px\)[\s\S]*meet-guest-lobby__media[\s\S]*overflow-y-auto/,
+    );
+    expect(css).toMatch(
+      /@container workspace-columns \(max-width: 767px\)[\s\S]*meet-guest-lobby__invite[\s\S]*shrink-0/,
+    );
+    expect(css).toMatch(
+      /@container workspace-columns \(max-width: 767px\)[\s\S]*safe-area-inset-bottom/,
+    );
+    expect(css).toMatch(
+      /@container workspace-columns \(min-width: 768px\)[\s\S]*"media heading"[\s\S]*"media invite"/,
+    );
+  });
+
   it("paints cream/dusk product tokens, not the navy waiting slab", () => {
     const lobby = css.match(/\.meet-guest-channel__lobby \{[\s\S]*?\n\}/)?.[0] ?? "";
     const title =
