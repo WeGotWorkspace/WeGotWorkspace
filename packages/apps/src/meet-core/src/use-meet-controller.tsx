@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
+import { isDisplayCaptureSupported } from "@/meet-core/src/meet-display-capture";
 import type { MeetAPIOperations, MeetRtcSettings } from "@/meet-core/src/meet-types";
 import { useMeetCallSession } from "@/meet-core/src/use-meet-call-session";
 import { meetCanModerateKnocks, useMeetMutations } from "@/meet-core/src/use-meet-mutations";
@@ -105,6 +106,7 @@ export function useMeetController({
     toggleVideo: callSession.toggleVideo,
     setVideoOn: room.setVideoOn,
     toggleScreenShare: callSession.toggleScreenShare,
+    canShareScreen: isDisplayCaptureSupported(),
     switchMic: callSession.switchMic,
     switchCamera: callSession.switchCamera,
     callLink: room.callLink,
