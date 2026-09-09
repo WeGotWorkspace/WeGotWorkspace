@@ -1,4 +1,5 @@
 import { isMeetRoomCode } from "@/calendar-core/src/calendar-meet-link";
+import { meetCallIsActive, type MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 import type { MeetCallStatus } from "@/meet-core/src/meet-call-types";
 import {
   MEET_MEETINGS_ROUTE,
@@ -59,6 +60,16 @@ export function meetShouldSelectLiveCallOnBareMeet(input: {
  */
 export function meetCallUiParkedOnWorkspaceUnmount(callEngaged: boolean): boolean {
   return callEngaged;
+}
+
+/**
+ * Chrome to restore after Meet remounts mid-call. Compact is the join default;
+ * expanded/fullscreen only come back if the user left them that way.
+ */
+export function meetResumeCallLayout(
+  persisted: MeetCallStageLayout | null | undefined,
+): MeetCallStageLayout {
+  return persisted && meetCallIsActive(persisted) ? persisted : "compact";
 }
 
 /**

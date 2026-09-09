@@ -3,6 +3,7 @@ import {
   meetCallMiniPlayerVisible,
   meetCallStatusEngaged,
   meetCallUiParkedOnWorkspaceUnmount,
+  meetResumeCallLayout,
   meetResumeCallNavigateTarget,
   meetResumeLiveCallChannelId,
   meetShouldSelectLiveCallOnBareMeet,
@@ -111,6 +112,20 @@ describe("meetCallUiParkedOnWorkspaceUnmount", () => {
   it("keeps the overlay parked so returning to /meet does not drop it", () => {
     expect(meetCallUiParkedOnWorkspaceUnmount(true)).toBe(true);
     expect(meetCallUiParkedOnWorkspaceUnmount(false)).toBe(false);
+  });
+});
+
+describe("meetResumeCallLayout", () => {
+  it("restores the chrome the user left (compact, split, or fullscreen)", () => {
+    expect(meetResumeCallLayout("compact")).toBe("compact");
+    expect(meetResumeCallLayout("side-by-side")).toBe("side-by-side");
+    expect(meetResumeCallLayout("fullscreen")).toBe("fullscreen");
+  });
+
+  it("defaults to the compact bar when nothing was persisted", () => {
+    expect(meetResumeCallLayout(null)).toBe("compact");
+    expect(meetResumeCallLayout(undefined)).toBe("compact");
+    expect(meetResumeCallLayout("collapsed")).toBe("compact");
   });
 });
 

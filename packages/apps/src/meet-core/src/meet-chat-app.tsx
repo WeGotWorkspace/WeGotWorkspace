@@ -11,6 +11,7 @@ import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import {
   meetCallStatusEngaged,
+  meetResumeCallLayout,
   meetResumeLiveCallChannelId,
 } from "@/meet-core/src/meet-call-resume";
 import {
@@ -362,6 +363,11 @@ function MeetChatLiveWorkspace({
       callStageRoom={callStageRoom}
       // Deep link wins; otherwise returning to /meet mid-call lands on the call.
       initialChannelId={routeChannelId ?? resumeLiveCallChannelId ?? undefined}
+      initialCallLayout={
+        resumeLiveCallChannelId
+          ? meetResumeCallLayout(suiteCallStore?.getSnapshot().callUiLayout)
+          : undefined
+      }
       routeChannelId={routeChannelId}
       liveCallChannelId={resumeLiveCallChannelId}
       onSelectedChannelChange={handleSelectedChannelChange}

@@ -42,5 +42,7 @@ describe("MeetChatApp in-call resume", () => {
       "initialChannelId={routeChannelId ?? resumeLiveCallChannelId ?? undefined}",
     );
     expect(meetChatAppSource).toContain("liveCallChannelId={resumeLiveCallChannelId}");
+    expect(meetChatAppSource).toContain("meetResumeCallLayout");
+    expect(meetChatAppSource).toContain("initialCallLayout={");
   });
 });

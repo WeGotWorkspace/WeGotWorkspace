@@ -211,6 +211,7 @@ describe("MeetCallStore", () => {
     store.setLiveCallChannelKind("dm");
     store.setCallLabel("Alice");
     store.setCallUiParked(true);
+    store.setCallUiLayout("compact");
     store.setMiniPlayerPosition({ x: 48, y: 96 });
 
     store.setStatus("idle");
@@ -221,8 +222,18 @@ describe("MeetCallStore", () => {
       liveCallChannelKind: null,
       callLabel: null,
       callUiParked: false,
+      callUiLayout: null,
       miniPlayerPosition: null,
     });
+  });
+
+  it("keeps compact vs expanded chrome until hang-up", () => {
+    const store = createMeetCallStore();
+    store.setStatus("in-call");
+    store.setCallUiLayout("compact");
+    expect(store.getSnapshot().callUiLayout).toBe("compact");
+    store.setCallUiLayout("side-by-side");
+    expect(store.getSnapshot().callUiLayout).toBe("side-by-side");
   });
 
   it("keeps a dragged mini-player offset until the call ends", () => {

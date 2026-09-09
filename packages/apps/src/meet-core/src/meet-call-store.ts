@@ -1,4 +1,5 @@
 import { syncMeetLocalTrackEnabled } from "@/meet-core/src/meet-local-track-enabled";
+import type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 import type { MeetCallStatus, MeetRemotePeer } from "@/meet-core/src/meet-call-types";
 import type { MeetMiniPlayerPosition } from "@/meet-core/src/meet-mini-player-position";
 import type { MeetChatLine } from "@/meet-core/src/meet-chat-line";
@@ -53,6 +54,12 @@ export type MeetCallSnapshot = {
   /** Channel kind for `liveCallChannelId` (meeting vs channel). Unused for DMs. */
   liveCallChannelKind: string | null;
   /**
+   * Compact vs expanded chrome for the live call. Survives Meet remounts so
+   * returning from another app does not force the split stage. Null until the
+   * user joins; cleared on hang-up.
+   */
+  callUiLayout: MeetCallStageLayout | null;
+  /**
    * Viewport `left`/`top` for the floating mini-player after the user drags it.
    * Null keeps the default bottom-right dock. Survives Meet remounts; cleared on hang-up.
    */
@@ -81,6 +88,7 @@ function createInitialSnapshot(): MeetCallSnapshot {
     callLabel: null,
     liveCallChannelId: null,
     liveCallChannelKind: null,
+    callUiLayout: null,
     miniPlayerPosition: null,
   };
 }
@@ -304,6 +312,10 @@ export class MeetCallStore {
     this.set("liveCallChannelKind", value);
   };
 
+  setCallUiLayout = (value: Updater<MeetCallStageLayout | null>): void => {
+    this.set("callUiLayout", value);
+  };
+
   setMiniPlayerPosition = (value: Updater<MeetMiniPlayerPosition | null>): void => {
     const previous = this.snapshot.miniPlayerPosition;
     const next =
@@ -322,6 +334,7 @@ export class MeetCallStore {
     this.setLiveCallChannelKind(null);
     this.setCallLabel(null);
     this.setCallUiParked(false);
+    this.setCallUiLayout(null);
     this.setMiniPlayerPosition(null);
   };
 
