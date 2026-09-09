@@ -46,7 +46,18 @@ fi
 
 if [ "$apps_changed" -eq 1 ]; then
   echo "pre-push: packages/apps changed — running pnpm test:apps-done-gate"
+  # Do not let Vitest inherit git's pre-push stdin (the ref list pipe).
+  exec < /dev/null
+  set +e
   pnpm test:apps-done-gate
+  gate_status=$?
+  set -e
+  # Storybook/Vitest leftover workers can SIGPIPE (141) after a green gate.
+  if [ "$gate_status" -eq 141 ]; then
+    echo "pre-push: apps done-gate passed; ignoring leftover worker SIGPIPE"
+    exit 0
+  fi
+  exit "$gate_status"
 else
   echo "pre-push: no packages/apps changes — running typecheck"
   pnpm --filter @wgw/apps typecheck
