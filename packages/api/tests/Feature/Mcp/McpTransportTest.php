@@ -150,6 +150,28 @@ final class McpTransportTest extends WgwDatabaseTestCase
             ->assertJsonPath('authorization_servers.0', $origin);
     }
 
+    public function test_ngrok_host_wins_over_app_url_localhost(): void
+    {
+        config(['app.url' => 'https://wegotworkspace.localhost']);
+        $host = 'sheep-nutmeg-zodiac.ngrok-free.dev';
+        $origin = 'https://'.$host;
+
+        $this->getJson($origin.'/.well-known/oauth-authorization-server')
+            ->assertOk()
+            ->assertJsonPath('issuer', $origin)
+            ->assertJsonPath('authorization_endpoint', $origin.'/oauth/authorize')
+            ->assertJsonPath('token_endpoint', $origin.'/oauth/token');
+
+        $this->getJson($origin.'/.well-known/oauth-protected-resource/mcp')
+            ->assertOk()
+            ->assertJsonPath('resource', $origin.'/mcp')
+            ->assertJsonPath('authorization_servers.0', $origin);
+
+        $this->assertStringNotContainsString('wegotworkspace.localhost', (string) $this->getJson(
+            $origin.'/.well-known/oauth-authorization-server',
+        )->getContent());
+    }
+
     public function test_delete_mcp_is_method_not_allowed(): void
     {
         $this->delete('/mcp')->assertStatus(405);

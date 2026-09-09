@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
+use App\Http\Middleware\BindMcpPublicOrigin;
 use App\Http\Middleware\EnsureCalendarsEnabled;
 use App\Http\Middleware\EnsureContactsEnabled;
 use App\Http\Middleware\EnsureMcpEnabled;
@@ -64,6 +65,8 @@ return Application::configure(basePath: dirname(__DIR__))
             ProtectMcpConsent::class,
             FilterMcpConsentScopes::class,
         ]);
+        $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
+        $middleware->append(BindMcpPublicOrigin::class);
         $middleware->append(McpCors::class);
         $middleware->append(EnsureMcpEnabled::class);
         $middleware->append(ResolveCimdClient::class);

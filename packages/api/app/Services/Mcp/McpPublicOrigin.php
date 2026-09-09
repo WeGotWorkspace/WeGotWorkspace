@@ -19,6 +19,13 @@ final class McpPublicOrigin
         return rtrim($request->getSchemeAndHttpHost(), '/');
     }
 
+    public static function isPublicOrigin(string $origin): bool
+    {
+        $host = parse_url($origin, PHP_URL_HOST);
+
+        return is_string($host) && $host !== '' && self::isPublicHostname($host);
+    }
+
     public static function absolute(Request $request, string $path): string
     {
         return self::for($request).'/'.ltrim($path, '/');
@@ -46,12 +53,14 @@ final class McpPublicOrigin
 
     private static function forwardedPublicOrigin(Request $request): ?string
     {
-        $raw = $request->headers->get('X-Forwarded-Host');
-        if (! is_string($raw) || trim($raw) === '') {
+        $host = self::firstForwardedHost($request);
+        if ($host === null) {
             return null;
         }
-        $host = strtolower(trim(explode(',', $raw)[0]));
         $proto = strtolower(trim((string) $request->headers->get('X-Forwarded-Proto', '')));
+        if ($proto === '') {
+            $proto = self::forwardedProto($request) ?? '';
+        }
         $scheme = $proto === 'http' ? 'http' : 'https';
         $host = self::stripStandardPort($host, $scheme);
         if (! self::isPublicHostname($host)) {
@@ -59,6 +68,45 @@ final class McpPublicOrigin
         }
 
         return $scheme.'://'.$host;
+    }
+
+    private static function firstForwardedHost(Request $request): ?string
+    {
+        foreach (['X-Forwarded-Host', 'X-Original-Host'] as $header) {
+            $raw = $request->headers->get($header);
+            if (! is_string($raw) || trim($raw) === '') {
+                continue;
+            }
+            $host = strtolower(trim(explode(',', $raw)[0]));
+            if ($host !== '') {
+                return $host;
+            }
+        }
+
+        $forwarded = $request->headers->get('Forwarded');
+        if (! is_string($forwarded) || trim($forwarded) === '') {
+            return null;
+        }
+        foreach (explode(',', $forwarded) as $hop) {
+            if (preg_match('/host\s*=\s*"?([^;";]+)"?/i', $hop, $match) === 1) {
+                $host = strtolower(trim($match[1]));
+                if ($host !== '') {
+                    return $host;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static function forwardedProto(Request $request): ?string
+    {
+        $forwarded = $request->headers->get('Forwarded');
+        if (! is_string($forwarded) || preg_match('/proto\s*=\s*"?([a-z]+)"?/i', $forwarded, $match) !== 1) {
+            return null;
+        }
+
+        return strtolower($match[1]);
     }
 
     private static function stripStandardPort(string $host, string $scheme): string

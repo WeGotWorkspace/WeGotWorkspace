@@ -105,11 +105,11 @@ Do **not** click Next to configure the connector manually. This instance require
 That warning means Claude’s probe to `/mcp` failed. Typical causes:
 
 1. **The URL is not reachable from the public internet.** `https://wegotworkspace.localhost/mcp` and `http://127.0.0.1:9080/mcp` work for Cursor / Claude Code on your machine. They never work for claude.ai.
-2. **ngrok Host rewrite.** If discovery JSON lists `https://wegotworkspace.localhost/oauth/token`, the tunnel is overwriting `Host`. Restart ngrok without that rewrite, for example:
+2. **ngrok Host rewrite.** If discovery JSON lists `https://wegotworkspace.localhost/oauth/token`, the tunnel is overwriting `Host`. Do **not** use `--host-header=wegotworkspace.localhost`. Restart ngrok so Host stays public, for example:
    ```bash
    ngrok http https://localhost:443 --url=https://YOUR-SUBDOMAIN.ngrok-free.dev --host-header=YOUR-SUBDOMAIN.ngrok-free.dev
    ```
-   Then paste `https://YOUR-SUBDOMAIN.ngrok-free.dev/mcp` into the assistant.
+   Paste that same origin — `https://YOUR-SUBDOMAIN.ngrok-free.dev/mcp` — into ChatGPT/Claude. Copying Connection URL while the admin UI is on `wegotworkspace.localhost` sends assistants to localhost.
 3. **Connected assistants is off.** Admin → Connected assistants must be on and saved. When it is off, `/mcp` returns 403.
 4. **Authorize URL shows the workspace 404 page** (“Page not found” / “Go to Drive”). The PWA service worker served the SPA instead of Laravel. Unregister service workers for this origin (DevTools → Application → Service Workers) and retry. A rebuilt worker ignores `/oauth`, `/mcp`, and `/.well-known/oauth-*`.
 5. **Sign-in and consent succeed, then the assistant shows “Authorization with … failed.”** The browser completed `/oauth/authorize`; the vendor’s **servers** then call `/oauth/token` and `/mcp`. They cannot reach `https://wegotworkspace.localhost`. Re-add the connector using the public tunnel origin — not `localhost`.
