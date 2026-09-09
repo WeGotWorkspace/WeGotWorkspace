@@ -22,6 +22,7 @@ describe("MeetCallExpanded", () => {
     expect(expanded).toMatch(/meet-call-stage__spotlight/);
     expect(expanded).toMatch(/meet-call-stage__strip/);
     expect(expanded).toMatch(/MeetCallToolbar/);
+    expect(expanded).toMatch(/canShareScreen=\{room\.controller\.canShareScreen\}/);
     expect(expanded).not.toMatch(/hideDevices/);
     expect(expanded).toMatch(/MeetPeerTile/);
     expect(expanded).not.toMatch(/leaveLabeled/);

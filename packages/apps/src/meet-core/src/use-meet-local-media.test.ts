@@ -18,4 +18,11 @@ describe("useMeetLocalMedia ensureLocalMedia", () => {
     expect(ts).toMatch(/const unmuteMic = useCallback\(\(\): boolean =>/);
     expect(ts).toContain("unmuteMic,");
   });
+
+  it("does not offer getDisplayMedia when the browser cannot capture the display", () => {
+    expect(ts).toContain("isDisplayCaptureSupported()");
+    expect(ts).toContain("meetLabels.shareScreenUnsupported");
+    expect(ts).toContain("isDisplayCaptureUserCancel");
+    expect(ts).not.toContain("User canceled picker.");
+  });
 });

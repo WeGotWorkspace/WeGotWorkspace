@@ -254,6 +254,7 @@ export function MeetCallExpanded({
             onToggleMic={room.controller.toggleMic}
             onToggleVideo={room.controller.toggleVideo}
             onToggleScreenShare={() => void room.controller.toggleScreenShare()}
+            canShareScreen={room.controller.canShareScreen}
             onCameraChange={(id) => {
               const deviceId = meetDeviceIdForOption(room.cameras, id);
               if (!deviceId) return;
