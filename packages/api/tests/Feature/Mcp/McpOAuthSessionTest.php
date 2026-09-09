@@ -124,6 +124,7 @@ final class McpOAuthSessionTest extends WgwDatabaseTestCase
         $this->get($query['return'])
             ->assertOk()
             ->assertSee('Connect assistant', false)
+            ->assertSee('Data is sent to the assistant vendor’s model.', false)
             ->assertDontSee('Sign in to connect an assistant', false);
     }
 

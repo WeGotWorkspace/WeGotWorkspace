@@ -22,7 +22,7 @@
         <div class="mcp-avatar" role="img" aria-label="Signed in as {{ $username }}">{{ $avatarInitials }}</div>
         <h1 class="mcp-title">Connect assistant</h1>
         <p class="mcp-lead">
-            Allow <strong class="mcp-origin">{{ \App\Services\Mcp\McpRedirectUris::displayHost($clientOrigin) }}</strong>
+            Allow <span class="mcp-origin">{{ \App\Services\Mcp\McpRedirectUris::displayHost($clientOrigin) }}</span>
             to access your workspace?
         </p>
     </header>
@@ -37,7 +37,7 @@
             </p>
             <p class="mcp-warn" role="note">
                 <strong class="mcp-warn__title">Content you allow here leaves this instance</strong>
-                It is sent to the assistant vendor’s model.
+                Data is sent to the assistant vendor’s model.
                 You can revoke access later in Settings → Connected assistants.
             </p>
             <div class="mcp-scope-groups" role="group" aria-labelledby="mcp-permissions-heading" aria-describedby="mcp-permissions-hint">

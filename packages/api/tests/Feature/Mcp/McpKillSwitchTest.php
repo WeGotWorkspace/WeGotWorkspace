@@ -36,7 +36,8 @@ final class McpKillSwitchTest extends WgwDatabaseTestCase
     {
         $this->get('/oauth/authorize')
             ->assertForbidden()
-            ->assertSee('Connected assistants are turned off', false);
+            ->assertSee('Connected assistants are turned off', false)
+            ->assertDontSee('Connect assistant', false);
     }
 
     public function test_mcp_jsonrpc_is_forbidden_when_off(): void

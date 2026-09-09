@@ -17,7 +17,7 @@ export type McpConsentPageMockProps = {
  * Catalog mock of the Passport consent page (`mcp/authorize.blade.php`).
  * Not wired into the PWA — live grant UI stays on `/oauth/authorize`.
  *
- * Layout: header + warning sit above the permissions card; Deny/Allow sit below it.
+ * Layout: signed-in avatar + title above the permissions card; Deny/Allow sit below it.
  */
 export function McpConsentPageMock({
   clientOrigin,
@@ -60,8 +60,8 @@ export function McpConsentPageMock({
           <h1 className="mcp-consent-page__title">Connect assistant</h1>
           <p className="mcp-consent-page__lead">
             Allow{" "}
-            <strong className="mcp-consent-page__origin">{displayOriginHost(clientOrigin)}</strong>{" "}
-            to access your workspace?
+            <span className="mcp-consent-page__origin">{displayOriginHost(clientOrigin)}</span> to
+            access your workspace?
           </p>
         </header>
         <form className="mcp-consent-page__form" onSubmit={onApprove}>

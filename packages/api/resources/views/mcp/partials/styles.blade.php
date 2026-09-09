@@ -14,11 +14,8 @@
         --mcp-card-bg: var(--color-cream);
         --mcp-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
         --mcp-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
-        --mcp-faint: color-mix(in oklab, var(--color-ink) 78%, transparent);
         --mcp-warn-bg: color-mix(in oklab, #c98a1f 14%, transparent);
         --mcp-warn-border: color-mix(in oklab, #c98a1f 35%, transparent);
-        --mcp-error-bg: color-mix(in oklab, #b14242 14%, transparent);
-        --mcp-error-fg: #991b1b;
         --mcp-focus: var(--settings-accent);
         --mcp-control-height: 2.25rem;
     }
@@ -54,10 +51,6 @@
         padding: 1.75rem;
     }
 
-    .mcp-card--wide {
-        max-width: 36rem;
-    }
-
     .mcp-shell .mcp-card {
         margin: 0;
         max-width: none;
@@ -75,16 +68,6 @@
         font-display: swap;
     }
 
-    .mcp-eyebrow {
-        margin: 0 0 0.5rem;
-        font-family: ui-monospace, monospace;
-        font-size: 0.75rem;
-        font-weight: 400;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--mcp-muted);
-    }
-
     h1 {
         font-size: 1.35rem;
         font-weight: 650;
@@ -99,8 +82,11 @@
         line-height: 1.15;
         letter-spacing: -0.025em;
         margin: 0 0 0.5rem;
-        padding-right: 3.5rem;
         color: var(--color-ink);
+    }
+
+    .mcp-header .mcp-title {
+        padding-right: 3.5rem;
     }
 
     .mcp-lead {
@@ -117,7 +103,7 @@
     }
 
     .mcp-origin {
-        font-weight: 700;
+        font-weight: 500;
         word-break: break-word;
     }
 
@@ -156,13 +142,6 @@
         font-weight: 650;
         margin: 0 0 0.15rem;
         color: var(--color-ink);
-    }
-
-    .mcp-error {
-        background: var(--mcp-error-bg);
-        color: var(--mcp-error-fg);
-        padding: 0.6rem 0.75rem;
-        border-radius: var(--control-radius);
     }
 
     .mcp-permissions-intro {
@@ -338,30 +317,6 @@
 
     .mcp-btn--secondary:hover {
         background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-    }
-
-    .mcp-field {
-        display: block;
-        font-weight: 600;
-        margin: 0.75rem 0 0.25rem;
-        color: var(--color-ink);
-    }
-
-    .mcp-input {
-        width: 100%;
-        min-height: var(--mcp-control-height);
-        padding: 0.5rem 0.7rem;
-        border: 1px solid var(--mcp-border);
-        border-radius: var(--control-radius);
-        background: var(--mcp-card-bg);
-        color: var(--color-ink);
-        font: inherit;
-    }
-
-    .mcp-input:focus-visible {
-        outline: 2px solid var(--mcp-focus);
-        outline-offset: 1px;
-        border-color: var(--mcp-focus);
     }
 
     @media (prefers-reduced-motion: reduce) {

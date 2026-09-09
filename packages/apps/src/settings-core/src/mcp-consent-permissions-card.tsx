@@ -23,8 +23,8 @@ export type McpConsentPermissionsCardProps = {
    */
   readOnly?: boolean;
   /**
-   * Card chrome around the permissions list. Default `true` (consent and
-   * Settings Connected assistants). Pass `false` to render without Card chrome.
+   * Card chrome around the permissions list. Default `true` for consent.
+   * Settings Connected assistants passes `false`.
    */
   framed?: boolean;
   /** Heading above the scopes list. Default matches OAuth consent. */
