@@ -28,7 +28,7 @@ final class OAuthRegisterController
             if (! is_string($uri) || ! McpRedirectUris::isAllowed($uri)) {
                 return response()->json([
                     'error' => 'invalid_redirect_uri',
-                    'error_description' => 'redirect_uris must be https or loopback IP literals.',
+                    'error_description' => 'redirect_uris must be https or native-app loopback (127.0.0.1, [::1], or localhost).',
                 ], 400);
             }
         }

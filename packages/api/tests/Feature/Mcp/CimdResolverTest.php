@@ -157,12 +157,32 @@ final class CimdResolverTest extends WgwDatabaseTestCase
         );
     }
 
-    public function test_localhost_redirect_in_metadata_is_rejected(): void
+    public function test_chatgpt_style_loopback_redirects_are_accepted(): void
+    {
+        Http::fake([
+            'https://chatgpt.example.test/oauth/codex/client.json' => Http::response([
+                'client_id' => 'https://chatgpt.example.test/oauth/codex/client.json',
+                'token_endpoint_auth_method' => 'none',
+                'redirect_uris' => [
+                    'http://127.0.0.1/callback/t-7TrfN7xkBK',
+                    'http://localhost/callback/t-7TrfN7xkBK',
+                ],
+            ], 200, ['Content-Type' => 'application/json']),
+        ]);
+
+        $client = app(CimdResolver::class)->resolve('https://chatgpt.example.test/oauth/codex/client.json');
+        $this->assertSame([
+            'http://127.0.0.1/callback/t-7TrfN7xkBK',
+            'http://localhost/callback/t-7TrfN7xkBK',
+        ], $client->redirect_uris);
+    }
+
+    public function test_http_non_loopback_redirect_in_metadata_is_rejected(): void
     {
         Http::fake([
             'https://metadata.example.test/client.json' => Http::response([
                 'token_endpoint_auth_method' => 'none',
-                'redirect_uris' => ['http://localhost:8787/cb'],
+                'redirect_uris' => ['http://evil.example/cb'],
             ], 200, ['Content-Type' => 'application/json']),
         ]);
 
@@ -171,16 +191,30 @@ final class CimdResolverTest extends WgwDatabaseTestCase
         app(CimdResolver::class)->resolve('https://metadata.example.test/client.json');
     }
 
-    public function test_dcr_rejects_localhost_hostname_and_accepts_loopback_ip(): void
+    public function test_https_localhost_redirect_in_metadata_is_rejected(): void
+    {
+        Http::fake([
+            'https://metadata.example.test/client.json' => Http::response([
+                'token_endpoint_auth_method' => 'none',
+                'redirect_uris' => ['https://localhost/callback'],
+            ], 200, ['Content-Type' => 'application/json']),
+        ]);
+
+        $this->expectException(CimdException::class);
+        $this->expectExceptionMessage('disallowed URI');
+        app(CimdResolver::class)->resolve('https://metadata.example.test/client.json');
+    }
+
+    public function test_dcr_accepts_native_app_loopback_and_rejects_http_public_hosts(): void
     {
         $this->postJson('/oauth/register', [
-            'client_name' => 'Local',
-            'redirect_uris' => ['http://localhost:1234/cb'],
+            'client_name' => 'Evil',
+            'redirect_uris' => ['http://evil.example/cb'],
         ])->assertStatus(400)->assertJsonPath('error', 'invalid_redirect_uri');
 
         $created = $this->postJson('/oauth/register', [
             'client_name' => 'Loopback',
-            'redirect_uris' => ['http://127.0.0.1:1234/cb'],
+            'redirect_uris' => ['http://127.0.0.1:1234/cb', 'http://localhost:1234/cb'],
         ])->assertCreated()->assertJsonPath('token_endpoint_auth_method', 'none');
         $dcrClient = Passport::client()->newQuery()->find($created->json('client_id'));
         $this->assertNotNull($dcrClient);

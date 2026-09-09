@@ -26,7 +26,8 @@ final class McpRedirectUris
             return true;
         }
         if ($scheme === 'http') {
-            return $host === '127.0.0.1' || $host === '::1';
+            // RFC 8252 native-app loopback. http to LAN or public hosts stays disallowed.
+            return $host === '127.0.0.1' || $host === '::1' || $host === 'localhost';
         }
 
         return false;
