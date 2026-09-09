@@ -116,6 +116,7 @@ export function createMeetStoryController(
     toggleVideo: noop,
     setVideoOn: noop,
     toggleScreenShare: noopAsync,
+    canShareScreen: true,
     switchMic: noopAsync,
     switchCamera: noopAsync,
     callLink: STORY_MEET_CALL_LINK,

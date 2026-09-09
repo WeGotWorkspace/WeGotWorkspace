@@ -1,5 +1,7 @@
 import { syncMeetLocalTrackEnabled } from "@/meet-core/src/meet-local-track-enabled";
+import type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 import type { MeetCallStatus, MeetRemotePeer } from "@/meet-core/src/meet-call-types";
+import type { MeetMiniPlayerPosition } from "@/meet-core/src/meet-mini-player-position";
 import type { MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import type { PeerInboundSample } from "@/meet-core/src/meet-inbound-media-hints";
 import type { MeetKnocker } from "@/meet-core/src/meet-poll-roster";
@@ -34,8 +36,9 @@ export type MeetCallSnapshot = {
   remoteCallActive: boolean;
   /**
    * The Meet chat workspace is mounted but the live call's channel is not on
-   * screen (another channel selected). Lets the mini-player show inside `/meet`;
-   * legacy shells never set this, so their full-screen call keeps hiding it.
+   * screen (another channel selected, or Meet unmounted while the call
+   * continues). Lets the mini-player show inside `/meet`; legacy shells never
+   * set this, so their full-screen call keeps hiding it.
    */
   callUiParked: boolean;
   /**
@@ -43,6 +46,24 @@ export type MeetCallSnapshot = {
    * Null for ad-hoc/legacy rooms — the mini-player falls back to "Meet".
    */
   callLabel: string | null;
+  /**
+   * Workspace selection key for the live call (`chat-…`, `dm:{peer}`). Survives
+   * Meet unmount so returning via the app switcher can restore the in-call view.
+   */
+  liveCallChannelId: string | null;
+  /** Channel kind for `liveCallChannelId` (meeting vs channel). Unused for DMs. */
+  liveCallChannelKind: string | null;
+  /**
+   * Compact vs expanded chrome for the live call. Survives Meet remounts so
+   * returning from another app does not force the split stage. Null until the
+   * user joins; cleared on hang-up.
+   */
+  callUiLayout: MeetCallStageLayout | null;
+  /**
+   * Viewport `left`/`top` for the floating mini-player after the user drags it.
+   * Null keeps the default bottom-right dock. Survives Meet remounts; cleared on hang-up.
+   */
+  miniPlayerPosition: MeetMiniPlayerPosition | null;
 };
 
 function createInitialSnapshot(): MeetCallSnapshot {
@@ -65,6 +86,10 @@ function createInitialSnapshot(): MeetCallSnapshot {
     remoteCallActive: false,
     callUiParked: false,
     callLabel: null,
+    liveCallChannelId: null,
+    liveCallChannelKind: null,
+    callUiLayout: null,
+    miniPlayerPosition: null,
   };
 }
 
@@ -196,6 +221,9 @@ export class MeetCallStore {
 
   setStatus = (value: Updater<MeetCallStatus>): void => {
     this.set("status", value, this.statusRef);
+    if (this.statusRef.current === "idle" || this.statusRef.current === "failed") {
+      this.clearLiveCallResume();
+    }
   };
 
   setError = (value: Updater<string | null>): void => {
@@ -274,6 +302,40 @@ export class MeetCallStore {
 
   setCallLabel = (value: Updater<string | null>): void => {
     this.set("callLabel", value);
+  };
+
+  setLiveCallChannelId = (value: Updater<string | null>): void => {
+    this.set("liveCallChannelId", value);
+  };
+
+  setLiveCallChannelKind = (value: Updater<string | null>): void => {
+    this.set("liveCallChannelKind", value);
+  };
+
+  setCallUiLayout = (value: Updater<MeetCallStageLayout | null>): void => {
+    this.set("callUiLayout", value);
+  };
+
+  setMiniPlayerPosition = (value: Updater<MeetMiniPlayerPosition | null>): void => {
+    const previous = this.snapshot.miniPlayerPosition;
+    const next =
+      typeof value === "function"
+        ? (value as (prev: MeetMiniPlayerPosition | null) => MeetMiniPlayerPosition | null)(
+            previous,
+          )
+        : value;
+    if (previous?.x === next?.x && previous?.y === next?.y) return;
+    this.set("miniPlayerPosition", next);
+  };
+
+  /** Hang-up / failure: drop resume keys so a later `/meet` visit is not hijacked. */
+  clearLiveCallResume = (): void => {
+    this.setLiveCallChannelId(null);
+    this.setLiveCallChannelKind(null);
+    this.setCallLabel(null);
+    this.setCallUiParked(false);
+    this.setCallUiLayout(null);
+    this.setMiniPlayerPosition(null);
   };
 
   resetPeerMaps = (): void => {

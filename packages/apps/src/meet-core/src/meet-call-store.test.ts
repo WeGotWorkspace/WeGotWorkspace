@@ -187,4 +187,64 @@ describe("MeetCallStore", () => {
     store.toggleMicRef.current();
     expect(store.getSnapshot().micOn).toBe(true);
   });
+
+  it("persists the live call channel so a remount can restore in-call chrome", () => {
+    const store = createMeetCallStore();
+    store.setStatus("in-call");
+    store.setLiveCallChannelId("chat-design");
+    store.setLiveCallChannelKind("channel");
+    store.setCallLabel("Design");
+    store.setCallUiParked(true);
+
+    expect(store.getSnapshot()).toMatchObject({
+      liveCallChannelId: "chat-design",
+      liveCallChannelKind: "channel",
+      callLabel: "Design",
+      callUiParked: true,
+    });
+  });
+
+  it("clears resume keys when the call returns to idle (hang up outside /meet)", () => {
+    const store = createMeetCallStore();
+    store.setStatus("in-call");
+    store.setLiveCallChannelId("dm:alice");
+    store.setLiveCallChannelKind("dm");
+    store.setCallLabel("Alice");
+    store.setCallUiParked(true);
+    store.setCallUiLayout("compact");
+    store.setMiniPlayerPosition({ x: 48, y: 96 });
+
+    store.setStatus("idle");
+
+    expect(store.getSnapshot()).toMatchObject({
+      status: "idle",
+      liveCallChannelId: null,
+      liveCallChannelKind: null,
+      callLabel: null,
+      callUiParked: false,
+      callUiLayout: null,
+      miniPlayerPosition: null,
+    });
+  });
+
+  it("keeps compact vs expanded chrome until hang-up", () => {
+    const store = createMeetCallStore();
+    store.setStatus("in-call");
+    store.setCallUiLayout("compact");
+    expect(store.getSnapshot().callUiLayout).toBe("compact");
+    store.setCallUiLayout("side-by-side");
+    expect(store.getSnapshot().callUiLayout).toBe("side-by-side");
+  });
+
+  it("keeps a dragged mini-player offset until the call ends", () => {
+    const store = createMeetCallStore();
+    const listener = vi.fn();
+    store.subscribe(listener);
+    store.setStatus("in-call");
+    store.setMiniPlayerPosition({ x: 40, y: 80 });
+    expect(store.getSnapshot().miniPlayerPosition).toEqual({ x: 40, y: 80 });
+    listener.mockClear();
+    store.setMiniPlayerPosition({ x: 40, y: 80 });
+    expect(listener).not.toHaveBeenCalled();
+  });
 });

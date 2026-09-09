@@ -31,3 +31,18 @@ describe("MeetChatApp upcoming join", () => {
     expect(meetChatAppSource).toContain("byId.delete(eventId)");
   });
 });
+
+describe("MeetChatApp in-call resume", () => {
+  it("restores the persisted live call channel when remounting on /meet", () => {
+    expect(meetChatAppSource).toContain("meetResumeLiveCallChannelId");
+    expect(meetChatAppSource).toContain("resumeLiveCallChannelId");
+    expect(meetChatAppSource).toContain("setLiveCallChannelId");
+    expect(meetChatAppSource).toContain("clearLiveCallResume");
+    expect(meetChatAppSource).toContain(
+      "initialChannelId={routeChannelId ?? resumeLiveCallChannelId ?? undefined}",
+    );
+    expect(meetChatAppSource).toContain("liveCallChannelId={resumeLiveCallChannelId}");
+    expect(meetChatAppSource).toContain("meetResumeCallLayout");
+    expect(meetChatAppSource).toContain("initialCallLayout={");
+  });
+});

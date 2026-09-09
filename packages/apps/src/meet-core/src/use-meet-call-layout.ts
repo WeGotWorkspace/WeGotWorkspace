@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { meetCallIsActive, type MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
+import { meetResumeCallLayout } from "@/meet-core/src/meet-call-resume";
 import type { MeetChatOperations } from "@/meet-core/src/meet-types";
 
 export type UseMeetCallLayoutArgs = {
@@ -11,10 +12,15 @@ export type UseMeetCallLayoutArgs = {
    * trees, which keeps layout state purely local). When provided, layout state
    * follows session *transitions*: a session that ends (remote end, join
    * failure) collapses its channel's chrome, and an already-running session
-   * (e.g. restored from the suite call store after a route remount) re-opens
-   * its stage.
+   * (e.g. restored from the suite call store after a route remount) restores
+   * the last compact/expanded chrome instead of forcing the split stage.
    */
   liveCallChannelId?: string | null;
+  /**
+   * Compact vs expanded chrome to restore when an already-running session is
+   * remounted. Defaults to the compact bar (join chrome), not the split stage.
+   */
+  resumeLayout?: MeetCallStageLayout;
 };
 
 function seedLayouts(
@@ -34,6 +40,7 @@ export function useMeetCallLayout({
   operations,
   channelId,
   liveCallChannelId,
+  resumeLayout,
 }: UseMeetCallLayoutArgs) {
   const [layouts, setLayouts] = useState<Record<string, MeetCallStageLayout>>(() =>
     seedLayouts(channelId, initialLayout),
@@ -70,12 +77,13 @@ export function useMeetCallLayout({
     previousLiveChannelRef.current = liveCallChannelId;
     if (previous) writeLayout(previous, "collapsed");
     if (!liveCallChannelId) return;
+    const restored = meetResumeCallLayout(resumeLayout);
     setLayouts((current) =>
       meetCallIsActive(current[liveCallChannelId] ?? "collapsed")
         ? current
-        : { ...current, [liveCallChannelId]: "side-by-side" },
+        : { ...current, [liveCallChannelId]: restored },
     );
-  }, [liveCallChannelId, writeLayout]);
+  }, [liveCallChannelId, resumeLayout, writeLayout]);
 
   const startCall = useCallback(
     (options?: { video?: boolean }) => {

@@ -25,6 +25,12 @@ describe("MeetCallToolbar", () => {
     );
   });
 
+  it("omits Share screen when display capture is unavailable", () => {
+    expect(toolbar).toMatch(/isDisplayCaptureSupported/);
+    expect(toolbar).toMatch(/shareAvailable \|\| screenOn/);
+    expect(toolbar).toMatch(/meetLabels\.shareScreen/);
+  });
+
   it("exposes the device popover trigger as a sm subtle IconButton", () => {
     expect(toolbar).toMatch(/from "@\/meet-core\/src\/meet-device-popover"/);
     expect(toolbar).toMatch(/size="sm"/);
