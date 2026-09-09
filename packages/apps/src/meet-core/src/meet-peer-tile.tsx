@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Mic, MicOff } from "lucide-react";
-import { IconButton } from "@/button/src/button";
+import { useAppToast } from "@/hooks/use-app-toast";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { shouldMirrorMeetStream } from "@/meet-core/src/meet-stream-mirror";
 import { MeetStreamVideo } from "@/meet-core/src/meet-stream-video";
@@ -28,8 +28,11 @@ type MeetPeerTileProps = {
    * loops through speakers. Remote tiles stay unmuted (they carry remote audio).
    */
   muted?: boolean;
-  /** Host/moderator: force-mute this remote peer. Omitted for guests and self. */
-  onMuteParticipant?: () => void;
+  /**
+   * Host/moderator: set this remote peer muted (`true`) or unmuted (`false`).
+   * Omitted for guests and self.
+   */
+  onMuteParticipant?: (muted: boolean) => void;
 };
 
 export function MeetPeerTile({
@@ -47,6 +50,7 @@ export function MeetPeerTile({
   onMuteParticipant,
   muted,
 }: MeetPeerTileProps) {
+  const toast = useAppToast();
   const { cameraRendering, micLive } = usePeerStreamPresence(stream);
   const [remoteVideoOk, setRemoteVideoOk] = useState(true);
 
@@ -68,27 +72,35 @@ export function MeetPeerTile({
   const showRemoteVideo = !!(
     stream && (disclosedMedia ? disclosedMedia.camera || disclosedMedia.screen : cameraFromTracks)
   );
-  const micLiveUi = disclosedMedia ? disclosedMedia.mic : micFromTracks;
+  const isSelfMute = typeof onToggleMic === "function";
+  const micLiveUi = isSelfMute
+    ? Boolean(micOn)
+    : disclosedMedia
+      ? disclosedMedia.mic
+      : micFromTracks;
   const showAvatarFill = !showRemoteVideo || !remoteVideoOk;
   const mirrored = shouldMirrorMeetStream(stream, disclosedMedia?.screen);
   const playbackStream = stream && stream.getTracks().length > 0 ? stream : null;
   const avatarSize = spotlight ? "xl" : compact ? "md" : "lg";
-  const isSelfMute = typeof onToggleMic === "function";
   const playbackMuted = muted ?? isSelfMute;
   const canForceMute = !isSelfMute && typeof onMuteParticipant === "function";
-  const showMute = isSelfMute || canForceMute;
-  const mutePressed = isSelfMute ? Boolean(micOn) : true;
+  const canToggleMute = isSelfMute || canForceMute;
   const muteLabel = isSelfMute
-    ? micOn
+    ? micLiveUi
       ? meetLabels.mute
       : meetLabels.unmute
-    : meetLabels.muteParticipant;
+    : micLiveUi
+      ? meetLabels.muteParticipant
+      : meetLabels.unmuteParticipant;
   const onMuteClick = () => {
     if (isSelfMute) {
       onToggleMic();
+      toast.show(micLiveUi ? meetLabels.microphoneMuted : meetLabels.microphoneUnmuted, {
+        severity: "info",
+      });
       return;
     }
-    onMuteParticipant?.();
+    onMuteParticipant?.(micLiveUi);
   };
   const avatar = (
     <UserAvatar
@@ -111,6 +123,13 @@ export function MeetPeerTile({
         {caption ? <p className="meet-peer-tile__caption">{caption}</p> : null}
       </div>
     ) : null;
+  const nameBadge = (
+    <>
+      {micLiveUi ? <Mic className="size-3" /> : <MicOff className="size-3 text-red-400" />}
+      <span>{name}</span>
+    </>
+  );
+  const nameClassName = cn("meet-peer-tile__name", !micLiveUi && "meet-peer-tile__name--mic-muted");
 
   return (
     <div
@@ -147,23 +166,20 @@ export function MeetPeerTile({
           {identity}
         </div>
       )}
-      <div className={cn("meet-peer-tile__name", !micLiveUi && "meet-peer-tile__name--mic-muted")}>
-        {micLiveUi ? <Mic className="size-3" /> : <MicOff className="size-3 text-red-400" />}
-        <span>{name}</span>
-      </div>
-      {showMute ? (
-        <IconButton
-          icon={mutePressed ? <Mic /> : <MicOff />}
-          label={muteLabel}
-          size="sm"
-          variant="subtle"
-          active={mutePressed}
-          aria-pressed={mutePressed}
-          showTooltip={false}
-          className="meet-peer-tile__mute"
+      {canToggleMute ? (
+        <button
+          type="button"
+          className={nameClassName}
+          aria-label={muteLabel}
+          aria-pressed={!micLiveUi}
+          title={muteLabel}
           onClick={onMuteClick}
-        />
-      ) : null}
+        >
+          {nameBadge}
+        </button>
+      ) : (
+        <div className={nameClassName}>{nameBadge}</div>
+      )}
     </div>
   );
 }

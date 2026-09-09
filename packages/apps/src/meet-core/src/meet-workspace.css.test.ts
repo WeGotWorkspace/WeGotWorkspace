@@ -342,11 +342,39 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).not.toMatch(/box-shadow:\s*0 0 0 1px var\(--meet-live\)/);
     expect(css).toMatch(/\.meet-call-stage__strip[\s\S]*w-44/);
     expect(css).toMatch(/\.meet-call-stage__strip \.meet-peer-tile--compact[\s\S]*min-h-36/);
-    expect(css).toMatch(/\.meet-peer-tile__mute/);
+    expect(css).toMatch(/button\.meet-peer-tile__name/);
+    expect(css).not.toMatch(/\.meet-peer-tile__mute/);
   });
 });
 
 describe("meet guest invite lobby chrome", () => {
+  it("lets the guest lobby scroll on short iOS viewports and keeps Knock on-screen", () => {
+    expect(css).toMatch(
+      /\.workspace-columns\.meet-guest-channel:not\(\.meet-workspace--call-active\) \{[\s\S]*max-height:\s*100svh/,
+    );
+    expect(css).toMatch(/\.meet-guest-channel__lobby \{[\s\S]*@apply[^;]*overflow-y-auto/);
+    expect(css).toMatch(/\.meet-guest-channel__lobby \{[\s\S]*env\(safe-area-inset-bottom/);
+    expect(css).toMatch(/\.meet-guest-lobby__card \{[\s\S]*@apply[^;]*my-auto/);
+    const lobbyRule = css.match(/\.meet-guest-channel__lobby \{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(lobbyRule).not.toMatch(/items-center justify-center/);
+    expect(lobbyRule).toMatch(/overflow-y-auto/);
+    expect(css).toMatch(
+      /@container workspace-columns \(max-width: 767px\)[\s\S]*overflow-y:\s*auto/,
+    );
+    expect(css).toMatch(
+      /@container workspace-columns \(max-width: 767px\)[\s\S]*meet-guest-lobby__invite[\s\S]*shrink-0/,
+    );
+    expect(css).toMatch(
+      /@container workspace-columns \(max-width: 767px\)[\s\S]*safe-area-inset-bottom/,
+    );
+    expect(css).toMatch(
+      /@container workspace-columns \(min-width: 768px\)[\s\S]*"media heading"[\s\S]*"media invite"/,
+    );
+    expect(guestChannel).toMatch(/aria-label=\{meetLabels\.guestLobbyRegion\}/);
+    expect(guestLobbyCard).toMatch(/aria-label=\{meetLabels\.guestLobbyMediaRegion\}/);
+    expect(guestLobbyCard).toMatch(/tabIndex=\{0\}/);
+  });
+
   it("paints cream/dusk product tokens, not the navy waiting slab", () => {
     const lobby = css.match(/\.meet-guest-channel__lobby \{[\s\S]*?\n\}/)?.[0] ?? "";
     const title =

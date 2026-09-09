@@ -46,8 +46,8 @@ export type MeetCallBarProps = {
   onSpeakerChange: (optionId: string) => void;
   onExpand: () => void;
   onLeave: () => void;
-  /** Host/moderator: force-mute a remote peer. Omitted for guests. */
-  onMuteParticipant?: (peerId: string) => void;
+  /** Host/moderator: mute (`true`) or unmute (`false`) a remote peer. Omitted for guests. */
+  onMuteParticipant?: (peerId: string, muted?: boolean) => void;
   /** IconButton cluster + camera tiles — only after this user joins. */
   joined?: boolean;
   /** Join on the bar while a meeting is live and this user has not joined. Start never lives here. */
@@ -219,7 +219,9 @@ export function MeetCallBar({
               compact
               remoteMedia={peer.remoteMedia}
               disclosedMedia={peer.disclosedMedia}
-              onMuteParticipant={onMuteParticipant ? () => onMuteParticipant(peer.id) : undefined}
+              onMuteParticipant={
+                onMuteParticipant ? (muted) => onMuteParticipant(peer.id, muted) : undefined
+              }
             />
           ))}
         </div>
