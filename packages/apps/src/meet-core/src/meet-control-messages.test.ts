@@ -77,8 +77,14 @@ describe("meet control messages", () => {
   });
 
   it("rejects malformed control payloads", () => {
+    const wire = (payload: unknown) => `__wgw_meet_control__:${JSON.stringify(payload)}`;
     expect(parseMeetControlMessage("hello")).toBeNull();
     expect(parseMeetControlMessage("__wgw_meet_control__:{")).toBeNull();
+    expect(parseMeetControlMessage(wire([]))).toBeNull();
+    expect(parseMeetControlMessage(wire(1))).toBeNull();
+    expect(parseMeetControlMessage(wire({ kind: "mute", peerId: "" }))).toBeNull();
+    expect(parseMeetControlMessage(wire({ kind: "unmute", peerId: "" }))).toBeNull();
+    expect(parseMeetControlMessage(wire({ kind: "unknown" }))).toBeNull();
     expect(
       parseMeetControlMessage(buildMeetControlMessage({ kind: "media", mic: true, camera: false })),
     ).not.toBeNull();
