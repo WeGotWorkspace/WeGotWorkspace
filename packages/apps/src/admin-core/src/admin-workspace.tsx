@@ -25,8 +25,14 @@ import { cn } from "@/lib/utils";
 import "@/admin-core/src/admin-workspace.css";
 
 export function AdminWorkspace(props: AdminWorkspaceProps) {
-  const { data, session, className, onLogout } = props;
-  const controller = useAdminController({ data, operations: props.operations });
+  const { data, session, className, onLogout, section, initialSection, onSectionChange } = props;
+  const controller = useAdminController({
+    data,
+    operations: props.operations,
+    section,
+    initialSection,
+    onSectionChange,
+  });
 
   useDocumentTitle(controller.currentSection.label);
 
