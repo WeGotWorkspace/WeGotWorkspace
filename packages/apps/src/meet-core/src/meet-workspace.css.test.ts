@@ -342,7 +342,8 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).not.toMatch(/box-shadow:\s*0 0 0 1px var\(--meet-live\)/);
     expect(css).toMatch(/\.meet-call-stage__strip[\s\S]*w-44/);
     expect(css).toMatch(/\.meet-call-stage__strip \.meet-peer-tile--compact[\s\S]*min-h-36/);
-    expect(css).toMatch(/\.meet-peer-tile__mute/);
+    expect(css).toMatch(/button\.meet-peer-tile__name/);
+    expect(css).not.toMatch(/\.meet-peer-tile__mute/);
   });
 });
 
