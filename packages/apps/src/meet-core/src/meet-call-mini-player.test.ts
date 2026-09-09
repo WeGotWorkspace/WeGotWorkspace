@@ -13,4 +13,13 @@ describe("MeetCallMiniPlayer return to call", () => {
     expect(miniPlayer).not.toContain("meetSearchFromRoom");
     expect(miniPlayer).not.toMatch(/to:\s*"\/meet"/);
   });
+
+  it("lets the user drag the card without treating action clicks as a drag", () => {
+    expect(miniPlayer).toContain("meetClampMiniPlayerPosition");
+    expect(miniPlayer).toContain("meetMiniPlayerDragExceededThreshold");
+    expect(miniPlayer).toContain("setMiniPlayerPosition");
+    expect(miniPlayer).toContain("setPointerCapture");
+    expect(miniPlayer).toContain('closest(".meet-mini-player__actions")');
+    expect(miniPlayer).toContain("meet-mini-player--dragging");
+  });
 });

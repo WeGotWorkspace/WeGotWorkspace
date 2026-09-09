@@ -211,6 +211,7 @@ describe("MeetCallStore", () => {
     store.setLiveCallChannelKind("dm");
     store.setCallLabel("Alice");
     store.setCallUiParked(true);
+    store.setMiniPlayerPosition({ x: 48, y: 96 });
 
     store.setStatus("idle");
 
@@ -220,6 +221,19 @@ describe("MeetCallStore", () => {
       liveCallChannelKind: null,
       callLabel: null,
       callUiParked: false,
+      miniPlayerPosition: null,
     });
+  });
+
+  it("keeps a dragged mini-player offset until the call ends", () => {
+    const store = createMeetCallStore();
+    const listener = vi.fn();
+    store.subscribe(listener);
+    store.setStatus("in-call");
+    store.setMiniPlayerPosition({ x: 40, y: 80 });
+    expect(store.getSnapshot().miniPlayerPosition).toEqual({ x: 40, y: 80 });
+    listener.mockClear();
+    store.setMiniPlayerPosition({ x: 40, y: 80 });
+    expect(listener).not.toHaveBeenCalled();
   });
 });

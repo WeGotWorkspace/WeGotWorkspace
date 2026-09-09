@@ -1,5 +1,6 @@
 import { syncMeetLocalTrackEnabled } from "@/meet-core/src/meet-local-track-enabled";
 import type { MeetCallStatus, MeetRemotePeer } from "@/meet-core/src/meet-call-types";
+import type { MeetMiniPlayerPosition } from "@/meet-core/src/meet-mini-player-position";
 import type { MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import type { PeerInboundSample } from "@/meet-core/src/meet-inbound-media-hints";
 import type { MeetKnocker } from "@/meet-core/src/meet-poll-roster";
@@ -51,6 +52,11 @@ export type MeetCallSnapshot = {
   liveCallChannelId: string | null;
   /** Channel kind for `liveCallChannelId` (meeting vs channel). Unused for DMs. */
   liveCallChannelKind: string | null;
+  /**
+   * Viewport `left`/`top` for the floating mini-player after the user drags it.
+   * Null keeps the default bottom-right dock. Survives Meet remounts; cleared on hang-up.
+   */
+  miniPlayerPosition: MeetMiniPlayerPosition | null;
 };
 
 function createInitialSnapshot(): MeetCallSnapshot {
@@ -75,6 +81,7 @@ function createInitialSnapshot(): MeetCallSnapshot {
     callLabel: null,
     liveCallChannelId: null,
     liveCallChannelKind: null,
+    miniPlayerPosition: null,
   };
 }
 
@@ -297,12 +304,25 @@ export class MeetCallStore {
     this.set("liveCallChannelKind", value);
   };
 
+  setMiniPlayerPosition = (value: Updater<MeetMiniPlayerPosition | null>): void => {
+    const previous = this.snapshot.miniPlayerPosition;
+    const next =
+      typeof value === "function"
+        ? (value as (prev: MeetMiniPlayerPosition | null) => MeetMiniPlayerPosition | null)(
+            previous,
+          )
+        : value;
+    if (previous?.x === next?.x && previous?.y === next?.y) return;
+    this.set("miniPlayerPosition", next);
+  };
+
   /** Hang-up / failure: drop resume keys so a later `/meet` visit is not hijacked. */
   clearLiveCallResume = (): void => {
     this.setLiveCallChannelId(null);
     this.setLiveCallChannelKind(null);
     this.setCallLabel(null);
     this.setCallUiParked(false);
+    this.setMiniPlayerPosition(null);
   };
 
   resetPeerMaps = (): void => {
