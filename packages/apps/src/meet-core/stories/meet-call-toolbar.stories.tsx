@@ -130,7 +130,6 @@ const baseArgs: MeetCallToolbarStoryArgs = {
 
 export const Default: Story = {
   args: baseArgs,
-  tags: ["vitest-ci"],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const devices = canvas.getByRole("button", { name: meetLabels.devices });
