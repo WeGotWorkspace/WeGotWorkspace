@@ -46,6 +46,21 @@ describe("docs workspace outline chrome", () => {
     );
   });
 
+  it("remaps footer logout outline washes to the same ink-into-blue tokens as sidebar scroll", () => {
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__footer \{[\s\S]*--button-outline-hover-color:\s*#ffffff/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__footer \{[\s\S]*--button-outline-hover-background:\s*color-mix\(in oklab,\s*#000000 10%,\s*var\(--docs-sidebar\)\)/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__footer \{[\s\S]*--button-outline-active-background:\s*color-mix\(in oklab,\s*#000000 16%,\s*var\(--docs-sidebar\)\)/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__footer \{[\s\S]*--button-outline-active-hover-background:\s*color-mix\(in oklab,\s*#000000 22%,\s*var\(--docs-sidebar\)\)/,
+    );
+  });
+
   it("uses outline IconButtons for header actions and home load-more", () => {
     expect(headerActions).toMatch(/variant="outline"/);
     expect(headerActions).not.toMatch(/variant="subtle"/);

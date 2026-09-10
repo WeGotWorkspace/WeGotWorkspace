@@ -217,6 +217,12 @@
 
 .docs-workspace .app-sidebar__footer {
   --color-ink: var(--app-sidebar-color);
+  /* Match scroll MenuItem outline remaps so logout IconButton hover/active washes align. */
+  --button-active-color: #ffffff;
+  --button-outline-hover-color: #ffffff;
+  --button-outline-hover-background: color-mix(in oklab, #000000 10%, var(--docs-sidebar));
+  --button-outline-active-background: color-mix(in oklab, #000000 16%, var(--docs-sidebar));
+  --button-outline-active-hover-background: color-mix(in oklab, #000000 22%, var(--docs-sidebar));
   --workspace-user-footer-text-color: #ffffff;
   --workspace-user-footer-subtitle-color: #ffffff;
   --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 18%, transparent);
