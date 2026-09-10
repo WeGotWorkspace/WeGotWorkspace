@@ -8,6 +8,7 @@ import { NoteDetailView } from "../src/note-detail-view";
 import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
 
 import "@/notes-core/src/notes-workspace.css";
+import "@/note-detail-view/src/note-text-editor-body.css";
 
 const meta: Meta<typeof NoteDetailView> = {
   title: "Apps/Notes/Note Detail View",
