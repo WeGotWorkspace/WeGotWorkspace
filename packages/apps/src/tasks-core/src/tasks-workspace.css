@@ -17,7 +17,7 @@
    * Horizontal inset for title text — matches view-header title, not the sidebar toggle.
    * Mobile: toggle (size-9) + flex gap-3 within header p-4, while main-content adds px-4.
    * Right inset is 0 on mobile: header actions sit at the main-content edge (header p-4 only).
-   * md+: centered column + view-header__main px-4; main-content is md:px-0.
+   * md+: content column stays centered; ViewHeader is full-bleed (toggle left, actions right).
    */
   --tasks-content-inset: calc(2.25rem + 0.75rem);
   --tasks-content-inset-end: 0;
@@ -42,8 +42,31 @@
   --button-primary-bg: var(--tasks-accent);
   --button-primary-fg: var(--color-ink);
 
-  /* Outline action language for header + collection sidebar rows. */
-  --tasks-accent-strong: color-mix(in oklab, var(--tasks-accent) 55%, var(--color-ink));
+  /*
+   * Outline / menu-item / collection-row language (same saturation family as Notes).
+   * Sidebar is already 12% accent on cream; mid washes blend into that tint, so
+   * selected sits at 55% accent→cream and hover at 40%. Selected-hover: 65%.
+   * On-color: ink on selected (heavy wash), 32% accent→ink on hover (~Notes recipe).
+   * Header IconButtons dial back to lighter washes below.
+   */
+  --tasks-accent-strong: color-mix(in oklab, var(--tasks-accent) 32%, var(--color-ink));
+  --button-active-color: var(--color-ink);
+  --button-outline-hover-color: var(--tasks-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--tasks-accent) 40%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--tasks-accent) 55%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--tasks-accent) 65%,
+    var(--color-cream, #ffffff)
+  );
+}
+
+/* Header outline chips stay muted; sidebar keeps the saturated root washes. */
+.tasks-workspace .tasks-workspace__header-actions {
   --button-active-color: var(--tasks-accent-strong);
   --button-outline-hover-color: var(--tasks-accent-strong);
   --button-outline-hover-background: color-mix(in oklab, var(--tasks-accent) 14%, transparent);
@@ -72,55 +95,34 @@
 }
 
 /**
- * Desktop: view title and task/composer text share the centered column's content inset
- * (md:px-4); row markers sit in a left gutter so they do not push title text right.
+ * Desktop: task/composer text keeps a modest content inset inside the centered
+ * column; row markers sit in a left gutter. ViewHeader stays full-bleed.
  */
 @media (min-width: 768px) {
   .tasks-workspace {
     --tasks-content-inset: 1rem;
     --tasks-content-inset-end: var(--tasks-content-inset);
   }
-
-  .tasks-workspace .workspace-app-layout__main-header > div:first-child {
-    display: grid;
-    grid-template-columns: 1fr minmax(0, var(--workspace-main-content-max-width)) 1fr;
-    align-items: start;
-    width: 100%;
-  }
-
-  .tasks-workspace .workspace-app-layout__main-header > div:first-child > :first-child {
-    grid-column: 1;
-    grid-row: 1;
-    justify-self: start;
-    /*
-     * Match `.tasks-main-view__row` content inset inside `.workspace-app-layout__main-content`:
-     * centering offset + 1rem, minus header md:p-6 (1.5rem) when the column is full width.
-     */
-    margin-inline-start: max(
-      -0.5rem,
-      calc((100% - var(--workspace-main-content-max-width)) / 2 + 1rem)
-    );
-  }
-
-  .tasks-workspace .workspace-app-layout__main-header .view-header__main {
-    grid-column: 2;
-    grid-row: 1;
-    width: 100%;
-    min-width: 0;
-    /* Match task/composer title text inset inside the centered column. */
-    @apply px-4;
-  }
-
-  .tasks-workspace .workspace-app-layout__main-header .view-header__search-stack {
-    max-width: var(--workspace-main-content-max-width);
-    margin-inline: auto;
-    width: 100%;
-  }
 }
 
 /** Header action icon buttons use the shared sm control size. */
 .tasks-workspace .tasks-workspace__header-actions .button {
   @apply shrink-0;
+}
+
+/*
+ * Show completed: icon-only below md (Meet-style sr-only label + square chrome);
+ * icon + visible label from md up (ActionBar showLabel pattern).
+ */
+@media (max-width: 767px) {
+  .tasks-workspace__show-completed > .button__label {
+    @apply sr-only;
+  }
+
+  .tasks-workspace__show-completed.button {
+    width: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+    @apply shrink-0 flex-none px-0;
+  }
 }
 
 .tasks-workspace .workspace-app-layout__main-content {
@@ -153,5 +155,5 @@
 }
 
 .tasks-workspace .collection-sidebar-row--drop-target {
-  background-color: color-mix(in oklab, var(--tasks-accent) 18%, transparent);
+  background-color: color-mix(in oklab, var(--tasks-accent) 28%, transparent);
 }

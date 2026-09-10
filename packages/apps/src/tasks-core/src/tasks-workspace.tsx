@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import { CheckCircle2, Eye } from "lucide-react";
-import { IconButton } from "@/button/src/button";
-import { TooltipProvider } from "@/ui/tooltip";
+import { Button, IconButton } from "@/button/src/button";
+import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import {
@@ -300,16 +301,28 @@ export function TasksWorkspace({
             actions={
               <div className="tasks-workspace__header-actions flex items-center gap-2">
                 {showCompletedToggle ? (
-                  <IconButton
-                    className="tasks-workspace__show-completed"
-                    label={showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks}
-                    onClick={toggleShowCompletedTasks}
-                    icon={<CheckCircle2 aria-hidden />}
-                    size="sm"
-                    variant="outline"
-                    active={showCompletedTasks}
-                    aria-pressed={showCompletedTasks}
-                  />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        className={cn(
+                          "tasks-workspace__show-completed",
+                          showCompletedTasks && ICON_BUTTON_ACTIVE_CLASSNAME,
+                        )}
+                        label={L.showCompletedTasks}
+                        aria-label={
+                          showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks
+                        }
+                        onClick={toggleShowCompletedTasks}
+                        icon={<CheckCircle2 aria-hidden />}
+                        size="sm"
+                        variant="outline"
+                        aria-pressed={showCompletedTasks}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks}
+                    </TooltipContent>
+                  </Tooltip>
                 ) : null}
                 {onRefreshList ? (
                   <IconButton

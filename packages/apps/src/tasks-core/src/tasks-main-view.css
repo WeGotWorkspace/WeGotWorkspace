@@ -418,7 +418,7 @@
 }
 
 .tasks-main-view__composer-actions {
-  @apply mt-2 flex w-full justify-end gap-2;
+  @apply mt-2 flex w-full justify-start gap-2;
 }
 
 .tasks-main-view__add-submit.button--variant-primary {
