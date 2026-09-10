@@ -199,6 +199,7 @@ export function NotesWorkspace({
     setSearchQuery,
     setMoveDialog,
     moveToNotebook,
+    moveActiveNoteToNotebook,
     assignTagToNotes,
     createNote,
     toggleStar,
@@ -603,9 +604,7 @@ export function NotesWorkspace({
               closeMobileDetail={closeMobileDetail}
               backLabel={viewLabel}
               notebooks={selectNotebooks}
-              onMoveToNotebook={(notebook) => {
-                if (active) moveToNotebook([active.id], notebook.id || notebook.name);
-              }}
+              onMoveToNotebook={moveActiveNoteToNotebook}
               onCreateNotebook={
                 canManageNotebooks && active ? () => openCreateNotebook([active.id]) : undefined
               }

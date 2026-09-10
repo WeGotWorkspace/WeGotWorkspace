@@ -62,6 +62,10 @@ export type NotesUILabels = {
   toolbarMoveToNotebook: string;
   /** Confirm notebook assignment in the change-notebook dialog (draft until clicked). */
   changeNotebookConfirm: string;
+  /** Detail action-bar confirm before moving the open note (Contacts address-book pattern). */
+  moveNoteTitle: string;
+  moveNoteDescription: (notebookName: string) => string;
+  moveNoteConfirm: string;
   toolbarStar: string;
   toolbarArchive: string;
   toolbarUnarchive: string;
@@ -165,6 +169,9 @@ export const defaultNotesLabels: NotesUILabels = {
   swipeUnarchive: "Unarchive",
   toolbarMoveToNotebook: "Change notebook",
   changeNotebookConfirm: "Change",
+  moveNoteTitle: "Move note?",
+  moveNoteDescription: (notebookName) => `Move this note to “${notebookName}”?`,
+  moveNoteConfirm: "Move",
   toolbarStar: "Star",
   toolbarArchive: "Archive",
   toolbarUnarchive: "Unarchive",

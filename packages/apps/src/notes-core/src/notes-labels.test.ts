@@ -26,6 +26,15 @@ describe("notes item collection copy", () => {
   });
 });
 
+describe("notes move-notebook confirm copy", () => {
+  it("mirrors Contacts address-book move confirm tone", () => {
+    expect(defaultNotesLabels.toolbarMoveToNotebook).toBe("Change notebook");
+    expect(defaultNotesLabels.moveNoteTitle).toBe("Move note?");
+    expect(defaultNotesLabels.moveNoteConfirm).toBe("Move");
+    expect(defaultNotesLabels.moveNoteDescription("Work")).toBe("Move this note to “Work”?");
+  });
+});
+
 describe("notes notebook toasts", () => {
   it("does not reuse Note saved for notebook actions", () => {
     expect(defaultNotesLabels.toastSaved).toBe("Note saved");

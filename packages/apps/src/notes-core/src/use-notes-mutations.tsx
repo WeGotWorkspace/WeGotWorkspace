@@ -36,6 +36,7 @@ import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { upsertNoteBodyPreviewInCache, upsertNoteInCache } from "@/lib/offline/notes-offline-store";
 import { persistNoteKeepingSyncRace, persistNoteOrDropGone } from "./notes-persist-access";
 import { useNotesBatchActions } from "./use-notes-batch-actions";
+import { notebookSelectionEquals } from "./notes-notebook-select";
 import type { NotesListState } from "./use-notes-list";
 import type { NotesShellState } from "./use-notes-shell";
 
@@ -443,6 +444,26 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       starred,
       view,
     ],
+  );
+
+  const moveActiveNoteToNotebook = useCallback(
+    (notebook: { id: string; name: string }) => {
+      if (!activeId) return;
+      const active = notes.find((note) => note.id === activeId);
+      if (!active) return;
+      if (notebookSelectionEquals({ id: active.notebookId, name: active.notebook }, notebook)) {
+        return;
+      }
+
+      requestConfirm({
+        title: L.moveNoteTitle,
+        description: L.moveNoteDescription(notebook.name),
+        confirmLabel: L.moveNoteConfirm,
+        cancelLabel: L.dialogCancel,
+        onConfirm: () => moveToNotebook([active.id], notebook.id || notebook.name),
+      });
+    },
+    [L, activeId, moveToNotebook, notes, requestConfirm],
   );
 
   const assignTagToNotes = useCallback(
@@ -943,6 +964,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     toggleStar,
     toggleArchive,
     moveToNotebook,
+    moveActiveNoteToNotebook,
     assignTagToNotes,
     renameNotebook,
     renameTag,
