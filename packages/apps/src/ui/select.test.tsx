@@ -5,7 +5,9 @@ import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Select, SelectTrigger, SelectValue } from "@/ui/select";
 
-const inputCss = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "input.css"), "utf8");
+const here = dirname(fileURLToPath(import.meta.url));
+const inputCss = readFileSync(join(here, "input.css"), "utf8");
+const selectTsx = readFileSync(join(here, "select.tsx"), "utf8");
 
 describe("SelectTrigger", () => {
   it("defaults to the md control size", () => {
@@ -67,12 +69,18 @@ describe("SelectTrigger", () => {
     expect(inputCss).toMatch(/\.select-trigger__icon \{[\s\S]*color:\s*inherit/);
   });
 
-  it("uses keyboard-only focus chrome on select/input surfaces", () => {
+  it("uses Button outline focus ring on select/control-surface triggers", () => {
     expect(inputCss).toMatch(
+      /\.control-surface,\s*\.select-trigger \{[\s\S]*focus-visible:ring-1 focus-visible:ring-ring/,
+    );
+    expect(inputCss).not.toMatch(
       /\.select-trigger:focus-visible:not\(:disabled\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,
     );
     expect(inputCss).not.toMatch(/\.select-trigger:focus:not\(:disabled\)/);
     expect(inputCss).not.toMatch(/\.input:focus:not\(:read-only\)/);
+    expect(inputCss).toMatch(
+      /\.input:focus-visible:not\(:read-only\),\s*\.textarea:focus-visible:not\(:read-only\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,
+    );
     expect(inputCss).toMatch(
       /\.select-trigger\[data-state="open"\]:not\(:disabled\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,
     );
@@ -83,6 +91,10 @@ describe("SelectTrigger", () => {
       /\.select-ui__item\[data-highlighted\][\s\S]*--button-outline-hover-background/,
     );
     expect(inputCss).not.toMatch(/focus:bg-accent|data-\[highlighted\]:bg-accent/);
+  });
+
+  it("bridges portal theme from the open trigger onto SelectContent", () => {
+    expect(selectTsx).toMatch(/bridgePortalThemeFromOpenTrigger/);
   });
 
   it("washes checked select items and checkmarks from outline-active tokens", () => {

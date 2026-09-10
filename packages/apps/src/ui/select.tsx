@@ -5,7 +5,7 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { bridgePortalThemeVars, findOpenMenuTrigger } from "@/ui/portal-theme-vars";
+import { bridgePortalThemeFromOpenTrigger } from "@/ui/portal-theme-vars";
 
 import "./input.css";
 
@@ -71,21 +71,25 @@ const SelectContent = React.forwardRef<
 >(({ className, children, position = "popper", ...props }, ref) => {
   const contentRef = React.useRef<React.ElementRef<typeof SelectPrimitive.Content> | null>(null);
 
+  const assignContentRef = React.useCallback(
+    (node: React.ElementRef<typeof SelectPrimitive.Content> | null) => {
+      contentRef.current = node;
+      if (node) bridgePortalThemeFromOpenTrigger(node);
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref],
+  );
+
   React.useLayoutEffect(() => {
     const content = contentRef.current;
-    if (!content) return;
-    const trigger = findOpenMenuTrigger();
-    if (trigger) bridgePortalThemeVars(trigger, content);
+    if (content) bridgePortalThemeFromOpenTrigger(content);
   }, []);
 
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
-        ref={(node) => {
-          contentRef.current = node;
-          if (typeof ref === "function") ref(node);
-          else if (ref) ref.current = node;
-        }}
+        ref={assignContentRef}
         className={cn(
           "relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-select-content-transform-origin)",
           position === "popper" &&

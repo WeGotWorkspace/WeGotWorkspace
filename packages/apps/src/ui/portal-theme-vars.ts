@@ -2,12 +2,14 @@
  * Portaled Radix surfaces (Select, DropdownMenu) render under `document.body`,
  * so they do not inherit workspace `--button-outline-*` / `--workspace-accent`.
  * Copy cascaded custom properties from the open trigger onto the portaled content
- * so `color-mix(… var(--*-accent) …)` tokens keep resolving.
+ * so menu hover/active washes match the trigger's workspace.
  *
- * Workspace sheets publish washes that still reference app accents
- * (`var(--notes-detail-accent)`, `var(--calendar-accent)`, …). Those deps are
- * not reliably enumerable via `getComputedStyle().item()`, so we walk `var(--*)`
- * references from the seed outline/accent tokens.
+ * Workspace sheets often publish washes as `color-mix(… var(--*-accent) …)`.
+ * Those accent deps are not reliably enumerable via `getComputedStyle().item()`,
+ * so we (1) walk `var(--*)` references from the seed outline/accent tokens, then
+ * (2) overwrite seeds with fully resolved colors from a probe under the trigger
+ * whenever the engine can compute them (avoids invalid-at-computed-value washes
+ * falling back to ink-gray on the portal).
  */
 
 export const PORTAL_THEME_BACKGROUND_VARS = [
@@ -24,6 +26,16 @@ export const PORTAL_THEME_COLOR_VARS = [
 ] as const;
 
 const CUSTOM_PROPERTY_REF = /var\(\s*(--[\w-]+)/g;
+
+const CONCRETE_COLOR = /^(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/i;
+
+function escapeCssIdent(value: string): string {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(value);
+  }
+  // jsdom may lack CSS.escape; Radix content ids are alphanumeric + hyphen.
+  return value.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+}
 
 function shouldBridgeCustomProperty(name: string): boolean {
   return (
@@ -45,8 +57,33 @@ export function collectCustomPropertyRefs(value: string): string[] {
   return refs;
 }
 
-/** Copy cascaded outline/accent tokens from `source` onto `target`. */
-export function bridgePortalThemeVars(source: Element, target: HTMLElement): void {
+/** True when `getComputedStyle` returned a usable color (not empty / transparent keyword alone). */
+export function isResolvedCssColor(value: string): boolean {
+  const v = value.trim();
+  if (!v || v === "transparent" || v === "rgba(0, 0, 0, 0)" || v === "rgb(0, 0, 0, 0)") {
+    return false;
+  }
+  return CONCRETE_COLOR.test(v) || /^#([0-9a-f]{3,8})$/i.test(v);
+}
+
+/**
+ * Resolve a custom property to a concrete color by painting it on a temporary
+ * child of `host` (inherits that element's custom-property cascade).
+ */
+export function resolveCustomPropertyColor(host: Element, property: string): string {
+  if (!(host instanceof HTMLElement)) return "";
+  const probe = document.createElement("span");
+  probe.setAttribute("data-portal-theme-probe", "");
+  probe.style.cssText =
+    "position:absolute;width:1px;height:1px;overflow:hidden;pointer-events:none;visibility:hidden;";
+  probe.style.setProperty("background-color", `var(${property})`);
+  host.appendChild(probe);
+  const resolved = getComputedStyle(probe).backgroundColor.trim();
+  probe.remove();
+  return resolved;
+}
+
+function copyVarChain(source: Element, target: HTMLElement): void {
   const style = getComputedStyle(source);
   const pending = new Set<string>([...PORTAL_THEME_BACKGROUND_VARS, ...PORTAL_THEME_COLOR_VARS]);
 
@@ -68,10 +105,25 @@ export function bridgePortalThemeVars(source: Element, target: HTMLElement): voi
     written.add(name);
 
     for (const ref of collectCustomPropertyRefs(value)) {
-      // Follow every `var(--*)` so app accents / cream / ink keep resolving.
       if (!written.has(ref)) pending.add(ref);
     }
   }
+}
+
+/** After the var chain is on `target`, collapse seeds to concrete colors when possible. */
+function overwriteSeedsWithResolvedColors(target: HTMLElement): void {
+  for (const name of [...PORTAL_THEME_BACKGROUND_VARS, ...PORTAL_THEME_COLOR_VARS]) {
+    const resolved = resolveCustomPropertyColor(target, name);
+    if (isResolvedCssColor(resolved)) {
+      target.style.setProperty(name, resolved);
+    }
+  }
+}
+
+/** Copy cascaded outline/accent tokens from `source` onto `target`. */
+export function bridgePortalThemeVars(source: Element, target: HTMLElement): void {
+  copyVarChain(source, target);
+  overwriteSeedsWithResolvedColors(target);
 }
 
 /** Open Select trigger (role=combobox) or DropdownMenu trigger. */
@@ -81,4 +133,23 @@ export function findOpenMenuTrigger(): HTMLElement | null {
       '.select-trigger[data-state="open"], [role="combobox"][data-state="open"], [aria-haspopup="menu"][data-state="open"]',
     ) ?? null
   );
+}
+
+/**
+ * Prefer the trigger that owns this portaled surface (`aria-controls` → content id).
+ * Falls back to the document-wide open-trigger heuristic.
+ */
+export function findTriggerForPortaledContent(content: HTMLElement): HTMLElement | null {
+  const id = content.id?.trim();
+  if (id) {
+    const owned = document.querySelector<HTMLElement>(`[aria-controls="${escapeCssIdent(id)}"]`);
+    if (owned) return owned;
+  }
+  return findOpenMenuTrigger();
+}
+
+/** Bridge theme vars from the trigger that owns `content` (no-op if none found). */
+export function bridgePortalThemeFromOpenTrigger(content: HTMLElement): void {
+  const trigger = findTriggerForPortaledContent(content);
+  if (trigger) bridgePortalThemeVars(trigger, content);
 }
