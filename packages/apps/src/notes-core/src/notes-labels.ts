@@ -84,7 +84,7 @@ export type NotesUILabels = {
   syncFailedTitle: string;
   syncFailedMessage: string;
   retrySync: string;
-  /** Prefix for the detail-footer last-edited chip (`Last edited {time}`). */
+  /** Clarification for the detail-footer last-edited chip (tooltip + aria-label; chip shows time only). */
   editedLabel: string;
   accessLostTitle: string;
   accessLostMessage: string;
@@ -189,7 +189,7 @@ export const defaultNotesLabels: NotesUILabels = {
   syncFailedTitle: "Some changes could not sync",
   syncFailedMessage: "Your edits are saved locally. Retry when you are back online.",
   retrySync: "Retry",
-  editedLabel: "Last edited ",
+  editedLabel: "Last edited",
   accessLostTitle: "Access lost",
   accessLostMessage: "You no longer have access to this note. Unsaved edits were not stored.",
   shareNotebookTitle: "Share notebook",

@@ -111,7 +111,9 @@ export const Editable: Story = {
       ".notes-detail-footer__meta-tag--edited",
     ) as HTMLElement | null;
     expect(edited).toBeTruthy();
-    expect(edited!.textContent).toMatch(/Last edited/);
+    expect(edited!.getAttribute("aria-label")).toBe("Last edited");
+    expect(edited!.textContent).toMatch(/\d/);
+    expect(edited!.textContent).not.toMatch(/Last edited/);
     const chip = edited!.querySelector(".tag") as HTMLElement | null;
     expect(chip).toBeTruthy();
     const chipStyle = getComputedStyle(chip!);
