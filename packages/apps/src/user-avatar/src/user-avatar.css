@@ -47,7 +47,7 @@
   --user-avatar-sky-fg: color-mix(in oklab, var(--user-avatar-sky) 72%, var(--color-ink));
   display: flex;
   align-items: center;
-  gap: var(--user-avatar-gap, 0.5rem);
+  gap: var(--user-avatar-gap, 0.625rem);
   min-width: 0;
 }
 
@@ -134,7 +134,7 @@
   bottom: -1px;
   width: 0.5rem;
   height: 0.5rem;
-  border-radius: var(--user-avatar-radius, 9999px);
+  border-radius: 9999px;
   box-shadow: 0 0 0 2px var(--user-avatar-presence-ring, var(--color-cream, #fff));
 }
 
@@ -216,18 +216,11 @@ button.user-avatar__mark {
 }
 
 .user-avatar__text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-  gap: 0.125rem;
+  @apply flex min-w-0 flex-1 flex-col gap-0;
 }
 
 .user-avatar__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.875rem;
+  @apply overflow-hidden text-ellipsis whitespace-nowrap text-sm leading-[1.1];
   color: var(--user-avatar-label-color, var(--user-avatar-fg, var(--color-ink)));
 }
 
@@ -236,9 +229,6 @@ button.user-avatar__mark {
 }
 
 .user-avatar__subtitle {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.75rem;
+  @apply overflow-hidden text-ellipsis whitespace-nowrap text-xs;
   color: var(--user-avatar-subtitle-color, color-mix(in oklab, var(--color-ink) 55%, transparent));
 }

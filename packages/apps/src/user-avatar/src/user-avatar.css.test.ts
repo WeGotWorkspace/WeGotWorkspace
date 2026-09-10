@@ -30,6 +30,24 @@ describe("user avatar mark border", () => {
   });
 });
 
+describe("user avatar label spacing", () => {
+  it("gives the mark and text column a gap-2.5 default", () => {
+    expect(css).toMatch(/\.user-avatar \{[\s\S]*gap:\s*var\(--user-avatar-gap,\s*0\.625rem\)/);
+  });
+
+  it("stacks name and subtitle with gap-0", () => {
+    const text = css.match(/^\.user-avatar__text \{[\s\S]*?\n\}/m)?.[0];
+    expect(text).toBeDefined();
+    expect(text).toMatch(/@apply[\s\S]*\bgap-0\b/);
+  });
+
+  it("tightens the display-name line-height to 1.1", () => {
+    const name = css.match(/^\.user-avatar__name \{[\s\S]*?\n\}/m)?.[0];
+    expect(name).toBeDefined();
+    expect(name).toMatch(/@apply[\s\S]*\bleading-\[1\.1\]/);
+  });
+});
+
 describe("UserAvatar presence CSS", () => {
   it("uses solid green / amber and a transparent offline ring", () => {
     expect(css).toMatch(
