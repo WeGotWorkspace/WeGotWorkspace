@@ -42,4 +42,18 @@ describe("WorkspaceSidebarToggle chrome", () => {
     expect(tsx).not.toMatch(/workspace-app-layout\.styles/);
     expect(tsx).not.toMatch(/--workspace-sidebar-toggle-/);
   });
+
+  it("marks open sidebar as pressed/active like Calendar invitations", () => {
+    const toggleBlock = tsx.match(/export function WorkspaceSidebarToggle\([\s\S]*?\n\}/)?.[0];
+    expect(toggleBlock).toBeDefined();
+    expect(toggleBlock!).toMatch(/active=\{open\}/);
+    expect(toggleBlock!).toMatch(/aria-pressed=\{open\}/);
+    expect(toggleBlock!).toMatch(/className="workspace-sidebar-toggle shrink-0"/);
+  });
+
+  it("keeps active Lucide panel/menu marks as stroke (no solid fill blob)", () => {
+    expect(css).toMatch(
+      /\.workspace-sidebar-toggle\.button\.icon-button--active \.button__icon > svg \{[\s\S]*fill:\s*none/,
+    );
+  });
 });

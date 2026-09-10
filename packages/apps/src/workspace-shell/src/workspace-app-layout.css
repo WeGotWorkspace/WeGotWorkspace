@@ -56,6 +56,15 @@
   );
 }
 
+/*
+ * Open sidebar: accent glyph via `.icon-button--active` + parent `--button-active-color`.
+ * Lucide panel/menu marks are stroke-based — keep fill none so active does not solid-blob.
+ * Product headers (e.g. Calendar `.view-header`) own accent wash tokens / overrides.
+ */
+.workspace-sidebar-toggle.button.icon-button--active .button__icon > svg {
+  fill: none;
+}
+
 /* Right-hand panel slide (mirrors app-sidebar open/close on the opposite edge). */
 .workspace-app-layout__panel {
   @apply shrink-0 overflow-hidden will-change-transform transition-[translate,margin,border-width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)];

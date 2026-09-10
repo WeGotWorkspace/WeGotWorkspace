@@ -186,7 +186,9 @@ export function WorkspaceSidebarToggle({ open, onToggle }: WorkspaceSidebarToggl
       }
       variant="outline"
       size="sm"
-      className="shrink-0"
+      active={open}
+      aria-pressed={open}
+      className="workspace-sidebar-toggle shrink-0"
     />
   );
 }
