@@ -5,17 +5,18 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { Circle, RefreshCw, Trash2, UserMinus } from "lucide-react";
+import { Circle, Trash2, UserMinus } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
 import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
+import { Badge } from "@/ui/badge";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ContactUserAvatar } from "./contact-user-avatar";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
+import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";
 import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
-import { cn } from "@/lib/utils";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
   contactDisplayName,
@@ -87,16 +88,23 @@ export function ContactsListPanel({
     visibleCards.map((card) => card.id),
   );
 
+  const headerCount =
+    selectionMode || selectedIds.length > 1 ? selectedIds.length : visibleCards.length;
+  const headerCountLabel =
+    selectionMode || selectedIds.length > 1
+      ? L.listSelected(headerCount)
+      : L.listContacts(headerCount);
+
   return {
     header: (
       <ViewHeader
         sidebarOpen={sidebarOpen}
         onToggleSidebar={onToggleSidebar}
         title={viewLabel}
-        subtitle={
-          selectionMode || selectedIds.length > 1
-            ? L.listSelected(selectedIds.length)
-            : L.listContacts(visibleCards.length)
+        titleSuffix={
+          <Badge variant="accent" aria-label={headerCountLabel}>
+            {headerCount}
+          </Badge>
         }
         actions={
           onRefreshList ? (
@@ -104,11 +112,9 @@ export function ContactsListPanel({
               label={L.refreshList}
               onClick={onRefreshList}
               disabled={listLoading || listRefreshing}
-              icon={
-                <RefreshCw className={cn("size-4", listRefreshing && "animate-spin")} aria-hidden />
-              }
+              icon={<RefreshSpinIcon spinning={listRefreshing} className="size-4" />}
               size="sm"
-              variant="subtle"
+              variant="outline"
             />
           ) : null
         }

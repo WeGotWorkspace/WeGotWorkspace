@@ -192,3 +192,17 @@ describe("ContactsListPanel avatars", () => {
     expect(container.querySelector('[data-list-item-id="card-jane"]')).toBeTruthy();
   });
 });
+
+describe("ContactsListPanel header count badge", () => {
+  it("shows the contact count as an accent Badge beside the title", () => {
+    const { container } = render(
+      <TooltipProvider>
+        <ListHarness visibleCards={[personCard, orgCard]} slot="header" />
+      </TooltipProvider>,
+    );
+    const badge = container.querySelector(".view-header__title-suffix .badge--variant-accent");
+    expect(badge).not.toBeNull();
+    expect(badge!.getAttribute("aria-label")).toBe(defaultContactsLabels.listContacts(2));
+    expect(badge!.textContent).toBe("2");
+  });
+});

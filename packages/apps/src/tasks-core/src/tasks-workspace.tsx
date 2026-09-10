@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
-import { CheckCircle2, Eye, RefreshCw } from "lucide-react";
+import { CheckCircle2, Eye } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -13,10 +13,12 @@ import {
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
 import { ViewHeader } from "@/view-header/src/view-header";
+import { Badge } from "@/ui/badge";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
+import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";
 import { filterSharePrincipals, sharePrincipalsFromDirectory } from "@/share-ui/collection-share";
 import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
@@ -288,7 +290,11 @@ export function TasksWorkspace({
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen((open) => !open)}
             title={viewLabel}
-            subtitle={L.listTasks(displayTasks.length)}
+            titleSuffix={
+              <Badge variant="accent" aria-label={L.listTasks(displayTasks.length)}>
+                {displayTasks.length}
+              </Badge>
+            }
             actions={
               <div className="tasks-workspace__header-actions flex items-center gap-2">
                 {showCompletedToggle ? (
@@ -298,7 +304,7 @@ export function TasksWorkspace({
                     onClick={toggleShowCompletedTasks}
                     icon={<CheckCircle2 aria-hidden />}
                     size="sm"
-                    variant="subtle"
+                    variant="outline"
                     active={showCompletedTasks}
                     aria-pressed={showCompletedTasks}
                   />
@@ -308,11 +314,9 @@ export function TasksWorkspace({
                     label={L.refreshList}
                     onClick={onRefreshList}
                     disabled={listRefreshing}
-                    icon={
-                      <RefreshCw className={cn(listRefreshing && "animate-spin")} aria-hidden />
-                    }
+                    icon={<RefreshSpinIcon spinning={listRefreshing} />}
                     size="sm"
-                    variant="subtle"
+                    variant="outline"
                   />
                 ) : null}
               </div>

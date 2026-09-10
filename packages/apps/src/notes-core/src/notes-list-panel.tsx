@@ -6,19 +6,11 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import {
-  Archive,
-  Circle,
-  Eye,
-  RefreshCw,
-  Share2,
-  Star,
-  Tag as TagIcon,
-  Trash2,
-} from "lucide-react";
+import { Archive, Circle, Eye, Share2, Star, Tag as TagIcon, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
 import { Tag } from "@/tag/src/tag";
+import { Badge } from "@/ui/badge";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
@@ -39,9 +31,9 @@ import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-righ
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
+import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";
 import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
-import { cn } from "@/lib/utils";
 import "@/notes-core/src/notes-list-panel.css";
 
 function notesListItemTags(tags: string[]): ReactNode {
@@ -150,16 +142,23 @@ export function NotesListPanel({
     visibleNotes.map((note) => note.id),
   );
 
+  const headerCount =
+    selectionMode || selectedIds.length > 1 ? selectedIds.length : visibleNotes.length;
+  const headerCountLabel =
+    selectionMode || selectedIds.length > 1
+      ? L.listSelected(headerCount)
+      : L.listItems(headerCount);
+
   return {
     header: (
       <ViewHeader
         sidebarOpen={sidebarOpen}
         onToggleSidebar={onToggleSidebar}
         title={viewLabel}
-        subtitle={
-          selectionMode || selectedIds.length > 1
-            ? L.listSelected(selectedIds.length)
-            : L.listItems(visibleNotes.length)
+        titleSuffix={
+          <Badge variant="accent" aria-label={headerCountLabel}>
+            {headerCount}
+          </Badge>
         }
         actions={
           <div className="notes-list-panel__header-actions flex items-center gap-2">
@@ -168,14 +167,9 @@ export function NotesListPanel({
                 label={L.refreshList}
                 onClick={onRefreshList}
                 disabled={listLoading || listRefreshing}
-                icon={
-                  <RefreshCw
-                    className={cn("size-4", listRefreshing && "animate-spin")}
-                    aria-hidden
-                  />
-                }
+                icon={<RefreshSpinIcon spinning={listRefreshing} className="size-4" />}
                 size="sm"
-                variant="subtle"
+                variant="outline"
               />
             ) : null}
             {view === "archive" && visibleNotes.length > 0 ? (
@@ -189,7 +183,7 @@ export function NotesListPanel({
                 }
                 icon={<Trash2 />}
                 size="sm"
-                variant="subtle"
+                variant="outline"
               />
             ) : null}
           </div>

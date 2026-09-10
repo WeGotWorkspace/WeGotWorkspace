@@ -293,4 +293,16 @@ describe("NotesListPanel access chips", () => {
     );
     expect(container.querySelector(".notes-list-panel__shared-pip")).toBeNull();
   });
+
+  it("shows the item count as an accent Badge beside the title", () => {
+    const { container } = render(
+      <TooltipProvider>
+        <ListHarness notes={[baseNote]} slot="header" />
+      </TooltipProvider>,
+    );
+    const badge = container.querySelector(".view-header__title-suffix .badge--variant-accent");
+    expect(badge).not.toBeNull();
+    expect(badge!.getAttribute("aria-label")).toBe(defaultNotesLabels.listItems(1));
+    expect(badge!.textContent).toBe("1");
+  });
 });

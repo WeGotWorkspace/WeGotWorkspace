@@ -48,6 +48,8 @@ export type NotesUILabels = {
   toastNotebookDeleted: (name: string) => string;
   toastNotebookShareRemoved: string;
   toastSynced: string;
+  toastListUpdated: string;
+  toastListRefreshFailed: string;
   selectionStar: string;
   selectionArchive: string;
   selectionMoveToNotebook: string;
@@ -150,6 +152,8 @@ export const defaultNotesLabels: NotesUILabels = {
   toastNotebookDeleted: (name) => `Notebook “${name}” deleted`,
   toastNotebookShareRemoved: "Notebook removed",
   toastSynced: "Changes synced",
+  toastListUpdated: "List updated",
+  toastListRefreshFailed: "Could not refresh notes. Please try again.",
   selectionStar: "Star",
   selectionArchive: "Archive",
   selectionMoveToNotebook: "Change notebook",

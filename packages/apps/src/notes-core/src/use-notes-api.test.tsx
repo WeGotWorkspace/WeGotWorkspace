@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import { useNotesAPI } from "./use-notes-api";
 import type { NotesApiSource } from "./notes-api-source";
 
@@ -17,6 +18,8 @@ const mockLoadBootstrap = vi.fn();
 const mockFlush = vi.fn();
 const mockOnReconnect = vi.fn();
 const mockInbound = vi.fn();
+const mockShow = vi.fn();
+const mockShowError = vi.fn();
 let mockOnline = true;
 
 vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
@@ -60,6 +63,15 @@ vi.mock("@/hooks/use-connectivity", () => ({
   },
 }));
 
+vi.mock("@/hooks/use-app-toast", () => ({
+  useAppToast: () => ({
+    show: mockShow,
+    showError: mockShowError,
+    showSuccess: vi.fn(),
+    dismiss: vi.fn(),
+  }),
+}));
+
 describe("useNotesAPI", () => {
   beforeEach(async () => {
     mockOnline = true;
@@ -68,6 +80,8 @@ describe("useNotesAPI", () => {
     mockFlush.mockReset();
     mockOnReconnect.mockReset();
     mockInbound.mockReset();
+    mockShow.mockReset();
+    mockShowError.mockReset();
     mockFlush.mockResolvedValue({ stateMismatches: [], bootstrap: null });
     mockLoadBootstrap.mockResolvedValue(bootstrap);
     mockInbound.mockResolvedValue({ changed: true, usedFullResync: false });
@@ -100,6 +114,32 @@ describe("useNotesAPI", () => {
     expect(mockPatchBootstrap).toHaveBeenCalled();
     expect(result.current.bootstrapRevision).toBe(1);
     expect(result.current.listLoading).toBe(false);
+    expect(mockShow).toHaveBeenCalledWith(
+      defaultNotesLabels.toastListUpdated,
+      expect.objectContaining({ icon: expect.anything() }),
+    );
+    expect(mockShowError).not.toHaveBeenCalled();
+  });
+
+  it("refreshList shows an error toast when inbound refresh fails", async () => {
+    mockInbound.mockRejectedValue(new Error("network"));
+    const source: NotesApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+
+    const { result } = renderHook(() => useNotesAPI(source));
+
+    act(() => {
+      result.current.refreshList();
+    });
+
+    await waitFor(() => {
+      expect(result.current.listRefreshing).toBe(false);
+    });
+
+    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockShowError).toHaveBeenCalledWith(defaultNotesLabels.toastListRefreshFailed);
   });
 
   it("flushes the outbox, then inbound /changes, on reconnect", async () => {

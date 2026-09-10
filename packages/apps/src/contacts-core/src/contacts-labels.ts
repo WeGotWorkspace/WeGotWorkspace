@@ -157,6 +157,8 @@ export type ContactsUILabels = {
   moveContactDescriptionWithGroups: (bookName: string) => string;
   moveContactConfirm: string;
   toastMovedToAddressBook: (name: string) => string;
+  toastListUpdated: string;
+  toastListRefreshFailed: string;
 };
 
 export const defaultContactsLabels: ContactsUILabels = {
@@ -313,6 +315,8 @@ export const defaultContactsLabels: ContactsUILabels = {
     `Move this contact to “${bookName}”? They will be removed from groups in the current address book.`,
   moveContactConfirm: "Move",
   toastMovedToAddressBook: (name) => `Moved to “${name}”`,
+  toastListUpdated: "List updated",
+  toastListRefreshFailed: "Could not refresh contacts. Please try again.",
 };
 
 export function mergeContactsLabels(overrides?: Partial<ContactsUILabels>): ContactsUILabels {

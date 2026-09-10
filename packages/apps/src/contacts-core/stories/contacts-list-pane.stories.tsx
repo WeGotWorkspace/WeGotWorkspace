@@ -278,7 +278,8 @@ export const ActiveGroup: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Friends")).toBeInTheDocument();
-    await expect(canvas.getByText("2 Contacts")).toBeInTheDocument();
+    await expect(canvas.getByText("2")).toBeInTheDocument();
+    await expect(canvas.getByLabelText("2 Contacts")).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: "Rename group" })).toBeNull();
     await expect(canvas.queryByRole("button", { name: "Delete group" })).toBeNull();
     await expect(canvas.getByRole("heading", { level: 3, name: "Jane Doe" })).toBeInTheDocument();

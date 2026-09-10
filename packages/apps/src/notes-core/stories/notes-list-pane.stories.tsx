@@ -109,7 +109,8 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: /Endless scroll/i })).toBeInTheDocument();
-    await expect(canvas.getByText("3 Items")).toBeInTheDocument();
+    await expect(canvas.getByText("3")).toBeInTheDocument();
+    await expect(canvas.getByLabelText("3 Items")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Refresh notes" })).toBeInTheDocument();
     await expect(canvas.getByText("architecture")).toBeInTheDocument();
     await expect(canvas.getByText("essay")).toBeInTheDocument();
