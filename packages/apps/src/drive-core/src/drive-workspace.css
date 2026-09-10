@@ -219,13 +219,6 @@
   background-color: var(--color-cream, #ffffff);
 }
 
-.drive-workspace .drive-selection-bar {
-  --button-ghost-color: inherit;
-  --button-ghost-hover-background: color-mix(in oklab, white 10%, transparent);
-  background-color: var(--color-ink) !important;
-  color: var(--color-cream, #ffffff) !important;
-}
-
 .drive-workspace .drive-detail-panel__scroll {
   @apply flex-1 overflow-y-auto px-5 md:px-6 py-6;
 }

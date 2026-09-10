@@ -25,13 +25,6 @@
   }
 }
 
-.docs-home-workspace .docs-home-pane__body.drive-workspace .drive-selection-bar {
-  --button-ghost-color: inherit;
-  --button-ghost-hover-background: color-mix(in oklab, white 10%, transparent);
-  background-color: var(--color-ink) !important;
-  color: var(--color-cream, #ffffff) !important;
-}
-
 .docs-home-workspace .docs-home-pane__load-more {
   @apply flex justify-center px-4 pb-8 md:px-6;
 }

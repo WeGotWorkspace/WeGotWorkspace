@@ -1,5 +1,6 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
+import { IconButton } from "@/button/src/button";
 import { cn } from "@/lib/utils";
+import "@/floating-action-bar/src/floating-action-bar.css";
 
 export type FloatingActionBarButton = {
   id?: string;
@@ -18,31 +19,24 @@ type FloatingActionBarProps = {
 export function FloatingActionBar({ items, buttons, children, className }: FloatingActionBarProps) {
   return (
     <div
-      className={cn(
-        "absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 px-2 py-2 rounded-full shadow-lg whitespace-nowrap",
-        className,
-      )}
-      style={{ backgroundColor: "var(--color-ink)", color: "var(--color-cream, #ffffff)" }}
+      className={cn("floating-action-bar", className)}
+      role="toolbar"
+      aria-label="Selection actions"
     >
-      <span className="text-xs px-3 font-medium tabular-nums leading-9 inline-flex items-center">
-        {items} selected
-      </span>
-      {buttons.map((button) => (
-        <Tooltip key={button.id ?? button.label}>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={button.onClick}
-              aria-label={button.label}
-              className="size-9 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
-            >
-              {button.icon}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>{button.label}</TooltipContent>
-        </Tooltip>
-      ))}
-      {children}
+      <span className="floating-action-bar__count">{items} selected</span>
+      <div className="floating-action-bar__actions">
+        {buttons.map((button) => (
+          <IconButton
+            key={button.id ?? button.label}
+            label={button.label}
+            icon={button.icon}
+            onClick={button.onClick}
+            size="sm"
+            variant="outline"
+          />
+        ))}
+        {children}
+      </div>
     </div>
   );
 }

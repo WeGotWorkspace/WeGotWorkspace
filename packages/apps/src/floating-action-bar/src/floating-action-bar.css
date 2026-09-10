@@ -1,0 +1,29 @@
+@import "../../styles.css" reference;
+
+/**
+ * Overlay batch / selection bar — light accent wash + hairline, matching
+ * header IconButton radius (`--control-radius-button-pill`). Parents publish
+ * `--workspace-accent` (and `--button-outline-*`) so Drive/Docs/Mail pick up
+ * app color without product-specific chrome overrides.
+ */
+.floating-action-bar {
+  --floating-action-bar-accent: var(--workspace-accent, var(--color-emerald, #10b981));
+  @apply absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap px-2 py-2 shadow-lg;
+  border-radius: var(--control-radius-button-pill);
+  color: var(--color-ink);
+  background-color: color-mix(
+    in oklab,
+    var(--floating-action-bar-accent) 14%,
+    var(--color-cream, #ffffff)
+  );
+  border: 1px solid color-mix(in oklab, var(--floating-action-bar-accent) 32%, transparent);
+}
+
+.floating-action-bar__count {
+  @apply inline-flex items-center px-3 text-xs font-medium tabular-nums leading-9;
+  color: var(--color-ink);
+}
+
+.floating-action-bar__actions {
+  @apply flex items-center gap-1.5;
+}
