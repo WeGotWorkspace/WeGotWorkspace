@@ -111,6 +111,7 @@
 }
 
 .button--variant-outline:hover {
+  color: var(--button-outline-hover-color, var(--button-outline-color, var(--color-ink)));
   background-color: var(
     --button-outline-hover-background,
     color-mix(in oklab, var(--color-ink) 8%, transparent)
