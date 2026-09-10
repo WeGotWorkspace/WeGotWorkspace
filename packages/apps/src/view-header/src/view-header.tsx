@@ -36,7 +36,11 @@ type ViewHeaderProps = {
    * `actions`. Stacked / narrow responsive: end of row 1.
    */
   titleTrailing?: ReactNode;
-  subtitle?: string;
+  /**
+   * Optional control immediately after the title (e.g. count Badge).
+   * Stays with the title in stacked / narrow layouts.
+   */
+  titleSuffix?: ReactNode;
   /** When true, omits the workspace sidebar toggle (e.g. portaled compose dialog). */
   hideSidebarToggle?: boolean;
   sidebarOpen?: boolean;
@@ -59,7 +63,7 @@ export function ViewHeader({
   titlePrefix,
   titleLeading,
   titleTrailing,
-  subtitle,
+  titleSuffix,
   hideSidebarToggle = false,
   sidebarOpen = false,
   onToggleSidebar,
@@ -118,6 +122,9 @@ export function ViewHeader({
                     title
                   )}
                 </h2>
+                {titleSuffix ? (
+                  <div className="view-header__title-suffix">{titleSuffix}</div>
+                ) : null}
               </div>
             </div>
             <div className="view-header__end">
@@ -127,9 +134,6 @@ export function ViewHeader({
               ) : null}
             </div>
           </div>
-          {subtitle ? (
-            <p className={cn("field-label-row__label", "view-header__subtitle")}>{subtitle}</p>
-          ) : null}
         </div>
       </div>
       {searchPlaceholder ? (

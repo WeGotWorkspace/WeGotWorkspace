@@ -27,9 +27,28 @@ describe("view-header CSS", () => {
   });
 
   it("aligns the title with the sidebar toggle and swaps compact titles", () => {
-    expect(css).toMatch(/\.view-header \{[\s\S]*items-start/);
+    expect(css).toMatch(/\.view-header \{[\s\S]*items-center/);
     expect(css).toMatch(/\.view-header__title-cluster \{[\s\S]*items-center gap-2/);
     expect(css).toMatch(/\.view-header__title-compact \{[\s\S]*hidden/);
+  });
+
+  it("does not define a subtitle slot", () => {
+    expect(css).not.toMatch(/\.view-header__subtitle/);
+  });
+
+  it("remaps title-suffix badges to outline-active wash, strong fg, and quiet stroke", () => {
+    expect(css).toMatch(
+      /\.view-header__title-suffix \.badge \{[\s\S]*--button-outline-active-background/,
+    );
+    expect(css).toMatch(
+      /\.view-header__title-suffix \.badge \{[\s\S]*border-color:\s*var\(\s*--button-outline-active-border-color,\s*var\(--button-outline-border-color,\s*var\(--control-border-color\)\)/,
+    );
+    expect(css).toMatch(
+      /\.view-header__title-suffix \.badge \{[\s\S]*color:\s*var\(--button-active-color,\s*var\(--color-ink\)\)/,
+    );
+    expect(css).toMatch(
+      /\.view-header__title-suffix \.badge:hover \{[\s\S]*--button-outline-active-hover-background/,
+    );
   });
 
   it("puts view actions and titleTrailing on row 1, title and prev/next on row 2", () => {

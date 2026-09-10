@@ -1,21 +1,17 @@
 @import "../../styles.css" reference;
-@import "../../ui/field-label-row.css";
 
 @import "../../ui/anchored-dropdown.css";
 
-/**
- * Toggle + title stack. `items-start` keeps the toggle on the title-row
- * center line (row min-height matches the icon button) when a subtitle follows.
- */
+/** Toggle + title row. */
 .view-header {
-  @apply flex items-start gap-3;
+  @apply flex items-center gap-3;
 }
 
 .view-header__sidebar-toggle {
   @apply flex shrink-0 items-center;
 }
 
-/** Title + subtitle stack; sits beside the sidebar toggle so the subtitle aligns with the title, not the toggle. */
+/** Title cluster; sits beside the sidebar toggle. */
 .view-header__main {
   @apply flex min-w-0 flex-1 flex-col;
   container: view-header-main / inline-size;
@@ -24,8 +20,8 @@
 /**
  * Grid keeps wide inline titles predictable; stacked / narrow responsive
  * wrap the title instead of ellipsizing first. Min-height matches compact
- * icon-button row (size-sm) so subtitle/search do not jump when actions
- * are present vs absent.
+ * icon-button row (size-sm) so search does not jump when actions are
+ * present vs absent.
  */
 .view-header__title-row {
   display: grid;
@@ -50,11 +46,52 @@
 }
 
 .view-header__title-block {
-  @apply flex min-w-0 items-center gap-1;
+  @apply flex min-w-0 items-center gap-2;
 }
 
 .view-header__title-prefix {
   @apply flex shrink-0 items-center;
+}
+
+.view-header__title-suffix {
+  @apply flex shrink-0 items-center;
+}
+
+/**
+ * Count badges beside the title inherit outline-active chrome so any Badge
+ * in this slot (accent or secondary) picks up app wash / strong fg / quiet
+ * stroke without per-call-site color props. Same tokens as selected outline
+ * IconButtons; `--button-active-color` is the AA-safe accent-strong.
+ */
+.view-header__title-suffix .badge {
+  border-color: var(
+    --button-outline-active-border-color,
+    var(--button-outline-border-color, var(--control-border-color))
+  );
+  background-color: var(
+    --button-outline-active-background,
+    color-mix(
+      in oklab,
+      var(--workspace-accent, var(--color-emerald)) 18%,
+      var(--color-cream, #ffffff)
+    )
+  );
+  color: var(--button-active-color, var(--color-ink));
+}
+
+.view-header__title-suffix .badge:hover {
+  background-color: var(
+    --button-outline-active-hover-background,
+    var(
+      --button-outline-active-background,
+      color-mix(
+        in oklab,
+        var(--workspace-accent, var(--color-emerald)) 18%,
+        var(--color-cream, #ffffff)
+      )
+    )
+  );
+  color: var(--button-active-color, var(--color-ink));
 }
 
 /**
@@ -232,11 +269,6 @@
       @apply inline;
     }
   }
-}
-
-.view-header__subtitle {
-  @apply mt-0 max-w-full font-medium;
-  font-family: var(--font-sans);
 }
 
 .view-header__search-stack {

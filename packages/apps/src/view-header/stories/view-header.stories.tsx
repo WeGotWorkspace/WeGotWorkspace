@@ -1,12 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ChevronLeft, ChevronRight, Inbox, PenSquare, Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
+import { Badge } from "@/ui/badge";
 import { ViewHeader } from "@/view-header/src/view-header";
 import "./view-header.stories.css";
 
 const meta: Meta<typeof ViewHeader> = {
   title: "Shared/View Header",
   component: ViewHeader,
+  decorators: [
+    (Story) => (
+      <div className="view-header-story-surface">
+        <Story />
+      </div>
+    ),
+  ],
   argTypes: {
     layout: {
       control: "select",
@@ -21,7 +29,11 @@ type Story = StoryObj<typeof ViewHeader>;
 export const Default: Story = {
   args: {
     title: "All Items",
-    subtitle: "24 Items",
+    titleSuffix: (
+      <Badge variant="accent" aria-label="24 Items">
+        24
+      </Badge>
+    ),
     sidebarOpen: true,
     onToggleSidebar: () => {},
     actions: (
@@ -31,14 +43,14 @@ export const Default: Story = {
           onClick={() => {}}
           icon={<PenSquare />}
           size="sm"
-          variant="subtle"
+          variant="outline"
         />
         <IconButton
           label="Delete"
           onClick={() => {}}
           icon={<Trash2 />}
           size="sm"
-          variant="subtle"
+          variant="outline"
         />
       </div>
     ),
@@ -59,7 +71,7 @@ export const SmallTitle: Story = {
   args: {
     ...Default.args,
     title: "quarterly-report.md",
-    subtitle: undefined,
+    titleSuffix: undefined,
     titleSize: "sm",
     searchPlaceholder: undefined,
   },
@@ -69,7 +81,6 @@ export const SmallTitle: Story = {
 export const WithoutSidebarToggle: Story = {
   args: {
     title: "New message",
-    subtitle: "Drafts · Today 14:32",
     hideSidebarToggle: true,
   },
 };

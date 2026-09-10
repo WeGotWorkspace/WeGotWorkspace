@@ -3,8 +3,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+import "./badge.css";
+
 const badgeVariants = cva(
-  "inline-flex items-center rounded-[length:var(--control-radius-pill)] border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "badge inline-flex items-center rounded-[length:var(--control-radius-pill)] border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
@@ -14,6 +16,8 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
         outline: "text-foreground",
+        /** Wash + fg from parent `--button-outline-active-*` / `--button-active-color`. */
+        accent: "badge--variant-accent",
       },
     },
     defaultVariants: {

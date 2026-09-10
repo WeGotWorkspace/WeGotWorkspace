@@ -48,6 +48,23 @@ describe("ViewHeader titlePrefix", () => {
   });
 });
 
+describe("ViewHeader titleSuffix", () => {
+  it("renders suffix controls immediately after the title", () => {
+    const { container } = render(
+      <ViewHeader {...baseProps} titleSuffix={<span className="count-badge">5</span>} />,
+    );
+    const block = container.querySelector(".view-header__title-block");
+    expect(block).not.toBeNull();
+    const title = block!.querySelector(".view-header__title");
+    const suffix = block!.querySelector(".view-header__title-suffix .count-badge");
+    expect(title).not.toBeNull();
+    expect(suffix).not.toBeNull();
+    expect(
+      Boolean(title!.compareDocumentPosition(suffix!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+  });
+});
+
 describe("ViewHeader titleLeading", () => {
   it("renders leading controls before the title in the title cluster", () => {
     const { container } = render(
