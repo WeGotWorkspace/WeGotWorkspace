@@ -20,6 +20,7 @@ export {
   buttonVariants,
   normalizeButtonSize,
   normalizeButtonVariant,
+  type ButtonSeverity,
   type ButtonSize,
   type ButtonSizeProp,
   type ButtonVariant,

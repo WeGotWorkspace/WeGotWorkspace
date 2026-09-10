@@ -1451,6 +1451,7 @@ export function useContactsController({
               label: L.selectionDelete,
               icon: <Trash2 className="size-4" />,
               onClick: requestDeleteSelected,
+              severity: "danger" as const,
             },
           ],
     [

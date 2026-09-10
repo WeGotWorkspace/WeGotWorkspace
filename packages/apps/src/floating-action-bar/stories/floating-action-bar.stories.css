@@ -1,6 +1,6 @@
 @import "../../styles.css" reference;
 
-/* Story surfaces publish workspace accent so the bar wash is visible offline. */
+/* Story surfaces publish workspace accent for outline action hovers offline. */
 .floating-action-bar-story--drive {
   --workspace-accent: #10b981;
   --button-outline-hover-color: color-mix(in oklab, var(--workspace-accent) 55%, var(--color-ink));

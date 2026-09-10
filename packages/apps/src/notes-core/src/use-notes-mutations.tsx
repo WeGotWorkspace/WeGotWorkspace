@@ -907,6 +907,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
               ),
               onClick: batchArchive,
               active: allSelectedArchived,
+              severity: allSelectedArchived ? undefined : ("danger" as const),
             },
           ]
         : []),
@@ -921,6 +922,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
               label: L.selectionDeletePermanently,
               icon: <Trash2 className="size-4" />,
               onClick: requestDeleteSelected,
+              severity: "danger" as const,
             },
           ]
         : []),

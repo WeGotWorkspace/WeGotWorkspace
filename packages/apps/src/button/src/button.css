@@ -118,6 +118,38 @@
   );
 }
 
+/*
+ * Severity outline/ghost (Delete, Archive, Trash): fg from destructive token;
+ * hover wash from the same hue — not workspace accent / --button-outline-hover-*.
+ * Token names align with MenuItem `--menu-item-severity-*`.
+ */
+.button--severity-danger {
+  --button-severity-color: var(
+    --menu-item-severity-color,
+    var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
+  );
+  --button-severity-hover-background: var(
+    --menu-item-severity-hover-background,
+    var(
+      --menu-item-danger-hover-background,
+      color-mix(in oklab, var(--button-severity-color) 14%, transparent)
+    )
+  );
+  color: var(--button-severity-color);
+}
+
+.button--severity-danger:hover,
+.button--severity-danger:focus-visible {
+  color: var(--button-severity-color);
+  background-color: var(--button-severity-hover-background);
+}
+
+.button.button--variant-outline.button--severity-danger:hover,
+.button.button--variant-outline.button--severity-danger:focus-visible {
+  color: var(--button-severity-color);
+  background-color: var(--button-severity-hover-background);
+}
+
 /* Pressed/selected outline (Today, open sidebar/inbox): accent fg + wash;
    keep the quiet control stroke (not a full accent ring). */
 .button.button--variant-outline.icon-button--active {

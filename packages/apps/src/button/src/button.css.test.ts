@@ -50,4 +50,12 @@ describe("button outline chrome", () => {
     expect(css).not.toMatch(/\.button--variant-subtle/);
     expect(css).not.toMatch(/--button-subtle-/);
   });
+
+  it("washes severity-danger hover from destructive tokens, not accent", () => {
+    expect(css).toMatch(/\.button--severity-danger \{[\s\S]*--color-destructive/);
+    expect(css).toMatch(/\.button--severity-danger:hover[\s\S]*--button-severity-hover-background/);
+    expect(css).toMatch(
+      /\.button\.button--variant-outline\.button--severity-danger:hover[\s\S]*--button-severity-hover-background/,
+    );
+  });
 });
