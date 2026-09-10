@@ -44,13 +44,30 @@ DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayNam
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubContent
-    ref={ref}
-    className={cn("dropdown-menu-ui__sub-content", className)}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const contentRef = React.useRef<React.ElementRef<typeof DropdownMenuPrimitive.SubContent> | null>(
+    null,
+  );
+
+  React.useLayoutEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+    const trigger = findOpenMenuTrigger();
+    if (trigger) bridgePortalThemeVars(trigger, content);
+  }, []);
+
+  return (
+    <DropdownMenuPrimitive.SubContent
+      ref={(node) => {
+        contentRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) ref.current = node;
+      }}
+      className={cn("dropdown-menu-ui__sub-content", className)}
+      {...props}
+    />
+  );
+});
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
 
 const DropdownMenuContent = React.forwardRef<
