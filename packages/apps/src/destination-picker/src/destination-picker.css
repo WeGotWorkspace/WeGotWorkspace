@@ -1,13 +1,15 @@
 @import "../../styles.css" reference;
 
-:is(.drive-dialog-surface, .mail-dialog-surface) {
+:is(.drive-dialog-surface, .mail-dialog-surface, .docs-dialog-surface) {
   --destination-picker-body-height: 16.5rem;
 }
 
 .destination-picker {
   @apply flex min-h-0 flex-col;
-  /* Match path-breadcrumb--sm: px-3 + lead (1.75rem) + gap (0.5rem) */
-  --destination-picker-trail-inset: calc(0.75rem + 1.75rem + 0.5rem);
+  /* Breadcrumbs bar px-3; path-breadcrumb--sm lead box 1.75rem; row icon size-4 = 1rem */
+  --destination-picker-bar-padding-x: 0.75rem;
+  --destination-picker-lead-size: 1.75rem;
+  --destination-picker-row-icon-size: 1rem;
 }
 
 .destination-picker__breadcrumbs {
@@ -47,8 +49,11 @@
 
 .destination-picker__scroll .destination-list-col-name {
   width: 100%;
-  /* Align row labels with breadcrumb trail (after the lead icon). */
-  padding-left: calc(var(--destination-picker-trail-inset) - 1rem - 0.625rem);
+  /* Center-align row icons with the tinted HardDrive lead in the Drives header. */
+  padding-left: calc(
+    var(--destination-picker-bar-padding-x) +
+      (var(--destination-picker-lead-size) - var(--destination-picker-row-icon-size)) / 2
+  );
   padding-right: 0.75rem;
 }
 

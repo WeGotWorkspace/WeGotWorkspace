@@ -6,8 +6,8 @@ import {
   Folder,
   Globe2,
   HardDrive,
+  Share,
   Share2,
-  Users,
   Users2,
 } from "lucide-react";
 import { Tag } from "@/tag/src/tag";
@@ -25,7 +25,6 @@ import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
 import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
-import { isSharedDriveApiPath } from "@/drive-core/src/drive-search-utils";
 import { SHARED_WITH_ME_UI_ROOT } from "@/drive-core/src/drive-path-utils";
 import "@/drive-core/src/drive-browser.css";
 import "@/file-preview/src/file-preview.css";
@@ -35,7 +34,7 @@ type DriveOfflineBadgeLabels = {
   offlinePendingSync: string;
 };
 
-/** Share2 for Shared with me / “Shared by …”; Users for team drives; HardDrive for My Drive. */
+/** Share for inbound Shared with me / “Shared by …”; HardDrive for personal + group drives. */
 function isSharedByLocation(file: DriveFile): boolean {
   if (file.parent === SHARED_WITH_ME_UI_ROOT) return true;
   const location = file.location?.trim();
@@ -48,8 +47,8 @@ function isSharedByLocation(file: DriveFile): boolean {
 function DriveLocationLabel({ file }: { file: DriveFile }) {
   if (!file.location) return <>—</>;
   const sharedBy = isSharedByLocation(file);
-  const sharedDrive = !sharedBy && isSharedDriveApiPath(file.apiPath);
-  const Icon = sharedBy ? Share2 : sharedDrive ? Users : HardDrive;
+  // Personal + group drives share HardDrive (matches sidebar / resolveDriveViewIcon SST).
+  const Icon = sharedBy ? Share : HardDrive;
   return (
     <span className="drive-location-label">
       <Icon className="drive-location-label__icon" aria-hidden />

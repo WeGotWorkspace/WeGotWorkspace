@@ -64,6 +64,18 @@
     var(--docs-accent) 24%,
     var(--color-cream, #ffffff)
   );
+  /* Quiet menu washes for portaled row/action DropdownMenus (portal-theme-vars). */
+  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
+  --menu-item-selected-background: color-mix(
+    in oklab,
+    var(--docs-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --menu-item-selected-hover-background: color-mix(
+    in oklab,
+    var(--docs-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
 
   --foreground: var(--docs-text);
   --color-foreground: var(--docs-text);
@@ -95,10 +107,36 @@
 }
 
 /* Docs home reuses Drive grid/list under `.drive-workspace` for layout selectors.
-   Remap drive accent tokens so tiles and list rows use docs blue, not drive green. */
+   Remap drive accent tokens so tiles, list rows, and portaled menus use docs blue. */
 .docs-workspace .drive-workspace {
   --drive-accent: var(--docs-accent);
+  --workspace-accent: var(--docs-accent);
   --color-emerald: var(--docs-accent);
+  --drive-accent-strong: var(--docs-accent-strong);
+  --button-active-color: var(--docs-accent-strong);
+  --button-outline-hover-color: var(--docs-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--docs-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--docs-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
+  --menu-item-selected-background: color-mix(
+    in oklab,
+    var(--docs-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --menu-item-selected-hover-background: color-mix(
+    in oklab,
+    var(--docs-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
 }
 
 @media (min-width: 768px) {
@@ -144,6 +182,13 @@
   background-color: var(--docs-sidebar);
 }
 
+/* Selected label must match icon on-color (white). Token remap alone is not enough:
+ * workspace root publishes --button-active-color as --docs-accent-strong for cream
+ * chrome; without an explicit selected fg, the label inherits that dark accent. */
+.docs-workspace .sidebar-section .menu-item--surface-selected {
+  color: #ffffff;
+}
+
 .docs-workspace .sidebar-section .menu-item--interactive:hover {
   color: #ffffff;
 }
@@ -164,6 +209,7 @@
   --button-primary-fg: var(--docs-sidebar);
   /* Dark blue sidebar: selected wash is ink-into-blue (not cream outline accent). */
   --button-active-color: #ffffff;
+  --button-outline-hover-color: #ffffff;
   --button-outline-hover-background: color-mix(in oklab, #000000 10%, var(--docs-sidebar));
   --button-outline-active-background: color-mix(in oklab, #000000 16%, var(--docs-sidebar));
   --button-outline-active-hover-background: color-mix(in oklab, #000000 22%, var(--docs-sidebar));
@@ -285,12 +331,28 @@
 
 .docs-dialog-surface {
   --docs-accent: #3b82f6;
+  --docs-accent-strong: color-mix(in oklab, var(--docs-accent) 70%, #0f172a);
+  --workspace-accent: var(--docs-accent);
   --destination-picker-accent: var(--docs-accent);
   --color-emerald: var(--docs-accent);
   --button-primary-bg: var(--docs-accent);
   --button-primary-fg: #ffffff;
   --primary: var(--docs-accent);
   --primary-foreground: #ffffff;
+  --button-active-color: var(--docs-accent-strong);
+  --button-outline-hover-color: var(--docs-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
+  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
+  --menu-item-selected-background: color-mix(
+    in oklab,
+    var(--docs-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --menu-item-selected-hover-background: color-mix(
+    in oklab,
+    var(--docs-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
 }
 
 .docs-workspace__editor {

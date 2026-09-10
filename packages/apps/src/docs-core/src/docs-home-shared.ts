@@ -13,7 +13,7 @@ import { DOCS_HOME_EXTENSIONS } from "@/docs-core/src/docs-home-constants";
 
 const DOCS_HOME_EXTENSION_SET = new Set<string>(DOCS_HOME_EXTENSIONS);
 
-/** Sidebar / listing selection for Docs home (All docs, Shared with me, or a drive). */
+/** Sidebar / listing selection for Docs home (My docs, Shared with me, or a drive). */
 export type DocsHomeView =
   | { type: "all" }
   | { type: "shared" }

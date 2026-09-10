@@ -6,11 +6,11 @@ import { useDocsHomeSidebarModel } from "@/docs-core/src/use-docs-home-sidebar-m
 
 describe("useDocsHomeSidebarModel", () => {
   const drives = [
-    { key: "users/alice", label: "My Drive", pathPrefix: "users/alice" },
-    { key: "groups/eng", label: "eng", pathPrefix: "groups/eng" },
+    { key: "users/alice", label: "Personal", pathPrefix: "users/alice" },
+    { key: "groups/eng", label: "Engineering", pathPrefix: "groups/eng" },
   ];
 
-  it("selects All docs and Shared with me in the primary section", () => {
+  it("selects My docs and Shared with me in the primary section", () => {
     const selectView = vi.fn();
     const { result, rerender } = renderHook(
       ({ view }: { view: DocsHomeView }) =>
@@ -24,7 +24,7 @@ describe("useDocsHomeSidebarModel", () => {
     );
 
     expect(result.current.primaryItems.map((item) => item.label)).toEqual([
-      "All docs",
+      "My docs",
       "Shared with me",
     ]);
     expect(result.current.primaryItems[0]?.selected).toBe(true);

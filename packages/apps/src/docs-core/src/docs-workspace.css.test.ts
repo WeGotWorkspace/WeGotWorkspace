@@ -20,6 +20,9 @@ describe("docs workspace outline chrome", () => {
       /\.docs-workspace \{[\s\S]*--button-outline-hover-color:\s*var\(--docs-accent-strong\)/,
     );
     expect(css).toMatch(
+      /\.docs-workspace \{[\s\S]*--menu-item-hover-background:[\s\S]*var\(--docs-accent\) 14%/,
+    );
+    expect(css).toMatch(
       /\.docs-workspace \.view-header \{[\s\S]*--button-outline-color:\s*var\(--color-ink\)/,
     );
     expect(css).toMatch(
@@ -28,6 +31,18 @@ describe("docs workspace outline chrome", () => {
     // Brace must keep surface tokens inside `.docs-workspace` (prior pass regression).
     expect(css).toMatch(
       /\.docs-workspace \{[\s\S]*--foreground:\s*var\(--docs-text\)[\s\S]*background-color:\s*var\(--docs-surface\)/,
+    );
+  });
+
+  it("forces selected sidebar label on-color to white on the saturated blue wash", () => {
+    expect(css).toMatch(
+      /\.docs-workspace \.sidebar-section \.menu-item--surface-selected \{[\s\S]*color:\s*#ffffff/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-active-color:\s*#ffffff/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*#ffffff/,
     );
   });
 

@@ -25,12 +25,13 @@ export const docsLabels = {
   homeLocationColumn: "Location",
   homeNewDocument: "New document",
   homeCreateError: "Could not create a new document.",
-  homeAllDocs: "All docs",
+  homeAllDocs: "My docs",
   homeSharedWithMe: "Shared with me",
   /** Location column for docs shared with the current user. */
   homeSharedBy: (username: string) => `Shared by ${username}`,
-  homeDrivesSection: "Drives",
-  homeMyDrive: "My Drive",
+  homeDrivesSection: "My Drives",
+  /** Docs personal-drive display label (SST). Drive UI path key remains `"My Drive"`. */
+  homeMyDrive: "Personal",
   loadError: "Could not load this document.",
   saveError: "Could not save this document.",
   renameError: "Could not rename this document.",

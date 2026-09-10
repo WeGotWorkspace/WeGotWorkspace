@@ -3,7 +3,7 @@ import { DOCS_VIEW_MODE_STORAGE_KEY } from "@/hooks/persisted-view-mode";
 import { usePersistedViewMode } from "@/hooks/use-persisted-view-mode";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { Plus } from "lucide-react";
+import { Plus, Share } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { Button } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -14,7 +14,7 @@ import {
 } from "@/workspace-shell/src/workspace-app-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
-import { wgwIsGuestSession } from "@/lib/api/wgw/http";
+import { wgwFetch, wgwIsGuestSession, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
 import { cn } from "@/lib/utils";
 import { mergeDocsLabels, type DocsUILabels } from "@/docs-core/src/docs-labels";
 import { useDocumentTitle } from "@/lib/document-title";
@@ -26,12 +26,15 @@ import {
   useDocsHomeOpenGuard,
 } from "@/docs-core/src/use-docs-home-offline-availability";
 import {
+  applyDocsHomeGroupDisplayNames,
   buildDocsHomeDrives,
   collectGroupRoots,
+  DOCS_DRIVE_UI_PERSONAL_PATH,
   fetchGroupRootsFromDrive,
   mergeGroupRoots,
   resolveDocsHomeCreateDialogBrowsePath,
   resolveNewDocumentName,
+  type DocsHomeGroupRoot,
 } from "@/docs-core/src/docs-home-drives";
 import {
   docsHomeBrowsePathPrefix,
@@ -109,16 +112,24 @@ export function DocsHomeWorkspace({
   });
   const [query, setQuery] = useState("");
   const [view, setView] = useState<DocsHomeView>({ type: "all" });
-  const [knownGroupRoots, setKnownGroupRoots] = useState<string[]>([]);
+  const [knownGroupRoots, setKnownGroupRoots] = useState<DocsHomeGroupRoot[]>([]);
+  const [groupDirectory, setGroupDirectory] = useState<
+    readonly { id: string; displayName: string }[]
+  >([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createDialogDefaultName, setCreateDialogDefaultName] = useState("Untitled.md");
+  const [createDialogBrowsePath, setCreateDialogBrowsePath] = useState(DOCS_DRIVE_UI_PERSONAL_PATH);
+
+  const labeledGroupRoots = useMemo(
+    () => applyDocsHomeGroupDisplayNames(knownGroupRoots, groupDirectory),
+    [groupDirectory, knownGroupRoots],
+  );
 
   const isSharedView = view.type === "shared";
   const isAllView = view.type === "all";
+  const isDriveView = view.type === "drive";
   const browsePathPrefix = docsHomeBrowsePathPrefix(view);
   const includeSharedInListing = isAllView || isSharedView;
-
-  useDocumentTitle(isSharedView ? labels.homeSharedWithMe : labels.homeTitle);
 
   const browseList = useDocsHomeList({
     username,
@@ -127,6 +138,7 @@ export function DocsHomeWorkspace({
     fetcher,
     offlineUsername,
     enabled: !isSharedView,
+    groupRoots: labeledGroupRoots,
   });
 
   const sharedList = useDocsHomeSharedList({
@@ -225,21 +237,6 @@ export function DocsHomeWorkspace({
     onUnavailable: () => showError(labels.homeNotAvailableOffline),
   });
 
-  const actions = useDocsHomeActions({
-    operations: driveOperations ?? operations,
-    files,
-    username,
-    groupRoots: knownGroupRoots,
-    offlineUsername,
-    onAvailabilityChanged: refresh,
-    reload,
-  });
-
-  const visibleFiles = useMemo(
-    () => files.filter((file) => !actions.hiddenFileIds.has(file.id)),
-    [actions.hiddenFileIds, files],
-  );
-
   useEffect(() => {
     if (!operations || !online) return;
     const controller = new AbortController();
@@ -251,14 +248,64 @@ export function DocsHomeWorkspace({
   }, [operations, online]);
 
   useEffect(() => {
+    if (!online || !wgwLiveApiEnabled()) return;
+    const controller = new AbortController();
+    void wgwFetch("/settings/state", { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const json = (await wgwReadJson(res)) as {
+          groups?: { id: string; displayName: string }[];
+        };
+        if (Array.isArray(json.groups)) setGroupDirectory(json.groups);
+      })
+      .catch(() => {
+        /* best-effort labels only */
+      });
+    return () => controller.abort();
+  }, [online]);
+
+  useEffect(() => {
     const discovered = collectGroupRoots(files);
     if (discovered.length === 0) return;
+    // mergeGroupRoots returns `prev` when slug/label sets are unchanged so
+    // setState bails out — otherwise labeledGroupRoots remaps files forever.
     setKnownGroupRoots((prev) => mergeGroupRoots(prev, discovered));
   }, [files]);
 
+  const groupRootSlugs = useMemo(
+    () => labeledGroupRoots.map((root) => root.slug),
+    [labeledGroupRoots],
+  );
+
   const drives = useMemo(
-    () => buildDocsHomeDrives(username, knownGroupRoots, labels.homeMyDrive),
-    [username, knownGroupRoots, labels.homeMyDrive],
+    () => buildDocsHomeDrives(username, labeledGroupRoots, labels.homeMyDrive),
+    [username, labeledGroupRoots, labels.homeMyDrive],
+  );
+
+  const selectedDriveLabel = useMemo(() => {
+    if (!isDriveView) return null;
+    return drives.find((drive) => drive.pathPrefix === view.pathPrefix)?.label ?? null;
+  }, [drives, isDriveView, view]);
+
+  const headerTitle = isSharedView
+    ? labels.homeSharedWithMe
+    : (selectedDriveLabel ?? labels.homeTitle);
+
+  useDocumentTitle(headerTitle);
+
+  const actions = useDocsHomeActions({
+    operations: driveOperations ?? operations,
+    files,
+    username,
+    groupRoots: groupRootSlugs,
+    offlineUsername,
+    onAvailabilityChanged: refresh,
+    reload,
+  });
+
+  const visibleFiles = useMemo(
+    () => files.filter((file) => !actions.hiddenFileIds.has(file.id)),
+    [actions.hiddenFileIds, files],
   );
 
   const selectView = useCallback((next: DocsHomeView) => {
@@ -283,10 +330,9 @@ export function DocsHomeWorkspace({
     [canOpenOffline, onOpenFile],
   );
 
-  const groupRootNames = useMemo(() => new Set(knownGroupRoots), [knownGroupRoots]);
-  const createDialogBrowsePath = useMemo(
-    () => resolveDocsHomeCreateDialogBrowsePath(browsePathPrefix ?? null),
-    [browsePathPrefix],
+  const groupRootNames = useMemo(
+    () => new Set(labeledGroupRoots.map((root) => root.slug)),
+    [labeledGroupRoots],
   );
   const createDialogView = useMemo(
     () => ({ type: "folder" as const, path: createDialogBrowsePath }),
@@ -296,7 +342,9 @@ export function DocsHomeWorkspace({
   const handleCreateDocument = useCallback(() => {
     const handle = username.trim();
     if (!handle || !onCreateDocument) return;
+    // Freeze the sidebar drive at click time (path key stays "My Drive" / "Groups/…").
     const browsePath = resolveDocsHomeCreateDialogBrowsePath(browsePathPrefix ?? null);
+    setCreateDialogBrowsePath(browsePath);
     const apiRoot = apiPathFromUiPath(browsePath, username, groupRootNames);
     void (async () => {
       const name = await resolveNewDocumentName(driveOperations ?? operations, apiRoot, files);
@@ -371,8 +419,9 @@ export function DocsHomeWorkspace({
         main={
           <DocsHomePane
             labels={labels}
-            title={isSharedView ? labels.homeSharedWithMe : labels.homeTitle}
+            title={headerTitle}
             emptyMessage={isSharedView ? labels.homeSharedEmpty : labels.homeEmpty}
+            emptyIcon={isSharedView ? <Share className="size-12" /> : undefined}
             files={visibleFiles}
             loading={loading}
             loadingMore={loadingMore}
@@ -415,7 +464,7 @@ export function DocsHomeWorkspace({
         labels={labels}
         files={files}
         username={username}
-        groupRoots={knownGroupRoots}
+        groupRoots={labeledGroupRoots}
         operations={operations}
         createDialogOpen={createDialogOpen}
         createDialogDefaultName={createDialogDefaultName}

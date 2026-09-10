@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Files, HardDrive, Share2, Users } from "lucide-react";
+import { Files, HardDrive, Share } from "lucide-react";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsHomeDrive } from "@/docs-core/src/docs-home-drives";
@@ -28,7 +28,7 @@ export function useDocsHomeSidebarModel({
       },
       {
         label: labels.homeSharedWithMe,
-        icon: <Share2 className="size-3.5" />,
+        icon: <Share className="size-3.5" />,
         selected: view.type === "shared",
         onClick: () => selectView({ type: "shared" }),
       },
@@ -40,11 +40,7 @@ export function useDocsHomeSidebarModel({
     () =>
       drives.map((drive) => ({
         label: drive.label,
-        icon: drive.pathPrefix.startsWith("users/") ? (
-          <HardDrive className="size-3.5" />
-        ) : (
-          <Users className="size-3.5" />
-        ),
+        icon: <HardDrive className="size-3.5" />,
         selected: view.type === "drive" && view.pathPrefix === drive.pathPrefix,
         onClick: () => selectView({ type: "drive", pathPrefix: drive.pathPrefix }),
       })),

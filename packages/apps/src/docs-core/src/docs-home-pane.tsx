@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { Dispatch, MouseEvent as ReactMouseEvent, SetStateAction } from "react";
+import type { Dispatch, MouseEvent as ReactMouseEvent, ReactNode, SetStateAction } from "react";
 import { FileText } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { CollectionState } from "@/collection-state/src/collection-state";
@@ -33,6 +33,8 @@ export type DocsHomePaneProps = {
   title?: string;
   /** Empty-state copy; defaults to `labels.homeEmpty`. */
   emptyMessage?: string;
+  /** Empty-state icon; defaults to a document icon. Use Share for Shared with me. */
+  emptyIcon?: ReactNode;
   files: DriveFile[];
   loading: boolean;
   loadingMore: boolean;
@@ -99,6 +101,7 @@ export function DocsHomePane({
   labels,
   title,
   emptyMessage,
+  emptyIcon,
   files,
   loading,
   loadingMore,
@@ -338,9 +341,11 @@ export function DocsHomePane({
         {loading ? (
           <CollectionState variant="loading">{labels.homeLoading}</CollectionState>
         ) : error ? (
-          <CollectionState icon={<FileText className="size-12" />}>{error}</CollectionState>
+          <CollectionState icon={emptyIcon ?? <FileText className="size-12" />}>
+            {error}
+          </CollectionState>
         ) : files.length === 0 ? (
-          <CollectionState icon={<FileText className="size-12" />}>
+          <CollectionState icon={emptyIcon ?? <FileText className="size-12" />}>
             {emptyMessage ?? labels.homeEmpty}
           </CollectionState>
         ) : (
