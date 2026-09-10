@@ -94,20 +94,10 @@
   color: var(--share-dialog-tag-fg);
 }
 
+/* Radius only — wash/fg come from UserAvatar (soft color= tiles or outline-active). */
 .share-dialog__principal-mark--group,
 .share-dialog__guest-mark {
   --user-avatar-radius: 0.5rem;
-}
-
-.share-dialog__principal-mark--active {
-  --user-avatar-bg: var(--share-dialog-accent);
-  --user-avatar-fg: var(--primary-foreground, #fff);
-}
-
-.share-dialog__principal-mark--idle,
-.share-dialog__guest-mark {
-  --user-avatar-bg: color-mix(in oklab, var(--share-dialog-accent) 10%, transparent);
-  --user-avatar-fg: var(--share-dialog-accent);
 }
 
 .share-dialog__permission-select {

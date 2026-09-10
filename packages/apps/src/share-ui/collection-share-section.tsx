@@ -158,7 +158,6 @@ export function CollectionShareSection({
                   principalType={grant.isGroup ? "group" : "user"}
                   displayName={title}
                   principalId={grant.isGroup ? undefined : grant.id}
-                  active
                 />
               }
               title={title}
