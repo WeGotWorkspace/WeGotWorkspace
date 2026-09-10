@@ -2,10 +2,7 @@ import { LogOut, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { SidebarLogo } from "@/sidebar-logo/src/sidebar-logo";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
-import {
-  WORKSPACE_SIDEBAR_TOGGLE_STYLE,
-  WORKSPACE_USER_LOGOUT_STYLE,
-} from "@/workspace-shell/src/workspace-app-layout.styles";
+import { WORKSPACE_SIDEBAR_TOGGLE_STYLE } from "@/workspace-shell/src/workspace-app-layout.styles";
 import { cn } from "@/lib/utils";
 import "@/workspace-shell/src/workspace-app-layout.css";
 
@@ -52,11 +49,11 @@ type WorkspaceBrandHeaderProps = {
 
 type WorkspaceUserFooterProps = {
   name: string;
+  /** Fallback mark text when `name` is empty; `UserAvatar` derives initials from the resolved name. */
   initials: string;
-  /** Optional second line (e.g. email) next to the avatar; when set, name/subtitle use `UserAvatar` layout. */
+  /** Optional second line (e.g. email) under the display name. */
   detailLine?: string;
   onLogoutClick?: () => void;
-  linkHoverClassName?: string;
 };
 
 type WorkspaceSidebarToggleProps = {
@@ -132,7 +129,6 @@ export function WorkspaceUserFooter({
   initials,
   detailLine,
   onLogoutClick,
-  linkHoverClassName = "hover:bg-[color-mix(in_oklab,var(--color-ink)_18%,transparent)]",
 }: WorkspaceUserFooterProps) {
   const trimmedName = name.trim();
   const trimmedDetailLine = detailLine?.trim() ?? "";
@@ -145,18 +141,15 @@ export function WorkspaceUserFooter({
     <div className="workspace-app-layout__user-footer">
       <UserAvatar
         displayName={avatarName}
-        subtitle={detailLine}
-        compact={!detailLine}
-        className={detailLine ? "flex-1 min-w-0" : "shrink-0"}
+        subtitle={trimmedDetailLine || undefined}
+        className="flex-1 min-w-0"
       />
-      {!detailLine ? <div className="flex-1 min-w-0 text-sm truncate">{name}</div> : null}
       <IconButton
         label="Log out"
         icon={<LogOut />}
         onClick={handleLogout}
         variant="subtle"
-        className={cn("size-9", linkHoverClassName)}
-        style={WORKSPACE_USER_LOGOUT_STYLE}
+        size="sm"
       />
     </div>
   );

@@ -263,7 +263,6 @@ function DriveSidebar({
           initials={workspaceUserInitials(session.user)}
           detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession())}
           onLogoutClick={onLogout}
-          linkHoverClassName="hover:bg-[color-mix(in_oklab,var(--color-ink)_18%,transparent)]"
         />
       }
       primaryButton={

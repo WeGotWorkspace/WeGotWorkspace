@@ -41,6 +41,19 @@
     --workspace-user-footer-border-color,
     color-mix(in oklab, var(--color-ink) 10%, transparent)
   );
+  /* Logout IconButton matches action-bar chrome via size="sm" + subtle vars. */
+  --button-subtle-color: var(
+    --workspace-user-footer-link-color,
+    color-mix(in oklab, var(--color-ink) 65%, transparent)
+  );
+  --button-subtle-background: var(
+    --workspace-user-footer-link-bg,
+    color-mix(in oklab, var(--color-ink) 6%, transparent)
+  );
+  --button-subtle-hover-background: var(
+    --workspace-user-footer-link-hover-bg,
+    color-mix(in oklab, var(--color-ink) 18%, transparent)
+  );
 }
 
 /* Right-hand panel slide (mirrors app-sidebar open/close on the opposite edge). */
