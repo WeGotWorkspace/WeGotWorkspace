@@ -1,7 +1,10 @@
 @import "../../styles.css" reference;
 
 .chat-message {
-  @apply relative flex min-w-0 max-w-full gap-2.5 px-5 py-2.5;
+  /* items-start: UserAvatar is a flex column with align-items:center; without
+     start alignment it stretches and vertically centers the mark beside tall
+     reply/reaction stacks. pt-0.5 on the avatar optically matches the name line. */
+  @apply relative flex min-w-0 max-w-full items-start gap-2.5 px-5 py-2.5;
 }
 
 .chat-message:hover,

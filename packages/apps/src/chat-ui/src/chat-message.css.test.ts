@@ -5,8 +5,26 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "chat-message.css"), "utf8");
+const tsx = readFileSync(join(here, "chat-message.tsx"), "utf8");
 const listCss = readFileSync(join(here, "chat-message-list.css"), "utf8");
 const composerCss = readFileSync(join(here, "chat-composer.css"), "utf8");
+const mentionTsx = readFileSync(join(here, "chat-mention-menu.tsx"), "utf8");
+const chatUiCss = readFileSync(join(here, "chat-ui.css"), "utf8");
+
+describe("chat-message avatar chrome", () => {
+  it("hashes author / mention ids through avatarColorForUserId without ink wash overrides", () => {
+    expect(tsx).toMatch(/<UserAvatar/);
+    expect(tsx).toMatch(/color=\{avatarColorForUserId\(message\.authorId\)\}/);
+    expect(mentionTsx).toMatch(/color=\{avatarColorForUserId\(principal\.id\)\}/);
+    expect(chatUiCss).not.toMatch(/--user-avatar-bg:/);
+    expect(chatUiCss).not.toMatch(/--user-avatar-fg:/);
+  });
+
+  it("top-aligns the avatar with the author row even when replies/reactions grow the body", () => {
+    expect(css).toMatch(/\.chat-message \{[\s\S]*?@apply[^;]*\bitems-start\b/);
+    expect(css).toMatch(/\.chat-message__avatar \{[\s\S]*?@apply[^;]*\bpt-0\.5\b/);
+  });
+});
 
 describe("chat-message continuation spacing", () => {
   it("keeps full row padding on the lead message", () => {

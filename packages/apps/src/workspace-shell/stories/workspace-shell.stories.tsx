@@ -30,9 +30,6 @@ export const Default: Story = {
           "color-mix(in oklab, var(--color-ink) 70%, transparent)",
         ["--workspace-user-footer-border-color" as string]:
           "color-mix(in oklab, var(--color-ink) 10%, transparent)",
-        ["--workspace-user-footer-avatar-bg" as string]:
-          "color-mix(in oklab, var(--color-ink) 12%, transparent)",
-        ["--workspace-user-footer-avatar-color" as string]: "var(--color-ink)",
       }}
     >
       <WorkspaceSidebar open>

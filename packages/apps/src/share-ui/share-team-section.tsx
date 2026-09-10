@@ -184,6 +184,7 @@ export function ShareTeamSection({
                 <SharePrincipalMark
                   principalType="user"
                   displayName={member.displayName}
+                  principalId={member.username}
                   active={active}
                 />
               }

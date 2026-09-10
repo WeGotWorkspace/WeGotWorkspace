@@ -73,7 +73,7 @@ export type UserAvatarProps = {
   size?: UserAvatarSize;
   /** Optional online/offline pip. Rendered by the primitive — do not draw a second custom dot. */
   presence?: UserAvatarPresence;
-  /** Washed fill + saturated 2px ring. Omit to keep parent `--user-avatar-*` tokens. */
+  /** Per-user palette (retints outline-active wash/fg/border). Omit for app-accent chrome. */
   color?: UserAvatarColor;
   /** Native `<img>` loading hint. List rows pass `lazy`; omit (eager) for the open card. */
   loading?: "eager" | "lazy";

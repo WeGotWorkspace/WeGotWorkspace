@@ -78,11 +78,6 @@
 }
 
 .workspace-app-layout__user-footer .user-avatar {
-  --user-avatar-bg: var(
-    --workspace-user-footer-avatar-bg,
-    color-mix(in oklab, var(--color-ink) 12%, transparent)
-  );
-  --user-avatar-fg: var(--workspace-user-footer-avatar-color, var(--color-ink));
   --user-avatar-label-color: var(
     --workspace-user-footer-text-color,
     color-mix(in oklab, var(--color-ink) 70%, transparent)

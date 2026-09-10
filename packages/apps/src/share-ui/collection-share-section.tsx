@@ -157,6 +157,7 @@ export function CollectionShareSection({
                 <SharePrincipalMark
                   principalType={grant.isGroup ? "group" : "user"}
                   displayName={title}
+                  principalId={grant.isGroup ? undefined : grant.id}
                   active
                 />
               }

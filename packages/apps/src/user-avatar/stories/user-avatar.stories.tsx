@@ -179,7 +179,7 @@ export const Presence: Story = {
   ),
 };
 
-/** Sidebar DM mark: presence only, no avatar. */
+/** Standalone presence pip (no mark) — e.g. density demos. DM rows use UserAvatar. */
 export const PresenceStandalone: Story = {
   render: () => (
     <div className="flex items-center gap-6 p-4">
