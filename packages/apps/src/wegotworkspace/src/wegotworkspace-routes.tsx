@@ -11,6 +11,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { AdminApp } from "@/admin-core/src/admin-app";
+import { useAdminRouteSync } from "@/admin-core/src/use-admin-route-sync";
 import { CalendarApp } from "@/calendar-core/src/calendar-app";
 import { CalendarRsvpPage } from "@/calendar-core/src/calendar-rsvp-page";
 import { validateCalendarRouteSearch } from "@/calendar-core/src/calendar-route-search";
@@ -234,7 +235,15 @@ function MockCalendarRoute() {
 function MockAdminRoute() {
   const onLogout = useWeGotWorkspaceLogout();
   const bootstrap = useMemo(() => createAdminAppBootstrap(), []);
-  return <AdminWorkspace {...bootstrap} onLogout={onLogout} />;
+  const { section, onSectionChange } = useAdminRouteSync();
+  return (
+    <AdminWorkspace
+      {...bootstrap}
+      section={section}
+      onSectionChange={onSectionChange}
+      onLogout={onLogout}
+    />
+  );
 }
 
 function MockInstallRoute() {
@@ -591,6 +600,13 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     component: isLive ? withWeGotWorkspaceAuth(AdminApp) : MockAdminRoute,
   });
 
+  const adminSectionRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/admin/$section",
+    head: adminPwaHead,
+    component: isLive ? withWeGotWorkspaceAuth(AdminApp) : MockAdminRoute,
+  });
+
   const ContactsComponent = isLive ? withWeGotWorkspaceAuth(ContactsApp) : MockContactsRoute;
 
   // Each contacts path is a root-level route with its own component so `useParams` in
@@ -786,6 +802,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     meetGuestRoute,
     meetJoinRoute,
     adminRoute,
+    adminSectionRoute,
     contactsIndexRoute,
     contactsAllRoute,
     contactsAllContactRoute,

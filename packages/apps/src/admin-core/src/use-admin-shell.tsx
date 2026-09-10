@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AdminSection } from "@/admin-core/src/admin-types";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
+import { ADMIN_DEFAULT_SECTION, resolveAdminSection } from "@/admin-core/src/admin-section";
 import {
   buildAdminSettingsFormState,
   mergePendingApplyPoll,
@@ -9,10 +10,23 @@ import {
 import { useAdminSidebarModel } from "@/admin-core/src/use-admin-sidebar-model";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
-export type UseAdminShellArgs = Pick<AdminWorkspaceProps, "data" | "operations">;
+export type UseAdminShellArgs = Pick<
+  AdminWorkspaceProps,
+  "data" | "operations" | "section" | "initialSection" | "onSectionChange"
+>;
 
-export function useAdminShell({ data, operations }: UseAdminShellArgs) {
-  const [section, setSection] = useState<AdminSection>("users");
+export function useAdminShell({
+  data,
+  operations,
+  section: sectionProp,
+  initialSection,
+  onSectionChange,
+}: UseAdminShellArgs) {
+  const isControlled = sectionProp !== undefined;
+  const [internalSection, setInternalSection] = useState<AdminSection>(() =>
+    resolveAdminSection(initialSection ?? ADMIN_DEFAULT_SECTION),
+  );
+  const section = resolveAdminSection(isControlled ? sectionProp : internalSection);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [users, setUsers] = useState(data.users);
   const [groups, setGroups] = useState(data.groups);
@@ -150,7 +164,11 @@ export function useAdminShell({ data, operations }: UseAdminShellArgs) {
   );
 
   const selectSection = (nextSection: AdminSection) => {
-    setSection(nextSection);
+    const resolved = resolveAdminSection(nextSection);
+    if (!isControlled) {
+      setInternalSection(resolved);
+    }
+    onSectionChange?.(resolved);
     if (isSidebarOverlayViewport()) {
       setSidebarOpen(false);
     }
