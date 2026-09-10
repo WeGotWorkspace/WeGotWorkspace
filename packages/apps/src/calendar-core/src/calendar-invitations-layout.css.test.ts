@@ -38,12 +38,23 @@ describe("calendar invitations dock width", () => {
   it("keeps the inbox and segmented control from expanding the column", () => {
     const panel = readCss("calendar-invitations-panel.css");
     expect(panel).toMatch(/\.calendar-invitations-panel \{[\s\S]*min-w-0/);
-    expect(panel).toMatch(/\.calendar-invitations-panel__filter \{[\s\S]*min-w-0/);
-    expect(panel).toMatch(
-      /\.calendar-invitations-panel__filter \.segmented-control__button \{[\s\S]*min-w-0/,
+    expect(panel).toMatch(/\.calendar-invitations-panel__filter \{[\s\S]*w-auto/);
+    expect(panel).toMatch(/\.calendar-invitations-panel__filter \{[\s\S]*shrink-0/);
+    expect(panel).not.toMatch(
+      /\.calendar-invitations-panel__filter \.segmented-control__button \{[\s\S]*flex-1/,
     );
     expect(panel).toMatch(
       /\.calendar-invitations-panel \{[\s\S]*background-color:\s*var\(--app-sidebar-bg\)/,
+    );
+  });
+
+  it("aligns invitations header padding with the main view-header chrome", () => {
+    const panel = readCss("calendar-invitations-panel.css");
+    expect(panel).toMatch(
+      /\.calendar-invitations-panel \.docs-collab-sidebar-panel__header \{[\s\S]*p-4 md:p-6/,
+    );
+    expect(panel).toMatch(
+      /@media\s*\(max-width:\s*40rem\)[\s\S]*\.calendar-invitations-panel \.docs-collab-sidebar-panel__header \{[\s\S]*p-3/,
     );
   });
 });

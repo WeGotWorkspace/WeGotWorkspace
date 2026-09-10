@@ -23,6 +23,18 @@
   background-color: var(--app-sidebar-bg);
 }
 
+/* Match `.workspace-app-layout__main-header` padding so title-row height
+   lines up with Calendar’s main `.view-header` (filter sits in headerActions). */
+.calendar-invitations-panel .docs-collab-sidebar-panel__header {
+  @apply p-4 md:p-6;
+}
+
+@media (max-width: 40rem) {
+  .calendar-invitations-panel .docs-collab-sidebar-panel__header {
+    @apply p-3;
+  }
+}
+
 .calendar-invitations-panel .docs-collab-sidebar-panel__scroll {
   @apply px-5 py-6;
 }
@@ -32,9 +44,5 @@
 }
 
 .calendar-invitations-panel__filter {
-  @apply flex min-w-0 w-full max-w-full;
-}
-
-.calendar-invitations-panel__filter .segmented-control__button {
-  @apply min-w-0 flex-1;
+  @apply w-auto shrink-0;
 }

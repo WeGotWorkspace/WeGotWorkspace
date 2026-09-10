@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { CheckCheck, Inbox } from "lucide-react";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarInvitationCard } from "@/calendar-core/src/calendar-invitation-card";
 import {
@@ -77,7 +78,7 @@ export function CalendarInvitationsPanel({
       empty={count === 0}
       emptyLabel={tab === "responded" ? labels.invitationsEmptyResponded : labels.invitationsEmpty}
       listClassName="docs-collab-sidebar-panel__list calendar-invitations-panel__list"
-      toolbar={
+      headerActions={
         <SegmentedControl
           value={tab}
           onChange={(next) => {
@@ -88,8 +89,16 @@ export function CalendarInvitationsPanel({
           className="calendar-invitations-panel__filter"
           aria-label={labels.invitationsFilterAria}
           options={[
-            { value: "new", label: labels.invitationsTabNew },
-            { value: "responded", label: labels.invitationsTabResponded },
+            {
+              value: "new",
+              label: labels.invitationsTabNew,
+              icon: <Inbox className="size-4" aria-hidden />,
+            },
+            {
+              value: "responded",
+              label: labels.invitationsTabResponded,
+              icon: <CheckCheck className="size-4" aria-hidden />,
+            },
           ]}
         />
       }

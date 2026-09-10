@@ -115,6 +115,13 @@ describe("CalendarInvitationsPanel", () => {
     expect(
       screen.getByRole("heading", { name: defaultCalendarLabels.invitationsSection }),
     ).toBeTruthy();
+    const filter = screen.getByRole("group", {
+      name: defaultCalendarLabels.invitationsFilterAria,
+    });
+    expect(filter.closest(".docs-collab-sidebar-panel__header-actions")).toBeTruthy();
+    expect(document.querySelector(".docs-collab-sidebar-panel__toolbar")).toBeNull();
+    expect(filter.className).toContain("segmented-control");
+    expect(filter.className).not.toContain("segmented-control--size-md");
     expect(
       screen.getByRole("button", { name: defaultCalendarLabels.invitationsTabNew }),
     ).toBeTruthy();

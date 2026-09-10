@@ -65,7 +65,7 @@ const meta: Meta<typeof CalendarInvitationsPanel> = {
     docs: {
       description: {
         component:
-          "Right-side invitations inbox: Docs collab chrome, Lit event-card body, and a New / Responded segmented filter.",
+          "Right-side invitations inbox: Docs collab chrome, Lit event-card body, and an icon-only New / Responded filter on the title row.",
       },
     },
   },
