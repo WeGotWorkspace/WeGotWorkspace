@@ -65,7 +65,7 @@ export const WithoutSearch: Story = {
   },
 };
 
-/** Compact title (medium-size, medium-weight, sans-serif) used for the doc editor file name. */
+/** Compact title (medium-size, medium-weight sans) used for the doc editor file name. */
 export const SmallTitle: Story = {
   args: {
     ...Default.args,
