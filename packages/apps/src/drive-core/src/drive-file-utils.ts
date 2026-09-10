@@ -116,7 +116,7 @@ export function shareOwnerUsernameFromShare(share: {
   return shareOwnerUsernameFromApiPath(share.path);
 }
 
-/** Location + share indicator for Shared with me rows (Share2, not team/Users). */
+/** Location + share indicator for Shared with me rows (inbound Share icon in UI, not team/Users). */
 function sharedWithMeListingFields(
   ownerUsername: string | null,
 ): Pick<DriveFile, "location" | "isShared"> {

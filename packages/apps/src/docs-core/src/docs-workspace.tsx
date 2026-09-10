@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Code2, Pencil, Printer, Share2 } from "lucide-react";
+import { Code2, Pencil, Printer, Share } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import {
@@ -279,7 +279,7 @@ function DocsMainHeader({
                     {
                       id: "share",
                       label: controller.labels.share,
-                      icon: <Share2 />,
+                      icon: <Share />,
                       className: "docs-workspace__share-button",
                       onClick: () => shareDialog.openShareDialog(apiPath, title),
                     },

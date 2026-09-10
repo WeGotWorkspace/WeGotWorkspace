@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Code2, MessageSquare, Printer, Share2 } from "lucide-react";
+import { Code2, MessageSquare, Printer, Share } from "lucide-react";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { docsLabels } from "@/docs-core/src/docs-labels";
@@ -645,7 +645,7 @@ function DocsCollabWorkspaceInner({
                           {
                             id: "share",
                             label: shareLabel ?? labels.share,
-                            icon: <Share2 />,
+                            icon: <Share />,
                             className: "docs-workspace__share-button",
                             onClick: onShare,
                           },
