@@ -6,15 +6,12 @@ import { useViewHeaderSearchQuery } from "@/view-header/src/use-view-header-sear
 
 import "./view-header.css";
 
-type ViewHeaderTitleSize = "default" | "sm";
 type ViewHeaderLayout = "inline" | "stacked" | "responsive";
 
 type ViewHeaderProps = {
   title: string;
   /** Shown instead of `title` when the header main column is narrow. */
   compactTitle?: string;
-  /** "default" = large semibold sans title (smaller on compact headers); "sm" = medium sans title (e.g. doc editor file name). */
-  titleSize?: ViewHeaderTitleSize;
   /**
    * Title-row layout for `view-header__title-cluster` + `view-header__end`.
    * "inline" (default) = one row; "stacked" = cluster then actions; "responsive" =
@@ -58,7 +55,6 @@ type ViewHeaderProps = {
 export function ViewHeader({
   title,
   compactTitle,
-  titleSize = "default",
   layout = "inline",
   titlePrefix,
   titleLeading,
@@ -107,12 +103,7 @@ export function ViewHeader({
                 {titlePrefix ? (
                   <div className="view-header__title-prefix">{titlePrefix}</div>
                 ) : null}
-                <h2
-                  className={cn(
-                    "view-header__title",
-                    titleSize === "sm" && "view-header__title--sm",
-                  )}
-                >
+                <h2 className="view-header__title">
                   {compactTitle ? (
                     <>
                       <span className="view-header__title-full">{title}</span>

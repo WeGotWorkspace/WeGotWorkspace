@@ -8,19 +8,12 @@ const baseProps = {
   hideSidebarToggle: true,
 };
 
-describe("ViewHeader titleSize", () => {
-  it("does not apply the small title modifier by default", () => {
+describe("ViewHeader title", () => {
+  it("renders the canonical title class without a size modifier", () => {
     const { container } = render(<ViewHeader {...baseProps} />);
     const title = container.querySelector(".view-header__title");
     expect(title).not.toBeNull();
     expect(title!.classList.contains("view-header__title--sm")).toBe(false);
-  });
-
-  it("applies the small title modifier when titleSize is 'sm'", () => {
-    const { container } = render(<ViewHeader {...baseProps} titleSize="sm" />);
-    const title = container.querySelector(".view-header__title");
-    expect(title).not.toBeNull();
-    expect(title!.classList.contains("view-header__title--sm")).toBe(true);
   });
 });
 

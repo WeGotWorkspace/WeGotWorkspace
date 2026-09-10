@@ -588,7 +588,6 @@ function DocsCollabWorkspaceInner({
           mainHeader={
             <ViewHeader
               title={resolvedDocumentTitle}
-              titleSize="sm"
               sidebarOpen={sidebarOpen}
               onToggleSidebar={() => setSidebarOpen((open) => !open)}
               actions={

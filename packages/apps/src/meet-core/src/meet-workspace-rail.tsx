@@ -42,7 +42,6 @@ export function MeetWorkspaceRail({
           className="meet-workspace__rail-panel"
           ariaLabel={title}
           title={title}
-          titleSize="default"
           closeLabel={closeLabel}
           onClose={onClose}
           showCloseButton

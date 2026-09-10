@@ -100,7 +100,6 @@ export function DocsCollabReviewPanel({
       className="docs-collab-review-panel"
       ariaLabel={labels.reviewSidebarTitle}
       title={labels.reviewSidebarTitle}
-      titleSize="default"
       count={reviewItems.length}
       countLabel={countLabel}
       closeLabel={labels.reviewCloseSidebar}

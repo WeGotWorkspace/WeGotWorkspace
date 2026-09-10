@@ -65,13 +65,12 @@ export const WithoutSearch: Story = {
   },
 };
 
-/** Compact title (medium-size, medium-weight sans) used for the doc editor file name. */
+/** File-name style title (same canonical sans as Default). */
 export const SmallTitle: Story = {
   args: {
     ...Default.args,
     title: "quarterly-report.md",
     titleSuffix: undefined,
-    titleSize: "sm",
     searchPlaceholder: undefined,
   },
 };

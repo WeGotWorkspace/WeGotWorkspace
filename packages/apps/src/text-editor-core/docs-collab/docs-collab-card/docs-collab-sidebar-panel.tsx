@@ -8,8 +8,6 @@ export type DocsCollabSidebarPanelProps = {
   className?: string;
   ariaLabel: string;
   title: string;
-  /** "default" = large serif display; "sm" = compact sans-serif (comments/suggestions panels). */
-  titleSize?: "default" | "sm";
   /** Numeric count shown in parentheses beside the title. */
   count?: number;
   /** Accessible label for the count (e.g. "3 open"). */
@@ -34,7 +32,6 @@ export function DocsCollabSidebarPanel({
   className,
   ariaLabel,
   title,
-  titleSize = "sm",
   count,
   countLabel,
   closeLabel,
@@ -58,7 +55,6 @@ export function DocsCollabSidebarPanel({
         <ViewHeader
           hideSidebarToggle
           title={title}
-          titleSize={titleSize}
           titleLeading={titleLeading}
           titleSuffix={
             count != null ? (

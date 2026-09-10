@@ -59,34 +59,22 @@
 
 /**
  * List counts beside the title — same typography as `.view-header__title`
- * (sans / size / weight / color), including the compact `--sm` title and
- * narrow container shrink. Not a Badge (those read as unread).
+ * (sans / size / weight / color). Not a Badge (those read as unread).
  */
 .view-header__title-count {
-  @apply text-2xl font-semibold leading-none;
+  @apply text-base font-medium leading-none md:text-xl;
   font-family: var(--font-sans);
   color: var(--color-ink);
-  text-box: auto;
-}
-
-.view-header__title--sm + .view-header__title-suffix .view-header__title-count {
-  @apply text-base font-medium md:text-xl;
 }
 
 /**
- * Default: large semibold sans title on wide headers. Tailwind has no
- * `text-box-*` utility that emits this, so the trim shorthand is a CSS property.
+ * Canonical title: medium-size, medium-weight sans (formerly the compact
+ * `titleSize="sm"` path). Serif display titles are removed.
  */
 .view-header__title {
-  @apply min-w-0 truncate text-2xl font-semibold leading-none;
+  @apply min-w-0 truncate text-base font-medium leading-none md:text-xl;
   font-family: var(--font-sans);
   color: var(--color-ink);
-  text-box: auto;
-}
-
-/** Compact variant: medium-size, medium-weight sans (e.g. doc editor file name). */
-.view-header__title--sm {
-  @apply text-base font-medium md:text-xl;
 }
 
 .view-header__title-compact {
@@ -150,16 +138,6 @@
 }
 
 @container view-header-main (max-width: 40rem) {
-  .view-header__title:not(.view-header__title--sm) {
-    @apply text-xl;
-  }
-
-  .view-header__title:not(.view-header__title--sm)
-    + .view-header__title-suffix
-    .view-header__title-count {
-    @apply text-xl;
-  }
-
   .view-header__title-row--responsive {
     grid-template-columns: minmax(0, 1fr) max-content;
     grid-template-areas:
@@ -206,16 +184,6 @@
 
 @supports not (container-type: inline-size) {
   @media (max-width: 40rem) {
-    .view-header__title:not(.view-header__title--sm) {
-      @apply text-xl;
-    }
-
-    .view-header__title:not(.view-header__title--sm)
-      + .view-header__title-suffix
-      .view-header__title-count {
-      @apply text-xl;
-    }
-
     .view-header__title-row--responsive {
       grid-template-columns: minmax(0, 1fr) max-content;
       grid-template-areas:

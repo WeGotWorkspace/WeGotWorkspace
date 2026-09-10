@@ -70,7 +70,6 @@ export function CalendarInvitationsPanel({
       className="calendar-invitations-panel"
       ariaLabel={labels.invitationsSection}
       title={labels.invitationsSection}
-      titleSize="default"
       closeLabel={labels.invitationsClosePanel}
       onClose={onClose}
       showCloseButton={showCloseButton}

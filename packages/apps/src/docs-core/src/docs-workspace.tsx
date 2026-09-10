@@ -252,7 +252,6 @@ function DocsMainHeader({
   return (
     <ViewHeader
       title={title}
-      titleSize={controller.hasFile ? "sm" : "default"}
       sidebarOpen={controller.sidebarOpen}
       onToggleSidebar={() => controller.setSidebarOpen((open) => !open)}
       actions={
