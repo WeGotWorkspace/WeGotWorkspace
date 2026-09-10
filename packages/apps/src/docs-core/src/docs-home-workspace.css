@@ -29,21 +29,25 @@
   @apply flex justify-center px-4 pb-8 md:px-6;
 }
 
-/* Grid density: auto-fill between Drive's fixed 4-col and the denser 10.5rem track. */
+/* Grid density: ≥2 cols on narrow; auto-fill at 13.5rem min when wider. */
 .docs-home-workspace .drive-workspace .drive-grid {
-  gap: 0.75rem;
-  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+  --docs-home-grid-gap: 0.75rem;
+  gap: var(--docs-home-grid-gap);
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(13.5rem, calc((100% - var(--docs-home-grid-gap)) / 2)), 1fr)
+  );
 }
 
 @media (min-width: 30rem) {
   .docs-home-workspace .drive-workspace .drive-grid {
-    gap: 0.875rem;
+    --docs-home-grid-gap: 0.875rem;
   }
 }
 
 @media (min-width: 48rem) {
   .docs-home-workspace .drive-workspace .drive-grid {
-    gap: 1rem;
+    --docs-home-grid-gap: 1rem;
   }
 }
 
