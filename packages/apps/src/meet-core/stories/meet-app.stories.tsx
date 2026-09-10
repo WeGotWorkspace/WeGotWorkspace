@@ -108,6 +108,9 @@ export const IdleChannel: Story = {
     const start = canvas.getByRole("button", { name: /^Meet$/ });
     await expect(start).toBeInTheDocument();
     await expect(start.closest(".meet-workspace__header-start")).toBeTruthy();
+    await expect(
+      start.closest(".meet-workspace__header-actions")?.querySelector(".meet-workspace__members"),
+    ).toBeNull();
     await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
@@ -395,14 +398,17 @@ export const ThreadOpen: Story = {
       .getByRole("button", { name: meetLabels.editChannel })
       .closest(".meet-workspace__header-actions");
     expect(channelActions).toBeTruthy();
-    const members = within(channelActions as HTMLElement).getByLabelText(
-      meetLabels.membersCount(6),
-    );
+    await expect(
+      within(channelActions as HTMLElement).queryByLabelText(/members/),
+    ).not.toBeInTheDocument();
+    const start = within(channelActions as HTMLElement).getByRole("button", { name: /^Meet$/ });
     const edit = within(channelActions as HTMLElement).getByRole("button", {
       name: meetLabels.editChannel,
     });
     const kids = [...(channelActions as HTMLElement).children];
-    expect(kids.indexOf(members)).toBeLessThan(kids.indexOf(edit));
+    expect(
+      kids.indexOf(start.closest(".meet-workspace__header-start") as HTMLElement),
+    ).toBeLessThan(kids.indexOf(edit));
   },
 };
 

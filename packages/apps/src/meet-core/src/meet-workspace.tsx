@@ -26,7 +26,6 @@ import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
 import {
   meetChannelComposerPlaceholder,
   meetChannelHashName,
-  meetChannelMemberCount,
   meetChannelTitle,
   meetMeetingHeaderSubtitle,
 } from "@/meet-core/src/meet-channel-label";
@@ -477,7 +476,6 @@ export function MeetWorkspace({
     : selectedDm
       ? selectedDm.displayName
       : meetLabels.productName;
-  const memberCount = selected ? meetChannelMemberCount(selected) : 0;
   const groups = useMemo(() => data.groups ?? [], [data.groups]);
   const ownerLabel = personalOwnerLabel(session);
   const knownSharePrincipals = useMemo(
@@ -1207,15 +1205,6 @@ export function MeetWorkspace({
             actions={
               conversationOpen ? (
                 <div className="meet-workspace__header-actions">
-                  {selected ? (
-                    <span
-                      className="meet-workspace__members"
-                      aria-label={meetLabels.membersCount(memberCount)}
-                    >
-                      <Users className="meet-workspace__members-icon" aria-hidden />
-                      {memberCount}
-                    </span>
-                  ) : null}
                   {showHeaderStart ? (
                     <SidebarSegmentedNewMenu
                       className="meet-workspace__header-start"

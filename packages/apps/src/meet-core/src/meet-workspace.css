@@ -902,6 +902,34 @@
 }
 
 /*
+ * Compact channel header: keep the Meet accessible name, hide the visible
+ * label so the primary control matches the sm icon-button square next to it.
+ */
+@container view-header-main (max-width: 40rem) {
+  .meet-workspace__header-start .sidebar-segmented-new-menu__main > .button__label {
+    @apply sr-only;
+  }
+
+  .meet-workspace__header-start.sidebar-segmented-new-menu
+    .sidebar-segmented-new-menu__main.button.button--pill {
+    @apply w-8 shrink-0 flex-none px-0;
+  }
+}
+
+@supports not (container-type: inline-size) {
+  @media (max-width: 40rem) {
+    .meet-workspace__header-start .sidebar-segmented-new-menu__main > .button__label {
+      @apply sr-only;
+    }
+
+    .meet-workspace__header-start.sidebar-segmented-new-menu
+      .sidebar-segmented-new-menu__main.button.button--pill {
+      @apply w-8 shrink-0 flex-none px-0;
+    }
+  }
+}
+
+/*
  * Call chrome is light paper with a lighter purple wash than the Meet sidebar
  * (`--meet-accent` 12% on cream) — “in a call”, not a dark island and not a
  * solid mint block on `__row`. `--meet-screen-bg` stays black for video pixels.

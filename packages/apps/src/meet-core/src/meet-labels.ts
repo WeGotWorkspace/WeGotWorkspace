@@ -157,7 +157,6 @@ export const meetLabels = {
   guestLinkAfterCreate: "A guest link will be ready after you create this meeting room.",
   emptyChannelMain: "Select a channel to start chatting.",
   chatColumnPlaceholder: "Chat will appear here.",
-  membersCount: (count: number) => `${count} members`,
   threadPeopleCount: (count: number) =>
     count === 1 ? "1 person in thread" : `${count} people in thread`,
   startCall: "Start call",

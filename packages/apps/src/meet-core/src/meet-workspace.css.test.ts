@@ -147,6 +147,12 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).toMatch(/mainLabel=\{meetLabels\.meet\}/);
     expect(tsx).toMatch(/meetLabels\.startAudioOnly/);
     expect(tsx).toMatch(/stretch=\{false\}/);
+    expect(css).toMatch(
+      /@container view-header-main \(max-width: 40rem\)[\s\S]*\.meet-workspace__header-start[\s\S]*\.button__label[\s\S]*sr-only/,
+    );
+    expect(css).toMatch(
+      /@container view-header-main \(max-width: 40rem\)[\s\S]*\.meet-workspace__header-start[\s\S]*w-8/,
+    );
     expect(tsx).not.toMatch(/label=\{meetLabels\.start\}/);
     expect(tsx).not.toMatch(/meetHeaderCallAction\(/);
     expect(tsx).not.toMatch(/headerCallLabel/);
@@ -319,15 +325,13 @@ describe("meet workspace sidebar chrome", () => {
     expect(railActions!.indexOf("meet-workspace__members")).toBeLessThan(
       railActions!.indexOf("chatUiLabels.edit"),
     );
-    // Channel ViewHeader: members, then Meet segmented, then edit.
+    // Channel ViewHeader: Meet segmented, then edit. No channel member count.
     const mainActions = tsx.match(
       /className="meet-workspace__header-actions"[\s\S]*?<\/div>\s*\) : null/,
     )?.[0];
     expect(mainActions).toBeTruthy();
     expect(mainActions!).toMatch(/meet-workspace__header-start/);
-    expect(mainActions!.indexOf("meet-workspace__members")).toBeLessThan(
-      mainActions!.indexOf("meet-workspace__header-start"),
-    );
+    expect(mainActions!).not.toMatch(/meet-workspace__members/);
     expect(mainActions!.indexOf("meet-workspace__header-start")).toBeLessThan(
       mainActions!.indexOf("meet-workspace__header-edit"),
     );
