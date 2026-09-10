@@ -130,6 +130,9 @@ describe("ContactsDetailActionBar", () => {
       },
     });
     expect(
+      screen.queryByRole("combobox", { name: defaultContactsLabels.personalAddressBook }),
+    ).toBeNull();
+    expect(
       screen.queryByRole("combobox", { name: defaultContactsLabels.toolbarMoveToAddressBook }),
     ).toBeNull();
   });
@@ -152,9 +155,15 @@ describe("ContactsDetailActionBar address-book move", () => {
     });
 
     const trigger = screen.getByRole("combobox", {
-      name: defaultContactsLabels.toolbarMoveToAddressBook,
+      name: defaultContactsLabels.personalAddressBook,
     });
-    expect(trigger.textContent).toContain(defaultContactsLabels.personalAddressBook);
+    expect(trigger.getAttribute("aria-label")).toBe(defaultContactsLabels.personalAddressBook);
+    expect(trigger.className).toContain("contacts-address-book-select");
+    expect(trigger.className).toContain("color-swatch-trigger");
+    expect(trigger.className).toContain("contacts-address-book-select--swatch");
+    expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
+    expect(trigger.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(trigger.querySelector(".contacts-address-book-select__name")).toBeNull();
     fireEvent.click(trigger);
 
     const options = screen.getAllByRole("option");

@@ -55,7 +55,7 @@ export const Default: Story = {
   tags: ["vitest-ci"],
   play: async ({ args }) => {
     const trigger = await screen.findByRole("combobox", {
-      name: defaultNotesLabels.toolbarMoveToNotebook,
+      name: "Drafts",
     });
     await expect(trigger).toHaveTextContent("Drafts");
 
@@ -84,9 +84,7 @@ export const Default: Story = {
     await expect(args.onNotebookChange).not.toHaveBeenCalled();
     await expect(screen.getByRole("dialog")).toBeTruthy();
 
-    await userEvent.click(
-      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }),
-    );
+    await userEvent.click(screen.getByRole("combobox", { name: "Drafts" }));
     await userEvent.click(screen.getByRole("option", { name: "The Journal" }));
     await expect(args.onNotebookChange).not.toHaveBeenCalled();
     await expect(confirm).toBeEnabled();

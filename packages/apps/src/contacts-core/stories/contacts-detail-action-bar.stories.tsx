@@ -86,9 +86,12 @@ export const ReadMode: Story = {
     await expect(
       canvas.getByRole("button", { name: defaultContactsLabels.edit }).className,
     ).toContain("action-bar__action--labeled");
-    await expect(
-      canvas.getByRole("combobox", { name: defaultContactsLabels.toolbarMoveToAddressBook }),
-    ).toHaveTextContent(defaultContactsLabels.personalAddressBook);
+    const move = canvas.getByRole("combobox", {
+      name: defaultContactsLabels.personalAddressBook,
+    });
+    await expect(move.className).toContain("color-swatch-trigger");
+    await expect(move.className).toContain("contacts-address-book-select--swatch");
+    await expect(move.querySelector(".contacts-address-book-select__name")).toBeNull();
   },
 };
 
@@ -111,8 +114,9 @@ export const ChangeAddressBook: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     const trigger = canvas.getByRole("combobox", {
-      name: defaultContactsLabels.toolbarMoveToAddressBook,
+      name: defaultContactsLabels.personalAddressBook,
     });
+    await expect(trigger.className).toContain("color-swatch-trigger");
     await userEvent.click(trigger);
     const options = await screen.findAllByRole("option");
     await expect(options.map((option) => option.textContent?.trim())).toEqual([

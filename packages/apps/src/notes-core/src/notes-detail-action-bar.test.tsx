@@ -104,9 +104,7 @@ describe("NotesDetailActionBar", () => {
       />,
     );
 
-    fireEvent.click(
-      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Drafts" }));
     fireEvent.click(screen.getByRole("option", { name: defaultNotesLabels.addNotebook }));
     expect(onCreateNotebook).toHaveBeenCalledTimes(1);
     expect(onMoveToNotebook).not.toHaveBeenCalled();
@@ -122,11 +120,15 @@ describe("NotesDetailActionBar", () => {
       />,
     );
 
-    const move = screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook });
-    expect(move.textContent).toContain("Drafts");
+    const move = screen.getByRole("combobox", { name: "Drafts" });
+    expect(move.getAttribute("aria-label")).toBe("Drafts");
     expect(move.hasAttribute("disabled")).toBe(false);
     expect(move.className).toContain("notes-notebook-select");
-    expect(move.className).toContain("select-trigger--size-sm");
+    expect(move.className).toContain("color-swatch-trigger");
+    expect(move.className).toContain("notes-notebook-select--swatch");
+    expect(move.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
+    expect(move.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(move.querySelector(".notes-notebook-select__name")).toBeNull();
   });
 
   it("shows the live collection name when the note still has the old name", () => {
@@ -138,9 +140,8 @@ describe("NotesDetailActionBar", () => {
       />,
     );
 
-    const move = screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook });
-    expect(move.textContent).toContain("Journal");
-    expect(move.textContent).not.toContain("Drafts");
+    const move = screen.getByRole("combobox", { name: "Journal" });
+    expect(move.getAttribute("aria-label")).toBe("Journal");
   });
 
   it("disables notebook switch for shared-inbox notes without a username chip", () => {
@@ -158,7 +159,7 @@ describe("NotesDetailActionBar", () => {
     );
 
     const move = screen.getByRole("combobox", { name: "TeamPad" });
-    expect(move.textContent).toContain("TeamPad");
+    expect(move.getAttribute("aria-label")).toBe("TeamPad");
     expect(move.textContent).not.toContain("bob");
     expect(move.textContent).not.toContain("Shared by");
     expect(container.querySelector(".notes-detail-action-bar__shared-by")).toBeNull();
@@ -270,8 +271,8 @@ describe("NotesDetailActionBar", () => {
       />,
     );
 
-    const move = screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook });
-    expect(move.textContent).toContain("Specs");
+    const move = screen.getByRole("combobox", { name: "Specs" });
+    expect(move.getAttribute("aria-label")).toBe("Specs");
     expect(move.hasAttribute("disabled")).toBe(false);
     fireEvent.click(move);
     fireEvent.click(screen.getByRole("option", { name: "The Journal" }));
@@ -301,12 +302,9 @@ describe("NotesDetailActionBar", () => {
       />,
     );
 
-    const move = screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook });
-    expect(move.textContent).toContain("Administratorss");
-    expect(move.textContent).not.toContain("group-administrators");
-    expect(move.textContent).not.toMatch(
-      /group-administrators.*Administratorss|Administratorss.*group-administrators/,
-    );
+    const move = screen.getByRole("combobox", { name: "Administratorss" });
+    expect(move.getAttribute("aria-label")).toBe("Administratorss");
+    expect(move.getAttribute("aria-label")).not.toContain("group-administrators");
     const option = container.querySelector(".notes-notebook-select .notes-notebook-select__option");
     expect(option).toBeTruthy();
     expect((option as HTMLElement).style.getPropertyValue("--collection-row-color")).toBe(

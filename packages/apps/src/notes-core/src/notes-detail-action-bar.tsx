@@ -108,7 +108,7 @@ export function NotesDetailActionBar({
             color: selectColor,
           }}
           labels={labels}
-          ariaLabel={notebookLocked ? locationLabel : labels.toolbarMoveToNotebook}
+          triggerVariant="swatch"
           disabled={notebookLocked}
           onNotebookChange={onMoveToNotebook}
           onCreateNotebook={notebookLocked ? undefined : onCreateNotebook}

@@ -278,34 +278,36 @@
   background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
 }
 
-/* Calendar view-select pattern: compact cream trigger in the detail header. */
-.notes-workspace .action-bar .notes-notebook-select {
+/*
+ * Detail header notebook switcher: ColorSwatchTrigger (CalendarEventCalendarPicker)
+ * — cream pill, sm height to match adjacent IconButtons, icon + chevron, no caption.
+ */
+.notes-workspace .action-bar .notes-notebook-select.color-swatch-trigger {
   --control-radius: var(--control-radius-button-pill);
-  width: auto;
-  min-width: 7rem;
+  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
   background-color: var(--color-cream, #ffffff);
 }
 
 /*
- * Detail Star / Archive / batch toggles: remap outline washes to the live
- * notebook accent (product yellow when unset). Shared ActionBar is outline.
+ * Detail Star / Archive / batch toggles + notebook Select portal:
+ * selected icon fg stays notebook-aware (`--notes-detail-accent-strong`);
+ * outline washes use the Notes app accent so portaled menus match sidebar
+ * chrome (not the live notebook orange/purple). Mix `--notes-accent`
+ * directly so the portal bridge only needs one accent hop.
  */
 .notes-workspace :is(.action-bar, .multi-selection-view__actions) {
   --button-active-color: var(--notes-detail-accent-strong);
   --button-outline-hover-color: var(--notes-detail-accent-strong);
-  --button-outline-hover-background: color-mix(
-    in oklab,
-    var(--notes-detail-accent) 14%,
-    transparent
-  );
+  --button-outline-hover-background: color-mix(in oklab, var(--notes-accent) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklab,
-    var(--notes-detail-accent) 18%,
+    var(--notes-accent) 18%,
     var(--color-cream, #ffffff)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
-    var(--notes-detail-accent) 24%,
+    var(--notes-accent) 24%,
     var(--color-cream, #ffffff)
   );
 }
@@ -333,9 +335,7 @@
 
 /* Sidebar Tags: wrapping Tag chips (not full-width MenuItem rows). */
 .notes-workspace .notes-sidebar-tags .sidebar-section__list {
-  @apply flex flex-wrap gap-1.5 space-y-0;
-  /* Match `.sidebar-section__heading` / collection rows (not Tailwind `px-4`). */
-  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
+  @apply flex flex-wrap gap-1.5 space-y-0 px-4;
 }
 
 .notes-workspace .notes-sidebar-tags__item {
@@ -348,17 +348,12 @@
   --tw-ring-color: color-mix(in oklab, var(--color-ink) 35%, transparent);
 }
 
-/* Idle chips: sidebar filters and list-row pills share one family. */
-.notes-workspace .notes-sidebar-tags__item .tag,
-.notes-workspace .list-item__tags .tag {
-  @apply border;
+/* Idle chips: sidebar filter tags. */
+.notes-workspace .notes-sidebar-tags__item .tag {
+  @apply max-w-full border;
   border-color: var(--notes-tag-border);
   background-color: var(--notes-tag-bg);
   color: var(--notes-tag-fg);
-}
-
-.notes-workspace .notes-sidebar-tags__item .tag {
-  @apply max-w-full;
 }
 
 .notes-workspace .notes-sidebar-tags__item:hover .tag {

@@ -279,9 +279,11 @@ describe("contacts workspace sidebar chrome", () => {
     expect(tsx).toMatch(/onMove: moveActiveContactToAddressBook/);
     expect(actionBar).toMatch(/<ContactsAddressBookSelect/);
     expect(actionBar).toMatch(/variant="toolbar"/);
+    expect(actionBar).toMatch(/triggerVariant="swatch"/);
+    expect(addressBookSelect).toMatch(/ColorSwatchTrigger/);
     expect(addressBookSelect).not.toMatch(/onCreateAddressBook|__create_address_book__/);
     expect(css).toMatch(
-      /\.contacts-workspace \.action-bar \.contacts-address-book-select \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+      /\.contacts-workspace \.action-bar \.contacts-address-book-select\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
     );
   });
 

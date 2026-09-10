@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
+import { TooltipProvider } from "@/ui/tooltip";
 
 const notebooks = [
   { id: "nb-journal", name: "The Journal", color: "#14b8a6" },
@@ -23,7 +24,6 @@ function stubSelectEnv() {
       addListener: vi.fn(),
       removeListener: vi.fn(),
       addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
     })),
   });
@@ -34,16 +34,18 @@ function renderDialog(overrides: Partial<ComponentProps<typeof NotesChangeNotebo
   const onCreateNotebook = vi.fn();
   const onClose = vi.fn();
   const view = render(
-    <NotesChangeNotebookDialog
-      open
-      notebooks={notebooks}
-      value={{ id: "nb-drafts", name: "Drafts", color: "#f59e0b" }}
-      labels={defaultNotesLabels}
-      onClose={onClose}
-      onNotebookChange={onNotebookChange}
-      onCreateNotebook={onCreateNotebook}
-      {...overrides}
-    />,
+    <TooltipProvider delayDuration={0}>
+      <NotesChangeNotebookDialog
+        open
+        notebooks={notebooks}
+        value={{ id: "nb-drafts", name: "Drafts", color: "#f59e0b" }}
+        labels={defaultNotesLabels}
+        onClose={onClose}
+        onNotebookChange={onNotebookChange}
+        onCreateNotebook={onCreateNotebook}
+        {...overrides}
+      />
+    </TooltipProvider>,
   );
   return { onNotebookChange, onCreateNotebook, onClose, ...view };
 }
@@ -64,9 +66,7 @@ describe("NotesChangeNotebookDialog", () => {
     expect(confirm.textContent).toBe("Change");
     expect(confirm.getAttribute("aria-label")).toBe("Change");
     expect((confirm as HTMLButtonElement).disabled).toBe(true);
-    const trigger = screen.getByRole("combobox", {
-      name: defaultNotesLabels.toolbarMoveToNotebook,
-    });
+    const trigger = screen.getByRole("combobox", { name: "Drafts" });
     expect(trigger.className).toContain("notes-notebook-select");
     expect(trigger.textContent).toContain("Drafts");
     expect(trigger.querySelectorAll(".notes-notebook-color-icon")).toHaveLength(1);
@@ -100,16 +100,14 @@ describe("NotesChangeNotebookDialog", () => {
   it("keeps the dialog open and does not move until Change", () => {
     const { onNotebookChange, onClose } = renderDialog();
 
-    fireEvent.click(
-      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Drafts" }));
     fireEvent.click(screen.getByRole("option", { name: "The Journal" }));
     expect(onNotebookChange).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(
-      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }).textContent,
-    ).toContain("The Journal");
+    expect(screen.getByRole("combobox", { name: "The Journal" }).textContent).toContain(
+      "The Journal",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: defaultNotesLabels.changeNotebookConfirm }));
     expect(onNotebookChange).toHaveBeenCalledWith(notebooks[0]);
@@ -119,9 +117,7 @@ describe("NotesChangeNotebookDialog", () => {
   it("does not move when Cancel closes a dirty draft", () => {
     const { onNotebookChange, onClose } = renderDialog();
 
-    fireEvent.click(
-      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Drafts" }));
     fireEvent.click(screen.getByRole("option", { name: "The Journal" }));
     fireEvent.click(screen.getByRole("button", { name: defaultNotesLabels.dialogCancel }));
     expect(onNotebookChange).not.toHaveBeenCalled();
@@ -131,9 +127,7 @@ describe("NotesChangeNotebookDialog", () => {
   it("opens Create notebook without moving or closing, then Change moves the created draft", () => {
     const { onNotebookChange, onCreateNotebook, onClose, rerender } = renderDialog();
 
-    fireEvent.click(
-      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Drafts" }));
     fireEvent.click(screen.getByRole("option", { name: defaultNotesLabels.addNotebook }));
     expect(onCreateNotebook).toHaveBeenCalledTimes(1);
     expect(onNotebookChange).not.toHaveBeenCalled();
@@ -141,22 +135,22 @@ describe("NotesChangeNotebookDialog", () => {
     expect(screen.getByRole("dialog")).toBeTruthy();
 
     rerender(
-      <NotesChangeNotebookDialog
-        open
-        notebooks={[...notebooks, createdNotebook]}
-        value={{ id: "nb-drafts", name: "Drafts", color: "#f59e0b" }}
-        createdNotebook={createdNotebook}
-        labels={defaultNotesLabels}
-        onClose={onClose}
-        onNotebookChange={onNotebookChange}
-        onCreateNotebook={onCreateNotebook}
-      />,
+      <TooltipProvider delayDuration={0}>
+        <NotesChangeNotebookDialog
+          open
+          notebooks={[...notebooks, createdNotebook]}
+          value={{ id: "nb-drafts", name: "Drafts", color: "#f59e0b" }}
+          createdNotebook={createdNotebook}
+          labels={defaultNotesLabels}
+          onClose={onClose}
+          onNotebookChange={onNotebookChange}
+          onCreateNotebook={onCreateNotebook}
+        />
+      </TooltipProvider>,
     );
 
     expect(onNotebookChange).not.toHaveBeenCalled();
-    expect(
-      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }).textContent,
-    ).toContain("Ideas");
+    expect(screen.getByRole("combobox", { name: "Ideas" }).textContent).toContain("Ideas");
     fireEvent.click(screen.getByRole("button", { name: defaultNotesLabels.changeNotebookConfirm }));
     expect(onNotebookChange).toHaveBeenCalledWith(createdNotebook);
     expect(onClose).toHaveBeenCalledTimes(1);

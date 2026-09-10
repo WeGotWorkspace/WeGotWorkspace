@@ -43,6 +43,7 @@ function MoveAddressBookSelect({
   return (
     <ContactsAddressBookSelect
       variant="toolbar"
+      triggerVariant="swatch"
       id="contact-move-address-book"
       label={labels.toolbarMoveToAddressBook}
       personalLabel={moveAddressBook.personalLabel ?? labels.personalAddressBook}

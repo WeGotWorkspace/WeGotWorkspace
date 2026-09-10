@@ -68,11 +68,14 @@
   --button-primary-fg: var(--color-ink, #042a22);
 }
 
-/* Calendar / Notes view-select pattern: compact cream trigger in the detail header. */
-.contacts-workspace .action-bar .contacts-address-book-select {
+/*
+ * Detail header address-book switcher: ColorSwatchTrigger (Notes notebook switcher)
+ * — cream pill, sm height to match adjacent IconButtons, icon + chevron, no caption.
+ */
+.contacts-workspace .action-bar .contacts-address-book-select.color-swatch-trigger {
   --control-radius: var(--control-radius-button-pill);
-  width: auto;
-  min-width: 7rem;
+  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
   background-color: var(--color-cream, #ffffff);
 }
 

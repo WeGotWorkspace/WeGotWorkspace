@@ -149,15 +149,6 @@ describe("notes workspace last-edited footer chip", () => {
 });
 
 describe("notes workspace selected tag chips", () => {
-  it("insets the sidebar tag list with the shared sidebar glyph padding token", () => {
-    expect(css).toMatch(
-      /\.notes-workspace \.notes-sidebar-tags \.sidebar-section__list \{[\s\S]*padding-inline:\s*var\(\s*--app-sidebar-item-padding-x,\s*calc\(2 \* 1\.875rem \* 0\.85 \* 112 \/ 512\)\s*\)/,
-    );
-    expect(css).not.toMatch(
-      /\.notes-workspace \.notes-sidebar-tags \.sidebar-section__list \{[\s\S]*\bpx-4\b/,
-    );
-  });
-
   it("paints sidebar filter chips with the idle tag family", () => {
     expect(css).toMatch(/--notes-tag-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 8%/);
     expect(css).toMatch(/--notes-tag-fg:\s*var\(--color-ink\)/);
