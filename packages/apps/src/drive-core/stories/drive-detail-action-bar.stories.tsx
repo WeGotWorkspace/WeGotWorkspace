@@ -108,13 +108,13 @@ export const Mobile: Story = {
 };
 
 export const NarrowAside: Story = {
-  name: "Narrow aside (container query)",
+  name: "Narrow aside",
   parameters: {
     narrowAside: true,
     docs: {
       description: {
         story:
-          "Desktop detail aside width (~22rem). Actions collapse into the overflow menu when the ActionBar container is under 28rem (shared container query), not via viewport breakpoints.",
+          "Desktop detail aside width (~22rem). More (`…`) appears only when there are more than three actions (first three stay inline); width no longer forces a full collapse.",
       },
     },
   },

@@ -19,26 +19,33 @@ function buildActions() {
   );
 }
 
-function renderActionBar(options?: { mobile?: boolean; containerWidth?: string }) {
+function renderActionBar(options?: { mobile?: boolean }) {
   const actions = buildActions();
 
   return render(
     <TooltipProvider>
       <div className="drive-workspace">
-        <div style={options?.containerWidth ? { width: options.containerWidth } : undefined}>
-          <DriveDetailActionBar actions={actions} onClose={vi.fn()} mobile={options?.mobile} />
-        </div>
+        <DriveDetailActionBar actions={actions} onClose={vi.fn()} mobile={options?.mobile} />
       </div>
     </TooltipProvider>,
   );
 }
 
 describe("DriveDetailActionBar", () => {
-  it("relies on ActionBar container queries instead of forcing expanded desktop layout", () => {
+  it("overflows into More when there are more than three file actions", () => {
+    const actions = buildActions();
+    expect(actions.length).toBeGreaterThan(3);
+
     const { container } = renderActionBar();
     const bar = container.querySelector(".action-bar");
     expect(bar?.classList.contains("action-bar--expanded")).toBe(false);
     expect(container.querySelector(".action-bar__menu")).toBeTruthy();
+    expect(
+      within(container as HTMLElement).getByRole("button", { name: "More actions" }),
+    ).toBeTruthy();
+    expect(
+      within(container.querySelector(".action-bar__row")!).getAllByRole("button"),
+    ).toHaveLength(3);
   });
 
   it("keeps the close control outside the overflow menu on desktop aside", () => {
@@ -47,20 +54,12 @@ describe("DriveDetailActionBar", () => {
     expect(within(container as HTMLElement).queryByRole("button", { name: "Back" })).toBeNull();
   });
 
-  it("uses stacked mobile chrome while still allowing container-query collapse", () => {
+  it("uses stacked mobile chrome while still counting overflow by action count", () => {
     const { container } = renderActionBar({ mobile: true });
     const bar = container.querySelector(".action-bar");
     expect(bar?.classList.contains("action-bar--expanded")).toBe(false);
     expect(container.querySelector(".action-bar__menu")).toBeTruthy();
     const back = within(container as HTMLElement).getByRole("button", { name: "Back" });
     expect(back.className).toContain("button--variant-outline");
-  });
-
-  it("renders overflow menu markup for narrow detail containers", () => {
-    const { container } = renderActionBar({ containerWidth: "20rem" });
-    expect(container.querySelector(".action-bar__menu")).toBeTruthy();
-    expect(
-      within(container as HTMLElement).getByRole("button", { name: "More actions" }),
-    ).toBeTruthy();
   });
 });

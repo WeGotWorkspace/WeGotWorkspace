@@ -35,7 +35,7 @@
 }
 
 .action-bar__menu {
-  display: none;
+  @apply inline-flex;
 }
 
 .action-bar__menu-trigger {
@@ -61,36 +61,4 @@
 
 .action-bar--expanded {
   container-type: normal;
-}
-
-.action-bar--expanded .action-bar__row {
-  display: flex;
-}
-
-.action-bar--expanded .action-bar__menu {
-  display: none;
-}
-
-/* Keep inline actions visible until the bar is narrower than ~28rem. */
-@container action-bar (max-width: 28rem) {
-  .action-bar__row {
-    display: none;
-  }
-
-  .action-bar__menu {
-    display: inline-flex;
-  }
-}
-
-/* Viewport fallback only when container queries are unavailable. */
-@supports not (container-type: inline-size) {
-  @media (max-width: 28rem) {
-    .action-bar__row {
-      display: none;
-    }
-
-    .action-bar__menu {
-      display: inline-flex;
-    }
-  }
 }

@@ -7,6 +7,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "@/action-bar/src/action-bar.css";
 
+/** Max actions shown inline before the More (`…`) overflow menu appears. */
+export const ACTION_BAR_MAX_INLINE_ACTIONS = 3;
+
 export type ActionBarAction = {
   id?: string;
   label: string;
@@ -30,7 +33,11 @@ export type ActionBarProps = {
   backLabel?: string;
   /** Back arrow for stacked mobile detail; close (X) for side panels and dialogs. */
   backIcon?: "back" | "close";
-  /** When false, always render inline actions instead of the compact overflow menu. */
+  /**
+   * When false, always render every action inline (no More menu).
+   * When true (default), overflow kicks in only when a side has more than
+   * {@link ACTION_BAR_MAX_INLINE_ACTIONS} actions (first N inline, rest in More).
+   */
   collapseActions?: boolean;
   /** Preferred API: action descriptors rendered by ActionBar with compact dropdown behavior. */
   leftActions?: ActionBarAction[];
@@ -51,6 +58,19 @@ export type ActionBarProps = {
   right?: React.ReactNode;
   className?: string;
 };
+
+function splitInlineAndOverflow(
+  actions: ActionBarAction[],
+  collapseActions: boolean,
+): { inline: ActionBarAction[]; overflow: ActionBarAction[] } {
+  if (!collapseActions || actions.length <= ACTION_BAR_MAX_INLINE_ACTIONS) {
+    return { inline: actions, overflow: [] };
+  }
+  return {
+    inline: actions.slice(0, ACTION_BAR_MAX_INLINE_ACTIONS),
+    overflow: actions.slice(ACTION_BAR_MAX_INLINE_ACTIONS),
+  };
+}
 
 function renderActionItems(actions: ActionBarAction[]) {
   return actions.map((action) => {
@@ -147,6 +167,10 @@ export function ActionBar({
   const hasLeftActions = (leftActions?.length ?? 0) > 0;
   const hasRightActions = (rightActions?.length ?? 0) > 0;
   const hasRightChrome = hasRightActions || right != null || rightLeading != null;
+  const leftSplit = hasLeftActions ? splitInlineAndOverflow(leftActions!, collapseActions) : null;
+  const rightSplit = hasRightActions
+    ? splitInlineAndOverflow(rightActions!, collapseActions)
+    : null;
 
   return (
     <nav className={cn("action-bar", !collapseActions && "action-bar--expanded", className)}>
@@ -161,16 +185,18 @@ export function ActionBar({
           title={backLabel}
         />
       ) : null}
-      {hasLeftActions ? (
+      {leftSplit ? (
         <div className="action-bar__left">
-          <div className="action-bar__row">{renderActionItems(leftActions!)}</div>
-          {renderCompactDropdown(
-            leftActions!,
-            leftMenuLabel,
-            leftMenuIcon,
-            "start",
-            "action-bar__menu",
-          )}
+          <div className="action-bar__row">{renderActionItems(leftSplit.inline)}</div>
+          {leftSplit.overflow.length > 0
+            ? renderCompactDropdown(
+                leftSplit.overflow,
+                leftMenuLabel,
+                leftMenuIcon,
+                "start",
+                "action-bar__menu",
+              )
+            : null}
         </div>
       ) : left != null ? (
         <div className="action-bar__left">{left}</div>
@@ -181,16 +207,18 @@ export function ActionBar({
           {rightLeading != null ? (
             <div className="action-bar__right-leading">{rightLeading}</div>
           ) : null}
-          {hasRightActions ? (
+          {rightSplit ? (
             <>
-              <div className="action-bar__row">{renderActionItems(rightActions!)}</div>
-              {renderCompactDropdown(
-                rightActions!,
-                rightMenuLabel,
-                rightMenuIcon,
-                "end",
-                "action-bar__menu",
-              )}
+              <div className="action-bar__row">{renderActionItems(rightSplit.inline)}</div>
+              {rightSplit.overflow.length > 0
+                ? renderCompactDropdown(
+                    rightSplit.overflow,
+                    rightMenuLabel,
+                    rightMenuIcon,
+                    "end",
+                    "action-bar__menu",
+                  )
+                : null}
             </>
           ) : right != null ? (
             right

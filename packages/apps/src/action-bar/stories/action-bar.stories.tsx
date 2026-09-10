@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Archive, Forward, Reply, Star } from "lucide-react";
+import { Archive, Forward, Reply, Star, Trash2 } from "lucide-react";
 import { ActionBar } from "../src/action-bar";
 
 const meta: Meta<typeof ActionBar> = {
@@ -9,7 +9,7 @@ const meta: Meta<typeof ActionBar> = {
     docs: {
       description: {
         component:
-          "Mobile back control uses outline Button chrome (same quiet border as peer actions).",
+          "Mobile back control uses outline Button chrome (same quiet border as peer actions). The More (`…`) menu appears only when a side has more than three actions (first three stay inline).",
       },
     },
   },
@@ -48,28 +48,33 @@ export const NotesLike: Story = {
   },
 };
 
-export const CompactOverflow: Story = {
+export const OverflowWhenMoreThanThree: Story = {
+  name: "Overflow when more than three",
   args: {
-    ...MailLike.args,
+    onBack: () => {},
+    backLabel: "Inbox",
+    rightActions: [
+      { id: "reply", label: "Reply", onClick: () => {}, icon: <Reply /> },
+      { id: "forward", label: "Forward", onClick: () => {}, icon: <Forward /> },
+      { id: "star", label: "Star", onClick: () => {}, icon: <Star /> },
+      { id: "archive", label: "Archive", onClick: () => {}, icon: <Archive /> },
+      { id: "trash", label: "Trash", onClick: () => {}, icon: <Trash2 /> },
+    ],
+    rightMenuLabel: "More actions",
   },
-  globals: {
-    viewport: {
-      value: "mobile1",
-      isRotated: false,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Five right actions: first three stay inline; Archive and Trash move into the More menu.",
+      },
     },
   },
 };
 
 export const CustomOverflowIcons: Story = {
   args: {
-    ...MailLike.args,
-    leftMenuIcon: <Forward />,
+    ...OverflowWhenMoreThanThree.args,
     rightMenuIcon: <Star />,
-  },
-  globals: {
-    viewport: {
-      value: "mobile1",
-      isRotated: false,
-    },
   },
 };
