@@ -34,6 +34,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     hiddenNotebookIds,
     notebookCollections,
     listLoading,
+    data,
     showMutationError,
   } = shell;
 
@@ -209,7 +210,13 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
       prevNotesRef.current = notes;
       return;
     }
-    if (notes.some((note) => note.id === activeId)) {
+    // Prefer in-memory rows, but also trust the latest bootstrap payload.
+    // Shell merges `data.notes` in an effect, so the first ready paint after
+    // `listLoading` flips can still have empty local `notes` for one frame.
+    if (
+      notes.some((note) => note.id === activeId) ||
+      data.notes.some((note) => note.id === activeId)
+    ) {
       prevNotesRef.current = notes;
       return;
     }
@@ -264,7 +271,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
       setActiveId("");
     }
     prevNotesRef.current = notes;
-  }, [activeId, listLoading, notes, setNotes, setSelectedIds]);
+  }, [activeId, data.notes, listLoading, notes, setNotes, setSelectedIds]);
 
   const active = activeId ? notes.find((n) => n.id === activeId) : undefined;
 

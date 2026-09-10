@@ -620,6 +620,40 @@ describe("useNotesController URL routing", () => {
     expect(onNoteChange).not.toHaveBeenCalledWith("");
   });
 
+  it("keeps a deep-linked note id when bootstrap data leads shell notes by one tick", () => {
+    // listLoading flips false in the same render that delivers data.notes, but shell
+    // only merges into `notes` in an effect — selection must trust data.notes and
+    // must not ReferenceError on an undefined alias (e.g. sourceNotes).
+    const onNoteChange = vi.fn();
+    const deepLinkId = "493f42cd-d139-400d-b1a6-0aadf5416d6a";
+    const empty: NotesUIData = { notes: [], notebooks: [], tags: [] };
+    const loaded: NotesUIData = {
+      notes: [{ ...localNote, id: deepLinkId }],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+
+    const { result, rerender } = renderHook(
+      ({ data, listLoading }: { data: NotesUIData; listLoading: boolean }) =>
+        useNotesController({
+          data,
+          listLoading,
+          initialNoteId: deepLinkId,
+          onNoteChange,
+        }),
+      { initialProps: { data: empty, listLoading: true } },
+    );
+
+    expect(result.current.activeId).toBe(deepLinkId);
+    expect(result.current.notes).toEqual([]);
+
+    rerender({ data: loaded, listLoading: false });
+
+    expect(result.current.activeId).toBe(deepLinkId);
+    expect(onNoteChange).not.toHaveBeenCalledWith("");
+    expect(result.current.notes.some((note) => note.id === deepLinkId)).toBe(true);
+  });
+
   it("clears a deep-linked note id after hydrate when the note is absent", () => {
     const onNoteChange = vi.fn();
     const empty: NotesUIData = { notes: [], notebooks: [], tags: [] };
