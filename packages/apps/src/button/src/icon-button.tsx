@@ -30,7 +30,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
     label,
     icon,
     size = "md",
-    variant = "subtle",
+    variant = "outline",
     active = false,
     showTooltip = true,
     tooltipClassName,

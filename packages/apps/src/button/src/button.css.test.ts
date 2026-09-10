@@ -36,10 +36,18 @@ describe("button outline chrome", () => {
     expect(css).toMatch(
       /\.button\.button--variant-outline\.icon-button--active:hover \{[\s\S]*background-color:\s*var\(\s*--button-outline-active-hover-background/,
     );
+    expect(css).toMatch(
+      /\.button\.button--variant-outline\.icon-button--active \.button__icon > svg \{[\s\S]*fill:\s*none/,
+    );
   });
 
   it("uses keyboard-only focus rings", () => {
     expect(css).toMatch(/\.button \{[\s\S]*focus-visible:ring-1 focus-visible:ring-ring/);
     expect(css).not.toMatch(/\.button \{[\s\S]*\bfocus:ring-/);
+  });
+
+  it("does not ship a subtle button variant", () => {
+    expect(css).not.toMatch(/\.button--variant-subtle/);
+    expect(css).not.toMatch(/--button-subtle-/);
   });
 });

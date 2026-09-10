@@ -8,7 +8,6 @@ export const BUTTON_VARIANT_OPTIONS = [
   "destructive-outline",
   "outline",
   "ghost",
-  "subtle",
   "link",
 ] as const;
 
@@ -54,7 +53,6 @@ export const BUTTON_VARIANT_CLASSNAMES: Record<ButtonVariant, string> = {
   "destructive-outline": "button--variant-destructive-outline",
   outline: "button--variant-outline",
   ghost: "button--variant-ghost",
-  subtle: "button--variant-subtle",
   link: "button--variant-link",
 };
 
@@ -68,7 +66,7 @@ export function normalizeButtonVariant(
     case "primary":
       return "primary";
     case "secondary":
-      return "subtle";
+      return "outline";
     default:
       return variant;
   }

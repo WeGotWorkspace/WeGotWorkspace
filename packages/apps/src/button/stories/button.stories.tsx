@@ -43,10 +43,6 @@ export const PrimaryPill: Story = {
   args: { ...Primary.args, size: "lg", pill: true },
 };
 
-export const Subtle: Story = {
-  args: { ...Primary.args, variant: "subtle" },
-};
-
 export const Ghost: Story = {
   args: { ...Primary.args, variant: "ghost" },
 };

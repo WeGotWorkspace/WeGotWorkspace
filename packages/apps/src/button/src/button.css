@@ -143,6 +143,11 @@
   );
 }
 
+/* Lucide marks are stroke-based; generic `.icon-button--active` fill would solid-blob them. */
+.button.button--variant-outline.icon-button--active .button__icon > svg {
+  fill: none;
+}
+
 .button--variant-ghost {
   color: var(--button-ghost-color, var(--color-ink));
   background-color: transparent;
@@ -152,21 +157,6 @@
   background-color: var(
     --button-ghost-hover-background,
     color-mix(in oklab, var(--color-ink) 12%, transparent)
-  );
-}
-
-.button--variant-subtle {
-  color: var(--button-subtle-color, color-mix(in oklab, var(--color-ink) 65%, transparent));
-  background-color: var(
-    --button-subtle-background,
-    color-mix(in oklab, var(--color-ink) 6%, transparent)
-  );
-}
-
-.button--variant-subtle:hover {
-  background-color: var(
-    --button-subtle-hover-background,
-    color-mix(in oklab, var(--color-ink) 18%, transparent)
   );
 }
 
