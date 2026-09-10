@@ -3,6 +3,7 @@ import { ArrowLeft, MoreHorizontal, X } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
+import type { MenuItemSeverity } from "@/menu-item/src/menu-item";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "@/action-bar/src/action-bar.css";
@@ -24,6 +25,8 @@ export type ActionBarAction = {
   disabled?: boolean;
   /** When true, render icon + visible label (Button) instead of icon-only IconButton. */
   showLabel?: boolean;
+  /** Passed through to overflow DropdownMenu items (e.g. Delete → danger wash). */
+  severity?: MenuItemSeverity;
 };
 
 export type ActionBarProps = {
@@ -132,6 +135,7 @@ function renderCompactDropdown(
           onClick: action.onClick,
           checked: action.active,
           disabled: action.disabled,
+          severity: action.severity,
         }))}
         contentClassName="min-w-[11rem] p-1.5"
         trigger={

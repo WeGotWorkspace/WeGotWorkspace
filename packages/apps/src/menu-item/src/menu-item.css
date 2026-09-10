@@ -11,12 +11,40 @@
 }
 
 /* Sidebar nav hover: same wash + fg family as outline IconButton. */
-.sidebar-section .menu-item--interactive:hover:not(.menu-item--surface-selected) {
+.sidebar-section
+  .menu-item--interactive:hover:not(.menu-item--surface-selected):not(.menu-item--severity-danger) {
   color: var(--button-outline-hover-color, var(--button-outline-color, var(--color-ink)));
   background-color: var(
     --button-outline-hover-background,
     color-mix(in oklab, var(--color-ink) 8%, transparent)
   );
+}
+
+/*
+ * Severity rows (Delete, etc.): fg from destructive token; hover/focus wash from
+ * the same hue — not workspace accent / --menu-item-hover-background.
+ */
+.menu-item--severity-danger {
+  --menu-item-severity-color: var(
+    --menu-item-danger-color,
+    var(--color-destructive, var(--destructive, #b14242))
+  );
+  --menu-item-severity-hover-background: var(
+    --menu-item-danger-hover-background,
+    color-mix(in oklab, var(--menu-item-severity-color) 14%, transparent)
+  );
+  color: var(--menu-item-severity-color);
+}
+
+.menu-item--severity-danger .menu-item__icon-slot {
+  opacity: 0.9;
+}
+
+.menu-item--severity-danger.menu-item--interactive:hover,
+.menu-item--severity-danger.menu-item--interactive:focus,
+.menu-item--severity-danger.menu-item--interactive:focus-visible {
+  color: var(--menu-item-severity-color);
+  background-color: var(--menu-item-severity-hover-background);
 }
 
 .menu-item--disabled {

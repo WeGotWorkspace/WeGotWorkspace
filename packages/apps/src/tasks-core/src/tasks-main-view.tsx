@@ -229,6 +229,7 @@ function TaskRow({
               icon: <Trash2 className="size-4" />,
               onClick: () => onDeleteTask(task.id),
               disabled: !canMutate,
+              severity: "danger",
             },
           ]}
         />

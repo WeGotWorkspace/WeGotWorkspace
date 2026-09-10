@@ -73,7 +73,7 @@
   border-radius: var(--control-radius);
 }
 
-.dropdown-menu-ui__item:focus {
+.dropdown-menu-ui__item:focus:not(.menu-item--severity-danger) {
   background-color: var(
     --menu-item-hover-background,
     color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)

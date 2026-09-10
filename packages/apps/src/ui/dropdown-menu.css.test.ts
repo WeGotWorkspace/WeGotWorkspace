@@ -10,12 +10,14 @@ const css = readFileSync(
 
 describe("dropdown-menu accent washes", () => {
   it("washes item focus with quiet menu-item hover, not outline/sidebar chip washes", () => {
-    expect(css).toMatch(/\.dropdown-menu-ui__item:focus \{[\s\S]*--menu-item-hover-background/);
     expect(css).toMatch(
-      /\.dropdown-menu-ui__item:focus \{[\s\S]*var\(--workspace-accent,\s*var\(--color-ink\)\) 14%/,
+      /\.dropdown-menu-ui__item:focus(?::not\(\.menu-item--severity-danger\))? \{[\s\S]*--menu-item-hover-background/,
+    );
+    expect(css).toMatch(
+      /\.dropdown-menu-ui__item:focus(?::not\(\.menu-item--severity-danger\))? \{[\s\S]*var\(--workspace-accent,\s*var\(--color-ink\)\) 14%/,
     );
     expect(css).not.toMatch(
-      /\.dropdown-menu-ui__item:focus \{[\s\S]*--button-outline-hover-background/,
+      /\.dropdown-menu-ui__item:focus(?::not\(\.menu-item--severity-danger\))? \{[\s\S]*--button-outline-hover-background/,
     );
     expect(css).not.toMatch(/\.dropdown-menu-ui__item:focus \{[\s\S]*@apply bg-accent/);
   });
