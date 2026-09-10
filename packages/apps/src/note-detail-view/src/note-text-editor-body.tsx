@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Editor, UseEditorOptions } from "@tiptap/react";
+import { Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAcceptedTextEditorContent } from "@/text-editor-core/src/text-editor-track-changes";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
@@ -21,6 +22,7 @@ import {
 } from "@/text-editor-core/docs-collab";
 import type { DocsCollabUrls } from "@/text-editor-core/docs-collab";
 import type { DocsCollabWireOperations } from "@/text-editor-core/docs-collab/docs-collab-wire";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 
 import "@/text-editor-core/src/text-editor.css";
 import "@/note-detail-view/src/note-text-editor-body.css";
@@ -193,6 +195,17 @@ export function NoteCollabChrome({ className }: { className?: string }) {
 
   return (
     <div className={cn("note-detail-view__collab-chrome", className)}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className="note-detail-view__collab-chrome-icon-trigger"
+            aria-label="Online collaborators"
+          >
+            <Users className="note-detail-view__collab-chrome-icon" aria-hidden />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>Online collaborators</TooltipContent>
+      </Tooltip>
       <DocsCollabPresence
         localUser={{ displayName: session.user.name }}
         peers={presencePeers}
@@ -211,7 +224,7 @@ export function NoteCollabEditorSurface({
   className?: string;
   /** When false, TipTap rejects typing (view-only share). */
   editable?: boolean;
-  /** Override TipTap mount focus. Omit to keep the collab default (end). */
+  /** Override TipTap mount focus. Omit to focus end without scrolling the caret into view. */
   autofocus?: UseEditorOptions["autofocus"];
 }) {
   const { session, onMarkdownChange, registerMarkdownGetter } = useNoteCollabContext();

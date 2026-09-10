@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
-import { Star } from "lucide-react";
+import { Star, Users } from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { DocsCollabPresence } from "@/text-editor-core/docs-collab/docs-collab-presence";
-import { TooltipProvider } from "@/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
 import { NoteDetailView } from "../src/note-detail-view";
 import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
 
@@ -117,6 +117,17 @@ export const CollabChromePreview: Story = {
         editedLabel="Last edited"
         start={
           <div className="note-detail-view__collab-chrome">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="note-detail-view__collab-chrome-icon-trigger"
+                  aria-label="Online collaborators"
+                >
+                  <Users className="note-detail-view__collab-chrome-icon" aria-hidden />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Online collaborators</TooltipContent>
+            </Tooltip>
             <DocsCollabPresence
               localUser={{ displayName: "Alex Example" }}
               peers={[

@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
+import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import type { DocsCollabMeshPeer } from "./docs-collab-types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import "@/text-editor-core/docs-collab/docs-collab-presence.css";
@@ -45,7 +45,6 @@ export function DocsCollabPresence({
                 displayName={peer.name}
                 compact
                 size="xs"
-                color={avatarColorForUserId(peer.id)}
                 className="docs-collab-presence__avatar"
               />
             </span>
