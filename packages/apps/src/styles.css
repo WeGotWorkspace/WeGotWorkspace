@@ -2,21 +2,8 @@
 @source "../src";
 @import "tw-animate-css";
 
-/* Self-hosted fonts: General Sans (sans), Libre Caslon Condensed (serif), JetBrains Mono (mono). */
-@font-face {
-  font-family: "General Sans";
-  src: url("/fonts/GeneralSans-Variable.woff2") format("woff2-variations");
-  font-weight: 200 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "General Sans";
-  src: url("/fonts/GeneralSans-VariableItalic.woff2") format("woff2-variations");
-  font-weight: 200 700;
-  font-style: italic;
-  font-display: swap;
-}
+/* Self-hosted fonts: Libre Caslon Condensed (serif), JetBrains Mono (mono), Bebas Neue (app mark).
+ * Product UI sans uses the system UI stack (`ui-sans-serif`) — see --font-sans. */
 @font-face {
   font-family: "Libre Caslon Condensed";
   src: url("/fonts/LibreCaslonCondensed.woff2") format("woff2-variations");
@@ -40,11 +27,11 @@
 }
 
 @theme inline {
-  --font-display: "General Sans", system-ui, sans-serif;
+  --font-display: ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Libre Caslon Condensed", serif;
-  --font-sans: "General Sans", system-ui, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --font-app: "Bebas Neue", "General Sans", system-ui, sans-serif;
+  --font-app: "Bebas Neue", ui-sans-serif, system-ui, sans-serif;
   --color-forest: #042318;
   --color-emerald: #34d399;
   --color-ink: #042a22;
