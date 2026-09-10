@@ -862,8 +862,9 @@ export function CalendarWorkspace({
                   onCreateRequested={
                     operations
                       ? (intent) => {
-                          const calendarId = intent.calendarId || defaultCalendarId;
-                          const calendar = calendars.find((entry) => entry.id === calendarId);
+                          const calendar = calendars.find(
+                            (entry) => entry.id === defaultCalendarId,
+                          );
                           if (!canWriteCalendarCollection(calendar)) return;
                           closeEventPreview();
                           openCreateFromSurface(intent);

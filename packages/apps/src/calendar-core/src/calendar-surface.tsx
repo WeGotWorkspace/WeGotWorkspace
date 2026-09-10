@@ -122,7 +122,19 @@ export function CalendarSurface({
     host.events = events;
     host.visibleCalendarIds = visibleCalendarIds;
     host.selectedCalendarId = selectedCalendarId;
-    host.contextValue = contextValue;
+    // Keep EventsAPI selection aligned with the React sidebar create-target.
+    // createCalendarEventsApi otherwise falls back to isDefault and click-create
+    // would ignore the highlighted calendar row.
+    host.contextValue = contextValue
+      ? {
+          ...contextValue,
+          getSelectedCalendarId: () => {
+            const fromHost = selectedCalendarId?.trim();
+            if (fromHost) return fromHost;
+            return contextValue.getSelectedCalendarId();
+          },
+        }
+      : undefined;
     host.requestRecurrenceScope = requestRecurrenceScope;
     host.pendingCreateIntent = pendingCreateIntent ?? null;
     host.selectedEventKey = selectedEventKey ?? "";

@@ -256,6 +256,9 @@ describe("useCalendarController view + create intent", () => {
     );
 
     act(() => {
+      result.current.selectDefaultCalendar("work");
+    });
+    act(() => {
       result.current.openCreateFromSurface({
         calendarId: "work",
         allDay: false,
@@ -285,6 +288,29 @@ describe("useCalendarController view + create intent", () => {
     });
   });
 
+  it("selectDefaultCalendar drives surface create even when intent stamps another calendar", () => {
+    const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
+
+    act(() => {
+      result.current.selectDefaultCalendar("work");
+    });
+    act(() => {
+      result.current.openCreateFromSurface({
+        calendarId: "default",
+        allDay: false,
+        start: Temporal.PlainDateTime.from("2033-01-12T10:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T11:00:00"),
+      });
+    });
+
+    expect(result.current.defaultCalendarId).toBe("work");
+    expect(result.current.editor).toMatchObject({
+      mode: "create",
+      form: { calendarId: "work" },
+    });
+    expect(result.current.pendingCreateIntent).toMatchObject({ calendarId: "work" });
+  });
+
   it("keeps pendingCreateIntent after save until the surface event fills the slot", async () => {
     let resolveCreate!: (event: { id: string }) => void;
     const createEvent = vi.fn().mockImplementation(
@@ -307,6 +333,9 @@ describe("useCalendarController view + create intent", () => {
       { initialProps: { surfaceEvents: undefined as CalendarEventsMap | undefined } },
     );
 
+    act(() => {
+      result.current.selectDefaultCalendar("work");
+    });
     act(() => {
       result.current.openCreateFromSurface({
         calendarId: "work",
@@ -366,6 +395,9 @@ describe("useCalendarController view + create intent", () => {
     );
 
     act(() => {
+      result.current.selectDefaultCalendar("work");
+    });
+    act(() => {
       result.current.openCreateFromSurface({
         calendarId: "work",
         allDay: false,
@@ -379,6 +411,9 @@ describe("useCalendarController view + create intent", () => {
     });
     expect(result.current.pendingCreateIntent?.start.toString()).toBe("2033-01-12T10:00:00");
 
+    act(() => {
+      result.current.selectDefaultCalendar("work");
+    });
     act(() => {
       result.current.openCreateFromSurface({
         calendarId: "work",
@@ -406,6 +441,9 @@ describe("useCalendarController view + create intent", () => {
     );
 
     act(() => {
+      result.current.selectDefaultCalendar("work");
+    });
+    act(() => {
       result.current.openCreateFromSurface({
         calendarId: "work",
         allDay: false,
@@ -418,6 +456,9 @@ describe("useCalendarController view + create intent", () => {
     });
     expect(result.current.pendingCreateIntent).toBeNull();
 
+    act(() => {
+      result.current.selectDefaultCalendar("work");
+    });
     act(() => {
       result.current.openCreateFromSurface({
         calendarId: "work",
@@ -455,6 +496,9 @@ describe("useCalendarController view + create intent", () => {
       }),
     );
 
+    act(() => {
+      result.current.selectDefaultCalendar("work");
+    });
     act(() => {
       result.current.openCreateFromSurface({
         calendarId: "work",

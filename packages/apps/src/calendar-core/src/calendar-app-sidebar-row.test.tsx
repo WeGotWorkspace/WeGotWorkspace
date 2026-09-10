@@ -95,6 +95,9 @@ describe("Calendar sidebar row click ≠ checkbox / no navigation", { timeout: 1
     expect(screen.getByText("Work").closest(".calendar-sidebar-row")?.className).toMatch(
       /calendar-sidebar-row--selected/,
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "New event" }));
+    expect(await screen.findByRole("button", { name: "Calendar: Work" })).toBeTruthy();
   });
 
   it("toggles visibility from the checkbox without selecting the row or changing the URL", async () => {

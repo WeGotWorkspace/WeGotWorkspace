@@ -474,7 +474,9 @@ export function useCalendarController({
   /** Drag/click create from the Lit surface — dialog only; nothing persisted yet. */
   const openCreateFromSurface = useCallback(
     (intent: CalendarSurfaceCreateIntent) => {
-      const calendarId = writableCalendarId(calendars, intent.calendarId || defaultCalendarId);
+      // Sidebar create-target owns assignment; do not trust a stale Lit intent
+      // calendarId (EventsAPI historically fell back to isDefault).
+      const calendarId = writableCalendarId(calendars, defaultCalendarId);
       if (!calendarId) return;
       const calendar = calendars.find((entry) => entry.id === calendarId);
       if (!canWriteCalendarCollection(calendar)) return;
