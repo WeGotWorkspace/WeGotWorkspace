@@ -37,4 +37,30 @@ describe("NotesDetailFooter", () => {
     );
     expect(container.querySelector(".notes-detail-footer")).toBeNull();
   });
+
+  it("renders presence start without a last-edited chip", () => {
+    const { container } = renderFooter(
+      <NotesDetailFooter start={<span data-testid="presence">peers</span>} />,
+    );
+    expect(container.querySelector(".notes-detail-footer")).toBeTruthy();
+    expect(screen.getByTestId("presence").textContent).toBe("peers");
+    expect(container.querySelector(".notes-detail-footer__meta-tag--edited")).toBeNull();
+  });
+
+  it("keeps presence on the left and last-edited on the end", () => {
+    const { container } = renderFooter(
+      <NotesDetailFooter
+        lastEdited="10 Aug 2026"
+        editedLabel="Last edited"
+        start={<span data-testid="presence">peers</span>}
+      />,
+    );
+    const footer = container.querySelector(".notes-detail-footer");
+    expect(footer).toBeTruthy();
+    const groups = footer!.querySelectorAll(".workspace-chrome-footer__group");
+    expect(groups.length).toBe(2);
+    expect(groups[0]!.querySelector("[data-testid='presence']")).toBeTruthy();
+    expect(groups[1]!.className).toContain("workspace-chrome-footer__group--end");
+    expect(groups[1]!.querySelector(".notes-detail-footer__meta-tag--edited")).toBeTruthy();
+  });
 });

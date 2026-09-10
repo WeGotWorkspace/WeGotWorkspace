@@ -88,24 +88,12 @@ export const ReadOnly: Story = {
   },
 };
 
-/** Static layout preview: presence in the action bar, meta in the pinned footer. */
+/** Static layout preview: presence left in the pinned footer; actions stay in the bar. */
 export const CollabChromePreview: Story = {
   render: () => (
     <div className="notes-workspace notes-story-scope notes-story-scope--detail flex min-h-[24rem] flex-col">
       <ActionBar
         onBack={() => {}}
-        rightLeading={
-          <div className="note-detail-view__collab-chrome">
-            <DocsCollabPresence
-              localUser={{ displayName: "Alex Example" }}
-              peers={[
-                { id: "peer-1", name: "Sam Lee" },
-                { id: "peer-2", name: "Jordan Kim" },
-              ]}
-              connectingPeers={[{ id: "peer-3", name: "Casey Wu" }]}
-            />
-          </div>
-        }
         rightActions={[
           {
             id: "star",
@@ -118,12 +106,27 @@ export const CollabChromePreview: Story = {
       <div className="workspace-detail-pane__scroll flex-1">
         <article className="note-detail-view note-detail-sheet">
           <p className="text-muted-foreground text-sm">
-            Collab session chrome preview — presence sits in the action bar; edited meta pins in the
-            footer.
+            Collab session chrome preview — presence sits left in the footer; edited meta pins on
+            the right.
           </p>
         </article>
       </div>
-      <NotesDetailFooter lastEdited="6 May 2026" />
+      <NotesDetailFooter
+        lastEdited="6 May 2026"
+        editedLabel="Last edited"
+        start={
+          <div className="note-detail-view__collab-chrome">
+            <DocsCollabPresence
+              localUser={{ displayName: "Alex Example" }}
+              peers={[
+                { id: "peer-1", name: "Sam Lee" },
+                { id: "peer-2", name: "Jordan Kim" },
+              ]}
+              connectingPeers={[{ id: "peer-3", name: "Casey Wu" }]}
+            />
+          </div>
+        }
+      />
     </div>
   ),
 };

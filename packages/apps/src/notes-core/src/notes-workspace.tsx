@@ -23,7 +23,7 @@ import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
-import { NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
+import { NoteCollabChrome, NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { WorkspaceUserFooter } from "@/workspace-shell/src/workspace-app-layout";
@@ -611,7 +611,6 @@ export function NotesWorkspace({
               }
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}
-              showCollabChrome={collabSessionActive}
               notebookColor={activeNotebook?.color}
               readOnly={noteReadOnly}
               canArchive={noteCanArchive}
@@ -680,6 +679,7 @@ export function NotesWorkspace({
             <NotesDetailFooter
               lastEdited={formatNoteLastEdited(active)}
               editedLabel={L.editedLabel}
+              start={collabSessionActive ? <NoteCollabChrome /> : undefined}
             />
           );
         }}

@@ -29,7 +29,7 @@
 }
 
 .note-detail-view__collab-chrome {
-  @apply flex shrink-0 flex-wrap items-center justify-end gap-1.5;
+  @apply flex shrink-0 flex-wrap items-center justify-start gap-1.5;
 }
 
 .note-detail-view__pending-sync {
@@ -43,19 +43,23 @@
   color: #c98a1f;
 }
 
-.note-detail-view .docs-collab-presence__avatar--self {
+/* Presence lives in the pinned detail footer (cream chrome), not the paper sheet. */
+.notes-workspace .note-detail-view__collab-chrome .docs-collab-presence__avatar--self {
   --user-avatar-bg: var(--notes-accent, #f6d176);
   --user-avatar-fg: var(--color-ink);
   --docs-collab-presence-accent: var(--notes-accent, #f6d176);
-  --docs-collab-presence-ring: var(--notes-detail-body-bg, var(--color-cream, #ffffff));
+  --docs-collab-presence-ring: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
 }
 
-.note-detail-view .docs-collab-presence__avatar--self .user-avatar__mark {
+.notes-workspace
+  .note-detail-view__collab-chrome
+  .docs-collab-presence__avatar--self
+  .user-avatar__mark {
   box-shadow:
-    0 0 0 2px var(--notes-detail-body-bg, var(--color-cream, #ffffff)),
+    0 0 0 2px var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff)),
     0 0 0 3px color-mix(in oklab, var(--notes-accent, #f6d176) 42%, transparent);
 }
 
-.note-detail-view .docs-collab-presence__avatar--connecting {
+.notes-workspace .note-detail-view__collab-chrome .docs-collab-presence__avatar--connecting {
   --docs-collab-presence-accent: var(--notes-accent, #f6d176);
 }

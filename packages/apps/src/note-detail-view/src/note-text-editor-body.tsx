@@ -177,7 +177,7 @@ export function NoteCollabSession({
   return <NoteCollabContext.Provider value={value}>{children}</NoteCollabContext.Provider>;
 }
 
-/** Docs-style peer avatars for the notes detail action bar. */
+/** Docs-style peer avatars for the notes detail footer (left). */
 export function NoteCollabChrome({ className }: { className?: string }) {
   const { session, peers, connectingPeers, warningPeers } = useNoteCollabContext();
   const awarenessPresencePeers = useDocsCollabAwarenessPresence(session?.awareness);
