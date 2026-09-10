@@ -12,9 +12,7 @@
   @apply -ml-2;
 }
 
-.docs-collab-presence__avatar .user-avatar__mark {
-  box-shadow: 0 0 0 2px var(--docs-collab-presence-ring, var(--background, #fff));
-}
+/* Mark outline only — no wrapper cream/background ring (avoids double border). */
 
 .docs-collab-presence__avatar--connecting {
   --user-avatar-bg: color-mix(

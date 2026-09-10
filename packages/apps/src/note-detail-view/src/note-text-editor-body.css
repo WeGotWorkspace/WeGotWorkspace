@@ -48,16 +48,6 @@
   --user-avatar-bg: var(--notes-accent, #f6d176);
   --user-avatar-fg: var(--color-ink);
   --docs-collab-presence-accent: var(--notes-accent, #f6d176);
-  --docs-collab-presence-ring: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
-}
-
-.notes-workspace
-  .note-detail-view__collab-chrome
-  .docs-collab-presence__avatar--self
-  .user-avatar__mark {
-  box-shadow:
-    0 0 0 2px var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff)),
-    0 0 0 3px color-mix(in oklab, var(--notes-accent, #f6d176) 42%, transparent);
 }
 
 .notes-workspace .note-detail-view__collab-chrome .docs-collab-presence__avatar--connecting {

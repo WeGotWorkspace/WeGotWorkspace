@@ -32,6 +32,19 @@ describe("user avatar mark border", () => {
     expect(css).not.toMatch(/\.user-avatar--colored \.user-avatar__mark \{[\s\S]*border:\s*2px/);
   });
 
+  it("keeps colored tile wash/border at outline-active intensity (not full-sat rings)", () => {
+    // Soft wash like default outline-active / docs-collab connecting chips.
+    expect(css).toMatch(
+      /--user-avatar-amber-bg:\s*color-mix\(\s*in oklab,\s*var\(--user-avatar-amber\) 14%,\s*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /--user-avatar-amber-border:\s*color-mix\(in oklab,\s*var\(--user-avatar-amber\) 38%,\s*transparent\)/,
+    );
+    // No raw hue borders (those read neon next to sidebar outline marks).
+    expect(css).not.toMatch(/--user-avatar-amber-border:\s*var\(--user-avatar-amber\)\s*;/);
+    expect(css).not.toMatch(/var\(--user-avatar-amber\) 32%,\s*var\(--color-cream/);
+  });
+
   it("does not zero the mark border on the button reset", () => {
     const button = css.match(/button\.user-avatar__mark \{[\s\S]*?\n\}/)?.[0];
     expect(button).toBeDefined();

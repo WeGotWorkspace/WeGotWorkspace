@@ -245,13 +245,6 @@
   --user-avatar-bg: var(--docs-accent);
   --user-avatar-fg: #fff;
   --docs-collab-presence-accent: var(--docs-accent);
-  --docs-collab-presence-ring: var(--background);
-}
-
-.docs-workspace .docs-collab-presence__avatar--self .user-avatar__mark {
-  box-shadow:
-    0 0 0 2px var(--background),
-    0 0 0 3px color-mix(in oklab, var(--docs-accent) 42%, transparent);
 }
 
 .docs-workspace .docs-collab-presence__avatar--connecting {
