@@ -107,12 +107,12 @@ describe("calendar workspace header markup", () => {
       /titleLeading=\{\s*<div className="calendar-header-nav">([\s\S]*?)<\/div>\s*\}/,
     )?.[1];
     expect(navBlock).toBeDefined();
-    expect(navBlock!).toMatch(/label=\{L\.nextPeriod\}[\s\S]*?className="calendar-header-today"/);
+    expect(navBlock!).toMatch(/label=\{periodNav\.next\}[\s\S]*?className="calendar-header-today"/);
     expect(navBlock!).toMatch(
       /className="calendar-header-today"[\s\S]*?icon=\{<CalendarDays className="size-4" \/>\}/,
     );
     expect(navBlock!).toMatch(/aria-pressed=\{showingToday\}/);
-    expect(navBlock!.indexOf("L.nextPeriod")).toBeLessThan(
+    expect(navBlock!.indexOf("periodNav.next")).toBeLessThan(
       navBlock!.indexOf('className="calendar-header-today"'),
     );
   });
@@ -122,18 +122,20 @@ describe("calendar workspace header markup", () => {
       /titleLeading=\{\s*<div className="calendar-header-nav">([\s\S]*?)<\/div>\s*\}/,
     )?.[1];
     expect(navBlock).toBeDefined();
-    expect(navBlock!).toMatch(/label=\{L\.previousPeriod\}[\s\S]*?variant="outline"/);
-    expect(navBlock!).toMatch(/label=\{L\.nextPeriod\}[\s\S]*?variant="outline"/);
+    expect(navBlock!).toMatch(/label=\{periodNav\.previous\}[\s\S]*?variant="outline"/);
+    expect(navBlock!).toMatch(/label=\{periodNav\.next\}[\s\S]*?variant="outline"/);
     expect(navBlock!).not.toMatch(/variant="subtle"/);
   });
 
-  it("uses L.previousPeriod / L.nextPeriod for prev/next IconButton labels", () => {
+  it("derives prev/next IconButton labels from calendarPeriodNavLabels(view)", () => {
+    expect(tsx).toMatch(/calendarPeriodNavLabels\(view,\s*L\)/);
     const navBlock = tsx.match(
       /titleLeading=\{\s*<div className="calendar-header-nav">([\s\S]*?)<\/div>\s*\}/,
     )?.[1];
     expect(navBlock).toBeDefined();
-    expect(navBlock!).toMatch(/label=\{L\.previousPeriod\}/);
-    expect(navBlock!).toMatch(/label=\{L\.nextPeriod\}/);
+    expect(navBlock!).toMatch(/label=\{periodNav\.previous\}/);
+    expect(navBlock!).toMatch(/label=\{periodNav\.next\}/);
+    expect(navBlock!).not.toMatch(/previousPeriod|nextPeriod/);
   });
 
   it("uses outline IconButton for Today and keeps it out of the actions cluster", () => {

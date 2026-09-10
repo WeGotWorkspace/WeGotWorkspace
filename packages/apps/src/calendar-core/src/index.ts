@@ -34,6 +34,7 @@ export {
   pickDefaultCalendarId,
 } from "./calendar-collection-write";
 export {
+  calendarPeriodNavLabels,
   defaultCalendarLabels,
   mergeCalendarLabels,
   type CalendarUILabels,

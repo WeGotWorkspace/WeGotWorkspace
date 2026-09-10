@@ -96,6 +96,7 @@ import {
   sharedWithMeCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
 import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
+import { calendarPeriodNavLabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { SideDrawer } from "@/ui/side-drawer";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
@@ -462,6 +463,7 @@ export function CalendarWorkspace({
     day: L.viewDay,
     year: L.viewYear,
   };
+  const periodNav = calendarPeriodNavLabels(view, L);
 
   useDocumentTitle(title);
 
@@ -728,7 +730,7 @@ export function CalendarWorkspace({
             titleLeading={
               <div className="calendar-header-nav">
                 <IconButton
-                  label={L.previousPeriod}
+                  label={periodNav.previous}
                   icon={<ChevronLeft className="size-4" />}
                   size="sm"
                   variant="outline"
@@ -736,7 +738,7 @@ export function CalendarWorkspace({
                   onClick={goPrevious}
                 />
                 <IconButton
-                  label={L.nextPeriod}
+                  label={periodNav.next}
                   icon={<ChevronRight className="size-4" />}
                   size="sm"
                   variant="outline"
