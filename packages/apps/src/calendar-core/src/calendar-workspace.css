@@ -40,6 +40,21 @@
   --primary: var(--calendar-accent-strong);
   --primary-foreground: #ffffff;
 
+  /* Outline action language for header + collection sidebar rows. */
+  --button-active-color: var(--calendar-accent-strong);
+  --button-outline-hover-color: var(--calendar-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--calendar-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--calendar-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--calendar-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
      fills the viewport instead of the default centered 42rem measure. */
   --workspace-main-content-max-width: none;

@@ -1,7 +1,9 @@
 @import "../../styles.css" reference;
 
 .sidebar-section__heading {
-  @apply px-4 mb-3 flex items-center justify-between gap-2 min-w-0 h-6;
+  @apply mb-3 flex items-center justify-between gap-2 min-w-0 h-6;
+  /* Match app-switch glyph inset (see `--app-sidebar-item-padding-x` on `.app-sidebar`). */
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
 }
 
 /** Caption look comes from `field-label-row__label` (see field-label-row.css). */
@@ -11,6 +13,10 @@
 
 .sidebar-section__list {
   @apply space-y-1;
+}
+
+.sidebar-section .menu-item {
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
 }
 
 .sidebar-section .sidebar-section__add {

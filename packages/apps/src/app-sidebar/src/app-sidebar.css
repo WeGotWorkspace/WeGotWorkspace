@@ -34,7 +34,15 @@
     var(--sidebar-logo-close-button-color, var(--color-ink)) 8%,
     transparent
   );
+  /* Outer chrome gutter — aligns with the app-switch icon tile. */
   --app-sidebar-padding-x: 1rem;
+  /* Same lockup math as `.app-switch-button__icon` (two caption lines). */
+  --app-switch-lockup-line: calc(1.875rem * 0.85);
+  --app-switch-icon-size: calc(2 * var(--app-switch-lockup-line));
+  /* White mark inset in 512² `/app-icons/*.svg` artwork (calendar body at x=112). */
+  --app-switch-glyph-inset: calc(var(--app-switch-icon-size) * 112 / 512);
+  /* Section titles + collection/menu rows: align to the glyph, not the tile edge. */
+  --app-sidebar-item-padding-x: var(--app-switch-glyph-inset);
 }
 
 .app-sidebar__header {

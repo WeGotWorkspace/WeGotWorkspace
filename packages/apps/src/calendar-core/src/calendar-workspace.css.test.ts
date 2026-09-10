@@ -25,6 +25,15 @@ describe("calendar workspace header CSS", () => {
 
   it("tints header outline hover/active with calendar accent instead of ink gray", () => {
     expect(css).toMatch(
+      /\.calendar-workspace \{[\s\S]*--button-active-color:\s*var\(--calendar-accent-strong\)/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--calendar-accent\) 14%/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--calendar-accent\) 18%/,
+    );
+    expect(css).toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--calendar-accent-strong\)/,
     );
     expect(css).toMatch(

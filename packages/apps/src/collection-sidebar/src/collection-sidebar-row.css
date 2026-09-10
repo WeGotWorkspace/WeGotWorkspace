@@ -1,25 +1,60 @@
 @import "../../styles.css" reference;
 
+/* Selected wash/fg match outline icon-button--active; no visible stroke in any
+ * state (1px transparent reserves space). Accent via --button-outline-*;
+ * keyboard-only focus ring. */
 .collection-sidebar-row {
-  @apply relative flex min-h-8 min-w-0 items-center gap-2 px-4 py-1 text-sm font-medium;
+  @apply relative flex min-h-8 min-w-0 items-center gap-2 py-1 text-sm font-medium;
   border-radius: var(--collection-sidebar-row-radius, 0.25rem);
+  /* Align leading content with section titles / app-switch glyph inset. */
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
+  border: 1px solid transparent;
+  background-color: transparent;
   color: color-mix(in oklab, var(--color-ink) 75%, transparent);
 }
 
 .collection-sidebar-row:hover {
+  border-color: transparent;
   background-color: var(
     --collection-sidebar-row-hover-bg,
-    color-mix(in oklab, var(--color-ink) 12%, transparent)
+    var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
   );
 }
 
-.collection-sidebar-row--selected,
-.collection-sidebar-row--selected:hover {
+/* Selected = outline icon-button--active washes/fg; no visible stroke (idle/hover/selected). */
+.collection-sidebar-row--selected {
+  color: var(
+    --collection-sidebar-row-selected-color,
+    var(--button-active-color, var(--color-emerald))
+  );
+  border-color: transparent;
   background-color: var(
     --collection-sidebar-row-selected-bg,
-    color-mix(in oklab, var(--workspace-accent, var(--color-emerald)) 18%, transparent)
+    var(
+      --button-outline-active-background,
+      var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+    )
   );
-  color: var(--collection-sidebar-row-selected-color, var(--color-ink));
+}
+
+.collection-sidebar-row--selected:hover {
+  color: var(
+    --collection-sidebar-row-selected-color,
+    var(--button-active-color, var(--color-emerald))
+  );
+  background-color: var(
+    --collection-sidebar-row-selected-bg,
+    var(
+      --button-outline-active-hover-background,
+      var(
+        --button-outline-active-background,
+        var(
+          --button-outline-hover-background,
+          color-mix(in oklab, var(--color-ink) 8%, transparent)
+        )
+      )
+    )
+  );
 }
 
 .collection-sidebar-row--related:not(.collection-sidebar-row--selected) {
@@ -85,8 +120,7 @@
 }
 
 .collection-sidebar-row:has(> .collection-sidebar-row__select:focus-visible) {
-  outline: 2px solid color-mix(in oklab, var(--color-ink) 35%, transparent);
-  outline-offset: 1px;
+  @apply outline-none ring-1 ring-ring;
 }
 
 .collection-sidebar-row__leading {
