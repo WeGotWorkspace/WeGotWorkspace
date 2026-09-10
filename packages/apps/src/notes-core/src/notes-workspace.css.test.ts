@@ -81,7 +81,10 @@ describe("notes workspace change-notebook dialog", () => {
     expect(tsx).toMatch(/notebookSelectValueForNotes\(notes, moveDialog\?\.ids, selectNotebooks\)/);
     expect(tsx).not.toMatch(/MoveToDialog/);
     expect(actionBar).toMatch(/<NotesNotebookSelect/);
+    expect(actionBar).toMatch(/triggerVariant="swatch"/);
+    expect(notebookSelect).toMatch(/ColorSwatchTrigger/);
     expect(changeDialog).toMatch(/<NotesNotebookSelect/);
+    expect(changeDialog).not.toMatch(/triggerVariant="swatch"/);
     expect(changeDialog).not.toMatch(/RadioGroup|CREATE_NEW_VALUE|BookOpen/);
   });
 
@@ -92,6 +95,11 @@ describe("notes workspace change-notebook dialog", () => {
     expect(tsx).not.toMatch(/openCreateNotebook\(moveDialog\.ids\)/);
     expect(tsx).toMatch(/setCreatedMoveDraft/);
     expect(actionBar).toMatch(/onNotebookChange=\{onMoveToNotebook\}/);
+  });
+
+  it("confirms detail action-bar notebook changes like Contacts address-book moves", () => {
+    expect(tsx).toMatch(/onMoveToNotebook=\{moveActiveNoteToNotebook\}/);
+    expect(tsx).not.toMatch(/onMoveToNotebook=\{\(notebook\) => \{\s*if \(active\) moveToNotebook/);
   });
 });
 
@@ -141,20 +149,29 @@ describe("notes workspace last-edited footer chip", () => {
 });
 
 describe("notes workspace selected tag chips", () => {
-  it("paints list-row tags with the same idle family as sidebar chips", () => {
+  it("insets the sidebar tag list with the shared sidebar glyph padding token", () => {
+    expect(css).toMatch(
+      /\.notes-workspace \.notes-sidebar-tags \.sidebar-section__list \{[\s\S]*padding-inline:\s*var\(\s*--app-sidebar-item-padding-x,\s*calc\(2 \* 1\.875rem \* 0\.85 \* 112 \/ 512\)\s*\)/,
+    );
+    expect(css).not.toMatch(
+      /\.notes-workspace \.notes-sidebar-tags \.sidebar-section__list \{[\s\S]*\bpx-4\b/,
+    );
+  });
+
+  it("paints sidebar filter chips with the idle tag family", () => {
     expect(css).toMatch(/--notes-tag-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 8%/);
     expect(css).toMatch(/--notes-tag-fg:\s*var\(--color-ink\)/);
     expect(css).toMatch(/--notes-tag-border:\s*color-mix\(in oklab,\s*var\(--color-ink\) 18%/);
     expect(css).toMatch(
-      /\.notes-workspace \.notes-sidebar-tags__item \.tag,[\s\S]*\.list-item__tags \.tag \{[\s\S]*border-color:\s*var\(--notes-tag-border\)/,
+      /\.notes-workspace \.notes-sidebar-tags__item \.tag \{[\s\S]*border-color:\s*var\(--notes-tag-border\)/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.notes-sidebar-tags__item \.tag,[\s\S]*\.list-item__tags \.tag \{[\s\S]*background-color:\s*var\(--notes-tag-bg\)/,
+      /\.notes-workspace \.notes-sidebar-tags__item \.tag \{[\s\S]*background-color:\s*var\(--notes-tag-bg\)/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.notes-sidebar-tags__item \.tag,[\s\S]*\.list-item__tags \.tag \{[\s\S]*color:\s*var\(--notes-tag-fg\)/,
+      /\.notes-workspace \.notes-sidebar-tags__item \.tag \{[\s\S]*color:\s*var\(--notes-tag-fg\)/,
     );
-    expect(css).not.toMatch(/\.list-item__tags \.tag \{[\s\S]*--note-detail-tag-/);
+    expect(css).not.toMatch(/\.list-item__tags \.tag/);
     expect(css).not.toMatch(/--notes-tag-bg:\s*var\(--note-detail-tag-bg\)/);
     expect(css).not.toMatch(/--notes-tag-border:\s*var\(--note-detail-tag-border\)/);
   });
@@ -248,17 +265,28 @@ describe("notes workspace action-bar selected Star/Archive", () => {
     expect(css).not.toMatch(
       /\.notes-workspace \{[\s\S]*--button-active-color:\s*var\(--notes-accent-strong\)/,
     );
+    // Root sidebar chrome stays at 55% — light action-bar washes live on the
+    // descendant `:is(.action-bar, …)` block, not in `.notes-workspace {`.
     expect(css).not.toMatch(
-      /\.notes-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--notes-accent\) (?:18|32|50)%/,
+      /\.notes-workspace \{[^}]*--button-outline-active-background:[^}]*var\(--notes-accent\) (?:18|32|50)%/,
     );
     expect(css).toMatch(
       /\.notes-workspace :is\(\.action-bar,\s*\.multi-selection-view__actions\) \{[\s\S]*--button-active-color:\s*var\(--notes-detail-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.notes-workspace :is\(\.action-bar,\s*\.multi-selection-view__actions\) \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--notes-detail-accent\) 18%/,
+      /\.notes-workspace :is\(\.action-bar,\s*\.multi-selection-view__actions\) \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--notes-accent\) 14%/,
     );
     expect(css).toMatch(
-      /\.notes-workspace :is\(\.action-bar,\s*\.multi-selection-view__actions\) \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--notes-detail-accent\) 24%/,
+      /\.notes-workspace :is\(\.action-bar,\s*\.multi-selection-view__actions\) \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--notes-accent\) 18%/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace :is\(\.action-bar,\s*\.multi-selection-view__actions\) \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--notes-accent\) 24%/,
+    );
+    expect(css).not.toMatch(
+      /\.notes-workspace :is\(\.action-bar,\s*\.multi-selection-view__actions\) \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--notes-detail-tint/,
+    );
+    expect(css).not.toMatch(
+      /\.notes-workspace :is\(\.action-bar,\s*\.multi-selection-view__actions\) \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--notes-detail-accent\) 14%/,
     );
     expect(css).not.toMatch(/\.button--variant-subtle\.icon-button--active/);
     expect(css).not.toMatch(/var\(--calendar-accent/);
@@ -284,7 +312,7 @@ describe("notes workspace action-bar selected Star/Archive", () => {
     expect(workspaceAppTsx).toMatch(/\{actionBar\?\.\(chrome\)\}/);
     expect(workspaceAppTsx).toMatch(/workspace-detail-pane__scroll/);
     expect(css).toMatch(
-      /\.notes-workspace \.action-bar \.notes-notebook-select \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+      /\.notes-workspace \.action-bar \.notes-notebook-select\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
     );
   });
 });
@@ -296,20 +324,10 @@ describe("notes workspace detail paper sheet tokens", () => {
         `--note-detail-sheet-bg:\\s*color-mix\\(\\s*in oklab,\\s*var\\(--notes-detail-tint,\\s*var\\(--color-cream,\\s*#ffffff\\)\\) ${NOTES_DETAIL_TINT_PERCENT}%,\\s*var\\(--color-cream`,
       ),
     );
-    expect(css).toMatch(
-      /--note-detail-sheet-shadow:\s*0 1px 1px color-mix\(in oklab,\s*var\(--color-ink\) 22%/,
+    expect(css).toMatch(/--note-detail-sheet-shadow:\s*var\(--sheet-shadow\)/);
+    expect(css).not.toMatch(
+      /--note-detail-sheet-shadow:\s*0 1px 1px color-mix\(in oklab,\s*var\(--color-ink\)/,
     );
-    expect(css).toMatch(
-      /--note-detail-sheet-shadow:[\s\S]*0 3px 6px color-mix\(in oklab,\s*var\(--color-ink\) 12%/,
-    );
-    expect(css).toMatch(
-      /--note-detail-sheet-shadow:[\s\S]*0 12px 20px -4px color-mix\(in oklab,\s*var\(--color-ink\) 14%/,
-    );
-    expect(css).toMatch(
-      /--note-detail-sheet-shadow:[\s\S]*0 32px 48px -12px color-mix\(in oklab,\s*var\(--color-ink\) 16%/,
-    );
-    expect(css).not.toMatch(/0 12px 32px -12px/);
-    expect(css).not.toMatch(/0 18px 28px -8px/);
     expect(css).toMatch(
       /@media \(max-width: 47\.999rem\) \{[\s\S]*\.note-detail-sheet \{[\s\S]*box-shadow:\s*none/,
     );

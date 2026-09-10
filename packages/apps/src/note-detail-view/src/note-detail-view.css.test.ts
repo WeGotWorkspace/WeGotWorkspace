@@ -13,11 +13,9 @@ describe("note-detail-view paper sheet CSS", () => {
     expect(css).not.toMatch(/\.note-detail-sheet \{[\s\S]*rounded-2xl/);
     expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*--note-detail-sheet-bg/);
     expect(css).toMatch(
-      /\.note-detail-sheet \{[\s\S]*0 1px 1px color-mix\(in oklab,\s*var\(--color-ink\) 22%/,
+      /\.note-detail-sheet \{[\s\S]*box-shadow:\s*var\(--note-detail-sheet-shadow,\s*var\(--sheet-shadow\)\)/,
     );
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*0 3px 6px/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*0 12px 20px -4px/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*0 32px 48px -12px/);
+    expect(styles).toMatch(/--sheet-shadow:\s*0 1px 2px #0000000a,\s*0 10px 30px -10px #0f172a1f/);
     expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*px-6/);
     expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*md:px-10/);
     expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*md:py-10/);

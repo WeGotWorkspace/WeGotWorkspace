@@ -8,6 +8,12 @@ const css = readFileSync(join(here, "docs-workspace.css"), "utf8");
 const headerActions = readFileSync(join(here, "docs-header-actions.tsx"), "utf8");
 const homePane = readFileSync(join(here, "docs-home-pane.tsx"), "utf8");
 
+describe("docs workspace sheet elevation", () => {
+  it("reuses the shared --sheet-shadow token for the editor paper sheet", () => {
+    expect(css).toMatch(/--text-editor-shadow-sheet:\s*var\(--sheet-shadow\)/);
+  });
+});
+
 describe("docs workspace outline chrome", () => {
   it("publishes outline tokens on the workspace and view-header (not ink-gray fallback)", () => {
     expect(css).toMatch(

@@ -311,7 +311,7 @@
 .docs-workspace .text-editor {
   @apply min-h-0 flex-1;
   --text-editor-comment: var(--docs-accent);
-  --text-editor-shadow-sheet: 0 1px 2px #0000000a, 0 10px 30px -10px #0f172a1f;
+  --text-editor-shadow-sheet: var(--sheet-shadow);
   --text-editor-format-btn-color: color-mix(in oklab, var(--docs-text) 70%, transparent);
   --text-editor-format-btn-hover-bg: color-mix(in oklab, var(--docs-accent) 10%, transparent);
   --text-editor-format-btn-hover-color: var(--docs-accent);

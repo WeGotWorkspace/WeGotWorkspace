@@ -105,17 +105,8 @@
     var(--color-ink) 85%,
     var(--note-detail-sheet-bg, var(--color-cream, #ffffff))
   );
-  /*
-   * Top-lit paper (reference sheet): tight contact at the edge, a short mid
-   * occlusion, then a broad ambient falloff below. All y-offsets downward —
-   * almost no shadow on the top edge. Ink at low alpha reads as warm charcoal
-   * on the cream desk (not a cool black blob).
-   */
-  --note-detail-sheet-shadow:
-    0 1px 1px color-mix(in oklab, var(--color-ink) 22%, transparent),
-    0 3px 6px color-mix(in oklab, var(--color-ink) 12%, transparent),
-    0 12px 20px -4px color-mix(in oklab, var(--color-ink) 14%, transparent),
-    0 32px 48px -12px color-mix(in oklab, var(--color-ink) 16%, transparent);
+  /* Same paper elevation as Docs (`--sheet-shadow` in styles.css). */
+  --note-detail-sheet-shadow: var(--sheet-shadow);
   --workspace-chrome-footer-padding-x: 1rem;
   --workspace-chrome-footer-padding-y: 0.5rem;
   --workspace-chrome-footer-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
@@ -342,7 +333,9 @@
 
 /* Sidebar Tags: wrapping Tag chips (not full-width MenuItem rows). */
 .notes-workspace .notes-sidebar-tags .sidebar-section__list {
-  @apply flex flex-wrap gap-1.5 space-y-0 px-4;
+  @apply flex flex-wrap gap-1.5 space-y-0;
+  /* Match `.sidebar-section__heading` / collection rows (not Tailwind `px-4`). */
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
 }
 
 .notes-workspace .notes-sidebar-tags__item {

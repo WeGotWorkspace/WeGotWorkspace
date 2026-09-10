@@ -14,13 +14,7 @@
   @apply mx-auto min-h-full w-full max-w-[680px] rounded-none px-6 py-8 md:px-10 md:py-10;
   background-color: var(--note-detail-sheet-bg, var(--color-cream, #ffffff));
   color: var(--notes-detail-contrast-fg, var(--color-ink));
-  box-shadow: var(
-    --note-detail-sheet-shadow,
-    0 1px 1px color-mix(in oklab, var(--color-ink) 22%, transparent),
-    0 3px 6px color-mix(in oklab, var(--color-ink) 12%, transparent),
-    0 12px 20px -4px color-mix(in oklab, var(--color-ink) 14%, transparent),
-    0 32px 48px -12px color-mix(in oklab, var(--color-ink) 16%, transparent)
-  );
+  box-shadow: var(--note-detail-sheet-shadow, var(--sheet-shadow));
 }
 
 /**
