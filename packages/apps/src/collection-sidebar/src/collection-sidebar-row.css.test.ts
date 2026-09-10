@@ -54,4 +54,14 @@ describe("collection sidebar row CSS", () => {
     expect(visibility).toMatch(/--checkbox-border-color:\s*var\(--collection-row-color/);
     expect(visibility).toMatch(/--primary:\s*var\(--collection-row-color/);
   });
+
+  it("washes the selected row from --collection-row-color, not ink gray", () => {
+    const selected = css.match(
+      /\.collection-sidebar-row--selected,[\s\S]*?\.collection-sidebar-row--selected:hover \{[^}]+\}/,
+    )?.[0];
+    expect(selected).toMatch(
+      /color-mix\(in oklab,\s*var\(--collection-row-color,\s*var\(--color-ink\)\)\s*18%,\s*transparent\)/,
+    );
+    expect(selected).not.toMatch(/var\(--color-ink\)\s*12%/);
+  });
 });
