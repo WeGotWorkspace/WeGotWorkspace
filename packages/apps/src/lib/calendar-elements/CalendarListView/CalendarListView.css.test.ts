@@ -10,19 +10,21 @@ const ts = readFileSync(join(here, "CalendarListView.ts"), "utf8");
 describe("CalendarListView heading CSS", () => {
   it("lets the workspace override sticky day-heading backgrounds", () => {
     expect(css).toMatch(
-      /\.agenda-day-heading \{[\s\S]*background-color:\s*var\(\s*--_lc-list-heading-bg/,
+      /\.agenda-day-heading\.list-sticky-header \{[\s\S]*background-color:\s*var\(\s*--_lc-list-heading-bg/,
     );
   });
 
   it("reuses list-sticky-header split-label weights instead of agenda-only type", () => {
     expect(ts).toMatch(/list-sticky-header\/src\/list-sticky-header\.css\?inline/);
+    expect(ts).toMatch(/class="list-sticky-header agenda-day-heading"/);
     expect(ts).toMatch(/list-sticky-header__emphasis/);
     expect(ts).toMatch(/list-sticky-header__rest/);
+    expect(css).toMatch(/\.agenda-day-heading\.list-sticky-header/);
     expect(css).not.toMatch(/agenda-day-weekday/);
     expect(css).not.toMatch(/agenda-day-date/);
     expect(css).not.toMatch(/font-\[650\]/);
     expect(css).not.toMatch(/font-\[450\]/);
-    expect(css).toMatch(/--list-sticky-header-color/);
+    expect(css).not.toMatch(/font-semibold/);
     expect(css).not.toMatch(/--list-sticky-header-emphasis-font-size/);
   });
 

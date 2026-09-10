@@ -19,10 +19,11 @@ describe("chat-message-list day chrome", () => {
     expect(css).toMatch(/--list-sticky-header-bg:\s*#ffffff/);
     expect(css).not.toMatch(/--list-sticky-header-font-size/);
     expect(css).not.toMatch(/--list-sticky-header-color/);
-    expect(css).not.toMatch(/chat-message-list__day-label/);
-    expect(css).not.toMatch(/rounded-full/);
+    expect(css).not.toMatch(/font-semibold/);
     expect(css).not.toMatch(/font-\[650\]/);
     expect(css).not.toMatch(/font-\[450\]/);
+    expect(css).not.toMatch(/chat-message-list__day-label/);
+    expect(css).not.toMatch(/rounded-full/);
   });
 
   it("anchors a New messages jump chip at the bottom of a relative list", () => {

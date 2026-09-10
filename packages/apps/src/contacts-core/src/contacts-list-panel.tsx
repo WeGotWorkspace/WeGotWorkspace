@@ -184,9 +184,7 @@ function ContactsListRows({
     () =>
       groupContactCardsBySection(visibleCards).map((section) => (
         <section key={section.letter} aria-labelledby={`contacts-section-${section.letter}`}>
-          <ListStickyHeader id={`contacts-section-${section.letter}`}>
-            {section.letter}
-          </ListStickyHeader>
+          <ListStickyHeader id={`contacts-section-${section.letter}`} emphasis={section.letter} />
           {section.cards.map((card) => {
             const name = contactDisplayName(card);
             const isPendingSync = pendingCardIds?.has(card.id) ?? false;

@@ -27,10 +27,10 @@
   @apply border-t-0 pt-1;
 }
 
-.agenda-day-heading {
-  @apply box-border m-0 flex items-baseline gap-2.5 w-full px-1.5 pt-1 pb-2.5 text-sm font-normal sticky top-0;
-  /* Same ink as `.list-sticky-header` — split-label color/weight live there. */
-  color: var(--list-sticky-header-color, light-dark(rgb(15 23 42 / 96%), rgb(255 255 255 / 95%)));
+/* Product chrome only — type language comes from `.list-sticky-header`
+   (+ `__emphasis` / `__rest`). No hairline; calendar days use section borders. */
+.agenda-day-heading.list-sticky-header {
+  @apply box-border m-0 w-full border-b-0 px-1.5 pt-1 pb-2.5 md:px-1.5;
   z-index: var(--_lc-z-sticky);
   /* Opaque surface so event cards scrolling underneath don't show through.
      Workspace can set --_lc-list-heading-bg (e.g. transparent under the

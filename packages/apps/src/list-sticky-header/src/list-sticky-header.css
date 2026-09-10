@@ -1,9 +1,10 @@
 @import "../../styles.css" reference;
 
-/* Calendar list headings are the source of truth for split-label type
-   (near-black ink, 650/450, 15px / 0.875rem). Chat days reuse these tokens. */
+/* Calendar list headings are the source of truth for type language
+   (near-black ink, font-normal root, 650/450 split, 15px / 0.875rem).
+   Chat days and contacts letters reuse the same root + emphasis/rest. */
 .list-sticky-header {
-  @apply sticky top-0 z-[5] flex items-baseline gap-2.5 border-b px-4 py-1.5 font-semibold md:px-6;
+  @apply sticky top-0 z-[5] flex items-baseline gap-2.5 border-b px-4 py-1.5 font-normal md:px-6;
   font-size: var(--list-sticky-header-font-size, 0.875rem);
   color: var(--list-sticky-header-color, light-dark(rgb(15 23 42 / 96%), rgb(255 255 255 / 95%)));
   background-color: var(

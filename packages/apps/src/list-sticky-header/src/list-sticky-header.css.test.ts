@@ -16,6 +16,8 @@ describe("list-sticky-header CSS", () => {
 
   it("owns the split-label type language used by calendar list and chat days", () => {
     expect(css).toMatch(/\.list-sticky-header \{[\s\S]*flex items-baseline gap-2\.5/);
+    expect(css).toMatch(/\.list-sticky-header \{[\s\S]*font-normal/);
+    expect(css).not.toMatch(/\.list-sticky-header \{[\s\S]*font-semibold/);
     expect(css).not.toMatch(/tracking-\[0\.04em\]/);
     expect(css).toMatch(/rgb\(15 23 42 \/ 96%\)/);
     expect(css).not.toMatch(/color-mix\(in oklab, var\(--color-ink\) 55%/);
