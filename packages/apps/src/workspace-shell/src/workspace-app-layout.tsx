@@ -146,7 +146,7 @@ export function WorkspaceUserFooter({
         label="Log out"
         icon={<LogOut />}
         onClick={handleLogout}
-        variant="subtle"
+        variant="outline"
         size="sm"
       />
     </div>

@@ -8,23 +8,25 @@ const tsx = readFileSync(join(here, "workspace-app-layout.tsx"), "utf8");
 const css = readFileSync(join(here, "workspace-app-layout.css"), "utf8");
 
 describe("WorkspaceUserFooter logout chrome", () => {
-  it("uses sm subtle IconButton without size-9 or inline logout styles", () => {
+  it("uses sm outline IconButton matching header/sidebar chrome, not filled subtle", () => {
+    const footerBlock = tsx.slice(
+      tsx.indexOf("export function WorkspaceUserFooter"),
+      tsx.indexOf("export function WorkspaceSidebarScrim"),
+    );
     expect(tsx).toMatch(/import \{ IconButton \} from "@\/button\/src\/button"/);
-    expect(tsx).toMatch(/label="Log out"[\s\S]*?variant="subtle"[\s\S]*?size="sm"/);
+    expect(footerBlock).toMatch(/label="Log out"/);
+    expect(footerBlock).toMatch(/variant="outline"/);
+    expect(footerBlock).toMatch(/size="sm"/);
+    expect(footerBlock).not.toMatch(/variant="subtle"/);
     expect(tsx).not.toMatch(/size-9/);
     expect(tsx).not.toMatch(/linkHoverClassName/);
     expect(tsx).not.toMatch(/WORKSPACE_USER_LOGOUT_STYLE/);
   });
 
-  it("maps footer link tokens to button-subtle vars instead of inline styles", () => {
-    expect(css).toMatch(
-      /\.workspace-app-layout__user-footer \{[\s\S]*--button-subtle-color:\s*var\(\s*--workspace-user-footer-link-color/,
-    );
-    expect(css).toMatch(
-      /\.workspace-app-layout__user-footer \{[\s\S]*--button-subtle-background:\s*var\(\s*--workspace-user-footer-link-bg/,
-    );
-    expect(css).toMatch(
-      /\.workspace-app-layout__user-footer \{[\s\S]*--button-subtle-hover-background:\s*var\(\s*--workspace-user-footer-link-hover-bg/,
+  it("does not force gray subtle fills on the footer logout", () => {
+    expect(css).not.toMatch(/\.workspace-app-layout__user-footer \{[\s\S]*--button-subtle-/);
+    expect(css).not.toMatch(
+      /\.workspace-app-layout__user-footer \{[\s\S]*--workspace-user-footer-link-bg/,
     );
     expect(tsx).not.toMatch(/WORKSPACE_USER_LOGOUT_STYLE/);
   });

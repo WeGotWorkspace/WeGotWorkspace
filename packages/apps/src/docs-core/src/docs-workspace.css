@@ -136,6 +136,7 @@
 }
 
 .docs-workspace .app-sidebar__footer {
+  --color-ink: var(--app-sidebar-color);
   --workspace-user-footer-text-color: #ffffff;
   --workspace-user-footer-subtitle-color: #ffffff;
   --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 18%, transparent);
