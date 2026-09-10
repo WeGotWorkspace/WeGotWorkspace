@@ -200,12 +200,17 @@ export const NotebookTint: Story = {
     expect(getComputedStyle(chip!).color).toBe(getComputedStyle(detailFg).color);
     expect(getComputedStyle(chip!).color).not.toBe(getComputedStyle(sidebarFg).color);
     const sheetRect = sheet!.getBoundingClientRect();
-    const scrollStyle = getComputedStyle(scroll!);
-    const padY =
-      Number.parseFloat(scrollStyle.paddingTop) + Number.parseFloat(scrollStyle.paddingBottom);
-    expect(getComputedStyle(sheet!).minHeight).toBe("100%");
+    expect(getComputedStyle(sheet!).minHeight).not.toBe("100%");
+    // Sheet grows with content; desk scrollport owns overflow (no sheet max-height / overflow-y).
+    expect(getComputedStyle(sheet!).maxHeight).toMatch(/^(none|)$/);
+    expect(getComputedStyle(sheet!).overflowY).not.toMatch(/^(auto|scroll)$/);
     expect(getComputedStyle(sheet!).borderRadius).toBe("0px");
-    expect(sheetRect.height).toBeGreaterThanOrEqual(scroll!.clientHeight - padY - 1);
+    // Sticky-note floor — taller than a pure content hug, still under the scrollport.
+    expect(sheetRect.height).toBeGreaterThanOrEqual(20 * 16 - 1);
+    expect(sheetRect.height).toBeLessThan(scroll!.clientHeight - 1);
+    // Short notes: no idle scroll on the desk scrollport or inside the sheet.
+    expect(scroll!.scrollHeight).toBeLessThanOrEqual(scroll!.clientHeight + 1);
+    expect(sheet!.scrollHeight).toBeLessThanOrEqual(sheet!.clientHeight + 1);
     tintBg.remove();
     sheetBg.remove();
     paneBg.remove();

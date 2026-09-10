@@ -35,7 +35,9 @@ export type DocsCollabEditorProps = {
   editable?: boolean;
   /**
    * TipTap mount focus. Default focuses the end of an editable doc (existing
-   * notes). Pass `false` when another field (e.g. a new-note title) should keep focus.
+   * notes) without scrolling the caret into view — the workspace detail
+   * scrollport should stay at the top on open/select. Pass `false` when
+   * another field (e.g. a new-note title) should keep focus.
    */
   autofocus?: UseEditorOptions["autofocus"];
   /**
@@ -121,11 +123,18 @@ export function DocsCollabEditor({
     [],
   );
 
+  const resolvedAutofocus = autofocus ?? (editable ? "end" : false);
+  // Capture mount intent only — do not re-focus when the parent later drops
+  // `autofocus={false}` (e.g. new-note title handoff).
+  const mountAutofocusRef = useRef(resolvedAutofocus);
+
   const editor = useEditor(
     {
       editable,
       enableContentCheck: false,
-      autofocus: autofocus ?? (editable ? "end" : false),
+      // TipTap's built-in autofocus scrolls the caret into view; we focus below
+      // with `scrollIntoView: false` so long notes open at the top.
+      autofocus: false,
       immediatelyRender: false,
       extensions: createCollaborativeTextEditorExtensions({
         format,
@@ -145,6 +154,13 @@ export function DocsCollabEditor({
     },
     [ydoc, awareness, format, user.color, user.name],
   );
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const pos = mountAutofocusRef.current;
+    if (pos === false) return;
+    editor.commands.focus(pos === true ? undefined : pos, { scrollIntoView: false });
+  }, [editor]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;

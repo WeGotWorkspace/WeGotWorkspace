@@ -107,9 +107,20 @@
   );
   /* Same paper elevation as Docs (`--sheet-shadow` in styles.css). */
   --note-detail-sheet-shadow: var(--sheet-shadow);
-  --workspace-chrome-footer-padding-x: 1rem;
+  /*
+   * Shared horizontal inset for list + detail chrome (header / sheet / footer).
+   * Matches `.list-item` / list sticky header: `px-4` → `md:px-6`.
+   */
+  --notes-pane-padding-x: 1rem;
+  --workspace-chrome-footer-padding-x: var(--notes-pane-padding-x);
   --workspace-chrome-footer-padding-y: 0.5rem;
   --workspace-chrome-footer-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  /*
+   * Detail paper: small cream desk gaps. Min/max height resolve against the
+   * scrollport (minus these pads) so short notes fill the visible desk.
+   */
+  --note-detail-sheet-desk-pad-block-start: 1.5rem;
+  --note-detail-sheet-desk-pad-block-end: 0.75rem;
 
   /*
    * Outline / menu-item / collection-row language.
@@ -151,34 +162,55 @@
 }
 
 /*
- * Short notes still look like a full-height sticky sheet: the scroll host
- * is a column so the card can grow. `min-height: 100%` is the content box
- * (pane minus the scroll padding that insets the card). Long notes grow.
+ * Note paper sits on the cream desk. Horizontal gutters stay flushed
+ * (`padding-inline: 0`) so the sheet owns `--notes-pane-padding-x`. Block
+ * padding is a modest desk gap under the action-bar and a small gap above
+ * the footer — not the pane defaults (`pt-6 pb-10` / `md:pt-12 md:pb-16`).
+ * Min-height fills the scrollport (minus desk pads); height grows with
+ * content. Overflow scrolls on `.workspace-detail-pane__scroll`, not the sheet.
  */
 .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-sheet) {
-  display: flex;
-  flex-direction: column;
+  padding-inline: 0;
+  padding-block-start: var(--note-detail-sheet-desk-pad-block-start);
+  padding-block-end: var(--note-detail-sheet-desk-pad-block-end);
 }
 
 .notes-workspace .note-detail-sheet {
-  flex: 1 0 auto;
-  min-height: 100%;
+  /* Match list gutter; note-detail-view.css carries the same defaults. */
+  padding-inline: var(--notes-pane-padding-x);
+  height: fit-content;
+  min-height: calc(
+    100% - var(--note-detail-sheet-desk-pad-block-start) -
+      var(--note-detail-sheet-desk-pad-block-end)
+  );
 }
 
 /*
- * Same split as `.workspace-detail-pane` (`absolute` → `md:relative`,
- * `@media (max-width: 47.999rem)` in workspace-app.css): below 48rem the
- * detail pane is already full-width. Flush the paper sheet to the pane —
- * no scroll inset, no max-width column, no floating shadow.
+ * Flush sheet chrome below the sidebar-dock threshold (`--breakpoint-sidebar`
+ * / 72.5rem in styles.css; same ε pattern as Meet `72.49rem`). Above that,
+ * cream desk pads stay intentional on wide three-column layouts. At and
+ * below: zero desk pads so the base min-height calc is `100%`, flush scroll
+ * padding, and paint desk/pane with `--note-detail-sheet-bg` so short notes
+ * read as continuous fullscreen tint (not cream around paper).
  */
-@media (max-width: 47.999rem) {
-  .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-sheet) {
-    @apply px-0 pt-0 pb-0;
+@media (max-width: 72.49rem) {
+  .notes-workspace {
+    --note-detail-sheet-desk-pad-block-start: 0;
+    --note-detail-sheet-desk-pad-block-end: 0;
   }
 
-  .notes-workspace .note-detail-sheet {
+  .notes-workspace .workspace-detail-pane:has(.note-detail-sheet) {
+    background-color: var(--note-detail-sheet-bg);
+  }
+
+  .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-sheet) {
+    padding: 0;
+    background-color: var(--note-detail-sheet-bg);
+  }
+
+  /* Same element: `class="note-detail-view note-detail-sheet"`. */
+  .notes-workspace .note-detail-view.note-detail-sheet {
     @apply mx-0 max-w-none;
-    min-height: 100%;
     box-shadow: none;
   }
 }
@@ -210,7 +242,7 @@
 
 @media (min-width: 768px) {
   .notes-workspace {
-    --workspace-chrome-footer-padding-x: 3rem;
+    --notes-pane-padding-x: 1.5rem;
   }
 }
 
@@ -276,6 +308,8 @@
 /* Live tree: `main.workspace-detail-pane > nav.action-bar` (WorkspaceApp). */
 .notes-workspace .workspace-detail-pane > .action-bar {
   background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
+  /* Default action-bar is `px-4 md:px-12` — match list / footer inset. */
+  padding-inline: var(--notes-pane-padding-x);
 }
 
 /*

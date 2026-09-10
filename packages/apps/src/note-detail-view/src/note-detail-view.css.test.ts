@@ -16,10 +16,15 @@ describe("note-detail-view paper sheet CSS", () => {
       /\.note-detail-sheet \{[\s\S]*box-shadow:\s*var\(--note-detail-sheet-shadow,\s*var\(--sheet-shadow\)\)/,
     );
     expect(styles).toMatch(/--sheet-shadow:\s*0 1px 2px #0000000a,\s*0 10px 30px -10px #0f172a1f/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*px-6/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*md:px-10/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*md:py-10/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*min-h-full/);
+    expect(css).toMatch(
+      /\.note-detail-sheet \{[\s\S]*@apply mx-auto w-full max-w-\[680px\] rounded-none px-4 py-8 md:px-6 md:py-10;/,
+    );
+    expect(css).not.toMatch(/\.note-detail-sheet \{[\s\S]*\bpx-6 py-8 md:px-10\b/);
+    expect(css).not.toMatch(/\.note-detail-sheet \{[\s\S]*min-h-full/);
+    expect(css).not.toMatch(/\.note-detail-sheet \{[\s\S]*min-height:\s*100%/);
+    expect(css).toMatch(/Notes-workspace sets scrollport-filling `min-height`/);
+    expect(css).toMatch(/overflow scrolls on `\.workspace-detail-pane__scroll`/);
+    expect(css).toMatch(/so the same calc is `100%`/);
   });
 
   it("paints title from the sheet contrast token", () => {

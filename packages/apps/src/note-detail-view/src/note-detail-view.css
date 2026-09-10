@@ -4,14 +4,16 @@
  * Paper sheet on the cream desk. Fill is `--note-detail-sheet-bg`
  * (very light notebook wash from the workspace; cream fallback). Inner
  * TipTap stays flush (`note-text-editor-body` zeroes nested text-editor
- * sheet tokens). Square corners — not a rounded card. `min-h-full` fills
- * the detail scroll content box (pane minus the scroll padding that
- * insets the card on md+); long notes grow. Below `md` / 48rem the
- * workspace pane is already full-width — notes-workspace.css flushes
- * the sheet to the pane edges.
+ * sheet tokens). Square corners — not a rounded card.
+ * Notes-workspace sets scrollport-filling `min-height` (minus desk pads)
+ * so short notes fill the visible desk; the sheet grows with content and
+ * overflow scrolls on `.workspace-detail-pane__scroll`. Below 48rem it
+ * zeroes desk pads (so the same calc is `100%`), zeroes scroll padding,
+ * and matches the desk to this sheet fill for fullscreen tint.
  */
 .note-detail-sheet {
-  @apply mx-auto min-h-full w-full max-w-[680px] rounded-none px-6 py-8 md:px-10 md:py-10;
+  /* Horizontal inset matches list-item `px-4 md:px-6` (Notes `--notes-pane-padding-x`). */
+  @apply mx-auto w-full max-w-[680px] rounded-none px-4 py-8 md:px-6 md:py-10;
   background-color: var(--note-detail-sheet-bg, var(--color-cream, #ffffff));
   color: var(--notes-detail-contrast-fg, var(--color-ink));
   box-shadow: var(--note-detail-sheet-shadow, var(--sheet-shadow));

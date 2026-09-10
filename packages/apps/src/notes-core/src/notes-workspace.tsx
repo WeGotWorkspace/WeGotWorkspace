@@ -469,6 +469,7 @@ export function NotesWorkspace({
       <WorkspaceApp
         ref={workspaceLayoutRef}
         initialDetailOpenMobile={Boolean(initialNoteId)}
+        detailScrollResetKey={showSingleNoteDetail && active ? active.id : ""}
         workspaceRoot={{
           className: cn("notes-workspace", className),
           style: notesDetailTintStyle(notesDetailTint) as CSSProperties | undefined,

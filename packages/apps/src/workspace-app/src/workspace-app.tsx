@@ -2,6 +2,7 @@ import {
   forwardRef,
   useCallback,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -72,6 +73,11 @@ export type WorkspaceAppProps = {
   /** Applied to the scroll container around `detail` (padding, overflow). */
   detailScrollClassName?: string;
   /**
+   * When this value changes (e.g. selected note id), reset
+   * `.workspace-detail-pane__scroll` to the top so a new detail opens at its start.
+   */
+  detailScrollResetKey?: string | number | null;
+  /**
    * First paint of the mobile overlay (e.g. deep-link `/notes/all/:noteId`).
    * Remounts after a route change must start open/closed from the URL so the
    * View Transition captures the right new snapshot.
@@ -96,6 +102,7 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
     detailWrapper,
     detailClassName,
     detailScrollClassName,
+    detailScrollResetKey,
     initialDetailOpenMobile = false,
   },
   ref,
@@ -104,6 +111,14 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
   const [detailOpenMobile, setDetailOpenMobile] = useState(initialDetailOpenMobile);
   const detailOpenMobileRef = useRef(detailOpenMobile);
   detailOpenMobileRef.current = detailOpenMobile;
+  const detailScrollRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (detailScrollResetKey === undefined) return;
+    const el = detailScrollRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+  }, [detailScrollResetKey]);
 
   const setMobileDetailOpen = useCallback((open: boolean, during?: MobileDetailDuring) => {
     const already = detailOpenMobileRef.current === open;
@@ -168,7 +183,10 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
   const detailChrome = (
     <>
       {actionBar?.(chrome)}
-      <div className={cn("workspace-detail-pane__scroll", detailScrollClassName)}>
+      <div
+        ref={detailScrollRef}
+        className={cn("workspace-detail-pane__scroll", detailScrollClassName)}
+      >
         {detail(chrome)}
       </div>
       {detailFooter?.(chrome)}
