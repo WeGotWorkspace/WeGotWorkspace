@@ -6,10 +6,9 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { Archive, Circle, Eye, Share2, Star, Tag as TagIcon, Trash2 } from "lucide-react";
+import { Archive, Circle, Eye, Share2, Star, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
-import { Tag } from "@/tag/src/tag";
 import { Badge } from "@/ui/badge";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
@@ -17,12 +16,10 @@ import type { Note } from "@/lib/models/note";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
 import {
   noteListExcerpt,
-  noteListTagOverflow,
   noteListTitle,
   noteListLocationLabel,
   noteShowsSharedBadge,
   noteShowsStarControls,
-  noteShowsTags,
   noteShowsViewOnlyBadge,
 } from "@/notes-core/src/notes-note-utils";
 import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
@@ -35,19 +32,6 @@ import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";
 import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import "@/notes-core/src/notes-list-panel.css";
-
-function notesListItemTags(tags: string[]): ReactNode {
-  const { visible, overflow } = noteListTagOverflow(tags);
-  if (visible.length === 0) return null;
-  return (
-    <span className="list-item__tags">
-      {visible.map((tag) => (
-        <Tag key={tag} label={tag} size="md" icon={<TagIcon />} />
-      ))}
-      {overflow > 0 ? <span className="list-item__tags-more">+{overflow} more</span> : null}
-    </span>
-  );
-}
 
 function NotesListLocation({
   note,
@@ -274,14 +258,12 @@ function NotesListRows({
     () =>
       visibleNotes.map((note) => {
         const isPendingSync = pendingNoteIds?.has(note.id) ?? false;
-        const showTags = noteShowsTags(note);
         const showStar = noteShowsStarControls(note);
         const showShared = noteShowsSharedBadge(note);
         const showViewOnly = noteShowsViewOnlyBadge(note);
         const canArchive = noteAllowsStructureManage(note);
         const notebookColor = notebookDisplayColor(note, notebookCollections);
         const excerpt = noteListExcerpt(note);
-        const tagsRow = showTags ? notesListItemTags(note.tags) : null;
         return (
           <ListItem
             key={note.id}
@@ -296,14 +278,7 @@ function NotesListRows({
               />
             }
             date={formatNoteDateForList(note.date)}
-            text={
-              excerpt || tagsRow ? (
-                <>
-                  {excerpt ? <span className="notes-list-panel__excerpt">{excerpt}</span> : null}
-                  {tagsRow}
-                </>
-              ) : null
-            }
+            text={excerpt ? <span className="notes-list-panel__excerpt">{excerpt}</span> : null}
             icons={[
               isPendingSync ? (
                 <span

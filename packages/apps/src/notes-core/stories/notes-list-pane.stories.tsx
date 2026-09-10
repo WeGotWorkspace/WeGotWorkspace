@@ -112,8 +112,9 @@ export const Default: Story = {
     await expect(canvas.getByText("3")).toBeInTheDocument();
     await expect(canvas.getByLabelText("3 Items")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Refresh notes" })).toBeInTheDocument();
-    await expect(canvas.getByText("architecture")).toBeInTheDocument();
-    await expect(canvas.getByText("essay")).toBeInTheDocument();
+    await expect(canvasElement.querySelector(".list-item__tags")).toBeNull();
+    await expect(canvas.queryByText("architecture")).toBeNull();
+    await expect(canvas.queryByText("essay")).toBeNull();
     await expect(canvasElement.querySelector(".notes-notebook-color-icon")).toBeTruthy();
     await expect(canvasElement.querySelector(".collection-sidebar-row__dot")).toBeNull();
     const input = canvas.getByPlaceholderText("Search notes...");

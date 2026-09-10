@@ -49,7 +49,6 @@
   color: var(--color-emerald);
 }
 
-/* Match tag chip icon weight (0.75rem / opacity-70) on the same list row. */
 .notes-list-panel__notebook {
   @apply inline-flex max-w-full min-w-0 items-center gap-1.5;
 }

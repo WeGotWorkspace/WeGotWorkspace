@@ -204,6 +204,19 @@ describe("NotesListPanel selection paint", () => {
   });
 });
 
+describe("NotesListPanel tags", () => {
+  it("does not render tag chips on list rows", () => {
+    const { container } = render(
+      <ListHarness notes={[{ ...baseNote, tags: ["architecture", "essay", "travel"] }]} />,
+    );
+    expect(container.querySelector(".list-item__tags")).toBeNull();
+    expect(container.querySelector(".tag")).toBeNull();
+    expect(screen.queryByText("architecture")).toBeNull();
+    expect(screen.queryByText("essay")).toBeNull();
+    expect(screen.getByText("Hello")).toBeTruthy();
+  });
+});
+
 describe("NotesListPanel access chips", () => {
   it("shows a view-only eye icon when mayEditContent is false", () => {
     const { container } = render(
