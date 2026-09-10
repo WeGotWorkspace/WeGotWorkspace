@@ -122,7 +122,7 @@
   --segmented-control-active-shadow: none;
 }
 
-/* Inbox is titleTrailing (row 1 end). Prev/next is titleLeading (row 2 end). */
+/* Inbox is titleTrailing (row 1 end). Prev/next/Today is titleLeading (row 2 end). */
 .calendar-workspace .calendar-header-nav,
 .calendar-workspace .calendar-header-actions {
   @apply flex items-center gap-1;
@@ -132,15 +132,10 @@
   --control-radius: var(--control-radius-button-pill);
 }
 
-/* Labeled Today stays in actions on desktop; icon-only sits before the title on mobile. */
-.calendar-workspace .view-header__title-prefix {
-  @apply hidden;
-}
-
 /*
  * Small viewports: two-row header matching the calendar mock.
  *   [☰] [Week] [grid|list]              [inbox]
- *   [today] [1–7 Feb 2027]              [<] [>]
+ *   [1–7 Feb 2027]                      [<] [>] [today]
  * Search leaves the actions row (CSS FAB, bottom-right) at the sidebar
  * overlay floor (1159px / `--breakpoint-sidebar`), not this stacked-header
  * 40rem floor. Viewport media (not a container query): flattening `__main`
@@ -179,10 +174,6 @@
     @apply min-w-0;
   }
 
-  .calendar-workspace .view-header__title-prefix {
-    @apply flex;
-  }
-
   .calendar-workspace .view-header__title {
     @apply overflow-visible whitespace-normal text-xl leading-tight;
     text-overflow: unset;
@@ -198,14 +189,9 @@
     justify-self: end;
   }
 
-  .calendar-workspace .calendar-header-today {
-    @apply hidden;
-  }
-
   .calendar-workspace .view-header__sidebar-toggle .button[class*="icon-button--size"],
   .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
   .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-header-today-icon.button[class*="icon-button--size"],
   .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
     @apply size-8;
   }
@@ -225,8 +211,9 @@
   }
 }
 
+/* Actions cluster ↔ inbox: same gap as sidebar toggle ↔ title/nav (`.view-header`). */
 .calendar-workspace .view-header__end {
-  @apply gap-1;
+  @apply gap-3;
 }
 
 .calendar-workspace .calendar-header-nav {
@@ -265,8 +252,7 @@
   :is(
     .workspace-sidebar-toggle,
     .calendar-invitations-trigger,
-    .calendar-header-today,
-    .calendar-header-today-icon
+    .calendar-header-today
   ).button--variant-outline.icon-button--active
   .button__icon
   > svg {

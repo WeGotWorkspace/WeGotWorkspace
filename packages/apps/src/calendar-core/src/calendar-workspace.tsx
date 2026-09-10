@@ -725,19 +725,6 @@ export function CalendarWorkspace({
             layout="responsive"
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-            titlePrefix={
-              <IconButton
-                className="calendar-header-today-icon"
-                label={L.today}
-                icon={<CalendarDays className="size-4" />}
-                size="sm"
-                variant="outline"
-                active={showingToday}
-                aria-pressed={showingToday}
-                disabled={searchActive}
-                onClick={goToday}
-              />
-            }
             titleLeading={
               <div className="calendar-header-nav">
                 <IconButton
@@ -755,6 +742,17 @@ export function CalendarWorkspace({
                   variant="outline"
                   disabled={searchActive}
                   onClick={goNext}
+                />
+                <IconButton
+                  className="calendar-header-today"
+                  label={L.today}
+                  icon={<CalendarDays className="size-4" />}
+                  size="sm"
+                  variant="outline"
+                  active={showingToday}
+                  aria-pressed={showingToday}
+                  disabled={searchActive}
+                  onClick={goToday}
                 />
               </div>
             }
@@ -823,16 +821,6 @@ export function CalendarWorkspace({
                   gridLabel={L.showAsCalendar}
                   listLabel={L.showAsList}
                   disabled={searchActive}
-                />
-                <Button
-                  className={cn("calendar-header-today", showingToday && "icon-button--active")}
-                  label={L.today}
-                  icon={<CalendarDays />}
-                  onClick={goToday}
-                  variant="outline"
-                  size="sm"
-                  disabled={searchActive}
-                  aria-pressed={showingToday}
                 />
               </div>
             }

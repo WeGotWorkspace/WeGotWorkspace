@@ -756,7 +756,7 @@ export const SearchClearImmediate: Story = {
 function labeledTodayButton(root: ParentNode): HTMLButtonElement {
   const button = root.querySelector(".calendar-header-today");
   if (!(button instanceof HTMLButtonElement)) {
-    throw new Error("labeled Today control not found");
+    throw new Error("Today control not found");
   }
   return button;
 }

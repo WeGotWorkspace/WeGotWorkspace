@@ -49,7 +49,7 @@ describe("calendar workspace header CSS", () => {
       /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-color:\s*var\(--button-outline-color\)/,
     );
     expect(css).toMatch(
-      /:is\([\s\S]*workspace-sidebar-toggle[\s\S]*calendar-header-today-icon[\s\S]*fill:\s*none/,
+      /:is\([\s\S]*workspace-sidebar-toggle[\s\S]*calendar-header-today[\s\S]*fill:\s*none/,
     );
     expect(css).not.toMatch(
       /calendar-invitations-trigger[\s\S]*\.button--variant-subtle\.icon-button--active/,
@@ -74,8 +74,8 @@ describe("calendar workspace header CSS", () => {
     );
   });
 
-  it("matches inbox gap to header actions so desktop clustering stays tight", () => {
-    expect(css).toMatch(/\.calendar-workspace \.view-header__end \{[\s\S]*gap-1/);
+  it("spaces inbox from header actions like sidebar toggle from the nav cluster", () => {
+    expect(css).toMatch(/\.calendar-workspace \.view-header__end \{[\s\S]*gap-3/);
     expect(css).toMatch(
       /\.calendar-workspace \.calendar-invitations-trigger\.button\[class\*="icon-button--size"\][\s\S]*size-8/,
     );
@@ -97,14 +97,24 @@ describe("calendar workspace header markup", () => {
     expect(actionsBlock![1].indexOf("CollectionSearchInput")).toBeLessThan(
       actionsBlock![1].indexOf("<Select"),
     );
-    expect(actionsBlock![1]).toMatch(/calendar-header-today/);
-    expect(actionsBlock![1]).toMatch(/icon=\{<CalendarDays/);
-    expect(actionsBlock![1]).toMatch(/aria-pressed=\{showingToday\}/);
+    expect(actionsBlock![1]).not.toMatch(/calendar-header-today/);
   });
 
-  it("places an icon-only Today control in titlePrefix ahead of the date title", () => {
-    expect(tsx).toMatch(/titlePrefix=\{\s*<IconButton/);
-    expect(tsx).toMatch(/className="calendar-header-today-icon"/);
+  it("places an icon-only Today control immediately after next in header nav", () => {
+    expect(tsx).not.toMatch(/titlePrefix=/);
+    expect(tsx).not.toMatch(/calendar-header-today-icon/);
+    const navBlock = tsx.match(
+      /titleLeading=\{\s*<div className="calendar-header-nav">([\s\S]*?)<\/div>\s*\}/,
+    )?.[1];
+    expect(navBlock).toBeDefined();
+    expect(navBlock!).toMatch(/label=\{L\.nextPeriod\}[\s\S]*?className="calendar-header-today"/);
+    expect(navBlock!).toMatch(
+      /className="calendar-header-today"[\s\S]*?icon=\{<CalendarDays className="size-4" \/>\}/,
+    );
+    expect(navBlock!).toMatch(/aria-pressed=\{showingToday\}/);
+    expect(navBlock!.indexOf("L.nextPeriod")).toBeLessThan(
+      navBlock!.indexOf('className="calendar-header-today"'),
+    );
   });
 
   it("uses outline IconButtons for period prev/next to match the view Select border", () => {
@@ -117,23 +127,29 @@ describe("calendar workspace header markup", () => {
     expect(navBlock!).not.toMatch(/variant="subtle"/);
   });
 
-  it("uses outline for Today (labeled + icon) and leaves header actions DRY with nav chrome", () => {
-    const prefixBlock = tsx.match(
-      /titlePrefix=\{\s*<IconButton\b([\s\S]*?)\bonClick=\{goToday\}\s*\/>\s*\}/,
+  it("uses L.previousPeriod / L.nextPeriod for prev/next IconButton labels", () => {
+    const navBlock = tsx.match(
+      /titleLeading=\{\s*<div className="calendar-header-nav">([\s\S]*?)<\/div>\s*\}/,
     )?.[1];
-    expect(prefixBlock).toBeDefined();
-    expect(prefixBlock!).toMatch(/className="calendar-header-today-icon"/);
-    expect(prefixBlock!).toMatch(/variant="outline"/);
-    expect(prefixBlock!).not.toMatch(/variant="subtle"/);
+    expect(navBlock).toBeDefined();
+    expect(navBlock!).toMatch(/label=\{L\.previousPeriod\}/);
+    expect(navBlock!).toMatch(/label=\{L\.nextPeriod\}/);
+  });
+
+  it("uses outline IconButton for Today and keeps it out of the actions cluster", () => {
+    const navBlock = tsx.match(
+      /titleLeading=\{\s*<div className="calendar-header-nav">([\s\S]*?)<\/div>\s*\}/,
+    )?.[1];
+    expect(navBlock).toBeDefined();
+    expect(navBlock!).toMatch(/className="calendar-header-today"[\s\S]*?variant="outline"/);
+    expect(navBlock!).not.toMatch(/calendar-header-today[\s\S]*variant="subtle"/);
 
     const actionsBlock = tsx.match(
       /actions=\{\s*<div className="calendar-header-actions">([\s\S]*?)<\/div>\s*\}/,
     )?.[1];
     expect(actionsBlock).toBeDefined();
-    expect(actionsBlock!).toMatch(
-      /className=\{cn\("calendar-header-today"[\s\S]*?variant="outline"/,
-    );
-    expect(actionsBlock!).not.toMatch(/calendar-header-today[\s\S]*variant="subtle"/);
+    expect(actionsBlock!).not.toMatch(/calendar-header-today/);
+    expect(actionsBlock!).not.toMatch(/goToday/);
   });
 });
 
@@ -365,11 +381,11 @@ describe("calendar workspace stacked header", () => {
     expect(css).toMatch(
       /@media\s*\(max-width:\s*40rem\)[\s\S]*"toggle actions trailing"[\s\S]*"title title leading"/,
     );
-    expect(css).toMatch(
+    expect(css).not.toMatch(
       /@media\s*\(max-width:\s*40rem\)[\s\S]*\.calendar-header-today \{[\s\S]*hidden/,
     );
-    expect(css).toMatch(/\.calendar-workspace \.view-header__title-prefix \{[\s\S]*hidden/);
-    expect(css).toMatch(
+    expect(css).not.toMatch(/\.calendar-workspace \.view-header__title-prefix \{[\s\S]*hidden/);
+    expect(css).not.toMatch(
       /@media\s*\(max-width:\s*40rem\)[\s\S]*\.view-header__title-prefix \{[\s\S]*flex/,
     );
     expect(css).toMatch(
