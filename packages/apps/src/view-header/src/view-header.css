@@ -62,17 +62,17 @@
  * (sans / size / weight / color). Not a Badge (those read as unread).
  */
 .view-header__title-count {
-  @apply text-base font-medium leading-none md:text-xl;
+  @apply text-sm font-medium leading-none md:text-lg;
   font-family: var(--font-sans);
   color: var(--color-ink);
 }
 
 /**
- * Canonical title: medium-size, medium-weight sans (formerly the compact
+ * Canonical title: compact medium-weight sans (formerly the compact
  * `titleSize="sm"` path). Serif display titles are removed.
  */
 .view-header__title {
-  @apply min-w-0 truncate text-base font-medium leading-none md:text-xl;
+  @apply min-w-0 truncate text-sm font-medium leading-none md:text-lg;
   font-family: var(--font-sans);
   color: var(--color-ink);
 }

@@ -20,7 +20,7 @@ describe("view-header CSS", () => {
 
   it("uses medium-weight sans for the canonical title", () => {
     expect(css).toMatch(
-      /\.view-header__title \{[\s\S]*text-base font-medium leading-none md:text-xl/,
+      /\.view-header__title \{[\s\S]*text-sm font-medium leading-none md:text-lg/,
     );
     expect(css).toMatch(/\.view-header__title \{[\s\S]*font-family:\s*var\(--font-sans\)/);
     expect(css).not.toMatch(/\.view-header__title \{[\s\S]*font-family:\s*var\(--font-serif\)/);
@@ -42,7 +42,7 @@ describe("view-header CSS", () => {
 
   it("styles title-count text to match the title typography, not a Badge", () => {
     expect(css).toMatch(
-      /\.view-header__title-count \{[\s\S]*text-base font-medium leading-none md:text-xl/,
+      /\.view-header__title-count \{[\s\S]*text-sm font-medium leading-none md:text-lg/,
     );
     expect(css).toMatch(/\.view-header__title-count \{[\s\S]*font-family:\s*var\(--font-sans\)/);
     expect(css).toMatch(/\.view-header__title-count \{[\s\S]*color:\s*var\(--color-ink\)/);
