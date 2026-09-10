@@ -46,6 +46,22 @@ describe("segmented-control chrome tokens", () => {
     );
   });
 
+  it("matches idle segment foreground to outline button color (no muted fade)", () => {
+    expect(css).toMatch(
+      /\.segmented-control__button \{[\s\S]*color:\s*var\(\s*--segmented-control-color,\s*var\(--button-outline-color,\s*var\(--color-ink\)\)/,
+    );
+    expect(css).not.toMatch(
+      /color-mix\(in oklab,\s*var\(--segmented-control-color,\s*var\(--color-ink\)\)\s*55%/,
+    );
+  });
+
+  it("uses keyboard-only focus rings on segments", () => {
+    expect(css).toMatch(
+      /\.segmented-control__button \{[\s\S]*focus-visible:ring-1 focus-visible:ring-ring/,
+    );
+    expect(css).not.toMatch(/\.segmented-control__button \{[\s\S]*\bfocus:ring-/);
+  });
+
   it("hovers non-disabled segments via outline hover tokens", () => {
     expect(css).toMatch(
       /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*color:\s*var\(\s*--segmented-control-hover-color,\s*var\(--button-outline-hover-color/,

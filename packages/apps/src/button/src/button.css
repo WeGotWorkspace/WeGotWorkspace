@@ -118,6 +118,31 @@
   );
 }
 
+/* Pressed/selected outline (Today, open sidebar/inbox): accent fg + wash;
+   keep the quiet control stroke (not a full accent ring). */
+.button.button--variant-outline.icon-button--active {
+  color: var(--button-active-color, var(--color-emerald));
+  border-color: var(
+    --button-outline-active-border-color,
+    var(--button-outline-border-color, var(--control-border-color))
+  );
+  background-color: var(
+    --button-outline-active-background,
+    var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+  );
+}
+
+.button.button--variant-outline.icon-button--active:hover {
+  color: var(--button-active-color, var(--color-emerald));
+  background-color: var(
+    --button-outline-active-hover-background,
+    var(
+      --button-outline-active-background,
+      var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+    )
+  );
+}
+
 .button--variant-ghost {
   color: var(--button-ghost-color, var(--color-ink));
   background-color: transparent;

@@ -32,11 +32,13 @@
 
 .segmented-control__button {
   @apply box-border inline-flex items-center justify-center border-0;
+  @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
   height: 100%;
   width: auto;
   aspect-ratio: 1 / 1;
   border-radius: var(--segmented-control-thumb-radius);
-  color: color-mix(in oklab, var(--segmented-control-color, var(--color-ink)) 55%, transparent);
+  /* Match outline Button / IconButton idle foreground (no muted fade). */
+  color: var(--segmented-control-color, var(--button-outline-color, var(--color-ink)));
   background: transparent;
   transition:
     color 150ms,

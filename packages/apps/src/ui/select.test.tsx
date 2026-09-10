@@ -46,4 +46,35 @@ describe("SelectTrigger", () => {
       /\.control-surface,\s*\.input,\s*\.textarea,\s*\.select-trigger \{[\s\S]*border-radius:\s*var\(--control-radius\)/,
     );
   });
+
+  it("aligns select-trigger idle color with outline button tokens", () => {
+    expect(inputCss).toMatch(
+      /\.select-trigger \{[\s\S]*color:\s*var\(--select-trigger-color,\s*var\(--button-outline-color,\s*var\(--color-ink\)\)\)/,
+    );
+  });
+
+  it("inherits trigger color on the chevron icon", () => {
+    const { container } = render(
+      <Select>
+        <SelectTrigger aria-label="View">
+          <SelectValue placeholder="Month" />
+        </SelectTrigger>
+      </Select>,
+    );
+    const icon = container.querySelector(".select-trigger__icon");
+    expect(icon).not.toBeNull();
+    expect(icon!.classList.contains("text-muted-foreground")).toBe(false);
+    expect(inputCss).toMatch(/\.select-trigger__icon \{[\s\S]*color:\s*inherit/);
+  });
+
+  it("uses keyboard-only focus chrome on select/input surfaces", () => {
+    expect(inputCss).toMatch(
+      /\.select-trigger:focus-visible:not\(:disabled\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,
+    );
+    expect(inputCss).not.toMatch(/\.select-trigger:focus:not\(:disabled\)/);
+    expect(inputCss).not.toMatch(/\.input:focus:not\(:read-only\)/);
+    expect(inputCss).toMatch(
+      /\.select-trigger\[data-state="open"\]:not\(:disabled\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,
+    );
+  });
 });

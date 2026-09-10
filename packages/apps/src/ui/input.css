@@ -59,9 +59,16 @@
 
 .select-trigger {
   @apply justify-between whitespace-nowrap;
-  @apply data-[placeholder]:text-muted-foreground data-[state=open]:text-foreground;
+  @apply data-[placeholder]:text-muted-foreground;
   @apply disabled:cursor-not-allowed;
   @apply [&>span]:line-clamp-1;
+  /* Align idle text/chevron with outline Button / SegmentedControl. */
+  color: var(--select-trigger-color, var(--button-outline-color, var(--color-ink)));
+}
+
+.select-trigger__icon {
+  @apply h-4 w-4 shrink-0;
+  color: inherit;
 }
 
 .select-trigger--size-sm,
@@ -143,14 +150,17 @@
   @apply cursor-default;
 }
 
-.control-surface:focus:not(:disabled),
+/* Keyboard-only focus chrome — mouse click must not paint a focus ring/border. */
 .control-surface:focus-visible:not(:disabled),
-.control-surface[data-state="open"]:not(:disabled),
-.input:focus:not(:read-only),
 .input:focus-visible:not(:read-only),
-.textarea:focus:not(:read-only),
 .textarea:focus-visible:not(:read-only),
-.select-trigger:focus:not(:disabled),
+.select-trigger:focus-visible:not(:disabled) {
+  background-color: var(--input-background-focus, #ffffff);
+  border-color: var(--input-border-focus, var(--ring));
+}
+
+/* Open select keeps the elevated surface without relying on :focus (pointer open). */
+.control-surface[data-state="open"]:not(:disabled),
 .select-trigger[data-state="open"]:not(:disabled) {
   background-color: var(--input-background-focus, #ffffff);
   border-color: var(--input-border-focus, var(--ring));

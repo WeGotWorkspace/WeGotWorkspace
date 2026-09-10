@@ -28,13 +28,25 @@ describe("calendar workspace header CSS", () => {
       /\.calendar-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--calendar-accent-strong\)/,
     );
     expect(css).toMatch(
+      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-color:\s*var\(--color-ink\)/,
+    );
+    expect(css).toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--calendar-accent-strong\)/,
     );
     expect(css).toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--calendar-accent\) 14%/,
     );
     expect(css).toMatch(
-      /:is\([\s\S]*workspace-sidebar-toggle[\s\S]*calendar-invitations-trigger[\s\S]*\)\.button--variant-outline\.icon-button--active \{[\s\S]*background-color:\s*color-mix/,
+      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--calendar-accent\) 18%/,
+    );
+    expect(css).not.toMatch(
+      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-active-border-color:/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \.view-header \{[\s\S]*--select-trigger-color:\s*var\(--button-outline-color\)/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-color:\s*var\(--button-outline-color\)/,
     );
     expect(css).toMatch(
       /:is\([\s\S]*workspace-sidebar-toggle[\s\S]*calendar-header-today-icon[\s\S]*fill:\s*none/,
@@ -52,7 +64,7 @@ describe("calendar workspace header CSS", () => {
       /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-track-border-color:\s*var\(\s*--button-outline-border-color,\s*var\(--control-border-color\)\s*\)/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-active-bg:[\s\S]*var\(--calendar-accent\) 18%/,
+      /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-active-bg:\s*var\(--button-outline-active-background\)/,
     );
     expect(css).toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-active-fg:\s*var\(--button-active-color\)/,
