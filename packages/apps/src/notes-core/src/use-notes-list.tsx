@@ -33,6 +33,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     archived,
     hiddenNotebookIds,
     notebookCollections,
+    listLoading,
     showMutationError,
   } = shell;
 
@@ -213,6 +214,15 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
       return;
     }
 
+    // Deep link / refresh: WorkspaceLiveAppShell mounts with empty placeholder
+    // notes while hybrid IndexedDB + network bootstrap runs (`listLoading`).
+    // Clearing activeId here would replace `/notes/all/:noteId` → `/all` before
+    // local-first cache can hydrate the row.
+    if (listLoading) {
+      prevNotesRef.current = notes;
+      return;
+    }
+
     const prevNotes = prevNotesRef.current;
     const prevActive = prevNotes.find((note) => note.id === activeId);
     let remappedId: string | undefined;
@@ -254,7 +264,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
       setActiveId("");
     }
     prevNotesRef.current = notes;
-  }, [activeId, notes, setNotes, setSelectedIds]);
+  }, [activeId, listLoading, notes, setNotes, setSelectedIds]);
 
   const active = activeId ? notes.find((n) => n.id === activeId) : undefined;
 
