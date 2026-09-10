@@ -89,12 +89,27 @@
 }
 
 /*
- * Header outline actions (sidebar toggle, Today, prev/next, inbox): accent
- * hover/active via shared button tokens — not ink-gray washes.
+ * Header outline actions (sidebar toggle, Today, prev/next, inbox, view switch):
+ * accent hover/active via shared button + segmented tokens — not ink-gray washes.
+ * SegmentedControl consumes these (and --segmented-control-*) so the grid/list
+ * track matches outline IconButtons; active thumb matches pressed Today/Inbox wash.
  */
 .calendar-workspace .view-header {
   --button-active-color: var(--calendar-accent-strong);
+  --button-outline-hover-color: var(--calendar-accent-strong);
   --button-outline-hover-background: color-mix(in oklab, var(--calendar-accent) 14%, transparent);
+  --segmented-control-track-bg: transparent;
+  --segmented-control-track-border-color: var(
+    --button-outline-border-color,
+    var(--control-border-color)
+  );
+  --segmented-control-active-bg: color-mix(
+    in oklab,
+    var(--calendar-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --segmented-control-active-fg: var(--button-active-color);
+  --segmented-control-active-shadow: none;
 }
 
 /* Inbox is titleTrailing (row 1 end). Prev/next is titleLeading (row 2 end). */
@@ -234,10 +249,12 @@
   @apply relative;
 }
 
-/* Open inbox / current-today: stronger accent wash; keep stroke glyphs
-   (generic `.icon-button--active` fills Lucide solid and blobs the icon). */
+/* Open sidebar / inbox / current-today: stronger accent wash; keep stroke glyphs
+   (generic `.icon-button--active` fills Lucide solid and blobs the icon).
+   Sidebar toggle also gets shared `fill: none` in workspace-app-layout.css. */
 .calendar-workspace
   :is(
+    .workspace-sidebar-toggle,
     .calendar-invitations-trigger,
     .calendar-header-today,
     .calendar-header-today-icon
@@ -252,6 +269,7 @@
 
 .calendar-workspace
   :is(
+    .workspace-sidebar-toggle,
     .calendar-invitations-trigger,
     .calendar-header-today,
     .calendar-header-today-icon

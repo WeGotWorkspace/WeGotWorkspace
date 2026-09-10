@@ -28,14 +28,37 @@ describe("calendar workspace header CSS", () => {
       /\.calendar-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--calendar-accent-strong\)/,
     );
     expect(css).toMatch(
+      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--calendar-accent-strong\)/,
+    );
+    expect(css).toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--calendar-accent\) 14%/,
     );
     expect(css).toMatch(
-      /:is\([\s\S]*calendar-invitations-trigger[\s\S]*\)\.button--variant-outline\.icon-button--active \{[\s\S]*background-color:\s*color-mix/,
+      /:is\([\s\S]*workspace-sidebar-toggle[\s\S]*calendar-invitations-trigger[\s\S]*\)\.button--variant-outline\.icon-button--active \{[\s\S]*background-color:\s*color-mix/,
     );
-    expect(css).toMatch(/:is\([\s\S]*calendar-header-today-icon[\s\S]*fill:\s*none/);
+    expect(css).toMatch(
+      /:is\([\s\S]*workspace-sidebar-toggle[\s\S]*calendar-header-today-icon[\s\S]*fill:\s*none/,
+    );
     expect(css).not.toMatch(
       /calendar-invitations-trigger[\s\S]*\.button--variant-subtle\.icon-button--active/,
+    );
+  });
+
+  it("aligns view-switch segmented chrome with outline header buttons", () => {
+    expect(css).toMatch(
+      /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-track-bg:\s*transparent/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-track-border-color:\s*var\(\s*--button-outline-border-color,\s*var\(--control-border-color\)\s*\)/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-active-bg:[\s\S]*var\(--calendar-accent\) 18%/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-active-fg:\s*var\(--button-active-color\)/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-active-shadow:\s*none/,
     );
   });
 

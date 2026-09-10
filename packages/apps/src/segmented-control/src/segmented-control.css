@@ -1,23 +1,29 @@
 @import "../../styles.css" reference;
 
 .segmented-control {
-  --segmented-control-padding: 0.125rem;
+  /* Zero inset: thumbs fill the content box; track keeps the resting outline. */
+  --segmented-control-padding: 0px;
+  --segmented-control-track-border-width: 1px;
   --segmented-control-height: var(
     --control-height-sm,
     calc(var(--input-height, 2.25rem) - 0.25rem)
   );
   --segmented-control-track-radius: var(--control-radius-button-pill);
   --segmented-control-thumb-radius: calc(
-    var(--segmented-control-track-radius) - var(--segmented-control-padding)
+    var(--segmented-control-track-radius) - var(--segmented-control-track-border-width) -
+      var(--segmented-control-padding)
   );
-  @apply box-border inline-flex items-center;
+  /* Allow active thumb to paint over the track stroke (no clip). */
+  @apply relative box-border inline-flex items-stretch;
   height: var(--segmented-control-height);
   padding: var(--segmented-control-padding);
   border-radius: var(--segmented-control-track-radius);
-  background-color: var(
-    --segmented-control-track-bg,
-    color-mix(in oklab, var(--color-ink) 6%, transparent)
-  );
+  background-color: var(--segmented-control-track-bg, transparent);
+  border: var(--segmented-control-track-border-width) solid
+    var(
+      --segmented-control-track-border-color,
+      var(--button-outline-border-color, var(--control-border-color))
+    );
 }
 
 .segmented-control--size-md {
@@ -25,31 +31,68 @@
 }
 
 .segmented-control__button {
-  @apply inline-flex items-center justify-center border-0;
-  width: calc(var(--segmented-control-height) - (2 * var(--segmented-control-padding)));
-  height: calc(var(--segmented-control-height) - (2 * var(--segmented-control-padding)));
+  @apply box-border inline-flex items-center justify-center border-0;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 1 / 1;
   border-radius: var(--segmented-control-thumb-radius);
   color: color-mix(in oklab, var(--segmented-control-color, var(--color-ink)) 55%, transparent);
   background: transparent;
   transition:
     color 150ms,
     background-color 150ms,
+    border-color 150ms,
     box-shadow 150ms;
 }
 
 .segmented-control__button--text {
-  width: auto;
+  aspect-ratio: auto;
   min-width: 2.75rem;
   padding-inline: 0.625rem;
 }
 
 .segmented-control__button--active {
-  background-color: var(--segmented-control-active-bg, var(--color-cream, #ffffff));
-  color: var(--segmented-control-active-fg, var(--color-ink));
-  box-shadow: var(
-    --segmented-control-active-shadow,
-    0 1px 2px color-mix(in oklab, var(--color-ink) 20%, transparent)
+  /* Prefer parent --segmented-control-*; else shared outline/active button tokens. */
+  background-color: var(
+    --segmented-control-active-bg,
+    var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
   );
+  color: var(--segmented-control-active-fg, var(--button-active-color, var(--color-ink)));
+  border: var(--segmented-control-track-border-width) solid
+    var(
+      --segmented-control-active-border-color,
+      var(--button-outline-border-color, var(--control-border-color))
+    );
+  /* Expand by track border width so wash + border sit on top of the track stroke. */
+  height: calc(100% + 2 * var(--segmented-control-track-border-width));
+  margin: calc(-1 * var(--segmented-control-track-border-width));
+  border-radius: var(--segmented-control-track-radius);
+  box-shadow: var(--segmented-control-active-shadow, none);
+  z-index: 1;
+}
+
+/* Match outline IconButton hover; Calendar `.view-header` already sets accent tokens. */
+.segmented-control__button:hover:not(:disabled) {
+  color: var(
+    --segmented-control-hover-color,
+    var(--button-outline-hover-color, var(--button-outline-color, var(--color-ink)))
+  );
+  background-color: var(
+    --segmented-control-hover-bg,
+    var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+  );
+}
+
+/* Keep (or optionally deepen) active wash — avoid reverting to the lighter hover wash. */
+.segmented-control__button--active:hover:not(:disabled) {
+  background-color: var(
+    --segmented-control-active-hover-bg,
+    var(
+      --segmented-control-active-bg,
+      var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+    )
+  );
+  color: var(--segmented-control-active-fg, var(--button-active-color, var(--color-ink)));
 }
 
 .segmented-control[data-disabled] {
