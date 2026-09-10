@@ -26,6 +26,7 @@ export function CalendarInvitationsTrigger({
       label={label}
       icon={<Inbox aria-hidden />}
       size="sm"
+      variant="outline"
       active={open}
       aria-pressed={open}
       className="calendar-invitations-trigger"

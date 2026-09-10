@@ -26,9 +26,6 @@
   --app-sidebar-color: var(--color-ink);
   --sidebar-logo-close-button-color: var(--color-ink);
   --sidebar-badge-fg: var(--calendar-accent);
-  --workspace-sidebar-toggle-color: var(--color-ink);
-  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
-
   --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
@@ -89,6 +86,15 @@
   --wai-fg: #ffffff;
   --wai-detail: #4f46e5;
   --wai-detail-muted: #c7d2fe;
+}
+
+/*
+ * Header outline actions (sidebar toggle, Today, prev/next, inbox): accent
+ * hover/active via shared button tokens — not ink-gray washes.
+ */
+.calendar-workspace .view-header {
+  --button-active-color: var(--calendar-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--calendar-accent) 14%, transparent);
 }
 
 /* Inbox is titleTrailing (row 1 end). Prev/next is titleLeading (row 2 end). */
@@ -228,25 +234,20 @@
   @apply relative;
 }
 
-/* Open inbox / current-today: indigo wash + stroke glyph. Generic active
-   recolors emerald and fills Lucide solid, which turns icons into blobs. */
+/* Open inbox / current-today: stronger accent wash; keep stroke glyphs
+   (generic `.icon-button--active` fills Lucide solid and blobs the icon). */
 .calendar-workspace
   :is(
     .calendar-invitations-trigger,
     .calendar-header-today,
     .calendar-header-today-icon
-  ).button--variant-subtle.icon-button--active {
-  --button-active-color: var(--calendar-accent-strong);
-  --button-subtle-background: color-mix(
-    in oklab,
-    var(--calendar-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --button-subtle-hover-background: color-mix(
+  ).button--variant-outline.icon-button--active {
+  --button-outline-hover-background: color-mix(
     in oklab,
     var(--calendar-accent) 24%,
     var(--color-cream, #ffffff)
   );
+  background-color: color-mix(in oklab, var(--calendar-accent) 18%, var(--color-cream, #ffffff));
 }
 
 .calendar-workspace
@@ -254,7 +255,7 @@
     .calendar-invitations-trigger,
     .calendar-header-today,
     .calendar-header-today-icon
-  ).button--variant-subtle.icon-button--active
+  ).button--variant-outline.icon-button--active
   .button__icon
   > svg {
   fill: none;

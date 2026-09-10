@@ -731,6 +731,7 @@ export function CalendarWorkspace({
                 label={L.today}
                 icon={<CalendarDays className="size-4" />}
                 size="sm"
+                variant="outline"
                 active={showingToday}
                 aria-pressed={showingToday}
                 disabled={searchActive}
@@ -743,6 +744,7 @@ export function CalendarWorkspace({
                   label={L.previousPeriod}
                   icon={<ChevronLeft className="size-4" />}
                   size="sm"
+                  variant="outline"
                   disabled={searchActive}
                   onClick={goPrevious}
                 />
@@ -750,6 +752,7 @@ export function CalendarWorkspace({
                   label={L.nextPeriod}
                   icon={<ChevronRight className="size-4" />}
                   size="sm"
+                  variant="outline"
                   disabled={searchActive}
                   onClick={goNext}
                 />
@@ -826,7 +829,7 @@ export function CalendarWorkspace({
                   label={L.today}
                   icon={<CalendarDays />}
                   onClick={goToday}
-                  variant="subtle"
+                  variant="outline"
                   size="sm"
                   disabled={searchActive}
                   aria-pressed={showingToday}

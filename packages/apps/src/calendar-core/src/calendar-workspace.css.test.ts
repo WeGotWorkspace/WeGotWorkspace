@@ -23,11 +23,20 @@ describe("calendar workspace header CSS", () => {
     );
   });
 
-  it("tints the open inbox and current-today controls instead of filled-emerald", () => {
+  it("tints header outline hover/active with calendar accent instead of ink gray", () => {
     expect(css).toMatch(
-      /:is\([\s\S]*calendar-invitations-trigger[\s\S]*calendar-header-today[\s\S]*\)\.button--variant-subtle\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--calendar-accent-strong\)/,
+      /\.calendar-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--calendar-accent-strong\)/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--calendar-accent\) 14%/,
+    );
+    expect(css).toMatch(
+      /:is\([\s\S]*calendar-invitations-trigger[\s\S]*\)\.button--variant-outline\.icon-button--active \{[\s\S]*background-color:\s*color-mix/,
     );
     expect(css).toMatch(/:is\([\s\S]*calendar-header-today-icon[\s\S]*fill:\s*none/);
+    expect(css).not.toMatch(
+      /calendar-invitations-trigger[\s\S]*\.button--variant-subtle\.icon-button--active/,
+    );
   });
 
   it("matches inbox gap to header actions so desktop clustering stays tight", () => {
@@ -61,6 +70,35 @@ describe("calendar workspace header markup", () => {
   it("places an icon-only Today control in titlePrefix ahead of the date title", () => {
     expect(tsx).toMatch(/titlePrefix=\{\s*<IconButton/);
     expect(tsx).toMatch(/className="calendar-header-today-icon"/);
+  });
+
+  it("uses outline IconButtons for period prev/next to match the view Select border", () => {
+    const navBlock = tsx.match(
+      /titleLeading=\{\s*<div className="calendar-header-nav">([\s\S]*?)<\/div>\s*\}/,
+    )?.[1];
+    expect(navBlock).toBeDefined();
+    expect(navBlock!).toMatch(/label=\{L\.previousPeriod\}[\s\S]*?variant="outline"/);
+    expect(navBlock!).toMatch(/label=\{L\.nextPeriod\}[\s\S]*?variant="outline"/);
+    expect(navBlock!).not.toMatch(/variant="subtle"/);
+  });
+
+  it("uses outline for Today (labeled + icon) and leaves header actions DRY with nav chrome", () => {
+    const prefixBlock = tsx.match(
+      /titlePrefix=\{\s*<IconButton\b([\s\S]*?)\bonClick=\{goToday\}\s*\/>\s*\}/,
+    )?.[1];
+    expect(prefixBlock).toBeDefined();
+    expect(prefixBlock!).toMatch(/className="calendar-header-today-icon"/);
+    expect(prefixBlock!).toMatch(/variant="outline"/);
+    expect(prefixBlock!).not.toMatch(/variant="subtle"/);
+
+    const actionsBlock = tsx.match(
+      /actions=\{\s*<div className="calendar-header-actions">([\s\S]*?)<\/div>\s*\}/,
+    )?.[1];
+    expect(actionsBlock).toBeDefined();
+    expect(actionsBlock!).toMatch(
+      /className=\{cn\("calendar-header-today"[\s\S]*?variant="outline"/,
+    );
+    expect(actionsBlock!).not.toMatch(/calendar-header-today[\s\S]*variant="subtle"/);
   });
 });
 
