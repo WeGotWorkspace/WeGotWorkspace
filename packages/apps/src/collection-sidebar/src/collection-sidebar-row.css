@@ -17,7 +17,7 @@
 .collection-sidebar-row--selected:hover {
   background-color: var(
     --collection-sidebar-row-selected-bg,
-    color-mix(in oklab, var(--collection-row-color, var(--color-ink)) 18%, transparent)
+    color-mix(in oklab, var(--workspace-accent, var(--color-emerald)) 18%, transparent)
   );
   color: var(--collection-sidebar-row-selected-color, var(--color-ink));
 }

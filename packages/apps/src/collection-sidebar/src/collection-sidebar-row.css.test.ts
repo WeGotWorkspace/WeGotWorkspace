@@ -55,13 +55,14 @@ describe("collection sidebar row CSS", () => {
     expect(visibility).toMatch(/--primary:\s*var\(--collection-row-color/);
   });
 
-  it("washes the selected row from --collection-row-color, not ink gray", () => {
+  it("washes the selected row from the app accent, not collection or ink gray", () => {
     const selected = css.match(
       /\.collection-sidebar-row--selected,[\s\S]*?\.collection-sidebar-row--selected:hover \{[^}]+\}/,
     )?.[0];
     expect(selected).toMatch(
-      /color-mix\(in oklab,\s*var\(--collection-row-color,\s*var\(--color-ink\)\)\s*18%,\s*transparent\)/,
+      /color-mix\(\s*in oklab,\s*var\(--workspace-accent,\s*var\(--color-emerald\)\)\s*18%,\s*transparent\s*\)/,
     );
+    expect(selected).not.toMatch(/--collection-row-color/);
     expect(selected).not.toMatch(/var\(--color-ink\)\s*12%/);
   });
 });
