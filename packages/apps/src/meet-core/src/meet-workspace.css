@@ -30,14 +30,11 @@
 
   --button-primary-bg: var(--meet-accent-strong);
   --button-primary-fg: var(--meet-text);
-  --button-subtle-background: var(--meet-panel-soft);
-  --button-subtle-color: var(--meet-text);
-  --button-subtle-hover-background: color-mix(
-    in oklab,
-    var(--meet-text) 12%,
-    var(--meet-panel-soft)
-  );
   --button-active-color: var(--meet-text);
+  /* Collection sidebar selected/hover wash on dark chrome. */
+  --button-outline-hover-background: color-mix(in oklab, var(--meet-text) 8%, transparent);
+  --button-outline-active-background: color-mix(in oklab, var(--meet-text) 14%, transparent);
+  --button-outline-active-hover-background: color-mix(in oklab, var(--meet-text) 20%, transparent);
   --field-label-color: var(--meet-muted);
   --foreground: var(--meet-text);
   --color-foreground: var(--meet-text);
@@ -182,11 +179,6 @@
   color: var(--meet-error);
 }
 
-.meet-workspace .button--variant-subtle.icon-button--active {
-  background-color: var(--meet-accent);
-  color: var(--meet-text);
-}
-
 .meet-workspace__stage {
   @apply relative min-h-0 flex-1;
 }
@@ -257,13 +249,6 @@
   --user-avatar-fg: var(--meet-text);
   --button-primary-bg: var(--meet-accent-strong);
   --button-primary-fg: var(--meet-text);
-  --button-subtle-background: var(--meet-panel-soft);
-  --button-subtle-color: var(--meet-text);
-  --button-subtle-hover-background: color-mix(
-    in oklab,
-    var(--meet-text) 12%,
-    var(--meet-panel-soft)
-  );
   --button-outline-color: var(--meet-text);
   --button-outline-border-color: var(--meet-border-strong);
   --button-outline-hover-background: color-mix(in oklab, var(--meet-text) 8%, transparent);
@@ -653,13 +638,22 @@
   --color-popover-foreground: var(--color-ink);
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
-  --button-subtle-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  --button-active-color: var(--meet-accent-strong);
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--meet-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--meet-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--meet-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--meet-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
   --button-primary-bg: var(--meet-accent);
   --button-primary-fg: var(--color-cream, #ffffff);
-  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --user-avatar-fg: var(--color-ink);
   @apply w-80 rounded-xl p-2;
   background-color: var(--meet-call-surface);
   color: var(--color-ink);
@@ -752,8 +746,6 @@
   --color-ink: #042a22;
   --meet-text: var(--color-ink);
   --meet-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
-  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --user-avatar-fg: var(--color-ink);
   --meet-sidebar: color-mix(in oklab, var(--meet-accent) 20%, var(--color-cream, #ffffff));
   --meet-surface: var(--color-cream, #ffffff);
   --workspace-accent: var(--meet-accent);
@@ -772,8 +764,6 @@
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
   --workspace-user-footer-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --workspace-user-footer-avatar-color: var(--color-ink);
   --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
   /*
@@ -783,10 +773,23 @@
   --field-label-color: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --button-primary-bg: var(--meet-accent-strong);
   --button-primary-fg: #ffffff;
-  /* ViewHeader Start matches Calendar Today idle (ink wash, not lobby dark slab). */
-  --button-subtle-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  /*
+   * Workspace and in-call chrome use outline IconButtons with Meet outline tokens.
+   */
+  --button-active-color: var(--meet-accent-strong);
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--meet-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--meet-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--meet-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--meet-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
   --workspace-main-bg: var(--meet-surface);
@@ -799,10 +802,6 @@
   --chat-action-surface: #ffffff;
   --user-avatar-presence-ring: var(--chat-list-surface);
   background-color: var(--meet-surface);
-  color: var(--color-ink);
-}
-
-.meet-workspace--split .user-avatar--colored .user-avatar__mark {
   color: var(--color-ink);
 }
 
@@ -848,17 +847,12 @@
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
   --workspace-user-footer-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --workspace-user-footer-avatar-color: var(--color-ink);
   --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 .meet-workspace--split .app-sidebar__scroll {
   --button-primary-bg: var(--meet-accent-strong);
   --button-primary-fg: #ffffff;
-  --button-subtle-color: var(--color-ink);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
 }
 
 /** App switcher lockup: near-black purple tile + cream camera. */
@@ -893,6 +887,40 @@
 
 .meet-workspace__header-actions {
   @apply flex items-center gap-2;
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--meet-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--meet-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--meet-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--meet-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+  --button-active-color: var(--meet-accent-strong);
+}
+
+/*
+ * Header outline actions (sidebar toggle + edit): accent hover/active like Calendar.
+ */
+.meet-workspace--split .view-header {
+  --button-active-color: var(--meet-accent-strong);
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--meet-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--meet-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--meet-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--meet-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
 }
 
 .meet-workspace__header-start {
@@ -939,12 +967,20 @@
   --meet-call-border: color-mix(in oklab, var(--meet-accent) 22%, transparent);
   --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #ffffff));
   color: var(--color-ink);
-  --button-subtle-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
   --button-active-color: var(--meet-accent-strong);
-  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --user-avatar-fg: var(--color-ink);
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--meet-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--meet-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--meet-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--meet-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
 }
@@ -954,30 +990,21 @@
   background-color: var(--meet-call-surface);
 }
 
+/* Lobby / call media toggles (MeetCircleToggle) use outline on cream paper. */
 .meet-workspace
   :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded, .meet-guest-lobby__preview)
-  .button--variant-subtle.icon-button--active {
+  .button--variant-outline.icon-button--active {
   --button-active-color: var(--meet-accent-strong);
-  --button-subtle-background: color-mix(
+  --button-outline-active-background: color-mix(
     in oklab,
     var(--meet-accent) 18%,
     var(--color-cream, #ffffff)
   );
-  --button-subtle-hover-background: color-mix(
+  --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--meet-accent) 24%,
     var(--color-cream, #ffffff)
   );
-  background-color: var(--button-subtle-background);
-  color: var(--button-active-color);
-}
-
-.meet-workspace
-  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded, .meet-guest-lobby__preview)
-  .button--variant-subtle.icon-button--active
-  .button__icon
-  > svg {
-  fill: none;
 }
 
 .meet-call-bar {
@@ -1481,13 +1508,22 @@
   --meet-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --meet-border-strong: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --field-label-color: color-mix(in oklab, var(--color-ink) 72%, transparent);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --button-subtle-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  --button-active-color: var(--meet-accent-strong);
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--meet-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--meet-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--meet-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--meet-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
-  --user-avatar-bg: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #ffffff));
-  --user-avatar-fg: var(--color-ink);
   --button-primary-bg: var(--meet-accent);
   --button-primary-fg: var(--color-cream, #ffffff);
   /* Same camera-off fill as live call tiles (`.meet-peer-tile` / `__fill`). */

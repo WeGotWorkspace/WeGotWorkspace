@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { IconButton } from "@/button/src/button";
+import { Badge } from "@/ui/badge";
 import { ViewHeader } from "@/view-header/src/view-header";
 import "./docs-collab-sidebar-panel.css";
 
@@ -10,6 +11,9 @@ export type DocsCollabSidebarPanelProps = {
   title: string;
   /** "default" = large serif display; "sm" = compact sans-serif (comments/suggestions panels). */
   titleSize?: "default" | "sm";
+  /** Numeric count shown in a Badge beside the title. */
+  count?: number;
+  /** Accessible label for the count Badge (e.g. "3 open"). */
   countLabel?: string;
   closeLabel: string;
   onClose: () => void;
@@ -32,6 +36,7 @@ export function DocsCollabSidebarPanel({
   ariaLabel,
   title,
   titleSize = "sm",
+  count,
   countLabel,
   closeLabel,
   onClose,
@@ -56,7 +61,13 @@ export function DocsCollabSidebarPanel({
           title={title}
           titleSize={titleSize}
           titleLeading={titleLeading}
-          subtitle={countLabel || undefined}
+          titleSuffix={
+            count != null ? (
+              <Badge variant="accent" aria-label={countLabel ?? String(count)}>
+                {count}
+              </Badge>
+            ) : null
+          }
           actions={
             headerActions || showCloseButton ? (
               <div className="docs-collab-sidebar-panel__header-actions">
@@ -66,7 +77,7 @@ export function DocsCollabSidebarPanel({
                     label={closeLabel}
                     icon={<X className="size-4" aria-hidden />}
                     size="sm"
-                    variant="subtle"
+                    variant="outline"
                     showTooltip={false}
                     onClick={onClose}
                   />

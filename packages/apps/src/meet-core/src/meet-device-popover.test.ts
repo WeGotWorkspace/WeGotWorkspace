@@ -15,7 +15,7 @@ describe("MeetDevicePopover", () => {
     expect(popover).not.toMatch(/--meet-call-surface/);
     expect(popover).toMatch(/active=\{open\}/);
     expect(popover).toMatch(/size="sm"/);
-    expect(popover).toMatch(/variant="subtle"/);
+    expect(popover).toMatch(/variant="outline"/);
   });
 
   it("keeps Settings on the trigger and Volume2 on the speaker row", () => {

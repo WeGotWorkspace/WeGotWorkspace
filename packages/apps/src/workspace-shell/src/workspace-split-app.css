@@ -3,7 +3,7 @@
 /**
  * Shared tokens for split `WorkspaceAppLayout` products (admin, settings, …).
  * Each workspace root (`admin-workspace`, `settings-workspace`) should import this
- * once, then only set product-specific overrides (sidebar accent, subtle buttons, …).
+ * once, then only set product-specific overrides (sidebar accent, outline chrome, …).
  *
  * Sidebar chrome contract (see also `app-sidebar.css` lockup derivation):
  * - `--app-sidebar-bg` — sidebar surface
@@ -18,8 +18,6 @@
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 15%, transparent);
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 80%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 18%, transparent);
-  --workspace-user-footer-avatar-color: var(--color-ink);
   --workspace-user-footer-link-color: var(--color-ink);
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
 
@@ -31,7 +29,4 @@
   --primary-foreground: #ffffff;
 
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
-
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --button-subtle-color: var(--color-ink);
 }

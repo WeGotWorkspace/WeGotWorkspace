@@ -20,6 +20,7 @@ describe("ActionBar", () => {
     const back = screen.getByRole("button", { name: "All Items" });
     expect(back.textContent).toContain("All Items");
     expect(back.className).toContain("action-bar__back");
+    expect(back.className).toContain("button--variant-outline");
   });
 
   it("defaults the back label to Back when none is provided", () => {

@@ -56,9 +56,11 @@
   color: color-mix(in oklab, currentColor 75%, transparent);
 }
 
-.install-workspace .sidebar-section .menu-item--surface-selected {
-  background-color: color-mix(in oklab, currentColor 12%, transparent);
-  color: currentColor;
+.install-workspace .app-sidebar {
+  --button-active-color: currentColor;
+  --button-outline-hover-background: color-mix(in oklab, currentColor 8%, transparent);
+  --button-outline-active-background: color-mix(in oklab, currentColor 12%, transparent);
+  --button-outline-active-hover-background: color-mix(in oklab, currentColor 18%, transparent);
 }
 
 .install-workspace .sidebar-section .menu-item.menu-item--selected .menu-item__badge {

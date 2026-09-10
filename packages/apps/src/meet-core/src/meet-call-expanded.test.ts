@@ -72,19 +72,20 @@ describe("MeetCallExpanded", () => {
 describe("Meet call/chat IconButton chrome", () => {
   it("uses the same sm IconButton square, with leave as the destructive exception", () => {
     expect(circleToggle).toMatch(/size="sm"/);
-    expect(circleToggle).toMatch(/variant="subtle"/);
+    expect(circleToggle).toMatch(/variant="outline"/);
+    expect(circleToggle).not.toMatch(/variant="subtle"/);
     expect(circleToggle).toMatch(/active=\{on\}/);
     expect(circleToggle).toMatch(/aria-pressed=\{on\}/);
     expect(circleToggle).not.toMatch(/destructive/);
     expect(callBar).toMatch(/size="sm"/);
-    expect(callBar).toMatch(/variant="subtle"/);
+    expect(callBar).toMatch(/variant="outline"/);
     expect(callBar).toMatch(/variant="destructive"/);
     expect(callBar).toMatch(/meet-call-bar__invite-button/);
     expect(callBar).toMatch(/meet-workspace__header-kind-icon/);
     expect(toolbar).not.toMatch(/MeetCircleToggle/);
     expect(toolbar).not.toMatch(/leaveLabeled/);
     expect(toolbar).toMatch(/size="sm"/);
-    expect(toolbar).toMatch(/variant="subtle"/);
+    expect(toolbar).toMatch(/variant="outline"/);
     expect(toolbar).toMatch(/variant="destructive"/);
     expect(toolbar).not.toMatch(/size="lg"/);
     expect(peerTile).not.toMatch(/variant="ghost"/);
@@ -95,10 +96,10 @@ describe("Meet call/chat IconButton chrome", () => {
     expect(peerTile).not.toMatch(/onMuteSoon/);
     expect(peerTile).not.toMatch(/DropdownMenu/);
     expect(peerTile).not.toMatch(/MoreVertical/);
-    expect(pip).toMatch(/variant="subtle"/);
+    expect(pip).toMatch(/variant="outline"/);
     expect(pip).not.toMatch(/variant="ghost"/);
     expect(expanded).toMatch(/size="sm"/);
-    expect(expanded).toMatch(/variant="subtle"/);
+    expect(expanded).toMatch(/variant="outline"/);
     expect(expanded).not.toMatch(/variant="ghost"/);
     expect(chatCall).not.toMatch(/muteSoon/);
     expect(chatCall).not.toMatch(/onMuteSoon/);

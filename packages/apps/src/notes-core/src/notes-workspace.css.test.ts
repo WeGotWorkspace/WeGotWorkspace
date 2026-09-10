@@ -224,32 +224,44 @@ describe("notes workspace app-switch lockup", () => {
 });
 
 describe("notes workspace action-bar selected Star/Archive", () => {
-  it("colors selected action-bar icons with --notes-detail-accent, not leftover gold", () => {
+  it("colors selected action-bar icons with --notes-detail-accent via outline tokens", () => {
     expect(css).toMatch(
-      /--notes-accent-strong:\s*color-mix\(in oklab,\s*var\(--notes-accent\) 70%,\s*var\(--color-ink\)\)/,
+      /--notes-accent-strong:\s*color-mix\(in oklab,\s*var\(--notes-accent\) 32%,\s*var\(--color-ink\)\)/,
     );
     expect(css).toMatch(
-      /--notes-detail-accent-strong:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-accent\) 70%,\s*var\(--color-ink\)/,
+      /--notes-detail-accent-strong:\s*color-mix\(\s*in oklab,\s*var\(--notes-detail-accent\) 32%,\s*var\(--color-ink\)/,
+    );
+    // Selected sidebar/chrome: ink fg on a stronger yellow wash (not gold-on-cream).
+    expect(css).toMatch(/\.notes-workspace \{[\s\S]*--button-active-color:\s*var\(--color-ink\)/);
+    expect(css).toMatch(
+      /\.notes-workspace \{[\s\S]*--button-outline-hover-color:\s*var\(--notes-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--notes-detail-accent-strong\)/,
+      /\.notes-workspace \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--notes-accent\) 40%/,
     );
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-subtle-background:[\s\S]*var\(--notes-detail-accent\) 18%/,
+      /\.notes-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--notes-accent\) 55%/,
     );
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-subtle-hover-background:[\s\S]*var\(--notes-detail-accent\) 24%/,
+      /\.notes-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--notes-accent\) 65%/,
     );
-    expect(css).toMatch(
-      /\.notes-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active[\s\S]*fill:\s*none/,
-    );
-    expect(css).toMatch(
-      /\.notes-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active[\s\S]*color:\s*var\(--notes-detail-accent-strong\)/,
-    );
-    expect(css).not.toMatch(/var\(--calendar-accent/);
     expect(css).not.toMatch(
-      /\.action-bar \.button--variant-subtle\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--color-ink\)/,
+      /\.notes-workspace \{[\s\S]*--button-active-color:\s*var\(--notes-accent-strong\)/,
     );
+    expect(css).not.toMatch(
+      /\.notes-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--notes-accent\) (?:18|32|50)%/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace :is\(\.action-bar,\s*\.multi-selection-view__actions\) \{[\s\S]*--button-active-color:\s*var\(--notes-detail-accent-strong\)/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace :is\(\.action-bar,\s*\.multi-selection-view__actions\) \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--notes-detail-accent\) 18%/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace :is\(\.action-bar,\s*\.multi-selection-view__actions\) \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--notes-detail-accent\) 24%/,
+    );
+    expect(css).not.toMatch(/\.button--variant-subtle\.icon-button--active/);
+    expect(css).not.toMatch(/var\(--calendar-accent/);
     expect(selectionPresentation).toMatch(/icon:\s*<CheckCircle2 className="size-4" \/>/);
     expect(selectionPresentation).not.toMatch(/icon:\s*<X /);
   });

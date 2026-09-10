@@ -195,7 +195,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           <div className="admin-email-delivery-pane__actions">
             <Button
               label="Clear stored SMTP password"
-              variant="subtle"
+              variant="outline"
               onClick={() => void controller.actions.clearMailDeliverySmtpPassword()}
             />
           </div>
@@ -210,7 +210,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         />
         <Button
           label="Send test email"
-          variant="subtle"
+          variant="outline"
           disabled={!capability.canSubmit}
           onClick={() => setTestSendOpen(true)}
         />

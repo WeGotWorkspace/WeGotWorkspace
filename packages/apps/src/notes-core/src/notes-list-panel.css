@@ -1,9 +1,8 @@
 @import "../../styles.css" reference;
 
 .notes-workspace .notes-list-panel__header-actions {
-  --button-subtle-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  /* Inherit workspace outline accent washes; idle stays ink. */
+  --button-outline-color: var(--color-ink);
 }
 
 .notes-workspace .notes-list-panel__star-pip,

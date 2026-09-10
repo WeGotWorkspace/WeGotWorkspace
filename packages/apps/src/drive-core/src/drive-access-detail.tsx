@@ -49,7 +49,7 @@ export function DriveAccessDetail({ controller }: DriveAccessDetailProps) {
         {hasPublicShares ? (
           <Button
             label={labels.accessRevokeAllPublic}
-            variant="subtle"
+            variant="outline"
             size="sm"
             onClick={() => void revokeAllPublic()}
             disabled={revokeLoading}

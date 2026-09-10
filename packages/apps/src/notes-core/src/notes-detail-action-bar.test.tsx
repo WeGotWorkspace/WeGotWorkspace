@@ -88,6 +88,7 @@ describe("NotesDetailActionBar", () => {
     const back = screen.getByRole("button", { name: "All Items" });
     expect(back.textContent).toContain("All Items");
     expect(back.className).toContain("action-bar__back");
+    expect(back.className).toContain("button--variant-outline");
   });
 
   it("opens Create notebook from the shared picker", () => {

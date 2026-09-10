@@ -15,7 +15,7 @@ export function meetChannelTopicSubtitle(topic: string | null | undefined): stri
   return value ? `— ${value}` : undefined;
 }
 
-/** ViewHeader subtitle: relative When first, then the channel topic. */
+/** Meeting header meta line: relative When first, then the channel topic. */
 export function meetMeetingHeaderSubtitle(
   relativeLabel: string | null | undefined,
   topic: string | null | undefined,

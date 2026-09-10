@@ -24,8 +24,6 @@
 
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --workspace-user-footer-avatar-color: var(--color-ink);
   --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
@@ -41,13 +39,28 @@
   --checkbox-checked-border: var(--contacts-accent);
   --checkbox-checked-fg: var(--color-ink);
   --switch-on-bg: var(--contacts-accent);
+
+  /* Outline action language for header + collection sidebar + action-bar. */
+  --button-active-color: var(--contacts-accent-strong);
+  --button-outline-hover-color: var(--contacts-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--contacts-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--contacts-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--contacts-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
 }
 
 /*
  * Primary CTA only — New / Save keep mint + ink. Do not set
- * `--button-subtle-color` here: action-bar idle chips stay muted ink
- * (Calendar / Notes / Tasks). Accent on every ghost icon leaked mint
- * onto trash and toolbar actions.
+ * `--button-outline-color` to mint here:
+ * action-bar idle chips stay muted ink (Calendar / Notes / Tasks).
+ * Accent on every outline icon leaked mint onto trash and toolbar actions.
  */
 .contacts-workspace .workspace-detail-pane .action-bar,
 .contacts-workspace .workspace-detail-pane {
@@ -66,39 +79,6 @@
 .contacts-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--contacts-accent);
   --button-primary-fg: var(--color-ink, #042a22);
-  --button-subtle-color: var(--color-ink);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
-}
-
-/*
- * Selected Edit (and any other action-bar / batch toggle): Calendar Today
- * / Notes Star wash — accent 18%/24% on cream, stroke glyph. Generic
- * `icon-button--active` recolors `--color-emerald` (mint) and fills Lucide.
- */
-.contacts-workspace
-  :is(.action-bar, .multi-selection-view__actions)
-  .button--variant-subtle.icon-button--active {
-  --button-active-color: var(--contacts-accent-strong);
-  --button-subtle-background: color-mix(
-    in oklab,
-    var(--contacts-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --button-subtle-hover-background: color-mix(
-    in oklab,
-    var(--contacts-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
-}
-
-.contacts-workspace
-  :is(.action-bar, .multi-selection-view__actions)
-  .button--variant-subtle.icon-button--active
-  .button__icon
-  > svg {
-  fill: none;
-  color: var(--contacts-accent-strong);
 }
 
 /**

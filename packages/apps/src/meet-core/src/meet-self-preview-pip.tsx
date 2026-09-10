@@ -314,7 +314,7 @@ export function MeetSelfPreviewPiP({
         icon={<PictureInPicture2 />}
         label={meetLabels.openSystemPip}
         size="sm"
-        variant="subtle"
+        variant="outline"
         className="meet-pip__pip-button"
       />
     </div>

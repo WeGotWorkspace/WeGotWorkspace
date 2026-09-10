@@ -1,6 +1,6 @@
 import { Check, Hand, X } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
-import { UserAvatar } from "@/user-avatar/src/user-avatar";
+import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +28,12 @@ export function MeetCallKnockQueue({
     <div className={cn("meet-knock-list", className)}>
       {knockers.map((knocker) => (
         <div key={knocker.id} className="meet-knock-row">
-          <UserAvatar displayName={knocker.name} compact size="sm" />
+          <UserAvatar
+            displayName={knocker.name}
+            compact
+            size="sm"
+            color={avatarColorForUserId(knocker.id)}
+          />
           <div className="meet-knock-row__copy">
             <div className="meet-knock-row__name">{knocker.name}</div>
             <div className="meet-knock-row__hint">{meetLabels.wantsToJoin}</div>
@@ -37,7 +42,7 @@ export function MeetCallKnockQueue({
             onClick={() => onDeny(knocker.id)}
             icon={<X />}
             label={meetLabels.denyName(knocker.name)}
-            variant="subtle"
+            variant="outline"
             size="sm"
             showTooltip={false}
             className="meet-knock-row__deny"
@@ -100,7 +105,7 @@ export function MeetCallKnockWaiting({
         <Button
           label={meetLabels.cancelRequest}
           size="sm"
-          variant="subtle"
+          variant="outline"
           onClick={onCancel}
           className="meet-call-knock-wait__cancel"
         />

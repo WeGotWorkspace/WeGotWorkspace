@@ -339,7 +339,7 @@ function DriveMainHeader({
             label={labels.detailPanelToggle}
             icon={<PanelRight className="size-4" aria-hidden />}
             size="sm"
-            variant="subtle"
+            variant="outline"
             active={detailOpen}
             onClick={() => setDetailOpen((open) => !open)}
           />

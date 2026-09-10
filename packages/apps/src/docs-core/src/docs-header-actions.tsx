@@ -27,7 +27,7 @@ function renderActionButton(action: DocsHeaderAction) {
       disabled={action.disabled}
       icon={action.icon}
       size="sm"
-      variant="subtle"
+      variant="outline"
       className={action.className}
       data-count={action["data-count"]}
       aria-pressed={action.active}
@@ -70,7 +70,7 @@ export function DocsHeaderActions({
                 <IconButton
                   label={menuLabel}
                   icon={<MoreHorizontal />}
-                  variant="subtle"
+                  variant="outline"
                   size="sm"
                   className="docs-workspace__header-actions-menu-trigger"
                 />

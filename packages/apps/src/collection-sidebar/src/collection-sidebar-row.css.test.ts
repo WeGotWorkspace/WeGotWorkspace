@@ -68,10 +68,15 @@ describe("collection sidebar row CSS", () => {
     expect(idle).toMatch(/border:\s*1px solid transparent/);
     expect(idle).toMatch(/background-color:\s*transparent/);
     expect(idle).not.toMatch(/--control-border-color/);
-    expect(css).toMatch(/\.collection-sidebar-row:hover \{[\s\S]*border-color:\s*transparent/);
+    expect(css).toMatch(
+      /\.collection-sidebar-row:hover:not\(\.collection-sidebar-row--selected\) \{[\s\S]*border-color:\s*transparent/,
+    );
     expect(css).toMatch(/\.collection-sidebar-row--selected \{[\s\S]*border-color:\s*transparent/);
     expect(css).toMatch(
-      /\.collection-sidebar-row:hover \{[\s\S]*--button-outline-hover-background[\s\S]*color-mix\(\s*in oklab,\s*var\(--color-ink\)\s*8%/,
+      /\.collection-sidebar-row:hover:not\(\.collection-sidebar-row--selected\) \{[\s\S]*--button-outline-hover-background[\s\S]*color-mix\(\s*in oklab,\s*var\(--color-ink\)\s*8%/,
+    );
+    expect(css).toMatch(
+      /\.collection-sidebar-row:hover:not\(\.collection-sidebar-row--selected\) \{[\s\S]*--button-outline-hover-color/,
     );
     expect(css).toMatch(
       /\.collection-sidebar-row:has\(> \.collection-sidebar-row__select:focus-visible\) \{[\s\S]*ring-1 ring-ring/,

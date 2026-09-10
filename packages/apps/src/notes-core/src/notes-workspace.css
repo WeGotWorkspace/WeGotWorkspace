@@ -22,12 +22,13 @@
   --notes-accent: #f6d176;
   --notes-sidebar: color-mix(in oklab, var(--notes-accent) 12%, var(--color-cream, #ffffff));
   /*
-   * Calendar: `--calendar-accent-strong` (#5558e8) is a darker step of
-   * `--calendar-accent` (#6366f1) — selected Today icon/label (`--button-active-color`).
-   * Notes has no standalone strong hex; do not invent one. Same derivation:
-   * mix the product accent toward `--color-ink` (the existing yellow contrast pair).
+   * Hover / detail strong fg: yellow is too light for Calendar-style
+   * accent-on-wash selected text. 32% accent → ink (~6.5:1 on cream washes)
+   * — deeper than Contacts’ 42% mint recipe. Selected chrome uses ink fg
+   * (see `--button-active-color`) so the Notes accent lives in a stronger
+   * yellow wash instead of washed gold-on-cream.
    */
-  --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 70%, var(--color-ink));
+  --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 32%, var(--color-ink));
   /*
    * Detail-pane accent: live notebook color when `--notes-detail-tint` is set
    * (single open note); product yellow when unset (empty / multi-select).
@@ -35,7 +36,7 @@
   --notes-detail-accent: var(--notes-detail-tint, var(--notes-accent));
   --notes-detail-accent-strong: color-mix(
     in oklab,
-    var(--notes-detail-accent) 70%,
+    var(--notes-detail-accent) 32%,
     var(--color-ink)
   );
   --workspace-chrome-footer-bg: var(--color-cream, #ffffff);
@@ -58,8 +59,6 @@
 
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --workspace-user-footer-avatar-color: var(--color-ink);
   --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
@@ -120,6 +119,27 @@
   --workspace-chrome-footer-padding-x: 1rem;
   --workspace-chrome-footer-padding-y: 0.5rem;
   --workspace-chrome-footer-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
+
+  /*
+   * Outline / menu-item / collection-row language.
+   * Selected: ink fg on a heavy yellow wash — sidebar is already 12% accent
+   * on cream; mid washes (~32%) still blend into that tint, so active sits at
+   * 55% accent→cream so the chip clearly pops. Hover: accent-strong fg + 40%
+   * wash. Selected-hover goes higher still (65%).
+   */
+  --button-active-color: var(--color-ink);
+  --button-outline-hover-color: var(--notes-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--notes-accent) 40%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--notes-accent) 55%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--notes-accent) 65%,
+    var(--color-cream, #ffffff)
+  );
 }
 
 /* Detail scroll shares the cream desk (card is the notebook sheet). */
@@ -207,9 +227,6 @@
   /* New note: warm-yellow fill + ink label (invert of selected chips; Tasks-style accent fill). */
   --button-primary-bg: var(--notes-accent);
   --button-primary-fg: var(--color-ink, #042a22);
-  --button-subtle-color: var(--color-ink);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
 }
 
 /**
@@ -279,36 +296,27 @@
 }
 
 /*
- * Selected Star / Archive: Calendar Today chrome remapped to notes tokens.
- * Same wash on the detail action bar and the batch multi-select actions.
- * Wash stays accent 18%/24% on cream. Icon/label uses the detail strong
- * token (notebook color when a note is open; product yellow when unset).
- * Idle chips keep action-bar muted.
+ * Detail Star / Archive / batch toggles: remap outline washes to the live
+ * notebook accent (product yellow when unset). Shared ActionBar is outline.
  */
-.notes-workspace
-  :is(.action-bar, .multi-selection-view__actions)
-  .button--variant-subtle.icon-button--active {
+.notes-workspace :is(.action-bar, .multi-selection-view__actions) {
   --button-active-color: var(--notes-detail-accent-strong);
-  --button-subtle-background: color-mix(
+  --button-outline-hover-color: var(--notes-detail-accent-strong);
+  --button-outline-hover-background: color-mix(
+    in oklab,
+    var(--notes-detail-accent) 14%,
+    transparent
+  );
+  --button-outline-active-background: color-mix(
     in oklab,
     var(--notes-detail-accent) 18%,
     var(--color-cream, #ffffff)
   );
-  --button-subtle-hover-background: color-mix(
+  --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--notes-detail-accent) 24%,
     var(--color-cream, #ffffff)
   );
-}
-
-/* Lucide icons are stroke-based; generic icon-button--active fill blobs them. */
-.notes-workspace
-  :is(.action-bar, .multi-selection-view__actions)
-  .button--variant-subtle.icon-button--active
-  .button__icon
-  > svg {
-  fill: none;
-  color: var(--notes-detail-accent-strong);
 }
 
 .notes-workspace .note-detail-view__tag-group {

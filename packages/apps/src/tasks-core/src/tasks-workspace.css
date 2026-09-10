@@ -36,21 +36,32 @@
   --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --workspace-user-footer-avatar-color: var(--color-ink);
   --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --button-primary-bg: var(--tasks-accent);
   --button-primary-fg: var(--color-ink);
+
+  /* Outline action language for header + collection sidebar rows. */
+  --tasks-accent-strong: color-mix(in oklab, var(--tasks-accent) 55%, var(--color-ink));
+  --button-active-color: var(--tasks-accent-strong);
+  --button-outline-hover-color: var(--tasks-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--tasks-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--tasks-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--tasks-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
 }
 
 .tasks-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--tasks-accent);
   --button-primary-fg: var(--color-ink);
-  --button-subtle-color: var(--color-ink);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
 }
 
 /** App switcher lockup: accent tile + ink checkmark (not default ink tile + accent glyph). */
@@ -110,33 +121,6 @@
 /** Header action icon buttons use the shared sm control size. */
 .tasks-workspace .tasks-workspace__header-actions .button {
   @apply shrink-0;
-}
-
-/*
- * Show completed: Calendar Today / Notes Star wash — accent 18%/24% on cream,
- * not a solid primary fill. Lucide stays stroke-only.
- */
-.tasks-workspace .tasks-workspace__show-completed.button--variant-subtle.icon-button--active {
-  --button-active-color: var(--color-ink);
-  --button-subtle-color: var(--color-ink);
-  --button-subtle-background: color-mix(
-    in oklab,
-    var(--tasks-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --button-subtle-hover-background: color-mix(
-    in oklab,
-    var(--tasks-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
-}
-
-.tasks-workspace
-  .tasks-workspace__show-completed.button--variant-subtle.icon-button--active
-  .button__icon
-  > svg {
-  fill: none;
-  color: var(--color-ink);
 }
 
 .tasks-workspace .workspace-app-layout__main-content {

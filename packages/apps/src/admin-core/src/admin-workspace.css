@@ -17,8 +17,6 @@
   --workspace-user-footer-link-hover-bg: color-mix(in oklab, #ffffff 10%, transparent);
   --workspace-user-footer-text-color: #ffffff;
   --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 18%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, #ffffff 20%, transparent);
-  --workspace-user-footer-avatar-color: #ffffff;
   --workspace-user-footer-link-color: #ffffff;
   --workspace-user-footer-link-bg: color-mix(in oklab, #ffffff 8%, transparent);
   --segmented-control-track-active-bg: var(--button-primary-bg, #2f302c);
@@ -32,9 +30,10 @@
 
 .admin-workspace .app-sidebar__scroll {
   --color-ink: #ffffff;
-  --button-subtle-color: #ffffff;
-  --button-subtle-background: color-mix(in oklab, #ffffff 10%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, #ffffff 18%, transparent);
+  --button-active-color: #ffffff;
+  --button-outline-hover-background: color-mix(in oklab, #ffffff 10%, transparent);
+  --button-outline-active-background: color-mix(in oklab, #ffffff 14%, transparent);
+  --button-outline-active-hover-background: color-mix(in oklab, #ffffff 20%, transparent);
 }
 
 .admin-workspace .app-sidebar__footer {
@@ -42,17 +41,10 @@
   --workspace-user-footer-text-color: #ffffff;
   --workspace-user-footer-subtitle-color: color-mix(in oklab, #ffffff 72%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 16%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, #ffffff 20%, transparent);
-  --workspace-user-footer-avatar-color: var(--workspace-user-footer-text-color);
   --workspace-user-footer-link-color: #ffffff;
 }
 
 .admin-workspace .sidebar-section .menu-item--surface-idle {
-  color: #ffffff;
-}
-
-.admin-workspace .sidebar-section .menu-item--surface-selected {
-  background-color: color-mix(in oklab, #ffffff 14%, transparent);
   color: #ffffff;
 }
 

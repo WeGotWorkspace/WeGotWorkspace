@@ -211,7 +211,7 @@ function TaskRow({
               label={L.taskActions}
               icon={<MoreVertical className="size-4" />}
               size="sm"
-              variant="subtle"
+              variant="outline"
               disabled={isExiting || !canMutate}
             />
           }
@@ -372,7 +372,7 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
                   {hasDraftContent ? (
                     <Button
                       type="button"
-                      variant="subtle"
+                      variant="outline"
                       size="sm"
                       onClick={resetDraft}
                       disabled={!canCreate}

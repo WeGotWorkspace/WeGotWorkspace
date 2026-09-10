@@ -52,7 +52,8 @@ describe("DriveDetailActionBar", () => {
     const bar = container.querySelector(".action-bar");
     expect(bar?.classList.contains("action-bar--expanded")).toBe(false);
     expect(container.querySelector(".action-bar__menu")).toBeTruthy();
-    expect(within(container as HTMLElement).getByRole("button", { name: "Back" })).toBeTruthy();
+    const back = within(container as HTMLElement).getByRole("button", { name: "Back" });
+    expect(back.className).toContain("button--variant-outline");
   });
 
   it("renders overflow menu markup for narrow detail containers", () => {

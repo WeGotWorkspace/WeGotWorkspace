@@ -29,8 +29,6 @@
   --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --workspace-user-footer-avatar-color: var(--color-ink);
   --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
@@ -76,9 +74,6 @@
 .calendar-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--calendar-accent-strong);
   --button-primary-fg: #ffffff;
-  --button-subtle-color: var(--color-ink);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
 }
 
 /**
@@ -259,19 +254,6 @@
 
 .calendar-workspace .calendar-invitations-trigger {
   @apply relative;
-}
-
-/* Open sidebar / inbox / current-today: Lucide stays stroke (generic active fills solid).
-   Wash/border/fg come from shared outline-active tokens on `.view-header`. */
-.calendar-workspace
-  :is(
-    .workspace-sidebar-toggle,
-    .calendar-invitations-trigger,
-    .calendar-header-today
-  ).button--variant-outline.icon-button--active
-  .button__icon
-  > svg {
-  fill: none;
 }
 
 .calendar-workspace .calendar-invitations-trigger::after {

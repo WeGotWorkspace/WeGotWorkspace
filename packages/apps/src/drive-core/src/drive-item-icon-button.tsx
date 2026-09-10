@@ -4,7 +4,7 @@ import { IconButton } from "@/button/src/button";
 /** Drive list/grid row icon button — matches {@link DriveFileItemActionsMenu} trigger sizing. */
 export function DriveItemIconButton({
   size = "sm",
-  variant = "subtle",
+  variant = "outline",
   onClick,
   ...props
 }: IconButtonProps) {

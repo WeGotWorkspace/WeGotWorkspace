@@ -57,11 +57,11 @@ describe("calendar workspace header CSS", () => {
     expect(css).toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-color:\s*var\(--button-outline-color\)/,
     );
-    expect(css).toMatch(
-      /:is\([\s\S]*workspace-sidebar-toggle[\s\S]*calendar-header-today[\s\S]*fill:\s*none/,
-    );
     expect(css).not.toMatch(
       /calendar-invitations-trigger[\s\S]*\.button--variant-subtle\.icon-button--active/,
+    );
+    expect(css).not.toMatch(
+      /:is\([\s\S]*workspace-sidebar-toggle[\s\S]*calendar-header-today[\s\S]*fill:\s*none/,
     );
   });
 

@@ -5,6 +5,14 @@ import { ActionBar } from "../src/action-bar";
 const meta: Meta<typeof ActionBar> = {
   title: "Shared/Action Bar",
   component: ActionBar,
+  parameters: {
+    docs: {
+      description: {
+        component:
+          "Mobile back control uses outline Button chrome (same quiet border as peer actions).",
+      },
+    },
+  },
 };
 
 export default meta;

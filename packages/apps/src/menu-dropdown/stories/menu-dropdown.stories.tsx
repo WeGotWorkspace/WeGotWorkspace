@@ -41,7 +41,7 @@ export const Default: Story = {
   render: (args) => (
     <DropdownMenu
       {...args}
-      trigger={<Button label="Open menu" variant="subtle" />}
+      trigger={<Button label="Open menu" variant="outline" />}
       items={baseItems}
     />
   ),
@@ -61,7 +61,7 @@ export const CheckedState: Story = {
   render: (args) => (
     <DropdownMenu
       {...args}
-      trigger={<Button label="Open menu" variant="subtle" />}
+      trigger={<Button label="Open menu" variant="outline" />}
       items={[
         {
           id: "notes",
@@ -90,7 +90,7 @@ export const Disabled: Story = {
   render: (args) => (
     <DropdownMenu
       {...args}
-      trigger={<Button label="Dropdown disabled" variant="subtle" disabled />}
+      trigger={<Button label="Dropdown disabled" variant="outline" disabled />}
       items={baseItems}
     />
   ),

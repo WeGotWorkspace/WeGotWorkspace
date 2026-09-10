@@ -143,7 +143,7 @@ export function MeetCallBar({
               label={meetLabels.join}
               icon={<LiveIcon />}
               size="sm"
-              variant="subtle"
+              variant="outline"
               onClick={onInvite}
             />
           </div>
@@ -154,7 +154,7 @@ export function MeetCallBar({
               label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
               icon={micOn ? <Mic /> : <MicOff />}
               size="sm"
-              variant="subtle"
+              variant="outline"
               active={micOn}
               aria-pressed={micOn}
               onClick={onToggleMic}
@@ -163,7 +163,7 @@ export function MeetCallBar({
               label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
               icon={videoOn ? <Video /> : <VideoOff />}
               size="sm"
-              variant="subtle"
+              variant="outline"
               active={videoOn}
               aria-pressed={videoOn}
               onClick={onToggleVideo}
@@ -186,7 +186,7 @@ export function MeetCallBar({
               label={meetLabels.expandCall}
               icon={<Maximize2 />}
               size="sm"
-              variant="subtle"
+              variant="outline"
               onClick={onExpand}
             />
             <div className="meet-call-bar__divider" aria-hidden />

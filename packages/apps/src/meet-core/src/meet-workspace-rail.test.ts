@@ -7,11 +7,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const rail = readFileSync(join(here, "meet-workspace-rail.tsx"), "utf8");
 
 describe("MeetWorkspaceRail", () => {
-  it("places an sm subtle back IconButton in titleLeading before the title", () => {
+  it("places an sm outline back IconButton in titleLeading before the title", () => {
     expect(rail).toMatch(/titleLeading=/);
     expect(rail).toMatch(/ChevronLeft/);
     expect(rail).toMatch(/size="sm"/);
-    expect(rail).toMatch(/variant="subtle"/);
+    expect(rail).toMatch(/variant="outline"/);
+    expect(rail).not.toMatch(/variant="subtle"/);
     expect(rail).toMatch(/onBack/);
     expect(rail).toMatch(/backLabel/);
     expect(rail).toMatch(/headerActions=\{headerActions\}/);

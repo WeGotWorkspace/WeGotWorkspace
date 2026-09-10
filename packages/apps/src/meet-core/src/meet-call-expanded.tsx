@@ -63,7 +63,7 @@ function MeetCallChatToggle({ open, onToggle }: { open: boolean; onToggle: () =>
       icon={<MessageSquare />}
       label={open ? meetLabels.toggleChatHide : meetLabels.toggleChatShow}
       size="sm"
-      variant="subtle"
+      variant="outline"
       active={open}
       aria-pressed={open}
     />
@@ -119,7 +119,7 @@ export function MeetCallExpanded({
       icon={<Minimize2 />}
       label={meetLabels.collapseCall}
       size="sm"
-      variant="subtle"
+      variant="outline"
     />
   ) : null;
 

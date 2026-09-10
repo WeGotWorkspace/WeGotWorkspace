@@ -8,8 +8,11 @@
  */
 .settings-workspace {
   --settings-accent: #64748b;
+  /* Darker slate so active outline glyphs clear WCAG on cream (mirrors docs). */
+  --settings-accent-strong: color-mix(in oklab, var(--settings-accent) 70%, #0f172a);
   --settings-accent-bg: var(--settings-accent);
   --workspace-accent: var(--settings-accent);
+  --color-emerald: var(--settings-accent);
   --workspace-root-bg: var(--color-cream, #ffffff);
   --workspace-main-bg: color-mix(in oklab, var(--settings-accent) 6%, var(--color-cream, #ffffff));
   --app-sidebar-bg: var(--settings-accent);
@@ -21,8 +24,6 @@
 
   --workspace-user-footer-text-color: #ffffff;
   --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 18%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, #ffffff 20%, transparent);
-  --workspace-user-footer-avatar-color: #ffffff;
   --workspace-user-footer-link-color: #ffffff;
   --workspace-user-footer-link-bg: color-mix(in oklab, #ffffff 8%, transparent);
 
@@ -30,6 +31,42 @@
   --button-primary-fg: #ffffff;
   --primary: var(--settings-accent);
   --primary-foreground: #ffffff;
+
+  /* Outline header chrome (cream main); sidebar keeps white remaps below. */
+  --button-active-color: var(--settings-accent-strong);
+  --button-outline-hover-color: var(--settings-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--settings-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--settings-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--settings-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+}
+
+/*
+ * Header outline actions (sidebar toggle): accent hover/active via shared button
+ * tokens — not global mint `--color-emerald`. Mirrors Calendar/Docs `.view-header`.
+ */
+.settings-workspace .view-header {
+  --button-active-color: var(--settings-accent-strong);
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--settings-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--settings-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--settings-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--settings-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
 }
 
 .settings-workspace .app-sidebar {
@@ -40,9 +77,10 @@
 
 .settings-workspace .app-sidebar__scroll {
   --color-ink: #ffffff;
-  --button-subtle-color: #ffffff;
-  --button-subtle-background: color-mix(in oklab, #ffffff 10%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, #ffffff 18%, transparent);
+  --button-active-color: #ffffff;
+  --button-outline-hover-background: color-mix(in oklab, #ffffff 10%, transparent);
+  --button-outline-active-background: color-mix(in oklab, #ffffff 14%, transparent);
+  --button-outline-active-hover-background: color-mix(in oklab, #ffffff 20%, transparent);
 }
 
 .settings-workspace .app-sidebar__footer {
@@ -50,17 +88,10 @@
   --workspace-user-footer-text-color: #ffffff;
   --workspace-user-footer-subtitle-color: color-mix(in oklab, #ffffff 72%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 16%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, #ffffff 20%, transparent);
-  --workspace-user-footer-avatar-color: var(--workspace-user-footer-text-color);
   --workspace-user-footer-link-color: #ffffff;
 }
 
 .settings-workspace .sidebar-section .menu-item--surface-idle {
-  color: #ffffff;
-}
-
-.settings-workspace .sidebar-section .menu-item--surface-selected {
-  background-color: color-mix(in oklab, #ffffff 14%, transparent);
   color: #ffffff;
 }
 

@@ -74,27 +74,23 @@ describe("contacts workspace sidebar chrome", () => {
     expect(detailPane).toMatch(/--button-primary-bg:\s*var\(--contacts-accent\)/);
     expect(detailPane).not.toMatch(/--button-subtle-color:\s*var\(--contacts-accent/);
     expect(detailPane).not.toMatch(/--button-ghost-color:\s*var\(--contacts-accent/);
+    expect(css).not.toMatch(/--button-subtle-/);
     expect(css).toMatch(
-      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-subtle-color:\s*var\(--color-ink\)/,
+      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-bg:\s*var\(--contacts-accent\)/,
     );
   });
 
-  it("washes selected action-bar icons like Calendar Today / Notes Star", () => {
+  it("washes selected action-bar icons like Calendar Today via outline tokens", () => {
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--contacts-accent-strong\)/,
+      /\.contacts-workspace \{[\s\S]*--button-active-color:\s*var\(--contacts-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-subtle-background:[\s\S]*var\(--contacts-accent\) 18%/,
+      /\.contacts-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--contacts-accent\) 18%/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-subtle-hover-background:[\s\S]*var\(--contacts-accent\) 24%/,
+      /\.contacts-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--contacts-accent\) 24%/,
     );
-    expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active[\s\S]*fill:\s*none/,
-    );
-    expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active[\s\S]*color:\s*var\(--contacts-accent-strong\)/,
-    );
+    expect(css).not.toMatch(/\.button--variant-subtle\.icon-button--active/);
   });
 
   it("opens the share-only address book dialog from mutations", () => {

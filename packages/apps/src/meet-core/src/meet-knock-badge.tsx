@@ -26,7 +26,7 @@ export function MeetKnockBadge({ knockers, onAdmit, onDeny, size = "sm" }: MeetK
         <IconButton
           icon={<Hand />}
           label={meetLabels.waitingToJoin(knockers.length)}
-          variant="subtle"
+          variant="outline"
           size={size}
           className="meet-knock-badge"
           data-count={knockers.length}

@@ -48,12 +48,50 @@
   --checkbox-checked-bg: var(--docs-accent);
   --checkbox-checked-border: var(--docs-accent);
   --checkbox-checked-fg: #ffffff;
+
+  /* Outline header chrome (cream main); sidebar keeps dark remaps below. */
+  --docs-accent-strong: color-mix(in oklab, var(--docs-accent) 70%, #0f172a);
+  --button-active-color: var(--docs-accent-strong);
+  --button-outline-hover-color: var(--docs-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--docs-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--docs-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+
   --foreground: var(--docs-text);
   --color-foreground: var(--docs-text);
 
   background-color: var(--docs-surface);
   color: var(--docs-text);
   font-family: var(--font-sans);
+}
+
+/*
+ * Header outline actions (sidebar toggle + DocsHeaderActions): accent hover/active
+ * via shared button tokens — not ink-gray washes. Mirrors Calendar `.view-header`.
+ */
+.docs-workspace .view-header {
+  --button-active-color: var(--docs-accent-strong);
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--docs-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--docs-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--docs-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
 }
 
 /* Docs home reuses Drive grid/list under `.drive-workspace` for layout selectors.
@@ -106,13 +144,7 @@
   background-color: var(--docs-sidebar);
 }
 
-.docs-workspace .sidebar-section .menu-item--surface-selected {
-  background-color: color-mix(in oklab, #000000 16%, var(--docs-sidebar));
-  color: #ffffff;
-}
-
 .docs-workspace .sidebar-section .menu-item--interactive:hover {
-  background-color: color-mix(in oklab, #000000 10%, var(--docs-sidebar));
   color: #ffffff;
 }
 
@@ -130,9 +162,11 @@
   --color-ink: #ffffff;
   --button-primary-bg: #ffffff;
   --button-primary-fg: var(--docs-sidebar);
-  --button-subtle-color: #ffffff;
-  --button-subtle-background: color-mix(in oklab, #ffffff 12%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, #ffffff 20%, transparent);
+  /* Dark blue sidebar: selected wash is ink-into-blue (not cream outline accent). */
+  --button-active-color: #ffffff;
+  --button-outline-hover-background: color-mix(in oklab, #000000 10%, var(--docs-sidebar));
+  --button-outline-active-background: color-mix(in oklab, #000000 16%, var(--docs-sidebar));
+  --button-outline-active-hover-background: color-mix(in oklab, #000000 22%, var(--docs-sidebar));
 }
 
 .docs-workspace .app-sidebar__footer {
@@ -140,13 +174,12 @@
   --workspace-user-footer-text-color: #ffffff;
   --workspace-user-footer-subtitle-color: #ffffff;
   --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 18%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, #000000 18%, var(--docs-sidebar));
-  --workspace-user-footer-avatar-color: var(--app-sidebar-color);
   --workspace-user-footer-link-color: #ffffff;
 }
 
 .docs-workspace__header-actions {
   @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
+  --button-outline-color: var(--color-ink);
 }
 
 .docs-workspace__header-actions-leading {

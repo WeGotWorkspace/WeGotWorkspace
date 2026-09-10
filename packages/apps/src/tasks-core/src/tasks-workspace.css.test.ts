@@ -11,6 +11,13 @@ const mainViewTsx = readFileSync(join(here, "tasks-main-view.tsx"), "utf8");
 const listIconCss = readFileSync(join(here, "tasks-list-icon.css"), "utf8");
 
 describe("tasks workspace header and sidebar", () => {
+  it("shows the task count as an accent Badge beside the ViewHeader title", () => {
+    expect(tsx).toMatch(/titleSuffix=\{/);
+    expect(tsx).toMatch(/variant="accent"/);
+    expect(tsx).toMatch(/from "@\/ui\/badge"/);
+    expect(tsx).not.toMatch(/subtitle=\{L\.listTasks/);
+  });
+
   it("does not put an edit-list pencil in the ViewHeader action bar", () => {
     const actionsBlock = tsx.match(
       /actions=\{\s*<div className="tasks-workspace__header-actions[\s\S]*?<\/div>\s*\}/,
@@ -71,18 +78,16 @@ describe("tasks workspace header and sidebar", () => {
     expect(tsx).toMatch(/requestDeleteTask\(editingTask\.id\)/);
   });
 
-  it("washes the show-completed active state like Calendar Today / Notes Star", () => {
+  it("washes the show-completed active state via workspace outline tokens", () => {
+    expect(tsx).toMatch(/tasks-workspace__show-completed[\s\S]*variant="outline"/);
     expect(css).toMatch(
-      /\.tasks-workspace__show-completed\.button--variant-subtle\.icon-button--active \{[\s\S]*--button-subtle-background:[\s\S]*var\(--tasks-accent\) 18%/,
+      /\.tasks-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--tasks-accent\) 18%/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace__show-completed\.button--variant-subtle\.icon-button--active \{[\s\S]*--button-subtle-hover-background:[\s\S]*var\(--tasks-accent\) 24%/,
-    );
-    expect(css).toMatch(
-      /\.tasks-workspace__show-completed\.button--variant-subtle\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--color-ink\)/,
+      /\.tasks-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--tasks-accent\) 24%/,
     );
     expect(css).not.toMatch(
-      /\.tasks-workspace__header-actions \.button--variant-subtle\.icon-button--active \{[\s\S]*background-color:\s*var\(--tasks-accent\)/,
+      /\.tasks-workspace__show-completed\.button--variant-subtle\.icon-button--active/,
     );
   });
 });

@@ -13,8 +13,12 @@
   color: color-mix(in oklab, var(--color-ink) 75%, transparent);
 }
 
-.collection-sidebar-row:hover {
+.collection-sidebar-row:hover:not(.collection-sidebar-row--selected) {
   border-color: transparent;
+  color: var(
+    --collection-sidebar-row-hover-color,
+    var(--button-outline-hover-color, var(--button-outline-color, var(--color-ink)))
+  );
   background-color: var(
     --collection-sidebar-row-hover-bg,
     var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))

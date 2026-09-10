@@ -101,7 +101,6 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
         mainHeader={
           <ViewHeader
             title={controller.currentSection.label}
-            subtitle={controller.currentSection.description}
             sidebarOpen={controller.sidebarOpen}
             onToggleSidebar={() => controller.setSidebarOpen((value) => !value)}
           />

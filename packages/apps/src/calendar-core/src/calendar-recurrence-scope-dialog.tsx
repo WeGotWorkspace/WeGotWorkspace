@@ -98,7 +98,7 @@ export function CalendarRecurrenceScopeDialog({
           </Button>
           <Button
             type="button"
-            variant="subtle"
+            variant="outline"
             className="calendar-recurrence-scope__action"
             onClick={() => close("thisAndFuture")}
           >
@@ -107,7 +107,7 @@ export function CalendarRecurrenceScopeDialog({
           {isDelete ? (
             <Button
               type="button"
-              variant="subtle"
+              variant="outline"
               className="calendar-recurrence-scope__action"
               onClick={() => close("allInstances")}
             >

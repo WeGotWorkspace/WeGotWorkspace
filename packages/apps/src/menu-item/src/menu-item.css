@@ -10,6 +10,15 @@
   background-color: color-mix(in oklab, currentColor 12%, transparent);
 }
 
+/* Sidebar nav hover: same wash + fg family as outline IconButton. */
+.sidebar-section .menu-item--interactive:hover:not(.menu-item--surface-selected) {
+  color: var(--button-outline-hover-color, var(--button-outline-color, var(--color-ink)));
+  background-color: var(
+    --button-outline-hover-background,
+    color-mix(in oklab, var(--color-ink) 8%, transparent)
+  );
+}
+
 .menu-item--disabled {
   @apply cursor-not-allowed opacity-45;
 }
@@ -42,8 +51,14 @@
   @apply bg-transparent;
 }
 
+/* Selected = outline icon-button--active wash/fg (parents publish --button-outline-*). */
 .sidebar-section .menu-item--surface-selected {
-  @apply bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)] font-medium text-[var(--color-ink)];
+  @apply font-medium;
+  background-color: var(
+    --button-outline-active-background,
+    color-mix(in oklab, var(--color-ink) 12%, transparent)
+  );
+  color: var(--button-active-color, var(--color-ink));
 }
 
 .menu-item--surface-drop {
@@ -65,8 +80,14 @@
   opacity: 0.65;
 }
 
-.sidebar-section .menu-item.menu-item--selected .menu-item__icon-slot {
+.sidebar-section
+  .menu-item--interactive:hover:not(.menu-item--surface-selected)
+  .menu-item__icon-slot {
   opacity: 0.9;
+}
+
+.sidebar-section .menu-item.menu-item--selected .menu-item__icon-slot {
+  opacity: 1;
 }
 
 /* ----- Main row ----- */

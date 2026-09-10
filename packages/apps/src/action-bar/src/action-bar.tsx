@@ -65,7 +65,7 @@ function renderActionItems(actions: ActionBarAction[]) {
               disabled={action.disabled}
               icon={action.icon}
               size="sm"
-              variant="subtle"
+              variant="outline"
               aria-label={tooltipLabel}
               aria-pressed={action.active}
               className={cn(
@@ -87,7 +87,7 @@ function renderActionItems(actions: ActionBarAction[]) {
         disabled={action.disabled}
         icon={action.icon}
         size="sm"
-        variant="subtle"
+        variant="outline"
       />
     );
   });
@@ -119,7 +119,7 @@ function renderCompactDropdown(
             label={label}
             icon={icon}
             size="sm"
-            variant="subtle"
+            variant="outline"
             className="action-bar__menu-trigger"
           />
         }
@@ -155,7 +155,7 @@ export function ActionBar({
           label={backLabel}
           onClick={onBack}
           icon={backIcon === "close" ? <X /> : <ArrowLeft />}
-          variant="ghost"
+          variant="outline"
           className="action-bar__back"
           size="sm"
           title={backLabel}

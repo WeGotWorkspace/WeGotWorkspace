@@ -358,7 +358,7 @@ export function DocsHomePane({
             {hasMore ? (
               <div className="docs-home-pane__load-more">
                 <Button
-                  variant="subtle"
+                  variant="outline"
                   size="sm"
                   label={labels.homeLoadMore}
                   disabled={loadingMore}

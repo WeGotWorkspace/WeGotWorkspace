@@ -40,7 +40,7 @@ export function MeetDevicePopover({
           icon={<SettingsIcon />}
           label={meetLabels.devices}
           size="sm"
-          variant="subtle"
+          variant="outline"
           active={open}
         />
       </PopoverTrigger>

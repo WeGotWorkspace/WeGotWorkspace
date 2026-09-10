@@ -30,11 +30,27 @@ function renderHeaderActions() {
 }
 
 describe("DocsHeaderActions", () => {
+  it("uses outline IconButtons for header chrome, not filled subtle", () => {
+    const { container } = renderHeaderActions();
+    const buttons = container.querySelectorAll(
+      ".docs-workspace__header-actions-row .button--variant-outline",
+    );
+    expect(buttons.length).toBeGreaterThanOrEqual(2);
+    expect(
+      container.querySelector(".docs-workspace__header-actions-row .button--variant-subtle"),
+    ).toBeNull();
+  });
+
   it("renders overflow menu trigger for compact header actions", () => {
     const { container } = renderHeaderActions();
     expect(container.querySelector(".docs-workspace__header-actions-menu")).toBeTruthy();
     expect(
       within(container as HTMLElement).getByRole("button", { name: "More actions" }),
+    ).toBeTruthy();
+    expect(
+      container.querySelector(
+        ".docs-workspace__header-actions-menu-trigger.button--variant-outline",
+      ),
     ).toBeTruthy();
   });
 

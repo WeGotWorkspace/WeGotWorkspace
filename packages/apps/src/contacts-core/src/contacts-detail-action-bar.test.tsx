@@ -57,6 +57,7 @@ describe("ContactsDetailActionBar", () => {
     const back = screen.getByRole("button", { name: "All Contacts" });
     expect(back.textContent).toContain("All Contacts");
     expect(back.className).toContain("action-bar__back");
+    expect(back.className).toContain("button--variant-outline");
   });
 
   it("shows a labeled edit action first in read mode", () => {

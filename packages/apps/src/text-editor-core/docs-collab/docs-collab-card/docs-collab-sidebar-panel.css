@@ -24,11 +24,6 @@
   --view-header-title-row-min-height: 2rem;
 }
 
-.docs-collab-sidebar-panel__header .view-header__subtitle {
-  @apply mt-1 text-sm font-medium;
-  color: var(--docs-text, var(--color-ink));
-}
-
 .docs-collab-sidebar-panel__header-actions {
   @apply flex shrink-0 items-center gap-1;
 }

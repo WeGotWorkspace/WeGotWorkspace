@@ -92,7 +92,7 @@ export function MeetCallToolbar({
           icon={micOn ? <Mic /> : <MicOff />}
           label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
           size="sm"
-          variant="subtle"
+          variant="outline"
           active={micOn}
           aria-pressed={micOn}
         />
@@ -101,7 +101,7 @@ export function MeetCallToolbar({
           icon={videoOn ? <Video /> : <VideoOff />}
           label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
           size="sm"
-          variant="subtle"
+          variant="outline"
           active={videoOn}
           aria-pressed={videoOn}
         />
@@ -111,7 +111,7 @@ export function MeetCallToolbar({
             icon={<MonitorUp />}
             label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
             size="sm"
-            variant="subtle"
+            variant="outline"
             active={screenOn}
             aria-pressed={screenOn}
           />

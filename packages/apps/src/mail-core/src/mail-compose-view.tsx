@@ -62,7 +62,7 @@ function composeHeaderTitle(mode: MailComposeMode): string {
 
 export function MailComposeView({
   composeMode = "new",
-  mailbox,
+  mailbox: _mailbox,
   to,
   cc,
   bcc,
@@ -105,7 +105,7 @@ export function MailComposeView({
   return (
     <div className={cn("mail-compose-view", className)}>
       <header className="mail-compose-view__header">
-        <ViewHeader hideSidebarToggle title={composeHeaderTitle(composeMode)} subtitle={mailbox} />
+        <ViewHeader hideSidebarToggle title={composeHeaderTitle(composeMode)} />
       </header>
 
       <div className="mail-compose-view__body">
