@@ -1,8 +1,10 @@
 /**
  * Portaled Radix surfaces (Select, DropdownMenu) render under `document.body`,
- * so they do not inherit workspace `--button-outline-*` / `--workspace-accent`.
- * Copy cascaded custom properties from the open trigger onto the portaled content
- * so menu hover/active washes match the trigger's workspace.
+ * so they do not inherit workspace `--menu-item-*` / `--button-outline-*` /
+ * `--workspace-accent`. Copy cascaded custom properties from the open trigger
+ * onto the portaled content so menu fg/accent match the trigger's workspace.
+ * Item washes prefer quiet `--menu-item-*-background` (14/18/24) over loud
+ * sidebar `--button-outline-*` chips (40/55/65).
  *
  * Workspace sheets often publish washes as `color-mix(… var(--*-accent) …)`.
  * Those accent deps are not reliably enumerable via `getComputedStyle().item()`,
@@ -13,6 +15,9 @@
  */
 
 export const PORTAL_THEME_BACKGROUND_VARS = [
+  "--menu-item-hover-background",
+  "--menu-item-selected-background",
+  "--menu-item-selected-hover-background",
   "--button-outline-hover-background",
   "--button-outline-active-background",
   "--button-outline-active-hover-background",
@@ -40,6 +45,7 @@ function escapeCssIdent(value: string): string {
 function shouldBridgeCustomProperty(name: string): boolean {
   return (
     name.startsWith("--button-") ||
+    name.startsWith("--menu-item-") ||
     name.startsWith("--workspace-") ||
     name.startsWith("--color-") ||
     name.includes("accent")

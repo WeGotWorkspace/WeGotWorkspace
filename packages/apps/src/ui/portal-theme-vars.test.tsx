@@ -18,6 +18,9 @@ describe("portal-theme-vars", () => {
   });
 
   it("exports the outline/accent tokens menus consume", () => {
+    expect(PORTAL_THEME_BACKGROUND_VARS).toContain("--menu-item-hover-background");
+    expect(PORTAL_THEME_BACKGROUND_VARS).toContain("--menu-item-selected-background");
+    expect(PORTAL_THEME_BACKGROUND_VARS).toContain("--menu-item-selected-hover-background");
     expect(PORTAL_THEME_BACKGROUND_VARS).toContain("--button-outline-hover-background");
     expect(PORTAL_THEME_BACKGROUND_VARS).toContain("--button-outline-active-background");
     expect(PORTAL_THEME_COLOR_VARS).toContain("--button-active-color");

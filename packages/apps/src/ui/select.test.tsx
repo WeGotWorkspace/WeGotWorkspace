@@ -86,8 +86,14 @@ describe("SelectTrigger", () => {
     );
   });
 
-  it("washes highlighted select items from outline-hover tokens", () => {
+  it("washes highlighted select items with quiet menu-item washes", () => {
     expect(inputCss).toMatch(
+      /\.select-ui__item\[data-highlighted\][\s\S]*--menu-item-hover-background/,
+    );
+    expect(inputCss).toMatch(
+      /\.select-ui__item\[data-highlighted\][\s\S]*var\(--workspace-accent,\s*var\(--color-ink\)\) 14%/,
+    );
+    expect(inputCss).not.toMatch(
       /\.select-ui__item\[data-highlighted\][\s\S]*--button-outline-hover-background/,
     );
     expect(inputCss).not.toMatch(/focus:bg-accent|data-\[highlighted\]:bg-accent/);
@@ -97,8 +103,14 @@ describe("SelectTrigger", () => {
     expect(selectTsx).toMatch(/bridgePortalThemeFromOpenTrigger/);
   });
 
-  it("washes checked select items and checkmarks from outline-active tokens", () => {
+  it("washes checked select items with quiet selected washes; checkmark keeps active color", () => {
     expect(inputCss).toMatch(
+      /\.select-ui__item\[data-state="checked"\] \{[\s\S]*--menu-item-selected-background/,
+    );
+    expect(inputCss).toMatch(
+      /\.select-ui__item\[data-state="checked"\] \{[\s\S]*var\(--workspace-accent,\s*var\(--color-ink\)\) 18%/,
+    );
+    expect(inputCss).not.toMatch(
       /\.select-ui__item\[data-state="checked"\] \{[\s\S]*--button-outline-active-background/,
     );
     expect(inputCss).toMatch(/\.select-ui__item-check \{[\s\S]*--button-active-color/);
