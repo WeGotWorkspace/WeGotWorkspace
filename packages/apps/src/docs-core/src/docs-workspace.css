@@ -40,8 +40,6 @@
   --sidebar-logo-close-button-color: var(--app-sidebar-color);
   --sidebar-badge-fg: var(--docs-accent);
   --workspace-main-content-max-width: none;
-  --workspace-sidebar-toggle-color: var(--color-ink);
-  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --workspace-user-footer-link-hover-bg: color-mix(in oklab, #ffffff 18%, transparent);
 
   --button-primary-bg: var(--docs-accent);

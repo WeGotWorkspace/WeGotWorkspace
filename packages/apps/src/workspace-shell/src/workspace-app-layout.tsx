@@ -2,7 +2,6 @@ import { LogOut, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { SidebarLogo } from "@/sidebar-logo/src/sidebar-logo";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
-import { WORKSPACE_SIDEBAR_TOGGLE_STYLE } from "@/workspace-shell/src/workspace-app-layout.styles";
 import { cn } from "@/lib/utils";
 import "@/workspace-shell/src/workspace-app-layout.css";
 
@@ -59,7 +58,6 @@ type WorkspaceUserFooterProps = {
 type WorkspaceSidebarToggleProps = {
   open: boolean;
   onToggle: () => void;
-  hoverClassName?: string;
 };
 
 export function WorkspaceAppLayout(props: WorkspaceAppLayoutProps) {
@@ -171,11 +169,7 @@ export function WorkspacePanelScrim({ open, onClick }: { open: boolean; onClick:
   return <div className="workspace-app-layout__panel-scrim" onClick={onClick} aria-hidden />;
 }
 
-export function WorkspaceSidebarToggle({
-  open,
-  onToggle,
-  hoverClassName = "hover:bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]",
-}: WorkspaceSidebarToggleProps) {
+export function WorkspaceSidebarToggle({ open, onToggle }: WorkspaceSidebarToggleProps) {
   return (
     <IconButton
       label={open ? "Hide sidebar" : "Show sidebar"}
@@ -190,10 +184,9 @@ export function WorkspaceSidebarToggle({
           )}
         </>
       }
-      variant="subtle"
+      variant="outline"
       size="sm"
-      className={cn("shrink-0", hoverClassName)}
-      style={WORKSPACE_SIDEBAR_TOGGLE_STYLE}
+      className="shrink-0"
     />
   );
 }

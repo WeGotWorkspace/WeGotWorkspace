@@ -6,10 +6,9 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const tsx = readFileSync(join(here, "workspace-app-layout.tsx"), "utf8");
 const css = readFileSync(join(here, "workspace-app-layout.css"), "utf8");
-const styles = readFileSync(join(here, "workspace-app-layout.styles.ts"), "utf8");
 
 describe("WorkspaceUserFooter logout chrome", () => {
-  it("uses the same sm subtle IconButton as action bars", () => {
+  it("uses sm subtle IconButton without size-9 or inline logout styles", () => {
     expect(tsx).toMatch(/import \{ IconButton \} from "@\/button\/src\/button"/);
     expect(tsx).toMatch(/label="Log out"[\s\S]*?variant="subtle"[\s\S]*?size="sm"/);
     expect(tsx).not.toMatch(/size-9/);
@@ -27,6 +26,20 @@ describe("WorkspaceUserFooter logout chrome", () => {
     expect(css).toMatch(
       /\.workspace-app-layout__user-footer \{[\s\S]*--button-subtle-hover-background:\s*var\(\s*--workspace-user-footer-link-hover-bg/,
     );
-    expect(styles).not.toMatch(/WORKSPACE_USER_LOGOUT_STYLE/);
+    expect(tsx).not.toMatch(/WORKSPACE_USER_LOGOUT_STYLE/);
+  });
+});
+
+describe("WorkspaceSidebarToggle chrome", () => {
+  it("uses outline IconButton matching Select/dropdown borders, not filled subtle", () => {
+    const toggleBlock = tsx.match(/export function WorkspaceSidebarToggle\([\s\S]*?\n\}/)?.[0];
+    expect(toggleBlock).toBeDefined();
+    expect(toggleBlock!).toMatch(/variant="outline"/);
+    expect(toggleBlock!).toMatch(/size="sm"/);
+    expect(toggleBlock!).not.toMatch(/variant="subtle"/);
+    expect(toggleBlock!).not.toMatch(/WORKSPACE_SIDEBAR_TOGGLE_STYLE/);
+    expect(toggleBlock!).not.toMatch(/hoverClassName/);
+    expect(tsx).not.toMatch(/workspace-app-layout\.styles/);
+    expect(tsx).not.toMatch(/--workspace-sidebar-toggle-/);
   });
 });

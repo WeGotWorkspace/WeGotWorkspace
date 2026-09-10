@@ -12,8 +12,6 @@
   --app-sidebar-color: var(--install-sidebar-fg);
   --sidebar-logo-close-button-color: var(--install-sidebar-fg);
   --app-sidebar-close-hover-bg: color-mix(in oklab, var(--install-sidebar-fg) 12%, transparent);
-  --workspace-sidebar-toggle-color: var(--color-ink);
-  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --button-primary-bg: var(--install-accent);
   --button-primary-fg: #ffffff;
   --primary: var(--install-accent);

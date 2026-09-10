@@ -76,15 +76,27 @@ export const WithoutSidebarToggle: Story = {
 
 const periodNav = (
   <div className="view-header-story-nav">
-    <IconButton label="Previous period" icon={<ChevronLeft />} onClick={() => {}} />
-    <IconButton label="Next period" icon={<ChevronRight />} onClick={() => {}} />
+    <IconButton
+      label="Previous period"
+      icon={<ChevronLeft />}
+      onClick={() => {}}
+      size="sm"
+      variant="outline"
+    />
+    <IconButton
+      label="Next period"
+      icon={<ChevronRight />}
+      onClick={() => {}}
+      size="sm"
+      variant="outline"
+    />
   </div>
 );
 
 const periodActions = (
   <div className="view-header-story-actions flex items-center gap-2">
-    <Button label="Month" onClick={() => {}} variant="subtle" />
-    <Button label="Today" onClick={() => {}} variant="subtle" />
+    <Button label="Month" onClick={() => {}} variant="outline" />
+    <Button label="Today" onClick={() => {}} variant="outline" />
   </div>
 );
 
@@ -97,7 +109,7 @@ export const Stacked: Story = {
     layout: "stacked",
     titleLeading: periodNav,
     titleTrailing: (
-      <IconButton label="Inbox" icon={<Inbox />} onClick={() => {}} size="sm" variant="subtle" />
+      <IconButton label="Inbox" icon={<Inbox />} onClick={() => {}} size="sm" variant="outline" />
     ),
     actions: periodActions,
   },

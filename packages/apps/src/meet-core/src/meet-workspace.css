@@ -768,8 +768,6 @@
   --sidebar-badge-fg: var(--meet-accent);
   --meet-unread-bg: var(--meet-accent-strong);
   --meet-unread-fg: #ffffff;
-  --workspace-sidebar-toggle-color: var(--color-ink);
-  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
   --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
   --workspace-user-footer-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
@@ -947,8 +945,6 @@
   --button-active-color: var(--meet-accent-strong);
   --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --user-avatar-fg: var(--color-ink);
-  --workspace-sidebar-toggle-color: var(--button-subtle-color);
-  --workspace-sidebar-toggle-bg: var(--button-subtle-background);
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
 }

@@ -20,8 +20,6 @@
   --app-sidebar-color: var(--color-ink);
   --sidebar-logo-close-button-color: var(--color-ink);
   --sidebar-badge-fg: var(--contacts-accent);
-  --workspace-sidebar-toggle-color: var(--color-ink);
-  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
   --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
 
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);

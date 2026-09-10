@@ -16,8 +16,6 @@
 :is(.admin-workspace, .settings-workspace, .notes-workspace, .mail-workspace, .install-workspace) {
   --workspace-root-bg: var(--color-cream, #ffffff);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 15%, transparent);
-  --workspace-sidebar-toggle-color: var(--color-ink);
-  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 80%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
   --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 18%, transparent);

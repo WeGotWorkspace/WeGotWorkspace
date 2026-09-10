@@ -14,8 +14,6 @@
   --app-sidebar-color: #ffffff;
   --sidebar-logo-close-button-color: #ffffff;
   --sidebar-badge-fg: var(--admin-accent);
-  --workspace-sidebar-toggle-color: #ffffff;
-  --workspace-sidebar-toggle-bg: color-mix(in oklab, #ffffff 10%, transparent);
   --workspace-user-footer-link-hover-bg: color-mix(in oklab, #ffffff 10%, transparent);
   --workspace-user-footer-text-color: #ffffff;
   --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 18%, transparent);

@@ -106,8 +106,8 @@
 .button--variant-outline {
   color: var(--button-outline-color, var(--color-ink));
   background-color: transparent;
-  border: 1px solid
-    var(--button-outline-border-color, color-mix(in oklab, var(--color-ink) 20%, transparent));
+  /* Match Select/Input `--control-border-color` so outline chrome aligns with dropdowns. */
+  border: 1px solid var(--button-outline-border-color, var(--control-border-color));
 }
 
 .button--variant-outline:hover {
