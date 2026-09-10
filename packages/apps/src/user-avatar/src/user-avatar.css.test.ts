@@ -7,12 +7,14 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "user-avatar.css"), "utf8");
 
 describe("user avatar mark border", () => {
-  it("consumes optional border tokens without growing the mark", () => {
+  it("outlines the mark by default and keeps box-sizing so size stays stable", () => {
     const mark = css.match(/^\.user-avatar__mark \{[\s\S]*?\n\}/m)?.[0];
     expect(mark).toBeDefined();
     expect(mark).toMatch(/box-sizing:\s*border-box/);
-    expect(mark).toMatch(/border-width:\s*var\(--user-avatar-border-width,\s*0\)/);
-    expect(mark).toMatch(/border-color:\s*var\(--user-avatar-border,\s*transparent\)/);
+    expect(mark).toMatch(/border-width:\s*var\(--user-avatar-border-width,\s*2px\)/);
+    expect(mark).toMatch(
+      /border-color:\s*var\(\s*--user-avatar-border,\s*color-mix\(in oklab,\s*currentColor 35%,\s*transparent\)\s*\)/,
+    );
     expect(mark).toMatch(/border-radius:\s*var\(--user-avatar-radius,\s*9999px\)/);
   });
 

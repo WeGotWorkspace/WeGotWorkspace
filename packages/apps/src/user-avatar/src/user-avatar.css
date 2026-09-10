@@ -122,9 +122,10 @@
   font-weight: 500;
   background-color: var(--user-avatar-bg, color-mix(in oklab, var(--color-ink) 12%, transparent));
   color: var(--user-avatar-fg, var(--color-ink));
-  border-width: var(--user-avatar-border-width, 0);
+  /* Default chrome is always outlined; parents may retint via `--user-avatar-border*`. */
+  border-width: var(--user-avatar-border-width, 2px);
   border-style: solid;
-  border-color: var(--user-avatar-border, transparent);
+  border-color: var(--user-avatar-border, color-mix(in oklab, currentColor 35%, transparent));
 }
 
 .user-avatar__presence {
