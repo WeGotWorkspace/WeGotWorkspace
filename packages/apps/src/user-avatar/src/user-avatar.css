@@ -118,7 +118,7 @@
   flex-shrink: 0;
   overflow: hidden;
   box-sizing: border-box;
-  border-radius: 9999px;
+  border-radius: var(--user-avatar-radius, 9999px);
   font-weight: 500;
   background-color: var(--user-avatar-bg, color-mix(in oklab, var(--color-ink) 12%, transparent));
   color: var(--user-avatar-fg, var(--color-ink));
@@ -133,7 +133,7 @@
   bottom: -1px;
   width: 0.5rem;
   height: 0.5rem;
-  border-radius: 9999px;
+  border-radius: var(--user-avatar-radius, 9999px);
   box-shadow: 0 0 0 2px var(--user-avatar-presence-ring, var(--color-cream, #fff));
 }
 
@@ -182,6 +182,12 @@ button.user-avatar__mark {
   cursor: pointer;
   font: inherit;
   text-align: center;
+}
+
+.user-avatar--xs .user-avatar__mark {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 10px;
 }
 
 .user-avatar--sm .user-avatar__mark {

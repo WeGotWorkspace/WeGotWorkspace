@@ -94,29 +94,20 @@
   color: var(--share-dialog-tag-fg);
 }
 
-.share-dialog__group-mark,
+.share-dialog__principal-mark--group,
 .share-dialog__guest-mark {
-  @apply flex size-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-semibold uppercase transition-colors;
+  --user-avatar-radius: 0.5rem;
 }
 
-.share-dialog__group-mark {
-  @apply rounded-lg;
+.share-dialog__principal-mark--active {
+  --user-avatar-bg: var(--share-dialog-accent);
+  --user-avatar-fg: var(--primary-foreground, #fff);
 }
 
-.share-dialog__group-mark--active,
-.share-dialog__member-mark--active {
-  background: var(--share-dialog-accent);
-  color: var(--primary-foreground, #fff);
-}
-
-.share-dialog__group-mark--idle,
-.share-dialog__member-mark--idle {
-  background: color-mix(in oklab, var(--share-dialog-accent) 10%, transparent);
-  color: var(--share-dialog-accent);
-}
-
-.share-dialog__member-mark {
-  @apply flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold uppercase transition-colors;
+.share-dialog__principal-mark--idle,
+.share-dialog__guest-mark {
+  --user-avatar-bg: color-mix(in oklab, var(--share-dialog-accent) 10%, transparent);
+  --user-avatar-fg: var(--share-dialog-accent);
 }
 
 .share-dialog__permission-select {

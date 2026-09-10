@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { initialsFromDisplayName } from "@/user-avatar/src/user-avatar";
+import { UserAvatar } from "@/user-avatar/src/user-avatar";
 
 export type SharePrincipalKind = "user" | "group";
 
@@ -14,6 +14,7 @@ type SharePrincipalMarkProps = {
   className?: string;
 };
 
+/** Compact share-dialog mark — thin domain wrapper around `UserAvatar`. */
 export function SharePrincipalMark({
   principalType,
   displayName,
@@ -21,25 +22,23 @@ export function SharePrincipalMark({
   icon,
   className,
 }: SharePrincipalMarkProps) {
-  const stateClass = active ? "share-dialog__group-mark--active" : "share-dialog__group-mark--idle";
-
-  if (principalType === "group") {
-    return (
-      <div className={cn("share-dialog__group-mark", stateClass, className)}>
-        {icon ?? <Users2 className="size-3.5" aria-hidden />}
-      </div>
-    );
-  }
-
-  const memberStateClass = icon
-    ? undefined
-    : active
-      ? "share-dialog__member-mark--active"
-      : "share-dialog__member-mark--idle";
+  const stateClass = active
+    ? "share-dialog__principal-mark--active"
+    : "share-dialog__principal-mark--idle";
+  const kindClass =
+    principalType === "group"
+      ? "share-dialog__principal-mark--group"
+      : "share-dialog__principal-mark--user";
 
   return (
-    <div className={cn("share-dialog__member-mark", memberStateClass, className)}>
-      {icon ?? initialsFromDisplayName(displayName)}
-    </div>
+    <UserAvatar
+      displayName={displayName}
+      compact
+      size="xs"
+      fallback={
+        principalType === "group" ? (icon ?? <Users2 className="size-3.5" aria-hidden />) : icon
+      }
+      className={cn("share-dialog__principal-mark", kindClass, stateClass, className)}
+    />
   );
 }

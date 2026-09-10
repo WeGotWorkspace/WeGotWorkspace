@@ -13,6 +13,7 @@ describe("user avatar mark border", () => {
     expect(mark).toMatch(/box-sizing:\s*border-box/);
     expect(mark).toMatch(/border-width:\s*var\(--user-avatar-border-width,\s*0\)/);
     expect(mark).toMatch(/border-color:\s*var\(--user-avatar-border,\s*transparent\)/);
+    expect(mark).toMatch(/border-radius:\s*var\(--user-avatar-radius,\s*9999px\)/);
   });
 
   it("does not zero the mark border on the button reset", () => {
@@ -20,6 +21,10 @@ describe("user avatar mark border", () => {
     expect(button).toBeDefined();
     expect(button).not.toMatch(/border:\s*0/);
     expect(button).not.toMatch(/border-width:\s*0/);
+  });
+
+  it("defines an xs mark size for collab / share chips", () => {
+    expect(css).toMatch(/\.user-avatar--xs \.user-avatar__mark \{[\s\S]*width:\s*1\.75rem/);
   });
 });
 

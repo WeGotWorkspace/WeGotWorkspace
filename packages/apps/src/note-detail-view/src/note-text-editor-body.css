@@ -44,21 +44,18 @@
 }
 
 .note-detail-view .docs-collab-presence__avatar--self {
-  background-color: var(--notes-accent, #f6d176);
-  color: var(--color-ink);
+  --user-avatar-bg: var(--notes-accent, #f6d176);
+  --user-avatar-fg: var(--color-ink);
+  --docs-collab-presence-accent: var(--notes-accent, #f6d176);
+  --docs-collab-presence-ring: var(--notes-detail-body-bg, var(--color-cream, #ffffff));
+}
+
+.note-detail-view .docs-collab-presence__avatar--self .user-avatar__mark {
   box-shadow:
     0 0 0 2px var(--notes-detail-body-bg, var(--color-cream, #ffffff)),
     0 0 0 3px color-mix(in oklab, var(--notes-accent, #f6d176) 42%, transparent);
 }
 
 .note-detail-view .docs-collab-presence__avatar--connecting {
-  color: color-mix(in oklab, var(--notes-accent, #f6d176) 72%, var(--color-ink));
-  background-color: color-mix(in oklab, var(--notes-accent, #f6d176) 14%, transparent);
-  border: 1px dashed color-mix(in oklab, var(--notes-accent, #f6d176) 38%, transparent);
-}
-
-.note-detail-view .docs-collab-presence__avatar--warning {
-  color: color-mix(in oklab, #c2410c 75%, var(--color-ink));
-  background-color: color-mix(in oklab, #c2410c 14%, transparent);
-  border: 1px solid color-mix(in oklab, #c2410c 42%, transparent);
+  --docs-collab-presence-accent: var(--notes-accent, #f6d176);
 }

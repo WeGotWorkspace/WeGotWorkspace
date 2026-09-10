@@ -210,22 +210,20 @@
 }
 
 .docs-workspace .docs-collab-presence__avatar--self {
-  background-color: var(--docs-accent);
+  --user-avatar-bg: var(--docs-accent);
+  --user-avatar-fg: #fff;
+  --docs-collab-presence-accent: var(--docs-accent);
+  --docs-collab-presence-ring: var(--background);
+}
+
+.docs-workspace .docs-collab-presence__avatar--self .user-avatar__mark {
   box-shadow:
     0 0 0 2px var(--background),
     0 0 0 3px color-mix(in oklab, var(--docs-accent) 42%, transparent);
 }
 
 .docs-workspace .docs-collab-presence__avatar--connecting {
-  color: color-mix(in oklab, var(--docs-accent) 72%, var(--color-ink));
-  background-color: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  border: 1px dashed color-mix(in oklab, var(--docs-accent) 38%, transparent);
-}
-
-.docs-workspace .docs-collab-presence__avatar--warning {
-  color: color-mix(in oklab, #c2410c 75%, var(--color-ink));
-  background-color: color-mix(in oklab, #c2410c 14%, transparent);
-  border: 1px solid color-mix(in oklab, #c2410c 42%, transparent);
+  --docs-collab-presence-accent: var(--docs-accent);
 }
 
 .docs-workspace__header-actions .button.docs-workspace__source-toggle--active {

@@ -1,5 +1,5 @@
 import { LogOut } from "lucide-react";
-import { initialsFromDisplayName } from "@/user-avatar/src/user-avatar";
+import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,8 +17,6 @@ export function WorkspaceShellHeaderUserMenu({
   displayName,
   onLogout,
 }: WorkspaceShellHeaderUserMenuProps) {
-  const initials = initialsFromDisplayName(displayName) || "U";
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -27,7 +25,13 @@ export function WorkspaceShellHeaderUserMenu({
           className="workspace-shell-header__user-menu-trigger"
           aria-label="User menu"
         >
-          {initials}
+          <UserAvatar
+            displayName={displayName}
+            compact
+            size="sm"
+            className="workspace-shell-header__user-avatar"
+            ariaLabel={`${displayName} avatar`}
+          />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="workspace-shell-header__user-menu-content">

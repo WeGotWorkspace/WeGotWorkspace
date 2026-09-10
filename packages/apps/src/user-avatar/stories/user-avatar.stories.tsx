@@ -9,10 +9,27 @@ import {
 import "@/mail-core/src/mail-workspace.css";
 import "@/meet-core/src/meet-workspace.css";
 import "@/workspace-shell/src/workspace-app-layout.css";
+import "@/docs-core/src/docs-workspace.css";
+import "@/text-editor-core/docs-collab/docs-collab-presence.css";
 
 const meta: Meta<typeof UserAvatar> = {
   title: "Shared/User Avatar",
   component: UserAvatar,
+  argTypes: {
+    size: {
+      control: "select",
+      options: ["xs", "sm", "md", "lg", "xl"],
+    },
+    presence: {
+      control: "select",
+      options: [undefined, "online", "away", "offline"],
+    },
+    compact: { control: "boolean" },
+    color: {
+      control: "select",
+      options: [undefined, ...USER_AVATAR_COLORS],
+    },
+  },
 };
 
 export default meta;
@@ -70,6 +87,31 @@ export const WithSubtitle: Story = {
     displayName: "Morgan Lee",
     subtitle: "morgan@example.com",
   },
+};
+
+/** Name only vs name+subtitle vs mark-only. */
+export const LabelVariants: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4 p-4 max-w-sm">
+      <UserAvatar displayName="Elias Linden" />
+      <UserAvatar displayName="Elias Linden" subtitle="elias@example.com" />
+      <UserAvatar displayName="Elias Linden" compact />
+    </div>
+  ),
+};
+
+/** Size ladder used across the suite. */
+export const SizeMatrix: Story = {
+  render: () => (
+    <div className="flex flex-wrap items-end gap-4 p-4">
+      {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
+        <div key={size} className="flex flex-col items-center gap-2">
+          <UserAvatar displayName="Ada Lovelace" compact size={size} />
+          <span className="text-xs opacity-60">{size}</span>
+        </div>
+      ))}
+    </div>
+  ),
 };
 
 /** Mail detail sender row: larger chip, emerald fill, two-line label. */
@@ -171,6 +213,42 @@ export const MeetCompactSizes: Story = {
   ),
 };
 
+/** Docs/notes collab peer stack (overlapping xs marks). */
+export const CollabPeerStack: Story = {
+  render: () => (
+    <div className="docs-workspace p-4">
+      <div className="docs-collab-presence" aria-label="Connected editors">
+        <span className="docs-collab-presence__chip">
+          <UserAvatar
+            displayName="Alex Example"
+            compact
+            size="xs"
+            className="docs-collab-presence__avatar docs-collab-presence__avatar--self"
+          />
+        </span>
+        <span className="docs-collab-presence__chip docs-collab-presence__chip--overlap">
+          <UserAvatar
+            displayName="Sam Lee"
+            compact
+            size="xs"
+            color={avatarColorForUserId("peer-1")}
+            className="docs-collab-presence__avatar"
+          />
+        </span>
+        <span className="docs-collab-presence__chip docs-collab-presence__chip--overlap">
+          <UserAvatar
+            displayName="Jordan Kim"
+            compact
+            size="xs"
+            color={avatarColorForUserId("peer-2")}
+            className="docs-collab-presence__avatar"
+          />
+        </span>
+      </div>
+    </div>
+  ),
+};
+
 /** Sidebar-style: chip uses footer avatar tokens, name uses shell label tone. */
 export const FooterTwoLine: Story = {
   render: () => (
@@ -180,6 +258,16 @@ export const FooterTwoLine: Story = {
         subtitle="elias@example.com"
         className="flex-1 min-w-0"
       />
+    </div>
+  ),
+};
+
+/** Icon / org fallback inside the mark (Contacts org, Drive public link). */
+export const WithFallbackIcon: Story = {
+  render: () => (
+    <div className="flex items-center gap-4 p-4">
+      <UserAvatar displayName="Acme Corp" compact size="sm" fallback="Org" />
+      <UserAvatar displayName="Public link" compact size="sm" fallback="Pub" />
     </div>
   ),
 };

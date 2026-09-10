@@ -10,10 +10,25 @@ export {
   type UserAvatarColor,
 } from "@/user-avatar/src/user-avatar-color";
 
-export type UserAvatarSize = "sm" | "md" | "lg" | "xl";
+/**
+ * Mark sizes (parent CSS may still override via layout):
+ * - `xs` — collab peer stack, share dialog marks (~1.75rem)
+ * - `sm` — sidebar / footer / chat (~2.25rem)
+ * - `md` — mail sender row (~2.5rem)
+ * - `lg` / `xl` — Meet tiles and lobby preview
+ */
+export type UserAvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 
 /** Presence pip: online green, away amber, offline transparent + ink ring. */
 export type UserAvatarPresence = "online" | "offline" | "away";
+
+const USER_AVATAR_SIZE_CLASS: Record<UserAvatarSize, string> = {
+  xs: "user-avatar--xs",
+  sm: "user-avatar--sm",
+  md: "user-avatar--md",
+  lg: "user-avatar--lg",
+  xl: "user-avatar--xl",
+};
 
 export type UserPresenceDotProps = {
   presence: UserAvatarPresence;
@@ -52,9 +67,9 @@ export type UserAvatarProps = {
   imageSrc?: string;
   /** Replaces initials when there is no photo (e.g. a company building icon). */
   fallback?: ReactNode;
-  /** Avatar + label only; no text column. */
+  /** Mark only — no name / subtitle column (icon-only / peer chip). */
   compact?: boolean;
-  /** `sm` = sidebar/footer chip; `md` = mail sender row; `lg` / `xl` = meet tiles and lobby preview. */
+  /** Defaults to `sm`. */
   size?: UserAvatarSize;
   /** Optional online/offline pip. Rendered by the primitive — do not draw a second custom dot. */
   presence?: UserAvatarPresence;
@@ -107,14 +122,7 @@ export function UserAvatar({
     setImageFailed(false);
   }, [imageSrc]);
 
-  const sizeClass =
-    size === "md"
-      ? "user-avatar--md"
-      : size === "lg"
-        ? "user-avatar--lg"
-        : size === "xl"
-          ? "user-avatar--xl"
-          : "user-avatar--sm";
+  const sizeClass = USER_AVATAR_SIZE_CLASS[size] ?? USER_AVATAR_SIZE_CLASS.sm;
 
   const markContent = showImage ? (
     <img
