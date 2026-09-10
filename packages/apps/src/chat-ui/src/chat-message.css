@@ -6,6 +6,8 @@
 
 .chat-message:hover,
 .chat-message:focus-within {
+  /* Above sticky day headers (z-[5]) so short-row hover actions stay visible. */
+  z-index: 6;
   background-color: var(--chat-hover, color-mix(in oklab, #06b6d4 8%, transparent));
 }
 
@@ -131,6 +133,7 @@
    leaving the row (or Radix moving focus into the portal) hides the trigger
    and the picker closes before the cursor can reach it. */
 .chat-message:has([data-state="open"]) {
+  z-index: 6;
   background-color: var(--chat-hover, color-mix(in oklab, #06b6d4 8%, transparent));
 }
 

@@ -36,6 +36,13 @@ describe("chat-message continuation spacing", () => {
     );
   });
 
+  it("lifts hovered/focused rows above sticky day headers so short-message actions stay visible", () => {
+    expect(css).toMatch(
+      /\.chat-message:hover,\s*\.chat-message:focus-within \{[\s\S]*?z-index:\s*6;/,
+    );
+    expect(css).toMatch(/\.chat-message:has\(\[data-state="open"\]\) \{[\s\S]*?z-index:\s*6;/);
+  });
+
   it("wraps message body text instead of overflowing a narrow rail", () => {
     expect(css).toMatch(/\.chat-message__body \{[\s\S]*?break-words/);
     expect(css).toMatch(/\.chat-message__body \{[\s\S]*?overflow-wrap:\s*anywhere/);
