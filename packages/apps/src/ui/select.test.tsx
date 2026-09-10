@@ -77,4 +77,18 @@ describe("SelectTrigger", () => {
       /\.select-trigger\[data-state="open"\]:not\(:disabled\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,
     );
   });
+
+  it("washes highlighted select items from outline-hover tokens", () => {
+    expect(inputCss).toMatch(
+      /\.select-ui__item\[data-highlighted\][\s\S]*--button-outline-hover-background/,
+    );
+    expect(inputCss).not.toMatch(/focus:bg-accent|data-\[highlighted\]:bg-accent/);
+  });
+
+  it("washes checked select items and checkmarks from outline-active tokens", () => {
+    expect(inputCss).toMatch(
+      /\.select-ui__item\[data-state="checked"\] \{[\s\S]*--button-outline-active-background/,
+    );
+    expect(inputCss).toMatch(/\.select-ui__item-check \{[\s\S]*--button-active-color/);
+  });
 });

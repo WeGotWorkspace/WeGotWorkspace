@@ -7,7 +7,11 @@
 
 .dropdown-menu-ui__sub-trigger:focus,
 .dropdown-menu-ui__sub-trigger[data-state="open"] {
-  @apply bg-accent;
+  background-color: var(
+    --button-outline-hover-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)
+  );
+  color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
 }
 
 .dropdown-menu-ui__sub-trigger--inset {
@@ -70,7 +74,11 @@
 }
 
 .dropdown-menu-ui__item:focus {
-  @apply bg-accent text-accent-foreground;
+  background-color: var(
+    --button-outline-hover-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)
+  );
+  color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
 }
 
 .dropdown-menu-ui__item[data-disabled] {
@@ -93,7 +101,38 @@
 
 .dropdown-menu-ui__checkbox-item:focus,
 .dropdown-menu-ui__radio-item:focus {
-  @apply bg-accent text-accent-foreground;
+  background-color: var(
+    --button-outline-hover-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)
+  );
+  color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
+}
+
+.dropdown-menu-ui__checkbox-item[data-state="checked"],
+.dropdown-menu-ui__radio-item[data-state="checked"] {
+  background-color: var(
+    --button-outline-active-background,
+    var(
+      --button-outline-hover-background,
+      color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 18%, transparent)
+    )
+  );
+  color: var(--button-active-color, var(--workspace-accent, inherit));
+}
+
+.dropdown-menu-ui__checkbox-item[data-state="checked"]:focus,
+.dropdown-menu-ui__radio-item[data-state="checked"]:focus {
+  background-color: var(
+    --button-outline-active-hover-background,
+    var(
+      --button-outline-active-background,
+      var(
+        --button-outline-hover-background,
+        color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 24%, transparent)
+      )
+    )
+  );
+  color: var(--button-active-color, var(--workspace-accent, inherit));
 }
 
 .dropdown-menu-ui__checkbox-item[data-disabled],
@@ -107,10 +146,12 @@
 
 .dropdown-menu-ui__indicator-check {
   @apply h-4 w-4;
+  color: var(--button-active-color, var(--workspace-accent, currentColor));
 }
 
 .dropdown-menu-ui__indicator-circle {
   @apply h-2 w-2 fill-current;
+  color: var(--button-active-color, var(--workspace-accent, currentColor));
 }
 
 .dropdown-menu-ui__label {
