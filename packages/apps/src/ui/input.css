@@ -27,6 +27,12 @@
   );
 }
 
+/* Picker triggers share Button outline focus — not text-field border chrome. */
+.control-surface,
+.select-trigger {
+  @apply focus-visible:ring-1 focus-visible:ring-ring;
+}
+
 .control-surface,
 .input,
 .select-trigger {
@@ -150,11 +156,9 @@
   @apply cursor-default;
 }
 
-/* Keyboard-only focus chrome — mouse click must not paint a focus ring/border. */
-.control-surface:focus-visible:not(:disabled),
+/* Text fields: keyboard-only border focus — mouse click must not paint chrome. */
 .input:focus-visible:not(:read-only),
-.textarea:focus-visible:not(:read-only),
-.select-trigger:focus-visible:not(:disabled) {
+.textarea:focus-visible:not(:read-only) {
   background-color: var(--input-background-focus, #ffffff);
   border-color: var(--input-border-focus, var(--ring));
 }

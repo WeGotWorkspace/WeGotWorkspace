@@ -1,8 +1,8 @@
 @import "../styles.css" reference;
 
 .color-swatch-trigger {
+  /* Focus ring comes from shared `.control-surface` (Button outline recipe). */
   @apply inline-flex w-auto shrink-0 cursor-pointer items-center justify-between gap-1.5 px-2 shadow-none;
-  @apply focus-visible:ring-2 focus-visible:ring-offset-1;
   min-width: 3.25rem;
   height: var(--input-height, 2.25rem);
 }
