@@ -58,40 +58,20 @@
 }
 
 /**
- * Count badges beside the title inherit outline-active chrome so any Badge
- * in this slot (accent or secondary) picks up app wash / strong fg / quiet
- * stroke without per-call-site color props. Same tokens as selected outline
- * IconButtons; `--button-active-color` is the AA-safe accent-strong.
+ * List counts beside the title — same typography as `.view-header__title`
+ * (serif / size / weight / color), including the compact `--sm` title and
+ * narrow container shrink. Not a Badge (those read as unread).
  */
-.view-header__title-suffix .badge {
-  border-color: var(
-    --button-outline-active-border-color,
-    var(--button-outline-border-color, var(--control-border-color))
-  );
-  background-color: var(
-    --button-outline-active-background,
-    color-mix(
-      in oklab,
-      var(--workspace-accent, var(--color-emerald)) 18%,
-      var(--color-cream, #ffffff)
-    )
-  );
-  color: var(--button-active-color, var(--color-ink));
+.view-header__title-count {
+  @apply text-2xl leading-none;
+  font-family: var(--font-serif);
+  color: var(--color-ink);
+  text-box: auto;
 }
 
-.view-header__title-suffix .badge:hover {
-  background-color: var(
-    --button-outline-active-hover-background,
-    var(
-      --button-outline-active-background,
-      color-mix(
-        in oklab,
-        var(--workspace-accent, var(--color-emerald)) 18%,
-        var(--color-cream, #ffffff)
-      )
-    )
-  );
-  color: var(--button-active-color, var(--color-ink));
+.view-header__title--sm + .view-header__title-suffix .view-header__title-count {
+  @apply text-base font-medium md:text-xl;
+  font-family: var(--font-sans);
 }
 
 /**
@@ -176,6 +156,12 @@
     @apply text-xl;
   }
 
+  .view-header__title:not(.view-header__title--sm)
+    + .view-header__title-suffix
+    .view-header__title-count {
+    @apply text-xl;
+  }
+
   .view-header__title-row--responsive {
     grid-template-columns: minmax(0, 1fr) max-content;
     grid-template-areas:
@@ -223,6 +209,12 @@
 @supports not (container-type: inline-size) {
   @media (max-width: 40rem) {
     .view-header__title:not(.view-header__title--sm) {
+      @apply text-xl;
+    }
+
+    .view-header__title:not(.view-header__title--sm)
+      + .view-header__title-suffix
+      .view-header__title-count {
       @apply text-xl;
     }
 

@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ChevronLeft, ChevronRight, Inbox, PenSquare, Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
-import { Badge } from "@/ui/badge";
 import { ViewHeader } from "@/view-header/src/view-header";
 import "./view-header.stories.css";
 
@@ -30,9 +29,9 @@ export const Default: Story = {
   args: {
     title: "All Items",
     titleSuffix: (
-      <Badge variant="accent" aria-label="24 Items">
-        24
-      </Badge>
+      <span className="view-header__title-count" aria-label="24 Items">
+        (24)
+      </span>
     ),
     sidebarOpen: true,
     onToggleSidebar: () => {},

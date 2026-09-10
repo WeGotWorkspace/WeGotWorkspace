@@ -36,19 +36,14 @@ describe("view-header CSS", () => {
     expect(css).not.toMatch(/\.view-header__subtitle/);
   });
 
-  it("remaps title-suffix badges to outline-active wash, strong fg, and quiet stroke", () => {
+  it("styles title-count text to match the title typography, not a Badge", () => {
+    expect(css).toMatch(/\.view-header__title-count \{[\s\S]*text-2xl leading-none/);
+    expect(css).toMatch(/\.view-header__title-count \{[\s\S]*font-family:\s*var\(--font-serif\)/);
+    expect(css).toMatch(/\.view-header__title-count \{[\s\S]*color:\s*var\(--color-ink\)/);
     expect(css).toMatch(
-      /\.view-header__title-suffix \.badge \{[\s\S]*--button-outline-active-background/,
+      /\.view-header__title--sm \+ \.view-header__title-suffix \.view-header__title-count \{[\s\S]*font-family:\s*var\(--font-sans\)/,
     );
-    expect(css).toMatch(
-      /\.view-header__title-suffix \.badge \{[\s\S]*border-color:\s*var\(\s*--button-outline-active-border-color,\s*var\(--button-outline-border-color,\s*var\(--control-border-color\)\)/,
-    );
-    expect(css).toMatch(
-      /\.view-header__title-suffix \.badge \{[\s\S]*color:\s*var\(--button-active-color,\s*var\(--color-ink\)\)/,
-    );
-    expect(css).toMatch(
-      /\.view-header__title-suffix \.badge:hover \{[\s\S]*--button-outline-active-hover-background/,
-    );
+    expect(css).not.toMatch(/\.view-header__title-suffix \.badge/);
   });
 
   it("puts view actions and titleTrailing on row 1, title and prev/next on row 2", () => {

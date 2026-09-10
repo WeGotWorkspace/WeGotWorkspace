@@ -9,7 +9,6 @@ import { Circle, Trash2, UserMinus } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
 import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
-import { Badge } from "@/ui/badge";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ContactUserAvatar } from "./contact-user-avatar";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
@@ -102,9 +101,9 @@ export function ContactsListPanel({
         onToggleSidebar={onToggleSidebar}
         title={viewLabel}
         titleSuffix={
-          <Badge variant="accent" aria-label={headerCountLabel}>
-            {headerCount}
-          </Badge>
+          <span className="view-header__title-count" aria-label={headerCountLabel}>
+            ({headerCount})
+          </span>
         }
         actions={
           onRefreshList ? (

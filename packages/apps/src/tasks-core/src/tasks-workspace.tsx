@@ -13,7 +13,6 @@ import {
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
 import { ViewHeader } from "@/view-header/src/view-header";
-import { Badge } from "@/ui/badge";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { cn } from "@/lib/utils";
@@ -291,9 +290,12 @@ export function TasksWorkspace({
             onToggleSidebar={() => setSidebarOpen((open) => !open)}
             title={viewLabel}
             titleSuffix={
-              <Badge variant="accent" aria-label={L.listTasks(displayTasks.length)}>
-                {displayTasks.length}
-              </Badge>
+              <span
+                className="view-header__title-count"
+                aria-label={L.listTasks(displayTasks.length)}
+              >
+                ({displayTasks.length})
+              </span>
             }
             actions={
               <div className="tasks-workspace__header-actions flex items-center gap-2">

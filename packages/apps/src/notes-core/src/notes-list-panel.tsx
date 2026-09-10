@@ -9,7 +9,6 @@ import {
 import { Archive, Circle, Eye, Share2, Star, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
-import { Badge } from "@/ui/badge";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
@@ -140,9 +139,9 @@ export function NotesListPanel({
         onToggleSidebar={onToggleSidebar}
         title={viewLabel}
         titleSuffix={
-          <Badge variant="accent" aria-label={headerCountLabel}>
-            {headerCount}
-          </Badge>
+          <span className="view-header__title-count" aria-label={headerCountLabel}>
+            ({headerCount})
+          </span>
         }
         actions={
           <div className="notes-list-panel__header-actions flex items-center gap-2">

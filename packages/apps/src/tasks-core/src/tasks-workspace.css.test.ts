@@ -11,10 +11,11 @@ const mainViewTsx = readFileSync(join(here, "tasks-main-view.tsx"), "utf8");
 const listIconCss = readFileSync(join(here, "tasks-list-icon.css"), "utf8");
 
 describe("tasks workspace header and sidebar", () => {
-  it("shows the task count as an accent Badge beside the ViewHeader title", () => {
+  it("shows the task count as parenthetical text beside the ViewHeader title", () => {
     expect(tsx).toMatch(/titleSuffix=\{/);
-    expect(tsx).toMatch(/variant="accent"/);
-    expect(tsx).toMatch(/from "@\/ui\/badge"/);
+    expect(tsx).toMatch(/view-header__title-count/);
+    expect(tsx).toMatch(/\(\{displayTasks\.length\}\)/);
+    expect(tsx).not.toMatch(/from "@\/ui\/badge"/);
     expect(tsx).not.toMatch(/subtitle=\{L\.listTasks/);
   });
 

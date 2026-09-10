@@ -37,7 +37,7 @@ type ViewHeaderProps = {
    */
   titleTrailing?: ReactNode;
   /**
-   * Optional control immediately after the title (e.g. count Badge).
+   * Optional control immediately after the title (e.g. list count in parentheses).
    * Stays with the title in stacked / narrow layouts.
    */
   titleSuffix?: ReactNode;

@@ -13,11 +13,11 @@ describe("DocsCollabSidebarPanel", () => {
     expect(panel).toMatch(/showCloseButton/);
   });
 
-  it("shows count as an accent Badge beside the title, not a ViewHeader subtitle", () => {
-    expect(panel).toMatch(/from "@\/ui\/badge"/);
+  it("shows count as parenthetical text beside the title, not a ViewHeader subtitle", () => {
+    expect(panel).toMatch(/view-header__title-count/);
     expect(panel).toMatch(/titleSuffix=/);
-    expect(panel).toMatch(/variant="accent"/);
-    expect(panel).not.toMatch(/variant="secondary"/);
+    expect(panel).toMatch(/\(\{count\}\)/);
+    expect(panel).not.toMatch(/from "@\/ui\/badge"/);
     expect(panel).not.toMatch(/subtitle=/);
   });
 });
