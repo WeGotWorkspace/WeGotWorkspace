@@ -790,6 +790,28 @@
     var(--meet-accent) 24%,
     var(--color-cream, #ffffff)
   );
+  /*
+   * AppSidebar selected wash: plum (#2a1644) at shared 55%→cream is still dark,
+   * and contrast-color → cream/white fails AA (~3.9:1). Brighter cream mixes +
+   * dark on-color (`--meet-accent-strong`) keep contrast ≥ 4.5:1. Hover must use
+   * cream (not transparent) so it stays lighter than selected on the dusk tint.
+   */
+  --app-sidebar-item-hover-bg: color-mix(
+    in oklab,
+    var(--meet-accent) 22%,
+    var(--color-cream, #ffffff)
+  );
+  --app-sidebar-item-selected-bg: color-mix(
+    in oklab,
+    var(--meet-accent) 32%,
+    var(--color-cream, #ffffff)
+  );
+  --app-sidebar-item-selected-hover-bg: color-mix(
+    in oklab,
+    var(--meet-accent) 40%,
+    var(--color-cream, #ffffff)
+  );
+  --app-sidebar-item-selected-color: var(--meet-accent-strong);
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
   --workspace-main-bg: var(--meet-surface);

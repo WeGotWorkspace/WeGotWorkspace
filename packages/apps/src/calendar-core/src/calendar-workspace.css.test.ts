@@ -66,6 +66,24 @@ describe("calendar workspace header CSS", () => {
     );
   });
 
+  it("brightens AppSidebar selected wash for indigo via --app-sidebar-item-*", () => {
+    expect(css).toMatch(
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklab,\s*var\(--calendar-accent\) 28%,\s*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--calendar-accent\) 38%[\s\S]*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--calendar-accent\) 48%[\s\S]*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-ink\)/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-ink\)/,
+    );
+  });
+
   it("aligns view-switch segmented chrome with outline header buttons", () => {
     expect(css).toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--segmented-control-track-bg:\s*transparent/,

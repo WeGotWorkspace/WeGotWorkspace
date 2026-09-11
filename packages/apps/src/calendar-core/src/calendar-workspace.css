@@ -55,6 +55,31 @@
     var(--color-cream, #ffffff)
   );
 
+  /*
+   * AppSidebar selected wash: indigo (#6366f1) still reads heavy at the shared
+   * 55%/65% accent→cream mixes. Brighten via `--app-sidebar-item-*` only;
+   * ink on-color clears AA on these lighter washes (accent-strong does not).
+   * Hover wash stays cream-family and lighter than selected; hover fg is ink
+   * (idle) — workspace `--button-outline-hover-color` is accent-strong for the
+   * header and must not leak onto sidebar rows.
+   */
+  --app-sidebar-item-hover-bg: color-mix(
+    in oklab,
+    var(--calendar-accent) 28%,
+    var(--color-cream, #ffffff)
+  );
+  --app-sidebar-item-selected-bg: color-mix(
+    in oklab,
+    var(--calendar-accent) 38%,
+    var(--color-cream, #ffffff)
+  );
+  --app-sidebar-item-selected-hover-bg: color-mix(
+    in oklab,
+    var(--calendar-accent) 48%,
+    var(--color-cream, #ffffff)
+  );
+  --app-sidebar-item-selected-color: var(--color-ink);
+
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
      fills the viewport instead of the default centered 42rem measure. */
   --workspace-main-content-max-width: none;
@@ -76,6 +101,8 @@
 .calendar-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--calendar-accent-strong);
   --button-primary-fg: #ffffff;
+  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
+  --button-outline-hover-color: var(--color-ink);
 }
 
 /**
