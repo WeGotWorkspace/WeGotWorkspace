@@ -12,10 +12,10 @@
     var(--color-cream, #ffffff)
   );
   --user-avatar-fg: var(--color-ink);
+  /* Soft stroke matches `.user-avatar` palette tiles; width stays default 1px. */
   --user-avatar-border: color-mix(
     in oklab,
-    var(--contacts-book-color, var(--contacts-accent)) 55%,
-    var(--color-cream, #ffffff)
+    var(--contacts-book-color, var(--contacts-accent)) 38%,
+    transparent
   );
-  --user-avatar-border-width: 2px;
 }

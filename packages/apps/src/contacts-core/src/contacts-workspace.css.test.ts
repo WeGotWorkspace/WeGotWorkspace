@@ -204,11 +204,11 @@ describe("contacts workspace sidebar chrome", () => {
     );
   });
 
-  it("rings person and org avatars with a 2px book-color tint", () => {
+  it("rings person and org avatars with the shared 1px soft book-color tint", () => {
     expect(avatarCss).toMatch(
-      /--user-avatar-border:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--contacts-accent\)\) 55%,\s*var\(--color-cream/,
+      /--user-avatar-border:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--contacts-accent\)\) 38%,\s*transparent/,
     );
-    expect(avatarCss).toMatch(/--user-avatar-border-width:\s*2px;/);
+    expect(avatarCss).not.toMatch(/--user-avatar-border-width/);
     expect(avatarCss).not.toMatch(/--contacts-person-avatar-border/);
     expect(css).not.toMatch(/--contacts-person-avatar-border/);
     expect(groupIconCss).not.toMatch(/--user-avatar-border/);
