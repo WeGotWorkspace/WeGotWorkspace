@@ -1,9 +1,31 @@
 @import "../styles.css" reference;
 
+/*
+ * SideDrawer motion matches AppSidebar overlay (`--panel-overlay-*` in styles.css).
+ * Sheet defaults open at 500ms / ease-in-out; override via tw-animate vars so Docs
+ * review + Calendar invitations stay in lockstep with the left chrome slide.
+ */
 .side-drawer {
   --side-drawer-width: 18rem;
+  --tw-duration: var(--panel-overlay-duration);
+  --tw-animation-duration: var(--panel-overlay-duration);
+  --tw-ease: var(--panel-overlay-ease);
 
   @apply w-[min(100%,var(--side-drawer-width))] max-w-[100vw] gap-0 border-0 p-0 shadow-none [&>button]:hidden;
+  transition-duration: var(--panel-overlay-duration);
+  transition-timing-function: var(--panel-overlay-ease);
+  animation-duration: var(--panel-overlay-duration);
+  animation-timing-function: var(--panel-overlay-ease);
+}
+
+/* Scrim: same dim + fade timing as `.app-sidebar__scrim` (Sheet defaults to black/80). */
+.side-drawer__overlay {
+  @apply bg-black/30;
+  --tw-duration: var(--panel-overlay-duration);
+  --tw-animation-duration: var(--panel-overlay-duration);
+  --tw-ease: var(--panel-overlay-ease);
+  animation-duration: var(--panel-overlay-duration);
+  animation-timing-function: var(--panel-overlay-ease);
 }
 
 .side-drawer__body {

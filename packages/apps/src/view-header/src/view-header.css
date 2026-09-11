@@ -2,9 +2,33 @@
 
 @import "../../ui/anchored-dropdown.css";
 
-/** Toggle + title row. */
+/** Toggle + title row. Soft accent wash SST for chrome outline controls. */
 .view-header {
   @apply flex items-center gap-3;
+  /*
+   * Soft outline wash for sidebar toggle, Show completed, Suggest, inbox, etc.
+   * Products set `--workspace-accent` and usually `--button-active-color` (accent-strong).
+   * Heavier sidebar nav washes stay on the workspace root and do not apply here.
+   */
+  --button-outline-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 14%,
+    transparent
+  );
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 24%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-hover-color: var(
+    --button-active-color,
+    var(--workspace-accent, var(--color-ink))
+  );
 }
 
 .view-header__sidebar-toggle {

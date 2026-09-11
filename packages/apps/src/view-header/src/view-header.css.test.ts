@@ -7,6 +7,18 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "view-header.css"), "utf8");
 
 describe("view-header CSS", () => {
+  it("publishes soft accent outline washes for chrome toggles (sidebar + actions)", () => {
+    expect(css).toMatch(
+      /\.view-header \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--workspace-accent[\s\S]*14%/,
+    );
+    expect(css).toMatch(
+      /\.view-header \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--workspace-accent[\s\S]*18%/,
+    );
+    expect(css).toMatch(
+      /\.view-header \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--workspace-accent[\s\S]*24%/,
+    );
+  });
+
   it("wraps stacked and narrow responsive titles instead of ellipsizing first", () => {
     expect(css).toMatch(
       /\.view-header__title-row--stacked \.view-header__title \{[\s\S]*whitespace-normal/,

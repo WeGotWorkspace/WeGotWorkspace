@@ -6,9 +6,17 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "styles.css"), "utf8");
 
-describe("shared sheet elevation token", () => {
-  it("defines --sheet-shadow once for Docs and Notes paper sheets", () => {
+describe("shared paper sheet tokens", () => {
+  it("defines --paper-sheet-bg and --sheet-shadow for Docs and Notes", () => {
+    expect(css).toMatch(/--paper-sheet-bg:\s*oklch\(1 0 0\)/);
     expect(css).toMatch(/--sheet-shadow:\s*0 1px 2px #0000000a,\s*0 10px 30px -10px #0f172a1f/);
+  });
+});
+
+describe("shared panel overlay motion tokens", () => {
+  it("defines duration + ease for AppSidebar and SideDrawer", () => {
+    expect(css).toMatch(/--panel-overlay-duration:\s*300ms/);
+    expect(css).toMatch(/--panel-overlay-ease:\s*cubic-bezier\(0\.32,\s*0\.72,\s*0,\s*1\)/);
   });
 });
 
