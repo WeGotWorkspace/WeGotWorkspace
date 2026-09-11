@@ -2,20 +2,46 @@
 
 /**
  * Overlay batch / selection bar — cream/white surface + neutral ink hairline,
- * matching header IconButton radius (`--control-radius-button-pill`). Parents
- * still publish `--workspace-accent` / `--button-outline-*` for outline action
- * hovers; the bar chrome itself stays neutral.
+ * matching header IconButton radius (`--control-radius-button-pill`). Soft
+ * outline washes match `.view-header` (14%/18%/24%→cream) so Star/etc. do not
+ * inherit heavier workspace-root sidebar/tile washes (Drive/Notes/Tasks 40/55).
+ * Products publish `--workspace-accent` (and usually `--button-active-color`).
  *
  * Enter/exit: short bottom slide + fade via `data-state` + `@starting-style`
  * (~200ms). Parent keeps the node mounted with `open={false}` until
  * `transitionend` unmounts (see FloatingActionBar).
  */
 .floating-action-bar {
-  @apply absolute bottom-6 left-1/2 z-30 flex items-center gap-1.5 whitespace-nowrap px-2 py-2 shadow-lg;
+  @apply absolute left-1/2 z-30 flex items-center gap-1.5 whitespace-nowrap px-2 py-2 shadow-lg;
+  /* Pin to the non-scrolling pane bottom; safe-area for notched phones. */
+  bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
   border-radius: var(--control-radius-button-pill);
   color: var(--color-ink);
   background-color: var(--color-cream, #ffffff);
   border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+  /*
+   * Soft accent outline wash SST (same recipe as `.view-header`). Overrides
+   * cascaded workspace-root washes so batch IconButtons match header chrome.
+   */
+  --button-outline-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 14%,
+    transparent
+  );
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 24%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-hover-color: var(
+    --button-active-color,
+    var(--workspace-accent, var(--color-ink))
+  );
   opacity: 1;
   transform: translate(-50%, 0);
   transition:

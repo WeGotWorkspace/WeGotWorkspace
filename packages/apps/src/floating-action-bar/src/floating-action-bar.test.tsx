@@ -72,4 +72,26 @@ describe("FloatingActionBar", () => {
     expect(css).toMatch(/\[data-state="closed"\]/);
     expect(css).toMatch(/@starting-style/);
   });
+
+  it("publishes soft accent outline washes matching view-header (not workspace-root weight)", () => {
+    expect(css).toMatch(
+      /\.floating-action-bar \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--workspace-accent[\s\S]*14%/,
+    );
+    expect(css).toMatch(
+      /\.floating-action-bar \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--workspace-accent[\s\S]*18%/,
+    );
+    expect(css).toMatch(
+      /\.floating-action-bar \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--workspace-accent[\s\S]*24%/,
+    );
+    expect(css).not.toMatch(
+      /\.floating-action-bar \{[\s\S]*--button-outline-active-background:[\s\S]*55%/,
+    );
+  });
+
+  it("pins absolutely to the pane bottom with safe-area inset", () => {
+    expect(css).toMatch(/\.floating-action-bar \{[\s\S]*?\babsolute\b/);
+    expect(css).toMatch(/bottom:\s*max\(\s*1\.5rem,\s*calc\(\s*env\(\s*safe-area-inset-bottom/);
+    expect(css).not.toMatch(/\.floating-action-bar \{[\s\S]*?\bfixed\b/);
+    expect(css).not.toMatch(/\.floating-action-bar \{[\s\S]*?\bsticky\b/);
+  });
 });
