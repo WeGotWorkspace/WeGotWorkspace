@@ -1,19 +1,33 @@
+import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sidebar";
+
 export const driveLabels = {
+  /** Primary AppSidebar home (SST with Docs; Docs uses "My Docs"). */
+  sidebarHome: filesBrowserSidebarLabels.homeDrive,
+  /**
+   * Personal-drive path / breadcrumb / location label (`"My Drive"` UI path key).
+   * Sidebar row under My Drives uses {@link driveLabels.sidebarPersonalDrive}.
+   */
   sidebarMyDrive: "My Drive",
-  sidebarSharedWithMe: "Shared with me",
-  sidebarRecent: "Recent",
-  sidebarStarred: "Starred",
-  sidebarTrash: "Trash",
-  sidebarSharedDrives: "Team drives",
+  /** Personal drive row under My Drives (same SST as Docs). */
+  sidebarPersonalDrive: filesBrowserSidebarLabels.personalDrive,
+  sidebarSharedWithMe: filesBrowserSidebarLabels.sharedWithMe,
+  sidebarRecent: filesBrowserSidebarLabels.recent,
+  sidebarStarred: filesBrowserSidebarLabels.starred,
+  sidebarTrash: filesBrowserSidebarLabels.trash,
+  /** My Drives section title (SST with Docs; was "Team drives"). */
+  sidebarSharedDrives: filesBrowserSidebarLabels.drivesSection,
   searchPlaceholder: "Search in Drive...",
   searchViewTitle: "Search",
   listColumnName: "Name",
+  listColumnLocation: "Location",
   listColumnActions: "Actions",
   listColumnOffline: "Offline",
   emptyFolder: "This folder is empty",
   folderListingLoading: "Loading folder…",
   dropUploadHint: "Drop files to upload to",
   newButton: "New",
+  /** Chevron menu on the sidebar segmented New control. */
+  newButtonMenu: "More create options",
   newFolder: "New folder",
   uploadFiles: "Upload files",
   newMarkdown: "New document",
@@ -24,6 +38,11 @@ export const driveLabels = {
   gridView: "Grid view",
   listView: "List view",
   detailPanelToggle: "Details panel",
+  /** DocsCollabSidebarPanel title for the file detail side panel. */
+  detailSidebarTitle: "Details",
+  detailClosePanel: "Close",
+  /** Empty body when the details panel is open with no file selected. */
+  detailEmpty: "Select a file to see its details.",
   selectionDone: "Done",
   selectionStar: "Star",
   selectionMove: "Move",

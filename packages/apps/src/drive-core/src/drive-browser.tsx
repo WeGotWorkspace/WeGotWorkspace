@@ -1,22 +1,9 @@
 import { useRef, type ReactNode } from "react";
-import {
-  Check,
-  Star,
-  Download,
-  Folder,
-  Globe2,
-  HardDrive,
-  Share,
-  Share2,
-  Users2,
-} from "lucide-react";
-import { Tag } from "@/tag/src/tag";
-import { useAppToast } from "@/hooks/use-app-toast";
+import { Check, Star, Folder, Globe2, HardDrive, Share, Share2, Users2 } from "lucide-react";
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
 import { kindIcon } from "@/drive-core/src/drive-icons";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import { cn } from "@/lib/utils";
-import { DriveDetailActionBar } from "@/drive-core/src/drive-detail-action-bar";
 import { buildDriveFileActions } from "@/drive-core/src/drive-file-action-builders";
 import { DriveFileItemActionsMenu } from "@/drive-core/src/drive-file-actions";
 import { DriveOfflinePinButton } from "@/drive-core/src/drive-offline-pin-button";
@@ -334,7 +321,7 @@ export function DriveGridView({
       )}
 
       {files.length > 0 && (
-        <Section title="Files">
+        <Section>
           <div className="drive-grid">
             {files.map((f) => (
               <FileTile
@@ -377,10 +364,10 @@ export function DriveGridView({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="drive-item-label drive-browser-section-title">{title}</h3>
+      {title ? <h3 className="drive-item-label drive-browser-section-title">{title}</h3> : null}
       {children}
     </div>
   );
@@ -1008,108 +995,6 @@ export function DriveListView({
           })}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-/* ---------------- Detail panel ---------------- */
-
-export function DriveDetailPanel({
-  labels,
-  file,
-  preview,
-  isStarred,
-  inTrash,
-  onClose,
-  onDownload,
-  onStar,
-  onRename,
-  onMove,
-  onDelete,
-  canShare,
-  canManageStructure,
-  onShare,
-  mobile,
-}: {
-  labels: DriveUILabels;
-  file: DriveFile;
-  preview?: FilePreviewPayload;
-  isStarred: boolean;
-  inTrash: boolean;
-  onClose: () => void;
-  onDownload: () => void;
-  onStar: () => void;
-  onRename: () => void;
-  onMove: () => void;
-  onDelete: () => void;
-  canShare?: boolean;
-  canManageStructure?: boolean;
-  onShare?: () => void;
-  mobile?: boolean;
-}) {
-  const { show } = useAppToast();
-
-  const actions = buildDriveFileActions(
-    labels,
-    {
-      isStarred,
-      inTrash,
-      canDownload: file.kind !== "folder",
-      canShare,
-      canManageStructure,
-    },
-    {
-      onDownload: () => {
-        onDownload();
-        show("Download started", { icon: <Download className="size-4" /> });
-      },
-      onStar,
-      onRename,
-      onMove,
-      onDelete,
-      onShare,
-    },
-  );
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <DriveDetailActionBar actions={actions} onClose={onClose} mobile={mobile} />
-      <div className="drive-detail-panel__scroll">
-        <div className="drive-detail-panel__preview">
-          <FilePreview
-            fileKind={file.kind}
-            fileName={file.title}
-            fileApiPath={file.apiPath}
-            preview={preview}
-            textMode="scrollable"
-            mediaClassName="drive-detail-panel__preview-media"
-            videoControls
-          />
-        </div>
-        <div className="drive-detail-panel__path">
-          <Tag label={file.parent} icon={<HardDrive className="size-3.5 opacity-70" />} />
-        </div>
-        <h1 className="drive-detail-panel__title">{file.title}</h1>
-        <dl className="space-y-2 text-sm mb-6">
-          <Row label="Type" value={file.kind} />
-          <Row label="Size" value={file.size} />
-          <Row label="Modified" value={file.date} />
-        </dl>
-        {file.body.map((p, i) => (
-          <p key={i} className="drive-detail-panel__body">
-            {p}
-          </p>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="drive-detail-panel__meta-row">
-      <dt className="drive-detail-panel__meta-label">{label}</dt>
-      <dd className="drive-detail-panel__meta-value">{value}</dd>
     </div>
   );
 }

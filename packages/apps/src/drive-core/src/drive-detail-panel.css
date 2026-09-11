@@ -1,0 +1,118 @@
+@import "../../styles.css" reference;
+@import "../../text-editor-core/docs-collab/docs-collab-card/docs-collab-sidebar-panel.css";
+
+/*
+ * Portal accent only — sheet wash + outline button chrome live on shared
+ * `.docs-collab-sidebar-panel-drawer` (SideDrawer under body).
+ */
+.drive-detail-panel-drawer {
+  --side-drawer-width: 22rem;
+  --drive-accent: #10b981;
+  --workspace-accent: var(--drive-accent);
+}
+
+.drive-detail-panel {
+  @apply min-w-0 max-w-full overflow-hidden;
+  --docs-collab-sidebar-panel-bg: var(
+    --docs-collab-sidebar-panel-wash,
+    var(--docs-collab-sidebar-panel-wash-recipe, var(--color-cream, #ffffff))
+  );
+  --docs-collab-sidebar-panel-color: var(--color-ink);
+  --docs-collab-sidebar-panel-border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  /* Horizontal inset inherits shared panel (main-header p-4 md:p-6). */
+}
+
+.drive-detail-panel .docs-collab-sidebar-panel__header {
+  @apply py-4 md:py-6;
+}
+
+@media (max-width: 40rem) {
+  .drive-detail-panel .docs-collab-sidebar-panel__header {
+    @apply py-3;
+  }
+}
+
+.drive-detail-panel .docs-collab-sidebar-panel__scroll {
+  @apply py-6;
+}
+
+/* Compact IconButton row in ViewHeader actions (before titleTrailing close). */
+.drive-detail-panel__actions {
+  @apply flex shrink-0 items-center gap-1;
+}
+
+.drive-detail-panel__actions-menu-icon > svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.drive-detail-panel__content {
+  @apply min-w-0;
+}
+
+.drive-detail-panel__preview {
+  /* Flat surface + accent kind icon — same language as `.drive-file-tile__preview`. */
+  @apply relative aspect-[4/3] flex items-center justify-center mb-6 overflow-hidden;
+  border-radius: var(--control-radius);
+  background-color: #ffffff;
+  color: var(--drive-accent, var(--workspace-accent, var(--color-ink)));
+}
+
+.drive-detail-panel__preview > img,
+.drive-detail-panel__preview > video,
+.drive-detail-panel__preview .file-preview__fallback,
+.drive-detail-panel__preview .drive-media-preview__fallback,
+.drive-detail-panel__preview .file-preview-text-pane,
+.drive-detail-panel__preview .docs-file-preview {
+  @apply absolute inset-0 h-full w-full;
+}
+
+.drive-detail-panel__preview-media {
+  @apply h-full w-full object-cover;
+  border-radius: var(--control-radius);
+}
+
+.drive-detail-panel__preview .file-preview__fallback,
+.drive-detail-panel__preview .drive-media-preview__fallback {
+  @apply flex items-center justify-center opacity-80;
+}
+
+.drive-detail-panel__preview .file-preview__fallback svg,
+.drive-detail-panel__preview .drive-media-preview__fallback svg {
+  width: 4rem;
+  height: 4rem;
+}
+
+.drive-detail-panel__path {
+  @apply mb-3;
+}
+
+.drive-detail-panel__title {
+  @apply text-base md:text-lg leading-tight mb-4 tracking-tight break-words font-semibold font-sans;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+}
+
+.drive-detail-panel__meta {
+  @apply mb-6 space-y-2 text-sm;
+}
+
+.drive-detail-panel__body {
+  @apply text-sm leading-relaxed mb-3;
+  color: color-mix(in oklab, var(--color-ink) 78%, transparent);
+}
+
+.drive-detail-panel__meta-row {
+  @apply flex justify-between gap-4 py-1.5 border-b;
+  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+}
+
+.drive-detail-panel__meta-label {
+  @apply text-[11px] uppercase tracking-wider;
+  color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+}
+
+.drive-detail-panel__meta-value {
+  @apply capitalize;
+  color: var(--color-ink);
+}

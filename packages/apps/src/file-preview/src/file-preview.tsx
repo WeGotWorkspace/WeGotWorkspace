@@ -123,7 +123,18 @@ export function FilePreview({
 
   const supportsInlineImage = fileKind !== "image" || canBrowserPreviewImage(fileName);
 
+  const kindIconFallback = (
+    <span className={cn("file-preview__fallback", fallbackClassName)} aria-hidden="true">
+      {kindIconLg[fileKind]}
+    </span>
+  );
+
   if (preview?.kind === "docs") {
+    // Empty docs body → same kind-icon tile treatment (not a blank white editor sheet).
+    if (!preview.content.trim()) {
+      return kindIconFallback;
+    }
+
     if (variant === "tile") {
       return (
         <LazyTileDocsPreview
@@ -153,9 +164,7 @@ export function FilePreview({
               className={mediaClassName}
             />
           ) : (
-            <span className={cn("file-preview__fallback", fallbackClassName)} aria-hidden="true">
-              {kindIconLg[fileKind]}
-            </span>
+            kindIconFallback
           )
         }
       />
@@ -177,11 +186,7 @@ export function FilePreview({
     supportsInlineImage;
 
   if (!canPreviewMedia) {
-    return (
-      <span className={cn("file-preview__fallback", fallbackClassName)} aria-hidden="true">
-        {kindIconLg[fileKind]}
-      </span>
-    );
+    return kindIconFallback;
   }
 
   if (fileKind === "video") {

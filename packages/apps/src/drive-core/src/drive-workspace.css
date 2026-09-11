@@ -25,20 +25,35 @@
   --file-drop-overlay-card-color: var(--drive-accent);
   --drive-detail-tag-bg: color-mix(in oklab, var(--drive-accent) 12%, transparent);
   --drive-detail-tag-fg: var(--drive-accent);
+  /* Alias for DocsCollabSidebarPanel wash (detail panel = 10% accent, not 32% nav). */
+  --docs-collab-sidebar-panel-wash: color-mix(
+    in oklab,
+    var(--drive-accent) 10%,
+    var(--color-cream, #ffffff)
+  );
+  /* Same flex-dock pattern as Calendar invitations / Docs review. */
+  --drive-detail-column-width: 22rem;
+  --workspace-panel-width: var(--drive-detail-column-width);
 
-  /* Outline action language for header + collection chrome. */
+  /*
+   * Outline / menu-item language. Workspace outline tokens stay Notes/Tasks-
+   * weight for segmented/tile chrome. Sidebar nav inherits the shared
+   * AppSidebar washed recipe (40% / 55%+ink / 65%+ink + darker on-color);
+   * `--app-sidebar-item-*` remains available if Drive needs a further tweak.
+   * `.view-header` keeps its own soft SST for header IconButtons.
+   */
   --drive-accent-strong: color-mix(in oklab, var(--drive-accent) 55%, var(--color-ink));
   --button-active-color: var(--drive-accent-strong);
   --button-outline-hover-color: var(--drive-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--drive-accent) 14%, transparent);
+  --button-outline-hover-background: color-mix(in oklab, var(--drive-accent) 40%, transparent);
   --button-outline-active-background: color-mix(
     in oklab,
-    var(--drive-accent) 18%,
+    var(--drive-accent) 55%,
     var(--color-cream, #ffffff)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
-    var(--drive-accent) 24%,
+    var(--drive-accent) 65%,
     var(--color-cream, #ffffff)
   );
 }
@@ -52,13 +67,24 @@
 }
 
 .drive-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--color-ink);
-  --button-primary-fg: var(--drive-accent);
+  /* New CTA: black/ink on Drive green (same recipe as Tasks/Notes sidebar primaries). */
+  --button-primary-bg: var(--drive-accent);
+  --button-primary-fg: var(--color-ink);
 }
 
-.drive-workspace .drive-detail-actions {
-  @apply px-5 md:px-6;
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+/** App switcher lockup: classic Drive brand tile (green + white glyph). */
+.drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
+  --app-switch-icon-bg: var(--drive-accent);
+  --app-switch-icon-fg: var(--color-cream, #ffffff);
+  background-color: var(--app-switch-icon-bg);
+}
+
+.drive-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: transparent;
+  --wai-fg: var(--app-switch-icon-fg);
 }
 
 .drive-workspace .drive-main-pane {
@@ -164,63 +190,26 @@
   @apply flex flex-1 min-h-0;
 }
 
-@media (min-width: 768px) {
-  .drive-workspace .drive-main-pane__body:has(.drive-detail-aside) {
-    display: grid;
-    grid-template-columns: 1fr 0fr;
-    transition: grid-template-columns 300ms cubic-bezier(0.32, 0.72, 0, 1);
-  }
-
-  .drive-workspace .drive-main-pane__body:has(.drive-detail-aside[data-open="true"]) {
-    grid-template-columns: 2fr 1fr;
-  }
-}
-
-@media (max-width: 767px) {
-  .drive-workspace .drive-main-pane__body {
-    transition: transform 300ms ease-out;
-  }
-
-  .drive-workspace .drive-main-pane--mobile-detail-open .drive-main-pane__body {
-    transform: translateX(-25%);
-  }
-}
-
 .drive-workspace .drive-main-pane__scroll {
   @apply flex-1 min-h-0 min-w-0 w-full overflow-x-hidden overflow-y-auto;
 }
 
-.drive-workspace .drive-detail-aside {
-  @apply hidden md:flex min-w-0 overflow-hidden border-l flex-col min-h-0 will-change-transform transition-[translate,border-width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)];
-  background-color: var(--color-cream, #ffffff);
+.drive-workspace .workspace-app-layout__main {
+  @apply isolate min-w-0;
+}
+
+.drive-workspace .workspace-app-layout__panel,
+.drive-workspace .drive-workspace__detail-panel {
+  @apply flex min-h-0 flex-col overflow-hidden border-l;
+  flex: 0 0 var(--drive-detail-column-width);
+  width: var(--drive-detail-column-width);
+  max-width: var(--drive-detail-column-width);
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  background-color: var(--docs-collab-sidebar-panel-wash);
 }
 
-.drive-workspace .drive-detail-aside[data-open="true"] {
-  @apply translate-x-0;
-}
-
-.drive-workspace .drive-detail-aside[data-open="false"] {
-  @apply translate-x-full border-l-0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .drive-workspace .drive-main-pane__body:has(.drive-detail-aside) {
-    transition: none;
-  }
-
-  .drive-workspace .drive-detail-aside {
-    transition: none;
-  }
-}
-
-.drive-workspace .drive-detail-overlay {
-  @apply md:hidden fixed inset-0 z-50 flex flex-col transition-transform duration-300 ease-out;
-  background-color: var(--color-cream, #ffffff);
-}
-
-.drive-workspace .drive-detail-panel__scroll {
-  @apply flex-1 overflow-y-auto px-5 md:px-6 py-6;
+.drive-workspace .drive-workspace__detail-panel[data-open="false"] {
+  @apply pointer-events-none;
 }
 
 .drive-workspace .drive-detail-panel__path {

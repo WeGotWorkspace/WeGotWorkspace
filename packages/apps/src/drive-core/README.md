@@ -21,7 +21,8 @@ Internal composition (import from `@/drive-core/src/…` in stories or sibling p
 - `useDriveShell`, `useDriveList`, `useDriveMutations` — shell navigation, list/selection, and mutation slices
 - `useDriveAPI` (`src/drive-core/src/use-drive-api.ts`)
 - `DriveMainPane`, `DriveDetailActionBar`, `DriveNewMenu`
-- `DriveGridView`, `DriveListView`, `DriveDetailPanel` (`src/drive-core/src/drive-browser.tsx`)
+- `DriveGridView`, `DriveListView` (`src/drive-core/src/drive-browser.tsx`)
+- `DriveDetailPanel` (`src/drive-core/src/drive-detail-panel.tsx`) — DocsCollabSidebarPanel shell; docked via WorkspaceAppLayout `panel` / SideDrawer
 - `DriveMoveToDialog`, `DriveFolderPicker`, `DriveMediaPreview`
 
 ## Provider wiring
