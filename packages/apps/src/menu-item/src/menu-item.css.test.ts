@@ -21,10 +21,10 @@ describe("menu-item sidebar surfaces", () => {
 
   it("washes idle sidebar hover from outline-hover tokens", () => {
     expect(css).toMatch(
-      /\.sidebar-section \.menu-item--interactive:hover:not\(\.menu-item--surface-selected\):not\([\s\S]*--button-outline-hover-color/,
+      /\.sidebar-section\s+\.menu-item--interactive:hover:not\(\.menu-item--surface-selected\):not\([\s\S]*--button-outline-hover-color/,
     );
     expect(css).toMatch(
-      /\.sidebar-section \.menu-item--interactive:hover:not\(\.menu-item--surface-selected\):not\([\s\S]*--button-outline-hover-background/,
+      /\.sidebar-section\s+\.menu-item--interactive:hover:not\(\.menu-item--surface-selected\):not\([\s\S]*--button-outline-hover-background/,
     );
     expect(css).toMatch(
       /\.sidebar-section\s+\.menu-item--interactive:hover:not\(\.menu-item--surface-selected\)\s+\.menu-item__icon-slot \{[\s\S]*opacity:\s*0\.9/,
@@ -44,7 +44,7 @@ describe("menu-item sidebar surfaces", () => {
     );
     expect(css).toMatch(/menu-item--severity-danger/);
     expect(css).toMatch(
-      /\.sidebar-section \.menu-item--interactive:hover:not\(\.menu-item--surface-selected\):not\(/,
+      /\.sidebar-section\s+\.menu-item--interactive:hover:not\(\.menu-item--surface-selected\):not\(/,
     );
   });
 });

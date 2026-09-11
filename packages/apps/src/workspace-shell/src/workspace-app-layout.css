@@ -100,13 +100,21 @@
     color-mix(in oklab, var(--color-ink) 55%, transparent)
   );
   /*
-   * Mark wash/glyph: do not inherit `.app-sidebar` selected-chip SST
-   * (55% accent→cream + accent-strong). That pairing collapses on tinted
-   * mint/emerald sidebars (Contacts/Drive). Dark footers remap `--color-ink`
-   * to sidebar on-color (white) so the same ink recipe stays readable.
+   * Opaque mark wash: darken the sidebar (not a transparent ink glaze).
+   * White-on-12%-white over Docs blue (#2563eb) flattened to ~4.17:1.
+   * 16% black into `--app-sidebar-bg` keeps white glyphs AA on navy/blue
+   * and ink glyphs AA on cream/mint. Do not inherit selected-chip SST.
    */
-  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --user-avatar-bg: color-mix(
+    in oklab,
+    #000000 16%,
+    var(--app-sidebar-bg, var(--color-cream, #ffffff))
+  );
   --user-avatar-fg: var(--color-ink);
   --user-avatar-border: color-mix(in oklab, var(--color-ink) 28%, transparent);
-  --user-avatar-hover-bg: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  --user-avatar-hover-bg: color-mix(
+    in oklab,
+    #000000 22%,
+    var(--app-sidebar-bg, var(--color-cream, #ffffff))
+  );
 }

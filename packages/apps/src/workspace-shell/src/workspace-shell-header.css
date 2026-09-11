@@ -26,9 +26,15 @@
 
 .workspace-shell-header__user-menu-trigger {
   @apply flex shrink-0 rounded-full border-0 bg-transparent p-0;
-  --user-avatar-bg: var(--workspace-shell-header-user-menu-bg, rgba(255, 255, 255, 0.16));
+  --user-avatar-bg: var(
+    --workspace-shell-header-user-menu-bg,
+    color-mix(in oklab, #ffffff 16%, var(--workspace-home-bg, #1b1d3a))
+  );
   --user-avatar-fg: var(--workspace-shell-header-user-menu-fg, #ffffff);
-  --user-avatar-border: var(--workspace-shell-header-user-menu-border, rgba(255, 255, 255, 0.22));
+  --user-avatar-border: var(
+    --workspace-shell-header-user-menu-border,
+    color-mix(in oklab, #ffffff 22%, var(--workspace-home-bg, #1b1d3a))
+  );
   --user-avatar-border-width: 1px;
 }
 

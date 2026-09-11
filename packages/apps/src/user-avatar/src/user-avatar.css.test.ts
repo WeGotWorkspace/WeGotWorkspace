@@ -45,6 +45,15 @@ describe("user avatar mark border", () => {
     expect(css).not.toMatch(/var\(--user-avatar-amber\) 32%,\s*var\(--color-cream/);
   });
 
+  it("keeps hashed-tile glyphs ink-heavy so 11px initials meet 4.5:1 on cream washes", () => {
+    expect(css).toMatch(
+      /--user-avatar-amber-fg:\s*color-mix\(in oklab,\s*var\(--user-avatar-amber\) 32%,\s*var\(--color-ink\)\)/,
+    );
+    expect(css).not.toMatch(
+      /--user-avatar-amber-fg:\s*color-mix\(in oklab,\s*var\(--user-avatar-amber\) 72%,\s*var\(--color-ink\)\)/,
+    );
+  });
+
   it("does not zero the mark border on the button reset", () => {
     const button = css.match(/button\.user-avatar__mark \{[\s\S]*?\n\}/)?.[0];
     expect(button).toBeDefined();

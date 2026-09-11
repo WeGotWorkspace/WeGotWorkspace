@@ -22,7 +22,7 @@
   --meet-live: #34d399;
   --meet-mic-off: #e5484d;
   --meet-overlay: rgba(8, 9, 18, 0.6);
-  --user-avatar-bg: rgba(255, 255, 255, 0.1);
+  --user-avatar-bg: color-mix(in oklab, #ffffff 12%, var(--meet-surface, #1b1d3a));
   --user-avatar-fg: var(--meet-text);
   --meet-empty-bg: rgba(255, 255, 255, 0.02);
   --meet-screen-bg: #000000;
@@ -245,7 +245,7 @@
   --meet-border-strong: rgba(255, 255, 255, 0.08);
   --meet-mic-off: #e5484d;
   --field-label-color: var(--meet-muted);
-  --user-avatar-bg: rgba(255, 255, 255, 0.1);
+  --user-avatar-bg: color-mix(in oklab, #ffffff 12%, var(--meet-surface, #1b1d3a));
   --user-avatar-fg: var(--meet-text);
   --button-primary-bg: var(--meet-accent-strong);
   --button-primary-fg: var(--meet-text);

@@ -13,11 +13,11 @@
     var(--color-cream, #fff)
   );
   --user-avatar-amber-border: color-mix(in oklab, var(--user-avatar-amber) 38%, transparent);
-  --user-avatar-amber-fg: color-mix(in oklab, var(--user-avatar-amber) 72%, var(--color-ink));
+  --user-avatar-amber-fg: color-mix(in oklab, var(--user-avatar-amber) 32%, var(--color-ink));
   --user-avatar-cyan: #06b6d4;
   --user-avatar-cyan-bg: color-mix(in oklab, var(--user-avatar-cyan) 14%, var(--color-cream, #fff));
   --user-avatar-cyan-border: color-mix(in oklab, var(--user-avatar-cyan) 38%, transparent);
-  --user-avatar-cyan-fg: color-mix(in oklab, var(--user-avatar-cyan) 72%, var(--color-ink));
+  --user-avatar-cyan-fg: color-mix(in oklab, var(--user-avatar-cyan) 32%, var(--color-ink));
   --user-avatar-orange: #f97316;
   --user-avatar-orange-bg: color-mix(
     in oklab,
@@ -25,7 +25,7 @@
     var(--color-cream, #fff)
   );
   --user-avatar-orange-border: color-mix(in oklab, var(--user-avatar-orange) 38%, transparent);
-  --user-avatar-orange-fg: color-mix(in oklab, var(--user-avatar-orange) 72%, var(--color-ink));
+  --user-avatar-orange-fg: color-mix(in oklab, var(--user-avatar-orange) 32%, var(--color-ink));
   --user-avatar-violet: #8b5cf6;
   --user-avatar-violet-bg: color-mix(
     in oklab,
@@ -33,23 +33,23 @@
     var(--color-cream, #fff)
   );
   --user-avatar-violet-border: color-mix(in oklab, var(--user-avatar-violet) 38%, transparent);
-  --user-avatar-violet-fg: color-mix(in oklab, var(--user-avatar-violet) 72%, var(--color-ink));
+  --user-avatar-violet-fg: color-mix(in oklab, var(--user-avatar-violet) 32%, var(--color-ink));
   --user-avatar-rose: #f43f5e;
   --user-avatar-rose-bg: color-mix(in oklab, var(--user-avatar-rose) 14%, var(--color-cream, #fff));
   --user-avatar-rose-border: color-mix(in oklab, var(--user-avatar-rose) 38%, transparent);
-  --user-avatar-rose-fg: color-mix(in oklab, var(--user-avatar-rose) 72%, var(--color-ink));
+  --user-avatar-rose-fg: color-mix(in oklab, var(--user-avatar-rose) 32%, var(--color-ink));
   --user-avatar-lime: #84cc16;
   --user-avatar-lime-bg: color-mix(in oklab, var(--user-avatar-lime) 14%, var(--color-cream, #fff));
   --user-avatar-lime-border: color-mix(in oklab, var(--user-avatar-lime) 38%, transparent);
-  --user-avatar-lime-fg: color-mix(in oklab, var(--user-avatar-lime) 72%, var(--color-ink));
+  --user-avatar-lime-fg: color-mix(in oklab, var(--user-avatar-lime) 32%, var(--color-ink));
   --user-avatar-teal: #14b8a6;
   --user-avatar-teal-bg: color-mix(in oklab, var(--user-avatar-teal) 14%, var(--color-cream, #fff));
   --user-avatar-teal-border: color-mix(in oklab, var(--user-avatar-teal) 38%, transparent);
-  --user-avatar-teal-fg: color-mix(in oklab, var(--user-avatar-teal) 72%, var(--color-ink));
+  --user-avatar-teal-fg: color-mix(in oklab, var(--user-avatar-teal) 32%, var(--color-ink));
   --user-avatar-sky: #0ea5e9;
   --user-avatar-sky-bg: color-mix(in oklab, var(--user-avatar-sky) 14%, var(--color-cream, #fff));
   --user-avatar-sky-border: color-mix(in oklab, var(--user-avatar-sky) 38%, transparent);
-  --user-avatar-sky-fg: color-mix(in oklab, var(--user-avatar-sky) 72%, var(--color-ink));
+  --user-avatar-sky-fg: color-mix(in oklab, var(--user-avatar-sky) 32%, var(--color-ink));
   display: flex;
   align-items: center;
   gap: var(--user-avatar-gap, 0.625rem);

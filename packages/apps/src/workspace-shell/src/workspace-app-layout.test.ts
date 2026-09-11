@@ -51,15 +51,18 @@ describe("WorkspaceUserFooter logout chrome", () => {
     expect(tsx).not.toMatch(/WORKSPACE_USER_LOGOUT_STYLE/);
   });
 
-  it("pins footer avatar mark to ink wash/fg — not sidebar selected-chip accent pairing", () => {
+  it("pins footer avatar mark to an opaque darkened sidebar wash — not selected-chip SST", () => {
     expect(css).toMatch(
-      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 12%/,
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(\s*in oklab,\s*#000000 16%,\s*var\(--app-sidebar-bg/,
     );
     expect(css).toMatch(
       /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--color-ink\)/,
     );
     expect(css).not.toMatch(
       /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--button-active-color/,
+    );
+    expect(css).not.toMatch(
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 12%,\s*transparent/,
     );
   });
 });

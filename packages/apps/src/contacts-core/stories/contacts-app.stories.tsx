@@ -37,7 +37,7 @@ export const Default: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Friends" }));
     await waitFor(() => {
-      expect(canvas.getByText("2 Contacts")).toBeInTheDocument();
+      expect(canvas.getByLabelText("2 Contacts")).toBeInTheDocument();
       expect(canvasElement.querySelector('[data-list-item-id="card-group-friends"]')).toBeNull();
       expect(canvasElement.querySelector('[data-list-item-id="card-jane"]')).toBeTruthy();
       expect(canvasElement.querySelector('[data-list-item-id="card-joe"]')).toBeTruthy();
