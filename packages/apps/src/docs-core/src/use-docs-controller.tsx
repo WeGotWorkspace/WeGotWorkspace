@@ -50,6 +50,7 @@ export function useDocsController({
   const { show, showError } = useAppToast();
   const [document, setDocument] = useState<DocsDocument | null>(initialDocument);
   const [content, setContent] = useState(() => initialDocument?.content ?? "");
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -89,6 +90,7 @@ export function useDocsController({
     pendingContentRef.current = null;
     try {
       await operations.saveFile(path, nextContent);
+      setLastSavedAt(new Date().toISOString());
       queueAutoSaveToast();
     } catch {
       showError(L.saveError);
@@ -127,6 +129,7 @@ export function useDocsController({
     if (!filePath) {
       setDocument(initialDocument);
       setContent(initialDocument?.content ?? "");
+      setLastSavedAt(null);
       setLoadError(false);
       setLoading(false);
       return;
@@ -135,6 +138,7 @@ export function useDocsController({
     if (!operations) {
       setDocument(null);
       setContent("");
+      setLastSavedAt(null);
       setLoadError(false);
       setLoading(false);
       return;
@@ -143,6 +147,7 @@ export function useDocsController({
     let cancelled = false;
     setLoading(true);
     setLoadError(false);
+    setLastSavedAt(null);
     void operations
       .loadFile(filePath)
       .then((loaded) => {
@@ -275,6 +280,7 @@ export function useDocsController({
     content,
     wordCount,
     characterCount,
+    lastSavedAt,
     loading,
     loadError,
     hasFile: !!filePath || !!initialDocument,

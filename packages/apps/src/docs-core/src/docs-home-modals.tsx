@@ -122,20 +122,30 @@ export function DocsHomeModals({
       <AlertDialog open={!!deleteState} onOpenChange={(open) => !open && closeDelete()}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move to Trash?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteState?.permanent
+                ? labels.homeDeletePermanentlyTitle
+                : labels.homeMoveToTrashTitle}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteState && deleteState.ids.length === 1
-                ? "This will move 1 file to Trash."
-                : `This will move ${deleteState?.ids.length ?? 0} files to Trash.`}
+              {deleteState?.permanent
+                ? deleteState.ids.length === 1
+                  ? labels.homeDeletePermanentlyOne
+                  : labels.homeDeletePermanentlyMany(deleteState.ids.length)
+                : deleteState && deleteState.ids.length === 1
+                  ? labels.homeMoveToTrashOne
+                  : labels.homeMoveToTrashMany(deleteState?.ids.length ?? 0)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
             <AlertDialogAction
               className={buttonVariants({ variant: "destructive" })}
               onClick={confirmTrash}
             >
-              Move to Trash
+              {deleteState?.permanent
+                ? labels.homeDeletePermanentlyAction
+                : labels.homeMoveToTrashAction}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

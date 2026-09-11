@@ -119,6 +119,9 @@ describe("docsHomeBrowsePathPrefix", () => {
   it("returns the drive prefix only for drive views", () => {
     expect(docsHomeBrowsePathPrefix({ type: "all" })).toBeUndefined();
     expect(docsHomeBrowsePathPrefix({ type: "shared" })).toBeUndefined();
+    expect(docsHomeBrowsePathPrefix({ type: "recent" })).toBeUndefined();
+    expect(docsHomeBrowsePathPrefix({ type: "starred" })).toBeUndefined();
+    expect(docsHomeBrowsePathPrefix({ type: "trash" })).toBeUndefined();
     expect(docsHomeBrowsePathPrefix({ type: "drive", pathPrefix: "users/alice" })).toBe(
       "users/alice",
     );

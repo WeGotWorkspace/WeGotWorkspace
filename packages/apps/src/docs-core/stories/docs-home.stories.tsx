@@ -172,7 +172,7 @@ export const Default: Story = {
     const canvas = within(canvasElement);
 
     await expect(await canvas.findByRole("button", { name: "New document" })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "My docs" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "My Docs" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Shared with me" })).toBeInTheDocument();
     await expect(canvas.getByText("My Drives")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Personal" })).toBeInTheDocument();

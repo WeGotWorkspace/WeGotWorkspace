@@ -61,6 +61,8 @@ export type DocsHomePaneProps = {
   onRename?: (file: DriveFile) => void;
   onMove?: (file: DriveFile) => void;
   onTrash?: (file: DriveFile) => void;
+  /** When true, selection delete permanently removes files (Trash view). */
+  inTrashView?: boolean;
   operations?: DriveAPIOperations;
   batchStar?: (ids: string[]) => void;
   requestMoveSelected?: (ids: string[]) => void;
@@ -123,6 +125,7 @@ export function DocsHomePane({
   onRename,
   onMove,
   onTrash,
+  inTrashView = false,
   operations,
   batchStar,
   requestMoveSelected,
@@ -222,7 +225,7 @@ export function DocsHomePane({
     selectedIds,
     selectionMode,
     activeId,
-    inTrashView: false,
+    inTrashView,
     operations,
     exitSelection,
     batchStar: () => batchStar?.(selectedIds),
@@ -291,7 +294,7 @@ export function DocsHomePane({
     starred: starred ?? {},
     labels: driveLabels,
     searchActive: false,
-    inTrash: false,
+    inTrash: inTrashView,
     selectionMode,
     isTouch,
     showLocationColumn: true,
@@ -338,42 +341,44 @@ export function DocsHomePane({
       </div>
 
       <div className="docs-home-pane__body drive-workspace">
-        {loading ? (
-          <CollectionState variant="loading">{labels.homeLoading}</CollectionState>
-        ) : error ? (
-          <CollectionState icon={emptyIcon ?? <FileText className="size-12" />}>
-            {error}
-          </CollectionState>
-        ) : files.length === 0 ? (
-          <CollectionState icon={emptyIcon ?? <FileText className="size-12" />}>
-            {emptyMessage ?? labels.homeEmpty}
-          </CollectionState>
-        ) : (
-          <>
-            {viewMode === "grid" ? (
-              <DriveGridView {...gridBrowserProps} />
-            ) : (
-              <DriveListView
-                {...sharedBrowserProps}
-                activeId={activeId}
-                showKindColumn={false}
-                locationColumnLabel={labels.homeLocationColumn}
-              />
-            )}
-            {hasMore ? (
-              <div className="docs-home-pane__load-more">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  label={labels.homeLoadMore}
-                  disabled={loadingMore}
-                  aria-busy={loadingMore}
-                  onClick={onLoadMore}
+        <div className="docs-home-pane__scroll collection-state-host">
+          {loading ? (
+            <CollectionState variant="loading">{labels.homeLoading}</CollectionState>
+          ) : error ? (
+            <CollectionState icon={emptyIcon ?? <FileText className="size-12" />}>
+              {error}
+            </CollectionState>
+          ) : files.length === 0 ? (
+            <CollectionState icon={emptyIcon ?? <FileText className="size-12" />}>
+              {emptyMessage ?? labels.homeEmpty}
+            </CollectionState>
+          ) : (
+            <>
+              {viewMode === "grid" ? (
+                <DriveGridView {...gridBrowserProps} />
+              ) : (
+                <DriveListView
+                  {...sharedBrowserProps}
+                  activeId={activeId}
+                  showKindColumn={false}
+                  locationColumnLabel={labels.homeLocationColumn}
                 />
-              </div>
-            ) : null}
-          </>
-        )}
+              )}
+              {hasMore ? (
+                <div className="docs-home-pane__load-more">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label={labels.homeLoadMore}
+                    disabled={loadingMore}
+                    aria-busy={loadingMore}
+                    onClick={onLoadMore}
+                  />
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
         {selectionBar}
       </div>
 

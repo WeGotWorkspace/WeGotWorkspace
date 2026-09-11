@@ -3,20 +3,21 @@
  * Markdown / plain-text allowlist used by Docs home browse (`DOCS_HOME_EXTENSIONS`).
  * Folders are omitted (Docs opens files, not folder browse).
  */
-import {
-  driveFileFromSharedWithMeEntry,
-  extensionFromFileName,
-} from "@/drive-core/src/drive-file-utils";
+import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
+import { mapDriveSharedWithMeEntries } from "@/drive-core/src/drive-shared-listing";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveSharedWithMeEntry } from "@wgw-api-generated/drive-types";
 import { DOCS_HOME_EXTENSIONS } from "@/docs-core/src/docs-home-constants";
 
 const DOCS_HOME_EXTENSION_SET = new Set<string>(DOCS_HOME_EXTENSIONS);
 
-/** Sidebar / listing selection for Docs home (My docs, Shared with me, or a drive). */
+/** Sidebar / listing selection for Docs home (My Docs, Shared with me, virtual views, or a drive). */
 export type DocsHomeView =
   | { type: "all" }
   | { type: "shared" }
+  | { type: "recent" }
+  | { type: "starred" }
+  | { type: "trash" }
   | { type: "drive"; pathPrefix: string };
 
 /** True when a file title/path has a Docs-home browse extension (md / markdown / txt). */
@@ -41,13 +42,7 @@ export function mapDocsHomeSharedEntries(
   entries: readonly DriveSharedWithMeEntry[],
   username: string,
 ): DriveFile[] {
-  const files: DriveFile[] = [];
-  for (const entry of entries) {
-    const file = driveFileFromSharedWithMeEntry(entry, username);
-    if (!file || !isDocsHomeCompatibleSharedFile(file)) continue;
-    files.push(file);
-  }
-  return files;
+  return mapDriveSharedWithMeEntries(entries, username).filter(isDocsHomeCompatibleSharedFile);
 }
 
 /** Client-side title filter for the Shared with me listing (no server search). */

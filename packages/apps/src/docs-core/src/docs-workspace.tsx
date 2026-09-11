@@ -259,19 +259,10 @@ function DocsMainHeader({
           <DocsHeaderActions
             actions={[
               {
-                id: "view-source",
-                label: viewSource ? controller.labels.hideSource : controller.labels.viewSource,
-                icon: <Code2 />,
-                active: viewSource,
-                disabled: !editor,
-                className: viewSource ? "docs-workspace__source-toggle--active" : undefined,
-                onClick: onToggleViewSource,
-              },
-              {
                 id: "print",
                 label: controller.labels.print,
                 icon: <Printer />,
-                disabled: !editor,
+                disabled: !editor || viewSource,
                 onClick: () => printTextEditorSheet(editor),
               },
               ...(showShare
@@ -291,6 +282,15 @@ function DocsMainHeader({
                 icon: <Pencil />,
                 disabled: !controller.canRename,
                 onClick: controller.openRenameDialog,
+              },
+              {
+                id: "view-source",
+                label: viewSource ? controller.labels.hideSource : controller.labels.viewSource,
+                icon: <Code2 />,
+                active: viewSource,
+                disabled: !editor,
+                className: viewSource ? "docs-workspace__source-toggle--active" : undefined,
+                onClick: onToggleViewSource,
               },
             ]}
           />
