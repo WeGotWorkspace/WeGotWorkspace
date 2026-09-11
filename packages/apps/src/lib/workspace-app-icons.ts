@@ -71,3 +71,20 @@ export function workspaceAppIconSrc(appId: WorkspaceAppId, size = APPLE_TOUCH_SI
 export function isWorkspaceAppId(value: string): value is WorkspaceAppId {
   return (WORKSPACE_APP_IDS as readonly string[]).includes(value);
 }
+
+/** Capitalized product label for chrome (app switch, toasts) — `docs` → `Docs`. */
+export function workspaceAppLabel(appId: WorkspaceAppId): string {
+  return appId.charAt(0).toUpperCase() + appId.slice(1);
+}
+
+/**
+ * Resolve the active suite app label from a pathname the same way
+ * {@link AppSwitchButton} infers its subtitle from the route.
+ * Falls back to `Workspace` on home / login / unknown paths.
+ */
+export function workspaceAppLabelFromPath(pathname: string): string {
+  const match = WORKSPACE_APP_IDS.find(
+    (id) => pathname === `/${id}` || pathname.startsWith(`/${id}/`),
+  );
+  return match ? workspaceAppLabel(match) : "Workspace";
+}
