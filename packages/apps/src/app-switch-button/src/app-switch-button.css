@@ -1,7 +1,8 @@
 @import "../../styles.css" reference;
 
 .app-switch-button__trigger {
-  @apply inline-flex min-w-0 items-center gap-2 rounded-lg pr-2 pl-1 py-1 -ml-1 transition-colors outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+  /* Top-align mark with the two-line label (not vertical center of the lockup). */
+  @apply inline-flex min-w-0 items-start gap-2 rounded-lg pr-2 pl-1 py-1 -ml-1 transition-colors outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
   user-select: none;
   color: var(--app-switch-label-color, currentColor);
   --app-switch-lockup-line: calc(1.875rem * 0.85);
@@ -34,7 +35,8 @@
 } */
 
 .app-switch-button__label {
-  @apply flex min-w-0 flex-col items-start leading-[0.85] tracking-wide text-left uppercase text-3xl;
+  /* leading after text-3xl so lockup-line math (0.85 × 1.875rem) wins over text-3xl's default lh. */
+  @apply flex min-w-0 flex-col items-start tracking-wide text-left uppercase text-3xl leading-[0.85];
   font-family: var(--font-app);
   color: var(--app-switch-label-color, currentColor);
 }
@@ -50,12 +52,15 @@
   );
 }
 
-.app-switch-button__chevron-stack {
-  @apply grid grid-rows-2 leading-[0.85];
+.app-switch-button__label-name {
+  @apply inline-flex items-baseline;
 }
 
 .app-switch-button__chevron {
-  @apply size-4 self-center transition-transform;
+  /* Same --font-app / text-3xl / weight as the app name; muted color only. */
+  @apply inline-block shrink-0 transition-transform;
+  margin-inline-start: 0.12em;
+  line-height: 1;
   color: var(
     --app-switch-chevron-color,
     color-mix(
@@ -76,7 +81,7 @@
   border-color: color-mix(in oklab, currentColor 25%, transparent);
 }
 .app-switch-button__trigger--compact {
-  @apply items-center gap-1.5 py-0.5 pl-0.5 pr-1.5;
+  @apply items-start gap-1.5 py-0.5 pl-0.5 pr-1.5;
 }
 
 .app-switch-button__trigger--compact .app-switch-button__icon {
@@ -86,12 +91,4 @@
 
 .app-switch-button__trigger--compact .workspace-app-icon--switch-trigger {
   @apply rounded-[4px];
-}
-
-.app-switch-button__trigger--compact .app-switch-button__chevron-stack {
-  @apply grid-rows-1;
-}
-
-.app-switch-button__trigger--compact .app-switch-button__chevron-stack > span:first-child {
-  display: none;
 }
