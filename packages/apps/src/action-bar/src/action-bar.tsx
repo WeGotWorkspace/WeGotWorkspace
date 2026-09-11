@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 import { ArrowLeft, MoreHorizontal, X } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
-import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
+import { ICON_BUTTON_ACTIVE_CLASSNAME, type ButtonSeverity } from "@/button/src/button.shared";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
-import type { MenuItemSeverity } from "@/menu-item/src/menu-item";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "@/action-bar/src/action-bar.css";
@@ -25,9 +24,14 @@ export type ActionBarAction = {
   disabled?: boolean;
   /** When true, render icon + visible label (Button) instead of icon-only IconButton. */
   showLabel?: boolean;
-  /** Passed through to overflow DropdownMenu items (e.g. Delete → danger wash). */
-  severity?: MenuItemSeverity;
+  /**
+   * Destructive outline wash on the inline IconButton and overflow menu item
+   * (e.g. Delete → `button--severity-danger`).
+   */
+  severity?: ButtonSeverity;
 };
+
+export type ActionBarRightLeadingPlacement = "start" | "after-first";
 
 export type ActionBarProps = {
   /** Shown only below the `md` breakpoint; typically closes the mobile detail stack. */
@@ -47,10 +51,15 @@ export type ActionBarProps = {
   /** Preferred API: action descriptors rendered by ActionBar with compact dropdown behavior. */
   rightActions?: ActionBarAction[];
   /**
-   * Optional leading content before right actions (e.g. collab presence), matching
-   * docs header `leading` slot order: presence then actions.
+   * Optional leading content beside right actions (e.g. notebook / address-book switcher).
+   * Placement defaults to before all actions (`start`).
    */
   rightLeading?: ReactNode;
+  /**
+   * Where to put {@link rightLeading} relative to {@link rightActions}.
+   * `after-first` pins the first right action leftmost (e.g. Contacts Edit), then the leading slot.
+   */
+  rightLeadingPlacement?: ActionBarRightLeadingPlacement;
   leftMenuLabel?: string;
   rightMenuLabel?: string;
   leftMenuIcon?: ReactNode;
@@ -108,12 +117,47 @@ function renderActionItems(actions: ActionBarAction[]) {
         onClick={action.onClick}
         active={action.active}
         disabled={action.disabled}
+        severity={action.severity}
         icon={action.icon}
         size="sm"
         variant="outline"
       />
     );
   });
+}
+
+function renderRightLeading(rightLeading: ReactNode) {
+  return <div className="action-bar__right-leading">{rightLeading}</div>;
+}
+
+function renderRightInlineWithLeading({
+  inline,
+  rightLeading,
+  placement,
+}: {
+  inline: ActionBarAction[];
+  rightLeading: ReactNode | undefined;
+  placement: ActionBarRightLeadingPlacement;
+}) {
+  const leading = rightLeading != null ? renderRightLeading(rightLeading) : null;
+  if (placement === "after-first" && inline.length > 0 && leading != null) {
+    return (
+      <>
+        <div className="action-bar__row">{renderActionItems(inline.slice(0, 1))}</div>
+        {leading}
+        {inline.length > 1 ? (
+          <div className="action-bar__row">{renderActionItems(inline.slice(1))}</div>
+        ) : null}
+      </>
+    );
+  }
+  return (
+    <>
+      {placement === "start" ? leading : null}
+      <div className="action-bar__row">{renderActionItems(inline)}</div>
+      {placement === "after-first" ? leading : null}
+    </>
+  );
 }
 
 function renderCompactDropdown(
@@ -160,6 +204,7 @@ export function ActionBar({
   leftActions,
   rightActions,
   rightLeading,
+  rightLeadingPlacement = "start",
   leftMenuLabel = "More actions",
   rightMenuLabel = "More actions",
   leftMenuIcon = <MoreHorizontal />,
@@ -208,12 +253,13 @@ export function ActionBar({
       <div className="action-bar__spacer" />
       {hasRightChrome ? (
         <div className="action-bar__right">
-          {rightLeading != null ? (
-            <div className="action-bar__right-leading">{rightLeading}</div>
-          ) : null}
           {rightSplit ? (
             <>
-              <div className="action-bar__row">{renderActionItems(rightSplit.inline)}</div>
+              {renderRightInlineWithLeading({
+                inline: rightSplit.inline,
+                rightLeading,
+                placement: rightLeadingPlacement,
+              })}
               {rightSplit.overflow.length > 0
                 ? renderCompactDropdown(
                     rightSplit.overflow,
@@ -224,9 +270,17 @@ export function ActionBar({
                   )
                 : null}
             </>
-          ) : right != null ? (
-            right
-          ) : null}
+          ) : (
+            <>
+              {rightLeading != null && rightLeadingPlacement === "start"
+                ? renderRightLeading(rightLeading)
+                : null}
+              {right != null ? right : null}
+              {rightLeading != null && rightLeadingPlacement === "after-first"
+                ? renderRightLeading(rightLeading)
+                : null}
+            </>
+          )}
         </div>
       ) : null}
     </nav>

@@ -123,11 +123,17 @@ export function ContactsDetailActionBar({
     },
   ];
 
+  const moveLeading =
+    moveAddressBook && moveAddressBook.books.length >= 2 ? (
+      <MoveAddressBookSelect labels={labels} moveAddressBook={moveAddressBook} />
+    ) : undefined;
+
   return (
     <ActionBar
       onBack={closeMobileDetail}
       backLabel={backLabel}
-      rightLeading={<MoveAddressBookSelect labels={labels} moveAddressBook={moveAddressBook} />}
+      rightLeading={moveLeading}
+      rightLeadingPlacement={canEdit ? "after-first" : "start"}
       rightActions={rightActions}
       rightMenuLabel="More actions"
     />

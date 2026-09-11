@@ -95,4 +95,52 @@ describe("ActionBar", () => {
       within(container.querySelector(".action-bar__row")!).getAllByRole("button"),
     ).toHaveLength(4);
   });
+
+  it("applies severity-danger wash to inline destructive IconButtons", () => {
+    const { container } = renderBar(
+      <ActionBar
+        rightActions={[
+          { id: "reply", label: "Reply", icon: <Reply />, onClick: vi.fn() },
+          {
+            id: "trash",
+            label: "Delete",
+            icon: <Trash2 />,
+            onClick: vi.fn(),
+            severity: "danger",
+          },
+        ]}
+      />,
+    );
+
+    const deleteButton = screen.getByRole("button", { name: "Delete" });
+    expect(deleteButton.className).toContain("button--severity-danger");
+    expect(container.querySelector(".action-bar__row .button--severity-danger")).toBe(deleteButton);
+  });
+
+  it("pins the first right action before rightLeading when placement is after-first", () => {
+    const { container } = renderBar(
+      <ActionBar
+        rightLeading={<span data-testid="leading-slot">Book</span>}
+        rightLeadingPlacement="after-first"
+        rightActions={[
+          { id: "edit", label: "Edit", icon: <Reply />, onClick: vi.fn(), showLabel: true },
+          { id: "download", label: "Download", icon: <Forward />, onClick: vi.fn() },
+          { id: "delete", label: "Delete", icon: <Trash2 />, onClick: vi.fn() },
+        ]}
+      />,
+    );
+
+    const right = container.querySelector(".action-bar__right");
+    expect(right).toBeTruthy();
+    const children = Array.from(right!.children).map((child) => child.className);
+    expect(children[0]).toContain("action-bar__row");
+    expect(children[1]).toContain("action-bar__right-leading");
+    expect(children[2]).toContain("action-bar__row");
+    expect(
+      within(right as HTMLElement)
+        .getAllByRole("button")
+        .map((b) => b.getAttribute("aria-label")),
+    ).toEqual(["Edit", "Download", "Delete"]);
+    expect(screen.getByTestId("leading-slot")).toBeTruthy();
+  });
 });

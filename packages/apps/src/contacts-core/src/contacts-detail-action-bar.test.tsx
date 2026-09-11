@@ -80,6 +80,36 @@ describe("ContactsDetailActionBar", () => {
     expect(buttons[2].textContent).not.toContain(defaultContactsLabels.delete);
   });
 
+  it("pins edit before the address-book switcher and washes delete with severity-danger", () => {
+    stubSelectEnv();
+    const { container } = renderActionBar({
+      moveAddressBook: {
+        books: twoBooks,
+        value: "default",
+        onMove: vi.fn(),
+      },
+    });
+
+    const right = container.querySelector(".action-bar__right");
+    expect(right).toBeTruthy();
+    const rightChildren = Array.from(right!.children).map((child) => child.className);
+    expect(rightChildren[0]).toContain("action-bar__row");
+    expect(rightChildren[1]).toContain("action-bar__right-leading");
+    expect(rightChildren[2]).toContain("action-bar__row");
+
+    const buttons = within(right as HTMLElement).getAllByRole("button");
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
+      defaultContactsLabels.edit,
+      defaultContactsLabels.downloadVCard,
+      defaultContactsLabels.delete,
+    ]);
+    expect(buttons[0].className).toContain("action-bar__action--labeled");
+    expect(buttons[2].className).toContain("button--severity-danger");
+    expect(
+      screen.getByRole("combobox", { name: defaultContactsLabels.personalAddressBook }),
+    ).toBeTruthy();
+  });
+
   it("keeps read actions visible while editing with correct disabled states", () => {
     const { container } = renderActionBar({ editMode: true });
     const row = container.querySelector(".action-bar__row");
