@@ -14,7 +14,6 @@
 }
 
 .multi-selection-view__actions {
-  --button-subtle-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  /* Idle outline chips stay muted; parents publish accent active/hover washes. */
+  --button-outline-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
 }

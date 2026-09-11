@@ -139,3 +139,46 @@ describe("WorkspaceApp mobile detail", () => {
     expect(screen.getByRole("main").getAttribute("data-open")).toBe("true");
   });
 });
+
+describe("WorkspaceApp detail scroll reset", () => {
+  it("resets the detail scrollport to the top when detailScrollResetKey changes", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
+
+    const { rerender } = render(
+      <WorkspaceApp
+        detailScrollResetKey="note-a"
+        workspaceRoot={{ className: "notes-workspace" }}
+        sidebar={() => <aside>Sidebar</aside>}
+        list={() => ({
+          header: <div>Header</div>,
+          listContent: <div>List</div>,
+          hasItems: true,
+          emptyLabel: "Empty",
+        })}
+        detail={() => <div style={{ height: 2000 }}>Tall detail</div>}
+      />,
+    );
+
+    const scroll = document.querySelector(".workspace-detail-pane__scroll") as HTMLDivElement;
+    expect(scroll).toBeTruthy();
+    Object.defineProperty(scroll, "scrollTop", { configurable: true, writable: true, value: 480 });
+    expect(scroll.scrollTop).toBe(480);
+
+    rerender(
+      <WorkspaceApp
+        detailScrollResetKey="note-b"
+        workspaceRoot={{ className: "notes-workspace" }}
+        sidebar={() => <aside>Sidebar</aside>}
+        list={() => ({
+          header: <div>Header</div>,
+          listContent: <div>List</div>,
+          hasItems: true,
+          emptyLabel: "Empty",
+        })}
+        detail={() => <div style={{ height: 2000 }}>Tall detail</div>}
+      />,
+    );
+
+    expect(scroll.scrollTop).toBe(0);
+  });
+});

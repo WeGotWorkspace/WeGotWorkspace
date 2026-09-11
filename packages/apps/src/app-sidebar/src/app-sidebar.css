@@ -22,37 +22,118 @@
 }
 
 .app-sidebar {
-  @apply fixed sidebar:static z-40 inset-y-0 left-0 shrink-0 flex h-dvh min-h-0 w-64 flex-col self-stretch border-r shadow-2xl sidebar:h-full sidebar:min-h-0 sidebar:shadow-none transition-[translate,margin,border-width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-hidden will-change-transform;
+  @apply fixed sidebar:static z-40 inset-y-0 left-0 shrink-0 flex h-dvh min-h-0 w-64 flex-col self-stretch border-r shadow-2xl sidebar:h-full sidebar:min-h-0 sidebar:shadow-none transition-[translate,margin,border-width] overflow-hidden will-change-transform;
+  transition-duration: var(--panel-overlay-duration);
+  transition-timing-function: var(--panel-overlay-ease);
   background-color: var(--app-sidebar-bg, var(--mail-sidebar, var(--color-cream, #ffffff)));
   border-color: var(
     --app-sidebar-border-color,
     color-mix(in oklab, var(--color-ink) 15%, transparent)
   );
   color: var(--app-sidebar-color, var(--color-ink));
-  --app-sidebar-close-hover-bg: color-mix(
-    in oklab,
-    var(--sidebar-logo-close-button-color, var(--color-ink)) 8%,
-    transparent
-  );
+  /* Outer chrome gutter — aligns with the app-switch icon tile. */
   --app-sidebar-padding-x: 1rem;
+  /* Same lockup math as `.app-switch-button__icon` (two caption lines). */
+  --app-switch-lockup-line: calc(1.875rem * 0.85);
+  --app-switch-icon-size: calc(2 * var(--app-switch-lockup-line));
+  /* White mark inset in 512² `/app-icons/*.svg` artwork (calendar body at x=112). */
+  --app-switch-glyph-inset: calc(var(--app-switch-icon-size) * 112 / 512);
+  /* Section titles + collection/menu rows: align to the glyph, not the tile edge. */
+  --app-sidebar-item-padding-x: var(--app-switch-glyph-inset);
+  /*
+   * Nav item SST (MenuItem + collection rows inherit). Hierarchy:
+   * idle < hover (accent 32%→cream) < selected (55% accent→cream) <
+   * selected-hover (65% accent→cream). Hover uses the same cream mix family
+   * as selected so it reads a little lighter, not a denser transparent wash.
+   * Products may override via `--app-sidebar-item-*`. Dark scroll remaps
+   * (Docs/Mail/Admin/Settings) still win on `.app-sidebar__scroll`. Selected
+   * on-color uses contrast-color against the selected wash (cream-nudged
+   * white, or dark when the wash stays light).
+   */
+  --button-outline-hover-background: var(
+    --app-sidebar-item-hover-bg,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 32%, var(--color-cream, #ffffff))
+  );
+  --button-outline-active-background: var(
+    --app-sidebar-item-selected-bg,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 55%, var(--color-cream, #ffffff))
+  );
+  --button-outline-active-hover-background: var(
+    --app-sidebar-item-selected-hover-bg,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 65%, var(--color-cream, #ffffff))
+  );
+  /* Fallback when contrast-color() is unavailable: keep a readable dark glyph. */
+  --button-active-color: var(
+    --app-sidebar-item-selected-color,
+    color-mix(
+      in oklab,
+      var(--button-active-color, var(--workspace-accent, var(--color-ink))) 70%,
+      var(--color-ink)
+    )
+  );
+}
+
+@supports (color: contrast-color(red)) {
+  .app-sidebar {
+    /*
+     * Light on-color (cream-nudged white) when the selected wash is strong/dark
+     * enough; dark when the wash stays light (e.g. yellow Notes). Override via
+     * `--app-sidebar-item-selected-color` still wins.
+     */
+    --button-active-color: var(
+      --app-sidebar-item-selected-color,
+      color-mix(
+        in oklab,
+        contrast-color(var(--button-outline-active-background)) 92%,
+        var(--color-cream, #ffffff)
+      )
+    );
+  }
 }
 
 .app-sidebar__header {
-  @apply flex shrink-0 items-center justify-between gap-3 py-6;
+  /*
+   * Block padding matches `.workspace-app-layout__main-header` (`p-4 md:p-6`) so
+   * the app-switch icon tile tops align with ViewHeader IconButtons across the
+   * mobile overlay split. Keep `items-start` so the mark does not float above close.
+   */
+  @apply flex shrink-0 items-start justify-between gap-3 py-4 md:py-6;
   padding-inline: var(--app-sidebar-padding-x);
 }
 
 .app-sidebar__header-main {
-  @apply flex min-w-0 items-center gap-2;
+  @apply flex min-w-0 items-start gap-2;
+}
+
+/*
+ * Trigger carries `py-1` for hit area; zero the top so the tile (not the padding)
+ * shares the same top edge as main-header IconButtons.
+ */
+.app-sidebar__header .app-switch-button__trigger {
+  @apply pt-0;
 }
 
 .app-sidebar__close {
-  @apply flex size-8 shrink-0 items-center justify-center rounded-full transition-colors sidebar:hidden;
-  color: var(--sidebar-logo-close-button-color, var(--color-ink));
+  /* Overlay mount + CSS hide; tile tops at header edge — no mt offset. */
+  @apply shrink-0;
+  /*
+   * Match footer logout IconButton: remap ink so outline + --control-border-color
+   * (ink 12% wash) resolve on dark chrome the same way as WorkspaceUserFooter.
+   */
+  --color-ink: var(--sidebar-logo-close-button-color, var(--app-sidebar-color, var(--color-ink)));
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--color-ink);
+  --button-outline-hover-background: color-mix(in oklab, var(--color-ink) 8%, transparent);
 }
 
-.app-sidebar__close:hover {
-  background-color: var(--app-sidebar-close-hover-bg);
+/*
+ * Docked sidebar (≥ `--breakpoint-sidebar` / 72.5rem): never show close.
+ * `@apply sidebar:hidden` loses to `.button { display: inline-flex }` (equal specificity).
+ */
+@media (width >= 72.5rem) {
+  .app-sidebar .button.app-sidebar__close {
+    display: none !important;
+  }
 }
 
 .app-sidebar__scroll {
@@ -86,5 +167,7 @@
 }
 
 .app-sidebar__scrim {
-  @apply fixed inset-0 z-30 cursor-pointer bg-black/30 sidebar:hidden animate-in fade-in duration-300;
+  @apply fixed inset-0 z-30 cursor-pointer bg-black/30 sidebar:hidden animate-in fade-in;
+  --tw-duration: var(--panel-overlay-duration);
+  animation-duration: var(--panel-overlay-duration);
 }

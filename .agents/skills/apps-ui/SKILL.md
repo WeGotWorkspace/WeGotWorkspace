@@ -46,7 +46,7 @@ Refactor checklist:
 
 - Primitives MUST stay context-agnostic; do not put semantic context classes like `*-toolbar`, `*-list`, `*-fab` on primitive instances.
 - Parent containers MUST own visual context by setting CSS custom properties in parent CSS files (for example `.settings-workspace`, `.admin-workspace`, `.admin-dialog-surface`).
-- Primitives MUST consume variables with defaults, e.g. `var(--button-subtle-color, <fallback>)`.
+- Primitives MUST consume variables with defaults, e.g. `var(--button-outline-color, <fallback>)`.
 - State behavior (hover, active, disabled) MUST live in primitive CSS; parents MUST override via variables only, not by reimplementing state in TSX.
 - Styling contracts MUST live in CSS files; do NOT centralize recurring visual presets in TypeScript objects.
 - When layout depends on parent width, you MUST use container queries in shared CSS with a media-query fallback where needed.
@@ -54,7 +54,7 @@ Refactor checklist:
 
 Example:
 
-- Parent CSS: set `--button-subtle-*`, `--button-ghost-*`, `--button-primary-*` on the workspace or dialog root.
+- Parent CSS: set `--button-outline-*`, `--button-ghost-*`, `--button-primary-*` on the workspace or dialog root.
 - Primitive CSS: read those vars in `.button--variant-*` rules with sensible fallbacks.
 
 ### Tailwind and `className` in workspace panes

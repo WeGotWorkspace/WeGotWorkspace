@@ -211,7 +211,7 @@ function TaskRow({
               label={L.taskActions}
               icon={<MoreVertical className="size-4" />}
               size="sm"
-              variant="subtle"
+              variant="outline"
               disabled={isExiting || !canMutate}
             />
           }
@@ -229,6 +229,7 @@ function TaskRow({
               icon: <Trash2 className="size-4" />,
               onClick: () => onDeleteTask(task.id),
               disabled: !canMutate,
+              severity: "danger",
             },
           ]}
         />
@@ -264,7 +265,6 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
       ...emptyTaskForm(defaultListId),
       due: composerDefaultDueForView(view),
     }));
-    const viewDefaultDue = composerDefaultDueForView(view);
     const displayLists = allTaskLists ?? taskLists;
 
     const focusComposerTitle = useCallback(() => {
@@ -313,11 +313,6 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
       },
       [draft, focusComposerTitle, onCreateTask, resetDraft],
     );
-
-    const hasDraftContent =
-      draft.title.trim().length > 0 ||
-      draft.description.trim().length > 0 ||
-      (draft.due !== null && draft.due !== viewDefaultDue);
 
     return (
       <div className="tasks-main-view">
@@ -369,17 +364,6 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
                 />
 
                 <div className="tasks-main-view__composer-actions">
-                  {hasDraftContent ? (
-                    <Button
-                      type="button"
-                      variant="subtle"
-                      size="sm"
-                      onClick={resetDraft}
-                      disabled={!canCreate}
-                    >
-                      {L.cancel}
-                    </Button>
-                  ) : null}
                   <Button
                     type="submit"
                     variant="primary"

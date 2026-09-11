@@ -60,7 +60,7 @@ export const Default: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     const trigger = canvas.getByRole("combobox", {
-      name: defaultNotesLabels.toolbarMoveToNotebook,
+      name: "Drafts",
     });
     await expect(trigger).toHaveTextContent("Drafts");
 

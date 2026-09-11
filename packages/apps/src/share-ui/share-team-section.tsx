@@ -19,11 +19,7 @@ import {
   SharePrincipalSearchDropdown,
   type ShareSearchOption,
 } from "@/share-ui/share-principal-search-dropdown";
-import {
-  SHARE_UI_PERMISSIONS,
-  accessToUIPermission,
-  type ShareUIPermission,
-} from "@/share-ui/share-access-map";
+import { SHARE_UI_PERMISSIONS, type ShareUIPermission } from "@/share-ui/share-access-map";
 import { formatSharePathLabel, shareLabels } from "@/share-ui/share-labels";
 import { SharePrincipalMark } from "@/share-ui/share-principal-mark";
 import { SharePrincipalRow } from "@/share-ui/share-principal-row";
@@ -124,8 +120,6 @@ export function ShareTeamSection({
       >
         {groupGrants.map((grant) => {
           const inherited = grant.source.inherited;
-          const uiPermission = accessToUIPermission(grant.access);
-          const active = Boolean(uiPermission);
           return (
             <SharePrincipalRow
               key={grant.principal}
@@ -133,7 +127,6 @@ export function ShareTeamSection({
                 <SharePrincipalMark
                   principalType="group"
                   displayName={grant.displayName ?? formatSharePathLabel(grant.principal)}
-                  active={active}
                 />
               }
               title={grant.displayName ?? formatSharePathLabel(grant.principal)}
@@ -169,8 +162,6 @@ export function ShareTeamSection({
 
         {directMemberAccess.map((member) => {
           const inherited = member.source.inherited;
-          const uiPermission = accessToUIPermission(member.access);
-          const active = Boolean(uiPermission);
           const subtitle = inherited
             ? member.username
             : member.viaGroup
@@ -184,7 +175,7 @@ export function ShareTeamSection({
                 <SharePrincipalMark
                   principalType="user"
                   displayName={member.displayName}
-                  active={active}
+                  principalId={member.username}
                 />
               }
               title={member.displayName}

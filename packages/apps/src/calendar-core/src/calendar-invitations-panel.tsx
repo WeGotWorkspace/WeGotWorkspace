@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { CheckCheck, Inbox } from "lucide-react";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarInvitationCard } from "@/calendar-core/src/calendar-invitation-card";
 import {
@@ -11,7 +12,6 @@ import type {
   CalendarSchedulingNotification,
   CalendarSchedulingRespondStatus,
 } from "@/lib/api/wgw/calendar-scheduling";
-import { SegmentedControl } from "@/segmented-control/src/segmented-control";
 import { DocsCollabSidebarPanel } from "@/text-editor-core/docs-collab/docs-collab-card";
 import "./calendar-invitations-panel.css";
 
@@ -47,7 +47,7 @@ export function CalendarInvitationsPanel({
   defaultCalendarId,
   busy = false,
   activeId = null,
-  showCloseButton = false,
+  showCloseButton = true,
   tab: tabProp,
   onTabChange,
   onClose,
@@ -69,7 +69,6 @@ export function CalendarInvitationsPanel({
       className="calendar-invitations-panel"
       ariaLabel={labels.invitationsSection}
       title={labels.invitationsSection}
-      titleSize="default"
       closeLabel={labels.invitationsClosePanel}
       onClose={onClose}
       showCloseButton={showCloseButton}
@@ -77,22 +76,27 @@ export function CalendarInvitationsPanel({
       empty={count === 0}
       emptyLabel={tab === "responded" ? labels.invitationsEmptyResponded : labels.invitationsEmpty}
       listClassName="docs-collab-sidebar-panel__list calendar-invitations-panel__list"
-      toolbar={
-        <SegmentedControl
-          value={tab}
-          onChange={(next) => {
-            if (tabProp === undefined) setUncontrolledTab(next);
-            onTabChange?.(next);
-          }}
-          size="sm"
-          className="calendar-invitations-panel__filter"
-          aria-label={labels.invitationsFilterAria}
-          options={[
-            { value: "new", label: labels.invitationsTabNew },
-            { value: "responded", label: labels.invitationsTabResponded },
-          ]}
-        />
-      }
+      filter={{
+        value: tab,
+        onChange: (next) => {
+          if (tabProp === undefined) setUncontrolledTab(next);
+          onTabChange?.(next);
+        },
+        ariaLabel: labels.invitationsFilterAria,
+        className: "calendar-invitations-panel__filter",
+        options: [
+          {
+            value: "new",
+            label: labels.invitationsTabNew,
+            icon: <Inbox className="size-4" aria-hidden />,
+          },
+          {
+            value: "responded",
+            label: labels.invitationsTabResponded,
+            icon: <CheckCheck className="size-4" aria-hidden />,
+          },
+        ],
+      }}
     >
       {visible.map((notification) => (
         <CalendarInvitationCard

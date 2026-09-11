@@ -1,0 +1,45 @@
+@import "../../styles.css" reference;
+
+.docs-collab-presence {
+  @apply flex items-center gap-1;
+}
+
+.docs-collab-presence__chip {
+  @apply inline-flex;
+}
+
+.docs-collab-presence__chip--overlap {
+  @apply -ml-2;
+}
+
+/* Mark outline only — no wrapper cream/background ring (avoids double border). */
+
+.docs-collab-presence__avatar--connecting {
+  --user-avatar-bg: color-mix(
+    in oklab,
+    var(--docs-collab-presence-accent, var(--color-ink)) 14%,
+    transparent
+  );
+  --user-avatar-fg: color-mix(
+    in oklab,
+    var(--docs-collab-presence-accent, var(--color-ink)) 72%,
+    var(--color-ink)
+  );
+  --user-avatar-border-width: 1px;
+  --user-avatar-border: color-mix(
+    in oklab,
+    var(--docs-collab-presence-accent, var(--color-ink)) 38%,
+    transparent
+  );
+}
+
+.docs-collab-presence__avatar--connecting .user-avatar__mark {
+  border-style: dashed;
+}
+
+.docs-collab-presence__avatar--warning {
+  --user-avatar-bg: color-mix(in oklab, #c2410c 14%, transparent);
+  --user-avatar-fg: color-mix(in oklab, #c2410c 75%, var(--color-ink));
+  --user-avatar-border-width: 1px;
+  --user-avatar-border: color-mix(in oklab, #c2410c 42%, transparent);
+}

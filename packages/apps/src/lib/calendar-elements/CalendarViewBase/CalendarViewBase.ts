@@ -232,19 +232,22 @@ export abstract class CalendarViewBase extends BaseElement {
   }
 
   /**
-   * Calendar id for create gestures: from {@link EventsAPIContextValue.getSelectedCalendarId} when the
-   * host provides it (e.g. `event-calendar`), otherwise {@link selectedCalendarId}.
+   * Calendar id for create gestures. Prefer the host {@link selectedCalendarId}
+   * (React sidebar / attribute) when set so create targets match the highlighted
+   * row; otherwise {@link EventsAPIContextValue.getSelectedCalendarId}.
    */
   protected calendarIdForNewEvent(): string | undefined {
+    const raw = this.selectedCalendarId;
+    if (raw !== undefined && raw !== null) {
+      const trimmed = String(raw).trim();
+      if (trimmed !== "") return trimmed;
+    }
     const fromContext = this.#eventsAPI?.getSelectedCalendarId();
     if (fromContext !== undefined && fromContext !== null) {
       const trimmed = String(fromContext).trim();
       if (trimmed !== "") return trimmed;
     }
-    const raw = this.selectedCalendarId;
-    if (raw === undefined || raw === null) return undefined;
-    const trimmed = String(raw).trim();
-    return trimmed === "" ? undefined : trimmed;
+    return undefined;
   }
 
   /** Account for a new event when the target calendar is known (see {@link calendarIdForNewEvent}). */

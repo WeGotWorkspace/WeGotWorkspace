@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Sticky section row used by contacts letter groups and chat day separators. Date labels split into a bold lead and regular rest (same treatment as calendar list headings). Scroll the list stories to confirm the hairline + label stay pinned until the next section.",
+          "Sticky section row shared by contacts letters, chat day separators, and calendar list day headings. Split labels use emphasis (650) + rest (450); the root stays font-normal so Meet cannot diverge from Calendar. Scroll the list stories to confirm the hairline + label stay pinned until the next section.",
       },
     },
   },
@@ -26,7 +26,7 @@ type Story = StoryObj<typeof ListStickyHeader>;
 
 export const Default: Story = {
   args: {
-    children: "A",
+    emphasis: "A",
   },
 };
 
@@ -38,7 +38,7 @@ export const ContactsLetters: Story = {
     <div className="list-sticky-header-story-scroll">
       {LETTERS.map((letter) => (
         <section key={letter} aria-labelledby={`list-sticky-story-${letter}`}>
-          <ListStickyHeader id={`list-sticky-story-${letter}`}>{letter}</ListStickyHeader>
+          <ListStickyHeader id={`list-sticky-story-${letter}`} emphasis={letter} />
           {Array.from({ length: 8 }, (_, index) => (
             <div key={index} className="list-sticky-header-story-row">
               {letter} contact {index + 1}

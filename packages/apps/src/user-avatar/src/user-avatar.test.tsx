@@ -119,6 +119,11 @@ describe("UserAvatar", () => {
       container.querySelector(`.user-avatar--colored.user-avatar--color-${color}`),
     ).toBeTruthy();
   });
+
+  it("applies the xs size class for collab / share marks", () => {
+    const { container } = render(<UserAvatar displayName="Sam Lee" compact size="xs" />);
+    expect(container.querySelector(".user-avatar--xs")).toBeTruthy();
+  });
 });
 
 describe("UserPresenceDot", () => {

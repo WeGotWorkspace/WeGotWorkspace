@@ -27,6 +27,12 @@
   );
 }
 
+/* Picker triggers share Button outline focus — not text-field border chrome. */
+.control-surface,
+.select-trigger {
+  @apply focus-visible:ring-1 focus-visible:ring-ring;
+}
+
 .control-surface,
 .input,
 .select-trigger {
@@ -59,9 +65,16 @@
 
 .select-trigger {
   @apply justify-between whitespace-nowrap;
-  @apply data-[placeholder]:text-muted-foreground data-[state=open]:text-foreground;
+  @apply data-[placeholder]:text-muted-foreground;
   @apply disabled:cursor-not-allowed;
   @apply [&>span]:line-clamp-1;
+  /* Align idle text/chevron with outline Button / SegmentedControl. */
+  color: var(--select-trigger-color, var(--button-outline-color, var(--color-ink)));
+}
+
+.select-trigger__icon {
+  @apply h-4 w-4 shrink-0;
+  color: inherit;
 }
 
 .select-trigger--size-sm,
@@ -143,17 +156,68 @@
   @apply cursor-default;
 }
 
-.control-surface:focus:not(:disabled),
-.control-surface:focus-visible:not(:disabled),
-.control-surface[data-state="open"]:not(:disabled),
-.input:focus:not(:read-only),
+/* Text fields: keyboard-only border focus — mouse click must not paint chrome. */
 .input:focus-visible:not(:read-only),
-.textarea:focus:not(:read-only),
-.textarea:focus-visible:not(:read-only),
-.select-trigger:focus:not(:disabled),
+.textarea:focus-visible:not(:read-only) {
+  background-color: var(--input-background-focus, #ffffff);
+  border-color: var(--input-border-focus, var(--ring));
+}
+
+/* Open select keeps the elevated surface without relying on :focus (pointer open). */
+.control-surface[data-state="open"]:not(:disabled),
 .select-trigger[data-state="open"]:not(:disabled) {
   background-color: var(--input-background-focus, #ffffff);
   border-color: var(--input-border-focus, var(--ring));
+}
+
+/**
+ * Select item states — quiet cream-surface washes (14/18/24), not sidebar chip
+ * saturation (40/55/65 via `--button-outline-*`). Accent + fg still come from
+ * portaled `--workspace-accent` / `--button-*-color` via `bridgePortalThemeVars`.
+ * Optional `--menu-item-*-background` overrides stay available for parents.
+ */
+.select-ui__item {
+  @apply relative flex w-full cursor-default select-none items-center py-1.5 pl-2 pr-8 text-sm outline-none transition-colors;
+  border-radius: var(--control-radius);
+}
+
+.select-ui__item[data-highlighted],
+.select-ui__item:focus {
+  background-color: var(
+    --menu-item-hover-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)
+  );
+  color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
+}
+
+.select-ui__item[data-state="checked"] {
+  background-color: var(
+    --menu-item-selected-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 18%, var(--color-cream, #ffffff))
+  );
+  color: var(--button-active-color, var(--workspace-accent, inherit));
+}
+
+.select-ui__item[data-state="checked"][data-highlighted],
+.select-ui__item[data-state="checked"]:focus {
+  background-color: var(
+    --menu-item-selected-hover-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 24%, var(--color-cream, #ffffff))
+  );
+  color: var(--button-active-color, var(--workspace-accent, inherit));
+}
+
+.select-ui__item[data-disabled] {
+  @apply pointer-events-none opacity-50;
+}
+
+.select-ui__item-indicator {
+  @apply absolute right-2 flex h-3.5 w-3.5 items-center justify-center;
+}
+
+.select-ui__item-check {
+  @apply h-4 w-4;
+  color: var(--button-active-color, var(--workspace-accent, currentColor));
 }
 
 .input::placeholder,

@@ -1,14 +1,25 @@
+import type { ReactElement } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   BooleanSegmentedControl,
   SegmentedControl,
 } from "@/segmented-control/src/segmented-control";
+import { TooltipProvider } from "@/ui/tooltip";
 
 const options = [
   { value: "grid", label: "Grid" },
   { value: "list", label: "List" },
 ] as const;
+
+const iconOptions = [
+  { value: "grid", label: "Grid view", icon: <span data-testid="grid-icon" /> },
+  { value: "list", label: "List view", icon: <span data-testid="list-icon" /> },
+] as const;
+
+function renderWithTooltip(ui: ReactElement) {
+  return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
+}
 
 describe("SegmentedControl", () => {
   it("defaults to compact size without the md modifier", () => {
@@ -40,6 +51,27 @@ describe("SegmentedControl", () => {
     expect(root?.hasAttribute("data-disabled")).toBe(true);
     expect(buttons).toHaveLength(2);
     buttons.forEach((button) => expect(button.disabled).toBe(true));
+  });
+
+  it("shows a tooltip for icon-only segments", async () => {
+    renderWithTooltip(
+      <SegmentedControl value="grid" onChange={vi.fn()} options={[...iconOptions]} />,
+    );
+    fireEvent.pointerMove(screen.getByRole("button", { name: "Grid view" }));
+    expect((await screen.findByRole("tooltip")).textContent).toBe("Grid view");
+  });
+
+  it("skips tooltips for icon-only segments when showTooltip is false", async () => {
+    renderWithTooltip(
+      <SegmentedControl
+        value="grid"
+        onChange={vi.fn()}
+        options={[...iconOptions]}
+        showTooltip={false}
+      />,
+    );
+    fireEvent.pointerMove(screen.getByRole("button", { name: "Grid view" }));
+    expect(screen.queryByRole("tooltip")).toBeNull();
   });
 
   it("renders a compact switch for boolean on/off", () => {

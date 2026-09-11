@@ -15,15 +15,23 @@ type DriveAccessGrantRowProps = {
   controller: DriveAccessController;
 };
 
-function PrincipalAvatar({ row }: { row: DriveAccessDisplayRow }) {
+function PrincipalAvatar({
+  row,
+  labels,
+}: {
+  row: DriveAccessDisplayRow;
+  labels: DriveAccessController["labels"];
+}) {
   if (row.kind === "public") {
     return (
-      <span
-        className="drive-access-grant-row__avatar drive-access-grant-row__avatar--icon"
-        aria-hidden
-      >
-        <Globe className="size-4" />
-      </span>
+      <UserAvatar
+        displayName={labels.accessPublicLink}
+        compact
+        size="sm"
+        fallback={<Globe className="size-4" aria-hidden />}
+        className="drive-access-grant-row__avatar"
+        ariaLabel={labels.accessPublicLink}
+      />
     );
   }
 
@@ -32,12 +40,13 @@ function PrincipalAvatar({ row }: { row: DriveAccessDisplayRow }) {
 
   if (principalType === "group") {
     return (
-      <span
-        className="drive-access-grant-row__avatar drive-access-grant-row__avatar--icon"
-        aria-hidden
-      >
-        <Users className="size-4" />
-      </span>
+      <UserAvatar
+        displayName={label}
+        compact
+        size="sm"
+        fallback={<Users className="size-4" aria-hidden />}
+        className="drive-access-grant-row__avatar"
+      />
     );
   }
 
@@ -53,7 +62,7 @@ export function DriveAccessGrantRow({ row, controller }: DriveAccessGrantRowProp
     const viaPath = driveAccessViaUiPath(row.entry.sharePath, username);
     return (
       <div className="drive-access-grant-row">
-        <PrincipalAvatar row={row} />
+        <PrincipalAvatar row={row} labels={labels} />
         <div className="drive-access-grant-row__main">
           <div className="drive-access-grant-row__title-row">
             <span className="drive-access-grant-row__name">{labels.accessPublicLink}</span>
@@ -88,7 +97,7 @@ export function DriveAccessGrantRow({ row, controller }: DriveAccessGrantRowProp
 
   return (
     <div className="drive-access-grant-row">
-      <PrincipalAvatar row={row} />
+      <PrincipalAvatar row={row} labels={labels} />
       <div className="drive-access-grant-row__main">
         <div className="drive-access-grant-row__title-row">
           {isPerson ? (

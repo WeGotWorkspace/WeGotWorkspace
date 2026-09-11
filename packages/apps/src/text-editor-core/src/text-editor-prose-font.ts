@@ -1,4 +1,4 @@
-/** Fallback when `--text-editor-prose-font-size` is absent (matches `.text-editor-prose`). */
+/** Fallback when `--text-editor-prose-font-size` is absent (matches clamp max). */
 export const TEXT_EDITOR_PROSE_FONT_SIZE_FALLBACK = "16px";
 
 let fontSizeProbe: HTMLDivElement | null = null;

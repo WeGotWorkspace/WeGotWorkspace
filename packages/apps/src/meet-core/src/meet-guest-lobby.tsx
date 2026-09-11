@@ -235,7 +235,7 @@ export function MeetGuestLobby({
             </p>
             {waitingForAdmission ? (
               <Button
-                variant="subtle"
+                variant="outline"
                 label={meetLabels.cancelKnock}
                 onClick={() => void controller.leave()}
                 className="meet-guest-lobby__cancel"

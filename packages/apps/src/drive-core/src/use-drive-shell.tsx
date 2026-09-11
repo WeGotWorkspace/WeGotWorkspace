@@ -13,10 +13,12 @@ import {
   uiPathFromApiPath,
 } from "@/drive-core/src/drive-path-utils";
 import { isDriveUnderTrash } from "@/drive-core/src/drive-visible-items";
+import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import {
-  driveFileFromSharedWithMeEntry,
-  driveFileFromEntry,
-} from "@/drive-core/src/drive-file-utils";
+  driveStarredPathMap,
+  fetchDriveStarredListing,
+} from "@/drive-core/src/drive-starred-listing";
+import { mapDriveSharedWithMeEntries } from "@/drive-core/src/drive-shared-listing";
 import type {
   DriveAPIOperations,
   DriveShareOperations,
@@ -251,50 +253,22 @@ export function useDriveShell({
     [commitView],
   );
 
-  const loadStarredItemsFromPaths = useCallback(
-    (paths: string[]) => {
-      if (!operations) {
-        setStarredItems(null);
-        return;
-      }
-      const requestVersion = starredLoadVersionRef.current + 1;
-      starredLoadVersionRef.current = requestVersion;
-      if (paths.length === 0) {
-        setStarredItems([]);
-        return;
-      }
-      void operations
-        .listEntriesByPaths(paths)
-        .then((entries) => {
-          if (requestVersion !== starredLoadVersionRef.current) return;
-          setStarredItems(entries.map((entry) => driveFileFromEntry(entry, currentUsername)));
-        })
-        .catch((error: unknown) => {
-          if (requestVersion !== starredLoadVersionRef.current) return;
-          const message = error instanceof Error ? error.message : String(error);
-          showError(message);
-        });
-    },
-    [operations, currentUsername, showError],
-  );
-
   const reloadStarredFromServer = useCallback(() => {
     if (!operations) return;
-    void operations
-      .listStars()
-      .then((paths) => {
-        const next: Record<string, boolean> = {};
-        for (const path of paths) {
-          next[path] = true;
-        }
-        setStarred(next);
-        loadStarredItemsFromPaths(paths);
+    const requestVersion = starredLoadVersionRef.current + 1;
+    starredLoadVersionRef.current = requestVersion;
+    void fetchDriveStarredListing(operations, currentUsername)
+      .then(({ paths, files }) => {
+        if (requestVersion !== starredLoadVersionRef.current) return;
+        setStarred(driveStarredPathMap(paths));
+        setStarredItems(files);
       })
       .catch((error: unknown) => {
+        if (requestVersion !== starredLoadVersionRef.current) return;
         const message = error instanceof Error ? error.message : String(error);
         showError(message);
       });
-  }, [operations, loadStarredItemsFromPaths, showError]);
+  }, [operations, currentUsername, showError]);
 
   useEffect(() => {
     if (!operations) return;
@@ -355,11 +329,7 @@ export function useDriveShell({
       .listSharedWithMe({ signal: controller.signal })
       .then((entries) => {
         if (requestVersion !== sharedLoadVersionRef.current) return;
-        setSharedItems(
-          entries
-            .map((entry) => driveFileFromSharedWithMeEntry(entry, currentUsername))
-            .filter((file): file is DriveFile => file !== null),
-        );
+        setSharedItems(mapDriveSharedWithMeEntries(entries, currentUsername));
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted || requestVersion !== sharedLoadVersionRef.current) return;

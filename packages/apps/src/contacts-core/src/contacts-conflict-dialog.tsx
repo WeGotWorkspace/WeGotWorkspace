@@ -167,7 +167,7 @@ export function ContactsConflictDialog({
         <DialogFooter className="contacts-conflict-dialog__actions">
           {fieldMergeMode ? (
             <>
-              <Button variant="subtle" onClick={onUseServer} disabled={busy}>
+              <Button variant="outline" onClick={onUseServer} disabled={busy}>
                 {L.conflictUseServer}
               </Button>
               <Button variant="primary" onClick={() => onConfirmMerge?.(choices)} disabled={busy}>
@@ -176,7 +176,7 @@ export function ContactsConflictDialog({
             </>
           ) : (
             <>
-              <Button variant="subtle" onClick={onUseServer} disabled={busy}>
+              <Button variant="outline" onClick={onUseServer} disabled={busy}>
                 {L.conflictUseServer}
               </Button>
               <Button variant="primary" onClick={onKeepLocal} disabled={busy}>

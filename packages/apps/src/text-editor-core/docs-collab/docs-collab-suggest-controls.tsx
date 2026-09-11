@@ -1,27 +1,40 @@
 import { useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
+import { Pencil } from "lucide-react";
 import "@/text-editor-core/src/text-editor-track-changes-augmentation";
-import { ChevronDown, Pencil, PenLine } from "lucide-react";
+import { Button } from "@/button/src/button";
+import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
 import { cn } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/ui/dropdown-menu";
+import { docsLabels } from "@/docs-core/src/docs-labels";
+import { useAppToast } from "@/hooks/use-app-toast";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import {
   editorHasTrackChanges,
   getTrackChangesMode,
-  getTrackChangesPendingCount,
 } from "@/text-editor-core/src/text-editor-track-changes";
 
 export type DocsCollabSuggestControlsProps = {
   editor: Editor | null;
   className?: string;
+  disabled?: boolean;
+  /** Visible label (Tasks show-completed pattern); defaults to “Suggest”. */
+  suggestLabel?: string;
+  /** Aria/tooltip when Suggest is on (action to leave Suggest); defaults to “Edit”. */
+  editLabel?: string;
 };
 
-/** Edit/suggest mode dropdown for the format bar (accept/reject live in the suggestions sidebar). */
-export function DocsCollabSuggestControls({ editor, className }: DocsCollabSuggestControlsProps) {
+/**
+ * Suggest-mode toggle for the Docs collab ViewHeader — outline state Button matching
+ * Tasks “Show completed” (active when Suggest is on; icon-only below md).
+ */
+export function DocsCollabSuggestControls({
+  editor,
+  className,
+  disabled = false,
+  suggestLabel = docsLabels.suggestMode,
+  editLabel = docsLabels.editMode,
+}: DocsCollabSuggestControlsProps) {
+  const { show } = useAppToast();
   const [, setRevision] = useState(0);
 
   useEffect(() => {
@@ -35,73 +48,37 @@ export function DocsCollabSuggestControls({ editor, className }: DocsCollabSugge
 
   if (!editorHasTrackChanges(editor)) return null;
 
-  const mode = getTrackChangesMode(editor);
-  const pendingCount = getTrackChangesPendingCount(editor);
-  const suggestActive = mode === "suggest";
-  const triggerLabel = suggestActive ? "Suggest" : "Edit";
-  const TriggerIcon = suggestActive ? PenLine : Pencil;
+  const isSuggest = getTrackChangesMode(editor) === "suggest";
+  const actionLabel = isSuggest ? editLabel : suggestLabel;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          title="Editing mode"
-          aria-haspopup="menu"
-          aria-label={`Editing mode: ${triggerLabel}`}
-          className={cn("text-editor-format-bar__mode-trigger", className)}
-        >
-          <TriggerIcon className="text-editor-format-bar__mode-trigger-icon" aria-hidden />
-          <span className="text-editor-format-bar__mode-trigger-label">{triggerLabel}</span>
-          {pendingCount > 0 ? (
-            <span
-              className="text-editor-format-bar__mode-trigger-badge"
-              aria-label={`${pendingCount} pending suggestions`}
-            >
-              {pendingCount}
-            </span>
-          ) : null}
-          <ChevronDown className="text-editor-format-bar__mode-trigger-chevron" aria-hidden />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="text-editor-format-bar__mode-menu">
-        <DropdownMenuItem
-          onClick={() => editor.commands.setEditMode()}
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
           className={cn(
-            "text-editor-format-bar__mode-option",
-            !suggestActive && "text-editor-format-bar__mode-option--selected",
+            "docs-collab-suggest-controls",
+            isSuggest && ICON_BUTTON_ACTIVE_CLASSNAME,
+            className,
           )}
-        >
-          <Pencil className="text-editor-format-bar__mode-option-icon" aria-hidden />
-          <span className="text-editor-format-bar__mode-option-text">
-            <span className="text-editor-format-bar__mode-option-label">Edit</span>
-            <span className="text-editor-format-bar__mode-option-hint">Changes apply directly</span>
-          </span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => editor.commands.setSuggestMode()}
-          className={cn(
-            "text-editor-format-bar__mode-option",
-            suggestActive && "text-editor-format-bar__mode-option--selected",
-          )}
-        >
-          <PenLine className="text-editor-format-bar__mode-option-icon" aria-hidden />
-          <span className="text-editor-format-bar__mode-option-text">
-            <span className="text-editor-format-bar__mode-option-label">Suggest</span>
-            <span className="text-editor-format-bar__mode-option-hint">
-              Changes are tracked for review
-            </span>
-          </span>
-          {pendingCount > 0 ? (
-            <span
-              className="text-editor-format-bar__mode-option-badge"
-              aria-label={`${pendingCount} pending`}
-            >
-              {pendingCount}
-            </span>
-          ) : null}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          label={suggestLabel}
+          aria-label={actionLabel}
+          onClick={() => {
+            if (isSuggest) {
+              editor.commands.setEditMode();
+              show(docsLabels.toastSwitchedToEditMode);
+              return;
+            }
+            editor.commands.setSuggestMode();
+            show(docsLabels.toastSwitchedToSuggestMode);
+          }}
+          icon={<Pencil aria-hidden />}
+          size="sm"
+          variant="outline"
+          aria-pressed={isSuggest}
+          disabled={disabled}
+        />
+      </TooltipTrigger>
+      <TooltipContent>{actionLabel}</TooltipContent>
+    </Tooltip>
   );
 }

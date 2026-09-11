@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import { useDriveSharedList } from "@/drive-core/src/use-drive-shared-list";
 import {
   filterDocsHomeSharedByQuery,
-  mapDocsHomeSharedEntries,
+  isDocsHomeCompatibleSharedFile,
 } from "@/docs-core/src/docs-home-shared";
 
 export type UseDocsHomeSharedListOptions = {
@@ -22,55 +23,23 @@ export type UseDocsHomeSharedListResult = {
   reload: () => void;
 };
 
+/** Docs home Shared with me — Drive loader + markdown/docs filter + title query. */
 export function useDocsHomeSharedList({
   username,
   shareOperations,
   enabled = true,
   query = "",
 }: UseDocsHomeSharedListOptions): UseDocsHomeSharedListResult {
-  const listSharedWithMe = shareOperations?.listSharedWithMe;
-  const shouldLoad = Boolean(enabled && listSharedWithMe);
-  const [items, setItems] = useState<DriveFile[]>([]);
-  const [loading, setLoading] = useState(shouldLoad);
-  const [error, setError] = useState<string | null>(null);
-  const [reloadToken, setReloadToken] = useState(0);
-  const loadVersionRef = useRef(0);
+  const drive = useDriveSharedList({ username, shareOperations, enabled });
+  const files = useMemo(
+    () => filterDocsHomeSharedByQuery(drive.files.filter(isDocsHomeCompatibleSharedFile), query),
+    [drive.files, query],
+  );
 
-  useEffect(() => {
-    if (!shouldLoad || !listSharedWithMe) {
-      setItems([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    const requestVersion = loadVersionRef.current + 1;
-    loadVersionRef.current = requestVersion;
-    const controller = new AbortController();
-    setLoading(true);
-    setError(null);
-
-    void listSharedWithMe({ signal: controller.signal })
-      .then((entries) => {
-        if (requestVersion !== loadVersionRef.current) return;
-        setItems(mapDocsHomeSharedEntries(entries, username));
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        if (controller.signal.aborted || requestVersion !== loadVersionRef.current) return;
-        setItems([]);
-        setLoading(false);
-        setError(err instanceof Error ? err.message : "Failed to load shared documents");
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [listSharedWithMe, reloadToken, shouldLoad, username]);
-
-  const reload = useCallback(() => setReloadToken((token) => token + 1), []);
-
-  const files = useMemo(() => filterDocsHomeSharedByQuery(items, query), [items, query]);
-
-  return { files, loading, error, reload };
+  return {
+    files,
+    loading: drive.loading,
+    error: drive.error,
+    reload: drive.reload,
+  };
 }

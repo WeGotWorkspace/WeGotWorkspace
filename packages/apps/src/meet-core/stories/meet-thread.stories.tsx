@@ -92,7 +92,11 @@ export const IdlePanel: Story = {
     expect(actions).toBeTruthy();
     const actionChildren = [...(actions as HTMLElement).children];
     expect(actionChildren.indexOf(people)).toBeLessThan(actionChildren.indexOf(headerEdit));
-    expect(actionChildren.at(-1)?.getAttribute("aria-label")).toBe(meetLabels.threadClose);
+    const close = canvas.getByLabelText(meetLabels.threadClose);
+    await expect(close.closest(".view-header__title-trailing")).toBeTruthy();
+    const end = close.closest(".view-header__end");
+    expect(end).toBeTruthy();
+    expect(actions!.closest(".view-header__end")).toBe(end);
   },
 };
 

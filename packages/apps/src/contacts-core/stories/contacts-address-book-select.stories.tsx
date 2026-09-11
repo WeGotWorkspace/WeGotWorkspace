@@ -13,10 +13,12 @@ const seedBooks = [
 
 function ContactsAddressBookSelectHarness({
   variant = "toolbar",
+  triggerVariant = "labeled",
   disabled = false,
   onValueChange,
 }: {
   variant?: "field" | "toolbar";
+  triggerVariant?: "labeled" | "swatch";
   disabled?: boolean;
   onValueChange: (bookId: string) => void;
 }) {
@@ -27,6 +29,7 @@ function ContactsAddressBookSelectHarness({
       <ContactsAddressBookSelect
         id="story-address-book"
         variant={variant}
+        triggerVariant={triggerVariant}
         label={
           variant === "toolbar"
             ? defaultContactsLabels.toolbarMoveToAddressBook
@@ -77,6 +80,25 @@ export const Toolbar: Story = {
     await expect(document.querySelectorAll(".notes-notebook-color-icon").length).toBeGreaterThan(0);
     await expect(document.querySelector(".contacts-group-icon")).toBeNull();
 
+    await userEvent.click(screen.getByRole("option", { name: "Engineering" }));
+    await expect(args.onValueChange).toHaveBeenCalledWith("group-eng");
+  },
+};
+
+export const Swatch: Story = {
+  tags: ["vitest-ci"],
+  args: { variant: "toolbar", triggerVariant: "swatch" },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole("combobox", {
+      name: defaultContactsLabels.personalAddressBook,
+    });
+    await expect(trigger.className).toContain("color-swatch-trigger");
+    await expect(trigger.className).toContain("contacts-address-book-select--swatch");
+    await expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
+    await expect(trigger.querySelector(".contacts-address-book-select__name")).toBeNull();
+
+    await userEvent.click(trigger);
     await userEvent.click(screen.getByRole("option", { name: "Engineering" }));
     await expect(args.onValueChange).toHaveBeenCalledWith("group-eng");
   },

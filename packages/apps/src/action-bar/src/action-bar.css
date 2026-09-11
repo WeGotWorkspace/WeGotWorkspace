@@ -4,10 +4,8 @@
   @apply px-4 md:px-12 h-16 md:h-20 border-b flex items-center shrink-0 gap-3;
   container: action-bar / inline-size;
   --action-bar-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --action-bar-back-color: var(--color-ink);
-  --button-subtle-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  /* Idle outline chips (incl. back) stay muted; parents publish accent hover washes. */
+  --button-outline-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
   border-color: var(--action-bar-border-color);
   background-color: var(
     --action-bar-bg,
@@ -17,8 +15,6 @@
 
 .action-bar__back {
   @apply max-w-[12rem] shrink min-w-0 rounded-full transition-colors;
-  --button-ghost-color: var(--action-bar-back-color);
-  --button-ghost-hover-background: color-mix(in oklab, var(--color-ink) 8%, transparent);
 }
 
 .action-bar__back > span:last-child {
@@ -39,7 +35,7 @@
 }
 
 .action-bar__menu {
-  display: none;
+  @apply inline-flex;
 }
 
 .action-bar__menu-trigger {
@@ -65,36 +61,4 @@
 
 .action-bar--expanded {
   container-type: normal;
-}
-
-.action-bar--expanded .action-bar__row {
-  display: flex;
-}
-
-.action-bar--expanded .action-bar__menu {
-  display: none;
-}
-
-/* Keep inline actions visible until the bar is narrower than ~28rem. */
-@container action-bar (max-width: 28rem) {
-  .action-bar__row {
-    display: none;
-  }
-
-  .action-bar__menu {
-    display: inline-flex;
-  }
-}
-
-/* Viewport fallback only when container queries are unavailable. */
-@supports not (container-type: inline-size) {
-  @media (max-width: 28rem) {
-    .action-bar__row {
-      display: none;
-    }
-
-    .action-bar__menu {
-      display: inline-flex;
-    }
-  }
 }

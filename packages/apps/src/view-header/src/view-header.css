@@ -1,21 +1,41 @@
 @import "../../styles.css" reference;
-@import "../../ui/field-label-row.css";
 
 @import "../../ui/anchored-dropdown.css";
 
-/**
- * Toggle + title stack. `items-start` keeps the toggle on the title-row
- * center line (row min-height matches the icon button) when a subtitle follows.
- */
+/** Toggle + title row. Soft accent wash SST for chrome outline controls. */
 .view-header {
-  @apply flex items-start gap-3;
+  @apply flex items-center gap-3;
+  /*
+   * Soft outline wash for sidebar toggle, Show completed, Suggest, inbox, etc.
+   * Products set `--workspace-accent` and usually `--button-active-color` (accent-strong).
+   * Heavier sidebar nav washes stay on the workspace root and do not apply here.
+   */
+  --button-outline-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 14%,
+    transparent
+  );
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 24%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-hover-color: var(
+    --button-active-color,
+    var(--workspace-accent, var(--color-ink))
+  );
 }
 
 .view-header__sidebar-toggle {
   @apply flex shrink-0 items-center;
 }
 
-/** Title + subtitle stack; sits beside the sidebar toggle so the subtitle aligns with the title, not the toggle. */
+/** Title cluster; sits beside the sidebar toggle. */
 .view-header__main {
   @apply flex min-w-0 flex-1 flex-col;
   container: view-header-main / inline-size;
@@ -24,8 +44,8 @@
 /**
  * Grid keeps wide inline titles predictable; stacked / narrow responsive
  * wrap the title instead of ellipsizing first. Min-height matches compact
- * icon-button row (size-sm) so subtitle/search do not jump when actions
- * are present vs absent.
+ * icon-button row (size-sm) so search does not jump when actions are
+ * present vs absent.
  */
 .view-header__title-row {
   display: grid;
@@ -50,28 +70,35 @@
 }
 
 .view-header__title-block {
-  @apply flex min-w-0 items-center gap-1;
+  @apply flex min-w-0 items-center gap-2;
 }
 
 .view-header__title-prefix {
   @apply flex shrink-0 items-center;
 }
 
-/**
- * Default: large serif title on wide headers. Tailwind has no `text-box-*`
- * utility that emits this, so the trim shorthand is a CSS property.
- */
-.view-header__title {
-  @apply min-w-0 truncate text-2xl leading-none;
-  font-family: var(--font-serif);
-  color: var(--color-ink);
-  text-box: auto;
+.view-header__title-suffix {
+  @apply flex shrink-0 items-center;
 }
 
-/** Compact variant: medium-size, medium-weight, sans-serif (e.g. doc editor file name). */
-.view-header__title--sm {
-  @apply text-base font-medium md:text-xl;
+/**
+ * List counts beside the title — same typography as `.view-header__title`
+ * (sans / size / weight / color). Not a Badge (those read as unread).
+ */
+.view-header__title-count {
+  @apply text-sm font-medium leading-none md:text-lg;
   font-family: var(--font-sans);
+  color: var(--color-ink);
+}
+
+/**
+ * Canonical title: compact medium-weight sans (formerly the compact
+ * `titleSize="sm"` path). Serif display titles are removed.
+ */
+.view-header__title {
+  @apply min-w-0 truncate text-sm font-medium leading-none md:text-lg;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
 }
 
 .view-header__title-compact {
@@ -135,10 +162,6 @@
 }
 
 @container view-header-main (max-width: 40rem) {
-  .view-header__title:not(.view-header__title--sm) {
-    @apply text-xl;
-  }
-
   .view-header__title-row--responsive {
     grid-template-columns: minmax(0, 1fr) max-content;
     grid-template-areas:
@@ -185,10 +208,6 @@
 
 @supports not (container-type: inline-size) {
   @media (max-width: 40rem) {
-    .view-header__title:not(.view-header__title--sm) {
-      @apply text-xl;
-    }
-
     .view-header__title-row--responsive {
       grid-template-columns: minmax(0, 1fr) max-content;
       grid-template-areas:
@@ -232,11 +251,6 @@
       @apply inline;
     }
   }
-}
-
-.view-header__subtitle {
-  @apply mt-0 max-w-full font-medium;
-  font-family: var(--font-sans);
 }
 
 .view-header__search-stack {

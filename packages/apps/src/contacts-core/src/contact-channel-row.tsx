@@ -39,7 +39,7 @@ export function ContactChannelRow({
           <IconButton
             label={removeLabel ?? ""}
             icon={<Trash2 className="size-4" aria-hidden />}
-            variant="subtle"
+            variant="outline"
             size="sm"
             onClick={onRemove}
           />

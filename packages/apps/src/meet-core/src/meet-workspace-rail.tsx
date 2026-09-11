@@ -42,7 +42,6 @@ export function MeetWorkspaceRail({
           className="meet-workspace__rail-panel"
           ariaLabel={title}
           title={title}
-          titleSize="default"
           closeLabel={closeLabel}
           onClose={onClose}
           showCloseButton
@@ -53,7 +52,7 @@ export function MeetWorkspaceRail({
                 icon={<ChevronLeft />}
                 label={backLabel ?? "Back"}
                 size="sm"
-                variant="subtle"
+                variant="outline"
                 showTooltip={false}
                 onClick={onBack}
               />

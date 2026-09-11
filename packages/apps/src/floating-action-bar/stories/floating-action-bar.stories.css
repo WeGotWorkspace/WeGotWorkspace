@@ -1,0 +1,15 @@
+@import "../../styles.css" reference;
+
+/*
+ * Story surfaces publish workspace accent + active glyph color offline.
+ * Soft outline washes live on `.floating-action-bar` (same SST as `.view-header`).
+ */
+.floating-action-bar-story--drive {
+  --workspace-accent: #10b981;
+  --button-active-color: color-mix(in oklab, var(--workspace-accent) 55%, var(--color-ink));
+}
+
+.floating-action-bar-story--docs {
+  --workspace-accent: #3b82f6;
+  --button-active-color: color-mix(in oklab, var(--workspace-accent) 70%, #0f172a);
+}

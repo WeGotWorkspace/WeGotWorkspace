@@ -7,6 +7,13 @@ import "./view-header.stories.css";
 const meta: Meta<typeof ViewHeader> = {
   title: "Shared/View Header",
   component: ViewHeader,
+  decorators: [
+    (Story) => (
+      <div className="view-header-story-surface">
+        <Story />
+      </div>
+    ),
+  ],
   argTypes: {
     layout: {
       control: "select",
@@ -21,7 +28,11 @@ type Story = StoryObj<typeof ViewHeader>;
 export const Default: Story = {
   args: {
     title: "All Items",
-    subtitle: "24 Items",
+    titleSuffix: (
+      <span className="view-header__title-count" aria-label="24 Items">
+        (24)
+      </span>
+    ),
     sidebarOpen: true,
     onToggleSidebar: () => {},
     actions: (
@@ -31,14 +42,14 @@ export const Default: Story = {
           onClick={() => {}}
           icon={<PenSquare />}
           size="sm"
-          variant="subtle"
+          variant="outline"
         />
         <IconButton
           label="Delete"
           onClick={() => {}}
           icon={<Trash2 />}
           size="sm"
-          variant="subtle"
+          variant="outline"
         />
       </div>
     ),
@@ -54,13 +65,12 @@ export const WithoutSearch: Story = {
   },
 };
 
-/** Compact title (medium-size, medium-weight, sans-serif) used for the doc editor file name. */
+/** File-name style title (same canonical sans as Default). */
 export const SmallTitle: Story = {
   args: {
     ...Default.args,
     title: "quarterly-report.md",
-    subtitle: undefined,
-    titleSize: "sm",
+    titleSuffix: undefined,
     searchPlaceholder: undefined,
   },
 };
@@ -69,22 +79,33 @@ export const SmallTitle: Story = {
 export const WithoutSidebarToggle: Story = {
   args: {
     title: "New message",
-    subtitle: "Drafts · Today 14:32",
     hideSidebarToggle: true,
   },
 };
 
 const periodNav = (
   <div className="view-header-story-nav">
-    <IconButton label="Previous period" icon={<ChevronLeft />} onClick={() => {}} />
-    <IconButton label="Next period" icon={<ChevronRight />} onClick={() => {}} />
+    <IconButton
+      label="Previous period"
+      icon={<ChevronLeft />}
+      onClick={() => {}}
+      size="sm"
+      variant="outline"
+    />
+    <IconButton
+      label="Next period"
+      icon={<ChevronRight />}
+      onClick={() => {}}
+      size="sm"
+      variant="outline"
+    />
   </div>
 );
 
 const periodActions = (
   <div className="view-header-story-actions flex items-center gap-2">
-    <Button label="Month" onClick={() => {}} variant="subtle" />
-    <Button label="Today" onClick={() => {}} variant="subtle" />
+    <Button label="Month" onClick={() => {}} variant="outline" />
+    <Button label="Today" onClick={() => {}} variant="outline" />
   </div>
 );
 
@@ -97,7 +118,7 @@ export const Stacked: Story = {
     layout: "stacked",
     titleLeading: periodNav,
     titleTrailing: (
-      <IconButton label="Inbox" icon={<Inbox />} onClick={() => {}} size="sm" variant="subtle" />
+      <IconButton label="Inbox" icon={<Inbox />} onClick={() => {}} size="sm" variant="outline" />
     ),
     actions: periodActions,
   },

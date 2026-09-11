@@ -96,8 +96,10 @@ import {
   sharedWithMeCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
 import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
+import { calendarPeriodNavLabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { SideDrawer } from "@/ui/side-drawer";
+import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
@@ -462,6 +464,7 @@ export function CalendarWorkspace({
     day: L.viewDay,
     year: L.viewYear,
   };
+  const periodNav = calendarPeriodNavLabels(view, L);
 
   useDocumentTitle(title);
 
@@ -573,7 +576,7 @@ export function CalendarWorkspace({
         calendars={calendars}
         defaultCalendarId={defaultCalendarId}
         busy={invitations.busy}
-        showCloseButton={useInvitationsDrawer}
+        showCloseButton
         onClose={() => setInvitationsOpen(false)}
         onRespond={async (id, status, calendarId) => {
           await persistRsvp(id, status, calendarId, { source: "sidebar" });
@@ -602,7 +605,6 @@ export function CalendarWorkspace({
       closeEventPreview,
       openEditEventKey,
       persistRsvp,
-      useInvitationsDrawer,
       meetOperations,
       workspaceOrigin,
       onJoinMeeting,
@@ -725,33 +727,34 @@ export function CalendarWorkspace({
             layout="responsive"
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-            titlePrefix={
-              <IconButton
-                className="calendar-header-today-icon"
-                label={L.today}
-                icon={<CalendarDays className="size-4" />}
-                size="sm"
-                active={showingToday}
-                aria-pressed={showingToday}
-                disabled={searchActive}
-                onClick={goToday}
-              />
-            }
             titleLeading={
               <div className="calendar-header-nav">
                 <IconButton
-                  label={L.previousPeriod}
+                  label={periodNav.previous}
                   icon={<ChevronLeft className="size-4" />}
                   size="sm"
+                  variant="outline"
                   disabled={searchActive}
                   onClick={goPrevious}
                 />
                 <IconButton
-                  label={L.nextPeriod}
+                  label={periodNav.next}
                   icon={<ChevronRight className="size-4" />}
                   size="sm"
+                  variant="outline"
                   disabled={searchActive}
                   onClick={goNext}
+                />
+                <IconButton
+                  className="calendar-header-today"
+                  label={L.today}
+                  icon={<CalendarDays className="size-4" />}
+                  size="sm"
+                  variant="outline"
+                  active={showingToday}
+                  aria-pressed={showingToday}
+                  disabled={searchActive}
+                  onClick={goToday}
                 />
               </div>
             }
@@ -821,16 +824,6 @@ export function CalendarWorkspace({
                   listLabel={L.showAsList}
                   disabled={searchActive}
                 />
-                <Button
-                  className={cn("calendar-header-today", showingToday && "icon-button--active")}
-                  label={L.today}
-                  icon={<CalendarDays />}
-                  onClick={goToday}
-                  variant="subtle"
-                  size="sm"
-                  disabled={searchActive}
-                  aria-pressed={showingToday}
-                />
               </div>
             }
           />
@@ -871,8 +864,9 @@ export function CalendarWorkspace({
                   onCreateRequested={
                     operations
                       ? (intent) => {
-                          const calendarId = intent.calendarId || defaultCalendarId;
-                          const calendar = calendars.find((entry) => entry.id === calendarId);
+                          const calendar = calendars.find(
+                            (entry) => entry.id === defaultCalendarId,
+                          );
                           if (!canWriteCalendarCollection(calendar)) return;
                           closeEventPreview();
                           openCreateFromSurface(intent);
@@ -908,7 +902,7 @@ export function CalendarWorkspace({
           open={invitationsOpen}
           onClose={() => setInvitationsOpen(false)}
           title={L.invitationsSection}
-          className="calendar-invitations-panel-drawer"
+          className={`${DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS} calendar-invitations-panel-drawer`}
         >
           {invitationsPanel}
         </SideDrawer>

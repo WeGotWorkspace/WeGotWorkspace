@@ -52,20 +52,6 @@ export function driveAccessSubtreeCounts(atPath: DriveShareAtPath | null) {
   };
 }
 
-export function driveAccessSubtitle(counts: ReturnType<typeof driveAccessSubtreeCounts>): string {
-  const parts: string[] = [];
-  if (counts.external > 0) {
-    parts.push(`${counts.external} external`);
-  }
-  if (counts.public > 0) {
-    parts.push(`${counts.public} public ${counts.public === 1 ? "link" : "links"}`);
-  }
-  if (parts.length === 0) {
-    return "Audit who can see what in your drives";
-  }
-  return parts.join(" · ");
-}
-
 function matchesQuery(row: DriveAccessDisplayRow, query: string): boolean {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return true;

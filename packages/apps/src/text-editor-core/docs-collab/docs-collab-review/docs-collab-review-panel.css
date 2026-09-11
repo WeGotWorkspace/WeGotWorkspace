@@ -1,11 +1,27 @@
-.docs-collab-review-panel-drawer {
-  --side-drawer-width: 22rem;
-}
-
 @import "../../../styles.css" reference;
 @import "../docs-collab-card/docs-collab-sidebar-panel.css";
 
+/*
+ * Portal accent only — sheet wash + outline button / segmented / menu chrome
+ * live on shared `.docs-collab-sidebar-panel-drawer` (SideDrawer under body).
+ */
+.docs-collab-review-panel-drawer {
+  --side-drawer-width: 22rem;
+  --docs-accent: #3b82f6;
+  --workspace-accent: var(--docs-accent);
+}
+
 .docs-collab-review-panel {
+  /* Same wash language as Calendar invitations / desktop review dock. */
+  --docs-collab-sidebar-panel-wash-recipe: color-mix(
+    in oklab,
+    var(--docs-accent, #3b82f6) 10%,
+    var(--color-cream, #ffffff)
+  );
+  --docs-collab-sidebar-panel-bg: var(
+    --docs-collab-sidebar-panel-wash,
+    var(--docs-collab-sidebar-panel-wash-recipe)
+  );
   --docs-collab-sidebar-panel-color: var(
     --docs-comments-panel-color,
     var(--docs-text, var(--color-ink))
@@ -14,12 +30,28 @@
     --docs-comments-panel-border-color,
     color-mix(in oklab, var(--color-ink) 8%, transparent)
   );
+  /* Horizontal inset inherits shared panel (main-header p-4 md:p-6 / Docs format chrome). */
+}
+
+/* Match main view-header block padding so the Open/Resolved filter sits on the title row. */
+.docs-collab-review-panel .docs-collab-sidebar-panel__header {
+  @apply py-4 md:py-6;
+}
+
+@media (max-width: 40rem) {
+  .docs-collab-review-panel .docs-collab-sidebar-panel__header {
+    @apply py-3;
+  }
 }
 
 .docs-collab-review-panel .docs-collab-sidebar-panel__scroll {
-  @apply px-5 py-6;
+  @apply py-6;
 }
 
 .docs-collab-review-panel__list {
   @apply space-y-4;
+}
+
+.docs-collab-review-panel__filter {
+  @apply w-auto shrink-0;
 }

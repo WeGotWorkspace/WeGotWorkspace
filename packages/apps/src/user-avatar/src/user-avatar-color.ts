@@ -22,7 +22,7 @@ function hashUserId(id: string): number {
   return hash >>> 0;
 }
 
-/** One stable palette token per user id so new messages pick up a color automatically. */
+/** One stable palette token per identity key (user id or email) so marks match across surfaces. */
 export function avatarColorForUserId(id: string): UserAvatarColor {
   const key = id.trim();
   if (!key) return USER_AVATAR_COLORS[0];

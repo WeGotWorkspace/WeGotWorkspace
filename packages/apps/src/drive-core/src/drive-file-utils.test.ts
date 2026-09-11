@@ -141,6 +141,37 @@ describe("driveFileFromEntry isShared", () => {
     expect(mapped.isShared).toBeUndefined();
   });
 
+  it("derives drive location from the API path", () => {
+    expect(
+      driveFileFromEntry(
+        {
+          type: "file",
+          path: "/users/alice/report.md",
+          name: "report.md",
+          size: 100,
+          time: 1,
+          permissions: 0,
+          myRights: fullDriveMyRights,
+        },
+        "alice",
+      ).location,
+    ).toBe("My Drive");
+    expect(
+      driveFileFromEntry(
+        {
+          type: "file",
+          path: "/groups/engineering/rfc.md",
+          name: "rfc.md",
+          size: 100,
+          time: 1,
+          permissions: 0,
+          myRights: fullDriveMyRights,
+        },
+        "alice",
+      ).location,
+    ).toBe("engineering");
+  });
+
   it("maps mayManageStructure from directory listing myRights", () => {
     const mapped = driveFileFromEntry(
       {

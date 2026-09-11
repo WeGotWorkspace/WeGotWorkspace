@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, waitFor } from "storybook/test";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
-import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
+import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
+import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { getNotesDetailStoryProps } from "./notes-pane-stories.fixtures";
 import { NotesStoryScope } from "./notes-story-scope";
 import "@/workspace-app/src/workspace-app.css";
@@ -51,7 +52,13 @@ function NotesDetailPaneHarness({
             body={body}
           />
         </div>
-        <NotesDetailFooter lastEdited={base.lastEdited} editedLabel={base.editedLabel} />
+        <WorkspaceDetailFooter
+          className="notes-detail-footer"
+          tags={notesLastEditedTag({
+            lastEdited: base.lastEdited,
+            editedLabel: base.editedLabel,
+          })}
+        />
       </div>
     </NotesStoryScope>
   );
@@ -72,7 +79,7 @@ export const Editable: Story = {
   tags: ["vitest-ci"],
   args: {},
   play: async ({ canvasElement }) => {
-    const sheet = canvasElement.querySelector(".note-detail-sheet");
+    const sheet = canvasElement.querySelector(".paper-sheet");
     expect(sheet).toBeTruthy();
     expect(sheet!.querySelector(".note-detail-view__title")).toBeTruthy();
     expect(sheet!.querySelector(".note-detail-view__tag-group")).toBeTruthy();
@@ -108,10 +115,12 @@ export const Editable: Story = {
     });
 
     const edited = canvasElement.querySelector(
-      ".notes-detail-footer__meta-tag--edited",
+      ".workspace-detail-footer__meta-tag--edited",
     ) as HTMLElement | null;
     expect(edited).toBeTruthy();
-    expect(edited!.textContent).toMatch(/Last edited/);
+    expect(edited!.getAttribute("aria-label")).toBe("Last edited");
+    expect(edited!.textContent).toMatch(/\d/);
+    expect(edited!.textContent).not.toMatch(/Last edited/);
     const chip = edited!.querySelector(".tag") as HTMLElement | null;
     expect(chip).toBeTruthy();
     const chipStyle = getComputedStyle(chip!);
@@ -144,7 +153,7 @@ export const NotebookTint: Story = {
     expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-tint").trim()).toBe(
       "#ec4899",
     );
-    const sheet = canvasElement.querySelector(".note-detail-sheet") as HTMLElement | null;
+    const sheet = canvasElement.querySelector(".paper-sheet") as HTMLElement | null;
     const scroll = canvasElement.querySelector(
       ".workspace-detail-pane__scroll",
     ) as HTMLElement | null;
@@ -163,7 +172,7 @@ export const NotebookTint: Story = {
     const detailFg = document.createElement("span");
     const sidebarFg = document.createElement("span");
     tintBg.style.backgroundColor = "var(--notes-detail-tint)";
-    sheetBg.style.backgroundColor = "var(--note-detail-sheet-bg)";
+    sheetBg.style.backgroundColor = "var(--paper-sheet-bg)";
     paneBg.style.backgroundColor = "var(--workspace-detail-bg)";
     detailFg.style.color = "var(--note-detail-tag-fg)";
     sidebarFg.style.color = "var(--notes-tag-selected-fg)";
@@ -198,12 +207,17 @@ export const NotebookTint: Story = {
     expect(getComputedStyle(chip!).color).toBe(getComputedStyle(detailFg).color);
     expect(getComputedStyle(chip!).color).not.toBe(getComputedStyle(sidebarFg).color);
     const sheetRect = sheet!.getBoundingClientRect();
-    const scrollStyle = getComputedStyle(scroll!);
-    const padY =
-      Number.parseFloat(scrollStyle.paddingTop) + Number.parseFloat(scrollStyle.paddingBottom);
-    expect(getComputedStyle(sheet!).minHeight).toBe("100%");
+    expect(getComputedStyle(sheet!).minHeight).not.toBe("100%");
+    // Sheet grows with content; desk scrollport owns overflow (no sheet max-height / overflow-y).
+    expect(getComputedStyle(sheet!).maxHeight).toMatch(/^(none|)$/);
+    expect(getComputedStyle(sheet!).overflowY).not.toMatch(/^(auto|scroll)$/);
     expect(getComputedStyle(sheet!).borderRadius).toBe("0px");
-    expect(sheetRect.height).toBeGreaterThanOrEqual(scroll!.clientHeight - padY - 1);
+    // Sticky-note floor — taller than a pure content hug, still under the scrollport.
+    expect(sheetRect.height).toBeGreaterThanOrEqual(20 * 16 - 1);
+    expect(sheetRect.height).toBeLessThan(scroll!.clientHeight - 1);
+    // Short notes: no idle scroll on the desk scrollport or inside the sheet.
+    expect(scroll!.scrollHeight).toBeLessThanOrEqual(scroll!.clientHeight + 1);
+    expect(sheet!.scrollHeight).toBeLessThanOrEqual(sheet!.clientHeight + 1);
     tintBg.remove();
     sheetBg.remove();
     paneBg.remove();

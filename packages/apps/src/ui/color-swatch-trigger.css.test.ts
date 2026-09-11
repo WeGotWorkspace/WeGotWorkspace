@@ -16,4 +16,10 @@ describe("color swatch trigger CSS", () => {
     expect(css).toMatch(/\.color-swatch-trigger__chevron \{[\s\S]*@apply size-3\.5/);
     expect(css).toMatch(/\.color-swatch-trigger__icon \{[\s\S]*@apply/);
   });
+
+  it("does not ship a divergent focus ring — inherits Button outline from control-surface", () => {
+    expect(css).not.toMatch(/focus-visible:ring-2/);
+    expect(css).not.toMatch(/focus-visible:ring-offset/);
+    expect(css).not.toMatch(/focus-visible:ring-1/);
+  });
 });

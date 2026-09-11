@@ -1,11 +1,11 @@
 @import "../../styles.css" reference;
 
 .docs-home-workspace .workspace-app-layout__main-content {
-  @apply mx-0 flex min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
+  @apply mx-0 flex min-h-0 h-full w-full max-w-none flex-1 flex-col px-0 py-0;
 }
 
 .docs-home-workspace .docs-home-pane {
-  @apply flex min-h-0 w-full flex-1 flex-col;
+  @apply flex min-h-0 h-full w-full flex-1 flex-col;
   background-color: var(--docs-surface, var(--color-cream, #ffffff));
 }
 
@@ -19,19 +19,20 @@
   @apply relative flex min-h-0 flex-1 flex-col;
 }
 
-@media (max-width: 767px) {
-  .docs-home-workspace .docs-home-pane__body:has(.drive-selection-bar) {
-    padding-bottom: 5.5rem;
-  }
+/* Internal scrollport — selection bar stays absolute on `__body` (Drive pattern). */
+.docs-home-workspace .docs-home-pane__scroll {
+  @apply flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto;
 }
 
-.docs-home-workspace .docs-home-pane__body.drive-workspace .drive-selection-bar {
-  --button-ghost-color: inherit;
-  --button-ghost-hover-background: color-mix(in oklab, white 10%, transparent);
-  background-color: var(--color-ink) !important;
-  color: var(--color-cream, #ffffff) !important;
+/* Reserve FAB clearance only at the end of scroll content — never between tiles. */
+@media (max-width: 767px) {
+  .docs-home-workspace .docs-home-pane__body:has(.drive-selection-bar) .docs-home-pane__scroll {
+    padding-bottom: 5.5rem;
+  }
 }
 
 .docs-home-workspace .docs-home-pane__load-more {
   @apply flex justify-center px-4 pb-8 md:px-6;
 }
+
+/* Grid density + tile chrome: canonical in drive-browser.css (Docs remaps accent only). */

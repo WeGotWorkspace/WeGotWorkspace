@@ -121,12 +121,50 @@ describe("DriveGridView tile interaction", () => {
     fireEvent.contextMenu(screen.getByRole("button", { name: FILE.title }));
     expect(onLongPress).toHaveBeenCalledWith(FILE.id);
   });
+
+  it("does not render a Files section heading above tiles", () => {
+    render(
+      <div className="drive-workspace">
+        <DriveGridView {...baseBrowserProps()} />
+      </div>,
+    );
+    expect(screen.queryByRole("heading", { name: "Files" })).toBeNull();
+  });
+
+  it("shows drive location under the tile title when enabled", () => {
+    render(
+      <div className="drive-workspace">
+        <DriveGridView
+          {...baseBrowserProps({
+            showLocationColumn: true,
+            items: [{ ...FILE, location: "My Drive" }],
+          })}
+        />
+      </div>,
+    );
+    expect(screen.getByText("My Drive")).toBeTruthy();
+    expect(document.querySelector(".drive-location-label")).toBeTruthy();
+  });
 });
 
 describe("DriveListView", () => {
   it("renders the Kind column by default", () => {
     render(<DriveListView {...baseBrowserProps()} />);
     expect(screen.getByRole("columnheader", { name: "Kind" })).toBeTruthy();
+  });
+
+  it("renders the Location column when enabled", () => {
+    render(
+      <DriveListView
+        {...baseBrowserProps({
+          showLocationColumn: true,
+          locationColumnLabel: driveLabels.listColumnLocation,
+          items: [{ ...FILE, location: "My Drive" }],
+        })}
+      />,
+    );
+    expect(screen.getByRole("columnheader", { name: "Location" })).toBeTruthy();
+    expect(screen.getByText("My Drive")).toBeTruthy();
   });
 
   it("shows a checkbox in selection mode", () => {

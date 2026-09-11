@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Code2, Pencil, Printer, Share2 } from "lucide-react";
+import { Code2, Pencil, Printer, Share } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import {
@@ -252,7 +252,6 @@ function DocsMainHeader({
   return (
     <ViewHeader
       title={title}
-      titleSize={controller.hasFile ? "sm" : "default"}
       sidebarOpen={controller.sidebarOpen}
       onToggleSidebar={() => controller.setSidebarOpen((open) => !open)}
       actions={
@@ -260,19 +259,10 @@ function DocsMainHeader({
           <DocsHeaderActions
             actions={[
               {
-                id: "view-source",
-                label: viewSource ? controller.labels.hideSource : controller.labels.viewSource,
-                icon: <Code2 />,
-                active: viewSource,
-                disabled: !editor,
-                className: viewSource ? "docs-workspace__source-toggle--active" : undefined,
-                onClick: onToggleViewSource,
-              },
-              {
                 id: "print",
                 label: controller.labels.print,
                 icon: <Printer />,
-                disabled: !editor,
+                disabled: !editor || viewSource,
                 onClick: () => printTextEditorSheet(editor),
               },
               ...(showShare
@@ -280,7 +270,7 @@ function DocsMainHeader({
                     {
                       id: "share",
                       label: controller.labels.share,
-                      icon: <Share2 />,
+                      icon: <Share />,
                       className: "docs-workspace__share-button",
                       onClick: () => shareDialog.openShareDialog(apiPath, title),
                     },
@@ -292,6 +282,15 @@ function DocsMainHeader({
                 icon: <Pencil />,
                 disabled: !controller.canRename,
                 onClick: controller.openRenameDialog,
+              },
+              {
+                id: "view-source",
+                label: viewSource ? controller.labels.hideSource : controller.labels.viewSource,
+                icon: <Code2 />,
+                active: viewSource,
+                disabled: !editor,
+                className: viewSource ? "docs-workspace__source-toggle--active" : undefined,
+                onClick: onToggleViewSource,
               },
             ]}
           />

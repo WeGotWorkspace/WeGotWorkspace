@@ -23,7 +23,7 @@ import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
-import { NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
+import { NoteCollabChrome, NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { WorkspaceUserFooter } from "@/workspace-shell/src/workspace-app-layout";
@@ -33,8 +33,9 @@ import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import { cn } from "@/lib/utils";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { NotesDetailActionBar } from "@/notes-core/src/notes-detail-action-bar";
-import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
+import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
 import { formatNoteDateForList, formatNoteLastEdited } from "@/notes-core/src/notes-date-utils";
+import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
 import {
@@ -199,6 +200,7 @@ export function NotesWorkspace({
     setSearchQuery,
     setMoveDialog,
     moveToNotebook,
+    moveActiveNoteToNotebook,
     assignTagToNotes,
     createNote,
     toggleStar,
@@ -468,6 +470,7 @@ export function NotesWorkspace({
       <WorkspaceApp
         ref={workspaceLayoutRef}
         initialDetailOpenMobile={Boolean(initialNoteId)}
+        detailScrollResetKey={showSingleNoteDetail && active ? active.id : ""}
         workspaceRoot={{
           className: cn("notes-workspace", className),
           style: notesDetailTintStyle(notesDetailTint) as CSSProperties | undefined,
@@ -603,15 +606,12 @@ export function NotesWorkspace({
               closeMobileDetail={closeMobileDetail}
               backLabel={viewLabel}
               notebooks={selectNotebooks}
-              onMoveToNotebook={(notebook) => {
-                if (active) moveToNotebook([active.id], notebook.id || notebook.name);
-              }}
+              onMoveToNotebook={moveActiveNoteToNotebook}
               onCreateNotebook={
                 canManageNotebooks && active ? () => openCreateNotebook([active.id]) : undefined
               }
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}
-              showCollabChrome={collabSessionActive}
               notebookColor={activeNotebook?.color}
               readOnly={noteReadOnly}
               canArchive={noteCanArchive}
@@ -677,9 +677,13 @@ export function NotesWorkspace({
         detailFooter={() => {
           if (!showSingleNoteDetail || !active) return null;
           return (
-            <NotesDetailFooter
-              lastEdited={formatNoteLastEdited(active)}
-              editedLabel={L.editedLabel}
+            <WorkspaceDetailFooter
+              className="notes-detail-footer"
+              start={collabSessionActive ? <NoteCollabChrome /> : undefined}
+              tags={notesLastEditedTag({
+                lastEdited: formatNoteLastEdited(active),
+                editedLabel: L.editedLabel,
+              })}
             />
           );
         }}

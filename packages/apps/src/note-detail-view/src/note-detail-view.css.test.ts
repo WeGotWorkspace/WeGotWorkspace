@@ -5,23 +5,33 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "note-detail-view.css"), "utf8");
+const paperSheet = readFileSync(join(here, "../../ui/paper-sheet.css"), "utf8");
 const styles = readFileSync(join(here, "../../styles.css"), "utf8");
 
 describe("note-detail-view paper sheet CSS", () => {
-  it("styles the open note as a paper card", () => {
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*rounded-none/);
-    expect(css).not.toMatch(/\.note-detail-sheet \{[\s\S]*rounded-2xl/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*--note-detail-sheet-bg/);
-    expect(css).toMatch(
-      /\.note-detail-sheet \{[\s\S]*0 1px 1px color-mix\(in oklab,\s*var\(--color-ink\) 22%/,
+  it("layouts the open note on the shared paper-sheet surface", () => {
+    expect(paperSheet).toMatch(/\.paper-sheet \{[\s\S]*border-radius:\s*0/);
+    expect(paperSheet).toMatch(
+      /\.paper-sheet \{[\s\S]*background-color:\s*var\(--paper-sheet-bg\)/,
     );
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*0 3px 6px/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*0 12px 20px -4px/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*0 32px 48px -12px/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*px-6/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*md:px-10/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*md:py-10/);
-    expect(css).toMatch(/\.note-detail-sheet \{[\s\S]*min-h-full/);
+    expect(paperSheet).toMatch(
+      /\.paper-sheet \{[\s\S]*box-shadow:\s*var\(--paper-sheet-shadow,\s*var\(--sheet-shadow\)\)/,
+    );
+    expect(paperSheet).toMatch(/\.paper-sheet \{[\s\S]*height:\s*fit-content/);
+    expect(paperSheet).toMatch(
+      /\.paper-sheet \{[\s\S]*min-height:\s*var\(--paper-sheet-min-height,\s*auto\)/,
+    );
+    expect(styles).toMatch(/--paper-sheet-bg:\s*oklch\(1 0 0\)/);
+    expect(styles).toMatch(/--sheet-shadow:\s*0 1px 2px #0000000a,\s*0 10px 30px -10px #0f172a1f/);
+    expect(css).toMatch(
+      /\.note-detail-view\.paper-sheet \{[\s\S]*@apply mx-auto w-full max-w-\[680px\] px-4 py-8 md:px-6 md:py-10;/,
+    );
+    expect(css).not.toMatch(/\.note-detail-view\.paper-sheet \{[\s\S]*\bpx-6 py-8 md:px-10\b/);
+    expect(css).not.toMatch(/\.note-detail-view\.paper-sheet \{[\s\S]*min-h-full/);
+    expect(css).not.toMatch(/\.note-detail-view\.paper-sheet \{[\s\S]*min-height:\s*100%/);
+    expect(css).toMatch(/Notes-workspace sets `--paper-sheet-min-height`/);
+    expect(css).toMatch(/overflow scrolls on[\s/*]+`\.workspace-detail-pane__scroll`/);
+    expect(css).toMatch(/so the same calc is `100%`/);
   });
 
   it("paints title from the sheet contrast token", () => {

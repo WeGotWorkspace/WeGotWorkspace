@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
 import { RenameFilenameField } from "@/dialogs/src/rename-filename-field";
 import { cn } from "@/lib/utils";
@@ -22,12 +22,15 @@ export function DriveCreateMarkdownDialog({
   labels,
   defaultName,
   initialBrowsePath,
+  initialSelectedPath,
   files,
   groupPaths,
   view: _view,
   operations,
   currentUsername,
   groupRootNames,
+  rootLabels,
+  rootIcon,
   isSubmitting = false,
   errorMessage,
   dialogSurfaceClassName = "drive-dialog-surface",
@@ -38,12 +41,18 @@ export function DriveCreateMarkdownDialog({
   labels: DriveUILabels;
   defaultName: string;
   initialBrowsePath: string;
+  /** Optional preselected destination (Docs: sidebar drive on the Drives root listing). */
+  initialSelectedPath?: string | null;
   files: DriveFile[];
   groupPaths: string[];
   view: ViewKey;
   operations?: DriveAPIOperations;
   currentUsername: string;
   groupRootNames: Set<string>;
+  /** Optional UI-path → display label for drive roots (Docs: Personal / principal names). */
+  rootLabels?: Readonly<Record<string, string>>;
+  /** Optional icon for drive-root rows (Docs: HardDrive). */
+  rootIcon?: ReactNode;
   isSubmitting?: boolean;
   errorMessage?: string | null;
   /** Portaled dialog theme class (repeat app accent tokens outside the workspace root). */
@@ -56,6 +65,7 @@ export function DriveCreateMarkdownDialog({
   const [focusSession, setFocusSession] = useState<string | null>(null);
   const [destinationPath, setDestinationPath] = useState<string | null>(null);
   const nextFocusSession = open ? defaultName : null;
+  const pickerRemountKey = `${initialBrowsePath}::${initialSelectedPath ?? ""}`;
 
   if (nextFocusSession !== focusSession) {
     setFocusSession(nextFocusSession);
@@ -97,15 +107,18 @@ export function DriveCreateMarkdownDialog({
 
         {open ? (
           <DriveFolderPicker
-            key={initialBrowsePath}
+            key={pickerRemountKey}
             labels={labels}
             files={files}
             groupPaths={groupPaths}
             moveIds={[]}
             initialBrowsePath={initialBrowsePath}
+            initialSelectedPath={initialSelectedPath}
             operations={operations}
             currentUsername={currentUsername}
             groupRootNames={groupRootNames}
+            rootLabels={rootLabels}
+            rootIcon={rootIcon}
             onDestinationChange={handleDestinationChange}
           />
         ) : null}

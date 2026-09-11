@@ -4,6 +4,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { focusTextEditorFromChromeEvent } from "@/text-editor-core/src/text-editor-chrome-focus";
 import { TextEditorSlashMenu } from "@/text-editor-core/src/text-editor-slash-menu";
 import { TextEditorTableControls } from "@/text-editor-core/src/text-editor-table-controls";
+import "@/ui/paper-sheet.css";
 
 export type TextEditorSheetVariant = "sheet" | "inline";
 
@@ -51,7 +52,7 @@ export function TextEditorSheet({
     >
       <EditorContent
         editor={editor}
-        className={variant === "sheet" ? "text-editor-sheet__surface" : undefined}
+        className={variant === "sheet" ? "text-editor-sheet__surface paper-sheet" : undefined}
       />
       {overlay}
       {slashMenu ? <TextEditorSlashMenu editor={editor} /> : null}

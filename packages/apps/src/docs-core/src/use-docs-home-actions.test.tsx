@@ -101,17 +101,23 @@ function createMockOperations(starredPaths: string[] = []): MockOperations {
 function renderActions(
   operations: MockOperations,
   reload = vi.fn(),
-  options?: { offlineUsername?: string; onAvailabilityChanged?: () => void },
+  options?: {
+    offlineUsername?: string;
+    onAvailabilityChanged?: () => void;
+    inTrashView?: boolean;
+    files?: typeof FILES;
+  },
 ) {
   return renderHook(() =>
     useDocsHomeActions({
       operations,
-      files: FILES,
+      files: options?.files ?? FILES,
       username: "alice",
       groupRoots: [],
       offlineUsername: options?.offlineUsername ?? null,
       onAvailabilityChanged: options?.onAvailabilityChanged,
       reload,
+      inTrashView: options?.inTrashView ?? false,
     }),
   );
 }
@@ -138,7 +144,23 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.onStar("search:file:users/alice/A.md"));
 
     expect(result.current.starred["search:file:users/alice/A.md"]).toBeUndefined();
-    expect(operations.setStar).toHaveBeenCalledWith({ path: "/users/alice/A.md", starred: false });
+    expect(queueMutation).toHaveBeenCalledTimes(1);
+    expect(queueMutation.mock.calls[0]?.[0]).toMatchObject({
+      key: "docs:star:search:file:users/alice/A.md",
+      toastMessage: "Unstarred",
+      undoToastMessage: "Star change undone.",
+    });
+
+    const execute = queueMutation.mock.calls[0]?.[0]?.execute as (
+      signal: AbortSignal,
+    ) => Promise<void>;
+    await act(async () => {
+      await execute(new AbortController().signal);
+    });
+    expect(operations.setStar).toHaveBeenCalledWith(
+      { path: "/users/alice/A.md", starred: false },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   it("downloads via the file api path", () => {
@@ -255,18 +277,38 @@ describe("useDocsHomeActions", () => {
     expect(reload).toHaveBeenCalled();
   });
 
-  it("batch-stars all selected files", async () => {
+  it("batch-stars all selected files via a single undoable toast", async () => {
     const operations = createMockOperations();
     const { result } = renderActions(operations);
     await waitFor(() => expect(operations.listStars).toHaveBeenCalled());
 
     act(() => result.current.batchStar(FILES.map((file) => file.id)));
 
-    expect(operations.setStar).toHaveBeenCalledTimes(2);
-    expect(operations.setStar).toHaveBeenCalledWith({ path: "/users/alice/A.md", starred: true });
-    expect(operations.setStar).toHaveBeenCalledWith({ path: "/users/alice/B.md", starred: true });
     expect(result.current.starred["search:file:users/alice/A.md"]).toBe(true);
     expect(result.current.starred["search:file:users/alice/B.md"]).toBe(true);
+    expect(queueMutation).toHaveBeenCalledTimes(1);
+    expect(queueMutation.mock.calls[0]?.[0]).toMatchObject({
+      key: "docs:batch-star:search:file:users/alice/A.md,search:file:users/alice/B.md",
+      toastMessage: "Starred",
+      undoToastMessage: "Star changes undone.",
+    });
+    expect(operations.setStar).not.toHaveBeenCalled();
+
+    const execute = queueMutation.mock.calls[0]?.[0]?.execute as (
+      signal: AbortSignal,
+    ) => Promise<void>;
+    await act(async () => {
+      await execute(new AbortController().signal);
+    });
+    expect(operations.setStar).toHaveBeenCalledTimes(2);
+    expect(operations.setStar).toHaveBeenCalledWith(
+      { path: "/users/alice/A.md", starred: true },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(operations.setStar).toHaveBeenCalledWith(
+      { path: "/users/alice/B.md", starred: true },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   it("moves all selected files and refreshes once", async () => {
@@ -446,5 +488,50 @@ describe("useDocsHomeActions", () => {
 
     expect(operations.renameItem).toHaveBeenCalledTimes(trashCalls);
     expect(onAvailabilityChanged).toHaveBeenCalled();
+  });
+
+  it("permanently deletes files when confirming from the Trash view", async () => {
+    const operations = createMockOperations();
+    const reload = vi.fn();
+    const trashFiles = [
+      file({
+        id: "search:file:users/alice/.Trash/B.md",
+        title: "B.md",
+        apiPath: "/users/alice/.Trash/B.md",
+        parent: "Trash",
+      }),
+    ];
+    const { result } = renderActions(operations, reload, {
+      inTrashView: true,
+      files: trashFiles,
+    });
+
+    act(() => result.current.onTrash(trashFiles[0]!));
+    expect(result.current.deleteState).toEqual({
+      ids: ["search:file:users/alice/.Trash/B.md"],
+      permanent: true,
+    });
+
+    act(() => result.current.confirmTrash());
+
+    expect(queueMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: "docs:delete:search:file:users/alice/.Trash/B.md",
+        toastMessage: "Deleted “B.md”",
+        executeImmediately: true,
+      }),
+    );
+
+    const queued = queueMutation.mock.calls[0]?.[0];
+    await act(async () => {
+      await queued?.execute(new AbortController().signal);
+    });
+
+    expect(operations.deleteItems).toHaveBeenCalledWith(
+      ["/users/alice/.Trash/B.md"],
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(operations.renameItem).not.toHaveBeenCalled();
+    expect(reload).toHaveBeenCalled();
   });
 });

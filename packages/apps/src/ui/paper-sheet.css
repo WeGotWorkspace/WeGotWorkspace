@@ -1,0 +1,19 @@
+@import "../styles.css" reference;
+
+/**
+ * Shared paper sheet surface — Docs letter sheet + Notes detail card.
+ * Parents publish `--paper-sheet-bg` (white default in styles.css). Elevation
+ * uses `--paper-sheet-shadow` → `--sheet-shadow`. Square corners — not a card.
+ *
+ * Height: grows with content (`fit-content`). Parents set
+ * `--paper-sheet-min-height` for a scrollport-filling floor (Notes desk pads /
+ * Docs canvas pads). Overflow belongs on the scrollport, not this surface.
+ * Nested sheets (e.g. Notes TipTap body) must reset `--paper-sheet-min-height`.
+ */
+.paper-sheet {
+  background-color: var(--paper-sheet-bg);
+  box-shadow: var(--paper-sheet-shadow, var(--sheet-shadow));
+  border-radius: 0;
+  height: fit-content;
+  min-height: var(--paper-sheet-min-height, auto);
+}

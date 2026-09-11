@@ -1,30 +1,53 @@
 @import "../../styles.css" reference;
 @import "../../text-editor-core/docs-collab/docs-collab-card/docs-collab-sidebar-panel.css";
 
+/*
+ * Portal accent only — sheet wash + outline button / segmented / menu chrome
+ * live on shared `.docs-collab-sidebar-panel-drawer` (SideDrawer under body).
+ */
 .calendar-invitations-panel-drawer {
   --side-drawer-width: 23rem;
+  --calendar-accent: #6366f1;
+  --calendar-accent-strong: #5558e8;
+  --workspace-accent: var(--calendar-accent);
+  --workspace-accent-strong: var(--calendar-accent-strong);
 }
 
 .calendar-invitations-panel {
   @apply min-w-0 max-w-full overflow-hidden;
-  --docs-surface: var(--app-sidebar-bg);
+  /* Shared DocsCollabSidebarPanel wash (workspace wash → recipe → Calendar sidebar). */
+  --docs-collab-sidebar-panel-bg: var(
+    --docs-collab-sidebar-panel-wash,
+    var(--docs-collab-sidebar-panel-wash-recipe, var(--app-sidebar-bg))
+  );
   --docs-collab-sidebar-panel-color: var(--docs-text, var(--color-ink));
   --docs-collab-sidebar-panel-border-color: var(
     --docs-border,
     color-mix(in oklab, var(--color-ink) 8%, transparent)
   );
-  background-color: var(--app-sidebar-bg);
 }
 
-.calendar-invitations-panel .docs-collab-sidebar-panel__header,
-.calendar-invitations-panel .docs-collab-sidebar-panel__scroll,
-.calendar-invitations-panel .docs-collab-sidebar-panel__empty,
-.calendar-invitations-panel .docs-collab-sidebar-panel__list {
-  background-color: var(--app-sidebar-bg);
+/* Calendar main-header uses `p-3` below 40rem — match that exception only. */
+@media (max-width: 40rem) {
+  .calendar-invitations-panel {
+    --docs-collab-sidebar-panel-padding-x: 0.75rem;
+  }
+}
+
+/* Match `.workspace-app-layout__main-header` block padding so title-row height
+   lines up with Calendar’s main `.view-header` (filter sits in headerActions). */
+.calendar-invitations-panel .docs-collab-sidebar-panel__header {
+  @apply py-4 md:py-6;
+}
+
+@media (max-width: 40rem) {
+  .calendar-invitations-panel .docs-collab-sidebar-panel__header {
+    @apply py-3;
+  }
 }
 
 .calendar-invitations-panel .docs-collab-sidebar-panel__scroll {
-  @apply px-5 py-6;
+  @apply py-6;
 }
 
 .calendar-invitations-panel__list {
@@ -32,9 +55,5 @@
 }
 
 .calendar-invitations-panel__filter {
-  @apply flex min-w-0 w-full max-w-full;
-}
-
-.calendar-invitations-panel__filter .segmented-control__button {
-  @apply min-w-0 flex-1;
+  @apply w-auto shrink-0;
 }

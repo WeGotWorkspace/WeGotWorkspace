@@ -1,6 +1,6 @@
 import { MessageSquarePlus } from "lucide-react";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
-import { cn } from "@/lib/utils";
+import { IconButton } from "@/button/src/button";
 
 export type DocsCollabCommentControlProps = {
   labels: Pick<
@@ -28,24 +28,22 @@ export function DocsCollabCommentControl({
   className,
 }: DocsCollabCommentControlProps) {
   const disabled = commentsDisabled || !canAddFromSelection;
-  const title = commentsDisabled
+  const label = commentsDisabled
     ? (commentsDisabledTitle ?? labels.commentsAddFromSelectionDisabledViewSource)
     : !canAddFromSelection
       ? labels.commentsAddFromSelectionDisabledNoSelection
       : labels.commentsAddFromSelection;
 
   return (
-    <button
-      type="button"
-      title={title}
+    <IconButton
+      label={label}
       aria-label={labels.commentsAddFromSelection}
       disabled={disabled}
       onClick={onAddCommentFromSelection}
-      className={cn("text-editor-format-bar__btn", className)}
-    >
-      <span className="text-editor-format-bar__btn-icon">
-        <MessageSquarePlus aria-hidden />
-      </span>
-    </button>
+      icon={<MessageSquarePlus aria-hidden />}
+      size="sm"
+      variant="outline"
+      className={className}
+    />
   );
 }

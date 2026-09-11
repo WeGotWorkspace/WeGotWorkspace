@@ -43,6 +43,7 @@ function MoveAddressBookSelect({
   return (
     <ContactsAddressBookSelect
       variant="toolbar"
+      triggerVariant="swatch"
       id="contact-move-address-book"
       label={labels.toolbarMoveToAddressBook}
       personalLabel={moveAddressBook.personalLabel ?? labels.personalAddressBook}
@@ -118,14 +119,21 @@ export function ContactsDetailActionBar({
       label: labels.delete,
       onClick: onDelete,
       icon: <Trash2 className="size-4" />,
+      severity: "danger" as const,
     },
   ];
+
+  const moveLeading =
+    moveAddressBook && moveAddressBook.books.length >= 2 ? (
+      <MoveAddressBookSelect labels={labels} moveAddressBook={moveAddressBook} />
+    ) : undefined;
 
   return (
     <ActionBar
       onBack={closeMobileDetail}
       backLabel={backLabel}
-      rightLeading={<MoveAddressBookSelect labels={labels} moveAddressBook={moveAddressBook} />}
+      rightLeading={moveLeading}
+      rightLeadingPlacement={canEdit ? "after-first" : "start"}
       rightActions={rightActions}
       rightMenuLabel="More actions"
     />

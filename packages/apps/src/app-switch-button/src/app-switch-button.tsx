@@ -1,19 +1,41 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { ChevronDown } from "lucide-react";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
-import type { DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
+import type { DropdownMenuEntry } from "@/menu-dropdown/src/dropdown-menu";
 import { WorkspaceAppIcon, WorkspaceHomeIcon } from "@/lib/workspace-app-icon";
-import { WORKSPACE_APP_IDS, type WorkspaceAppId } from "@/lib/workspace-app-icons";
+import {
+  WORKSPACE_APP_IDS,
+  workspaceAppLabel,
+  workspaceAppLabelFromPath,
+  type WorkspaceAppId,
+} from "@/lib/workspace-app-icons";
 import { cn } from "@/lib/utils";
 import "@/app-switch-button/src/app-switch-button.css";
 
 const TAGLINE = "we got";
+/** Typographic dropdown mark — same font metrics as the app name (not a Lucide glyph). */
+const CHEVRON = "▾";
+
+/** Chrome / account apps — listed below a divider, separate from product apps. */
+const UTILITY_APP_IDS = new Set<WorkspaceAppId>(["admin", "settings"]);
 
 const WORKSPACE_APPS = WORKSPACE_APP_IDS.map((id) => ({
   id,
-  label: id.charAt(0).toUpperCase() + id.slice(1),
+  label: workspaceAppLabel(id),
   to: `/${id}` as const,
 }));
+
+type WorkspaceAppEntry = (typeof WORKSPACE_APPS)[number];
+
+function byDisplayName(a: WorkspaceAppEntry, b: WorkspaceAppEntry): number {
+  return a.label.localeCompare(b.label);
+}
+
+const PRODUCT_APPS = WORKSPACE_APPS.filter((app) => !UTILITY_APP_IDS.has(app.id)).sort(
+  byDisplayName,
+);
+const UTILITY_APPS = WORKSPACE_APPS.filter((app) => UTILITY_APP_IDS.has(app.id)).sort(
+  byDisplayName,
+);
 
 export type AppSwitchButtonVariant = "default" | "compact";
 
@@ -41,7 +63,7 @@ export function AppSwitchButton({
       ? WORKSPACE_APPS.find((a) => a.label.toLowerCase() === subtitleProp.toLowerCase())
       : undefined;
   const current = fromSubtitle ?? fromPath ?? WORKSPACE_APPS[0];
-  const subtitle = subtitleProp ?? current.label;
+  const subtitle = subtitleProp ?? workspaceAppLabelFromPath(path);
   const isWorkspaceContext = subtitleProp === "Workspace";
   const menuSurfaceKey = isWorkspaceContext ? "workspace" : current.id;
   const onSelect =
@@ -50,7 +72,7 @@ export function AppSwitchButton({
       void navigate({ to: app.to });
     });
 
-  const menuItems: DropdownMenuItemProps[] = WORKSPACE_APPS.map((app) => ({
+  const toMenuItem = (app: WorkspaceAppEntry): DropdownMenuEntry => ({
     id: app.id,
     label: app.label,
     icon: (
@@ -64,7 +86,15 @@ export function AppSwitchButton({
       if (disabled || app.id === current.id) return;
       onSelect?.(app);
     },
-  }));
+  });
+
+  const menuItems: DropdownMenuEntry[] = [
+    ...PRODUCT_APPS.map(toMenuItem),
+    ...(PRODUCT_APPS.length > 0 && UTILITY_APPS.length > 0
+      ? [{ type: "separator" as const, id: "app-switch-utility-sep" }]
+      : []),
+    ...UTILITY_APPS.map(toMenuItem),
+  ];
 
   return (
     <DropdownMenu
@@ -89,14 +119,15 @@ export function AppSwitchButton({
           )}
           <span className="app-switch-button__label">
             {!compact ? <span className="app-switch-button__label-top">{TAGLINE}</span> : null}
-            <span>{subtitle}</span>
-          </span>
-          {!disabled ? (
-            <span className="app-switch-button__chevron-stack">
-              <span aria-hidden />
-              <ChevronDown className="app-switch-button__chevron" aria-hidden />
+            <span className="app-switch-button__label-name">
+              {subtitle}
+              {!disabled ? (
+                <span className="app-switch-button__chevron" aria-hidden>
+                  {CHEVRON}
+                </span>
+              ) : null}
             </span>
-          ) : null}
+          </span>
         </button>
       }
       items={menuItems}

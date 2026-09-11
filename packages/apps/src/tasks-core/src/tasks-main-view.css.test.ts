@@ -33,6 +33,20 @@ describe("tasks remind button label", () => {
   });
 });
 
+describe("tasks composer add actions", () => {
+  it("does not render a Cancel control in the add-task composer", () => {
+    const mainView = readFileSync(join(here, "tasks-main-view.tsx"), "utf8");
+    const actions = mainView.match(
+      /className="tasks-main-view__composer-actions"[\s\S]*?<\/div>/,
+    )?.[0];
+    expect(actions).toBeTruthy();
+    expect(actions).toMatch(/L\.addTaskButton/);
+    expect(actions).not.toMatch(/L\.cancel/);
+    expect(actions).not.toMatch(/resetDraft/);
+    expect(mainView).not.toMatch(/hasDraftContent/);
+  });
+});
+
 describe("tasks composer select chips", () => {
   it("pins compact metrics with higher specificity than select-trigger defaults", () => {
     const block = css.match(/\.select-trigger\.tasks-main-view__composer-select \{[^}]+\}/)?.[0];
@@ -65,12 +79,18 @@ describe("tasks composer select chips", () => {
     expect(block).toMatch(/font-size:\s*0\.75rem/);
   });
 
-  it("lets Add task and Cancel use production Button size-sm metrics", () => {
+  it("lets Add task use production Button size-sm metrics", () => {
     expect(css).not.toMatch(/\.tasks-main-view__composer-actions \.button\.button--size-sm \{/);
     const actions = css.match(/\.tasks-main-view__composer-actions \{[^}]+\}/)?.[0];
     expect(actions).toBeTruthy();
     expect(actions).not.toMatch(/--control-height-sm:\s*2rem/);
     expect(actions).not.toMatch(/--control-radius-button-pill:\s*var\(--control-radius\)/);
+  });
+
+  it("pins Add task on the start (left) side of the composer actions row", () => {
+    const actions = css.match(/\.tasks-main-view__composer-actions \{[^}]+\}/)?.[0];
+    expect(actions).toMatch(/justify-start/);
+    expect(actions).not.toMatch(/justify-end/);
   });
 
   it("colors the assigned composer remind bell like the list-row mark", () => {

@@ -31,10 +31,10 @@ describe("MeetCallToolbar", () => {
     expect(toolbar).toMatch(/meetLabels\.shareScreen/);
   });
 
-  it("exposes the device popover trigger as a sm subtle IconButton", () => {
+  it("exposes the device popover trigger as a sm outline IconButton", () => {
     expect(toolbar).toMatch(/from "@\/meet-core\/src\/meet-device-popover"/);
     expect(toolbar).toMatch(/size="sm"/);
-    expect(toolbar).toMatch(/variant="subtle"/);
+    expect(toolbar).toMatch(/variant="outline"/);
     expect(toolbar).toMatch(/variant="destructive"/);
   });
 

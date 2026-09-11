@@ -20,7 +20,7 @@ export function MeetCircleToggle({ on, onClick, OnIcon, OffIcon, label }: MeetCi
       label={label}
       icon={<Icon />}
       size="sm"
-      variant="subtle"
+      variant="outline"
       active={on}
       aria-pressed={on}
     />

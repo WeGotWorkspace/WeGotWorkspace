@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createElement } from "react";
+import { Check } from "lucide-react";
+import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { createNotesJmapClient } from "@/lib/api/wgw/notes-jmap";
@@ -31,6 +34,7 @@ import {
 import { setNotesSyncConflictListener } from "@/lib/offline/notes-sync-conflicts";
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
+import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import type { NotesNotebookCollection, NotesUIData } from "@/notes-core/src/notes-types";
 import { createDefaultNotesApiSource, type NotesApiSource } from "./notes-api-source";
 
@@ -116,6 +120,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
   const [listRefreshing, setListRefreshing] = useState(false);
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
   const crossTabRefreshInFlightRef = useRef(false);
+  const { show, showError } = useAppToast();
 
   const patchFromCache = useCallback(async () => {
     if (!offlineUsername) return;
@@ -137,11 +142,17 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     void applyInboundRefresh()
       .then(() => {
         if (offlineUsername) notifyNotesBootstrapUpdated(offlineUsername);
+        show(defaultNotesLabels.toastListUpdated, {
+          icon: createElement(Check, { className: "size-4" }),
+        });
+      })
+      .catch(() => {
+        showError(defaultNotesLabels.toastListRefreshFailed);
       })
       .finally(() => {
         setListRefreshing(false);
       });
-  }, [applyInboundRefresh, listRefreshing, offlineUsername]);
+  }, [applyInboundRefresh, listRefreshing, offlineUsername, show, showError]);
 
   const reconnectSyncing = useOfflineReconnectFlush({
     enabled: Boolean(offlineUsername),

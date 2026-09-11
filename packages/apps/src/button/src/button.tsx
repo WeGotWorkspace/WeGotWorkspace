@@ -20,6 +20,7 @@ export {
   buttonVariants,
   normalizeButtonSize,
   normalizeButtonVariant,
+  type ButtonSeverity,
   type ButtonSize,
   type ButtonSizeProp,
   type ButtonVariant,
@@ -65,7 +66,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       : (children ?? (
           <>
             {icon ? <span className={BUTTON_ICON_SLOT_CLASSNAME}>{icon}</span> : null}
-            {label ? <span>{label}</span> : null}
+            {label ? <span className="button__label">{label}</span> : null}
           </>
         ));
 

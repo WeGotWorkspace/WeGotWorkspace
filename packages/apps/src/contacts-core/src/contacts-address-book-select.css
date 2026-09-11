@@ -1,12 +1,12 @@
 @import "../../styles.css" reference;
 
-.contacts-address-book-select {
+.contacts-address-book-select.select-trigger {
   width: auto;
   min-width: 7rem;
   background-color: var(--color-cream, #ffffff);
 }
 
-.contacts-address-book-select > span {
+.contacts-address-book-select.select-trigger > span {
   @apply flex min-w-0 items-center overflow-visible;
   -webkit-line-clamp: unset;
   -webkit-box-orient: unset;
@@ -16,7 +16,7 @@
   @apply flex min-w-0 items-center gap-2;
 }
 
-.contacts-address-book-select .contacts-address-book-select__option {
+.contacts-address-book-select.select-trigger .contacts-address-book-select__option {
   @apply flex items-center gap-2 overflow-visible;
   -webkit-line-clamp: unset;
   -webkit-box-orient: unset;
@@ -24,4 +24,9 @@
 
 .contacts-address-book-select__name {
   @apply min-w-0 truncate;
+}
+
+/* ColorSwatchTrigger variant — keep intrinsic icon + chevron width (calendar picker). */
+.contacts-address-book-select.contacts-address-book-select--swatch {
+  min-width: 3.25rem;
 }

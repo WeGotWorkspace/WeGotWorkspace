@@ -5,6 +5,8 @@ import {
   workspaceAppIconAppleTouchSrc,
   workspaceAppIconManifestSrc,
   workspaceAppIconUiSrc,
+  workspaceAppLabel,
+  workspaceAppLabelFromPath,
 } from "@/lib/workspace-app-icons";
 import { WORKSPACE_APP_ICON_INLINE } from "@/lib/workspace-app-icon-svgs";
 
@@ -108,5 +110,22 @@ describe("WORKSPACE_APP_ACCENT", () => {
   it("samples contacts from the mint launcher tile, not leftover gold", () => {
     expect(WORKSPACE_APP_ACCENT.contacts.toLowerCase()).toBe("#39d49b");
     expect(WORKSPACE_APP_ACCENT.contacts).not.toMatch(/#8b6f45/i);
+  });
+});
+
+describe("workspaceAppLabelFromPath", () => {
+  it("capitalizes the suite app id matching the app-switch route", () => {
+    expect(workspaceAppLabel("docs")).toBe("Docs");
+    expect(workspaceAppLabelFromPath("/docs")).toBe("Docs");
+    expect(workspaceAppLabelFromPath("/docs/abc")).toBe("Docs");
+    expect(workspaceAppLabelFromPath("/tasks")).toBe("Tasks");
+    expect(workspaceAppLabelFromPath("/drive/folder")).toBe("Drive");
+    expect(workspaceAppLabelFromPath("/meet/room-1")).toBe("Meet");
+  });
+
+  it("falls back to Workspace outside product routes", () => {
+    expect(workspaceAppLabelFromPath("/")).toBe("Workspace");
+    expect(workspaceAppLabelFromPath("/login")).toBe("Workspace");
+    expect(workspaceAppLabelFromPath("/install")).toBe("Workspace");
   });
 });

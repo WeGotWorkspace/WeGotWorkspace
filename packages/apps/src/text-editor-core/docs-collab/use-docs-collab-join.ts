@@ -57,6 +57,7 @@ type UseDocsCollabJoinOptions = {
   mesh: MeshApi;
   save: SaveApi;
   setDocStatus: (status: string | ((prev: string) => string)) => void;
+  setLastSavedAt: (iso: string | null) => void;
   setPendingSync: (pending: boolean) => void;
   setFailedSync: (failed: boolean) => void;
 };
@@ -69,6 +70,7 @@ export function useDocsCollabJoin({
   mesh,
   save,
   setDocStatus,
+  setLastSavedAt,
   setPendingSync,
   setFailedSync,
 }: UseDocsCollabJoinOptions) {
@@ -142,9 +144,10 @@ export function useDocsCollabJoin({
     setJoined(false);
     resetMeshUi();
     setDocStatus("");
+    setLastSavedAt(null);
     setPendingSync(false);
     setFailedSync(false);
-  }, [refs, room, setDocStatus, setFailedSync, setPendingSync, resetMeshUi]);
+  }, [refs, room, setDocStatus, setFailedSync, setLastSavedAt, setPendingSync, resetMeshUi]);
 
   const mergeServerState = useCallback(
     async (authToken: string | undefined): Promise<boolean> => {

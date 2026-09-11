@@ -121,7 +121,7 @@ export class CalendarListView extends CalendarViewBase {
                 ({ date, items }) => html`
                   <section class="agenda-day" aria-labelledby=${`agenda-day-${date}`}>
                     <h2
-                      class="agenda-day-heading"
+                      class="list-sticky-header agenda-day-heading"
                       id=${`agenda-day-${date}`}
                       aria-label=${this.#formatLongDateLabel(date)}
                     >

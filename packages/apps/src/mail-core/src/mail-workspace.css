@@ -15,15 +15,11 @@
   --app-sidebar-color: #ffffff;
   --sidebar-logo-close-button-color: #ffffff;
   --sidebar-badge-fg: var(--mail-accent);
-  --workspace-sidebar-toggle-color: var(--color-ink);
-  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
   --workspace-user-footer-link-hover-bg: color-mix(in oklab, #ffffff 10%, transparent);
   --mail-state-accent: var(--mail-accent);
 
   --workspace-user-footer-text-color: color-mix(in oklab, #ffffff 75%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 15%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, #ffffff 15%, transparent);
-  --workspace-user-footer-avatar-color: #ffffff;
   --workspace-user-footer-link-color: color-mix(in oklab, #ffffff 70%, transparent);
   --workspace-user-footer-link-bg: color-mix(in oklab, #ffffff 8%, transparent);
 
@@ -50,21 +46,18 @@
   --color-ink: #ffffff;
   --button-primary-bg: #ffffff;
   --button-primary-fg: var(--mail-accent);
-  --button-subtle-color: #ffffff;
-  --button-subtle-background: color-mix(in oklab, #ffffff 12%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, #ffffff 20%, transparent);
+  --button-active-color: #ffffff;
+  --button-outline-hover-background: color-mix(in oklab, #ffffff 10%, transparent);
+  --button-outline-active-background: color-mix(in oklab, #ffffff 14%, transparent);
+  --button-outline-active-hover-background: color-mix(in oklab, #ffffff 20%, transparent);
 }
 
 .mail-workspace .app-sidebar__footer {
+  --color-ink: var(--app-sidebar-color);
   --workspace-user-footer-text-color: #ffffff;
   --workspace-user-footer-subtitle-color: color-mix(in oklab, #ffffff 72%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 18%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, #ffffff 22%, transparent);
-  --workspace-user-footer-avatar-color: var(--app-sidebar-color);
   --workspace-user-footer-link-color: #ffffff;
-  --button-subtle-color: #ffffff;
-  --button-subtle-background: color-mix(in oklab, #ffffff 10%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, #ffffff 18%, transparent);
 }
 
 .mail-workspace .mail-state-accent {

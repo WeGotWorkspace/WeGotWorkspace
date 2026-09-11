@@ -12,8 +12,6 @@
   --app-sidebar-color: var(--install-sidebar-fg);
   --sidebar-logo-close-button-color: var(--install-sidebar-fg);
   --app-sidebar-close-hover-bg: color-mix(in oklab, var(--install-sidebar-fg) 12%, transparent);
-  --workspace-sidebar-toggle-color: var(--color-ink);
-  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --button-primary-bg: var(--install-accent);
   --button-primary-fg: #ffffff;
   --primary: var(--install-accent);
@@ -58,9 +56,11 @@
   color: color-mix(in oklab, currentColor 75%, transparent);
 }
 
-.install-workspace .sidebar-section .menu-item--surface-selected {
-  background-color: color-mix(in oklab, currentColor 12%, transparent);
-  color: currentColor;
+.install-workspace .app-sidebar {
+  --button-active-color: currentColor;
+  --button-outline-hover-background: color-mix(in oklab, currentColor 8%, transparent);
+  --button-outline-active-background: color-mix(in oklab, currentColor 12%, transparent);
+  --button-outline-active-hover-background: color-mix(in oklab, currentColor 18%, transparent);
 }
 
 .install-workspace .sidebar-section .menu-item.menu-item--selected .menu-item__badge {

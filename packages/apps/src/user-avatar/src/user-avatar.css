@@ -1,53 +1,58 @@
 @import "../../styles.css" reference;
 
 .user-avatar {
+  /*
+   * Per-user palette: same intensity as default outline-active marks and
+   * docs-collab connecting chips (soft wash + muted stroke, not full-sat rings).
+   * Wash ~14% hue→cream; border ~38% hue→transparent; fg hue→ink for glyphs.
+   */
   --user-avatar-amber: #f59e0b;
   --user-avatar-amber-bg: color-mix(
     in oklab,
-    var(--user-avatar-amber) 32%,
+    var(--user-avatar-amber) 14%,
     var(--color-cream, #fff)
   );
-  --user-avatar-amber-border: var(--user-avatar-amber);
-  --user-avatar-amber-fg: color-mix(in oklab, var(--user-avatar-amber) 72%, var(--color-ink));
+  --user-avatar-amber-border: color-mix(in oklab, var(--user-avatar-amber) 38%, transparent);
+  --user-avatar-amber-fg: color-mix(in oklab, var(--user-avatar-amber) 32%, var(--color-ink));
   --user-avatar-cyan: #06b6d4;
-  --user-avatar-cyan-bg: color-mix(in oklab, var(--user-avatar-cyan) 32%, var(--color-cream, #fff));
-  --user-avatar-cyan-border: var(--user-avatar-cyan);
-  --user-avatar-cyan-fg: color-mix(in oklab, var(--user-avatar-cyan) 72%, var(--color-ink));
+  --user-avatar-cyan-bg: color-mix(in oklab, var(--user-avatar-cyan) 14%, var(--color-cream, #fff));
+  --user-avatar-cyan-border: color-mix(in oklab, var(--user-avatar-cyan) 38%, transparent);
+  --user-avatar-cyan-fg: color-mix(in oklab, var(--user-avatar-cyan) 32%, var(--color-ink));
   --user-avatar-orange: #f97316;
   --user-avatar-orange-bg: color-mix(
     in oklab,
-    var(--user-avatar-orange) 32%,
+    var(--user-avatar-orange) 14%,
     var(--color-cream, #fff)
   );
-  --user-avatar-orange-border: var(--user-avatar-orange);
-  --user-avatar-orange-fg: color-mix(in oklab, var(--user-avatar-orange) 72%, var(--color-ink));
+  --user-avatar-orange-border: color-mix(in oklab, var(--user-avatar-orange) 38%, transparent);
+  --user-avatar-orange-fg: color-mix(in oklab, var(--user-avatar-orange) 32%, var(--color-ink));
   --user-avatar-violet: #8b5cf6;
   --user-avatar-violet-bg: color-mix(
     in oklab,
-    var(--user-avatar-violet) 32%,
+    var(--user-avatar-violet) 14%,
     var(--color-cream, #fff)
   );
-  --user-avatar-violet-border: var(--user-avatar-violet);
-  --user-avatar-violet-fg: color-mix(in oklab, var(--user-avatar-violet) 72%, var(--color-ink));
+  --user-avatar-violet-border: color-mix(in oklab, var(--user-avatar-violet) 38%, transparent);
+  --user-avatar-violet-fg: color-mix(in oklab, var(--user-avatar-violet) 32%, var(--color-ink));
   --user-avatar-rose: #f43f5e;
-  --user-avatar-rose-bg: color-mix(in oklab, var(--user-avatar-rose) 32%, var(--color-cream, #fff));
-  --user-avatar-rose-border: var(--user-avatar-rose);
-  --user-avatar-rose-fg: color-mix(in oklab, var(--user-avatar-rose) 72%, var(--color-ink));
+  --user-avatar-rose-bg: color-mix(in oklab, var(--user-avatar-rose) 14%, var(--color-cream, #fff));
+  --user-avatar-rose-border: color-mix(in oklab, var(--user-avatar-rose) 38%, transparent);
+  --user-avatar-rose-fg: color-mix(in oklab, var(--user-avatar-rose) 32%, var(--color-ink));
   --user-avatar-lime: #84cc16;
-  --user-avatar-lime-bg: color-mix(in oklab, var(--user-avatar-lime) 32%, var(--color-cream, #fff));
-  --user-avatar-lime-border: var(--user-avatar-lime);
-  --user-avatar-lime-fg: color-mix(in oklab, var(--user-avatar-lime) 72%, var(--color-ink));
+  --user-avatar-lime-bg: color-mix(in oklab, var(--user-avatar-lime) 14%, var(--color-cream, #fff));
+  --user-avatar-lime-border: color-mix(in oklab, var(--user-avatar-lime) 38%, transparent);
+  --user-avatar-lime-fg: color-mix(in oklab, var(--user-avatar-lime) 32%, var(--color-ink));
   --user-avatar-teal: #14b8a6;
-  --user-avatar-teal-bg: color-mix(in oklab, var(--user-avatar-teal) 32%, var(--color-cream, #fff));
-  --user-avatar-teal-border: var(--user-avatar-teal);
-  --user-avatar-teal-fg: color-mix(in oklab, var(--user-avatar-teal) 72%, var(--color-ink));
+  --user-avatar-teal-bg: color-mix(in oklab, var(--user-avatar-teal) 14%, var(--color-cream, #fff));
+  --user-avatar-teal-border: color-mix(in oklab, var(--user-avatar-teal) 38%, transparent);
+  --user-avatar-teal-fg: color-mix(in oklab, var(--user-avatar-teal) 32%, var(--color-ink));
   --user-avatar-sky: #0ea5e9;
-  --user-avatar-sky-bg: color-mix(in oklab, var(--user-avatar-sky) 32%, var(--color-cream, #fff));
-  --user-avatar-sky-border: var(--user-avatar-sky);
-  --user-avatar-sky-fg: color-mix(in oklab, var(--user-avatar-sky) 72%, var(--color-ink));
+  --user-avatar-sky-bg: color-mix(in oklab, var(--user-avatar-sky) 14%, var(--color-cream, #fff));
+  --user-avatar-sky-border: color-mix(in oklab, var(--user-avatar-sky) 38%, transparent);
+  --user-avatar-sky-fg: color-mix(in oklab, var(--user-avatar-sky) 32%, var(--color-ink));
   display: flex;
   align-items: center;
-  gap: var(--user-avatar-gap, 0.5rem);
+  gap: var(--user-avatar-gap, 0.625rem);
   min-width: 0;
 }
 
@@ -99,11 +104,16 @@
   --user-avatar-tile-fg: var(--user-avatar-sky-fg);
 }
 
-.user-avatar--colored .user-avatar__mark {
-  box-sizing: border-box;
-  background-color: var(--user-avatar-tile-bg);
-  border: 2px solid var(--user-avatar-tile-border);
-  color: var(--user-avatar-tile-fg);
+/* Colored marks keep outline radius/1px stroke; palette retints wash/fg/border. */
+.user-avatar--colored {
+  --user-avatar-bg: var(--user-avatar-tile-bg);
+  --user-avatar-fg: var(--user-avatar-tile-fg);
+  --user-avatar-border: var(--user-avatar-tile-border);
+  --user-avatar-hover-bg: color-mix(
+    in oklab,
+    var(--user-avatar-tile-border) 18%,
+    var(--user-avatar-tile-bg)
+  );
 }
 
 .user-avatar__mark-wrap {
@@ -118,13 +128,27 @@
   flex-shrink: 0;
   overflow: hidden;
   box-sizing: border-box;
-  border-radius: 9999px;
+  /* Match outline IconButton sm radius (`--control-radius-button-pill`). */
+  border-radius: var(--user-avatar-radius, var(--control-radius-button-pill));
   font-weight: 500;
-  background-color: var(--user-avatar-bg, color-mix(in oklab, var(--color-ink) 12%, transparent));
-  color: var(--user-avatar-fg, var(--color-ink));
-  border-width: var(--user-avatar-border-width, 0);
+  /* Selected outline chrome: accent wash + accent glyph; quiet control stroke. */
+  background-color: var(
+    --user-avatar-bg,
+    var(
+      --button-outline-active-background,
+      var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+    )
+  );
+  color: var(--user-avatar-fg, var(--button-active-color, var(--color-emerald)));
+  border-width: var(--user-avatar-border-width, 1px);
   border-style: solid;
-  border-color: var(--user-avatar-border, transparent);
+  border-color: var(
+    --user-avatar-border,
+    var(
+      --button-outline-active-border-color,
+      var(--button-outline-border-color, var(--control-border-color))
+    )
+  );
 }
 
 .user-avatar__presence {
@@ -182,6 +206,29 @@ button.user-avatar__mark {
   cursor: pointer;
   font: inherit;
   text-align: center;
+  @apply transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+}
+
+button.user-avatar__mark:hover {
+  background-color: var(
+    --user-avatar-hover-bg,
+    var(
+      --button-outline-active-hover-background,
+      var(
+        --button-outline-active-background,
+        var(
+          --button-outline-hover-background,
+          color-mix(in oklab, var(--color-ink) 8%, transparent)
+        )
+      )
+    )
+  );
+}
+
+.user-avatar--xs .user-avatar__mark {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 10px;
 }
 
 .user-avatar--sm .user-avatar__mark {
@@ -209,18 +256,11 @@ button.user-avatar__mark {
 }
 
 .user-avatar__text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-  gap: 0.125rem;
+  @apply flex min-w-0 flex-1 flex-col gap-0;
 }
 
 .user-avatar__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.875rem;
+  @apply overflow-hidden text-ellipsis whitespace-nowrap text-sm leading-[1.1];
   color: var(--user-avatar-label-color, var(--user-avatar-fg, var(--color-ink)));
 }
 
@@ -229,9 +269,6 @@ button.user-avatar__mark {
 }
 
 .user-avatar__subtitle {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.75rem;
+  @apply overflow-hidden text-ellipsis whitespace-nowrap text-xs;
   color: var(--user-avatar-subtitle-color, color-mix(in oklab, var(--color-ink) 55%, transparent));
 }

@@ -8,19 +8,12 @@ const baseProps = {
   hideSidebarToggle: true,
 };
 
-describe("ViewHeader titleSize", () => {
-  it("does not apply the small title modifier by default", () => {
+describe("ViewHeader title", () => {
+  it("renders the canonical title class without a size modifier", () => {
     const { container } = render(<ViewHeader {...baseProps} />);
     const title = container.querySelector(".view-header__title");
     expect(title).not.toBeNull();
     expect(title!.classList.contains("view-header__title--sm")).toBe(false);
-  });
-
-  it("applies the small title modifier when titleSize is 'sm'", () => {
-    const { container } = render(<ViewHeader {...baseProps} titleSize="sm" />);
-    const title = container.querySelector(".view-header__title");
-    expect(title).not.toBeNull();
-    expect(title!.classList.contains("view-header__title--sm")).toBe(true);
   });
 });
 
@@ -44,6 +37,23 @@ describe("ViewHeader titlePrefix", () => {
     expect(title).not.toBeNull();
     expect(
       Boolean(prefix!.compareDocumentPosition(title!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+  });
+});
+
+describe("ViewHeader titleSuffix", () => {
+  it("renders suffix controls immediately after the title", () => {
+    const { container } = render(
+      <ViewHeader {...baseProps} titleSuffix={<span className="count-badge">5</span>} />,
+    );
+    const block = container.querySelector(".view-header__title-block");
+    expect(block).not.toBeNull();
+    const title = block!.querySelector(".view-header__title");
+    const suffix = block!.querySelector(".view-header__title-suffix .count-badge");
+    expect(title).not.toBeNull();
+    expect(suffix).not.toBeNull();
+    expect(
+      Boolean(title!.compareDocumentPosition(suffix!) & Node.DOCUMENT_POSITION_FOLLOWING),
     ).toBe(true);
   });
 });

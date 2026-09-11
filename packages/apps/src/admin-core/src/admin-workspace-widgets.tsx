@@ -20,7 +20,7 @@ export function IconActionButton({
       onClick={onClick}
       disabled={disabled}
       size="sm"
-      variant="subtle"
+      variant="outline"
       className="admin-icon-action"
     />
   );

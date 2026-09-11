@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { HardDrive } from "lucide-react";
 import { Button, buttonVariants } from "@/button/src/button";
 import { RenameFilenameField } from "@/dialogs/src/rename-filename-field";
 import {
@@ -21,18 +22,25 @@ import {
 } from "@/ui/alert-dialog";
 import { DriveCreateMarkdownDialog } from "@/drive-core/src/drive-create-markdown-dialog";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
+import { DRIVE_FOLDER_PICKER_ROOT } from "@/drive-core/src/drive-breadcrumbs";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
+import {
+  buildDocsFolderPickerRootLabels,
+  DOCS_DRIVE_UI_PERSONAL_PATH,
+  type DocsHomeGroupRoot,
+} from "@/docs-core/src/docs-home-drives";
 
 type DocsHomeModalsProps = {
   actions: DocsHomeActions;
   labels: DocsUILabels;
   files: DriveFile[];
   username: string;
-  groupRoots: string[];
+  /** Labeled group roots (SST) — slugs for paths, labels for picker chrome. */
+  groupRoots: readonly DocsHomeGroupRoot[];
   operations?: DriveAPIOperations;
   createDialogOpen?: boolean;
   createDialogDefaultName?: string;
@@ -51,8 +59,8 @@ export function DocsHomeModals({
   operations,
   createDialogOpen = false,
   createDialogDefaultName = "Untitled.md",
-  createDialogBrowsePath = "My Drive",
-  createDialogView = { type: "folder", path: "My Drive" },
+  createDialogBrowsePath = DOCS_DRIVE_UI_PERSONAL_PATH,
+  createDialogView = { type: "folder", path: DOCS_DRIVE_UI_PERSONAL_PATH },
   onCloseCreateDialog,
   onConfirmCreateDocument,
 }: DocsHomeModalsProps) {
@@ -70,8 +78,17 @@ export function DocsHomeModals({
     confirmTrash,
   } = actions;
 
-  const groupPaths = useMemo(() => groupRoots.map((root) => `Groups/${root}`), [groupRoots]);
-  const groupRootNames = useMemo(() => new Set(groupRoots), [groupRoots]);
+  const groupPaths = useMemo(() => groupRoots.map((root) => `Groups/${root.slug}`), [groupRoots]);
+  const groupRootNames = useMemo(() => new Set(groupRoots.map((root) => root.slug)), [groupRoots]);
+  const folderPickerRootLabels = useMemo(
+    () => buildDocsFolderPickerRootLabels(groupRoots, labels.homeMyDrive),
+    [groupRoots, labels.homeMyDrive],
+  );
+  const pickerLabels = useMemo(
+    () => ({ ...driveLabels, sidebarMyDrive: labels.homeMyDrive }),
+    [labels.homeMyDrive],
+  );
+  const folderPickerRootIcon = useMemo(() => <HardDrive />, []);
   const moveTarget = moveState ? actions.fileById(moveState.ids[0]!) : null;
   const canSubmitRename = renameName.trim().length > 0;
 
@@ -105,20 +122,30 @@ export function DocsHomeModals({
       <AlertDialog open={!!deleteState} onOpenChange={(open) => !open && closeDelete()}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move to Trash?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteState?.permanent
+                ? labels.homeDeletePermanentlyTitle
+                : labels.homeMoveToTrashTitle}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteState && deleteState.ids.length === 1
-                ? "This will move 1 file to Trash."
-                : `This will move ${deleteState?.ids.length ?? 0} files to Trash.`}
+              {deleteState?.permanent
+                ? deleteState.ids.length === 1
+                  ? labels.homeDeletePermanentlyOne
+                  : labels.homeDeletePermanentlyMany(deleteState.ids.length)
+                : deleteState && deleteState.ids.length === 1
+                  ? labels.homeMoveToTrashOne
+                  : labels.homeMoveToTrashMany(deleteState?.ids.length ?? 0)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
             <AlertDialogAction
               className={buttonVariants({ variant: "destructive" })}
               onClick={confirmTrash}
             >
-              Move to Trash
+              {deleteState?.permanent
+                ? labels.homeDeletePermanentlyAction
+                : labels.homeMoveToTrashAction}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -126,15 +153,17 @@ export function DocsHomeModals({
 
       <DriveMoveToDialog
         open={!!moveState}
-        labels={driveLabels}
+        labels={pickerLabels}
         files={files}
         groupPaths={groupPaths}
         moveIds={moveState?.ids ?? []}
-        view={{ type: "folder", path: "My Drive" }}
+        view={{ type: "folder", path: DOCS_DRIVE_UI_PERSONAL_PATH }}
         singleItemParent={moveTarget?.parent}
         operations={operations}
         currentUsername={username}
         groupRootNames={groupRootNames}
+        rootLabels={folderPickerRootLabels}
+        rootIcon={folderPickerRootIcon}
         dialogSurfaceClassName="docs-dialog-surface"
         onClose={closeMove}
         onConfirm={confirmMove}
@@ -143,15 +172,18 @@ export function DocsHomeModals({
       {onCloseCreateDialog && onConfirmCreateDocument ? (
         <DriveCreateMarkdownDialog
           open={createDialogOpen}
-          labels={driveLabels}
+          labels={pickerLabels}
           defaultName={createDialogDefaultName}
-          initialBrowsePath={createDialogBrowsePath}
+          initialBrowsePath={DRIVE_FOLDER_PICKER_ROOT}
+          initialSelectedPath={createDialogBrowsePath}
           files={files}
           groupPaths={groupPaths}
           view={createDialogView}
           operations={operations}
           currentUsername={username}
           groupRootNames={groupRootNames}
+          rootLabels={folderPickerRootLabels}
+          rootIcon={folderPickerRootIcon}
           dialogSurfaceClassName="docs-dialog-surface"
           onClose={onCloseCreateDialog}
           onConfirm={onConfirmCreateDocument}

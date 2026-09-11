@@ -124,7 +124,7 @@ export function TasksComposerDuePicker({
             {dateOnly ? (
               <Button
                 type="button"
-                variant="subtle"
+                variant="outline"
                 size="sm"
                 label={labels.dueAddTime}
                 onClick={() =>
@@ -169,7 +169,7 @@ export function TasksComposerDuePicker({
                 </Select>
                 <Button
                   type="button"
-                  variant="subtle"
+                  variant="outline"
                   size="sm"
                   label={labels.dueDateOnly}
                   onClick={() => emitDateOnly(selectedDate)}
@@ -182,7 +182,7 @@ export function TasksComposerDuePicker({
           <div className="tasks-main-view__composer-due-clear">
             <Button
               type="button"
-              variant="subtle"
+              variant="outline"
               size="sm"
               className="tasks-main-view__composer-due-clear-button"
               label={labels.noDue}

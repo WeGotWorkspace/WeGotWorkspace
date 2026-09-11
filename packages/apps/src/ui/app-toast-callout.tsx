@@ -5,6 +5,9 @@ import { Callout, type CalloutSeverity } from "@/callout/src/callout";
 
 export type AppToastCalloutProps = {
   toastId: string | number;
+  /** Active suite app label (Docs, Tasks, …) shown under the message. */
+  appName: string;
+  /** Primary toast body (main line above the app name). */
   title: string;
   message?: ReactNode;
   severity: CalloutSeverity;
@@ -19,6 +22,7 @@ export type AppToastCalloutProps = {
 
 export function AppToastCallout({
   toastId,
+  appName,
   title,
   message,
   severity,
@@ -34,12 +38,22 @@ export function AppToastCallout({
   const actionLabel = showUndo ? undoLabel : retryLabel;
   const onAction = showUndo ? onUndo : onRetry;
 
+  const body =
+    message != null && message !== "" ? (
+      <>
+        <span className="app-toast-callout__title">{title}</span>
+        <span className="app-toast-callout__detail">{message}</span>
+      </>
+    ) : (
+      title
+    );
+
   return (
     <Callout
-      className="w-full min-w-0"
+      className="app-toast-callout w-full min-w-0"
       severity={severity}
-      title={title}
-      message={message}
+      title={body}
+      message={appName}
       icon={icon}
       action={
         showAction ? (

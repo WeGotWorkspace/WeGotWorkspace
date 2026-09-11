@@ -1,12 +1,12 @@
 @import "../../styles.css" reference;
 
-.notes-notebook-select {
+.notes-notebook-select.select-trigger {
   width: auto;
   min-width: 7rem;
   background-color: var(--color-cream, #ffffff);
 }
 
-.notes-notebook-select > span {
+.notes-notebook-select.select-trigger > span {
   @apply flex min-w-0 items-center overflow-visible;
   -webkit-line-clamp: unset;
   -webkit-box-orient: unset;
@@ -16,7 +16,7 @@
   @apply flex min-w-0 items-center gap-2;
 }
 
-.notes-notebook-select .notes-notebook-select__option {
+.notes-notebook-select.select-trigger .notes-notebook-select__option {
   @apply flex items-center gap-2 overflow-visible;
   -webkit-line-clamp: unset;
   -webkit-box-orient: unset;
@@ -24,4 +24,9 @@
 
 .notes-notebook-select__name {
   @apply min-w-0 truncate;
+}
+
+/* ColorSwatchTrigger variant — keep intrinsic icon + chevron width (calendar picker). */
+.notes-notebook-select.notes-notebook-select--swatch {
+  min-width: 3.25rem;
 }

@@ -38,6 +38,17 @@ const FIXTURES: WgwUnifiedSearchResult[] = [
   fixture(8, "users/alice/Archive/Old Plan.txt", "Old Plan", 20),
 ];
 
+const STORY_GROUP_ROOTS = [
+  { slug: "engineering", label: "Engineering" },
+  { slug: "design", label: "Design" },
+];
+
+function mapStoryDocsHomeResults(results: readonly WgwUnifiedSearchResult[]) {
+  return mapDocsHomeResults(results, session.user.username ?? "alice", {
+    groupRoots: STORY_GROUP_ROOTS,
+  });
+}
+
 function fixture(
   id: number,
   sourceKey: string,
@@ -161,10 +172,10 @@ export const Default: Story = {
     const canvas = within(canvasElement);
 
     await expect(await canvas.findByRole("button", { name: "New document" })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "All docs" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "My Docs" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Shared with me" })).toBeInTheDocument();
-    await expect(canvas.getByText("Drives")).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "My Drive" })).toBeInTheDocument();
+    await expect(canvas.getByText("My Drives")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Personal" })).toBeInTheDocument();
 
     // Docs home hides the redundant "Kind" column (everything is a document).
     await expect(canvas.queryByRole("columnheader", { name: "Kind" })).not.toBeInTheDocument();
@@ -180,6 +191,7 @@ export const Default: Story = {
     await waitFor(async () => {
       await expect(canvas.queryByText("Roadmap 2026")).not.toBeInTheDocument();
     });
+    await expect(canvas.getByRole("heading", { name: "engineering" })).toBeInTheDocument();
     await expect(canvas.getByText("RFC: Storage Tiers")).toBeInTheDocument();
     await expect(canvas.queryByText("Shared Notes.md")).not.toBeInTheDocument();
   },
@@ -277,10 +289,44 @@ export const CreateUniqueName: Story = {
     const body = within(canvasElement.ownerDocument.body);
     const createButton = await canvas.findByRole("button", { name: "New document" });
     await userEvent.click(createButton);
-    await body.findByRole("dialog", { name: "New document" });
-    await userEvent.click(await body.findByRole("button", { name: "Create" }));
+    const dialog = await body.findByRole("dialog", { name: "New document" });
+    const dialogScope = within(dialog);
+    const personalRow = dialogScope.getByText("Personal").closest("tr");
+    await expect(personalRow).toHaveClass("destination-list-row--selected");
+    await userEvent.click(await dialogScope.findByRole("button", { name: "Create" }));
     await waitFor(() =>
       expect(args.onCreateDocument).toHaveBeenCalledWith("/users/alice/Untitled 2.md"),
+    );
+  },
+};
+
+/** Sidebar drive selection preselects that drive in the New document destination picker. */
+export const CreateFromSelectedDrive: Story = {
+  name: "Create (from selected drive)",
+  tags: ["vitest-ci"],
+  args: {
+    fetcher: createPaginatedFetcher(FIXTURES),
+    operations: createMockHomeOperations([], ["Untitled.md"]),
+    onCreateDocument: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(await canvas.findByRole("button", { name: "engineering" }));
+    await expect(await canvas.findByRole("heading", { name: "engineering" })).toBeInTheDocument();
+
+    await userEvent.click(await canvas.findByRole("button", { name: "New document" }));
+    const dialog = await body.findByRole("dialog", { name: "New document" });
+    const dialogScope = within(dialog);
+
+    await expect(dialogScope.getByText("Personal")).toBeInTheDocument();
+    const engineeringRow = dialogScope.getByText("engineering").closest("tr");
+    await expect(engineeringRow).toHaveClass("destination-list-row--selected");
+
+    await userEvent.click(await dialogScope.findByRole("button", { name: "Create" }));
+    await waitFor(() =>
+      expect(args.onCreateDocument).toHaveBeenCalledWith("/groups/engineering/Untitled 2.md"),
     );
   },
 };
@@ -306,7 +352,7 @@ export const OfflineCachedListing: Story = {
 };
 
 function OfflineCachedListingHarness() {
-  const files = mapDocsHomeResults(FIXTURES, session.user.username ?? "alice");
+  const files = mapStoryDocsHomeResults(FIXTURES);
   return (
     <div className="docs-workspace docs-home-workspace" style={{ height: "100dvh" }}>
       <DocsHomePane

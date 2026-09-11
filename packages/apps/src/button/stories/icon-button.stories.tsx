@@ -24,7 +24,7 @@ export const Default: StoryObj<typeof IconButton> = {
     label: "Favorite",
     icon: <Star />,
     size: "md",
-    variant: "subtle",
+    variant: "outline",
     onClick: () => {},
   },
   render: (args) => <IconButton {...args} />,

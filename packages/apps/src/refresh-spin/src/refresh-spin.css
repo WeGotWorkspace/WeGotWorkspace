@@ -1,0 +1,15 @@
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.refresh-spin {
+  animation: refresh-spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refresh-spin {
+    animation: none;
+  }
+}

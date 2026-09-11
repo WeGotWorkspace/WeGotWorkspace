@@ -1,12 +1,13 @@
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
 import type { DriveUnifiedSearchResult } from "@/drive-core/src/drive-types";
-import { driveLabels } from "@/drive-core/src/drive-labels";
 import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 import {
   formatBytesCompact,
+  driveLocationLabel,
   driveShareFlagsFromListing,
-  shareOwnerUsernameFromApiPath,
 } from "@/drive-core/src/drive-file-utils";
+
+export { driveLocationLabel } from "@/drive-core/src/drive-file-utils";
 
 export function parentVirtualPath(path: string): string {
   const normalized = path.trim().replace(/\/+$/, "");
@@ -19,28 +20,6 @@ export function apiPathFromSearchSourceKey(sourceKey: string): string | null {
   const key = sourceKey.trim().replace(/^\/+/, "");
   if (!key) return null;
   return `/${key}`;
-}
-
-/**
- * Top-level drive location label for a unified-search source key.
- * Own `users/{viewer}/...` → `My Drive`; other personal drives → `Shared by {owner}`;
- * `groups/{name}/...` → `{name}` (matches sidebar drive labels).
- */
-export function driveLocationLabel(sourceKey: string, viewerUsername?: string): string | null {
-  const segments = sourceKey.split("/").filter(Boolean);
-  if (segments[0] === "users") {
-    const owner = shareOwnerUsernameFromApiPath(`/${segments.join("/")}`);
-    if (
-      owner &&
-      viewerUsername?.trim() &&
-      owner.toLowerCase() !== viewerUsername.trim().toLowerCase()
-    ) {
-      return driveLabels.sharedBy(owner);
-    }
-    return driveLabels.sidebarMyDrive;
-  }
-  if (segments[0] === "groups" && segments[1]) return segments[1];
-  return null;
 }
 
 /** Whether a file's API path lives under a shared (group) drive. */

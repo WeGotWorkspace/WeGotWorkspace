@@ -14,7 +14,7 @@ export type ListStickyHeaderProps = {
   className?: string;
 };
 
-/** Full-width sticky list section row (hairline + label). Shared by contacts letters and chat days. */
+/** Full-width sticky list section row (hairline + label). Shared by contacts letters, chat days, and calendar list headings. */
 export function ListStickyHeader({
   children,
   emphasis,

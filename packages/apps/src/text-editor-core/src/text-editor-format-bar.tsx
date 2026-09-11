@@ -20,7 +20,8 @@ import {
   Undo2,
 } from "lucide-react";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
-import { Button } from "@/ui/button";
+import { Button, IconButton } from "@/button/src/button";
+import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import {
   DropdownMenu,
@@ -38,30 +39,30 @@ import {
 
 type EditorChain = ReturnType<Editor["chain"]>;
 
-function FormatBarButton({
+function FormatBarIconButton({
+  label,
   onClick,
   active,
   disabled,
-  title,
-  children,
+  icon,
 }: {
+  label: string;
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
-  title: string;
-  children: ReactNode;
+  icon: ReactNode;
 }) {
   return (
-    <button
-      type="button"
+    <IconButton
+      label={label}
+      icon={icon}
       onClick={onClick}
+      active={active}
       disabled={disabled}
-      title={title}
-      aria-pressed={active ? true : undefined}
-      className={cn("text-editor-format-bar__btn", active && "text-editor-format-bar__btn--active")}
-    >
-      <span className="text-editor-format-bar__btn-icon">{children}</span>
-    </button>
+      size="sm"
+      variant="outline"
+      aria-pressed={active || undefined}
+    />
   );
 }
 
@@ -135,6 +136,7 @@ export function TextEditorFormatBar({
   const showLink = enabled.has("link");
   const showComment = Boolean(commentControl);
   const hasContentBeforeComment = showLink || showHistory || showHeading || showMarks || showBlocks;
+  const headingActive = state.headingLevel > 0;
 
   if (
     !showHistory &&
@@ -151,190 +153,185 @@ export function TextEditorFormatBar({
 
   return (
     <div className={cn("text-editor-format-bar no-print", className)}>
-      {showHistory ? (
-        <>
-          <FormatBarButton
-            title="Undo"
-            disabled={formattingDisabled || !state.canUndo}
-            onClick={() => chain().undo().run()}
-          >
-            <Undo2 className="h-4 w-4" />
-          </FormatBarButton>
-          <FormatBarButton
-            title="Redo"
-            disabled={formattingDisabled || !state.canRedo}
-            onClick={() => chain().redo().run()}
-          >
-            <Redo2 className="h-4 w-4" />
-          </FormatBarButton>
-        </>
-      ) : null}
-      {showHistory && (showHeading || showMarks || showBlocks || showLink) ? (
-        <FormatBarSeparator />
-      ) : null}
-      {showHeading ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              title="Heading level"
-              disabled={formattingDisabled}
-              aria-pressed={state.headingLevel > 0 ? true : undefined}
-              className={cn(
-                "text-editor-format-bar__heading-trigger",
-                state.headingLevel > 0 && "text-editor-format-bar__btn--active",
-              )}
-            >
-              <span className="text-editor-format-bar__heading-trigger-label">
-                {state.headingLevel > 0 ? `H${state.headingLevel}` : "Text"}
-              </span>
-              <ChevronDown className="text-editor-format-bar__heading-trigger-chevron" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="text-editor-format-bar__heading-menu">
-            <DropdownMenuItem
-              onClick={() => chain().setParagraph().run()}
-              className={cn(
-                "text-editor-format-bar__heading-option",
-                state.headingLevel === 0 && "text-editor-format-bar__heading-option--selected",
-              )}
-            >
-              <span className="text-editor-format-bar__heading-option-label">Text</span>
-            </DropdownMenuItem>
-            {([1, 2, 3, 4, 5, 6] as const).map((lvl) => (
-              <DropdownMenuItem
-                key={lvl}
-                onClick={() => chain().toggleHeading({ level: lvl }).run()}
+      <div className="text-editor-format-bar__controls">
+        {showHistory ? (
+          <>
+            <FormatBarIconButton
+              label="Undo"
+              disabled={formattingDisabled || !state.canUndo}
+              onClick={() => chain().undo().run()}
+              icon={<Undo2 />}
+            />
+            <FormatBarIconButton
+              label="Redo"
+              disabled={formattingDisabled || !state.canRedo}
+              onClick={() => chain().redo().run()}
+              icon={<Redo2 />}
+            />
+          </>
+        ) : null}
+        {showHistory && (showHeading || showMarks || showBlocks || showLink) ? (
+          <FormatBarSeparator />
+        ) : null}
+        {showHeading ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                aria-label="Heading level"
+                disabled={formattingDisabled}
+                aria-pressed={headingActive || undefined}
+                size="sm"
+                variant="outline"
                 className={cn(
-                  "text-editor-format-bar__heading-option",
-                  state.headingLevel === lvl && "text-editor-format-bar__heading-option--selected",
+                  "text-editor-format-bar__heading-trigger",
+                  headingActive && ICON_BUTTON_ACTIVE_CLASSNAME,
                 )}
               >
-                <span className="text-editor-format-bar__heading-option-label">Heading {lvl}</span>
+                <span className="text-editor-format-bar__heading-trigger-label">
+                  {headingActive ? `H${state.headingLevel}` : "Text"}
+                </span>
+                <ChevronDown className="text-editor-format-bar__heading-trigger-chevron" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="text-editor-format-bar__heading-menu">
+              <DropdownMenuItem
+                onClick={() => chain().setParagraph().run()}
+                className={cn(
+                  "text-editor-format-bar__heading-option",
+                  state.headingLevel === 0 && "text-editor-format-bar__heading-option--selected",
+                )}
+              >
+                <span className="text-editor-format-bar__heading-option-label">Text</span>
               </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
-      {showHeading && showMarks ? <FormatBarSeparator /> : null}
-      {showMarksBasic ? (
-        <>
-          <FormatBarButton
-            title="Bold"
-            active={state.bold}
+              {([1, 2, 3, 4, 5, 6] as const).map((lvl) => (
+                <DropdownMenuItem
+                  key={lvl}
+                  onClick={() => chain().toggleHeading({ level: lvl }).run()}
+                  className={cn(
+                    "text-editor-format-bar__heading-option",
+                    state.headingLevel === lvl &&
+                      "text-editor-format-bar__heading-option--selected",
+                  )}
+                >
+                  <span className="text-editor-format-bar__heading-option-label">
+                    Heading {lvl}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+        {showHeading && showMarks ? <FormatBarSeparator /> : null}
+        {showMarksBasic ? (
+          <>
+            <FormatBarIconButton
+              label="Bold"
+              active={state.bold}
+              disabled={formattingDisabled}
+              onClick={() => chain().toggleBold().run()}
+              icon={<Bold />}
+            />
+            <FormatBarIconButton
+              label="Italic"
+              active={state.italic}
+              disabled={formattingDisabled}
+              onClick={() => chain().toggleItalic().run()}
+              icon={<Italic />}
+            />
+            <FormatBarIconButton
+              label="Underline"
+              active={state.underline}
+              disabled={formattingDisabled}
+              onClick={() => chain().toggleUnderline().run()}
+              icon={<UnderlineIcon />}
+            />
+          </>
+        ) : null}
+        {showMarksExtra ? (
+          <>
+            <FormatBarIconButton
+              label="Strike"
+              active={state.strike}
+              disabled={formattingDisabled}
+              onClick={() => chain().toggleStrike().run()}
+              icon={<Strikethrough />}
+            />
+            <FormatBarIconButton
+              label="Inline code"
+              active={state.code}
+              disabled={formattingDisabled}
+              onClick={() => chain().toggleCode().run()}
+              icon={<Code />}
+            />
+            <FormatBarIconButton
+              label="Highlight"
+              active={state.highlight}
+              disabled={formattingDisabled}
+              onClick={() => chain().toggleHighlight().run()}
+              icon={<Highlighter />}
+            />
+          </>
+        ) : null}
+        {showMarks && showBlocks ? <FormatBarSeparator /> : null}
+        {showBlocksBasic ? (
+          <>
+            <FormatBarIconButton
+              label="Bullet list"
+              active={state.bulletList}
+              disabled={formattingDisabled}
+              onClick={() => chain().toggleBulletList().run()}
+              icon={<List />}
+            />
+            <FormatBarIconButton
+              label="Ordered list"
+              active={state.orderedList}
+              disabled={formattingDisabled}
+              onClick={() => chain().toggleOrderedList().run()}
+              icon={<ListOrdered />}
+            />
+          </>
+        ) : null}
+        {showBlocksExtra ? (
+          <>
+            <FormatBarIconButton
+              label="Task list"
+              active={state.taskList}
+              disabled={formattingDisabled}
+              onClick={() => chain().toggleTaskList().run()}
+              icon={<ListChecks />}
+            />
+            <FormatBarIconButton
+              label="Blockquote"
+              active={state.blockquote}
+              disabled={formattingDisabled}
+              onClick={() => chain().toggleBlockquote().run()}
+              icon={<Quote />}
+            />
+            <FormatBarIconButton
+              label="Divider"
+              disabled={formattingDisabled}
+              onClick={() => chain().setHorizontalRule().run()}
+              icon={<Minus />}
+            />
+          </>
+        ) : null}
+        {/* Link sits in the blocksExtra cluster (quote / divider); sep only when blocks are off. */}
+        {!showBlocks && (showMarks || showHeading || showHistory) && showLink ? (
+          <FormatBarSeparator />
+        ) : null}
+        {showLink ? (
+          <FormatBarIconButton
+            label="Link"
+            active={state.link}
             disabled={formattingDisabled}
-            onClick={() => chain().toggleBold().run()}
-          >
-            <Bold className="h-4 w-4" />
-          </FormatBarButton>
-          <FormatBarButton
-            title="Italic"
-            active={state.italic}
-            disabled={formattingDisabled}
-            onClick={() => chain().toggleItalic().run()}
-          >
-            <Italic className="h-4 w-4" />
-          </FormatBarButton>
-          <FormatBarButton
-            title="Underline"
-            active={state.underline}
-            disabled={formattingDisabled}
-            onClick={() => chain().toggleUnderline().run()}
-          >
-            <UnderlineIcon className="h-4 w-4" />
-          </FormatBarButton>
-        </>
-      ) : null}
-      {showMarksExtra ? (
-        <>
-          <FormatBarButton
-            title="Strike"
-            active={state.strike}
-            disabled={formattingDisabled}
-            onClick={() => chain().toggleStrike().run()}
-          >
-            <Strikethrough className="h-4 w-4" />
-          </FormatBarButton>
-          <FormatBarButton
-            title="Inline code"
-            active={state.code}
-            disabled={formattingDisabled}
-            onClick={() => chain().toggleCode().run()}
-          >
-            <Code className="h-4 w-4" />
-          </FormatBarButton>
-          <FormatBarButton
-            title="Highlight"
-            active={state.highlight}
-            disabled={formattingDisabled}
-            onClick={() => chain().toggleHighlight().run()}
-          >
-            <Highlighter className="h-4 w-4" />
-          </FormatBarButton>
-        </>
-      ) : null}
-      {showMarks && showBlocks ? <FormatBarSeparator /> : null}
-      {showBlocksBasic ? (
-        <>
-          <FormatBarButton
-            title="Bullet list"
-            active={state.bulletList}
-            disabled={formattingDisabled}
-            onClick={() => chain().toggleBulletList().run()}
-          >
-            <List className="h-4 w-4" />
-          </FormatBarButton>
-          <FormatBarButton
-            title="Ordered list"
-            active={state.orderedList}
-            disabled={formattingDisabled}
-            onClick={() => chain().toggleOrderedList().run()}
-          >
-            <ListOrdered className="h-4 w-4" />
-          </FormatBarButton>
-        </>
-      ) : null}
-      {showBlocksExtra ? (
-        <>
-          <FormatBarButton
-            title="Task list"
-            active={state.taskList}
-            disabled={formattingDisabled}
-            onClick={() => chain().toggleTaskList().run()}
-          >
-            <ListChecks className="h-4 w-4" />
-          </FormatBarButton>
-          <FormatBarButton
-            title="Blockquote"
-            active={state.blockquote}
-            disabled={formattingDisabled}
-            onClick={() => chain().toggleBlockquote().run()}
-          >
-            <Quote className="h-4 w-4" />
-          </FormatBarButton>
-          <FormatBarButton
-            title="Divider"
-            disabled={formattingDisabled}
-            onClick={() => chain().setHorizontalRule().run()}
-          >
-            <Minus className="h-4 w-4" />
-          </FormatBarButton>
-        </>
-      ) : null}
-      {(showBlocks || showMarks) && showLink ? <FormatBarSeparator /> : null}
-      {showLink ? (
-        <FormatBarButton
-          title="Link"
-          active={state.link}
-          disabled={formattingDisabled}
-          onClick={openLinkDialog}
-        >
-          <Link2 className="h-4 w-4" />
-        </FormatBarButton>
-      ) : null}
-      {showComment && hasContentBeforeComment ? <FormatBarSeparator /> : null}
-      {commentControl}
-      {showComment && (showPrint || trailing) ? <FormatBarSeparator /> : null}
+            onClick={openLinkDialog}
+            icon={<Link2 />}
+          />
+        ) : null}
+        {showComment && hasContentBeforeComment ? <FormatBarSeparator /> : null}
+        {commentControl}
+      </div>
       {showPrint || trailing ? (
         <div className="text-editor-format-bar__end">
           {showPrint ? (

@@ -7,6 +7,8 @@ namespace App\Services\Jmap\FileNodes;
 use App\Models\JmapFileNode;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Notes\NoteMarkdownCodec;
+use App\Services\Search\BestEffortSearchIndexSync;
+use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 
@@ -24,6 +26,9 @@ use App\Storage\WgwStorage;
  *
  * Note files (`.md` under `.notes`) accept a `note` {title, tags} patch.
  * Frontmatter does not parse or emit YAML `starred` — starring is Drive stars.
+ *
+ * Unified search (Docs home browse) is kept in sync best-effort — same
+ * contract as DriveService REST writes and Sabre SearchIndexPlugin.
  */
 final class FileNodeSetService
 {
@@ -60,6 +65,8 @@ final class FileNodeSetService
         private readonly WgwStorage $storage,
         private readonly NoteMarkdownCodec $codec,
         private readonly StoragePaths $paths,
+        private readonly SearchIndexerService $search,
+        private readonly BestEffortSearchIndexSync $searchSync,
     ) {}
 
     /**
@@ -185,6 +192,7 @@ final class FileNodeSetService
             $disk->delete($key);
         }
         $this->index->recordDelete($key);
+        $this->syncSearchDelete($key);
     }
 
     /**
@@ -273,6 +281,8 @@ final class FileNodeSetService
             throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Could not index the created node.']);
         }
 
+        $this->syncSearchIndex($key);
+
         return $this->mapper->toFileNode($node, $principal);
     }
 
@@ -352,6 +362,7 @@ final class FileNodeSetService
                     throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Move failed.']);
                 }
                 $node = $this->index->recordMove($fromKey, $toKey) ?? $node;
+                $this->syncSearchMove($fromKey, $toKey);
             }
         }
 
@@ -389,6 +400,7 @@ final class FileNodeSetService
             );
             $this->storage->files()->put((string) $node->storage_key, $contents);
             $node = $this->index->recordContentWrite((string) $node->storage_key, hash('sha256', $contents)) ?? $node;
+            $this->syncSearchIndex((string) $node->storage_key);
             $shape = $this->mapper->toFileNode($node, $principal);
             $serverSet['size'] = $shape['size'];
             $serverSet['blobId'] = $shape['blobId'];
@@ -398,6 +410,46 @@ final class FileNodeSetService
         }
 
         return $serverSet === [] ? null : $serverSet;
+    }
+
+    private function syncSearchIndex(string $storageKey): void
+    {
+        $this->searchSync->sync(
+            'filenode',
+            fn () => $this->search->indexFileStorageKey($storageKey),
+            'files/'.$storageKey,
+        );
+    }
+
+    private function syncSearchDelete(string $storageKey): void
+    {
+        $this->searchSync->sync(
+            'filenode',
+            fn () => $this->search->deleteDavPath('files/'.$storageKey),
+            'files/'.$storageKey,
+        );
+    }
+
+    private function syncSearchMove(string $fromKey, string $toKey): void
+    {
+        $this->searchSync->sync(
+            'filenode',
+            function () use ($fromKey, $toKey): void {
+                $this->search->deleteDavPath('files/'.$fromKey);
+                $this->search->indexFileStorageKey($toKey);
+                $disk = $this->storage->files();
+                if (! $disk->directoryExists($toKey)) {
+                    return;
+                }
+                foreach ($disk->allDirectories($toKey) as $dirKey) {
+                    $this->search->indexFileStorageKey($dirKey);
+                }
+                foreach ($disk->allFiles($toKey) as $fileKey) {
+                    $this->search->indexFileStorageKey($fileKey);
+                }
+            },
+            'files/'.$toKey,
+        );
     }
 
     /**

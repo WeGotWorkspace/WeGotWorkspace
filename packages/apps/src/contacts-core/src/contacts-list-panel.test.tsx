@@ -192,3 +192,17 @@ describe("ContactsListPanel avatars", () => {
     expect(container.querySelector('[data-list-item-id="card-jane"]')).toBeTruthy();
   });
 });
+
+describe("ContactsListPanel header count", () => {
+  it("shows the contact count as parenthetical text beside the title", () => {
+    const { container } = render(
+      <TooltipProvider>
+        <ListHarness visibleCards={[personCard, orgCard]} slot="header" />
+      </TooltipProvider>,
+    );
+    const count = container.querySelector(".view-header__title-suffix .view-header__title-count");
+    expect(count).not.toBeNull();
+    expect(count!.getAttribute("aria-label")).toBe(defaultContactsLabels.listContacts(2));
+    expect(count!.textContent).toBe("(2)");
+  });
+});

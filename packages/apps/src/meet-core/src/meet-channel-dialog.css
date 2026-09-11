@@ -14,6 +14,17 @@
   --button-outline-color: var(--color-ink);
   --button-outline-border-color: color-mix(in oklab, var(--color-ink) 20%, transparent);
   --button-outline-hover-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  --button-active-color: var(--meet-accent-strong);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--meet-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--meet-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
   --primary: var(--meet-accent-strong);
   --primary-foreground: #ffffff;
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
@@ -34,8 +45,6 @@
   --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --card-panel-bg: color-mix(in oklab, var(--color-ink) 3%, transparent);
   --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
-  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --user-avatar-fg: var(--color-ink);
   background-color: var(--color-cream, #ffffff);
   color: var(--color-ink);
   border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);

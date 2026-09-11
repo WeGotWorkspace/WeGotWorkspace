@@ -5,9 +5,11 @@ import "@/button/src/icon-button.css";
 import {
   BUTTON_BASE_CLASSNAME,
   BUTTON_ICON_SLOT_CLASSNAME,
+  BUTTON_SEVERITY_CLASSNAMES,
   BUTTON_VARIANT_CLASSNAMES,
   ICON_BUTTON_ACTIVE_CLASSNAME,
   ICON_BUTTON_SIZE_CLASSNAMES,
+  type ButtonSeverity,
   type ButtonVariant,
   type IconButtonSize,
 } from "@/button/src/button.shared";
@@ -21,6 +23,8 @@ export type IconButtonProps = Omit<
   size?: IconButtonSize;
   variant?: ButtonVariant;
   active?: boolean;
+  /** Destructive actions: danger fg + severity hover wash (matches MenuItem). */
+  severity?: ButtonSeverity;
   showTooltip?: boolean;
   tooltipClassName?: string;
 };
@@ -30,8 +34,9 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
     label,
     icon,
     size = "md",
-    variant = "subtle",
+    variant = "outline",
     active = false,
+    severity,
     showTooltip = true,
     tooltipClassName,
     className,
@@ -50,6 +55,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
         ICON_BUTTON_SIZE_CLASSNAMES[size],
         active && ICON_BUTTON_ACTIVE_CLASSNAME,
         BUTTON_VARIANT_CLASSNAMES[variant],
+        severity ? BUTTON_SEVERITY_CLASSNAMES[severity] : undefined,
         className,
       )}
       style={style}

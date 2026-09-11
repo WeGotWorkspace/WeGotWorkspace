@@ -75,6 +75,7 @@ export function useDriveSelectionBar({
         label: inTrashView ? labels.selectionDeletePermanently : labels.selectionMoveToTrash,
         icon: <Trash2 className="size-4" />,
         onClick: requestDeleteSelected,
+        severity: "danger",
       },
     ];
   }, [

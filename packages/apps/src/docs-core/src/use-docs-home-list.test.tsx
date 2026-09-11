@@ -83,15 +83,31 @@ describe("sortDocsHomeResults", () => {
 
 describe("mapDocsHomeResults", () => {
   it("maps to drive files, sorts modified-desc, and derives the location label", () => {
-    const files = mapDocsHomeResults([FIXTURES[2], FIXTURES[0], FIXTURES[1]], "alice");
+    const files = mapDocsHomeResults([FIXTURES[2], FIXTURES[0], FIXTURES[1]], "alice", {
+      groupRoots: [{ slug: "eng", label: "Engineering" }],
+    });
     expect(files.map((f) => f.title)).toEqual(["A", "B", "C"]);
     expect(files[0]).toMatchObject({
       title: "A",
-      location: "My Drive",
+      location: "Personal",
       kind: "doc",
       apiPath: "/users/alice/A.md",
     });
-    expect(files[1].location).toBe("eng");
+    expect(files[1].location).toBe("Engineering");
+  });
+
+  it("falls back to group slug when no display label is known", () => {
+    const files = mapDocsHomeResults([FIXTURES[1]], "alice");
+    expect(files[0].location).toBe("eng");
+  });
+
+  it("maps administrators slug to principal display name when groupRoots provided", () => {
+    const files = mapDocsHomeResults(
+      [result(20, "groups/administrators/notes.md", "Notes", 600)],
+      "alice",
+      { groupRoots: [{ slug: "administrators", label: "Administrators" }] },
+    );
+    expect(files[0].location).toBe("Administrators");
   });
 
   it("dedupes repeated source keys", () => {

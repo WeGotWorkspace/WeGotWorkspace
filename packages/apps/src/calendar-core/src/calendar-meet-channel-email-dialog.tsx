@@ -13,17 +13,17 @@ import "./calendar-meet-channel-email-dialog.css";
 
 const CHOICES: {
   id: MeetChannelEmailChoice;
-  variant: "subtle" | "primary";
+  variant: "outline" | "primary";
   label: (labels: CalendarUILabels) => string;
 }[] = [
   {
     id: "keep-both",
-    variant: "subtle",
+    variant: "outline",
     label: (row) => row.eventMeetChannelEmailKeepBoth,
   },
   {
     id: "strip-emails",
-    variant: "subtle",
+    variant: "outline",
     label: (row) => row.eventMeetChannelEmailStripEmails,
   },
   {

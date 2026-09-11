@@ -94,6 +94,8 @@ describe("buildDriveFileActions", () => {
 
     expect(actions.some((action) => action.id === "rename")).toBe(true);
     expect(actions.some((action) => action.id === "move")).toBe(true);
-    expect(actions.some((action) => action.id === "delete")).toBe(true);
+    const deleteAction = actions.find((action) => action.id === "delete");
+    expect(deleteAction).toBeTruthy();
+    expect(deleteAction?.severity).toBe("danger");
   });
 });

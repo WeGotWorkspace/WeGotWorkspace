@@ -16,14 +16,20 @@ export {
   type DocsHomeFetcher,
 } from "@/docs-core/src/use-docs-home-list";
 export {
+  applyDocsHomeGroupDisplayNames,
+  buildDocsFolderPickerRootLabels,
   buildDocsHomeDrives,
   collectGroupRoots,
+  DOCS_DRIVE_UI_PERSONAL_PATH,
+  docsHomeGroupSlugFromPrincipalId,
   mergeGroupRoots,
   newDocumentApiPath,
   nextUntitledMarkdownName,
   fallbackUntitledMarkdownName,
+  resolveDocsDriveLabel,
   resolveNewDocumentName,
   type DocsHomeDrive,
+  type DocsHomeGroupRoot,
 } from "@/docs-core/src/docs-home-drives";
 export { DOCS_EDITOR_EXTENSIONS } from "@/drive-core/src/drive-models";
 export {

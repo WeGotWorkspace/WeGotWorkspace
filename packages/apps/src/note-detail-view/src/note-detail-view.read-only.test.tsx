@@ -69,7 +69,7 @@ describe("NoteDetailView readOnly", () => {
       />,
     );
 
-    const sheet = container.querySelector(".note-detail-sheet");
+    const sheet = container.querySelector(".paper-sheet");
     expect(sheet).toBeTruthy();
     expect(sheet!.classList.contains("note-detail-view")).toBe(true);
     expect(sheet!.querySelector(".note-detail-view__title")).toBeTruthy();

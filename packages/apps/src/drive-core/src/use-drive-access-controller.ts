@@ -11,7 +11,6 @@ import {
 import {
   driveAccessDisplayRows,
   driveAccessSubtreeCounts,
-  driveAccessSubtitle,
   type DriveAccessFilter,
 } from "@/drive-core/src/drive-access-utils";
 import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
@@ -77,7 +76,6 @@ export function useDriveAccessController({
   );
 
   const subtreeCounts = useMemo(() => driveAccessSubtreeCounts(atPath), [atPath]);
-  const subtitle = useMemo(() => driveAccessSubtitle(subtreeCounts), [subtreeCounts]);
   const displayRows = useMemo(
     () => driveAccessDisplayRows(atPath, filter, query),
     [atPath, filter, query],
@@ -260,7 +258,6 @@ export function useDriveAccessController({
     atPathLoading,
     displayRows,
     subtreeCounts,
-    subtitle,
     breadcrumbs,
     activeApiPath,
     personPrincipal,

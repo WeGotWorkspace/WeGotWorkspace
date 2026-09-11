@@ -1,4 +1,5 @@
 import { CALENDAR_LIST_EMPTY_LABEL } from "@/lib/calendar-elements/CalendarListView/calendar-list-empty-label";
+import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
 
 export type CalendarUILabels = {
@@ -11,8 +12,15 @@ export type CalendarUILabels = {
   showAsList: string;
   showAsCalendar: string;
   today: string;
-  previousPeriod: string;
-  nextPeriod: string;
+  /** Prev/next accessible names — match `shiftAnchor` step unit per view. */
+  previousDay: string;
+  nextDay: string;
+  previousWeek: string;
+  nextWeek: string;
+  previousMonth: string;
+  nextMonth: string;
+  previousYear: string;
+  nextYear: string;
   newEvent: string;
   /** Accessible name for the New event menu chevron. */
   newEventMenu: string;
@@ -254,8 +262,14 @@ export const defaultCalendarLabels: CalendarUILabels = {
   showAsList: "List view",
   showAsCalendar: "Calendar view",
   today: "Today",
-  previousPeriod: "Previous",
-  nextPeriod: "Next",
+  previousDay: "Previous day",
+  nextDay: "Next day",
+  previousWeek: "Previous week",
+  nextWeek: "Next week",
+  previousMonth: "Previous month",
+  nextMonth: "Next month",
+  previousYear: "Previous year",
+  nextYear: "Next year",
   newEvent: "New event",
   newEventMenu: "More calendar actions",
   importIcs: "Import ICS",
@@ -481,4 +495,31 @@ export const defaultCalendarLabels: CalendarUILabels = {
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {
   return { ...defaultCalendarLabels, ...overrides };
+}
+
+/** Tooltip / aria-label pair for header prev/next — same unit `shiftAnchor` steps. */
+export function calendarPeriodNavLabels(
+  view: CalendarViewId,
+  labels: Pick<
+    CalendarUILabels,
+    | "previousDay"
+    | "nextDay"
+    | "previousWeek"
+    | "nextWeek"
+    | "previousMonth"
+    | "nextMonth"
+    | "previousYear"
+    | "nextYear"
+  >,
+): { previous: string; next: string } {
+  switch (view) {
+    case "day":
+      return { previous: labels.previousDay, next: labels.nextDay };
+    case "week":
+      return { previous: labels.previousWeek, next: labels.nextWeek };
+    case "month":
+      return { previous: labels.previousMonth, next: labels.nextMonth };
+    case "year":
+      return { previous: labels.previousYear, next: labels.nextYear };
+  }
 }

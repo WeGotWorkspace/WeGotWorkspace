@@ -23,7 +23,7 @@ function LeaveToastProbe() {
 }
 
 describe("Meet call toast surface", () => {
-  it("renders a Callout toast, not a raw Sonner text node", async () => {
+  it("renders a Callout toast with the app name under the message", async () => {
     render(<LeaveToastProbe />);
 
     await screen.findByRole("region", { name: /notifications/i });
@@ -33,5 +33,11 @@ describe("Meet call toast surface", () => {
     const callout = title.closest(".callout");
     expect(callout).not.toBeNull();
     expect(callout?.classList.contains("callout--info")).toBe(true);
+    expect(
+      title.classList.contains("menu-item__label") || title.closest(".menu-item__label"),
+    ).toBeTruthy();
+    expect(callout?.querySelector(".menu-item__description")?.textContent).toMatch(
+      /^(Meet|Workspace)$/,
+    );
   });
 });

@@ -64,6 +64,28 @@ export function driveShareFlagsFromListing(
   };
 }
 
+/**
+ * Top-level drive location label for an API path or unified-search source key.
+ * Own `users/{viewer}/...` → `My Drive`; other personal drives → `Shared by {owner}`;
+ * `groups/{name}/...` → `{name}` (matches sidebar drive labels).
+ */
+export function driveLocationLabel(sourceKey: string, viewerUsername?: string): string | null {
+  const segments = sourceKey.split("/").filter(Boolean);
+  if (segments[0] === "users") {
+    const owner = shareOwnerUsernameFromApiPath(`/${segments.join("/")}`);
+    if (
+      owner &&
+      viewerUsername?.trim() &&
+      owner.toLowerCase() !== viewerUsername.trim().toLowerCase()
+    ) {
+      return driveLabels.sharedBy(owner);
+    }
+    return driveLabels.sidebarMyDrive;
+  }
+  if (segments[0] === "groups" && segments[1]) return segments[1];
+  return null;
+}
+
 export function driveFileFromEntry(
   entry: DriveUIData["directory"]["files"][number],
   username: string,
@@ -74,6 +96,8 @@ export function driveFileFromEntry(
   const kind: FileKind = entry.type === "dir" ? "folder" : inferFileKindFromName(entry.name);
   const date = entry.time > 0 ? new Date(entry.time * 1000).toLocaleDateString() : "Now";
   const size = entry.type === "dir" ? "—" : entry.size > 0 ? formatBytesCompact(entry.size) : "0 B";
+  const location =
+    driveLocationLabel(normalizeApiVirtualPath(apiPath).replace(/^\/+/, ""), username) ?? undefined;
   return {
     id: apiPath,
     notebook: entry.type === "dir" ? "Folder" : `File · ${size}`,
@@ -88,6 +112,7 @@ export function driveFileFromEntry(
     kind,
     size,
     apiPath,
+    location,
     mayShare: entry.myRights?.mayShare,
     mayManageStructure: entry.myRights?.mayManageStructure,
     ...driveShareFlagsFromListing(entry),
@@ -116,7 +141,7 @@ export function shareOwnerUsernameFromShare(share: {
   return shareOwnerUsernameFromApiPath(share.path);
 }
 
-/** Location + share indicator for Shared with me rows (Share2, not team/Users). */
+/** Location + share indicator for Shared with me rows (inbound Share icon in UI, not team/Users). */
 function sharedWithMeListingFields(
   ownerUsername: string | null,
 ): Pick<DriveFile, "location" | "isShared"> {

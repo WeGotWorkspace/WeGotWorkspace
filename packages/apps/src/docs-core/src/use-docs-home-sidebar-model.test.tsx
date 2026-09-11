@@ -6,11 +6,11 @@ import { useDocsHomeSidebarModel } from "@/docs-core/src/use-docs-home-sidebar-m
 
 describe("useDocsHomeSidebarModel", () => {
   const drives = [
-    { key: "users/alice", label: "My Drive", pathPrefix: "users/alice" },
-    { key: "groups/eng", label: "eng", pathPrefix: "groups/eng" },
+    { key: "users/alice", label: "Personal", pathPrefix: "users/alice" },
+    { key: "groups/eng", label: "Engineering", pathPrefix: "groups/eng" },
   ];
 
-  it("selects All docs and Shared with me in the primary section", () => {
+  it("includes Recent, Starred, and Trash after Shared with me", () => {
     const selectView = vi.fn();
     const { result, rerender } = renderHook(
       ({ view }: { view: DocsHomeView }) =>
@@ -24,8 +24,11 @@ describe("useDocsHomeSidebarModel", () => {
     );
 
     expect(result.current.primaryItems.map((item) => item.label)).toEqual([
-      "All docs",
+      "My Docs",
       "Shared with me",
+      "Recent",
+      "Starred",
+      "Trash",
     ]);
     expect(result.current.primaryItems[0]?.selected).toBe(true);
     expect(result.current.primaryItems[1]?.selected).toBe(false);
@@ -36,6 +39,38 @@ describe("useDocsHomeSidebarModel", () => {
     rerender({ view: { type: "shared" } as DocsHomeView });
     expect(result.current.primaryItems[0]?.selected).toBe(false);
     expect(result.current.primaryItems[1]?.selected).toBe(true);
+
+    result.current.primaryItems[2]?.onClick?.();
+    expect(selectView).toHaveBeenCalledWith({ type: "recent" });
+    result.current.primaryItems[3]?.onClick?.();
+    expect(selectView).toHaveBeenCalledWith({ type: "starred" });
+    result.current.primaryItems[4]?.onClick?.();
+    expect(selectView).toHaveBeenCalledWith({ type: "trash" });
+  });
+
+  it("selects Recent, Starred, and Trash when those views are active", () => {
+    const selectView = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ view }: { view: DocsHomeView }) =>
+        useDocsHomeSidebarModel({
+          labels: docsLabels,
+          drives,
+          view,
+          selectView,
+        }),
+      { initialProps: { view: { type: "recent" } as DocsHomeView } },
+    );
+
+    expect(result.current.primaryItems[2]?.selected).toBe(true);
+    expect(result.current.primaryItems[2]?.icon).toBeTruthy();
+
+    rerender({ view: { type: "starred" } });
+    expect(result.current.primaryItems[3]?.selected).toBe(true);
+    expect(result.current.primaryItems[3]?.icon).toBeTruthy();
+
+    rerender({ view: { type: "trash" } });
+    expect(result.current.primaryItems[4]?.selected).toBe(true);
+    expect(result.current.primaryItems[4]?.icon).toBeTruthy();
   });
 
   it("selects a drive item when the drive view matches", () => {

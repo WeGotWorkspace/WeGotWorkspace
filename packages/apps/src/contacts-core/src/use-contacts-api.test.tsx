@@ -2,12 +2,15 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import { useContactsAPI } from "./use-contacts-api";
 import type { ContactsApiSource } from "./contacts-api-source";
 
 const mockPatchBootstrap = vi.fn();
 const mockLoadBootstrap = vi.fn();
 const mockFlush = vi.fn();
+const mockShow = vi.fn();
+const mockShowError = vi.fn();
 const initialize = vi.fn();
 const startPolling = vi.fn();
 const stopPolling = vi.fn();
@@ -49,6 +52,15 @@ vi.mock("@/hooks/use-connectivity", () => ({
   },
 }));
 
+vi.mock("@/hooks/use-app-toast", () => ({
+  useAppToast: () => ({
+    show: mockShow,
+    showError: mockShowError,
+    showSuccess: vi.fn(),
+    dismiss: vi.fn(),
+  }),
+}));
+
 vi.mock("@/lib/offline/contacts-offline-store", () => ({
   readContactsBootstrapFromCache: vi.fn().mockResolvedValue(null),
 }));
@@ -88,6 +100,8 @@ describe("useContactsAPI", () => {
     mockPatchBootstrap.mockReset();
     mockLoadBootstrap.mockReset();
     mockFlush.mockReset();
+    mockShow.mockReset();
+    mockShowError.mockReset();
     mockFlush.mockResolvedValue({ stateMismatches: [], bootstrap: null });
     mockLoadBootstrap.mockResolvedValue(bootstrap);
     initialize.mockReset();
@@ -121,6 +135,32 @@ describe("useContactsAPI", () => {
     expect(mockPatchBootstrap).toHaveBeenCalledTimes(1);
     expect(mockPatchBootstrap.mock.calls[0]?.[0]()).toEqual(bootstrap);
     expect(result.current.listLoading).toBe(false);
+    expect(mockShow).toHaveBeenCalledWith(
+      defaultContactsLabels.toastListUpdated,
+      expect.objectContaining({ icon: expect.anything() }),
+    );
+    expect(mockShowError).not.toHaveBeenCalled();
+  });
+
+  it("refreshList shows an error toast when bootstrap reload fails", async () => {
+    mockLoadBootstrap.mockRejectedValue(new Error("network"));
+    const source: ContactsApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+
+    const { result } = renderHook(() => useContactsAPI(source));
+
+    act(() => {
+      result.current.refreshList();
+    });
+
+    await waitFor(() => {
+      expect(result.current.listRefreshing).toBe(false);
+    });
+
+    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockShowError).toHaveBeenCalledWith(defaultContactsLabels.toastListRefreshFailed);
   });
 
   it("reconnect with cached cards keeps listLoading false", () => {

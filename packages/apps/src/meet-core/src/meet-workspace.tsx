@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
-import { UserPresenceDot } from "@/user-avatar/src/user-avatar";
+import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
@@ -26,9 +26,7 @@ import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
 import {
   meetChannelComposerPlaceholder,
   meetChannelHashName,
-  meetChannelMemberCount,
   meetChannelTitle,
-  meetMeetingHeaderSubtitle,
 } from "@/meet-core/src/meet-channel-label";
 import { partitionMeetChannels } from "@/meet-core/src/meet-channel-partition";
 import {
@@ -51,7 +49,6 @@ import {
   leftoverMeetingStartLabel,
   leftoverUpcomingMeetings,
   preferredCalendarEventForMeeting,
-  relativeLabelForCalendarEvent,
   shouldAutoJoinScheduledMeeting,
   todaySidebarMeetingChannels,
   upcomingEventIdsForChannel,
@@ -210,7 +207,13 @@ function MeetDirectMessageRows({
           selected={selectedId === person.channelId}
           onSelect={() => onSelect(person.channelId)}
           leading={
-            <UserPresenceDot presence={authorPresence?.[person.id] ?? "offline"} standalone />
+            <UserAvatar
+              displayName={person.displayName}
+              compact
+              size="xs"
+              presence={authorPresence?.[person.id] ?? "offline"}
+              color={avatarColorForUserId(person.id)}
+            />
           }
           trailing={
             <MeetSidebarRowMeta
@@ -477,7 +480,6 @@ export function MeetWorkspace({
     : selectedDm
       ? selectedDm.displayName
       : meetLabels.productName;
-  const memberCount = selected ? meetChannelMemberCount(selected) : 0;
   const groups = useMemo(() => data.groups ?? [], [data.groups]);
   const ownerLabel = personalOwnerLabel(session);
   const knownSharePrincipals = useMemo(
@@ -1064,7 +1066,7 @@ export function MeetWorkspace({
                       icon={<Pencil />}
                       label={chatUiLabels.edit}
                       size="sm"
-                      variant="subtle"
+                      variant="outline"
                       active={parentEditing}
                       showTooltip={false}
                       onClick={() => chat.setEditingMessageId(threadRoot.id)}
@@ -1198,24 +1200,9 @@ export function MeetWorkspace({
                 <CalendarDays className="meet-workspace__header-kind-icon" aria-hidden />
               ) : null
             }
-            subtitle={meetMeetingHeaderSubtitle(
-              selected?.kind === "meeting"
-                ? relativeLabelForCalendarEvent(selectedMeetingEvent, nowTick)
-                : null,
-              selected?.topic,
-            )}
             actions={
               conversationOpen ? (
                 <div className="meet-workspace__header-actions">
-                  {selected ? (
-                    <span
-                      className="meet-workspace__members"
-                      aria-label={meetLabels.membersCount(memberCount)}
-                    >
-                      <Users className="meet-workspace__members-icon" aria-hidden />
-                      {memberCount}
-                    </span>
-                  ) : null}
                   {showHeaderStart ? (
                     <SidebarSegmentedNewMenu
                       className="meet-workspace__header-start"
@@ -1245,7 +1232,7 @@ export function MeetWorkspace({
                           : meetLabels.editChannel
                       }
                       size="sm"
-                      variant="subtle"
+                      variant="outline"
                       showTooltip={false}
                       onClick={() => openEdit(selected)}
                     />

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import { Switch } from "@/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 
 import "./segmented-control.css";
 
@@ -20,6 +21,8 @@ export type SegmentedControlProps<T extends string> = {
   disabled?: boolean;
   className?: string;
   "aria-label"?: string;
+  /** Icon-only segments show a tooltip (IconButton pattern). Default true. */
+  showTooltip?: boolean;
 };
 
 export function SegmentedControl<T extends string>({
@@ -30,6 +33,7 @@ export function SegmentedControl<T extends string>({
   disabled = false,
   className,
   "aria-label": ariaLabel,
+  showTooltip = true,
 }: SegmentedControlProps<T>) {
   return (
     <div
@@ -42,13 +46,11 @@ export function SegmentedControl<T extends string>({
       {options.map((option) => {
         const active = value === option.value;
         const textOnly = !option.icon;
-        return (
+        const button = (
           <button
-            key={option.value}
             type="button"
             aria-label={option.label}
             aria-pressed={active}
-            title={option.label}
             disabled={disabled}
             onClick={() => onChange(option.value)}
             className={cn(
@@ -59,6 +61,17 @@ export function SegmentedControl<T extends string>({
           >
             {option.icon ?? <span className="segmented-control__label">{option.label}</span>}
           </button>
+        );
+
+        if (textOnly || !showTooltip) {
+          return <React.Fragment key={option.value}>{button}</React.Fragment>;
+        }
+
+        return (
+          <Tooltip key={option.value}>
+            <TooltipTrigger asChild>{button}</TooltipTrigger>
+            <TooltipContent>{option.label}</TooltipContent>
+          </Tooltip>
         );
       })}
     </div>

@@ -1,45 +1,44 @@
 import type { ReactNode } from "react";
 import { Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { initialsFromDisplayName } from "@/user-avatar/src/user-avatar";
+import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 
 export type SharePrincipalKind = "user" | "group";
 
 type SharePrincipalMarkProps = {
   principalType: SharePrincipalKind;
   displayName: string;
-  active?: boolean;
+  /** Stable identity key for per-user palette (user principals only). */
+  principalId?: string;
   /** Replaces initials (or the group glyph) with an icon in the same circle. */
   icon?: ReactNode;
   className?: string;
 };
 
+/** Compact share-dialog mark — thin domain wrapper around `UserAvatar`. */
 export function SharePrincipalMark({
   principalType,
   displayName,
-  active = false,
+  principalId,
   icon,
   className,
 }: SharePrincipalMarkProps) {
-  const stateClass = active ? "share-dialog__group-mark--active" : "share-dialog__group-mark--idle";
-
-  if (principalType === "group") {
-    return (
-      <div className={cn("share-dialog__group-mark", stateClass, className)}>
-        {icon ?? <Users2 className="size-3.5" aria-hidden />}
-      </div>
-    );
-  }
-
-  const memberStateClass = icon
-    ? undefined
-    : active
-      ? "share-dialog__member-mark--active"
-      : "share-dialog__member-mark--idle";
+  const kindClass =
+    principalType === "group"
+      ? "share-dialog__principal-mark--group"
+      : "share-dialog__principal-mark--user";
+  const colorKey = principalType === "user" ? (principalId ?? displayName) : null;
 
   return (
-    <div className={cn("share-dialog__member-mark", memberStateClass, className)}>
-      {icon ?? initialsFromDisplayName(displayName)}
-    </div>
+    <UserAvatar
+      displayName={displayName}
+      compact
+      size="xs"
+      color={colorKey ? avatarColorForUserId(colorKey) : undefined}
+      fallback={
+        principalType === "group" ? (icon ?? <Users2 className="size-3.5" aria-hidden />) : icon
+      }
+      className={cn("share-dialog__principal-mark", kindClass, className)}
+    />
   );
 }

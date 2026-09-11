@@ -7,7 +7,7 @@ export const NOTES_CREAM_HEX = "#ffffff";
 
 /**
  * Calendar event-card light wash (`surfaceTint(color, 11)` in srgb).
- * Paper card (`--note-detail-sheet-bg`) uses the same percentage in oklab
+ * Paper card (`--paper-sheet-bg`) uses the same percentage in oklab
  * on cream — a very light notebook tint, not the full collection color.
  */
 export const NOTES_DETAIL_TINT_PERCENT = 11;

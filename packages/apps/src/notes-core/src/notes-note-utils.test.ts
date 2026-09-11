@@ -20,7 +20,6 @@ import {
   noteHasListableBody,
   shouldDiscardEmptyCreatedNote,
   noteListExcerpt,
-  noteListTagOverflow,
   noteListTitle,
   usableNoteListPreview,
   noteListLocationLabel,
@@ -122,15 +121,6 @@ describe("notes-note-utils", () => {
         body: [""],
       }),
     ).toBe("Boodschappen Aug Bananen Fruit Past");
-  });
-
-  it("caps visible list tags and reports overflow", () => {
-    expect(noteListTagOverflow(["a", "b"])).toEqual({ visible: ["a", "b"], overflow: 0 });
-    expect(noteListTagOverflow(["a", "b", "c", "d"])).toEqual({
-      visible: ["a", "b"],
-      overflow: 2,
-    });
-    expect(noteListTagOverflow(["  focus  ", ""])).toEqual({ visible: ["focus"], overflow: 0 });
   });
 
   it("hides tags and stars for Shared-with-me recipients; shows for owned and group", () => {

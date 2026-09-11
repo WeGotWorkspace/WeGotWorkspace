@@ -23,35 +23,26 @@
   @apply space-y-6 sm:space-y-8;
 }
 
+/* ≥2 cols on narrow; auto-fill denser tracks when wider (Docs + Drive SST). */
 .drive-workspace .drive-grid {
+  --drive-grid-gap: 0.75rem;
   display: grid;
-  gap: 0.875rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--drive-grid-gap);
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(13.5rem, calc((100% - var(--drive-grid-gap)) / 2)), 1fr)
+  );
 }
 
 @media (min-width: 30rem) {
   .drive-workspace .drive-grid {
-    gap: 1rem;
+    --drive-grid-gap: 0.875rem;
   }
 }
 
 @media (min-width: 48rem) {
   .drive-workspace .drive-grid {
-    gap: 1.25rem;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 64rem) {
-  .drive-workspace .drive-grid {
-    gap: 1.5rem;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 80rem) {
-  .drive-workspace .drive-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    --drive-grid-gap: 1rem;
   }
 }
 
@@ -99,12 +90,16 @@
 }
 
 .drive-workspace .drive-folder-tile--selected {
-  background-color: color-mix(in oklab, var(--color-emerald) 18%, transparent);
-  box-shadow: 0 0 0 2px var(--color-emerald);
+  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 12%, transparent);
+  box-shadow: none;
 }
 
 .drive-workspace .drive-folder-tile--idle {
   background-color: color-mix(in oklab, var(--color-ink) 5%, transparent);
+}
+
+.drive-workspace .drive-folder-tile--idle:hover {
+  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 8%, transparent);
 }
 
 .drive-workspace .drive-folder-tile__icon {
@@ -131,8 +126,11 @@
 
 .drive-workspace .drive-file-tile__footer {
   @apply relative px-3.5 py-3 sm:px-4 sm:py-3.5 flex items-center gap-2.5 border-t;
-  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
-  transition: padding 180ms ease;
+  background-color: #ffffff;
+  border-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 14%, transparent);
+  transition:
+    padding 180ms ease,
+    background-color 150ms ease;
 }
 
 .drive-workspace .drive-file-tile--selection-mode .drive-file-tile__footer {
@@ -184,19 +182,55 @@
   @apply size-3 text-white;
 }
 
+/*
+ * File tiles: idle white + full-card accent hairline.
+ * Inset shadow sits on ::after — opaque preview/footer otherwise cover a parent inset.
+ */
 .drive-workspace .drive-file-tile {
   @apply relative overflow-hidden transition-all cursor-pointer outline-none;
   border-radius: var(--control-radius);
-  background-color: color-mix(in oklab, var(--color-ink) 5%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 8%, transparent);
+  background-color: #ffffff;
+  box-shadow: none;
+}
+
+.drive-workspace .drive-file-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 16%, transparent);
 }
 
 .drive-workspace .drive-file-tile--dragging {
   @apply opacity-40;
 }
 
+.drive-workspace .drive-file-tile:not(.drive-file-tile--selected):hover .drive-file-tile__preview {
+  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 6%, transparent);
+}
+
+.drive-workspace .drive-file-tile:not(.drive-file-tile--selected):hover .drive-file-tile__footer {
+  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 8%, transparent);
+}
+
 .drive-workspace .drive-file-tile--selected {
-  box-shadow: 0 0 0 2px var(--color-emerald);
+  box-shadow: none;
+}
+
+.drive-workspace .drive-file-tile--selected::after {
+  box-shadow: inset 0 0 0 1px
+    color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 14%, transparent);
+}
+
+.drive-workspace .drive-file-tile--selected .drive-file-tile__preview {
+  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 10%, transparent);
+}
+
+.drive-workspace .drive-file-tile--selected .drive-file-tile__footer {
+  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 14%, transparent);
 }
 
 .drive-workspace .drive-file-tile__star-badge {
@@ -207,7 +241,7 @@
 .drive-workspace .drive-file-tile__preview {
   @apply relative flex items-center justify-center overflow-hidden;
   aspect-ratio: 16 / 9;
-  background-color: var(--color-cream, #fff);
+  background-color: #ffffff;
   color: var(--drive-accent);
 }
 
@@ -260,7 +294,8 @@
 }
 
 .drive-workspace .drive-file-tile__title {
-  @apply min-w-0 flex-1 truncate text-sm sm:text-[0.9375rem] font-medium;
+  /* Content-sized so share indicators sit next to the title (list-view adjacency). */
+  @apply min-w-0 truncate text-sm sm:text-[0.9375rem] font-medium;
   color: var(--color-ink);
 }
 
@@ -350,6 +385,12 @@
   @apply cursor-default transition-colors;
 }
 
+.drive-workspace
+  .drive-list-row:not(.drive-list-row--selected):not(.drive-list-row--drop-target):hover
+  > td {
+  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 8%, transparent);
+}
+
 .drive-workspace .drive-list-row__name {
   @apply relative;
   transition: padding-inline-start 180ms ease;
@@ -373,7 +414,7 @@
 }
 
 .drive-workspace .drive-list-row--selected > td {
-  background-color: color-mix(in oklab, var(--color-emerald) 16%, transparent);
+  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 12%, transparent);
 }
 
 .drive-workspace .drive-list-row--selected > td:first-child {
@@ -429,61 +470,4 @@
 
 .drive-workspace .drive-list-file-icon {
   color: var(--drive-accent);
-}
-
-.drive-workspace .drive-detail-panel__preview {
-  @apply relative aspect-[4/3] flex items-center justify-center mb-6 overflow-hidden;
-  border-radius: var(--control-radius);
-  background-color: color-mix(in oklab, var(--drive-accent) 14%, transparent);
-  color: var(--drive-accent);
-}
-
-.drive-workspace .drive-detail-panel__preview > img,
-.drive-workspace .drive-detail-panel__preview > video,
-.drive-workspace .drive-detail-panel__preview .file-preview__fallback,
-.drive-workspace .drive-detail-panel__preview .drive-media-preview__fallback,
-.drive-workspace .drive-detail-panel__preview .file-preview-text-pane,
-.drive-workspace .drive-detail-panel__preview .docs-file-preview {
-  @apply absolute inset-0 h-full w-full;
-}
-
-.drive-workspace .drive-detail-panel__preview-media {
-  @apply h-full w-full object-cover;
-  border-radius: var(--control-radius);
-}
-
-.drive-workspace .drive-detail-panel__preview .file-preview__fallback svg,
-.drive-workspace .drive-detail-panel__preview .drive-media-preview__fallback svg {
-  width: 4rem;
-  height: 4rem;
-}
-
-.drive-workspace .drive-detail-panel__path {
-  @apply mb-3;
-}
-
-.drive-workspace .drive-detail-panel__title {
-  @apply text-base md:text-lg leading-tight mb-4 tracking-tight break-words font-semibold font-sans;
-  font-family: var(--font-sans);
-  color: var(--color-ink);
-}
-
-.drive-workspace .drive-detail-panel__body {
-  @apply text-sm leading-relaxed mb-3;
-  color: color-mix(in oklab, var(--color-ink) 78%, transparent);
-}
-
-.drive-workspace .drive-detail-panel__meta-row {
-  @apply flex justify-between gap-4 py-1.5 border-b;
-  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
-}
-
-.drive-workspace .drive-detail-panel__meta-label {
-  @apply text-[11px] uppercase tracking-wider;
-  color: color-mix(in oklab, var(--color-ink) 50%, transparent);
-}
-
-.drive-workspace .drive-detail-panel__meta-value {
-  @apply capitalize;
-  color: var(--color-ink);
 }

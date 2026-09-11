@@ -1,11 +1,16 @@
 @import "../../styles.css" reference;
 
 .chat-message {
-  @apply relative flex min-w-0 max-w-full gap-2.5 px-5 py-2.5;
+  /* items-start: UserAvatar is a flex column with align-items:center; without
+     start alignment it stretches and vertically centers the mark beside tall
+     reply/reaction stacks. pt-0.5 on the avatar optically matches the name line. */
+  @apply relative flex min-w-0 max-w-full items-start gap-2.5 px-5 py-2.5;
 }
 
 .chat-message:hover,
 .chat-message:focus-within {
+  /* Above sticky day headers (z-[5]) so short-row hover actions stay visible. */
+  z-index: 6;
   background-color: var(--chat-hover, color-mix(in oklab, #06b6d4 8%, transparent));
 }
 
@@ -131,6 +136,7 @@
    leaving the row (or Radix moving focus into the portal) hides the trigger
    and the picker closes before the cursor can reach it. */
 .chat-message:has([data-state="open"]) {
+  z-index: 6;
   background-color: var(--chat-hover, color-mix(in oklab, #06b6d4 8%, transparent));
 }
 

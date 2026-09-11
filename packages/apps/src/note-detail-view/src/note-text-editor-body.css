@@ -1,11 +1,15 @@
 @import "../../styles.css" reference;
 
-/* Flush note body — `.note-detail-sheet` is the paper card. Zero nested
- * text-editor sheet padding/gutter so tags + prose share the card inset
- * (including ≤768px, where text-editor otherwise tightens sheet tokens). */
+/* Flush note body — outer `.paper-sheet` is the paper card. Zero nested
+ * text-editor / paper-sheet padding/gutter so tags + prose share the card
+ * inset (including ≤768px, where text-editor otherwise tightens sheet tokens). */
 .note-text-editor-body.text-editor {
+  --paper-sheet-bg: transparent;
   --text-editor-sheet: transparent;
+  --paper-sheet-shadow: none;
   --text-editor-shadow-sheet: none;
+  /* Outer `.note-detail-view.paper-sheet` owns the scrollport floor — nested surface must not inherit it. */
+  --paper-sheet-min-height: auto;
   --text-editor-sheet-padding: 0;
   --text-editor-sheet-margin-block: 0;
   --text-editor-sheet-shadow-gutter: 0;
@@ -28,10 +32,6 @@
   z-index: 50;
 }
 
-.note-detail-view__collab-chrome {
-  @apply flex shrink-0 flex-wrap items-center justify-end gap-1.5;
-}
-
 .note-detail-view__pending-sync {
   display: inline-flex;
   align-items: center;
@@ -43,22 +43,7 @@
   color: #c98a1f;
 }
 
-.note-detail-view .docs-collab-presence__avatar--self {
-  background-color: var(--notes-accent, #f6d176);
-  color: var(--color-ink);
-  box-shadow:
-    0 0 0 2px var(--notes-detail-body-bg, var(--color-cream, #ffffff)),
-    0 0 0 3px color-mix(in oklab, var(--notes-accent, #f6d176) 42%, transparent);
-}
-
-.note-detail-view .docs-collab-presence__avatar--connecting {
-  color: color-mix(in oklab, var(--notes-accent, #f6d176) 72%, var(--color-ink));
-  background-color: color-mix(in oklab, var(--notes-accent, #f6d176) 14%, transparent);
-  border: 1px dashed color-mix(in oklab, var(--notes-accent, #f6d176) 38%, transparent);
-}
-
-.note-detail-view .docs-collab-presence__avatar--warning {
-  color: color-mix(in oklab, #c2410c 75%, var(--color-ink));
-  background-color: color-mix(in oklab, #c2410c 14%, transparent);
-  border: 1px solid color-mix(in oklab, #c2410c 42%, transparent);
+/* Soft wash lives on shared `.docs-collab-presence-chrome`; Notes only sets accent. */
+.notes-workspace .docs-collab-presence-chrome {
+  --docs-collab-presence-accent: var(--notes-accent, #f6d176);
 }

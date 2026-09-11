@@ -40,7 +40,7 @@ export const EditableFormLike: Story = {
       <div className="flex justify-end pt-2">
         <Button
           label="Save"
-          variant="subtle"
+          variant="outline"
           style={{ backgroundColor: "#949dad", color: "var(--color-ink)" }}
         />
       </div>
@@ -91,7 +91,7 @@ export const WithPanelRows: Story = {
     <Card titleIcon={<Globe2 className="size-4" />} title="When">
       <CardPanel>
         <CardRow title="All day">
-          <Button label="On" variant="subtle" />
+          <Button label="On" variant="outline" />
         </CardRow>
         <CardRow title="Starts">
           <Button label="17 Aug" variant="outline" />

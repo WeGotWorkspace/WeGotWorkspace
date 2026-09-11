@@ -1,7 +1,12 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { AppSwitchButton } from "@/app-switch-button/src/app-switch-button";
+import { IconButton } from "@/button/src/button";
 import { cn } from "@/lib/utils";
+import {
+  SIDEBAR_OVERLAY_MEDIA_QUERY,
+  isSidebarOverlayViewport,
+} from "@/workspace-shell/src/sidebar-breakpoint";
 import "@/app-sidebar/src/app-sidebar.css";
 
 export type AppSidebarProps = {
@@ -21,6 +26,18 @@ export type AppSidebarProps = {
   className?: string;
 };
 
+function useIsSidebarOverlay() {
+  const [isOverlay, setIsOverlay] = useState(isSidebarOverlayViewport);
+  useEffect(() => {
+    const mql = window.matchMedia(SIDEBAR_OVERLAY_MEDIA_QUERY);
+    const onChange = () => setIsOverlay(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+  return isOverlay;
+}
+
 export function AppSidebar({
   open,
   onCloseMobile,
@@ -32,6 +49,7 @@ export function AppSidebar({
   appSwitchSubtitle,
   className,
 }: AppSidebarProps) {
+  const isOverlay = useIsSidebarOverlay();
   return (
     <>
       {open ? <div className="app-sidebar__scrim" onClick={onCloseMobile} aria-hidden /> : null}
@@ -40,14 +58,17 @@ export function AppSidebar({
           <div className="app-sidebar__header-main">
             <AppSwitchButton disabled={appSwitchDisabled} subtitle={appSwitchSubtitle} />
           </div>
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={onCloseMobile}
-            className="app-sidebar__close"
-          >
-            <X className="size-4" aria-hidden />
-          </button>
+          {isOverlay ? (
+            <IconButton
+              label="Close menu"
+              icon={<X className="size-4" aria-hidden />}
+              size="sm"
+              variant="outline"
+              showTooltip={false}
+              onClick={onCloseMobile}
+              className="app-sidebar__close"
+            />
+          ) : null}
         </header>
 
         <div className="app-sidebar__scroll">

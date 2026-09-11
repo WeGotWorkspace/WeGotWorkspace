@@ -3,6 +3,8 @@ import type { DocsCommentThread } from "../docs-comments-types";
 import { resolveThreadDocumentPosition } from "../docs-comments/docs-comments-mark-visibility";
 import type { DocsSuggestionWithThread } from "../docs-suggestions-types";
 
+export type DocsCollabReviewInboxTab = "open" | "resolved";
+
 export type DocsCollabReviewCommentItem = {
   type: "comment";
   thread: DocsCommentThread;
@@ -14,6 +16,29 @@ export type DocsCollabReviewSuggestionItem = {
 };
 
 export type DocsCollabReviewItem = DocsCollabReviewCommentItem | DocsCollabReviewSuggestionItem;
+
+/** Unresolved threads, including in-progress drafts (no messages yet). */
+export function isOpenReviewThread(thread: DocsCommentThread): boolean {
+  return !thread.resolved;
+}
+
+export function isPersistedResolvedThread(thread: DocsCommentThread): boolean {
+  return thread.resolved && thread.messages.length > 0;
+}
+
+/** Open = unresolved comments (+ draft) and pending suggestions; Resolved = resolved comments only. */
+export function filterReviewItemsByTab(
+  tab: DocsCollabReviewInboxTab,
+  threads: DocsCommentThread[],
+  suggestions: DocsSuggestionWithThread[],
+  editor: Editor | null,
+): DocsCollabReviewItem[] {
+  if (tab === "resolved") {
+    return sortReviewItemsByDocumentOrder(editor, threads.filter(isPersistedResolvedThread), []);
+  }
+
+  return sortReviewItemsByDocumentOrder(editor, threads.filter(isOpenReviewThread), suggestions);
+}
 
 function resolveReviewItemDocumentPosition(
   editor: Editor | null,

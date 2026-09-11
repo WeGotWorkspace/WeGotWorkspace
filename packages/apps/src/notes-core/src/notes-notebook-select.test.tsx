@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactElement } from "react";
 import {
   NOTES_CREATE_NOTEBOOK_VALUE,
   NotesNotebookSelect,
@@ -10,6 +11,7 @@ import {
   resolveNotebookSelectValue,
 } from "@/notes-core/src/notes-notebook-select";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
+import { TooltipProvider } from "@/ui/tooltip";
 
 const notebooks = [
   { id: "nb-journal", name: "The Journal", color: "#14b8a6" },
@@ -28,10 +30,13 @@ function stubSelectEnv() {
       addListener: vi.fn(),
       removeListener: vi.fn(),
       addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
     })),
   });
+}
+
+function renderSelect(ui: ReactElement) {
+  return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
 }
 
 describe("NotesNotebookSelect helpers", () => {
@@ -121,7 +126,7 @@ describe("NotesNotebookSelect", () => {
   it("lists notebooks with colored notebook icons, the current notebook selected, and Create after a separator", () => {
     const onNotebookChange = vi.fn();
     const onCreateNotebook = vi.fn();
-    const { container } = render(
+    const { container } = renderSelect(
       <NotesNotebookSelect
         notebooks={notebooks}
         value={{ id: "nb-drafts", name: "Drafts", color: "#f59e0b" }}
@@ -131,10 +136,9 @@ describe("NotesNotebookSelect", () => {
       />,
     );
 
-    const trigger = screen.getByRole("combobox", {
-      name: defaultNotesLabels.toolbarMoveToNotebook,
-    });
+    const trigger = screen.getByRole("combobox", { name: "Drafts" });
     expect(trigger.textContent).toContain("Drafts");
+    expect(trigger.getAttribute("aria-label")).toBe("Drafts");
     fireEvent.click(trigger);
 
     const options = screen.getAllByRole("option");
@@ -162,7 +166,7 @@ describe("NotesNotebookSelect", () => {
 
   it("moves when choosing another notebook", () => {
     const onNotebookChange = vi.fn();
-    render(
+    renderSelect(
       <NotesNotebookSelect
         notebooks={notebooks}
         value={{ id: "nb-drafts", name: "Drafts" }}
@@ -172,10 +176,30 @@ describe("NotesNotebookSelect", () => {
       />,
     );
 
-    fireEvent.click(
-      screen.getByRole("combobox", { name: defaultNotesLabels.toolbarMoveToNotebook }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Drafts" }));
     fireEvent.click(screen.getByRole("option", { name: "The Journal" }));
     expect(onNotebookChange).toHaveBeenCalledWith(notebooks[0]);
+  });
+
+  it("reuses ColorSwatchTrigger for the swatch variant (icon + chevron, no caption)", () => {
+    const { container } = renderSelect(
+      <NotesNotebookSelect
+        notebooks={notebooks}
+        value={{ id: "nb-drafts", name: "Drafts", color: "#f59e0b" }}
+        labels={defaultNotesLabels}
+        triggerVariant="swatch"
+        onNotebookChange={vi.fn()}
+        onCreateNotebook={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: "Drafts" });
+    expect(trigger.className).toContain("color-swatch-trigger");
+    expect(trigger.className).toContain("notes-notebook-select--swatch");
+    expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
+    expect(trigger.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(trigger.querySelector(".color-swatch-trigger__caption")).toBeNull();
+    expect(trigger.querySelector(".notes-notebook-select__name")).toBeNull();
+    expect(container.querySelector(".select-trigger__icon")).toBeNull();
   });
 });

@@ -74,27 +74,23 @@ describe("contacts workspace sidebar chrome", () => {
     expect(detailPane).toMatch(/--button-primary-bg:\s*var\(--contacts-accent\)/);
     expect(detailPane).not.toMatch(/--button-subtle-color:\s*var\(--contacts-accent/);
     expect(detailPane).not.toMatch(/--button-ghost-color:\s*var\(--contacts-accent/);
+    expect(css).not.toMatch(/--button-subtle-/);
     expect(css).toMatch(
-      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-subtle-color:\s*var\(--color-ink\)/,
+      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-bg:\s*var\(--contacts-accent\)/,
     );
   });
 
-  it("washes selected action-bar icons like Calendar Today / Notes Star", () => {
+  it("washes selected action-bar icons like Calendar Today via outline tokens", () => {
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--contacts-accent-strong\)/,
+      /\.contacts-workspace \{[\s\S]*--button-active-color:\s*var\(--contacts-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-subtle-background:[\s\S]*var\(--contacts-accent\) 18%/,
+      /\.contacts-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--contacts-accent\) 18%/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-subtle-hover-background:[\s\S]*var\(--contacts-accent\) 24%/,
+      /\.contacts-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--contacts-accent\) 24%/,
     );
-    expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active[\s\S]*fill:\s*none/,
-    );
-    expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active[\s\S]*color:\s*var\(--contacts-accent-strong\)/,
-    );
+    expect(css).not.toMatch(/\.button--variant-subtle\.icon-button--active/);
   });
 
   it("opens the share-only address book dialog from mutations", () => {
@@ -208,11 +204,11 @@ describe("contacts workspace sidebar chrome", () => {
     );
   });
 
-  it("rings person and org avatars with a 2px book-color tint", () => {
+  it("rings person and org avatars with the shared 1px soft book-color tint", () => {
     expect(avatarCss).toMatch(
-      /--user-avatar-border:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--contacts-accent\)\) 55%,\s*var\(--color-cream/,
+      /--user-avatar-border:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--contacts-accent\)\) 38%,\s*transparent/,
     );
-    expect(avatarCss).toMatch(/--user-avatar-border-width:\s*2px;/);
+    expect(avatarCss).not.toMatch(/--user-avatar-border-width/);
     expect(avatarCss).not.toMatch(/--contacts-person-avatar-border/);
     expect(css).not.toMatch(/--contacts-person-avatar-border/);
     expect(groupIconCss).not.toMatch(/--user-avatar-border/);
@@ -283,9 +279,11 @@ describe("contacts workspace sidebar chrome", () => {
     expect(tsx).toMatch(/onMove: moveActiveContactToAddressBook/);
     expect(actionBar).toMatch(/<ContactsAddressBookSelect/);
     expect(actionBar).toMatch(/variant="toolbar"/);
+    expect(actionBar).toMatch(/triggerVariant="swatch"/);
+    expect(addressBookSelect).toMatch(/ColorSwatchTrigger/);
     expect(addressBookSelect).not.toMatch(/onCreateAddressBook|__create_address_book__/);
     expect(css).toMatch(
-      /\.contacts-workspace \.action-bar \.contacts-address-book-select \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+      /\.contacts-workspace \.action-bar \.contacts-address-book-select\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
     );
   });
 
