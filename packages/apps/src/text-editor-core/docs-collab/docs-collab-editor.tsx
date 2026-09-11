@@ -19,7 +19,6 @@ import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
 import { useTextEditorSourceSync } from "@/text-editor-core/src/use-text-editor-source-sync";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import { DocsCollabCommentControl } from "./docs-collab-comment-control";
-import { DocsCollabSuggestControls } from "./docs-collab-suggest-controls";
 
 import "@/text-editor-core/src/text-editor.css";
 
@@ -63,8 +62,6 @@ export type DocsCollabEditorProps = {
     | "commentsAddFromSelectionDisabledViewSource"
     | "commentsAddFromSelectionDisabledReadOnly"
   >;
-  /** When false, hide Edit/Suggest mode control. */
-  showSuggestControls?: boolean;
   commentsOverlay?: ReactNode;
   suggestionsOverlay?: ReactNode;
 };
@@ -91,7 +88,6 @@ export function DocsCollabEditor({
   commentsDisabled = false,
   commentsDisabledTitle,
   commentControlLabels,
-  showSuggestControls = true,
   commentsOverlay,
   suggestionsOverlay,
 }: DocsCollabEditorProps) {
@@ -213,11 +209,6 @@ export function DocsCollabEditor({
             onAddCommentFromSelection={onAddCommentFromSelection}
           />
         ) : undefined
-      }
-      trailing={
-        viewSource || !showSuggestControls ? undefined : (
-          <DocsCollabSuggestControls editor={editor} />
-        )
       }
     />
   ) : null;

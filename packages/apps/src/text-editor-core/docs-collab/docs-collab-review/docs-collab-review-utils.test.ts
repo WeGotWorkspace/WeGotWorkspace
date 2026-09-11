@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DocsCommentThread } from "../docs-comments-types";
 import type { DocsSuggestionWithThread } from "../docs-suggestions-types";
-import { sortReviewItemsByDocumentOrder } from "./docs-collab-review-utils";
+import { filterReviewItemsByTab, sortReviewItemsByDocumentOrder } from "./docs-collab-review-utils";
 
 const commentThread = (id: string, anchorFrom: number): DocsCommentThread => ({
   id,
@@ -60,5 +60,37 @@ describe("sortReviewItemsByDocumentOrder", () => {
 
   it("returns an empty list when there are no review items", () => {
     expect(sortReviewItemsByDocumentOrder(null, [], [])).toEqual([]);
+  });
+});
+
+describe("filterReviewItemsByTab", () => {
+  it("keeps open comments and suggestions on the open tab", () => {
+    const resolved = { ...commentThread("t-done", 4), resolved: true };
+    const items = filterReviewItemsByTab(
+      "open",
+      [commentThread("t-open", 10), resolved],
+      [suggestion("s-1", 5)],
+      null,
+    );
+
+    expect(
+      items.map((item) => (item.type === "comment" ? item.thread.id : item.suggestion.changeId)),
+    ).toEqual(["s-1", "t-open"]);
+  });
+
+  it("shows only resolved comments on the resolved tab", () => {
+    const resolved = { ...commentThread("t-done", 4), resolved: true };
+    const items = filterReviewItemsByTab(
+      "resolved",
+      [commentThread("t-open", 10), resolved],
+      [suggestion("s-1", 5)],
+      null,
+    );
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.type).toBe("comment");
+    if (items[0]?.type === "comment") {
+      expect(items[0].thread.id).toBe("t-done");
+    }
   });
 });

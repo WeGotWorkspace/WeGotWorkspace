@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const presenceCss = readFileSync(join(here, "docs-collab-presence.css"), "utf8");
+const chromeCss = readFileSync(join(here, "docs-collab-presence-chrome.css"), "utf8");
 const presenceTsx = readFileSync(join(here, "docs-collab-presence.tsx"), "utf8");
+const chromeTsx = readFileSync(join(here, "docs-collab-presence-chrome.tsx"), "utf8");
 const notesCss = readFileSync(
   join(here, "../../note-detail-view/src/note-text-editor-body.css"),
   "utf8",
@@ -16,6 +18,8 @@ describe("docs-collab presence avatar chrome", () => {
   it("keeps a single UserAvatar mark border — no cream/background wrapper ring", () => {
     expect(presenceCss).not.toMatch(/docs-collab-presence__avatar[\s\S]*box-shadow/);
     expect(presenceCss).not.toMatch(/--docs-collab-presence-ring/);
+    expect(chromeCss).not.toMatch(/box-shadow/);
+    expect(chromeCss).not.toMatch(/--docs-collab-presence-ring/);
     expect(notesCss).not.toMatch(
       /\.docs-collab-presence__avatar--self[\s\S]*\.user-avatar__mark[\s\S]*box-shadow/,
     );
@@ -33,23 +37,43 @@ describe("docs-collab presence avatar chrome", () => {
     expect(presenceTsx).not.toMatch(/\bcolor=\{/);
   });
 
-  it("Notes collab chrome uses soft cream wash — not solid accent or 55% sidebar chip", () => {
-    // Self used to set --user-avatar-bg: var(--notes-accent) (full #f6d176).
-    // Peers inherited workspace 55% outline-active — loud on white detail footer.
-    expect(notesCss).not.toMatch(
-      /\.docs-collab-presence__avatar--self[\s\S]*--user-avatar-bg:\s*var\(--notes-accent/,
+  it("shared chrome owns Users icon + Online collaborators tooltip", () => {
+    expect(chromeTsx).toMatch(/Online collaborators/);
+    expect(chromeTsx).toMatch(/<Users\b/);
+    expect(chromeTsx).toMatch(/DocsCollabPresence/);
+  });
+
+  it("shared chrome uses soft cream wash — not solid accent or 55% sidebar chip", () => {
+    // Canonical self-avatar policy: 18%/24% accent→cream via outline-active tokens.
+    // Apps only set --docs-collab-presence-accent (notes-accent / docs-accent).
+    expect(chromeCss).toMatch(
+      /\.docs-collab-presence-chrome \{[\s\S]*--button-outline-active-background:[\s\S]*--docs-collab-presence-accent[\s\S]*18%/,
+    );
+    expect(chromeCss).toMatch(
+      /\.docs-collab-presence-chrome \{[\s\S]*--button-outline-active-hover-background:[\s\S]*--docs-collab-presence-accent[\s\S]*24%/,
+    );
+    expect(chromeCss).not.toMatch(
+      /\.docs-collab-presence-chrome \{[\s\S]*--button-outline-active-background:[\s\S]*55%/,
+    );
+    expect(chromeCss).not.toMatch(/--user-avatar-bg:/);
+    expect(chromeCss).toMatch(
+      /\.docs-collab-presence-chrome \{[\s\S]*--user-avatar-fg:\s*var\(--color-ink\)/,
+    );
+
+    expect(notesCss).toMatch(
+      /\.notes-workspace \.docs-collab-presence-chrome \{[\s\S]*--docs-collab-presence-accent:\s*var\(--notes-accent/,
     );
     expect(notesCss).not.toMatch(/--user-avatar-bg:\s*var\(--notes-accent/);
     expect(notesCss).not.toMatch(/--user-avatar-bg:\s*var\(--notes-detail-tint/);
     expect(notesCss).not.toMatch(/--user-avatar-bg:\s*var\(--notes-detail-accent/);
-    expect(notesCss).toMatch(
-      /\.notes-workspace \.note-detail-view__collab-chrome \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--notes-accent[^)]*\) 18%/,
+
+    expect(docsCss).toMatch(
+      /\.docs-workspace \.docs-collab-presence-chrome \{[\s\S]*--docs-collab-presence-accent:\s*var\(--docs-accent/,
     );
-    expect(notesCss).toMatch(
-      /\.notes-workspace \.note-detail-view__collab-chrome \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--notes-accent[^)]*\) 24%/,
+    // Docs must not solid-fill self with --docs-accent (match Notes softness).
+    expect(docsCss).not.toMatch(
+      /\.docs-collab-presence__avatar--self[\s\S]*--user-avatar-bg:\s*var\(--docs-accent/,
     );
-    expect(notesCss).not.toMatch(
-      /\.note-detail-view__collab-chrome \{[\s\S]*--button-outline-active-background:[\s\S]*55%/,
-    );
+    expect(docsCss).not.toMatch(/--user-avatar-bg:\s*var\(--docs-accent/);
   });
 });

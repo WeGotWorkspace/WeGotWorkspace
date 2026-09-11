@@ -4,7 +4,11 @@
 /* Parent-scoped tokens for the text editor workspace */
 :root {
   --text-editor-sheet-padding: 0.75in;
-  --text-editor-prose-font-size: 16px;
+  /*
+   * Modest fluid body size: ~15px on narrow viewports, 16px from ~700px up.
+   * Heading sizes are unitless multipliers of this token (Docs + Notes).
+   */
+  --text-editor-prose-font-size: clamp(15px, 0.875rem + 0.35vw, 16px);
   --text-editor-prose-line-height: 1.7;
   /* Unitless multipliers × `--text-editor-prose-font-size` for heading scale. */
   --text-editor-prose-heading-h1-size: 2.1;
@@ -15,7 +19,10 @@
 }
 
 .text-editor {
-  --text-editor-sheet: oklch(1 0 0);
+  /* White letter fill — shared with Notes via `.paper-sheet` / `--paper-sheet-bg`. */
+  --paper-sheet-bg: oklch(1 0 0);
+  /* Compat alias for callers that still read `--text-editor-sheet`. */
+  --text-editor-sheet: var(--paper-sheet-bg);
   --text-editor-sheet-margin-block: 1.5rem;
   --text-editor-highlight: oklch(0.95 0.15 95);
   --text-editor-comment: oklch(0.9 0.12 80);
@@ -31,11 +38,8 @@
     -1px 0 1px rgba(15, 23, 42, 0.03), -10px 0 24px -16px rgba(15, 23, 42, 0.1),
     -24px 0 48px -32px rgba(15, 23, 42, 0.06), 1px 0 1px rgba(15, 23, 42, 0.03),
     10px 0 24px -16px rgba(15, 23, 42, 0.1), 24px 0 48px -32px rgba(15, 23, 42, 0.06);
-  --text-editor-format-btn-color: color-mix(in oklab, var(--foreground) 70%, transparent);
-  --text-editor-format-btn-hover-bg: var(--accent);
-  --text-editor-format-btn-hover-color: var(--accent-foreground);
-  --text-editor-format-btn-active-bg: var(--accent);
-  --text-editor-format-btn-active-color: var(--accent-foreground);
+  /* `.paper-sheet` chrome — Docs remaps `--text-editor-shadow-sheet` → `--sheet-shadow`. */
+  --paper-sheet-shadow: var(--text-editor-shadow-sheet);
 }
 
 /* Collaboration carets (TipTap CollaborationCaret extension) */
@@ -72,106 +76,64 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.125rem;
+  /*
+   * Flex (not 1fr|auto|1fr grid): bar `padding-inline` is the only chrome inset
+   * (Docs sets `--docs-format-chrome-padding-x` equally L/R). Centering happens
+   * inside `__controls` via `safe center` — no empty side columns that add inset
+   * beyond the shared token. Gap only applies when `__end` is present.
+   */
+  @apply flex items-center gap-2;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in oklab, var(--background) 80%, transparent);
+  /*
+   * Soft chrome wash: ~5% workspace accent on cream (same family as Docs/Notes
+   * side-panel washes). Parent workspaces set --workspace-accent — never hardcode
+   * Docs blue here.
+   */
+  --text-editor-format-bar-wash: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 5%,
+    var(--color-cream, #ffffff)
+  );
+  background: var(--text-editor-format-bar-wash);
   padding: 0.375rem 0.5rem;
   backdrop-filter: blur(8px);
 }
 
-/* Unlayered so width/height survive active state (layered rules lose to Tailwind unlayered CSS). */
-.text-editor-format-bar__btn,
-.text-editor-format-bar__btn--active,
-.text-editor-format-bar__btn--active:hover:not(:disabled),
-.text-editor-format-bar__heading-trigger,
-.text-editor-format-bar__mode-trigger {
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 2rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  padding: 0;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 0;
-  color: var(--text-editor-format-btn-color);
-  background: transparent;
-  transition:
-    background-color 0.15s,
-    color 0.15s;
+/*
+ * Single-row format controls: center the cluster when it fits; `safe center`
+ * falls back to start on overflow so the first button sits on the bar’s
+ * padding edge (matches header sidebar toggle). Horizontal scroll (no wrap);
+ * scrollbar chrome hidden. Children must not flex-shrink.
+ */
+.text-editor-format-bar__controls {
+  @apply flex min-w-0 flex-1 flex-nowrap items-center justify-center gap-1.5 overflow-x-auto whitespace-nowrap;
+  justify-content: safe center;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.text-editor-format-bar__btn,
-.text-editor-format-bar__btn--active,
-.text-editor-format-bar__btn--active:hover:not(:disabled) {
-  width: 2rem;
-  min-width: 2rem;
-  max-width: 2rem;
+.text-editor-format-bar__controls > * {
+  @apply shrink-0;
 }
 
-.text-editor-format-bar__btn-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-  pointer-events: none;
-}
-
-.text-editor-format-bar__btn-icon svg {
-  display: block;
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-  stroke-width: 2;
+.text-editor-format-bar__controls::-webkit-scrollbar {
+  display: none;
 }
 
 .text-editor-format-bar__heading-trigger {
-  flex-direction: row;
-  flex-wrap: nowrap;
-  justify-content: flex-start;
-  gap: 0.375rem;
+  @apply inline-flex shrink-0 flex-row flex-nowrap items-center justify-start gap-1.5 whitespace-nowrap;
   min-width: 4.25rem;
   padding-inline: 0.625rem;
-  white-space: nowrap;
 }
 
 .text-editor-format-bar__heading-trigger-label {
-  display: inline-block;
-  flex: 0 1 auto;
-  min-width: 2ch;
+  @apply inline-block min-w-[2ch] shrink whitespace-nowrap;
   line-height: 1;
-  white-space: nowrap;
 }
 
 .text-editor-format-bar__heading-trigger-chevron {
-  display: block;
-  flex: 0 0 0.75rem;
-  width: 0.75rem;
-  height: 0.75rem;
+  @apply block size-3 shrink-0 opacity-60;
   stroke-width: 2;
-  opacity: 0.6;
-}
-
-.text-editor-format-bar__btn:hover:not(:disabled),
-.text-editor-format-bar__heading-trigger:hover:not(:disabled),
-.text-editor-format-bar__mode-trigger:hover:not(:disabled) {
-  background: var(--text-editor-format-btn-hover-bg);
-  color: var(--text-editor-format-btn-hover-color);
-}
-
-.text-editor-format-bar__btn:disabled {
-  opacity: 0.4;
-}
-
-.text-editor-format-bar__btn:disabled:hover {
-  background: transparent;
 }
 
 .text-editor-format-bar__heading-trigger:disabled,
@@ -180,28 +142,8 @@
   cursor: not-allowed;
 }
 
-.text-editor-format-bar__heading-trigger:disabled:hover,
-.text-editor-format-bar__print-btn:disabled:hover {
-  background: transparent;
-}
-
-.text-editor-format-bar__btn.text-editor-format-bar__btn--active,
-.text-editor-format-bar__btn.text-editor-format-bar__btn--active:hover:not(:disabled),
-.text-editor-format-bar__btn[aria-pressed="true"],
-.text-editor-format-bar__btn[aria-pressed="true"]:hover:not(:disabled),
-.text-editor-format-bar__heading-trigger.text-editor-format-bar__btn--active,
-.text-editor-format-bar__heading-trigger.text-editor-format-bar__btn--active:hover:not(:disabled),
-.text-editor-format-bar__heading-trigger[aria-pressed="true"],
-.text-editor-format-bar__heading-trigger[aria-pressed="true"]:hover:not(:disabled) {
-  font-weight: 600;
-  color: var(--text-editor-format-btn-active-color);
-  background: var(--text-editor-format-btn-active-bg);
-  border-color: color-mix(in oklab, var(--text-editor-format-btn-active-color) 28%, transparent);
-  box-shadow: inset 0 0 0 1px
-    color-mix(in oklab, var(--text-editor-format-btn-active-color) 22%, transparent);
-}
-
 .text-editor-format-bar__sep {
+  @apply shrink-0;
   margin: 0 0.25rem;
   height: 1.25rem;
   width: 1px;
@@ -209,7 +151,7 @@
 }
 
 .text-editor-format-bar__end {
-  @apply ml-auto flex items-center gap-1.5;
+  @apply flex shrink-0 items-center gap-1.5;
 }
 
 .text-editor-format-bar__print {
@@ -259,69 +201,6 @@
   line-height: 1.25;
 }
 
-.text-editor-format-bar__mode-trigger {
-  @apply flex-row flex-nowrap justify-start gap-1 min-w-0 max-w-none w-auto px-2 whitespace-nowrap;
-}
-
-.text-editor-format-bar__mode-trigger-icon {
-  @apply block size-3.5 shrink-0;
-}
-
-.text-editor-format-bar__mode-trigger-label {
-  @apply inline-block min-w-[2.5ch] shrink grow basis-auto whitespace-nowrap text-xs font-medium;
-}
-
-.text-editor-format-bar__mode-trigger-chevron {
-  @apply block size-3 shrink-0 opacity-65;
-}
-
-.text-editor-format-bar__mode-trigger-badge {
-  @apply inline-flex items-center justify-center min-w-[1.125rem] h-[1.125rem] rounded-full px-1 text-[0.625rem] font-bold leading-none;
-  color: var(--accent-foreground);
-  background: var(--accent);
-}
-
-.text-editor-format-bar__mode-menu {
-  @apply min-w-56;
-}
-
-.text-editor-format-bar__mode-menu .text-editor-format-bar__mode-option {
-  @apply items-start min-h-10 py-1.5;
-}
-
-.text-editor-format-bar__mode-option-icon {
-  @apply size-3.5 shrink-0 mt-0.5;
-}
-
-.text-editor-format-bar__mode-option-text {
-  @apply flex min-w-0 flex-1 flex-col gap-0.5;
-}
-
-.text-editor-format-bar__mode-option-label {
-  @apply text-[0.8125rem] font-medium;
-}
-
-.text-editor-format-bar__mode-option-hint {
-  @apply text-[0.6875rem];
-  color: var(--muted-foreground);
-}
-
-.text-editor-format-bar__mode-option-badge {
-  @apply ml-auto inline-flex shrink-0 self-start items-center justify-center min-w-[1.125rem] h-[1.125rem] rounded-full px-1 text-[0.625rem] font-bold leading-none;
-  color: var(--accent-foreground);
-  background: var(--accent);
-}
-
-.text-editor-format-bar__mode-option--selected,
-.text-editor-format-bar__mode-option--selected:focus {
-  background: var(--accent);
-  color: var(--accent-foreground);
-}
-
-.text-editor-format-bar__mode-option--selected .text-editor-format-bar__mode-option-hint {
-  color: color-mix(in oklab, var(--accent-foreground) 75%, transparent);
-}
-
 .text-editor-sheet {
   position: relative;
   display: flex;
@@ -367,7 +246,8 @@
   flex-direction: column;
   width: 100%;
   max-width: none;
-  min-height: 100%;
+  /* Prefer parent `--paper-sheet-min-height` (Docs/Notes); else fill the scrollport. */
+  min-height: var(--paper-sheet-min-height, 100%);
   margin-block: 0;
 }
 
@@ -383,10 +263,13 @@
   flex-shrink: 0;
   margin-block: var(--text-editor-sheet-margin-block);
   margin-inline: auto;
-  border-radius: 0;
-  background: var(--text-editor-sheet);
+  /* Fill + elevation + radius: shared `.paper-sheet` (see paper-sheet.css). */
   padding: var(--text-editor-sheet-padding);
-  box-shadow: var(--text-editor-shadow-sheet);
+  /* Optional block-start override (e.g. Docs mobile flush) without changing sides. */
+  padding-block-start: var(
+    --text-editor-sheet-padding-block-start,
+    var(--text-editor-sheet-padding)
+  );
 }
 
 .text-editor-sheet__surface .ProseMirror {
@@ -880,10 +763,11 @@
 }
 
 /* Compact sheet inset on small viewports via tokens so parents (e.g. notes)
- * can keep padding/margin at 0 without fighting a hardcoded surface rule. */
+ * can keep padding/margin at 0 without fighting a hardcoded surface rule.
+ * 1.25rem keeps top/bottom breathing room under flush chrome (Docs mobile). */
 @media (max-width: 768px) {
   .text-editor {
-    --text-editor-sheet-padding: 1rem;
+    --text-editor-sheet-padding: 1.25rem;
     --text-editor-sheet-margin-block: 1rem;
   }
 }
@@ -1090,18 +974,14 @@
 }
 
 /**
- * Light workspace surfaces (mail compose, docs): ink foreground + accent mixes
- * so format-bar hover/active states stay visible on cream/oklch backgrounds.
+ * Light workspace surfaces (mail compose, docs): ink foreground so outline
+ * IconButtons stay readable on cream/oklch backgrounds.
  */
 :is(.mail-compose-dialog-surface .mail-compose-view__message-editor.text-editor) {
   --foreground: var(--color-ink);
   --accent: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --accent-foreground: var(--color-ink);
   --border: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --text-editor-format-btn-hover-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
-  --text-editor-format-btn-hover-color: var(--color-ink);
-  --text-editor-format-btn-active-bg: color-mix(in oklab, var(--color-ink) 16%, transparent);
-  --text-editor-format-btn-active-color: var(--color-ink);
 }
 
 /* Compact body for format-bar-only Storybook previews */
@@ -1156,7 +1036,7 @@
   align-items: stretch;
   padding-block: 1rem;
   padding-inline: 1.25rem;
-  background-color: var(--text-editor-sheet, oklch(1 0 0));
+  background-color: var(--paper-sheet-bg, oklch(1 0 0));
 }
 
 .text-editor--view-source
@@ -1182,7 +1062,7 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  background: var(--text-editor-sheet, oklch(1 0 0));
+  background: var(--paper-sheet-bg, oklch(1 0 0));
 }
 
 .text-editor-source__layout {

@@ -33,7 +33,7 @@ function TableControlsHarness() {
         row or column.
       </p>
       <div className="text-editor-sheet text-editor-sheet--inline min-h-[320px] flex-1">
-        <EditorContent editor={editor} className="text-editor-sheet__surface" />
+        <EditorContent editor={editor} className="text-editor-sheet__surface paper-sheet" />
       </div>
       <TextEditorTableControls editor={editor} />
     </div>

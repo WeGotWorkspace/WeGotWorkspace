@@ -1,0 +1,40 @@
+@import "../../styles.css" reference;
+
+.docs-collab-presence-chrome {
+  @apply flex shrink-0 flex-wrap items-center justify-start gap-1.5;
+  /*
+   * Soft cream wash for presence marks (Notes policy — Docs matches).
+   * Workspace outline-active is often ~55% accent for selected chips on tinted
+   * sidebars; that same wash reads neon on a white/cream detail footer.
+   * Soften to action-bar cream-surface intensity (18%/24%). No solid accent fill.
+   * Apps set `--docs-collab-presence-accent` (e.g. notes-accent / docs-accent).
+   */
+  --button-active-color: var(--color-ink);
+  /* Pin glyph to ink — UserAvatar falls back to `--button-active-color` / emerald
+   * otherwise; keep wash on outline-active tokens (no `--user-avatar-bg` override). */
+  --user-avatar-fg: var(--color-ink);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--docs-collab-presence-accent, var(--color-ink)) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--docs-collab-presence-accent, var(--color-ink)) 24%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-border-color: color-mix(
+    in oklab,
+    var(--docs-collab-presence-accent, var(--color-ink)) 28%,
+    transparent
+  );
+}
+
+/* Leading mark trigger — density matches Notes last-edited CalendarDays. */
+.docs-collab-presence-chrome__icon-trigger {
+  @apply inline-flex shrink-0 items-center;
+}
+
+.docs-collab-presence-chrome__icon {
+  @apply size-3.5 shrink-0 opacity-70;
+}

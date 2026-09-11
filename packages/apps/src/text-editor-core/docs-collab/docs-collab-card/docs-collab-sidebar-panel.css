@@ -1,18 +1,121 @@
 @import "../../../styles.css" reference;
 
+/*
+ * SideDrawer portals under `document.body` (outside workspace roots), so
+ * workspace wash / accent / outline-button tokens do not cascade. Apply this
+ * class on the SideDrawer sheet root; products republish `--workspace-accent`
+ * (and their product accent) on a thin drawer modifier. Sheet wash + cream-
+ * surface IconButton / SegmentedControl / menu washes are shared here so
+ * overlay matches docked chrome without Docs/Calendar forks.
+ */
+.docs-collab-sidebar-panel-drawer {
+  --docs-collab-sidebar-panel-wash-recipe: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 10%,
+    var(--color-cream, #ffffff)
+  );
+  --docs-collab-sidebar-panel-wash: var(--docs-collab-sidebar-panel-wash-recipe);
+  background-color: var(--docs-collab-sidebar-panel-wash);
+
+  /*
+   * Same accent→cream outline recipe as Docs/Calendar workspace roots +
+   * `.view-header`. Optional `--workspace-accent-strong` override (Calendar).
+   */
+  --docs-collab-sidebar-panel-accent-strong: var(
+    --workspace-accent-strong,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 70%, #0f172a)
+  );
+  --button-active-color: var(--docs-collab-sidebar-panel-accent-strong);
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--docs-collab-sidebar-panel-accent-strong);
+  --button-outline-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 14%,
+    transparent
+  );
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 24%,
+    var(--color-cream, #ffffff)
+  );
+  --segmented-control-color: var(--button-outline-color);
+  --segmented-control-track-bg: transparent;
+  --segmented-control-track-border-color: var(
+    --button-outline-border-color,
+    var(--control-border-color)
+  );
+  --segmented-control-active-bg: var(--button-outline-active-background);
+  --segmented-control-active-fg: var(--button-active-color);
+  --segmented-control-active-shadow: none;
+  --menu-item-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 14%,
+    transparent
+  );
+  --menu-item-selected-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --menu-item-selected-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 24%,
+    var(--color-cream, #ffffff)
+  );
+}
+
 .docs-collab-sidebar-panel {
   @apply flex h-full min-h-0 w-full flex-col self-stretch overflow-hidden;
-  background-color: var(--docs-surface, var(--color-cream, #ffffff));
+  /*
+   * Horizontal inset matches `.workspace-app-layout__main-header`
+   * (`p-4 md:p-6` → 1rem / 1.5rem). Header + scroll/empty body share this
+   * token so Calendar / Docs / Drive side panels line up with main chrome.
+   * Products may override only when their main header diverges (e.g. Calendar
+   * `p-3` below 40rem).
+   */
+  --docs-collab-sidebar-panel-padding-x: 1rem;
+  /*
+   * Side-panel wash language (Calendar invitations source of truth):
+   * 10% product accent on cream. Workspaces may publish
+   * --docs-collab-sidebar-panel-wash; the recipe below is the fallback.
+   * Washed panels set --docs-collab-sidebar-panel-bg to that wash.
+   * Cream-only rails (Meet) leave --docs-collab-sidebar-panel-bg unset.
+   */
+  --docs-collab-sidebar-panel-wash-recipe: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 10%,
+    var(--color-cream, #ffffff)
+  );
+  background-color: var(
+    --docs-collab-sidebar-panel-bg,
+    var(--docs-surface, var(--color-cream, #ffffff))
+  );
   color: var(--docs-collab-sidebar-panel-color, var(--docs-text, var(--color-ink)));
 }
 
+@media (min-width: 768px) {
+  .docs-collab-sidebar-panel {
+    --docs-collab-sidebar-panel-padding-x: 1.5rem;
+  }
+}
+
 .docs-collab-sidebar-panel__header {
-  @apply shrink-0 border-b px-4 py-3.5;
+  @apply shrink-0 border-b py-3.5;
+  padding-inline: var(--docs-collab-sidebar-panel-padding-x);
   border-color: var(
     --docs-collab-sidebar-panel-border-color,
     color-mix(in oklab, var(--color-ink) 8%, transparent)
   );
-  background-color: color-mix(in oklab, var(--docs-surface, #ffffff) 72%, transparent);
+  /* Solid when washed; frosted cream when bg is unset. */
+  background-color: var(
+    --docs-collab-sidebar-panel-bg,
+    color-mix(in oklab, var(--docs-surface, #ffffff) 72%, transparent)
+  );
   backdrop-filter: blur(8px);
 }
 
@@ -24,8 +127,17 @@
   --view-header-title-row-min-height: 2rem;
 }
 
+/* Action cluster ↔ close: same gap as Calendar/Docs actions ↔ titleTrailing. */
+.docs-collab-sidebar-panel__header .view-header__end {
+  @apply gap-3;
+}
+
 .docs-collab-sidebar-panel__header-actions {
   @apply flex shrink-0 items-center gap-1;
+}
+
+.docs-collab-sidebar-panel__filter {
+  @apply w-auto shrink-0;
 }
 
 .docs-collab-sidebar-panel__toolbar {
@@ -33,11 +145,13 @@
 }
 
 .docs-collab-sidebar-panel__scroll {
-  @apply min-h-0 flex-1 overflow-y-auto px-4 py-5;
+  @apply min-h-0 flex-1 overflow-y-auto py-5;
+  padding-inline: var(--docs-collab-sidebar-panel-padding-x);
 }
 
+/* No extra horizontal inset — scroll already matches header title inset. */
 .docs-collab-sidebar-panel__empty {
-  @apply px-1 text-sm;
+  @apply text-sm;
   color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
 }
 
