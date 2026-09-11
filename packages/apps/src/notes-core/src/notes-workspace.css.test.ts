@@ -147,13 +147,13 @@ describe("notes workspace editor checkboxes", () => {
 describe("notes workspace last-edited footer chip", () => {
   it("keeps the muted edited chip isolated from assigned tag ink/gold", () => {
     expect(css).toMatch(
-      /\.notes-workspace \.notes-detail-footer__meta-tag--edited \{[\s\S]*--tag-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 6%/,
+      /\.notes-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 6%/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.notes-detail-footer__meta-tag--edited \{[\s\S]*--tag-fg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 58%/,
+      /\.notes-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-fg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 58%/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.notes-detail-footer__meta-tag--edited \.tag \{[\s\S]*background-color:\s*var\(--tag-bg\)/,
+      /\.notes-workspace \.workspace-detail-footer__meta-tag--edited \.tag \{[\s\S]*background-color:\s*var\(--tag-bg\)/,
     );
   });
 });
@@ -322,34 +322,38 @@ describe("notes workspace detail paper sheet tokens", () => {
   it("paints the paper card with a very light notebook wash on a cream desk", () => {
     expect(css).toMatch(
       new RegExp(
-        `--note-detail-sheet-bg:\\s*color-mix\\(\\s*in oklab,\\s*var\\(--notes-detail-tint,\\s*var\\(--color-cream,\\s*#ffffff\\)\\) ${NOTES_DETAIL_TINT_PERCENT}%,\\s*var\\(--color-cream`,
+        `--paper-sheet-bg:\\s*color-mix\\(\\s*in oklab,\\s*var\\(--notes-detail-tint,\\s*var\\(--color-cream,\\s*#ffffff\\)\\) ${NOTES_DETAIL_TINT_PERCENT}%,\\s*var\\(--color-cream`,
       ),
     );
-    expect(css).toMatch(/--note-detail-sheet-shadow:\s*var\(--sheet-shadow\)/);
-    expect(css).not.toMatch(
-      /--note-detail-sheet-shadow:\s*0 1px 1px color-mix\(in oklab,\s*var\(--color-ink\)/,
-    );
+    expect(css).not.toMatch(/--note-detail-sheet-shadow:/);
+    expect(css).not.toMatch(/--note-detail-sheet-bg:/);
     expect(css).toMatch(/--notes-detail-body-bg:\s*var\(--workspace-detail-bg\)/);
-    expect(css).not.toMatch(/--notes-detail-body-bg:\s*var\(--note-detail-sheet-bg\)/);
-    expect(css).not.toMatch(
-      /--note-detail-sheet-bg:\s*var\(--notes-detail-tint,\s*var\(--color-cream/,
-    );
+    expect(css).not.toMatch(/--notes-detail-body-bg:\s*var\(--paper-sheet-bg\)/);
+    expect(css).not.toMatch(/--paper-sheet-bg:\s*var\(--notes-detail-tint,\s*var\(--color-cream/);
     /* Scrollport-filling min-height — sheet grows; desk scrollport owns overflow. */
     expect(css).not.toMatch(/--note-detail-sheet-min-height/);
-    expect(css).not.toMatch(/\.notes-workspace \.note-detail-sheet \{[\s\S]*flex:\s*1/);
+    expect(css).not.toMatch(/\.notes-workspace \.note-detail-view\.paper-sheet \{[\s\S]*flex:\s*1/);
     expect(css).toMatch(/--note-detail-sheet-desk-pad-block-start:\s*1\.5rem/);
     expect(css).toMatch(/--note-detail-sheet-desk-pad-block-end:\s*0\.75rem/);
     expect(css).toMatch(
-      /\.notes-workspace \.workspace-detail-pane__scroll:has\(\.note-detail-sheet\) \{\s*padding-inline:\s*0;\s*padding-block-start:\s*var\(--note-detail-sheet-desk-pad-block-start\);\s*padding-block-end:\s*var\(--note-detail-sheet-desk-pad-block-end\);\s*\}/,
+      /\.notes-workspace \.workspace-detail-pane__scroll:has\(\.note-detail-view\.paper-sheet\) \{\s*padding-inline:\s*0;\s*padding-block-start:\s*var\(--note-detail-sheet-desk-pad-block-start\);\s*padding-block-end:\s*var\(--note-detail-sheet-desk-pad-block-end\);\s*\}/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.note-detail-sheet \{[\s\S]*min-height:\s*calc\(\s*100%\s*-\s*var\(--note-detail-sheet-desk-pad-block-start\)/,
+      /\.notes-workspace \.note-detail-view\.paper-sheet \{[\s\S]*--paper-sheet-min-height:\s*calc\(\s*100%\s*-\s*var\(--note-detail-sheet-desk-pad-block-start\)/,
+    );
+    /* Token only — do not re-declare layout props that live on shared `.paper-sheet`. */
+    expect(css).not.toMatch(
+      /\.notes-workspace \.note-detail-view\.paper-sheet \{[^}]*[^-\w]min-height\s*:/,
     );
     expect(css).not.toMatch(
-      /\.notes-workspace \.note-detail-sheet \{[\s\S]*max-height:\s*calc\(\s*100%\s*-\s*var\(--note-detail-sheet-desk-pad-block-start\)/,
+      /\.notes-workspace \.note-detail-view\.paper-sheet \{[\s\S]*max-height:\s*calc\(\s*100%\s*-\s*var\(--note-detail-sheet-desk-pad-block-start\)/,
     );
-    expect(css).not.toMatch(/\.notes-workspace \.note-detail-sheet \{[\s\S]*overflow-y:\s*auto/);
-    expect(css).toMatch(/\.notes-workspace \.note-detail-sheet \{[\s\S]*height:\s*fit-content/);
+    expect(css).not.toMatch(
+      /\.notes-workspace \.note-detail-view\.paper-sheet \{[\s\S]*overflow-y:\s*auto/,
+    );
+    expect(css).not.toMatch(
+      /\.notes-workspace \.note-detail-view\.paper-sheet \{[^}]*[^-\w]height\s*:\s*fit-content/,
+    );
     /* Below sidebar-dock (72.5rem): zero desk pads + flush scroll + sheet-tinted desk. */
     expect(css).toMatch(
       /@media \(max-width: 72\.49rem\) \{[\s\S]*\.notes-workspace \{[\s\S]*--note-detail-sheet-desk-pad-block-start:\s*0/,
@@ -358,25 +362,25 @@ describe("notes workspace detail paper sheet tokens", () => {
       /@media \(max-width: 72\.49rem\) \{[\s\S]*\.notes-workspace \{[\s\S]*--note-detail-sheet-desk-pad-block-end:\s*0/,
     );
     expect(css).toMatch(
-      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.note-detail-view\.note-detail-sheet \{[\s\S]*box-shadow:\s*none/,
+      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.note-detail-view\.paper-sheet \{[\s\S]*--paper-sheet-shadow:\s*none/,
     );
     expect(css).toMatch(
-      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.note-detail-view\.note-detail-sheet \{[\s\S]*max-w-none/,
+      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.note-detail-view\.paper-sheet \{[\s\S]*max-w-none/,
     );
     expect(css).not.toMatch(
-      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.note-detail-view\.note-detail-sheet \{[\s\S]*min-height:\s*100%/,
+      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.note-detail-view\.paper-sheet \{[\s\S]*min-height:\s*100%/,
     );
     expect(css).not.toMatch(
-      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.note-detail-view\.note-detail-sheet \{[\s\S]*max-height:\s*100%/,
+      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.note-detail-view\.paper-sheet \{[\s\S]*max-height:\s*100%/,
     );
     expect(css).toMatch(
-      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.workspace-detail-pane__scroll:has\(\.note-detail-sheet\) \{[\s\S]*padding:\s*0/,
+      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.workspace-detail-pane__scroll:has\(\.note-detail-view\.paper-sheet\) \{[\s\S]*padding:\s*0/,
     );
     expect(css).toMatch(
-      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.workspace-detail-pane__scroll:has\(\.note-detail-sheet\) \{[\s\S]*background-color:\s*var\(--note-detail-sheet-bg\)/,
+      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.workspace-detail-pane__scroll:has\(\.note-detail-view\.paper-sheet\) \{[\s\S]*background-color:\s*var\(--paper-sheet-bg\)/,
     );
     expect(css).toMatch(
-      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.workspace-detail-pane:has\(\.note-detail-sheet\) \{[\s\S]*background-color:\s*var\(--note-detail-sheet-bg\)/,
+      /@media \(max-width: 72\.49rem\) \{[\s\S]*\.workspace-detail-pane:has\(\.note-detail-view\.paper-sheet\) \{[\s\S]*background-color:\s*var\(--paper-sheet-bg\)/,
     );
   });
 });
@@ -391,7 +395,7 @@ describe("notes workspace shared pane horizontal inset", () => {
       /\.notes-workspace \.workspace-detail-pane > \.action-bar \{[\s\S]*padding-inline:\s*var\(--notes-pane-padding-x\)/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.note-detail-sheet \{[\s\S]*padding-inline:\s*var\(--notes-pane-padding-x\)/,
+      /\.notes-workspace \.note-detail-view\.paper-sheet \{[\s\S]*padding-inline:\s*var\(--notes-pane-padding-x\)/,
     );
     expect(actionBarCss).toMatch(/\.action-bar \{[\s\S]*md:px-12/);
   });
@@ -413,7 +417,7 @@ describe("notes workspace detail notebook tint", () => {
 
   it("softens title/body ink onto the sheet, not full ink", () => {
     expect(css).toMatch(
-      /--notes-detail-contrast-fg:\s*color-mix\(\s*in oklab,\s*var\(--color-ink\) 85%,\s*var\(--note-detail-sheet-bg/,
+      /--notes-detail-contrast-fg:\s*color-mix\(\s*in oklab,\s*var\(--color-ink\) 85%,\s*var\(--paper-sheet-bg/,
     );
     expect(css).not.toMatch(/--notes-detail-contrast-fg:\s*var\(--color-ink\)/);
   });
@@ -432,7 +436,7 @@ describe("notes workspace selected list row", () => {
     expect(css).toMatch(/--app-sidebar-bg:\s*var\(--notes-sidebar\)/);
     expect(css).not.toMatch(/--list-item-selected-bg:\s*color-mix/);
     expect(css).not.toMatch(/--list-item-selected-bg:\s*var\(--notes-accent/);
-    expect(css).not.toMatch(/--list-item-selected-bg:\s*var\(--note-detail-sheet-bg/);
+    expect(css).not.toMatch(/--list-item-selected-bg:\s*var\(--paper-sheet-bg/);
     expect(css).not.toMatch(/--list-item-selected-bg:\s*var\(--notes-detail-tint/);
     expect(css).not.toMatch(/--list-item-active-bg:\s*color-mix/);
   });

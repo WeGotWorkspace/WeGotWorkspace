@@ -8,7 +8,7 @@
  * Notes icon / webmanifest). Sidebar selected chips stay that yellow on ink
  * (WCAG AA). Detail pane / desk is the same cream as the footer and action
  * bar (`--workspace-chrome-footer-bg`), so the open-note paper card can
- * read as a tinted sheet. `--note-detail-sheet-bg` is cream mixed with
+ * read as a tinted sheet. `--paper-sheet-bg` is cream mixed with
  * `--notes-detail-tint` at 11% (same wash as Calendar event cards) — a
  * very light notebook tint, never the full collection color.
  * `--notes-detail-accent` still binds to that tint so selected
@@ -94,7 +94,7 @@
   --note-detail-tag-border: color-mix(in oklab, var(--notes-detail-accent) 28%, transparent);
   --note-detail-title-font-family: var(--font-serif);
   /* Very light notebook wash on cream — not the full `--notes-detail-tint`. */
-  --note-detail-sheet-bg: color-mix(
+  --paper-sheet-bg: color-mix(
     in oklab,
     var(--notes-detail-tint, var(--color-cream, #ffffff)) 11%,
     var(--color-cream, #ffffff)
@@ -103,10 +103,8 @@
   --notes-detail-contrast-fg: color-mix(
     in oklab,
     var(--color-ink) 85%,
-    var(--note-detail-sheet-bg, var(--color-cream, #ffffff))
+    var(--paper-sheet-bg, var(--color-cream, #ffffff))
   );
-  /* Same paper elevation as Docs (`--sheet-shadow` in styles.css). */
-  --note-detail-sheet-shadow: var(--sheet-shadow);
   /*
    * Shared horizontal inset for list + detail chrome (header / sheet / footer).
    * Matches `.list-item` / list sticky header: `px-4` → `md:px-6`.
@@ -169,17 +167,17 @@
  * Min-height fills the scrollport (minus desk pads); height grows with
  * content. Overflow scrolls on `.workspace-detail-pane__scroll`, not the sheet.
  */
-.notes-workspace .workspace-detail-pane__scroll:has(.note-detail-sheet) {
+.notes-workspace .workspace-detail-pane__scroll:has(.note-detail-view.paper-sheet) {
   padding-inline: 0;
   padding-block-start: var(--note-detail-sheet-desk-pad-block-start);
   padding-block-end: var(--note-detail-sheet-desk-pad-block-end);
 }
 
-.notes-workspace .note-detail-sheet {
-  /* Match list gutter; note-detail-view.css carries the same defaults. */
+.notes-workspace .note-detail-view.paper-sheet {
+  /* Match list gutter; note-detail-view.css carries the same defaults.
+   * Scrollport floor via shared `.paper-sheet` + `--paper-sheet-min-height`. */
   padding-inline: var(--notes-pane-padding-x);
-  height: fit-content;
-  min-height: calc(
+  --paper-sheet-min-height: calc(
     100% - var(--note-detail-sheet-desk-pad-block-start) -
       var(--note-detail-sheet-desk-pad-block-end)
   );
@@ -190,7 +188,7 @@
  * / 72.5rem in styles.css; same ε pattern as Meet `72.49rem`). Above that,
  * cream desk pads stay intentional on wide three-column layouts. At and
  * below: zero desk pads so the base min-height calc is `100%`, flush scroll
- * padding, and paint desk/pane with `--note-detail-sheet-bg` so short notes
+ * padding, and paint desk/pane with `--paper-sheet-bg` so short notes
  * read as continuous fullscreen tint (not cream around paper).
  */
 @media (max-width: 72.49rem) {
@@ -199,19 +197,19 @@
     --note-detail-sheet-desk-pad-block-end: 0;
   }
 
-  .notes-workspace .workspace-detail-pane:has(.note-detail-sheet) {
-    background-color: var(--note-detail-sheet-bg);
+  .notes-workspace .workspace-detail-pane:has(.note-detail-view.paper-sheet) {
+    background-color: var(--paper-sheet-bg);
   }
 
-  .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-sheet) {
+  .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-view.paper-sheet) {
     padding: 0;
-    background-color: var(--note-detail-sheet-bg);
+    background-color: var(--paper-sheet-bg);
   }
 
-  /* Same element: `class="note-detail-view note-detail-sheet"`. */
-  .notes-workspace .note-detail-view.note-detail-sheet {
+  /* Same element: `class="note-detail-view paper-sheet"`. */
+  .notes-workspace .note-detail-view.paper-sheet {
     @apply mx-0 max-w-none;
-    box-shadow: none;
+    --paper-sheet-shadow: none;
   }
 }
 
@@ -294,13 +292,13 @@
 }
 
 /* Isolate from assigned CATEGORIES ink/gold (`--tag-bg` / `--tag-fg`). */
-.notes-workspace .notes-detail-footer__meta-tag--edited {
+.notes-workspace .workspace-detail-footer__meta-tag--edited {
   @apply shrink-0;
   --tag-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --tag-fg: color-mix(in oklab, var(--color-ink) 58%, transparent);
 }
 
-.notes-workspace .notes-detail-footer__meta-tag--edited .tag {
+.notes-workspace .workspace-detail-footer__meta-tag--edited .tag {
   background-color: var(--tag-bg);
   color: var(--tag-fg);
 }

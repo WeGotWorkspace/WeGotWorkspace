@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
-import { Star, Users } from "lucide-react";
+import { Star } from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
-import { DocsCollabPresence } from "@/text-editor-core/docs-collab/docs-collab-presence";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
+import { DocsCollabPresenceChrome } from "@/text-editor-core/docs-collab/docs-collab-presence-chrome";
+import { TooltipProvider } from "@/ui/tooltip";
 import { NoteDetailView } from "../src/note-detail-view";
-import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
+import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
+import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 
 import "@/notes-core/src/notes-workspace.css";
 import "@/note-detail-view/src/note-text-editor-body.css";
@@ -105,39 +106,29 @@ export const CollabChromePreview: Story = {
         ]}
       />
       <div className="workspace-detail-pane__scroll flex-1">
-        <article className="note-detail-view note-detail-sheet">
+        <article className="note-detail-view paper-sheet">
           <p className="text-muted-foreground text-sm">
             Collab session chrome preview — presence sits left in the footer; edited meta pins on
             the right.
           </p>
         </article>
       </div>
-      <NotesDetailFooter
-        lastEdited="6 May 2026"
-        editedLabel="Last edited"
+      <WorkspaceDetailFooter
+        className="notes-detail-footer"
         start={
-          <div className="note-detail-view__collab-chrome">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  className="note-detail-view__collab-chrome-icon-trigger"
-                  aria-label="Online collaborators"
-                >
-                  <Users className="note-detail-view__collab-chrome-icon" aria-hidden />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>Online collaborators</TooltipContent>
-            </Tooltip>
-            <DocsCollabPresence
-              localUser={{ displayName: "Alex Example" }}
-              peers={[
-                { id: "peer-1", name: "Sam Lee" },
-                { id: "peer-2", name: "Jordan Kim" },
-              ]}
-              connectingPeers={[{ id: "peer-3", name: "Casey Wu" }]}
-            />
-          </div>
+          <DocsCollabPresenceChrome
+            localUser={{ displayName: "Alex Example" }}
+            peers={[
+              { id: "peer-1", name: "Sam Lee" },
+              { id: "peer-2", name: "Jordan Kim" },
+            ]}
+            connectingPeers={[{ id: "peer-3", name: "Casey Wu" }]}
+          />
         }
+        tags={notesLastEditedTag({
+          lastEdited: "6 May 2026",
+          editedLabel: "Last edited",
+        })}
       />
     </div>
   ),

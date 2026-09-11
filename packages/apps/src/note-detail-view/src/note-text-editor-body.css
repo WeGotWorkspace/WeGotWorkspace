@@ -1,11 +1,15 @@
 @import "../../styles.css" reference;
 
-/* Flush note body — `.note-detail-sheet` is the paper card. Zero nested
- * text-editor sheet padding/gutter so tags + prose share the card inset
- * (including ≤768px, where text-editor otherwise tightens sheet tokens). */
+/* Flush note body — outer `.paper-sheet` is the paper card. Zero nested
+ * text-editor / paper-sheet padding/gutter so tags + prose share the card
+ * inset (including ≤768px, where text-editor otherwise tightens sheet tokens). */
 .note-text-editor-body.text-editor {
+  --paper-sheet-bg: transparent;
   --text-editor-sheet: transparent;
+  --paper-sheet-shadow: none;
   --text-editor-shadow-sheet: none;
+  /* Outer `.note-detail-view.paper-sheet` owns the scrollport floor — nested surface must not inherit it. */
+  --paper-sheet-min-height: auto;
   --text-editor-sheet-padding: 0;
   --text-editor-sheet-margin-block: 0;
   --text-editor-sheet-shadow-gutter: 0;
@@ -28,19 +32,6 @@
   z-index: 50;
 }
 
-.note-detail-view__collab-chrome {
-  @apply flex shrink-0 flex-wrap items-center justify-start gap-1.5;
-}
-
-/* Leading mark trigger — density matches NotesDetailFooter CalendarDays. */
-.note-detail-view__collab-chrome-icon-trigger {
-  @apply inline-flex shrink-0 items-center;
-}
-
-.note-detail-view__collab-chrome-icon {
-  @apply size-3.5 shrink-0 opacity-70;
-}
-
 .note-detail-view__pending-sync {
   display: inline-flex;
   align-items: center;
@@ -52,29 +43,7 @@
   color: #c98a1f;
 }
 
-/*
- * Presence sits on white/cream detail footer. Workspace outline-active is 55%
- * notes-accent→cream for selected chips on already-yellow sidebar (12% tint) —
- * that same 55% (or a solid `--notes-accent` fill) reads goldenrod neon here.
- * Soften to the action-bar cream-surface wash (18%/24%) so marks match the
- * sidebar footer UserAvatar’s perceived intensity. No solid accent fill.
- */
-.notes-workspace .note-detail-view__collab-chrome {
-  --button-active-color: var(--color-ink);
-  --button-outline-active-background: color-mix(
-    in oklab,
-    var(--notes-accent, #f6d176) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--notes-accent, #f6d176) 24%,
-    var(--color-cream, #ffffff)
-  );
-  --button-outline-active-border-color: color-mix(
-    in oklab,
-    var(--notes-accent, #f6d176) 28%,
-    transparent
-  );
+/* Soft wash lives on shared `.docs-collab-presence-chrome`; Notes only sets accent. */
+.notes-workspace .docs-collab-presence-chrome {
   --docs-collab-presence-accent: var(--notes-accent, #f6d176);
 }

@@ -232,18 +232,21 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       const starredNote = { ...current, starred: nowStarred };
       setNotes((prev) => prev.map((note) => (note.id === id ? starredNote : note)));
       persistOptimisticNote(starredNote, true);
-      show(nowStarred ? "Starred" : "Unstarred", {
-        icon: nowStarred ? (
-          <Star className="size-4" fill="currentColor" />
-        ) : (
-          <StarOff className="size-4" />
-        ),
-      });
-      if (!operations) return;
+      const toastIcon = nowStarred ? (
+        <Star className="size-4" fill="currentColor" />
+      ) : (
+        <StarOff className="size-4" />
+      );
+      // Offline/mock: regular toast. Live: undoable toast only (no parallel `show`).
+      if (!operations) {
+        show(nowStarred ? "Starred" : "Unstarred", { icon: toastIcon });
+        return;
+      }
       const updated = { ...current, starred: nowStarred };
       queueMutation({
         key: `notes:star:${id}`,
         toastMessage: nowStarred ? "Starred" : "Unstarred",
+        icon: toastIcon,
         execute: async () => {
           await persistNoteOrDropGone(operations.upsertNote(updated), () => dropGoneNote(id));
         },

@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, waitFor } from "storybook/test";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
-import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
+import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
+import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { getNotesDetailStoryProps } from "./notes-pane-stories.fixtures";
 import { NotesStoryScope } from "./notes-story-scope";
 import "@/workspace-app/src/workspace-app.css";
@@ -51,7 +52,13 @@ function NotesDetailPaneHarness({
             body={body}
           />
         </div>
-        <NotesDetailFooter lastEdited={base.lastEdited} editedLabel={base.editedLabel} />
+        <WorkspaceDetailFooter
+          className="notes-detail-footer"
+          tags={notesLastEditedTag({
+            lastEdited: base.lastEdited,
+            editedLabel: base.editedLabel,
+          })}
+        />
       </div>
     </NotesStoryScope>
   );
@@ -72,7 +79,7 @@ export const Editable: Story = {
   tags: ["vitest-ci"],
   args: {},
   play: async ({ canvasElement }) => {
-    const sheet = canvasElement.querySelector(".note-detail-sheet");
+    const sheet = canvasElement.querySelector(".paper-sheet");
     expect(sheet).toBeTruthy();
     expect(sheet!.querySelector(".note-detail-view__title")).toBeTruthy();
     expect(sheet!.querySelector(".note-detail-view__tag-group")).toBeTruthy();
@@ -108,7 +115,7 @@ export const Editable: Story = {
     });
 
     const edited = canvasElement.querySelector(
-      ".notes-detail-footer__meta-tag--edited",
+      ".workspace-detail-footer__meta-tag--edited",
     ) as HTMLElement | null;
     expect(edited).toBeTruthy();
     expect(edited!.getAttribute("aria-label")).toBe("Last edited");
@@ -146,7 +153,7 @@ export const NotebookTint: Story = {
     expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-tint").trim()).toBe(
       "#ec4899",
     );
-    const sheet = canvasElement.querySelector(".note-detail-sheet") as HTMLElement | null;
+    const sheet = canvasElement.querySelector(".paper-sheet") as HTMLElement | null;
     const scroll = canvasElement.querySelector(
       ".workspace-detail-pane__scroll",
     ) as HTMLElement | null;
@@ -165,7 +172,7 @@ export const NotebookTint: Story = {
     const detailFg = document.createElement("span");
     const sidebarFg = document.createElement("span");
     tintBg.style.backgroundColor = "var(--notes-detail-tint)";
-    sheetBg.style.backgroundColor = "var(--note-detail-sheet-bg)";
+    sheetBg.style.backgroundColor = "var(--paper-sheet-bg)";
     paneBg.style.backgroundColor = "var(--workspace-detail-bg)";
     detailFg.style.color = "var(--note-detail-tag-fg)";
     sidebarFg.style.color = "var(--notes-tag-selected-fg)";
