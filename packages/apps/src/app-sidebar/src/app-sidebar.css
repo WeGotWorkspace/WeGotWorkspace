@@ -42,39 +42,27 @@
   --app-sidebar-item-padding-x: var(--app-switch-glyph-inset);
   /*
    * Nav item SST (MenuItem + collection rows inherit). Hierarchy:
-   * idle < hover (accent 40% transparent) < selected (55% accent→cream + ink step).
+   * idle < hover (accent 32%→cream) < selected (55% accent→cream) <
+   * selected-hover (65% accent→cream). Hover uses the same cream mix family
+   * as selected so it reads a little lighter, not a denser transparent wash.
    * Products may override via `--app-sidebar-item-*`. Dark scroll remaps
-   * (Docs/Mail/Admin/Settings) still win on `.app-sidebar__scroll`.
-   * Selected on-color steps ink-ward from product `--button-active-color`.
+   * (Docs/Mail/Admin/Settings) still win on `.app-sidebar__scroll`. Selected
+   * on-color uses contrast-color against the selected wash (cream-nudged
+   * white, or dark when the wash stays light).
    */
   --button-outline-hover-background: var(
     --app-sidebar-item-hover-bg,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 40%, transparent)
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 32%, var(--color-cream, #ffffff))
   );
   --button-outline-active-background: var(
     --app-sidebar-item-selected-bg,
-    color-mix(
-      in oklab,
-      var(--color-ink) 10%,
-      color-mix(
-        in oklab,
-        var(--workspace-accent, var(--color-ink)) 55%,
-        var(--color-cream, #ffffff)
-      )
-    )
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 55%, var(--color-cream, #ffffff))
   );
   --button-outline-active-hover-background: var(
     --app-sidebar-item-selected-hover-bg,
-    color-mix(
-      in oklab,
-      var(--color-ink) 14%,
-      color-mix(
-        in oklab,
-        var(--workspace-accent, var(--color-ink)) 65%,
-        var(--color-cream, #ffffff)
-      )
-    )
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 65%, var(--color-cream, #ffffff))
   );
+  /* Fallback when contrast-color() is unavailable: keep a readable dark glyph. */
   --button-active-color: var(
     --app-sidebar-item-selected-color,
     color-mix(
@@ -83,6 +71,24 @@
       var(--color-ink)
     )
   );
+}
+
+@supports (color: contrast-color(red)) {
+  .app-sidebar {
+    /*
+     * Light on-color (cream-nudged white) when the selected wash is strong/dark
+     * enough; dark when the wash stays light (e.g. yellow Notes). Override via
+     * `--app-sidebar-item-selected-color` still wins.
+     */
+    --button-active-color: var(
+      --app-sidebar-item-selected-color,
+      color-mix(
+        in oklab,
+        contrast-color(var(--button-outline-active-background)) 92%,
+        var(--color-cream, #ffffff)
+      )
+    );
+  }
 }
 
 .app-sidebar__header {

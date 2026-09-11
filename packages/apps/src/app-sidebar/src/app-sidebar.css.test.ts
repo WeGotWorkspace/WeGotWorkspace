@@ -64,16 +64,28 @@ describe("app sidebar nav selection SST", () => {
     expect(css).toMatch(
       /\.app-sidebar \{[\s\S]*--button-active-color:\s*var\(\s*--app-sidebar-item-selected-color/,
     );
-    // Washed fallbacks: hover 40%, selected 55%+ink, selected-hover 65%+ink, on-color ink step.
-    expect(css).toMatch(/\.app-sidebar \{[\s\S]*--app-sidebar-item-hover-bg[\s\S]*40%/);
+    // Brighter cream washes (no ink step): hover 32%→cream < selected 55%→cream < selected-hover 65%→cream.
     expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-bg[\s\S]*var\(--color-ink\)\s*10%[\s\S]*55%/,
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-hover-bg[\s\S]*32%[\s\S]*var\(--color-cream/,
     );
     expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-hover-bg[\s\S]*var\(--color-ink\)\s*14%[\s\S]*65%/,
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-bg[\s\S]*55%[\s\S]*var\(--color-cream/,
+    );
+    expect(css).not.toMatch(
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-bg[\s\S]*var\(--color-ink\)\s*10%/,
     );
     expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-color[\s\S]*70%[\s\S]*var\(--color-ink\)/,
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-hover-bg[\s\S]*65%[\s\S]*var\(--color-cream/,
+    );
+    expect(css).not.toMatch(
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-hover-bg[\s\S]*var\(--color-ink\)\s*14%/,
+    );
+    // Contrast-aware on-color (cream-nudged); override token still wins.
+    expect(css).toMatch(
+      /@supports\s*\(color:\s*contrast-color\(red\)\)\s*\{[\s\S]*--app-sidebar-item-selected-color[\s\S]*contrast-color\(\s*var\(--button-outline-active-background\)/,
+    );
+    expect(css).toMatch(
+      /@supports\s*\(color:\s*contrast-color\(red\)\)\s*\{[\s\S]*contrast-color\([\s\S]*92%[\s\S]*var\(--color-cream/,
     );
   });
 });
