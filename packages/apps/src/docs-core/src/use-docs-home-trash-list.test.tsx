@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
-import type { WgwDriveDirectoryEntry } from "@wgw-api-generated/drive-types";
+import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { mapDriveTrashEntries } from "@/drive-core/src/drive-trash-listing";
 import { mapDocsHomeTrashEntries } from "@/docs-core/src/use-docs-home-trash-list";
 

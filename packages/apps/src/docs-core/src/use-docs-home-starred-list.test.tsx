@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
-import type { WgwDriveDirectoryEntry } from "@wgw-api-generated/drive-types";
+import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import {
   driveStarredPathMap,

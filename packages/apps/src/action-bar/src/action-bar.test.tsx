@@ -66,12 +66,12 @@ describe("ActionBar", () => {
     );
 
     const row = container.querySelector(".action-bar__row");
-    expect(row).toBeTruthy();
-    expect(within(row!).getAllByRole("button")).toHaveLength(3);
-    expect(within(row!).getByRole("button", { name: "Reply" })).toBeTruthy();
-    expect(within(row!).getByRole("button", { name: "Forward" })).toBeTruthy();
-    expect(within(row!).getByRole("button", { name: "Star" })).toBeTruthy();
-    expect(within(row!).queryByRole("button", { name: "Archive" })).toBeNull();
+    expect(row).toBeInstanceOf(HTMLElement);
+    expect(within(row as HTMLElement).getAllByRole("button")).toHaveLength(3);
+    expect(within(row as HTMLElement).getByRole("button", { name: "Reply" })).toBeTruthy();
+    expect(within(row as HTMLElement).getByRole("button", { name: "Forward" })).toBeTruthy();
+    expect(within(row as HTMLElement).getByRole("button", { name: "Star" })).toBeTruthy();
+    expect(within(row as HTMLElement).queryByRole("button", { name: "Archive" })).toBeNull();
 
     expect(container.querySelector(".action-bar__menu")).toBeTruthy();
     expect(screen.getByRole("button", { name: "More actions" })).toBeTruthy();
@@ -91,9 +91,9 @@ describe("ActionBar", () => {
     );
 
     expect(container.querySelector(".action-bar__menu")).toBeNull();
-    expect(
-      within(container.querySelector(".action-bar__row")!).getAllByRole("button"),
-    ).toHaveLength(4);
+    const row = container.querySelector(".action-bar__row");
+    expect(row).toBeInstanceOf(HTMLElement);
+    expect(within(row as HTMLElement).getAllByRole("button")).toHaveLength(4);
   });
 
   it("applies severity-danger wash to inline destructive IconButtons", () => {

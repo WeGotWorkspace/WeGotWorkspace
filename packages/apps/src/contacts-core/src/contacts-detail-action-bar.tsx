@@ -119,7 +119,7 @@ export function ContactsDetailActionBar({
       label: labels.delete,
       onClick: onDelete,
       icon: <Trash2 className="size-4" />,
-      severity: "danger",
+      severity: "danger" as const,
     },
   ];
 

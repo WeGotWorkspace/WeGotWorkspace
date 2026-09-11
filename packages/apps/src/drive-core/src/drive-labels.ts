@@ -105,7 +105,12 @@ export const driveLabels = {
   sharedBy: (username: string) => `Shared by ${username}`,
 } as const;
 
-export type DriveUILabels = typeof driveLabels;
+/** Writable labels bag — string fields widen so products (Docs) can SST-override. */
+export type DriveUILabels = {
+  [K in keyof typeof driveLabels]: (typeof driveLabels)[K] extends string
+    ? string
+    : (typeof driveLabels)[K];
+};
 
 export type DriveOfficeBlankKind = "doc" | "sheet" | "slides";
 
