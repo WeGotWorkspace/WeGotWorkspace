@@ -7,6 +7,26 @@ const here = dirname(fileURLToPath(import.meta.url));
 const tsx = readFileSync(join(here, "workspace-app-layout.tsx"), "utf8");
 const css = readFileSync(join(here, "workspace-app-layout.css"), "utf8");
 
+describe("workspace-app-layout main stacking", () => {
+  it("isolates the main column so chrome z-30 stays under the AppSidebar overlay scrim", () => {
+    expect(css).toMatch(/\.workspace-app-layout__main \{[\s\S]*\bisolate\b/);
+  });
+});
+
+describe("workspace-app-layout panel overlay motion", () => {
+  it("uses shared panel-overlay duration + ease like AppSidebar", () => {
+    expect(css).toMatch(
+      /\.workspace-app-layout__panel \{[\s\S]*transition-duration:\s*var\(--panel-overlay-duration\)/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-layout__panel \{[\s\S]*transition-timing-function:\s*var\(--panel-overlay-ease\)/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-layout__panel-scrim \{[\s\S]*--tw-duration:\s*var\(--panel-overlay-duration\)/,
+    );
+  });
+});
+
 describe("WorkspaceUserFooter logout chrome", () => {
   it("uses sm outline IconButton matching header/sidebar chrome, not filled subtle", () => {
     const footerBlock = tsx.slice(
@@ -29,6 +49,18 @@ describe("WorkspaceUserFooter logout chrome", () => {
       /\.workspace-app-layout__user-footer \{[\s\S]*--workspace-user-footer-link-bg/,
     );
     expect(tsx).not.toMatch(/WORKSPACE_USER_LOGOUT_STYLE/);
+  });
+
+  it("pins footer avatar mark to ink wash/fg — not sidebar selected-chip accent pairing", () => {
+    expect(css).toMatch(
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 12%/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--color-ink\)/,
+    );
+    expect(css).not.toMatch(
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--button-active-color/,
+    );
   });
 });
 

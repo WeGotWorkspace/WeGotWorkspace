@@ -8,11 +8,20 @@
 }
 
 .workspace-app-layout__main {
-  @apply relative flex min-w-0 flex-1 flex-col;
+  /*
+   * Isolate so elevated chrome inside main (ViewHeader / workspace-chrome-footer
+   * at z-30) cannot paint above the AppSidebar overlay scrim (also z-30) or the
+   * sidebar panel (z-40). Same pattern Calendar/Meet already applied per-product.
+   */
+  @apply relative isolate flex min-w-0 flex-1 flex-col;
   background-color: var(--workspace-main-bg, var(--color-cream, #ffffff));
 }
 
 .workspace-app-layout__main-header {
+  /*
+   * Block padding (`p-4 md:p-6`) is the suite chrome rhythm — AppSidebar header
+   * mirrors it with `py-4 md:py-6` so the app-switch tile tops with IconButtons.
+   */
   @apply shrink-0 border-b p-4 md:p-6;
   border-color: var(
     --workspace-main-header-border-color,
@@ -54,7 +63,9 @@
 
 /* Right-hand panel slide (mirrors app-sidebar open/close on the opposite edge). */
 .workspace-app-layout__panel {
-  @apply shrink-0 overflow-hidden will-change-transform transition-[translate,margin,border-width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)];
+  @apply shrink-0 overflow-hidden will-change-transform transition-[translate,margin,border-width];
+  transition-duration: var(--panel-overlay-duration);
+  transition-timing-function: var(--panel-overlay-ease);
 }
 
 .workspace-app-layout__panel[data-open="true"] {
@@ -74,7 +85,9 @@
 
 /* Right-hand panel overlay scrim — same dim/motion tokens as `.app-sidebar__scrim`. */
 .workspace-app-layout__panel-scrim {
-  @apply absolute inset-0 z-10 cursor-pointer bg-black/30 sidebar:hidden animate-in fade-in duration-300;
+  @apply absolute inset-0 z-10 cursor-pointer bg-black/30 sidebar:hidden animate-in fade-in;
+  --tw-duration: var(--panel-overlay-duration);
+  animation-duration: var(--panel-overlay-duration);
 }
 
 .workspace-app-layout__user-footer .user-avatar {
@@ -86,4 +99,14 @@
     --workspace-user-footer-subtitle-color,
     color-mix(in oklab, var(--color-ink) 55%, transparent)
   );
+  /*
+   * Mark wash/glyph: do not inherit `.app-sidebar` selected-chip SST
+   * (55% accent→cream + accent-strong). That pairing collapses on tinted
+   * mint/emerald sidebars (Contacts/Drive). Dark footers remap `--color-ink`
+   * to sidebar on-color (white) so the same ink recipe stays readable.
+   */
+  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --user-avatar-fg: var(--color-ink);
+  --user-avatar-border: color-mix(in oklab, var(--color-ink) 28%, transparent);
+  --user-avatar-hover-bg: color-mix(in oklab, var(--color-ink) 18%, transparent);
 }
