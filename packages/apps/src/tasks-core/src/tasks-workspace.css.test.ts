@@ -109,13 +109,13 @@ describe("tasks workspace header and sidebar", () => {
       /\.tasks-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--tasks-accent\) 65%/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \.tasks-workspace__header-actions \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--tasks-accent\) 14%/,
+      /\.tasks-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--tasks-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \.tasks-workspace__header-actions \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--tasks-accent\) 18%/,
+      /\.tasks-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--tasks-accent-strong\)/,
     );
-    expect(css).toMatch(
-      /\.tasks-workspace \.tasks-workspace__header-actions \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--tasks-accent\) 24%/,
+    expect(css).not.toMatch(
+      /\.tasks-workspace \.tasks-workspace__header-actions \{[\s\S]*--button-outline-active-background/,
     );
     expect(css).not.toMatch(
       /\.tasks-workspace__show-completed\.button--variant-subtle\.icon-button--active/,

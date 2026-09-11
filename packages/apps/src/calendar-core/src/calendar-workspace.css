@@ -22,6 +22,8 @@
   --workspace-detail-bg: var(--color-cream, #ffffff);
 
   --app-sidebar-bg: var(--calendar-sidebar);
+  /* Alias for DocsCollabSidebarPanel wash consumers (invitations = sidebar tint). */
+  --docs-collab-sidebar-panel-wash: var(--calendar-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --app-sidebar-color: var(--color-ink);
   --sidebar-logo-close-button-color: var(--color-ink);
@@ -100,7 +102,7 @@
 
 /*
  * Header outline actions (sidebar toggle, Today, prev/next, inbox, view switch):
- * accent hover/active via shared button + segmented tokens — not ink-gray washes.
+ * accent glyph via `--button-active-color`; soft washes from shared `.view-header` SST.
  * SegmentedControl consumes these (and --segmented-control-*) so the grid/list
  * track matches outline IconButtons; active thumb matches pressed Today/Inbox wash.
  * Idle Week select + outline buttons share --button-outline-color (ink).
@@ -109,17 +111,6 @@
   --button-active-color: var(--calendar-accent-strong);
   --button-outline-color: var(--color-ink);
   --button-outline-hover-color: var(--calendar-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--calendar-accent) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklab,
-    var(--calendar-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--calendar-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
   --select-trigger-color: var(--button-outline-color);
   --segmented-control-color: var(--button-outline-color);
   --segmented-control-track-bg: transparent;

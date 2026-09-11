@@ -49,24 +49,13 @@
 }
 
 /*
- * Header outline actions (sidebar toggle): accent hover/active via shared button
- * tokens — not global mint `--color-emerald`. Mirrors Calendar/Docs `.view-header`.
+ * Header outline actions (sidebar toggle): accent glyph via `--button-active-color`;
+ * soft washes come from shared `.view-header` SST.
  */
 .settings-workspace .view-header {
   --button-active-color: var(--settings-accent-strong);
   --button-outline-color: var(--color-ink);
   --button-outline-hover-color: var(--settings-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--settings-accent) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklab,
-    var(--settings-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--settings-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
 }
 
 .settings-workspace .app-sidebar {

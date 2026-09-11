@@ -35,10 +35,11 @@ describe("settings workspace outline chrome", () => {
     expect(css).toMatch(
       /\.settings-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--settings-accent-strong\)/,
     );
-    expect(css).toMatch(
+    /* Soft washes live on shared `.view-header` SST (`--workspace-accent` 14/18/24%). */
+    expect(css).not.toMatch(
       /\.settings-workspace \.view-header \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--settings-accent\) 14%/,
     );
-    expect(css).toMatch(
+    expect(css).not.toMatch(
       /\.settings-workspace \.view-header \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--settings-accent\) 18%/,
     );
   });

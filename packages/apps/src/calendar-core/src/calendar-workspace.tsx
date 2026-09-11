@@ -99,6 +99,7 @@ import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription"
 import { calendarPeriodNavLabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { SideDrawer } from "@/ui/side-drawer";
+import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
@@ -575,7 +576,7 @@ export function CalendarWorkspace({
         calendars={calendars}
         defaultCalendarId={defaultCalendarId}
         busy={invitations.busy}
-        showCloseButton={useInvitationsDrawer}
+        showCloseButton
         onClose={() => setInvitationsOpen(false)}
         onRespond={async (id, status, calendarId) => {
           await persistRsvp(id, status, calendarId, { source: "sidebar" });
@@ -604,7 +605,6 @@ export function CalendarWorkspace({
       closeEventPreview,
       openEditEventKey,
       persistRsvp,
-      useInvitationsDrawer,
       meetOperations,
       workspaceOrigin,
       onJoinMeeting,
@@ -902,7 +902,7 @@ export function CalendarWorkspace({
           open={invitationsOpen}
           onClose={() => setInvitationsOpen(false)}
           title={L.invitationsSection}
-          className="calendar-invitations-panel-drawer"
+          className={`${DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS} calendar-invitations-panel-drawer`}
         >
           {invitationsPanel}
         </SideDrawer>

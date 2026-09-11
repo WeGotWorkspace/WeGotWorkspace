@@ -242,7 +242,10 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(/--meet-chat-panel-width:\s*22rem/);
     expect(css).toMatch(/workspace-app-layout__panel/);
     expect(layoutCss).toMatch(/\.workspace-app-layout__panel-scrim/);
-    expect(layoutCss).toMatch(/bg-black\/30 sidebar:hidden animate-in fade-in duration-300/);
+    expect(layoutCss).toMatch(/bg-black\/30 sidebar:hidden animate-in fade-in/);
+    expect(layoutCss).toMatch(
+      /\.workspace-app-layout__panel-scrim \{[\s\S]*--tw-duration:\s*var\(--panel-overlay-duration\)/,
+    );
     expect(css).toMatch(/workspace-app-layout__panel-scrim/);
     expect(css).toMatch(/sidebar:static sidebar:shadow-none/);
     expect(css).toMatch(/\.meet-workspace__surface--parked[\s\S]*content-visibility:\s*hidden/);

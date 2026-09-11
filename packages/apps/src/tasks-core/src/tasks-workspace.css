@@ -66,20 +66,9 @@
 }
 
 /* Header outline chips stay muted; sidebar keeps the saturated root washes. */
-.tasks-workspace .tasks-workspace__header-actions {
+.tasks-workspace .view-header {
   --button-active-color: var(--tasks-accent-strong);
   --button-outline-hover-color: var(--tasks-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--tasks-accent) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklab,
-    var(--tasks-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--tasks-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
 }
 
 .tasks-workspace .app-sidebar__scroll {

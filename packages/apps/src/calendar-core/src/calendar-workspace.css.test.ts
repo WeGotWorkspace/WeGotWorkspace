@@ -42,10 +42,11 @@ describe("calendar workspace header CSS", () => {
     expect(css).toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--calendar-accent-strong\)/,
     );
-    expect(css).toMatch(
+    /* Soft washes live on shared `.view-header` SST (`--workspace-accent` 14/18/24%). */
+    expect(css).not.toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--calendar-accent\) 14%/,
     );
-    expect(css).toMatch(
+    expect(css).not.toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--calendar-accent\) 18%/,
     );
     expect(css).not.toMatch(

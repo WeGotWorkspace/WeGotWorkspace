@@ -904,23 +904,13 @@
 }
 
 /*
- * Header outline actions (sidebar toggle + edit): accent hover/active like Calendar.
+ * Header outline actions (sidebar toggle + edit): accent glyph via `--button-active-color`;
+ * soft washes come from shared `.view-header` SST.
  */
 .meet-workspace--split .view-header {
   --button-active-color: var(--meet-accent-strong);
   --button-outline-color: var(--color-ink);
   --button-outline-hover-color: var(--meet-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--meet-accent) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklab,
-    var(--meet-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--meet-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
 }
 
 .meet-workspace__header-start {
