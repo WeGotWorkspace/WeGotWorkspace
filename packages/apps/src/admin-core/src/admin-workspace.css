@@ -7,8 +7,11 @@
  */
 .admin-workspace {
   --admin-accent: #475569;
+  /* Darker slate so active outline glyphs clear WCAG on cream (mirrors Settings). */
+  --admin-accent-strong: color-mix(in oklab, var(--admin-accent) 70%, #0f172a);
   --admin-sidebar: var(--admin-accent);
   --workspace-accent: var(--admin-accent);
+  --color-emerald: var(--admin-accent);
   --app-sidebar-bg: var(--admin-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, #ffffff 14%, transparent);
   --app-sidebar-color: #ffffff;
@@ -20,6 +23,31 @@
   --workspace-user-footer-link-color: #ffffff;
   --workspace-user-footer-link-bg: color-mix(in oklab, #ffffff 8%, transparent);
   --segmented-control-track-active-bg: var(--button-primary-bg, #2f302c);
+
+  /* Outline header chrome (cream main); sidebar keeps white remaps below. */
+  --button-active-color: var(--admin-accent-strong);
+  --button-outline-hover-color: var(--admin-accent-strong);
+  --button-outline-hover-background: color-mix(in oklab, var(--admin-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--admin-accent) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--admin-accent) 24%,
+    var(--color-cream, #ffffff)
+  );
+}
+
+/*
+ * Header outline actions (sidebar toggle): accent glyph via `--button-active-color`;
+ * soft washes come from shared `.view-header` SST.
+ */
+.admin-workspace .view-header {
+  --button-active-color: var(--admin-accent-strong);
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--admin-accent-strong);
 }
 
 .admin-workspace .app-sidebar {
