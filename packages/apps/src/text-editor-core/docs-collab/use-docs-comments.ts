@@ -183,6 +183,7 @@ export function useDocsComments({
     selectionQualifiesForComment: canMutateComments && selectionQualifiesForComment,
     selectThread,
     activateThreadFromMark,
+    clearActiveThread,
     createThreadFromSelection,
     cancelDraft,
     submitDraftComment,

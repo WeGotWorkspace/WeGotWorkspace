@@ -49,6 +49,7 @@ export function useTestDocsSuggestions(editor: Editor | null, options?: UseDocsS
   );
   return useDocsSuggestions(editor, {
     ...options,
+    ydoc: options?.ydoc ?? null,
     currentUser,
     threadsClient: client,
     docPath: options?.docPath ?? DOCS_THREADS_TEST_PATH,
