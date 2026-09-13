@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks;
 
+use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
@@ -28,6 +29,7 @@ final class TaskRepository
         private readonly DriveGroupResolver $groups,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
+        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     /**
@@ -139,6 +141,7 @@ final class TaskRepository
             $davPath,
             $username,
         );
+        $this->eventDispatch->fireMutation($username, 'tasks', 'created', $davPath);
 
         $object = $this->findObjectInCalendar((int) $instance->calendarid, $objectUri);
         if ($object === null) {

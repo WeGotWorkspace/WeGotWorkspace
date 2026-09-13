@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\FileNodes;
 
+use App\Events\EventDispatch;
 use App\Models\JmapFileNode;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Notes\NoteMarkdownCodec;
@@ -67,6 +68,7 @@ final class FileNodeSetService
         private readonly StoragePaths $paths,
         private readonly SearchIndexerService $search,
         private readonly BestEffortSearchIndexSync $searchSync,
+        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     /**
@@ -419,6 +421,7 @@ final class FileNodeSetService
             fn () => $this->search->indexFileStorageKey($storageKey),
             'files/'.$storageKey,
         );
+        $this->eventDispatch->fireMutation('system', 'drive', 'written', 'files/'.$storageKey);
     }
 
     private function syncSearchDelete(string $storageKey): void

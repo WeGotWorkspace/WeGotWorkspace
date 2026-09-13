@@ -45,6 +45,8 @@ use App\Http\Controllers\Api\V1\Mail\MailController;
 use App\Http\Controllers\Api\V1\Meetings\MeetingsController;
 use App\Http\Controllers\Api\V1\Notes\NotebooksController;
 use App\Http\Controllers\Api\V1\Notes\NotesController;
+use App\Http\Controllers\Api\V1\Notify\NotificationsController;
+use App\Http\Controllers\Api\V1\Notify\PushSubscriptionsController;
 use App\Http\Controllers\Api\V1\Plugins\ActivationController as PluginsActivationController;
 use App\Http\Controllers\Api\V1\Plugins\IndexController as PluginsIndexController;
 use App\Http\Controllers\Api\V1\Plugins\SessionController as PluginsSessionController;
@@ -132,6 +134,13 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('me', MeController::class);
     Route::get('workspace/state', HomeStateController::class);
     Route::get('dav/capabilities', DavCapabilitiesController::class);
+
+    Route::get('notifications', [NotificationsController::class, 'index']);
+    Route::post('notifications/{id}/ack', [NotificationsController::class, 'ack']);
+    Route::post('notifications/{id}/local-ack', [NotificationsController::class, 'ackLocal']);
+    Route::get('notifications/push/vapid-public-key', [PushSubscriptionsController::class, 'publicKey']);
+    Route::post('notifications/push/subscriptions', [PushSubscriptionsController::class, 'store']);
+    Route::delete('notifications/push/subscriptions', [PushSubscriptionsController::class, 'destroy']);
 
     // Drive cwd uses Laravel session (DriveSessionStore). Share CRUD does not — keep it
     // off StartSession so SESSION_DRIVER=database without a sessions table cannot 500 the dialog.

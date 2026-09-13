@@ -1,0 +1,66 @@
+@import "../../styles.css" reference;
+
+.notification-inbox-tray__trigger {
+  @apply relative;
+}
+
+.notification-inbox-tray__trigger::after {
+  content: attr(data-count);
+  @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
+  background-color: var(--color-ink, #042a22);
+  color: var(--color-cream, #ffffff);
+}
+
+.notification-inbox-tray__trigger:not([data-count])::after {
+  content: none;
+}
+
+.notification-inbox-tray__popover {
+  --popover: var(--color-cream, #ffffff);
+  --popover-foreground: var(--color-ink, #042a22);
+  @apply w-80 p-0;
+}
+
+.notification-inbox-tray__header {
+  @apply flex items-center justify-between gap-2 border-b px-3 py-2;
+}
+
+.notification-inbox-tray__title {
+  @apply text-sm font-semibold;
+}
+
+.notification-inbox-tray__enable {
+  @apply text-xs underline;
+}
+
+.notification-inbox-tray__empty {
+  @apply px-3 py-6 text-sm text-muted-foreground;
+}
+
+.notification-inbox-tray__list {
+  @apply max-h-80 overflow-y-auto p-0;
+}
+
+.notification-inbox-tray__row {
+  @apply flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left;
+}
+
+.notification-inbox-tray__row[data-unread="true"] {
+  @apply font-medium;
+}
+
+.notification-inbox-tray__row-title {
+  @apply text-sm;
+}
+
+.notification-inbox-tray__row-body {
+  @apply text-xs text-muted-foreground;
+}
+
+.notification-inbox-host {
+  @apply pointer-events-none fixed right-16 top-3 z-40;
+}
+
+.notification-inbox-host > * {
+  @apply pointer-events-auto;
+}

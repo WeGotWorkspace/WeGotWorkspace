@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notes;
 
+use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
@@ -30,6 +31,7 @@ final class NoteRepository
         private readonly SearchIndexerService $searchIndexer,
         private readonly JmapNoteStateService $noteStates = new JmapNoteStateService,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
+        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     /**
@@ -570,6 +572,7 @@ final class NoteRepository
             $path,
             $username,
         );
+        $this->eventDispatch->fireMutation($username, 'notes', 'written', $path);
     }
 
     private function davPath(string $username, CalendarInstance $instance, string $objectUri): string

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Chat;
 
+use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
@@ -45,6 +46,7 @@ final class ChatMessageRepository
         private readonly ChatMessageJournalConverter $converter,
         private readonly ChatChangesFeed $changesFeed,
         private readonly CalendarCollectionAccess $collectionAccess,
+        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     /**
@@ -206,6 +208,22 @@ final class ChatMessageRepository
         if ($object === null) {
             throw new ApiHttpException(500, 'Could not load created message.', 'server_error');
         }
+
+        $roster = $this->channels->rosterUsernames($instance, null);
+        $preview = mb_substr(trim($body), 0, 140);
+        $this->eventDispatch->fireMutation(
+            $username,
+            'chat',
+            'message_posted',
+            $channelId,
+            [
+                'recipients' => $roster,
+                'title' => 'New chat message',
+                'body' => $preview !== '' ? $preview : 'New message',
+                'navigate' => '/meet',
+                'tag' => 'chat.message:'.$uid,
+            ],
+        );
 
         return ['message' => $this->presentSingle($object, $instance), 'created' => true];
     }

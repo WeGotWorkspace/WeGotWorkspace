@@ -6,7 +6,6 @@ import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { wgwApiViteProxy } from "./scripts/wgw-proxy-target";
-import { PWA_NAVIGATE_FALLBACK_DENYLIST } from "./src/lib/offline/pwa-navigate-fallback-denylist";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const wgwMonorepoRoot = path.join(__dirname, "..", "..");
@@ -54,19 +53,16 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       tsconfigPaths(),
       VitePWA({
+        // Custom SW so push/notificationclick can run; generateSW cannot host those handlers.
+        strategies: "injectManifest",
+        srcDir: "src",
+        filename: "sw.ts",
         // Keep updates passive to avoid cross-tab reload/remount loops when two docs tabs are open.
         registerType: "prompt",
         injectRegister: false,
         devOptions: { enabled: false },
-        workbox: {
-          // Wait for tabs to close before activating a new worker (safer for local preview).
-          skipWaiting: false,
-          // Control the page on first SW activation so Chrome can offer install without a manual reload.
-          clientsClaim: true,
-          navigateFallback: "index.html",
-          navigateFallbackDenylist: [...PWA_NAVIGATE_FALLBACK_DENYLIST],
+        injectManifest: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
-          // Lit calendar CE graph is large; keep precache when the main chunk grows past 2 MiB.
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         },
         manifest: false,

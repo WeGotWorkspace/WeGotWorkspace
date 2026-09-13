@@ -147,4 +147,4 @@ Not part of `pnpm test:apps-done-gate` or CI yet (see [apps-done-gate.md](../.ag
 
 ## Architecture docs
 
-Cross-cutting product/protocol decisions live under [`docs/architecture/`](architecture/). Start with [Tasks module](architecture/tasks.md) ([#330](https://github.com/WeGotWorkspace/wegotworkspace/issues/330)) for v0.9 Calendar/Tasks work. API conversion detail stays under `packages/api/docs/<domain>/`.
+Cross-cutting product/protocol decisions live under [`docs/architecture/`](architecture/). Start with [Tasks module](architecture/tasks.md) ([#330](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/330)) for v0.9 Calendar/Tasks work, and [suite notify](architecture/suite-notify.md) ([#741](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/741)) for the inbox / VAPID pipeline. API conversion detail stays under `packages/api/docs/<domain>/`.

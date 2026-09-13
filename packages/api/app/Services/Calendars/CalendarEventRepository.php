@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
@@ -32,6 +33,7 @@ final class CalendarEventRepository
         private readonly CalendarRepository $calendars,
         private readonly CalendarSchedulingService $scheduling,
         private readonly CalendarMeetLinkWriteHook $meetLinkHook,
+        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     /**
@@ -605,6 +607,7 @@ final class CalendarEventRepository
                 $davPath,
                 $username,
             );
+            $this->eventDispatch->fireMutation($username, 'calendars', 'created', $davPath);
 
             $object = $this->findObjectInCalendar((int) $instance->calendarid, $eventUri, fresh: true);
             if ($object === null) {

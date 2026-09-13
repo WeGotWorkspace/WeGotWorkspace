@@ -70,6 +70,20 @@ After setup, sign in with your new account and connect clients using the same si
 
 If your install is in a subfolder, set `RewriteBase` in `.htaccess` to that subfolder path.
 
+### Cron (reminders and Web Push)
+
+Due Calendar/Task reminders and Web Push fallback need Laravel’s scheduler **every minute**. Add a host crontab entry (adjust the path to this install):
+
+```cron
+* * * * * php /path/to/packages/api/artisan schedule:run >> /dev/null 2>&1
+```
+
+Do **not** run `queue:work` as a long-lived daemon. `QUEUE_CONNECTION=sync` is the supported LAMP layout.
+
+VAPID keys are created on first use into `wgw-content/keys/` (`php artisan wgw:vapid-keys --working-dir packages/api`), or set `WGW_VAPID_PUBLIC_KEY` / `WGW_VAPID_PRIVATE_KEY` / `WGW_VAPID_SUBJECT` in `packages/api/.env`.
+
+The Docker install stack includes a `scheduler` sidecar that loops `schedule:run` every 60 seconds (same contract as cron, not a queue worker). See [docs/architecture/suite-notify.md](docs/architecture/suite-notify.md).
+
 ### MCP / OAuth discovery (origin root)
 
 Assistants discover this instance at `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource` on the **same origin** users open in the browser. The ZIP layout already rewrites those paths to Laravel via `index.php`. If you only expose Laravel under `Alias /api` (or another prefix) and the document root is not this install shell, add rewrite or alias rules so those two `.well-known` paths (and `/.well-known/oauth-protected-resource/<path>`) still reach Laravel. Do not tell clients to use `/api/.well-known/…`. Details: [docs/mcp-connect.md](docs/mcp-connect.md).

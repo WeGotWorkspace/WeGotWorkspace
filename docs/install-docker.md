@@ -210,6 +210,7 @@ Each `docker compose up` runs a **one-shot migrator** before the web container s
    - **Fresh install** (no `wgw-content/.installed`): runs headless `wgw:install` when `WGW_INSTALL_HEADLESS=1` and env is complete; otherwise skips schema migration — the web wizard runs initial setup.
    - **Existing install**: runs `php artisan wgw:schema-migrate` (same as ZIP in-place updates).
 2. **Web** entrypoint ([docker-entrypoint.sh](../docker/install/docker-entrypoint.sh)): symlinks `api.env` → `packages/api/.env`, ensures permissions, runs `key:generate` when needed, starts Apache.
+3. **Scheduler** sidecar: loops `php artisan schedule:run` every 60 seconds (due Calendar/Task alarms and VAPID fallback). This is the Docker equivalent of host cron — **not** a `queue:work` daemon.
 
 Failed migrations block the web service from starting, preventing a half-upgraded state.
 

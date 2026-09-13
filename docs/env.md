@@ -53,6 +53,24 @@ php artisan migrate --working-dir packages/api
 
 That database is separate from `wgw-content/db.sqlite`.
 
+### Scheduler (reminders and Web Push)
+
+Shared hosting and production Docker must run `php artisan schedule:run` every minute. Registered commands: `wgw:notify:due-alarms`, `wgw:notify:vapid-sweep`. There is no `queue:work` daemon.
+
+```cron
+* * * * * php packages/api/artisan schedule:run >> /dev/null 2>&1
+```
+
+Local Docker (`compose.dev.yml`) and the install compose files ship a `scheduler` sidecar with the same loop. Optional VAPID override in `packages/api/.env`:
+
+```bash
+# WGW_VAPID_SUBJECT=mailto:noreply@example.com
+# WGW_VAPID_PUBLIC_KEY=
+# WGW_VAPID_PRIVATE_KEY=
+```
+
+If unset, keys are generated into `wgw-content/keys/vapid-public.txt` and `vapid-private.txt` (`php artisan wgw:vapid-keys`).
+
 ## Storybook Live API
 
 ```bash

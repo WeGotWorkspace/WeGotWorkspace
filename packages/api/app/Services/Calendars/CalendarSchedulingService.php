@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Events\EventDispatch;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\Principal;
@@ -30,6 +31,7 @@ final class CalendarSchedulingService
         private readonly SearchIndexerService $searchIndexer,
         private readonly BestEffortSearchIndexSync $searchIndexSync,
         private readonly CalendarImipService $imip,
+        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     public function scheduleAfterWrite(string $username, ?string $oldIcs, string $newIcs): void
@@ -492,6 +494,7 @@ final class CalendarSchedulingService
             $davPath,
             $username,
         );
+        $this->eventDispatch->fireMutation($username, 'calendars', 'deleted', $davPath);
     }
 
     private function findEventByUid(string $principalUri, string $uid): ?CalendarObject

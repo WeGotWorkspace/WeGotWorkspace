@@ -1,0 +1,84 @@
+{
+  "Notification": {
+    "type": "object",
+    "required": ["id", "eventId", "domain", "action", "title", "navigate", "createdAt"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "minLength": 1 },
+      "eventId": { "type": "string", "minLength": 1 },
+      "domain": { "type": "string" },
+      "action": { "type": "string" },
+      "title": { "type": "string" },
+      "body": { "type": ["string", "null"] },
+      "navigate": { "type": "string", "description": "In-app path (allowlisted SPA prefix)." },
+      "tag": { "type": ["string", "null"] },
+      "readAt": { "type": ["string", "null"], "format": "date-time" },
+      "createdAt": { "type": "string", "format": "date-time" }
+    }
+  },
+  "NotificationListResponse": {
+    "type": "object",
+    "required": ["list", "unreadCount"],
+    "additionalProperties": false,
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/Notification" }
+      },
+      "unreadCount": { "type": "integer", "minimum": 0 }
+    }
+  },
+  "NotificationOkResponse": {
+    "type": "object",
+    "required": ["ok"],
+    "additionalProperties": false,
+    "properties": {
+      "ok": { "type": "boolean", "const": true }
+    }
+  },
+  "VapidPublicKeyResponse": {
+    "type": "object",
+    "required": ["publicKey"],
+    "additionalProperties": false,
+    "properties": {
+      "publicKey": {
+        "type": "string",
+        "description": "URL-safe base64 VAPID public key for pushManager.subscribe."
+      }
+    }
+  },
+  "PushSubscriptionCreateRequest": {
+    "type": "object",
+    "required": ["endpoint", "keys"],
+    "additionalProperties": false,
+    "properties": {
+      "endpoint": { "type": "string", "format": "uri" },
+      "keys": {
+        "type": "object",
+        "required": ["p256dh", "auth"],
+        "additionalProperties": false,
+        "properties": {
+          "p256dh": { "type": "string" },
+          "auth": { "type": "string" }
+        }
+      }
+    }
+  },
+  "PushSubscriptionResponse": {
+    "type": "object",
+    "required": ["id", "endpoint"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string" },
+      "endpoint": { "type": "string" }
+    }
+  },
+  "PushUnsubscribeRequest": {
+    "type": "object",
+    "required": ["endpoint"],
+    "additionalProperties": false,
+    "properties": {
+      "endpoint": { "type": "string", "format": "uri" }
+    }
+  }
+}

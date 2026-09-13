@@ -654,7 +654,7 @@ final class ChatChannelRepository
      *
      * @return list<string>
      */
-    private function rosterUsernames(CalendarInstance $instance, ?string $groupSlug): array
+    public function rosterUsernames(CalendarInstance $instance, ?string $_groupSlug = null): array
     {
         $usernames = [];
 

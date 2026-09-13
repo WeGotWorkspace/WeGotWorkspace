@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Drive;
 
+use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Models\DriveShare;
 use App\Models\DriveShareGrant;
 use App\Models\DriveShareSession;
+use App\Models\GroupMember;
 use App\Models\Principal;
+use App\Services\Admin\AdminConstants;
 use App\Services\Auth\JwtTokenService;
 use App\Services\Settings\GroupDirectoryService;
 use App\Storage\StoragePaths;
@@ -35,6 +38,7 @@ final class DriveShareService
         private DriveShareSessionRateLimiter $rateLimiter,
         private CollabDocFormats $collabDocFormats,
         private DriveShareAuthorizer $authorizer,
+        private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     /**
@@ -157,8 +161,10 @@ final class DriveShareService
             }
 
             $share->refresh();
+            $serialized = $this->serializeShareForOwner($share);
+            $this->notifySharees($owner, $share);
 
-            return $this->serializeShareForOwner($share);
+            return $serialized;
         });
     }
 
@@ -2049,5 +2055,67 @@ final class DriveShareService
         }
 
         return $flags;
+    }
+
+    private function notifySharees(string $actor, DriveShare $share): void
+    {
+        $path = (string) $share->path;
+        $isDoc = str_ends_with(strtolower($path), '.md');
+        $recipients = $this->shareeUsernames($share);
+        if ($recipients === []) {
+            return;
+        }
+        $name = basename($path) ?: $path;
+        $this->eventDispatch->fireMutation(
+            $actor,
+            'docs',
+            'shared',
+            $path,
+            [
+                'recipients' => $recipients,
+                'title' => $name.' was shared with you',
+                'body' => $actor.' shared a document with you.',
+                'navigate' => $isDoc ? '/docs' : '/drive',
+                'tag' => 'docs.shared:'.$share->id,
+                'path' => $path,
+            ],
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function shareeUsernames(DriveShare $share): array
+    {
+        $usernames = [];
+        foreach (DriveShareGrant::query()->where('share_id', $share->id)->get() as $grant) {
+            $type = (string) $grant->grantee_type;
+            if ($type === 'user' && is_string($grant->grantee_user) && $grant->grantee_user !== '') {
+                $usernames[strtolower($grant->grantee_user)] = true;
+            }
+            if ($type === 'group' && is_string($grant->grantee_group) && $grant->grantee_group !== '') {
+                foreach ($this->usernamesForGroupSlug($grant->grantee_group) as $username) {
+                    $usernames[strtolower($username)] = true;
+                }
+            }
+        }
+
+        return array_keys($usernames);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function usernamesForGroupSlug(string $slug): array
+    {
+        $uri = AdminConstants::GROUP_PREFIX.$slug;
+
+        return GroupMember::query()
+            ->join('principals as g', 'g.id', '=', 'groupmembers.principal_id')
+            ->join('principals as m', 'm.id', '=', 'groupmembers.member_id')
+            ->where('g.uri', $uri)
+            ->pluck('m.uri')
+            ->map(static fn (mixed $uri): string => str_replace('principals/', '', (string) $uri))
+            ->all();
     }
 }

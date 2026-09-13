@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Drive;
 
+use App\Events\EventDispatch;
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
@@ -29,6 +30,7 @@ final class DriveService
         private AdminRoleResolver $adminRoles,
         private SearchIndexerService $search,
         private FileNodeIndexService $fileNodes,
+        private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     /**
@@ -163,6 +165,7 @@ final class DriveService
         }
         $this->search->indexFileStorageKey($key);
         $this->syncFileNodeIndex(fn () => $this->fileNodes->recordCreate($key));
+        $this->eventDispatch->fireMutation($username, 'drive', 'created', 'files/'.$key);
 
         return 'Created';
     }
