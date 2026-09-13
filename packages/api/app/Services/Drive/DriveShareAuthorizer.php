@@ -44,6 +44,17 @@ final class DriveShareAuthorizer
     /**
      * @param  array{username: string, role: string}  $principal
      */
+    public function assertMayComment(string $virtualPath, array $principal): void
+    {
+        $rights = $this->effectiveRights($virtualPath, $principal);
+        if (! $rights['mayComment']) {
+            $this->deny();
+        }
+    }
+
+    /**
+     * @param  array{username: string, role: string}  $principal
+     */
     public function assertMayManageStructure(string $virtualPath, array $principal): void
     {
         $rights = $this->effectiveRights($virtualPath, $principal);

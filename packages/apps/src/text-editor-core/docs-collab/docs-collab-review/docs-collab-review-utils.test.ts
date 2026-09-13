@@ -93,4 +93,14 @@ describe("filterReviewItemsByTab", () => {
       expect(items[0].thread.id).toBe("t-done");
     }
   });
+
+  it("never places suggestion threads on the resolved tab", () => {
+    const items = filterReviewItemsByTab(
+      "resolved",
+      [],
+      [suggestion("s-archived-looking", 1)],
+      null,
+    );
+    expect(items).toEqual([]);
+  });
 });

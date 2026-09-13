@@ -3426,6 +3426,342 @@
         "x-wgw-access": "guest"
       }
     },
+    "/files/threads/changes": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Docs thread changes for a file path",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Path-scoped calendarchanges",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsFileThreadChangesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        }
+      }
+    },
+    "/files/threads": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "List Docs comment and suggestion threads",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assembled threads for the Doc",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsFileThreadListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Create a Docs comment or suggestion thread",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsFileThreadCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created thread",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsFileThread"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/JmapPayloadTooLarge"
+          }
+        }
+      }
+    },
+    "/files/threads/{threadId}/replies": {
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Reply to a Docs thread",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "threadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsFileThreadReplyCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated thread",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsFileThread"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
+    "/files/threads/{threadId}/reactions": {
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Toggle a reaction on a Docs thread root",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "threadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsFileThreadReactionToggle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated thread",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsFileThread"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
+    "/files/threads/{threadId}": {
+      "patch": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Resolve or archive a Docs thread",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "threadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsFileThreadPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated thread",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsFileThread"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
     "/files/content": {
       "get": {
         "tags": [

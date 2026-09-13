@@ -1,8 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { Editor } from "@tiptap/react";
 import type * as Y from "yjs";
 import { isPersistedOpenThread } from "./docs-comments-map";
 import type { DocsCommentAuthor, DocsCommentThread } from "./docs-comments-types";
+import { createDocsThreadsMemory, type DocsThreadsMemoryClient } from "./docs-threads-memory";
+import type { DocsThreadsClient } from "./docs-threads-types";
 import { useDocsCommentsActive } from "./use-docs-comments-active";
 import { useDocsCommentsDraft } from "./use-docs-comments-draft";
 import { useDocsCommentsMutations } from "./use-docs-comments-mutations";
@@ -12,6 +14,7 @@ import { useDocsCommentsSelectionVersion } from "./use-docs-comments-selection-v
 import { useDocsCommentsSync } from "./use-docs-comments-sync";
 import { useDocsCommentsThreadActions } from "./use-docs-comments-thread-actions";
 import { useDocsCommentsVisibilityCleanup } from "./use-docs-comments-visibility";
+import { useDocsThreadsSource, type DocsThreadsSource } from "./use-docs-threads-source";
 
 export type UseDocsCommentsOptions = {
   ydoc: Y.Doc | null;
@@ -21,6 +24,12 @@ export type UseDocsCommentsOptions = {
   commentsVisible?: boolean;
   /** When false, create/reply/resolve/react are no-ops (view-only shares). */
   canMutateComments?: boolean;
+  /** Drive virtual path (`/users/…`). Required for live persist. */
+  docPath?: string | null;
+  threadsClient?: DocsThreadsClient | null;
+  /** Shared source from the Doc workspace so comments + suggestions share one list. */
+  threadsSource?: DocsThreadsSource;
+  pollThreads?: boolean;
 };
 
 export type UseDocsCommentsResult = {
@@ -45,13 +54,39 @@ export type UseDocsCommentsResult = {
 
 export { getDocsCommentsMap } from "./docs-comments-map";
 
+const FALLBACK_DOC_PATH = "/users/bob/docs/plan.md";
+
+function isMemoryClient(client: DocsThreadsClient): client is DocsThreadsMemoryClient {
+  return "setActor" in client;
+}
+
 export function useDocsComments({
   ydoc,
   editor,
   currentUser,
   commentsVisible = true,
   canMutateComments = true,
+  docPath = null,
+  threadsClient,
+  threadsSource,
+  pollThreads = false,
 }: UseDocsCommentsOptions): UseDocsCommentsResult {
+  const fallbackClient = useRef<DocsThreadsClient | null>(null);
+  if (fallbackClient.current == null && threadsClient == null) {
+    fallbackClient.current = createDocsThreadsMemory(docPath ?? FALLBACK_DOC_PATH, currentUser);
+  }
+  const resolvedClient = threadsClient ?? fallbackClient.current;
+  if (resolvedClient && isMemoryClient(resolvedClient)) {
+    resolvedClient.setActor(currentUser);
+  }
+
+  const ownedSource = useDocsThreadsSource({
+    client: threadsSource ? null : resolvedClient,
+    path: threadsSource ? null : (docPath ?? FALLBACK_DOC_PATH),
+    poll: Boolean(pollThreads && !threadsSource),
+  });
+  const source = threadsSource ?? ownedSource;
+
   const { selectionVersion, bumpSelectionVersion } = useDocsCommentsSelectionVersion();
   const {
     activeThreadId,
@@ -60,7 +95,8 @@ export function useDocsComments({
     setActiveThreadId,
     clearActiveThread,
   } = useDocsCommentsActive(editor);
-  const threads = useDocsCommentsSync(ydoc, editor);
+  const threads = source.comments;
+  useDocsCommentsSync(editor, threads);
 
   const openThreads = useMemo(() => threads.filter(isPersistedOpenThread), [threads]);
   const openThreadIds = useMemo(
@@ -125,7 +161,9 @@ export function useDocsComments({
 
   const { addReply, toggleReaction, resolveThread, deleteThread, submitDraftComment } =
     useDocsCommentsMutations({
-      ydoc,
+      client: resolvedClient,
+      path: docPath ?? FALLBACK_DOC_PATH,
+      source,
       editor,
       currentUser,
       activeThreadId,
@@ -145,7 +183,6 @@ export function useDocsComments({
     selectionQualifiesForComment: canMutateComments && selectionQualifiesForComment,
     selectThread,
     activateThreadFromMark,
-    clearActiveThread,
     createThreadFromSelection,
     cancelDraft,
     submitDraftComment,

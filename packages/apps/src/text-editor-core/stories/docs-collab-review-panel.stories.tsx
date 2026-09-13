@@ -50,7 +50,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Unified review sidebar mixing comment threads and track-change suggestions in document order, with the shared inbox filter for Open / Resolved.",
+          "Unified review sidebar mixing comment threads and track-change suggestions in document order, with the shared inbox filter for Open / Resolved. Thread records are REST-assembled `DocsCommentThread` / suggestion types (VJOURNAL storage); this mock-tier story feeds those domain fixtures directly.",
       },
     },
   },

@@ -119,6 +119,7 @@ final class WgwSchemaMigratorTest extends TestCase
             'oauth_device_codes',
             'mcp_audit_events',
             'mcp_sessions',
+            'docs_thread_index',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
