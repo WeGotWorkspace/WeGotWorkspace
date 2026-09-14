@@ -30,6 +30,7 @@ const meta: Meta<typeof CalendarEventDetailsPopover> = {
     origin: { left: 72, top: 96, width: 168, height: 40 },
     onClose: fn(),
     onEdit: fn(),
+    onDelete: fn(),
   },
 };
 
@@ -40,14 +41,24 @@ export const Default: Story = {
   tags: ["vitest-ci"],
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    const heading = canvas.getByRole("heading", { name: "Lunch" });
-    await expect(heading).toBeTruthy();
-    await expect(heading.querySelector(".calendar-event-details-popover__swatch")).toBeTruthy();
+    const popover = canvas.getByRole("dialog", { name: "Lunch" });
+    await expect(popover).toBeTruthy();
+    const eventCard = popover.querySelector("event-card.calendar-event-details-popover__event") as
+      | (HTMLElement & { summary?: string })
+      | null;
+    await expect(eventCard).toBeTruthy();
+    await expect(eventCard?.summary).toBe("Lunch");
+    await expect(popover.querySelector(".calendar-event-details-popover__details")).toBeTruthy();
+    await expect(popover.querySelector(".calendar-event-details-popover__row")).toBeTruthy();
+    await expect(canvas.getByText("Cafe")).toBeTruthy();
+    await expect(canvas.getByText("Bring laptop")).toBeTruthy();
     await expect(canvas.queryByText("Personal")).toBeNull();
     await userEvent.click(
       canvas.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
     );
     await expect(args.onEdit).toHaveBeenCalled();
+    await userEvent.click(canvas.getByRole("button", { name: defaultCalendarLabels.delete }));
+    await expect(args.onDelete).toHaveBeenCalled();
   },
 };
 
@@ -94,9 +105,15 @@ export const MeetJoin: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement.ownerDocument.body);
     const join = canvas.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
+    const edit = canvas.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit });
     await expect(join.className).toContain("button--variant-primary");
-    await expect(join.closest(".calendar-event-details-popover__meet")).toBeTruthy();
-    await expect(join.closest(".calendar-event-details-popover__row")).toBeNull();
+    const primary = join.closest(".calendar-event-details-popover__footer-primary");
+    const actions = edit.closest(".calendar-event-details-popover__footer-actions");
+    await expect(primary).toBeTruthy();
+    await expect(actions).toBeTruthy();
+    await expect(
+      primary!.compareDocumentPosition(actions!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     await userEvent.click(join);
     await expect(args.onJoinMeeting).toHaveBeenCalled();
   },

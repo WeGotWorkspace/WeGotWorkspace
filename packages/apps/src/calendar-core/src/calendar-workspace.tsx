@@ -1,4 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Circle, Eye, Rss } from "lucide-react";
+import { Temporal } from "@js-temporal/polyfill";
 import {
   type ChangeEvent,
   type MouseEvent,
@@ -53,8 +54,10 @@ import {
   eventPreviewOccurrenceKey,
   resolveCalendarEventPreview,
   resolveInvitationEventPreview,
+  resolveLiveEventPreview,
   type CalendarEventPreviewModel,
   type CalendarEventSelectionOrigin,
+  type CalendarEventTimesDraft,
 } from "@/calendar-core/src/calendar-event-preview";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
@@ -274,6 +277,7 @@ export function CalendarWorkspace({
     setEditorForm,
     saveEditor,
     deleteEditorEvent,
+    deleteCalendarEvent,
     setAnchor,
     canCreateCalendar,
     canSubscribeCalendar,
@@ -419,6 +423,16 @@ export function CalendarWorkspace({
     origin?: CalendarEventSelectionOrigin;
     hideRsvp?: boolean;
   } | null>(null);
+  const [eventTimesDraft, setEventTimesDraft] = useState<CalendarEventTimesDraft | null>(null);
+  const liveEventPreview = useMemo(() => {
+    if (!eventPreview) return null;
+    return resolveLiveEventPreview(eventPreview.model, {
+      events: data.events,
+      surfaceEvents: surface?.events,
+      pendingDeletedEventIds,
+      timesDraft: eventTimesDraft,
+    });
+  }, [data.events, eventPreview, eventTimesDraft, pendingDeletedEventIds, surface?.events]);
   const toggleInvitationsOpen = () => {
     if (!invitationsOpen) {
       void invitations.refreshIfIdle().catch(() => undefined);
@@ -428,8 +442,8 @@ export function CalendarWorkspace({
 
   const canWrite = Boolean(operations) && calendars.some((c) => canWriteCalendarCollection(c));
   const sessionEmail = organizerAddress(session.user)?.email;
-  const previewCalendar = eventPreview
-    ? calendars.find((entry) => entry.id === eventPreview.model.form.calendarId)
+  const previewCalendar = liveEventPreview
+    ? calendars.find((entry) => entry.id === liveEventPreview.form.calendarId)
     : undefined;
   const previewCanEdit =
     Boolean(operations) &&
@@ -437,7 +451,7 @@ export function CalendarWorkspace({
       mode: "edit",
       calendar: previewCalendar,
       isOrganizer: isSessionEventOrganizer(
-        eventPreview?.model.form.attendees ?? [],
+        liveEventPreview?.form.attendees ?? [],
         sessionEmail,
         invitations.invitees,
       ),
@@ -532,6 +546,24 @@ export function CalendarWorkspace({
 
   const closeEventPreview = useCallback(() => {
     setEventPreview(null);
+    setEventTimesDraft(null);
+  }, []);
+
+  const onEventTimesDraft = useCallback((draft: CalendarEventTimesDraft | null) => {
+    setEventTimesDraft((current) => {
+      if (current == null && draft == null) return current;
+      if (
+        current &&
+        draft &&
+        current.key === draft.key &&
+        current.allDay === draft.allDay &&
+        Temporal.PlainDateTime.compare(current.start, draft.start) === 0 &&
+        Temporal.PlainDateTime.compare(current.end, draft.end) === 0
+      ) {
+        return current;
+      }
+      return draft;
+    });
   }, []);
 
   const openEventPreview = useCallback(
@@ -543,6 +575,7 @@ export function CalendarWorkspace({
         pendingDeletedEventIds,
       });
       if (!model) return;
+      setEventTimesDraft(null);
       setEventPreview({ model, origin });
     },
     [closeEditor, data.events, pendingDeletedEventIds, surface?.events],
@@ -568,6 +601,7 @@ export function CalendarWorkspace({
             pendingDeletedEventIds,
           });
       if (!model) return;
+      setEventTimesDraft(null);
       setEventPreview({ model, origin, hideRsvp: true });
     },
     [
@@ -582,11 +616,24 @@ export function CalendarWorkspace({
   );
 
   const openEditFromPreview = useCallback(() => {
-    if (!eventPreview) return;
-    const key = eventPreviewOccurrenceKey(eventPreview.model);
+    if (!liveEventPreview) return;
+    const key = eventPreviewOccurrenceKey(liveEventPreview);
     setEventPreview(null);
+    setEventTimesDraft(null);
     void openEditEventKey(key);
-  }, [eventPreview, openEditEventKey]);
+  }, [liveEventPreview, openEditEventKey]);
+
+  const deleteFromPreview = useCallback(() => {
+    if (!liveEventPreview || !previewCanEdit) return;
+    const { eventId, recurrenceId, form } = liveEventPreview;
+    setEventPreview(null);
+    setEventTimesDraft(null);
+    deleteCalendarEvent({
+      eventId,
+      form,
+      ...(recurrenceId ? { recurrenceId } : {}),
+    });
+  }, [deleteCalendarEvent, liveEventPreview, previewCanEdit]);
 
   const invitationsPanel = useMemo(
     () => (
@@ -869,6 +916,7 @@ export function CalendarWorkspace({
                   onRecurrenceFutureDelete={truncateSeriesFromOccurrence}
                   onRecurrenceFutureUpdate={splitSeriesFromDrag}
                   onEventSelected={openEventPreview}
+                  onEventTimesDraft={onEventTimesDraft}
                   onViewChange={selectView}
                   onStartDateChange={setAnchor}
                   onCreateRequested={
@@ -885,8 +933,8 @@ export function CalendarWorkspace({
                   }
                   pendingCreateIntent={pendingCreateIntent}
                   selectedEventKey={
-                    eventPreview && previewCanResize
-                      ? eventPreviewOccurrenceKey(eventPreview.model)
+                    liveEventPreview && previewCanResize
+                      ? eventPreviewOccurrenceKey(liveEventPreview)
                       : ""
                   }
                 />
@@ -917,16 +965,16 @@ export function CalendarWorkspace({
           {invitationsPanel}
         </SideDrawer>
       ) : null}
-      {eventPreview ? (
+      {eventPreview && liveEventPreview ? (
         <CalendarEventDetailsPopover
           open
-          preview={eventPreview.model}
+          preview={liveEventPreview}
           origin={eventPreview.origin}
           calendars={calendars}
           labels={L}
           locale={locale}
           untitledLabel={L.untitledEvent}
-          pendingSync={pendingEventIds?.has(eventPreview.model.eventId) ?? false}
+          pendingSync={pendingEventIds?.has(liveEventPreview.eventId) ?? false}
           canEdit={previewCanEdit}
           sessionEmail={sessionEmail}
           meetOperations={meetOperations}
@@ -934,16 +982,17 @@ export function CalendarWorkspace({
           onJoinMeeting={onJoinMeeting}
           onClose={closeEventPreview}
           onEdit={previewCanEdit ? openEditFromPreview : undefined}
+          onDelete={previewCanEdit ? deleteFromPreview : undefined}
           onRsvp={
             eventPreview.hideRsvp
               ? undefined
               : (status) => {
-                  const eventId = eventPreview.model.eventId;
+                  const eventId = liveEventPreview.eventId;
                   const notification = inviteeNotifications.find((row) => row.eventId === eventId);
                   return persistRsvp(notification?.id ?? eventId, status, undefined, {
                     source: "preview",
-                    editorRecurrenceId: eventPreview.model.recurrenceId,
-                    attendees: eventPreview.model.form.attendees,
+                    editorRecurrenceId: liveEventPreview.recurrenceId,
+                    attendees: liveEventPreview.form.attendees,
                   }).then(() => undefined);
                 }
           }

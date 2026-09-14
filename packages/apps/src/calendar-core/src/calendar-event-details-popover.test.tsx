@@ -5,7 +5,10 @@ import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarEventDetailsPopover } from "@/calendar-core/src/calendar-event-details-popover";
-import { resolveCalendarEventPreview } from "@/calendar-core/src/calendar-event-preview";
+import {
+  formatEventPreviewWhen,
+  resolveCalendarEventPreview,
+} from "@/calendar-core/src/calendar-event-preview";
 import { emptyCalendarEventForm } from "@/calendar-core/src/calendar-editor-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
@@ -19,6 +22,7 @@ function renderPopover(
   const onEdit = vi.fn();
   const onClose = vi.fn();
   const onRsvp = vi.fn();
+  const onDelete = vi.fn();
   const preview =
     overrides.preview ?? resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
 
@@ -33,13 +37,14 @@ function renderPopover(
         untitledLabel={defaultCalendarLabels.untitledEvent}
         canEdit
         onEdit={onEdit}
+        onDelete={onDelete}
         onClose={onClose}
         {...overrides}
       />
     </TooltipProvider>,
   );
 
-  return { onEdit, onClose, onRsvp, container: view.container };
+  return { onEdit, onClose, onRsvp, onDelete, container: view.container };
 }
 
 describe("CalendarEventDetailsPopover", () => {
@@ -47,27 +52,133 @@ describe("CalendarEventDetailsPopover", () => {
     cleanup();
   });
 
-  it("shows title with color swatch, time, and Edit", { timeout: 10_000 }, () => {
-    const { onEdit } = renderPopover({
+  it("updates the when-row when preview form times change while open", { timeout: 10_000 }, () => {
+    const base = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+    expect(base).not.toBeNull();
+    const { rerender } = render(
+      <TooltipProvider delayDuration={0}>
+        <CalendarEventDetailsPopover
+          open
+          preview={base!}
+          calendars={bootstrap.data.calendars}
+          labels={defaultCalendarLabels}
+          locale="en-US"
+          untitledLabel={defaultCalendarLabels.untitledEvent}
+          canEdit
+          onEdit={vi.fn()}
+          onClose={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    const initialWhen = formatEventPreviewWhen(base!.form, "en-US");
+    expect(screen.getByText(initialWhen)).toBeTruthy();
+
+    const moved = {
+      ...base!,
+      form: {
+        ...base!.form,
+        startTime: "15:00",
+        endTime: "16:00",
+      },
+    };
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <CalendarEventDetailsPopover
+          open
+          preview={moved}
+          calendars={bootstrap.data.calendars}
+          labels={defaultCalendarLabels}
+          locale="en-US"
+          untitledLabel={defaultCalendarLabels.untitledEvent}
+          canEdit
+          onEdit={vi.fn()}
+          onClose={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    const nextWhen = formatEventPreviewWhen(moved.form, "en-US");
+    expect(nextWhen).not.toBe(initialWhen);
+    expect(screen.getByText(nextWhen)).toBeTruthy();
+    expect(screen.queryByText(initialWhen)).toBeNull();
+  });
+
+  it("shows a flow event-card with title, time, and Edit", { timeout: 10_000 }, () => {
+    const { onEdit, onDelete } = renderPopover({
       origin: { left: 48, top: 96, width: 180, height: 36 },
     });
-    const heading = screen.getByRole("heading", { name: /Dentist/i });
-    expect(heading.querySelector(".calendar-event-details-popover__swatch")).toBeTruthy();
-    expect(screen.queryByText("Personal")).toBeNull();
-    expect(document.querySelector(".calendar-event-details-popover__calendar")).toBeNull();
-    expect(screen.getByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeTruthy();
     const popover = screen.getByRole("dialog", { name: /Dentist/i });
     expect(popover.className).toContain("calendar-event-details-popover");
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }));
+    const eventCard = popover.querySelector("event-card.calendar-event-details-popover__event") as
+      | (HTMLElement & { summary?: string; layout?: string })
+      | null;
+    expect(eventCard).toBeTruthy();
+    expect(eventCard?.summary).toMatch(/Dentist/i);
+    expect(eventCard?.layout).toBe("flow");
+    expect(screen.queryByText("Personal")).toBeNull();
+    expect(document.querySelector(".calendar-event-details-popover__calendar")).toBeNull();
+    const edit = screen.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit });
+    expect(edit.className).toContain("icon-button--size-sm");
+    expect(edit.querySelector(".button__label")).toBeNull();
+    fireEvent.click(edit);
     expect(onEdit).toHaveBeenCalledTimes(1);
+    const remove = screen.getByRole("button", { name: defaultCalendarLabels.delete });
+    expect(remove.className).toContain("button--severity-danger");
+    fireEvent.click(remove);
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("autofocuses the dialog root, not Edit or RSVP chrome", { timeout: 10_000 }, () => {
+    const preview = {
+      eventId: "awaiting-reply",
+      form: {
+        ...emptyCalendarEventForm("work", "2033-01-11"),
+        title: "Partner sync",
+        meetingUrl: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
+        attendees: [
+          {
+            email: "ada@example.test",
+            name: "Ada",
+            participationStatus: "accepted" as const,
+            isOrganizer: true,
+          },
+          {
+            email: "me@example.test",
+            name: "Me",
+            participationStatus: "needs-action" as const,
+          },
+        ],
+      },
+    };
+    renderPopover({
+      preview,
+      calendars: bootstrap.data.calendars.map((calendar) =>
+        calendar.id === "work" ? { ...calendar, mayShare: false, mayWrite: true } : calendar,
+      ),
+      sessionEmail: "me@example.test",
+      workspaceOrigin: "https://workspace.example.com",
+      onRsvp: vi.fn(),
+      canEdit: true,
+    });
+    const dialog = screen.getByRole("dialog", { name: /Partner sync/i });
+    expect(document.activeElement).toBe(dialog);
+    expect(document.activeElement).not.toBe(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
+    );
+    expect(document.activeElement).not.toBe(
+      screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }),
+    );
+    expect(document.activeElement).not.toBe(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin }),
+    );
   });
 
   it("does not force Edit when the user cannot write", { timeout: 10_000 }, () => {
-    renderPopover({ canEdit: false, onEdit: undefined });
-    expect(screen.getByRole("heading", { name: /Dentist/i })).toBeTruthy();
+    renderPopover({ canEdit: false, onEdit: undefined, onDelete: undefined });
+    expect(screen.getByRole("dialog", { name: /Dentist/i })).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
     ).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.delete })).toBeNull();
   });
 
   it(
@@ -79,10 +190,11 @@ describe("CalendarEventDetailsPopover", () => {
         form: { ...emptyCalendarEventForm("family", "2033-01-14"), title: "School play" },
       };
       renderPopover({ preview, canEdit: true });
-      expect(screen.getByRole("heading", { name: /School play/i })).toBeTruthy();
+      expect(screen.getByRole("dialog", { name: /School play/i })).toBeTruthy();
       expect(
         screen.queryByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
       ).toBeNull();
+      expect(screen.queryByRole("button", { name: defaultCalendarLabels.delete })).toBeNull();
     },
   );
 
@@ -177,7 +289,7 @@ describe("CalendarEventDetailsPopover", () => {
       sessionEmail: "me@example.test",
       onRsvp: undefined,
     });
-    expect(screen.getByRole("heading", { name: /Partner sync/i })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /Partner sync/i })).toBeTruthy();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpAccept })).toBeNull();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpMaybe })).toBeNull();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpDecline })).toBeNull();
@@ -256,7 +368,7 @@ describe("CalendarEventDetailsPopover", () => {
     },
   );
 
-  it("shows a primary Join button below the details rows", { timeout: 10_000 }, () => {
+  it("shows a primary Join button in the footer with Edit", { timeout: 10_000 }, () => {
     const onJoinMeeting = vi.fn();
     const href = "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n";
     renderPopover({
@@ -272,10 +384,77 @@ describe("CalendarEventDetailsPopover", () => {
       },
     });
     const join = screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
+    const edit = screen.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit });
     expect(join.className).toContain("button--variant-primary");
-    expect(join.closest(".calendar-event-details-popover__meet")).toBeTruthy();
-    expect(join.closest(".calendar-event-details-popover__row")).toBeNull();
+    const primary = join.closest(".calendar-event-details-popover__footer-primary");
+    const actions = edit.closest(".calendar-event-details-popover__footer-actions");
+    expect(primary).toBeTruthy();
+    expect(actions).toBeTruthy();
+    expect(
+      screen
+        .getByRole("button", { name: defaultCalendarLabels.delete })
+        .closest(".calendar-event-details-popover__footer-actions"),
+    ).toBeTruthy();
+    const footer = join.closest(".calendar-event-details-popover__footer");
+    expect(footer).toBeTruthy();
+    expect(
+      primary!.compareDocumentPosition(actions!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     fireEvent.click(join);
     expect(onJoinMeeting).toHaveBeenCalledWith(href);
+  });
+
+  it("orders Join before RSVP in the primary footer cluster", { timeout: 10_000 }, () => {
+    const href = "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n";
+    renderPopover({
+      workspaceOrigin: "https://workspace.example.com",
+      canEdit: false,
+      onEdit: undefined,
+      onDelete: undefined,
+      onRsvp: vi.fn(),
+      sessionEmail: "me@example.test",
+      preview: {
+        eventId: "partner-meet",
+        form: {
+          ...emptyCalendarEventForm("work", "2033-01-11"),
+          title: "Partner meet",
+          meetingUrl: href,
+          attendees: [
+            {
+              email: "ada@example.test",
+              name: "Ada",
+              participationStatus: "accepted" as const,
+              isOrganizer: true,
+            },
+            {
+              email: "me@example.test",
+              name: "Me",
+              participationStatus: "needs-action" as const,
+            },
+          ],
+        },
+      },
+    });
+    const join = screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
+    const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+    const primary = join.closest(".calendar-event-details-popover__footer-primary");
+    expect(primary).toBeTruthy();
+    expect(accept.closest(".calendar-event-details-popover__footer-primary")).toBe(primary);
+    expect(join.compareDocumentPosition(accept) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("shows alarms with a bell row on the event card", { timeout: 10_000 }, () => {
+    renderPopover({
+      preview: {
+        eventId: "with-alarm",
+        form: {
+          ...emptyCalendarEventForm("default", "2033-01-12"),
+          title: "Alarm demo",
+          alerts: [{ id: "alert1", action: "display", offset: "-PT15M" }],
+        },
+      },
+    });
+    expect(screen.getByText(defaultCalendarLabels.eventAlarm15Min)).toBeTruthy();
+    expect(document.querySelector(".lucide-bell")).toBeTruthy();
   });
 });

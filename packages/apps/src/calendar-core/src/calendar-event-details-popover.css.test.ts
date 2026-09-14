@@ -20,6 +20,9 @@ describe("calendar event details popover CSS", () => {
     expect(css).toContain("justify-self: center");
     expect(css).toContain("align-self: start");
     expect(css).toContain("w-[min(20rem,calc(100vw-1.5rem))]");
+    expect(css).toMatch(
+      /\.calendar-dialog-surface\.calendar-event-details-popover\s*\{[\s\S]*?\bp-2\b/,
+    );
     expect(css).not.toContain("--radix-popover-trigger-width");
   });
 
@@ -37,19 +40,29 @@ describe("calendar event details popover CSS", () => {
     expect(css).toContain("position-try-fallbacks: none");
   });
 
-  it("centers a size-3.5 swatch on the title and keeps meta icons in a size-4 column", () => {
+  it("centers a flow event-card with icon detail rows and a shared footer", () => {
+    expect(css).toContain("calendar-event-details-popover__event");
+    expect(css).toContain("calendar-event-details-popover__details");
+    expect(css).toContain("calendar-event-details-popover__row");
+    expect(css).toContain("calendar-event-details-popover__icon");
+    expect(css).toContain(
+      "padding-inline-start: var(--_lc-event-card-heading-padding-inline-start, 13px)",
+    );
+    expect(css).toContain("font-size: var(--_lc-time-label-font-size, 0.75rem)");
+    expect(css).toContain("calendar-event-details-popover__footer");
+    expect(css).toContain("calendar-event-details-popover__footer-actions");
+    expect(css).toContain("calendar-event-details-popover__footer-primary");
+    expect(css).toContain("justify-between");
+    expect(css).toMatch(/\.calendar-event-details-popover__footer-actions\s*\{[^}]*\bms-auto\b/);
+    expect(css).not.toMatch(
+      /\.calendar-event-details-popover__footer-primary\s*\{[^}]*\bms-auto\b/,
+    );
+    expect(css).not.toContain("calendar-event-details-popover__rsvp {");
+    expect(css).not.toContain("calendar-event-details-popover__title");
+    expect(css).not.toContain("calendar-event-details-popover__swatch");
+    expect(css).not.toContain("calendar-event-details-popover__extras");
+    expect(css).not.toContain("calendar-event-details-popover__meet");
     expect(css).not.toContain("calendar-event-details-popover__calendar");
-    expect(css).toMatch(
-      /\.calendar-event-details-popover__title\s*\{[\s\S]*?@apply m-0 flex[\s\S]*?items-center/,
-    );
-    expect(css).toMatch(/\.calendar-event-details-popover__swatch\s*\{[\s\S]*?@apply size-3\.5/);
-    expect(css).toContain("--calendar-event-details-icon-column: 1rem");
-    expect(css).toContain("width: var(--calendar-event-details-icon-column, 1rem)");
-    expect(css).toContain("height: var(--calendar-event-details-icon-column, 1rem)");
-    expect(css).toMatch(
-      /\.calendar-event-details-popover__icon\s*\{[\s\S]*?@apply inline-flex[\s\S]*?items-center justify-center/,
-    );
-    expect(css).toContain("calendar-event-details-popover__meet");
     expect(css).not.toContain("calendar-event-details-popover__join");
   });
 });

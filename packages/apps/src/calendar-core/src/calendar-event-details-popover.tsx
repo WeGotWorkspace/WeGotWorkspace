@@ -1,6 +1,16 @@
-import type { ReactNode } from "react";
-import { CalendarDays, Circle, MapPin, Pencil, Repeat, StickyNote, Users } from "lucide-react";
-import { Button } from "@/button/src/button";
+import { createElement, type ReactNode } from "react";
+import {
+  Bell,
+  CalendarDays,
+  Circle,
+  MapPin,
+  Pencil,
+  Repeat,
+  StickyNote,
+  Trash2,
+  Users,
+} from "lucide-react";
+import { IconButton } from "@/button/src/button";
 import {
   isSessionEventInvitee,
   isSessionEventOrganizer,
@@ -10,6 +20,7 @@ import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collec
 import {
   detailsPopoverAnchorOrigin,
   detailsPopoverShouldDock,
+  eventPreviewAlarmSummary,
   eventPreviewInviteeNames,
   eventPreviewNotesExcerpt,
   eventPreviewRepeatLabel,
@@ -22,8 +33,10 @@ import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
+import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
+import "@/lib/calendar-elements/EventCard/EventCard";
 import "./calendar-event-details-popover.css";
 
 export type CalendarEventDetailsPopoverProps = {
@@ -40,6 +53,7 @@ export type CalendarEventDetailsPopoverProps = {
   pendingSync?: boolean;
   onClose: () => void;
   onEdit?: () => void;
+  onDelete?: () => void;
   onRsvp?: (status: CalendarSchedulingRespondStatus) => void | Promise<void>;
   meetOperations?: CalendarMeetOperations;
   workspaceOrigin?: string;
@@ -52,10 +66,10 @@ function DetailRow({ icon, label, value }: { icon: ReactNode; label: string; val
       <span className="calendar-event-details-popover__icon" aria-hidden>
         {icon}
       </span>
-      <div className="calendar-event-details-popover__row-text">
-        <p className="calendar-event-details-popover__dt">{label}</p>
-        <p className="calendar-event-details-popover__dd">{value}</p>
-      </div>
+      <p className="calendar-event-details-popover__dd">
+        <span className="sr-only">{label}. </span>
+        {value}
+      </p>
     </div>
   );
 }
@@ -74,6 +88,7 @@ export function CalendarEventDetailsPopover({
   pendingSync = false,
   onClose,
   onEdit,
+  onDelete,
   onRsvp,
   meetOperations,
   workspaceOrigin = typeof window !== "undefined" ? window.location.origin : "",
@@ -88,13 +103,80 @@ export function CalendarEventDetailsPopover({
     canEdit &&
     Boolean(onEdit) &&
     !isCalendarEventFormReadOnly({ mode: "edit", calendar, isOrganizer });
+  const showDelete =
+    canEdit &&
+    Boolean(onDelete) &&
+    !isCalendarEventFormReadOnly({ mode: "edit", calendar, isOrganizer });
   const title = form.title.trim() || untitledLabel;
   const when = formatEventPreviewWhen(form, locale);
+  const location = form.location.trim();
   const notes = eventPreviewNotesExcerpt(form.description);
   const repeat = eventPreviewRepeatLabel(form, locale);
   const invitees = eventPreviewInviteeNames(form.attendees, labels);
+  const alarms = eventPreviewAlarmSummary(form.alerts, labels);
   const showRsvp = Boolean(onRsvp) && isSessionEventInvitee(form.attendees, sessionEmail);
   const rsvpStatus = sessionEventInviteeStatus(form.attendees, sessionEmail);
+  const eventColor = calendar?.color?.trim() || DEFAULT_CALENDAR_COLOR;
+  const showMeet = Boolean(form.meetingUrl.trim());
+  const showFooter = showMeet || showEdit || showDelete || showRsvp;
+  const detailRows: ReactNode[] = [
+    <DetailRow
+      key="when"
+      icon={<CalendarDays className="size-3.5" />}
+      label={labels.eventWhenSectionTitle}
+      value={when}
+    />,
+  ];
+  if (location) {
+    detailRows.push(
+      <DetailRow
+        key="location"
+        icon={<MapPin className="size-3.5" />}
+        label={labels.eventLocationLabel}
+        value={location}
+      />,
+    );
+  }
+  if (repeat) {
+    detailRows.push(
+      <DetailRow
+        key="repeat"
+        icon={<Repeat className="size-3.5" />}
+        label={labels.eventRepeatLabel}
+        value={repeat}
+      />,
+    );
+  }
+  if (notes) {
+    detailRows.push(
+      <DetailRow
+        key="notes"
+        icon={<StickyNote className="size-3.5" />}
+        label={labels.eventNotesLabel}
+        value={notes}
+      />,
+    );
+  }
+  if (invitees) {
+    detailRows.push(
+      <DetailRow
+        key="invitees"
+        icon={<Users className="size-3.5" />}
+        label={labels.eventAttendeesLabel}
+        value={invitees}
+      />,
+    );
+  }
+  if (alarms) {
+    detailRows.push(
+      <DetailRow
+        key="alarms"
+        icon={<Bell className="size-3.5" />}
+        label={labels.eventAlarmsLabel}
+        value={alarms}
+      />,
+    );
+  }
   const docked = detailsPopoverShouldDock(origin);
   const placementOrigin = origin && !docked ? detailsPopoverAnchorOrigin(origin) : origin;
   const fallbackLeft = Math.round(globalThis.innerWidth / 2);
@@ -144,107 +226,95 @@ export function CalendarEventDetailsPopover({
           .join(" ")}
         aria-label={title}
         onOpenAutoFocus={(event) => {
+          // Keep focus on the dialog root — not Edit/Delete/Join/RSVP chrome
+          // (those IconButtons would immediately show tooltips). Search exits
+          // the list before this fires; without a fallback, focus stays on the
+          // ViewHeader query (then Radix hideOthers aria-hides it).
           event.preventDefault();
           const root = event.currentTarget;
-          if (!(root instanceof HTMLElement)) return;
-          const focusable = root.querySelector<HTMLElement>(
-            "button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])",
-          );
-          // Search exits the list before this fires; without a fallback, focus
-          // stays on the ViewHeader query (then Radix hideOthers aria-hides it).
-          (focusable ?? root).focus();
+          if (root instanceof HTMLElement) root.focus();
         }}
       >
-        <header>
-          <h2 className="calendar-event-details-popover__title">
-            {calendar ? (
-              <span
-                className="calendar-event-details-popover__swatch"
-                style={{ backgroundColor: calendar.color }}
-                aria-hidden
-              />
-            ) : null}
-            {title}
-            {pendingSync ? (
-              <span
-                className="calendar-event-details-popover__pending-sync"
-                role="img"
-                aria-label={labels.pendingSync}
-              >
-                <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
-              </span>
-            ) : null}
-          </h2>
-        </header>
-        <div className="calendar-event-details-popover__details">
-          <DetailRow
-            icon={<CalendarDays className="size-4" />}
-            label={labels.eventWhenSectionTitle}
-            value={when}
-          />
-          {form.location.trim() ? (
-            <DetailRow
-              icon={<MapPin className="size-4" />}
-              label={labels.eventLocationLabel}
-              value={form.location.trim()}
-            />
-          ) : null}
-          {repeat ? (
-            <DetailRow
-              icon={<Repeat className="size-4" />}
-              label={labels.eventRepeatLabel}
-              value={repeat}
-            />
-          ) : null}
-          {notes ? (
-            <DetailRow
-              icon={<StickyNote className="size-4" />}
-              label={labels.eventNotesLabel}
-              value={notes}
-            />
-          ) : null}
-          {invitees ? (
-            <DetailRow
-              icon={<Users className="size-4" />}
-              label={labels.eventAttendeesLabel}
-              value={invitees}
-            />
-          ) : null}
-        </div>
-        {form.meetingUrl.trim() ? (
-          <div className="calendar-event-details-popover__meet">
-            <CalendarMeetJoin
-              href={form.meetingUrl}
-              labels={labels}
-              workspaceOrigin={workspaceOrigin}
-              meetOperations={meetOperations}
-              onJoin={onJoinMeeting}
-            />
-          </div>
+        {pendingSync ? (
+          <span
+            className="calendar-event-details-popover__pending-sync"
+            role="img"
+            aria-label={labels.pendingSync}
+          >
+            <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
+          </span>
         ) : null}
-        {showRsvp && onRsvp ? (
-          <div className="calendar-event-details-popover__rsvp">
-            {form.recurrencePreset !== "none" ? (
-              <p className="calendar-event-details-popover__rsvp-hint">{labels.rsvpSeriesHint}</p>
-            ) : null}
-            <CalendarRsvpActions
-              currentStatus={rsvpStatus ?? undefined}
-              labels={labels}
-              busy={busy}
-              size="sm"
-              onRespond={onRsvp}
-            />
-          </div>
+        {createElement(
+          "event-card",
+          {
+            class: "calendar-event-details-popover__event",
+            layout: "flow",
+            lang: locale,
+            summary: title,
+            color: eventColor,
+            recurring: form.recurrencePreset !== "none",
+            "data-selected": "",
+          },
+          createElement(
+            "div",
+            { className: "calendar-event-details-popover__details" },
+            ...detailRows,
+          ),
+        )}
+        {showRsvp && onRsvp && form.recurrencePreset !== "none" ? (
+          <p className="calendar-event-details-popover__rsvp-hint">{labels.rsvpSeriesHint}</p>
         ) : null}
-        {showEdit && onEdit ? (
+        {showFooter ? (
           <footer className="calendar-event-details-popover__footer">
-            <Button
-              type="button"
-              variant="outline"
-              icon={<Pencil className="size-3.5" aria-hidden />}
-              label={labels.eventDetailsEdit}
-              onClick={onEdit}
-            />
+            {showRsvp || showMeet ? (
+              <div className="calendar-event-details-popover__footer-primary">
+                {showMeet ? (
+                  <CalendarMeetJoin
+                    href={form.meetingUrl}
+                    labels={labels}
+                    workspaceOrigin={workspaceOrigin}
+                    meetOperations={meetOperations}
+                    onJoin={onJoinMeeting}
+                  />
+                ) : null}
+                {showRsvp && onRsvp ? (
+                  <CalendarRsvpActions
+                    currentStatus={rsvpStatus ?? undefined}
+                    labels={labels}
+                    busy={busy}
+                    size="sm"
+                    onRespond={onRsvp}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+            {showEdit || showDelete ? (
+              <div className="calendar-event-details-popover__footer-actions">
+                {showEdit && onEdit ? (
+                  <IconButton
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    label={labels.eventDetailsEdit}
+                    icon={<Pencil className="size-3.5" aria-hidden />}
+                    disabled={busy}
+                    onClick={onEdit}
+                  />
+                ) : null}
+                {showDelete && onDelete ? (
+                  <IconButton
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    severity="danger"
+                    label={labels.delete}
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    disabled={busy}
+                    onClick={onDelete}
+                  />
+                ) : null}
+              </div>
+            ) : null}
           </footer>
         ) : null}
       </PopoverContent>
