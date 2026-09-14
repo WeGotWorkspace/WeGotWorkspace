@@ -32,6 +32,10 @@ describe("CalendarRsvpActions", () => {
     expect(compact?.className).not.toContain("calendar-rsvp-actions--lg");
     expect(compact?.querySelector(".segmented-control")).toBeTruthy();
     expect(compact?.querySelector(".segmented-control--size-md")).toBeNull();
+    expect(compact?.querySelector(".segmented-control__button--text")).toBeNull();
+    const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+    expect(accept.textContent).not.toContain(defaultCalendarLabels.rsvpAccept);
+    expect(accept.querySelector("svg")).toBeTruthy();
 
     rerender(
       <TooltipProvider delayDuration={0}>
@@ -50,13 +54,41 @@ describe("CalendarRsvpActions", () => {
     expect(large?.querySelector(".segmented-control--size-md")).toBeTruthy();
   });
 
-  it("selects Maybe when status is unset or needs-action without sending until click", () => {
-    const onRespond = vi.fn();
+  it.each([undefined, "needs-action", "delegated"] as const)(
+    "selects no option when currentStatus is %s without sending until click",
+    (currentStatus) => {
+      const onRespond = vi.fn();
+      renderActions(
+        <CalendarRsvpActions
+          currentStatus={currentStatus}
+          labels={defaultCalendarLabels}
+          onRespond={onRespond}
+        />,
+      );
+
+      const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+      const maybe = screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe });
+      const decline = screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline });
+      expect(accept.getAttribute("aria-pressed")).not.toBe("true");
+      expect(maybe.getAttribute("aria-pressed")).not.toBe("true");
+      expect(decline.getAttribute("aria-pressed")).not.toBe("true");
+      expect(accept.className).not.toContain("segmented-control__button--active");
+      expect(maybe.className).not.toContain("segmented-control__button--active");
+      expect(decline.className).not.toContain("segmented-control__button--active");
+      expect(onRespond).not.toHaveBeenCalled();
+
+      fireEvent.click(maybe);
+      expect(onRespond).toHaveBeenCalledWith("tentative");
+      expect(maybe.getAttribute("aria-pressed")).toBe("true");
+    },
+  );
+
+  it("presses Maybe only when status is tentative", () => {
     renderActions(
       <CalendarRsvpActions
-        currentStatus="needs-action"
+        currentStatus="tentative"
         labels={defaultCalendarLabels}
-        onRespond={onRespond}
+        onRespond={vi.fn()}
       />,
     );
 
@@ -64,12 +96,9 @@ describe("CalendarRsvpActions", () => {
     const maybe = screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe });
     const decline = screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline });
     expect(maybe.getAttribute("aria-pressed")).toBe("true");
+    expect(maybe.className).toContain("segmented-control__button--active");
     expect(accept.getAttribute("aria-pressed")).toBe("false");
     expect(decline.getAttribute("aria-pressed")).toBe("false");
-    expect(onRespond).not.toHaveBeenCalled();
-
-    fireEvent.click(maybe);
-    expect(onRespond).toHaveBeenCalledWith("tentative");
   });
 
   it("marks the newly chosen option selected without waiting for currentStatus", () => {
@@ -113,6 +142,35 @@ describe("CalendarRsvpActions", () => {
       expect(accept.getAttribute("aria-pressed")).toBe("true");
       expect(maybe.getAttribute("aria-pressed")).toBe("false");
     });
+  });
+
+  it("stays interactive while a respond promise is pending (no busy greying)", () => {
+    const onRespond = vi.fn(() => new Promise<void>(() => undefined));
+    renderActions(
+      <CalendarRsvpActions
+        currentStatus="needs-action"
+        labels={defaultCalendarLabels}
+        onRespond={onRespond}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }));
+    expect(onRespond).toHaveBeenCalledWith("accepted");
+    expect(
+      screen
+        .getByRole("button", { name: defaultCalendarLabels.rsvpAccept })
+        .hasAttribute("disabled"),
+    ).toBe(false);
+    expect(
+      screen
+        .getByRole("button", { name: defaultCalendarLabels.rsvpMaybe })
+        .hasAttribute("disabled"),
+    ).toBe(false);
+    expect(
+      screen
+        .getByRole("button", { name: defaultCalendarLabels.rsvpDecline })
+        .hasAttribute("disabled"),
+    ).toBe(false);
   });
 });
 

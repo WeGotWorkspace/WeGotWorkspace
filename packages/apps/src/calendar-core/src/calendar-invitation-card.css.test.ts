@@ -13,8 +13,18 @@ describe("calendar invitation card CSS", () => {
   it("pins the event-dialog calendar picker to the card header actions", () => {
     const css = readCss("calendar-invitation-card.css");
     expect(css).toMatch(/\.calendar-invitation-card \.docs-collab-card__actions \{[\s\S]*shrink-0/);
+    expect(css).toMatch(
+      /\.calendar-invitation-card \.docs-collab-card__actions \{[\s\S]*flex-nowrap/,
+    );
     expect(css).toMatch(/\.calendar-invitation-card__calendar-trigger \{[\s\S]*width:\s*auto/);
     expect(css).toMatch(/\.calendar-invitation-card__calendar \{[\s\S]*shrink-0/);
+  });
+
+  it("keeps the series hint and RSVP row under the event", () => {
+    const css = readCss("calendar-invitation-card.css");
+    expect(css).toMatch(/\.calendar-invitation-card__actions \{[\s\S]*mt-3/);
+    expect(css).toMatch(/\.calendar-invitation-card__actions \{[\s\S]*justify-start/);
+    expect(css).toMatch(/\.calendar-invitation-card__rsvp-hint \{[\s\S]*mt-2\.5/);
   });
 
   it("paints a solid cream/white surface on the card shell only", () => {

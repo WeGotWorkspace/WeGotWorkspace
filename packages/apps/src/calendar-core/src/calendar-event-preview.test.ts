@@ -11,6 +11,9 @@ import {
   eventSelectedFromEvent,
   resolveCalendarEventPreview,
   selectionOriginFromEvent,
+  invitationToEventPreview,
+  resolveInvitationEventPreview,
+  selectionOriginFromElement,
 } from "@/calendar-core/src/calendar-event-preview";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
@@ -56,6 +59,88 @@ describe("resolveCalendarEventPreview", () => {
     expect(preview?.form.startDate).toBe("2033-01-13");
     expect(preview?.form.startTime).toBe("11:00");
     expect(preview?.form.allDay).toBe(false);
+  });
+});
+
+describe("invitationToEventPreview", () => {
+  const invite = {
+    id: "invite-1.ics",
+    uid: "uid-1",
+    method: "REQUEST",
+    title: "Standup",
+    organizerEmail: "bob@example.test",
+    organizerName: "Bob",
+    start: "2026-08-20T14:00:00",
+    end: "2026-08-20T15:00:00",
+    location: "Room 4",
+    url: "https://workspace.example.com/meet/guest?room=abcd",
+    participationStatus: "needs-action" as const,
+    eventId: "missing-copy",
+  };
+
+  it("maps inbox fields onto a compact preview form", () => {
+    const preview = invitationToEventPreview(invite, {
+      untitledLabel: defaultCalendarLabels.untitledEvent,
+      defaultCalendarId: "work",
+    });
+    expect(preview.eventId).toBe("missing-copy");
+    expect(preview.form.title).toBe("Standup");
+    expect(preview.form.calendarId).toBe("work");
+    expect(preview.form.startDate).toBe("2026-08-20");
+    expect(preview.form.startTime).toBe("14:00");
+    expect(preview.form.endTime).toBe("15:00");
+    expect(preview.form.location).toBe("Room 4");
+    expect(preview.form.meetingUrl).toContain("meet/guest");
+    expect(preview.form.attendees[0]?.email).toBe("bob@example.test");
+    expect(preview.form.attendees[0]?.isOrganizer).toBe(true);
+  });
+
+  it("treats a date-only start as all-day", () => {
+    const preview = invitationToEventPreview(
+      { ...invite, start: "2026-08-20", end: "2026-08-21" },
+      { untitledLabel: defaultCalendarLabels.untitledEvent },
+    );
+    expect(preview.form.allDay).toBe(true);
+    expect(preview.form.startDate).toBe("2026-08-20");
+    expect(preview.form.endDate).toBe("2026-08-21");
+  });
+
+  it("prefers the loaded calendar event when the invite copy exists", () => {
+    const preview = resolveInvitationEventPreview(
+      { ...invite, eventId: "dentist", title: "Inbox dentist" },
+      {
+        events: bootstrap.data.events,
+        untitledLabel: defaultCalendarLabels.untitledEvent,
+      },
+    );
+    expect(preview.eventId).toBe("dentist");
+    expect(preview.form.title).toMatch(/dentist/i);
+    expect(preview.form.title).not.toBe("Inbox dentist");
+  });
+});
+
+describe("selectionOriginFromElement", () => {
+  it("reads a non-empty client rect", () => {
+    const el = {
+      getBoundingClientRect: () =>
+        ({
+          left: 12,
+          top: 80,
+          width: 280,
+          height: 64,
+          right: 292,
+          bottom: 144,
+          x: 12,
+          y: 80,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    } as Element;
+    expect(selectionOriginFromElement(el)).toEqual({
+      left: 12,
+      top: 80,
+      width: 280,
+      height: 64,
+    });
   });
 });
 

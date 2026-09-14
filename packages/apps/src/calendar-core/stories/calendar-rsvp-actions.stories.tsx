@@ -1,6 +1,6 @@
 import { useEffect, useState, type ComponentProps } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import { expect, fn, within } from "storybook/test";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarRsvpActions, CalendarRsvpSelect } from "@/calendar-core/src/calendar-rsvp-actions";
 
@@ -37,6 +37,23 @@ export const NeedsAction: Story = {
   args: { currentStatus: "needs-action" },
   tags: ["vitest-ci"],
   render: (args) => <InteractiveRsvp {...args} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const root = canvasElement.querySelector(".segmented-control");
+    await expect(root?.classList.contains("segmented-control--unselected")).toBe(true);
+    await expect(canvasElement.querySelector(".segmented-control__button--active")).toBeNull();
+    for (const name of [
+      defaultCalendarLabels.rsvpAccept,
+      defaultCalendarLabels.rsvpMaybe,
+      defaultCalendarLabels.rsvpDecline,
+    ]) {
+      const button = canvas.getByRole("button", { name });
+      await expect(button).not.toHaveAttribute("aria-pressed", "true");
+      await expect(button.classList.contains("segmented-control__button--text")).toBe(false);
+      await expect(button).not.toHaveTextContent(name);
+      await expect(button.querySelector("svg")).toBeTruthy();
+    }
+  },
 };
 
 export const Accepted: Story = {

@@ -80,7 +80,7 @@ export function CalendarRsvpActions({
   }, [incoming]);
 
   const status = optimisticStatus ?? incoming;
-  const selected = calendarRespondStatus(status) ?? "tentative";
+  const selected = calendarRespondStatus(status) ?? null;
 
   return (
     <div

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { CheckCheck, Inbox } from "lucide-react";
+import type { CalendarEventSelectionOrigin } from "@/calendar-core/src/calendar-event-preview";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarInvitationCard } from "@/calendar-core/src/calendar-invitation-card";
 import {
@@ -21,7 +22,6 @@ export type CalendarInvitationsPanelProps = {
   locale: string;
   calendars?: CalendarInfo[];
   defaultCalendarId?: string;
-  busy?: boolean;
   activeId?: string | null;
   showCloseButton?: boolean;
   tab?: CalendarInvitationInboxTab;
@@ -32,7 +32,7 @@ export type CalendarInvitationsPanelProps = {
     status: CalendarSchedulingRespondStatus,
     calendarId?: string,
   ) => void | Promise<void>;
-  onOpenEvent?: (eventId: string) => void;
+  onOpenEvent?: (eventId: string, origin?: CalendarEventSelectionOrigin) => void;
   onSelect?: (id: string) => void;
   meetOperations?: CalendarMeetOperations;
   workspaceOrigin?: string;
@@ -45,7 +45,6 @@ export function CalendarInvitationsPanel({
   locale,
   calendars = [],
   defaultCalendarId,
-  busy = false,
   activeId = null,
   showCloseButton = true,
   tab: tabProp,
@@ -107,10 +106,10 @@ export function CalendarInvitationsPanel({
           calendars={calendars}
           defaultCalendarId={defaultCalendarId}
           active={activeId === notification.id}
-          busy={busy}
-          onSelect={() => {
+          onSelect={(origin) => {
             onSelect?.(notification.id);
-            if (notification.eventId) onOpenEvent?.(notification.eventId);
+            const eventId = notification.eventId?.trim() || notification.id;
+            onOpenEvent?.(eventId, origin);
           }}
           onRespond={(status, calendarId) => onRespond(notification.id, status, calendarId)}
           meetOperations={meetOperations}

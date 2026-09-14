@@ -1,12 +1,14 @@
 import { Temporal } from "@js-temporal/polyfill";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
-import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import { localToPlainDateTime, type JmapCalendarEvent } from "@/lib/jmap-client";
+import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
 import {
   listedInviteeAttendees,
   type CalendarAttendee,
 } from "@/calendar-core/src/calendar-attendees";
 import {
   calendarEventToForm,
+  emptyCalendarEventForm,
   engineEventToForm,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
@@ -93,6 +95,96 @@ export function resolveCalendarEventPreview(
     form,
     ...(recurrenceId ? { recurrenceId } : {}),
   };
+}
+
+const INVITATION_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+function invitationInstant(value: string): Temporal.PlainDateTime {
+  if (INVITATION_DATE_ONLY.test(value)) {
+    return Temporal.PlainDate.from(value).toPlainDateTime(Temporal.PlainTime.from("00:00"));
+  }
+  return localToPlainDateTime(value);
+}
+
+function invitationOrganizerAttendees(
+  notification: CalendarSchedulingNotification,
+): CalendarAttendee[] {
+  const email = notification.organizerEmail?.trim();
+  if (!email) return [];
+  return [
+    {
+      email,
+      name: notification.organizerName?.trim() || email,
+      participationStatus: "accepted",
+      isOrganizer: true,
+    },
+  ];
+}
+
+/** Compact popover model when the invite is not yet on a loaded calendar. */
+export function invitationToEventPreview(
+  notification: CalendarSchedulingNotification,
+  options: { untitledLabel: string; defaultCalendarId?: string },
+): CalendarEventPreviewModel {
+  const calendarId = options.defaultCalendarId ?? "";
+  const startRaw = notification.start?.trim() ?? "";
+  const allDay = INVITATION_DATE_ONLY.test(startRaw);
+  let form = emptyCalendarEventForm(calendarId, Temporal.Now.plainDateISO().toString());
+
+  if (startRaw) {
+    try {
+      const start = invitationInstant(startRaw);
+      const startDate = start.toPlainDate().toString();
+      const startTime = start.toPlainTime().toString({ smallestUnit: "minute" });
+      form = {
+        ...emptyCalendarEventForm(calendarId, startDate, allDay ? "10:00" : startTime),
+        allDay,
+        startDate,
+        startTime: allDay ? "00:00" : startTime,
+      };
+      const endRaw = notification.end?.trim() ?? "";
+      if (endRaw) {
+        const end = invitationInstant(endRaw);
+        form = {
+          ...form,
+          endDate: end.toPlainDate().toString(),
+          endTime: allDay ? "00:00" : end.toPlainTime().toString({ smallestUnit: "minute" }),
+        };
+      }
+    } catch {
+      // Keep empty-form defaults when the inbox timestamps are not parseable.
+    }
+  }
+
+  return {
+    eventId: notification.eventId?.trim() || notification.uid || notification.id,
+    form: {
+      ...form,
+      title: notification.title.trim() || options.untitledLabel,
+      location: notification.location?.trim() ?? "",
+      meetingUrl: notification.url?.trim() ?? "",
+      attendees: invitationOrganizerAttendees(notification),
+    },
+  };
+}
+
+/** Prefer the loaded calendar event; fall back to inbox fields. */
+export function resolveInvitationEventPreview(
+  notification: CalendarSchedulingNotification,
+  options: {
+    events: readonly JmapCalendarEvent[];
+    surfaceEvents?: CalendarEventsMap;
+    pendingDeletedEventIds?: ReadonlySet<string>;
+    untitledLabel: string;
+    defaultCalendarId?: string;
+  },
+): CalendarEventPreviewModel {
+  const eventId = notification.eventId?.trim();
+  if (eventId) {
+    const fromCalendar = resolveCalendarEventPreview(eventId, options);
+    if (fromCalendar) return fromCalendar;
+  }
+  return invitationToEventPreview(notification, options);
 }
 
 export function eventPreviewOccurrenceKey(preview: CalendarEventPreviewModel): string {
@@ -254,6 +346,13 @@ export function bindCalendarEventSelected(
   return () => target.removeEventListener("event-selected", handle);
 }
 
+export function selectionOriginFromElement(
+  element: Element | null | undefined,
+): CalendarEventSelectionOrigin | undefined {
+  if (!element) return undefined;
+  return originFromRect(element.getBoundingClientRect());
+}
+
 export function selectionOriginFromEvent(event: Event): CalendarEventSelectionOrigin | undefined {
   const detail = event instanceof CustomEvent ? event.detail : undefined;
   const fromDetail = originFromUnknown(
@@ -263,6 +362,6 @@ export function selectionOriginFromEvent(event: Event): CalendarEventSelectionOr
 
   const path = typeof event.composedPath === "function" ? event.composedPath() : [];
   const card = eventCardFromPath(path);
-  if (card) return originFromRect(card.getBoundingClientRect());
+  if (card) return selectionOriginFromElement(card);
   return undefined;
 }

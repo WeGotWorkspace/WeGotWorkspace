@@ -151,6 +151,38 @@ describe("CalendarEventDetailsPopover", () => {
     ).toBeNull();
   });
 
+  it("hides RSVP when onRsvp is omitted even for an invitee", { timeout: 10_000 }, () => {
+    const preview = {
+      eventId: "awaiting-reply",
+      form: {
+        ...emptyCalendarEventForm("work", "2033-01-11"),
+        title: "Partner sync",
+        attendees: [
+          {
+            email: "ada@example.test",
+            name: "Ada",
+            participationStatus: "accepted" as const,
+            isOrganizer: true,
+          },
+          {
+            email: "me@example.test",
+            name: "Me",
+            participationStatus: "needs-action" as const,
+          },
+        ],
+      },
+    };
+    renderPopover({
+      preview,
+      sessionEmail: "me@example.test",
+      onRsvp: undefined,
+    });
+    expect(screen.getByRole("heading", { name: /Partner sync/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpAccept })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpMaybe })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpDecline })).toBeNull();
+  });
+
   it("shows Edit for a write-share recipient who is not the organizer", { timeout: 10_000 }, () => {
     const calendars = bootstrap.data.calendars.map((calendar) =>
       calendar.id === "default" ? { ...calendar, mayShare: false, mayWrite: true } : calendar,

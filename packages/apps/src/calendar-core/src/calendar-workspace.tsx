@@ -52,6 +52,7 @@ import { CalendarEventDetailsPopover } from "@/calendar-core/src/calendar-event-
 import {
   eventPreviewOccurrenceKey,
   resolveCalendarEventPreview,
+  resolveInvitationEventPreview,
   type CalendarEventPreviewModel,
   type CalendarEventSelectionOrigin,
 } from "@/calendar-core/src/calendar-event-preview";
@@ -71,9 +72,7 @@ import { occurrenceHasThisInstanceOverride } from "@/calendar-core/src/calendar-
 import {
   eventIsRecurringForRsvp,
   persistInviteeRsvp,
-  queueUndoableRespond,
   rsvpRecurrenceIdForEvent,
-  rsvpUndoStatus,
   type CalendarRsvpPersistSource,
 } from "@/calendar-core/src/calendar-rsvp-scope";
 import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
@@ -304,7 +303,6 @@ export function CalendarWorkspace({
     recurrenceScopeDialog,
     truncateSeriesFromOccurrence,
     splitSeriesFromDrag,
-    queueMutation,
     searchQuery,
     setSearchQuery,
     searchActive,
@@ -312,7 +310,7 @@ export function CalendarWorkspace({
     searchRange,
     undoLatest,
   } = controller;
-  const { showError } = useAppToast();
+  const { showError, showSuccess } = useAppToast();
   const handleInvitationResponded = useCallback(() => {
     surface?.syncNow();
   }, [surface]);
@@ -419,6 +417,7 @@ export function CalendarWorkspace({
   const [eventPreview, setEventPreview] = useState<{
     model: CalendarEventPreviewModel;
     origin?: CalendarEventSelectionOrigin;
+    hideRsvp?: boolean;
   } | null>(null);
   const toggleInvitationsOpen = () => {
     if (!invitationsOpen) {
@@ -510,35 +509,24 @@ export function CalendarWorkspace({
         masterId: eventId,
         recurrenceId,
         askScope: askRecurrenceScope,
-        respond: (scopeOptions) =>
-          queueUndoableRespond({
-            queueMutation,
-            key: `calendar:rsvp:${notificationId}:${status}`,
-            toastMessage: L.toastRsvpUpdated,
-            undoToastMessage: L.toastRsvpUndone,
-            execute: () =>
-              invitations.respond(notificationId, status, {
-                ...respondOptions,
-                ...scopeOptions,
-              }),
-            undo: () => {
-              const revert = rsvpUndoStatus(previousStatus);
-              if (!revert) return;
-              void invitations.respond(notificationId, revert, respondOptions);
-            },
-          }),
+        respond: async (scopeOptions) => {
+          await invitations.respond(notificationId, status, {
+            ...respondOptions,
+            ...scopeOptions,
+          });
+          showSuccess(L.toastRsvpUpdated);
+        },
       });
     },
     [
-      L.toastRsvpUndone,
       L.toastRsvpUpdated,
       askRecurrenceScope,
       data.events,
       editor,
       invitations,
       inviteeNotifications,
-      queueMutation,
       session.user,
+      showSuccess,
     ],
   );
 
@@ -560,6 +548,39 @@ export function CalendarWorkspace({
     [closeEditor, data.events, pendingDeletedEventIds, surface?.events],
   );
 
+  const openInvitationPreview = useCallback(
+    (key: string, origin?: CalendarEventSelectionOrigin) => {
+      closeEditor();
+      const notification = inviteeNotifications.find(
+        (row) => row.eventId === key || row.id === key,
+      );
+      const model = notification
+        ? resolveInvitationEventPreview(notification, {
+            events: data.events,
+            surfaceEvents: surface?.events,
+            pendingDeletedEventIds,
+            untitledLabel: L.untitledEvent,
+            defaultCalendarId,
+          })
+        : resolveCalendarEventPreview(key, {
+            events: data.events,
+            surfaceEvents: surface?.events,
+            pendingDeletedEventIds,
+          });
+      if (!model) return;
+      setEventPreview({ model, origin, hideRsvp: true });
+    },
+    [
+      L.untitledEvent,
+      closeEditor,
+      data.events,
+      defaultCalendarId,
+      inviteeNotifications,
+      pendingDeletedEventIds,
+      surface?.events,
+    ],
+  );
+
   const openEditFromPreview = useCallback(() => {
     if (!eventPreview) return;
     const key = eventPreviewOccurrenceKey(eventPreview.model);
@@ -575,20 +596,12 @@ export function CalendarWorkspace({
         locale={locale}
         calendars={calendars}
         defaultCalendarId={defaultCalendarId}
-        busy={invitations.busy}
         showCloseButton
         onClose={() => setInvitationsOpen(false)}
         onRespond={async (id, status, calendarId) => {
           await persistRsvp(id, status, calendarId, { source: "sidebar" });
         }}
-        onOpenEvent={
-          canWrite
-            ? (key) => {
-                closeEventPreview();
-                return openEditEventKey(key);
-              }
-            : undefined
-        }
+        onOpenEvent={openInvitationPreview}
         meetOperations={meetOperations}
         workspaceOrigin={workspaceOrigin}
         onJoinMeeting={onJoinMeeting}
@@ -597,13 +610,10 @@ export function CalendarWorkspace({
     [
       L,
       calendars,
-      canWrite,
       defaultCalendarId,
-      invitations.busy,
       inviteeNotifications,
       locale,
-      closeEventPreview,
-      openEditEventKey,
+      openInvitationPreview,
       persistRsvp,
       meetOperations,
       workspaceOrigin,
@@ -918,22 +928,25 @@ export function CalendarWorkspace({
           untitledLabel={L.untitledEvent}
           pendingSync={pendingEventIds?.has(eventPreview.model.eventId) ?? false}
           canEdit={previewCanEdit}
-          busy={invitations.busy}
           sessionEmail={sessionEmail}
           meetOperations={meetOperations}
           workspaceOrigin={workspaceOrigin}
           onJoinMeeting={onJoinMeeting}
           onClose={closeEventPreview}
           onEdit={previewCanEdit ? openEditFromPreview : undefined}
-          onRsvp={(status) => {
-            const eventId = eventPreview.model.eventId;
-            const notification = inviteeNotifications.find((row) => row.eventId === eventId);
-            return persistRsvp(notification?.id ?? eventId, status, undefined, {
-              source: "preview",
-              editorRecurrenceId: eventPreview.model.recurrenceId,
-              attendees: eventPreview.model.form.attendees,
-            }).then(() => undefined);
-          }}
+          onRsvp={
+            eventPreview.hideRsvp
+              ? undefined
+              : (status) => {
+                  const eventId = eventPreview.model.eventId;
+                  const notification = inviteeNotifications.find((row) => row.eventId === eventId);
+                  return persistRsvp(notification?.id ?? eventId, status, undefined, {
+                    source: "preview",
+                    editorRecurrenceId: eventPreview.model.recurrenceId,
+                    attendees: eventPreview.model.form.attendees,
+                  }).then(() => undefined);
+                }
+          }
         />
       ) : null}
       {editor ? (
