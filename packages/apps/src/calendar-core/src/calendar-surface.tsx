@@ -23,6 +23,7 @@ export type CalendarSurfaceCreateIntent = {
 import {
   bindCalendarEventSelected,
   type CalendarEventSelectionOrigin,
+  type CalendarEventTimesDraft,
 } from "@/calendar-core/src/calendar-event-preview";
 import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurrence-scope";
 import type { RecurrenceScopeRequest } from "@/calendar-core/src/calendar-recurrence-scope";
@@ -37,6 +38,11 @@ export type CalendarSurfaceProps = {
   selectedCalendarId?: string;
   contextValue?: EventsAPIContextValue;
   onEventSelected?: (key: string, origin?: CalendarEventSelectionOrigin) => void | Promise<void>;
+  /**
+   * Live move/resize draft times from Lit (same source as the grid card preview).
+   * `null` clears the draft when the gesture ends or the engine map catches up.
+   */
+  onEventTimesDraft?: (draft: CalendarEventTimesDraft | null) => void;
   /** User picked a day number in Lit — React owns the dropdown/URL view write. */
   onViewChange?: (view: CalendarSurfaceViewId) => void;
   /** Lit changed the anchor date (day click, week swipe, …). */
@@ -94,6 +100,7 @@ export function CalendarSurface({
   selectedCalendarId,
   contextValue,
   onEventSelected,
+  onEventTimesDraft,
   onViewChange,
   onStartDateChange,
   onCreateRequested,
@@ -156,6 +163,17 @@ export function CalendarSurface({
     if (!host || !onEventSelected) return;
     return bindCalendarEventSelected(host, onEventSelected);
   }, [onEventSelected]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || !onEventTimesDraft) return;
+    const handle = (event: Event) => {
+      const detail = (event as CustomEvent<CalendarEventTimesDraft | null>).detail;
+      onEventTimesDraft(detail ?? null);
+    };
+    host.addEventListener("event-times-draft", handle);
+    return () => host.removeEventListener("event-times-draft", handle);
+  }, [onEventTimesDraft]);
 
   useEffect(() => {
     const host = hostRef.current;

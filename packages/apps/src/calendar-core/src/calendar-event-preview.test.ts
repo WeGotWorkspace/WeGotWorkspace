@@ -1,15 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
+import { Temporal } from "@js-temporal/polyfill";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import {
   detailsPopoverAnchorOrigin,
   detailsPopoverShouldDock,
+  eventPreviewAlarmSummary,
   eventPreviewInviteeNames,
   eventPreviewNotesExcerpt,
   eventPreviewOccurrenceKey,
   formatEventPreviewWhen,
+  formWithEventTimesDraft,
   bindCalendarEventSelected,
   eventSelectedFromEvent,
   resolveCalendarEventPreview,
+  resolveLiveEventPreview,
   selectionOriginFromEvent,
   invitationToEventPreview,
   resolveInvitationEventPreview,
@@ -144,6 +148,38 @@ describe("selectionOriginFromElement", () => {
   });
 });
 
+describe("resolveLiveEventPreview", () => {
+  it("prefers Lit move/resize draft times over the open snapshot", () => {
+    const snapshot = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+    expect(snapshot).not.toBeNull();
+    const live = resolveLiveEventPreview(snapshot!, {
+      events: bootstrap.data.events,
+      timesDraft: {
+        key: "dentist",
+        start: Temporal.PlainDateTime.from("2033-01-12T15:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T16:00:00"),
+        allDay: false,
+      },
+    });
+    expect(live.form.startTime).toBe("15:00");
+    expect(live.form.endTime).toBe("16:00");
+    expect(formatEventPreviewWhen(live.form, "en-US")).toMatch(/3:00/);
+  });
+
+  it("formWithEventTimesDraft maps exclusive all-day ends to inclusive form days", () => {
+    const snapshot = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+    expect(snapshot).not.toBeNull();
+    const form = formWithEventTimesDraft(snapshot!.form, {
+      start: Temporal.PlainDateTime.from("2033-01-12T00:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-14T00:00:00"),
+      allDay: true,
+    });
+    expect(form.allDay).toBe(true);
+    expect(form.startDate).toBe("2033-01-12");
+    expect(form.endDate).toBe("2033-01-13");
+  });
+});
+
 describe("event preview formatters", () => {
   it("formats a same-day timed range", () => {
     const preview = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
@@ -173,6 +209,19 @@ describe("event preview formatters", () => {
         defaultCalendarLabels,
       ),
     ).toBe("Carol");
+  });
+
+  it("summarizes alarm offsets with preset labels", () => {
+    expect(eventPreviewAlarmSummary([], defaultCalendarLabels)).toBeNull();
+    expect(
+      eventPreviewAlarmSummary(
+        [
+          { id: "a1", action: "display", offset: "-PT15M" },
+          { id: "a2", action: "display", offset: "-P1D" },
+        ],
+        defaultCalendarLabels,
+      ),
+    ).toBe(`${defaultCalendarLabels.eventAlarm15Min}, ${defaultCalendarLabels.eventAlarm1Day}`);
   });
 });
 

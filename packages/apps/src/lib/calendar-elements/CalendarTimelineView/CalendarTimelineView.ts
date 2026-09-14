@@ -29,6 +29,7 @@ import type {
   TimelineEvent,
   TimelineEventCreateDetail,
   TimelineEventMoveCommitDetail,
+  TimelineEventPreviewDetail,
   TimelineEventPreviewRange,
   TimelineEventResizeCommitDetail,
   TimelineGestureSignalDetail,
@@ -322,6 +323,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     this.#pendingOccurrenceGeometry = null;
     this.#pendingCreateGeometry = null;
     this.#sawSurfaceCreateIntent = false;
+    this.#emitEventTimesDraft(null);
     this.#clearEmptyMonthDaySelection();
     super.disconnectedCallback();
   }
@@ -614,6 +616,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     );
     if (pendingOccurrenceRetention(pending, engineTimes) === "clear") {
       this.#pendingOccurrenceGeometry = null;
+      this.#emitEventTimesDraft(null);
     }
   }
 
@@ -837,15 +840,98 @@ export class CalendarTimelineView extends CalendarViewBase {
       start: next.start,
       end: next.end,
     };
+    this.#emitEventTimesDraft({
+      key: timelineEvent.key,
+      start: next.start,
+      end: next.end,
+      allDay: current?.data.allDay === true || timelineEvent.allDay,
+    });
     this.requestUpdate();
     const result = await this.applyUpdateRequestToEventsAPI(detail);
     if (shouldRevertPendingGeometry(result)) {
       this.#pendingOccurrenceGeometry = null;
+      this.#emitEventTimesDraft(null);
       this.requestUpdate();
       return;
     }
     this.#syncPendingOccurrenceGeometry();
-    if (!this.#pendingOccurrenceGeometry) this.requestUpdate();
+    if (!this.#pendingOccurrenceGeometry) {
+      this.#emitEventTimesDraft(null);
+      this.requestUpdate();
+    }
+  }
+
+  /** Live move/resize times for the React details popover (same draft the grid card uses). */
+  #emitEventTimesDraft(
+    detail: {
+      key: string;
+      start: Temporal.PlainDateTime;
+      end: Temporal.PlainDateTime;
+      allDay: boolean;
+    } | null,
+  ) {
+    this.dispatchEvent(
+      new CustomEvent("event-times-draft", {
+        bubbles: true,
+        composed: true,
+        detail,
+      }),
+    );
+  }
+
+  #liveRangeFromTimelinePreview(
+    timelineEvent: CalendarTimelineEvent,
+    detail: TimelineEventPreviewDetail,
+    variant: TimelineVariant,
+  ): { start: Temporal.PlainDateTime; end: Temporal.PlainDateTime; allDay: boolean } {
+    if (variant === "all-day") {
+      const unitsPerDay = this.#resolvedTimelineMax;
+      const duration = detail.end - detail.start;
+      const originalDuration = timelineEvent.end - timelineEvent.start;
+      if (Math.abs(duration - originalDuration) < 1e-6) {
+        const dayDelta = Math.round((detail.start - timelineEvent.start) / unitsPerDay);
+        return {
+          start: timelineEvent.originalStart.add({ days: dayDelta }),
+          end: timelineEvent.originalEnd.add({ days: dayDelta }),
+          allDay: true,
+        };
+      }
+      return {
+        start: this.#dayRoundedDateTime(detail.start),
+        end: this.#dayRoundedDateTime(detail.end),
+        allDay: true,
+      };
+    }
+    const range = fromTimelineRange(detail.start, detail.end, this.#scale);
+    return { start: range.start, end: range.end, allDay: false };
+  }
+
+  #handleTimelineEventPreview(event: Event, variant: TimelineVariant) {
+    const detail = (event as CustomEvent<TimelineEventPreviewDetail | null>).detail;
+    if (!detail) {
+      if (this.#pendingOccurrenceGeometry) {
+        const pending = this.#pendingOccurrenceGeometry;
+        const { event: current } = this.#resolveSourceEvent(pending.key);
+        this.#emitEventTimesDraft({
+          key: pending.key,
+          start: pending.start,
+          end: pending.end,
+          allDay: current?.data.allDay === true,
+        });
+        return;
+      }
+      this.#emitEventTimesDraft(null);
+      return;
+    }
+    const timelineEvent = this.#renderedEventsFor(variant)[detail.index];
+    if (!timelineEvent) return;
+    const live = this.#liveRangeFromTimelinePreview(timelineEvent, detail, variant);
+    this.#emitEventTimesDraft({
+      key: timelineEvent.key,
+      start: live.start,
+      end: live.end,
+      allDay: live.allDay,
+    });
   }
 
   async #requestDeleteForKey(key: string) {
@@ -1704,6 +1790,8 @@ export class CalendarTimelineView extends CalendarViewBase {
         .footerTemplate=${this.#showOverflowFooter ? this.#overflowFooterTemplate : undefined}
         @timeline-event-move=${(event: Event) => this.#handleTimelineMoveCommit(event, variant)}
         @timeline-event-resize=${(event: Event) => this.#handleTimelineResizeCommit(event, variant)}
+        @timeline-event-preview=${(event: Event) =>
+          this.#handleTimelineEventPreview(event, variant)}
         @timeline-event-create=${(event: Event) => this.#handleTimelineCreate(event, variant)}
       ></time-line>
     `;
@@ -1780,6 +1868,8 @@ export class CalendarTimelineView extends CalendarViewBase {
               this.#handleTimelineMoveCommit(event, "all-day")}
             @timeline-event-resize=${(event: Event) =>
               this.#handleTimelineResizeCommit(event, "all-day")}
+            @timeline-event-preview=${(event: Event) =>
+              this.#handleTimelineEventPreview(event, "all-day")}
             @timeline-event-create=${(event: Event) => this.#handleTimelineCreate(event, "all-day")}
           ></time-line>
         `
@@ -1837,6 +1927,8 @@ export class CalendarTimelineView extends CalendarViewBase {
             @timeline-event-move=${(event: Event) => this.#handleTimelineMoveCommit(event, "timed")}
             @timeline-event-resize=${(event: Event) =>
               this.#handleTimelineResizeCommit(event, "timed")}
+            @timeline-event-preview=${(event: Event) =>
+              this.#handleTimelineEventPreview(event, "timed")}
             @timeline-event-create=${(event: Event) => this.#handleTimelineCreate(event, "timed")}
           ></time-line>
         </div>

@@ -10,9 +10,14 @@ import {
   calendarEventToForm,
   emptyCalendarEventForm,
   engineEventToForm,
+  type CalendarEventAlertFormValue,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
+import {
+  formatUnmatchedAlertOffset,
+  matchAlertOffsetPreset,
+} from "@/calendar-core/src/calendar-alerts";
 import {
   formAnchoredToOccurrence,
   splitOccurrenceKey,
@@ -25,6 +30,17 @@ export type CalendarEventPreviewModel = {
   eventId: string;
   recurrenceId?: string;
   form: CalendarEventFormValue;
+};
+
+/**
+ * Live move/resize times from the Lit timeline draft (same source as the grid card preview).
+ * `end` matches the engine: exclusive midnight for all-day, wall-clock for timed.
+ */
+export type CalendarEventTimesDraft = {
+  key: string;
+  start: Temporal.PlainDateTime;
+  end: Temporal.PlainDateTime;
+  allDay: boolean;
 };
 
 export type CalendarEventSelectionOrigin = {
@@ -191,6 +207,50 @@ export function eventPreviewOccurrenceKey(preview: CalendarEventPreviewModel): s
   return preview.recurrenceId ? `${preview.eventId}::${preview.recurrenceId}` : preview.eventId;
 }
 
+/** Patch form wall times from a Lit move/resize draft (engine exclusive all-day end). */
+export function formWithEventTimesDraft(
+  form: CalendarEventFormValue,
+  draft: Pick<CalendarEventTimesDraft, "start" | "end" | "allDay">,
+): CalendarEventFormValue {
+  const allDay = draft.allDay;
+  const formEnd = allDay ? draft.end.subtract({ days: 1 }) : draft.end;
+  return {
+    ...form,
+    allDay,
+    startDate: draft.start.toPlainDate().toString(),
+    startTime: allDay ? "00:00" : draft.start.toPlainTime().toString({ smallestUnit: "minute" }),
+    endDate: formEnd.toPlainDate().toString(),
+    endTime: allDay ? "00:00" : formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
+  };
+}
+
+/**
+ * Popover model while open: prefer the live Lit draft, else re-resolve from the surface
+ * so post-drop optimistic times stay in sync without a parallel clock.
+ */
+export function resolveLiveEventPreview(
+  snapshot: CalendarEventPreviewModel,
+  options: {
+    events: readonly JmapCalendarEvent[];
+    surfaceEvents?: CalendarEventsMap;
+    pendingDeletedEventIds?: ReadonlySet<string>;
+    timesDraft?: CalendarEventTimesDraft | null;
+  },
+): CalendarEventPreviewModel {
+  const key = eventPreviewOccurrenceKey(snapshot);
+  const draft = options.timesDraft;
+  if (draft && draft.key === key) {
+    return { ...snapshot, form: formWithEventTimesDraft(snapshot.form, draft) };
+  }
+  return (
+    resolveCalendarEventPreview(key, {
+      events: options.events,
+      surfaceEvents: options.surfaceEvents,
+      pendingDeletedEventIds: options.pendingDeletedEventIds,
+    }) ?? snapshot
+  );
+}
+
 function formatPlainDate(iso: string, locale: string): string {
   try {
     return Temporal.PlainDate.from(iso).toLocaleString(locale, { dateStyle: "medium" });
@@ -248,6 +308,57 @@ export function eventPreviewRepeatLabel(
 ): string | null {
   if (form.recurrencePreset === "none") return null;
   return recurrencePresetOptionLabel(form.recurrencePreset, form.startDate, locale);
+}
+
+type EventPreviewAlarmLabels = Pick<
+  CalendarUILabels,
+  | "eventAlarmAtStart"
+  | "eventAlarm5Min"
+  | "eventAlarm10Min"
+  | "eventAlarm15Min"
+  | "eventAlarm30Min"
+  | "eventAlarm1Hour"
+  | "eventAlarm1Day"
+>;
+
+function alarmPreviewLabel(
+  alert: CalendarEventAlertFormValue,
+  labels: EventPreviewAlarmLabels,
+): string | null {
+  if (alert.offset != null) {
+    const preset = matchAlertOffsetPreset(alert.offset);
+    switch (preset) {
+      case "at-start":
+        return labels.eventAlarmAtStart;
+      case "5m":
+        return labels.eventAlarm5Min;
+      case "10m":
+        return labels.eventAlarm10Min;
+      case "15m":
+        return labels.eventAlarm15Min;
+      case "30m":
+        return labels.eventAlarm30Min;
+      case "1h":
+        return labels.eventAlarm1Hour;
+      case "1d":
+        return labels.eventAlarm1Day;
+      default:
+        return formatUnmatchedAlertOffset(alert.offset);
+    }
+  }
+  const when = alert.when?.trim();
+  return when || null;
+}
+
+/** Comma-joined alarm labels for the details popover; null when none. */
+export function eventPreviewAlarmSummary(
+  alerts: CalendarEventAlertFormValue[],
+  labels: EventPreviewAlarmLabels,
+): string | null {
+  const parts = alerts
+    .map((alert) => alarmPreviewLabel(alert, labels))
+    .filter((value): value is string => Boolean(value));
+  return parts.length > 0 ? parts.join(", ") : null;
 }
 
 function originFromRect(
