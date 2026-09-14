@@ -67,22 +67,30 @@
     );
   background-color: var(
     --segmented-control-active-bg,
-    var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+    var(
+      --button-outline-active-background,
+      var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+    )
   );
   box-shadow: var(--segmented-control-active-shadow, none);
   opacity: 0;
-  transition:
-    transform 200ms cubic-bezier(0.32, 0.72, 0, 1),
-    width 200ms cubic-bezier(0.32, 0.72, 0, 1),
-    background-color 150ms ease;
+  /* Transform-only slide (ViewModeToggle feel); width and severity wash snap. */
+  transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .segmented-control[data-thumb-ready] .segmented-control__thumb {
   opacity: 1;
 }
 
-.segmented-control:not([data-thumb-ready]) .segmented-control__thumb {
+/* Mount / first layout snaps; motion only after `data-thumb-animate` (see TSX contract). */
+.segmented-control:not([data-thumb-animate]) .segmented-control__thumb {
   transition: none;
+}
+
+.segmented-control--unselected .segmented-control__thumb {
+  /* Park without fighting translateX(var(--thumb-x)); remounts must not slide in from off-screen. */
+  @apply invisible opacity-0;
+  width: 0;
 }
 
 .segmented-control__thumb--severity-success {
@@ -94,12 +102,14 @@
 }
 
 .segmented-control__button {
-  @apply relative z-[2] box-border inline-flex items-center justify-center border-0;
+  @apply relative z-[2] box-border inline-flex items-center justify-center border-0 p-0;
   @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
   height: 100%;
   width: auto;
   aspect-ratio: 1 / 1;
   border-radius: var(--segmented-control-thumb-radius);
+  /* Kill UA line-box strut so icon+label stay optically centered in the thumb. */
+  line-height: 0;
   /* Match outline Button / IconButton idle foreground (no muted fade). */
   color: var(--segmented-control-color, var(--button-outline-color, var(--color-ink)));
   background: transparent;
@@ -110,7 +120,12 @@
     box-shadow 150ms;
 }
 
+.segmented-control__button svg {
+  @apply block shrink-0;
+}
+
 .segmented-control__button--text {
+  @apply gap-1;
   aspect-ratio: auto;
   min-width: 2.75rem;
   padding-inline: 0.625rem;
@@ -132,15 +147,7 @@
   );
 }
 
-.segmented-control__button--severity-success:hover:not(:disabled) {
-  color: var(--segmented-control-severity-success-color);
-  background-color: var(--segmented-control-severity-success-hover-bg);
-}
-
-.segmented-control__button--severity-danger:hover:not(:disabled) {
-  color: var(--segmented-control-severity-danger-color);
-  background-color: var(--segmented-control-severity-danger-hover-bg);
-}
+/* Severity wash is selected-only (thumb + active fg); idle hover stays neutral outline. */
 
 /* Keep the sliding thumb wash — avoid painting a second hover layer on the active segment. */
 .segmented-control__button--active:hover:not(:disabled) {
@@ -178,7 +185,8 @@
 }
 
 .segmented-control__label {
-  @apply text-xs font-medium leading-none;
+  @apply text-xs font-medium;
+  line-height: 1;
 }
 
 .segmented-control--size-md .segmented-control__button--text {

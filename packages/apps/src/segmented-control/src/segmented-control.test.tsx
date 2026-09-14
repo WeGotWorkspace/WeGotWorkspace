@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   BooleanSegmentedControl,
@@ -77,6 +77,28 @@ describe("SegmentedControl", () => {
     expect((await screen.findByRole("tooltip")).textContent).toBe("Grid view");
   });
 
+  it("renders icon and visible label together when showLabel is set", () => {
+    const labeled = rsvpOptions.map((option) => ({ ...option, showLabel: true }));
+    const { container } = renderWithTooltip(
+      <SegmentedControl value={null} onChange={vi.fn()} options={labeled} />,
+    );
+
+    const accept = screen.getByRole("button", { name: "Accept" });
+    expect(accept.className).toContain("segmented-control__button--text");
+    expect(accept.textContent).toContain("Accept");
+    expect(screen.getByTestId("accept-icon")).toBeTruthy();
+    expect(screen.getByTestId("maybe-icon")).toBeTruthy();
+    expect(screen.getByTestId("decline-icon")).toBeTruthy();
+    expect(container.querySelectorAll(".segmented-control__label")).toHaveLength(3);
+  });
+
+  it("skips tooltips when the label is visible beside the icon", async () => {
+    const labeled = rsvpOptions.map((option) => ({ ...option, showLabel: true }));
+    renderWithTooltip(<SegmentedControl value={null} onChange={vi.fn()} options={labeled} />);
+    fireEvent.pointerMove(screen.getByRole("button", { name: "Accept" }));
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
   it("skips tooltips for icon-only segments when showTooltip is false", async () => {
     renderWithTooltip(
       <SegmentedControl
@@ -88,6 +110,54 @@ describe("SegmentedControl", () => {
     );
     fireEvent.pointerMove(screen.getByRole("button", { name: "Grid view" }));
     expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("has no active thumb or pressed option when value is null", () => {
+    const onChange = vi.fn();
+    const { container } = renderWithTooltip(
+      <SegmentedControl value={null} onChange={onChange} options={rsvpOptions} />,
+    );
+
+    const root = container.querySelector(".segmented-control");
+    expect(root?.classList.contains("segmented-control--unselected")).toBe(true);
+    expect(root?.hasAttribute("data-thumb-ready")).toBe(false);
+    expect(root?.hasAttribute("data-thumb-animate")).toBe(false);
+    expect(container.querySelector(".segmented-control__button--active")).toBeNull();
+    for (const name of ["Accept", "Maybe", "Decline"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.getAttribute("aria-pressed")).toBeNull();
+      expect(button.className).not.toContain("segmented-control__button--active");
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    expect(onChange).toHaveBeenCalledWith("accepted");
+  });
+
+  it("snaps thumb on mount with a selected value (no animate until after first paint)", async () => {
+    const { container, unmount } = renderWithTooltip(
+      <SegmentedControl value="accepted" onChange={vi.fn()} options={rsvpOptions} />,
+    );
+
+    const root = container.querySelector(".segmented-control");
+    expect(root?.hasAttribute("data-thumb-ready")).toBe(true);
+    // Contract: remounting invitation cards must not replay a slide-in.
+    expect(root?.hasAttribute("data-thumb-animate")).toBe(false);
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+    });
+    expect(root?.hasAttribute("data-thumb-animate")).toBe(true);
+
+    unmount();
+    const remounted = renderWithTooltip(
+      <SegmentedControl value="accepted" onChange={vi.fn()} options={rsvpOptions} />,
+    );
+    const remountRoot = remounted.container.querySelector(".segmented-control");
+    expect(remountRoot?.hasAttribute("data-thumb-ready")).toBe(true);
+    expect(remountRoot?.hasAttribute("data-thumb-animate")).toBe(false);
+    remounted.unmount();
   });
 
   it("renders three options with per-option severity and a sliding thumb", () => {
