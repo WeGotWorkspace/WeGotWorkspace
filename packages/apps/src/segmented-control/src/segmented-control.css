@@ -13,6 +13,25 @@
     var(--segmented-control-track-radius) - var(--segmented-control-track-border-width) -
       var(--segmented-control-padding)
   );
+  --segmented-control-severity-danger-color: var(
+    --menu-item-severity-color,
+    var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
+  );
+  --segmented-control-severity-danger-hover-bg: var(
+    --menu-item-severity-hover-background,
+    var(
+      --menu-item-danger-hover-background,
+      color-mix(in oklab, var(--segmented-control-severity-danger-color) 14%, transparent)
+    )
+  );
+  --segmented-control-severity-success-color: var(
+    --button-severity-success-color,
+    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--color-ink, #042a22))
+  );
+  --segmented-control-severity-success-hover-bg: var(
+    --button-severity-success-hover-background,
+    color-mix(in oklab, var(--segmented-control-severity-success-color) 14%, transparent)
+  );
   /* Allow active thumb to paint over the track stroke (no clip). */
   @apply relative box-border inline-flex items-stretch;
   height: var(--segmented-control-height);
@@ -30,8 +49,52 @@
   --segmented-control-height: var(--control-height-md, var(--input-height, 2.25rem));
 }
 
+.segmented-control__thumb {
+  @apply pointer-events-none absolute box-border;
+  z-index: 1;
+  top: calc(-1 * var(--segmented-control-track-border-width));
+  left: calc(-1 * var(--segmented-control-track-border-width));
+  height: calc(100% + 2 * var(--segmented-control-track-border-width));
+  width: calc(
+    var(--segmented-control-thumb-width, 0px) + 2 * var(--segmented-control-track-border-width)
+  );
+  transform: translateX(var(--segmented-control-thumb-x, 0px));
+  border-radius: var(--segmented-control-track-radius);
+  border: var(--segmented-control-track-border-width) solid
+    var(
+      --segmented-control-active-border-color,
+      var(--button-outline-border-color, var(--control-border-color))
+    );
+  background-color: var(
+    --segmented-control-active-bg,
+    var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+  );
+  box-shadow: var(--segmented-control-active-shadow, none);
+  opacity: 0;
+  transition:
+    transform 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    width 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    background-color 150ms ease;
+}
+
+.segmented-control[data-thumb-ready] .segmented-control__thumb {
+  opacity: 1;
+}
+
+.segmented-control:not([data-thumb-ready]) .segmented-control__thumb {
+  transition: none;
+}
+
+.segmented-control__thumb--severity-success {
+  background-color: var(--segmented-control-severity-success-hover-bg);
+}
+
+.segmented-control__thumb--severity-danger {
+  background-color: var(--segmented-control-severity-danger-hover-bg);
+}
+
 .segmented-control__button {
-  @apply box-border inline-flex items-center justify-center border-0;
+  @apply relative z-[2] box-border inline-flex items-center justify-center border-0;
   @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
   height: 100%;
   width: auto;
@@ -54,23 +117,7 @@
 }
 
 .segmented-control__button--active {
-  /* Prefer parent --segmented-control-*; else shared outline/active button tokens. */
-  background-color: var(
-    --segmented-control-active-bg,
-    var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
-  );
   color: var(--segmented-control-active-fg, var(--button-active-color, var(--color-ink)));
-  border: var(--segmented-control-track-border-width) solid
-    var(
-      --segmented-control-active-border-color,
-      var(--button-outline-border-color, var(--control-border-color))
-    );
-  /* Expand by track border width so wash + border sit on top of the track stroke. */
-  height: calc(100% + 2 * var(--segmented-control-track-border-width));
-  margin: calc(-1 * var(--segmented-control-track-border-width));
-  border-radius: var(--segmented-control-track-radius);
-  box-shadow: var(--segmented-control-active-shadow, none);
-  z-index: 1;
 }
 
 /* Match outline IconButton hover; Calendar `.view-header` already sets accent tokens. */
@@ -85,16 +132,40 @@
   );
 }
 
-/* Keep (or optionally deepen) active wash — avoid reverting to the lighter hover wash. */
+.segmented-control__button--severity-success:hover:not(:disabled) {
+  color: var(--segmented-control-severity-success-color);
+  background-color: var(--segmented-control-severity-success-hover-bg);
+}
+
+.segmented-control__button--severity-danger:hover:not(:disabled) {
+  color: var(--segmented-control-severity-danger-color);
+  background-color: var(--segmented-control-severity-danger-hover-bg);
+}
+
+/* Keep the sliding thumb wash — avoid painting a second hover layer on the active segment. */
 .segmented-control__button--active:hover:not(:disabled) {
-  background-color: var(
-    --segmented-control-active-hover-bg,
-    var(
-      --segmented-control-active-bg,
-      var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
-    )
-  );
+  background-color: transparent;
   color: var(--segmented-control-active-fg, var(--button-active-color, var(--color-ink)));
+}
+
+.segmented-control__button--active.segmented-control__button--severity-success {
+  color: var(--segmented-control-severity-success-color);
+}
+
+.segmented-control__button--active.segmented-control__button--severity-danger {
+  color: var(--segmented-control-severity-danger-color);
+}
+
+.segmented-control__button--active.segmented-control__button--severity-success:hover:not(
+    :disabled
+  ) {
+  color: var(--segmented-control-severity-success-color);
+  background-color: transparent;
+}
+
+.segmented-control__button--active.segmented-control__button--severity-danger:hover:not(:disabled) {
+  color: var(--segmented-control-severity-danger-color);
+  background-color: transparent;
 }
 
 .segmented-control[data-disabled] {
@@ -117,4 +188,11 @@
 
 .segmented-control--size-md .segmented-control__label {
   font-size: var(--input-font-size, 0.875rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmented-control__thumb,
+  .segmented-control__button {
+    transition: none;
+  }
 }

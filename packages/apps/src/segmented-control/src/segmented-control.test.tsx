@@ -17,6 +17,22 @@ const iconOptions = [
   { value: "list", label: "List view", icon: <span data-testid="list-icon" /> },
 ] as const;
 
+const rsvpOptions = [
+  {
+    value: "accepted",
+    label: "Accept",
+    icon: <span data-testid="accept-icon" />,
+    severity: "success" as const,
+  },
+  { value: "tentative", label: "Maybe", icon: <span data-testid="maybe-icon" /> },
+  {
+    value: "declined",
+    label: "Decline",
+    icon: <span data-testid="decline-icon" />,
+    severity: "danger" as const,
+  },
+];
+
 function renderWithTooltip(ui: ReactElement) {
   return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
 }
@@ -72,6 +88,39 @@ describe("SegmentedControl", () => {
     );
     fireEvent.pointerMove(screen.getByRole("button", { name: "Grid view" }));
     expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("renders three options with per-option severity and a sliding thumb", () => {
+    const onChange = vi.fn();
+    const { container, rerender } = renderWithTooltip(
+      <SegmentedControl value="tentative" onChange={onChange} options={rsvpOptions} />,
+    );
+
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Accept" }).className).toContain(
+      "segmented-control__button--severity-success",
+    );
+    expect(screen.getByRole("button", { name: "Decline" }).className).toContain(
+      "segmented-control__button--severity-danger",
+    );
+    expect(screen.getByRole("button", { name: "Maybe" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Accept" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    );
+    expect(container.querySelector(".segmented-control__thumb")).toBeTruthy();
+    expect(container.querySelector(".segmented-control__thumb--severity-success")).toBeNull();
+    expect(container.querySelector(".segmented-control__thumb--severity-danger")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    expect(onChange).toHaveBeenCalledWith("accepted");
+
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <SegmentedControl value="accepted" onChange={onChange} options={rsvpOptions} />
+      </TooltipProvider>,
+    );
+    expect(container.querySelector(".segmented-control__thumb--severity-success")).toBeTruthy();
   });
 
   it("renders a compact switch for boolean on/off", () => {

@@ -16,33 +16,40 @@ describe("segmented-control chrome tokens", () => {
     );
   });
 
-  it("fills thumbs flush and lets the active thumb overlap the track stroke", () => {
+  it("slides a selected thumb that overlaps the track stroke", () => {
     expect(css).toMatch(/--segmented-control-padding:\s*0px/);
     expect(css).toMatch(/\.segmented-control \{[\s\S]*items-stretch/);
     expect(css).not.toMatch(/overflow-hidden/);
     expect(css).toMatch(/\.segmented-control__button \{[\s\S]*height:\s*100%/);
     expect(css).toMatch(/\.segmented-control__button \{[\s\S]*aspect-ratio:\s*1\s*\/\s*1/);
     expect(css).toMatch(
-      /\.segmented-control__button--active \{[\s\S]*height:\s*calc\(100%\s*\+\s*2\s*\*\s*var\(--segmented-control-track-border-width\)\)/,
+      /\.segmented-control__thumb \{[\s\S]*height:\s*calc\(100%\s*\+\s*2\s*\*\s*var\(--segmented-control-track-border-width\)\)/,
     );
     expect(css).toMatch(
-      /\.segmented-control__button--active \{[\s\S]*margin:\s*calc\(-1\s*\*\s*var\(--segmented-control-track-border-width\)\)/,
+      /\.segmented-control__thumb \{[\s\S]*transform:\s*translateX\(var\(--segmented-control-thumb-x,\s*0px\)\)/,
     );
     expect(css).toMatch(
-      /\.segmented-control__button--active \{[\s\S]*border:\s*var\(--segmented-control-track-border-width\)\s+solid\s+var\(\s*--segmented-control-active-border-color,\s*var\(--button-outline-border-color,\s*var\(--control-border-color\)\)/,
+      /\.segmented-control__thumb \{[\s\S]*border:\s*var\(--segmented-control-track-border-width\)\s+solid\s+var\(\s*--segmented-control-active-border-color,\s*var\(--button-outline-border-color,\s*var\(--control-border-color\)\)/,
     );
-    expect(css).toMatch(/\.segmented-control__button--active \{[\s\S]*z-index:\s*1/);
+    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*z-index:\s*1/);
   });
 
-  it("tints the active segment via wash/glyph tokens", () => {
+  it("animates the selected thumb and disables motion under reduced-motion", () => {
+    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*transition:[\s\S]*transform 200ms/);
     expect(css).toMatch(
-      /\.segmented-control__button--active \{[\s\S]*background-color:\s*var\(\s*--segmented-control-active-bg,\s*var\(\s*--button-outline-hover-background/,
+      /@media \(prefers-reduced-motion:\s*reduce\) \{[\s\S]*\.segmented-control__thumb[\s\S]*transition:\s*none/,
+    );
+  });
+
+  it("tints the active thumb via wash/glyph tokens", () => {
+    expect(css).toMatch(
+      /\.segmented-control__thumb \{[\s\S]*background-color:\s*var\(\s*--segmented-control-active-bg,\s*var\(\s*--button-outline-hover-background/,
     );
     expect(css).toMatch(
       /\.segmented-control__button--active \{[\s\S]*color:\s*var\(\s*--segmented-control-active-fg,\s*var\(--button-active-color,\s*var\(--color-ink\)\)/,
     );
     expect(css).toMatch(
-      /\.segmented-control__button--active \{[\s\S]*box-shadow:\s*var\(--segmented-control-active-shadow,\s*none\)/,
+      /\.segmented-control__thumb \{[\s\S]*box-shadow:\s*var\(--segmented-control-active-shadow,\s*none\)/,
     );
   });
 
@@ -67,10 +74,29 @@ describe("segmented-control chrome tokens", () => {
       /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*color:\s*var\(\s*--segmented-control-hover-color,\s*var\(--button-outline-hover-color/,
     );
     expect(css).toMatch(
-      /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*background-color:\s*var\(\s*--segmented-control-hover-bg,\s*var\(\s*--button-outline-hover-background/,
+      /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*background-color:\s*var\(\s*--segmented-control-hover-bg,\s*var\(--button-outline-hover-background/,
     );
     expect(css).toMatch(
-      /\.segmented-control__button--active:hover:not\(:disabled\) \{[\s\S]*background-color:\s*var\(\s*--segmented-control-active-hover-bg,\s*var\(\s*--segmented-control-active-bg/,
+      /\.segmented-control__button--active:hover:not\(:disabled\) \{[\s\S]*background-color:\s*transparent/,
+    );
+  });
+
+  it("washes success/danger on hover and selected thumb, using ghost mix not emerald", () => {
+    expect(css).toMatch(
+      /--segmented-control-severity-success-color:\s*var\(\s*--button-severity-success-color,\s*color-mix\(in oklab,\s*var\(--color-ghost/,
+    );
+    expect(css).not.toMatch(/--segmented-control-severity-success[\s\S]*--color-emerald/);
+    expect(css).toMatch(
+      /\.segmented-control__button--severity-success:hover:not\(:disabled\) \{[\s\S]*background-color:\s*var\(--segmented-control-severity-success-hover-bg\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control__button--severity-danger:hover:not\(:disabled\) \{[\s\S]*background-color:\s*var\(--segmented-control-severity-danger-hover-bg\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control__thumb--severity-success \{[\s\S]*background-color:\s*var\(--segmented-control-severity-success-hover-bg\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control__thumb--severity-danger \{[\s\S]*background-color:\s*var\(--segmented-control-severity-danger-hover-bg\)/,
     );
   });
 });
