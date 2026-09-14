@@ -430,7 +430,7 @@ describe("CalendarInvitationsPanel", () => {
     expect(eventCardHost("invite-1.ics")?.time).toMatch(/Thu, Aug 20/);
   });
 
-  it("sets recurring on the event-card so the repeat icon can render", () => {
+  it("sets recurring on the event-card for series a11y", () => {
     renderPanel({ notifications: [{ ...request, recurring: true }] });
     expect(eventCardHost("invite-1.ics")?.recurring).toBe(true);
   });

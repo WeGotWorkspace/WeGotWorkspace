@@ -178,7 +178,7 @@ describe("invitationToEventCardFields", () => {
     expect(fields.summary).toBe("Canceled standup");
   });
 
-  it("passes recurring through for the event-card repeat icon", () => {
+  it("passes recurring through for series a11y on the event-card", () => {
     const fields = invitationToEventCardFields(
       notification({ recurring: true }),
       defaultCalendarLabels,
