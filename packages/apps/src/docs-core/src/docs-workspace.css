@@ -406,13 +406,6 @@
   --docs-accent: #3b82f6;
 }
 
-.docs-workspace .docs-comments-floating-layer__card .docs-comments-thread-card[data-active="true"] {
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--color-ink) 5%, transparent),
-    0 8px 24px -8px color-mix(in oklab, var(--docs-accent) 28%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--docs-accent) 12%, transparent);
-}
-
 .docs-workspace .text-editor {
   @apply min-h-0 flex-1;
   --text-editor-comment: var(--docs-accent);

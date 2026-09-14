@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
+import { IconButton } from "@/button/src/button";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsCommentThread } from "../docs-comments-types";
 import {
@@ -87,18 +88,17 @@ export function DocsCommentsThreadCard({
         createdAt={authorCreatedAt}
         actions={
           isDraft || !canMutate ? null : (
-            <button
-              type="button"
-              className="docs-comments-thread-card__resolve"
-              aria-label={labels.commentsResolve}
+            <IconButton
+              label={labels.commentsResolve}
+              icon={<Check />}
+              size="sm"
+              variant="outline"
+              severity="success"
               onClick={(event) => {
                 event.stopPropagation();
                 runExitAnimation(onResolve);
               }}
-            >
-              <Check className="docs-comments-thread-card__resolve-icon" aria-hidden />
-              Resolve
-            </button>
+            />
           )
         }
       />

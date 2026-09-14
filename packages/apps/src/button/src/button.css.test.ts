@@ -58,4 +58,15 @@ describe("button outline chrome", () => {
       /\.button\.button--variant-outline\.button--severity-danger:hover[\s\S]*--button-severity-hover-background/,
     );
   });
+
+  it("washes severity-success from --color-ghost on hover, not remapped emerald/accent", () => {
+    expect(css).toMatch(/\.button--severity-success \{[\s\S]*?--color-ghost/);
+    expect(css).toMatch(/\.button--severity-success \{[\s\S]*?--button-severity-hover-background/);
+    expect(css).toMatch(
+      /\.button--severity-success:hover[\s\S]*--button-severity-hover-background/,
+    );
+    expect(css).toMatch(
+      /\.button\.button--variant-outline\.button--severity-success:hover[\s\S]*--button-severity-hover-background/,
+    );
+  });
 });

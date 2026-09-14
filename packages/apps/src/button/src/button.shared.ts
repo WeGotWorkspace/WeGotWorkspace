@@ -15,8 +15,8 @@ export type ButtonVariant = (typeof BUTTON_VARIANT_OPTIONS)[number];
 export type ButtonSize = (typeof BUTTON_SIZE_OPTIONS)[number];
 export type IconButtonSize = (typeof ICON_BUTTON_SIZE_OPTIONS)[number];
 
-/** Semantic severity for destructive outline/ghost actions (hover wash + fg). */
-export type ButtonSeverity = "danger";
+/** Semantic severity for outline/ghost actions (fg + wash). */
+export type ButtonSeverity = "danger" | "success";
 
 /** shadcn / Radix UI kit variant names — mapped to product variants in {@link normalizeButtonVariant}. */
 export type ShadcnButtonVariant =
@@ -61,6 +61,7 @@ export const BUTTON_VARIANT_CLASSNAMES: Record<ButtonVariant, string> = {
 
 export const BUTTON_SEVERITY_CLASSNAMES: Record<ButtonSeverity, string> = {
   danger: "button--severity-danger",
+  success: "button--severity-success",
 };
 
 export function normalizeButtonVariant(

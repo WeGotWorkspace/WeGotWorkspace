@@ -150,6 +150,35 @@
   background-color: var(--button-severity-hover-background);
 }
 
+/*
+ * Success outline/ghost (Resolve, Accept): fg from a true green — not
+ * `--color-emerald`, which product workspaces remap to accent. Wash on hover
+ * only, matching severity-danger.
+ */
+.button--severity-success {
+  --button-severity-color: var(
+    --button-severity-success-color,
+    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--color-ink, #042a22))
+  );
+  --button-severity-hover-background: var(
+    --button-severity-success-hover-background,
+    color-mix(in oklab, var(--button-severity-color) 14%, transparent)
+  );
+  color: var(--button-severity-color);
+}
+
+.button--severity-success:hover,
+.button--severity-success:focus-visible {
+  color: var(--button-severity-color);
+  background-color: var(--button-severity-hover-background);
+}
+
+.button.button--variant-outline.button--severity-success:hover,
+.button.button--variant-outline.button--severity-success:focus-visible {
+  color: var(--button-severity-color);
+  background-color: var(--button-severity-hover-background);
+}
+
 /* Pressed/selected outline (Today, open sidebar/inbox): accent fg + wash;
    keep the quiet control stroke (not a full accent ring). */
 .button.button--variant-outline.icon-button--active {
