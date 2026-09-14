@@ -6,6 +6,7 @@ import {
 } from "@/calendar-core/src/calendar-attendees";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
+import { SegmentedControl } from "@/segmented-control/src/segmented-control";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import "./calendar-rsvp-actions.css";
@@ -52,22 +53,6 @@ export function calendarRespondStatus(
 
 export type CalendarRsvpActionsSize = "sm" | "lg";
 
-function rsvpActionClass(
-  kind: "accept" | "maybe" | "decline",
-  selected: boolean,
-  size: CalendarRsvpActionsSize,
-): string {
-  return cn(
-    "calendar-rsvp-action",
-    `calendar-rsvp-action--${kind}`,
-    `calendar-rsvp-action--${size}`,
-    selected && "calendar-rsvp-action--selected",
-    "calendar-invitation-card__action",
-    `calendar-invitation-card__action--${kind}`,
-    selected && "calendar-invitation-card__action--selected",
-  );
-}
-
 export type CalendarRsvpActionsProps = {
   currentStatus?: string;
   labels: CalendarUILabels;
@@ -95,38 +80,31 @@ export function CalendarRsvpActions({
   }, [incoming]);
 
   const status = optimisticStatus ?? incoming;
+  const selected = calendarRespondStatus(status) ?? "tentative";
 
   return (
-    <div className={cn("calendar-rsvp-actions", `calendar-rsvp-actions--${size}`, className)}>
-      {RSVP_ACTIONS.map(({ kind, status: value, Icon, labelKey }) => {
-        const selected = status === value;
-        return (
-          <button
-            key={kind}
-            type="button"
-            className={rsvpActionClass(kind, selected, size)}
-            aria-pressed={selected}
-            disabled={busy}
-            onClick={(event) => {
-              event.stopPropagation();
-              setOptimisticStatus(value);
-              void Promise.resolve(onRespond(value)).catch(() => {
-                setOptimisticStatus(null);
-              });
-            }}
-          >
-            <Icon
-              className={cn(
-                "calendar-rsvp-action-icon",
-                `calendar-rsvp-action-icon--${size}`,
-                "calendar-invitation-card__action-icon",
-              )}
-              aria-hidden
-            />
-            {labels[labelKey]}
-          </button>
-        );
-      })}
+    <div
+      className={cn("calendar-rsvp-actions", `calendar-rsvp-actions--${size}`, className)}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <SegmentedControl
+        value={selected}
+        size={size === "lg" ? "md" : "sm"}
+        disabled={busy}
+        aria-label={labels.rsvpLabel}
+        onChange={(next) => {
+          setOptimisticStatus(next);
+          void Promise.resolve(onRespond(next)).catch(() => {
+            setOptimisticStatus(null);
+          });
+        }}
+        options={RSVP_ACTIONS.map(({ kind, status: value, Icon, labelKey }) => ({
+          value,
+          label: labels[labelKey],
+          icon: <Icon className="size-4" aria-hidden />,
+          severity: kind === "accept" ? "success" : kind === "decline" ? "danger" : undefined,
+        }))}
+      />
     </div>
   );
 }

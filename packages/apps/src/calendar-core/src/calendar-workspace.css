@@ -624,21 +624,14 @@
   @apply min-w-0 flex-1;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__meet-row .icon-button--size-sm {
-  @apply size-9 shrink-0;
-}
-
 /*
- * ColorSwatchTrigger is an input-height control-surface (calendar picker chrome).
- * In this row it must match the adjacent outline IconButton sm (size-9).
+ * ColorSwatchTrigger already matches IconButton sm (pill + control-height-sm).
+ * Keep this row compact next to the Meet URL field.
  */
 .calendar-dialog-surface
   .control-surface.color-swatch-trigger.calendar-event-dialog__meet-menu-trigger {
-  @apply h-9 min-h-9 w-auto shrink-0 border px-2 py-0 shadow-none;
+  @apply w-auto shrink-0;
   min-width: 0;
-  box-sizing: border-box;
-  border-color: var(--button-outline-border-color, var(--control-border-color));
-  border-radius: var(--control-radius-button-pill);
   background-color: transparent;
   --loading-spinner-color: currentColor;
 }

@@ -385,18 +385,18 @@ describe("calendar event dialog Meet field", () => {
     expect(css).toMatch(
       /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \{[\s\S]*@apply/,
     );
-    expect(css).toMatch(
-      /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \.icon-button--size-sm \{[\s\S]*@apply/,
+    expect(css).not.toMatch(
+      /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \.icon-button--size-sm \{[\s\S]*size-9/,
     );
     expect(css).toMatch(/\.calendar-event-dialog__meet-menu/);
     expect(css).toMatch(/\.calendar-event-dialog__meet-menu-trigger/);
-    expect(css).toMatch(
-      /\.calendar-event-dialog__meet-menu-trigger \{[\s\S]*@apply h-9 min-h-9[\s\S]*border-radius:\s*var\(--control-radius-button-pill\)/,
+    expect(css).not.toMatch(
+      /\.calendar-event-dialog__meet-menu-trigger \{[\s\S]*@apply h-9 min-h-9/,
+    );
+    expect(css).not.toMatch(
+      /\.calendar-event-dialog__meet-menu-trigger \{[\s\S]*border-radius:\s*var\(--control-radius-button-pill\)/,
     );
     expect(css).toContain("background-color: transparent");
-    expect(css).toContain(
-      "border-color: var(--button-outline-border-color, var(--control-border-color))",
-    );
     expect(css).toContain("stroke-width: 1.75");
     expect(css).toContain("--meet-accent: #2a1644");
     expect(css).toContain("--card-title-icon-color: var(--meet-accent)");

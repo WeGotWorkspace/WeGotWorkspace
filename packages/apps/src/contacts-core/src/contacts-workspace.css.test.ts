@@ -283,6 +283,9 @@ describe("contacts workspace sidebar chrome", () => {
     expect(addressBookSelect).toMatch(/ColorSwatchTrigger/);
     expect(addressBookSelect).not.toMatch(/onCreateAddressBook|__create_address_book__/);
     expect(css).toMatch(
+      /\.contacts-workspace \.action-bar \.contacts-address-book-select\.color-swatch-trigger \{[\s\S]*background-color:\s*var\(--color-cream/,
+    );
+    expect(css).not.toMatch(
       /\.contacts-workspace \.action-bar \.contacts-address-book-select\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
     );
   });

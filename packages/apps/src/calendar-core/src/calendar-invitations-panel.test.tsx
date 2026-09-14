@@ -136,16 +136,13 @@ describe("CalendarInvitationsPanel", () => {
     const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
     const maybe = screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe });
     const decline = screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline });
-    expect(accept.className).toContain("calendar-invitation-card__action--accept");
-    expect(maybe.className).toContain("calendar-invitation-card__action--maybe");
-    expect(decline.className).toContain("calendar-invitation-card__action--decline");
     const actions = document.querySelector(".calendar-invitation-card__actions");
     expect(actions?.className).toContain("calendar-rsvp-actions--sm");
     expect(actions?.className).not.toContain("calendar-rsvp-actions--lg");
-    expect(accept.className).toContain("calendar-rsvp-action--sm");
-    expect(accept.className).not.toContain("calendar-invitation-card__action--selected");
-    expect(maybe.className).not.toContain("calendar-invitation-card__action--selected");
-    expect(decline.className).not.toContain("calendar-invitation-card__action--selected");
+    expect(actions?.querySelector(".segmented-control")).toBeTruthy();
+    expect(maybe.getAttribute("aria-pressed")).toBe("true");
+    expect(accept.getAttribute("aria-pressed")).toBe("false");
+    expect(decline.getAttribute("aria-pressed")).toBe("false");
     expect(document.querySelector(".calendar-invitation-card")).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: defaultCalendarLabels.invitationsDismiss }),
@@ -188,14 +185,20 @@ describe("CalendarInvitationsPanel", () => {
     expect(eventCardHost("invite-3.ics")?.summary).toBe("Planning");
     expect(eventCardHost("invite-1.ics")).toBeNull();
     expect(
-      screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }).className,
-    ).toContain("calendar-invitation-card__action--selected");
+      screen
+        .getByRole("button", { name: defaultCalendarLabels.rsvpAccept })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
     expect(
-      screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe }).className,
-    ).not.toContain("calendar-invitation-card__action--selected");
+      screen
+        .getByRole("button", { name: defaultCalendarLabels.rsvpMaybe })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
     expect(
-      screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline }).className,
-    ).not.toContain("calendar-invitation-card__action--selected");
+      screen
+        .getByRole("button", { name: defaultCalendarLabels.rsvpDecline })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
     expect(screen.queryByRole("button", { name: /Calendar: Personal/i })).toBeNull();
   });
 

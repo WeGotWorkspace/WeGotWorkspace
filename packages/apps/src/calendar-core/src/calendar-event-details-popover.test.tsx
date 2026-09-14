@@ -9,6 +9,7 @@ import { resolveCalendarEventPreview } from "@/calendar-core/src/calendar-event-
 import { emptyCalendarEventForm } from "@/calendar-core/src/calendar-editor-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import { TooltipProvider } from "@/ui/tooltip";
 
 const bootstrap = createCalendarAppBootstrap();
 
@@ -22,18 +23,20 @@ function renderPopover(
     overrides.preview ?? resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
 
   const view = render(
-    <CalendarEventDetailsPopover
-      open
-      preview={preview}
-      calendars={bootstrap.data.calendars}
-      labels={defaultCalendarLabels}
-      locale="en-US"
-      untitledLabel={defaultCalendarLabels.untitledEvent}
-      canEdit
-      onEdit={onEdit}
-      onClose={onClose}
-      {...overrides}
-    />,
+    <TooltipProvider delayDuration={0}>
+      <CalendarEventDetailsPopover
+        open
+        preview={preview}
+        calendars={bootstrap.data.calendars}
+        labels={defaultCalendarLabels}
+        locale="en-US"
+        untitledLabel={defaultCalendarLabels.untitledEvent}
+        canEdit
+        onEdit={onEdit}
+        onClose={onClose}
+        {...overrides}
+      />
+    </TooltipProvider>,
   );
 
   return { onEdit, onClose, onRsvp, container: view.container };

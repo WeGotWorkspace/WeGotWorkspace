@@ -4,7 +4,13 @@
   /* Focus ring comes from shared `.control-surface` (Button outline recipe). */
   @apply inline-flex w-auto shrink-0 cursor-pointer items-center justify-between gap-1.5 px-2 shadow-none;
   min-width: 3.25rem;
-  height: var(--input-height, 2.25rem);
+}
+
+/* Match IconButton sm / SegmentedControl sm: pill radius + compact height. */
+.control-surface.color-swatch-trigger {
+  --control-radius: var(--control-radius-button-pill);
+  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
 }
 
 /* `.control-surface` is `width: 100%` in a later production CSS chunk. Beat it with

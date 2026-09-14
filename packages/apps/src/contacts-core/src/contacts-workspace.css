@@ -70,12 +70,9 @@
 
 /*
  * Detail header address-book switcher: ColorSwatchTrigger (Notes notebook switcher)
- * — cream pill, sm height to match adjacent IconButtons, icon + chevron, no caption.
+ * — cream surface; height/radius come from the shared primitive.
  */
 .contacts-workspace .action-bar .contacts-address-book-select.color-swatch-trigger {
-  --control-radius: var(--control-radius-button-pill);
-  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
   background-color: var(--color-cream, #ffffff);
 }
 

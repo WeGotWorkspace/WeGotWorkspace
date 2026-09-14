@@ -313,6 +313,9 @@ describe("notes workspace action-bar selected Star/Archive", () => {
     expect(workspaceAppTsx).toMatch(/\{actionBar\?\.\(chrome\)\}/);
     expect(workspaceAppTsx).toMatch(/workspace-detail-pane__scroll/);
     expect(css).toMatch(
+      /\.notes-workspace \.action-bar \.notes-notebook-select\.color-swatch-trigger \{[\s\S]*background-color:\s*var\(--color-cream/,
+    );
+    expect(css).not.toMatch(
       /\.notes-workspace \.action-bar \.notes-notebook-select\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
     );
   });
