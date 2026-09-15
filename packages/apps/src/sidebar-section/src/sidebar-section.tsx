@@ -38,9 +38,9 @@ export function SidebarSection({
     >
       {title ? (
         <div className="sidebar-section__heading">
-          <h3 id={titleId} className={cn("field-label-row__label", "sidebar-section__title")}>
+          <h4 id={titleId} className={cn("field-label-row__label", "sidebar-section__title")}>
             {title}
-          </h3>
+          </h4>
           {onAdd ? (
             <IconButton
               label={addLabel}

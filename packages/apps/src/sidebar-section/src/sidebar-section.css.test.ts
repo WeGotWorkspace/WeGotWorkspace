@@ -16,4 +16,12 @@ describe("sidebar section padding", () => {
       /\.sidebar-section \.menu-item \{[\s\S]*padding-inline:\s*var\(\s*--app-sidebar-item-padding-x/,
     );
   });
+
+  it("uses a tight spacing-token margin under the heading and 1px tracking on the h4", () => {
+    expect(css).toMatch(
+      /\.sidebar-section__heading \{[\s\S]*margin-bottom:\s*calc\(\s*var\(\s*--spacing,\s*0\.25rem\)\s*\*\s*1\s*\)/,
+    );
+    expect(css).not.toMatch(/\.sidebar-section__heading \{[\s\S]*\bmb-3\b/);
+    expect(css).toMatch(/\.sidebar-section__heading h4 \{[\s\S]*letter-spacing:\s*1px/);
+  });
 });
