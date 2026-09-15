@@ -15,7 +15,7 @@
 }
 
 .drive-workspace .drive-item-label > svg {
-  @apply size-2.5 shrink-0;
+  @apply size-3 shrink-0;
 }
 
 .drive-workspace .drive-browser-section-title {

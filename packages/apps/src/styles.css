@@ -32,9 +32,9 @@
   --font-sans: ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --font-app: "Bebas Neue", ui-sans-serif, system-ui, sans-serif;
-  /* Dense uppercase captions (field labels, sidebar section titles) — one step below `text-xs`. */
-  --text-2xs: 0.625rem;
-  --text-2xs--line-height: 0.75rem;
+  /* Dense uppercase captions (field labels, sidebar section titles) — minimum label size (12px). */
+  --text-2xs: 0.75rem;
+  --text-2xs--line-height: 1rem;
   --color-forest: #042318;
   --color-emerald: #34d399;
   --color-ink: #042a22;

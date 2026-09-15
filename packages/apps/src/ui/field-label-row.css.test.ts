@@ -12,10 +12,10 @@ describe("field-label-row CSS", () => {
       /\.field-label-row__label \{[\s\S]*@apply[\s\S]*font-medium[\s\S]*uppercase/,
     );
     expect(css).toMatch(
-      /\.field-label-row__label \{[\s\S]*font-family:\s*var\(--field-label-font-family,\s*var\(--font-sans/,
+      /\.field-label-row__label \{[\s\S]*font-family:\s*var\(\s*--field-label-font-family,\s*var\(\s*--font-sans/,
     );
     expect(css).not.toMatch(
-      /\.field-label-row__label \{[\s\S]*font-family:\s*var\(--field-label-font-family,\s*var\(--font-mono/,
+      /\.field-label-row__label \{[\s\S]*font-family:\s*var\(\s*--field-label-font-family,\s*var\(\s*--font-mono/,
     );
   });
 
@@ -24,8 +24,8 @@ describe("field-label-row CSS", () => {
       /\.field-label-row__label \{[\s\S]*@apply[\s\S]*\btext-2xs\b[\s\S]*uppercase/,
     );
     expect(css).not.toMatch(/\.field-label-row__label \{[\s\S]*@apply[\s\S]*\btracking-/);
-    expect(css).toMatch(/\.field-label-row__label > svg \{[\s\S]*@apply size-2\.5/);
-    expect(css).toMatch(/\.field-label-row__lock \{[\s\S]*@apply size-2\.5/);
+    expect(css).toMatch(/\.field-label-row__label > svg \{[\s\S]*@apply size-3/);
+    expect(css).toMatch(/\.field-label-row__lock \{[\s\S]*@apply size-3/);
   });
 
   it("reserves the caption band without collapsing or using column flex-basis", () => {

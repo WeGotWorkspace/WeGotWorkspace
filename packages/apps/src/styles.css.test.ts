@@ -54,8 +54,8 @@ describe("product UI font tokens", () => {
   });
 
   it("publishes text-2xs for dense uppercase captions", () => {
-    expect(css).toMatch(/--text-2xs:\s*0\.625rem/);
-    expect(css).toMatch(/--text-2xs--line-height:\s*0\.75rem/);
+    expect(css).toMatch(/--text-2xs:\s*0\.75rem/);
+    expect(css).toMatch(/--text-2xs--line-height:\s*1rem/);
   });
 
   it("opts shared Input/Textarea classes out of the iOS 1rem floor", () => {
