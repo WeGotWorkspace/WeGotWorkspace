@@ -33,10 +33,6 @@
 .calendar-dialog-surface.calendar-event-details-popover--editable {
   /* Keep narrower than New event Dialog (32rem) — do not share that token. */
   --calendar-event-details-popover-editable-max-inline-size: 24rem;
-  /* Align DialogCloseButton with the editable popover inset (p-3). */
-  --modal-inset: 0.75rem;
-  --modal-close-size: var(--control-height-sm, 2rem);
-  --modal-header-end: calc(var(--modal-close-size) + 0.5rem);
   @apply gap-0 p-3;
   width: min(var(--calendar-event-details-popover-editable-max-inline-size), calc(100vw - 1.5rem));
   max-width: min(
@@ -49,15 +45,6 @@
   );
   min-width: min(18rem, calc(100vw - 1.5rem));
   max-height: 50vh;
-}
-
-.calendar-dialog-surface.calendar-event-details-popover--editable > .ui-modal-header {
-  @apply shrink-0;
-}
-
-.calendar-dialog-surface.calendar-event-details-popover--editable > .ui-modal-title,
-.calendar-dialog-surface.calendar-event-details-popover--editable .ui-modal-title {
-  font-size: var(--modal-title-font-size-sm, 1.25rem);
 }
 
 @position-try --calendar-event-details-try-start {

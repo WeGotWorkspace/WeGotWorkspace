@@ -104,12 +104,6 @@ describe("calendar event details popover CSS", () => {
       /\.calendar-event-details-popover--editable[\s\S]*--calendar-event-dialog-max-inline-size/,
     );
     expect(css).toContain("max-height: 50vh");
-    expect(css).toMatch(
-      /\.calendar-event-details-popover--editable \{[\s\S]*--modal-inset:\s*0\.75rem/,
-    );
-    expect(css).toMatch(
-      /\.calendar-event-details-popover--editable > \.ui-modal-header \{[\s\S]*shrink-0/,
-    );
     expect(css).not.toContain("w-[min(28rem,calc(100vw-1.5rem))]");
     expect(css).not.toContain("w-[min(34rem,calc(100vw-1.5rem))]");
   });

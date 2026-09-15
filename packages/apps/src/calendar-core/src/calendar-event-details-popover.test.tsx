@@ -147,11 +147,11 @@ describe("CalendarEventDetailsPopover", () => {
         onDelete: vi.fn(),
       },
     });
-    const popover = screen.getByRole("dialog", { name: defaultCalendarLabels.editEventTitle });
+    const popover = screen.getByRole("dialog", { name: /Dentist/i });
     expect(popover.className).toContain("calendar-event-details-popover--editable");
     expect(
-      screen.getByRole("heading", { name: defaultCalendarLabels.editEventTitle }),
-    ).toBeTruthy();
+      screen.queryByRole("heading", { name: defaultCalendarLabels.editEventTitle }),
+    ).toBeNull();
     expect(popover.querySelector("event-card")).toBeNull();
     expect(screen.getByDisplayValue(preview!.form.title)).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeTruthy();
@@ -246,21 +246,20 @@ describe("CalendarEventDetailsPopover", () => {
         onSave,
       },
     });
-    const popover = screen.getByRole("dialog", { name: defaultCalendarLabels.createEventTitle });
+    const popover = screen.getByRole("dialog");
     expect(popover.className).toContain("calendar-event-details-popover--editable");
     expect(
-      screen.getByRole("heading", { name: defaultCalendarLabels.createEventTitle }),
-    ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+      screen.queryByRole("heading", { name: defaultCalendarLabels.createEventTitle }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
     expect(popover.querySelector(".calendar-event-dialog__fields")).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.delete })).toBeNull();
   });
 
-  it("shows Edit event header chrome on the desktop editable popover", { timeout: 10_000 }, () => {
+  it("keeps the desktop editable popover headerless", { timeout: 10_000 }, () => {
     const preview = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
     expect(preview).not.toBeNull();
-    const onClose = vi.fn();
     renderPopover({
       preview,
       canEdit: true,
@@ -268,18 +267,17 @@ describe("CalendarEventDetailsPopover", () => {
         mode: "edit",
         form: preview!.form,
         onChange: vi.fn(),
-        onClose,
+        onClose: vi.fn(),
         onSave: vi.fn(),
         onDelete: vi.fn(),
       },
     });
-    const popover = screen.getByRole("dialog", { name: defaultCalendarLabels.editEventTitle });
+    const popover = screen.getByRole("dialog", { name: /Dentist/i });
     expect(popover.className).toContain("calendar-event-details-popover--editable");
     expect(
-      screen.getByRole("heading", { name: defaultCalendarLabels.editEventTitle }),
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(onClose).toHaveBeenCalled();
+      screen.queryByRole("heading", { name: defaultCalendarLabels.editEventTitle }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
   });
 
   it(
@@ -694,11 +692,11 @@ describe("CalendarEventDetailsPopover", () => {
           sessionEmail: "me@example.test",
         },
       });
-      const popover = screen.getByRole("dialog", { name: defaultCalendarLabels.editEventTitle });
+      const popover = screen.getByRole("dialog", { name: /Yoga/i });
       expect(popover.className).toContain("calendar-event-details-popover--editable");
       expect(
-        screen.getByRole("heading", { name: defaultCalendarLabels.editEventTitle }),
-      ).toBeTruthy();
+        screen.queryByRole("heading", { name: defaultCalendarLabels.editEventTitle }),
+      ).toBeNull();
       expect(popover.querySelector("event-card")).toBeNull();
       const title = screen.getByDisplayValue("Yoga") as HTMLInputElement;
       expect(title.disabled).toBe(true);

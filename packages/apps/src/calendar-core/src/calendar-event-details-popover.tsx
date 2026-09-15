@@ -40,11 +40,8 @@ import {
 } from "@/calendar-core/src/calendar-event-form";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
-import { DialogCloseButton } from "@/ui/dialog-close-button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import "@/lib/calendar-elements/EventCard/EventCard";
-import "@/ui/modal-surface.css";
-import "@/ui/modal-title.css";
 import "./calendar-event-details-popover.css";
 
 export type CalendarEventDetailsPopoverEditProps = Omit<
@@ -142,11 +139,11 @@ export function CalendarEventDetailsPopover({
   const showMeet = Boolean(form.meetingUrl.trim());
   const showFooter = !editable && (showMeet || showDelete || showRsvp);
   const dialogLabel = editable ? edit?.form.title.trim() || title : title;
-  // Create keeps "New event"; edit + invitation share "Edit event" (same form chrome).
+  // Mobile Dialog shell only — desktop popover stays headerless (event title via aria-label).
   const shellTitle =
     editable && editMode === "create"
       ? labels.createEventTitle
-      : editable
+      : editable && editMode === "edit"
         ? labels.editEventTitle
         : dialogLabel;
   const surfaceBusy = busy || Boolean(edit?.busy);
@@ -393,27 +390,13 @@ export function CalendarEventDetailsPopover({
         ]
           .filter(Boolean)
           .join(" ")}
-        aria-label={editable ? shellTitle : dialogLabel}
+        aria-label={dialogLabel}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           const root = event.currentTarget;
           if (root instanceof HTMLElement) root.focus();
         }}
       >
-        {editable ? (
-          <>
-            <div className="ui-modal-header">
-              <h2 className="ui-modal-title">{shellTitle}</h2>
-            </div>
-            <DialogCloseButton
-              type="button"
-              disabled={surfaceBusy}
-              onClick={() => {
-                if (!surfaceBusy) dismiss();
-              }}
-            />
-          </>
-        ) : null}
         {pendingSyncBadge}
         {body}
       </PopoverContent>
