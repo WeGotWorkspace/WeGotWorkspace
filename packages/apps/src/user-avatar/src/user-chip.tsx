@@ -49,6 +49,7 @@ export function UserChip({
 
   const chip = (
     <span
+      role="group"
       className={cn("user-chip", controlSizeClassName("user-chip", size), className)}
       aria-label={a11yName}
       tabIndex={statusLabel ? 0 : undefined}

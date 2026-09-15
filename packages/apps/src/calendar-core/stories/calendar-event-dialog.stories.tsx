@@ -76,8 +76,9 @@ export const Default: Story = {
     const canvas = within(canvasElement.ownerDocument.body);
     await expect(meetMenuTrigger(canvas)).toBeEnabled();
     await expect(canvas.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toBeTruthy();
+    await expect(canvas.getByLabelText(defaultCalendarLabels.eventLocationLabel)).toBeTruthy();
     await expect(
-      canvas.getByPlaceholderText(defaultCalendarLabels.eventLocationLabel),
+      canvas.getByPlaceholderText(defaultCalendarLabels.eventLocationPlaceholder),
     ).toBeTruthy();
   },
 };
