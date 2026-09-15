@@ -32,6 +32,15 @@ describe("CalendarListView heading CSS", () => {
     expect(css).toMatch(/\.agenda-shell \{[\s\S]*padding-bottom:\s*var\(--_lc-list-end-pad/);
   });
 
+  it("caps the agenda column so details popover can use the end gutter", () => {
+    expect(css).toMatch(
+      /\.agenda-shell \{[\s\S]*max-inline-size:\s*min\(100%,\s*var\(--_lc-list-max-inline-size,\s*36rem\)\)/,
+    );
+    expect(css).toMatch(
+      /@container \(min-width:\s*56rem\)\s*\{[\s\S]*\.agenda-shell \{[\s\S]*calc\(100%\s*-\s*var\(--_lc-list-details-gutter,\s*26rem\)\)/,
+    );
+  });
+
   it("keeps the host as the agenda scrollport", () => {
     expect(css).toMatch(/:host \{[\s\S]*?@apply[^;]*overflow-y-auto/);
   });
@@ -44,5 +53,26 @@ describe("CalendarListView heading CSS", () => {
     expect(css).toMatch(
       /\.agenda-event-list\s*\{[\s\S]*?content-visibility:\s*auto;[\s\S]*?contain-intrinsic-block-size:\s*auto 130px;/,
     );
+  });
+
+  it("keeps rest/selected wash-free and adds a subtle accent mix on hover", () => {
+    expect(css).toMatch(
+      /\.agenda-event-item event-card\s*\{[\s\S]*--_lc-event-card-bg-default:\s*transparent/,
+    );
+    expect(css).toMatch(
+      /\.agenda-event-item event-card\s*\{[\s\S]*--_lc-event-card-bg-active:\s*transparent/,
+    );
+    expect(css).toMatch(
+      /\.agenda-event-item event-card:hover\s*\{[\s\S]*--_lc-event-card-bg-active:\s*color-mix\(\s*in srgb,\s*var\(--_lc-event-accent-color(?:,\s*CanvasText)?\)\s*10%,\s*var\(--_lc-surface-bg/,
+    );
+    expect(css).toMatch(
+      /\.agenda-event-item event-card\[data-selected\]\s*\{[\s\S]*--_lc-event-card-bg-active:\s*transparent/,
+    );
+    expect(css).toMatch(
+      /\.agenda-event-item event-card\s*\{[\s\S]*--_lc-event-card-accent-color:\s*var\(--_lc-event-accent-color\)/,
+    );
+    expect(css).not.toMatch(/--_lc-event-card-bg-default:\s*var\(--_lc-event-bg\)/);
+    expect(css).not.toMatch(/--_lc-event-card-bg-active:\s*var\(--_lc-event-bg-active/);
+    expect(css).not.toMatch(/--_lc-event-card-bg-active:\s*var\(--_lc-event-bg-hover/);
   });
 });

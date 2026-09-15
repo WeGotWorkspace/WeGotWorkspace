@@ -16,6 +16,22 @@
   @apply box-border w-full min-h-full;
   /* Workspace floating search overlays the bottom; inherit scroll-end room. */
   padding-bottom: var(--_lc-list-end-pad, 0px);
+  /* Cap the agenda column on wide panes so event-details (≤24rem editable)
+     can sit in the end gutter without covering list rows. Timeline/grid views
+     do not use this shell. Workspace may override --_lc-list-max-inline-size. */
+  max-inline-size: min(100%, var(--_lc-list-max-inline-size, 36rem));
+}
+
+/* When the list pane is wide enough for cards + an editable details popover
+   (~24rem + margin), shrink further so the preferred side=right placement
+   lands in empty space instead of flipping over titles. */
+@container (min-width: 56rem) {
+  .agenda-shell {
+    max-inline-size: min(
+      var(--_lc-list-max-inline-size, 36rem),
+      calc(100% - var(--_lc-list-details-gutter, 26rem))
+    );
+  }
 }
 
 .agenda-day {
@@ -58,9 +74,25 @@
   scroll-margin-top: 2.5rem;
 }
 
+/* List rows: accent bar + tinted text; rest/selected stay transparent (no
+   always-on calendar wash). Hover gets a light accent→surface mix as click
+   affordance. Transparent default/active beat EventCard :host(:hover)/
+   [data-selected] remaps to --_lc-event-bg-hover unless overridden below. */
 .agenda-event-item event-card {
-  --_lc-event-card-bg-default: var(--_lc-event-bg);
-  --_lc-event-card-bg-active: var(--_lc-event-bg-active, var(--_lc-event-bg));
+  --_lc-event-card-bg-default: transparent;
+  --_lc-event-card-bg-active: transparent;
   --_lc-event-card-accent-color: var(--_lc-event-accent-color);
   --_lc-event-card-text-color: var(--_lc-event-text-color, CanvasText);
+}
+
+.agenda-event-item event-card[data-selected] {
+  --_lc-event-card-bg-active: transparent;
+}
+
+.agenda-event-item event-card:hover {
+  --_lc-event-card-bg-active: color-mix(
+    in srgb,
+    var(--_lc-event-accent-color, CanvasText) 10%,
+    var(--_lc-surface-bg, light-dark(#fff, #222))
+  );
 }
