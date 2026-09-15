@@ -218,13 +218,15 @@ final class CalendarSchedulingNotificationService
             return $this->isOwnParticipant($username, (string) $vevent->ORGANIZER);
         }
 
-        if ($vevent instanceof VEvent && $this->isListedAttendee($username, $vevent)) {
-            return false;
+        // Missing ORGANIZER: only keep rows where this user is an ATTENDEE.
+        // Outbound copies (and post-materialization owned events) must stay out.
+        if ($vevent instanceof VEvent) {
+            return ! $this->isListedAttendee($username, $vevent);
         }
 
         $eventId = $notification['eventId'] ?? null;
         if (! is_string($eventId) || $eventId === '') {
-            return $vevent instanceof VEvent && ! $this->isListedAttendee($username, $vevent);
+            return true;
         }
 
         try {
@@ -307,7 +309,15 @@ final class CalendarSchedulingNotificationService
         $copy = $uid !== '' ? $this->findEventByUid($username, $uid) : null;
         // Inbox-only REQUESTs (copy missing) cannot be RSVP'd — materialize the
         // invitee calendar object so the UI gets an eventId and respond works.
-        if ($copy === null && $uid !== '' && $method === 'REQUEST') {
+        // Skip materialization when this principal is not an ATTENDEE (outbound /
+        // organizer-shaped rows with a missing ORGANIZER must not create a copy).
+        if (
+            $copy === null
+            && $uid !== ''
+            && $method === 'REQUEST'
+            && $vevent instanceof VEvent
+            && $this->isListedAttendee($username, $vevent)
+        ) {
             $copy = $this->ensureInviteeEventCopy($username, $raw, $uid);
         }
 

@@ -141,7 +141,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
 
     public function test_post_accepts_finite_expires_at(): void
     {
-        $expires = Carbon::parse('2026-09-15T12:00:00Z');
+        $expires = Carbon::now('UTC')->addDays(7)->startOfSecond();
 
         $this->reserveMeetRoom(self::ROOM, extra: ['expiresAt' => $expires->toISOString()])
             ->assertCreated()
@@ -152,11 +152,12 @@ final class MeetReservationTest extends WgwDatabaseTestCase
     {
         $this->reserveMeetRoom(self::ROOM, ownerPrincipal: 'u:bob')->assertCreated();
 
+        $expires = Carbon::now('UTC')->addDays(14)->startOfSecond();
         $this->withBearer($this->carolBearerToken())
             ->postJson('/api/v1/meetings/rooms', [
                 'room' => self::ROOM,
                 'ownerPrincipal' => 'u:carol',
-                'expiresAt' => '2026-10-01T00:00:00Z',
+                'expiresAt' => $expires->toISOString(),
             ])
             ->assertCreated()
             ->assertExactJson([
@@ -173,13 +174,13 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'createdBy' => 'u:bob',
             ]);
         $this->assertTrue(
-            Carbon::parse((string) $status->json('expiresAt'))->equalTo(Carbon::parse('2026-10-01T00:00:00Z')),
+            Carbon::parse((string) $status->json('expiresAt'))->equalTo($expires),
         );
     }
 
     public function test_post_omit_expires_at_on_existing_row_does_not_wipe_clock(): void
     {
-        $expires = Carbon::parse('2026-09-15T12:00:00Z');
+        $expires = Carbon::now('UTC')->addDays(3)->startOfSecond();
         $this->reserveMeetRoom(self::ROOM, extra: ['expiresAt' => $expires->toISOString()])
             ->assertCreated();
 
