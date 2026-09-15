@@ -80,6 +80,26 @@ describe("Input", () => {
     );
   });
 
+  it("shares md font-size tokens across Input, Textarea, and control-surface", () => {
+    const mdBlock = inputCss.match(
+      /\.select-trigger--size-md,\s*\.input--size-md,\s*\.control-surface--size-md \{[\s\S]*?\n\}/,
+    )?.[0];
+    expect(mdBlock).toBeDefined();
+    expect(mdBlock).toMatch(/font-size:\s*calc\(var\(--input-font-size/);
+    expect(inputCss).toMatch(
+      /\.textarea--size-md \{[\s\S]*font-size:\s*calc\(var\(--input-font-size/,
+    );
+    expect(inputCss).toMatch(
+      /\.control-surface,\s*\.input,\s*\.textarea,\s*\.select-trigger \{[\s\S]*font-size:\s*var\(--input-font-size/,
+    );
+  });
+
+  it("inherits font-size into WebKit time datetime-edit fields", () => {
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]::-webkit-datetime-edit(?:,\s*\n\.input\[type="time"\]::-webkit-[\w-]+)* \{[\s\S]*font-size:\s*inherit/,
+    );
+  });
+
   it("renders a leading search icon and no clear button when empty", () => {
     const { container } = render(
       <Input variant="search" size="sm" value="" onChange={() => {}} aria-label="Search" />,

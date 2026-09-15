@@ -47,4 +47,10 @@ describe("product UI font tokens", () => {
   it("applies the shared sans token on body", () => {
     expect(css).toMatch(/body \{[\s\S]*font-family:\s*var\(--font-sans\)/);
   });
+
+  it("opts shared Input/Textarea classes out of the iOS 1rem floor", () => {
+    expect(css).toMatch(/:not\(\.input\):not\(\.input__field\)/);
+    expect(css).toMatch(/textarea:not\(\.note-detail-view__title\):not\(\.textarea\)/);
+    expect(css).toMatch(/font-size:\s*max\(1rem,\s*100%\)\s*!important/);
+  });
 });

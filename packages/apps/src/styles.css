@@ -280,15 +280,17 @@
   color: var(--color-ink);
 }
 
-/* iOS Safari zooms focused fields under 16px; keep text entry ≥1rem.
- * Document titles opt out — they use title-scale (`--text-4xl`).
- * Add-tag field opts out — it must match the add-tag button (`--tag-font-size`). */
+/* iOS Safari zooms focused fields under 16px; keep unmanaged text entry ≥1rem.
+ * Opt-outs (own type scale via size classes / tokens):
+ * - `.input` / `.input__field` / `.textarea` — shared control size font-size
+ * - `.note-detail-view__title` — title-scale (`--text-4xl`)
+ * - `.tag-group__input` — must match add-tag button (`--tag-font-size`) */
 input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not(
     [type="radio"]
   ):not([type="file"]):not([type="hidden"]):not([type="range"]):not([type="color"]):not(
     [type="image"]
-  ):not(.note-detail-view__title):not(.tag-group__input),
-textarea:not(.note-detail-view__title),
+  ):not(.note-detail-view__title):not(.tag-group__input):not(.input):not(.input__field),
+textarea:not(.note-detail-view__title):not(.textarea),
 select {
   font-size: max(1rem, 100%) !important;
 }
