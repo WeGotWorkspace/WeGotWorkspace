@@ -28,6 +28,7 @@
   --card-title-icon-color: var(--calendar-accent);
   --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   /* Desktop New event Dialog only — matches Dialog max-w-lg (~32rem). Editable
    * details popover keeps its own narrower token in details-popover.css. */
   --calendar-event-dialog-max-inline-size: 32rem;

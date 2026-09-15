@@ -220,8 +220,10 @@ export const Create: Story = {
     await expect(canvas.queryByRole("button", { name: defaultContactsLabels.addUrl })).toBeNull();
     const phone = canvas.getByLabelText(defaultContactsLabels.phoneNumber);
     fireEvent.change(phone, { target: { value: "555" } });
-    await expect(phone).toHaveValue("555");
-    await expect(canvas.getAllByLabelText(defaultContactsLabels.phoneNumber)).toHaveLength(2);
+    const phones = canvas.getAllByLabelText(defaultContactsLabels.phoneNumber);
+    await expect(phones).toHaveLength(2);
+    await expect(phones[0]).toHaveValue("555");
+    await expect(phones[0]).toHaveFocus();
     await expect(
       canvas.getAllByRole("combobox", {
         name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,

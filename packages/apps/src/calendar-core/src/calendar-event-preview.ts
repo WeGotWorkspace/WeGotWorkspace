@@ -474,12 +474,18 @@ export function measureCalendarCreatePreviewOrigin(
     const node = stack.pop();
     if (!node || seen.has(node)) continue;
     seen.add(node);
-    if (node instanceof Element && node.classList.contains("create-preview")) {
-      const origin = selectionOriginFromElement(node);
-      if (origin) return origin;
-    }
-    if ("shadowRoot" in node && node.shadowRoot) {
-      stack.push(node.shadowRoot);
+    if (node instanceof Element) {
+      if (node.classList.contains("create-preview")) {
+        const origin = selectionOriginFromElement(node);
+        if (origin) return origin;
+      }
+      if (node.shadowRoot) {
+        stack.push(node.shadowRoot);
+      }
+      for (const child of Array.from(node.children)) {
+        stack.push(child);
+      }
+      continue;
     }
     if ("children" in node) {
       for (const child of Array.from(node.children)) {
