@@ -8,6 +8,7 @@ import {
   MapPin,
   Repeat,
   StickyNote,
+  Sun,
   Trash2,
   Type,
   Users,
@@ -433,7 +434,7 @@ export function CalendarEventForm({
                   className="calendar-event-dialog__field calendar-event-dialog__field--all-day"
                   label={labels.eventAllDayLabel}
                   labelMode="icon"
-                  icon={fieldIcon(<CalendarDays className="size-3.5" aria-hidden />)}
+                  icon={fieldIcon(<Sun className="size-3.5" aria-hidden />)}
                 >
                   <div className="calendar-event-dialog__all-day">
                     <Switch
@@ -531,18 +532,20 @@ export function CalendarEventForm({
                         <SelectItem value="count">{labels.eventRecurrenceEndsAfter}</SelectItem>
                       </SelectContent>
                     </Select>
-                    <div className="calendar-event-dialog__recurrence-ends-extra">
-                      {form.recurrenceEnds !== "count" ? (
+                    {form.recurrenceEnds === "until" ? (
+                      <div className="calendar-event-dialog__recurrence-ends-extra">
                         <LocaleDatePicker
                           value={form.recurrenceUntilDate || form.startDate}
                           locale={locale}
                           size={controlSize}
                           label={labels.eventRecurrenceEndsOnDate}
                           onChange={(next) => set("recurrenceUntilDate", next)}
-                          disabled={form.recurrenceEnds !== "until" || fieldsDisabled}
+                          disabled={fieldsDisabled}
                         />
-                      ) : null}
-                      {form.recurrenceEnds === "count" ? (
+                      </div>
+                    ) : null}
+                    {form.recurrenceEnds === "count" ? (
+                      <div className="calendar-event-dialog__recurrence-ends-extra">
                         <div className="calendar-event-dialog__recurrence-count">
                           <Input
                             type="number"
@@ -561,8 +564,8 @@ export function CalendarEventForm({
                             {labels.eventRecurrenceEndsCountSuffix}
                           </span>
                         </div>
-                      ) : null}
-                    </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

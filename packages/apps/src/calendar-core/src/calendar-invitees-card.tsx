@@ -19,15 +19,13 @@ import {
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
-import { ShareAccessRow } from "@/share-ui/share-access-row";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
-import { SharePrincipalMark } from "@/share-ui/share-principal-mark";
 import {
   SharePrincipalSearchDropdown,
   type ShareSearchOption,
 } from "@/share-ui/share-principal-search-dropdown";
+import { UserChip } from "@/user-avatar/src/user-chip";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 import "@/share-ui/share-ui.css";
@@ -116,29 +114,36 @@ function rsvpToneClass(status: CalendarParticipationStatus): string | undefined 
   }
 }
 
-function InviteeStatusMark({
-  label,
+function ParticipantChip({
+  title,
+  statusLabel,
   icon: Icon,
   toneClass,
+  size,
+  removable,
+  removeLabel,
+  onRemove,
 }: {
-  label: string;
+  title: string;
+  statusLabel: string;
   icon: LucideIcon;
   toneClass?: string;
+  size: ControlSize;
+  removable?: boolean;
+  removeLabel: string;
+  onRemove?: () => void;
 }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="calendar-invitees-status-mark-trigger" tabIndex={0} aria-label={label}>
-          <SharePrincipalMark
-            principalType="user"
-            displayName={label}
-            icon={<Icon aria-hidden />}
-            className={cn("calendar-invitees-status-mark", toneClass)}
-          />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
+    <UserChip
+      label={title}
+      statusLabel={statusLabel}
+      markIcon={<Icon aria-hidden />}
+      size={size}
+      className={cn("calendar-invitees-card__chip", toneClass)}
+      removable={removable && !!onRemove}
+      onRemove={onRemove}
+      removeAriaLabel={removeLabel}
+    />
   );
 }
 
@@ -250,21 +255,17 @@ export function CalendarInviteesCard({
       </p>
     ) : null;
 
-  const rows = (
-    <>
+  const chips = (
+    <div className="calendar-invitees-card__chips">
       {organizer ? (
-        <ShareAccessRow
+        <ParticipantChip
           key={`organizer:${organizer.email}`}
-          mark={
-            <InviteeStatusMark
-              label={labels.eventAttendeesOrganizer}
-              icon={Crown}
-              toneClass="calendar-invitees-status-mark--organizer"
-            />
-          }
           title={organizer.name || organizer.email}
-          showRemove={!readOnly}
-          removeDisabled
+          statusLabel={labels.eventAttendeesOrganizer}
+          icon={Crown}
+          toneClass="calendar-invitees-status-mark--organizer"
+          size={controlSize}
+          removable={false}
           removeLabel={labels.eventAttendeesRemove}
         />
       ) : null}
@@ -276,12 +277,15 @@ export function CalendarInviteesCard({
         const StatusIcon = calendarRsvpStatusIcon(attendee.participationStatus) ?? Clock;
 
         return (
-          <ShareAccessRow
+          <ParticipantChip
             key={attendee.email}
-            mark={<InviteeStatusMark label={status} icon={StatusIcon} toneClass={toneClass} />}
             title={title}
+            statusLabel={status}
+            icon={StatusIcon}
+            toneClass={toneClass}
+            size={controlSize}
+            removable={!locked}
             removeLabel={labels.eventAttendeesRemove}
-            removeDisabled={locked}
             onRemove={
               readOnly
                 ? undefined
@@ -295,7 +299,7 @@ export function CalendarInviteesCard({
           />
         );
       })}
-    </>
+    </div>
   );
 
   if (presentation === "field") {
@@ -307,7 +311,7 @@ export function CalendarInviteesCard({
         icon={fieldIcon ?? <Users className="size-3.5" aria-hidden />}
       >
         <div className="calendar-invitees-card__field-body">
-          {rows}
+          {chips}
           {addControl != null ? (
             <div className="calendar-invitees-card__add">{addControl}</div>
           ) : null}
@@ -326,7 +330,7 @@ export function CalendarInviteesCard({
       footer={footer}
       addControl={addControl}
     >
-      {rows}
+      {chips}
     </ShareAccessCard>
   );
 }

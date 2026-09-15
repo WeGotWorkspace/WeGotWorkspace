@@ -85,10 +85,8 @@ describe("Input", () => {
       /\.select-trigger--size-md,\s*\.input--size-md,\s*\.control-surface--size-md \{[\s\S]*?\n\}/,
     )?.[0];
     expect(mdBlock).toBeDefined();
-    expect(mdBlock).toMatch(/font-size:\s*calc\(var\(--input-font-size/);
-    expect(inputCss).toMatch(
-      /\.textarea--size-md \{[\s\S]*font-size:\s*calc\(var\(--input-font-size/,
-    );
+    expect(mdBlock).toMatch(/font-size:\s*var\(--input-font-size-md/);
+    expect(inputCss).toMatch(/\.textarea--size-md \{[\s\S]*font-size:\s*var\(--input-font-size-md/);
     expect(inputCss).toMatch(
       /\.control-surface,\s*\.input,\s*\.textarea,\s*\.select-trigger \{[\s\S]*font-size:\s*var\(--input-font-size/,
     );
@@ -101,11 +99,13 @@ describe("Input", () => {
   });
 
   it("pins the time picker indicator to the trailing edge like LocaleDatePicker", () => {
-    expect(inputCss).toMatch(/\.input\[type="time"\]\s*\{[\s\S]*justify-between/);
+    expect(inputCss).toMatch(/\.input\[type="time"\]\s*\{[\s\S]*relative/);
     expect(inputCss).toMatch(
-      /\.input\[type="time"\]::-webkit-calendar-picker-indicator\s*\{[\s\S]*margin-inline-start:\s*auto/,
+      /\.input\[type="time"\]::-webkit-calendar-picker-indicator\s*\{[\s\S]*inset-inline-end:\s*0\.4rem/,
     );
-    expect(inputCss).toMatch(/\.input\[type="time"\]::-webkit-datetime-edit\s*\{[\s\S]*flex-1/);
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]::-webkit-datetime-edit\s*\{[\s\S]*padding-inline-end:\s*1\.25rem/,
+    );
   });
 
   it("renders a leading search icon and no clear button when empty", () => {

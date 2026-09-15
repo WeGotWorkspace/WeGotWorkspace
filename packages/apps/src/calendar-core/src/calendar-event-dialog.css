@@ -201,10 +201,6 @@
   @apply flex flex-col gap-2;
 }
 
-.calendar-dialog-surface .calendar-invitees-card--field .card__row {
-  @apply rounded-md;
-}
-
 /*
  * Invitees / Alarms / Description stay direct participants in `.fields` gap
  * (no nested secondary gap doubling the rhythm).
@@ -339,6 +335,11 @@
 
 .calendar-dialog-surface .calendar-event-dialog__recurrence-ends {
   @apply grid items-center gap-2;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.calendar-dialog-surface
+  .calendar-event-dialog__recurrence-ends:has(.calendar-event-dialog__recurrence-ends-extra) {
   grid-template-columns: minmax(6.5rem, 1fr) minmax(8.5rem, 1fr);
 }
 

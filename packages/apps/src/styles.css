@@ -185,7 +185,19 @@
   --control-height-xl: 2.75rem;
   --input-height: var(--control-height-md);
   --input-padding-x: 0.75rem;
+  /*
+   * Control type scale (shared by Input, Button, Select, UserChip, …).
+   * `--input-font-size` remains the unset/base fallback (body-adjacent).
+   * Size steps: xs=12 / sm=14 / md=14 / lg=16 / xl=16.
+   */
   --input-font-size: 1rem;
+  --input-font-size-xs: 0.75rem;
+  --input-font-size-sm: 0.875rem;
+  --input-font-size-md: 0.875rem;
+  --input-font-size-lg: 1rem;
+  --input-font-size-xl: 1rem;
+  /* Switch off track + pending UserChip wash — one shared gray. */
+  --switch-off-bg: color-mix(in oklab, var(--color-ink) 18%, var(--color-cream, #ffffff));
 }
 
 .dark {

@@ -1,37 +1,70 @@
 /*
- * RSVP chips reuse Callout severity hues (success / error) and the shared
- * docs/info blue already used for accent chips — applied via Tag --tag-* vars.
- * Invitees-card status marks keep these tokens; RSVP actions use SegmentedControl
- * severity instead of selected-action --tag-* washes.
+ * RSVP / participant chip tones. Sets `--tag-*` (legacy marks) and
+ * `--user-chip-*` (UserChip fill + border) so the whole chip washes, not only
+ * the avatar circle.
  */
 .calendar-rsvp-status--accepted,
 .calendar-invitees-rsvp-tag--accepted,
 .calendar-rsvp-select--accept.calendar-rsvp-select--selected {
-  --tag-bg: color-mix(in oklab, #3a8f5a 18%, transparent);
   --tag-fg: #3a8f5a;
+  --tag-bg: color-mix(in oklab, #3a8f5a 18%, var(--color-cream, #fff));
+  --user-chip-fg: #3a8f5a;
+  --user-chip-bg: color-mix(in oklab, #3a8f5a 18%, var(--color-cream, #fff));
+  --user-chip-border: color-mix(in oklab, #3a8f5a 42%, transparent);
 }
 
 .calendar-rsvp-status--tentative,
-.calendar-invitees-rsvp-tag--tentative,
+.calendar-invitees-rsvp-tag--tentative {
+  /* Dark on white/transparent — same neutral chrome as unresponded chips. */
+  --tag-fg: var(--color-ink);
+  --tag-bg: transparent;
+  --user-chip-fg: var(--color-ink);
+  --user-chip-bg: transparent;
+  --user-chip-border: var(
+    --control-border-color,
+    color-mix(in oklab, var(--color-ink) 22%, transparent)
+  );
+}
+
 .calendar-rsvp-select--maybe.calendar-rsvp-select--selected {
-  --tag-bg: color-mix(in oklab, #2563eb 16%, transparent);
   --tag-fg: #2563eb;
+  --tag-bg: color-mix(in oklab, #2563eb 16%, var(--color-cream, #fff));
+  --user-chip-fg: #2563eb;
+  --user-chip-bg: color-mix(in oklab, #2563eb 16%, var(--color-cream, #fff));
+  --user-chip-border: color-mix(in oklab, #2563eb 42%, transparent);
 }
 
 .calendar-rsvp-status--declined,
 .calendar-invitees-rsvp-tag--declined,
 .calendar-rsvp-select--decline.calendar-rsvp-select--selected {
-  --tag-bg: color-mix(in oklab, #b14242 18%, transparent);
   --tag-fg: #b14242;
+  --tag-bg: color-mix(in oklab, #b14242 18%, var(--color-cream, #fff));
+  --user-chip-fg: #b14242;
+  --user-chip-bg: color-mix(in oklab, #b14242 18%, var(--color-cream, #fff));
+  --user-chip-border: color-mix(in oklab, #b14242 42%, transparent);
 }
 
 .calendar-invitees-status-mark--organizer {
-  --tag-bg: color-mix(in oklab, var(--share-dialog-accent, var(--color-ink)) 16%, transparent);
-  --tag-fg: var(--share-dialog-accent, var(--color-ink));
+  --tag-fg: var(--calendar-accent, #6366f1);
+  --tag-bg: color-mix(in oklab, var(--calendar-accent, #6366f1) 18%, var(--color-cream, #fff));
+  --user-chip-fg: var(--calendar-accent, #6366f1);
+  --user-chip-bg: color-mix(
+    in oklab,
+    var(--calendar-accent, #6366f1) 18%,
+    var(--color-cream, #fff)
+  );
+  --user-chip-border: color-mix(in oklab, var(--calendar-accent, #6366f1) 42%, transparent);
 }
 
 .calendar-invitees-status-mark--pending,
 .calendar-invitees-status-mark--delegated {
-  --tag-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --tag-fg: color-mix(in oklab, var(--color-ink) 72%, transparent);
+  /* Dark on white/transparent — no gray wash. */
+  --tag-fg: var(--color-ink);
+  --tag-bg: transparent;
+  --user-chip-fg: var(--color-ink);
+  --user-chip-bg: transparent;
+  --user-chip-border: var(
+    --control-border-color,
+    color-mix(in oklab, var(--color-ink) 22%, transparent)
+  );
 }

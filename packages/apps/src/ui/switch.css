@@ -30,10 +30,7 @@
   max-height: var(--switch-track-height);
   overflow: hidden;
   border-radius: var(--switch-track-radius, 999px);
-  background-color: var(
-    --switch-off-bg,
-    color-mix(in oklab, var(--color-ink) 18%, var(--color-cream, #ffffff))
-  );
+  background-color: var(--switch-off-bg);
   cursor: pointer;
   transition: background-color 150ms ease;
   --tw-ring-color: var(--switch-ring-color, var(--ring));
@@ -67,7 +64,6 @@
   margin-inline-start: var(--switch-pad);
   border-radius: var(--switch-thumb-radius, 999px);
   background-color: var(--switch-thumb-bg, var(--color-cream, #ffffff));
-  box-shadow: 0 1px 2px color-mix(in oklab, var(--color-ink) 22%, transparent);
   transform: translateX(0);
   transition: transform 150ms ease;
 }
