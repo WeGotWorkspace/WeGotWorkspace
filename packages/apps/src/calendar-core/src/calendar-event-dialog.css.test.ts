@@ -172,3 +172,16 @@ describe("calendar event dialog Meet field", () => {
     expect(css).not.toMatch(/\.calendar-event-dialog__meet-readonly \{[\s\S]*flex-col/);
   });
 });
+
+describe("calendar event dialog invitation footer", () => {
+  it("end-aligns RSVP actions and omits the series hint in invitation mode", () => {
+    expect(formTsx).toContain('mode === "invitation"');
+    expect(formTsx).toContain("calendar-event-dialog__invitation-rsvp");
+    expect(formTsx).toContain("CalendarRsvpActions");
+    expect(formTsx).not.toMatch(/calendar-event-dialog__invitation-rsvp[\s\S]*rsvpSeriesHint/);
+    expect(css).toMatch(
+      /\.calendar-dialog-surface \.calendar-event-dialog__invitation-rsvp \{[\s\S]*justify-end/,
+    );
+    expect(css).not.toMatch(/calendar-event-dialog__rsvp-hint/);
+  });
+});

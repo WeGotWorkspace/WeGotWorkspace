@@ -17,6 +17,7 @@ describe("CalendarWorkspace popover → resize selection", () => {
     expect(workspace).toContain("onEventTimesDraft");
     expect(workspace).toContain("resolveLiveEventPreview");
     expect(workspace).toContain("openInvitationPreview");
-    expect(workspace).toContain("hideRsvp");
+    expect(workspace).toContain("invitation: true");
+    expect(workspace).toContain('mode: "invitation"');
   });
 });

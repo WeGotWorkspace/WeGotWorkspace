@@ -493,7 +493,7 @@ describe("calendar invitation picker reuse", () => {
     expect(workspace).toContain("onToggle={toggleInvitationsOpen}");
     expect(workspace).toContain("refreshIfIdle");
     expect(workspace).toContain("onOpenEvent={openInvitationPreview}");
-    expect(workspace).toContain("hideRsvp: true");
+    expect(workspace).toContain("invitation: true");
     expect(workspace).not.toMatch(/onOpenEvent=\{[\s\S]*openEditEventKey/);
   });
 

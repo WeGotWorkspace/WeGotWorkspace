@@ -68,7 +68,9 @@ import {
   personalOwnerLabel,
 } from "@/calendar-core/src/calendar-workspace-props";
 import {
+  isSessionEventInvitee,
   isSessionEventOrganizer,
+  normalizeParticipationStatus,
   organizerAddress,
   sessionEventInviteeStatus,
   type CalendarAttendee,
@@ -423,7 +425,8 @@ export function CalendarWorkspace({
   const [eventPreview, setEventPreview] = useState<{
     model: CalendarEventPreviewModel;
     origin?: CalendarEventSelectionOrigin;
-    hideRsvp?: boolean;
+    /** When true, the popover hosts the invitee form (RSVP + calendar picker). */
+    invitation?: boolean;
     /** When true, the popover hosts the editor form for this selection. */
     interactiveEdit?: boolean;
   } | null>(null);
@@ -602,16 +605,17 @@ export function CalendarWorkspace({
       });
       if (!model) return;
       const calendar = calendars.find((entry) => entry.id === model.form.calendarId);
+      const sessionIsOrganizer = isSessionEventOrganizer(
+        model.form.attendees,
+        organizerAddress(session.user)?.email,
+        invitations.invitees,
+      );
       const canInteractiveEdit =
         Boolean(operations) &&
         !isCalendarEventFormReadOnly({
           mode: "edit",
           calendar,
-          isOrganizer: isSessionEventOrganizer(
-            model.form.attendees,
-            organizerAddress(session.user)?.email,
-            invitations.invitees,
-          ),
+          isOrganizer: sessionIsOrganizer,
         });
       setEventTimesDraft(null);
       if (canInteractiveEdit) {
@@ -620,6 +624,15 @@ export function CalendarWorkspace({
         return;
       }
       closeEditor();
+      const sessionIsInvitee = isSessionEventInvitee(
+        model.form.attendees,
+        organizerAddress(session.user)?.email,
+        invitations.invitees,
+      );
+      if (sessionIsInvitee) {
+        setEventPreview({ model, origin, invitation: true });
+        return;
+      }
       setEventPreview({ model, origin });
     },
     [
@@ -641,7 +654,7 @@ export function CalendarWorkspace({
       const notification = inviteeNotifications.find(
         (row) => row.eventId === key || row.id === key,
       );
-      const model = notification
+      let model = notification
         ? resolveInvitationEventPreview(notification, {
             events: data.events,
             surfaceEvents: surface?.events,
@@ -655,16 +668,45 @@ export function CalendarWorkspace({
             pendingDeletedEventIds,
           });
       if (!model) return;
+      // Inbox fallback models only carry the organizer — seed the session invitee for RSVP chrome.
+      if (notification && sessionEmail) {
+        const alreadyInvitee = isSessionEventInvitee(
+          model.form.attendees,
+          sessionEmail,
+          invitations.invitees,
+        );
+        if (!alreadyInvitee) {
+          model = {
+            ...model,
+            form: {
+              ...model.form,
+              attendees: [
+                ...model.form.attendees,
+                {
+                  email: sessionEmail,
+                  name: session.user.displayName || sessionEmail,
+                  participationStatus: normalizeParticipationStatus(
+                    notification.participationStatus,
+                  ),
+                },
+              ],
+            },
+          };
+        }
+      }
       setEventTimesDraft(null);
-      setEventPreview({ model, origin, hideRsvp: true });
+      setEventPreview({ model, origin, invitation: true });
     },
     [
       L.untitledEvent,
       closeEditor,
       data.events,
       defaultCalendarId,
+      invitations.invitees,
       inviteeNotifications,
       pendingDeletedEventIds,
+      session.user.displayName,
+      sessionEmail,
       surface?.events,
     ],
   );
@@ -1120,17 +1162,42 @@ export function CalendarWorkspace({
                       });
                     },
                   }
-                : undefined
+                : eventPreview?.invitation && liveEventPreview
+                  ? {
+                      mode: "invitation",
+                      form: liveEventPreview.form,
+                      onChange: () => undefined,
+                      onClose: closeEventPreview,
+                      onSave: () => undefined,
+                      invitees: invitations.invitees,
+                      sessionEmail,
+                      sessionUsername: session.user.username,
+                      meetOperations,
+                      workspaceOrigin,
+                      onJoinMeeting,
+                      onRsvp: (status, calendarId) => {
+                        const eventId = liveEventPreview.eventId;
+                        const notification = inviteeNotifications.find(
+                          (row) => row.eventId === eventId || row.id === eventId,
+                        );
+                        return persistRsvp(notification?.id ?? eventId, status, calendarId, {
+                          source: "preview",
+                          editorRecurrenceId: liveEventPreview.recurrenceId,
+                          attendees: liveEventPreview.form.attendees,
+                        }).then(() => undefined);
+                      },
+                    }
+                  : undefined
           }
           onDelete={
-            pointerCreateOpen || eventPreview?.interactiveEdit
+            pointerCreateOpen || eventPreview?.interactiveEdit || eventPreview?.invitation
               ? undefined
               : previewCanEdit
                 ? deleteFromPreview
                 : undefined
           }
           onRsvp={
-            pointerCreateOpen || eventPreview?.hideRsvp || eventPreview?.interactiveEdit
+            pointerCreateOpen || eventPreview?.invitation || eventPreview?.interactiveEdit
               ? undefined
               : liveEventPreview
                 ? (status) => {

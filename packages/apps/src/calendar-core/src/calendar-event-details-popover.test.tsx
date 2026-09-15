@@ -523,4 +523,120 @@ describe("CalendarEventDetailsPopover", () => {
     });
     expect(screen.getByText(/15 minutes/i)).toBeTruthy();
   });
+
+  it(
+    "hosts invitation mode with disabled fields, RSVP, and interactive calendar",
+    {
+      timeout: 10_000,
+    },
+    () => {
+      const onRsvp = vi.fn();
+      const preview = {
+        eventId: "yoga-invite",
+        form: {
+          ...emptyCalendarEventForm("work", "2033-09-16", "18:30"),
+          title: "Yoga",
+          endTime: "19:30",
+          recurrencePreset: "weekly" as const,
+          attendees: [
+            {
+              email: "ada@example.test",
+              name: "Ada",
+              participationStatus: "accepted" as const,
+              isOrganizer: true,
+            },
+            {
+              email: "me@example.test",
+              name: "Me",
+              participationStatus: "accepted" as const,
+            },
+          ],
+        },
+      };
+      renderPopover({
+        preview,
+        sessionEmail: "me@example.test",
+        canEdit: false,
+        onDelete: undefined,
+        edit: {
+          mode: "invitation",
+          form: preview.form,
+          onChange: vi.fn(),
+          onClose: vi.fn(),
+          onSave: vi.fn(),
+          onRsvp,
+          sessionEmail: "me@example.test",
+        },
+      });
+      const popover = screen.getByRole("dialog", { name: /Yoga/i });
+      expect(popover.className).toContain("calendar-event-details-popover--editable");
+      expect(popover.querySelector("event-card")).toBeNull();
+      const title = screen.getByDisplayValue("Yoga") as HTMLInputElement;
+      expect(title.disabled).toBe(true);
+      expect(screen.queryByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeNull();
+      expect(screen.queryByRole("button", { name: defaultCalendarLabels.cancel })).toBeNull();
+      expect(screen.queryByText(defaultCalendarLabels.rsvpSeriesHint)).toBeNull();
+      const rsvpCluster = document.querySelector(".calendar-event-dialog__invitation-rsvp");
+      expect(rsvpCluster).toBeTruthy();
+      expect(rsvpCluster?.className).toContain("calendar-event-dialog__invitation-rsvp");
+      fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe }));
+      expect(onRsvp).toHaveBeenCalledWith("tentative", "work");
+      expect(document.querySelector(".calendar-event-dialog__calendar-trigger")).toBeTruthy();
+    },
+  );
+
+  it(
+    "persists calendar changes immediately in invitation mode when already accepted",
+    {
+      timeout: 10_000,
+    },
+    () => {
+      const onRsvp = vi.fn().mockResolvedValue(undefined);
+      const calendars = bootstrap.data.calendars.filter((calendar) =>
+        ["work", "default"].includes(calendar.id),
+      );
+      const preview = {
+        eventId: "yoga-invite",
+        form: {
+          ...emptyCalendarEventForm("work", "2033-09-16", "18:30"),
+          title: "Yoga",
+          attendees: [
+            {
+              email: "ada@example.test",
+              name: "Ada",
+              participationStatus: "accepted" as const,
+              isOrganizer: true,
+            },
+            {
+              email: "me@example.test",
+              name: "Me",
+              participationStatus: "accepted" as const,
+            },
+          ],
+        },
+      };
+      renderPopover({
+        preview,
+        calendars,
+        sessionEmail: "me@example.test",
+        canEdit: false,
+        onDelete: undefined,
+        edit: {
+          mode: "invitation",
+          form: preview.form,
+          onChange: vi.fn(),
+          onClose: vi.fn(),
+          onSave: vi.fn(),
+          onRsvp,
+          sessionEmail: "me@example.test",
+        },
+      });
+      const trigger = screen.getByRole("button", { name: /Calendar: Work/i }) as HTMLButtonElement;
+      expect(trigger.disabled).toBe(false);
+      fireEvent.pointerDown(trigger);
+      fireEvent.click(trigger);
+      fireEvent.click(screen.getByRole("menuitem", { name: /Personal/i }));
+      expect(onRsvp).toHaveBeenCalledWith("accepted", "default");
+    },
+  );
 });

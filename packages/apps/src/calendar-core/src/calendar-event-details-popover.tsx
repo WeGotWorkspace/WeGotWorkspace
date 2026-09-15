@@ -46,8 +46,8 @@ export type CalendarEventDetailsPopoverEditProps = Omit<
   CalendarEventFormProps,
   "mode" | "calendars" | "labels" | "locale" | "className" | "autoFocusTitle"
 > & {
-  /** Defaults to edit (interactive selection). Pass create for pointer/drag create. */
-  mode?: "create" | "edit";
+  /** Defaults to edit (interactive selection). Pass create for pointer/drag create; invitation for invitee RSVP. */
+  mode?: "create" | "edit" | "invitation";
 };
 
 export type CalendarEventDetailsPopoverProps = {
@@ -112,8 +112,15 @@ export function CalendarEventDetailsPopover({
   const calendar = calendars.find((entry) => entry.id === form.calendarId);
   const isOrganizer = isSessionEventOrganizer(form.attendees, sessionEmail);
   const editMode = edit?.mode ?? "edit";
-  const formReadOnly = isCalendarEventFormReadOnly({ mode: editMode, calendar, isOrganizer });
-  const editable = Boolean(edit) && canEdit && !formReadOnly;
+  const invitationMode = editMode === "invitation";
+  const formReadOnly =
+    invitationMode ||
+    isCalendarEventFormReadOnly({
+      mode: editMode === "create" ? "create" : "edit",
+      calendar,
+      isOrganizer,
+    });
+  const editable = Boolean(edit) && (invitationMode || (canEdit && !formReadOnly));
   const showDelete = !editable && canEdit && Boolean(onDelete) && !formReadOnly;
   const title = form.title.trim() || untitledLabel;
   const when = formatEventPreviewWhen(form, locale);
@@ -127,6 +134,7 @@ export function CalendarEventDetailsPopover({
   const eventColor = calendar?.color?.trim() || DEFAULT_CALENDAR_COLOR;
   const showMeet = Boolean(form.meetingUrl.trim());
   const showFooter = !editable && (showMeet || showDelete || showRsvp);
+  const dialogLabel = editable ? edit?.form.title.trim() || title : title;
   const detailRows: ReactNode[] = [
     <DetailRow
       key="when"
@@ -199,8 +207,6 @@ export function CalendarEventDetailsPopover({
           height: placementOrigin.height,
         }
       : { left: fallbackLeft, top: fallbackTop, width: 0, height: 0 };
-
-  const dialogLabel = editable ? edit?.form.title.trim() || title : title;
 
   return (
     <Popover

@@ -38,6 +38,7 @@ import { CalendarMeetChannelEmailDialog } from "@/calendar-core/src/calendar-mee
 import { useCalendarMeetChannelEmailCollision } from "@/calendar-core/src/use-calendar-meet-channel-email";
 import {
   calendarRespondStatus,
+  CalendarRsvpActions,
   CalendarRsvpSelect,
 } from "@/calendar-core/src/calendar-rsvp-actions";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
@@ -81,7 +82,8 @@ export type CalendarEventFormLayout = {
 };
 
 export type CalendarEventFormProps = {
-  mode: "create" | "edit";
+  /** `invitation` = invitee details popover: fields read-only except calendar; RSVP footer. */
+  mode: "create" | "edit" | "invitation";
   form: CalendarEventFormValue;
   calendars: CalendarInfo[];
   labels: CalendarUILabels;
@@ -162,15 +164,24 @@ export function CalendarEventForm({
   controlSize = "md",
 }: CalendarEventFormProps) {
   const locale = useMemo(() => resolveLocale(localeProp), [localeProp]);
+  const invitationMode = mode === "invitation";
   const isOrganizer = isSessionEventOrganizer(form.attendees, sessionEmail, invitees);
   const isInvitee = isSessionEventInvitee(form.attendees, sessionEmail, invitees);
   const inviteeRsvp = sessionEventInviteeStatus(form.attendees, sessionEmail, invitees);
   const incomingRsvp = calendarRespondStatus(inviteeRsvp);
   const calendar = calendars.find((entry) => entry.id === form.calendarId);
-  const readOnly = isCalendarEventFormReadOnly({ mode, calendar, isOrganizer });
+  const readOnly =
+    invitationMode ||
+    isCalendarEventFormReadOnly({
+      mode: mode === "create" ? "create" : "edit",
+      calendar,
+      isOrganizer,
+    });
   const fieldsDisabled = busy || readOnly;
   const showInviteeRsvp = mode === "edit" && Boolean(onRsvp) && isInvitee;
-  const showSaveCancel = !readOnly || showInviteeRsvp;
+  const showInvitationRsvp = invitationMode && Boolean(onRsvp);
+  const showSaveCancel = !invitationMode && (!readOnly || showInviteeRsvp);
+  const calendarPickerInteractive = invitationMode || showInviteeRsvp;
   const [draftCalendarId, setDraftCalendarId] = useState(form.calendarId);
   const [draftRsvp, setDraftRsvp] = useState<CalendarSchedulingRespondStatus | "">(
     incomingRsvp ?? "",
@@ -298,13 +309,27 @@ export function CalendarEventForm({
               {layout?.hideCalendarPicker ? null : (
                 <CalendarEventCalendarPicker
                   calendars={calendars}
-                  calendarId={showInviteeRsvp ? draftCalendarId : form.calendarId}
+                  calendarId={calendarPickerInteractive ? draftCalendarId : form.calendarId}
                   labels={labels}
                   size={controlSize}
-                  disabled={busy || (readOnly && !showInviteeRsvp)}
+                  disabled={busy || (readOnly && !calendarPickerInteractive)}
                   onCalendarIdChange={(calendarId) => {
                     if (showInviteeRsvp) {
                       setDraftCalendarId(calendarId);
+                      return;
+                    }
+                    if (invitationMode) {
+                      if (busy || calendarId === draftCalendarId) return;
+                      const previous = draftCalendarId;
+                      setDraftCalendarId(calendarId);
+                      // needs-action / declined: keep local until Accept/Maybe (Decline ignores calendarId).
+                      const persisted = incomingRsvp;
+                      if (!persisted || persisted === "declined") return;
+                      void Promise.resolve(onRsvp?.(persisted, calendarId || undefined)).catch(
+                        () => {
+                          setDraftCalendarId(previous);
+                        },
+                      );
                       return;
                     }
                     set("calendarId", calendarId);
@@ -347,7 +372,7 @@ export function CalendarEventForm({
               meetOperations={meetOperations}
               disabled={fieldsDisabled}
               readOnly={readOnly}
-              copyOnly={layout?.meetCopyOnly}
+              copyOnly={invitationMode || layout?.meetCopyOnly}
               controlSize={controlSize}
               emailGuestHint={
                 showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
@@ -668,6 +693,25 @@ export function CalendarEventForm({
         </div>
 
         <footer className="calendar-event-dialog__footer">
+          {showInvitationRsvp && onRsvp ? (
+            <div className="calendar-event-dialog__invitation-rsvp">
+              <CalendarRsvpActions
+                className="calendar-event-dialog__rsvp-actions"
+                currentStatus={inviteeRsvp ?? undefined}
+                labels={labels}
+                busy={busy}
+                size="sm"
+                onRespond={(status) => {
+                  void Promise.resolve(
+                    onRsvp(
+                      status,
+                      status === "declined" ? undefined : draftCalendarId || undefined,
+                    ),
+                  );
+                }}
+              />
+            </div>
+          ) : null}
           {showInviteeRsvp ? (
             <CalendarRsvpSelect
               className="calendar-event-dialog__rsvp"

@@ -378,6 +378,10 @@
   @apply flex shrink-0 flex-wrap items-center gap-2;
 }
 
+.calendar-dialog-surface .calendar-event-dialog__invitation-rsvp {
+  @apply ms-auto flex w-full flex-wrap items-center justify-end gap-2;
+}
+
 .calendar-dialog-surface .calendar-event-dialog__rsvp {
   @apply me-auto;
 }
