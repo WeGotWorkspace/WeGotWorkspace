@@ -183,11 +183,18 @@ export const Editable: Story = {
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "Jane Updated");
     await expect(nameInput).toHaveValue("Jane Updated");
-    const birthday = canvas.getByLabelText(defaultContactsLabels.sectionBirthday);
-    await expect(birthday).toHaveAttribute("type", "date");
-    await expect(birthday).toHaveValue("1985-04-23");
-    fireEvent.change(birthday, { target: { value: "1991-07-04" } });
-    await expect(birthday).toHaveValue("1991-07-04");
+    const birthday = canvas.getByRole("button", { name: /Birthday:/ });
+    await expect(birthday).toHaveClass("locale-date-picker");
+    await expect(birthday).toHaveAccessibleName(/1985/);
+    fireEvent.click(birthday);
+    const day = canvasElement.ownerDocument.querySelector<HTMLButtonElement>(
+      'button[data-day]:not([data-selected-single="true"])',
+    );
+    expect(day).toBeTruthy();
+    fireEvent.click(day!);
+    await expect(canvas.getByRole("button", { name: /Birthday:/ })).not.toHaveAccessibleName(
+      /Apr 23, 1985|April 23, 1985/,
+    );
     await expect(
       canvas.getAllByRole("combobox", {
         name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
@@ -220,9 +227,9 @@ export const Create: Story = {
         name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
       }),
     ).toHaveLength(2);
-    const birthday = canvas.getByLabelText(defaultContactsLabels.sectionBirthday);
-    await expect(birthday).toHaveAttribute("type", "date");
-    await expect(birthday).toHaveValue("");
+    const birthday = canvas.getByRole("button", { name: /^Birthday:\s*$/ });
+    await expect(birthday).toHaveClass("locale-date-picker");
+    await expect(birthday).toHaveAccessibleName(/^Birthday:\s*$/);
   },
 };
 
@@ -244,7 +251,7 @@ export const ReadOnly: Story = {
     await expect(
       canvas.getByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
     ).toBeInTheDocument();
-    expect(canvas.queryByLabelText(defaultContactsLabels.sectionBirthday)).toBeNull();
+    expect(canvas.queryByRole("button", { name: /Birthday:/ })).toBeNull();
     await expect(canvas.getByText(/1985/)).toBeInTheDocument();
   },
 };
