@@ -13,6 +13,8 @@ export function isDriveSharedGroupPath(path: string): boolean {
 export function buildDriveFolderBreadcrumbs(
   viewPath: string,
   labels: Pick<DriveUILabels, "sidebarMyDrive" | "sidebarSharedDrives">,
+  /** Optional UI-path → display label (Personal / principal group names). */
+  rootLabels?: Readonly<Record<string, string>>,
 ): PathBreadcrumbItem[] {
   if (viewPath === GROUPS_ROOT) {
     return [{ label: labels.sidebarSharedDrives, path: null }];
@@ -20,20 +22,21 @@ export function buildDriveFolderBreadcrumbs(
 
   if (viewPath.startsWith(`${GROUPS_ROOT}/`)) {
     const relativeParts = viewPath.slice(`${GROUPS_ROOT}/`.length).split("/").filter(Boolean);
-    return relativeParts.map((segment, index) => ({
-      label: segment,
-      path: `${GROUPS_ROOT}/${relativeParts.slice(0, index + 1).join("/")}`,
-    }));
+    return relativeParts.map((segment, index) => {
+      const path = `${GROUPS_ROOT}/${relativeParts.slice(0, index + 1).join("/")}`;
+      const label = index === 0 ? (rootLabels?.[path] ?? segment) : segment;
+      return { label, path };
+    });
   }
 
   if (viewPath === "My Drive") {
-    return [{ label: labels.sidebarMyDrive, path: "My Drive" }];
+    return [{ label: rootLabels?.["My Drive"] ?? labels.sidebarMyDrive, path: "My Drive" }];
   }
 
   if (viewPath.startsWith("My Drive/")) {
     const relativeParts = viewPath.slice("My Drive/".length).split("/").filter(Boolean);
     return [
-      { label: labels.sidebarMyDrive, path: "My Drive" },
+      { label: rootLabels?.["My Drive"] ?? labels.sidebarMyDrive, path: "My Drive" },
       ...relativeParts.map((segment, index) => ({
         label: segment,
         path: `My Drive/${relativeParts.slice(0, index + 1).join("/")}`,

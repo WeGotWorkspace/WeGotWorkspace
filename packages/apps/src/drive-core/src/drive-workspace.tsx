@@ -157,7 +157,7 @@ export function DriveWorkspace({
   const { primarySidebarItems, groupSidebarItems } = useDriveSidebarModel({
     labels: controller.labels,
     view: controller.view,
-    sidebarGroupPaths: controller.sidebarGroupPaths,
+    sidebarGroupRoots: controller.sidebarGroupRoots,
     selectView: controller.selectView,
     sidebarDropZoneProps: controller.sidebarDropZoneProps,
     commitMoveToFolder: controller.commitMoveToFolder,

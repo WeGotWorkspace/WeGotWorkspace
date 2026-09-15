@@ -23,7 +23,7 @@ describe("docsLabels Drive SST re-exports", () => {
     expect(docsLabels.homeMyDrive).toBe("Personal");
     expect(docsLabels.homeDrivesSection).toBe("My Drives");
     expect(driveLabels.sidebarHome).toBe("My Files");
-    expect(driveLabels.sidebarPersonalDrive).toBe(docsLabels.homeMyDrive);
+    expect(driveLabels.sidebarMyDrive).toBe(docsLabels.homeMyDrive);
     expect(driveLabels.sidebarSharedDrives).toBe(docsLabels.homeDrivesSection);
     expect(docsLabels.renameDialogTitle).toBe("Rename document");
     expect(docsLabels.homeEmpty).toContain("Markdown");

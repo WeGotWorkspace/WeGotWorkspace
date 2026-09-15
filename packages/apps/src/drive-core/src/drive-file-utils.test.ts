@@ -155,7 +155,7 @@ describe("driveFileFromEntry isShared", () => {
         },
         "alice",
       ).location,
-    ).toBe("My Drive");
+    ).toBe("Personal");
     expect(
       driveFileFromEntry(
         {
