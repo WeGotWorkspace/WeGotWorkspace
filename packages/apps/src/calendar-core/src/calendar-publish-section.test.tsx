@@ -39,7 +39,7 @@ describe("CalendarPublishSection", () => {
     expect(onToggle).toHaveBeenCalledWith(true);
   });
 
-  it("asks before unpublishing, copies the https URL, and opens webcal", () => {
+  it("asks before unpublishing and copies the https URL", () => {
     const onToggle = vi.fn();
     const onCopyHttps = vi.fn();
     renderSection({ feed, onToggle, onCopyHttps });
@@ -54,11 +54,7 @@ describe("CalendarPublishSection", () => {
     expect(httpsField.classList.contains("share-dialog__input")).toBe(true);
     expect(httpsField.closest(".share-dialog__link-row")).not.toBeNull();
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
-
-    const openLink = screen.getByRole("link", { name: defaultCalendarLabels.openInCalendar });
-    expect(openLink.getAttribute("href")).toBe(feed.webcalUrl);
-    expect(openLink.classList.contains("share-dialog__icon-link")).toBe(true);
-    expect(openLink.classList.contains("icon-button--size-md")).toBe(true);
+    expect(screen.queryByRole("link", { name: defaultCalendarLabels.openInCalendar })).toBeNull();
     expect(screen.queryByDisplayValue(feed.webcalUrl)).toBeNull();
 
     const toggle = screen.getByRole("switch", { name: defaultCalendarLabels.publishCalendarTitle });

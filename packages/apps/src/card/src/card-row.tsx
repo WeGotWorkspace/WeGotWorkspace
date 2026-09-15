@@ -33,17 +33,21 @@ export function CardRow({
 
   return (
     <div className={cn("card__row", fill && "card__row--fill", className)}>
-      {leading}
+      {leading != null ? (
+        <div className={cn("card__row-leading", !hasMain && "card__row-leading--fill")}>
+          {leading}
+        </div>
+      ) : null}
       {hasMain ? (
         <div className="card__row-main">
           <div className="card__row-title-line">
             <div className="card__row-title-group">
-              {title != null ? <p className="card__row-title">{title}</p> : null}
+              {title != null ? <div className="card__row-title">{title}</div> : null}
               {titleExtra}
             </div>
             {titleEnd}
           </div>
-          {subtitle ? <p className="card__row-subtitle">{subtitle}</p> : null}
+          {subtitle ? <div className="card__row-subtitle">{subtitle}</div> : null}
         </div>
       ) : null}
       {children ? <div className="card__row-action">{children}</div> : null}

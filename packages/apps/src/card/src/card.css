@@ -1,6 +1,13 @@
 @import "../../styles.css" reference;
 
 .card {
+  /*
+   * Card header SST — title→description gap lives on the title block, not under
+   * the full header-row, so tall actions (e.g. share switch touch target) do not
+   * push the hint away from the title.
+   */
+  --card-title-description-gap: 0.25rem;
+  --card-header-gap: 1rem;
   @apply border p-6 mb-6;
   border-radius: var(--control-radius);
   background-color: var(--card-surface-bg, color-mix(in oklab, var(--color-ink) 3%, transparent));
@@ -11,11 +18,19 @@
 }
 
 .card__header {
-  @apply mb-4;
+  margin-block-end: var(--card-header-gap);
 }
 
 .card__header-row {
   @apply flex items-center justify-between gap-2;
+}
+
+.card__header-row:has(.card__description) {
+  @apply items-start;
+}
+
+.card__title-block {
+  @apply min-w-0 flex-1;
 }
 
 .card__title-group {
@@ -55,8 +70,13 @@
 }
 
 .card__description {
-  @apply mt-1 text-xs;
+  @apply text-xs;
+  margin-block-start: var(--card-title-description-gap);
   color: var(--card-description-color, color-mix(in oklab, var(--color-ink) 55%, transparent));
+}
+
+.card__title-block > .card__description:first-child {
+  margin-block-start: 0;
 }
 
 .card__panel {
@@ -76,8 +96,21 @@
   background: var(--card-row-hover-bg, color-mix(in oklab, var(--color-ink) 5%, transparent));
 }
 
-.card__row-main {
+.card__row-leading {
+  @apply shrink-0;
+}
+
+.card__row-leading--fill {
   @apply min-w-0 flex-1;
+}
+
+.card__row-main {
+  /*
+   * Dual-line identity fallback — prefer labeled `UserAvatar` / SharePrincipalMark.
+   * When CardRow still stacks title+subtitle, reuse the avatar text SST.
+   */
+  @apply flex min-w-0 flex-1 flex-col;
+  gap: var(--user-avatar-text-gap, 0);
 }
 
 .card__row-title-line {
@@ -90,11 +123,16 @@
 
 .card__row-title {
   @apply min-w-0 truncate text-sm font-medium;
+  line-height: var(--user-avatar-name-leading, 1.1);
 }
 
 .card__row-subtitle {
   @apply truncate text-xs;
-  color: var(--card-row-subtitle-color, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  line-height: var(--user-avatar-subtitle-leading, 1.25);
+  color: var(
+    --card-row-subtitle-color,
+    var(--user-avatar-subtitle-color, color-mix(in oklab, var(--color-ink) 55%, transparent))
+  );
 }
 
 .card__row-action {
