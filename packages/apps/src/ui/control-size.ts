@@ -1,6 +1,6 @@
 /**
  * Shared control height scale for Button, IconButton, Input, SelectTrigger,
- * LocaleDatePicker, Textarea (padding/font), and SegmentedControl.
+ * LocaleDatePicker, ColorSwatchTrigger, Textarea (padding/font), and SegmentedControl.
  *
  * | Size | Height |
  * |------|--------|

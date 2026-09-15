@@ -1,15 +1,15 @@
 @import "../styles.css" reference;
 
 .color-swatch-trigger {
-  /* Focus ring comes from shared `.control-surface` (Button outline recipe). */
+  /* Focus ring / radius / font come from `.control-surface` + `--size-*`
+   * (same path as LocaleDatePicker / SelectTrigger). Compact px for swatch+chevron. */
   @apply inline-flex w-auto shrink-0 cursor-pointer items-center justify-between gap-1.5 px-2 shadow-none;
   min-width: 3.25rem;
 }
 
-/* Share form control radius (`--control-radius`); pin chrome height to md (36px). */
+/* Beat `.control-surface--size-*` horizontal padding; height/font stay on the size class. */
 .control-surface.color-swatch-trigger {
-  height: var(--control-height-md, 2.25rem);
-  min-height: var(--control-height-md, 2.25rem);
+  @apply px-2;
 }
 
 /* `.control-surface` is `width: 100%` in a later production CSS chunk. Beat it with

@@ -173,8 +173,11 @@ describe("CalendarInvitationsPanel", () => {
     expect(trigger.className).toContain("color-swatch-trigger");
     expect(trigger.className).toContain("calendar-event-dialog__calendar-trigger");
     expect(trigger.className).toContain("calendar-invitation-card__calendar-trigger");
+    expect(trigger.className).toContain("control-surface--size-md");
     expect(trigger.querySelector(".color-swatch-trigger__dot")).toBeTruthy();
     expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
+    expect(trigger.querySelector(".color-swatch-trigger__caption")).toBeNull();
+    expect(trigger.textContent?.trim()).toBe("");
     const actions = document.querySelector(
       "[data-invitation-id='invite-1.ics'] .docs-collab-card__actions",
     );
