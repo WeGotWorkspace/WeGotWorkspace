@@ -89,7 +89,7 @@ export function CalendarRsvpActions({
     >
       <SegmentedControl
         value={selected}
-        size={size === "lg" ? "md" : "sm"}
+        size={size === "lg" ? "lg" : "md"}
         disabled={busy}
         aria-label={labels.rsvpLabel}
         onChange={(next) => {

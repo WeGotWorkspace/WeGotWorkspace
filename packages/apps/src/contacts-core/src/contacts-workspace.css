@@ -126,10 +126,7 @@
 }
 
 .contacts-detail-view {
-  --contacts-channel-action-size: var(
-    --control-height-sm,
-    calc(var(--input-height, 2.25rem) - 0.25rem)
-  );
+  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
   /* Label ↔ control: FieldLabelRow `space-y-1.5`. Groups: Calendar `gap-4` / `mb-4`. */
   --contacts-field-gap: 0.375rem;
   --contacts-field-stack-gap: 1rem;
@@ -263,10 +260,7 @@
 }
 
 .contacts-detail-view__channel-row--editable {
-  --contacts-channel-action-size: var(
-    --control-height-sm,
-    calc(var(--input-height, 2.25rem) - 0.25rem)
-  );
+  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
   grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
   align-items: center;
 }
@@ -315,10 +309,7 @@
 }
 
 .contacts-detail-view__address-row {
-  --contacts-channel-action-size: var(
-    --control-height-sm,
-    calc(var(--input-height, 2.25rem) - 0.25rem)
-  );
+  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
   display: grid;
   grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
   column-gap: 1rem;
@@ -346,10 +337,7 @@
 }
 
 .contacts-detail-view__address-fields {
-  --contacts-channel-action-size: var(
-    --control-height-sm,
-    calc(var(--input-height, 2.25rem) - 0.25rem)
-  );
+  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
   display: grid;
   grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
   column-gap: 1rem;

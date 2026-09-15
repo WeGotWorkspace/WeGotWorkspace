@@ -21,7 +21,7 @@ describe("ContactContextTypeSelect", () => {
     const trigger = screen.getByRole("combobox", {
       name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.sectionAddresses}`,
     });
-    expect(trigger.classList.contains("select-trigger--size-sm")).toBe(false);
+    expect(trigger.classList.contains("select-trigger--size-md")).toBe(true);
     expect(trigger.classList.contains("contacts-detail-view__context-select")).toBe(true);
     expect(document.querySelector(".share-dialog__permission-item")).toBeNull();
     expect(document.querySelector(".contacts-detail-view__context-select-item")).not.toBeNull();

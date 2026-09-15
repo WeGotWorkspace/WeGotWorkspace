@@ -69,7 +69,7 @@ describe("tasks composer select chips", () => {
     );
   });
 
-  it("pins the remind trigger so production .button--size-sm cannot win", () => {
+  it("pins the remind trigger so production .button--size-md cannot win", () => {
     const block = css.match(
       /\.tasks-main-view__composer-select\.tasks-main-view__remind-button \{[^}]+\}/,
     )?.[0];
@@ -79,8 +79,8 @@ describe("tasks composer select chips", () => {
     expect(block).toMatch(/font-size:\s*0\.75rem/);
   });
 
-  it("lets Add task use production Button size-sm metrics", () => {
-    expect(css).not.toMatch(/\.tasks-main-view__composer-actions \.button\.button--size-sm \{/);
+  it("lets Add task use production Button size-md metrics", () => {
+    expect(css).not.toMatch(/\.tasks-main-view__composer-actions \.button\.button--size-md \{/);
     const actions = css.match(/\.tasks-main-view__composer-actions \{[^}]+\}/)?.[0];
     expect(actions).toBeTruthy();
     expect(actions).not.toMatch(/--control-height-sm:\s*2rem/);

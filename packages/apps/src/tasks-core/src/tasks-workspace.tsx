@@ -314,7 +314,7 @@ export function TasksWorkspace({
                         }
                         onClick={toggleShowCompletedTasks}
                         icon={<CheckCircle2 aria-hidden />}
-                        size="sm"
+                        size="md"
                         variant="outline"
                         aria-pressed={showCompletedTasks}
                       />
@@ -330,7 +330,7 @@ export function TasksWorkspace({
                     onClick={onRefreshList}
                     disabled={listRefreshing}
                     icon={<RefreshSpinIcon spinning={listRefreshing} />}
-                    size="sm"
+                    size="md"
                     variant="outline"
                   />
                 ) : null}

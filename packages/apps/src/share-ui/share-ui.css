@@ -36,8 +36,8 @@
 }
 
 /* IconButton sm is input-height − 4px globally; in share rows keep full 36px hit area. */
-.share-dialog .icon-button--size-sm,
-.share-access-card .icon-button--size-sm {
+.share-dialog .icon-button--size-md,
+.share-access-card .icon-button--size-md {
   width: var(--input-height);
   height: var(--input-height);
 }

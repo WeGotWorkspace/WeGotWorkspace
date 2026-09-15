@@ -14,11 +14,11 @@ describe("Input", () => {
     const { container } = render(<Input aria-label="Name" />);
     const field = container.querySelector(".input");
     expect(field).not.toBeNull();
-    expect(field!.classList.contains("input--size-sm")).toBe(false);
+    expect(field!.classList.contains("input--size-md")).toBe(true);
     expect(field!.classList.contains("input--search")).toBe(false);
   });
 
-  it("applies the compact size class for toolbar clusters", () => {
+  it("applies the sm size class for tighter fields", () => {
     const { container } = render(<Input aria-label="Name" size="sm" />);
     const field = container.querySelector(".input");
     expect(field).not.toBeNull();
@@ -58,18 +58,18 @@ describe("Input", () => {
         .classList.contains("select-trigger--size-sm"),
     ).toBe(true);
     expect(
-      screen.getByRole("textbox", { name: "md input" }).classList.contains("input--size-sm"),
-    ).toBe(false);
+      screen.getByRole("textbox", { name: "md input" }).classList.contains("input--size-md"),
+    ).toBe(true);
     expect(
       screen
         .getByRole("combobox", { name: "md select" })
-        .classList.contains("select-trigger--size-sm"),
-    ).toBe(false);
+        .classList.contains("select-trigger--size-md"),
+    ).toBe(true);
   });
 
-  it("does not set pill radius on the sm size class", () => {
+  it("does not set pill radius on size classes", () => {
     const smBlock = inputCss.match(
-      /\.select-trigger--size-sm,\s*\.input--size-sm \{[\s\S]*?\n\}/,
+      /\.select-trigger--size-sm,\s*\.input--size-sm,\s*\.control-surface--size-sm \{[\s\S]*?\n\}/,
     )?.[0];
     expect(smBlock).toBeDefined();
     expect(smBlock).not.toMatch(/control-radius-button-pill/);

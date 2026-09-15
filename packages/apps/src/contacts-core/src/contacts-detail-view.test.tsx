@@ -249,7 +249,7 @@ describe("ContactsDetailView empty trailing rows", () => {
       ?.querySelector(".field-label-row__label--reserved");
     expect(reserved).toBeTruthy();
     expect(reserved?.getAttribute("aria-hidden")).toBe("true");
-    expect(addressType.classList.contains("select-trigger--size-sm")).toBe(false);
+    expect(addressType.classList.contains("select-trigger--size-md")).toBe(true);
 
     const streetRow = screen
       .getByLabelText(defaultContactsLabels.addressStreet)
@@ -261,10 +261,10 @@ describe("ContactsDetailView empty trailing rows", () => {
       name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
     });
     expect(phoneType.closest(".field-label-row")).toBeNull();
-    expect(phoneType.classList.contains("select-trigger--size-sm")).toBe(false);
+    expect(phoneType.classList.contains("select-trigger--size-md")).toBe(true);
     expect(
-      screen.getByLabelText(defaultContactsLabels.phoneNumber).classList.contains("input--size-sm"),
-    ).toBe(false);
+      screen.getByLabelText(defaultContactsLabels.phoneNumber).classList.contains("input--size-md"),
+    ).toBe(true);
   });
 });
 

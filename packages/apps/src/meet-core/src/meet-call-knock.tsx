@@ -31,7 +31,7 @@ export function MeetCallKnockQueue({
           <UserAvatar
             displayName={knocker.name}
             compact
-            size="sm"
+            size="md"
             color={avatarColorForUserId(knocker.id)}
           />
           <div className="meet-knock-row__copy">
@@ -43,7 +43,7 @@ export function MeetCallKnockQueue({
             icon={<X />}
             label={meetLabels.denyName(knocker.name)}
             variant="outline"
-            size="sm"
+            size="md"
             showTooltip={false}
             className="meet-knock-row__deny"
           />
@@ -52,7 +52,7 @@ export function MeetCallKnockQueue({
             icon={<Check />}
             label={meetLabels.admitName(knocker.name)}
             variant="primary"
-            size="sm"
+            size="md"
             showTooltip={false}
             className="meet-knock-row__admit"
           />
@@ -104,7 +104,7 @@ export function MeetCallKnockWaiting({
       {onCancel ? (
         <Button
           label={meetLabels.cancelRequest}
-          size="sm"
+          size="md"
           variant="outline"
           onClick={onCancel}
           className="meet-call-knock-wait__cancel"

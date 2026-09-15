@@ -236,9 +236,9 @@ describe("DocsSuggestionCard", () => {
     const reject = screen.getByRole("button", { name: docsLabels.suggestionsReject });
     expect(accept.closest(".segmented-control")).toBeNull();
     expect(reject.closest(".segmented-control")).toBeNull();
-    expect(accept.className).toContain("icon-button--size-sm");
+    expect(accept.className).toContain("icon-button--size-md");
     expect(accept.className).toContain("button--severity-success");
-    expect(reject.className).toContain("icon-button--size-sm");
+    expect(reject.className).toContain("icon-button--size-md");
     expect(reject.className).toContain("button--severity-danger");
     expect(screen.queryByText("Accept")).toBeNull();
     expect(screen.queryByText("Reject")).toBeNull();

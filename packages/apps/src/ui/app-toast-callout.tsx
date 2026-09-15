@@ -60,7 +60,7 @@ export function AppToastCallout({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="md"
             label={actionLabel}
             onClick={() => {
               onAction?.();

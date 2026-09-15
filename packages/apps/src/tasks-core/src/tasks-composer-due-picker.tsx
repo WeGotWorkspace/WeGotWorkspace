@@ -125,7 +125,7 @@ export function TasksComposerDuePicker({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
+                size="md"
                 label={labels.dueAddTime}
                 onClick={() =>
                   emitTimed(
@@ -138,7 +138,7 @@ export function TasksComposerDuePicker({
               <div className="tasks-main-view__composer-due-time-row">
                 <Input
                   type="time"
-                  size="sm"
+                  size="md"
                   className="tasks-main-view__composer-due-time"
                   value={dueTimeInputValue(selectedDate)}
                   aria-label={labels.dueTimeLabel}
@@ -153,7 +153,7 @@ export function TasksComposerDuePicker({
                   }
                 >
                   <SelectTrigger
-                    size="sm"
+                    size="md"
                     className="tasks-main-view__composer-due-timezone"
                     aria-label={defaultCalendarLabels.eventTimeZoneLabel}
                   >
@@ -170,7 +170,7 @@ export function TasksComposerDuePicker({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
+                  size="md"
                   label={labels.dueDateOnly}
                   onClick={() => emitDateOnly(selectedDate)}
                 />
@@ -183,7 +183,7 @@ export function TasksComposerDuePicker({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="md"
               className="tasks-main-view__composer-due-clear-button"
               label={labels.noDue}
               onClick={() => {

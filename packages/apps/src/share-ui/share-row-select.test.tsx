@@ -18,23 +18,23 @@ describe("ShareRowSelect", () => {
     );
     const trigger = container.querySelector(".select-trigger");
     expect(trigger).not.toBeNull();
-    expect(trigger!.classList.contains("select-trigger--size-sm")).toBe(false);
+    expect(trigger!.classList.contains("select-trigger--size-md")).toBe(true);
   });
 
-  it("applies the compact size class when size is sm", () => {
+  it("keeps the md size class when size is md", () => {
     const { container } = render(
       <ShareRowSelect
         value="edit"
         options={[{ value: "edit", label: "Can edit" }]}
         aria-label="Permission"
-        size="sm"
+        size="md"
         className="contacts-detail-view__context-select"
         onChange={vi.fn()}
       />,
     );
     const trigger = container.querySelector(".select-trigger");
     expect(trigger).not.toBeNull();
-    expect(trigger!.classList.contains("select-trigger--size-sm")).toBe(true);
+    expect(trigger!.classList.contains("select-trigger--size-md")).toBe(true);
     expect(trigger!.classList.contains("contacts-detail-view__context-select")).toBe(true);
   });
 

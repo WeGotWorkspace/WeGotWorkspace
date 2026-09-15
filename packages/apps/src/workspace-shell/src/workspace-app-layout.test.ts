@@ -36,7 +36,7 @@ describe("WorkspaceUserFooter logout chrome", () => {
     expect(tsx).toMatch(/import \{ IconButton \} from "@\/button\/src\/button"/);
     expect(footerBlock).toMatch(/label="Log out"/);
     expect(footerBlock).toMatch(/variant="outline"/);
-    expect(footerBlock).toMatch(/size="sm"/);
+    expect(footerBlock).toMatch(/size="md"/);
     expect(footerBlock).not.toMatch(/variant="subtle"/);
     expect(tsx).not.toMatch(/size-9/);
     expect(tsx).not.toMatch(/linkHoverClassName/);
@@ -72,7 +72,7 @@ describe("WorkspaceSidebarToggle chrome", () => {
     const toggleBlock = tsx.match(/export function WorkspaceSidebarToggle\([\s\S]*?\n\}/)?.[0];
     expect(toggleBlock).toBeDefined();
     expect(toggleBlock!).toMatch(/variant="outline"/);
-    expect(toggleBlock!).toMatch(/size="sm"/);
+    expect(toggleBlock!).toMatch(/size="md"/);
     expect(toggleBlock!).not.toMatch(/variant="subtle"/);
     expect(toggleBlock!).not.toMatch(/WORKSPACE_SIDEBAR_TOGGLE_STYLE/);
     expect(toggleBlock!).not.toMatch(/hoverClassName/);

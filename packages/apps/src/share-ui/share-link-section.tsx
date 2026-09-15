@@ -192,7 +192,7 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
             <IconButton
               label={shareLabels.copyLink}
               icon={<Copy className="size-3.5" aria-hidden />}
-              size="sm"
+              size="md"
               variant="outline"
               disabled={!token}
               onClick={() => void handleCopyLink()}
@@ -200,7 +200,7 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
             <IconButton
               label={shareLabels.regenerateLink}
               icon={<RefreshCw className="size-3.5" aria-hidden />}
-              size="sm"
+              size="md"
               variant="outline"
               title={shareLabels.regenerateLinkHint}
               disabled={disabled}
@@ -255,7 +255,7 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
                 <IconButton
                   label={shareLabels.copyPassword}
                   icon={<Copy className="size-3.5" aria-hidden />}
-                  size="sm"
+                  size="md"
                   variant="outline"
                   disabled={disabled || passwordBusy}
                   onClick={() => void handleCopyPassword()}
@@ -264,7 +264,7 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
               <IconButton
                 label={shareLabels.regeneratePassword}
                 icon={<RefreshCw className="size-3.5" aria-hidden />}
-                size="sm"
+                size="md"
                 variant="outline"
                 title={
                   passwordRequired && !passwordRevealed

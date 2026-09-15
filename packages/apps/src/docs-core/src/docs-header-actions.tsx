@@ -26,7 +26,7 @@ function renderActionButton(action: DocsHeaderAction) {
       active={action.active}
       disabled={action.disabled}
       icon={action.icon}
-      size="sm"
+      size="md"
       variant="outline"
       className={action.className}
       data-count={action["data-count"]}
@@ -71,7 +71,7 @@ export function DocsHeaderActions({
                   label={menuLabel}
                   icon={<MoreHorizontal />}
                   variant="outline"
-                  size="sm"
+                  size="md"
                   className="docs-workspace__header-actions-menu-trigger"
                 />
               }

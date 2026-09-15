@@ -15,7 +15,7 @@ export type ShareDialogIconLinkProps = Omit<ComponentProps<"a">, "children"> & {
   icon: ReactNode;
 };
 
-/** IconButton look on an `<a>` — same sm/outline chrome as Drive share-row actions. */
+/** IconButton look on an `<a>` — same md/outline chrome as Drive share-row actions. */
 export function ShareDialogIconLink({
   label,
   icon,
@@ -29,7 +29,7 @@ export function ShareDialogIconLink({
           aria-label={label}
           className={cn(
             BUTTON_BASE_CLASSNAME,
-            ICON_BUTTON_SIZE_CLASSNAMES.sm,
+            ICON_BUTTON_SIZE_CLASSNAMES.md,
             BUTTON_VARIANT_CLASSNAMES.outline,
             "share-dialog__icon-link",
             className,

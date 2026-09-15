@@ -6,6 +6,21 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "button.css"), "utf8");
 
+describe("button radius", () => {
+  it("uses shared --control-radius for default and size variants; pill opt-in only", () => {
+    expect(css).toMatch(/\.button \{[\s\S]*?border-radius:\s*var\(--control-radius\)/);
+    for (const size of ["xs", "sm", "md"] as const) {
+      const block = css.slice(css.indexOf(`.button--size-${size} {`));
+      const end = block.indexOf("\n}");
+      const sizeBlock = block.slice(0, end);
+      expect(sizeBlock).not.toMatch(/border-radius/);
+    }
+    expect(css).toMatch(
+      /\.button\.button--pill \{[\s\S]*border-radius:\s*var\(--control-radius-button-pill\)/,
+    );
+  });
+});
+
 describe("button outline chrome", () => {
   it("defaults outline borders to Select/Input --control-border-color", () => {
     expect(css).toMatch(

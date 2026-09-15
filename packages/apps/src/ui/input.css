@@ -4,7 +4,9 @@
  * Text field primitives. Optional overrides: `--input-height`, `--input-background`,
  * `--input-background-focus`, `--input-background-disabled`, `--input-color-disabled`,
  * `--input-placeholder-color`, `--input-shadow`, `--input-border-focus`, `--control-border-color`.
- * Size (`sm` / `md`) changes height, padding, and font-size only.
+ * Size (`xs` … `xl`) changes height, padding, and font-size only.
+ * Default `md` = 36px — action bar / view header / event form density.
+ * Spacious forms use `lg` (40px); sidebar New / hero CTAs use `xl` (44px).
  * Radius stays `--control-radius` on the shared surface — toolbars/search that
  * want a pill set `--control-radius: var(--control-radius-button-pill)` on the parent.
  * Search variant: leading icon + trailing clear when the field has a value.
@@ -37,8 +39,8 @@
 .input,
 .select-trigger {
   @apply items-center px-[var(--input-padding-x,0.75rem)] py-1;
-  min-height: var(--control-height-md, var(--input-height, 2.25rem));
-  height: var(--control-height-md, var(--input-height, 2.25rem));
+  min-height: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
 }
 
 .input {
@@ -77,12 +79,71 @@
   color: inherit;
 }
 
+.select-trigger--size-xs,
+.input--size-xs,
+.control-surface--size-xs {
+  @apply px-2;
+  min-height: var(--control-height-xs, 1.75rem);
+  height: var(--control-height-xs, 1.75rem);
+  font-size: calc(var(--input-font-size, 0.875rem) - 0.125rem);
+}
+
 .select-trigger--size-sm,
-.input--size-sm {
-  @apply px-3;
-  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+.input--size-sm,
+.control-surface--size-sm {
+  @apply px-2.5;
+  min-height: var(--control-height-sm, 2rem);
+  height: var(--control-height-sm, 2rem);
   font-size: calc(var(--input-font-size, 0.875rem) - 0.0625rem);
+}
+
+.select-trigger--size-md,
+.input--size-md,
+.control-surface--size-md {
+  @apply px-3;
+  min-height: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
+  font-size: calc(var(--input-font-size, 0.875rem) - 0.0625rem);
+}
+
+.select-trigger--size-lg,
+.input--size-lg,
+.control-surface--size-lg {
+  @apply px-3;
+  min-height: var(--control-height-lg, 2.5rem);
+  height: var(--control-height-lg, 2.5rem);
+  font-size: var(--input-font-size, 0.875rem);
+}
+
+.select-trigger--size-xl,
+.input--size-xl,
+.control-surface--size-xl {
+  @apply px-3;
+  min-height: var(--control-height-xl, 2.75rem);
+  height: var(--control-height-xl, 2.75rem);
+  font-size: var(--input-font-size, 0.875rem);
+}
+
+/* Textarea: size affects padding + font only; height stays auto. */
+.textarea--size-xs {
+  @apply px-2 py-1;
+  font-size: calc(var(--input-font-size, 0.875rem) - 0.125rem);
+}
+
+.textarea--size-sm {
+  @apply px-2.5 py-1.5;
+  font-size: calc(var(--input-font-size, 0.875rem) - 0.0625rem);
+}
+
+.textarea--size-md {
+  @apply px-3 py-2;
+  font-size: calc(var(--input-font-size, 0.875rem) - 0.0625rem);
+}
+
+.textarea--size-lg,
+.textarea--size-xl {
+  @apply px-3 py-2;
+  font-size: var(--input-font-size, 0.875rem);
 }
 
 .input--search {

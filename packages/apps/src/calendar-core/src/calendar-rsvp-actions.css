@@ -47,7 +47,7 @@
 /* Slimmer icon-only RSVP on mouse / trackpad; keep touch-friendly height for coarse pointers. */
 @media (hover: hover) and (pointer: fine) {
   .calendar-rsvp-actions--sm {
-    --segmented-control-height: calc(var(--control-height-sm, 2rem) - 0.25rem);
+    --segmented-control-height: calc(var(--control-height-md, 2.25rem) - 0.25rem);
   }
 }
 

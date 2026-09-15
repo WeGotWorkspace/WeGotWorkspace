@@ -293,7 +293,7 @@ export function DriveFolderPicker({
     <DestinationPickerFrame
       breadcrumbs={
         <PathBreadcrumb
-          size="sm"
+          size="md"
           className="destination-picker__breadcrumbs"
           leadingIcon={<DriveViewIcon view={breadcrumbView} className="size-3.5" />}
           items={breadcrumbItems}

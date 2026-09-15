@@ -12,11 +12,11 @@ describe("color swatch trigger CSS", () => {
       /\.control-surface\.color-swatch-trigger:not\(\.color-swatch-trigger--labeled\) \{[\s\S]*width:\s*auto/,
     );
     expect(css).toMatch(/\.control-surface\.color-swatch-trigger--labeled \{[\s\S]*width:\s*100%/);
-    expect(css).toMatch(
+    expect(css).not.toMatch(
       /\.control-surface\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
     );
     expect(css).toMatch(
-      /\.control-surface\.color-swatch-trigger \{[\s\S]*height:\s*var\(--control-height-sm/,
+      /\.control-surface\.color-swatch-trigger \{[\s\S]*height:\s*var\(--control-height-md/,
     );
     expect(css).toMatch(/\.color-swatch-trigger \{[\s\S]*min-width:\s*3\.25rem/);
     expect(css).toMatch(/\.color-swatch-trigger__chevron \{[\s\S]*@apply size-3\.5/);

@@ -52,7 +52,7 @@ export function ChatMentionMenu({
               <UserAvatar
                 displayName={principal.displayName}
                 compact
-                size="sm"
+                size="md"
                 color={avatarColorForUserId(principal.id)}
               />
               <span className="chat-mention-menu__name">{principal.displayName}</span>

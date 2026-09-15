@@ -40,7 +40,24 @@ export const Primary: Story = {
 };
 
 export const PrimaryPill: Story = {
-  args: { ...Primary.args, size: "lg", pill: true },
+  args: { ...Primary.args, size: "xl", pill: true },
+};
+
+export const AllSizes: Story = {
+  name: "Sizes (xs–xl)",
+  render: () => (
+    <div className="flex flex-wrap items-end gap-3">
+      {BUTTON_SIZE_OPTIONS.map((size) => (
+        <Button key={size} label={`${size}`} size={size} variant="outline" onClick={() => {}} />
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    for (const size of BUTTON_SIZE_OPTIONS) {
+      await expect(canvas.getByRole("button", { name: size })).toHaveClass(`button--size-${size}`);
+    }
+  },
 };
 
 export const Ghost: Story = {

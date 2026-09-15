@@ -91,7 +91,7 @@ export function DocsCommentsThreadCard({
             <IconButton
               label={labels.commentsResolve}
               icon={<Check />}
-              size="sm"
+              size="md"
               variant="outline"
               severity="success"
               onClick={(event) => {

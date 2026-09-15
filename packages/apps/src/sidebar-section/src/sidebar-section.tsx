@@ -45,7 +45,7 @@ export function SidebarSection({
             <IconButton
               label={addLabel}
               icon={<Plus className="size-3.5" aria-hidden />}
-              size="sm"
+              size="md"
               variant="outline"
               onClick={onAdd}
               className="sidebar-section__add"

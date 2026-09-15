@@ -14,7 +14,7 @@ describe("MeetDevicePopover", () => {
     expect(popover).not.toMatch(/meet-popover-surface/);
     expect(popover).not.toMatch(/--meet-call-surface/);
     expect(popover).toMatch(/active=\{open\}/);
-    expect(popover).toMatch(/size="sm"/);
+    expect(popover).toMatch(/size="md"/);
     expect(popover).toMatch(/variant="outline"/);
   });
 

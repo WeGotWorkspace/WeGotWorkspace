@@ -58,7 +58,7 @@ describe("CalendarPublishSection", () => {
     const openLink = screen.getByRole("link", { name: defaultCalendarLabels.openInCalendar });
     expect(openLink.getAttribute("href")).toBe(feed.webcalUrl);
     expect(openLink.classList.contains("share-dialog__icon-link")).toBe(true);
-    expect(openLink.classList.contains("icon-button--size-sm")).toBe(true);
+    expect(openLink.classList.contains("icon-button--size-md")).toBe(true);
     expect(screen.queryByDisplayValue(feed.webcalUrl)).toBeNull();
 
     const toggle = screen.getByRole("switch", { name: defaultCalendarLabels.publishCalendarTitle });

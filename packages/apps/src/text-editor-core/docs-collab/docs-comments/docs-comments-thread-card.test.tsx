@@ -35,7 +35,7 @@ describe("DocsCommentsThreadCard", () => {
     renderCard();
 
     const resolve = screen.getByRole("button", { name: docsLabels.commentsResolve });
-    expect(resolve.className).toContain("icon-button--size-sm");
+    expect(resolve.className).toContain("icon-button--size-md");
     expect(resolve.className).toContain("button--severity-success");
     expect(screen.queryByText("Resolve")).toBeNull();
   });

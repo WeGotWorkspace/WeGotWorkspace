@@ -39,7 +39,7 @@ export function MeetDevicePopover({
         <IconButton
           icon={<SettingsIcon />}
           label={meetLabels.devices}
-          size="sm"
+          size="md"
           variant="outline"
           active={open}
         />

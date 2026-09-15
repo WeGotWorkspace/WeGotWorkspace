@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 
 export type ShareRowSelectOption<T extends string> = {
@@ -18,8 +19,8 @@ export type ShareRowSelectProps<T extends string> = {
   className?: string;
   /** Label class. Share-dialog compact type only when using the default trigger. */
   itemClassName?: string;
-  /** Compact toolbar/form rows; defaults to the shared md control. */
-  size?: "sm" | "md";
+  /** Default `md` = 36px. */
+  size?: ControlSize;
   "aria-label"?: string;
 };
 

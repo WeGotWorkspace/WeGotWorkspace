@@ -157,7 +157,7 @@ describe("contacts workspace sidebar chrome", () => {
   });
 
   it("reserves the same action-column width on editable rows and address fields", () => {
-    expect(css).toMatch(/--contacts-channel-action-size:\s*var\(\s*--control-height-sm,/);
+    expect(css).toMatch(/--contacts-channel-action-size:\s*var\(\s*--control-height-md,/);
     expect(css).toMatch(
       /\.contacts-detail-view__channel-row--editable \{[\s\S]*?grid-template-columns:\s*7rem minmax\(0, 1fr\) var\(--contacts-channel-action-size\)/,
     );

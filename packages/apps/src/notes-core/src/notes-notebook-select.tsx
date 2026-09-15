@@ -162,7 +162,7 @@ export function NotesNotebookSelect({
     </SelectPrimitive.Trigger>
   ) : (
     <SelectTrigger
-      size="sm"
+      size="md"
       className={cn("notes-notebook-select", className)}
       aria-label={accessibleName}
       disabled={disabled}

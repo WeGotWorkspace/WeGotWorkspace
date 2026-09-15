@@ -18,7 +18,7 @@ function renderActions(ui: ReactElement) {
 }
 
 describe("CalendarRsvpActions", () => {
-  it("defaults to compact segmented size and maps lg to md", () => {
+  it("defaults to compact segmented size and maps lg to SegmentedControl lg", () => {
     const { rerender } = renderActions(
       <CalendarRsvpActions
         currentStatus="accepted"
@@ -31,7 +31,8 @@ describe("CalendarRsvpActions", () => {
     expect(compact?.className).toContain("calendar-rsvp-actions--sm");
     expect(compact?.className).not.toContain("calendar-rsvp-actions--lg");
     expect(compact?.querySelector(".segmented-control")).toBeTruthy();
-    expect(compact?.querySelector(".segmented-control--size-md")).toBeNull();
+    expect(compact?.querySelector(".segmented-control--size-md")).toBeTruthy();
+    expect(compact?.querySelector(".segmented-control--size-lg")).toBeNull();
     expect(compact?.querySelector(".segmented-control__button--text")).toBeNull();
     const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
     expect(accept.textContent).not.toContain(defaultCalendarLabels.rsvpAccept);
@@ -51,7 +52,7 @@ describe("CalendarRsvpActions", () => {
     const large = document.querySelector(".calendar-rsvp-actions");
     expect(large?.className).toContain("calendar-rsvp-actions--lg");
     expect(large?.className).not.toContain("calendar-rsvp-actions--sm");
-    expect(large?.querySelector(".segmented-control--size-md")).toBeTruthy();
+    expect(large?.querySelector(".segmented-control--size-lg")).toBeTruthy();
   });
 
   it.each([undefined, "needs-action", "delegated"] as const)(

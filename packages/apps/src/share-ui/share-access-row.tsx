@@ -49,7 +49,7 @@ export function ShareAccessRow({
         <IconButton
           label={removeLabel}
           icon={<Trash2 className="size-3.5" aria-hidden />}
-          size="sm"
+          size="md"
           variant="outline"
           disabled={!canRemove}
           title={removeTitle}

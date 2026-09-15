@@ -33,6 +33,21 @@ For shared primitives (`Button`, `IconButton`, and similar):
 - Prefer introducing new CSS variables over adding one-off variant branches in TypeScript.
 - For responsive action surfaces, prefer descriptor props (`*Actions`) over arbitrary node slots in new APIs.
 
+### Control size scale (`xs` … `xl`)
+
+Fixed heights (not viewport-relative). Shared by Button, IconButton, Input, SelectTrigger,
+LocaleDatePicker, Textarea (padding/font), and SegmentedControl:
+
+| Size | Height | Use |
+|------|--------|-----|
+| `xs` | 28px | Compact icon-only / dense chips |
+| `sm` | 32px | Tighter chrome when needed |
+| `md` | **36px** | **Default** — action bar, view header, event forms |
+| `lg` | 40px | Spacious forms / emphasis |
+| `xl` | 44px | Sidebar primary New / hero CTAs |
+
+Tokens: `--control-height-xs|sm|md|lg|xl`. `--input-height` aliases `md`.
+
 Refactor checklist:
 
 - Move duplicated `style={...}` presets into parent-scoped CSS variables.

@@ -109,7 +109,7 @@
   }
 
   .tasks-workspace__show-completed.button {
-    width: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+    width: var(--control-height-md, 2.25rem);
     @apply shrink-0 flex-none px-0;
   }
 }

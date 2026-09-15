@@ -73,7 +73,7 @@
   @apply min-w-0 flex-1;
 }
 
-.meet-channel-dialog__link-row .icon-button--size-sm {
+.meet-channel-dialog__link-row .icon-button--size-md {
   @apply size-9 shrink-0;
 }
 

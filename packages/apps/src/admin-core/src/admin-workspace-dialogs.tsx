@@ -215,7 +215,7 @@ export function GroupDialog({
                     <UserAvatar
                       displayName={user.displayName}
                       subtitle={user.username}
-                      size="sm"
+                      size="md"
                       className="flex-1"
                     />
                     <Switch

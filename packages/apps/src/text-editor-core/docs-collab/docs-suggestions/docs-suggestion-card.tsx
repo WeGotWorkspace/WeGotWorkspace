@@ -81,7 +81,7 @@ export function DocsSuggestionCard({
             <IconButton
               label={labels.suggestionsAccept}
               icon={<Check />}
-              size="sm"
+              size="md"
               variant="outline"
               severity="success"
               onClick={(event) => {
@@ -92,7 +92,7 @@ export function DocsSuggestionCard({
             <IconButton
               label={labels.suggestionsReject}
               icon={<X />}
-              size="sm"
+              size="md"
               variant="outline"
               severity="danger"
               onClick={(event) => {

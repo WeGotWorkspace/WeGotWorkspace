@@ -27,7 +27,7 @@ function PrincipalAvatar({
       <UserAvatar
         displayName={labels.accessPublicLink}
         compact
-        size="sm"
+        size="md"
         fallback={<Globe className="size-4" aria-hidden />}
         className="drive-access-grant-row__avatar"
         ariaLabel={labels.accessPublicLink}
@@ -43,7 +43,7 @@ function PrincipalAvatar({
       <UserAvatar
         displayName={label}
         compact
-        size="sm"
+        size="md"
         fallback={<Users className="size-4" aria-hidden />}
         className="drive-access-grant-row__avatar"
       />

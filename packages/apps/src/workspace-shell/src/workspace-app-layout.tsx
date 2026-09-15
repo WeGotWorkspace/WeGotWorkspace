@@ -147,7 +147,7 @@ export function WorkspaceUserFooter({
         icon={<LogOut />}
         onClick={handleLogout}
         variant="outline"
-        size="sm"
+        size="md"
       />
     </div>
   );
@@ -185,7 +185,7 @@ export function WorkspaceSidebarToggle({ open, onToggle }: WorkspaceSidebarToggl
         </>
       }
       variant="outline"
-      size="sm"
+      size="md"
       active={open}
       aria-pressed={open}
       className="workspace-sidebar-toggle shrink-0"

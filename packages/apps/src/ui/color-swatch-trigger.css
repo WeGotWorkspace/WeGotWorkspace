@@ -6,11 +6,10 @@
   min-width: 3.25rem;
 }
 
-/* Match IconButton sm / SegmentedControl sm: pill radius + compact height. */
+/* Share form control radius (`--control-radius`); pin chrome height to md (36px). */
 .control-surface.color-swatch-trigger {
-  --control-radius: var(--control-radius-button-pill);
-  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+  height: var(--control-height-md, 2.25rem);
+  min-height: var(--control-height-md, 2.25rem);
 }
 
 /* `.control-surface` is `width: 100%` in a later production CSS chunk. Beat it with

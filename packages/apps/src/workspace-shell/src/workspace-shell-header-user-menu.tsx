@@ -28,7 +28,7 @@ export function WorkspaceShellHeaderUserMenu({
           <UserAvatar
             displayName={displayName}
             compact
-            size="sm"
+            size="md"
             className="workspace-shell-header__user-avatar"
             ariaLabel={`${displayName} avatar`}
           />
