@@ -81,18 +81,7 @@
     var(--docs-accent) 24%,
     var(--color-cream, #ffffff)
   );
-  /* Quiet menu washes for portaled row/action DropdownMenus (portal-theme-vars). */
-  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-selected-background: color-mix(
-    in oklab,
-    var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --menu-item-selected-hover-background: color-mix(
-    in oklab,
-    var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
+  /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24). */
 
   --foreground: var(--docs-text);
   --color-foreground: var(--docs-text);
@@ -152,17 +141,7 @@
     var(--docs-accent) 24%,
     var(--color-cream, #ffffff)
   );
-  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-selected-background: color-mix(
-    in oklab,
-    var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --menu-item-selected-hover-background: color-mix(
-    in oklab,
-    var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
+  /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 @media (min-width: 768px) {
@@ -385,17 +364,7 @@
   --button-active-color: var(--docs-accent-strong);
   --button-outline-hover-color: var(--docs-accent-strong);
   --button-outline-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-selected-background: color-mix(
-    in oklab,
-    var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --menu-item-selected-hover-background: color-mix(
-    in oklab,
-    var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
+  /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 .docs-workspace__editor {

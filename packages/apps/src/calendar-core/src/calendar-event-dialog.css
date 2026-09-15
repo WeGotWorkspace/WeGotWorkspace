@@ -16,11 +16,14 @@
 .calendar-dialog-surface {
   --calendar-accent: #6366f1;
   --calendar-accent-strong: #5558e8;
+  --workspace-accent: var(--calendar-accent);
+  --workspace-accent-strong: var(--calendar-accent-strong);
   --color-emerald: var(--calendar-accent);
   --button-primary-bg: var(--calendar-accent-strong);
   --button-primary-fg: #ffffff;
   --primary: var(--calendar-accent-strong);
   --primary-foreground: #ffffff;
+  --button-active-color: var(--calendar-accent-strong);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --card-title-icon-color: var(--calendar-accent);
   --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);

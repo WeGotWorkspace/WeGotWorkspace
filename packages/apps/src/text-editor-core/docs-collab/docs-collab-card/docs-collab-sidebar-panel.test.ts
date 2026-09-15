@@ -75,15 +75,6 @@ describe("DocsCollabSidebarPanel", () => {
 
   it("republishes cream-surface outline button + segmented + menu washes on the drawer", () => {
     expect(css).toMatch(
-      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-outline-hover-background:\s*color-mix\(\s*in oklab,\s*var\(--workspace-accent/,
-    );
-    expect(css).toMatch(
-      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-outline-active-background:\s*color-mix\(\s*in oklab,\s*var\(--workspace-accent[\s\S]*18%/,
-    );
-    expect(css).toMatch(
-      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-outline-active-hover-background:\s*color-mix\(\s*in oklab,\s*var\(--workspace-accent[\s\S]*24%/,
-    );
-    expect(css).toMatch(
       /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-active-color:\s*var\(--docs-collab-sidebar-panel-accent-strong\)/,
     );
     expect(css).toMatch(
@@ -95,8 +86,9 @@ describe("DocsCollabSidebarPanel", () => {
     expect(css).toMatch(
       /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--segmented-control-active-fg:\s*var\(--button-active-color\)/,
     );
-    expect(css).toMatch(
-      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--menu-item-hover-background:\s*color-mix\(\s*in oklab,\s*var\(--workspace-accent/,
+    // Soft outline + menu washes live on shared `ui/workspace-menu-item-sst.css`.
+    expect(css).not.toMatch(
+      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-outline-hover-background:\s*color-mix/,
     );
   });
 

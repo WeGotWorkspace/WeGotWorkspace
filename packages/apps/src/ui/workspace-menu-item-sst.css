@@ -1,0 +1,85 @@
+@import "../styles.css" reference;
+
+/**
+ * Soft Select / DropdownMenu / MenuItem washes from `--workspace-accent`.
+ * Same 14/18/24 cream recipe as chrome outline IconButtons (see below).
+ *
+ * Products set `--workspace-accent` on the shell (and dialog surfaces that host
+ * selects). Portaled menus copy these via `bridgePortalThemeVars` so hover /
+ * selected washes stay accent-tinted everywhere — not ink-gray.
+ */
+:is(
+  .view-header,
+  .floating-action-bar,
+  .calendar-workspace,
+  .docs-workspace,
+  .drive-workspace,
+  .tasks-workspace,
+  .notes-workspace,
+  .mail-workspace,
+  .meet-workspace,
+  .contacts-workspace,
+  .settings-workspace,
+  .admin-workspace,
+  .install-workspace,
+  .calendar-dialog-surface,
+  .share-dialog,
+  .share-access-card,
+  .docs-collab-sidebar-panel,
+  .docs-collab-sidebar-panel-drawer,
+  .meet-channel-dialog
+) {
+  --menu-item-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 14%,
+    transparent
+  );
+  --menu-item-selected-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --menu-item-selected-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 24%,
+    var(--color-cream, #ffffff)
+  );
+}
+
+/**
+ * Soft outline Button / IconButton washes (14/18/24→cream) for chrome that
+ * must not inherit heavier workspace-root tile washes (Notes/Tasks/Drive 40/55).
+ * Prefer `--button-active-color` (accent-strong) for hover fg.
+ *
+ * Scoped to header, floating action bar, and dialog / overlay surfaces — not
+ * product workspace roots (those publish their own outline weights).
+ */
+:is(
+  .view-header,
+  .floating-action-bar,
+  .calendar-dialog-surface,
+  .share-dialog,
+  .share-access-card,
+  .docs-collab-sidebar-panel-drawer,
+  .meet-channel-dialog
+) {
+  --button-outline-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 14%,
+    transparent
+  );
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-ink)) 24%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-hover-color: var(
+    --button-active-color,
+    var(--workspace-accent, var(--color-ink))
+  );
+}

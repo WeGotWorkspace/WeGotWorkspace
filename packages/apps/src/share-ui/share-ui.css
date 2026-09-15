@@ -4,6 +4,7 @@
 .share-access-card {
   /* Accent for icons and small marks only — not section fills (see dialog surface --primary). */
   --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
+  --workspace-accent: var(--share-dialog-accent);
   --share-dialog-tag-bg: color-mix(in oklab, var(--share-dialog-accent) 62%, transparent);
   --share-dialog-tag-fg: var(--color-ink);
   --share-dialog-muted: var(
@@ -142,11 +143,7 @@
 }
 
 .share-dialog__input {
-  @apply min-w-0 flex-1;
-}
-
-.share-dialog__input--mono {
-  @apply truncate font-mono;
+  @apply min-w-0 flex-1 truncate;
 }
 
 .share-dialog__link-row > :not(.share-dialog__input) {
@@ -180,7 +177,7 @@
 }
 
 .share-dialog__link-url {
-  @apply min-w-0 truncate font-mono text-xs;
+  @apply min-w-0 truncate text-xs;
   color: var(--share-dialog-muted);
 }
 

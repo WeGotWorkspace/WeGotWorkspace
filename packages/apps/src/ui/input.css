@@ -1,4 +1,5 @@
 @import "../styles.css" reference;
+@import "./workspace-menu-item-sst.css";
 
 /**
  * Text field primitives. Optional overrides: `--input-height`, `--input-background`,
@@ -296,7 +297,7 @@
  * Select item states — quiet cream-surface washes (14/18/24), not sidebar chip
  * saturation (40/55/65 via `--button-outline-*`). Accent + fg still come from
  * portaled `--workspace-accent` / `--button-*-color` via `bridgePortalThemeVars`.
- * Optional `--menu-item-*-background` overrides stay available for parents.
+ * Soft washes: shared `workspace-menu-item-sst.css` (`--menu-item-*`).
  */
 .select-ui__item {
   @apply relative flex w-full cursor-default select-none items-center py-1.5 pl-2 pr-8 text-sm outline-none transition-colors;

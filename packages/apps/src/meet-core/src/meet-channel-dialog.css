@@ -8,23 +8,14 @@
 .meet-channel-dialog {
   --meet-accent: #2a1644;
   --meet-accent-strong: #1a0e2a;
+  --workspace-accent: var(--meet-accent);
   --color-emerald: var(--meet-accent);
   --button-primary-bg: var(--meet-accent-strong);
   --button-primary-fg: #ffffff;
   --button-outline-color: var(--color-ink);
   --button-outline-border-color: color-mix(in oklab, var(--color-ink) 20%, transparent);
-  --button-outline-hover-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --button-active-color: var(--meet-accent-strong);
-  --button-outline-active-background: color-mix(
-    in oklab,
-    var(--meet-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--meet-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   --primary: var(--meet-accent-strong);
   --primary-foreground: #ffffff;
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);

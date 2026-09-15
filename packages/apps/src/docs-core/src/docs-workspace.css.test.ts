@@ -85,9 +85,6 @@ describe("docs workspace outline chrome", () => {
       /\.docs-workspace \{[\s\S]*--button-outline-hover-color:\s*var\(--docs-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.docs-workspace \{[\s\S]*--menu-item-hover-background:[\s\S]*var\(--docs-accent\) 14%/,
-    );
-    expect(css).toMatch(
       /\.docs-workspace \.view-header \{[\s\S]*--button-outline-color:\s*var\(--color-ink\)/,
     );
     expect(css).toMatch(
