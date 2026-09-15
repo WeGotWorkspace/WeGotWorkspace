@@ -19,12 +19,25 @@ describe("segmented-control chrome tokens", () => {
     );
   });
 
-  it("shares the track radius with the thumb (segment borders form the stroke)", () => {
+  it("shares the track radius token with the thumb (outer edges via data-thumb-edge)", () => {
     expect(css).toMatch(
       /--segmented-control-thumb-radius:\s*var\(--segmented-control-track-radius\)/,
     );
+    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*border-radius:\s*0/);
     expect(css).toMatch(
-      /\.segmented-control__thumb \{[\s\S]*border-radius:\s*var\(--segmented-control-thumb-radius\)/,
+      /\.segmented-control\[data-thumb-edge="solo"\] \.segmented-control__thumb \{[\s\S]*border-radius:\s*var\(--segmented-control-thumb-radius\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control\[data-thumb-edge="first"\] \.segmented-control__thumb \{[\s\S]*border-start-start-radius:\s*var\(--segmented-control-thumb-radius\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control\[data-thumb-edge="first"\] \.segmented-control__thumb \{[\s\S]*border-end-start-radius:\s*var\(--segmented-control-thumb-radius\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control\[data-thumb-edge="last"\] \.segmented-control__thumb \{[\s\S]*border-start-end-radius:\s*var\(--segmented-control-thumb-radius\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control\[data-thumb-edge="last"\] \.segmented-control__thumb \{[\s\S]*border-end-end-radius:\s*var\(--segmented-control-thumb-radius\)/,
     );
   });
 
@@ -76,9 +89,7 @@ describe("segmented-control chrome tokens", () => {
       /\.segmented-control__thumb \{[\s\S]*transform:\s*translateX\(var\(--segmented-control-thumb-x,\s*0px\)\)/,
     );
     expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*border:\s*0/);
-    expect(css).toMatch(
-      /\.segmented-control__thumb \{[\s\S]*border-radius:\s*var\(--segmented-control-thumb-radius\)/,
-    );
+    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*border-radius:\s*0/);
     expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*z-index:\s*1/);
     expect(css).not.toMatch(
       /height:\s*calc\(100%\s*\+\s*2\s*\*\s*var\(--segmented-control-track-border-width\)\)/,

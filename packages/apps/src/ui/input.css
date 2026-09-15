@@ -78,6 +78,18 @@
   opacity: 0.6;
 }
 
+/*
+ * WebKit hides the native clock glyph when the field is disabled. Keep it
+ * visible (LocaleDatePicker still shows its calendar icon) but non-interactive.
+ */
+.input[type="time"]:disabled::-webkit-calendar-picker-indicator,
+.input[type="time"]:read-only::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  pointer-events: none;
+  cursor: default;
+  display: block;
+}
+
 .input[type="time"]::-webkit-datetime-edit {
   @apply min-w-0;
   padding-inline-end: 1.25rem;

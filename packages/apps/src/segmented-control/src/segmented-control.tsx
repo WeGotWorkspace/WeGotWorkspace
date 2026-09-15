@@ -40,6 +40,18 @@ function optionKey<T extends string>(options: SegmentedControlOption<T>[]): stri
   return options.map((option) => option.value).join("\0");
 }
 
+function thumbEdgeForActive(
+  root: HTMLElement,
+  active: HTMLElement,
+): "solo" | "first" | "last" | "middle" {
+  const buttons = [...root.querySelectorAll<HTMLElement>(".segmented-control__button")];
+  if (buttons.length <= 1) return "solo";
+  const index = buttons.indexOf(active);
+  if (index <= 0) return "first";
+  if (index >= buttons.length - 1) return "last";
+  return "middle";
+}
+
 /**
  * Sync thumb geometry to the active segment.
  *
@@ -49,8 +61,10 @@ function optionKey<T extends string>(options: SegmentedControlOption<T>[]): stri
  * reveal, so remounting a card with a selected value never replays a slide-in.
  * Later option changes animate transform only (see CSS).
  *
- * Height uses `clientHeight` (content box) — not border-box — so the wash
- * cannot paint past the track top/bottom on first layout.
+ * Geometry uses offsetLeft/offsetWidth (layout box), not viewport rects,
+ * so popover zoom/transform ancestors cannot shrink the wash into an inset pill.
+ * Height uses `clientHeight` (content box) so the wash cannot paint past the
+ * track top/bottom on first layout. `data-thumb-edge` drives outer-only radius.
  */
 function syncSegmentedThumb(
   root: HTMLElement,
@@ -60,19 +74,17 @@ function syncSegmentedThumb(
   if (!active) {
     delete root.dataset.thumbReady;
     delete root.dataset.thumbAnimate;
+    delete root.dataset.thumbEdge;
     root.style.removeProperty("--segmented-control-thumb-x");
     root.style.removeProperty("--segmented-control-thumb-width");
     root.style.removeProperty("--segmented-control-thumb-height");
     return;
   }
-  const rootRect = root.getBoundingClientRect();
-  const buttonRect = active.getBoundingClientRect();
-  const border = Number.parseFloat(getComputedStyle(root).borderTopWidth) || 0;
-  // Thumb `left: 0` is the padding edge; rootRect is the border box.
-  // Round to device pixels so labeled end segments do not overhang the track by a hair.
-  const x = Math.round(buttonRect.left - rootRect.left - border);
-  const width = Math.round(buttonRect.width);
+  // Layout coords ignore ancestor transforms (Radix popover zoom-in-95).
+  const x = Math.round(active.offsetLeft);
+  const width = Math.round(active.offsetWidth);
   const height = Math.round(root.clientHeight);
+  root.dataset.thumbEdge = thumbEdgeForActive(root, active);
   root.style.setProperty("--segmented-control-thumb-x", `${x}px`);
   root.style.setProperty("--segmented-control-thumb-width", `${width}px`);
   root.style.setProperty("--segmented-control-thumb-height", `${height}px`);

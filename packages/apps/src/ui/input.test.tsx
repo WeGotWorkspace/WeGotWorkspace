@@ -108,6 +108,18 @@ describe("Input", () => {
     );
   });
 
+  it("keeps the time picker indicator visible when disabled or read-only", () => {
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]:disabled::-webkit-calendar-picker-indicator[\s\S]*opacity:\s*0\.6/,
+    );
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]:read-only::-webkit-calendar-picker-indicator[\s\S]*pointer-events:\s*none/,
+    );
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]:disabled::-webkit-calendar-picker-indicator[\s\S]*display:\s*block/,
+    );
+  });
+
   it("renders a leading search icon and no clear button when empty", () => {
     const { container } = render(
       <Input variant="search" size="sm" value="" onChange={() => {}} aria-label="Search" />,

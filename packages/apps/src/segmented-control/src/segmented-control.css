@@ -78,7 +78,9 @@
   max-height: 100%;
   width: var(--segmented-control-thumb-width, 0px);
   transform: translateX(var(--segmented-control-thumb-x, 0px));
-  border-radius: var(--segmented-control-thumb-radius);
+  /* Default = middle segment: square against both dividers. Outer edges only
+   * round via [data-thumb-edge] so the wash sits flush on internal separators. */
+  border-radius: 0;
   border: 0;
   background-color: var(
     --segmented-control-active-bg,
@@ -91,6 +93,20 @@
   opacity: 0;
   /* Transform-only slide (ViewModeToggle feel); width and severity wash snap. */
   transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.segmented-control[data-thumb-edge="solo"] .segmented-control__thumb {
+  border-radius: var(--segmented-control-thumb-radius);
+}
+
+.segmented-control[data-thumb-edge="first"] .segmented-control__thumb {
+  border-start-start-radius: var(--segmented-control-thumb-radius);
+  border-end-start-radius: var(--segmented-control-thumb-radius);
+}
+
+.segmented-control[data-thumb-edge="last"] .segmented-control__thumb {
+  border-start-end-radius: var(--segmented-control-thumb-radius);
+  border-end-end-radius: var(--segmented-control-thumb-radius);
 }
 
 .segmented-control[data-thumb-ready] .segmented-control__thumb {
