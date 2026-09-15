@@ -70,6 +70,7 @@ function eventCardHost(invitationId: string) {
         past?: boolean;
         time?: string;
         recurring?: boolean;
+        color?: string;
       })
     | null;
 }

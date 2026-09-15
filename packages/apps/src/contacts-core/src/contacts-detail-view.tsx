@@ -632,7 +632,7 @@ export function ContactsDetailView({
         {groupTags ? (
           <TagGroup
             className="contacts-detail-view__tag-group"
-            size="xl"
+            size="lg"
             tags={groupTags.assigned.map((chip) =>
               groupToTagItem(chip, !groupTags.readonly && chip.writable, colorOverrides),
             )}

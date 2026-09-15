@@ -26,7 +26,7 @@ export function DriveDetailActionBar({ actions }: DriveDetailActionBarProps) {
           onClick: action.onClick,
           checked: action.active,
           disabled: action.disabled,
-          severity: action.severity,
+          severity: action.severity === "danger" ? ("danger" as const) : undefined,
         }))}
         contentClassName="min-w-[11rem] p-1.5"
         trigger={

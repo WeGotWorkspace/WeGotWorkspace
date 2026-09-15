@@ -84,7 +84,7 @@ export function MailMoveToDialog({
           <DestinationPickerFrame
             breadcrumbs={
               <PathBreadcrumb
-                size="md"
+                size="default"
                 className="destination-picker__breadcrumbs"
                 leadingIcon={<InboxIcon className="size-3.5" />}
                 items={[{ label: labels.moveDialogBreadcrumb, path: MAILBOX_PICKER_ROOT }]}

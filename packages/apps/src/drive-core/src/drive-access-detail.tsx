@@ -38,7 +38,7 @@ export function DriveAccessDetail({ controller }: DriveAccessDetailProps) {
           currentPath={scopePath}
           onNavigate={navigateScopeFromBreadcrumb}
           leadingIcon={<DriveViewIcon view={{ type: "folder", path: scopePath }} />}
-          size="md"
+          size="default"
         />
         <h2 id="drive-access-detail-title" className="drive-access-detail__title">
           {scopeTitle}

@@ -95,10 +95,10 @@ describe("calendar event details popover CSS", () => {
       /width:\s*min\(var\(--calendar-event-details-popover-editable-max-inline-size\),\s*calc\(100vw - 1\.5rem\)\)/,
     );
     expect(css).toMatch(
-      /max-width:\s*min\(var\(--calendar-event-details-popover-editable-max-inline-size\),\s*calc\(100vw - 1\.5rem\)\)/,
+      /max-width:\s*min\(\s*var\(--calendar-event-details-popover-editable-max-inline-size\)\s*,\s*calc\(100vw - 1\.5rem\)\s*\)/,
     );
     expect(css).toMatch(
-      /max-inline-size:\s*min\(var\(--calendar-event-details-popover-editable-max-inline-size\),\s*calc\(100vw - 1\.5rem\)\)/,
+      /max-inline-size:\s*min\(\s*var\(--calendar-event-details-popover-editable-max-inline-size\)\s*,\s*calc\(100vw - 1\.5rem\)\s*\)/,
     );
     expect(css).not.toMatch(
       /\.calendar-event-details-popover--editable[\s\S]*--calendar-event-dialog-max-inline-size/,
