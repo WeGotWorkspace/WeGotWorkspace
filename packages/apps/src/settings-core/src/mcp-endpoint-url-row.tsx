@@ -39,7 +39,6 @@ export function McpEndpointUrlRow({ url, inputId, className }: McpEndpointUrlRow
             type="url"
             value={url}
             readOnly
-            mono
             aria-label="Connection URL"
           />
           <IconButton

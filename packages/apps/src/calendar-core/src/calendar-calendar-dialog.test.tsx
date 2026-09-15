@@ -265,7 +265,9 @@ describe("CalendarCalendarDialog", () => {
     fireEvent.change(screen.getByLabelText(defaultCalendarLabels.calendarNameLabel), {
       target: { value: "Company Holidays" },
     });
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.subscribeCalendar }));
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.subscribeCalendarSubmit }),
+    );
 
     expect(onConfirm).toHaveBeenCalledWith({
       name: "Company Holidays",
@@ -305,7 +307,9 @@ describe("CalendarCalendarDialog", () => {
       (screen.getByLabelText(defaultCalendarLabels.calendarNameLabel) as HTMLInputElement).value,
     ).toBe("My Holidays");
 
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.subscribeCalendar }));
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.subscribeCalendarSubmit }),
+    );
     expect(onConfirm).toHaveBeenCalledWith({
       name: "My Holidays",
       color: DEFAULT_CALENDAR_COLOR,
@@ -330,7 +334,9 @@ describe("CalendarCalendarDialog", () => {
     fireEvent.change(screen.getByLabelText(defaultCalendarLabels.subscribeUrlLabel), {
       target: { value: "https://feeds.example.test/us-public-holidays.ics" },
     });
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.subscribeCalendar }));
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.subscribeCalendarSubmit }),
+    );
 
     expect(onConfirm).toHaveBeenCalledWith({
       name: "Us Public Holidays",
@@ -368,7 +374,9 @@ describe("CalendarCalendarDialog", () => {
         name: defaultCalendarLabels.calendarDirectoryGroup("Team"),
       }),
     );
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.subscribeCalendar }));
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.subscribeCalendarSubmit }),
+    );
 
     expect(onConfirm).toHaveBeenCalledWith({
       name: "Holidays",

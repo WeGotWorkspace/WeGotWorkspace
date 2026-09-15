@@ -58,6 +58,8 @@ export type CalendarUILabels = {
   changeCalendarOwnerConfirm: string;
   subscribeCalendar: string;
   subscribeCalendarTitle: string;
+  /** Primary action in the subscribe dialog. */
+  subscribeCalendarSubmit: string;
   subscribeUrlLabel: string;
   subscribeUrlPlaceholder: string;
   unsubscribeCalendar: string;
@@ -316,6 +318,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   changeCalendarOwnerConfirm: "Change owner",
   subscribeCalendar: "Subscribe to a calendar",
   subscribeCalendarTitle: "Subscribe to calendar",
+  subscribeCalendarSubmit: "Subscribe",
   subscribeUrlLabel: "Calendar URL",
   subscribeUrlPlaceholder: "https://… or webcal://…",
   unsubscribeCalendar: "Unsubscribe",
@@ -328,7 +331,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
     "It disappears from your list. The owner’s share is unchanged, so it can be added again later.",
   subscribedCalendarBadge: "Subscribed calendar",
   publishCalendarTitle: "Public feed",
-  publishCalendarEnabledHint: "Anyone with the link can subscribe in Google, Apple, or Outlook.",
+  publishCalendarEnabledHint: "Anyone with the link can subscribe. Access is view only",
   publishCalendarDisabledHint: "Turn on to publish this calendar as an ICS / webcal feed.",
   publishCalendarHttpsLabel: "Web address",
   copyHttpsUrl: "Copy link",

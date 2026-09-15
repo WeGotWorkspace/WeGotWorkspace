@@ -49,6 +49,11 @@ LocaleDatePicker, Textarea (padding/font), SegmentedControl, UserChip, and UserA
 Tokens: `--control-height-xs|sm|md|lg|xl`. `--input-height` aliases `md`.
 UserAvatar adds display-only `2xl` (80px) for Meet lobby / large idle tiles outside this scale.
 
+### Dialog footers
+
+Cancel / dismiss = `Button variant="outline"` (same as `AlertDialogCancel`). Primary confirm =
+default primary. Destructive side actions (Delete) may stay ghost or outline+danger.
+
 Refactor checklist:
 
 - Move duplicated `style={...}` presets into parent-scoped CSS variables.

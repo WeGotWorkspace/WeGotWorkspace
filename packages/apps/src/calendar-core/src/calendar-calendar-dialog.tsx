@@ -362,7 +362,7 @@ export function CalendarCalendarDialog({
                   {labels.cancel}
                 </Button>
                 <Button type="submit" disabled={!canSubmit}>
-                  {isSubscribe ? labels.subscribeCalendar : labels.save}
+                  {isSubscribe ? labels.subscribeCalendarSubmit : labels.save}
                 </Button>
               </div>
             </DialogFooter>

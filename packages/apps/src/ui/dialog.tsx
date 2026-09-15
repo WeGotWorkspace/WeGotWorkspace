@@ -68,6 +68,11 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 );
 DialogHeader.displayName = "DialogHeader";
 
+/**
+ * Dialog action row. Convention: Cancel / dismiss = `variant="outline"`; primary
+ * submit = default primary. Destructive side actions (delete) may use ghost or
+ * outline+danger. {@link AlertDialogCancel} already defaults to outline.
+ */
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}

@@ -70,7 +70,6 @@ export function CalendarPublishSection({
               type="text"
               value={feed.httpsUrl}
               readOnly
-              mono
               aria-label={labels.publishCalendarHttpsLabel}
             />
             <IconButton

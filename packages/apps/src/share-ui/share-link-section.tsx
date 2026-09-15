@@ -186,7 +186,6 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
               type="text"
               value={url}
               readOnly
-              mono
               aria-label={shareLabels.publicSectionTitle}
             />
             <IconButton
@@ -240,7 +239,6 @@ export function ShareLinkSection({ atPath, mutations, disabled = false }: ShareL
                 type="text"
                 value={passwordFieldValue}
                 readOnly
-                mono
                 disabled={!passwordRequired || disabled || passwordBusy}
                 aria-label={
                   passwordRevealed
