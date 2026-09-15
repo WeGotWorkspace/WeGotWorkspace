@@ -48,6 +48,16 @@ describe("product UI font tokens", () => {
     expect(css).toMatch(/body \{[\s\S]*font-family:\s*var\(--font-sans\)/);
   });
 
+  it("uses sans for all-caps label utility (.uppercase)", () => {
+    expect(css).toMatch(/\.uppercase \{[\s\S]*font-family:\s*var\(--font-sans\)/);
+    expect(css).not.toMatch(/\.uppercase \{[\s\S]*font-family:\s*var\(--font-mono\)/);
+  });
+
+  it("publishes text-2xs for dense uppercase captions", () => {
+    expect(css).toMatch(/--text-2xs:\s*0\.625rem/);
+    expect(css).toMatch(/--text-2xs--line-height:\s*0\.75rem/);
+  });
+
   it("opts shared Input/Textarea classes out of the iOS 1rem floor", () => {
     expect(css).toMatch(/:not\(\.input\):not\(\.input__field\)/);
     expect(css).toMatch(/textarea:not\(\.note-detail-view__title\):not\(\.textarea\)/);

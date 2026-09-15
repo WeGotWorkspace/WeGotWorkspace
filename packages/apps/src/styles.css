@@ -32,6 +32,9 @@
   --font-sans: ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --font-app: "Bebas Neue", ui-sans-serif, system-ui, sans-serif;
+  /* Dense uppercase captions (field labels, sidebar section titles) — one step below `text-xs`. */
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.75rem;
   --color-forest: #042318;
   --color-emerald: #34d399;
   --color-ink: #042a22;
@@ -237,9 +240,9 @@
     min-height: 100dvh;
   }
 
-  /* All-caps small labels (sidebar headings, table headers, eyebrows) use mono */
+  /* All-caps small labels (sidebar headings, table headers, eyebrows) use sans */
   .uppercase {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
   }
 }
 

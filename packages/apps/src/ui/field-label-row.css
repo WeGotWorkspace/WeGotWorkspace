@@ -8,11 +8,20 @@
 /**
  * Dense uppercase field caption. Parents override tone via `labelClassName` or
  * `--field-label-color` / `--field-label-font-family` on an ancestor.
+ * No letter-spacing — size comes from `--text-2xs` (one step below caption/`text-xs`).
  */
 .field-label-row__label {
-  @apply flex items-center gap-1.5 text-xs font-normal uppercase tracking-wider;
-  font-family: var(--field-label-font-family, var(--font-mono, ui-monospace, monospace));
+  @apply flex items-center gap-1 text-2xs font-medium uppercase;
+  font-family: var(
+    --field-label-font-family,
+    var(--font-sans, ui-sans-serif, system-ui, sans-serif)
+  );
   color: var(--field-label-color, var(--color-muted-foreground));
+}
+
+/** Sibling icons (passed `icon`, lock) match the 2xs caption optically. */
+.field-label-row__label > svg {
+  @apply size-2.5 shrink-0;
 }
 
 /**
@@ -25,5 +34,5 @@
 }
 
 .field-label-row__lock {
-  @apply size-3 shrink-0 opacity-60;
+  @apply size-2.5 shrink-0 opacity-60;
 }

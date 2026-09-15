@@ -7,6 +7,27 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "field-label-row.css"), "utf8");
 
 describe("field-label-row CSS", () => {
+  it("uses sans for uppercase captions with medium weight", () => {
+    expect(css).toMatch(
+      /\.field-label-row__label \{[\s\S]*@apply[\s\S]*font-medium[\s\S]*uppercase/,
+    );
+    expect(css).toMatch(
+      /\.field-label-row__label \{[\s\S]*font-family:\s*var\(--field-label-font-family,\s*var\(--font-sans/,
+    );
+    expect(css).not.toMatch(
+      /\.field-label-row__label \{[\s\S]*font-family:\s*var\(--field-label-font-family,\s*var\(--font-mono/,
+    );
+  });
+
+  it("uses text-2xs without letter-spacing and scales sibling icons", () => {
+    expect(css).toMatch(
+      /\.field-label-row__label \{[\s\S]*@apply[\s\S]*\btext-2xs\b[\s\S]*uppercase/,
+    );
+    expect(css).not.toMatch(/\.field-label-row__label \{[\s\S]*@apply[\s\S]*\btracking-/);
+    expect(css).toMatch(/\.field-label-row__label > svg \{[\s\S]*@apply size-2\.5/);
+    expect(css).toMatch(/\.field-label-row__lock \{[\s\S]*@apply size-2\.5/);
+  });
+
   it("reserves the caption band without collapsing or using column flex-basis", () => {
     expect(css).toMatch(/\.field-label-row__label--reserved \{[\s\S]*@apply invisible/);
     expect(css).not.toMatch(/\.field-label-row__label--reserved \{[\s\S]*display:\s*none/);
