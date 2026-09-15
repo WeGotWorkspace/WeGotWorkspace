@@ -60,10 +60,21 @@
  * WebKit/Blink time fields paint value text in datetime-edit pseudos with UA
  * font metrics that ignore the host `.input` size class. Inherit so type=time
  * matches text Input / Textarea / LocaleDatePicker (`--input-font-size`).
+ * Push the picker affordance to the trailing edge like LocaleDatePicker’s icon
+ * (`justify-between` + trailing mark) — UA chrome otherwise sits mid-field.
  */
+.input[type="time"] {
+  @apply justify-between gap-2;
+}
+
 .input[type="time"]::-webkit-calendar-picker-indicator {
-  @apply cursor-pointer;
-  opacity: 1;
+  @apply size-3.5 shrink-0 cursor-pointer;
+  margin-inline-start: auto;
+  opacity: 0.6;
+}
+
+.input[type="time"]::-webkit-datetime-edit {
+  @apply min-w-0 flex-1;
 }
 
 .input[type="time"]::-webkit-datetime-edit,

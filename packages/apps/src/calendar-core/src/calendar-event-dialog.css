@@ -43,18 +43,8 @@
   overscroll-behavior: contain;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__title-row {
+.calendar-dialog-surface .calendar-event-dialog__field--title {
   grid-column: 1 / -1;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__title-row .name-color-row__input {
-  font-family: var(--font-serif);
-  font-size: 1.35rem;
-  font-weight: 600;
-  border: none;
-  background: transparent;
-  box-shadow: none;
-  padding-inline: 0;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__fields > .field-label-row,
@@ -62,23 +52,20 @@
   @apply mb-0 min-w-0;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__field--location,
-.calendar-dialog-surface .calendar-event-dialog__divider {
+.calendar-dialog-surface .calendar-event-dialog__field--location {
   grid-column: 1 / -1;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__divider {
-  @apply my-1 border-0 border-t;
-  border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
-}
-
 .calendar-dialog-surface .calendar-event-dialog__all-day {
-  @apply flex min-h-9 items-center gap-2;
+  @apply flex min-h-9 items-center;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__all-day-label {
-  @apply text-sm;
-  color: var(--color-ink);
+.calendar-dialog-surface .calendar-event-dialog__form--compact .calendar-event-dialog__all-day,
+.calendar-dialog-surface .calendar-event-dialog__form--compact .calendar-event-dialog__time-slot,
+.calendar-dialog-surface
+  .calendar-event-dialog__form--compact
+  .calendar-event-dialog__recurrence-ends-extra {
+  @apply min-h-8;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__repeat-stack {
@@ -97,8 +84,23 @@
   @apply flex flex-col gap-2;
 }
 
-.calendar-dialog-surface .calendar-invitees-card--field .share-access-row {
+.calendar-dialog-surface .calendar-invitees-card--field .card__row {
   @apply rounded-md;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__secondary {
+  grid-column: 1 / -1;
+  @apply flex min-w-0 flex-col gap-3;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__secondary-start,
+.calendar-dialog-surface .calendar-event-dialog__secondary-end {
+  @apply flex min-w-0 flex-col gap-3;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__field--inert {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 @media (min-width: 40rem) {
@@ -130,20 +132,8 @@
     grid-column: 2;
   }
 
-  .calendar-dialog-surface .calendar-event-dialog__field--meet {
-    grid-column: 1;
-  }
-
-  .calendar-dialog-surface .calendar-event-dialog__field--alarms {
-    grid-column: 2;
-  }
-
-  .calendar-dialog-surface .calendar-event-dialog__field--invitees {
-    grid-column: 1;
-  }
-
-  .calendar-dialog-surface .calendar-event-dialog__field--notes {
-    grid-column: 2;
+  .calendar-dialog-surface .calendar-event-dialog__secondary {
+    @apply grid grid-cols-2 items-start gap-x-4 gap-y-3;
   }
 }
 
@@ -181,7 +171,7 @@
 }
 
 /*
- * ColorSwatchTrigger already shares control radius + md height.
+ * ColorSwatchTrigger already shares control radius + height via `size`.
  * Keep this row compact next to the Meet URL field.
  */
 .calendar-dialog-surface
@@ -213,11 +203,11 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-row {
-  @apply flex min-w-0 flex-wrap items-center justify-end gap-2;
+  @apply flex min-w-0 flex-1 items-center gap-2;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-offset {
-  @apply min-w-36;
+  @apply min-w-0 w-full;
 }
 
 /* Portaled outside .calendar-dialog-surface — do not nest under that ancestor. */
@@ -253,18 +243,21 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__datetime {
-  @apply flex flex-nowrap items-center gap-2;
+  @apply grid items-center gap-2;
+  grid-template-columns: minmax(0, 1fr) var(--calendar-event-time-slot-width, 7.5rem);
 }
 
 /* Date chrome lives on shared LocaleDatePicker `.control-surface`; layout only here. */
 .calendar-dialog-surface .calendar-event-dialog__datetime .locale-date-picker {
-  @apply min-w-0 flex-1;
+  @apply min-w-0 w-full;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__datetime .input[type="time"] {
-  width: auto;
-  min-width: 7.5rem;
-  flex: 0 0 auto;
+.calendar-dialog-surface .calendar-event-dialog__time-slot {
+  @apply flex min-h-9 w-full min-w-0 items-center;
+}
+
+.calendar-dialog-surface .calendar-event-dialog__time-slot .input[type="time"] {
+  @apply w-full min-w-0;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__recurrence-ends {

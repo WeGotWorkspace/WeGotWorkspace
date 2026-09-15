@@ -34,8 +34,8 @@
 }
 
 .calendar-dialog-surface.calendar-event-details-popover--editable {
-  @apply w-[min(42rem,calc(100vw-1.5rem))] max-w-[min(42rem,calc(100vw-1.5rem))] gap-0 p-4;
-  min-width: min(20rem, calc(100vw - 1.5rem));
+  @apply w-[min(34rem,calc(100vw-1.5rem))] max-w-[min(34rem,calc(100vw-1.5rem))] gap-0 p-3;
+  min-width: min(18rem, calc(100vw - 1.5rem));
   max-height: min(90dvh, 56rem);
 }
 

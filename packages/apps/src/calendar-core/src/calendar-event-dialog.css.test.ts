@@ -30,12 +30,17 @@ describe("calendar event dialog CSS ownership", () => {
 });
 
 describe("calendar event dialog title row", () => {
-  it("uses the shared name-color row so the summary field can flex", () => {
+  it("uses FieldLabelRow plus name-color row so the summary field can flex", () => {
     expect(dialogTsx).toMatch(/CalendarEventForm/);
+    expect(formTsx).toMatch(/FieldLabelRow/);
+    expect(formTsx).toMatch(/calendar-event-dialog__field--title/);
     expect(formTsx).toMatch(/NameColorRow/);
     expect(formTsx).toMatch(/NAME_COLOR_ROW_INPUT_CLASS/);
     expect(css).not.toMatch(/calendar-event-dialog__title-input/);
     expect(css).not.toMatch(/calendar-event-dialog__calendar-trigger \{[\s\S]*width:\s*auto/);
+    expect(css).not.toMatch(
+      /\.calendar-event-dialog__title-row \.name-color-row__input \{[\s\S]*border:\s*none/,
+    );
   });
 });
 
@@ -52,10 +57,26 @@ describe("calendar event dialog shared form controls", () => {
     expect(css).not.toContain("color: #b91c1c");
   });
 
-  it("relies on default control size md (36px) without compact size props", () => {
-    expect(formTsx).not.toMatch(/size=["']sm["']/);
-    expect(formTsx).not.toMatch(/size=["']lg["']/);
-    expect(formTsx).not.toMatch(/size=["']xl["']/);
+  it("defaults to control size md and accepts an explicit compact size prop", () => {
+    expect(formTsx).toMatch(/controlSize\s*=\s*"md"/);
+    expect(formTsx).toMatch(/size=\{controlSize\}/);
+    expect(formTsx).toMatch(/calendar-event-dialog__form--compact/);
+  });
+
+  it("stacks Meet→Invitees and Alarms→Notes in a secondary two-column band", () => {
+    expect(formTsx).toMatch(/calendar-event-dialog__secondary/);
+    expect(formTsx).toMatch(/calendar-event-dialog__secondary-start/);
+    expect(formTsx).toMatch(/calendar-event-dialog__secondary-end/);
+    expect(css).toMatch(/\.calendar-event-dialog__secondary/);
+    expect(formTsx).not.toMatch(/calendar-event-dialog__divider/);
+    expect(css).not.toMatch(/calendar-event-dialog__divider/);
+  });
+
+  it("reserves datetime time slots so all-day toggle does not reflow neighbors", () => {
+    expect(formTsx).toMatch(/calendar-event-dialog__time-slot/);
+    expect(css).toMatch(/calendar-event-dialog__time-slot/);
+    expect(css).toMatch(/--calendar-event-time-slot-width/);
+    expect(formTsx).toMatch(/calendar-event-dialog__field--inert/);
   });
 });
 

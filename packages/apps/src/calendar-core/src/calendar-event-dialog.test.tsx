@@ -253,11 +253,19 @@ describe("CalendarEventDialog", () => {
       screen.getByRole("combobox", { name: defaultCalendarLabels.eventRecurrenceEndsLabel }),
     ).toBeTruthy();
     expect(screen.getByRole("combobox", { name: defaultCalendarLabels.eventShowAs })).toBeTruthy();
-    expect(document.querySelector(".calendar-event-dialog__divider")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__divider")).toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__secondary")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__secondary-start")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__secondary-end")).not.toBeNull();
     expect(document.querySelector(".calendar-event-dialog__field--meet")).not.toBeNull();
     expect(document.querySelector(".calendar-event-dialog__field--alarms")).not.toBeNull();
     expect(document.querySelector(".calendar-event-dialog__field--invitees")).not.toBeNull();
     expect(document.querySelector(".calendar-event-dialog__field--notes")).not.toBeNull();
+    const startCol = document.querySelector(".calendar-event-dialog__secondary-start");
+    const meet = document.querySelector(".calendar-event-dialog__field--meet");
+    const invitees = document.querySelector(".calendar-event-dialog__field--invitees");
+    expect(startCol?.contains(meet)).toBe(true);
+    expect(startCol?.contains(invitees)).toBe(true);
     expect(document.querySelectorAll(".calendar-event-dialog__fields > .card").length).toBe(0);
   });
 
@@ -315,7 +323,7 @@ describe("CalendarEventDialog", () => {
     expect(screen.queryByText(defaultCalendarLabels.eventAlarmsNone)).toBeNull();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventAlarmAdd })).toBeNull();
     expect(screen.getByText(defaultCalendarLabels.eventAlarmsLabel)).toBeTruthy();
-    expect(screen.getByText(`${defaultCalendarLabels.eventAlarmRow} 1`)).toBeTruthy();
+    expect(screen.queryByText(`${defaultCalendarLabels.eventAlarmRow} 1`)).toBeNull();
 
     const emptyOffset = screen.getByRole("combobox", {
       name: defaultCalendarLabels.eventAlarmOffset,
@@ -336,8 +344,8 @@ describe("CalendarEventDialog", () => {
     cleanup();
     const next = renderDialog({ form: withAlarm, locale: "en-US" });
     expect(screen.getAllByText(defaultCalendarLabels.eventAlarmsLabel)).toHaveLength(1);
-    expect(screen.getByText(`${defaultCalendarLabels.eventAlarmRow} 1`)).toBeTruthy();
-    expect(screen.getByText(`${defaultCalendarLabels.eventAlarmRow} 2`)).toBeTruthy();
+    expect(screen.queryByText(`${defaultCalendarLabels.eventAlarmRow} 1`)).toBeNull();
+    expect(screen.queryByText(`${defaultCalendarLabels.eventAlarmRow} 2`)).toBeNull();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventAlarmAdd })).toBeNull();
     const offsets = screen.getAllByRole("combobox", {
       name: defaultCalendarLabels.eventAlarmOffset,

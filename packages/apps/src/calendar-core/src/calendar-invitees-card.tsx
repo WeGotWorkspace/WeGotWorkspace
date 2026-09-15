@@ -28,6 +28,7 @@ import {
 } from "@/share-ui/share-principal-search-dropdown";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
+import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 import "@/share-ui/share-ui.css";
 import "@/calendar-core/src/calendar-invitees-card.css";
@@ -51,6 +52,8 @@ export type CalendarInviteesCardProps = {
   presentation?: "card" | "field";
   className?: string;
   fieldIcon?: ReactNode;
+  /** Shared control height for the add-invitee input. Default `md`. */
+  controlSize?: ControlSize;
   onChange: (attendees: CalendarAttendee[]) => void;
   /** Live JMAP refresh; cache remains the first paint. */
   onRefreshContactCards?: () => void;
@@ -152,6 +155,7 @@ export function CalendarInviteesCard({
   presentation = "card",
   className,
   fieldIcon,
+  controlSize = "md",
   onChange,
   onRefreshContactCards,
 }: CalendarInviteesCardProps) {
@@ -222,6 +226,7 @@ export function CalendarInviteesCard({
     >
       <ShareDialogInput
         value={query}
+        size={controlSize}
         disabled={locked}
         placeholder={labels.eventAttendeesEmailPlaceholder}
         aria-label={labels.eventAttendeesAdd}
@@ -302,7 +307,9 @@ export function CalendarInviteesCard({
       >
         <div className="calendar-invitees-card__field-body">
           {rows}
-          {addControl != null ? <div className="share-dialog__add-grant">{addControl}</div> : null}
+          {addControl != null ? (
+            <div className="calendar-invitees-card__add">{addControl}</div>
+          ) : null}
           {footer}
         </div>
       </FieldLabelRow>

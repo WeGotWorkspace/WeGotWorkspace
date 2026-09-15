@@ -44,6 +44,7 @@ import { createMeetRoomCode } from "@/meet-core/src/meet-room-id";
 import { buildMeetGuestCallLink } from "@/meet-core/src/meet-route-search";
 import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
 import { Callout } from "@/callout/src/callout";
+import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 
 export type CalendarMeetCardProps = {
@@ -68,6 +69,8 @@ export type CalendarMeetCardProps = {
   presentation?: "card" | "field";
   className?: string;
   fieldIcon?: ReactNode;
+  /** Shared control height (`sm` in the compact event popover). Default `md`. */
+  controlSize?: ControlSize;
   onChange: (next: CalendarEventFormValue) => void;
   onRecurrenceSaveScopeChange?: (scope: RecurrenceEditScope) => void;
   onJoin?: (href: string) => void;
@@ -88,6 +91,7 @@ function CalendarMeetUrlRow({
   labels,
   readOnly = false,
   disabled = false,
+  controlSize = "md",
   onChange,
   onBlur,
   meetMenu,
@@ -96,6 +100,7 @@ function CalendarMeetUrlRow({
   labels: CalendarUILabels;
   readOnly?: boolean;
   disabled?: boolean;
+  controlSize?: ControlSize;
   onChange?: (value: string) => void;
   onBlur?: () => void;
   /** Meet actions dropdown (new link + channels) after copy. */
@@ -106,6 +111,7 @@ function CalendarMeetUrlRow({
     <div className="calendar-event-dialog__meet-row share-dialog__link-row">
       <ShareDialogInput
         type="url"
+        size={controlSize}
         value={href}
         readOnly={readOnly}
         disabled={disabled}
@@ -123,7 +129,7 @@ function CalendarMeetUrlRow({
       <IconButton
         label={labels.copyHttpsUrl}
         icon={<Copy className="size-3.5" aria-hidden />}
-        size="md"
+        size={controlSize}
         variant="outline"
         disabled={!trimmed}
         onClick={() => {
@@ -152,6 +158,7 @@ export function CalendarMeetCard({
   presentation = "card",
   className,
   fieldIcon,
+  controlSize = "md",
   abandonStagedReserveRef,
   onChange,
   onRecurrenceSaveScopeChange,
@@ -364,7 +371,12 @@ export function CalendarMeetCard({
     if (!form.meetingUrl.trim()) return null;
     return (
       <div className="calendar-event-dialog__meet-readonly">
-        <CalendarMeetUrlRow href={form.meetingUrl} labels={labels} readOnly />
+        <CalendarMeetUrlRow
+          href={form.meetingUrl}
+          labels={labels}
+          readOnly
+          controlSize={controlSize}
+        />
         <CalendarMeetJoin
           href={form.meetingUrl}
           labels={labels}
@@ -389,6 +401,7 @@ export function CalendarMeetCard({
         disabled={disabled || reserving}
       >
         <SelectTrigger
+          size={controlSize}
           className="calendar-event-dialog__meet-scope-trigger"
           aria-label={labels.eventMeetApplyTo}
         >
@@ -408,6 +421,7 @@ export function CalendarMeetCard({
       labels={labels}
       readOnly={copyOnly}
       disabled={disabled}
+      controlSize={controlSize}
       onChange={
         copyOnly
           ? undefined
@@ -431,6 +445,7 @@ export function CalendarMeetCard({
             listChannels={listChannels}
             disabled={disabled}
             reserving={reserving}
+            size={controlSize}
             onNewLink={canGenerate ? requestGenerate : undefined}
             onPick={pickChannel}
           />
@@ -509,6 +524,7 @@ export function CalendarMeetCard({
             disabled={disabled || reserving}
           >
             <SelectTrigger
+              size={controlSize}
               className="calendar-event-dialog__meet-scope-trigger"
               aria-label={labels.eventMeetApplyTo}
             >

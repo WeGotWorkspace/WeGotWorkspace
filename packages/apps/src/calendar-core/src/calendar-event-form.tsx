@@ -9,6 +9,7 @@ import {
   Repeat,
   StickyNote,
   Trash2,
+  Type,
   Users,
 } from "lucide-react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
@@ -61,6 +62,7 @@ import {
 } from "@/calendar-core/src/calendar-timezones";
 import { CalendarEventCalendarPicker } from "@/calendar-core/src/calendar-event-calendar-picker";
 import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collection-write";
+import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 import "./calendar-event-dialog.css";
 
@@ -114,6 +116,11 @@ export type CalendarEventFormProps = {
   collisionContentClassName?: string;
   /** When false, skip autofocus on the title (popover hosts focus on the shell). */
   autoFocusTitle?: boolean;
+  /**
+   * Shared control height for Inputs / Selects / LocaleDatePicker / buttons.
+   * Interactive edit popover uses `sm`; create/edit dialog keeps default `md`.
+   */
+  controlSize?: ControlSize;
 };
 
 function fieldIcon(node: ReactNode): ReactNode {
@@ -153,6 +160,7 @@ export function CalendarEventForm({
   onJoinMeeting,
   collisionContentClassName = "calendar-dialog-surface calendar-event-dialog",
   autoFocusTitle = true,
+  controlSize = "md",
 }: CalendarEventFormProps) {
   const locale = useMemo(() => resolveLocale(localeProp), [localeProp]);
   const isOrganizer = isSessionEventOrganizer(form.attendees, sessionEmail, invitees);
@@ -252,7 +260,11 @@ export function CalendarEventForm({
   return (
     <>
       <form
-        className={cn("calendar-event-dialog__form", className)}
+        className={cn(
+          "calendar-event-dialog__form",
+          controlSize === "sm" && "calendar-event-dialog__form--compact",
+          className,
+        )}
         lang={locale}
         onSubmit={(event) => {
           event.preventDefault();
@@ -270,32 +282,40 @@ export function CalendarEventForm({
         }}
       >
         <div className="calendar-event-dialog__fields">
-          <NameColorRow className="calendar-event-dialog__title-row">
-            <Input
-              className={NAME_COLOR_ROW_INPUT_CLASS}
-              value={form.title}
-              onChange={(event) => set("title", event.target.value)}
-              placeholder={labels.eventTitleLabel}
-              aria-label={labels.eventTitleLabel}
-              disabled={fieldsDisabled}
-              autoFocus={autoFocusTitle && !readOnly}
-            />
-            {layout?.hideCalendarPicker ? null : (
-              <CalendarEventCalendarPicker
-                calendars={calendars}
-                calendarId={showInviteeRsvp ? draftCalendarId : form.calendarId}
-                labels={labels}
-                disabled={busy || (readOnly && !showInviteeRsvp)}
-                onCalendarIdChange={(calendarId) => {
-                  if (showInviteeRsvp) {
-                    setDraftCalendarId(calendarId);
-                    return;
-                  }
-                  set("calendarId", calendarId);
-                }}
+          <FieldLabelRow
+            className="calendar-event-dialog__field calendar-event-dialog__field--title"
+            label={labels.eventTitleLabel}
+            icon={fieldIcon(<Type className="size-3.5" aria-hidden />)}
+          >
+            <NameColorRow className="calendar-event-dialog__title-row">
+              <Input
+                className={NAME_COLOR_ROW_INPUT_CLASS}
+                size={controlSize}
+                value={form.title}
+                onChange={(event) => set("title", event.target.value)}
+                placeholder={labels.eventTitleLabel}
+                aria-label={labels.eventTitleLabel}
+                disabled={fieldsDisabled}
+                autoFocus={autoFocusTitle && !readOnly}
               />
-            )}
-          </NameColorRow>
+              {layout?.hideCalendarPicker ? null : (
+                <CalendarEventCalendarPicker
+                  calendars={calendars}
+                  calendarId={showInviteeRsvp ? draftCalendarId : form.calendarId}
+                  labels={labels}
+                  size={controlSize}
+                  disabled={busy || (readOnly && !showInviteeRsvp)}
+                  onCalendarIdChange={(calendarId) => {
+                    if (showInviteeRsvp) {
+                      setDraftCalendarId(calendarId);
+                      return;
+                    }
+                    set("calendarId", calendarId);
+                  }}
+                />
+              )}
+            </NameColorRow>
+          </FieldLabelRow>
 
           {layout?.hideLocation ? null : (
             <FieldLabelRow
@@ -304,6 +324,7 @@ export function CalendarEventForm({
               icon={fieldIcon(<MapPin className="size-3.5" aria-hidden />)}
             >
               <Input
+                size={controlSize}
                 value={form.location}
                 onChange={(event) => set("location", event.target.value)}
                 placeholder={labels.eventLocationPlaceholder}
@@ -323,20 +344,27 @@ export function CalendarEventForm({
                   <LocaleDatePicker
                     value={form.startDate}
                     locale={locale}
+                    size={controlSize}
                     label={labels.eventStartLabel}
                     onChange={(next) => set("startDate", next)}
                     disabled={fieldsDisabled}
                   />
-                  {!form.allDay ? (
-                    <Input
-                      type="time"
-                      lang={locale}
-                      value={form.startTime}
-                      aria-label={`${labels.eventStartLabel} time`}
-                      disabled={fieldsDisabled}
-                      onChange={(event) => set("startTime", event.target.value)}
-                    />
-                  ) : null}
+                  <div
+                    className="calendar-event-dialog__time-slot"
+                    aria-hidden={form.allDay || undefined}
+                  >
+                    {!form.allDay ? (
+                      <Input
+                        type="time"
+                        size={controlSize}
+                        lang={locale}
+                        value={form.startTime}
+                        aria-label={`${labels.eventStartLabel} time`}
+                        disabled={fieldsDisabled}
+                        onChange={(event) => set("startTime", event.target.value)}
+                      />
+                    ) : null}
+                  </div>
                 </div>
               </FieldLabelRow>
               <FieldLabelRow
@@ -348,23 +376,34 @@ export function CalendarEventForm({
                   <LocaleDatePicker
                     value={form.endDate}
                     locale={locale}
+                    size={controlSize}
                     label={labels.eventEndLabel}
                     onChange={(next) => set("endDate", next)}
                     disabled={fieldsDisabled}
                   />
-                  {!form.allDay ? (
-                    <Input
-                      type="time"
-                      lang={locale}
-                      value={form.endTime}
-                      aria-label={`${labels.eventEndLabel} time`}
-                      disabled={fieldsDisabled}
-                      onChange={(event) => set("endTime", event.target.value)}
-                    />
-                  ) : null}
+                  <div
+                    className="calendar-event-dialog__time-slot"
+                    aria-hidden={form.allDay || undefined}
+                  >
+                    {!form.allDay ? (
+                      <Input
+                        type="time"
+                        size={controlSize}
+                        lang={locale}
+                        value={form.endTime}
+                        aria-label={`${labels.eventEndLabel} time`}
+                        disabled={fieldsDisabled}
+                        onChange={(event) => set("endTime", event.target.value)}
+                      />
+                    ) : null}
+                  </div>
                 </div>
               </FieldLabelRow>
-              <div className="calendar-event-dialog__field calendar-event-dialog__field--all-day">
+              <FieldLabelRow
+                className="calendar-event-dialog__field calendar-event-dialog__field--all-day"
+                label={labels.eventAllDayLabel}
+                icon={fieldIcon(<CalendarDays className="size-3.5" aria-hidden />)}
+              >
                 <div className="calendar-event-dialog__all-day">
                   <Switch
                     checked={form.allDay}
@@ -372,43 +411,39 @@ export function CalendarEventForm({
                     aria-label={labels.eventAllDayLabel}
                     disabled={fieldsDisabled}
                   />
-                  <span className="calendar-event-dialog__all-day-label">
-                    {labels.eventAllDayLabel}
-                  </span>
                 </div>
-              </div>
-              {!form.allDay ? (
-                <FieldLabelRow
-                  className="calendar-event-dialog__field calendar-event-dialog__field--timezone"
-                  label={labels.eventTimeZoneLabel}
-                  icon={fieldIcon(<Globe className="size-3.5" aria-hidden />)}
+              </FieldLabelRow>
+              <FieldLabelRow
+                className={cn(
+                  "calendar-event-dialog__field calendar-event-dialog__field--timezone",
+                  form.allDay && "calendar-event-dialog__field--inert",
+                )}
+                label={labels.eventTimeZoneLabel}
+                icon={fieldIcon(<Globe className="size-3.5" aria-hidden />)}
+              >
+                <Select
+                  value={eventTimeZoneSelectValue(form.timeZone)}
+                  onValueChange={(value) => set("timeZone", eventTimeZoneFromSelectValue(value))}
+                  disabled={fieldsDisabled || form.allDay}
                 >
-                  <Select
-                    value={eventTimeZoneSelectValue(form.timeZone)}
-                    onValueChange={(value) => set("timeZone", eventTimeZoneFromSelectValue(value))}
-                    disabled={fieldsDisabled}
+                  <SelectTrigger
+                    size={controlSize}
+                    className="calendar-event-dialog__timezone-trigger"
+                    aria-label={labels.eventTimeZoneLabel}
+                    aria-hidden={form.allDay || undefined}
+                    tabIndex={form.allDay ? -1 : undefined}
                   >
-                    <SelectTrigger
-                      className="calendar-event-dialog__timezone-trigger"
-                      aria-label={labels.eventTimeZoneLabel}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeZoneOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FieldLabelRow>
-              ) : (
-                <div
-                  className="calendar-event-dialog__field calendar-event-dialog__field--timezone calendar-event-dialog__field--spacer"
-                  aria-hidden
-                />
-              )}
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeZoneOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldLabelRow>
             </>
           )}
 
@@ -427,6 +462,7 @@ export function CalendarEventForm({
                   disabled={recurrenceLocked || fieldsDisabled}
                 >
                   <SelectTrigger
+                    size={controlSize}
                     className="calendar-event-dialog__repeat-trigger"
                     aria-label={labels.eventRepeatLabel}
                   >
@@ -447,7 +483,10 @@ export function CalendarEventForm({
                       onValueChange={(value) => set("recurrenceEnds", value as RecurrenceEndsMode)}
                       disabled={fieldsDisabled}
                     >
-                      <SelectTrigger aria-label={labels.eventRecurrenceEndsLabel}>
+                      <SelectTrigger
+                        size={controlSize}
+                        aria-label={labels.eventRecurrenceEndsLabel}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -461,6 +500,7 @@ export function CalendarEventForm({
                         <LocaleDatePicker
                           value={form.recurrenceUntilDate || form.startDate}
                           locale={locale}
+                          size={controlSize}
                           label={labels.eventRecurrenceEndsOnDate}
                           onChange={(next) => set("recurrenceUntilDate", next)}
                           disabled={form.recurrenceEnds !== "until" || fieldsDisabled}
@@ -470,6 +510,7 @@ export function CalendarEventForm({
                         <div className="calendar-event-dialog__recurrence-count">
                           <Input
                             type="number"
+                            size={controlSize}
                             min={1}
                             step={1}
                             value={form.recurrenceCount}
@@ -504,6 +545,7 @@ export function CalendarEventForm({
                 disabled={fieldsDisabled}
               >
                 <SelectTrigger
+                  size={controlSize}
                   className="calendar-event-dialog__show-as-trigger"
                   aria-label={labels.eventShowAs}
                 >
@@ -517,89 +559,99 @@ export function CalendarEventForm({
             </FieldLabelRow>
           )}
 
-          <div className="calendar-event-dialog__divider" role="separator" aria-hidden />
-
-          <CalendarMeetCard
-            className="calendar-event-dialog__field calendar-event-dialog__field--meet"
-            presentation="field"
-            form={form}
-            labels={labels}
-            calendar={calendar}
-            username={sessionUsername}
-            workspaceOrigin={workspaceOrigin}
-            recurrenceId={recurrenceId}
-            recurrenceSaveScope={meetSaveScope}
-            thisInstanceLocked={thisInstanceLocked}
-            meetOperations={meetOperations}
-            disabled={fieldsDisabled}
-            readOnly={readOnly}
-            copyOnly={layout?.meetCopyOnly}
-            emailGuestHint={
-              showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
-            }
-            fieldIcon={fieldIcon(<Link2 className="size-3.5" aria-hidden />)}
-            onChange={commitForm}
-            abandonStagedReserveRef={abandonStagedReserveRef}
-            onRecurrenceSaveScopeChange={onRecurrenceSaveScopeChange ?? setUncontrolledMeetScope}
-            onJoin={onJoinMeeting}
-          />
-
-          {afterMeetAccessory}
-
-          {layout?.hideAlarms ? null : (
-            <FieldLabelRow
-              className="calendar-event-dialog__field calendar-event-dialog__field--alarms"
-              label={labels.eventAlarmsLabel}
-              icon={fieldIcon(<Bell className="size-3.5" aria-hidden />)}
-            >
-              <div className="calendar-event-dialog__alarms-field">
-                <CalendarAlarmsRows
-                  alerts={form.alerts}
-                  labels={labels}
-                  disabled={fieldsDisabled}
-                  readOnly={readOnly}
-                  onChange={(alerts) => set("alerts", alerts)}
-                />
-              </div>
-            </FieldLabelRow>
-          )}
-
-          {layout?.hideInvitees ? null : (
-            <CalendarInviteesCard
-              className="calendar-event-dialog__field calendar-event-dialog__field--invitees"
-              presentation="field"
-              fieldIcon={fieldIcon(<Users className="size-3.5" aria-hidden />)}
-              attendees={form.attendees}
-              invitees={invitees}
-              contactCards={contactCards}
-              onRefreshContactCards={onRefreshContactCards}
-              labels={labels}
-              busy={busy}
-              readOnly={readOnly}
-              canSubmitEmail={canSubmitEmail}
-              sessionEmail={sessionEmail}
-              meetEmailGuestHint={
-                showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
-              }
-              onChange={(attendees) => set("attendees", attendees)}
-            />
-          )}
-
-          {layout?.hideNotes ? null : (
-            <FieldLabelRow
-              className="calendar-event-dialog__field calendar-event-dialog__field--notes"
-              label={labels.eventNotesLabel}
-              icon={fieldIcon(<StickyNote className="size-3.5" aria-hidden />)}
-            >
-              <Textarea
-                value={form.description}
-                onChange={(event) => set("description", event.target.value)}
-                placeholder={labels.eventNotesLabel}
+          <div className="calendar-event-dialog__secondary">
+            <div className="calendar-event-dialog__secondary-start">
+              <CalendarMeetCard
+                className="calendar-event-dialog__field calendar-event-dialog__field--meet"
+                presentation="field"
+                form={form}
+                labels={labels}
+                calendar={calendar}
+                username={sessionUsername}
+                workspaceOrigin={workspaceOrigin}
+                recurrenceId={recurrenceId}
+                recurrenceSaveScope={meetSaveScope}
+                thisInstanceLocked={thisInstanceLocked}
+                meetOperations={meetOperations}
                 disabled={fieldsDisabled}
-                rows={3}
+                readOnly={readOnly}
+                copyOnly={layout?.meetCopyOnly}
+                controlSize={controlSize}
+                emailGuestHint={
+                  showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
+                }
+                fieldIcon={fieldIcon(<Link2 className="size-3.5" aria-hidden />)}
+                onChange={commitForm}
+                abandonStagedReserveRef={abandonStagedReserveRef}
+                onRecurrenceSaveScopeChange={
+                  onRecurrenceSaveScopeChange ?? setUncontrolledMeetScope
+                }
+                onJoin={onJoinMeeting}
               />
-            </FieldLabelRow>
-          )}
+
+              {afterMeetAccessory}
+
+              {layout?.hideInvitees ? null : (
+                <CalendarInviteesCard
+                  className="calendar-event-dialog__field calendar-event-dialog__field--invitees"
+                  presentation="field"
+                  fieldIcon={fieldIcon(<Users className="size-3.5" aria-hidden />)}
+                  attendees={form.attendees}
+                  invitees={invitees}
+                  contactCards={contactCards}
+                  onRefreshContactCards={onRefreshContactCards}
+                  labels={labels}
+                  busy={busy}
+                  readOnly={readOnly}
+                  canSubmitEmail={canSubmitEmail}
+                  sessionEmail={sessionEmail}
+                  controlSize={controlSize}
+                  meetEmailGuestHint={
+                    showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
+                  }
+                  onChange={(attendees) => set("attendees", attendees)}
+                />
+              )}
+            </div>
+
+            <div className="calendar-event-dialog__secondary-end">
+              {layout?.hideAlarms ? null : (
+                <FieldLabelRow
+                  className="calendar-event-dialog__field calendar-event-dialog__field--alarms"
+                  label={labels.eventAlarmsLabel}
+                  icon={fieldIcon(<Bell className="size-3.5" aria-hidden />)}
+                >
+                  <div className="calendar-event-dialog__alarms-field">
+                    <CalendarAlarmsRows
+                      alerts={form.alerts}
+                      labels={labels}
+                      disabled={fieldsDisabled}
+                      readOnly={readOnly}
+                      controlSize={controlSize}
+                      onChange={(alerts) => set("alerts", alerts)}
+                    />
+                  </div>
+                </FieldLabelRow>
+              )}
+
+              {layout?.hideNotes ? null : (
+                <FieldLabelRow
+                  className="calendar-event-dialog__field calendar-event-dialog__field--notes"
+                  label={labels.eventNotesLabel}
+                  icon={fieldIcon(<StickyNote className="size-3.5" aria-hidden />)}
+                >
+                  <Textarea
+                    size={controlSize}
+                    value={form.description}
+                    onChange={(event) => set("description", event.target.value)}
+                    placeholder={labels.eventNotesLabel}
+                    disabled={fieldsDisabled}
+                    rows={3}
+                  />
+                </FieldLabelRow>
+              )}
+            </div>
+          </div>
         </div>
 
         <footer className="calendar-event-dialog__footer">
@@ -616,6 +668,7 @@ export function CalendarEventForm({
             <Button
               type="button"
               variant="destructive-outline"
+              size={controlSize}
               className="calendar-event-dialog__delete"
               icon={<Trash2 className="size-3.5" aria-hidden />}
               label={labels.delete}
@@ -628,12 +681,14 @@ export function CalendarEventForm({
               <Button
                 type="button"
                 variant="outline"
+                size={controlSize}
                 label={labels.cancel}
                 onClick={dismiss}
                 disabled={busy}
               />
               <Button
                 type="submit"
+                size={controlSize}
                 label={saveLabel}
                 disabled={
                   showInviteeRsvp ? !draftRsvp || busy : !valid || busy || canSubmit === false

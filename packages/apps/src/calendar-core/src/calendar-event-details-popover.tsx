@@ -261,6 +261,7 @@ export function CalendarEventDetailsPopover({
             locale={locale}
             busy={busy || edit.busy}
             autoFocusTitle={false}
+            controlSize="sm"
             collisionContentClassName="calendar-dialog-surface calendar-event-dialog"
             {...edit}
           />

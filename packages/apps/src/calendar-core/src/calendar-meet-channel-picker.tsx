@@ -14,12 +14,15 @@ import {
   calendarMeetPickerChannels,
   type CalendarMeetChannelOption,
 } from "@/calendar-core/src/calendar-meet-link";
+import type { ControlSize } from "@/ui/control-size";
 
 export type CalendarMeetChannelPickerProps = {
   labels: CalendarUILabels;
   listChannels?: () => Promise<CalendarMeetChannelOption[]>;
   disabled?: boolean;
   reserving?: boolean;
+  /** Shared control height for the menu trigger. Default `md`. */
+  size?: ControlSize;
   onNewLink?: () => void;
   onPick?: (channel: CalendarMeetChannelOption) => void;
 };
@@ -40,6 +43,7 @@ export function CalendarMeetChannelPicker({
   listChannels,
   disabled = false,
   reserving = false,
+  size = "md",
   onNewLink,
   onPick,
 }: CalendarMeetChannelPickerProps) {
@@ -68,6 +72,7 @@ export function CalendarMeetChannelPicker({
           className="calendar-event-dialog__meet-menu-trigger"
           label={labels.eventMeetAdd}
           showSwatch={false}
+          size={size}
           icon={reserving ? <LoadingSpinner size="sm" /> : <Video />}
           disabled={disabled || reserving}
         />

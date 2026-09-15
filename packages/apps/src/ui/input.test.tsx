@@ -100,6 +100,14 @@ describe("Input", () => {
     );
   });
 
+  it("pins the time picker indicator to the trailing edge like LocaleDatePicker", () => {
+    expect(inputCss).toMatch(/\.input\[type="time"\]\s*\{[\s\S]*justify-between/);
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]::-webkit-calendar-picker-indicator\s*\{[\s\S]*margin-inline-start:\s*auto/,
+    );
+    expect(inputCss).toMatch(/\.input\[type="time"\]::-webkit-datetime-edit\s*\{[\s\S]*flex-1/);
+  });
+
   it("renders a leading search icon and no clear button when empty", () => {
     const { container } = render(
       <Input variant="search" size="sm" value="" onChange={() => {}} aria-label="Search" />,
