@@ -55,6 +55,13 @@ Refactor checklist:
 - Verify callsites no longer hardcode icon sizing/fill when primitive already owns it.
 - Keep legacy slot props only as compatibility paths; avoid new usage when descriptor APIs exist.
 
+### Control radius
+
+- **Global soft default:** `--control-radius` (0.375rem) is the ordinary control radius for Button, IconButton, Input, Select, SegmentedControl, ColorSwatchTrigger, LocaleDatePicker, etc.
+- **Do not remap** `--control-radius` on layout ancestors (`.view-header`, side panels, search stacks) just to soften chrome — controls outside that subtree silently diverge.
+- `--control-radius-button-pill` is an **alias** of `--control-radius` (legacy `.button--pill` / chips). Prefer `--control-radius` for new code.
+- **True capsules** stay explicit: `--control-radius-pill` / `999px` (Switch track, badges). Do not force Switch onto `--control-radius`.
+
 ## Parent-scoped CSS variables and workspace styling
 
 ### Primitives and tokens

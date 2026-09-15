@@ -189,7 +189,6 @@
   --control-height-md: 2rem;
   --input-font-size: 0.75rem;
   --input-padding-x: 0.5rem;
-  --control-radius-button-pill: var(--control-radius);
   @apply mt-2 flex flex-wrap items-center gap-2;
 }
 

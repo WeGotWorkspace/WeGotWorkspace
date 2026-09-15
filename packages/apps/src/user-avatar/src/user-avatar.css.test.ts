@@ -11,9 +11,7 @@ describe("user avatar mark border", () => {
     const mark = css.match(/^\.user-avatar__mark \{[\s\S]*?\n\}/m)?.[0];
     expect(mark).toBeDefined();
     expect(mark).toMatch(/box-sizing:\s*border-box/);
-    expect(mark).toMatch(
-      /border-radius:\s*var\(--user-avatar-radius,\s*var\(--control-radius-button-pill\)\)/,
-    );
+    expect(mark).toMatch(/border-radius:\s*var\(--user-avatar-radius,\s*var\(--control-radius\)\)/);
     expect(mark).toMatch(/--button-outline-active-background/);
     expect(mark).toMatch(
       /color:\s*var\(--user-avatar-fg,\s*var\(--button-active-color,\s*var\(--color-emerald\)\)\)/,

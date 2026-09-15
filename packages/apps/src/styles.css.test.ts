@@ -6,6 +6,15 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "styles.css"), "utf8");
 
+describe("shared control radius tokens", () => {
+  it("publishes soft --control-radius globally and aliases button-pill", () => {
+    expect(css).toMatch(/--control-radius:\s*0\.375rem/);
+    expect(css).toMatch(/--control-radius-button-pill:\s*var\(--control-radius\)/);
+    expect(css).toMatch(/--control-radius-pill:\s*9999px/);
+    expect(css).not.toMatch(/--control-radius:\s*0\.1875rem/);
+  });
+});
+
 describe("shared paper sheet tokens", () => {
   it("defines --paper-sheet-bg and --sheet-shadow for Docs and Notes", () => {
     expect(css).toMatch(/--paper-sheet-bg:\s*oklch\(1 0 0\)/);

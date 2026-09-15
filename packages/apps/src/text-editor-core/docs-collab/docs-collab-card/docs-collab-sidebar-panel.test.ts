@@ -51,6 +51,13 @@ describe("DocsCollabSidebarPanel", () => {
     );
   });
 
+  it("does not remap --control-radius (soft radius is global)", () => {
+    expect(css).not.toMatch(
+      /\.docs-collab-sidebar-panel \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+    );
+    expect(css).not.toMatch(/\.docs-collab-sidebar-panel \{[\s\S]*--control-radius:/);
+  });
+
   it("paints portaled SideDrawer sheets from workspace-accent wash so overlay is not Sheet gray", () => {
     expect(panel).toMatch(
       /export const DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS =\s*"docs-collab-sidebar-panel-drawer"/,

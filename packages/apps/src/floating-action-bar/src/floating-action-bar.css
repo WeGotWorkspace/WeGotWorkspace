@@ -1,9 +1,9 @@
 @import "../../styles.css" reference;
 
 /**
- * Overlay batch / selection bar — cream/white surface + neutral ink hairline,
- * matching header IconButton radius (`--control-radius-button-pill`). Soft
- * outline washes match `.view-header` (14%/18%/24%→cream) so Star/etc. do not
+ * Overlay batch / selection bar — cream/white surface + neutral ink hairline.
+ * Radius uses global `--control-radius` (via `--control-radius-button-pill` alias).
+ * Soft outline washes match `.view-header` (14%/18%/24%→cream) so Star/etc. do not
  * inherit heavier workspace-root sidebar/tile washes (Drive/Notes/Tasks 40/55).
  * Products publish `--workspace-accent` (and usually `--button-active-color`).
  *

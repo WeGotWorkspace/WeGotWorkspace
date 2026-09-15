@@ -9,6 +9,7 @@
    * Soft outline wash for sidebar toggle, Show completed, Suggest, inbox, etc.
    * Products set `--workspace-accent` and usually `--button-active-color` (accent-strong).
    * Heavier sidebar nav washes stay on the workspace root and do not apply here.
+   * Control radius is global (`--control-radius` in styles.css) — do not remap here.
    */
   --button-outline-hover-background: color-mix(
     in oklab,
@@ -252,5 +253,4 @@
 
 .view-header__search-stack {
   @apply mt-0.5;
-  --control-radius: var(--control-radius-button-pill);
 }

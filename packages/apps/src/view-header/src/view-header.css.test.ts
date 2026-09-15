@@ -19,6 +19,16 @@ describe("view-header CSS", () => {
     );
   });
 
+  it("does not remap --control-radius (soft radius is global)", () => {
+    expect(css).not.toMatch(
+      /\.view-header \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+    );
+    expect(css).not.toMatch(
+      /\.view-header__search-stack \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+    );
+    expect(css).not.toMatch(/\.view-header \{[\s\S]*--control-radius:/);
+  });
+
   it("wraps stacked and narrow responsive titles instead of ellipsizing first", () => {
     expect(css).toMatch(
       /\.view-header__title-row--stacked \.view-header__title \{[\s\S]*whitespace-normal/,

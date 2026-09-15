@@ -7,8 +7,8 @@
  * Size (`xs` … `xl`) changes height, padding, and font-size only.
  * Default `md` = 36px — action bar / view header / event form density.
  * Spacious forms use `lg` (40px); sidebar New / hero CTAs use `xl` (44px).
- * Radius stays `--control-radius` on the shared surface — toolbars/search that
- * want a pill set `--control-radius: var(--control-radius-button-pill)` on the parent.
+ * Radius stays global `--control-radius` on the shared surface — do not remap
+ * soft chrome on layout ancestors. True capsules use `--control-radius-pill`.
  * Search variant: leading icon + trailing clear when the field has a value.
  */
 .control-surface,

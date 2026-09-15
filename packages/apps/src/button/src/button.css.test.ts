@@ -7,7 +7,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "button.css"), "utf8");
 
 describe("button radius", () => {
-  it("uses shared --control-radius for default and size variants; pill opt-in only", () => {
+  it("uses shared --control-radius for default and size variants; pill is control-radius alias", () => {
     expect(css).toMatch(/\.button \{[\s\S]*?border-radius:\s*var\(--control-radius\)/);
     for (const size of ["xs", "sm", "md"] as const) {
       const block = css.slice(css.indexOf(`.button--size-${size} {`));

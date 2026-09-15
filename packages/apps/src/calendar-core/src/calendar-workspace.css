@@ -136,6 +136,7 @@
  * Idle Week select + outline buttons share --button-outline-color (ink).
  */
 .calendar-workspace .view-header {
+  /* Soft `--control-radius` is global (styles.css); header only owns outline washes. */
   --button-active-color: var(--calendar-accent-strong);
   --button-outline-color: var(--color-ink);
   --button-outline-hover-color: var(--calendar-accent-strong);
@@ -155,10 +156,6 @@
 .calendar-workspace .calendar-header-nav,
 .calendar-workspace .calendar-header-actions {
   @apply flex items-center gap-1;
-}
-
-.calendar-workspace .calendar-header-actions {
-  --control-radius: var(--control-radius-button-pill);
 }
 
 /*

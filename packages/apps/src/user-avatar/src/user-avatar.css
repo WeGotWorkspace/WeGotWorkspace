@@ -128,8 +128,8 @@
   flex-shrink: 0;
   overflow: hidden;
   box-sizing: border-box;
-  /* Match outline IconButton sm radius (`--control-radius-button-pill`). */
-  border-radius: var(--user-avatar-radius, var(--control-radius-button-pill));
+  /* Match outline IconButton radius (global `--control-radius`). */
+  border-radius: var(--user-avatar-radius, var(--control-radius));
   font-weight: 500;
   /* Selected outline chrome: accent wash + accent glyph; quiet control stroke. */
   background-color: var(

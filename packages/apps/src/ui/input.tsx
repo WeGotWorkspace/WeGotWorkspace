@@ -10,7 +10,7 @@ export type InputSize = ControlSize;
 export type InputVariant = "default" | "search";
 
 export type InputProps = Omit<React.ComponentProps<"input">, "size"> & {
-  /** Height, padding, and font-size. Radius stays `--control-radius` (parent token). Default `md` = 36px. */
+  /** Height, padding, and font-size. Radius is global `--control-radius`. Default `md` = 36px. */
   size?: InputSize;
   variant?: InputVariant;
 };

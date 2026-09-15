@@ -6,7 +6,7 @@
   @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
   @apply disabled:pointer-events-none disabled:opacity-50;
   @apply data-[state=on]:bg-accent data-[state=on]:text-accent-foreground;
-  border-radius: var(--control-radius-button-pill);
+  border-radius: var(--control-radius);
   background-color: transparent;
 }
 

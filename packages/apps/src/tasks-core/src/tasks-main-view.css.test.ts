@@ -85,6 +85,9 @@ describe("tasks composer select chips", () => {
     expect(actions).toBeTruthy();
     expect(actions).not.toMatch(/--control-height-sm:\s*2rem/);
     expect(actions).not.toMatch(/--control-radius-button-pill:\s*var\(--control-radius\)/);
+    expect(css).not.toMatch(
+      /\.tasks-main-view__composer-meta \{[\s\S]*--control-radius-button-pill:\s*var\(--control-radius\)/,
+    );
   });
 
   it("pins Add task on the start (left) side of the composer actions row", () => {
