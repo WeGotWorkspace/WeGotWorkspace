@@ -96,11 +96,16 @@
  * {@link Button} and {@link buttonVariants} match the admin shell.
  */
 .admin-dialog-surface {
+  --admin-accent: #475569;
+  --admin-accent-strong: color-mix(in oklab, var(--admin-accent) 70%, #0f172a);
+  --workspace-accent: var(--admin-accent);
   --button-primary-bg: #2f302c;
   --button-primary-fg: #ffffff;
   --primary: #2f302c;
   --primary-foreground: #ffffff;
+  --button-active-color: var(--admin-accent-strong);
   --segmented-control-track-active-bg: var(--button-primary-bg);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 /* Storybook pane stories: cream canvas without inline layout presets. */

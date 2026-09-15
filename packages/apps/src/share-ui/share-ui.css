@@ -13,6 +13,7 @@
   );
   --card-title-icon-color: var(--share-dialog-accent);
   --card-description-color: var(--share-dialog-muted);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   --share-dialog-row-hover: color-mix(
     in oklab,
     var(--muted, oklch(0.968 0.007 247.896)) 50%,

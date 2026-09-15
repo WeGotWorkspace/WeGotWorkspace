@@ -119,13 +119,16 @@ describe("contacts workspace sidebar chrome", () => {
     );
   });
 
-  it("does not override context-select radius or force a compact type face", () => {
+  it("inherits context-select item type from the trigger size (not base 1rem)", () => {
     expect(css).not.toMatch(
       /\.select-trigger\.contacts-detail-view__context-select \{[\s\S]*border-radius:/,
     );
     expect(css).not.toMatch(/\.contacts-detail-view__context-select \{[\s\S]*?text-xs/);
     expect(css).toMatch(
-      /\.contacts-detail-view__context-select-item \{[\s\S]*font-size:\s*var\(--input-font-size, 1rem\)/,
+      /\.contacts-detail-view__context-select-item \{[\s\S]*font-size:\s*inherit/,
+    );
+    expect(css).not.toMatch(
+      /\.contacts-detail-view__context-select-item \{[\s\S]*font-size:\s*var\(--input-font-size,\s*1rem\)/,
     );
   });
 

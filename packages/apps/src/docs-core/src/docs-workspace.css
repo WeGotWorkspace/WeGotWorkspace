@@ -362,9 +362,7 @@
   --primary: var(--docs-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--docs-accent-strong);
-  --button-outline-hover-color: var(--docs-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 .docs-workspace__editor {

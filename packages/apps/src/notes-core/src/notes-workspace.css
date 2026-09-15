@@ -282,13 +282,17 @@
 
 .notes-dialog-surface {
   --notes-accent: #f6d176;
+  --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 32%, var(--color-ink));
+  --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
   --button-primary-bg: var(--notes-accent);
   --button-primary-fg: var(--color-ink, #042a22);
   --primary: var(--notes-accent);
   --primary-foreground: var(--color-ink);
+  --button-active-color: var(--notes-accent-strong);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --segmented-control-track-active-bg: var(--color-ink);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 /* Isolate from assigned CATEGORIES ink/gold (`--tag-bg` / `--tag-fg`). */
