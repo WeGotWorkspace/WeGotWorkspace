@@ -113,7 +113,10 @@ export type CalendarEventFormProps = {
   onRefreshContactCards?: () => void;
   canSubmitEmail?: boolean;
   sessionEmail?: string;
-  onRsvp?: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void | Promise<void>;
+  onRsvp?: (
+    status: CalendarSchedulingRespondStatus,
+    calendarId?: string,
+  ) => void | boolean | Promise<void | boolean>;
   /** Collision dialog surface class (defaults to calendar dialog surface). */
   collisionContentClassName?: string;
   /** When false, skip autofocus on the title (popover hosts focus on the shell). */
@@ -702,14 +705,9 @@ export function CalendarEventForm({
                 busy={busy}
                 size="sm"
                 showLabels
-                onRespond={(status) => {
-                  void Promise.resolve(
-                    onRsvp(
-                      status,
-                      status === "declined" ? undefined : draftCalendarId || undefined,
-                    ),
-                  );
-                }}
+                onRespond={(status) =>
+                  onRsvp(status, status === "declined" ? undefined : draftCalendarId || undefined)
+                }
               />
             </div>
           ) : null}

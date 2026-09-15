@@ -173,7 +173,7 @@ describe("calendar-rsvp-scope", () => {
     });
     expect(persisted).toBe(true);
     expect(askScope).toHaveBeenCalledWith({
-      action: "edit",
+      action: "rsvp",
       masterId: "standup",
       recurrenceId: "2033-01-17T09:30:00",
     });

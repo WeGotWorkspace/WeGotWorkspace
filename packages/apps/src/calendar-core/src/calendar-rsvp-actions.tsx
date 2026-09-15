@@ -64,7 +64,11 @@ export type CalendarRsvpActionsProps = {
    */
   showLabels?: boolean;
   className?: string;
-  onRespond: (status: CalendarSchedulingRespondStatus) => void | Promise<void>;
+  /**
+   * Persist the RSVP. Return `false` (or reject) to revert optimistic selection —
+   * e.g. when the recurrence-scope dialog is cancelled.
+   */
+  onRespond: (status: CalendarSchedulingRespondStatus) => void | boolean | Promise<void | boolean>;
 };
 
 function segmentedControlSize(size: CalendarRsvpActionsSize) {
@@ -107,9 +111,13 @@ export function CalendarRsvpActions({
         aria-label={labels.rsvpLabel}
         onChange={(next) => {
           setOptimisticStatus(next);
-          void Promise.resolve(onRespond(next)).catch(() => {
-            setOptimisticStatus(null);
-          });
+          void Promise.resolve(onRespond(next))
+            .then((ok) => {
+              if (ok === false) setOptimisticStatus(null);
+            })
+            .catch(() => {
+              setOptimisticStatus(null);
+            });
         }}
         options={RSVP_ACTIONS.map(({ kind, status: value, Icon, labelKey }) => ({
           value,

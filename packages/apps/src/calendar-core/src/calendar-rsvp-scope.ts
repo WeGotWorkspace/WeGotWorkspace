@@ -108,7 +108,7 @@ export async function persistInviteeRsvp(args: {
     return true;
   }
   const asked = await args.askScope({
-    action: "edit",
+    action: "rsvp",
     masterId: args.masterId,
     ...(args.recurrenceId ? { recurrenceId: args.recurrenceId } : {}),
   });

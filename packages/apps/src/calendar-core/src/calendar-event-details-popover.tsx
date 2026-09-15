@@ -68,7 +68,7 @@ export type CalendarEventDetailsPopoverProps = {
   /** When set, the popover hosts the shared editable event form (writable organizer path). */
   edit?: CalendarEventDetailsPopoverEditProps;
   onDelete?: () => void;
-  onRsvp?: (status: CalendarSchedulingRespondStatus) => void | Promise<void>;
+  onRsvp?: (status: CalendarSchedulingRespondStatus) => void | boolean | Promise<void | boolean>;
   meetOperations?: CalendarMeetOperations;
   workspaceOrigin?: string;
   onJoinMeeting?: (href: string) => void;

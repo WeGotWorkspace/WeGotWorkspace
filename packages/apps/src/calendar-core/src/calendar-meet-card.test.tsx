@@ -7,6 +7,16 @@ import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import { TooltipProvider } from "@/ui/tooltip";
 
+const showSuccess = vi.fn();
+vi.mock("@/hooks/use-app-toast", () => ({
+  useAppToast: () => ({
+    show: vi.fn(),
+    dismiss: vi.fn(),
+    showSuccess,
+    showError: vi.fn(),
+  }),
+}));
+
 const ORIGIN = "https://workspace.example.com";
 const ROOM = "h8y8-ewp6-al8n";
 
@@ -58,6 +68,7 @@ function clickGenerateMeet(): void {
 describe("CalendarMeetCard", () => {
   beforeEach(() => {
     cleanup();
+    showSuccess.mockClear();
   });
 
   afterEach(() => {
@@ -271,6 +282,7 @@ describe("CalendarMeetCard", () => {
     expect(input.readOnly).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(href));
+    expect(showSuccess).toHaveBeenCalledWith(defaultCalendarLabels.toastFeedCopied);
   });
 
   it("shows the stored href for invitees and copies it", async () => {
@@ -289,6 +301,7 @@ describe("CalendarMeetCard", () => {
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(href));
+    expect(showSuccess).toHaveBeenCalledWith(defaultCalendarLabels.toastFeedCopied);
   });
 
   it("keeps compact Join inline on the Meet URL row in read-only mode", async () => {

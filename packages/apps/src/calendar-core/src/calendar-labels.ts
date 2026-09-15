@@ -107,8 +107,11 @@ export type CalendarUILabels = {
   toastEventSaveFailed: string;
   recurrenceScopeEditTitle: string;
   recurrenceScopeDeleteTitle: string;
+  /** Scope prompt when changing RSVP on a repeating invitation. */
+  recurrenceScopeRsvpTitle: string;
   recurrenceScopeEditDescription: string;
   recurrenceScopeDeleteDescription: string;
+  recurrenceScopeRsvpDescription: string;
   recurrenceScopeThisInstance: string;
   recurrenceScopeThisAndFuture: string;
   /** Delete only — destroy the master series. */
@@ -362,10 +365,13 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastEventSaveFailed: "Could not save event",
   recurrenceScopeEditTitle: "You're changing a repeating event.",
   recurrenceScopeDeleteTitle: "You're deleting a repeating event.",
+  recurrenceScopeRsvpTitle: "You're updating your RSVP for a repeating event.",
   recurrenceScopeEditDescription:
     "Do you want to change only this occurrence, or this and all future events?",
   recurrenceScopeDeleteDescription:
     "Do you want to delete only this occurrence, this and all future events, or the entire series?",
+  recurrenceScopeRsvpDescription:
+    "Do you want to update your RSVP for only this occurrence, or this and all future events?",
   recurrenceScopeThisInstance: "Only this event",
   recurrenceScopeThisAndFuture: "All future events",
   recurrenceScopeAllInstances: "All events",

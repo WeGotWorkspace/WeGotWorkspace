@@ -6,7 +6,7 @@ import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurre
 import "./calendar-event-dialog.css";
 
 export type CalendarRecurrenceScopeDialogState = null | {
-  action: "edit" | "delete" | "update";
+  action: "edit" | "delete" | "update" | "rsvp";
   /** Optional short context (e.g. move target time). */
   description?: string;
   resolve: (scope: RecurrenceScopeChoice | null) => void;
@@ -36,6 +36,7 @@ export function CalendarRecurrenceScopeDialog({
   /** Ignore dismiss signals until the opening pointer gesture has fully settled. */
   const ignoreDismissRef = useRef(false);
   const isDelete = dialog?.action === "delete";
+  const isRsvp = dialog?.action === "rsvp";
 
   useEffect(() => {
     if (!dialog) {
@@ -51,10 +52,18 @@ export function CalendarRecurrenceScopeDialog({
     return () => window.clearTimeout(timer);
   }, [dialog]);
 
-  const title = isDelete ? labels.recurrenceScopeDeleteTitle : labels.recurrenceScopeEditTitle;
+  const title = isDelete
+    ? labels.recurrenceScopeDeleteTitle
+    : isRsvp
+      ? labels.recurrenceScopeRsvpTitle
+      : labels.recurrenceScopeEditTitle;
   const description =
     dialog?.description ??
-    (isDelete ? labels.recurrenceScopeDeleteDescription : labels.recurrenceScopeEditDescription);
+    (isDelete
+      ? labels.recurrenceScopeDeleteDescription
+      : isRsvp
+        ? labels.recurrenceScopeRsvpDescription
+        : labels.recurrenceScopeEditDescription);
 
   const close = (scope: RecurrenceScopeChoice | null) => {
     if (!dialog || settledRef.current) return;

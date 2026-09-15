@@ -6,6 +6,7 @@ import { Card } from "@/card/src/card";
 import { CardRow } from "@/card/src/card-row";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { copyShareText } from "@/share-ui/share-path-utils";
+import { useAppToast } from "@/hooks/use-app-toast";
 import "@/share-ui/share-ui.css";
 import {
   AlertDialog,
@@ -93,6 +94,7 @@ function CalendarMeetUrlRow({
   onChange,
   onBlur,
   meetMenu,
+  onCopied,
 }: {
   href: string;
   labels: CalendarUILabels;
@@ -103,6 +105,7 @@ function CalendarMeetUrlRow({
   onBlur?: () => void;
   /** Meet actions dropdown (new link + channels) after copy. */
   meetMenu?: ReactNode;
+  onCopied?: () => void;
 }) {
   const trimmed = href.trim();
   return (
@@ -131,7 +134,9 @@ function CalendarMeetUrlRow({
         variant="outline"
         disabled={!trimmed}
         onClick={() => {
-          void copyShareText(trimmed);
+          void copyShareText(trimmed).then((copied) => {
+            if (copied) onCopied?.();
+          });
         }}
       />
       {meetMenu}
@@ -161,6 +166,7 @@ export function CalendarMeetCard({
   onChange,
   onJoin,
 }: CalendarMeetCardProps) {
+  const { showSuccess } = useAppToast();
   const [reserving, setReserving] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(false);
   const inflightRef = useRef(false);
@@ -351,6 +357,7 @@ export function CalendarMeetCard({
           labels={labels}
           readOnly
           controlSize={controlSize}
+          onCopied={() => showSuccess(labels.toastFeedCopied)}
           meetMenu={
             <CalendarMeetJoin
               href={form.meetingUrl}
@@ -392,6 +399,7 @@ export function CalendarMeetCard({
       readOnly={copyOnly}
       disabled={disabled}
       controlSize={controlSize}
+      onCopied={() => showSuccess(labels.toastFeedCopied)}
       onChange={
         copyOnly
           ? undefined

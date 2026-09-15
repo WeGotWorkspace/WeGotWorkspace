@@ -167,6 +167,28 @@ describe("CalendarRsvpActions", () => {
     });
   });
 
+  it("reverts the optimistic selection when onRespond returns false", async () => {
+    const onRespond = vi.fn().mockResolvedValue(false);
+    renderActions(
+      <CalendarRsvpActions
+        currentStatus="accepted"
+        labels={defaultCalendarLabels}
+        onRespond={onRespond}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe }));
+
+    const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+    const maybe = screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe });
+    expect(maybe.getAttribute("aria-pressed")).toBe("true");
+
+    await waitFor(() => {
+      expect(accept.getAttribute("aria-pressed")).toBe("true");
+      expect(maybe.getAttribute("aria-pressed")).toBe("false");
+    });
+  });
+
   it("stays interactive while a respond promise is pending (no busy greying)", () => {
     const onRespond = vi.fn(() => new Promise<void>(() => undefined));
     renderActions(
