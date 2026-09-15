@@ -7,6 +7,30 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "segmented-control.css"), "utf8");
 
 describe("segmented-control chrome tokens", () => {
+  it("inherits track radius from global --control-radius", () => {
+    expect(css).toMatch(
+      /\.segmented-control \{[\s\S]*--segmented-control-track-radius:\s*var\(--control-radius\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control \{[\s\S]*border-radius:\s*var\(--segmented-control-track-radius\)/,
+    );
+    expect(css).not.toMatch(
+      /--segmented-control-track-radius:\s*var\(--control-radius-button-pill\)/,
+    );
+  });
+
+  it("keeps the thumb on the same radius token as the track (no gutter calc → 0px)", () => {
+    expect(css).toMatch(
+      /--segmented-control-thumb-radius:\s*var\(--segmented-control-track-radius\)/,
+    );
+    expect(css).not.toMatch(
+      /--segmented-control-thumb-radius:\s*calc\(\s*var\(--segmented-control-track-radius\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control__thumb \{[\s\S]*border-radius:\s*var\(--segmented-control-thumb-radius\)/,
+    );
+  });
+
   it("defaults the track to transparent with outline/control border", () => {
     expect(css).toMatch(
       /\.segmented-control \{[\s\S]*background-color:\s*var\(--segmented-control-track-bg,\s*transparent\)/,
@@ -16,21 +40,15 @@ describe("segmented-control chrome tokens", () => {
     );
   });
 
-  it("insets the selected thumb with a track gutter (not flush to the stroke)", () => {
-    expect(css).toMatch(/--segmented-control-padding:\s*0\.125rem/);
-    expect(css).toMatch(
-      /\.segmented-control \{[\s\S]*padding:\s*var\(--segmented-control-padding\)/,
-    );
+  it("keeps the selected thumb flush to the track (no Switch-like gutter)", () => {
+    expect(css).not.toMatch(/--segmented-control-padding:/);
+    expect(css).toMatch(/\.segmented-control \{[\s\S]*padding:\s*0/);
     expect(css).toMatch(/\.segmented-control \{[\s\S]*items-stretch/);
     expect(css).not.toMatch(/overflow-hidden|overflow:\s*hidden/);
     expect(css).toMatch(/\.segmented-control__button \{[\s\S]*height:\s*100%/);
     expect(css).toMatch(/\.segmented-control__button \{[\s\S]*aspect-ratio:\s*1\s*\/\s*1/);
-    expect(css).toMatch(
-      /\.segmented-control__thumb \{[\s\S]*top:\s*var\(--segmented-control-padding\)/,
-    );
-    expect(css).toMatch(
-      /\.segmented-control__thumb \{[\s\S]*bottom:\s*var\(--segmented-control-padding\)/,
-    );
+    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*top:\s*0/);
+    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*bottom:\s*0/);
     expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*height:\s*auto/);
     expect(css).toMatch(
       /\.segmented-control__thumb \{[\s\S]*width:\s*var\(--segmented-control-thumb-width,\s*0px\)/,

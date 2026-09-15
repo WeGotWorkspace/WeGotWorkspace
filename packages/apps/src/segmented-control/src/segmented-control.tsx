@@ -49,8 +49,8 @@ function optionKey<T extends string>(options: SegmentedControlOption<T>[]): stri
  * remounting a card with a selected value never replays a slide-in from the
  * parked/zero thumb. Later option changes animate transform only (see CSS).
  *
- * Vertical size is CSS-only (`top`/`bottom` = track padding gutter). Only x/width
- * are measured from the active segment (already inside that gutter).
+ * Vertical size is CSS-only (`top`/`bottom: 0` — flush to the track). Only
+ * x/width are measured from the active segment.
  */
 function syncSegmentedThumb(root: HTMLElement, options: { allowAnimate: boolean }): void {
   const active = root.querySelector<HTMLElement>(".segmented-control__button--active");

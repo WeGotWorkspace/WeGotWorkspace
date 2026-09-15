@@ -1,16 +1,14 @@
 @import "../../styles.css" reference;
 
 .segmented-control {
-  /* Track gutter (matches Switch `--switch-pad`): thumb + segments sit inside the
-   * border with visible breathing room — never flush to the stroke. */
-  --segmented-control-padding: 0.125rem;
+  /* Thumb sits flush to the track inner edge (no Switch-like gutter). */
   --segmented-control-track-border-width: 1px;
   --segmented-control-height: var(--control-height-md, 2.25rem);
-  --segmented-control-track-radius: var(--control-radius-button-pill);
-  --segmented-control-thumb-radius: calc(
-    var(--segmented-control-track-radius) - var(--segmented-control-track-border-width) -
-      var(--segmented-control-padding)
-  );
+  /* Track radius from global `--control-radius` (soft by default).
+   * Thumb shares the track radius token — do not subtract border/padding
+   * (that calc can bottom out to 0px on very small radii). */
+  --segmented-control-track-radius: var(--control-radius);
+  --segmented-control-thumb-radius: var(--segmented-control-track-radius);
   --segmented-control-severity-danger-color: var(
     --menu-item-severity-color,
     var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
@@ -33,7 +31,7 @@
   /* No overflow clip — focus rings on segments must not be cropped. */
   @apply relative box-border inline-flex items-stretch;
   height: var(--segmented-control-height);
-  padding: var(--segmented-control-padding);
+  padding: 0;
   border-radius: var(--segmented-control-track-radius);
   background-color: var(--segmented-control-track-bg, transparent);
   border: var(--segmented-control-track-border-width) solid
@@ -66,9 +64,9 @@
 .segmented-control__thumb {
   @apply pointer-events-none absolute box-border;
   z-index: 1;
-  /* Abspos origin is the padding edge — inset by the same gutter as in-flow segments. */
-  top: var(--segmented-control-padding);
-  bottom: var(--segmented-control-padding);
+  /* Abspos origin is the padding edge; padding is 0 so thumb is flush to the border. */
+  top: 0;
+  bottom: 0;
   left: 0;
   height: auto;
   width: var(--segmented-control-thumb-width, 0px);
