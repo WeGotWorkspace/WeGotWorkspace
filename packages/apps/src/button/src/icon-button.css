@@ -1,31 +1,32 @@
 @import "../../styles.css" reference;
 
 .icon-button--size-xs {
-  width: var(--tag-height, 1.5rem);
-  height: var(--tag-height, 1.5rem);
+  width: var(--control-height-xs, 1.75rem);
+  height: var(--control-height-xs, 1.75rem);
   --button-icon-size: 0.75rem;
 }
 
 .icon-button--size-sm {
-  width: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+  width: var(--control-height-sm, 2rem);
+  height: var(--control-height-sm, 2rem);
   --button-icon-size: 0.875rem;
 }
 
-/* Beat `.button` radius so compact icon chrome matches sm buttons / segmented tracks. */
-.button.icon-button--size-sm {
-  border-radius: var(--control-radius-button-pill);
-}
-
 .icon-button--size-md {
-  width: var(--control-height-md, var(--input-height, 2.25rem));
-  height: var(--control-height-md, var(--input-height, 2.25rem));
-  --button-icon-size: 1rem;
+  width: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
+  --button-icon-size: 0.875rem;
 }
 
 .icon-button--size-lg {
-  width: var(--control-height-lg, calc(var(--input-height, 2.25rem) + 0.25rem));
-  height: var(--control-height-lg, calc(var(--input-height, 2.25rem) + 0.25rem));
+  width: var(--control-height-lg, 2.5rem);
+  height: var(--control-height-lg, 2.5rem);
+  --button-icon-size: 1rem;
+}
+
+.icon-button--size-xl {
+  width: var(--control-height-xl, 2.75rem);
+  height: var(--control-height-xl, 2.75rem);
   --button-icon-size: 1.25rem;
 }
 

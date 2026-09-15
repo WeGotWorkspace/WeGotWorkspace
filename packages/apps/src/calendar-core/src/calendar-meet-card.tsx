@@ -6,6 +6,7 @@ import { Card } from "@/card/src/card";
 import { CardRow } from "@/card/src/card-row";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { copyShareText } from "@/share-ui/share-path-utils";
+import { useAppToast } from "@/hooks/use-app-toast";
 import "@/share-ui/share-ui.css";
 import {
   AlertDialog,
@@ -17,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import {
   patchCalendarEventForm,
   type CalendarEventFormValue,
@@ -43,6 +44,8 @@ import { createMeetRoomCode } from "@/meet-core/src/meet-room-id";
 import { buildMeetGuestCallLink } from "@/meet-core/src/meet-route-search";
 import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
 import { Callout } from "@/callout/src/callout";
+import type { ControlSize } from "@/ui/control-size";
+import { cn } from "@/lib/utils";
 
 export type CalendarMeetCardProps = {
   form: CalendarEventFormValue;
@@ -62,8 +65,13 @@ export type CalendarMeetCardProps = {
   copyOnly?: boolean;
   /** Persistent warning when email guests cannot join a channel Meet. */
   emailGuestHint?: string;
+  /** `field` matches the flat event-form FieldLabelRow chrome (popover / redesigned dialog). */
+  presentation?: "card" | "field";
+  className?: string;
+  fieldIcon?: ReactNode;
+  /** Shared control height (`sm` in the compact event popover). Default `md`. */
+  controlSize?: ControlSize;
   onChange: (next: CalendarEventFormValue) => void;
-  onRecurrenceSaveScopeChange?: (scope: RecurrenceEditScope) => void;
   onJoin?: (href: string) => void;
 };
 
@@ -82,24 +90,29 @@ function CalendarMeetUrlRow({
   labels,
   readOnly = false,
   disabled = false,
+  controlSize = "md",
   onChange,
   onBlur,
   meetMenu,
+  onCopied,
 }: {
   href: string;
   labels: CalendarUILabels;
   readOnly?: boolean;
   disabled?: boolean;
+  controlSize?: ControlSize;
   onChange?: (value: string) => void;
   onBlur?: () => void;
   /** Meet actions dropdown (new link + channels) after copy. */
   meetMenu?: ReactNode;
+  onCopied?: () => void;
 }) {
   const trimmed = href.trim();
   return (
     <div className="calendar-event-dialog__meet-row share-dialog__link-row">
       <ShareDialogInput
         type="url"
+        size={controlSize}
         value={href}
         readOnly={readOnly}
         disabled={disabled}
@@ -117,11 +130,13 @@ function CalendarMeetUrlRow({
       <IconButton
         label={labels.copyHttpsUrl}
         icon={<Copy className="size-3.5" aria-hidden />}
-        size="sm"
+        size={controlSize}
         variant="outline"
         disabled={!trimmed}
         onClick={() => {
-          void copyShareText(trimmed);
+          void copyShareText(trimmed).then((copied) => {
+            if (copied) onCopied?.();
+          });
         }}
       />
       {meetMenu}
@@ -143,11 +158,15 @@ export function CalendarMeetCard({
   readOnly = false,
   copyOnly = false,
   emailGuestHint,
+  presentation = "card",
+  className,
+  fieldIcon,
+  controlSize = "md",
   abandonStagedReserveRef,
   onChange,
-  onRecurrenceSaveScopeChange,
   onJoin,
 }: CalendarMeetCardProps) {
+  const { showSuccess } = useAppToast();
   const [reserving, setReserving] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(false);
   const inflightRef = useRef(false);
@@ -157,7 +176,7 @@ export function CalendarMeetCard({
   const hrefDraftRef = useRef(form.meetingUrl);
   const urlWriteGenRef = useRef(0);
   const [draftHref, setDraftHref] = useState(form.meetingUrl);
-  const canChooseScope = Boolean(recurrenceId) && !thisInstanceLocked && !readOnly;
+  // Room TTL while drafting only — persist scope is chosen at save via CalendarRecurrenceScopeDialog.
   const scope = resolveCalendarMeetReserveScope({
     recurrencePreset: form.recurrencePreset,
     recurrenceId,
@@ -269,28 +288,6 @@ export function CalendarMeetCard({
     void generateMeet(false);
   };
 
-  const removeMeet = async (): Promise<void> => {
-    const room =
-      stagedRoomRef.current.trim() ||
-      form.meetRoomCode?.trim() ||
-      roomCodeFromMeetingUrl(form.meetingUrl, workspaceOrigin);
-    if (room) await expireStagedRoom(room);
-    stagedRoomRef.current = "";
-    reservedThisSessionRef.current = false;
-    hrefDraftRef.current = "";
-    applyForm(form, { meetingUrl: "", meetRoomCode: undefined }, onChange);
-  };
-
-  const changeScope = async (next: RecurrenceEditScope): Promise<void> => {
-    if (next === recurrenceSaveScope) return;
-    if (reservedThisSessionRef.current || form.meetRoomCode) {
-      await removeMeet();
-    } else if (form.meetingUrl.trim()) {
-      applyForm(form, { meetingUrl: "" }, onChange);
-    }
-    onRecurrenceSaveScopeChange?.(next);
-  };
-
   const expireLocalWgwRoom = async (): Promise<void> => {
     const room = stagedRoomRef.current.trim() || form.meetRoomCode?.trim() || "";
     if (room) await expireStagedRoom(room);
@@ -353,119 +350,154 @@ export function CalendarMeetCard({
 
   if (readOnly) {
     if (!form.meetingUrl.trim()) return null;
-    return (
+    const readonlyRow = (
       <div className="calendar-event-dialog__meet-readonly">
-        <CalendarMeetUrlRow href={form.meetingUrl} labels={labels} readOnly />
-        <CalendarMeetJoin
+        <CalendarMeetUrlRow
           href={form.meetingUrl}
           labels={labels}
-          workspaceOrigin={workspaceOrigin}
-          meetOperations={meetOperations}
-          onJoin={onJoin}
+          readOnly
+          controlSize={controlSize}
+          onCopied={() => showSuccess(labels.toastFeedCopied)}
+          meetMenu={
+            <CalendarMeetJoin
+              href={form.meetingUrl}
+              labels={labels}
+              workspaceOrigin={workspaceOrigin}
+              meetOperations={meetOperations}
+              appearance="icon"
+              size={controlSize}
+              onJoin={onJoin}
+            />
+          }
         />
       </div>
     );
+    // Invitation / invitee read-only must still use FieldLabelRow chrome when
+    // the parent form uses presentation="field" (leading icon + control band).
+    if (presentation === "field") {
+      return (
+        <FieldLabelRow
+          className={cn("calendar-event-dialog__meet", className)}
+          label={labels.eventMeetSectionTitle}
+          labelMode="icon"
+          icon={fieldIcon ?? <Video className="size-3.5" aria-hidden />}
+        >
+          {readonlyRow}
+        </FieldLabelRow>
+      );
+    }
+    return readonlyRow;
   }
 
   const canGenerate = Boolean(meetOperations?.reserveRoom) && !copyOnly;
   const listChannels = copyOnly ? undefined : meetOperations?.listChannels;
 
+  const urlRow = (
+    <CalendarMeetUrlRow
+      href={draftHref}
+      labels={labels}
+      readOnly={copyOnly}
+      disabled={disabled}
+      controlSize={controlSize}
+      onCopied={() => showSuccess(labels.toastFeedCopied)}
+      onChange={
+        copyOnly
+          ? undefined
+          : (value) => {
+              hrefDraftRef.current = value;
+              setDraftHref(value);
+              applyForm(form, { meetingUrl: value }, onChange);
+            }
+      }
+      onBlur={
+        copyOnly
+          ? undefined
+          : () => {
+              void onUrlBlur();
+            }
+      }
+      meetMenu={
+        copyOnly ? undefined : (
+          <CalendarMeetChannelPicker
+            labels={labels}
+            listChannels={listChannels}
+            disabled={disabled}
+            reserving={reserving}
+            size={controlSize}
+            meetingUrl={draftHref}
+            workspaceOrigin={workspaceOrigin}
+            onJoin={onJoin}
+            onNewLink={canGenerate ? requestGenerate : undefined}
+            onPick={pickChannel}
+          />
+        )
+      }
+    />
+  );
+
+  const hint =
+    emailGuestHint != null ? (
+      <Callout
+        severity="warning"
+        className="calendar-event-dialog__meet-email-hint"
+        title={emailGuestHint}
+      />
+    ) : null;
+
+  const replaceDialog = (
+    <AlertDialog
+      open={confirmReplace}
+      onOpenChange={(open) => !reserving && setConfirmReplace(open)}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{labels.eventMeetReplaceTitle}</AlertDialogTitle>
+          <AlertDialogDescription>{labels.eventMeetReplaceDescription}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={reserving}>{labels.cancel}</AlertDialogCancel>
+          <AlertDialogAction
+            className={buttonVariants({ variant: "destructive" })}
+            disabled={reserving}
+            onClick={(event) => {
+              event.preventDefault();
+              setConfirmReplace(false);
+              void generateMeet(true);
+            }}
+          >
+            {labels.eventMeetReplaceConfirm}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
+  if (presentation === "field") {
+    return (
+      <FieldLabelRow
+        className={cn("calendar-event-dialog__meet", className)}
+        label={labels.eventMeetSectionTitle}
+        labelMode="icon"
+        icon={fieldIcon ?? <Video className="size-3.5" aria-hidden />}
+      >
+        <div className="calendar-event-dialog__meet-field">
+          {urlRow}
+          {hint}
+        </div>
+        {replaceDialog}
+      </FieldLabelRow>
+    );
+  }
+
   return (
     <Card
-      className="calendar-event-dialog__card calendar-event-dialog__meet"
+      className={cn("calendar-event-dialog__card calendar-event-dialog__meet", className)}
       titleIcon={<Video className="size-4" />}
       title={labels.eventMeetSectionTitle}
     >
-      {canChooseScope ? (
-        <CardRow title={labels.eventMeetApplyTo}>
-          <Select
-            value={recurrenceSaveScope ?? "thisAndFuture"}
-            onValueChange={(value) => {
-              void changeScope(value as RecurrenceEditScope);
-            }}
-            disabled={disabled || reserving}
-          >
-            <SelectTrigger
-              className="calendar-event-dialog__meet-scope-trigger"
-              aria-label={labels.eventMeetApplyTo}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="thisInstance">{labels.recurrenceScopeThisInstance}</SelectItem>
-              <SelectItem value="thisAndFuture">{labels.recurrenceScopeThisAndFuture}</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardRow>
-      ) : null}
-      <CardRow fill>
-        <CalendarMeetUrlRow
-          href={draftHref}
-          labels={labels}
-          readOnly={copyOnly}
-          disabled={disabled}
-          onChange={
-            copyOnly
-              ? undefined
-              : (value) => {
-                  hrefDraftRef.current = value;
-                  setDraftHref(value);
-                  applyForm(form, { meetingUrl: value }, onChange);
-                }
-          }
-          onBlur={
-            copyOnly
-              ? undefined
-              : () => {
-                  void onUrlBlur();
-                }
-          }
-          meetMenu={
-            copyOnly ? undefined : (
-              <CalendarMeetChannelPicker
-                labels={labels}
-                listChannels={listChannels}
-                disabled={disabled}
-                reserving={reserving}
-                onNewLink={canGenerate ? requestGenerate : undefined}
-                onPick={pickChannel}
-              />
-            )
-          }
-        />
-      </CardRow>
-      {emailGuestHint ? (
-        <Callout
-          severity="warning"
-          className="calendar-event-dialog__meet-email-hint"
-          title={emailGuestHint}
-        />
-      ) : null}
-      <AlertDialog
-        open={confirmReplace}
-        onOpenChange={(open) => !reserving && setConfirmReplace(open)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{labels.eventMeetReplaceTitle}</AlertDialogTitle>
-            <AlertDialogDescription>{labels.eventMeetReplaceDescription}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={reserving}>{labels.cancel}</AlertDialogCancel>
-            <AlertDialogAction
-              className={buttonVariants({ variant: "destructive" })}
-              disabled={reserving}
-              onClick={(event) => {
-                event.preventDefault();
-                setConfirmReplace(false);
-                void generateMeet(true);
-              }}
-            >
-              {labels.eventMeetReplaceConfirm}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <CardRow fill>{urlRow}</CardRow>
+      {hint}
+      {replaceDialog}
     </Card>
   );
 }

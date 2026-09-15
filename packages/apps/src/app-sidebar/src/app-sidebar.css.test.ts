@@ -12,7 +12,7 @@ describe("app sidebar overlay close", () => {
     expect(tsx).toMatch(/from "@\/button\/src\/button"/);
     expect(tsx).toMatch(/<IconButton[\s\S]*label="Close menu"/);
     expect(tsx).toMatch(/variant="outline"/);
-    expect(tsx).toMatch(/size="sm"/);
+    expect(tsx).toMatch(/size="md"/);
     expect(tsx).toMatch(/showTooltip=\{false\}/);
     expect(tsx).not.toMatch(/<button[\s\S]*aria-label="Close menu"/);
   });

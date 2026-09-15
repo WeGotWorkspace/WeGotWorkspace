@@ -25,6 +25,7 @@ export {
   type ButtonSizeProp,
   type ButtonVariant,
   type ButtonVariantProp,
+  type ControlSize,
   type IconButtonSize,
   type ShadcnButtonSize,
   type ShadcnButtonVariant,

@@ -19,7 +19,7 @@ function AppSidebarHarness() {
         <Button
           label="Compose"
           onClick={() => {}}
-          size="lg"
+          size="xl"
           pill
           variant="primary"
           icon={<Pencil />}

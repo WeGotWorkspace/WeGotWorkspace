@@ -4,6 +4,7 @@
 .share-access-card {
   /* Accent for icons and small marks only — not section fills (see dialog surface --primary). */
   --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
+  --workspace-accent: var(--share-dialog-accent);
   --share-dialog-tag-bg: color-mix(in oklab, var(--share-dialog-accent) 62%, transparent);
   --share-dialog-tag-fg: var(--color-ink);
   --share-dialog-muted: var(
@@ -12,6 +13,7 @@
   );
   --card-title-icon-color: var(--share-dialog-accent);
   --card-description-color: var(--share-dialog-muted);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   --share-dialog-row-hover: color-mix(
     in oklab,
     var(--muted, oklch(0.968 0.007 247.896)) 50%,
@@ -36,8 +38,8 @@
 }
 
 /* IconButton sm is input-height − 4px globally; in share rows keep full 36px hit area. */
-.share-dialog .icon-button--size-sm,
-.share-access-card .icon-button--size-sm {
+.share-dialog .icon-button--size-md,
+.share-access-card .icon-button--size-md {
   width: var(--input-height);
   height: var(--input-height);
 }
@@ -100,6 +102,10 @@
   --user-avatar-radius: 0.5rem;
 }
 
+.share-dialog__principal-mark--labeled {
+  @apply min-w-0 flex-1;
+}
+
 .share-dialog__permission-select {
   @apply w-[8.125rem] shrink-0 bg-transparent text-xs;
   height: var(--input-height);
@@ -126,7 +132,7 @@
 }
 
 .share-dialog__link-controls {
-  @apply flex min-w-0 flex-col gap-2 rounded-xl border border-border/70 bg-card/60 px-3 pt-2 pb-0;
+  @apply flex min-w-0 flex-col gap-2;
 }
 
 .share-dialog__link-row {
@@ -138,11 +144,7 @@
 }
 
 .share-dialog__input {
-  @apply min-w-0 flex-1;
-}
-
-.share-dialog__input--mono {
-  @apply truncate font-mono;
+  @apply min-w-0 flex-1 truncate;
 }
 
 .share-dialog__link-row > :not(.share-dialog__input) {
@@ -176,7 +178,7 @@
 }
 
 .share-dialog__link-url {
-  @apply min-w-0 truncate font-mono text-xs;
+  @apply min-w-0 truncate text-xs;
   color: var(--share-dialog-muted);
 }
 
@@ -207,8 +209,20 @@
 }
 
 .share-dialog__add-grant {
-  @apply border-t p-2;
-  border-color: var(--share-dialog-panel-border);
+  @apply min-w-0;
+}
+
+.share-access-card__body {
+  @apply flex min-w-0 flex-col gap-2;
+}
+
+/* Flat rows — Card already provides the section surface; no nested panel chrome. */
+.share-access-card .card__row {
+  @apply rounded-none px-0 py-0;
+}
+
+.share-access-card .card__row:hover {
+  background: transparent;
 }
 
 .share-dialog__add-grant-input {

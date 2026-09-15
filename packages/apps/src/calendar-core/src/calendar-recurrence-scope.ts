@@ -38,7 +38,7 @@ export type RecurrenceDeleteScope = RecurrenceEditScope | "allInstances";
 /** Resolved choice from the scope dialog (edit or delete). */
 export type RecurrenceScopeChoice = RecurrenceDeleteScope;
 
-export type RecurrenceScopeAction = "edit" | "delete" | "update";
+export type RecurrenceScopeAction = "edit" | "delete" | "update" | "rsvp";
 
 export type RecurrenceScopeRequest = {
   action: RecurrenceScopeAction;

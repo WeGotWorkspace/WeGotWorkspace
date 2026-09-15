@@ -41,14 +41,14 @@ export const Default: Story = {
           label="Compose"
           onClick={() => {}}
           icon={<PenSquare />}
-          size="sm"
+          size="md"
           variant="outline"
         />
         <IconButton
           label="Delete"
           onClick={() => {}}
           icon={<Trash2 />}
-          size="sm"
+          size="md"
           variant="outline"
         />
       </div>
@@ -89,14 +89,14 @@ const periodNav = (
       label="Previous period"
       icon={<ChevronLeft />}
       onClick={() => {}}
-      size="sm"
+      size="md"
       variant="outline"
     />
     <IconButton
       label="Next period"
       icon={<ChevronRight />}
       onClick={() => {}}
-      size="sm"
+      size="md"
       variant="outline"
     />
   </div>
@@ -118,7 +118,7 @@ export const Stacked: Story = {
     layout: "stacked",
     titleLeading: periodNav,
     titleTrailing: (
-      <IconButton label="Inbox" icon={<Inbox />} onClick={() => {}} size="sm" variant="outline" />
+      <IconButton label="Inbox" icon={<Inbox />} onClick={() => {}} size="md" variant="outline" />
     ),
     actions: periodActions,
   },

@@ -81,18 +81,7 @@
     var(--docs-accent) 24%,
     var(--color-cream, #ffffff)
   );
-  /* Quiet menu washes for portaled row/action DropdownMenus (portal-theme-vars). */
-  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-selected-background: color-mix(
-    in oklab,
-    var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --menu-item-selected-hover-background: color-mix(
-    in oklab,
-    var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
+  /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24). */
 
   --foreground: var(--docs-text);
   --color-foreground: var(--docs-text);
@@ -122,7 +111,7 @@
   }
 
   .docs-collab-suggest-controls.button {
-    width: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+    width: var(--control-height-md, 2.25rem);
     @apply shrink-0 flex-none px-0;
   }
 }
@@ -152,17 +141,7 @@
     var(--docs-accent) 24%,
     var(--color-cream, #ffffff)
   );
-  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-selected-background: color-mix(
-    in oklab,
-    var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --menu-item-selected-hover-background: color-mix(
-    in oklab,
-    var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
+  /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 @media (min-width: 768px) {
@@ -383,19 +362,7 @@
   --primary: var(--docs-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--docs-accent-strong);
-  --button-outline-hover-color: var(--docs-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-selected-background: color-mix(
-    in oklab,
-    var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --menu-item-selected-hover-background: color-mix(
-    in oklab,
-    var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 .docs-workspace__editor {
@@ -404,13 +371,6 @@
 
 .docs-workspace .docs-comments-floating-layer {
   --docs-accent: #3b82f6;
-}
-
-.docs-workspace .docs-comments-floating-layer__card .docs-comments-thread-card[data-active="true"] {
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--color-ink) 5%, transparent),
-    0 8px 24px -8px color-mix(in oklab, var(--docs-accent) 28%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--docs-accent) 12%, transparent);
 }
 
 .docs-workspace .text-editor {

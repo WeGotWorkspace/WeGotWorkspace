@@ -12,7 +12,7 @@ export function TextEditorWithSourceToggle(args: ComponentProps<typeof TextEdito
         <Button
           type="button"
           variant={viewSource ? "secondary" : "outline"}
-          size="sm"
+          size="md"
           onClick={() => setViewSource((on) => !on)}
         >
           {viewSource ? "Hide source" : "Edit source"}

@@ -58,7 +58,7 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
                 <UserAvatar
                   displayName={grant.principal}
                   compact
-                  size="xs"
+                  size="md"
                   color={avatarColorForUserId(grant.principal)}
                   className="share-dialog__guest-mark"
                 />
@@ -82,7 +82,7 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
                 <IconButton
                   label={shareLabels.removeGuest}
                   icon={<Trash2 className="size-3.5" aria-hidden />}
-                  size="sm"
+                  size="md"
                   variant="outline"
                   disabled={disabled}
                   onClick={() => {
@@ -126,7 +126,7 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
           <IconButton
             label={shareLabels.inviteGuest}
             icon={<Send className="size-3.5" aria-hidden />}
-            size="sm"
+            size="md"
             variant="primary"
             disabled={disabled || !canInvite}
             onClick={addGuest}

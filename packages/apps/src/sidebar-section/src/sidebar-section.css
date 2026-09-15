@@ -1,9 +1,14 @@
 @import "../../styles.css" reference;
 
 .sidebar-section__heading {
-  @apply mb-3 flex items-center justify-between gap-2 min-w-0 h-6;
+  @apply flex items-center justify-between gap-2 min-w-0 h-6;
+  margin-bottom: calc(var(--spacing, 0.25rem) * 1);
   /* Match app-switch glyph inset (see `--app-sidebar-item-padding-x` on `.app-sidebar`). */
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
+}
+
+.sidebar-section__heading h4 {
+  letter-spacing: 1px;
 }
 
 /** Caption look comes from `field-label-row__label` (see field-label-row.css). */

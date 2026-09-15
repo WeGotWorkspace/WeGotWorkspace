@@ -112,7 +112,7 @@ export function ContactsListPanel({
               onClick={onRefreshList}
               disabled={listLoading || listRefreshing}
               icon={<RefreshSpinIcon spinning={listRefreshing} className="size-4" />}
-              size="sm"
+              size="md"
               variant="outline"
             />
           ) : null
@@ -217,7 +217,7 @@ function ContactsListRows({
                   <ContactUserAvatar
                     card={card}
                     compact
-                    size="sm"
+                    size="md"
                     className="contacts-list-panel__avatar"
                     loading="lazy"
                     decoding="async"

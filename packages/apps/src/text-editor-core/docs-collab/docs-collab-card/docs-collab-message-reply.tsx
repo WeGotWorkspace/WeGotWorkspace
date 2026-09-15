@@ -13,7 +13,7 @@ export function DocsCollabMessageReply({ message }: DocsCollabMessageReplyProps)
       <UserAvatar
         displayName={message.author.name}
         compact
-        size="sm"
+        size="md"
         className="docs-collab-message-reply__avatar"
       />
       <div className="docs-collab-message-reply__content">

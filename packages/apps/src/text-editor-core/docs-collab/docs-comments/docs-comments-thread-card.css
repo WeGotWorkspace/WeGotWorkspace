@@ -6,21 +6,6 @@
   --highlight-amber: oklch(0.94 0.13 86);
 }
 
-.docs-comments-thread-card__resolve {
-  @apply inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors;
-  border-color: var(--docs-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
-  color: var(--docs-text, var(--color-ink));
-  background-color: transparent;
-}
-
-.docs-comments-thread-card__resolve:hover {
-  background-color: color-mix(in oklab, var(--color-ink) 5%, transparent);
-}
-
-.docs-comments-thread-card__resolve-icon {
-  @apply size-3.5;
-}
-
 .docs-comments-thread-card__quote {
   @apply mt-2.5 m-0 not-italic;
 }

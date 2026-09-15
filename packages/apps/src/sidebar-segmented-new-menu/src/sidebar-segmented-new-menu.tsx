@@ -7,7 +7,7 @@ import type { DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
 import { cn } from "@/lib/utils";
 import "./sidebar-segmented-new-menu.css";
 
-export type SidebarSegmentedNewMenuSize = Extract<ButtonSizeProp, "sm" | "lg">;
+export type SidebarSegmentedNewMenuSize = Extract<ButtonSizeProp, "md" | "xl">;
 
 export type SidebarSegmentedNewMenuProps = {
   mainLabel: string;
@@ -34,7 +34,7 @@ export function SidebarSegmentedNewMenu({
   blockName = "sidebar-segmented-new-menu",
   className,
   icon,
-  size = "lg",
+  size = "xl",
   stretch = true,
 }: SidebarSegmentedNewMenuProps) {
   const hasMenu = items.length > 0;
@@ -57,7 +57,7 @@ export function SidebarSegmentedNewMenu({
     <div
       className={cn(
         blockName,
-        size === "sm" && `${blockName}--sm`,
+        size === "md" && `${blockName}--sm`,
         stretch && `${blockName}--stretch`,
         className,
       )}

@@ -368,7 +368,7 @@ export function DocsHomePane({
                 <div className="docs-home-pane__load-more">
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="md"
                     label={labels.homeLoadMore}
                     disabled={loadingMore}
                     aria-busy={loadingMore}

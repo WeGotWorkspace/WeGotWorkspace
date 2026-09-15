@@ -1,5 +1,8 @@
 import type { ReactElement } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   BooleanSegmentedControl,
@@ -17,27 +20,44 @@ const iconOptions = [
   { value: "list", label: "List view", icon: <span data-testid="list-icon" /> },
 ] as const;
 
+const rsvpOptions = [
+  {
+    value: "accepted",
+    label: "Accept",
+    icon: <span data-testid="accept-icon" />,
+    severity: "success" as const,
+  },
+  { value: "tentative", label: "Maybe", icon: <span data-testid="maybe-icon" /> },
+  {
+    value: "declined",
+    label: "Decline",
+    icon: <span data-testid="decline-icon" />,
+    severity: "danger" as const,
+  },
+];
+
 function renderWithTooltip(ui: ReactElement) {
   return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
 }
 
 describe("SegmentedControl", () => {
-  it("defaults to compact size without the md modifier", () => {
+  it("defaults to md height with the md size modifier class", () => {
     const { container } = render(
       <SegmentedControl value="grid" onChange={vi.fn()} options={[...options]} />,
     );
     const root = container.querySelector(".segmented-control");
     expect(root).not.toBeNull();
-    expect(root!.classList.contains("segmented-control--size-md")).toBe(false);
+    expect(root!.classList.contains("segmented-control--size-md")).toBe(true);
+    expect(root!.classList.contains("segmented-control--size-lg")).toBe(false);
   });
 
-  it("applies the md size modifier when requested", () => {
+  it("applies the lg size modifier when requested", () => {
     const { container } = render(
-      <SegmentedControl value="grid" onChange={vi.fn()} options={[...options]} size="md" />,
+      <SegmentedControl value="grid" onChange={vi.fn()} options={[...options]} size="lg" />,
     );
     const root = container.querySelector(".segmented-control");
     expect(root).not.toBeNull();
-    expect(root!.classList.contains("segmented-control--size-md")).toBe(true);
+    expect(root!.classList.contains("segmented-control--size-lg")).toBe(true);
   });
 
   it("disables segment buttons when disabled", () => {
@@ -61,6 +81,28 @@ describe("SegmentedControl", () => {
     expect((await screen.findByRole("tooltip")).textContent).toBe("Grid view");
   });
 
+  it("renders icon and visible label together when showLabel is set", () => {
+    const labeled = rsvpOptions.map((option) => ({ ...option, showLabel: true }));
+    const { container } = renderWithTooltip(
+      <SegmentedControl value={null} onChange={vi.fn()} options={labeled} />,
+    );
+
+    const accept = screen.getByRole("button", { name: "Accept" });
+    expect(accept.className).toContain("segmented-control__button--text");
+    expect(accept.textContent).toContain("Accept");
+    expect(screen.getByTestId("accept-icon")).toBeTruthy();
+    expect(screen.getByTestId("maybe-icon")).toBeTruthy();
+    expect(screen.getByTestId("decline-icon")).toBeTruthy();
+    expect(container.querySelectorAll(".segmented-control__label")).toHaveLength(3);
+  });
+
+  it("skips tooltips when the label is visible beside the icon", async () => {
+    const labeled = rsvpOptions.map((option) => ({ ...option, showLabel: true }));
+    renderWithTooltip(<SegmentedControl value={null} onChange={vi.fn()} options={labeled} />);
+    fireEvent.pointerMove(screen.getByRole("button", { name: "Accept" }));
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
   it("skips tooltips for icon-only segments when showTooltip is false", async () => {
     renderWithTooltip(
       <SegmentedControl
@@ -72,6 +114,210 @@ describe("SegmentedControl", () => {
     );
     fireEvent.pointerMove(screen.getByRole("button", { name: "Grid view" }));
     expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("has no active thumb or pressed option when value is null", () => {
+    const onChange = vi.fn();
+    const { container } = renderWithTooltip(
+      <SegmentedControl value={null} onChange={onChange} options={rsvpOptions} />,
+    );
+
+    const root = container.querySelector(".segmented-control") as HTMLElement;
+    expect(root?.classList.contains("segmented-control--unselected")).toBe(true);
+    expect(root?.hasAttribute("data-thumb-ready")).toBe(false);
+    expect(root?.hasAttribute("data-thumb-animate")).toBe(false);
+    expect(root.style.getPropertyValue("--segmented-control-thumb-width")).toBe("");
+    expect(container.querySelector(".segmented-control__button--active")).toBeNull();
+    for (const name of ["Accept", "Maybe", "Decline"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.getAttribute("aria-pressed")).toBeNull();
+      expect(button.className).not.toContain("segmented-control__button--active");
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    expect(onChange).toHaveBeenCalledWith("accepted");
+  });
+
+  it("clips labeled thumbs with rounded integer geometry inside the track", () => {
+    const labeled = rsvpOptions.map((option) => ({ ...option, showLabel: true as const }));
+    const { container } = renderWithTooltip(
+      <SegmentedControl value="declined" onChange={vi.fn()} options={labeled} />,
+    );
+    const root = container.querySelector(".segmented-control") as HTMLElement;
+    const decline = screen.getByRole("button", { name: "Decline" });
+    expect(decline.textContent).toContain("Decline");
+    expect(decline.className).toContain("segmented-control__button--text");
+    expect(decline.className).toContain("segmented-control__button--last");
+    expect(screen.getByRole("button", { name: "Accept" }).className).toContain(
+      "segmented-control__button--first",
+    );
+    const width = root.style.getPropertyValue("--segmented-control-thumb-width");
+    const x = root.style.getPropertyValue("--segmented-control-thumb-x");
+    const height = root.style.getPropertyValue("--segmented-control-thumb-height");
+    expect(width).toMatch(/^\d+px$/);
+    expect(x).toMatch(/^\d+px$/);
+    expect(height).toMatch(/^\d+px$/);
+    expect(root.dataset.thumbEdge).toBe("last");
+  });
+
+  it("rounds only the outer thumb edge against internal separators", () => {
+    const { container, rerender } = renderWithTooltip(
+      <SegmentedControl value="grid" onChange={vi.fn()} options={[...options]} />,
+    );
+    const root = container.querySelector(".segmented-control") as HTMLElement;
+    expect(root.dataset.thumbEdge).toBe("first");
+
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <SegmentedControl value="list" onChange={vi.fn()} options={[...options]} />
+      </TooltipProvider>,
+    );
+    expect(root.dataset.thumbEdge).toBe("last");
+
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <SegmentedControl value="tentative" onChange={vi.fn()} options={rsvpOptions} />
+      </TooltipProvider>,
+    );
+    expect((container.querySelector(".segmented-control") as HTMLElement).dataset.thumbEdge).toBe(
+      "middle",
+    );
+
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <SegmentedControl
+          value="only"
+          onChange={vi.fn()}
+          options={[{ value: "only", label: "Only" }]}
+        />
+      </TooltipProvider>,
+    );
+    expect((container.querySelector(".segmented-control") as HTMLElement).dataset.thumbEdge).toBe(
+      "solo",
+    );
+  });
+
+  it("measures thumb geometry from layout offsets (transform-safe)", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(join(here, "segmented-control.tsx"), "utf8");
+    expect(source).toMatch(/active\.offsetLeft/);
+    expect(source).toMatch(/active\.offsetWidth/);
+    expect(source).toMatch(/data-thumb-edge/);
+    expect(source).not.toMatch(/active\.getBoundingClientRect|root\.getBoundingClientRect/);
+  });
+
+  it("defers thumb reveal until post-paint remeasure (no first-paint flash)", async () => {
+    const labeled = rsvpOptions.map((option) => ({ ...option, showLabel: true as const }));
+    const { container, unmount } = renderWithTooltip(
+      <SegmentedControl value="tentative" onChange={vi.fn()} options={labeled} />,
+    );
+
+    const root = container.querySelector(".segmented-control") as HTMLElement;
+    // Geometry is written in layout; opacity waits for double-rAF remeasure.
+    expect(root.style.getPropertyValue("--segmented-control-thumb-width")).not.toBe("");
+    expect(root.style.getPropertyValue("--segmented-control-thumb-height")).not.toBe("");
+    expect(root?.hasAttribute("data-thumb-ready")).toBe(false);
+    expect(root?.hasAttribute("data-thumb-animate")).toBe(false);
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+    });
+    expect(root?.hasAttribute("data-thumb-ready")).toBe(true);
+    expect(root?.hasAttribute("data-thumb-animate")).toBe(true);
+    expect(
+      Number.parseInt(root.style.getPropertyValue("--segmented-control-thumb-height"), 10),
+    ).toBe(Math.round(root.clientHeight));
+
+    unmount();
+    const remounted = renderWithTooltip(
+      <SegmentedControl value="tentative" onChange={vi.fn()} options={labeled} />,
+    );
+    const remountRoot = remounted.container.querySelector(".segmented-control");
+    expect(remountRoot?.hasAttribute("data-thumb-ready")).toBe(false);
+    expect(remountRoot?.hasAttribute("data-thumb-animate")).toBe(false);
+    remounted.unmount();
+  });
+
+  it("snaps thumb on mount with a selected value (no animate until after first paint)", async () => {
+    const { container, unmount } = renderWithTooltip(
+      <SegmentedControl value="accepted" onChange={vi.fn()} options={rsvpOptions} />,
+    );
+
+    const root = container.querySelector(".segmented-control") as HTMLElement;
+    expect(root?.hasAttribute("data-thumb-ready")).toBe(false);
+    expect(root?.hasAttribute("data-thumb-animate")).toBe(false);
+    expect(root.style.getPropertyValue("--segmented-control-thumb-width")).not.toBe("");
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+    });
+    expect(root?.hasAttribute("data-thumb-ready")).toBe(true);
+    expect(root?.hasAttribute("data-thumb-animate")).toBe(true);
+
+    unmount();
+    const remounted = renderWithTooltip(
+      <SegmentedControl value="accepted" onChange={vi.fn()} options={rsvpOptions} />,
+    );
+    const remountRoot = remounted.container.querySelector(".segmented-control");
+    expect(remountRoot?.hasAttribute("data-thumb-ready")).toBe(false);
+    expect(remountRoot?.hasAttribute("data-thumb-animate")).toBe(false);
+    remounted.unmount();
+  });
+
+  it("clears thumb geometry when returning to an idle null value", async () => {
+    const { container, rerender } = renderWithTooltip(
+      <SegmentedControl value="accepted" onChange={vi.fn()} options={rsvpOptions} />,
+    );
+    const root = container.querySelector(".segmented-control") as HTMLElement;
+    expect(root.style.getPropertyValue("--segmented-control-thumb-width")).not.toBe("");
+
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <SegmentedControl value={null} onChange={vi.fn()} options={rsvpOptions} />
+      </TooltipProvider>,
+    );
+    expect(root.classList.contains("segmented-control--unselected")).toBe(true);
+    expect(root.hasAttribute("data-thumb-ready")).toBe(false);
+    expect(root.style.getPropertyValue("--segmented-control-thumb-width")).toBe("");
+    expect(root.style.getPropertyValue("--segmented-control-thumb-x")).toBe("");
+    expect(root.style.getPropertyValue("--segmented-control-thumb-height")).toBe("");
+  });
+
+  it("renders three options with per-option severity and a sliding thumb", () => {
+    const onChange = vi.fn();
+    const { container, rerender } = renderWithTooltip(
+      <SegmentedControl value="tentative" onChange={onChange} options={rsvpOptions} />,
+    );
+
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Accept" }).className).toContain(
+      "segmented-control__button--severity-success",
+    );
+    expect(screen.getByRole("button", { name: "Decline" }).className).toContain(
+      "segmented-control__button--severity-danger",
+    );
+    expect(screen.getByRole("button", { name: "Maybe" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Accept" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    );
+    expect(container.querySelector(".segmented-control__thumb")).toBeTruthy();
+    expect(container.querySelector(".segmented-control__thumb--severity-success")).toBeNull();
+    expect(container.querySelector(".segmented-control__thumb--severity-danger")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    expect(onChange).toHaveBeenCalledWith("accepted");
+
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <SegmentedControl value="accepted" onChange={onChange} options={rsvpOptions} />
+      </TooltipProvider>,
+    );
+    expect(container.querySelector(".segmented-control__thumb--severity-success")).toBeTruthy();
   });
 
   it("renders a compact switch for boolean on/off", () => {

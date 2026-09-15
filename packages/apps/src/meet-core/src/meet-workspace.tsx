@@ -1065,7 +1065,7 @@ export function MeetWorkspace({
                     <IconButton
                       icon={<Pencil />}
                       label={chatUiLabels.edit}
-                      size="sm"
+                      size="md"
                       variant="outline"
                       active={parentEditing}
                       showTooltip={false}
@@ -1209,7 +1209,7 @@ export function MeetWorkspace({
                       mainLabel={meetLabels.meet}
                       menuLabel={meetLabels.startCallMenu}
                       icon={<Video />}
-                      size="sm"
+                      size="md"
                       stretch={false}
                       onMainAction={() => onCallInvite()}
                       items={[
@@ -1231,7 +1231,7 @@ export function MeetWorkspace({
                           ? meetLabels.editMeeting
                           : meetLabels.editChannel
                       }
-                      size="sm"
+                      size="md"
                       variant="outline"
                       showTooltip={false}
                       onClick={() => openEdit(selected)}

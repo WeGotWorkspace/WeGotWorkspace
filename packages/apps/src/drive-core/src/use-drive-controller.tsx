@@ -204,6 +204,8 @@ export function useDriveController({
     active: list.active,
     groupRootNames: shell.groupRootNames,
     sidebarGroupPaths: shell.sidebarGroupPaths,
+    sidebarGroupRoots: shell.sidebarGroupRoots,
+    folderPickerRootLabels: shell.folderPickerRootLabels,
     openFile: list.openFile,
     openDocsEditorFile: list.openDocsEditorFile,
     handleSelect: list.handleSelect,

@@ -96,7 +96,7 @@ function renderActionItems(actions: ActionBarAction[]) {
               onClick={action.onClick}
               disabled={action.disabled}
               icon={action.icon}
-              size="sm"
+              size="md"
               variant="outline"
               aria-label={tooltipLabel}
               aria-pressed={action.active}
@@ -119,7 +119,7 @@ function renderActionItems(actions: ActionBarAction[]) {
         disabled={action.disabled}
         severity={action.severity}
         icon={action.icon}
-        size="sm"
+        size="md"
         variant="outline"
       />
     );
@@ -179,14 +179,14 @@ function renderCompactDropdown(
           onClick: action.onClick,
           checked: action.active,
           disabled: action.disabled,
-          severity: action.severity,
+          severity: action.severity === "danger" ? ("danger" as const) : undefined,
         }))}
         contentClassName="min-w-[11rem] p-1.5"
         trigger={
           <IconButton
             label={label}
             icon={icon}
-            size="sm"
+            size="md"
             variant="outline"
             className="action-bar__menu-trigger"
           />
@@ -230,7 +230,7 @@ export function ActionBar({
           icon={backIcon === "close" ? <X /> : <ArrowLeft />}
           variant="outline"
           className="action-bar__back"
-          size="sm"
+          size="md"
           title={backLabel}
         />
       ) : null}

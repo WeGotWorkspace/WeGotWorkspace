@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Copy, Trash2 } from "lucide-react";
 import { Button } from "@/button/src/button";
+import { IconButton } from "@/button/src/icon-button";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
@@ -20,8 +22,6 @@ import {
   PERSONAL_SCOPE_VALUE,
   type OwnerScopeGroupOption,
 } from "@/ui/owner-scope-field";
-import { Copy } from "lucide-react";
-import { IconButton } from "@/button/src/icon-button";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
 import type { CollectionSharePrincipal, CollectionShareWith } from "@/share-ui/collection-share";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
@@ -261,7 +261,7 @@ export function MeetChannelDialog({
                       type="button"
                       label={meetLabels.copyLink}
                       icon={<Copy className="size-3.5" aria-hidden />}
-                      size="sm"
+                      size="md"
                       variant="outline"
                       disabled={!guestLink}
                       onClick={() => {
@@ -304,21 +304,25 @@ export function MeetChannelDialog({
 
             <DialogFooter className="meet-channel-dialog__footer">
               {canDelete ? (
-                <Button
+                <IconButton
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  severity="danger"
+                  size="md"
                   className="meet-channel-dialog__delete"
+                  icon={<Trash2 className="size-3.5" aria-hidden />}
+                  label={meetingKind ? meetLabels.deleteMeeting : meetLabels.deleteChannel}
                   onClick={() => setConfirmDeleteOpen(true)}
-                >
-                  {meetingKind ? meetLabels.deleteMeeting : meetLabels.deleteChannel}
-                </Button>
+                />
               ) : null}
-              <Button type="button" variant="outline" onClick={onClose}>
-                {meetLabels.cancel}
-              </Button>
-              <Button type="submit" disabled={!canSubmit}>
-                {isCreate ? meetLabels.createChannelButton : meetLabels.saveChannelButton}
-              </Button>
+              <div className="meet-channel-dialog__footer-end">
+                <Button type="button" variant="outline" onClick={onClose}>
+                  {meetLabels.cancel}
+                </Button>
+                <Button type="submit" disabled={!canSubmit}>
+                  {isCreate ? meetLabels.createChannelButton : meetLabels.saveChannelButton}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>

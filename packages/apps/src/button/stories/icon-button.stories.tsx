@@ -49,3 +49,13 @@ export const Disabled: StoryObj<typeof IconButton> = {
   ...Default,
   args: { ...Default.args, disabled: true },
 };
+
+export const Success: StoryObj<typeof IconButton> = {
+  ...Default,
+  args: { ...Default.args, severity: "success", label: "Resolve thread" },
+};
+
+export const Danger: StoryObj<typeof IconButton> = {
+  ...Default,
+  args: { ...Default.args, severity: "danger", label: "Delete" },
+};

@@ -59,7 +59,7 @@ function FormatBarIconButton({
       onClick={onClick}
       active={active}
       disabled={disabled}
-      size="sm"
+      size="md"
       variant="outline"
       aria-pressed={active || undefined}
     />
@@ -181,7 +181,7 @@ export function TextEditorFormatBar({
                 aria-label="Heading level"
                 disabled={formattingDisabled}
                 aria-pressed={headingActive || undefined}
-                size="sm"
+                size="md"
                 variant="outline"
                 className={cn(
                   "text-editor-format-bar__heading-trigger",

@@ -122,7 +122,7 @@ export function MailComposeView({
               {!showCcBcc ? (
                 <Button
                   type="button"
-                  size="sm"
+                  size="md"
                   variant="primary"
                   label="(B)cc"
                   onClick={() => setShowCcBcc(true)}
@@ -213,7 +213,7 @@ export function MailComposeView({
           <IconButton
             type="button"
             variant="ghost"
-            size="sm"
+            size="md"
             label={attachFilesLabel}
             icon={<Paperclip className="size-4" aria-hidden />}
             onClick={() => fileInputRef.current?.click()}
@@ -221,10 +221,11 @@ export function MailComposeView({
           />
           <IconButton
             type="button"
-            variant="ghost"
-            size="sm"
+            variant="outline"
+            severity="danger"
+            size="md"
             label={deleteDraftLabel}
-            icon={<Trash2 className="size-4" aria-hidden />}
+            icon={<Trash2 className="size-3.5" aria-hidden />}
             onClick={onDiscard}
             disabled={disableActions}
           />

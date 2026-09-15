@@ -1,7 +1,4 @@
-.search-bar {
-  --control-radius: var(--control-radius-button-pill);
-}
-
+/* Soft radius is global (`--control-radius`); no parent remap for search. */
 .search-bar > div {
   margin-top: 0;
 }

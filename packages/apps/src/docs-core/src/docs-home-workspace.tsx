@@ -465,7 +465,7 @@ export function DocsHomeWorkspace({
                 <Button
                   label={labels.homeNewDocument}
                   icon={<Plus />}
-                  size="lg"
+                  size="xl"
                   pill
                   variant="primary"
                   className="w-full"

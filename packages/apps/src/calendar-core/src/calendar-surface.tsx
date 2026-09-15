@@ -6,6 +6,15 @@ import "@/lib/calendar-elements/wgw/wgw-calendar-surface";
 import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/EventsAPIContext";
 import { resolveCreateIntentAllDay } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import {
+  bindCalendarEventSelected,
+  measureCalendarCreatePreviewOrigin,
+  selectionOriginFromEvent,
+  type CalendarEventSelectionOrigin,
+  type CalendarEventTimesDraft,
+} from "@/calendar-core/src/calendar-event-preview";
+import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurrence-scope";
+import type { RecurrenceScopeRequest } from "@/calendar-core/src/calendar-recurrence-scope";
 
 /** Lit surface time-range view (list vs grid is `presentation`). */
 export type CalendarSurfaceViewId = CalendarViewId;
@@ -18,14 +27,9 @@ export type CalendarSurfaceCreateIntent = {
   /** Exclusive end for all-day; wall-clock end for timed. */
   end: Temporal.PlainDateTime;
   title?: string;
+  /** Viewport rect of the create-preview card when the intent was emitted. */
+  origin?: CalendarEventSelectionOrigin;
 };
-
-import {
-  bindCalendarEventSelected,
-  type CalendarEventSelectionOrigin,
-} from "@/calendar-core/src/calendar-event-preview";
-import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurrence-scope";
-import type { RecurrenceScopeRequest } from "@/calendar-core/src/calendar-recurrence-scope";
 
 export type CalendarSurfaceProps = {
   view: CalendarSurfaceViewId;
@@ -37,17 +41,22 @@ export type CalendarSurfaceProps = {
   selectedCalendarId?: string;
   contextValue?: EventsAPIContextValue;
   onEventSelected?: (key: string, origin?: CalendarEventSelectionOrigin) => void | Promise<void>;
+  /**
+   * Live move/resize draft times from Lit (same source as the grid card preview).
+   * `null` clears the draft when the gesture ends or the engine map catches up.
+   */
+  onEventTimesDraft?: (draft: CalendarEventTimesDraft | null) => void;
   /** User picked a day number in Lit — React owns the dropdown/URL view write. */
   onViewChange?: (view: CalendarSurfaceViewId) => void;
   /** Lit changed the anchor date (day click, week swipe, …). */
   onStartDateChange?: (isoDate: string) => void;
   /**
    * Drag/click create intent. When provided, the cancelable Lit create is
-   * prevented so the adapter does not persist until the dialog saves.
+   * prevented so the adapter does not persist until the create UI saves.
    */
   onCreateRequested?: (intent: CalendarSurfaceCreateIntent) => void;
   /**
-   * Open create-dialog range, or the in-flight save after the dialog closes.
+   * Open create range (popover or dialog), or the in-flight save after create closes.
    * Lit keeps the drag-create card in that slot until a real event replaces it.
    */
   pendingCreateIntent?: CalendarSurfaceCreateIntent | null;
@@ -94,6 +103,7 @@ export function CalendarSurface({
   selectedCalendarId,
   contextValue,
   onEventSelected,
+  onEventTimesDraft,
   onViewChange,
   onStartDateChange,
   onCreateRequested,
@@ -159,6 +169,17 @@ export function CalendarSurface({
 
   useEffect(() => {
     const host = hostRef.current;
+    if (!host || !onEventTimesDraft) return;
+    const handle = (event: Event) => {
+      const detail = (event as CustomEvent<CalendarEventTimesDraft | null>).detail;
+      onEventTimesDraft(detail ?? null);
+    };
+    host.addEventListener("event-times-draft", handle);
+    return () => host.removeEventListener("event-times-draft", handle);
+  }, [onEventTimesDraft]);
+
+  useEffect(() => {
+    const host = hostRef.current;
     if (!host) return;
 
     // `view-changed` is a Lit property echo, not user intent. Honoring it after the
@@ -196,7 +217,7 @@ export function CalendarSurface({
     if (!host || !onCreateRequested) return;
 
     const handleCreateRequested = (event: Event) => {
-      // Prefer dialog → save over optimistic adapter create.
+      // Prefer create UI → save over optimistic adapter create.
       event.preventDefault();
       const detail = (
         event as CustomEvent<{
@@ -207,11 +228,16 @@ export function CalendarSurface({
             allDay?: boolean;
             summary?: string;
           };
+          origin?: CalendarEventSelectionOrigin;
         }>
       ).detail;
       const start = detail?.content?.start;
       const end = detail?.content?.end;
       if (!start || !end) return;
+      const origin =
+        detail?.origin ??
+        selectionOriginFromEvent(event) ??
+        measureCalendarCreatePreviewOrigin(host);
       onCreateRequested({
         calendarId: detail.envelope?.calendarId,
         allDay: resolveCreateIntentAllDay({
@@ -222,6 +248,7 @@ export function CalendarSurface({
         start,
         end,
         title: detail.content?.summary,
+        ...(origin ? { origin } : {}),
       });
     };
 

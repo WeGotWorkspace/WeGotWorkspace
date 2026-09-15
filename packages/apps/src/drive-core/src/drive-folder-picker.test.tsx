@@ -40,7 +40,7 @@ describe("DriveFolderPicker", () => {
   it("applies Docs rootLabels and rootIcon on the Drives root listing", () => {
     render(
       <DriveFolderPicker
-        labels={{ ...driveLabels, sidebarMyDrive: "Personal" }}
+        labels={driveLabels}
         files={[]}
         groupPaths={["Groups/administrators"]}
         moveIds={[]}
@@ -48,7 +48,7 @@ describe("DriveFolderPicker", () => {
         currentUsername="alice"
         groupRootNames={new Set(["administrators"])}
         rootLabels={{
-          "My Drive": "Personal",
+          "My Drive": driveLabels.sidebarMyDrive,
           "Groups/administrators": "Administrators",
         }}
         rootIcon={<HardDrive data-testid="docs-drive-root-icon" />}
@@ -67,7 +67,7 @@ describe("DriveFolderPicker", () => {
     const onDestinationChange = vi.fn();
     render(
       <DriveFolderPicker
-        labels={{ ...driveLabels, sidebarMyDrive: "Personal" }}
+        labels={driveLabels}
         files={[]}
         groupPaths={["Groups/engineering"]}
         moveIds={[]}
@@ -76,7 +76,7 @@ describe("DriveFolderPicker", () => {
         currentUsername="alice"
         groupRootNames={new Set(["engineering"])}
         rootLabels={{
-          "My Drive": "Personal",
+          "My Drive": driveLabels.sidebarMyDrive,
           "Groups/engineering": "engineering",
         }}
         onDestinationChange={onDestinationChange}

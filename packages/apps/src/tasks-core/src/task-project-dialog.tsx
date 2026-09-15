@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/button/src/button";
+import { IconButton } from "@/button/src/icon-button";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
@@ -291,30 +293,36 @@ export function TaskProjectDialog({
 
             <DialogFooter className="task-project-dialog__footer">
               {canDelete ? (
-                <Button
+                <IconButton
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  severity="danger"
+                  size="md"
                   className="task-project-dialog__delete"
+                  icon={<Trash2 className="size-3.5" aria-hidden />}
+                  label={labels.deleteList}
                   onClick={() => setConfirmDeleteOpen(true)}
-                >
-                  {labels.deleteList}
-                </Button>
+                />
               ) : canRemoveShared ? (
-                <Button
+                <IconButton
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  severity="danger"
+                  size="md"
                   className="task-project-dialog__remove"
+                  icon={<Trash2 className="size-3.5" aria-hidden />}
+                  label={labels.removeSharedList}
                   onClick={() => setConfirmRemoveOpen(true)}
-                >
-                  {labels.removeSharedList}
-                </Button>
+                />
               ) : null}
-              <Button type="button" variant="outline" onClick={onClose}>
-                {labels.cancel}
-              </Button>
-              <Button type="submit" disabled={!canSubmit}>
-                {isCreate ? labels.createButton : labels.saveButton}
-              </Button>
+              <div className="task-project-dialog__footer-end">
+                <Button type="button" variant="outline" onClick={onClose}>
+                  {labels.cancel}
+                </Button>
+                <Button type="submit" disabled={!canSubmit}>
+                  {isCreate ? labels.createButton : labels.saveButton}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>

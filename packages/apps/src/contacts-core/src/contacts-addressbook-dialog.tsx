@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/button/src/button";
+import { IconButton } from "@/button/src/icon-button";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { SwatchColorPicker } from "@/ui/swatch-color-picker";
@@ -187,18 +189,22 @@ export function ContactsAddressBookDialog({
 
               <DialogFooter className="contacts-addressbook-dialog__footer">
                 {canRemoveShared ? (
-                  <Button
+                  <IconButton
                     type="button"
-                    variant="ghost"
+                    variant="outline"
+                    severity="danger"
+                    size="md"
                     className="contacts-addressbook-dialog__remove"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    label={labels.removeSharedAddressBook}
                     onClick={() => setConfirmRemoveOpen(true)}
-                  >
-                    {labels.removeSharedAddressBook}
-                  </Button>
+                  />
                 ) : null}
-                <Button type="button" variant="outline" onClick={onClose}>
-                  {labels.addressBookDialogDone}
-                </Button>
+                <div className="contacts-addressbook-dialog__footer-end">
+                  <Button type="button" variant="outline" onClick={onClose}>
+                    {labels.addressBookDialogDone}
+                  </Button>
+                </div>
               </DialogFooter>
             </>
           ) : null}

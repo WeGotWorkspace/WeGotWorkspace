@@ -51,7 +51,7 @@ export function MeetWorkspaceRail({
               <IconButton
                 icon={<ChevronLeft />}
                 label={backLabel ?? "Back"}
-                size="sm"
+                size="md"
                 variant="outline"
                 showTooltip={false}
                 onClick={onBack}

@@ -187,7 +187,7 @@ export function ChatMessageList({
             <Button
               className="chat-message-list__jump"
               label={chatUiLabels.newMessages}
-              size="sm"
+              size="md"
               pill
               variant="primary"
               onClick={jumpToLatest}

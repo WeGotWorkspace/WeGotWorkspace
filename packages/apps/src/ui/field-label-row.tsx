@@ -3,18 +3,23 @@ import { Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Label } from "@/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 
 import "./field-label-row.css";
 
+export type FieldLabelRowLabelMode = "caption" | "icon";
+
 export type FieldLabelRowProps = {
   /**
-   * Visible caption. Pass `""` to keep the label band with no caption so
+   * Visible caption (caption mode) or accessible name + tooltip text (icon mode).
+   * Pass `""` in caption mode to keep the label band with no caption so
    * adjacent FieldLabelRows share a control baseline.
    */
   label?: string;
   /**
    * Same reserved band as `label=""`. Use when the column has no caption
    * (the control must still expose its own name via `aria-label` / `htmlFor` elsewhere).
+   * Ignored when `labelMode="icon"`.
    */
   reserveLabel?: boolean;
   children: ReactNode;
@@ -29,6 +34,11 @@ export type FieldLabelRowProps = {
    * Omitted when the band is reserved so an empty `<label>` does not become the name.
    */
   htmlFor?: string;
+  /**
+   * `caption` (default): uppercase text above the control.
+   * `icon`: icon only, in front of the control; tooltip shows the label text on hover.
+   */
+  labelMode?: FieldLabelRowLabelMode;
 };
 
 function hasVisibleCaption(label: string | undefined): boolean {
@@ -41,6 +51,33 @@ function isFieldLabelBandReserved(label: string | undefined, reserveLabel?: bool
     return false;
   }
   return Boolean(reserveLabel) || label !== undefined;
+}
+
+function FieldLabelIconLabel({
+  label,
+  icon,
+  readOnly,
+  htmlFor,
+  className,
+}: {
+  label: string;
+  icon: ReactNode;
+  readOnly?: boolean;
+  htmlFor?: string;
+  className?: string;
+}): ReactNode {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Label htmlFor={htmlFor} className={cn("field-label-row__icon-label", className)}>
+          {icon}
+          <span className="sr-only">{label}</span>
+          {readOnly ? <Lock className="field-label-row__lock" aria-hidden /> : null}
+        </Label>
+      </TooltipTrigger>
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 /**
@@ -56,7 +93,26 @@ export function FieldLabelRow({
   className,
   labelClassName,
   htmlFor,
+  labelMode = "caption",
 }: FieldLabelRowProps): ReactNode {
+  if (labelMode === "icon") {
+    const captionText = label?.trim() ?? "";
+    return (
+      <div className={cn("field-label-row", "field-label-row--icon", className)}>
+        {captionText && icon ? (
+          <FieldLabelIconLabel
+            label={captionText}
+            icon={icon}
+            readOnly={readOnly}
+            htmlFor={htmlFor}
+            className={labelClassName}
+          />
+        ) : null}
+        <div className="field-label-row__control">{children}</div>
+      </div>
+    );
+  }
+
   const caption = hasVisibleCaption(label);
   const reserved = isFieldLabelBandReserved(label, reserveLabel);
   const showLabel = caption || reserved;

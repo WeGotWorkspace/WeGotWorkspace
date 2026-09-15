@@ -40,7 +40,7 @@ export function ContactChannelRow({
             label={removeLabel ?? ""}
             icon={<Trash2 className="size-4" aria-hidden />}
             variant="outline"
-            size="sm"
+            size="md"
             onClick={onRemove}
           />
         ) : (

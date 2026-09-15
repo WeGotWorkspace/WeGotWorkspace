@@ -62,7 +62,7 @@ export function MultiSelectionView({
               onClick={action.onClick}
               active={action.active}
               icon={action.icon}
-              size="lg"
+              size="xl"
               variant="outline"
             />
           ))}

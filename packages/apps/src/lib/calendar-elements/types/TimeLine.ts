@@ -58,6 +58,16 @@ export interface TimelineEventMoveCommitDetail {
   previousEnd: number;
 }
 
+/**
+ * Live snapped range while a move/resize gesture is in progress (and briefly after commit
+ * until the parent events map catches up). `null` detail clears the draft.
+ */
+export interface TimelineEventPreviewDetail {
+  index: number;
+  start: number;
+  end: number;
+}
+
 /** Numeric range (absolute axis units) committed by the drag-to-create gesture. */
 export interface TimelineEventCreateDetail {
   start: number;
