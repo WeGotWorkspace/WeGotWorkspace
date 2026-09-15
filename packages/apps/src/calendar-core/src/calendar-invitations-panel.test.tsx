@@ -121,7 +121,7 @@ describe("CalendarInvitationsPanel", () => {
     expect(filter.closest(".docs-collab-sidebar-panel__header-actions")).toBeTruthy();
     expect(document.querySelector(".docs-collab-sidebar-panel__toolbar")).toBeNull();
     expect(filter.className).toContain("segmented-control");
-    expect(filter.className).not.toContain("segmented-control--size-md");
+    expect(filter.className).not.toContain("segmented-control--size-lg");
     expect(
       screen.getByRole("button", { name: defaultCalendarLabels.invitationsTabNew }),
     ).toBeTruthy();
@@ -475,12 +475,12 @@ describe("CalendarInvitationsPanel", () => {
 });
 
 describe("calendar invitation picker reuse", () => {
-  it("imports CalendarEventCalendarPicker from the event dialog and invite card", () => {
+  it("imports CalendarEventCalendarPicker from the event form and invite card", () => {
     const here = dirname(fileURLToPath(import.meta.url));
-    const dialog = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
+    const form = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
     const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
     const importLine = 'from "@/calendar-core/src/calendar-event-calendar-picker"';
-    expect(dialog).toContain(importLine);
+    expect(form).toContain(importLine);
     expect(card).toContain(importLine);
   });
 
@@ -494,13 +494,13 @@ describe("calendar invitation picker reuse", () => {
     expect(workspace).not.toMatch(/onOpenEvent=\{[\s\S]*openEditEventKey/);
   });
 
-  it("reuses RSVP controls from calendar-rsvp-actions in the dialog and invite card", () => {
+  it("reuses RSVP controls from calendar-rsvp-actions in the event form and invite card", () => {
     const here = dirname(fileURLToPath(import.meta.url));
-    const dialog = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
+    const form = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
     const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
     const importLine = 'from "@/calendar-core/src/calendar-rsvp-actions"';
-    expect(dialog).toContain(importLine);
-    expect(dialog).toContain("CalendarRsvpSelect");
+    expect(form).toContain(importLine);
+    expect(form).toContain("CalendarRsvpSelect");
     expect(card).toContain(importLine);
     expect(card).toContain("CalendarRsvpActions");
     expect(card).toMatch(/DocsCollabCardHeader[\s\S]*event-card[\s\S]*CalendarRsvpActions/);

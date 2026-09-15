@@ -57,6 +57,10 @@ const meta: Meta<typeof CalendarEventDialog> = {
     onClose: fn(),
     onSave: fn(),
   },
+  globals: {
+    // Shared form uses @media (min-width: 40rem) for two-column layout.
+    viewport: { value: "desktop", isRotated: false },
+  },
 };
 
 export default meta;

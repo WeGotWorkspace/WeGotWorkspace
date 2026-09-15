@@ -3,6 +3,7 @@ import { Button } from "@/button/src/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/ui/dialog";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurrence-scope";
+import "./calendar-event-dialog.css";
 
 export type CalendarRecurrenceScopeDialogState = null | {
   action: "edit" | "delete" | "update";

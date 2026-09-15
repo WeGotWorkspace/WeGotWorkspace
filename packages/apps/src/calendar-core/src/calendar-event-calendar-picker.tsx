@@ -92,7 +92,9 @@ export function CalendarEventCalendarPicker({
           }
           className={triggerClassName}
           disabled={disabled}
-        />
+        >
+          {selectedCalendar?.name}
+        </ColorSwatchTrigger>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="calendar-event-dialog__calendar-menu">
         {writableCalendars.map((calendar) => (

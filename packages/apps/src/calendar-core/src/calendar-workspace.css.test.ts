@@ -370,39 +370,11 @@ describe("calendar workspace search results", () => {
   });
 });
 
-describe("calendar event dialog title row", () => {
-  it("uses the shared name-color row so the summary field can flex", () => {
-    const dialogTsx = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
-    expect(dialogTsx).toMatch(/NameColorRow/);
-    expect(dialogTsx).toMatch(/NAME_COLOR_ROW_INPUT_CLASS/);
-    expect(css).not.toMatch(/calendar-event-dialog__title-input/);
-    expect(css).not.toMatch(/calendar-event-dialog__calendar-trigger \{[\s\S]*width:\s*auto/);
-  });
-});
-
-describe("calendar event dialog Meet field", () => {
-  it("lays out the Meet URL row with BEM + @apply", () => {
-    expect(css).toMatch(
-      /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \{[\s\S]*@apply/,
-    );
-    expect(css).not.toMatch(
-      /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \.icon-button--size-sm \{[\s\S]*size-9/,
-    );
-    expect(css).toMatch(/\.calendar-event-dialog__meet-menu/);
-    expect(css).toMatch(/\.calendar-event-dialog__meet-menu-trigger/);
-    expect(css).not.toMatch(
-      /\.calendar-event-dialog__meet-menu-trigger \{[\s\S]*@apply h-9 min-h-9/,
-    );
-    expect(css).not.toMatch(
-      /\.calendar-event-dialog__meet-menu-trigger \{[\s\S]*border-radius:\s*var\(--control-radius-button-pill\)/,
-    );
-    expect(css).toContain("background-color: transparent");
-    expect(css).toContain("stroke-width: 1.75");
-    expect(css).toContain("--meet-accent: #2a1644");
-    expect(css).toContain("--card-title-icon-color: var(--meet-accent)");
-    expect(css).not.toMatch(/calendar-event-dialog__meet-generate/);
-    expect(css).not.toContain("calendar-event-dialog__meet-switch");
-    expect(css).toMatch(/\.calendar-event-dialog__meet-scope-trigger/);
+describe("calendar event dialog chrome ownership", () => {
+  it("imports shared dialog CSS so shell hosts keep form chrome without owning it", () => {
+    expect(css).toMatch(/@import "\.\/calendar-event-dialog\.css"/);
+    expect(css).not.toMatch(/\.calendar-dialog-surface\.calendar-event-dialog\s*\{/);
+    expect(css).not.toMatch(/\.calendar-event-dialog__fields\s*\{/);
   });
 });
 

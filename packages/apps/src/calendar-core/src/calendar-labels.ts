@@ -126,6 +126,8 @@ export type CalendarUILabels = {
   /** Floating / wall-clock option (no fixed TZID). */
   eventTimeZoneLocalLabel: string;
   eventLocationLabel: string;
+  /** Placeholder for the location field (e.g. "Add location"). */
+  eventLocationPlaceholder: string;
   /** Card heading for the meeting URL field. */
   eventMeetSectionTitle: string;
   /** Accessible name for the Meet actions menu trigger. */
@@ -189,6 +191,8 @@ export type CalendarUILabels = {
   eventRecurrenceEndsAfter: string;
   eventRecurrenceEndsCountSuffix: string;
   save: string;
+  /** Primary submit on the edit surface (popover / dialog). */
+  saveChanges: string;
   cancel: string;
   delete: string;
   invitationsSection: string;
@@ -376,6 +380,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventTimeZoneLabel: "Time zone",
   eventTimeZoneLocalLabel: "Local (floating)",
   eventLocationLabel: "Location",
+  eventLocationPlaceholder: "Add location",
   eventMeetSectionTitle: "Meet",
   eventMeetAdd: "Create Meet Room URL",
   eventMeetNewLink: "New meeting link",
@@ -403,7 +408,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventNotesLabel: "Notes",
   eventDetailsEdit: "Edit",
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),
-  eventShowAs: "Show as",
+  eventShowAs: "Availability",
   eventShowAsBusy: "Busy",
   eventShowAsFree: "Free",
   eventAlarmsLabel: "Alarms",
@@ -427,6 +432,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventRecurrenceEndsAfter: "After",
   eventRecurrenceEndsCountSuffix: "times",
   save: "Save",
+  saveChanges: "Save changes",
   cancel: "Cancel",
   delete: "Delete",
   invitationsSection: "Invitations",

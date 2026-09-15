@@ -219,73 +219,43 @@ describe("CalendarEventDialog", () => {
     ).toBeNull();
   });
 
-  it("groups schedule, recurrence, invitees, and alarms into cards in order", () => {
+  it("lays out schedule fields with FieldLabelRows and a Meet/Invitees/Alarms/Notes grid", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Standup",
       recurrencePreset: "daily" as const,
     };
     renderDialog({ form, locale: "en-US" });
-    const whenTitle = screen.getByRole("heading", {
-      name: defaultCalendarLabels.eventWhenSectionTitle,
-    });
-    const repeatTitle = screen.getByRole("heading", {
-      name: defaultCalendarLabels.eventRepeatLabel,
-    });
-    const inviteesTitle = screen.getByRole("heading", {
-      name: defaultCalendarLabels.eventAttendeesLabel,
-    });
-    const alarmsTitle = screen.getByRole("heading", {
-      name: defaultCalendarLabels.eventAlarmsLabel,
-    });
-    const whenCard = whenTitle.closest(".card");
-    const repeatCard = repeatTitle.closest(".card");
-    const inviteesCard = inviteesTitle.closest(".card");
-    const alarmsCard = alarmsTitle.closest(".card");
-    expect(whenCard).not.toBeNull();
-    expect(repeatCard).not.toBeNull();
-    expect(inviteesCard).not.toBeNull();
-    expect(inviteesCard!.classList.contains("calendar-invitees-card")).toBe(true);
-    expect(alarmsCard).not.toBeNull();
-    expect(whenCard!.querySelector(".card__panel")).toBeNull();
-    expect(repeatCard!.querySelector(".card__panel")).toBeNull();
-    expect(whenCard!.querySelector(".card__row")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__fields")).not.toBeNull();
     expect(
-      whenCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventAllDayLabel}"]`),
-    ).not.toBeNull();
+      screen.getByRole("button", {
+        name: new RegExp(`${defaultCalendarLabels.eventStartLabel}:`, "i"),
+      }),
+    ).toBeTruthy();
     expect(
-      whenCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventTimeZoneLabel}"]`),
-    ).not.toBeNull();
+      screen.getByRole("button", {
+        name: new RegExp(`${defaultCalendarLabels.eventEndLabel}:`, "i"),
+      }),
+    ).toBeTruthy();
     expect(
-      whenCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventShowAs}"]`),
-    ).toBeNull();
+      screen.getByRole("switch", { name: defaultCalendarLabels.eventAllDayLabel }),
+    ).toBeTruthy();
     expect(
-      repeatCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventRepeatLabel}"]`),
-    ).not.toBeNull();
+      screen.getByRole("combobox", { name: defaultCalendarLabels.eventTimeZoneLabel }),
+    ).toBeTruthy();
     expect(
-      repeatCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventRecurrenceEndsLabel}"]`),
-    ).not.toBeNull();
-
-    const cards = document.querySelectorAll(
-      ".calendar-event-dialog__fields > .calendar-event-dialog__card",
-    );
-    expect([...cards].map((card) => card.querySelector(".card__title")?.textContent)).toEqual([
-      defaultCalendarLabels.eventMeetSectionTitle,
-      defaultCalendarLabels.eventWhenSectionTitle,
-      defaultCalendarLabels.eventRepeatLabel,
-      defaultCalendarLabels.eventAttendeesLabel,
-      defaultCalendarLabels.eventAlarmsLabel,
-    ]);
-    const fieldRows = document.querySelectorAll(
-      ".calendar-event-dialog__fields > .field-label-row",
-    );
+      screen.getByRole("combobox", { name: defaultCalendarLabels.eventRepeatLabel }),
+    ).toBeTruthy();
     expect(
-      [...fieldRows].map((row) => row.querySelector(".field-label-row__label")?.textContent),
-    ).toEqual([
-      defaultCalendarLabels.eventLocationLabel,
-      defaultCalendarLabels.eventShowAs,
-      defaultCalendarLabels.eventNotesLabel,
-    ]);
+      screen.getByRole("combobox", { name: defaultCalendarLabels.eventRecurrenceEndsLabel }),
+    ).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: defaultCalendarLabels.eventShowAs })).toBeTruthy();
+    expect(document.querySelector(".calendar-event-dialog__divider")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field--meet")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field--alarms")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field--invitees")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field--notes")).not.toBeNull();
+    expect(document.querySelectorAll(".calendar-event-dialog__fields > .card").length).toBe(0);
   });
 
   it("shows Ends controls for editable repeating presets", () => {
@@ -338,18 +308,11 @@ describe("CalendarEventDialog", () => {
   it("shows the alarms card, adds an alarm from the trailing None row, and forwards offset changes", () => {
     const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
     const { onChange } = renderDialog({ form, locale: "en-US" });
-    expect(
-      screen.getByRole("heading", { name: defaultCalendarLabels.eventAlarmsLabel }),
-    ).toBeTruthy();
+    expect(document.querySelector(".calendar-event-dialog__field--alarms")).not.toBeNull();
     expect(screen.queryByText(defaultCalendarLabels.eventAlarmsNone)).toBeNull();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventAlarmAdd })).toBeNull();
-    expect(screen.getAllByText(defaultCalendarLabels.eventAlarmsLabel)).toHaveLength(1);
+    expect(screen.getByText(defaultCalendarLabels.eventAlarmsLabel)).toBeTruthy();
     expect(screen.getByText(`${defaultCalendarLabels.eventAlarmRow} 1`)).toBeTruthy();
-    expect(
-      screen
-        .getByRole("heading", { name: defaultCalendarLabels.eventAlarmsLabel })
-        .closest(".share-access-card"),
-    ).not.toBeNull();
 
     const emptyOffset = screen.getByRole("combobox", {
       name: defaultCalendarLabels.eventAlarmOffset,
@@ -578,9 +541,7 @@ describe("CalendarEventDialog", () => {
       ],
     };
     const { onChange } = renderDialog({ form });
-    expect(
-      screen.getByRole("heading", { name: defaultCalendarLabels.eventAttendeesLabel }),
-    ).toBeTruthy();
+    expect(document.querySelector(".calendar-event-dialog__field--invitees")).not.toBeNull();
     expect(screen.getByText("Carol")).toBeTruthy();
     expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesRsvpAccepted)).toBeTruthy();
     expect(document.querySelector(".calendar-invitees-card .tag")).toBeNull();
@@ -995,7 +956,7 @@ describe("CalendarEventDialog", () => {
     expect(title).toHaveProperty("disabled", false);
     fireEvent.change(title, { target: { value: "Weekly standup" } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ title: "Weekly standup" }));
-    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.delete })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.cancel })).toBeTruthy();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpAccept })).toBeNull();
@@ -1073,7 +1034,7 @@ describe("CalendarEventDialog", () => {
     expect(title).toHaveProperty("disabled", false);
     fireEvent.change(title, { target: { value: "Weekly standup" } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ title: "Weekly standup" }));
-    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.delete })).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: defaultCalendarLabels.rsvpLabel })).toBeNull();
   });
@@ -1109,7 +1070,7 @@ describe("CalendarEventDialog", () => {
     });
 
     expect(screen.getByDisplayValue("Standup")).toHaveProperty("disabled", false);
-    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.delete })).toBeTruthy();
   });
 
@@ -1397,11 +1358,14 @@ describe("CalendarEventDialog", () => {
       afterMeetAccessory: <div>Schedule row</div>,
     });
     const title = screen.getByLabelText(defaultCalendarLabels.eventTitleLabel);
-    const meet = screen.getByRole("heading", { name: defaultCalendarLabels.eventMeetSectionTitle });
+    const meet = document.querySelector(".calendar-event-dialog__field--meet");
     const accessory = screen.getByText("Schedule row");
+    expect(meet).not.toBeNull();
     expect((title as HTMLInputElement).value).toBe("");
-    expect(title.compareDocumentPosition(meet) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(meet.compareDocumentPosition(accessory) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(title.compareDocumentPosition(meet!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      meet!.compareDocumentPosition(accessory) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create" }).hasAttribute("disabled")).toBe(true);
   });
 

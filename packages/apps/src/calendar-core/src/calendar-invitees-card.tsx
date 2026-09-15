@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Clock, Crown, Users, type LucideIcon } from "lucide-react";
 import { calendarRsvpStatusIcon } from "@/calendar-core/src/calendar-rsvp-actions";
 import {
@@ -26,6 +26,7 @@ import {
   SharePrincipalSearchDropdown,
   type ShareSearchOption,
 } from "@/share-ui/share-principal-search-dropdown";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "@/share-ui/share-ui.css";
@@ -46,6 +47,10 @@ export type CalendarInviteesCardProps = {
   readOnly?: boolean;
   /** Persistent warning when email guests cannot join a channel Meet. */
   meetEmailGuestHint?: string;
+  /** `field` matches the flat event-form FieldLabelRow chrome. */
+  presentation?: "card" | "field";
+  className?: string;
+  fieldIcon?: ReactNode;
   onChange: (attendees: CalendarAttendee[]) => void;
   /** Live JMAP refresh; cache remains the first paint. */
   onRefreshContactCards?: () => void;
@@ -144,6 +149,9 @@ export function CalendarInviteesCard({
   contactCards = [],
   readOnly = false,
   meetEmailGuestHint,
+  presentation = "card",
+  className,
+  fieldIcon,
   onChange,
   onRefreshContactCards,
 }: CalendarInviteesCardProps) {
@@ -203,48 +211,42 @@ export function CalendarInviteesCard({
     if (row) selectSearchRow(row);
   };
 
-  return (
-    <ShareAccessCard
-      className="calendar-event-dialog__card calendar-invitees-card"
-      titleIcon={<Users className="size-4" />}
-      title={labels.eventAttendeesLabel}
-      description={labels.eventAttendeesHint}
-      footer={
-        !readOnly && !canSubmitEmail ? (
-          <p className="share-access-card__hint">{labels.eventAttendeesEmailUnavailable}</p>
-        ) : meetEmailGuestHint ? (
-          <p className="share-access-card__hint calendar-invitees-card__meet-email-hint">
-            {meetEmailGuestHint}
-          </p>
-        ) : null
-      }
-      addControl={
-        readOnly ? undefined : (
-          <SharePrincipalSearchDropdown
-            query={query}
-            results={searchResults}
-            emptyLabel={labels.eventAttendeesSearchEmpty}
-            listLabel={labels.eventAttendeesLabel}
-            minQueryLength={1}
-            onSelect={selectSearchOption}
-          >
-            <ShareDialogInput
-              value={query}
-              disabled={locked}
-              placeholder={labels.eventAttendeesEmailPlaceholder}
-              aria-label={labels.eventAttendeesAdd}
-              className="share-dialog__add-grant-input"
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter") return;
-                event.preventDefault();
-                addTypedEmail(query);
-              }}
-            />
-          </SharePrincipalSearchDropdown>
-        )
-      }
+  const addControl = readOnly ? undefined : (
+    <SharePrincipalSearchDropdown
+      query={query}
+      results={searchResults}
+      emptyLabel={labels.eventAttendeesSearchEmpty}
+      listLabel={labels.eventAttendeesLabel}
+      minQueryLength={1}
+      onSelect={selectSearchOption}
     >
+      <ShareDialogInput
+        value={query}
+        disabled={locked}
+        placeholder={labels.eventAttendeesEmailPlaceholder}
+        aria-label={labels.eventAttendeesAdd}
+        className="share-dialog__add-grant-input"
+        onChange={(event) => setQuery(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          addTypedEmail(query);
+        }}
+      />
+    </SharePrincipalSearchDropdown>
+  );
+
+  const footer =
+    !readOnly && !canSubmitEmail ? (
+      <p className="share-access-card__hint">{labels.eventAttendeesEmailUnavailable}</p>
+    ) : meetEmailGuestHint ? (
+      <p className="share-access-card__hint calendar-invitees-card__meet-email-hint">
+        {meetEmailGuestHint}
+      </p>
+    ) : null;
+
+  const rows = (
+    <>
       {organizer ? (
         <ShareAccessRow
           key={`organizer:${organizer.email}`}
@@ -288,6 +290,35 @@ export function CalendarInviteesCard({
           />
         );
       })}
+    </>
+  );
+
+  if (presentation === "field") {
+    return (
+      <FieldLabelRow
+        className={cn("calendar-invitees-card calendar-invitees-card--field", className)}
+        label={labels.eventAttendeesLabel}
+        icon={fieldIcon ?? <Users className="size-3.5" aria-hidden />}
+      >
+        <div className="calendar-invitees-card__field-body">
+          {rows}
+          {addControl != null ? <div className="share-dialog__add-grant">{addControl}</div> : null}
+          {footer}
+        </div>
+      </FieldLabelRow>
+    );
+  }
+
+  return (
+    <ShareAccessCard
+      className={cn("calendar-event-dialog__card calendar-invitees-card", className)}
+      titleIcon={<Users className="size-4" />}
+      title={labels.eventAttendeesLabel}
+      description={labels.eventAttendeesHint}
+      footer={footer}
+      addControl={addControl}
+    >
+      {rows}
     </ShareAccessCard>
   );
 }
