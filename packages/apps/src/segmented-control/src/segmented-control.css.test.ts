@@ -16,22 +16,36 @@ describe("segmented-control chrome tokens", () => {
     );
   });
 
-  it("slides a selected thumb that overlaps the track stroke", () => {
-    expect(css).toMatch(/--segmented-control-padding:\s*0px/);
+  it("insets the selected thumb with a track gutter (not flush to the stroke)", () => {
+    expect(css).toMatch(/--segmented-control-padding:\s*0\.125rem/);
+    expect(css).toMatch(
+      /\.segmented-control \{[\s\S]*padding:\s*var\(--segmented-control-padding\)/,
+    );
     expect(css).toMatch(/\.segmented-control \{[\s\S]*items-stretch/);
-    expect(css).not.toMatch(/overflow-hidden/);
+    expect(css).not.toMatch(/overflow-hidden|overflow:\s*hidden/);
     expect(css).toMatch(/\.segmented-control__button \{[\s\S]*height:\s*100%/);
     expect(css).toMatch(/\.segmented-control__button \{[\s\S]*aspect-ratio:\s*1\s*\/\s*1/);
     expect(css).toMatch(
-      /\.segmented-control__thumb \{[\s\S]*height:\s*calc\(100%\s*\+\s*2\s*\*\s*var\(--segmented-control-track-border-width\)\)/,
+      /\.segmented-control__thumb \{[\s\S]*top:\s*var\(--segmented-control-padding\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control__thumb \{[\s\S]*bottom:\s*var\(--segmented-control-padding\)/,
+    );
+    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*height:\s*auto/);
+    expect(css).toMatch(
+      /\.segmented-control__thumb \{[\s\S]*width:\s*var\(--segmented-control-thumb-width,\s*0px\)/,
     );
     expect(css).toMatch(
       /\.segmented-control__thumb \{[\s\S]*transform:\s*translateX\(var\(--segmented-control-thumb-x,\s*0px\)\)/,
     );
+    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*border:\s*0/);
     expect(css).toMatch(
-      /\.segmented-control__thumb \{[\s\S]*border:\s*var\(--segmented-control-track-border-width\)\s+solid\s+var\(\s*--segmented-control-active-border-color,\s*var\(--button-outline-border-color,\s*var\(--control-border-color\)\)/,
+      /\.segmented-control__thumb \{[\s\S]*border-radius:\s*var\(--segmented-control-thumb-radius\)/,
     );
     expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*z-index:\s*1/);
+    expect(css).not.toMatch(
+      /height:\s*calc\(100%\s*\+\s*2\s*\*\s*var\(--segmented-control-track-border-width\)\)/,
+    );
   });
 
   it("uses auto aspect-ratio and inline gap for labeled segments", () => {

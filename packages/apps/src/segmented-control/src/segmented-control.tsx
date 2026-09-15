@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { ButtonSeverity } from "@/button/src/button.shared";
 import { cn } from "@/lib/utils";
+import { controlSizeClassName, type ControlSize } from "@/ui/control-size";
 import { Switch } from "@/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 
@@ -26,7 +27,8 @@ export type SegmentedControlProps<T extends string> = {
   value: T | null;
   onChange: (value: T) => void;
   options: SegmentedControlOption<T>[];
-  size?: "sm" | "md";
+  /** Default `md` = 36px (chrome density). */
+  size?: ControlSize;
   disabled?: boolean;
   className?: string;
   "aria-label"?: string;
@@ -43,23 +45,26 @@ function optionKey<T extends string>(options: SegmentedControlOption<T>[]): stri
  *
  * Contract: the first layout (and any layout while the thumb was unselected)
  * writes position/width without enabling motion. `data-thumb-animate` is set
- * only after that snap has painted, so remounting a card with a selected value
- * never replays a slide-in from the parked/zero thumb. Later option changes
- * animate transform only (see CSS).
+ * only after that snap has painted (and a post-paint remeasure has run), so
+ * remounting a card with a selected value never replays a slide-in from the
+ * parked/zero thumb. Later option changes animate transform only (see CSS).
+ *
+ * Vertical size is CSS-only (`top`/`bottom` = track padding gutter). Only x/width
+ * are measured from the active segment (already inside that gutter).
  */
-function syncSegmentedThumb(
-  root: HTMLElement,
-  options: { allowAnimate: boolean; onReady: () => void },
-): void {
+function syncSegmentedThumb(root: HTMLElement, options: { allowAnimate: boolean }): void {
   const active = root.querySelector<HTMLElement>(".segmented-control__button--active");
   if (!active) {
     delete root.dataset.thumbReady;
     delete root.dataset.thumbAnimate;
+    root.style.removeProperty("--segmented-control-thumb-x");
+    root.style.removeProperty("--segmented-control-thumb-width");
     return;
   }
   const rootRect = root.getBoundingClientRect();
   const buttonRect = active.getBoundingClientRect();
   const border = Number.parseFloat(getComputedStyle(root).borderTopWidth) || 0;
+  // Thumb `left: 0` is the padding edge; rootRect is the border box.
   const x = buttonRect.left - rootRect.left - border;
   root.style.setProperty("--segmented-control-thumb-x", `${x}px`);
   root.style.setProperty("--segmented-control-thumb-width", `${buttonRect.width}px`);
@@ -69,14 +74,13 @@ function syncSegmentedThumb(
   } else {
     delete root.dataset.thumbAnimate;
   }
-  options.onReady();
 }
 
 export function SegmentedControl<T extends string>({
   value,
   onChange,
   options,
-  size = "sm",
+  size = "md",
   disabled = false,
   className,
   "aria-label": ariaLabel,
@@ -104,34 +108,31 @@ export function SegmentedControl<T extends string>({
     let outerFrame = 0;
     let innerFrame = 0;
     const runSync = () => {
-      const allowAnimate = hasAnimatedRef.current;
-      syncSegmentedThumb(root, {
-        allowAnimate,
-        onReady: () => {
-          if (allowAnimate || !root.hasAttribute("data-thumb-ready") || cancelled) {
-            return;
-          }
-          // Enable motion only after the snapped first layout has painted.
-          cancelAnimationFrame(outerFrame);
-          cancelAnimationFrame(innerFrame);
-          outerFrame = requestAnimationFrame(() => {
-            innerFrame = requestAnimationFrame(() => {
-              if (
-                cancelled ||
-                !root.isConnected ||
-                !root.querySelector(".segmented-control__button--active")
-              ) {
-                return;
-              }
-              hasAnimatedRef.current = true;
-              root.dataset.thumbAnimate = "";
-            });
-          });
-        },
-      });
+      syncSegmentedThumb(root, { allowAnimate: hasAnimatedRef.current });
     };
 
     runSync();
+    // Post-paint remeasure: popover zoom-in and first layout can leave stale
+    // client rects. Enable slide motion only after that snap has painted.
+    cancelAnimationFrame(outerFrame);
+    cancelAnimationFrame(innerFrame);
+    outerFrame = requestAnimationFrame(() => {
+      innerFrame = requestAnimationFrame(() => {
+        if (cancelled || !root.isConnected) {
+          return;
+        }
+        runSync();
+        if (
+          cancelled ||
+          !root.hasAttribute("data-thumb-ready") ||
+          !root.querySelector(".segmented-control__button--active")
+        ) {
+          return;
+        }
+        hasAnimatedRef.current = true;
+        root.dataset.thumbAnimate = "";
+      });
+    });
     if (typeof ResizeObserver === "undefined") {
       return () => {
         cancelled = true;
@@ -157,7 +158,7 @@ export function SegmentedControl<T extends string>({
       ref={rootRef}
       className={cn(
         "segmented-control",
-        size === "md" && "segmented-control--size-md",
+        controlSizeClassName("segmented-control", size),
         !hasSelection && "segmented-control--unselected",
         className,
       )}

@@ -38,22 +38,23 @@ function renderWithTooltip(ui: ReactElement) {
 }
 
 describe("SegmentedControl", () => {
-  it("defaults to compact size without the md modifier", () => {
+  it("defaults to md height with the md size modifier class", () => {
     const { container } = render(
       <SegmentedControl value="grid" onChange={vi.fn()} options={[...options]} />,
     );
     const root = container.querySelector(".segmented-control");
     expect(root).not.toBeNull();
-    expect(root!.classList.contains("segmented-control--size-md")).toBe(false);
+    expect(root!.classList.contains("segmented-control--size-md")).toBe(true);
+    expect(root!.classList.contains("segmented-control--size-lg")).toBe(false);
   });
 
-  it("applies the md size modifier when requested", () => {
+  it("applies the lg size modifier when requested", () => {
     const { container } = render(
-      <SegmentedControl value="grid" onChange={vi.fn()} options={[...options]} size="md" />,
+      <SegmentedControl value="grid" onChange={vi.fn()} options={[...options]} size="lg" />,
     );
     const root = container.querySelector(".segmented-control");
     expect(root).not.toBeNull();
-    expect(root!.classList.contains("segmented-control--size-md")).toBe(true);
+    expect(root!.classList.contains("segmented-control--size-lg")).toBe(true);
   });
 
   it("disables segment buttons when disabled", () => {
@@ -118,10 +119,11 @@ describe("SegmentedControl", () => {
       <SegmentedControl value={null} onChange={onChange} options={rsvpOptions} />,
     );
 
-    const root = container.querySelector(".segmented-control");
+    const root = container.querySelector(".segmented-control") as HTMLElement;
     expect(root?.classList.contains("segmented-control--unselected")).toBe(true);
     expect(root?.hasAttribute("data-thumb-ready")).toBe(false);
     expect(root?.hasAttribute("data-thumb-animate")).toBe(false);
+    expect(root.style.getPropertyValue("--segmented-control-thumb-width")).toBe("");
     expect(container.querySelector(".segmented-control__button--active")).toBeNull();
     for (const name of ["Accept", "Maybe", "Decline"]) {
       const button = screen.getByRole("button", { name });
@@ -138,10 +140,11 @@ describe("SegmentedControl", () => {
       <SegmentedControl value="accepted" onChange={vi.fn()} options={rsvpOptions} />,
     );
 
-    const root = container.querySelector(".segmented-control");
+    const root = container.querySelector(".segmented-control") as HTMLElement;
     expect(root?.hasAttribute("data-thumb-ready")).toBe(true);
     // Contract: remounting invitation cards must not replay a slide-in.
     expect(root?.hasAttribute("data-thumb-animate")).toBe(false);
+    expect(root.style.getPropertyValue("--segmented-control-thumb-width")).not.toBe("");
 
     await act(async () => {
       await new Promise<void>((resolve) => {
@@ -158,6 +161,24 @@ describe("SegmentedControl", () => {
     expect(remountRoot?.hasAttribute("data-thumb-ready")).toBe(true);
     expect(remountRoot?.hasAttribute("data-thumb-animate")).toBe(false);
     remounted.unmount();
+  });
+
+  it("clears thumb geometry when returning to an idle null value", async () => {
+    const { container, rerender } = renderWithTooltip(
+      <SegmentedControl value="accepted" onChange={vi.fn()} options={rsvpOptions} />,
+    );
+    const root = container.querySelector(".segmented-control") as HTMLElement;
+    expect(root.style.getPropertyValue("--segmented-control-thumb-width")).not.toBe("");
+
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <SegmentedControl value={null} onChange={vi.fn()} options={rsvpOptions} />
+      </TooltipProvider>,
+    );
+    expect(root.classList.contains("segmented-control--unselected")).toBe(true);
+    expect(root.hasAttribute("data-thumb-ready")).toBe(false);
+    expect(root.style.getPropertyValue("--segmented-control-thumb-width")).toBe("");
+    expect(root.style.getPropertyValue("--segmented-control-thumb-x")).toBe("");
   });
 
   it("renders three options with per-option severity and a sliding thumb", () => {

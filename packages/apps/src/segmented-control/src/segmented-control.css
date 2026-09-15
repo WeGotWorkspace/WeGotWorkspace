@@ -1,13 +1,11 @@
 @import "../../styles.css" reference;
 
 .segmented-control {
-  /* Zero inset: thumbs fill the content box; track keeps the resting outline. */
-  --segmented-control-padding: 0px;
+  /* Track gutter (matches Switch `--switch-pad`): thumb + segments sit inside the
+   * border with visible breathing room — never flush to the stroke. */
+  --segmented-control-padding: 0.125rem;
   --segmented-control-track-border-width: 1px;
-  --segmented-control-height: var(
-    --control-height-sm,
-    calc(var(--input-height, 2.25rem) - 0.25rem)
-  );
+  --segmented-control-height: var(--control-height-md, 2.25rem);
   --segmented-control-track-radius: var(--control-radius-button-pill);
   --segmented-control-thumb-radius: calc(
     var(--segmented-control-track-radius) - var(--segmented-control-track-border-width) -
@@ -32,7 +30,7 @@
     --button-severity-success-hover-background,
     color-mix(in oklab, var(--segmented-control-severity-success-color) 14%, transparent)
   );
-  /* Allow active thumb to paint over the track stroke (no clip). */
+  /* No overflow clip — focus rings on segments must not be cropped. */
   @apply relative box-border inline-flex items-stretch;
   height: var(--segmented-control-height);
   padding: var(--segmented-control-padding);
@@ -45,26 +43,38 @@
     );
 }
 
+.segmented-control--size-xs {
+  --segmented-control-height: var(--control-height-xs, 1.75rem);
+}
+
+.segmented-control--size-sm {
+  --segmented-control-height: var(--control-height-sm, 2rem);
+}
+
 .segmented-control--size-md {
-  --segmented-control-height: var(--control-height-md, var(--input-height, 2.25rem));
+  --segmented-control-height: var(--control-height-md, 2.25rem);
+}
+
+.segmented-control--size-lg {
+  --segmented-control-height: var(--control-height-lg, 2.5rem);
+}
+
+.segmented-control--size-xl {
+  --segmented-control-height: var(--control-height-xl, 2.75rem);
 }
 
 .segmented-control__thumb {
   @apply pointer-events-none absolute box-border;
   z-index: 1;
-  top: calc(-1 * var(--segmented-control-track-border-width));
-  left: calc(-1 * var(--segmented-control-track-border-width));
-  height: calc(100% + 2 * var(--segmented-control-track-border-width));
-  width: calc(
-    var(--segmented-control-thumb-width, 0px) + 2 * var(--segmented-control-track-border-width)
-  );
+  /* Abspos origin is the padding edge — inset by the same gutter as in-flow segments. */
+  top: var(--segmented-control-padding);
+  bottom: var(--segmented-control-padding);
+  left: 0;
+  height: auto;
+  width: var(--segmented-control-thumb-width, 0px);
   transform: translateX(var(--segmented-control-thumb-x, 0px));
-  border-radius: var(--segmented-control-track-radius);
-  border: var(--segmented-control-track-border-width) solid
-    var(
-      --segmented-control-active-border-color,
-      var(--button-outline-border-color, var(--control-border-color))
-    );
+  border-radius: var(--segmented-control-thumb-radius);
+  border: 0;
   background-color: var(
     --segmented-control-active-bg,
     var(
@@ -189,12 +199,12 @@
   line-height: 1;
 }
 
-.segmented-control--size-md .segmented-control__button--text {
+.segmented-control--size-lg .segmented-control__button--text {
   min-width: 3.25rem;
   padding-inline: 0.75rem;
 }
 
-.segmented-control--size-md .segmented-control__label {
+.segmented-control--size-lg .segmented-control__label {
   font-size: var(--input-font-size, 0.875rem);
 }
 
