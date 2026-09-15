@@ -58,6 +58,8 @@ export type CalendarUILabels = {
   changeCalendarOwnerConfirm: string;
   subscribeCalendar: string;
   subscribeCalendarTitle: string;
+  /** Primary action in the subscribe dialog. */
+  subscribeCalendarSubmit: string;
   subscribeUrlLabel: string;
   subscribeUrlPlaceholder: string;
   unsubscribeCalendar: string;
@@ -107,8 +109,11 @@ export type CalendarUILabels = {
   toastEventSaveFailed: string;
   recurrenceScopeEditTitle: string;
   recurrenceScopeDeleteTitle: string;
+  /** Scope prompt when changing RSVP on a repeating invitation. */
+  recurrenceScopeRsvpTitle: string;
   recurrenceScopeEditDescription: string;
   recurrenceScopeDeleteDescription: string;
+  recurrenceScopeRsvpDescription: string;
   recurrenceScopeThisInstance: string;
   recurrenceScopeThisAndFuture: string;
   /** Delete only — destroy the master series. */
@@ -126,6 +131,8 @@ export type CalendarUILabels = {
   /** Floating / wall-clock option (no fixed TZID). */
   eventTimeZoneLocalLabel: string;
   eventLocationLabel: string;
+  /** Placeholder for the location field (e.g. "Add location"). */
+  eventLocationPlaceholder: string;
   /** Card heading for the meeting URL field. */
   eventMeetSectionTitle: string;
   /** Accessible name for the Meet actions menu trigger. */
@@ -161,7 +168,7 @@ export type CalendarUILabels = {
   /** Compact details popover — opens the existing event dialog. */
   eventDetailsEdit: string;
   eventDetailsMoreInvitees: (count: number) => string;
-  /** Standalone card heading and select label for busy/free availability. */
+  /** Standalone field label for busy/free “Show as”. */
   eventShowAs: string;
   eventShowAsBusy: string;
   eventShowAsFree: string;
@@ -189,6 +196,8 @@ export type CalendarUILabels = {
   eventRecurrenceEndsAfter: string;
   eventRecurrenceEndsCountSuffix: string;
   save: string;
+  /** Primary submit on the edit surface (popover / dialog). */
+  saveChanges: string;
   cancel: string;
   delete: string;
   invitationsSection: string;
@@ -309,6 +318,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   changeCalendarOwnerConfirm: "Change owner",
   subscribeCalendar: "Subscribe to a calendar",
   subscribeCalendarTitle: "Subscribe to calendar",
+  subscribeCalendarSubmit: "Subscribe",
   subscribeUrlLabel: "Calendar URL",
   subscribeUrlPlaceholder: "https://… or webcal://…",
   unsubscribeCalendar: "Unsubscribe",
@@ -321,7 +331,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
     "It disappears from your list. The owner’s share is unchanged, so it can be added again later.",
   subscribedCalendarBadge: "Subscribed calendar",
   publishCalendarTitle: "Public feed",
-  publishCalendarEnabledHint: "Anyone with the link can subscribe in Google, Apple, or Outlook.",
+  publishCalendarEnabledHint: "Anyone with the link can subscribe. Access is view only",
   publishCalendarDisabledHint: "Turn on to publish this calendar as an ICS / webcal feed.",
   publishCalendarHttpsLabel: "Web address",
   copyHttpsUrl: "Copy link",
@@ -358,10 +368,13 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastEventSaveFailed: "Could not save event",
   recurrenceScopeEditTitle: "You're changing a repeating event.",
   recurrenceScopeDeleteTitle: "You're deleting a repeating event.",
+  recurrenceScopeRsvpTitle: "You're updating your RSVP for a repeating event.",
   recurrenceScopeEditDescription:
     "Do you want to change only this occurrence, or this and all future events?",
   recurrenceScopeDeleteDescription:
     "Do you want to delete only this occurrence, this and all future events, or the entire series?",
+  recurrenceScopeRsvpDescription:
+    "Do you want to update your RSVP for only this occurrence, or this and all future events?",
   recurrenceScopeThisInstance: "Only this event",
   recurrenceScopeThisAndFuture: "All future events",
   recurrenceScopeAllInstances: "All events",
@@ -376,6 +389,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventTimeZoneLabel: "Time zone",
   eventTimeZoneLocalLabel: "Local (floating)",
   eventLocationLabel: "Location",
+  eventLocationPlaceholder: "Add location",
   eventMeetSectionTitle: "Meet",
   eventMeetAdd: "Create Meet Room URL",
   eventMeetNewLink: "New meeting link",
@@ -400,7 +414,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventMeetChannelEmailReplaceLink: "Use Meeting Link",
   eventMeetEmailGuestsNoAccessHint:
     "Email guests will receive a calendar invite but cannot join this Meet. The channel is members-only.",
-  eventNotesLabel: "Notes",
+  eventNotesLabel: "Description",
   eventDetailsEdit: "Edit",
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),
   eventShowAs: "Show as",
@@ -422,11 +436,12 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAlarm1Day: "1 day before",
   eventRepeatLabel: "Repeat",
   eventRecurrenceEndsLabel: "Ends",
-  eventRecurrenceEndsNever: "Never",
-  eventRecurrenceEndsOnDate: "On date",
-  eventRecurrenceEndsAfter: "After",
+  eventRecurrenceEndsNever: "Ends never",
+  eventRecurrenceEndsOnDate: "Ends on date",
+  eventRecurrenceEndsAfter: "Ends after",
   eventRecurrenceEndsCountSuffix: "times",
   save: "Save",
+  saveChanges: "Save",
   cancel: "Cancel",
   delete: "Delete",
   invitationsSection: "Invitations",
@@ -444,15 +459,15 @@ export const defaultCalendarLabels: CalendarUILabels = {
   invitationsToggleShow: "Show invitations",
   invitationsToggleHide: "Hide invitations",
   invitationsOrganizerUnknown: "Organizer",
-  eventAttendeesLabel: "Invitees",
+  eventAttendeesLabel: "Participants",
   eventAttendeesHint: "Add teammates, contacts, or anyone with an email address.",
-  eventAttendeesAdd: "Add people",
-  eventAttendeesEmpty: "No invitees yet.",
-  eventAttendeesEmailPlaceholder: "Add people…",
+  eventAttendeesAdd: "Add participants",
+  eventAttendeesEmpty: "No participants yet.",
+  eventAttendeesEmailPlaceholder: "Add participants…",
   eventAttendeesEmailAdd: "Add email",
   eventAttendeesEmailUnavailable:
     "Email delivery is unavailable. External invitees are saved on the event but will not receive an invitation.",
-  eventAttendeesRemove: "Remove invitee",
+  eventAttendeesRemove: "Remove participant",
   eventAttendeesSearchEmpty: "No people found",
   eventAttendeesTeammate: "Teammate",
   eventAttendeesContactWork: "Work",

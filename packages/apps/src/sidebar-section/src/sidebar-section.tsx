@@ -38,14 +38,14 @@ export function SidebarSection({
     >
       {title ? (
         <div className="sidebar-section__heading">
-          <h3 id={titleId} className={cn("field-label-row__label", "sidebar-section__title")}>
+          <h4 id={titleId} className={cn("field-label-row__label", "sidebar-section__title")}>
             {title}
-          </h3>
+          </h4>
           {onAdd ? (
             <IconButton
               label={addLabel}
               icon={<Plus className="size-3.5" aria-hidden />}
-              size="sm"
+              size="md"
               variant="outline"
               onClick={onAdd}
               className="sidebar-section__add"

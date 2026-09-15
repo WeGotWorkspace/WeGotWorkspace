@@ -64,7 +64,7 @@ export const Default: Story = {
             type="submit"
             label="Sign in"
             variant="primary"
-            size="lg"
+            size="xl"
             pill
             className="login-screen__submit"
           />

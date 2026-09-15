@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import {
@@ -6,12 +7,17 @@ import {
   contactsEditGroupDialogLabelsFrom,
 } from "@/contacts-core/src/contacts-edit-group-dialog";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
+import { TooltipProvider } from "@/ui/tooltip";
 
 const labels = contactsEditGroupDialogLabelsFrom(defaultContactsLabels);
 
 const ownerBook = { id: "default", name: "Ada" };
 const adminBook = { id: "group-admin", name: "Admin" };
 const administratorsBook = { id: "group-administrators", name: "Administrators" };
+
+function render(ui: ReactNode) {
+  return rtlRender(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
+}
 
 function bookTrigger() {
   return screen.getByRole("combobox", { name: defaultContactsLabels.createGroupAddressBookLabel });

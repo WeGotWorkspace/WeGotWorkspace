@@ -282,6 +282,7 @@
 .meet-call-dialog {
   --meet-accent: #2a1644;
   --meet-accent-strong: #1a0e2a;
+  --workspace-accent: var(--meet-accent);
   --color-ink: #042a22;
   --meet-text: var(--color-ink);
   --meet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
@@ -298,7 +299,8 @@
   --modal-title-foreground: var(--color-ink);
   --button-outline-color: var(--color-ink);
   --button-outline-border-color: color-mix(in oklab, var(--color-ink) 20%, transparent);
-  --button-outline-hover-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  --button-active-color: var(--meet-accent-strong);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   --button-destructive-bg: var(--color-red-500, #dc2626);
   --button-destructive-fg: #ffffff;
   @apply max-w-sm;

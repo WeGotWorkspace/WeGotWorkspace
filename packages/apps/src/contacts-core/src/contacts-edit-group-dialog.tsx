@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/button/src/button";
+import { IconButton } from "@/button/src/icon-button";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import {
@@ -152,21 +154,25 @@ export function ContactsEditGroupDialog({
             </div>
             <DialogFooter className="contacts-edit-group-dialog__footer">
               {showDelete ? (
-                <Button
+                <IconButton
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  severity="danger"
+                  size="md"
                   className="contacts-edit-group-dialog__delete"
+                  icon={<Trash2 className="size-3.5" aria-hidden />}
+                  label={labels.deleteGroup}
                   onClick={() => setConfirmDeleteOpen(true)}
-                >
-                  {labels.deleteGroup}
-                </Button>
+                />
               ) : null}
-              <Button type="button" variant="outline" onClick={onClose}>
-                {labels.cancel}
-              </Button>
-              <Button type="submit" disabled={!canSubmit}>
-                {labels.save}
-              </Button>
+              <div className="contacts-edit-group-dialog__footer-end">
+                <Button type="button" variant="outline" onClick={onClose}>
+                  {labels.cancel}
+                </Button>
+                <Button type="submit" disabled={!canSubmit}>
+                  {labels.save}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>

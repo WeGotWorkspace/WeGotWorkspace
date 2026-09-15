@@ -70,12 +70,9 @@
 
 /*
  * Detail header address-book switcher: ColorSwatchTrigger (Notes notebook switcher)
- * — cream pill, sm height to match adjacent IconButtons, icon + chevron, no caption.
+ * — cream surface; height/radius come from the shared primitive.
  */
 .contacts-workspace .action-bar .contacts-address-book-select.color-swatch-trigger {
-  --control-radius: var(--control-radius-button-pill);
-  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
   background-color: var(--color-cream, #ffffff);
 }
 
@@ -129,10 +126,7 @@
 }
 
 .contacts-detail-view {
-  --contacts-channel-action-size: var(
-    --control-height-sm,
-    calc(var(--input-height, 2.25rem) - 0.25rem)
-  );
+  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
   /* Label ↔ control: FieldLabelRow `space-y-1.5`. Groups: Calendar `gap-4` / `mb-4`. */
   --contacts-field-gap: 0.375rem;
   --contacts-field-stack-gap: 1rem;
@@ -266,10 +260,7 @@
 }
 
 .contacts-detail-view__channel-row--editable {
-  --contacts-channel-action-size: var(
-    --control-height-sm,
-    calc(var(--input-height, 2.25rem) - 0.25rem)
-  );
+  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
   grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
   align-items: center;
 }
@@ -318,10 +309,7 @@
 }
 
 .contacts-detail-view__address-row {
-  --contacts-channel-action-size: var(
-    --control-height-sm,
-    calc(var(--input-height, 2.25rem) - 0.25rem)
-  );
+  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
   display: grid;
   grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
   column-gap: 1rem;
@@ -349,10 +337,7 @@
 }
 
 .contacts-detail-view__address-fields {
-  --contacts-channel-action-size: var(
-    --control-height-sm,
-    calc(var(--input-height, 2.25rem) - 0.25rem)
-  );
+  --contacts-channel-action-size: var(--control-height-md, 2.25rem);
   display: grid;
   grid-template-columns: 7rem minmax(0, 1fr) var(--contacts-channel-action-size);
   column-gap: 1rem;
@@ -410,9 +395,9 @@
   @apply w-full shrink-0;
 }
 
-/* Same face as Inputs — not the compact share-dialog permission label. */
+/* Inherit trigger face (md/sm = 0.875rem) — do not force base `--input-font-size` (1rem). */
 .contacts-detail-view__context-select-item {
-  font-size: var(--input-font-size, 1rem);
+  font-size: inherit;
 }
 
 .contacts-detail-view__editable-row .input,
@@ -462,13 +447,16 @@
 .contacts-dialog-surface {
   --contacts-accent: #39d49b;
   --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 42%, #042a22);
+  --workspace-accent: var(--contacts-accent);
   --color-emerald: var(--contacts-accent);
   --button-primary-bg: var(--contacts-accent);
   --button-primary-fg: var(--color-ink, #042a22);
   --primary: var(--contacts-accent);
   --primary-foreground: var(--color-ink);
+  --button-active-color: var(--contacts-accent-strong);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --segmented-control-track-active-bg: var(--color-ink);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 .contacts-workspace .field-label-row:has(input[readonly]) .input,

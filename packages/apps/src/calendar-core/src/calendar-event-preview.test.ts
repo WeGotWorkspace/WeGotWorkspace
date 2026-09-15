@@ -1,16 +1,25 @@
+/** @vitest-environment jsdom */
 import { describe, expect, it, vi } from "vitest";
+import { Temporal } from "@js-temporal/polyfill";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import {
   detailsPopoverAnchorOrigin,
   detailsPopoverShouldDock,
+  eventPreviewAlarmSummary,
   eventPreviewInviteeNames,
   eventPreviewNotesExcerpt,
   eventPreviewOccurrenceKey,
   formatEventPreviewWhen,
+  formWithEventTimesDraft,
   bindCalendarEventSelected,
   eventSelectedFromEvent,
   resolveCalendarEventPreview,
+  resolveLiveEventPreview,
   selectionOriginFromEvent,
+  invitationToEventPreview,
+  resolveInvitationEventPreview,
+  selectionOriginFromElement,
+  measureCalendarCreatePreviewOrigin,
 } from "@/calendar-core/src/calendar-event-preview";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
@@ -59,6 +68,154 @@ describe("resolveCalendarEventPreview", () => {
   });
 });
 
+describe("invitationToEventPreview", () => {
+  const invite = {
+    id: "invite-1.ics",
+    uid: "uid-1",
+    method: "REQUEST",
+    title: "Standup",
+    organizerEmail: "bob@example.test",
+    organizerName: "Bob",
+    start: "2026-08-20T14:00:00",
+    end: "2026-08-20T15:00:00",
+    location: "Room 4",
+    url: "https://workspace.example.com/meet/guest?room=abcd",
+    participationStatus: "needs-action" as const,
+    eventId: "missing-copy",
+  };
+
+  it("maps inbox fields onto a compact preview form", () => {
+    const preview = invitationToEventPreview(invite, {
+      untitledLabel: defaultCalendarLabels.untitledEvent,
+      defaultCalendarId: "work",
+    });
+    expect(preview.eventId).toBe("missing-copy");
+    expect(preview.form.title).toBe("Standup");
+    expect(preview.form.calendarId).toBe("work");
+    expect(preview.form.startDate).toBe("2026-08-20");
+    expect(preview.form.startTime).toBe("14:00");
+    expect(preview.form.endTime).toBe("15:00");
+    expect(preview.form.location).toBe("Room 4");
+    expect(preview.form.meetingUrl).toContain("meet/guest");
+    expect(preview.form.attendees[0]?.email).toBe("bob@example.test");
+    expect(preview.form.attendees[0]?.isOrganizer).toBe(true);
+  });
+
+  it("treats a date-only start as all-day", () => {
+    const preview = invitationToEventPreview(
+      { ...invite, start: "2026-08-20", end: "2026-08-21" },
+      { untitledLabel: defaultCalendarLabels.untitledEvent },
+    );
+    expect(preview.form.allDay).toBe(true);
+    expect(preview.form.startDate).toBe("2026-08-20");
+    expect(preview.form.endDate).toBe("2026-08-21");
+  });
+
+  it("prefers the loaded calendar event when the invite copy exists", () => {
+    const preview = resolveInvitationEventPreview(
+      { ...invite, eventId: "dentist", title: "Inbox dentist" },
+      {
+        events: bootstrap.data.events,
+        untitledLabel: defaultCalendarLabels.untitledEvent,
+      },
+    );
+    expect(preview.eventId).toBe("dentist");
+    expect(preview.form.title).toMatch(/dentist/i);
+    expect(preview.form.title).not.toBe("Inbox dentist");
+  });
+});
+
+describe("selectionOriginFromElement", () => {
+  it("reads a non-empty client rect", () => {
+    const el = {
+      getBoundingClientRect: () =>
+        ({
+          left: 12,
+          top: 80,
+          width: 280,
+          height: 64,
+          right: 292,
+          bottom: 144,
+          x: 12,
+          y: 80,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    } as Element;
+    expect(selectionOriginFromElement(el)).toEqual({
+      left: 12,
+      top: 80,
+      width: 280,
+      height: 64,
+    });
+  });
+});
+
+describe("measureCalendarCreatePreviewOrigin", () => {
+  it("finds a create-preview rect across nested shadow roots", () => {
+    const preview = document.createElement("div");
+    preview.className = "create-preview";
+    preview.getBoundingClientRect = () =>
+      ({
+        left: 40,
+        top: 120,
+        width: 96,
+        height: 180,
+        right: 136,
+        bottom: 300,
+        x: 40,
+        y: 120,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    const inner = document.createElement("div");
+    const innerShadow = inner.attachShadow({ mode: "open" });
+    innerShadow.append(preview);
+
+    const host = document.createElement("div");
+    const hostShadow = host.attachShadow({ mode: "open" });
+    hostShadow.append(inner);
+
+    expect(measureCalendarCreatePreviewOrigin(host)).toEqual({
+      left: 40,
+      top: 120,
+      width: 96,
+      height: 180,
+    });
+  });
+});
+
+describe("resolveLiveEventPreview", () => {
+  it("prefers Lit move/resize draft times over the open snapshot", () => {
+    const snapshot = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+    expect(snapshot).not.toBeNull();
+    const live = resolveLiveEventPreview(snapshot!, {
+      events: bootstrap.data.events,
+      timesDraft: {
+        key: "dentist",
+        start: Temporal.PlainDateTime.from("2033-01-12T15:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T16:00:00"),
+        allDay: false,
+      },
+    });
+    expect(live.form.startTime).toBe("15:00");
+    expect(live.form.endTime).toBe("16:00");
+    expect(formatEventPreviewWhen(live.form, "en-US")).toMatch(/3:00/);
+  });
+
+  it("formWithEventTimesDraft maps exclusive all-day ends to inclusive form days", () => {
+    const snapshot = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+    expect(snapshot).not.toBeNull();
+    const form = formWithEventTimesDraft(snapshot!.form, {
+      start: Temporal.PlainDateTime.from("2033-01-12T00:00:00"),
+      end: Temporal.PlainDateTime.from("2033-01-14T00:00:00"),
+      allDay: true,
+    });
+    expect(form.allDay).toBe(true);
+    expect(form.startDate).toBe("2033-01-12");
+    expect(form.endDate).toBe("2033-01-13");
+  });
+});
+
 describe("event preview formatters", () => {
   it("formats a same-day timed range", () => {
     const preview = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
@@ -88,6 +245,19 @@ describe("event preview formatters", () => {
         defaultCalendarLabels,
       ),
     ).toBe("Carol");
+  });
+
+  it("summarizes alarm offsets with preset labels", () => {
+    expect(eventPreviewAlarmSummary([], defaultCalendarLabels)).toBeNull();
+    expect(
+      eventPreviewAlarmSummary(
+        [
+          { id: "a1", action: "display", offset: "-PT15M" },
+          { id: "a2", action: "display", offset: "-P1D" },
+        ],
+        defaultCalendarLabels,
+      ),
+    ).toBe(`${defaultCalendarLabels.eventAlarm15Min}, ${defaultCalendarLabels.eventAlarm1Day}`);
   });
 });
 
@@ -146,6 +316,27 @@ describe("detailsPopoverShouldDock", () => {
   it("leaves a tall week-view segment undocked so the popover stays compact", () => {
     expect(detailsPopoverShouldDock({ left: 420, top: 160, width: 168, height: 420 })).toBe(false);
     expect(detailsPopoverShouldDock({ left: 280, top: 48, width: 336, height: 520 })).toBe(false);
+  });
+
+  it("does not dock from viewport alone (portrait iPad keeps an anchored popover)", () => {
+    const matchMedia = vi.fn((query: string) => ({
+      matches:
+        query.includes("orientation: portrait") ||
+        query.includes("max-width: 48rem") ||
+        query.includes("max-width: 40rem") ||
+        query.includes("max-width: 767px"),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    const previous = globalThis.matchMedia;
+    globalThis.matchMedia = matchMedia as unknown as typeof globalThis.matchMedia;
+    try {
+      expect(detailsPopoverShouldDock({ left: 48, top: 96, width: 180, height: 36 })).toBe(false);
+      expect(detailsPopoverShouldDock(undefined)).toBe(false);
+    } finally {
+      globalThis.matchMedia = previous;
+    }
   });
 });
 

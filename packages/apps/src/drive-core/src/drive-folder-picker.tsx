@@ -378,7 +378,7 @@ export function DriveFolderPicker({
 
   const breadcrumb = (
     <PathBreadcrumb
-      size="sm"
+      size={fileSelect ? "sm" : "default"}
       className={fileSelect ? "min-w-0 flex-1" : "destination-picker__breadcrumbs"}
       leadingIcon={<DriveViewIcon view={breadcrumbView} className="size-3.5" />}
       items={breadcrumbItems}

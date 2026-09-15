@@ -55,6 +55,23 @@ describe("drive browser grid + tile chrome (canonical for Docs + Drive)", () => 
     expect(pickerCss).not.toMatch(/\.drive-file-tile--selected/);
   });
 
+  it("matches field-label sans captions for item labels and list heads", () => {
+    expect(css).toMatch(
+      /\.drive-item-label \{[\s\S]*font-family:\s*var\(\s*--field-label-font-family,\s*var\(\s*--font-sans/,
+    );
+    expect(css).toMatch(
+      /\.drive-list-head__cell \{[\s\S]*font-family:\s*var\(\s*--field-label-font-family,\s*var\(\s*--font-sans/,
+    );
+    expect(css).not.toMatch(
+      /\.drive-item-label \{[\s\S]*font-family:\s*var\(\s*--field-label-font-family,\s*var\(\s*--font-mono/,
+    );
+    expect(css).toMatch(/\.drive-item-label \{[\s\S]*@apply[\s\S]*\btext-2xs\b/);
+    expect(css).toMatch(/\.drive-list-head__cell \{[\s\S]*@apply[\s\S]*\btext-2xs\b/);
+    expect(css).not.toMatch(/\.drive-item-label \{[\s\S]*@apply[\s\S]*\btracking-/);
+    expect(css).not.toMatch(/\.drive-list-head__cell \{[\s\S]*@apply[\s\S]*\btracking-/);
+    expect(css).toMatch(/\.drive-item-label > svg \{[\s\S]*@apply size-3/);
+  });
+
   it("keeps tile title + share indicators adjacent (no flex-1 on title)", () => {
     expect(css).toMatch(
       /\.drive-file-tile__title-row\s*\{[\s\S]*?@apply flex min-w-0 items-center/,

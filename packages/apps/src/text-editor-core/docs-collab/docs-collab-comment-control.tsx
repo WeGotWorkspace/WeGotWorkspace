@@ -41,7 +41,7 @@ export function DocsCollabCommentControl({
       disabled={disabled}
       onClick={onAddCommentFromSelection}
       icon={<MessageSquarePlus aria-hidden />}
-      size="sm"
+      size="md"
       variant="outline"
       className={className}
     />

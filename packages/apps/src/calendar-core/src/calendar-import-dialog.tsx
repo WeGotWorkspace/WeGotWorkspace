@@ -180,7 +180,7 @@ export function CalendarImportDialog({
           <DialogFooter>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               label={labels.cancel}
               disabled={busy}
               onClick={onClose}

@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
+import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -48,6 +49,8 @@ export type CalendarEventCalendarPickerProps = {
   labels: CalendarUILabels;
   disabled?: boolean;
   triggerClassName?: string;
+  /** Shared control height. Default `md`. */
+  size?: ControlSize;
   onCalendarIdChange: (calendarId: string) => void;
 };
 
@@ -70,6 +73,7 @@ export function CalendarEventCalendarPicker({
   labels,
   disabled = false,
   triggerClassName = "calendar-event-dialog__calendar-trigger",
+  size = "md",
   onCalendarIdChange,
 }: CalendarEventCalendarPickerProps) {
   const writableCalendars = writableCalendarsForPicker(calendars);
@@ -91,6 +95,7 @@ export function CalendarEventCalendarPicker({
               : labels.eventCalendarLabel
           }
           className={triggerClassName}
+          size={size}
           disabled={disabled}
         />
       </DropdownMenuTrigger>

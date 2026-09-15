@@ -51,8 +51,8 @@ function expectSlimLaneTokens(block: string) {
   expect(block).toMatch(/--_lc-event-card-heading-line-height:\s*1/);
   expect(block).toMatch(/--_lc-time-label-font-size:\s*0\.625rem/);
   expect(block).toMatch(/--_lc-event-card-pointer-events:\s*none/);
-  expect(block).toMatch(/--_lc-event-card-recurring-icon-display:\s*none/);
   expect(block).toMatch(/--_lc-event-card-accent-bar-display:\s*none/);
+  expect(block).not.toMatch(/--_lc-event-card-recurring-icon-display/);
   const headingInlineStart = tokenPx(block, "--_lc-event-card-heading-padding-inline-start");
   expect(headingInlineStart).toBeGreaterThanOrEqual(2);
   expect(headingInlineStart).toBeLessThan(13);
@@ -146,7 +146,7 @@ describe("CalendarTimelineView wide-month density CSS", () => {
     expect(block).toMatch(/--_lc-event-card-heading-line-height:\s*1/);
     expect(block).not.toMatch(/--_lc-event-card-pointer-events:\s*none/);
     expect(block).not.toMatch(/--_lc-event-card-accent-bar-display:\s*none/);
-    expect(block).not.toMatch(/--_lc-event-card-recurring-icon-display:\s*none/);
+    expect(block).not.toMatch(/--_lc-event-card-recurring-icon-display/);
     expect(css).toMatch(/:host\(\[mode="month"\]\)\s*\{/);
     expect(css).not.toMatch(
       /@media\s*\(pointer:\s*fine\)\s*\{[\s\S]*?:host\(\[mode="month"\]\)\s*\{[\s\S]*?--event-height:\s*22px/,

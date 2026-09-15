@@ -8,23 +8,14 @@
 .meet-channel-dialog {
   --meet-accent: #2a1644;
   --meet-accent-strong: #1a0e2a;
+  --workspace-accent: var(--meet-accent);
   --color-emerald: var(--meet-accent);
   --button-primary-bg: var(--meet-accent-strong);
   --button-primary-fg: #ffffff;
   --button-outline-color: var(--color-ink);
   --button-outline-border-color: color-mix(in oklab, var(--color-ink) 20%, transparent);
-  --button-outline-hover-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --button-active-color: var(--meet-accent-strong);
-  --button-outline-active-background: color-mix(
-    in oklab,
-    var(--meet-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--meet-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   --primary: var(--meet-accent-strong);
   --primary-foreground: #ffffff;
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
@@ -73,7 +64,7 @@
   @apply min-w-0 flex-1;
 }
 
-.meet-channel-dialog__link-row .icon-button--size-sm {
+.meet-channel-dialog__link-row .icon-button--size-md {
   @apply size-9 shrink-0;
 }
 
@@ -83,16 +74,13 @@
 }
 
 .meet-channel-dialog__footer {
-  @apply mt-4 gap-2 sm:gap-0;
+  @apply mt-4 flex flex-row flex-wrap items-center gap-2 sm:justify-start;
 }
 
 .meet-channel-dialog__footer .meet-channel-dialog__delete {
-  @apply w-full justify-center sm:w-auto sm:me-auto;
-  color: #b91c1c;
+  @apply me-auto;
 }
 
-@media (max-width: 639px) {
-  .meet-channel-dialog__footer .meet-channel-dialog__delete {
-    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
-  }
+.meet-channel-dialog__footer-end {
+  @apply ms-auto flex flex-wrap items-center gap-2;
 }

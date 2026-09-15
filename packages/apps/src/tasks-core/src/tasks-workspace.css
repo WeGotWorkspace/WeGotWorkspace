@@ -109,7 +109,7 @@
   }
 
   .tasks-workspace__show-completed.button {
-    width: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+    width: var(--control-height-md, 2.25rem);
     @apply shrink-0 flex-none px-0;
   }
 }
@@ -126,12 +126,16 @@
  */
 .tasks-dialog-surface {
   --tasks-accent: #ea8c72;
+  --tasks-accent-strong: color-mix(in oklab, var(--tasks-accent) 32%, var(--color-ink));
+  --workspace-accent: var(--tasks-accent);
   --color-emerald: var(--tasks-accent);
   --button-primary-bg: var(--tasks-accent);
   --button-primary-fg: var(--color-ink);
   --primary: var(--tasks-accent);
   --primary-foreground: var(--color-ink);
+  --button-active-color: var(--tasks-accent-strong);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 .tasks-story-scope {

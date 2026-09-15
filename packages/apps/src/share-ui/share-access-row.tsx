@@ -12,6 +12,8 @@ export type ShareAccessRowProps = {
   titleEnd?: ReactNode;
   /** Trailing control (permission or meeting-role select). */
   trailing?: ReactNode;
+  /** Grow the trailing slot (full-width select with no title). */
+  fill?: boolean;
   onRemove?: () => void;
   removeLabel?: string;
   removeDisabled?: boolean;
@@ -27,6 +29,7 @@ export function ShareAccessRow({
   titleExtra,
   titleEnd,
   trailing,
+  fill = false,
   onRemove,
   removeLabel = shareLabels.removeGrant,
   removeDisabled = false,
@@ -43,13 +46,14 @@ export function ShareAccessRow({
       subtitle={subtitle}
       titleExtra={titleExtra}
       titleEnd={titleEnd}
+      fill={fill}
     >
       {trailing}
       {renderRemove ? (
         <IconButton
           label={removeLabel}
           icon={<Trash2 className="size-3.5" aria-hidden />}
-          size="sm"
+          size="md"
           variant="outline"
           disabled={!canRemove}
           title={removeTitle}

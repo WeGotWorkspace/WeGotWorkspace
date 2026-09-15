@@ -62,7 +62,7 @@ export function AppSidebar({
             <IconButton
               label="Close menu"
               icon={<X className="size-4" aria-hidden />}
-              size="sm"
+              size="md"
               variant="outline"
               showTooltip={false}
               onClick={onCloseMobile}

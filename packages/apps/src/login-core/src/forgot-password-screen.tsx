@@ -76,7 +76,7 @@ export function ForgotPasswordScreen() {
               type="submit"
               label={submitting ? "Submitting..." : "Send reset link"}
               variant="primary"
-              size="lg"
+              size="xl"
               pill
               disabled={submitting}
               className="login-screen__submit"

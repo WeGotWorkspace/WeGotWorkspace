@@ -70,6 +70,7 @@ function eventCardHost(invitationId: string) {
         past?: boolean;
         time?: string;
         recurring?: boolean;
+        color?: string;
       })
     | null;
 }
@@ -121,7 +122,7 @@ describe("CalendarInvitationsPanel", () => {
     expect(filter.closest(".docs-collab-sidebar-panel__header-actions")).toBeTruthy();
     expect(document.querySelector(".docs-collab-sidebar-panel__toolbar")).toBeNull();
     expect(filter.className).toContain("segmented-control");
-    expect(filter.className).not.toContain("segmented-control--size-md");
+    expect(filter.className).not.toContain("segmented-control--size-lg");
     expect(
       screen.getByRole("button", { name: defaultCalendarLabels.invitationsTabNew }),
     ).toBeTruthy();
@@ -136,17 +137,34 @@ describe("CalendarInvitationsPanel", () => {
     const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
     const maybe = screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe });
     const decline = screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline });
-    expect(accept.className).toContain("calendar-invitation-card__action--accept");
-    expect(maybe.className).toContain("calendar-invitation-card__action--maybe");
-    expect(decline.className).toContain("calendar-invitation-card__action--decline");
+    const headerActions = document.querySelector(
+      "[data-invitation-id='invite-1.ics'] .docs-collab-card__actions",
+    );
     const actions = document.querySelector(".calendar-invitation-card__actions");
+    expect(headerActions?.contains(actions)).toBe(false);
     expect(actions?.className).toContain("calendar-rsvp-actions--sm");
+    expect(actions?.className).not.toContain("calendar-rsvp-actions--xs");
     expect(actions?.className).not.toContain("calendar-rsvp-actions--lg");
-    expect(accept.className).toContain("calendar-rsvp-action--sm");
-    expect(accept.className).not.toContain("calendar-invitation-card__action--selected");
-    expect(maybe.className).not.toContain("calendar-invitation-card__action--selected");
-    expect(decline.className).not.toContain("calendar-invitation-card__action--selected");
+    expect(actions?.querySelector(".segmented-control")).toBeTruthy();
+    expect(actions?.querySelector(".segmented-control--size-md")).toBeTruthy();
+    expect(actions?.querySelector(".segmented-control--unselected")).toBeTruthy();
+    expect(accept.className).toContain("segmented-control__button--text");
+    expect(maybe.className).toContain("segmented-control__button--text");
+    expect(decline.className).toContain("segmented-control__button--text");
+    expect(accept.textContent).toContain(defaultCalendarLabels.rsvpAccept);
+    expect(maybe.textContent).toContain(defaultCalendarLabels.rsvpMaybe);
+    expect(decline.textContent).toContain(defaultCalendarLabels.rsvpDecline);
+    expect(accept.querySelector("svg")).toBeTruthy();
+    expect(maybe.querySelector("svg")).toBeTruthy();
+    expect(decline.querySelector("svg")).toBeTruthy();
+    expect(accept.getAttribute("aria-pressed")).not.toBe("true");
+    expect(maybe.getAttribute("aria-pressed")).not.toBe("true");
+    expect(decline.getAttribute("aria-pressed")).not.toBe("true");
+    expect(accept.className).not.toContain("segmented-control__button--active");
+    expect(maybe.className).not.toContain("segmented-control__button--active");
+    expect(decline.className).not.toContain("segmented-control__button--active");
     expect(document.querySelector(".calendar-invitation-card")).toBeTruthy();
+    expect(document.querySelector(".calendar-invitation-card__rsvp")).toBeNull();
     expect(
       screen.queryByRole("button", { name: defaultCalendarLabels.invitationsDismiss }),
     ).toBeNull();
@@ -158,12 +176,22 @@ describe("CalendarInvitationsPanel", () => {
     expect(trigger.className).toContain("color-swatch-trigger");
     expect(trigger.className).toContain("calendar-event-dialog__calendar-trigger");
     expect(trigger.className).toContain("calendar-invitation-card__calendar-trigger");
+    expect(trigger.className).toContain("control-surface--size-md");
     expect(trigger.querySelector(".color-swatch-trigger__dot")).toBeTruthy();
     expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
+    expect(trigger.querySelector(".color-swatch-trigger__caption")).toBeNull();
+    expect(trigger.textContent?.trim()).toBe("");
     const actions = document.querySelector(
       "[data-invitation-id='invite-1.ics'] .docs-collab-card__actions",
     );
+    const rsvp = document.querySelector(
+      "[data-invitation-id='invite-1.ics'] .calendar-invitation-card__actions",
+    );
     expect(actions?.contains(trigger)).toBe(true);
+    expect(actions?.contains(rsvp)).toBe(false);
+    const cluster = [...(actions?.children ?? [])];
+    expect(cluster).toHaveLength(1);
+    expect(cluster[0]?.className).toContain("calendar-invitation-card__calendar");
   });
 
   it("uses the docs comments empty chrome", () => {
@@ -188,15 +216,103 @@ describe("CalendarInvitationsPanel", () => {
     expect(eventCardHost("invite-3.ics")?.summary).toBe("Planning");
     expect(eventCardHost("invite-1.ics")).toBeNull();
     expect(
-      screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }).className,
-    ).toContain("calendar-invitation-card__action--selected");
+      screen
+        .getByRole("button", { name: defaultCalendarLabels.rsvpAccept })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
     expect(
-      screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe }).className,
-    ).not.toContain("calendar-invitation-card__action--selected");
+      screen
+        .getByRole("button", { name: defaultCalendarLabels.rsvpMaybe })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
     expect(
-      screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline }).className,
-    ).not.toContain("calendar-invitation-card__action--selected");
-    expect(screen.queryByRole("button", { name: /Calendar: Personal/i })).toBeNull();
+      screen
+        .getByRole("button", { name: defaultCalendarLabels.rsvpDecline })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
+    expect(screen.getByRole("button", { name: /Calendar: Personal/i })).toBeTruthy();
+    const headerActions = document.querySelector(
+      "[data-invitation-id='invite-3.ics'] .docs-collab-card__actions",
+    );
+    expect(headerActions?.querySelector(".calendar-invitation-card__calendar")).toBeTruthy();
+    expect(headerActions?.querySelector(".calendar-invitation-card__actions")).toBeNull();
+    const rsvp = document.querySelector(
+      "[data-invitation-id='invite-3.ics'] .calendar-invitation-card__actions",
+    );
+    expect(rsvp).toBeTruthy();
+    expect(headerActions?.contains(rsvp)).toBe(false);
+  });
+
+  it("keeps calendar picker local on needs-action until Accept", () => {
+    const { onRespond } = renderPanel();
+    const host = eventCardHost("invite-1.ics");
+    expect(host?.getAttribute("color") ?? host?.color).toBe("#6366f1");
+
+    const trigger = screen.getByRole("button", { name: /Calendar: Personal/i });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("menuitem", { name: /Work/i }));
+
+    expect(onRespond).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Calendar: Work/i })).toBeTruthy();
+    const after = eventCardHost("invite-1.ics");
+    expect(after?.getAttribute("color") ?? after?.color).toBe("#0ea5e9");
+  });
+
+  it("persists calendar picker changes for already-accepted invites", () => {
+    const { onRespond } = renderPanel({
+      notifications: [accepted],
+      tab: "responded",
+    });
+
+    const trigger = screen.getByRole("button", { name: /Calendar: Personal/i });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("menuitem", { name: /Work/i }));
+
+    expect(onRespond).toHaveBeenCalledWith("invite-3.ics", "accepted", "work");
+    expect(screen.getByRole("button", { name: /Calendar: Work/i })).toBeTruthy();
+    const host = eventCardHost("invite-3.ics");
+    expect(host?.getAttribute("color") ?? host?.color).toBe("#0ea5e9");
+  });
+
+  it("persists calendar picker changes for tentative invites", () => {
+    const tentative: CalendarSchedulingNotification = {
+      ...accepted,
+      id: "invite-tentative.ics",
+      uid: "uid-tentative",
+      participationStatus: "tentative",
+    };
+    const { onRespond } = renderPanel({
+      notifications: [tentative],
+      tab: "responded",
+    });
+
+    const trigger = screen.getByRole("button", { name: /Calendar: Personal/i });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("menuitem", { name: /Work/i }));
+
+    expect(onRespond).toHaveBeenCalledWith("invite-tentative.ics", "tentative", "work");
+  });
+
+  it("reverts the calendar picker when persist rejects", async () => {
+    const onRespond = vi.fn().mockRejectedValue(new Error("Could not move event"));
+    renderPanel({
+      notifications: [accepted],
+      tab: "responded",
+      onRespond,
+    });
+
+    const trigger = screen.getByRole("button", { name: /Calendar: Personal/i });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("menuitem", { name: /Work/i }));
+
+    expect(onRespond).toHaveBeenCalledWith("invite-3.ics", "accepted", "work");
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /Calendar: Personal/i })).toBeTruthy();
+    });
   });
 
   it("shows RSVP actions when METHOD is missing or lowercase on a new REQUEST", () => {
@@ -222,10 +338,19 @@ describe("CalendarInvitationsPanel", () => {
   });
 
   it("calls onRespond with the selected calendar on Accept", () => {
-    const { onRespond } = renderPanel({ defaultCalendarId: "work" });
+    const { onRespond, onOpenEvent } = renderPanel({ defaultCalendarId: "work" });
     expect(screen.getByRole("button", { name: /Calendar: Work/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }));
+    const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+    const maybe = screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe });
+    const decline = screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline });
+    expect(accept.getAttribute("aria-pressed")).not.toBe("true");
+    fireEvent.click(accept);
     expect(onRespond).toHaveBeenCalledWith("invite-1.ics", "accepted", "work");
+    expect(onOpenEvent).not.toHaveBeenCalled();
+    expect(accept.getAttribute("aria-pressed")).toBe("true");
+    expect(accept.className).toContain("segmented-control__button--active");
+    expect(maybe.getAttribute("aria-pressed")).toBe("false");
+    expect(decline.getAttribute("aria-pressed")).toBe("false");
   });
 
   it("defaults Accept to the default calendar and omits it on Decline", () => {
@@ -239,10 +364,62 @@ describe("CalendarInvitationsPanel", () => {
     expect(next.onRespond).toHaveBeenCalledWith("invite-1.ics", "declined", undefined);
   });
 
-  it("opens the event when the card is selected", () => {
+  it("keeps other invitation RSVP controls enabled while one respond is in flight", () => {
+    let release: (() => void) | undefined;
+    const onRespond = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const second: CalendarSchedulingNotification = {
+      ...request,
+      id: "invite-other.ics",
+      uid: "uid-other",
+      title: "Other invite",
+      eventId: "invite-other",
+    };
+    renderPanel({ notifications: [request, second], onRespond });
+
+    const accepts = screen.getAllByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+    expect(accepts).toHaveLength(2);
+    fireEvent.click(accepts[0]!);
+
+    expect(onRespond).toHaveBeenCalledTimes(1);
+    for (const accept of accepts) {
+      expect(accept.hasAttribute("disabled")).toBe(false);
+    }
+    for (const maybe of screen.getAllByRole("button", {
+      name: defaultCalendarLabels.rsvpMaybe,
+    })) {
+      expect(maybe.hasAttribute("disabled")).toBe(false);
+    }
+    release?.();
+  });
+
+  it("opens event details when the card is selected", () => {
     const { onOpenEvent } = renderPanel();
-    fireEvent.click(document.querySelector("[data-invitation-id='invite-1.ics']")!);
-    expect(onOpenEvent).toHaveBeenCalledWith("invite-copy");
+    const card = document.querySelector("[data-invitation-id='invite-1.ics']") as HTMLElement;
+    const eventCard = card.querySelector("event-card") as HTMLElement;
+    eventCard.getBoundingClientRect = () =>
+      ({
+        left: 12,
+        top: 80,
+        width: 280,
+        height: 64,
+        right: 292,
+        bottom: 144,
+        x: 12,
+        y: 80,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    fireEvent.click(card);
+    expect(onOpenEvent).toHaveBeenCalledWith("invite-copy", {
+      left: 12,
+      top: 80,
+      width: 280,
+      height: 64,
+    });
   });
 
   it("hides cancelled organizer notices from the invitee inbox", () => {
@@ -259,19 +436,28 @@ describe("CalendarInvitationsPanel", () => {
     expect(eventCardHost("invite-1.ics")?.time).toMatch(/Thu, Aug 20/);
   });
 
-  it("sets recurring on the event-card so the repeat icon can render", () => {
+  it("sets recurring on the event-card for series a11y", () => {
     renderPanel({ notifications: [{ ...request, recurring: true }] });
     expect(eventCardHost("invite-1.ics")?.recurring).toBe(true);
   });
 
-  it("discloses that sidebar RSVP applies to the entire series when recurring", () => {
+  it("does not show the series hint on invitation cards", () => {
     renderPanel({ notifications: [{ ...request, recurring: true }] });
-    expect(screen.getByText(defaultCalendarLabels.rsvpSeriesHint)).toBeTruthy();
+    expect(screen.queryByText(defaultCalendarLabels.rsvpSeriesHint)).toBeNull();
+    expect(document.querySelector(".calendar-invitation-card__rsvp-hint")).toBeNull();
   });
 
-  it("does not show the series hint on a one-off invitation", () => {
-    renderPanel();
-    expect(screen.queryByText(defaultCalendarLabels.rsvpSeriesHint)).toBeNull();
+  it("does not show Meet Join on invitation cards", () => {
+    renderPanel({
+      notifications: [
+        {
+          ...request,
+          url: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
+        },
+      ],
+    });
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetJoin })).toBeNull();
+    expect(document.querySelector(".calendar-invitation-card__meet")).toBeNull();
   });
 
   it("closes from the panel header", () => {
@@ -301,12 +487,12 @@ describe("CalendarInvitationsPanel", () => {
 });
 
 describe("calendar invitation picker reuse", () => {
-  it("imports CalendarEventCalendarPicker from the event dialog and invite card", () => {
+  it("imports CalendarEventCalendarPicker from the event form and invite card", () => {
     const here = dirname(fileURLToPath(import.meta.url));
-    const dialog = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
+    const form = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
     const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
     const importLine = 'from "@/calendar-core/src/calendar-event-calendar-picker"';
-    expect(dialog).toContain(importLine);
+    expect(form).toContain(importLine);
     expect(card).toContain(importLine);
   });
 
@@ -315,17 +501,25 @@ describe("calendar invitation picker reuse", () => {
     const workspace = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
     expect(workspace).toContain("onToggle={toggleInvitationsOpen}");
     expect(workspace).toContain("refreshIfIdle");
+    expect(workspace).toContain("onOpenEvent={openInvitationPreview}");
+    expect(workspace).toContain("invitation: true");
+    expect(workspace).not.toMatch(/onOpenEvent=\{[\s\S]*openEditEventKey/);
   });
 
-  it("reuses RSVP controls from calendar-rsvp-actions in the dialog and invite card", () => {
+  it("reuses RSVP controls from calendar-rsvp-actions in the event form and invite card", () => {
     const here = dirname(fileURLToPath(import.meta.url));
-    const dialog = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
+    const form = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
     const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
     const importLine = 'from "@/calendar-core/src/calendar-rsvp-actions"';
-    expect(dialog).toContain(importLine);
-    expect(dialog).toContain("CalendarRsvpSelect");
+    expect(form).toContain(importLine);
+    expect(form).toContain("CalendarRsvpSelect");
+    expect(form).toMatch(
+      /calendar-event-dialog__invitation-rsvp[\s\S]*CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/,
+    );
     expect(card).toContain(importLine);
     expect(card).toContain("CalendarRsvpActions");
+    expect(card).toMatch(/DocsCollabCardHeader[\s\S]*event-card[\s\S]*CalendarRsvpActions/);
+    expect(card).toMatch(/CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/);
   });
 });
 

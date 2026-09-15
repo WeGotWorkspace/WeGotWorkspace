@@ -140,14 +140,18 @@
 :is(.mail-compose-dialog-surface, .mail-dialog-surface) {
   --mail-accent: #ef4444;
   --mail-sidebar: #d9254f;
+  --mail-accent-strong: var(--mail-sidebar);
+  --workspace-accent: var(--mail-accent);
   --destination-picker-accent: var(--mail-accent);
   --color-emerald: var(--mail-accent);
   --button-primary-bg: var(--mail-sidebar);
   --button-primary-fg: var(--color-cream, #ffffff);
   --primary: var(--mail-sidebar);
   --primary-foreground: var(--color-cream, #ffffff);
+  --button-active-color: var(--mail-accent-strong);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --segmented-control-track-active-bg: var(--color-ink);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 .mail-compose-dialog-surface {

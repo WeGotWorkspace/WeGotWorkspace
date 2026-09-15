@@ -39,14 +39,13 @@ export function McpEndpointUrlRow({ url, inputId, className }: McpEndpointUrlRow
             type="url"
             value={url}
             readOnly
-            mono
             aria-label="Connection URL"
           />
           <IconButton
             type="button"
             label={shareLabels.copyLink}
             icon={<Copy className="size-3.5" aria-hidden />}
-            size="sm"
+            size="md"
             variant="outline"
             disabled={!url}
             onClick={() => {

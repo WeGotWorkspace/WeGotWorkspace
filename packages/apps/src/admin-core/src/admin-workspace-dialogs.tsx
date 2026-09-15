@@ -73,7 +73,7 @@ export function UserDialog({ open, title, initial, onOpenChange, onSubmit }: Use
           </FormField>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
@@ -136,7 +136,7 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
           </FormField>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
@@ -215,7 +215,7 @@ export function GroupDialog({
                     <UserAvatar
                       displayName={user.displayName}
                       subtitle={user.username}
-                      size="sm"
+                      size="md"
                       className="flex-1"
                     />
                     <Switch
@@ -234,7 +234,7 @@ export function GroupDialog({
           ) : null}
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={() => onSubmit({ name, memberUserIds })} disabled={!name.trim()}>
@@ -304,7 +304,7 @@ export function MailDeliveryTestDialog({
           />
         </FormField>
         <DialogFooter>
-          <Button variant="ghost" disabled={submitting} onClick={() => onOpenChange(false)}>
+          <Button variant="outline" disabled={submitting} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button

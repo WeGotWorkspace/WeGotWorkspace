@@ -74,7 +74,7 @@ export function FloatingActionBar({
               onClick={button.onClick}
               active={button.active}
               severity={button.severity}
-              size="sm"
+              size="md"
               variant="outline"
             />
           </span>

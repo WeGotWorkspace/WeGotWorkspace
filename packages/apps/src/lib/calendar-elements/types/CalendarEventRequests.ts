@@ -21,6 +21,8 @@ export type EventKeyDetail = {
 export type EventCreateRequestDetail = {
   envelope: Pick<CalendarEventEnvelope, "calendarId" | "accountId">;
   content: CalendarEventUIData;
+  /** Viewport rect of the create-preview card when the intent was emitted. */
+  origin?: EventSelectionOriginRect;
 };
 
 /** Internal: maps UI update gesture to API update/move/resize input (not DOM event detail). */

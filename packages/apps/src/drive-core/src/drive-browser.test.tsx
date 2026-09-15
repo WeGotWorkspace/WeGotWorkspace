@@ -137,12 +137,12 @@ describe("DriveGridView tile interaction", () => {
         <DriveGridView
           {...baseBrowserProps({
             showLocationColumn: true,
-            items: [{ ...FILE, location: "My Drive" }],
+            items: [{ ...FILE, location: "Personal" }],
           })}
         />
       </div>,
     );
-    expect(screen.getByText("My Drive")).toBeTruthy();
+    expect(screen.getByText("Personal")).toBeTruthy();
     expect(document.querySelector(".drive-location-label")).toBeTruthy();
   });
 
@@ -171,12 +171,12 @@ describe("DriveListView", () => {
         {...baseBrowserProps({
           showLocationColumn: true,
           locationColumnLabel: driveLabels.listColumnLocation,
-          items: [{ ...FILE, location: "My Drive" }],
+          items: [{ ...FILE, location: "Personal" }],
         })}
       />,
     );
     expect(screen.getByRole("columnheader", { name: "Location" })).toBeTruthy();
-    expect(screen.getByText("My Drive")).toBeTruthy();
+    expect(screen.getByText("Personal")).toBeTruthy();
   });
 
   it("shows a checkbox in selection mode", () => {

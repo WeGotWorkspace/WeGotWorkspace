@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
+import { IconButton } from "@/button/src/button";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsSuggestionWithThread } from "../docs-suggestions-types";
 import {
@@ -77,29 +78,28 @@ export function DocsSuggestionCard({
         createdAt={suggestion.timestamp}
         actions={
           <>
-            <button
-              type="button"
-              className="docs-suggestion-card__accept"
-              aria-label={labels.suggestionsAccept}
+            <IconButton
+              label={labels.suggestionsAccept}
+              icon={<Check />}
+              size="md"
+              variant="outline"
+              severity="success"
               onClick={(event) => {
                 event.stopPropagation();
                 runExitAnimation(onAccept);
               }}
-            >
-              <Check className="docs-suggestion-card__accept-icon" aria-hidden />
-              Accept
-            </button>
-            <button
-              type="button"
-              className="docs-suggestion-card__reject"
-              aria-label={labels.suggestionsReject}
+            />
+            <IconButton
+              label={labels.suggestionsReject}
+              icon={<X />}
+              size="md"
+              variant="outline"
+              severity="danger"
               onClick={(event) => {
                 event.stopPropagation();
                 runExitAnimation(onReject);
               }}
-            >
-              <X className="docs-suggestion-card__reject-icon" aria-hidden />
-            </button>
+            />
           </>
         }
       />

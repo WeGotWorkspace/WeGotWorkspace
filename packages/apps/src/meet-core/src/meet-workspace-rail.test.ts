@@ -10,7 +10,7 @@ describe("MeetWorkspaceRail", () => {
   it("places an sm outline back IconButton in titleLeading before the title", () => {
     expect(rail).toMatch(/titleLeading=/);
     expect(rail).toMatch(/ChevronLeft/);
-    expect(rail).toMatch(/size="sm"/);
+    expect(rail).toMatch(/size="md"/);
     expect(rail).toMatch(/variant="outline"/);
     expect(rail).not.toMatch(/variant="subtle"/);
     expect(rail).toMatch(/onBack/);

@@ -1,12 +1,15 @@
 @import "../styles.css" reference;
+@import "./workspace-menu-item-sst.css";
 
 /**
  * Text field primitives. Optional overrides: `--input-height`, `--input-background`,
  * `--input-background-focus`, `--input-background-disabled`, `--input-color-disabled`,
  * `--input-placeholder-color`, `--input-shadow`, `--input-border-focus`, `--control-border-color`.
- * Size (`sm` / `md`) changes height, padding, and font-size only.
- * Radius stays `--control-radius` on the shared surface — toolbars/search that
- * want a pill set `--control-radius: var(--control-radius-button-pill)` on the parent.
+ * Size (`xs` … `xl`) changes height, padding, and font-size only.
+ * Default `md` = 36px — action bar / view header / event form density.
+ * Spacious forms use `lg` (40px); sidebar New / hero CTAs use `xl` (44px).
+ * Radius stays global `--control-radius` on the shared surface — do not remap
+ * soft chrome on layout ancestors. True capsules use `--control-radius-pill`.
  * Search variant: leading icon + trailing clear when the field has a value.
  */
 .control-surface,
@@ -37,8 +40,8 @@
 .input,
 .select-trigger {
   @apply items-center px-[var(--input-padding-x,0.75rem)] py-1;
-  min-height: var(--control-height-md, var(--input-height, 2.25rem));
-  height: var(--control-height-md, var(--input-height, 2.25rem));
+  min-height: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
 }
 
 .input {
@@ -52,6 +55,57 @@
 .input[type="date"]::-webkit-calendar-picker-indicator {
   @apply cursor-pointer;
   opacity: 1;
+}
+
+/*
+ * WebKit/Blink time fields paint value text in datetime-edit pseudos with UA
+ * font metrics that ignore the host `.input` size class. Inherit so type=time
+ * matches text Input / Textarea / LocaleDatePicker (`--input-font-size`).
+ * Native time internals are not flex children (Safari keeps the clock next to
+ * the value). Pin the picker with a fixed trailing inset so it lines up with
+ * Select / LocaleDatePicker glyphs (WebKit indicator paint box differs from Lucide).
+ */
+.input[type="time"] {
+  @apply relative;
+}
+
+.input[type="time"]::-webkit-calendar-picker-indicator {
+  @apply size-3.5 shrink-0 cursor-pointer;
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: 0.4rem;
+  transform: translateY(-50%);
+  margin: 0;
+  opacity: 0.6;
+}
+
+/*
+ * WebKit hides the native clock glyph when the field is disabled. Keep it
+ * visible (LocaleDatePicker still shows its calendar icon) but non-interactive.
+ */
+.input[type="time"]:disabled::-webkit-calendar-picker-indicator,
+.input[type="time"]:read-only::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  pointer-events: none;
+  cursor: default;
+  display: block;
+}
+
+.input[type="time"]::-webkit-datetime-edit {
+  @apply min-w-0;
+  padding-inline-end: 1.25rem;
+}
+
+.input[type="time"]::-webkit-datetime-edit,
+.input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.input[type="time"]::-webkit-datetime-edit-text,
+.input[type="time"]::-webkit-datetime-edit-hour-field,
+.input[type="time"]::-webkit-datetime-edit-minute-field,
+.input[type="time"]::-webkit-datetime-edit-second-field,
+.input[type="time"]::-webkit-datetime-edit-ampm-field {
+  font: inherit;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 .input::file-selector-button {
@@ -73,16 +127,85 @@
 }
 
 .select-trigger__icon {
-  @apply h-4 w-4 shrink-0;
+  /* Match LocaleDatePicker / time picker trailing glyph (size-3.5). */
+  @apply size-3.5 shrink-0;
   color: inherit;
+  opacity: 0.6;
+}
+
+/*
+ * Size padding via `--input-padding-x` (base surface already applies it).
+ * Keeps native time picker `inset-inline-end` aligned with Select / LocaleDatePicker.
+ */
+.select-trigger--size-xs,
+.input--size-xs,
+.control-surface--size-xs {
+  --input-padding-x: 0.5rem; /* px-2 */
+  min-height: var(--control-height-xs, 1.75rem);
+  height: var(--control-height-xs, 1.75rem);
+  font-size: var(--input-font-size-xs, 0.75rem);
 }
 
 .select-trigger--size-sm,
-.input--size-sm {
-  @apply px-3;
-  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  font-size: calc(var(--input-font-size, 0.875rem) - 0.0625rem);
+.input--size-sm,
+.control-surface--size-sm {
+  --input-padding-x: 0.625rem; /* px-2.5 */
+  min-height: var(--control-height-sm, 2rem);
+  height: var(--control-height-sm, 2rem);
+  font-size: var(--input-font-size-sm, 0.875rem);
+}
+
+.select-trigger--size-md,
+.input--size-md,
+.control-surface--size-md {
+  --input-padding-x: 0.75rem; /* px-3 */
+  min-height: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
+  font-size: var(--input-font-size-md, 0.875rem);
+}
+
+.select-trigger--size-lg,
+.input--size-lg,
+.control-surface--size-lg {
+  --input-padding-x: 0.75rem;
+  min-height: var(--control-height-lg, 2.5rem);
+  height: var(--control-height-lg, 2.5rem);
+  font-size: var(--input-font-size-lg, 1rem);
+}
+
+.select-trigger--size-xl,
+.input--size-xl,
+.control-surface--size-xl {
+  --input-padding-x: 0.75rem;
+  min-height: var(--control-height-xl, 2.75rem);
+  height: var(--control-height-xl, 2.75rem);
+  font-size: var(--input-font-size-xl, 1rem);
+}
+
+/* Textarea: size affects padding + font only; height stays auto. */
+.textarea--size-xs {
+  @apply px-2 py-1;
+  font-size: var(--input-font-size-xs, 0.75rem);
+}
+
+.textarea--size-sm {
+  @apply px-2.5 py-1.5;
+  font-size: var(--input-font-size-sm, 0.875rem);
+}
+
+.textarea--size-md {
+  @apply px-3 py-2;
+  font-size: var(--input-font-size-md, 0.875rem);
+}
+
+.textarea--size-lg {
+  @apply px-3 py-2;
+  font-size: var(--input-font-size-lg, 1rem);
+}
+
+.textarea--size-xl {
+  @apply px-3 py-2;
+  font-size: var(--input-font-size-xl, 1rem);
 }
 
 .input--search {
@@ -174,7 +297,7 @@
  * Select item states — quiet cream-surface washes (14/18/24), not sidebar chip
  * saturation (40/55/65 via `--button-outline-*`). Accent + fg still come from
  * portaled `--workspace-accent` / `--button-*-color` via `bridgePortalThemeVars`.
- * Optional `--menu-item-*-background` overrides stay available for parents.
+ * Soft washes: shared `workspace-menu-item-sst.css` (`--menu-item-*`).
  */
 .select-ui__item {
   @apply relative flex w-full cursor-default select-none items-center py-1.5 pl-2 pr-8 text-sm outline-none transition-colors;

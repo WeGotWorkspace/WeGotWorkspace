@@ -73,7 +73,7 @@ export function ChatThreadPanel({
           <IconButton
             label={closeLabel}
             icon={<X aria-hidden />}
-            size="sm"
+            size="md"
             variant="ghost"
             showTooltip={false}
             onClick={onClose}

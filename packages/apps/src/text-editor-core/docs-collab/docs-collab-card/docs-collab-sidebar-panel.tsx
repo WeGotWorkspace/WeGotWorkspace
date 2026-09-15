@@ -74,7 +74,7 @@ export function DocsCollabSidebarPanel<T extends string = string>({
       value={filter.value}
       onChange={filter.onChange}
       options={filter.options}
-      size="sm"
+      size="md"
       className={
         filter.className
           ? `docs-collab-sidebar-panel__filter ${filter.className}`
@@ -97,7 +97,7 @@ export function DocsCollabSidebarPanel<T extends string = string>({
     <IconButton
       label={closeLabel}
       icon={<X className="size-4" aria-hidden />}
-      size="sm"
+      size="md"
       variant="outline"
       showTooltip={false}
       onClick={onClose}

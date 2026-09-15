@@ -129,7 +129,7 @@ export function MeetCallBar({
                 <UserAvatar
                   displayName={person.name}
                   compact
-                  size="sm"
+                  size="md"
                   color={avatarColorForUserId(person.id)}
                 />
               </li>
@@ -142,7 +142,7 @@ export function MeetCallBar({
               className="meet-call-bar__invite-button"
               label={meetLabels.join}
               icon={<LiveIcon />}
-              size="sm"
+              size="md"
               variant="outline"
               onClick={onInvite}
             />
@@ -153,7 +153,7 @@ export function MeetCallBar({
             <IconButton
               label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
               icon={micOn ? <Mic /> : <MicOff />}
-              size="sm"
+              size="md"
               variant="outline"
               active={micOn}
               aria-pressed={micOn}
@@ -162,7 +162,7 @@ export function MeetCallBar({
             <IconButton
               label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
               icon={videoOn ? <Video /> : <VideoOff />}
-              size="sm"
+              size="md"
               variant="outline"
               active={videoOn}
               aria-pressed={videoOn}
@@ -185,7 +185,7 @@ export function MeetCallBar({
             <IconButton
               label={meetLabels.expandCall}
               icon={<Maximize2 />}
-              size="sm"
+              size="md"
               variant="outline"
               onClick={onExpand}
             />
@@ -193,7 +193,7 @@ export function MeetCallBar({
             <IconButton
               label={meetLabels.leave}
               icon={<PhoneOff />}
-              size="sm"
+              size="md"
               variant="destructive"
               onClick={onLeave}
             />
