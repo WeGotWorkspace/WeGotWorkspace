@@ -31,7 +31,7 @@ describe("calendar event dialog CSS ownership", () => {
     expect(css).toMatch(
       /max-inline-size:\s*min\(var\(--calendar-event-dialog-max-inline-size\),\s*calc\(100vw - 1\.5rem\)\)/,
     );
-    expect(css).toMatch(/max-h-\[50vh\]/);
+    expect(css).toMatch(/max-h-\[75vh\]/);
     expect(css).toMatch(/--calendar-event-field-gap:\s*1rem/);
     expect(css).toMatch(/--calendar-event-field-group-gap:\s*0\.5rem/);
     expect(css).toMatch(/row-gap:\s*var\(--calendar-event-field-gap\)/);

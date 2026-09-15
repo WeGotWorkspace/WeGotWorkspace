@@ -34,7 +34,7 @@
 }
 
 .calendar-dialog-surface.calendar-event-dialog {
-  @apply flex max-h-[50vh] flex-col overflow-hidden;
+  @apply flex max-h-[75vh] flex-col overflow-hidden;
   max-inline-size: min(var(--calendar-event-dialog-max-inline-size), calc(100vw - 1.5rem));
 }
 
