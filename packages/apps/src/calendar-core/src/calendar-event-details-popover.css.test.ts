@@ -9,16 +9,25 @@ const css = readFileSync(
 );
 
 describe("calendar event details popover CSS", () => {
-  it("anchors large-screen placement to the event card and tries flips around it", () => {
+  it("anchors large-screen placement beside the event with vertical center and side flips", () => {
     expect(css).toContain("anchor-name: --calendar-event-details-anchor");
     expect(css).toContain("position-anchor: --calendar-event-details-anchor");
     expect(css).toContain("position-try-fallbacks");
-    expect(css).toContain("flip-block");
     expect(css).toContain("flip-inline");
-    expect(css).toContain("position-area: top left");
-    expect(css).toContain("position-area: top right");
-    expect(css).toContain("justify-self: center");
-    expect(css).toContain("align-self: start");
+    expect(css).toContain("flip-block");
+    expect(css).toMatch(
+      /\.calendar-dialog-surface\.calendar-event-details-popover\s*\{[\s\S]*?position-area:\s*right/,
+    );
+    expect(css).toMatch(
+      /\.calendar-dialog-surface\.calendar-event-details-popover\s*\{[\s\S]*?align-self:\s*center/,
+    );
+    expect(css).toContain("position-area: left");
+    expect(css).toContain("position-area: top");
+    expect(css).toContain("position-area: bottom");
+    expect(css).toContain("--calendar-event-details-try-above");
+    expect(css).toContain("--calendar-event-details-try-below");
+    expect(css).not.toContain("--calendar-event-details-try-above-start");
+    expect(css).not.toContain("--calendar-event-details-try-above-end");
     expect(css).toContain("w-[min(20rem,calc(100vw-1.5rem))]");
     expect(css).toMatch(
       /\.calendar-dialog-surface\.calendar-event-details-popover\s*\{[\s\S]*?\bp-2\b/,
@@ -26,18 +35,31 @@ describe("calendar event details popover CSS", () => {
     expect(css).not.toContain("--radix-popover-trigger-width");
   });
 
-  it("docks the Radix wrapper on small viewports and compact-month --docked", () => {
-    expect(css).toContain(
-      "[data-radix-popper-content-wrapper]:has(.calendar-event-details-popover)",
-    );
+  it("docks only compact-month --docked (mobile uses Dialog below 768px)", () => {
     expect(css).toContain(
       "[data-radix-popper-content-wrapper]:has(.calendar-event-details-popover--docked)",
     );
-    expect(css).toMatch(/@media \(max-width: 40rem\)/);
+    expect(css).not.toMatch(/@media \(max-width: 40rem\)/);
+    expect(css).not.toMatch(/@media \(max-width: 48rem\)/);
+    expect(css).not.toMatch(/@media \(max-width: 768px\)/);
     expect(css).toContain("calendar-event-details-popover--docked");
+    expect(css).toContain("calendar-event-details-popover--dialog");
     expect(css).toContain("height: max-content");
     expect(css).toContain("position-anchor: none");
     expect(css).toContain("position-try-fallbacks: none");
+    expect(css).toContain("calendar-event-details-popover__body");
+    expect(css).toMatch(/\.calendar-event-details-popover__body\s*\{[\s\S]*?\boverflow-y-auto\b/);
+    expect(css).toMatch(/\.calendar-event-details-popover__footer\s*\{[\s\S]*?\bshrink-0\b/);
+  });
+
+  it("defers mobile Dialog full-viewport sheet sizing to shared event-dialog CSS", () => {
+    expect(css).toMatch(/@import "\.\/calendar-event-dialog\.css"/);
+    expect(css).toMatch(
+      /\.calendar-dialog-surface\.calendar-event-details-popover--dialog\s*\{[\s\S]*?\boverflow-hidden\b/,
+    );
+    expect(css).not.toMatch(
+      /\.calendar-dialog-surface\.calendar-event-details-popover--dialog\s*\{[\s\S]*?max-h-\[50vh\]/,
+    );
   });
 
   it("centers a flow event-card with icon detail rows and a shared footer", () => {
@@ -68,7 +90,19 @@ describe("calendar event details popover CSS", () => {
 
   it("sizes the editable popover for the single-column event form", () => {
     expect(css).toContain("calendar-event-details-popover--editable");
-    expect(css).toContain("w-[min(24rem,calc(100vw-1.5rem))]");
+    expect(css).toMatch(/--calendar-event-details-popover-editable-max-inline-size:\s*24rem/);
+    expect(css).toMatch(
+      /width:\s*min\(var\(--calendar-event-details-popover-editable-max-inline-size\),\s*calc\(100vw - 1\.5rem\)\)/,
+    );
+    expect(css).toMatch(
+      /max-width:\s*min\(var\(--calendar-event-details-popover-editable-max-inline-size\),\s*calc\(100vw - 1\.5rem\)\)/,
+    );
+    expect(css).toMatch(
+      /max-inline-size:\s*min\(var\(--calendar-event-details-popover-editable-max-inline-size\),\s*calc\(100vw - 1\.5rem\)\)/,
+    );
+    expect(css).not.toMatch(
+      /\.calendar-event-details-popover--editable[\s\S]*--calendar-event-dialog-max-inline-size/,
+    );
     expect(css).toContain("max-height: 50vh");
     expect(css).not.toContain("w-[min(28rem,calc(100vw-1.5rem))]");
     expect(css).not.toContain("w-[min(34rem,calc(100vw-1.5rem))]");

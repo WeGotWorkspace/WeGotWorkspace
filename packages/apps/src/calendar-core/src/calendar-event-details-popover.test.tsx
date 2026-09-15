@@ -14,6 +14,14 @@ import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { TooltipProvider } from "@/ui/tooltip";
 
+const { isMobileRef } = vi.hoisted(() => ({ isMobileRef: { current: false } }));
+
+vi.mock("@/hooks/use-mobile", () => ({
+  useIsMobile: () => isMobileRef.current,
+  MOBILE_BREAKPOINT_PX: 768,
+  MOBILE_MEDIA_QUERY: "(max-width: 767px)",
+}));
+
 const bootstrap = createCalendarAppBootstrap();
 
 function renderPopover(
@@ -48,6 +56,7 @@ function renderPopover(
 describe("CalendarEventDetailsPopover", () => {
   beforeEach(() => {
     cleanup();
+    isMobileRef.current = false;
   });
 
   it("updates the when-row when preview form times change while open", { timeout: 10_000 }, () => {
@@ -401,11 +410,96 @@ describe("CalendarEventDetailsPopover", () => {
     },
   );
 
-  it("shifts away from viewport edges with collision padding", () => {
+  it(
+    "renders as a centered Dialog below the mobile breakpoint (not a docked popover)",
+    { timeout: 10_000 },
+    () => {
+      isMobileRef.current = true;
+      const { container } = renderPopover({
+        origin: { left: 48, top: 96, width: 180, height: 36 },
+      });
+      const dialog = screen.getByRole("dialog", { name: /Dentist/i });
+      expect(dialog.className).toContain("calendar-event-details-popover--dialog");
+      expect(dialog.className).not.toContain("calendar-event-details-popover--docked");
+      expect(dialog.querySelector(".calendar-event-details-popover__body")).toBeTruthy();
+      expect(
+        container.ownerDocument.querySelector(".calendar-event-details-popover__anchor"),
+      ).toBeNull();
+      expect(
+        container.ownerDocument.querySelector("[data-radix-popper-content-wrapper]"),
+      ).toBeNull();
+    },
+  );
+
+  it(
+    "uses the New-event Dialog chrome for pointer-create on small viewports",
+    { timeout: 10_000 },
+    () => {
+      isMobileRef.current = true;
+      const form = {
+        ...emptyCalendarEventForm("default", "2033-01-12"),
+        title: "",
+        startTime: "10:00",
+        endTime: "11:00",
+      };
+      renderPopover({
+        preview: { eventId: "create-preview", form },
+        canEdit: true,
+        edit: {
+          mode: "create",
+          form,
+          onChange: vi.fn(),
+          onClose: vi.fn(),
+          onSave: vi.fn(),
+        },
+      });
+      const dialog = screen.getByRole("dialog", { name: defaultCalendarLabels.createEventTitle });
+      expect(dialog.className).toContain("calendar-event-dialog");
+      expect(dialog.className).not.toContain("calendar-event-details-popover--editable");
+      expect(
+        screen.getByRole("heading", { name: defaultCalendarLabels.createEventTitle }),
+      ).toBeTruthy();
+      expect(dialog.querySelector(".calendar-event-dialog__fields")).toBeTruthy();
+    },
+  );
+
+  it(
+    "uses Edit-event Dialog chrome for interactive edit on small viewports",
+    { timeout: 10_000 },
+    () => {
+      isMobileRef.current = true;
+      const preview = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+      expect(preview).not.toBeNull();
+      renderPopover({
+        preview,
+        canEdit: true,
+        edit: {
+          mode: "edit",
+          form: preview!.form,
+          onChange: vi.fn(),
+          onClose: vi.fn(),
+          onSave: vi.fn(),
+          onDelete: vi.fn(),
+        },
+      });
+      const dialog = screen.getByRole("dialog", { name: defaultCalendarLabels.editEventTitle });
+      expect(dialog.className).toContain("calendar-event-dialog");
+      expect(
+        screen.getByRole("heading", { name: defaultCalendarLabels.editEventTitle }),
+      ).toBeTruthy();
+    },
+  );
+
+  it("places the desktop popover beside the anchor with collision-aware centering", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const source = readFileSync(join(here, "calendar-event-details-popover.tsx"), "utf8");
+    expect(source).toMatch(/side="right"/);
+    expect(source).toMatch(/align="center"/);
+    expect(source).toContain('sticky="partial"');
     expect(source).toContain("collisionPadding={16}");
     expect(source).toContain("avoidCollisions={!docked}");
+    expect(source).toContain("useIsMobile");
+    expect(source).toContain("DialogContent");
   });
 
   it(
@@ -579,7 +673,16 @@ describe("CalendarEventDetailsPopover", () => {
       const rsvpCluster = document.querySelector(".calendar-event-dialog__invitation-rsvp");
       expect(rsvpCluster).toBeTruthy();
       expect(rsvpCluster?.className).toContain("calendar-event-dialog__invitation-rsvp");
-      fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe }));
+      const rsvpActions = rsvpCluster?.querySelector(".calendar-rsvp-actions");
+      expect(rsvpActions?.className).toContain("calendar-rsvp-actions--sm");
+      expect(rsvpActions?.className).not.toContain("calendar-rsvp-actions--xs");
+      const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+      const maybe = screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe });
+      const decline = screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline });
+      expect(accept.textContent).toContain(defaultCalendarLabels.rsvpAccept);
+      expect(maybe.textContent).toContain(defaultCalendarLabels.rsvpMaybe);
+      expect(decline.textContent).toContain(defaultCalendarLabels.rsvpDecline);
+      fireEvent.click(maybe);
       expect(onRsvp).toHaveBeenCalledWith("tentative", "work");
       expect(document.querySelector(".calendar-event-dialog__calendar-trigger")).toBeTruthy();
     },

@@ -38,6 +38,8 @@ import {
   CalendarEventForm,
   type CalendarEventFormProps,
 } from "@/calendar-core/src/calendar-event-form";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import "@/lib/calendar-elements/EventCard/EventCard";
 import "./calendar-event-details-popover.css";
@@ -106,6 +108,8 @@ export function CalendarEventDetailsPopover({
   workspaceOrigin = typeof window !== "undefined" ? window.location.origin : "",
   onJoinMeeting,
 }: CalendarEventDetailsPopoverProps) {
+  const isMobile = useIsMobile();
+
   if (!preview) return null;
 
   const form = preview.form;
@@ -135,6 +139,13 @@ export function CalendarEventDetailsPopover({
   const showMeet = Boolean(form.meetingUrl.trim());
   const showFooter = !editable && (showMeet || showDelete || showRsvp);
   const dialogLabel = editable ? edit?.form.title.trim() || title : title;
+  const shellTitle =
+    editable && editMode === "create"
+      ? labels.createEventTitle
+      : editable && editMode === "edit"
+        ? labels.editEventTitle
+        : dialogLabel;
+  const surfaceBusy = busy || Boolean(edit?.busy);
   const detailRows: ReactNode[] = [
     <DetailRow
       key="when"
@@ -193,7 +204,7 @@ export function CalendarEventDetailsPopover({
       />,
     );
   }
-  const docked = detailsPopoverShouldDock(origin);
+  const docked = !isMobile && detailsPopoverShouldDock(origin);
   const placementOrigin = origin && !docked ? detailsPopoverAnchorOrigin(origin) : origin;
   const fallbackLeft = Math.round(globalThis.innerWidth / 2);
   const fallbackTop = Math.round(globalThis.innerHeight * 0.28);
@@ -208,17 +219,145 @@ export function CalendarEventDetailsPopover({
         }
       : { left: fallbackLeft, top: fallbackTop, width: 0, height: 0 };
 
+  const dismiss = () => {
+    if (editable && edit) {
+      edit.onClose();
+      return;
+    }
+    onClose();
+  };
+
+  const body =
+    editable && edit ? (
+      <CalendarEventForm
+        calendars={calendars}
+        labels={labels}
+        locale={locale}
+        busy={surfaceBusy}
+        autoFocusTitle={editMode === "create"}
+        controlSize={isMobile ? "md" : "sm"}
+        collisionContentClassName="calendar-dialog-surface calendar-event-dialog"
+        {...edit}
+        mode={editMode}
+      />
+    ) : (
+      <>
+        <div className="calendar-event-details-popover__body">
+          {createElement(
+            "event-card",
+            {
+              class: "calendar-event-details-popover__event",
+              layout: "flow",
+              lang: locale,
+              summary: title,
+              color: eventColor,
+              recurring: form.recurrencePreset !== "none",
+              "data-selected": "",
+            },
+            createElement(
+              "div",
+              { className: "calendar-event-details-popover__details" },
+              ...detailRows,
+            ),
+          )}
+          {showRsvp && onRsvp && form.recurrencePreset !== "none" ? (
+            <p className="calendar-event-details-popover__rsvp-hint">{labels.rsvpSeriesHint}</p>
+          ) : null}
+        </div>
+        {showFooter ? (
+          <footer className="calendar-event-details-popover__footer">
+            {showRsvp || showMeet ? (
+              <div className="calendar-event-details-popover__footer-primary">
+                {showMeet ? (
+                  <CalendarMeetJoin
+                    href={form.meetingUrl}
+                    labels={labels}
+                    workspaceOrigin={workspaceOrigin}
+                    meetOperations={meetOperations}
+                    onJoin={onJoinMeeting}
+                  />
+                ) : null}
+                {showRsvp && onRsvp ? (
+                  <CalendarRsvpActions
+                    currentStatus={rsvpStatus ?? undefined}
+                    labels={labels}
+                    busy={busy}
+                    size="sm"
+                    showLabels
+                    onRespond={onRsvp}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+            {showDelete && onDelete ? (
+              <div className="calendar-event-details-popover__footer-actions">
+                <IconButton
+                  type="button"
+                  size="md"
+                  variant="outline"
+                  severity="danger"
+                  label={labels.delete}
+                  icon={<Trash2 className="size-3.5" aria-hidden />}
+                  disabled={busy}
+                  onClick={onDelete}
+                />
+              </div>
+            ) : null}
+          </footer>
+        ) : null}
+      </>
+    );
+
+  const pendingSyncBadge = pendingSync ? (
+    <span
+      className="calendar-event-details-popover__pending-sync"
+      role="img"
+      aria-label={labels.pendingSync}
+    >
+      <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
+    </span>
+  ) : null;
+
+  if (isMobile) {
+    const dialogClassName = [
+      "calendar-dialog-surface",
+      editable
+        ? "calendar-event-dialog"
+        : "calendar-event-details-popover calendar-event-details-popover--dialog",
+    ].join(" ");
+    return (
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next && !surfaceBusy) dismiss();
+        }}
+      >
+        <DialogContent
+          className={dialogClassName}
+          lang={locale}
+          aria-describedby={undefined}
+          onOpenAutoFocus={(event) => {
+            if (editable && editMode === "create") return;
+            event.preventDefault();
+            const root = event.currentTarget;
+            if (root instanceof HTMLElement) root.focus();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>{shellTitle}</DialogTitle>
+          </DialogHeader>
+          {pendingSyncBadge}
+          {body}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Popover
       open={open}
       onOpenChange={(next) => {
-        if (!next) {
-          if (editable && edit) {
-            edit.onClose();
-            return;
-          }
-          onClose();
-        }
+        if (!next) dismiss();
       }}
       modal
     >
@@ -235,10 +374,13 @@ export function CalendarEventDetailsPopover({
         />
       </PopoverAnchor>
       <PopoverContent
+        // Prefer beside the event (right → left on collision), vertically centered on the
+        // anchor; Radix shifts/flips when the preferred side would clip the viewport.
+        side="right"
         align="center"
-        side="bottom"
         sideOffset={8}
         collisionPadding={16}
+        sticky="partial"
         avoidCollisions={!docked}
         className={[
           "calendar-dialog-surface calendar-event-details-popover",
@@ -254,91 +396,8 @@ export function CalendarEventDetailsPopover({
           if (root instanceof HTMLElement) root.focus();
         }}
       >
-        {pendingSync ? (
-          <span
-            className="calendar-event-details-popover__pending-sync"
-            role="img"
-            aria-label={labels.pendingSync}
-          >
-            <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
-          </span>
-        ) : null}
-        {editable && edit ? (
-          <CalendarEventForm
-            calendars={calendars}
-            labels={labels}
-            locale={locale}
-            busy={busy || edit.busy}
-            autoFocusTitle={editMode === "create"}
-            controlSize="sm"
-            collisionContentClassName="calendar-dialog-surface calendar-event-dialog"
-            {...edit}
-            mode={editMode}
-          />
-        ) : (
-          <>
-            {createElement(
-              "event-card",
-              {
-                class: "calendar-event-details-popover__event",
-                layout: "flow",
-                lang: locale,
-                summary: title,
-                color: eventColor,
-                recurring: form.recurrencePreset !== "none",
-                "data-selected": "",
-              },
-              createElement(
-                "div",
-                { className: "calendar-event-details-popover__details" },
-                ...detailRows,
-              ),
-            )}
-            {showRsvp && onRsvp && form.recurrencePreset !== "none" ? (
-              <p className="calendar-event-details-popover__rsvp-hint">{labels.rsvpSeriesHint}</p>
-            ) : null}
-            {showFooter ? (
-              <footer className="calendar-event-details-popover__footer">
-                {showRsvp || showMeet ? (
-                  <div className="calendar-event-details-popover__footer-primary">
-                    {showMeet ? (
-                      <CalendarMeetJoin
-                        href={form.meetingUrl}
-                        labels={labels}
-                        workspaceOrigin={workspaceOrigin}
-                        meetOperations={meetOperations}
-                        onJoin={onJoinMeeting}
-                      />
-                    ) : null}
-                    {showRsvp && onRsvp ? (
-                      <CalendarRsvpActions
-                        currentStatus={rsvpStatus ?? undefined}
-                        labels={labels}
-                        busy={busy}
-                        size="sm"
-                        onRespond={onRsvp}
-                      />
-                    ) : null}
-                  </div>
-                ) : null}
-                {showDelete && onDelete ? (
-                  <div className="calendar-event-details-popover__footer-actions">
-                    <IconButton
-                      type="button"
-                      size="md"
-                      variant="outline"
-                      severity="danger"
-                      label={labels.delete}
-                      icon={<Trash2 className="size-3.5" aria-hidden />}
-                      disabled={busy}
-                      onClick={onDelete}
-                    />
-                  </div>
-                ) : null}
-              </footer>
-            ) : null}
-          </>
-        )}
+        {pendingSyncBadge}
+        {body}
       </PopoverContent>
     </Popover>
   );

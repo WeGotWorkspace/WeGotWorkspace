@@ -281,6 +281,27 @@ describe("detailsPopoverShouldDock", () => {
     expect(detailsPopoverShouldDock({ left: 420, top: 160, width: 168, height: 420 })).toBe(false);
     expect(detailsPopoverShouldDock({ left: 280, top: 48, width: 336, height: 520 })).toBe(false);
   });
+
+  it("does not dock from viewport alone (portrait iPad keeps an anchored popover)", () => {
+    const matchMedia = vi.fn((query: string) => ({
+      matches:
+        query.includes("orientation: portrait") ||
+        query.includes("max-width: 48rem") ||
+        query.includes("max-width: 40rem") ||
+        query.includes("max-width: 767px"),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    const previous = globalThis.matchMedia;
+    globalThis.matchMedia = matchMedia as unknown as typeof globalThis.matchMedia;
+    try {
+      expect(detailsPopoverShouldDock({ left: 48, top: 96, width: 180, height: 36 })).toBe(false);
+      expect(detailsPopoverShouldDock(undefined)).toBe(false);
+    } finally {
+      globalThis.matchMedia = previous;
+    }
+  });
 });
 
 describe("detailsPopoverAnchorOrigin", () => {

@@ -25,11 +25,53 @@
   --card-title-icon-color: var(--calendar-accent);
   --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
+  /* Desktop New event Dialog only — matches Dialog max-w-lg (~32rem). Editable
+   * details popover keeps its own narrower token in details-popover.css. */
+  --calendar-event-dialog-max-inline-size: 32rem;
 }
 
 .calendar-dialog-surface.calendar-event-dialog {
   @apply flex max-h-[50vh] flex-col overflow-hidden;
-  max-inline-size: min(24rem, calc(100vw - 1.5rem));
+  max-inline-size: min(var(--calendar-event-dialog-max-inline-size), calc(100vw - 1.5rem));
+}
+
+/**
+ * Narrow viewports (<768px / useIsMobile): fill the viewport as a sheet.
+ * Shared by CalendarEventDialog, details Dialog (create/edit), and read-only
+ * details `--dialog`. Desktop Dialog / Popover keep the compact max-height above.
+ */
+@media (max-width: 767px) {
+  .calendar-dialog-surface.calendar-event-dialog,
+  .calendar-dialog-surface.calendar-event-details-popover--dialog {
+    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    max-inline-size: none;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    translate: none;
+    transform: none;
+    border-radius: 0;
+    @apply flex flex-col overflow-hidden;
+    padding-block-start: max(var(--modal-inset, 1rem), env(safe-area-inset-top, 0px));
+    padding-block-end: max(var(--modal-inset, 1rem), env(safe-area-inset-bottom, 0px));
+    padding-inline-start: max(var(--modal-inset, 1rem), env(safe-area-inset-left, 0px));
+    padding-inline-end: max(var(--modal-inset, 1rem), env(safe-area-inset-right, 0px));
+  }
+
+  .calendar-dialog-surface.calendar-event-dialog > .ui-modal-header,
+  .calendar-dialog-surface.calendar-event-details-popover--dialog > .ui-modal-header {
+    @apply shrink-0;
+  }
+
+  .calendar-dialog-surface.calendar-event-dialog > .calendar-event-dialog__form {
+    @apply min-h-0 flex-1;
+  }
 }
 
 .calendar-dialog-surface .calendar-event-dialog__form {

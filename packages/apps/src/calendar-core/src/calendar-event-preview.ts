@@ -421,17 +421,13 @@ export function detailsPopoverAnchorOrigin(
   return { ...origin, height: DETAILS_POPOVER_ANCHOR_MAX_HEIGHT };
 }
 
-function viewportPrefersDockedPopover(): boolean {
-  if (typeof globalThis.matchMedia !== "function") return false;
-  return (
-    globalThis.matchMedia("(max-width: 40rem)").matches ||
-    globalThis.matchMedia("(orientation: portrait) and (max-width: 48rem)").matches
-  );
-}
-
-/** Narrow/portrait viewport or a compact-month day cell: dock instead of anchoring to the card. */
+/**
+ * Compact-month day cell: dock instead of anchoring to the cell.
+ * Narrow viewports use a Dialog shell (see CalendarEventDetailsPopover + useIsMobile),
+ * not CSS docking — so portrait iPad (768px) keeps an anchored popover.
+ */
 export function detailsPopoverShouldDock(origin?: CalendarEventSelectionOrigin): boolean {
-  return viewportPrefersDockedPopover() || (origin != null && originLooksLikeMonthCell(origin));
+  return origin != null && originLooksLikeMonthCell(origin);
 }
 
 /** Shared `event-selected` decode for CalendarSurface and search list hosts. */

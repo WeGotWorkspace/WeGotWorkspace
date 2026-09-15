@@ -27,12 +27,29 @@ describe("calendar event dialog CSS ownership", () => {
     );
     expect(css).not.toMatch(/@media \(min-width: 40rem\)/);
     expect(css).not.toMatch(/grid-template-columns:\s*1fr 1fr/);
-    expect(css).toMatch(/max-inline-size:\s*min\(24rem/);
+    expect(css).toMatch(/--calendar-event-dialog-max-inline-size:\s*32rem/);
+    expect(css).toMatch(
+      /max-inline-size:\s*min\(var\(--calendar-event-dialog-max-inline-size\),\s*calc\(100vw - 1\.5rem\)\)/,
+    );
     expect(css).toMatch(/max-h-\[50vh\]/);
     expect(css).toMatch(/--calendar-event-field-gap:\s*1rem/);
     expect(css).toMatch(/--calendar-event-field-group-gap:\s*0\.5rem/);
     expect(css).toMatch(/row-gap:\s*var\(--calendar-event-field-gap\)/);
     expect(formTsx).toMatch(/!form\.allDay \? \(/);
+  });
+
+  it("fills the viewport as a sheet below the mobile breakpoint", () => {
+    expect(css).toMatch(/@media \(max-width: 767px\)/);
+    expect(css).toMatch(
+      /\.calendar-dialog-surface\.calendar-event-dialog,\s*\.calendar-dialog-surface\.calendar-event-details-popover--dialog/,
+    );
+    expect(css).toMatch(/inset:\s*0/);
+    expect(css).toMatch(/border-radius:\s*0/);
+    expect(css).toMatch(/safe-area-inset-top/);
+    expect(css).toMatch(/safe-area-inset-bottom/);
+    expect(css).toMatch(
+      /\.calendar-event-dialog > \.calendar-event-dialog__form\s*\{[\s\S]*?\bflex-1\b/,
+    );
   });
 
   it("puts all-day and timezone on one row with a visible all-day caption", () => {
@@ -178,6 +195,12 @@ describe("calendar event dialog invitation footer", () => {
     expect(formTsx).toContain('mode === "invitation"');
     expect(formTsx).toContain("calendar-event-dialog__invitation-rsvp");
     expect(formTsx).toContain("CalendarRsvpActions");
+    expect(formTsx).toMatch(
+      /calendar-event-dialog__invitation-rsvp[\s\S]*CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/,
+    );
+    expect(formTsx).not.toMatch(
+      /calendar-event-dialog__invitation-rsvp[\s\S]*CalendarRsvpActions[\s\S]*size="xs"/,
+    );
     expect(formTsx).not.toMatch(/calendar-event-dialog__invitation-rsvp[\s\S]*rsvpSeriesHint/);
     expect(css).toMatch(
       /\.calendar-dialog-surface \.calendar-event-dialog__invitation-rsvp \{[\s\S]*justify-end/,
