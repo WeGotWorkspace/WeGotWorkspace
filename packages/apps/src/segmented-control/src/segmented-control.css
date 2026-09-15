@@ -5,10 +5,13 @@
   --segmented-control-track-border-width: 1px;
   --segmented-control-height: var(--control-height-md, 2.25rem);
   /* Track radius from global `--control-radius` (soft by default).
-   * Thumb shares the track radius token — do not subtract border/padding
-   * (that calc can bottom out to 0px on very small radii). */
+   * Thumb uses the *inner* curve (track radius − border) so the wash does not
+   * paint past the gray border at end segments — especially labeled RSVP. */
   --segmented-control-track-radius: var(--control-radius);
-  --segmented-control-thumb-radius: var(--segmented-control-track-radius);
+  --segmented-control-thumb-radius: max(
+    0px,
+    calc(var(--segmented-control-track-radius) - var(--segmented-control-track-border-width))
+  );
   --segmented-control-severity-danger-color: var(
     --menu-item-severity-color,
     var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
@@ -28,8 +31,8 @@
     --button-severity-success-hover-background,
     color-mix(in oklab, var(--segmented-control-severity-success-color) 14%, transparent)
   );
-  /* No overflow clip — focus rings on segments must not be cropped. */
-  @apply relative box-border inline-flex items-stretch;
+  /* Clip the sliding thumb to the track; focus ring lives on the control via :has(). */
+  @apply relative box-border inline-flex items-stretch overflow-hidden;
   height: var(--segmented-control-height);
   padding: 0;
   border-radius: var(--segmented-control-track-radius);
@@ -39,6 +42,10 @@
       --segmented-control-track-border-color,
       var(--button-outline-border-color, var(--control-border-color))
     );
+}
+
+.segmented-control:has(.segmented-control__button:focus-visible) {
+  @apply ring-1 ring-ring;
 }
 
 .segmented-control--size-xs {
@@ -111,7 +118,7 @@
 
 .segmented-control__button {
   @apply relative z-[2] box-border inline-flex items-center justify-center border-0 p-0;
-  @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+  @apply focus-visible:outline-none;
   height: 100%;
   width: auto;
   aspect-ratio: 1 / 1;

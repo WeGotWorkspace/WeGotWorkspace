@@ -65,9 +65,11 @@ function syncSegmentedThumb(root: HTMLElement, options: { allowAnimate: boolean 
   const buttonRect = active.getBoundingClientRect();
   const border = Number.parseFloat(getComputedStyle(root).borderTopWidth) || 0;
   // Thumb `left: 0` is the padding edge; rootRect is the border box.
-  const x = buttonRect.left - rootRect.left - border;
+  // Round to device pixels so labeled end segments do not overhang the track by a hair.
+  const x = Math.round(buttonRect.left - rootRect.left - border);
+  const width = Math.round(buttonRect.width);
   root.style.setProperty("--segmented-control-thumb-x", `${x}px`);
-  root.style.setProperty("--segmented-control-thumb-width", `${buttonRect.width}px`);
+  root.style.setProperty("--segmented-control-thumb-width", `${width}px`);
   root.dataset.thumbReady = "";
   if (options.allowAnimate) {
     root.dataset.thumbAnimate = "";

@@ -7,7 +7,6 @@ import {
   filterInvitationsByTab,
   type CalendarInvitationInboxTab,
 } from "@/calendar-core/src/calendar-invitation-event";
-import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 import type {
   CalendarSchedulingNotification,
@@ -34,9 +33,6 @@ export type CalendarInvitationsPanelProps = {
   ) => void | Promise<void>;
   onOpenEvent?: (eventId: string, origin?: CalendarEventSelectionOrigin) => void;
   onSelect?: (id: string) => void;
-  meetOperations?: CalendarMeetOperations;
-  workspaceOrigin?: string;
-  onJoinMeeting?: (href: string) => void;
 };
 
 export function CalendarInvitationsPanel({
@@ -53,9 +49,6 @@ export function CalendarInvitationsPanel({
   onRespond,
   onOpenEvent,
   onSelect,
-  meetOperations,
-  workspaceOrigin,
-  onJoinMeeting,
 }: CalendarInvitationsPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [uncontrolledTab, setUncontrolledTab] = useState<CalendarInvitationInboxTab>("new");
@@ -112,9 +105,6 @@ export function CalendarInvitationsPanel({
             onOpenEvent?.(eventId, origin);
           }}
           onRespond={(status, calendarId) => onRespond(notification.id, status, calendarId)}
-          meetOperations={meetOperations}
-          workspaceOrigin={workspaceOrigin}
-          onJoinMeeting={onJoinMeeting}
         />
       ))}
     </DocsCollabSidebarPanel>

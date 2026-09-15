@@ -19,12 +19,12 @@ describe("segmented-control chrome tokens", () => {
     );
   });
 
-  it("keeps the thumb on the same radius token as the track (no gutter calc → 0px)", () => {
+  it("keeps the thumb on the inner track curve (track radius − border, floored at 0)", () => {
     expect(css).toMatch(
-      /--segmented-control-thumb-radius:\s*var\(--segmented-control-track-radius\)/,
+      /--segmented-control-thumb-radius:\s*max\(\s*0px,\s*calc\(\s*var\(--segmented-control-track-radius\)\s*-\s*var\(--segmented-control-track-border-width\)\s*\)\s*\)/,
     );
     expect(css).not.toMatch(
-      /--segmented-control-thumb-radius:\s*calc\(\s*var\(--segmented-control-track-radius\)/,
+      /--segmented-control-thumb-radius:\s*var\(--segmented-control-track-radius\)\s*;/,
     );
     expect(css).toMatch(
       /\.segmented-control__thumb \{[\s\S]*border-radius:\s*var\(--segmented-control-thumb-radius\)/,
@@ -40,11 +40,11 @@ describe("segmented-control chrome tokens", () => {
     );
   });
 
-  it("keeps the selected thumb flush to the track (no Switch-like gutter)", () => {
+  it("clips the selected thumb inside the track (overflow hidden, flush, no Switch gutter)", () => {
     expect(css).not.toMatch(/--segmented-control-padding:/);
     expect(css).toMatch(/\.segmented-control \{[\s\S]*padding:\s*0/);
     expect(css).toMatch(/\.segmented-control \{[\s\S]*items-stretch/);
-    expect(css).not.toMatch(/overflow-hidden|overflow:\s*hidden/);
+    expect(css).toMatch(/\.segmented-control \{[\s\S]*overflow-hidden/);
     expect(css).toMatch(/\.segmented-control__button \{[\s\S]*height:\s*100%/);
     expect(css).toMatch(/\.segmented-control__button \{[\s\S]*aspect-ratio:\s*1\s*\/\s*1/);
     expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*top:\s*0/);
@@ -113,11 +113,13 @@ describe("segmented-control chrome tokens", () => {
     );
   });
 
-  it("uses keyboard-only focus rings on segments", () => {
+  it("uses keyboard-only focus rings on the track (not cropped by overflow)", () => {
     expect(css).toMatch(
-      /\.segmented-control__button \{[\s\S]*focus-visible:ring-1 focus-visible:ring-ring/,
+      /\.segmented-control:has\(\.segmented-control__button:focus-visible\) \{[\s\S]*ring-1 ring-ring/,
     );
+    expect(css).toMatch(/\.segmented-control__button \{[\s\S]*focus-visible:outline-none/);
     expect(css).not.toMatch(/\.segmented-control__button \{[\s\S]*\bfocus:ring-/);
+    expect(css).not.toMatch(/\.segmented-control__button \{[\s\S]*focus-visible:ring-1/);
   });
 
   it("hovers non-disabled segments via outline hover tokens", () => {

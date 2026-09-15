@@ -142,15 +142,17 @@ describe("CalendarInvitationsPanel", () => {
     const actions = document.querySelector(".calendar-invitation-card__actions");
     expect(headerActions?.contains(actions)).toBe(false);
     expect(actions?.className).toContain("calendar-rsvp-actions--sm");
+    expect(actions?.className).not.toContain("calendar-rsvp-actions--xs");
     expect(actions?.className).not.toContain("calendar-rsvp-actions--lg");
     expect(actions?.querySelector(".segmented-control")).toBeTruthy();
+    expect(actions?.querySelector(".segmented-control--size-md")).toBeTruthy();
     expect(actions?.querySelector(".segmented-control--unselected")).toBeTruthy();
-    expect(accept.className).not.toContain("segmented-control__button--text");
-    expect(maybe.className).not.toContain("segmented-control__button--text");
-    expect(decline.className).not.toContain("segmented-control__button--text");
-    expect(accept.textContent).not.toContain(defaultCalendarLabels.rsvpAccept);
-    expect(maybe.textContent).not.toContain(defaultCalendarLabels.rsvpMaybe);
-    expect(decline.textContent).not.toContain(defaultCalendarLabels.rsvpDecline);
+    expect(accept.className).toContain("segmented-control__button--text");
+    expect(maybe.className).toContain("segmented-control__button--text");
+    expect(decline.className).toContain("segmented-control__button--text");
+    expect(accept.textContent).toContain(defaultCalendarLabels.rsvpAccept);
+    expect(maybe.textContent).toContain(defaultCalendarLabels.rsvpMaybe);
+    expect(decline.textContent).toContain(defaultCalendarLabels.rsvpDecline);
     expect(accept.querySelector("svg")).toBeTruthy();
     expect(maybe.querySelector("svg")).toBeTruthy();
     expect(decline.querySelector("svg")).toBeTruthy();
@@ -438,17 +440,23 @@ describe("CalendarInvitationsPanel", () => {
     expect(eventCardHost("invite-1.ics")?.recurring).toBe(true);
   });
 
-  it("discloses that sidebar RSVP applies to the entire series when recurring", () => {
+  it("does not show the series hint on invitation cards", () => {
     renderPanel({ notifications: [{ ...request, recurring: true }] });
-    const hint = screen.getByText(defaultCalendarLabels.rsvpSeriesHint);
-    expect(hint.className).toContain("calendar-invitation-card__rsvp-hint");
-    expect(hint.closest(".calendar-invitation-card__rsvp")).toBeNull();
-    expect(hint.closest(".docs-collab-card__actions")).toBeNull();
+    expect(screen.queryByText(defaultCalendarLabels.rsvpSeriesHint)).toBeNull();
+    expect(document.querySelector(".calendar-invitation-card__rsvp-hint")).toBeNull();
   });
 
-  it("does not show the series hint on a one-off invitation", () => {
-    renderPanel();
-    expect(screen.queryByText(defaultCalendarLabels.rsvpSeriesHint)).toBeNull();
+  it("does not show Meet Join on invitation cards", () => {
+    renderPanel({
+      notifications: [
+        {
+          ...request,
+          url: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
+        },
+      ],
+    });
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetJoin })).toBeNull();
+    expect(document.querySelector(".calendar-invitation-card__meet")).toBeNull();
   });
 
   it("closes from the panel header", () => {
@@ -504,9 +512,13 @@ describe("calendar invitation picker reuse", () => {
     const importLine = 'from "@/calendar-core/src/calendar-rsvp-actions"';
     expect(form).toContain(importLine);
     expect(form).toContain("CalendarRsvpSelect");
+    expect(form).toMatch(
+      /calendar-event-dialog__invitation-rsvp[\s\S]*CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/,
+    );
     expect(card).toContain(importLine);
     expect(card).toContain("CalendarRsvpActions");
     expect(card).toMatch(/DocsCollabCardHeader[\s\S]*event-card[\s\S]*CalendarRsvpActions/);
+    expect(card).toMatch(/CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/);
   });
 });
 

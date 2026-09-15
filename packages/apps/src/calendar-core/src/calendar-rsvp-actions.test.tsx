@@ -18,7 +18,7 @@ function renderActions(ui: ReactElement) {
 }
 
 describe("CalendarRsvpActions", () => {
-  it("defaults to compact segmented size and maps lg to SegmentedControl lg", () => {
+  it("defaults to compact segmented size and maps xs/lg to SegmentedControl sizes", () => {
     const { rerender } = renderActions(
       <CalendarRsvpActions
         currentStatus="accepted"
@@ -30,9 +30,11 @@ describe("CalendarRsvpActions", () => {
     const compact = document.querySelector(".calendar-rsvp-actions");
     expect(compact?.className).toContain("calendar-rsvp-actions--sm");
     expect(compact?.className).not.toContain("calendar-rsvp-actions--lg");
+    expect(compact?.className).not.toContain("calendar-rsvp-actions--xs");
     expect(compact?.querySelector(".segmented-control")).toBeTruthy();
     expect(compact?.querySelector(".segmented-control--size-md")).toBeTruthy();
     expect(compact?.querySelector(".segmented-control--size-lg")).toBeNull();
+    expect(compact?.querySelector(".segmented-control--size-xs")).toBeNull();
     expect(compact?.querySelector(".segmented-control__button--text")).toBeNull();
     const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
     expect(accept.textContent).not.toContain(defaultCalendarLabels.rsvpAccept);
@@ -53,6 +55,26 @@ describe("CalendarRsvpActions", () => {
     expect(large?.className).toContain("calendar-rsvp-actions--lg");
     expect(large?.className).not.toContain("calendar-rsvp-actions--sm");
     expect(large?.querySelector(".segmented-control--size-lg")).toBeTruthy();
+
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <CalendarRsvpActions
+          currentStatus="accepted"
+          labels={defaultCalendarLabels}
+          size="sm"
+          showLabels
+          onRespond={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+
+    const labeled = document.querySelector(".calendar-rsvp-actions");
+    expect(labeled?.className).toContain("calendar-rsvp-actions--sm");
+    expect(labeled?.querySelector(".segmented-control--size-md")).toBeTruthy();
+    const labeledAccept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+    expect(labeledAccept.className).toContain("segmented-control__button--text");
+    expect(labeledAccept.textContent).toContain(defaultCalendarLabels.rsvpAccept);
+    expect(labeledAccept.querySelector("svg")).toBeTruthy();
   });
 
   it.each([undefined, "needs-action", "delegated"] as const)(

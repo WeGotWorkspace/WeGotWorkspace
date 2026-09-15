@@ -115,6 +115,7 @@ export const Default: Story = {
     await expect(headerActions?.contains(rsvp ?? null)).toBe(false);
     await expect(rsvp?.classList.contains("segmented-control--unselected")).toBe(true);
     await expect(card?.querySelector(".segmented-control__button--active")).toBeNull();
+    await expect(rsvp?.classList.contains("segmented-control--size-md")).toBe(true);
     for (const name of [
       defaultCalendarLabels.rsvpAccept,
       defaultCalendarLabels.rsvpMaybe,
@@ -122,8 +123,8 @@ export const Default: Story = {
     ]) {
       const button = canvas.getByRole("button", { name });
       await expect(button).not.toHaveAttribute("aria-pressed", "true");
-      await expect(button.classList.contains("segmented-control__button--text")).toBe(false);
-      await expect(button).not.toHaveTextContent(name);
+      await expect(button.classList.contains("segmented-control__button--text")).toBe(true);
+      await expect(button).toHaveTextContent(name);
       await expect(button.querySelector("svg")).toBeTruthy();
     }
   },
@@ -134,26 +135,6 @@ export const Responded: Story = {
     ...panelHandlers,
     tab: "responded",
     notifications: [sample, canceled, accepted, maybe],
-  },
-};
-
-export const WithMeetJoin: Story = {
-  args: {
-    ...panelHandlers,
-    workspaceOrigin: "https://workspace.example.com",
-    onJoinMeeting: () => {},
-    meetOperations: {
-      roomStatus: async () => ({ reserved: true, active: false }),
-    },
-    notifications: [
-      {
-        ...sample,
-        url: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
-      },
-      canceled,
-      accepted,
-      maybe,
-    ],
   },
 };
 

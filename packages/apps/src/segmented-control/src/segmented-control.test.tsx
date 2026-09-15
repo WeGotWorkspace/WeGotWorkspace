@@ -135,6 +135,22 @@ describe("SegmentedControl", () => {
     expect(onChange).toHaveBeenCalledWith("accepted");
   });
 
+  it("clips labeled thumbs with rounded integer geometry inside the track", () => {
+    const labeled = rsvpOptions.map((option) => ({ ...option, showLabel: true as const }));
+    const { container } = renderWithTooltip(
+      <SegmentedControl value="declined" onChange={vi.fn()} options={labeled} />,
+    );
+    const root = container.querySelector(".segmented-control") as HTMLElement;
+    expect(screen.getByRole("button", { name: "Decline" }).textContent).toContain("Decline");
+    expect(screen.getByRole("button", { name: "Decline" }).className).toContain(
+      "segmented-control__button--text",
+    );
+    const width = root.style.getPropertyValue("--segmented-control-thumb-width");
+    const x = root.style.getPropertyValue("--segmented-control-thumb-x");
+    expect(width).toMatch(/^\d+px$/);
+    expect(x).toMatch(/^\d+px$/);
+  });
+
   it("snaps thumb on mount with a selected value (no animate until after first paint)", async () => {
     const { container, unmount } = renderWithTooltip(
       <SegmentedControl value="accepted" onChange={vi.fn()} options={rsvpOptions} />,

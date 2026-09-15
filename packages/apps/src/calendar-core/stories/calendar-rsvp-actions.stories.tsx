@@ -71,6 +71,27 @@ export const Declined: Story = {
   render: (args) => <InteractiveRsvp {...args} />,
 };
 
+export const LabeledSm: Story = {
+  args: { currentStatus: "needs-action", size: "sm", showLabels: true },
+  tags: ["vitest-ci"],
+  render: (args) => <InteractiveRsvp {...args} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const root = canvasElement.querySelector(".segmented-control");
+    await expect(root?.classList.contains("segmented-control--size-md")).toBe(true);
+    for (const name of [
+      defaultCalendarLabels.rsvpAccept,
+      defaultCalendarLabels.rsvpMaybe,
+      defaultCalendarLabels.rsvpDecline,
+    ]) {
+      const button = canvas.getByRole("button", { name });
+      await expect(button.classList.contains("segmented-control__button--text")).toBe(true);
+      await expect(button).toHaveTextContent(name);
+      await expect(button.querySelector("svg")).toBeTruthy();
+    }
+  },
+};
+
 export const SelectRespond: Story = {
   render: () => <CalendarRsvpSelect labels={defaultCalendarLabels} onChange={fn()} />,
 };

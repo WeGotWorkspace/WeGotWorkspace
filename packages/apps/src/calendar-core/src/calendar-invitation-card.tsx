@@ -10,8 +10,6 @@ import {
 } from "@/calendar-core/src/calendar-event-preview";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { normalizeParticipationStatus } from "@/calendar-core/src/calendar-attendees";
-import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
-import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
 import {
   canRespondInvitation,
@@ -42,9 +40,6 @@ export type CalendarInvitationCardProps = {
   busy?: boolean;
   onSelect: (origin?: CalendarEventSelectionOrigin) => void;
   onRespond: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void | Promise<void>;
-  meetOperations?: CalendarMeetOperations;
-  workspaceOrigin?: string;
-  onJoinMeeting?: (href: string) => void;
 };
 
 export function CalendarInvitationCard({
@@ -57,9 +52,6 @@ export function CalendarInvitationCard({
   busy = false,
   onSelect,
   onRespond,
-  meetOperations,
-  workspaceOrigin = typeof window !== "undefined" ? window.location.origin : "",
-  onJoinMeeting,
 }: CalendarInvitationCardProps) {
   const { cardRef, isExiting, handleExitAnimationEnd } = useDocsCollabCardExit({
     exitAnimationName: INVITATION_EXIT_ANIMATION,
@@ -154,25 +146,6 @@ export function CalendarInvitationCard({
         recurring: eventCard.recurring,
       })}
 
-      {notification.url?.trim() ? (
-        <div
-          className="calendar-invitation-card__meet"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <CalendarMeetJoin
-            href={notification.url}
-            labels={labels}
-            workspaceOrigin={workspaceOrigin}
-            meetOperations={meetOperations}
-            onJoin={onJoinMeeting}
-          />
-        </div>
-      ) : null}
-
-      {canRespond && eventCard.recurring ? (
-        <p className="calendar-invitation-card__rsvp-hint">{labels.rsvpSeriesHint}</p>
-      ) : null}
-
       {canRespond ? (
         <CalendarRsvpActions
           className="calendar-invitation-card__actions"
@@ -180,6 +153,7 @@ export function CalendarInvitationCard({
           labels={labels}
           busy={busy}
           size="sm"
+          showLabels
           onRespond={respond}
         />
       ) : null}

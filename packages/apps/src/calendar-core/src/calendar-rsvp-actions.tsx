@@ -51,22 +51,34 @@ export function calendarRespondStatus(
   return undefined;
 }
 
-export type CalendarRsvpActionsSize = "sm" | "lg";
+export type CalendarRsvpActionsSize = "xs" | "sm" | "lg";
 
 export type CalendarRsvpActionsProps = {
   currentStatus?: string;
   labels: CalendarUILabels;
   busy?: boolean;
   size?: CalendarRsvpActionsSize;
+  /**
+   * When true, render Accept / Maybe / Decline labels beside icons.
+   * Default stays icon-only unless a callsite opts in (cards, invitation popover).
+   */
+  showLabels?: boolean;
   className?: string;
   onRespond: (status: CalendarSchedulingRespondStatus) => void | Promise<void>;
 };
+
+function segmentedControlSize(size: CalendarRsvpActionsSize) {
+  if (size === "lg") return "lg" as const;
+  if (size === "xs") return "xs" as const;
+  return "md" as const;
+}
 
 export function CalendarRsvpActions({
   currentStatus,
   labels,
   busy = false,
   size = "sm",
+  showLabels = false,
   className,
   onRespond,
 }: CalendarRsvpActionsProps) {
@@ -81,6 +93,7 @@ export function CalendarRsvpActions({
 
   const status = optimisticStatus ?? incoming;
   const selected = calendarRespondStatus(status) ?? null;
+  const iconClassName = size === "xs" ? "size-3.5" : "size-4";
 
   return (
     <div
@@ -89,7 +102,7 @@ export function CalendarRsvpActions({
     >
       <SegmentedControl
         value={selected}
-        size={size === "lg" ? "lg" : "md"}
+        size={segmentedControlSize(size)}
         disabled={busy}
         aria-label={labels.rsvpLabel}
         onChange={(next) => {
@@ -101,7 +114,8 @@ export function CalendarRsvpActions({
         options={RSVP_ACTIONS.map(({ kind, status: value, Icon, labelKey }) => ({
           value,
           label: labels[labelKey],
-          icon: <Icon className="size-4" aria-hidden />,
+          icon: <Icon className={iconClassName} aria-hidden />,
+          showLabel: showLabels || undefined,
           severity: kind === "accept" ? "success" : kind === "decline" ? "danger" : undefined,
         }))}
       />

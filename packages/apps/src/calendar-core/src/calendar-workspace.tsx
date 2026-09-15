@@ -751,9 +751,6 @@ export function CalendarWorkspace({
           await persistRsvp(id, status, calendarId, { source: "sidebar" });
         }}
         onOpenEvent={openInvitationPreview}
-        meetOperations={meetOperations}
-        workspaceOrigin={workspaceOrigin}
-        onJoinMeeting={onJoinMeeting}
       />
     ),
     [
@@ -764,9 +761,6 @@ export function CalendarWorkspace({
       locale,
       openInvitationPreview,
       persistRsvp,
-      meetOperations,
-      workspaceOrigin,
-      onJoinMeeting,
     ],
   );
 

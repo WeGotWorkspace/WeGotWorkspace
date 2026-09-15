@@ -701,6 +701,7 @@ export function CalendarEventForm({
                 labels={labels}
                 busy={busy}
                 size="sm"
+                showLabels
                 onRespond={(status) => {
                   void Promise.resolve(
                     onRsvp(

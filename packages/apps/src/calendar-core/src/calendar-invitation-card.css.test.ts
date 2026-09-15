@@ -20,11 +20,14 @@ describe("calendar invitation card CSS", () => {
     expect(css).toMatch(/\.calendar-invitation-card__calendar \{[\s\S]*shrink-0/);
   });
 
-  it("keeps the series hint and RSVP row under the event", () => {
+  it("keeps the RSVP row under the event, end-aligned", () => {
     const css = readCss("calendar-invitation-card.css");
     expect(css).toMatch(/\.calendar-invitation-card__actions \{[\s\S]*mt-3/);
-    expect(css).toMatch(/\.calendar-invitation-card__actions \{[\s\S]*justify-start/);
-    expect(css).toMatch(/\.calendar-invitation-card__rsvp-hint \{[\s\S]*mt-2\.5/);
+    expect(css).toMatch(/\.calendar-invitation-card__actions \{[\s\S]*justify-end/);
+    expect(css).toMatch(/\.calendar-invitation-card__actions \{[\s\S]*self-end/);
+    expect(css).not.toMatch(/\.calendar-invitation-card__actions \{[\s\S]*justify-start/);
+    expect(css).not.toMatch(/calendar-invitation-card__rsvp-hint/);
+    expect(css).not.toMatch(/calendar-invitation-card__meet/);
   });
 
   it("paints a solid cream/white surface on the card shell only", () => {
