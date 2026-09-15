@@ -36,17 +36,18 @@ For shared primitives (`Button`, `IconButton`, and similar):
 ### Control size scale (`xs` … `xl`)
 
 Fixed heights (not viewport-relative). Shared by Button, IconButton, Input, SelectTrigger,
-LocaleDatePicker, Textarea (padding/font), and SegmentedControl:
+LocaleDatePicker, Textarea (padding/font), SegmentedControl, UserChip, and UserAvatar:
 
 | Size | Height | Use |
 |------|--------|-----|
 | `xs` | 28px | Compact icon-only / dense chips |
 | `sm` | 32px | Tighter chrome when needed |
-| `md` | **36px** | **Default** — action bar, view header, event forms |
+| `md` | **36px** | **Default** — action bar, view header, event forms, share marks beside md inputs |
 | `lg` | 40px | Spacious forms / emphasis |
 | `xl` | 44px | Sidebar primary New / hero CTAs |
 
 Tokens: `--control-height-xs|sm|md|lg|xl`. `--input-height` aliases `md`.
+UserAvatar adds display-only `2xl` (80px) for Meet lobby / large idle tiles outside this scale.
 
 Refactor checklist:
 

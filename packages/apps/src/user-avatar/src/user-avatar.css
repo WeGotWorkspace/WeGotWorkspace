@@ -2,6 +2,13 @@
 
 .user-avatar {
   /*
+   * Identity text SST — shared by sidebar footer, share rows, and any labeled
+   * avatar. Keep name→subtitle gap on these tokens; do not restyle via CardRow.
+   */
+  --user-avatar-text-gap: 0;
+  --user-avatar-name-leading: 1.1;
+  --user-avatar-subtitle-leading: 1.25;
+  /*
    * Per-user palette: same intensity as default outline-active marks and
    * docs-collab connecting chips (soft wash + muted stroke, not full-sat rings).
    * Wash ~14% hue→cream; border ~38% hue→transparent; fg hue→ink for glyphs.
@@ -226,41 +233,58 @@ button.user-avatar__mark:hover {
 }
 
 .user-avatar--xs .user-avatar__mark {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: var(--control-height-xs, 1.75rem);
+  height: var(--control-height-xs, 1.75rem);
   font-size: 10px;
 }
 
 .user-avatar--sm .user-avatar__mark {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: var(--control-height-sm, 2rem);
+  height: var(--control-height-sm, 2rem);
   font-size: 11px;
 }
 
 .user-avatar--md .user-avatar__mark {
-  width: 2.5rem;
-  height: 2.5rem;
-  font-size: 0.75rem;
+  width: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
+  font-size: 11px;
 }
 
 .user-avatar--lg .user-avatar__mark {
-  width: 3rem;
-  height: 3rem;
-  font-size: 1.0625rem;
+  width: var(--control-height-lg, 2.5rem);
+  height: var(--control-height-lg, 2.5rem);
+  font-size: 0.75rem;
 }
 
 .user-avatar--xl .user-avatar__mark {
+  width: var(--control-height-xl, 2.75rem);
+  height: var(--control-height-xl, 2.75rem);
+  font-size: 0.875rem;
+}
+
+/* Display-only — outside the control scale (Meet lobby / large idle tiles). */
+.user-avatar--2xl .user-avatar__mark {
   width: 5rem;
   height: 5rem;
   font-size: 1.8125rem;
 }
 
 .user-avatar__text {
-  @apply flex min-w-0 flex-1 flex-col gap-0;
+  @apply flex min-w-0 flex-1 flex-col;
+  gap: var(--user-avatar-text-gap);
+}
+
+.user-avatar__name-line {
+  @apply flex min-w-0 items-center gap-1.5;
+}
+
+.user-avatar__name-group {
+  @apply flex min-w-0 flex-1 items-center gap-1;
 }
 
 .user-avatar__name {
-  @apply overflow-hidden text-ellipsis whitespace-nowrap text-sm leading-[1.1];
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm;
+  line-height: var(--user-avatar-name-leading);
   color: var(--user-avatar-label-color, var(--user-avatar-fg, var(--color-ink)));
 }
 
@@ -270,5 +294,6 @@ button.user-avatar__mark:hover {
 
 .user-avatar__subtitle {
   @apply overflow-hidden text-ellipsis whitespace-nowrap text-xs;
+  line-height: var(--user-avatar-subtitle-leading);
   color: var(--user-avatar-subtitle-color, color-mix(in oklab, var(--color-ink) 55%, transparent));
 }

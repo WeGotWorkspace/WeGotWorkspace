@@ -1,7 +1,7 @@
 /**
  * Shared control height scale for Button, IconButton, Input, SelectTrigger,
  * LocaleDatePicker, ColorSwatchTrigger, Textarea (padding/font), SegmentedControl,
- * and UserChip.
+ * UserChip, and UserAvatar (`xs`…`xl`; UserAvatar also has display-only `2xl`).
  *
  * | Size | Height |
  * |------|--------|

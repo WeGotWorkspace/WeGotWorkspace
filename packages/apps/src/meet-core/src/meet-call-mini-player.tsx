@@ -224,7 +224,7 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
         {showVideo ? (
           <video ref={videoRef} autoPlay muted playsInline className="meet-mini-player__video" />
         ) : (
-          <UserAvatar displayName={snapshot.displayName || "You"} compact size="sm" />
+          <UserAvatar displayName={snapshot.displayName || "You"} compact size="md" />
         )}
       </button>
       <div className="meet-mini-player__info">

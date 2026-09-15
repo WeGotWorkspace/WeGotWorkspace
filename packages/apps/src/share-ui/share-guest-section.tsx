@@ -58,7 +58,7 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
                 <UserAvatar
                   displayName={grant.principal}
                   compact
-                  size="xs"
+                  size="md"
                   color={avatarColorForUserId(grant.principal)}
                   className="share-dialog__guest-mark"
                 />

@@ -51,7 +51,7 @@ function PrincipalAvatar({
   }
 
   return (
-    <UserAvatar displayName={label} compact size="sm" className="drive-access-grant-row__avatar" />
+    <UserAvatar displayName={label} compact size="md" className="drive-access-grant-row__avatar" />
   );
 }
 

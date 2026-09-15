@@ -100,11 +100,11 @@ export const LabelVariants: Story = {
   ),
 };
 
-/** Size ladder used across the suite. */
+/** Size ladder — `xs`…`xl` match ControlSize; `2xl` is display-only. */
 export const SizeMatrix: Story = {
   render: () => (
     <div className="flex flex-wrap items-end gap-4 p-4">
-      {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
+      {(["xs", "sm", "md", "lg", "xl", "2xl"] as const).map((size) => (
         <div key={size} className="flex flex-col items-center gap-2">
           <UserAvatar displayName="Ada Lovelace" compact size={size} />
           <span className="text-xs opacity-60">{size}</span>
@@ -119,7 +119,7 @@ export const MailSenderRow: Story = {
   render: () => (
     <div className="mail-workspace">
       <div className="mail-detail-view__sender-row max-w-[680px]">
-        <UserAvatar displayName="Ops Bot" subtitle="ops@example.com · to you" size="md" />
+        <UserAvatar displayName="Ops Bot" subtitle="ops@example.com · to you" size="lg" />
       </div>
     </div>
   ),
@@ -132,7 +132,7 @@ export const MeetLobbyPreview: Story = {
       className="meet-workspace flex min-h-48 items-center justify-center p-8"
       style={{ background: "var(--meet-surface)" }}
     >
-      <UserAvatar displayName="Demo User" compact size="xl" />
+      <UserAvatar displayName="Demo User" compact size="2xl" />
     </div>
   ),
 };

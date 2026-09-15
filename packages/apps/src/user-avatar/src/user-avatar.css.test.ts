@@ -69,8 +69,14 @@ describe("user avatar mark border", () => {
     );
   });
 
-  it("defines an xs mark size for collab / share chips", () => {
-    expect(css).toMatch(/\.user-avatar--xs \.user-avatar__mark \{[\s\S]*width:\s*1\.75rem/);
+  it("wires mark sizes to the shared ControlSize height tokens", () => {
+    expect(css).toMatch(
+      /\.user-avatar--xs \.user-avatar__mark \{[\s\S]*width:\s*var\(--control-height-xs/,
+    );
+    expect(css).toMatch(
+      /\.user-avatar--md \.user-avatar__mark \{[\s\S]*width:\s*var\(--control-height-md/,
+    );
+    expect(css).toMatch(/\.user-avatar--2xl \.user-avatar__mark \{[\s\S]*width:\s*5rem/);
   });
 });
 
@@ -79,16 +85,16 @@ describe("user avatar label spacing", () => {
     expect(css).toMatch(/\.user-avatar \{[\s\S]*gap:\s*var\(--user-avatar-gap,\s*0\.625rem\)/);
   });
 
-  it("stacks name and subtitle with gap-0", () => {
+  it("stacks name and subtitle with the identity text-gap SST", () => {
     const text = css.match(/^\.user-avatar__text \{[\s\S]*?\n\}/m)?.[0];
     expect(text).toBeDefined();
-    expect(text).toMatch(/@apply[\s\S]*\bgap-0\b/);
+    expect(text).toMatch(/gap:\s*var\(--user-avatar-text-gap\)/);
   });
 
-  it("tightens the display-name line-height to 1.1", () => {
+  it("tightens the display-name line-height via SST", () => {
     const name = css.match(/^\.user-avatar__name \{[\s\S]*?\n\}/m)?.[0];
     expect(name).toBeDefined();
-    expect(name).toMatch(/@apply[\s\S]*\bleading-\[1\.1\]/);
+    expect(name).toMatch(/line-height:\s*var\(--user-avatar-name-leading\)/);
   });
 });
 
