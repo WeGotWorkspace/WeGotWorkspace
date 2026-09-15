@@ -212,7 +212,6 @@ function InvitationPreviewHarness() {
           locale="en-US"
           untitledLabel={defaultCalendarLabels.untitledEvent}
           canEdit
-          onEdit={() => {}}
           onClose={() => setPreview(null)}
         />
       ) : null}

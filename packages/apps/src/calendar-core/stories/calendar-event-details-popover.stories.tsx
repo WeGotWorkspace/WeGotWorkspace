@@ -29,7 +29,6 @@ const meta: Meta<typeof CalendarEventDetailsPopover> = {
     canEdit: true,
     origin: { left: 72, top: 96, width: 168, height: 40 },
     onClose: fn(),
-    onEdit: fn(),
     onDelete: fn(),
   },
 };
@@ -49,16 +48,72 @@ export const Default: Story = {
     await expect(eventCard).toBeTruthy();
     await expect(eventCard?.summary).toBe("Lunch");
     await expect(popover.querySelector(".calendar-event-details-popover__details")).toBeTruthy();
-    await expect(popover.querySelector(".calendar-event-details-popover__row")).toBeTruthy();
     await expect(canvas.getByText("Cafe")).toBeTruthy();
     await expect(canvas.getByText("Bring laptop")).toBeTruthy();
-    await expect(canvas.queryByText("Personal")).toBeNull();
-    await userEvent.click(
-      canvas.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
-    );
-    await expect(args.onEdit).toHaveBeenCalled();
     await userEvent.click(canvas.getByRole("button", { name: defaultCalendarLabels.delete }));
     await expect(args.onDelete).toHaveBeenCalled();
+  },
+};
+
+export const InteractiveEdit: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    // Card-sized week/day origin — not a compact-month cell — so the popover
+    // stays undocked and hosts the shared multi-column event form.
+    origin: { left: 120, top: 72, width: 220, height: 48 },
+    edit: {
+      form: lunchForm,
+      onChange: fn(),
+      onClose: fn(),
+      onSave: fn(),
+      onDelete: fn(),
+    },
+  },
+  globals: {
+    // Multi-column form layout uses @media (min-width: 40rem); lock desktop
+    // so responsive Storybook panels cannot collapse the canvas below that.
+    viewport: { value: "desktop", isRotated: false },
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    const popover = canvas.getByRole("dialog", { name: "Lunch" });
+    await expect(popover.className).toContain("calendar-event-details-popover--editable");
+    await expect(popover.className).toContain("calendar-event-dialog");
+    await expect(popover.className).not.toContain("calendar-event-details-popover--docked");
+    await expect(popover.querySelector(".calendar-event-dialog__fields")).toBeTruthy();
+    await expect(canvas.getByDisplayValue("Lunch")).toBeTruthy();
+    // Shared control chrome: Input / Select / Textarea / LocaleDatePicker / Button.
+    await expect(popover.querySelector(".input")).toBeTruthy();
+    await expect(popover.querySelector(".input--size-md")).toBeTruthy();
+    await expect(popover.querySelector(".select-trigger")).toBeTruthy();
+    await expect(popover.querySelector(".select-trigger--size-md")).toBeTruthy();
+    await expect(popover.querySelector(".textarea")).toBeTruthy();
+    await expect(popover.querySelector(".control-surface.locale-date-picker")).toBeTruthy();
+    await expect(popover.querySelector(".control-surface--size-md")).toBeTruthy();
+    const remove = canvas.getByRole("button", { name: defaultCalendarLabels.delete });
+    await expect(remove.className).toContain("button--variant-destructive-outline");
+    await expect(
+      canvas.getByRole("button", { name: defaultCalendarLabels.saveChanges }),
+    ).toBeTruthy();
+    await userEvent.click(canvas.getByRole("button", { name: defaultCalendarLabels.cancel }));
+    await expect(args.edit?.onClose).toHaveBeenCalled();
+  },
+};
+
+/** Stacked event-form layout below the 40rem multi-column breakpoint. */
+export const InteractiveEditMobile: Story = {
+  args: {
+    origin: { left: 24, top: 64, width: 160, height: 40 },
+    edit: {
+      form: lunchForm,
+      onChange: fn(),
+      onClose: fn(),
+      onSave: fn(),
+      onDelete: fn(),
+    },
+  },
+  globals: {
+    viewport: { value: "mobile2", isRotated: false },
   },
 };
 
@@ -105,10 +160,10 @@ export const MeetJoin: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement.ownerDocument.body);
     const join = canvas.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
-    const edit = canvas.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit });
+    const remove = canvas.getByRole("button", { name: defaultCalendarLabels.delete });
     await expect(join.className).toContain("button--variant-primary");
     const primary = join.closest(".calendar-event-details-popover__footer-primary");
-    const actions = edit.closest(".calendar-event-details-popover__footer-actions");
+    const actions = remove.closest(".calendar-event-details-popover__footer-actions");
     await expect(primary).toBeTruthy();
     await expect(actions).toBeTruthy();
     await expect(

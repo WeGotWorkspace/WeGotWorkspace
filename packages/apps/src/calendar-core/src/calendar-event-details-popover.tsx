@@ -4,7 +4,6 @@ import {
   CalendarDays,
   Circle,
   MapPin,
-  Pencil,
   Repeat,
   StickyNote,
   Trash2,
@@ -35,9 +34,18 @@ import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-l
 import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
 import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
+import {
+  CalendarEventForm,
+  type CalendarEventFormProps,
+} from "@/calendar-core/src/calendar-event-form";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import "@/lib/calendar-elements/EventCard/EventCard";
 import "./calendar-event-details-popover.css";
+
+export type CalendarEventDetailsPopoverEditProps = Omit<
+  CalendarEventFormProps,
+  "mode" | "calendars" | "labels" | "locale" | "className" | "autoFocusTitle"
+>;
 
 export type CalendarEventDetailsPopoverProps = {
   open: boolean;
@@ -52,7 +60,8 @@ export type CalendarEventDetailsPopoverProps = {
   untitledLabel: string;
   pendingSync?: boolean;
   onClose: () => void;
-  onEdit?: () => void;
+  /** When set, the popover hosts the shared editable event form (writable organizer path). */
+  edit?: CalendarEventDetailsPopoverEditProps;
   onDelete?: () => void;
   onRsvp?: (status: CalendarSchedulingRespondStatus) => void | Promise<void>;
   meetOperations?: CalendarMeetOperations;
@@ -87,7 +96,7 @@ export function CalendarEventDetailsPopover({
   untitledLabel,
   pendingSync = false,
   onClose,
-  onEdit,
+  edit,
   onDelete,
   onRsvp,
   meetOperations,
@@ -99,14 +108,9 @@ export function CalendarEventDetailsPopover({
   const form = preview.form;
   const calendar = calendars.find((entry) => entry.id === form.calendarId);
   const isOrganizer = isSessionEventOrganizer(form.attendees, sessionEmail);
-  const showEdit =
-    canEdit &&
-    Boolean(onEdit) &&
-    !isCalendarEventFormReadOnly({ mode: "edit", calendar, isOrganizer });
-  const showDelete =
-    canEdit &&
-    Boolean(onDelete) &&
-    !isCalendarEventFormReadOnly({ mode: "edit", calendar, isOrganizer });
+  const formReadOnly = isCalendarEventFormReadOnly({ mode: "edit", calendar, isOrganizer });
+  const editable = Boolean(edit) && canEdit && !formReadOnly;
+  const showDelete = !editable && canEdit && Boolean(onDelete) && !formReadOnly;
   const title = form.title.trim() || untitledLabel;
   const when = formatEventPreviewWhen(form, locale);
   const location = form.location.trim();
@@ -118,7 +122,7 @@ export function CalendarEventDetailsPopover({
   const rsvpStatus = sessionEventInviteeStatus(form.attendees, sessionEmail);
   const eventColor = calendar?.color?.trim() || DEFAULT_CALENDAR_COLOR;
   const showMeet = Boolean(form.meetingUrl.trim());
-  const showFooter = showMeet || showEdit || showDelete || showRsvp;
+  const showFooter = !editable && (showMeet || showDelete || showRsvp);
   const detailRows: ReactNode[] = [
     <DetailRow
       key="when"
@@ -192,11 +196,19 @@ export function CalendarEventDetailsPopover({
         }
       : { left: fallbackLeft, top: fallbackTop, width: 0, height: 0 };
 
+  const dialogLabel = editable ? edit?.form.title.trim() || title : title;
+
   return (
     <Popover
       open={open}
       onOpenChange={(next) => {
-        if (!next) onClose();
+        if (!next) {
+          if (editable && edit) {
+            edit.onClose();
+            return;
+          }
+          onClose();
+        }
       }}
       modal
     >
@@ -220,16 +232,13 @@ export function CalendarEventDetailsPopover({
         avoidCollisions={!docked}
         className={[
           "calendar-dialog-surface calendar-event-details-popover",
+          editable ? "calendar-event-details-popover--editable calendar-event-dialog" : "",
           docked ? "calendar-event-details-popover--docked" : "",
         ]
           .filter(Boolean)
           .join(" ")}
-        aria-label={title}
+        aria-label={dialogLabel}
         onOpenAutoFocus={(event) => {
-          // Keep focus on the dialog root — not Edit/Delete/Join/RSVP chrome
-          // (those IconButtons would immediately show tooltips). Search exits
-          // the list before this fires; without a fallback, focus stays on the
-          // ViewHeader query (then Radix hideOthers aria-hides it).
           event.preventDefault();
           const root = event.currentTarget;
           if (root instanceof HTMLElement) root.focus();
@@ -244,79 +253,81 @@ export function CalendarEventDetailsPopover({
             <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
           </span>
         ) : null}
-        {createElement(
-          "event-card",
-          {
-            class: "calendar-event-details-popover__event",
-            layout: "flow",
-            lang: locale,
-            summary: title,
-            color: eventColor,
-            recurring: form.recurrencePreset !== "none",
-            "data-selected": "",
-          },
-          createElement(
-            "div",
-            { className: "calendar-event-details-popover__details" },
-            ...detailRows,
-          ),
-        )}
-        {showRsvp && onRsvp && form.recurrencePreset !== "none" ? (
-          <p className="calendar-event-details-popover__rsvp-hint">{labels.rsvpSeriesHint}</p>
-        ) : null}
-        {showFooter ? (
-          <footer className="calendar-event-details-popover__footer">
-            {showRsvp || showMeet ? (
-              <div className="calendar-event-details-popover__footer-primary">
-                {showMeet ? (
-                  <CalendarMeetJoin
-                    href={form.meetingUrl}
-                    labels={labels}
-                    workspaceOrigin={workspaceOrigin}
-                    meetOperations={meetOperations}
-                    onJoin={onJoinMeeting}
-                  />
-                ) : null}
-                {showRsvp && onRsvp ? (
-                  <CalendarRsvpActions
-                    currentStatus={rsvpStatus ?? undefined}
-                    labels={labels}
-                    busy={busy}
-                    size="sm"
-                    onRespond={onRsvp}
-                  />
-                ) : null}
-              </div>
+        {editable && edit ? (
+          <CalendarEventForm
+            mode="edit"
+            calendars={calendars}
+            labels={labels}
+            locale={locale}
+            busy={busy || edit.busy}
+            autoFocusTitle={false}
+            collisionContentClassName="calendar-dialog-surface calendar-event-dialog"
+            {...edit}
+          />
+        ) : (
+          <>
+            {createElement(
+              "event-card",
+              {
+                class: "calendar-event-details-popover__event",
+                layout: "flow",
+                lang: locale,
+                summary: title,
+                color: eventColor,
+                recurring: form.recurrencePreset !== "none",
+                "data-selected": "",
+              },
+              createElement(
+                "div",
+                { className: "calendar-event-details-popover__details" },
+                ...detailRows,
+              ),
+            )}
+            {showRsvp && onRsvp && form.recurrencePreset !== "none" ? (
+              <p className="calendar-event-details-popover__rsvp-hint">{labels.rsvpSeriesHint}</p>
             ) : null}
-            {showEdit || showDelete ? (
-              <div className="calendar-event-details-popover__footer-actions">
-                {showEdit && onEdit ? (
-                  <IconButton
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    label={labels.eventDetailsEdit}
-                    icon={<Pencil className="size-3.5" aria-hidden />}
-                    disabled={busy}
-                    onClick={onEdit}
-                  />
+            {showFooter ? (
+              <footer className="calendar-event-details-popover__footer">
+                {showRsvp || showMeet ? (
+                  <div className="calendar-event-details-popover__footer-primary">
+                    {showMeet ? (
+                      <CalendarMeetJoin
+                        href={form.meetingUrl}
+                        labels={labels}
+                        workspaceOrigin={workspaceOrigin}
+                        meetOperations={meetOperations}
+                        onJoin={onJoinMeeting}
+                      />
+                    ) : null}
+                    {showRsvp && onRsvp ? (
+                      <CalendarRsvpActions
+                        currentStatus={rsvpStatus ?? undefined}
+                        labels={labels}
+                        busy={busy}
+                        size="sm"
+                        onRespond={onRsvp}
+                      />
+                    ) : null}
+                  </div>
                 ) : null}
                 {showDelete && onDelete ? (
-                  <IconButton
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    severity="danger"
-                    label={labels.delete}
-                    icon={<Trash2 className="size-3.5" aria-hidden />}
-                    disabled={busy}
-                    onClick={onDelete}
-                  />
+                  <div className="calendar-event-details-popover__footer-actions">
+                    <IconButton
+                      type="button"
+                      size="md"
+                      variant="outline"
+                      severity="danger"
+                      label={labels.delete}
+                      icon={<Trash2 className="size-3.5" aria-hidden />}
+                      disabled={busy}
+                      onClick={onDelete}
+                    />
+                  </div>
                 ) : null}
-              </div>
+              </footer>
             ) : null}
-          </footer>
-        ) : null}
+          </>
+        )}
       </PopoverContent>
     </Popover>
   );

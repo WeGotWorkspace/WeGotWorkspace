@@ -65,4 +65,9 @@ describe("calendar event details popover CSS", () => {
     expect(css).not.toContain("calendar-event-details-popover__calendar");
     expect(css).not.toContain("calendar-event-details-popover__join");
   });
+
+  it("widens the editable popover for the multi-column event form", () => {
+    expect(css).toContain("calendar-event-details-popover--editable");
+    expect(css).toContain("w-[min(42rem,calc(100vw-1.5rem))]");
+  });
 });
