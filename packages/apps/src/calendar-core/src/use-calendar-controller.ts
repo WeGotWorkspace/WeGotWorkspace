@@ -88,7 +88,10 @@ import {
   type RecurrenceScopeChoice,
   type RecurrenceScopeRequest,
 } from "@/calendar-core/src/calendar-recurrence-scope";
-import { resolveCalendarEventPreview } from "@/calendar-core/src/calendar-event-preview";
+import {
+  resolveCalendarEventPreview,
+  type CalendarEventSelectionOrigin,
+} from "@/calendar-core/src/calendar-event-preview";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { persistCalendarRoutePrefs } from "@/calendar-core/src/calendar-view-prefs";
@@ -99,7 +102,13 @@ import { useCalendarSearch } from "@/calendar-core/src/use-calendar-search";
 export type CalendarCreateSource = "pointer" | "menu";
 
 export type CalendarEditorState =
-  | { mode: "create"; form: CalendarEventFormValue; source: CalendarCreateSource }
+  | {
+      mode: "create";
+      form: CalendarEventFormValue;
+      source: CalendarCreateSource;
+      /** Viewport rect for pointer-create popover placement. */
+      origin?: CalendarEventSelectionOrigin;
+    }
   | {
       mode: "edit";
       eventId: string;
@@ -490,6 +499,7 @@ export function useCalendarController({
         mode: "create",
         source: "pointer",
         form: createIntentToForm(calendarId, intent),
+        ...(intent.origin ? { origin: intent.origin } : {}),
       });
     },
     [calendars, defaultCalendarId, ensureCalendarVisible],
@@ -518,6 +528,7 @@ export function useCalendarController({
       window.setTimeout(() => {
         if (settled) return;
         setRecurrenceScopeDialog({
+          // Legacy "update" maps to edit chrome; RSVP keeps its own copy.
           action: request.action === "update" ? "edit" : request.action,
           ...(request.description ? { description: request.description } : {}),
           resolve: settle,

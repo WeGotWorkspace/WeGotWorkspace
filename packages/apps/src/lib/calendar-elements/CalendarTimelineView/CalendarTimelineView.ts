@@ -731,6 +731,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     allDay: boolean;
   }) {
     const calendarId = this.calendarIdForNewEvent();
+    const origin = this.#createPreviewOrigin();
     const detail: EventCreateRequestDetail = {
       envelope: {
         calendarId,
@@ -744,8 +745,23 @@ export class CalendarTimelineView extends CalendarViewBase {
         summary: "",
         color: this.resolveNewEventColor(calendarId),
       },
+      ...(origin ? { origin } : {}),
     };
     this.applyCreateRequestToEventsAPI(detail);
+  }
+
+  /** Prefer the still-painted drag create-preview; fall back to held preview after commit. */
+  #createPreviewOrigin() {
+    const root = this.renderRoot;
+    if (!(root instanceof ShadowRoot)) return undefined;
+    for (const timeline of root.querySelectorAll("time-line")) {
+      const preview =
+        timeline.shadowRoot?.querySelector(".create-preview") ??
+        timeline.querySelector(".create-preview");
+      const origin = eventSelectionOriginFromElement(preview);
+      if (origin) return origin;
+    }
+    return undefined;
   }
 
   /**

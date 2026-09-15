@@ -1071,7 +1071,9 @@ export function CalendarWorkspace({
                 ? { ...liveEventPreview!, form: editor.form }
                 : liveEventPreview!
           }
-          origin={eventPreview?.origin}
+          origin={
+            pointerCreateOpen && editor?.mode === "create" ? editor.origin : eventPreview?.origin
+          }
           calendars={calendars}
           labels={L}
           locale={locale}
@@ -1153,6 +1155,7 @@ export function CalendarWorkspace({
                         editorRecurrenceId: editor.recurrenceId,
                       }).then((persisted) => {
                         if (persisted) closeInteractiveEditor();
+                        return persisted;
                       });
                     },
                   }
@@ -1178,7 +1181,7 @@ export function CalendarWorkspace({
                           source: "preview",
                           editorRecurrenceId: liveEventPreview.recurrenceId,
                           attendees: liveEventPreview.form.attendees,
-                        }).then(() => undefined);
+                        });
                       },
                     }
                   : undefined
@@ -1203,7 +1206,7 @@ export function CalendarWorkspace({
                       source: "preview",
                       editorRecurrenceId: liveEventPreview.recurrenceId,
                       attendees: liveEventPreview.form.attendees,
-                    }).then(() => undefined);
+                    });
                   }
                 : undefined
           }

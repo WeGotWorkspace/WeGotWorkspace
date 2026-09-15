@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 import { describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
@@ -18,6 +19,7 @@ import {
   invitationToEventPreview,
   resolveInvitationEventPreview,
   selectionOriginFromElement,
+  measureCalendarCreatePreviewOrigin,
 } from "@/calendar-core/src/calendar-event-preview";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
@@ -144,6 +146,40 @@ describe("selectionOriginFromElement", () => {
       top: 80,
       width: 280,
       height: 64,
+    });
+  });
+});
+
+describe("measureCalendarCreatePreviewOrigin", () => {
+  it("finds a create-preview rect across nested shadow roots", () => {
+    const preview = document.createElement("div");
+    preview.className = "create-preview";
+    preview.getBoundingClientRect = () =>
+      ({
+        left: 40,
+        top: 120,
+        width: 96,
+        height: 180,
+        right: 136,
+        bottom: 300,
+        x: 40,
+        y: 120,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    const inner = document.createElement("div");
+    const innerShadow = inner.attachShadow({ mode: "open" });
+    innerShadow.append(preview);
+
+    const host = document.createElement("div");
+    const hostShadow = host.attachShadow({ mode: "open" });
+    hostShadow.append(inner);
+
+    expect(measureCalendarCreatePreviewOrigin(host)).toEqual({
+      left: 40,
+      top: 120,
+      width: 96,
+      height: 180,
     });
   });
 });

@@ -27,6 +27,9 @@ describe("CalendarWorkspace create UI routing", () => {
     // Dialog only when menu create — not for every create editor.
     expect(workspace).toMatch(/menuCreateOpen && editor\?\.mode === "create"/);
     expect(workspace).not.toMatch(/\{editor\?\.mode === "create" \? \(/);
+    // Pointer create must anchor beside the ghost card, not viewport-center fallback.
+    expect(workspace).toContain('pointerCreateOpen && editor?.mode === "create"');
+    expect(workspace).toContain("editor.origin");
   });
 
   it("lets the details popover host create-mode CalendarEventForm", () => {

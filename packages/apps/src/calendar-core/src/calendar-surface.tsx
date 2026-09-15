@@ -6,6 +6,15 @@ import "@/lib/calendar-elements/wgw/wgw-calendar-surface";
 import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/EventsAPIContext";
 import { resolveCreateIntentAllDay } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarPresentation, CalendarViewId } from "@/calendar-core/src/calendar-types";
+import {
+  bindCalendarEventSelected,
+  measureCalendarCreatePreviewOrigin,
+  selectionOriginFromEvent,
+  type CalendarEventSelectionOrigin,
+  type CalendarEventTimesDraft,
+} from "@/calendar-core/src/calendar-event-preview";
+import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurrence-scope";
+import type { RecurrenceScopeRequest } from "@/calendar-core/src/calendar-recurrence-scope";
 
 /** Lit surface time-range view (list vs grid is `presentation`). */
 export type CalendarSurfaceViewId = CalendarViewId;
@@ -18,15 +27,9 @@ export type CalendarSurfaceCreateIntent = {
   /** Exclusive end for all-day; wall-clock end for timed. */
   end: Temporal.PlainDateTime;
   title?: string;
+  /** Viewport rect of the create-preview card when the intent was emitted. */
+  origin?: CalendarEventSelectionOrigin;
 };
-
-import {
-  bindCalendarEventSelected,
-  type CalendarEventSelectionOrigin,
-  type CalendarEventTimesDraft,
-} from "@/calendar-core/src/calendar-event-preview";
-import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurrence-scope";
-import type { RecurrenceScopeRequest } from "@/calendar-core/src/calendar-recurrence-scope";
 
 export type CalendarSurfaceProps = {
   view: CalendarSurfaceViewId;
@@ -225,11 +228,16 @@ export function CalendarSurface({
             allDay?: boolean;
             summary?: string;
           };
+          origin?: CalendarEventSelectionOrigin;
         }>
       ).detail;
       const start = detail?.content?.start;
       const end = detail?.content?.end;
       if (!start || !end) return;
+      const origin =
+        detail?.origin ??
+        selectionOriginFromEvent(event) ??
+        measureCalendarCreatePreviewOrigin(host);
       onCreateRequested({
         calendarId: detail.envelope?.calendarId,
         allDay: resolveCreateIntentAllDay({
@@ -240,6 +248,7 @@ export function CalendarSurface({
         start,
         end,
         title: detail.content?.summary,
+        ...(origin ? { origin } : {}),
       });
     };
 

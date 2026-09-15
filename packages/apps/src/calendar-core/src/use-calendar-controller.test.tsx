@@ -264,6 +264,7 @@ describe("useCalendarController view + create intent", () => {
         allDay: false,
         start: Temporal.PlainDateTime.from("2033-01-12T10:00:00"),
         end: Temporal.PlainDateTime.from("2033-01-12T11:00:00"),
+        origin: { left: 48, top: 120, width: 110, height: 160 },
       });
     });
 
@@ -271,6 +272,7 @@ describe("useCalendarController view + create intent", () => {
     expect(result.current.editor).toMatchObject({
       mode: "create",
       source: "pointer",
+      origin: { left: 48, top: 120, width: 110, height: 160 },
       form: {
         calendarId: "work",
         allDay: false,

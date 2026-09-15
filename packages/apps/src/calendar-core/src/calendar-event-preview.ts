@@ -460,6 +460,36 @@ export function selectionOriginFromElement(
   return originFromRect(element.getBoundingClientRect());
 }
 
+/**
+ * Walk open shadow roots for the Lit create-preview card so pointer-create
+ * popovers can anchor beside the ghost when the CustomEvent path has no card.
+ */
+export function measureCalendarCreatePreviewOrigin(
+  root: ParentNode | null | undefined,
+): CalendarEventSelectionOrigin | undefined {
+  if (!root || typeof Element === "undefined") return undefined;
+  const stack: Array<ParentNode> = [root];
+  const seen = new Set<ParentNode>();
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node || seen.has(node)) continue;
+    seen.add(node);
+    if (node instanceof Element && node.classList.contains("create-preview")) {
+      const origin = selectionOriginFromElement(node);
+      if (origin) return origin;
+    }
+    if ("shadowRoot" in node && node.shadowRoot) {
+      stack.push(node.shadowRoot);
+    }
+    if ("children" in node) {
+      for (const child of Array.from(node.children)) {
+        stack.push(child);
+      }
+    }
+  }
+  return undefined;
+}
+
 export function selectionOriginFromEvent(event: Event): CalendarEventSelectionOrigin | undefined {
   const detail = event instanceof CustomEvent ? event.detail : undefined;
   const fromDetail = originFromUnknown(
