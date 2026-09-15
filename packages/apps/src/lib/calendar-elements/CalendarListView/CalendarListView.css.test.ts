@@ -34,11 +34,13 @@ describe("CalendarListView heading CSS", () => {
 
   it("caps the agenda column so details popover can use the end gutter", () => {
     expect(css).toMatch(
-      /\.agenda-shell \{[\s\S]*max-inline-size:\s*min\(100%,\s*var\(--_lc-list-max-inline-size,\s*36rem\)\)/,
+      /\.agenda-shell \{[\s\S]*max-inline-size:\s*min\(100%,\s*var\(--_lc-list-max-inline-size,\s*28rem\)\)/,
     );
     expect(css).toMatch(
-      /@container \(min-width:\s*56rem\)\s*\{[\s\S]*\.agenda-shell \{[\s\S]*calc\(100%\s*-\s*var\(--_lc-list-details-gutter,\s*26rem\)\)/,
+      /@container \(min-width:\s*44rem\)\s*\{[\s\S]*\.agenda-shell \{[\s\S]*calc\(100%\s*-\s*var\(--_lc-list-details-gutter,\s*26rem\)\)/,
     );
+    expect(css).not.toMatch(/@container \(min-width:\s*56rem\)/);
+    expect(css).not.toMatch(/--_lc-list-max-inline-size,\s*36rem/);
   });
 
   it("keeps the host as the agenda scrollport", () => {

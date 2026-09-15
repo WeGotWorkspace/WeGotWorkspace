@@ -19,16 +19,17 @@
   /* Cap the agenda column on wide panes so event-details (≤24rem editable)
      can sit in the end gutter without covering list rows. Timeline/grid views
      do not use this shell. Workspace may override --_lc-list-max-inline-size. */
-  max-inline-size: min(100%, var(--_lc-list-max-inline-size, 36rem));
+  max-inline-size: min(100%, var(--_lc-list-max-inline-size, 28rem));
 }
 
-/* When the list pane is wide enough for cards + an editable details popover
-   (~24rem + margin), shrink further so the preferred side=right placement
-   lands in empty space instead of flipping over titles. */
-@container (min-width: 56rem) {
+/* When the list pane can host cards + an editable details popover (~24rem +
+   margin), shrink further so preferred side=right placement lands in empty
+   space instead of clipping past the viewport. 44rem ≈ 18rem cards + 26rem
+   gutter — mid-size panes below the old 56rem floor still get a gutter. */
+@container (min-width: 44rem) {
   .agenda-shell {
     max-inline-size: min(
-      var(--_lc-list-max-inline-size, 36rem),
+      var(--_lc-list-max-inline-size, 28rem),
       calc(100% - var(--_lc-list-details-gutter, 26rem))
     );
   }
