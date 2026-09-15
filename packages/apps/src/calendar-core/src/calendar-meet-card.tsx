@@ -397,6 +397,9 @@ export function CalendarMeetCard({
             disabled={disabled}
             reserving={reserving}
             size={controlSize}
+            meetingUrl={draftHref}
+            workspaceOrigin={workspaceOrigin}
+            onJoin={onJoin}
             onNewLink={canGenerate ? requestGenerate : undefined}
             onPick={pickChannel}
           />

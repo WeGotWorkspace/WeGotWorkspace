@@ -145,14 +145,21 @@ describe("calendar event dialog Meet field", () => {
     );
     expect(css).toMatch(/\.calendar-event-dialog__meet-menu/);
     expect(css).toMatch(/\.calendar-event-dialog__meet-menu-trigger/);
+    expect(css).toMatch(
+      /\.calendar-dialog-surface \.calendar-event-dialog__meet-menu-trigger \{[\s\S]*@apply flex/,
+    );
+    expect(css).toMatch(/meet-menu-trigger__join\.button/);
+    expect(css).toMatch(/meet-menu-trigger__menu\.button/);
+    expect(css).toMatch(/border-inline-start:\s*1px solid/);
     expect(css).not.toMatch(
       /\.calendar-event-dialog__meet-menu-trigger \{[\s\S]*@apply h-9 min-h-9/,
     );
     expect(css).not.toMatch(
       /\.calendar-event-dialog__meet-menu-trigger \{[\s\S]*border-radius:\s*var\(--control-radius-button-pill\)/,
     );
-    expect(css).toContain("background-color: transparent");
-    expect(css).toContain("stroke-width: 1.75");
+    expect(css).not.toContain("background-color: transparent");
+    expect(css).not.toContain("stroke-width: 1.75");
+    expect(css).not.toMatch(/color-swatch-trigger/);
     expect(css).toContain("--meet-accent: #2a1644");
     expect(css).toContain("--card-title-icon-color: var(--meet-accent)");
     expect(css).not.toMatch(/calendar-event-dialog__meet-generate/);

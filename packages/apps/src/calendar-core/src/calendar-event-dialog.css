@@ -244,31 +244,26 @@
 }
 
 /*
- * ColorSwatchTrigger already shares control radius + height via `size`.
- * Keep this row compact next to the Meet URL field.
+ * Primary segmented Join + menu (mirrors SidebarSegmentedNewMenu), sized via
+ * IconButton `size` to match the Meet URL row density.
  */
-.calendar-dialog-surface
-  .control-surface.color-swatch-trigger.calendar-event-dialog__meet-menu-trigger {
-  @apply w-auto shrink-0;
-  min-width: 0;
-  background-color: transparent;
+.calendar-dialog-surface .calendar-event-dialog__meet-menu-trigger {
+  @apply flex min-w-0 shrink-0 items-stretch gap-0;
   --loading-spinner-color: currentColor;
 }
 
-.calendar-dialog-surface .calendar-event-dialog__meet-menu-trigger .color-swatch-trigger__icon,
 .calendar-dialog-surface
   .calendar-event-dialog__meet-menu-trigger
-  .color-swatch-trigger__icon
-  > svg,
-.calendar-dialog-surface .calendar-event-dialog__meet-menu-trigger .color-swatch-trigger__chevron {
-  @apply size-3.5;
+  .calendar-event-dialog__meet-menu-trigger__join.button {
+  @apply rounded-e-none;
 }
 
 .calendar-dialog-surface
   .calendar-event-dialog__meet-menu-trigger
-  .color-swatch-trigger__icon
-  > svg {
-  stroke-width: 1.75;
+  .calendar-event-dialog__meet-menu-trigger__menu.button {
+  @apply shrink-0 rounded-s-none px-0;
+  border-inline-start: 1px solid
+    color-mix(in oklab, var(--button-primary-fg, #ffffff) 22%, transparent);
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet-readonly {
