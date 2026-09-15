@@ -270,6 +270,7 @@ describe("useCalendarController view + create intent", () => {
     expect(createEvent).not.toHaveBeenCalled();
     expect(result.current.editor).toMatchObject({
       mode: "create",
+      source: "pointer",
       form: {
         calendarId: "work",
         allDay: false,
@@ -306,9 +307,31 @@ describe("useCalendarController view + create intent", () => {
     expect(result.current.defaultCalendarId).toBe("work");
     expect(result.current.editor).toMatchObject({
       mode: "create",
+      source: "pointer",
       form: { calendarId: "work" },
     });
     expect(result.current.pendingCreateIntent).toMatchObject({ calendarId: "work" });
+  });
+
+  it("tags menu create as source menu and surface create as pointer", () => {
+    const { result } = renderHook(() => useCalendarController({ data: bootstrap.data }));
+
+    act(() => {
+      result.current.openCreateEvent("2033-01-12");
+    });
+    expect(result.current.editor).toMatchObject({ mode: "create", source: "menu" });
+
+    act(() => {
+      result.current.closeEditor();
+    });
+    act(() => {
+      result.current.openCreateFromSurface({
+        allDay: false,
+        start: Temporal.PlainDateTime.from("2033-01-12T10:00:00"),
+        end: Temporal.PlainDateTime.from("2033-01-12T11:00:00"),
+      });
+    });
+    expect(result.current.editor).toMatchObject({ mode: "create", source: "pointer" });
   });
 
   it("keeps pendingCreateIntent after save until the surface event fills the slot", async () => {
@@ -730,6 +753,7 @@ describe("useCalendarController view + create intent", () => {
 
     expect(result.current.editor).toMatchObject({
       mode: "create",
+      source: "menu",
       form: {
         calendarId: "work",
         startDate: "2033-01-12",

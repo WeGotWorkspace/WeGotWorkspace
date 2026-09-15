@@ -220,6 +220,27 @@ describe("CalendarEventDetailsPopover", () => {
     },
   );
 
+  it("hosts interactive create when edit.mode is create", { timeout: 10_000 }, () => {
+    const form = emptyCalendarEventForm("default", "2033-01-12", "10:00");
+    const onSave = vi.fn();
+    renderPopover({
+      canEdit: true,
+      preview: { eventId: "", form },
+      edit: {
+        mode: "create",
+        form,
+        onChange: vi.fn(),
+        onClose: vi.fn(),
+        onSave,
+      },
+    });
+    const popover = screen.getByRole("dialog");
+    expect(popover.className).toContain("calendar-event-details-popover--editable");
+    expect(popover.querySelector(".calendar-event-dialog__fields")).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.delete })).toBeNull();
+  });
+
   it(
     "hosts interactive edit for a group member who is not the organizer",
     { timeout: 10_000 },

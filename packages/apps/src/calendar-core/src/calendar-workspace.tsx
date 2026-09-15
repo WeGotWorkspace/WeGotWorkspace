@@ -675,6 +675,13 @@ export function CalendarWorkspace({
     setEventTimesDraft(null);
   }, [closeEditor]);
 
+  const pointerCreateOpen = editor?.mode === "create" && editor.source === "pointer";
+  const menuCreateOpen = editor?.mode === "create" && editor.source === "menu";
+  const pointerCreatePreview: CalendarEventPreviewModel | null = pointerCreateOpen
+    ? { eventId: "", form: editor.form }
+    : null;
+  const detailsPopoverOpen = Boolean((eventPreview && liveEventPreview) || pointerCreatePreview);
+
   const deleteFromPreview = useCallback(() => {
     if (!liveEventPreview || !previewCanEdit) return;
     const { eventId, recurrenceId, form } = liveEventPreview;
@@ -1018,40 +1025,44 @@ export function CalendarWorkspace({
           {invitationsPanel}
         </SideDrawer>
       ) : null}
-      {eventPreview && liveEventPreview ? (
+      {detailsPopoverOpen && (pointerCreatePreview || liveEventPreview) ? (
         <CalendarEventDetailsPopover
           open
           preview={
-            eventPreview.interactiveEdit && editor?.mode === "edit"
-              ? { ...liveEventPreview, form: editor.form }
-              : liveEventPreview
+            pointerCreatePreview
+              ? pointerCreatePreview
+              : eventPreview?.interactiveEdit && editor?.mode === "edit"
+                ? { ...liveEventPreview!, form: editor.form }
+                : liveEventPreview!
           }
-          origin={eventPreview.origin}
+          origin={eventPreview?.origin}
           calendars={calendars}
           labels={L}
           locale={locale}
           untitledLabel={L.untitledEvent}
-          pendingSync={pendingEventIds?.has(liveEventPreview.eventId) ?? false}
-          canEdit={previewCanEdit}
+          pendingSync={
+            liveEventPreview ? (pendingEventIds?.has(liveEventPreview.eventId) ?? false) : false
+          }
+          canEdit={pointerCreateOpen || previewCanEdit}
           busy={editorBusy || invitations.busy}
           sessionEmail={sessionEmail}
           meetOperations={meetOperations}
           workspaceOrigin={workspaceOrigin}
           onJoinMeeting={onJoinMeeting}
-          onClose={eventPreview.interactiveEdit ? closeInteractiveEditor : closeEventPreview}
+          onClose={
+            pointerCreateOpen || eventPreview?.interactiveEdit
+              ? closeInteractiveEditor
+              : closeEventPreview
+          }
           edit={
-            eventPreview.interactiveEdit && editor?.mode === "edit"
+            pointerCreateOpen && editor?.mode === "create"
               ? {
+                  mode: "create",
                   form: editor.form,
                   onChange: setEditorForm,
                   onClose: closeInteractiveEditor,
-                  onSave: (scope) => {
-                    saveEditor(scope);
-                    setEventPreview(null);
-                    setEventTimesDraft(null);
-                  },
-                  onDelete: () => {
-                    deleteEditorEvent();
+                  onSave: () => {
+                    saveEditor();
                     setEventPreview(null);
                     setEventTimesDraft(null);
                   },
@@ -1061,54 +1072,83 @@ export function CalendarWorkspace({
                   canSubmitEmail: invitations.canSubmitEmail,
                   sessionEmail,
                   sessionUsername: session.user.username,
-                  recurrenceId: editor.recurrenceId,
-                  thisInstanceLocked:
-                    Boolean(editor.recurrenceId) &&
-                    occurrenceHasThisInstanceOverride(
-                      data.events.find((entry) => entry.id === editor.eventId),
-                      editor.recurrenceId ?? "",
-                    ),
                   meetOperations,
                   workspaceOrigin,
                   onJoinMeeting,
-                  onRsvp: (status, calendarId) => {
-                    const notification = inviteeNotifications.find(
-                      (row) => row.eventId === editor.eventId,
-                    );
-                    const id = notification?.id ?? editor.eventId;
-                    return persistRsvp(id, status, calendarId, {
-                      source: "dialog",
-                      editorRecurrenceId: editor.recurrenceId,
-                    }).then((persisted) => {
-                      if (persisted) closeInteractiveEditor();
-                    });
-                  },
                 }
-              : undefined
+              : eventPreview?.interactiveEdit && editor?.mode === "edit"
+                ? {
+                    form: editor.form,
+                    onChange: setEditorForm,
+                    onClose: closeInteractiveEditor,
+                    onSave: (scope) => {
+                      saveEditor(scope);
+                      setEventPreview(null);
+                      setEventTimesDraft(null);
+                    },
+                    onDelete: () => {
+                      deleteEditorEvent();
+                      setEventPreview(null);
+                      setEventTimesDraft(null);
+                    },
+                    invitees: invitations.invitees,
+                    contactCards,
+                    onRefreshContactCards: refreshCards,
+                    canSubmitEmail: invitations.canSubmitEmail,
+                    sessionEmail,
+                    sessionUsername: session.user.username,
+                    recurrenceId: editor.recurrenceId,
+                    thisInstanceLocked:
+                      Boolean(editor.recurrenceId) &&
+                      occurrenceHasThisInstanceOverride(
+                        data.events.find((entry) => entry.id === editor.eventId),
+                        editor.recurrenceId ?? "",
+                      ),
+                    meetOperations,
+                    workspaceOrigin,
+                    onJoinMeeting,
+                    onRsvp: (status, calendarId) => {
+                      const notification = inviteeNotifications.find(
+                        (row) => row.eventId === editor.eventId,
+                      );
+                      const id = notification?.id ?? editor.eventId;
+                      return persistRsvp(id, status, calendarId, {
+                        source: "dialog",
+                        editorRecurrenceId: editor.recurrenceId,
+                      }).then((persisted) => {
+                        if (persisted) closeInteractiveEditor();
+                      });
+                    },
+                  }
+                : undefined
           }
           onDelete={
-            eventPreview.interactiveEdit
+            pointerCreateOpen || eventPreview?.interactiveEdit
               ? undefined
               : previewCanEdit
                 ? deleteFromPreview
                 : undefined
           }
           onRsvp={
-            eventPreview.hideRsvp || eventPreview.interactiveEdit
+            pointerCreateOpen || eventPreview?.hideRsvp || eventPreview?.interactiveEdit
               ? undefined
-              : (status) => {
-                  const eventId = liveEventPreview.eventId;
-                  const notification = inviteeNotifications.find((row) => row.eventId === eventId);
-                  return persistRsvp(notification?.id ?? eventId, status, undefined, {
-                    source: "preview",
-                    editorRecurrenceId: liveEventPreview.recurrenceId,
-                    attendees: liveEventPreview.form.attendees,
-                  }).then(() => undefined);
-                }
+              : liveEventPreview
+                ? (status) => {
+                    const eventId = liveEventPreview.eventId;
+                    const notification = inviteeNotifications.find(
+                      (row) => row.eventId === eventId,
+                    );
+                    return persistRsvp(notification?.id ?? eventId, status, undefined, {
+                      source: "preview",
+                      editorRecurrenceId: liveEventPreview.recurrenceId,
+                      attendees: liveEventPreview.form.attendees,
+                    }).then(() => undefined);
+                  }
+                : undefined
           }
         />
       ) : null}
-      {editor?.mode === "create" ? (
+      {menuCreateOpen && editor?.mode === "create" ? (
         <CalendarEventDialog
           open
           mode="create"

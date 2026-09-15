@@ -95,8 +95,11 @@ import { persistCalendarRoutePrefs } from "@/calendar-core/src/calendar-view-pre
 import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
 import { useCalendarSearch } from "@/calendar-core/src/use-calendar-search";
 
+/** How the create editor was opened — workspace routes pointer → popover, menu → dialog. */
+export type CalendarCreateSource = "pointer" | "menu";
+
 export type CalendarEditorState =
-  | { mode: "create"; form: CalendarEventFormValue }
+  | { mode: "create"; form: CalendarEventFormValue; source: CalendarCreateSource }
   | {
       mode: "edit";
       eventId: string;
@@ -465,13 +468,14 @@ export function useCalendarController({
       setHeldCreateIntent(null);
       setEditor({
         mode: "create",
+        source: "menu",
         form: emptyCalendarEventForm(calendarId, dateISO ?? anchor, startTime),
       });
     },
     [calendars, defaultCalendarId, anchor, ensureCalendarVisible],
   );
 
-  /** Drag/click create from the Lit surface — dialog only; nothing persisted yet. */
+  /** Drag/click create from the Lit surface — popover UI; nothing persisted yet. */
   const openCreateFromSurface = useCallback(
     (intent: CalendarSurfaceCreateIntent) => {
       // Sidebar create-target owns assignment; do not trust a stale Lit intent
@@ -484,6 +488,7 @@ export function useCalendarController({
       setHeldCreateIntent(null);
       setEditor({
         mode: "create",
+        source: "pointer",
         form: createIntentToForm(calendarId, intent),
       });
     },

@@ -49,11 +49,11 @@ export type CalendarSurfaceProps = {
   onStartDateChange?: (isoDate: string) => void;
   /**
    * Drag/click create intent. When provided, the cancelable Lit create is
-   * prevented so the adapter does not persist until the dialog saves.
+   * prevented so the adapter does not persist until the create UI saves.
    */
   onCreateRequested?: (intent: CalendarSurfaceCreateIntent) => void;
   /**
-   * Open create-dialog range, or the in-flight save after the dialog closes.
+   * Open create range (popover or dialog), or the in-flight save after create closes.
    * Lit keeps the drag-create card in that slot until a real event replaces it.
    */
   pendingCreateIntent?: CalendarSurfaceCreateIntent | null;
@@ -214,7 +214,7 @@ export function CalendarSurface({
     if (!host || !onCreateRequested) return;
 
     const handleCreateRequested = (event: Event) => {
-      // Prefer dialog → save over optimistic adapter create.
+      // Prefer create UI → save over optimistic adapter create.
       event.preventDefault();
       const detail = (
         event as CustomEvent<{

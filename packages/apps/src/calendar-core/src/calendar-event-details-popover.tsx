@@ -45,7 +45,10 @@ import "./calendar-event-details-popover.css";
 export type CalendarEventDetailsPopoverEditProps = Omit<
   CalendarEventFormProps,
   "mode" | "calendars" | "labels" | "locale" | "className" | "autoFocusTitle"
->;
+> & {
+  /** Defaults to edit (interactive selection). Pass create for pointer/drag create. */
+  mode?: "create" | "edit";
+};
 
 export type CalendarEventDetailsPopoverProps = {
   open: boolean;
@@ -108,7 +111,8 @@ export function CalendarEventDetailsPopover({
   const form = preview.form;
   const calendar = calendars.find((entry) => entry.id === form.calendarId);
   const isOrganizer = isSessionEventOrganizer(form.attendees, sessionEmail);
-  const formReadOnly = isCalendarEventFormReadOnly({ mode: "edit", calendar, isOrganizer });
+  const editMode = edit?.mode ?? "edit";
+  const formReadOnly = isCalendarEventFormReadOnly({ mode: editMode, calendar, isOrganizer });
   const editable = Boolean(edit) && canEdit && !formReadOnly;
   const showDelete = !editable && canEdit && Boolean(onDelete) && !formReadOnly;
   const title = form.title.trim() || untitledLabel;
@@ -255,15 +259,15 @@ export function CalendarEventDetailsPopover({
         ) : null}
         {editable && edit ? (
           <CalendarEventForm
-            mode="edit"
             calendars={calendars}
             labels={labels}
             locale={locale}
             busy={busy || edit.busy}
-            autoFocusTitle={false}
+            autoFocusTitle={editMode === "create"}
             controlSize="sm"
             collisionContentClassName="calendar-dialog-surface calendar-event-dialog"
             {...edit}
+            mode={editMode}
           />
         ) : (
           <>
