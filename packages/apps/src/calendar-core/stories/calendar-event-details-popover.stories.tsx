@@ -59,7 +59,7 @@ export const InteractiveEdit: Story = {
   tags: ["vitest-ci"],
   args: {
     // Card-sized week/day origin — not a compact-month cell — so the popover
-    // stays undocked and hosts the shared multi-column event form.
+    // stays undocked and hosts the shared single-column event form.
     origin: { left: 120, top: 72, width: 220, height: 48 },
     edit: {
       form: lunchForm,
@@ -69,11 +69,6 @@ export const InteractiveEdit: Story = {
       onDelete: fn(),
     },
   },
-  globals: {
-    // Multi-column form layout uses @media (min-width: 40rem); lock desktop
-    // so responsive Storybook panels cannot collapse the canvas below that.
-    viewport: { value: "desktop", isRotated: false },
-  },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement.ownerDocument.body);
     const popover = canvas.getByRole("dialog", { name: "Lunch" });
@@ -81,17 +76,19 @@ export const InteractiveEdit: Story = {
     await expect(popover.className).toContain("calendar-event-dialog");
     await expect(popover.className).not.toContain("calendar-event-details-popover--docked");
     await expect(popover.querySelector(".calendar-event-dialog__fields")).toBeTruthy();
+    await expect(popover.querySelector(".field-label-row--icon")).toBeTruthy();
     await expect(canvas.getByDisplayValue("Lunch")).toBeTruthy();
-    // Shared control chrome: Input / Select / Textarea / LocaleDatePicker / Button.
+    // Shared control chrome: Input / Select / Textarea / LocaleDatePicker / Button (sm).
     await expect(popover.querySelector(".input")).toBeTruthy();
-    await expect(popover.querySelector(".input--size-md")).toBeTruthy();
+    await expect(popover.querySelector(".input--size-sm")).toBeTruthy();
     await expect(popover.querySelector(".select-trigger")).toBeTruthy();
-    await expect(popover.querySelector(".select-trigger--size-md")).toBeTruthy();
+    await expect(popover.querySelector(".select-trigger--size-sm")).toBeTruthy();
     await expect(popover.querySelector(".textarea")).toBeTruthy();
     await expect(popover.querySelector(".control-surface.locale-date-picker")).toBeTruthy();
-    await expect(popover.querySelector(".control-surface--size-md")).toBeTruthy();
+    await expect(popover.querySelector(".control-surface--size-sm")).toBeTruthy();
     const remove = canvas.getByRole("button", { name: defaultCalendarLabels.delete });
-    await expect(remove.className).toContain("button--variant-destructive-outline");
+    await expect(remove.className).toContain("button--severity-danger");
+    await expect(remove.className).toContain("button--variant-outline");
     await expect(
       canvas.getByRole("button", { name: defaultCalendarLabels.saveChanges }),
     ).toBeTruthy();
@@ -100,7 +97,7 @@ export const InteractiveEdit: Story = {
   },
 };
 
-/** Stacked event-form layout below the 40rem multi-column breakpoint. */
+/** Narrow viewport still uses the same single-column event form. */
 export const InteractiveEditMobile: Story = {
   args: {
     origin: { left: 24, top: 64, width: 160, height: 40 },

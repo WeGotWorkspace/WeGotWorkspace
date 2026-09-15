@@ -58,7 +58,7 @@ const meta: Meta<typeof CalendarEventDialog> = {
     onSave: fn(),
   },
   globals: {
-    // Shared form uses @media (min-width: 40rem) for two-column layout.
+    // Prefer a comfortable canvas for the single-column event form.
     viewport: { value: "desktop", isRotated: false },
   },
 };

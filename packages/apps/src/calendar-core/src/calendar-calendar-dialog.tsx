@@ -238,7 +238,10 @@ export function CalendarCalendarDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
-        <DialogContent className="calendar-dialog-surface" aria-describedby={undefined}>
+        <DialogContent
+          className="calendar-dialog-surface calendar-calendar-dialog"
+          aria-describedby={undefined}
+        >
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>

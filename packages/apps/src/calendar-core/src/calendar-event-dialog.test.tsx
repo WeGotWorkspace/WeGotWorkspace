@@ -170,6 +170,7 @@ describe("CalendarEventDialog", () => {
     renderDialog({ form, mode: "edit", onDelete: vi.fn(), locale: "en-US" });
     expect(document.querySelectorAll('input[type="time"]')).toHaveLength(0);
     expect(screen.getAllByRole("button", { name: /Jan/i }).length).toBeGreaterThanOrEqual(2);
+    expect(document.querySelector(".calendar-event-dialog__field--timezone")).toBeNull();
     expect(
       screen.queryByRole("combobox", { name: defaultCalendarLabels.eventTimeZoneLabel }),
     ).toBeNull();
@@ -222,7 +223,7 @@ describe("CalendarEventDialog", () => {
     ).toBeNull();
   });
 
-  it("lays out schedule fields with FieldLabelRows and a Meet/Invitees/Alarms/Notes grid", () => {
+  it("lays out schedule fields with icon FieldLabelRows, Location+Meet group, and Invitees/Alarms/Notes band", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Standup",
@@ -230,6 +231,7 @@ describe("CalendarEventDialog", () => {
     };
     renderDialog({ form, locale: "en-US" });
     expect(document.querySelector(".calendar-event-dialog__fields")).not.toBeNull();
+    expect(document.querySelector(".field-label-row--icon")).not.toBeNull();
     expect(
       screen.getByRole("button", {
         name: new RegExp(`${defaultCalendarLabels.eventStartLabel}:`, "i"),
@@ -254,6 +256,8 @@ describe("CalendarEventDialog", () => {
     ).toBeTruthy();
     expect(screen.getByRole("combobox", { name: defaultCalendarLabels.eventShowAs })).toBeTruthy();
     expect(document.querySelector(".calendar-event-dialog__divider")).toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field-group--place")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field-group--when")).not.toBeNull();
     expect(document.querySelector(".calendar-event-dialog__secondary")).not.toBeNull();
     expect(document.querySelector(".calendar-event-dialog__secondary-start")).not.toBeNull();
     expect(document.querySelector(".calendar-event-dialog__secondary-end")).not.toBeNull();
@@ -261,12 +265,20 @@ describe("CalendarEventDialog", () => {
     expect(document.querySelector(".calendar-event-dialog__field--alarms")).not.toBeNull();
     expect(document.querySelector(".calendar-event-dialog__field--invitees")).not.toBeNull();
     expect(document.querySelector(".calendar-event-dialog__field--notes")).not.toBeNull();
-    const startCol = document.querySelector(".calendar-event-dialog__secondary-start");
+    const placeGroup = document.querySelector(".calendar-event-dialog__field-group--place");
+    const whenGroup = document.querySelector(".calendar-event-dialog__field-group--when");
     const meet = document.querySelector(".calendar-event-dialog__field--meet");
     const invitees = document.querySelector(".calendar-event-dialog__field--invitees");
-    expect(startCol?.contains(meet)).toBe(true);
+    const whenMeta = document.querySelector(".calendar-event-dialog__when-meta");
+    const startCol = document.querySelector(".calendar-event-dialog__secondary-start");
+    expect(placeGroup?.contains(meet)).toBe(true);
+    expect(whenGroup?.contains(whenMeta)).toBe(true);
     expect(startCol?.contains(invitees)).toBe(true);
+    expect(startCol?.contains(meet)).toBe(false);
     expect(document.querySelectorAll(".calendar-event-dialog__fields > .card").length).toBe(0);
+    expect(
+      screen.queryByRole("combobox", { name: defaultCalendarLabels.eventMeetApplyTo }),
+    ).toBeNull();
   });
 
   it("shows Ends controls for editable repeating presets", () => {

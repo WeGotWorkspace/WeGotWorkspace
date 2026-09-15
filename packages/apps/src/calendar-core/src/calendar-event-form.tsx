@@ -15,7 +15,7 @@ import {
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
-import { Button } from "@/button/src/button";
+import { Button, IconButton } from "@/button/src/button";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import { Input } from "@/ui/input";
@@ -88,7 +88,7 @@ export type CalendarEventFormProps = {
   locale?: string;
   busy?: boolean;
   submitLabel?: string;
-  /** Rendered after the primary schedule block, before Meet (e.g. Meet Schedule switch). */
+  /** Rendered after Meet in the Location+Meet group (e.g. Meet Schedule switch). */
   afterMeetAccessory?: ReactNode;
   className?: string;
   layout?: CalendarEventFormLayout;
@@ -104,7 +104,6 @@ export type CalendarEventFormProps = {
   meetOperations?: CalendarMeetOperations;
   workspaceOrigin?: string;
   sessionUsername?: string;
-  onRecurrenceSaveScopeChange?: (scope: RecurrenceEditScope) => void;
   onJoinMeeting?: (href: string) => void;
   invitees?: CalendarInvitee[];
   contactCards?: ContactCard[];
@@ -156,7 +155,6 @@ export function CalendarEventForm({
   meetOperations,
   workspaceOrigin = typeof window !== "undefined" ? window.location.origin : "",
   sessionUsername,
-  onRecurrenceSaveScopeChange,
   onJoinMeeting,
   collisionContentClassName = "calendar-dialog-surface calendar-event-dialog",
   autoFocusTitle = true,
@@ -176,12 +174,11 @@ export function CalendarEventForm({
   const [draftRsvp, setDraftRsvp] = useState<CalendarSchedulingRespondStatus | "">(
     incomingRsvp ?? "",
   );
-  const [uncontrolledMeetScope, setUncontrolledMeetScope] =
-    useState<RecurrenceEditScope>("thisAndFuture");
   const abandonStagedReserveRef = useRef<(() => void) | null>(null);
-  const meetSaveScope = thisInstanceLocked
+  // Draft Meet reserve TTL only — edit persist scope is asked at save.
+  const meetReserveScope = thisInstanceLocked
     ? "thisInstance"
-    : (recurrenceSaveScope ?? uncontrolledMeetScope);
+    : (recurrenceSaveScope ?? "thisAndFuture");
 
   const dismiss = () => {
     abandonStagedReserveRef.current?.();
@@ -192,10 +189,6 @@ export function CalendarEventForm({
     setDraftCalendarId(form.calendarId);
     setDraftRsvp(incomingRsvp ?? "");
   }, [form.calendarId, incomingRsvp]);
-
-  useEffect(() => {
-    setUncontrolledMeetScope(thisInstanceLocked ? "thisInstance" : "thisAndFuture");
-  }, [recurrenceId, thisInstanceLocked]);
 
   const valid = calendarEventFormIsValid(form);
   const recurrenceLocked = form.recurrencePreset === "custom";
@@ -232,7 +225,7 @@ export function CalendarEventForm({
     calendar,
     username: sessionUsername,
     recurrenceId,
-    recurrenceSaveScope: meetSaveScope,
+    recurrenceSaveScope: meetReserveScope,
     onChange,
     onSave,
   });
@@ -278,13 +271,16 @@ export function CalendarEventForm({
             return;
           }
           if (readOnly || !valid) return;
-          trySave(form.meetingUrl.trim() || form.meetRoomCode ? meetSaveScope : undefined);
+          // Do not pre-supply Meet/recurrence scope — controller asks via
+          // CalendarRecurrenceScopeDialog for repeating events.
+          trySave();
         }}
       >
         <div className="calendar-event-dialog__fields">
           <FieldLabelRow
             className="calendar-event-dialog__field calendar-event-dialog__field--title"
             label={labels.eventTitleLabel}
+            labelMode="icon"
             icon={fieldIcon(<Type className="size-3.5" aria-hidden />)}
           >
             <NameColorRow className="calendar-event-dialog__title-row">
@@ -317,27 +313,59 @@ export function CalendarEventForm({
             </NameColorRow>
           </FieldLabelRow>
 
-          {layout?.hideLocation ? null : (
-            <FieldLabelRow
-              className="calendar-event-dialog__field calendar-event-dialog__field--location"
-              label={labels.eventLocationLabel}
-              icon={fieldIcon(<MapPin className="size-3.5" aria-hidden />)}
-            >
-              <Input
-                size={controlSize}
-                value={form.location}
-                onChange={(event) => set("location", event.target.value)}
-                placeholder={labels.eventLocationPlaceholder}
-                disabled={fieldsDisabled}
-              />
-            </FieldLabelRow>
-          )}
+          <div className="calendar-event-dialog__field-group calendar-event-dialog__field-group--place">
+            {layout?.hideLocation ? null : (
+              <FieldLabelRow
+                className="calendar-event-dialog__field calendar-event-dialog__field--location"
+                label={labels.eventLocationLabel}
+                labelMode="icon"
+                icon={fieldIcon(<MapPin className="size-3.5" aria-hidden />)}
+              >
+                <Input
+                  size={controlSize}
+                  value={form.location}
+                  onChange={(event) => set("location", event.target.value)}
+                  placeholder={labels.eventLocationPlaceholder}
+                  aria-label={labels.eventLocationLabel}
+                  disabled={fieldsDisabled}
+                />
+              </FieldLabelRow>
+            )}
+
+            <CalendarMeetCard
+              className="calendar-event-dialog__field calendar-event-dialog__field--meet"
+              presentation="field"
+              form={form}
+              labels={labels}
+              calendar={calendar}
+              username={sessionUsername}
+              workspaceOrigin={workspaceOrigin}
+              recurrenceId={recurrenceId}
+              recurrenceSaveScope={meetReserveScope}
+              thisInstanceLocked={thisInstanceLocked}
+              meetOperations={meetOperations}
+              disabled={fieldsDisabled}
+              readOnly={readOnly}
+              copyOnly={layout?.meetCopyOnly}
+              controlSize={controlSize}
+              emailGuestHint={
+                showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
+              }
+              fieldIcon={fieldIcon(<Link2 className="size-3.5" aria-hidden />)}
+              onChange={commitForm}
+              abandonStagedReserveRef={abandonStagedReserveRef}
+              onJoin={onJoinMeeting}
+            />
+
+            {afterMeetAccessory}
+          </div>
 
           {layout?.hideWhen ? null : (
-            <>
+            <div className="calendar-event-dialog__field-group calendar-event-dialog__field-group--when">
               <FieldLabelRow
                 className="calendar-event-dialog__field calendar-event-dialog__field--starts"
                 label={labels.eventStartLabel}
+                labelMode="icon"
                 icon={fieldIcon(<CalendarDays className="size-3.5" aria-hidden />)}
               >
                 <div className="calendar-event-dialog__datetime">
@@ -370,6 +398,7 @@ export function CalendarEventForm({
               <FieldLabelRow
                 className="calendar-event-dialog__field calendar-event-dialog__field--ends"
                 label={labels.eventEndLabel}
+                labelMode="icon"
                 icon={fieldIcon(<CalendarDays className="size-3.5" aria-hidden />)}
               >
                 <div className="calendar-event-dialog__datetime">
@@ -399,58 +428,65 @@ export function CalendarEventForm({
                   </div>
                 </div>
               </FieldLabelRow>
-              <FieldLabelRow
-                className="calendar-event-dialog__field calendar-event-dialog__field--all-day"
-                label={labels.eventAllDayLabel}
-                icon={fieldIcon(<CalendarDays className="size-3.5" aria-hidden />)}
-              >
-                <div className="calendar-event-dialog__all-day">
-                  <Switch
-                    checked={form.allDay}
-                    onCheckedChange={(checked) => set("allDay", checked === true)}
-                    aria-label={labels.eventAllDayLabel}
-                    disabled={fieldsDisabled}
-                  />
-                </div>
-              </FieldLabelRow>
-              <FieldLabelRow
-                className={cn(
-                  "calendar-event-dialog__field calendar-event-dialog__field--timezone",
-                  form.allDay && "calendar-event-dialog__field--inert",
-                )}
-                label={labels.eventTimeZoneLabel}
-                icon={fieldIcon(<Globe className="size-3.5" aria-hidden />)}
-              >
-                <Select
-                  value={eventTimeZoneSelectValue(form.timeZone)}
-                  onValueChange={(value) => set("timeZone", eventTimeZoneFromSelectValue(value))}
-                  disabled={fieldsDisabled || form.allDay}
+              <div className="calendar-event-dialog__when-meta">
+                <FieldLabelRow
+                  className="calendar-event-dialog__field calendar-event-dialog__field--all-day"
+                  label={labels.eventAllDayLabel}
+                  labelMode="icon"
+                  icon={fieldIcon(<CalendarDays className="size-3.5" aria-hidden />)}
                 >
-                  <SelectTrigger
-                    size={controlSize}
-                    className="calendar-event-dialog__timezone-trigger"
-                    aria-label={labels.eventTimeZoneLabel}
-                    aria-hidden={form.allDay || undefined}
-                    tabIndex={form.allDay ? -1 : undefined}
+                  <div className="calendar-event-dialog__all-day">
+                    <Switch
+                      checked={form.allDay}
+                      onCheckedChange={(checked) => set("allDay", checked === true)}
+                      aria-label={labels.eventAllDayLabel}
+                      disabled={fieldsDisabled}
+                    />
+                    <span className="calendar-event-dialog__all-day-caption" aria-hidden>
+                      {labels.eventAllDayLabel}
+                    </span>
+                  </div>
+                </FieldLabelRow>
+                {!form.allDay ? (
+                  <FieldLabelRow
+                    className="calendar-event-dialog__field calendar-event-dialog__field--timezone"
+                    label={labels.eventTimeZoneLabel}
+                    labelMode="icon"
+                    icon={fieldIcon(<Globe className="size-3.5" aria-hidden />)}
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeZoneOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FieldLabelRow>
-            </>
+                    <Select
+                      value={eventTimeZoneSelectValue(form.timeZone)}
+                      onValueChange={(value) =>
+                        set("timeZone", eventTimeZoneFromSelectValue(value))
+                      }
+                      disabled={fieldsDisabled}
+                    >
+                      <SelectTrigger
+                        size={controlSize}
+                        className="calendar-event-dialog__timezone-trigger"
+                        aria-label={labels.eventTimeZoneLabel}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeZoneOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FieldLabelRow>
+                ) : null}
+              </div>
+            </div>
           )}
 
           {layout?.hideRecurrence ? null : (
             <FieldLabelRow
               className="calendar-event-dialog__field calendar-event-dialog__field--repeat"
               label={labels.eventRepeatLabel}
+              labelMode="icon"
               icon={fieldIcon(<Repeat className="size-3.5" aria-hidden />)}
             >
               <div className="calendar-event-dialog__repeat-stack">
@@ -537,6 +573,7 @@ export function CalendarEventForm({
             <FieldLabelRow
               className="calendar-event-dialog__field calendar-event-dialog__field--availability"
               label={labels.eventShowAs}
+              labelMode="icon"
               icon={fieldIcon(<CircleDot className="size-3.5" aria-hidden />)}
             >
               <Select
@@ -561,36 +598,6 @@ export function CalendarEventForm({
 
           <div className="calendar-event-dialog__secondary">
             <div className="calendar-event-dialog__secondary-start">
-              <CalendarMeetCard
-                className="calendar-event-dialog__field calendar-event-dialog__field--meet"
-                presentation="field"
-                form={form}
-                labels={labels}
-                calendar={calendar}
-                username={sessionUsername}
-                workspaceOrigin={workspaceOrigin}
-                recurrenceId={recurrenceId}
-                recurrenceSaveScope={meetSaveScope}
-                thisInstanceLocked={thisInstanceLocked}
-                meetOperations={meetOperations}
-                disabled={fieldsDisabled}
-                readOnly={readOnly}
-                copyOnly={layout?.meetCopyOnly}
-                controlSize={controlSize}
-                emailGuestHint={
-                  showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
-                }
-                fieldIcon={fieldIcon(<Link2 className="size-3.5" aria-hidden />)}
-                onChange={commitForm}
-                abandonStagedReserveRef={abandonStagedReserveRef}
-                onRecurrenceSaveScopeChange={
-                  onRecurrenceSaveScopeChange ?? setUncontrolledMeetScope
-                }
-                onJoin={onJoinMeeting}
-              />
-
-              {afterMeetAccessory}
-
               {layout?.hideInvitees ? null : (
                 <CalendarInviteesCard
                   className="calendar-event-dialog__field calendar-event-dialog__field--invitees"
@@ -619,6 +626,7 @@ export function CalendarEventForm({
                 <FieldLabelRow
                   className="calendar-event-dialog__field calendar-event-dialog__field--alarms"
                   label={labels.eventAlarmsLabel}
+                  labelMode="icon"
                   icon={fieldIcon(<Bell className="size-3.5" aria-hidden />)}
                 >
                   <div className="calendar-event-dialog__alarms-field">
@@ -638,6 +646,7 @@ export function CalendarEventForm({
                 <FieldLabelRow
                   className="calendar-event-dialog__field calendar-event-dialog__field--notes"
                   label={labels.eventNotesLabel}
+                  labelMode="icon"
                   icon={fieldIcon(<StickyNote className="size-3.5" aria-hidden />)}
                 >
                   <Textarea
@@ -645,6 +654,7 @@ export function CalendarEventForm({
                     value={form.description}
                     onChange={(event) => set("description", event.target.value)}
                     placeholder={labels.eventNotesLabel}
+                    aria-label={labels.eventNotesLabel}
                     disabled={fieldsDisabled}
                     rows={3}
                   />
@@ -665,9 +675,10 @@ export function CalendarEventForm({
             />
           ) : null}
           {mode === "edit" && onDelete && !readOnly ? (
-            <Button
+            <IconButton
               type="button"
-              variant="destructive-outline"
+              variant="outline"
+              severity="danger"
               size={controlSize}
               className="calendar-event-dialog__delete"
               icon={<Trash2 className="size-3.5" aria-hidden />}

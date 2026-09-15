@@ -303,6 +303,7 @@ export function CalendarInviteesCard({
       <FieldLabelRow
         className={cn("calendar-invitees-card calendar-invitees-card--field", className)}
         label={labels.eventAttendeesLabel}
+        labelMode="icon"
         icon={fieldIcon ?? <Users className="size-3.5" aria-hidden />}
       >
         <div className="calendar-invitees-card__field-body">

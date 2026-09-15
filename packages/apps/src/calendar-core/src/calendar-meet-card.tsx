@@ -18,7 +18,6 @@ import {
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import {
   patchCalendarEventForm,
   type CalendarEventFormValue,
@@ -72,7 +71,6 @@ export type CalendarMeetCardProps = {
   /** Shared control height (`sm` in the compact event popover). Default `md`. */
   controlSize?: ControlSize;
   onChange: (next: CalendarEventFormValue) => void;
-  onRecurrenceSaveScopeChange?: (scope: RecurrenceEditScope) => void;
   onJoin?: (href: string) => void;
 };
 
@@ -161,7 +159,6 @@ export function CalendarMeetCard({
   controlSize = "md",
   abandonStagedReserveRef,
   onChange,
-  onRecurrenceSaveScopeChange,
   onJoin,
 }: CalendarMeetCardProps) {
   const [reserving, setReserving] = useState(false);
@@ -173,7 +170,7 @@ export function CalendarMeetCard({
   const hrefDraftRef = useRef(form.meetingUrl);
   const urlWriteGenRef = useRef(0);
   const [draftHref, setDraftHref] = useState(form.meetingUrl);
-  const canChooseScope = Boolean(recurrenceId) && !thisInstanceLocked && !readOnly;
+  // Room TTL while drafting only — persist scope is chosen at save via CalendarRecurrenceScopeDialog.
   const scope = resolveCalendarMeetReserveScope({
     recurrencePreset: form.recurrencePreset,
     recurrenceId,
@@ -285,28 +282,6 @@ export function CalendarMeetCard({
     void generateMeet(false);
   };
 
-  const removeMeet = async (): Promise<void> => {
-    const room =
-      stagedRoomRef.current.trim() ||
-      form.meetRoomCode?.trim() ||
-      roomCodeFromMeetingUrl(form.meetingUrl, workspaceOrigin);
-    if (room) await expireStagedRoom(room);
-    stagedRoomRef.current = "";
-    reservedThisSessionRef.current = false;
-    hrefDraftRef.current = "";
-    applyForm(form, { meetingUrl: "", meetRoomCode: undefined }, onChange);
-  };
-
-  const changeScope = async (next: RecurrenceEditScope): Promise<void> => {
-    if (next === recurrenceSaveScope) return;
-    if (reservedThisSessionRef.current || form.meetRoomCode) {
-      await removeMeet();
-    } else if (form.meetingUrl.trim()) {
-      applyForm(form, { meetingUrl: "" }, onChange);
-    }
-    onRecurrenceSaveScopeChange?.(next);
-  };
-
   const expireLocalWgwRoom = async (): Promise<void> => {
     const room = stagedRoomRef.current.trim() || form.meetRoomCode?.trim() || "";
     if (room) await expireStagedRoom(room);
@@ -391,30 +366,6 @@ export function CalendarMeetCard({
   const canGenerate = Boolean(meetOperations?.reserveRoom) && !copyOnly;
   const listChannels = copyOnly ? undefined : meetOperations?.listChannels;
 
-  const scopeRow = canChooseScope ? (
-    <div className="calendar-event-dialog__meet-scope">
-      <Select
-        value={recurrenceSaveScope ?? "thisAndFuture"}
-        onValueChange={(value) => {
-          void changeScope(value as RecurrenceEditScope);
-        }}
-        disabled={disabled || reserving}
-      >
-        <SelectTrigger
-          size={controlSize}
-          className="calendar-event-dialog__meet-scope-trigger"
-          aria-label={labels.eventMeetApplyTo}
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="thisInstance">{labels.recurrenceScopeThisInstance}</SelectItem>
-          <SelectItem value="thisAndFuture">{labels.recurrenceScopeThisAndFuture}</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-  ) : null;
-
   const urlRow = (
     <CalendarMeetUrlRow
       href={draftHref}
@@ -496,10 +447,10 @@ export function CalendarMeetCard({
       <FieldLabelRow
         className={cn("calendar-event-dialog__meet", className)}
         label={labels.eventMeetSectionTitle}
+        labelMode="icon"
         icon={fieldIcon ?? <Video className="size-3.5" aria-hidden />}
       >
         <div className="calendar-event-dialog__meet-field">
-          {scopeRow}
           {urlRow}
           {hint}
         </div>
@@ -514,29 +465,6 @@ export function CalendarMeetCard({
       titleIcon={<Video className="size-4" />}
       title={labels.eventMeetSectionTitle}
     >
-      {canChooseScope ? (
-        <CardRow title={labels.eventMeetApplyTo}>
-          <Select
-            value={recurrenceSaveScope ?? "thisAndFuture"}
-            onValueChange={(value) => {
-              void changeScope(value as RecurrenceEditScope);
-            }}
-            disabled={disabled || reserving}
-          >
-            <SelectTrigger
-              size={controlSize}
-              className="calendar-event-dialog__meet-scope-trigger"
-              aria-label={labels.eventMeetApplyTo}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="thisInstance">{labels.recurrenceScopeThisInstance}</SelectItem>
-              <SelectItem value="thisAndFuture">{labels.recurrenceScopeThisAndFuture}</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardRow>
-      ) : null}
       <CardRow fill>{urlRow}</CardRow>
       {hint}
       {replaceDialog}

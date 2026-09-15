@@ -1,6 +1,7 @@
 @import "../../styles.css" reference;
 
-.calendar-dialog-surface .field-label-row + .field-label-row {
+/* Scoped to this dialog only — do not leak mt into event form / popover surfaces. */
+.calendar-dialog-surface.calendar-calendar-dialog .field-label-row + .field-label-row {
   @apply mt-3;
 }
 

@@ -66,8 +66,11 @@ describe("calendar event details popover CSS", () => {
     expect(css).not.toContain("calendar-event-details-popover__join");
   });
 
-  it("widens the editable popover for the multi-column event form", () => {
+  it("sizes the editable popover for the single-column event form", () => {
     expect(css).toContain("calendar-event-details-popover--editable");
-    expect(css).toContain("w-[min(34rem,calc(100vw-1.5rem))]");
+    expect(css).toContain("w-[min(24rem,calc(100vw-1.5rem))]");
+    expect(css).toContain("max-height: 50vh");
+    expect(css).not.toContain("w-[min(28rem,calc(100vw-1.5rem))]");
+    expect(css).not.toContain("w-[min(34rem,calc(100vw-1.5rem))]");
   });
 });

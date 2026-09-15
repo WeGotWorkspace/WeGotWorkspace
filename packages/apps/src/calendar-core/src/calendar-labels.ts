@@ -163,7 +163,7 @@ export type CalendarUILabels = {
   /** Compact details popover — opens the existing event dialog. */
   eventDetailsEdit: string;
   eventDetailsMoreInvitees: (count: number) => string;
-  /** Standalone card heading and select label for busy/free availability. */
+  /** Standalone field label for busy/free “Show as”. */
   eventShowAs: string;
   eventShowAsBusy: string;
   eventShowAsFree: string;
@@ -405,10 +405,10 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventMeetChannelEmailReplaceLink: "Use Meeting Link",
   eventMeetEmailGuestsNoAccessHint:
     "Email guests will receive a calendar invite but cannot join this Meet. The channel is members-only.",
-  eventNotesLabel: "Notes",
+  eventNotesLabel: "Description",
   eventDetailsEdit: "Edit",
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),
-  eventShowAs: "Availability",
+  eventShowAs: "Show as",
   eventShowAsBusy: "Busy",
   eventShowAsFree: "Free",
   eventAlarmsLabel: "Alarms",
@@ -432,7 +432,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventRecurrenceEndsAfter: "After",
   eventRecurrenceEndsCountSuffix: "times",
   save: "Save",
-  saveChanges: "Save changes",
+  saveChanges: "Save",
   cancel: "Cancel",
   delete: "Delete",
   invitationsSection: "Invitations",

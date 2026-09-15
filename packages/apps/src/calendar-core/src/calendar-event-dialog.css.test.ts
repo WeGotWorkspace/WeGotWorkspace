@@ -21,11 +21,25 @@ describe("calendar event dialog CSS ownership", () => {
     expect(css).toContain("--button-primary-bg: var(--calendar-accent-strong)");
   });
 
-  it("uses a 40rem media query for the multi-column event form", () => {
-    expect(css).toMatch(/@media \(min-width: 40rem\)/);
+  it("keeps the event form single-column (date+time pairs stay in-row)", () => {
     expect(css).toMatch(
-      /\.calendar-dialog-surface \.calendar-event-dialog__fields \{[\s\S]*grid-template-columns:\s*1fr 1fr/,
+      /\.calendar-dialog-surface \.calendar-event-dialog__fields \{[\s\S]*grid-cols-1/,
     );
+    expect(css).not.toMatch(/@media \(min-width: 40rem\)/);
+    expect(css).not.toMatch(/grid-template-columns:\s*1fr 1fr/);
+    expect(css).toMatch(/max-inline-size:\s*min\(24rem/);
+    expect(css).toMatch(/max-h-\[50vh\]/);
+    expect(css).toMatch(/--calendar-event-field-gap:\s*1rem/);
+    expect(css).toMatch(/--calendar-event-field-group-gap:\s*0\.5rem/);
+    expect(css).toMatch(/row-gap:\s*var\(--calendar-event-field-gap\)/);
+    expect(formTsx).toMatch(/!form\.allDay \? \(/);
+  });
+
+  it("puts all-day and timezone on one row with a visible all-day caption", () => {
+    expect(formTsx).toMatch(/calendar-event-dialog__when-meta/);
+    expect(formTsx).toMatch(/calendar-event-dialog__all-day-caption/);
+    expect(css).toMatch(/\.calendar-event-dialog__when-meta/);
+    expect(css).toMatch(/calendar-event-dialog__all-day-caption/);
   });
 });
 
@@ -51,7 +65,9 @@ describe("calendar event dialog shared form controls", () => {
     expect(formTsx).toMatch(/from "@\/ui\/select"/);
     expect(formTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
     expect(formTsx).toMatch(/from "@\/button\/src\/button"/);
-    expect(formTsx).toMatch(/variant="destructive-outline"/);
+    expect(formTsx).toMatch(/IconButton/);
+    expect(formTsx).toMatch(/severity="danger"/);
+    expect(formTsx).not.toMatch(/variant="destructive-outline"/);
     expect(formTsx).not.toMatch(/calendar-event-dialog__date-trigger/);
     expect(css).not.toMatch(/calendar-event-dialog__date-trigger/);
     expect(css).not.toContain("color: #b91c1c");
@@ -63,20 +79,59 @@ describe("calendar event dialog shared form controls", () => {
     expect(formTsx).toMatch(/calendar-event-dialog__form--compact/);
   });
 
-  it("stacks Meet→Invitees and Alarms→Notes in a secondary two-column band", () => {
+  it("stacks Invitees→Alarms→Description via display:contents secondary so fields share parent gap", () => {
     expect(formTsx).toMatch(/calendar-event-dialog__secondary/);
     expect(formTsx).toMatch(/calendar-event-dialog__secondary-start/);
     expect(formTsx).toMatch(/calendar-event-dialog__secondary-end/);
-    expect(css).toMatch(/\.calendar-event-dialog__secondary/);
+    expect(css).toMatch(/\.calendar-event-dialog__secondary[\s\S]*display:\s*contents/);
+    expect(css).toMatch(/\.calendar-event-dialog__secondary-start[\s\S]*display:\s*contents/);
+    expect(css).toMatch(/\.calendar-event-dialog__secondary-end[\s\S]*display:\s*contents/);
+    expect(css).not.toMatch(/\.calendar-event-dialog__secondary \{[\s\S]*grid-cols-2/);
     expect(formTsx).not.toMatch(/calendar-event-dialog__divider/);
     expect(css).not.toMatch(/calendar-event-dialog__divider/);
+    expect(formTsx).toMatch(/labelMode="icon"/);
+    expect(formTsx).toMatch(/calendar-event-dialog__field-group--place/);
+    expect(formTsx).toMatch(/calendar-event-dialog__field-group--when/);
+    expect(css).toMatch(/\.calendar-event-dialog__field-group/);
+    expect(css).toMatch(
+      /\.calendar-event-dialog__field-group \{[\s\S]*gap:\s*var\(--calendar-event-field-group-gap\)/,
+    );
   });
 
   it("reserves datetime time slots so all-day toggle does not reflow neighbors", () => {
     expect(formTsx).toMatch(/calendar-event-dialog__time-slot/);
     expect(css).toMatch(/calendar-event-dialog__time-slot/);
     expect(css).toMatch(/--calendar-event-time-slot-width/);
-    expect(formTsx).toMatch(/calendar-event-dialog__field--inert/);
+    expect(formTsx).not.toMatch(/calendar-event-dialog__field--inert/);
+    expect(formTsx).toMatch(/field--timezone/);
+  });
+
+  it("vertically centers all-day + timezone on a shared stretched row height", () => {
+    expect(css).toMatch(/\.calendar-event-dialog__when-meta \{[\s\S]*align-items:\s*stretch/);
+    expect(css).toMatch(/\.calendar-event-dialog__when-meta \{[\s\S]*gap:\s*1\.25rem/);
+    expect(css).toMatch(/--when-meta-row-height:/);
+    expect(css).toMatch(
+      /\.calendar-event-dialog__when-meta > \.field-label-row--icon \{[\s\S]*align-items:\s*center/,
+    );
+    expect(css).toMatch(
+      /\.calendar-event-dialog__when-meta > \.field-label-row--icon \{[\s\S]*margin-top:\s*0/,
+    );
+    expect(css).toMatch(
+      /\.calendar-event-dialog__when-meta > \.field-label-row--icon \{[\s\S]*margin-bottom:\s*0/,
+    );
+    expect(css).toMatch(
+      /\.calendar-event-dialog__when-meta \.field-label-row__icon-label \{[\s\S]*height:\s*var\(--when-meta-row-height\)/,
+    );
+    expect(css).toMatch(
+      /\.calendar-event-dialog__all-day \{[\s\S]*height:\s*var\(--when-meta-row-height\)/,
+    );
+  });
+
+  it("owns field margins so leaked sibling mt cannot break group gaps", () => {
+    expect(css).toMatch(/\.calendar-event-dialog__fields \.field-label-row[\s\S]*margin-top:\s*0/);
+    expect(css).toMatch(
+      /\.calendar-event-dialog__fields \.field-label-row[\s\S]*margin-bottom:\s*0/,
+    );
   });
 });
 
@@ -102,6 +157,7 @@ describe("calendar event dialog Meet field", () => {
     expect(css).toContain("--card-title-icon-color: var(--meet-accent)");
     expect(css).not.toMatch(/calendar-event-dialog__meet-generate/);
     expect(css).not.toContain("calendar-event-dialog__meet-switch");
-    expect(css).toMatch(/\.calendar-event-dialog__meet-scope-trigger/);
+    expect(css).not.toMatch(/calendar-event-dialog__meet-scope-trigger/);
+    expect(formTsx).not.toMatch(/onRecurrenceSaveScopeChange/);
   });
 });

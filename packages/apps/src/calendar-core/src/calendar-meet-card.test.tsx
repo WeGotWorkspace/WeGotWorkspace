@@ -25,7 +25,6 @@ function renderCard(
   } = {},
 ) {
   const onChange = vi.fn();
-  const onRecurrenceSaveScopeChange = vi.fn();
   const form = overrides.form ?? emptyCalendarEventForm("default", "2033-01-12");
   const meetOperations = overrides.meetOperations ?? stubMeet();
   render(
@@ -38,12 +37,11 @@ function renderCard(
         workspaceOrigin={ORIGIN}
         meetOperations={meetOperations}
         onChange={onChange}
-        onRecurrenceSaveScopeChange={onRecurrenceSaveScopeChange}
         {...overrides}
       />
     </TooltipProvider>,
   );
-  return { onChange, onRecurrenceSaveScopeChange, meetOperations };
+  return { onChange, meetOperations };
 }
 
 function generateMeetButton(): HTMLElement {
@@ -231,10 +229,8 @@ describe("CalendarMeetCard", () => {
     });
   });
 
-  it("invalidates a staged reserve when save-scope changes", async () => {
-    const meetOperations = stubMeet();
-    const { onRecurrenceSaveScopeChange } = renderCard({
-      meetOperations,
+  it("does not show a Meet apply-to / recurrence scope selector", () => {
+    renderCard({
       recurrenceId: "2033-01-12T10:00:00",
       recurrenceSaveScope: "thisAndFuture",
       form: {
@@ -244,12 +240,9 @@ describe("CalendarMeetCard", () => {
         meetRoomCode: ROOM,
       },
     });
-    fireEvent.click(screen.getByRole("combobox", { name: defaultCalendarLabels.eventMeetApplyTo }));
-    fireEvent.click(
-      screen.getByRole("option", { name: defaultCalendarLabels.recurrenceScopeThisInstance }),
-    );
-    await waitFor(() => expect(meetOperations.patchRoomExpiresAt).toHaveBeenCalled());
-    expect(onRecurrenceSaveScopeChange).toHaveBeenCalledWith("thisInstance");
+    expect(
+      screen.queryByRole("combobox", { name: defaultCalendarLabels.eventMeetApplyTo }),
+    ).toBeNull();
   });
 
   it("always shows the URL field and generate, and does not confirm when empty", () => {
