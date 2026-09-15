@@ -43,22 +43,26 @@ function optionKey<T extends string>(options: SegmentedControlOption<T>[]): stri
 /**
  * Sync thumb geometry to the active segment.
  *
- * Contract: the first layout (and any layout while the thumb was unselected)
- * writes position/width without enabling motion. `data-thumb-animate` is set
- * only after that snap has painted (and a post-paint remeasure has run), so
- * remounting a card with a selected value never replays a slide-in from the
- * parked/zero thumb. Later option changes animate transform only (see CSS).
+ * Contract: layout writes x/width/height immediately, but `data-thumb-ready`
+ * (opacity) waits for a post-paint remeasure so the wash never flashes at a
+ * stale or border-box-tall size. `data-thumb-animate` is set only after that
+ * reveal, so remounting a card with a selected value never replays a slide-in.
+ * Later option changes animate transform only (see CSS).
  *
- * Vertical size is CSS-only (`top`/`bottom: 0` — flush to the track). Only
- * x/width are measured from the active segment.
+ * Height uses `clientHeight` (content box) — not border-box — so the wash
+ * cannot paint past the track top/bottom on first layout.
  */
-function syncSegmentedThumb(root: HTMLElement, options: { allowAnimate: boolean }): void {
+function syncSegmentedThumb(
+  root: HTMLElement,
+  options: { allowAnimate: boolean; reveal: boolean },
+): void {
   const active = root.querySelector<HTMLElement>(".segmented-control__button--active");
   if (!active) {
     delete root.dataset.thumbReady;
     delete root.dataset.thumbAnimate;
     root.style.removeProperty("--segmented-control-thumb-x");
     root.style.removeProperty("--segmented-control-thumb-width");
+    root.style.removeProperty("--segmented-control-thumb-height");
     return;
   }
   const rootRect = root.getBoundingClientRect();
@@ -68,9 +72,15 @@ function syncSegmentedThumb(root: HTMLElement, options: { allowAnimate: boolean 
   // Round to device pixels so labeled end segments do not overhang the track by a hair.
   const x = Math.round(buttonRect.left - rootRect.left - border);
   const width = Math.round(buttonRect.width);
+  const height = Math.round(root.clientHeight);
   root.style.setProperty("--segmented-control-thumb-x", `${x}px`);
   root.style.setProperty("--segmented-control-thumb-width", `${width}px`);
-  root.dataset.thumbReady = "";
+  root.style.setProperty("--segmented-control-thumb-height", `${height}px`);
+  // Reveal after the caller’s post-paint remeasure — do not gate on measured
+  // size (jsdom often reports 0×0; real layouts settle before double-rAF).
+  if (options.reveal) {
+    root.dataset.thumbReady = "";
+  }
   if (options.allowAnimate) {
     root.dataset.thumbAnimate = "";
   } else {
@@ -109,13 +119,15 @@ export function SegmentedControl<T extends string>({
     let cancelled = false;
     let outerFrame = 0;
     let innerFrame = 0;
-    const runSync = () => {
-      syncSegmentedThumb(root, { allowAnimate: hasAnimatedRef.current });
+    const runSync = (reveal: boolean) => {
+      syncSegmentedThumb(root, {
+        allowAnimate: hasAnimatedRef.current,
+        reveal,
+      });
     };
 
-    runSync();
-    // Post-paint remeasure: popover zoom-in and first layout can leave stale
-    // client rects. Enable slide motion only after that snap has painted.
+    // Measure now but keep the wash hidden until post-paint remeasure.
+    runSync(false);
     cancelAnimationFrame(outerFrame);
     cancelAnimationFrame(innerFrame);
     outerFrame = requestAnimationFrame(() => {
@@ -123,7 +135,7 @@ export function SegmentedControl<T extends string>({
         if (cancelled || !root.isConnected) {
           return;
         }
-        runSync();
+        runSync(true);
         if (
           cancelled ||
           !root.hasAttribute("data-thumb-ready") ||
@@ -142,7 +154,11 @@ export function SegmentedControl<T extends string>({
         cancelAnimationFrame(innerFrame);
       };
     }
-    const observer = new ResizeObserver(() => runSync());
+    const observer = new ResizeObserver(() => {
+      // Keep geometry fresh; only reveal if the wash is already visible so
+      // ResizeObserver cannot flash a pre-paint thumb on first layout.
+      runSync(root.hasAttribute("data-thumb-ready"));
+    });
     observer.observe(root);
     for (const button of root.querySelectorAll(".segmented-control__button")) {
       observer.observe(button);
@@ -176,7 +192,7 @@ export function SegmentedControl<T extends string>({
         )}
         aria-hidden
       />
-      {options.map((option) => {
+      {options.map((option, index) => {
         const active = hasSelection && value === option.value;
         const hasIcon = option.icon != null;
         const showVisibleLabel = !hasIcon || Boolean(option.showLabel);
@@ -190,6 +206,8 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             className={cn(
               "segmented-control__button",
+              index === 0 && "segmented-control__button--first",
+              index === options.length - 1 && "segmented-control__button--last",
               showVisibleLabel && "segmented-control__button--text",
               active && "segmented-control__button--active",
               option.severity && `segmented-control__button--severity-${option.severity}`,

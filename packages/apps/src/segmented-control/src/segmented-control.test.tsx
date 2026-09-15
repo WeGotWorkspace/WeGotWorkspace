@@ -141,14 +141,53 @@ describe("SegmentedControl", () => {
       <SegmentedControl value="declined" onChange={vi.fn()} options={labeled} />,
     );
     const root = container.querySelector(".segmented-control") as HTMLElement;
-    expect(screen.getByRole("button", { name: "Decline" }).textContent).toContain("Decline");
-    expect(screen.getByRole("button", { name: "Decline" }).className).toContain(
-      "segmented-control__button--text",
+    const decline = screen.getByRole("button", { name: "Decline" });
+    expect(decline.textContent).toContain("Decline");
+    expect(decline.className).toContain("segmented-control__button--text");
+    expect(decline.className).toContain("segmented-control__button--last");
+    expect(screen.getByRole("button", { name: "Accept" }).className).toContain(
+      "segmented-control__button--first",
     );
     const width = root.style.getPropertyValue("--segmented-control-thumb-width");
     const x = root.style.getPropertyValue("--segmented-control-thumb-x");
+    const height = root.style.getPropertyValue("--segmented-control-thumb-height");
     expect(width).toMatch(/^\d+px$/);
     expect(x).toMatch(/^\d+px$/);
+    expect(height).toMatch(/^\d+px$/);
+  });
+
+  it("defers thumb reveal until post-paint remeasure (no first-paint flash)", async () => {
+    const labeled = rsvpOptions.map((option) => ({ ...option, showLabel: true as const }));
+    const { container, unmount } = renderWithTooltip(
+      <SegmentedControl value="tentative" onChange={vi.fn()} options={labeled} />,
+    );
+
+    const root = container.querySelector(".segmented-control") as HTMLElement;
+    // Geometry is written in layout; opacity waits for double-rAF remeasure.
+    expect(root.style.getPropertyValue("--segmented-control-thumb-width")).not.toBe("");
+    expect(root.style.getPropertyValue("--segmented-control-thumb-height")).not.toBe("");
+    expect(root?.hasAttribute("data-thumb-ready")).toBe(false);
+    expect(root?.hasAttribute("data-thumb-animate")).toBe(false);
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+    });
+    expect(root?.hasAttribute("data-thumb-ready")).toBe(true);
+    expect(root?.hasAttribute("data-thumb-animate")).toBe(true);
+    expect(
+      Number.parseInt(root.style.getPropertyValue("--segmented-control-thumb-height"), 10),
+    ).toBe(Math.round(root.clientHeight));
+
+    unmount();
+    const remounted = renderWithTooltip(
+      <SegmentedControl value="tentative" onChange={vi.fn()} options={labeled} />,
+    );
+    const remountRoot = remounted.container.querySelector(".segmented-control");
+    expect(remountRoot?.hasAttribute("data-thumb-ready")).toBe(false);
+    expect(remountRoot?.hasAttribute("data-thumb-animate")).toBe(false);
+    remounted.unmount();
   });
 
   it("snaps thumb on mount with a selected value (no animate until after first paint)", async () => {
@@ -157,8 +196,7 @@ describe("SegmentedControl", () => {
     );
 
     const root = container.querySelector(".segmented-control") as HTMLElement;
-    expect(root?.hasAttribute("data-thumb-ready")).toBe(true);
-    // Contract: remounting invitation cards must not replay a slide-in.
+    expect(root?.hasAttribute("data-thumb-ready")).toBe(false);
     expect(root?.hasAttribute("data-thumb-animate")).toBe(false);
     expect(root.style.getPropertyValue("--segmented-control-thumb-width")).not.toBe("");
 
@@ -167,6 +205,7 @@ describe("SegmentedControl", () => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
     });
+    expect(root?.hasAttribute("data-thumb-ready")).toBe(true);
     expect(root?.hasAttribute("data-thumb-animate")).toBe(true);
 
     unmount();
@@ -174,7 +213,7 @@ describe("SegmentedControl", () => {
       <SegmentedControl value="accepted" onChange={vi.fn()} options={rsvpOptions} />,
     );
     const remountRoot = remounted.container.querySelector(".segmented-control");
-    expect(remountRoot?.hasAttribute("data-thumb-ready")).toBe(true);
+    expect(remountRoot?.hasAttribute("data-thumb-ready")).toBe(false);
     expect(remountRoot?.hasAttribute("data-thumb-animate")).toBe(false);
     remounted.unmount();
   });
@@ -195,6 +234,7 @@ describe("SegmentedControl", () => {
     expect(root.hasAttribute("data-thumb-ready")).toBe(false);
     expect(root.style.getPropertyValue("--segmented-control-thumb-width")).toBe("");
     expect(root.style.getPropertyValue("--segmented-control-thumb-x")).toBe("");
+    expect(root.style.getPropertyValue("--segmented-control-thumb-height")).toBe("");
   });
 
   it("renders three options with per-option severity and a sliding thumb", () => {

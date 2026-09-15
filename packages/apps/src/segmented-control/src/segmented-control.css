@@ -1,16 +1,16 @@
 @import "../../styles.css" reference;
 
 .segmented-control {
-  /* Thumb sits flush to the track inner edge (no Switch-like gutter). */
+  /* Segment borders form the chrome; track stroke is 0 so end cells do not double. */
   --segmented-control-track-border-width: 1px;
   --segmented-control-height: var(--control-height-md, 2.25rem);
   /* Track radius from global `--control-radius` (soft by default).
-   * Thumb uses the *inner* curve (track radius − border) so the wash does not
-   * paint past the gray border at end segments — especially labeled RSVP. */
+   * Thumb / end segments share the same outer curve (no track stroke to subtract). */
   --segmented-control-track-radius: var(--control-radius);
-  --segmented-control-thumb-radius: max(
-    0px,
-    calc(var(--segmented-control-track-radius) - var(--segmented-control-track-border-width))
+  --segmented-control-thumb-radius: var(--segmented-control-track-radius);
+  --segmented-control-segment-border-color: var(
+    --segmented-control-track-border-color,
+    var(--button-outline-border-color, var(--control-border-color))
   );
   --segmented-control-severity-danger-color: var(
     --menu-item-severity-color,
@@ -31,17 +31,15 @@
     --button-severity-success-hover-background,
     color-mix(in oklab, var(--segmented-control-severity-success-color) 14%, transparent)
   );
-  /* Clip the sliding thumb to the track; focus ring lives on the control via :has(). */
+  /* Clip the sliding thumb to the track; focus ring lives on the control via :has().
+   * `clip` avoids first-paint bleed past the rounded edge that `hidden` can miss. */
   @apply relative box-border inline-flex items-stretch overflow-hidden;
+  overflow: clip;
   height: var(--segmented-control-height);
   padding: 0;
+  border: 0;
   border-radius: var(--segmented-control-track-radius);
   background-color: var(--segmented-control-track-bg, transparent);
-  border: var(--segmented-control-track-border-width) solid
-    var(
-      --segmented-control-track-border-color,
-      var(--button-outline-border-color, var(--control-border-color))
-    );
 }
 
 .segmented-control:has(.segmented-control__button:focus-visible) {
@@ -71,11 +69,13 @@
 .segmented-control__thumb {
   @apply pointer-events-none absolute box-border;
   z-index: 1;
-  /* Abspos origin is the padding edge; padding is 0 so thumb is flush to the border. */
+  /* Explicit content-box height (set in TS from clientHeight) — never stretch via
+   * top+bottom to a border-box that can paint past the track on first layout. */
   top: 0;
-  bottom: 0;
+  bottom: auto;
   left: 0;
-  height: auto;
+  height: var(--segmented-control-thumb-height, 100%);
+  max-height: 100%;
   width: var(--segmented-control-thumb-width, 0px);
   transform: translateX(var(--segmented-control-thumb-x, 0px));
   border-radius: var(--segmented-control-thumb-radius);
@@ -117,12 +117,16 @@
 }
 
 .segmented-control__button {
-  @apply relative z-[2] box-border inline-flex items-center justify-center border-0 p-0;
+  @apply relative z-[2] box-border inline-flex items-center justify-center p-0;
   @apply focus-visible:outline-none;
   height: 100%;
   width: auto;
   aspect-ratio: 1 / 1;
-  border-radius: var(--segmented-control-thumb-radius);
+  /* Full cell border; collapse with the next segment so meetings stay 1px. */
+  border: var(--segmented-control-track-border-width) solid
+    var(--segmented-control-segment-border-color);
+  margin-inline-end: calc(-1 * var(--segmented-control-track-border-width));
+  border-radius: 0;
   /* Kill UA line-box strut so icon+label stay optically centered in the thumb. */
   line-height: 0;
   /* Match outline Button / IconButton idle foreground (no muted fade). */
@@ -133,6 +137,17 @@
     background-color 150ms,
     border-color 150ms,
     box-shadow 150ms;
+}
+
+.segmented-control__button--first {
+  border-start-start-radius: var(--segmented-control-track-radius);
+  border-end-start-radius: var(--segmented-control-track-radius);
+}
+
+.segmented-control__button--last {
+  margin-inline-end: 0;
+  border-start-end-radius: var(--segmented-control-track-radius);
+  border-end-end-radius: var(--segmented-control-track-radius);
 }
 
 .segmented-control__button svg {

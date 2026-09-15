@@ -19,37 +19,56 @@ describe("segmented-control chrome tokens", () => {
     );
   });
 
-  it("keeps the thumb on the inner track curve (track radius − border, floored at 0)", () => {
+  it("shares the track radius with the thumb (segment borders form the stroke)", () => {
     expect(css).toMatch(
-      /--segmented-control-thumb-radius:\s*max\(\s*0px,\s*calc\(\s*var\(--segmented-control-track-radius\)\s*-\s*var\(--segmented-control-track-border-width\)\s*\)\s*\)/,
-    );
-    expect(css).not.toMatch(
-      /--segmented-control-thumb-radius:\s*var\(--segmented-control-track-radius\)\s*;/,
+      /--segmented-control-thumb-radius:\s*var\(--segmented-control-track-radius\)/,
     );
     expect(css).toMatch(
       /\.segmented-control__thumb \{[\s\S]*border-radius:\s*var\(--segmented-control-thumb-radius\)/,
     );
   });
 
-  it("defaults the track to transparent with outline/control border", () => {
-    expect(css).toMatch(
-      /\.segmented-control \{[\s\S]*background-color:\s*var\(--segmented-control-track-bg,\s*transparent\)/,
+  it("drops the track stroke so end-segment borders do not double", () => {
+    const trackBlock = css.match(/\.segmented-control \{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(trackBlock).toMatch(/border:\s*0/);
+    expect(trackBlock).toMatch(
+      /background-color:\s*var\(--segmented-control-track-bg,\s*transparent\)/,
     );
-    expect(css).toMatch(
-      /\.segmented-control \{[\s\S]*border:\s*var\(--segmented-control-track-border-width\)\s+solid\s+var\(\s*--segmented-control-track-border-color,\s*var\(--button-outline-border-color,\s*var\(--control-border-color\)\)/,
+    expect(trackBlock).not.toMatch(
+      /border:\s*var\(--segmented-control-track-border-width\)\s+solid/,
     );
   });
 
-  it("clips the selected thumb inside the track (overflow hidden, flush, no Switch gutter)", () => {
+  it("borders each segment and collapses adjacent edges with negative margin", () => {
+    expect(css).toMatch(
+      /\.segmented-control__button \{[\s\S]*border:\s*var\(--segmented-control-track-border-width\)\s+solid\s+var\(--segmented-control-segment-border-color\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control__button \{[\s\S]*margin-inline-end:\s*calc\(\s*-1\s*\*\s*var\(--segmented-control-track-border-width\)\s*\)/,
+    );
+    expect(css).toMatch(/\.segmented-control__button--last \{[\s\S]*margin-inline-end:\s*0/);
+    expect(css).toMatch(
+      /\.segmented-control__button--first \{[\s\S]*border-start-start-radius:\s*var\(--segmented-control-track-radius\)/,
+    );
+    expect(css).toMatch(
+      /\.segmented-control__button--last \{[\s\S]*border-start-end-radius:\s*var\(--segmented-control-track-radius\)/,
+    );
+  });
+
+  it("clips the selected thumb inside the track (overflow clip, content-box height)", () => {
     expect(css).not.toMatch(/--segmented-control-padding:/);
     expect(css).toMatch(/\.segmented-control \{[\s\S]*padding:\s*0/);
     expect(css).toMatch(/\.segmented-control \{[\s\S]*items-stretch/);
     expect(css).toMatch(/\.segmented-control \{[\s\S]*overflow-hidden/);
+    expect(css).toMatch(/\.segmented-control \{[\s\S]*overflow:\s*clip/);
     expect(css).toMatch(/\.segmented-control__button \{[\s\S]*height:\s*100%/);
     expect(css).toMatch(/\.segmented-control__button \{[\s\S]*aspect-ratio:\s*1\s*\/\s*1/);
     expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*top:\s*0/);
-    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*bottom:\s*0/);
-    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*height:\s*auto/);
+    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*bottom:\s*auto/);
+    expect(css).toMatch(
+      /\.segmented-control__thumb \{[\s\S]*height:\s*var\(--segmented-control-thumb-height,\s*100%\)/,
+    );
+    expect(css).toMatch(/\.segmented-control__thumb \{[\s\S]*max-height:\s*100%/);
     expect(css).toMatch(
       /\.segmented-control__thumb \{[\s\S]*width:\s*var\(--segmented-control-thumb-width,\s*0px\)/,
     );
@@ -153,8 +172,7 @@ describe("segmented-control chrome tokens", () => {
     );
   });
 
-  it("resets button padding and kills line-box strut for vertical centering", () => {
-    expect(css).toMatch(/\.segmented-control__button \{[\s\S]*border-0 p-0/);
+  it("kills line-box strut for vertical centering", () => {
     expect(css).toMatch(/\.segmented-control__button \{[\s\S]*line-height:\s*0/);
     expect(css).toMatch(/\.segmented-control__button svg \{[\s\S]*@apply block shrink-0/);
     expect(css).toMatch(/\.segmented-control__label \{[\s\S]*line-height:\s*1/);
