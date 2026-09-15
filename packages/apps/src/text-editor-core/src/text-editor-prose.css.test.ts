@@ -26,6 +26,10 @@ describe("text editor prose typography tokens", () => {
     );
   });
 
+  it("keeps inserted images within the prose column", () => {
+    expect(css).toMatch(/\.text-editor-prose img \{[\s\S]*@apply max-w-full/);
+  });
+
   it("uses modest equal sheet padding on small viewports (Docs + Mail share the token)", () => {
     expect(css).toMatch(
       /@media \(max-width: 768px\) \{[\s\S]*\.text-editor \{[\s\S]*--text-editor-sheet-padding:\s*1\.25rem/,

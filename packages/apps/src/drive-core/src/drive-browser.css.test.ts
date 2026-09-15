@@ -48,6 +48,13 @@ describe("drive browser grid + tile chrome (canonical for Docs + Drive)", () => 
     expect(docsHomeCss).not.toMatch(/\.drive-file-tile--selected/);
   });
 
+  it("does not re-fork tile/grid chrome under the folder picker", () => {
+    const pickerCss = readFileSync(join(here, "drive-folder-picker.css"), "utf8");
+    expect(pickerCss).not.toMatch(/\.drive-grid\s*\{/);
+    expect(pickerCss).not.toMatch(/\.drive-file-tile::after/);
+    expect(pickerCss).not.toMatch(/\.drive-file-tile--selected/);
+  });
+
   it("keeps tile title + share indicators adjacent (no flex-1 on title)", () => {
     expect(css).toMatch(
       /\.drive-file-tile__title-row\s*\{[\s\S]*?@apply flex min-w-0 items-center/,

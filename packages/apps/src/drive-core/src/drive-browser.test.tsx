@@ -145,6 +145,18 @@ describe("DriveGridView tile interaction", () => {
     expect(screen.getByText("My Drive")).toBeTruthy();
     expect(document.querySelector(".drive-location-label")).toBeTruthy();
   });
+
+  it("hides overflow actions and drag in picker chrome", () => {
+    const { container } = render(
+      <div className="drive-workspace">
+        <DriveGridView {...baseBrowserProps({ itemChrome: "picker" })} />
+      </div>,
+    );
+
+    expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
+    const tile = container.querySelector(".drive-file-tile");
+    expect(tile?.getAttribute("draggable")).toBe("false");
+  });
 });
 
 describe("DriveListView", () => {
@@ -201,5 +213,16 @@ describe("DriveListView", () => {
 
     fireEvent.contextMenu(screen.getByText(FILE.title).closest("tr")!);
     expect(onLongPress).toHaveBeenCalledWith(FILE.id);
+  });
+
+  it("hides the actions column in picker chrome", () => {
+    render(
+      <div className="drive-workspace">
+        <DriveListView {...baseBrowserProps({ itemChrome: "picker" })} />
+      </div>,
+    );
+
+    expect(screen.queryByRole("columnheader", { name: "Actions" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
   });
 });

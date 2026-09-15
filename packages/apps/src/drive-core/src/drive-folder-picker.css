@@ -1,1 +1,25 @@
+@import "../../styles.css" reference;
 @import "../../destination-picker/src/destination-picker.css";
+
+.destination-picker.destination-picker--file-select {
+  --destination-picker-body-height: 22rem;
+}
+
+.destination-picker__breadcrumbs--with-toggle {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+.destination-picker__view-toggle {
+  @apply shrink-0 pr-3;
+}
+
+.destination-picker--file-select .destination-picker__body {
+  @apply overflow-y-auto;
+}
+
+/* Compact listing padding in the dialog — do not retouch tile/grid chrome. */
+.destination-picker--file-select
+  .destination-picker__body
+  :is(.drive-grid-layout, .drive-list-view) {
+  @apply px-3 py-3;
+}

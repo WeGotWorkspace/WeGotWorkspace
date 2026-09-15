@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
 import {
   Dialog,
@@ -15,30 +15,12 @@ import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 
-export function DriveMoveToDialog({
-  open,
-  labels,
-  files,
-  groupPaths,
-  moveIds,
-  view,
-  singleItemParent,
-  operations,
-  currentUsername,
-  groupRootNames,
-  rootLabels,
-  rootIcon,
-  dialogSurfaceClassName = "drive-dialog-surface",
-  onClose,
-  onConfirm,
-}: {
+type DriveMoveToDialogShared = {
   open: boolean;
   labels: DriveUILabels;
   files: DriveFile[];
   groupPaths: string[];
-  moveIds: string[];
   view: ViewKey;
-  singleItemParent?: string;
   operations?: DriveAPIOperations;
   currentUsername: string;
   groupRootNames: Set<string>;
@@ -49,26 +31,79 @@ export function DriveMoveToDialog({
   /** Portaled dialog theme class (repeat app accent tokens outside the workspace root). */
   dialogSurfaceClassName?: string;
   onClose: () => void;
-  onConfirm: (destinationPath: string) => void;
-}) {
+};
+
+export type DriveMoveToDialogProps = DriveMoveToDialogShared &
+  (
+    | {
+        mode?: "folder-destination";
+        moveIds: string[];
+        singleItemParent?: string;
+        onConfirm: (destinationPath: string) => void;
+      }
+    | {
+        mode: "file-select";
+        moveIds?: string[];
+        singleItemParent?: string;
+        onSelectFile: (file: DriveFile) => void;
+        onUploadFiles?: (files: File[]) => void;
+      }
+  );
+
+export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
+  const {
+    open,
+    labels,
+    files,
+    groupPaths,
+    view,
+    operations,
+    currentUsername,
+    groupRootNames,
+    rootLabels,
+    rootIcon,
+    dialogSurfaceClassName = "drive-dialog-surface",
+    onClose,
+  } = props;
+  const fileSelect = props.mode === "file-select";
+  const moveIds = fileSelect ? [] : props.moveIds;
+  const singleItemParent = props.singleItemParent;
+  const onConfirm = fileSelect ? undefined : props.onConfirm;
+  const onSelectFile = fileSelect ? props.onSelectFile : undefined;
+  const onUploadFiles = fileSelect ? props.onUploadFiles : undefined;
   const initialBrowsePath = resolveDriveFolderPickerStartPath(view, singleItemParent);
   const [destinationPath, setDestinationPath] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const handleDestinationChange = useCallback((path: string | null) => {
     setDestinationPath(path);
   }, []);
 
+  const handleSelectedFileChange = useCallback((file: DriveFile | null) => {
+    setSelectedFile(file);
+  }, []);
+
+  const title = fileSelect ? labels.fileSelectDialogTitle : labels.moveDialogTitle;
+  const description = fileSelect
+    ? labels.fileSelectDialogDescription
+    : labels.moveDialogDescription;
+  const confirmDisabled = fileSelect ? selectedFile == null : !destinationPath;
+
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className={cn(dialogSurfaceClassName, "sm:max-w-lg")}>
+      <DialogContent
+        className={cn(dialogSurfaceClassName, fileSelect ? "sm:max-w-2xl" : "sm:max-w-lg")}
+      >
         <DialogHeader>
-          <DialogTitle>{labels.moveDialogTitle}</DialogTitle>
-          <DialogDescription>{labels.moveDialogDescription}</DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         {open ? (
           <DriveFolderPicker
-            key={initialBrowsePath}
+            key={`${initialBrowsePath}::${fileSelect ? "file-select" : "folder-destination"}`}
+            mode={fileSelect ? "file-select" : "folder-destination"}
             labels={labels}
             files={files}
             groupPaths={groupPaths}
@@ -80,6 +115,7 @@ export function DriveMoveToDialog({
             rootLabels={rootLabels}
             rootIcon={rootIcon}
             onDestinationChange={handleDestinationChange}
+            onSelectedFileChange={handleSelectedFileChange}
           />
         ) : null}
 
@@ -87,16 +123,49 @@ export function DriveMoveToDialog({
           <Button variant="outline" onClick={onClose}>
             {labels.moveDialogCancel}
           </Button>
-          <Button
-            variant="primary"
-            disabled={!destinationPath}
-            onClick={() => {
-              if (!destinationPath) return;
-              onConfirm(destinationPath);
-            }}
-          >
-            {labels.moveDialogConfirm}
-          </Button>
+          {fileSelect ? (
+            <>
+              <input
+                ref={uploadInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                aria-hidden
+                tabIndex={-1}
+                onChange={(event) => {
+                  const chosen = event.target.files;
+                  if (chosen && chosen.length > 0) {
+                    onUploadFiles?.(Array.from(chosen));
+                  }
+                  event.target.value = "";
+                }}
+              />
+              <Button variant="outline" onClick={() => uploadInputRef.current?.click()}>
+                {labels.fileSelectDialogUpload}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={confirmDisabled}
+                onClick={() => {
+                  if (!selectedFile) return;
+                  onSelectFile?.(selectedFile);
+                }}
+              >
+                {labels.fileSelectDialogInsert}
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="primary"
+              disabled={confirmDisabled}
+              onClick={() => {
+                if (!destinationPath) return;
+                onConfirm?.(destinationPath);
+              }}
+            >
+              {labels.moveDialogConfirm}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

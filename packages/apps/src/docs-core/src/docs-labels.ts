@@ -57,6 +57,7 @@ export const docsLabels = {
   renameError: "Could not rename this document.",
   print: "Print",
   share: driveLabels.detailShare,
+  insertImageError: "Could not insert the image.",
   viewSource: "Edit source",
   hideSource: "Hide source",
   rename: driveLabels.detailRename,

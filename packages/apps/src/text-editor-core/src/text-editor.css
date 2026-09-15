@@ -600,6 +600,10 @@
 
 /* Suggest-mode toolbar styles removed — mode control lives in the format bar dropdown. */
 
+.text-editor-prose img {
+  @apply max-w-full h-auto;
+}
+
 .text-editor-prose table {
   width: 100%;
   border-collapse: collapse;

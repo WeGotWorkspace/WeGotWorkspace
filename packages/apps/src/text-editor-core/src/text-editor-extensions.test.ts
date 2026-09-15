@@ -22,6 +22,12 @@ describe("text editor extensions", () => {
     const extensions = createTextEditorExtensions({ format: "markdown" });
     const names = extensions.map((ext) => ext.name);
     expect(duplicateExtensionNames(names)).toEqual([]);
+    expect(names).toContain("image");
+  });
+
+  it("omits Image for plain-text documents", () => {
+    const names = createTextEditorExtensions({ format: "text" }).map((ext) => ext.name);
+    expect(names).not.toContain("image");
   });
 
   it("does not duplicate extension names in the collaborative editor", () => {

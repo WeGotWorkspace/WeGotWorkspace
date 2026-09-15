@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
+use App\Services\Drive\DocAttachmentsService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use Illuminate\Support\Facades\Log;
 use Sabre\DAV\Server;
@@ -19,9 +20,12 @@ use Sabre\HTTP\ResponseInterface;
  */
 final class FileNodeIndexPlugin extends ServerPlugin
 {
-    private Server $server;
+    private ?Server $server = null;
 
-    public function __construct(private readonly FileNodeIndexService $index) {}
+    public function __construct(
+        private readonly FileNodeIndexService $index,
+        private readonly DocAttachmentsService $attachments,
+    ) {}
 
     public function initialize(Server $server): void
     {
@@ -43,15 +47,29 @@ final class FileNodeIndexPlugin extends ServerPlugin
             return;
         }
 
+        $method = strtoupper($request->getMethod());
+        $docIds = [];
+        $destKey = $method === 'MOVE' || $method === 'COPY' ? $this->destinationKey($request) : null;
+        if ($method === 'DELETE') {
+            try {
+                $docIds = $this->attachments->docNodeIdsForDestroyKey($key);
+            } catch (\Throwable $e) {
+                Log::warning('doc_attachments_sidecar_failed', [
+                    'op' => 'enumerate',
+                    'method' => $method,
+                    'path' => $request->getPath(),
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         try {
-            $method = strtoupper($request->getMethod());
             switch ($method) {
                 case 'DELETE':
                     $this->index->recordDelete($key);
                     break;
                 case 'MOVE':
                 case 'COPY':
-                    $destKey = $this->destinationKey($request);
                     if ($destKey === null) {
                         break;
                     }
@@ -75,6 +93,15 @@ final class FileNodeIndexPlugin extends ServerPlugin
                 'error' => $e->getMessage(),
             ]);
         }
+
+        if ($method === 'DELETE') {
+            $this->attachments->destroyDocsBestEffort($docIds);
+
+            return;
+        }
+        if ($method === 'MOVE' && $destKey !== null) {
+            $this->attachments->relocateAfterMoveBestEffort($key, $destKey);
+        }
     }
 
     private function destinationKey(RequestInterface $request): ?string
@@ -83,10 +110,17 @@ final class FileNodeIndexPlugin extends ServerPlugin
         if (! is_string($destination) || $destination === '') {
             return null;
         }
-        try {
-            $destPath = trim((string) $this->server->calculateUri($destination), '/');
-        } catch (\Throwable) {
-            return null;
+        $destPath = $destination;
+        if ($this->server !== null) {
+            try {
+                $destPath = trim((string) $this->server->calculateUri($destination), '/');
+            } catch (\Throwable) {
+                return null;
+            }
+        } else {
+            $parsed = parse_url($destination, PHP_URL_PATH);
+            $destPath = is_string($parsed) && $parsed !== '' ? $parsed : $destination;
+            $destPath = trim($destPath, '/');
         }
 
         return $this->storageKey($destPath);

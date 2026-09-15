@@ -229,6 +229,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
                 showShare={collabMayShare === true}
                 shareLabel={docsLabels.share}
                 permissions={collabPermissions}
+                driveOperations={driveOperations}
+                driveUsername={session.user.username}
+                docApiPath={filePath}
                 onShare={
                   filePath
                     ? () =>
