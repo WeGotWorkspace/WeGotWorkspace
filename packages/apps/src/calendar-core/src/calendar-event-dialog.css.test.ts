@@ -166,5 +166,9 @@ describe("calendar event dialog Meet field", () => {
     expect(css).not.toContain("calendar-event-dialog__meet-switch");
     expect(css).not.toMatch(/calendar-event-dialog__meet-scope-trigger/);
     expect(formTsx).not.toMatch(/onRecurrenceSaveScopeChange/);
+    expect(css).toMatch(
+      /\.calendar-dialog-surface \.calendar-event-dialog__meet-readonly \{[\s\S]*@apply min-w-0/,
+    );
+    expect(css).not.toMatch(/\.calendar-event-dialog__meet-readonly \{[\s\S]*flex-col/);
   });
 });

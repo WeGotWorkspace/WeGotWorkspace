@@ -291,6 +291,72 @@ describe("CalendarMeetCard", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(href));
   });
 
+  it("keeps compact Join inline on the Meet URL row in read-only mode", async () => {
+    const href = `${ORIGIN}/meet/guest?room=${ROOM}`;
+    const onJoin = vi.fn();
+    renderCard({
+      readOnly: true,
+      onJoin,
+      form: { ...emptyCalendarEventForm("default", "2033-01-12"), meetingUrl: href },
+    });
+    const input = screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel);
+    const copy = screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl });
+    const join = await screen.findByRole("button", {
+      name: defaultCalendarLabels.eventMeetJoin,
+    });
+    const row = input.closest(".calendar-event-dialog__meet-row");
+    expect(row).toBeTruthy();
+    expect(row!.contains(copy)).toBe(true);
+    expect(row!.contains(join)).toBe(true);
+    expect(join.className).toContain("calendar-meet-join--icon");
+    expect(join.className).toContain("icon-button");
+    expect(join.textContent).not.toContain(defaultCalendarLabels.eventMeetJoin);
+    fireEvent.click(join);
+    expect(onJoin).toHaveBeenCalledWith(href);
+  });
+
+  it("renders FieldLabelRow leading icon in field presentation (editable)", () => {
+    renderCard({
+      presentation: "field",
+      form: {
+        ...emptyCalendarEventForm("default", "2033-01-12"),
+        meetingUrl: `${ORIGIN}/meet/guest?room=${ROOM}`,
+      },
+    });
+    const iconLabel = document.querySelector(".field-label-row__icon-label");
+    expect(iconLabel).toBeTruthy();
+    expect(iconLabel!.querySelector("svg")).toBeTruthy();
+    expect(iconLabel!.textContent).toContain(defaultCalendarLabels.eventMeetSectionTitle);
+    expect(document.querySelector(".field-label-row--icon")).toBeTruthy();
+  });
+
+  it("keeps FieldLabelRow leading icon in field presentation when read-only (invitation)", async () => {
+    const href = `${ORIGIN}/meet/guest?room=${ROOM}`;
+    const onJoin = vi.fn();
+    renderCard({
+      presentation: "field",
+      readOnly: true,
+      copyOnly: true,
+      onJoin,
+      className: "calendar-event-dialog__field calendar-event-dialog__field--meet",
+      form: { ...emptyCalendarEventForm("default", "2033-01-12"), meetingUrl: href },
+    });
+    const iconLabel = document.querySelector(".field-label-row__icon-label");
+    expect(iconLabel).toBeTruthy();
+    expect(iconLabel!.querySelector("svg")).toBeTruthy();
+    expect(iconLabel!.textContent).toContain(defaultCalendarLabels.eventMeetSectionTitle);
+    const fieldRow = document.querySelector(
+      ".calendar-event-dialog__field--meet.field-label-row--icon",
+    );
+    expect(fieldRow).toBeTruthy();
+    expect(fieldRow!.contains(iconLabel)).toBe(true);
+    const join = await screen.findByRole("button", {
+      name: defaultCalendarLabels.eventMeetJoin,
+    });
+    expect(fieldRow!.contains(join)).toBe(true);
+    expect(join.className).toContain("calendar-meet-join--icon");
+  });
+
   it("reserves a complete same-origin guest URL on blur as a draft", async () => {
     const meetOperations = stubMeet();
     const href = `${ORIGIN}/meet/guest?room=${ROOM}`;

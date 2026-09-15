@@ -344,23 +344,42 @@ export function CalendarMeetCard({
 
   if (readOnly) {
     if (!form.meetingUrl.trim()) return null;
-    return (
+    const readonlyRow = (
       <div className="calendar-event-dialog__meet-readonly">
         <CalendarMeetUrlRow
           href={form.meetingUrl}
           labels={labels}
           readOnly
           controlSize={controlSize}
-        />
-        <CalendarMeetJoin
-          href={form.meetingUrl}
-          labels={labels}
-          workspaceOrigin={workspaceOrigin}
-          meetOperations={meetOperations}
-          onJoin={onJoin}
+          meetMenu={
+            <CalendarMeetJoin
+              href={form.meetingUrl}
+              labels={labels}
+              workspaceOrigin={workspaceOrigin}
+              meetOperations={meetOperations}
+              appearance="icon"
+              size={controlSize}
+              onJoin={onJoin}
+            />
+          }
         />
       </div>
     );
+    // Invitation / invitee read-only must still use FieldLabelRow chrome when
+    // the parent form uses presentation="field" (leading icon + control band).
+    if (presentation === "field") {
+      return (
+        <FieldLabelRow
+          className={cn("calendar-event-dialog__meet", className)}
+          label={labels.eventMeetSectionTitle}
+          labelMode="icon"
+          icon={fieldIcon ?? <Video className="size-3.5" aria-hidden />}
+        >
+          {readonlyRow}
+        </FieldLabelRow>
+      );
+    }
+    return readonlyRow;
   }
 
   const canGenerate = Boolean(meetOperations?.reserveRoom) && !copyOnly;

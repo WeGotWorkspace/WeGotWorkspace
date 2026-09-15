@@ -58,4 +58,30 @@ describe("CalendarMeetJoin", () => {
     ).toBeTruthy();
     expect(screen.queryByText(defaultCalendarLabels.eventMeetDeadLink)).toBeNull();
   });
+
+  it("renders a compact primary IconButton when appearance is icon", async () => {
+    const onJoin = vi.fn();
+    render(
+      <TooltipProvider delayDuration={0}>
+        <CalendarMeetJoin
+          href={HREF}
+          labels={defaultCalendarLabels}
+          workspaceOrigin={ORIGIN}
+          appearance="icon"
+          size="md"
+          onJoin={onJoin}
+        />
+      </TooltipProvider>,
+    );
+    const join = await screen.findByRole("button", {
+      name: defaultCalendarLabels.eventMeetJoin,
+    });
+    expect(join.className).toContain("calendar-meet-join--icon");
+    expect(join.className).toContain("icon-button");
+    expect(join.className).toContain("button--variant-primary");
+    expect(join.className).toContain("icon-button--size-md");
+    expect(join.textContent).not.toContain(defaultCalendarLabels.eventMeetJoin);
+    fireEvent.click(join);
+    expect(onJoin).toHaveBeenCalledWith(HREF);
+  });
 });

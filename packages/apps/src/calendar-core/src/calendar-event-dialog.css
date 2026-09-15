@@ -266,8 +266,9 @@
     color-mix(in oklab, var(--button-primary-fg, #ffffff) 22%, transparent);
 }
 
+/* Read-only Meet: same URL row as edit — input + copy + compact Join (not stacked). */
 .calendar-dialog-surface .calendar-event-dialog__meet-readonly {
-  @apply flex flex-col items-stretch gap-2;
+  @apply min-w-0;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__alarm-row {
