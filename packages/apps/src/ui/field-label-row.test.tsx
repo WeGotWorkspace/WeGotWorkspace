@@ -1,11 +1,18 @@
+import type { ReactElement } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
+import { Type } from "lucide-react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { FieldLabelRow } from "@/ui/field-label-row";
+import { TooltipProvider } from "@/ui/tooltip";
 
 afterEach(() => {
   cleanup();
 });
+
+function renderWithTooltip(ui: ReactElement) {
+  return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
+}
 
 describe("FieldLabelRow", () => {
   it("associates a visible caption with the control via htmlFor", () => {
@@ -85,5 +92,27 @@ describe("FieldLabelRow", () => {
     expect(caption.classList.contains("field-label-row__label--reserved")).toBe(false);
     expect(caption.getAttribute("aria-hidden")).toBeNull();
     expect(screen.getByLabelText("Street")).toBeTruthy();
+  });
+
+  it("renders an icon-only label in front of the control with sr-only name", () => {
+    const { container } = renderWithTooltip(
+      <FieldLabelRow
+        label="Title"
+        labelMode="icon"
+        htmlFor="event-title"
+        icon={<Type data-testid="title-icon" aria-hidden />}
+      >
+        <input id="event-title" />
+      </FieldLabelRow>,
+    );
+
+    const row = container.querySelector(".field-label-row--icon");
+    expect(row).not.toBeNull();
+    expect(container.querySelector(".field-label-row__label")).toBeNull();
+    expect(container.querySelector(".field-label-row__icon-label")).not.toBeNull();
+    expect(screen.getByTestId("title-icon")).toBeTruthy();
+    expect(screen.getByText("Title").classList.contains("sr-only")).toBe(true);
+    expect(screen.getByLabelText("Title")).toBeTruthy();
+    expect(screen.getByLabelText("Title").getAttribute("id")).toBe("event-title");
   });
 });

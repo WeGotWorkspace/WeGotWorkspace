@@ -33,4 +33,11 @@ describe("field-label-row CSS", () => {
     expect(css).not.toMatch(/\.field-label-row__label--reserved \{[\s\S]*display:\s*none/);
     expect(css).not.toMatch(/flex-basis:\s*(?!auto\b)\S+/);
   });
+
+  it("lays out icon mode as a horizontal icon-then-control row", () => {
+    expect(css).toMatch(/\.field-label-row--icon \{[\s\S]*@apply[\s\S]*\bflex\b/);
+    expect(css).toMatch(/\.field-label-row__icon-label \{[\s\S]*min-height:/);
+    expect(css).toMatch(/\.field-label-row__icon-label > svg \{[\s\S]*@apply size-3/);
+    expect(css).toMatch(/\.field-label-row__control \{[\s\S]*@apply min-w-0 flex-1/);
+  });
 });
