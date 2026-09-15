@@ -51,9 +51,17 @@ describe("calendar invitation card CSS", () => {
   it("keeps invitees Tag --tag-* tokens; RSVP actions no longer use selected-chip washes", () => {
     const tokens = readCss("calendar-rsvp-status.css");
     expect(tokens).toMatch(/\.calendar-invitees-rsvp-tag--accepted[\s\S]*--tag-fg:\s*#3a8f5a/);
+    expect(tokens).toMatch(/\.calendar-invitees-status-mark--organizer[\s\S]*?--tag-fg:\s*#3a8f5a/);
     expect(tokens).toMatch(
-      /\.calendar-invitees-rsvp-tag--tentative[\s\S]*--tag-fg:\s*var\(--color-ink\)/,
+      /\.calendar-rsvp-status--accepted,\s*\n\.calendar-invitees-rsvp-tag--accepted,\s*\n\.calendar-rsvp-select--accept\.calendar-rsvp-select--selected,\s*\n\.calendar-invitees-status-mark--organizer \{/,
     );
+    expect(tokens).toMatch(
+      /\.calendar-invitees-rsvp-tag--tentative[\s\S]*?--tag-fg:\s*var\(\s*--calendar-accent-strong/,
+    );
+    expect(tokens).toMatch(
+      /\.calendar-rsvp-select--maybe\.calendar-rsvp-select--selected[\s\S]*?--calendar-accent/,
+    );
+    expect(tokens).not.toMatch(/#2563eb/);
     expect(tokens).toMatch(/\.calendar-invitees-rsvp-tag--declined[\s\S]*--tag-fg:\s*#b14242/);
     expect(tokens).toMatch(
       /\.calendar-rsvp-select--accept\.calendar-rsvp-select--selected[\s\S]*--tag-fg:\s*#3a8f5a/,
