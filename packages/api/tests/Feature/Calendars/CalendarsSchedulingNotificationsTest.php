@@ -646,6 +646,34 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
         $this->assertIsArray($list);
         $this->assertCount(1, $list);
         $this->assertSame('future-oneoff', $list[0]['uid']);
+        $this->assertNotNull($list[0]['eventId']);
+        $this->assertNotSame('', $list[0]['eventId']);
+    }
+
+    public function test_inbox_only_request_can_be_accepted_after_copy_is_materialized(): void
+    {
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'inbox-only.ics',
+            $this->inviteIcs('inbox-only', '20300215T100000Z', '20300215T103000Z'),
+        );
+
+        $notificationId = (string) $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list.0.id');
+        $eventId = (string) $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->json('list.0.eventId');
+        $this->assertNotSame('', $eventId);
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'accepted'],
+        )->assertOk()->assertJsonPath('participationStatus', 'accepted');
+
+        $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->assertJsonPath('list.0.participationStatus', 'accepted')
+            ->assertJsonPath('list.0.eventId', $eventId);
     }
 
     public function test_recurring_invite_with_future_instances_is_listed(): void

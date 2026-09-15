@@ -299,9 +299,17 @@ final class CalendarSchedulingNotificationService
         $raw = is_string($row->calendardata) ? $row->calendardata : (string) $row->calendardata;
         $vcal = Reader::read($raw);
         $vevent = $vcal->VEVENT ?? null;
-        $method = strtoupper(trim((string) ($vcal->METHOD ?? 'REQUEST')));
+        $method = strtoupper(trim((string) ($vcal->METHOD ?? '')));
+        if ($method === '') {
+            $method = 'REQUEST';
+        }
         $uid = $vevent instanceof VEvent ? trim((string) ($vevent->UID ?? '')) : '';
         $copy = $uid !== '' ? $this->findEventByUid($username, $uid) : null;
+        // Inbox-only REQUESTs (copy missing) cannot be RSVP'd — materialize the
+        // invitee calendar object so the UI gets an eventId and respond works.
+        if ($copy === null && $uid !== '' && $method === 'REQUEST') {
+            $copy = $this->ensureInviteeEventCopy($username, $raw, $uid);
+        }
 
         return [
             'id' => (string) $row->uri,
@@ -321,6 +329,21 @@ final class CalendarSchedulingNotificationService
             'recurring' => $vevent instanceof VEvent && $this->isRecurring($vevent),
             'etag' => (string) $row->etag,
         ];
+    }
+
+    /**
+     * Create a default-calendar copy from a schedule-inbox REQUEST when delivery
+     * left the inbox row without a VEVENT object (or the copy was deleted).
+     */
+    private function ensureInviteeEventCopy(string $username, string $ics, string $uid): ?CalendarObject
+    {
+        try {
+            $this->events->importFromIcs($username, $ics, CalendarCollectionUris::EVENT_DEFAULT);
+        } catch (\Throwable) {
+            // Race or unimportable payload — fall through to a fresh lookup.
+        }
+
+        return $this->findEventByUid($username, $uid);
     }
 
     private function schedulingObjectFromCalendarCopy(CalendarObject $copy): SchedulingObject

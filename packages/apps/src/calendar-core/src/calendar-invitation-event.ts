@@ -22,7 +22,9 @@ export function invitationMethod(notification: CalendarSchedulingNotification): 
 }
 
 export function canRespondInvitation(notification: CalendarSchedulingNotification): boolean {
-  return invitationMethod(notification) === "REQUEST" && Boolean(notification.eventId);
+  // REQUEST is actionable even when eventId is temporarily missing — the API
+  // materializes the invitee calendar copy on list/respond.
+  return invitationMethod(notification) === "REQUEST";
 }
 
 export function invitationInboxTab(

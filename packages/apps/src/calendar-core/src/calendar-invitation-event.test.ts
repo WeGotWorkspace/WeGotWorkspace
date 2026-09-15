@@ -81,7 +81,7 @@ describe("canRespondInvitation", () => {
     expect(canRespondInvitation(notification({ method: "" }))).toBe(true);
     expect(canRespondInvitation(notification({ method: "CANCEL" }))).toBe(false);
     expect(canRespondInvitation(notification({ participationStatus: "accepted" }))).toBe(true);
-    expect(canRespondInvitation(notification({ eventId: null }))).toBe(false);
+    expect(canRespondInvitation(notification({ eventId: null }))).toBe(true);
   });
 });
 
