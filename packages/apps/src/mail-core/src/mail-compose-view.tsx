@@ -221,10 +221,11 @@ export function MailComposeView({
           />
           <IconButton
             type="button"
-            variant="ghost"
+            variant="outline"
+            severity="danger"
             size="md"
             label={deleteDraftLabel}
-            icon={<Trash2 className="size-4" aria-hidden />}
+            icon={<Trash2 className="size-3.5" aria-hidden />}
             onClick={onDiscard}
             disabled={disableActions}
           />

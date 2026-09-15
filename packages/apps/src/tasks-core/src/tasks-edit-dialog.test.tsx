@@ -121,7 +121,8 @@ describe("TasksEditDialog", () => {
     const { onClose } = renderEditDialog({ onDelete });
 
     const deleteButton = screen.getByRole("button", { name: defaultTasksLabels.delete });
-    expect(deleteButton.className).toMatch(/button--variant-destructive/);
+    expect(deleteButton.className).toMatch(/button--severity-danger/);
+    expect(deleteButton.className).toMatch(/button--variant-outline/);
     fireEvent.click(deleteButton);
 
     expect(onDelete).toHaveBeenCalledTimes(1);

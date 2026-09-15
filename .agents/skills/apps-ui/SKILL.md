@@ -52,7 +52,9 @@ UserAvatar adds display-only `2xl` (80px) for Meet lobby / large idle tiles outs
 ### Dialog footers
 
 Cancel / dismiss = `Button variant="outline"` (same as `AlertDialogCancel`). Primary confirm =
-default primary. Destructive side actions (Delete) may stay ghost or outline+danger.
+default primary. Destructive side actions (Delete / Remove) = icon-only `IconButton` with
+`variant="outline"` + `severity="danger"` (Trash2), start-pinned with `me-auto` — match Calendar
+event and calendar dialogs. Confirm dialogs keep a labeled destructive primary.
 
 Refactor checklist:
 

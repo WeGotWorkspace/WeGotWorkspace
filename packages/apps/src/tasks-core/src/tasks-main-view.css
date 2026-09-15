@@ -442,9 +442,13 @@
 }
 
 .tasks-dialog-surface .tasks-edit-dialog__footer {
-  @apply gap-2 sm:gap-0;
+  @apply flex flex-row flex-wrap items-center gap-2 sm:justify-start;
 }
 
 .tasks-dialog-surface .tasks-edit-dialog__footer .tasks-edit-dialog__delete {
-  @apply w-full justify-center sm:w-auto sm:me-auto;
+  @apply me-auto;
+}
+
+.tasks-dialog-surface .tasks-edit-dialog__footer-end {
+  @apply ms-auto flex flex-wrap items-center gap-2;
 }

@@ -70,8 +70,9 @@ DialogHeader.displayName = "DialogHeader";
 
 /**
  * Dialog action row. Convention: Cancel / dismiss = `variant="outline"`; primary
- * submit = default primary. Destructive side actions (delete) may use ghost or
- * outline+danger. {@link AlertDialogCancel} already defaults to outline.
+ * submit = default primary. Destructive side actions (delete / remove) =
+ * icon-only `IconButton` with `variant="outline"` + `severity="danger"` (Trash2),
+ * pinned start via `me-auto` — same as Calendar event/calendar dialogs.
  */
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
