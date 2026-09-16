@@ -164,7 +164,7 @@ export function CollectionSidebarRow({
         <IconButton
           label={editLabel}
           icon={<Pencil className="size-3.5" aria-hidden />}
-          size="md"
+          size="xs"
           variant="ghost"
           className={`${bem(blocks, "__action")} ${bem(blocks, "__edit")}`}
           onClick={() => onEdit()}
@@ -180,7 +180,7 @@ export function CollectionSidebarRow({
               <ChevronRight className="size-3.5" aria-hidden />
             )
           }
-          size="md"
+          size="xs"
           variant="ghost"
           className={bem(blocks, "__expand")}
           aria-expanded={expanded}

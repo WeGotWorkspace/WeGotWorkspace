@@ -28,6 +28,21 @@ describe("collection sidebar row CSS", () => {
     expect(idle).not.toMatch(/\bpx-4\b/);
   });
 
+  it("pins row height to the AppSidebar item SST, not py-1 + md IconButtons", () => {
+    const idle = css.match(/\.collection-sidebar-row \{[^}]+\}/)?.[0];
+    expect(idle).toMatch(
+      /min-height:\s*var\(\s*--app-sidebar-item-height,\s*var\(--control-height-md,\s*2\.25rem\)\s*\)/,
+    );
+    expect(idle).not.toMatch(/\bmin-h-8\b/);
+    expect(idle).not.toMatch(/\bpy-1\b/);
+    expect(css).toMatch(
+      /\.collection-sidebar-row__action\.button,[\s\S]*min-height:\s*var\(--control-height-xs,\s*1\.75rem\)/,
+    );
+    expect(css).toMatch(
+      /\.collection-sidebar-row__expand\.button \{[\s\S]*min-height:\s*var\(--control-height-xs,\s*1\.75rem\)/,
+    );
+  });
+
   it("owns hover-only edit on fine pointers", () => {
     expect(css).toMatch(/@media \(hover: hover\) and \(pointer: fine\)/);
     expect(css).toMatch(/\.collection-sidebar-row__action\.button \{[\s\S]*opacity:\s*0/);
@@ -47,7 +62,9 @@ describe("collection sidebar row CSS", () => {
     expect(css).toMatch(
       /\.collection-sidebar-row--related:not\(\.collection-sidebar-row--selected\)/,
     );
-    expect(css).toMatch(/\.collection-sidebar-row__expand\.button \{[\s\S]*size-6/);
+    expect(css).toMatch(
+      /\.collection-sidebar-row__expand\.button \{[\s\S]*min-height:\s*var\(--control-height-xs/,
+    );
     const hoverHide = css.match(/@media \(hover: hover\) and \(pointer: fine\) \{[\s\S]*$/)?.[0];
     expect(hoverHide).toMatch(/\.collection-sidebar-row__action\.button \{[\s\S]*opacity:\s*0/);
     expect(hoverHide).not.toMatch(/collection-sidebar-row__expand/);
