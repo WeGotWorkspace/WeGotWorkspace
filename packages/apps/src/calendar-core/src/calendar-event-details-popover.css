@@ -131,6 +131,43 @@
   position-try-fallbacks: none;
 }
 
+/*
+ * iOS Safari: if JS still mounts the desktop Popover below 768px (useIsMobile
+ * first paint / innerWidth vs CSS), Radix's wrapper is `left:0; top:0` plus a
+ * `transform` iOS often drops — compact card at the origin. Pin the wrapper
+ * to the viewport and let the surface fill it as a sheet.
+ */
+@media (max-width: 767px) {
+  [data-radix-popper-content-wrapper]:has(.calendar-event-details-popover) {
+    position: fixed !important;
+    inset: 0 !important;
+    transform: none !important;
+    translate: none !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+  }
+
+  .calendar-dialog-surface.calendar-event-details-popover,
+  .calendar-dialog-surface.calendar-event-details-popover--editable {
+    @apply box-border flex h-full w-full max-h-none max-w-none flex-col overflow-hidden rounded-none;
+    position-anchor: none;
+    position-area: none;
+    position-try: none;
+    position-try-fallbacks: none;
+    justify-self: unset;
+    align-self: unset;
+    margin: 0;
+    min-width: 0;
+    max-inline-size: none;
+    padding-block-start: max(var(--modal-inset, 1rem), env(safe-area-inset-top, 0px));
+    padding-block-end: max(var(--modal-inset, 1rem), env(safe-area-inset-bottom, 0px));
+    padding-inline-start: max(var(--modal-inset, 1rem), env(safe-area-inset-left, 0px));
+    padding-inline-end: max(var(--modal-inset, 1rem), env(safe-area-inset-right, 0px));
+  }
+}
+
 [data-radix-popper-content-wrapper]:has(.calendar-event-details-popover--docked) {
   position: fixed !important;
   inset: auto 0.75rem max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) 0.75rem !important;

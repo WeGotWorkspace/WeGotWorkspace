@@ -172,7 +172,7 @@ describe("meet workspace sidebar chrome", () => {
       /@container view-header-main \(max-width: 40rem\)[\s\S]*\.meet-workspace__header-start[\s\S]*\.button__label[\s\S]*sr-only/,
     );
     expect(css).toMatch(
-      /@container view-header-main \(max-width: 40rem\)[\s\S]*\.meet-workspace__header-start[\s\S]*w-8/,
+      /@container view-header-main \(max-width: 40rem\)[\s\S]*\.meet-workspace__header-start[\s\S]*w-9/,
     );
     expect(tsx).not.toMatch(/label=\{meetLabels\.start\}/);
     expect(tsx).not.toMatch(/meetHeaderCallAction\(/);

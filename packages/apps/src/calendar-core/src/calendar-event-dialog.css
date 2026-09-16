@@ -43,25 +43,35 @@
  * Narrow viewports (<768px / useIsMobile): fill the viewport as a sheet.
  * Shared by CalendarEventDialog, details Dialog (create/edit), and read-only
  * details `--dialog`. Desktop Dialog / Popover keep the compact max-height above.
+ *
+ * DialogContent ships `left-[50%] top-[50%] translate-x-[-50%] zoom-in-95`.
+ * iOS Safari applies the enter `transform` after `inset: 0`, which keeps a
+ * compact card pinned toward the origin. Reset placement + animation here
+ * (three-class selector beats the utilities; `animation: none` skips enter).
  */
 @media (max-width: 767px) {
-  .calendar-dialog-surface.calendar-event-dialog,
-  .calendar-dialog-surface.calendar-event-details-popover--dialog {
+  .ui-modal-surface.calendar-dialog-surface.calendar-event-dialog,
+  .ui-modal-surface.calendar-dialog-surface.calendar-event-details-popover--dialog {
+    @apply m-0 flex w-full max-h-none max-w-none flex-col overflow-hidden;
+    position: fixed;
     inset: 0;
     top: 0;
-    left: 0;
     right: 0;
     bottom: 0;
-    width: auto;
-    max-width: none;
-    max-inline-size: none;
-    height: auto;
-    max-height: none;
-    margin: 0;
-    translate: none;
-    transform: none;
+    left: 0;
     border-radius: 0;
-    @apply flex flex-col overflow-hidden;
+    width: auto;
+    height: auto;
+    max-inline-size: none;
+    translate: 0 0;
+    scale: 1;
+    transform: none;
+    animation: none;
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    --tw-enter-scale: 1;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
     padding-block-start: max(var(--modal-inset, 1rem), env(safe-area-inset-top, 0px));
     padding-block-end: max(var(--modal-inset, 1rem), env(safe-area-inset-bottom, 0px));
     padding-inline-start: max(var(--modal-inset, 1rem), env(safe-area-inset-left, 0px));
