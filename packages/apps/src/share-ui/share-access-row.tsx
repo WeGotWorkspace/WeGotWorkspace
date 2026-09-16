@@ -53,8 +53,9 @@ export function ShareAccessRow({
         <IconButton
           label={removeLabel}
           icon={<Trash2 className="size-3.5" aria-hidden />}
-          size="md"
+          size="sm"
           variant="outline"
+          className="share-access-row__remove"
           disabled={!canRemove}
           title={removeTitle}
           onClick={canRemove ? onRemove : undefined}

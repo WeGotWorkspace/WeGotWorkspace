@@ -93,8 +93,8 @@ describe("calendar event dialog shared form controls", () => {
     expect(css).not.toContain("color: #b91c1c");
   });
 
-  it("defaults to control size md and accepts an explicit compact size prop", () => {
-    expect(formTsx).toMatch(/controlSize\s*=\s*"md"/);
+  it("defaults to control size sm (32px) at every breakpoint", () => {
+    expect(formTsx).toMatch(/controlSize\s*=\s*"sm"/);
     expect(formTsx).toMatch(/size=\{controlSize\}/);
     expect(formTsx).toMatch(/calendar-event-dialog__form--compact/);
   });

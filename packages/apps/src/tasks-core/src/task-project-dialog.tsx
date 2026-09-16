@@ -246,6 +246,7 @@ export function TaskProjectDialog({
                 <Input
                   id="task-project-name"
                   className={NAME_COLOR_ROW_INPUT_CLASS}
+                  size="sm"
                   autoFocus
                   value={name}
                   onChange={(event) => setName(event.target.value)}

@@ -35,4 +35,13 @@ describe("ui-modal-surface viewport clamp", () => {
   it("keeps action rows sticky to the dialog scrollport", () => {
     expect(css).toMatch(/\.ui-modal-footer \{[\s\S]*sticky[\s\S]*bottom-0/);
   });
+
+  it("remaps md control height to sm so dialog fields are 32px at every breakpoint", () => {
+    expect(css).toMatch(
+      /\.ui-modal-surface \{[\s\S]*--control-height-md:\s*var\(--control-height-sm,\s*2rem\)/,
+    );
+    expect(css).toMatch(
+      /\.ui-modal-surface \{[\s\S]*--input-height:\s*var\(--control-height-sm,\s*2rem\)/,
+    );
+  });
 });

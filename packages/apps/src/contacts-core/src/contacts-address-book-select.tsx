@@ -106,6 +106,7 @@ export function ContactsAddressBookSelect({
         id={id}
         label={accessibleName}
         disabled={disabled}
+        size={toolbar ? "md" : "sm"}
         onKeyDown={onTriggerKeyDown}
         icon={
           <span
@@ -132,7 +133,7 @@ export function ContactsAddressBookSelect({
   ) : (
     <SelectTrigger
       id={id}
-      size={toolbar ? "sm" : undefined}
+      size="sm"
       className={cn(toolbar && "contacts-address-book-select", className)}
       aria-label={accessibleName}
       disabled={disabled}

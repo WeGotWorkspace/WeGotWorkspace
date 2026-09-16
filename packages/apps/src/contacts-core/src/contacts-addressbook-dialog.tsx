@@ -138,6 +138,7 @@ export function ContactsAddressBookDialog({
                   <Input
                     id="contacts-addressbook-name"
                     className={NAME_COLOR_ROW_INPUT_CLASS}
+                    size="sm"
                     value={contactsAddressBookDisplayName(
                       {
                         id: dialog.bookId,
@@ -158,6 +159,7 @@ export function ContactsAddressBookDialog({
                     <ColorSwatchTrigger
                       color={selectedColor}
                       label={labels.addressBookColorLabel}
+                      size="sm"
                       aria-haspopup="dialog"
                     />
                   </SwatchColorPicker>

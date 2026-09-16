@@ -43,7 +43,7 @@ function AlarmOffsetRow({
   alert,
   labels,
   disabled,
-  controlSize = "md",
+  controlSize = "sm",
   onSelect,
   onRemove,
 }: {
@@ -136,7 +136,7 @@ export function CalendarAlarmsRows({
   disabled = false,
   readOnly = false,
   defaultRelatedTo,
-  controlSize = "md",
+  controlSize = "sm",
   onChange,
 }: CalendarAlarmsCardProps) {
   const showTrailingNone = !readOnly;

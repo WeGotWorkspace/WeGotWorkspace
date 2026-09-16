@@ -1,32 +1,47 @@
 @import "../../styles.css" reference;
 
 .icon-button--size-xs {
+  @apply shrink-0;
   width: var(--control-height-xs, 1.75rem);
   height: var(--control-height-xs, 1.75rem);
+  min-width: var(--control-height-xs, 1.75rem);
+  min-height: var(--control-height-xs, 1.75rem);
   --button-icon-size: 0.75rem;
 }
 
 .icon-button--size-sm {
+  @apply shrink-0;
   width: var(--control-height-sm, 2rem);
   height: var(--control-height-sm, 2rem);
+  min-width: var(--control-height-sm, 2rem);
+  min-height: var(--control-height-sm, 2rem);
   --button-icon-size: 0.875rem;
 }
 
 .icon-button--size-md {
+  @apply shrink-0;
   width: var(--control-height-md, 2.25rem);
   height: var(--control-height-md, 2.25rem);
+  min-width: var(--control-height-md, 2.25rem);
+  min-height: var(--control-height-md, 2.25rem);
   --button-icon-size: 0.875rem;
 }
 
 .icon-button--size-lg {
+  @apply shrink-0;
   width: var(--control-height-lg, 2.5rem);
   height: var(--control-height-lg, 2.5rem);
+  min-width: var(--control-height-lg, 2.5rem);
+  min-height: var(--control-height-lg, 2.5rem);
   --button-icon-size: 1rem;
 }
 
 .icon-button--size-xl {
+  @apply shrink-0;
   width: var(--control-height-xl, 2.75rem);
   height: var(--control-height-xl, 2.75rem);
+  min-width: var(--control-height-xl, 2.75rem);
+  min-height: var(--control-height-xl, 2.75rem);
   --button-icon-size: 1.25rem;
 }
 

@@ -378,7 +378,7 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__time-slot {
-  @apply flex min-h-9 w-full min-w-0 items-center;
+  @apply flex min-h-8 w-full min-w-0 items-center;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__time-slot .input[type="time"] {
@@ -400,7 +400,7 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__recurrence-ends-extra {
-  @apply flex min-h-9 min-w-0 items-center gap-1;
+  @apply flex min-h-8 min-w-0 items-center gap-1;
 }
 
 .calendar-dialog-surface .calendar-event-dialog__recurrence-ends-extra .locale-date-picker,

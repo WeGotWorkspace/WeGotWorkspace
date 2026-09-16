@@ -236,7 +236,7 @@ export function CalendarEventDetailsPopover({
         locale={locale}
         busy={surfaceBusy}
         autoFocusTitle={editMode === "create"}
-        controlSize={isMobile ? "md" : "sm"}
+        controlSize="sm"
         collisionContentClassName="calendar-dialog-surface calendar-event-dialog"
         {...edit}
         mode={editMode}

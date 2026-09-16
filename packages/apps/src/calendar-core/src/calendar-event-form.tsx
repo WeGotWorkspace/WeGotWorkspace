@@ -123,7 +123,7 @@ export type CalendarEventFormProps = {
   autoFocusTitle?: boolean;
   /**
    * Shared control height for Inputs / Selects / LocaleDatePicker / buttons.
-   * Interactive edit popover uses `sm`; create/edit dialog keeps default `md`.
+   * Dialogs and the interactive details popover use `sm` (32px) at every breakpoint.
    */
   controlSize?: ControlSize;
 };
@@ -164,7 +164,7 @@ export function CalendarEventForm({
   onJoinMeeting,
   collisionContentClassName = "calendar-dialog-surface calendar-event-dialog",
   autoFocusTitle = true,
-  controlSize = "md",
+  controlSize = "sm",
 }: CalendarEventFormProps) {
   const locale = useMemo(() => resolveLocale(localeProp), [localeProp]);
   const invitationMode = mode === "invitation";

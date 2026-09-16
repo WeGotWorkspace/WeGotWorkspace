@@ -37,6 +37,7 @@ export function McpEndpointUrlRow({ url, inputId, className }: McpEndpointUrlRow
           <ShareDialogInput
             id={fieldId}
             type="url"
+            size="md"
             value={url}
             readOnly
             aria-label="Connection URL"

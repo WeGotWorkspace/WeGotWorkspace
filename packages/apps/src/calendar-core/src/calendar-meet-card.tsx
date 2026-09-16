@@ -69,7 +69,7 @@ export type CalendarMeetCardProps = {
   presentation?: "card" | "field";
   className?: string;
   fieldIcon?: ReactNode;
-  /** Shared control height (`sm` in the compact event popover). Default `md`. */
+  /** Shared control height (`sm` / 32px in dialogs and the event popover). Default `sm`. */
   controlSize?: ControlSize;
   onChange: (next: CalendarEventFormValue) => void;
   onJoin?: (href: string) => void;
@@ -90,7 +90,7 @@ function CalendarMeetUrlRow({
   labels,
   readOnly = false,
   disabled = false,
-  controlSize = "md",
+  controlSize = "sm",
   onChange,
   onBlur,
   meetMenu,
@@ -161,7 +161,7 @@ export function CalendarMeetCard({
   presentation = "card",
   className,
   fieldIcon,
-  controlSize = "md",
+  controlSize = "sm",
   abandonStagedReserveRef,
   onChange,
   onJoin,

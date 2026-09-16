@@ -114,6 +114,7 @@ export function MailComposeView({
             <div className="mail-compose-view__to-row">
               <Input
                 className="mail-compose-view__to-input"
+                size="sm"
                 value={to}
                 onChange={(event) => onToChange(event.target.value)}
                 placeholder="alice@example.com, bob@example.com"
@@ -122,7 +123,7 @@ export function MailComposeView({
               {!showCcBcc ? (
                 <Button
                   type="button"
-                  size="md"
+                  size="sm"
                   variant="primary"
                   label="(B)cc"
                   onClick={() => setShowCcBcc(true)}
@@ -135,6 +136,7 @@ export function MailComposeView({
             <>
               <FieldLabelRow label="Cc" className="mail-compose-view__field">
                 <Input
+                  size="sm"
                   value={cc}
                   onChange={(event) => onCcChange(event.target.value)}
                   placeholder="Optional"
@@ -143,6 +145,7 @@ export function MailComposeView({
               </FieldLabelRow>
               <FieldLabelRow label="Bcc" className="mail-compose-view__field">
                 <Input
+                  size="sm"
                   value={bcc}
                   onChange={(event) => onBccChange(event.target.value)}
                   placeholder="Optional"
@@ -154,6 +157,7 @@ export function MailComposeView({
 
           <FieldLabelRow label="Subject" className="mail-compose-view__field">
             <Input
+              size="sm"
               value={subject}
               onChange={(event) => onSubjectChange(event.target.value)}
               placeholder="Subject"
