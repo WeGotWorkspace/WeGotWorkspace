@@ -6,13 +6,6 @@
   --modal-header-end: calc(var(--modal-close-size) + 0.5rem);
   --modal-max-width: 32rem;
   --modal-max-height: 100dvh;
-  /*
-   * Dialog form density: sm / 32px at every breakpoint. Remap the default md
-   * height so Input / Select / Textarea / control-surface paint 32px without
-   * per-dialog size sprinkles. View-header is outside this surface and stays md.
-   */
-  --control-height-md: var(--control-height-sm, 2rem);
-  --input-height: var(--control-height-sm, 2rem);
   @apply box-border min-w-0 overflow-x-hidden p-[length:var(--modal-inset)];
 }
 
@@ -20,8 +13,15 @@
  * Centered Dialog / AlertDialog. Sheets keep edge layout and skip this.
  * Clamp to the visual viewport so min-content children and translate
  * centering cannot paint past the screen (iOS Safari especially).
+ *
+ * Dialog form density: remapped here (not on all `.ui-modal-surface`) so
+ * SideDrawer / Sheet chrome keeps true `--control-height-md` (36px) and
+ * matches main ViewHeader IconButtons. Centered dialogs still paint sm /
+ * 32px Inputs without per-dialog size sprinkles.
  */
 .ui-modal-surface--center {
+  --control-height-md: var(--control-height-sm, 2rem);
+  --input-height: var(--control-height-sm, 2rem);
   @apply flex flex-col;
   width: min(100%, var(--modal-max-width));
   max-width: min(var(--modal-max-width), 100svw);

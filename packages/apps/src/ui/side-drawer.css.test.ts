@@ -34,4 +34,12 @@ describe("SideDrawer overlay motion", () => {
     expect(sheet).not.toMatch(/data-\[state=open\]:duration-500/);
     expect(sheet).toMatch(/overlayClassName\?:/);
   });
+
+  it("uses Sheet ui-modal-surface without --center so md chrome stays 36px", () => {
+    // SheetContent always gets `ui-modal-surface`; SideDrawer must not also
+    // opt into `--center` (that remaps --control-height-md → sm / 32px).
+    expect(sheet).toMatch(/ui-modal-surface/);
+    expect(tsx).not.toMatch(/ui-modal-surface--center/);
+    expect(css).not.toMatch(/--control-height-md:\s*var\(--control-height-sm/);
+  });
 });

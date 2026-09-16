@@ -98,6 +98,10 @@ describe("DocsCollabSidebarPanel", () => {
     );
     expect(panel).toMatch(/size="md"/);
     expect(panel).not.toMatch(/size="sm"/);
+    // SideDrawer Sheet is `.ui-modal-surface` without `--center`, so true
+    // `--control-height-md` (2.25rem / 36px) must remain available — do not
+    // reintroduce a panel-local md→sm remap that would shrink chrome again.
+    expect(css).not.toMatch(/--control-height-md:\s*var\(--control-height-sm/);
   });
 
   it("aligns header title and empty/scroll body on main-header padding (p-4 md:p-6)", () => {

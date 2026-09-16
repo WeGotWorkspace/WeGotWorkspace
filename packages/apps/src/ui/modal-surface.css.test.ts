@@ -41,12 +41,17 @@ describe("ui-modal-surface viewport clamp", () => {
     expect(css).not.toMatch(/\.ui-modal-footer \{[\s\S]*sticky/);
   });
 
-  it("remaps md control height to sm so dialog fields are 32px at every breakpoint", () => {
+  it("remaps md control height to sm on centered dialogs only (sheets keep true md)", () => {
     expect(css).toMatch(
-      /\.ui-modal-surface \{[\s\S]*--control-height-md:\s*var\(--control-height-sm,\s*2rem\)/,
+      /\.ui-modal-surface--center \{[\s\S]*?--control-height-md:\s*var\(--control-height-sm,\s*2rem\)/,
     );
     expect(css).toMatch(
-      /\.ui-modal-surface \{[\s\S]*--input-height:\s*var\(--control-height-sm,\s*2rem\)/,
+      /\.ui-modal-surface--center \{[\s\S]*?--input-height:\s*var\(--control-height-sm,\s*2rem\)/,
+    );
+    // Sheet / SideDrawer use `.ui-modal-surface` without `--center` — do not
+    // shrink ViewHeader-matching IconButton / SegmentedControl chrome to 32px.
+    expect(css).not.toMatch(
+      /\.ui-modal-surface \{[^}]*--control-height-md:\s*var\(--control-height-sm/,
     );
   });
 });
