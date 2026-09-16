@@ -608,7 +608,8 @@ describe("meet leave/end call dialog", () => {
     expect(css).toMatch(
       /\.meet-call-dialog \.ui-modal-title \{[\s\S]*var\(--modal-title-foreground\)/,
     );
-    expect(css).toMatch(/\.meet-call-dialog \.meet-call-dialog__cancel/);
+    expect(css).not.toMatch(/\.meet-call-dialog__footer[\s\S]*flex-col-reverse/);
+    expect(css).not.toMatch(/\.meet-call-dialog__cancel[\s\S]*w-full/);
     expect(css).not.toMatch(/\.meet-dialog-surface,\s*\.meet-call-dialog,/);
   });
 });

@@ -80,13 +80,7 @@ const DialogHeader = markUiModalSlot(
  */
 const DialogFooter = markUiModalSlot(
   ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-    <div
-      className={cn(
-        "ui-modal-footer flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-        className,
-      )}
-      {...props}
-    />
+    <div className={cn("ui-modal-footer flex flex-row justify-end gap-2", className)} {...props} />
   ),
   "footer",
   "DialogFooter",

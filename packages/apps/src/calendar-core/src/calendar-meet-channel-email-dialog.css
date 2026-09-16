@@ -5,12 +5,12 @@
 }
 
 .calendar-meet-channel-email-dialog__footer {
-  /* AlertDialogFooter is col-reverse below `sm` with no gap; keep stacked actions separate. */
-  @apply gap-2 sm:flex-wrap;
+  /* Three choice actions; wrap when the row is tight. */
+  @apply flex-wrap;
 }
 
 .calendar-meet-channel-email-dialog__action {
-  @apply w-full justify-center sm:w-auto;
+  @apply justify-center;
 }
 
 .calendar-event-dialog__meet-email-hint,

@@ -61,13 +61,7 @@ const AlertDialogHeader = markUiModalSlot(
 
 const AlertDialogFooter = markUiModalSlot(
   ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-    <div
-      className={cn(
-        "ui-modal-footer flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-        className,
-      )}
-      {...props}
-    />
+    <div className={cn("ui-modal-footer flex flex-row justify-end gap-2", className)} {...props} />
   ),
   "footer",
   "AlertDialogFooter",
@@ -113,11 +107,7 @@ const AlertDialogCancel = React.forwardRef<
   <AlertDialogPrimitive.Cancel
     ref={ref}
     asChild={asChild}
-    className={
-      asChild
-        ? cn("mt-2 sm:mt-0", className)
-        : cn(buttonVariants({ variant: "outline" }), "mt-2 sm:mt-0", className)
-    }
+    className={asChild ? className : cn(buttonVariants({ variant: "outline" }), className)}
     {...props}
   />
 ));

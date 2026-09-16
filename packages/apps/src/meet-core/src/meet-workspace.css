@@ -317,15 +317,6 @@
   @apply text-center sm:text-center;
 }
 
-.meet-call-dialog .meet-call-dialog__footer {
-  @apply flex-col-reverse gap-2 sm:flex-col-reverse sm:space-x-0;
-}
-
-.meet-call-dialog .meet-call-dialog__cancel,
-.meet-call-dialog .meet-call-dialog__confirm {
-  @apply w-full;
-}
-
 .meet-popover-surface {
   /* Portaled content: beat PopoverContent utilities (bg-popover, text-popover-foreground, border). */
   border-width: 0 !important;
