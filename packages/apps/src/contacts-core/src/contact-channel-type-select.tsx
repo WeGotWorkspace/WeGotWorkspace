@@ -32,6 +32,7 @@ function ContactChannelTypeSelect<T extends string>({
     <ShareRowSelect
       value={channelSelectValue(value)}
       options={options}
+      size="md"
       className={CONTEXT_SELECT_CLASS}
       itemClassName={CONTEXT_SELECT_ITEM_CLASS}
       aria-label={ariaLabel}

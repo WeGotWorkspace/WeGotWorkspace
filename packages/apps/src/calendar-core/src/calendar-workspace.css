@@ -215,15 +215,10 @@
     justify-self: end;
   }
 
-  .calendar-workspace .view-header__sidebar-toggle .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
-    @apply size-8;
-  }
-
+  /* Keep Week select shrinkable; height stays control md (36px) like IconButton
+   * / ViewModeToggle. Do not compact a subset of header chrome below md. */
   .calendar-workspace .calendar-header-actions .calendar-view-select {
-    @apply h-8 min-w-0;
+    @apply min-w-0;
   }
 
   .calendar-workspace
@@ -287,33 +282,6 @@
   width: auto;
   min-width: 7rem;
   background-color: var(--color-cream, #ffffff);
-}
-
-/* Compact chrome so the date-range title can wrap instead of ellipsizing. */
-@container view-header-main (max-width: 40rem) {
-  .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
-    @apply size-8;
-  }
-
-  .calendar-workspace .calendar-header-actions .calendar-view-select {
-    @apply h-8 min-w-0;
-  }
-}
-
-@supports not (container-type: inline-size) {
-  @media (max-width: 40rem) {
-    .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-    .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
-    .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
-      @apply size-8;
-    }
-
-    .calendar-workspace .calendar-header-actions .calendar-view-select {
-      @apply h-8 min-w-0;
-    }
-  }
 }
 
 .calendar-workspace .calendar-sidebar-dot {

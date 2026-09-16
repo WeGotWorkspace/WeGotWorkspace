@@ -189,6 +189,8 @@
    * Control type scale (shared by Input, Button, Select, UserChip, …).
    * `--input-font-size` remains the unset/base fallback (body-adjacent).
    * Size steps: xs=12 / sm=14 / md=14 / lg=16 / xl=16.
+   * Form controls floor xs/sm/md to 1rem below 768px (iOS focus-zoom block).
+   * Buttons / chips keep this desktop scale — do not raise these tokens on :root.
    */
   --input-font-size: 1rem;
   --input-font-size-xs: 0.75rem;
@@ -295,11 +297,20 @@
   color: var(--color-ink);
 }
 
-/* iOS Safari zooms focused fields under 16px; keep unmanaged text entry ≥1rem.
- * Opt-outs (own type scale via size classes / tokens):
- * - `.input` / `.input__field` / `.textarea` — shared control size font-size
+/*
+ * iOS Safari zooms focused form controls whose computed font-size is < 16px.
+ * Icon-only buttons and labels keep their own type — this floor is text-entry only.
+ *
+ * Unmanaged native `input` / `textarea` / `select` always use ≥1rem.
+ * Shared Input / Textarea / SelectTrigger / control-surface keep the desktop
+ * xs/sm/md scale and raise `--input-font-size*` to 1rem at max-width 767px
+ * (same breakpoint as `MOBILE_MEDIA_QUERY` / `useIsMobile`).
+ *
+ * Opt-outs from the unmanaged floor (own type scale):
+ * - `.input` / `.input__field` / `.textarea` — size-class tokens (mobile floor below)
  * - `.note-detail-view__title` — title-scale (`--text-4xl`)
- * - `.tag-group__input` — must match add-tag button (`--tag-font-size`) */
+ * - `.tag-group__input` — chip scale on desktop; included in the mobile floor
+ */
 input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not(
     [type="radio"]
   ):not([type="file"]):not([type="hidden"]):not([type="range"]):not([type="color"]):not(
@@ -308,4 +319,28 @@ input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="c
 textarea:not(.note-detail-view__title):not(.textarea),
 select {
   font-size: max(1rem, 100%) !important;
+}
+
+@media (max-width: 767px) {
+  .control-surface,
+  .input,
+  .textarea,
+  .select-trigger,
+  .tag-group__input {
+    --input-font-size: 1rem;
+    --input-font-size-xs: 1rem;
+    --input-font-size-sm: 1rem;
+    --input-font-size-md: 1rem;
+    font-size: 1rem !important;
+  }
+
+  .input__field {
+    font-size: inherit !important;
+  }
+
+  .text-editor,
+  .text-editor-prose {
+    --text-editor-prose-font-size: 1rem;
+    --text-editor-source-font-size: 1rem;
+  }
 }

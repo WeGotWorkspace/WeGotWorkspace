@@ -9,15 +9,17 @@ const tsx = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
 const searchTsx = readFileSync(join(here, "calendar-search-results.tsx"), "utf8");
 
 describe("calendar workspace header CSS", () => {
-  it("compacts header chrome on narrow view-header containers", () => {
-    expect(css).toMatch(/@container view-header-main \(max-width: 40rem\)/);
-    expect(css).toMatch(
-      /\.calendar-workspace \.calendar-header-nav \.button\[class\*="icon-button--size"\][\s\S]*size-8/,
-    );
+  it("keeps header chrome at control md on narrow viewports", () => {
     expect(css).toMatch(
       /\.calendar-workspace \.calendar-header-actions \.calendar-view-select \{[\s\S]*min-w-0/,
     );
     expect(css).toMatch(/\.calendar-workspace \.workspace-app-layout__main-header \{[\s\S]*p-3/);
+    /* All header controls stay size md (36px) — do not compact IconButtons /
+     * Week select while ViewModeToggle remains md. */
+    expect(css).not.toMatch(/@apply size-8/);
+    expect(css).not.toMatch(
+      /\.calendar-workspace \.calendar-header-actions \.calendar-view-select \{[^}]*\bh-8\b/,
+    );
     /* Soft radius is global (`--control-radius`); no actions-only remap
      * (Inbox titleTrailing must share the same token as Week / search). */
     expect(css).not.toMatch(
@@ -106,9 +108,7 @@ describe("calendar workspace header CSS", () => {
 
   it("spaces inbox from header actions like sidebar toggle from the nav cluster", () => {
     expect(css).toMatch(/\.calendar-workspace \.view-header__end \{[\s\S]*gap-3/);
-    expect(css).toMatch(
-      /\.calendar-workspace \.calendar-invitations-trigger\.button\[class\*="icon-button--size"\][\s\S]*size-8/,
-    );
+    expect(css).not.toMatch(/calendar-invitations-trigger[^}]*@apply size-8/);
   });
 });
 

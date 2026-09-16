@@ -41,10 +41,13 @@ describe("calendar event dialog CSS ownership", () => {
   it("fills the viewport as a sheet below the mobile breakpoint", () => {
     expect(css).toMatch(/@media \(max-width: 767px\)/);
     expect(css).toMatch(
-      /\.calendar-dialog-surface\.calendar-event-dialog,\s*\.calendar-dialog-surface\.calendar-event-details-popover--dialog/,
+      /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-dialog,\s*\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-details-popover--dialog/,
     );
     expect(css).toMatch(/inset:\s*0/);
     expect(css).toMatch(/border-radius:\s*0/);
+    expect(css).toMatch(/position:\s*fixed/);
+    expect(css).toMatch(/transform:\s*none/);
+    expect(css).toMatch(/animation:\s*none/);
     expect(css).toMatch(/safe-area-inset-top/);
     expect(css).toMatch(/safe-area-inset-bottom/);
     expect(css).toMatch(
@@ -90,8 +93,8 @@ describe("calendar event dialog shared form controls", () => {
     expect(css).not.toContain("color: #b91c1c");
   });
 
-  it("defaults to control size md and accepts an explicit compact size prop", () => {
-    expect(formTsx).toMatch(/controlSize\s*=\s*"md"/);
+  it("defaults to control size sm (32px) at every breakpoint", () => {
+    expect(formTsx).toMatch(/controlSize\s*=\s*"sm"/);
     expect(formTsx).toMatch(/size=\{controlSize\}/);
     expect(formTsx).toMatch(/calendar-event-dialog__form--compact/);
   });

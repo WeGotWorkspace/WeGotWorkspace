@@ -90,6 +90,7 @@ export function DriveWorkspaceModals({
           <Input
             autoFocus
             placeholder="Folder name"
+            size="sm"
             value={newFolderName}
             onChange={(event) => setNewFolderName(event.target.value)}
             onKeyDown={(event) => {

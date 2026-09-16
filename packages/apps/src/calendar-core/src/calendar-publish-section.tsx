@@ -75,7 +75,7 @@ export function CalendarPublishSection({
             <IconButton
               label={labels.copyHttpsUrl}
               icon={<Copy className="size-3.5" aria-hidden />}
-              size="md"
+              size="sm"
               variant="outline"
               onClick={onCopyHttps}
             />

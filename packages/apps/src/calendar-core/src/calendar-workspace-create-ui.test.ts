@@ -41,7 +41,7 @@ describe("CalendarWorkspace create UI routing", () => {
   it("switches the shared details surface to Dialog below 768px (iPad portrait keeps popover)", () => {
     expect(popover).toContain("useIsMobile");
     expect(popover).toContain("DialogContent");
-    expect(popover).toMatch(/controlSize=\{isMobile \? "md" : "sm"\}/);
+    expect(popover).toMatch(/controlSize="sm"/);
     expect(popover).toContain("calendar-event-details-popover--dialog");
   });
 });

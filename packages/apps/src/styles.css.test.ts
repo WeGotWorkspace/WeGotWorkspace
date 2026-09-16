@@ -63,4 +63,14 @@ describe("product UI font tokens", () => {
     expect(css).toMatch(/textarea:not\(\.note-detail-view__title\):not\(\.textarea\)/);
     expect(css).toMatch(/font-size:\s*max\(1rem,\s*100%\)\s*!important/);
   });
+
+  it("raises shared form-control type to 1rem below 768px so iOS does not zoom", () => {
+    expect(css).toMatch(
+      /@media \(max-width: 767px\)[\s\S]*--input-font-size-xs:\s*1rem[\s\S]*--input-font-size-sm:\s*1rem[\s\S]*--input-font-size-md:\s*1rem/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 767px\)[\s\S]*\.select-trigger[\s\S]*font-size:\s*1rem\s*!important/,
+    );
+    expect(css).toMatch(/@media \(max-width: 767px\)[\s\S]*--text-editor-prose-font-size:\s*1rem/);
+  });
 });

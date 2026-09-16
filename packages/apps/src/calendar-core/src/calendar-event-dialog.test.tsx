@@ -79,7 +79,7 @@ describe("CalendarEventDialog", () => {
   it("keeps the calendar picker as a color swatch trigger when closed", () => {
     renderDialog();
     const trigger = screen.getByRole("button", { name: /Calendar: Personal/i });
-    expect(trigger.className).toContain("control-surface--size-md");
+    expect(trigger.className).toContain("control-surface--size-sm");
     expect(trigger.querySelector(".color-swatch-trigger__dot")).toBeTruthy();
     expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
     expect(trigger.querySelector(".color-swatch-trigger__caption")).toBeNull();

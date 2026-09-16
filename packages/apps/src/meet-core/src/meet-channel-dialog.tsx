@@ -226,6 +226,7 @@ export function MeetChannelDialog({
               <Input
                 id="meet-channel-name"
                 autoFocus
+                size="sm"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
               />
@@ -261,7 +262,7 @@ export function MeetChannelDialog({
                       type="button"
                       label={meetLabels.copyLink}
                       icon={<Copy className="size-3.5" aria-hidden />}
-                      size="md"
+                      size="sm"
                       variant="outline"
                       disabled={!guestLink}
                       onClick={() => {
