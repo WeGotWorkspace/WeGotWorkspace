@@ -50,6 +50,14 @@ describe("app sidebar padding tokens", () => {
   });
 });
 
+describe("app sidebar nav item height SST", () => {
+  it("publishes --app-sidebar-item-height from the md control token", () => {
+    expect(css).toMatch(
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-height:\s*var\(--control-height-md,\s*2\.25rem\)/,
+    );
+  });
+});
+
 describe("app sidebar nav selection SST", () => {
   it("defaults to color-washed hover < selected, overridable via --app-sidebar-item-*", () => {
     expect(css).toMatch(
