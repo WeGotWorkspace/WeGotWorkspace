@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CalendarDays, Hash, Mic, Pencil, Users, Video } from "lucide-react";
+import { CalendarDays, Hash, Mic, Pencil, Video } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -84,12 +84,10 @@ import {
   type MeetCallStageLayout,
 } from "@/meet-core/src/meet-call-stage-layout";
 import { meetThreadRailShowsBack } from "@/meet-core/src/meet-thread-placement";
-import { meetThreadPeopleCount } from "@/meet-core/src/meet-thread-people";
 import { MeetChatColumn } from "@/meet-core/src/meet-chat-column";
 import { mergeMeetRoomChatIntoChannel } from "@/meet-core/src/meet-chat-line";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
-import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { ChatThreadPanel } from "@/chat-ui/src/chat-thread-panel";
 import type { ChatMentionPrincipal } from "@/chat-ui/src/chat-types";
 import {
@@ -997,14 +995,6 @@ export function MeetWorkspace({
   }, [onCaughtUpChange, visibleCaughtUp]);
   const railShowsBack = meetThreadRailShowsBack(showExpandedStage, railShowsThread);
   const railTitle = railShowsThread ? meetLabels.threadTitle : chatTitle;
-  const threadRoot = resolvedParent ?? cachedThread?.parent ?? null;
-  const threadRepliesForPeople = resolvedParent ? resolvedReplies : (cachedThread?.replies ?? []);
-  const threadPeople = railShowsThread
-    ? meetThreadPeopleCount(threadRoot, threadRepliesForPeople)
-    : 0;
-  const canEditThreadRoot = Boolean(
-    railShowsThread && threadRoot && threadRoot.authorId === currentUserId && !threadRoot.deletedAt,
-  );
   const closeRail = () => {
     if (showExpandedStage) {
       setCallChatOpen(false);
@@ -1051,30 +1041,6 @@ export function MeetWorkspace({
             onClose={closeRail}
             onBack={railShowsBack ? closeResolvedThread : undefined}
             backLabel={meetLabels.threadBack}
-            headerActions={
-              railShowsThread ? (
-                <>
-                  <span
-                    className="meet-workspace__members"
-                    aria-label={meetLabels.threadPeopleCount(threadPeople)}
-                  >
-                    <Users className="meet-workspace__members-icon" aria-hidden />
-                    {threadPeople}
-                  </span>
-                  {canEditThreadRoot && threadRoot ? (
-                    <IconButton
-                      icon={<Pencil />}
-                      label={chatUiLabels.edit}
-                      size="md"
-                      variant="outline"
-                      active={parentEditing}
-                      showTooltip={false}
-                      onClick={() => chat.setEditingMessageId(threadRoot.id)}
-                    />
-                  ) : null}
-                </>
-              ) : undefined
-            }
           >
             <div className="meet-workspace__rail-surfaces">
               <div

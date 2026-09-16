@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CalendarCalendarDialog,
   DEFAULT_CALENDAR_COLOR,
@@ -34,6 +34,14 @@ describe("CalendarCalendarDialog", () => {
         dispatchEvent: vi.fn(),
       })),
     });
+  });
+
+  afterEach(async () => {
+    // Let Radix FocusScope's deferred focus event run while the dialog is still mounted.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    cleanup();
   });
 
   it("submits trimmed create payload with personal directory", () => {

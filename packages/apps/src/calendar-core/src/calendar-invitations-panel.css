@@ -32,15 +32,7 @@
   .calendar-invitations-panel {
     --docs-collab-sidebar-panel-padding-x: 0.75rem;
   }
-}
 
-/* Match `.workspace-app-layout__main-header` block padding so title-row height
-   lines up with Calendar’s main `.view-header` (filter sits in headerActions). */
-.calendar-invitations-panel .docs-collab-sidebar-panel__header {
-  @apply py-4 md:py-6;
-}
-
-@media (max-width: 40rem) {
   .calendar-invitations-panel .docs-collab-sidebar-panel__header {
     @apply py-3;
   }

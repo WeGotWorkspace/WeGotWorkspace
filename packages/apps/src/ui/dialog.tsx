@@ -6,6 +6,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { DialogCloseButton } from "@/ui/dialog-close-button";
 import { withNestedLayerDismissGuard } from "@/ui/dialog-nested-layer";
+import { markUiModalSlot, wrapModalSurfaceChildren } from "@/ui/modal-surface-children";
 import "@/ui/modal-surface.css";
 import "@/ui/modal-title.css";
 
@@ -45,7 +46,7 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          "ui-modal-surface ui-modal-surface--center fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-[length:var(--control-radius)]",
+          "ui-modal-surface ui-modal-surface--center fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-[length:var(--control-radius)]",
           className,
         )}
         {...props}
@@ -53,7 +54,7 @@ const DialogContent = React.forwardRef<
         onInteractOutside={withNestedLayerDismissGuard(onInteractOutside)}
         onFocusOutside={withNestedLayerDismissGuard(onFocusOutside)}
       >
-        {children}
+        {wrapModalSurfaceChildren(children)}
         <DialogPrimitive.Close asChild>
           <DialogCloseButton />
         </DialogPrimitive.Close>
@@ -63,10 +64,13 @@ const DialogContent = React.forwardRef<
 );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
-const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("ui-modal-header", className)} {...props} />
+const DialogHeader = markUiModalSlot(
+  ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+    <div className={cn("ui-modal-header", className)} {...props} />
+  ),
+  "header",
+  "DialogHeader",
 );
-DialogHeader.displayName = "DialogHeader";
 
 /**
  * Dialog action row. Convention: Cancel / dismiss = `variant="outline"`; primary
@@ -74,16 +78,13 @@ DialogHeader.displayName = "DialogHeader";
  * icon-only `IconButton` with `variant="outline"` + `severity="danger"` (Trash2),
  * pinned start via `me-auto` — same as Calendar event/calendar dialogs.
  */
-const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "ui-modal-footer flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-      className,
-    )}
-    {...props}
-  />
+const DialogFooter = markUiModalSlot(
+  ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+    <div className={cn("ui-modal-footer flex flex-row justify-end gap-2", className)} {...props} />
+  ),
+  "footer",
+  "DialogFooter",
 );
-DialogFooter.displayName = "DialogFooter";
 
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,

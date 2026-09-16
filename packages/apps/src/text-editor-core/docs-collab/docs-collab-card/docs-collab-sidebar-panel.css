@@ -75,7 +75,12 @@
 }
 
 .docs-collab-sidebar-panel__header {
-  @apply shrink-0 border-b py-3.5;
+  /*
+   * Block padding matches `.workspace-app-layout__main-header` (`p-4 md:p-6`)
+   * and `.app-sidebar__header` (`py-4 md:py-6`) so docked / drawer side panels
+   * line up with the main ViewHeader strip on sm and lg.
+   */
+  @apply shrink-0 border-b py-4 md:py-6;
   padding-inline: var(--docs-collab-sidebar-panel-padding-x);
   border-color: var(
     --docs-collab-sidebar-panel-border-color,
@@ -94,7 +99,7 @@
 }
 
 .docs-collab-sidebar-panel__header .view-header__title-row {
-  --view-header-title-row-min-height: 2rem;
+  --view-header-title-row-min-height: var(--control-height-md, 2.25rem);
 }
 
 /* Action cluster ↔ close: same gap as Calendar/Docs actions ↔ titleTrailing. */
