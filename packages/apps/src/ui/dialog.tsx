@@ -69,8 +69,8 @@ const DialogHeader = markUiModalSlot(
     <div className={cn("ui-modal-header", className)} {...props} />
   ),
   "header",
+  "DialogHeader",
 );
-DialogHeader.displayName = "DialogHeader";
 
 /**
  * Dialog action row. Convention: Cancel / dismiss = `variant="outline"`; primary
@@ -89,8 +89,8 @@ const DialogFooter = markUiModalSlot(
     />
   ),
   "footer",
+  "DialogFooter",
 );
-DialogFooter.displayName = "DialogFooter";
 
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,

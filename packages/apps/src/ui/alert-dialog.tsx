@@ -56,8 +56,8 @@ const AlertDialogHeader = markUiModalSlot(
     />
   ),
   "header",
+  "AlertDialogHeader",
 );
-AlertDialogHeader.displayName = "AlertDialogHeader";
 
 const AlertDialogFooter = markUiModalSlot(
   ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
@@ -70,8 +70,8 @@ const AlertDialogFooter = markUiModalSlot(
     />
   ),
   "footer",
+  "AlertDialogFooter",
 );
-AlertDialogFooter.displayName = "AlertDialogFooter";
 
 const AlertDialogTitle = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Title>,

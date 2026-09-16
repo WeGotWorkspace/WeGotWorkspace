@@ -7,8 +7,13 @@ const FOOTER_NAMES = new Set(["DialogFooter", "AlertDialogFooter"]);
 export type UiModalSlot = "header" | "footer";
 
 /** Marks Dialog/AlertDialog header and footer so the surface wrapper can slot them. */
-export function markUiModalSlot<T extends object>(component: T, slot: UiModalSlot): T {
+export function markUiModalSlot<P extends object>(
+  component: React.FC<P>,
+  slot: UiModalSlot,
+  displayName: string,
+): React.FC<P> {
   Object.defineProperty(component, "__uiModalSlot", { value: slot });
+  component.displayName = displayName;
   return component;
 }
 
