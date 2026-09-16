@@ -87,11 +87,8 @@ describe("calendar invitations dock width", () => {
     expect(panel).toMatch(
       /@media\s*\(max-width:\s*40rem\)[\s\S]*\.calendar-invitations-panel \{[\s\S]*--docs-collab-sidebar-panel-padding-x:\s*0\.75rem/,
     );
-    expect(panel).toMatch(
+    expect(panel).not.toMatch(
       /\.calendar-invitations-panel \.docs-collab-sidebar-panel__header \{[\s\S]*py-4 md:py-6/,
-    );
-    expect(panel).toMatch(
-      /@media\s*\(max-width:\s*40rem\)[\s\S]*\.calendar-invitations-panel \.docs-collab-sidebar-panel__header \{[\s\S]*py-3/,
     );
     expect(panel).not.toMatch(
       /\.calendar-invitations-panel \.docs-collab-sidebar-panel__scroll \{[\s\S]*px-5/,

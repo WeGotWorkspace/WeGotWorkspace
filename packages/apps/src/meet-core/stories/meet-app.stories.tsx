@@ -392,7 +392,7 @@ export const ThreadOpen: Story = {
     await expect(
       canvas.getAllByRole("button", { name: chatUiLabels.reply }).length,
     ).toBeGreaterThan(0);
-    await expect(canvas.getByLabelText(meetLabels.threadPeopleCount(3))).toBeInTheDocument();
+    await expect(canvas.queryByLabelText(meetLabels.threadPeopleCount(3))).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.editChannel })).toBeInTheDocument();
     const channelActions = canvas
       .getByRole("button", { name: meetLabels.editChannel })

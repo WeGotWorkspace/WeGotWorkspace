@@ -22,11 +22,12 @@
  * centering cannot paint past the screen (iOS Safari especially).
  */
 .ui-modal-surface--center {
+  @apply flex flex-col;
   width: min(100%, var(--modal-max-width));
   max-width: min(var(--modal-max-width), 100svw);
   max-height: min(var(--modal-max-height), 100dvh);
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
+  gap: 1rem;
 }
 
 /*
@@ -71,14 +72,30 @@
 }
 
 .ui-modal-header {
-  @apply flex flex-col justify-center gap-1.5 text-left;
+  @apply flex shrink-0 flex-col justify-center gap-1.5 text-left;
   min-height: var(--modal-close-size);
   padding-inline-end: var(--modal-header-end);
 }
 
+.ui-modal-body {
+  @apply min-h-0 flex-1 overflow-y-auto;
+}
+
+.ui-modal-form {
+  @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+}
+
+/* Component that renders a <form> (e.g. CalendarEventForm) still pins its footer. */
+.ui-modal-body:has(> form) {
+  @apply flex flex-col overflow-hidden;
+}
+
+.ui-modal-body > form {
+  @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+}
+
 .ui-modal-footer {
-  @apply sticky bottom-0 z-[1];
-  margin-block-start: auto;
+  @apply shrink-0;
   padding-block-start: 0.5rem;
   background-color: var(--background, var(--color-cream, #ffffff));
 }

@@ -18,7 +18,8 @@ describe("ui-modal-surface viewport clamp", () => {
     expect(css).toMatch(
       /\.ui-modal-surface--center \{[\s\S]*max-height:\s*min\(var\(--modal-max-height\),\s*100dvh\)/,
     );
-    expect(css).toMatch(/\.ui-modal-surface--center \{[\s\S]*overflow-y:\s*auto/);
+    expect(css).toMatch(/\.ui-modal-surface--center \{[\s\S]*@apply flex flex-col/);
+    expect(css).toMatch(/\.ui-modal-surface--center \{[\s\S]*overflow:\s*hidden/);
   });
 
   it("fills the viewport as a sheet below 768px and resets enter transform", () => {
@@ -32,8 +33,12 @@ describe("ui-modal-surface viewport clamp", () => {
     expect(css).toMatch(/safe-area-inset-bottom/);
   });
 
-  it("keeps action rows sticky to the dialog scrollport", () => {
-    expect(css).toMatch(/\.ui-modal-footer \{[\s\S]*sticky[\s\S]*bottom-0/);
+  it("pins header and footer and scrolls the body", () => {
+    expect(css).toMatch(/\.ui-modal-header \{[\s\S]*shrink-0/);
+    expect(css).toMatch(/\.ui-modal-body \{[\s\S]*flex-1[\s\S]*overflow-y-auto/);
+    expect(css).toMatch(/\.ui-modal-form \{[\s\S]*flex-1[\s\S]*overflow-hidden/);
+    expect(css).toMatch(/\.ui-modal-footer \{[\s\S]*shrink-0/);
+    expect(css).not.toMatch(/\.ui-modal-footer \{[\s\S]*sticky/);
   });
 
   it("remaps md control height to sm so dialog fields are 32px at every breakpoint", () => {

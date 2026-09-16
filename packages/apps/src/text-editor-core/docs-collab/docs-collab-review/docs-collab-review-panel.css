@@ -33,17 +33,6 @@
   /* Horizontal inset inherits shared panel (main-header p-4 md:p-6 / Docs format chrome). */
 }
 
-/* Match main view-header block padding so the Open/Resolved filter sits on the title row. */
-.docs-collab-review-panel .docs-collab-sidebar-panel__header {
-  @apply py-4 md:py-6;
-}
-
-@media (max-width: 40rem) {
-  .docs-collab-review-panel .docs-collab-sidebar-panel__header {
-    @apply py-3;
-  }
-}
-
 .docs-collab-review-panel .docs-collab-sidebar-panel__scroll {
   @apply py-6;
 }

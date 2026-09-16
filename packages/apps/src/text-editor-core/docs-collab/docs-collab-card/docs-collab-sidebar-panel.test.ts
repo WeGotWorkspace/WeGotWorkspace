@@ -92,6 +92,14 @@ describe("DocsCollabSidebarPanel", () => {
     );
   });
 
+  it("sizes the title row to md control height so filter and close match ViewHeader", () => {
+    expect(css).toMatch(
+      /\.docs-collab-sidebar-panel__header \.view-header__title-row \{[\s\S]*--view-header-title-row-min-height:\s*var\(--control-height-md/,
+    );
+    expect(panel).toMatch(/size="md"/);
+    expect(panel).not.toMatch(/size="sm"/);
+  });
+
   it("aligns header title and empty/scroll body on main-header padding (p-4 md:p-6)", () => {
     expect(css).toMatch(
       /\.docs-collab-sidebar-panel \{[\s\S]*--docs-collab-sidebar-panel-padding-x:\s*1rem/,

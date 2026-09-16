@@ -318,10 +318,9 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).toMatch(/meet-workspace__rail-surfaces/);
     expect(tsx).toMatch(/meet-workspace__rail-thread/);
     expect(tsx).not.toMatch(/\{railShowsThread \? threadContent : null\}/);
-    expect(tsx).toMatch(/headerActions=/);
-    expect(tsx).toMatch(/meetThreadPeopleCount/);
-    expect(tsx).toMatch(/meetLabels\.threadPeopleCount/);
-    expect(tsx).toMatch(/icon=\{<Pencil \/>\}/);
+    expect(tsx).not.toMatch(/headerActions=/);
+    expect(tsx).not.toMatch(/meetThreadPeopleCount/);
+    expect(tsx).not.toMatch(/meetLabels\.threadPeopleCount/);
     expect(tsx).toMatch(/className="meet-workspace__header-edit"/);
     expect(tsx).toMatch(/className="meet-workspace__header-edit"[\s\S]*?variant="outline"/);
     expect(tsx).not.toMatch(/className="meet-workspace__header-edit"[\s\S]*?variant="subtle"/);
@@ -348,17 +347,7 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).toMatch(/calendarEventsForMeetingChannel/);
     expect(tsx).toMatch(/editLabel=\{meetLabels\.editMeeting\}/);
     expect(tsx).toMatch(/parentEditing/);
-    // Thread rail: people indicator before edit; DocsCollab Close stays outermost.
-    const railActions = tsx.match(
-      /headerActions=\{\s*railShowsThread \? \([\s\S]*?\) : undefined\s*\}/,
-    )?.[0];
-    expect(railActions).toBeTruthy();
-    expect(railActions!.indexOf("meet-workspace__members")).toBeLessThan(
-      railActions!.indexOf("chatUiLabels.edit"),
-    );
-    const railEdit = railActions!.match(/chatUiLabels\.edit[\s\S]*?variant="outline"/);
-    expect(railEdit).not.toBeNull();
-    // Channel ViewHeader: Meet segmented, then edit. No channel member count.
+    // Thread rail: title + close only. Channel ViewHeader: Meet segmented, then edit.
     const mainActions = tsx.match(
       /className="meet-workspace__header-actions"[\s\S]*?<\/div>\s*\) : null/,
     )?.[0];
