@@ -38,10 +38,15 @@
 }
 
 /*
- * Share / access rows: [mark] [permission select] [remove]. The select is shrink-0
- * with a fixed width; without a square min-size the trailing IconButton flex-shrinks
- * and clips. Keep it square at the row control height (sm / 32px in dialogs).
+ * Share / access rows: [mark] [permission select] [remove]. The SelectTrigger
+ * ships `w-full` and would grow, crushing the trailing IconButton. Pin the
+ * combobox (`flex: 0`) and keep the trash square at --input-height (sm / 32px).
  */
+.share-dialog .card__row-action button[role="combobox"],
+.share-access-card .card__row-action button[role="combobox"] {
+  flex: 0 0 auto;
+}
+
 .share-dialog .card__row-action > .icon-button,
 .share-access-card .card__row-action > .icon-button {
   @apply shrink-0;
@@ -116,6 +121,7 @@
 
 .share-dialog__permission-select {
   @apply w-[8.125rem] shrink-0 bg-transparent text-xs;
+  flex: 0 0 auto;
   height: var(--input-height);
   min-height: var(--input-height);
 }

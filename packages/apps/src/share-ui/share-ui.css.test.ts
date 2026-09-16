@@ -32,6 +32,7 @@ describe("share principal marks", () => {
 describe("share access row remove control", () => {
   it("keeps the trailing IconButton square at --input-height so it cannot flex-shrink", () => {
     expect(css).toMatch(/--input-height:\s*var\(--control-height-sm/);
+    expect(css).toMatch(/\.card__row-action button\[role="combobox"\] \{[\s\S]*flex:\s*0 0 auto/);
     expect(css).toMatch(
       /\.share-dialog \.card__row-action > \.icon-button,\s*\n\.share-access-card \.card__row-action > \.icon-button \{[\s\S]*min-width:\s*var\(--input-height\)[\s\S]*min-height:\s*var\(--input-height\)/,
     );
