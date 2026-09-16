@@ -12,6 +12,7 @@ describe("ui-modal-surface viewport clamp", () => {
   it("clamps centered dialogs to the visual viewport", () => {
     expect(css).toMatch(/--modal-max-width:\s*32rem/);
     expect(css).toMatch(/--modal-max-height:\s*100dvh/);
+    expect(css).toMatch(/\.ui-modal-surface--center \{[\s\S]*height:\s*auto/);
     expect(css).toMatch(
       /\.ui-modal-surface--center \{[\s\S]*max-width:\s*min\(var\(--modal-max-width\),\s*100svw\)/,
     );
@@ -22,21 +23,30 @@ describe("ui-modal-surface viewport clamp", () => {
     expect(css).toMatch(/\.ui-modal-surface--center \{[\s\S]*overflow:\s*hidden/);
   });
 
-  it("fills the viewport as a sheet below 768px and resets enter transform", () => {
+  it("keeps a centered card with overlay gutters below 768px (not a full-bleed sheet)", () => {
     expect(css).toMatch(
       /@media \(max-width: 767px\)[\s\S]*\.ui-modal-surface\.ui-modal-surface--center/,
     );
+    expect(css).toMatch(/--modal-mobile-inline-gutter:/);
+    expect(css).toMatch(/--modal-mobile-block-gutter:/);
     expect(css).toMatch(
-      /\.ui-modal-surface\.ui-modal-surface--center \{[\s\S]*inset:\s*0[\s\S]*transform:\s*none[\s\S]*animation:\s*none/,
+      /\.ui-modal-surface\.ui-modal-surface--center \{[\s\S]*height:\s*auto[\s\S]*transform:\s*translate\(-50%,\s*-50%\)[\s\S]*animation:\s*none/,
     );
     expect(css).toMatch(/safe-area-inset-top/);
     expect(css).toMatch(/safe-area-inset-bottom/);
+    // Full-bleed sheet would wipe the scrim — must not return.
+    expect(css).not.toMatch(/\.ui-modal-surface\.ui-modal-surface--center \{[\s\S]*inset:\s*0/);
+    expect(css).not.toMatch(
+      /\.ui-modal-surface\.ui-modal-surface--center \{[\s\S]*border-radius:\s*0/,
+    );
   });
 
   it("pins header and footer and scrolls the body", () => {
     expect(css).toMatch(/\.ui-modal-header \{[\s\S]*shrink-0/);
-    expect(css).toMatch(/\.ui-modal-body \{[\s\S]*flex-1[\s\S]*overflow-y-auto/);
-    expect(css).toMatch(/\.ui-modal-form \{[\s\S]*flex-1[\s\S]*overflow-hidden/);
+    expect(css).toMatch(/\.ui-modal-body \{[\s\S]*overflow-y-auto/);
+    expect(css).toMatch(/\.ui-modal-body \{[\s\S]*flex:\s*1 1 auto/);
+    expect(css).toMatch(/\.ui-modal-form \{[\s\S]*overflow-hidden/);
+    expect(css).toMatch(/\.ui-modal-form \{[\s\S]*flex:\s*1 1 auto/);
     expect(css).toMatch(/\.ui-modal-footer \{[\s\S]*shrink-0/);
     expect(css).not.toMatch(/\.ui-modal-footer \{[\s\S]*sticky/);
   });

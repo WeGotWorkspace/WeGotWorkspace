@@ -25,6 +25,7 @@
   @apply flex flex-col;
   width: min(100%, var(--modal-max-width));
   max-width: min(var(--modal-max-width), 100svw);
+  height: auto;
   max-height: min(var(--modal-max-height), 100dvh);
   overflow: hidden;
   gap: 1rem;
@@ -32,36 +33,42 @@
 
 /*
  * DialogContent ships `left-[50%] top-[50%] translate-x-[-50%] zoom-in-95`.
- * Below 768px fill the viewport as a sheet and reset enter transform so
- * WebKit cannot leave a card larger than the screen at the origin.
+ * Below 768px keep a centered CARD with modest gutters so DialogOverlay
+ * (bg-black/80) stays visible around the edges — not a full-bleed sheet.
+ * Height follows content until max-height; then the body scrolls.
+ * Reset enter zoom so WebKit cannot leave a mis-scaled card.
  */
 @media (max-width: 767px) {
   .ui-modal-surface.ui-modal-surface--center {
+    --modal-mobile-inline-gutter: max(
+      0.75rem,
+      env(safe-area-inset-left, 0px),
+      env(safe-area-inset-right, 0px)
+    );
+    --modal-mobile-block-gutter: max(
+      0.75rem,
+      env(safe-area-inset-top, 0px),
+      env(safe-area-inset-bottom, 0px)
+    );
     @apply m-0;
     position: fixed;
-    inset: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: auto;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    width: min(var(--modal-max-width), calc(100svw - (2 * var(--modal-mobile-inline-gutter))));
+    max-width: min(var(--modal-max-width), calc(100svw - (2 * var(--modal-mobile-inline-gutter))));
     height: auto;
-    max-width: none;
-    max-height: none;
-    border-radius: 0;
-    translate: 0 0;
+    max-height: min(var(--modal-max-height), calc(100dvh - (2 * var(--modal-mobile-block-gutter))));
+    translate: none;
     scale: 1;
-    transform: none;
+    transform: translate(-50%, -50%);
     animation: none;
-    --tw-translate-x: 0;
-    --tw-translate-y: 0;
+    --tw-translate-x: -50%;
+    --tw-translate-y: -50%;
     --tw-enter-scale: 1;
-    --tw-enter-translate-x: 0;
-    --tw-enter-translate-y: 0;
-    padding-block-start: max(var(--modal-inset, 1rem), env(safe-area-inset-top, 0px));
-    padding-block-end: max(var(--modal-inset, 1rem), env(safe-area-inset-bottom, 0px));
-    padding-inline-start: max(var(--modal-inset, 1rem), env(safe-area-inset-left, 0px));
-    padding-inline-end: max(var(--modal-inset, 1rem), env(safe-area-inset-right, 0px));
+    --tw-enter-translate-x: -50%;
+    --tw-enter-translate-y: -50%;
   }
 }
 
@@ -77,12 +84,19 @@
   padding-inline-end: var(--modal-header-end);
 }
 
+/*
+ * Body/form grow with content (flex-basis: auto). When the surface hits
+ * max-height they shrink (min-height: 0) and the body scrolls — no empty
+ * stretch that pins the footer to the viewport bottom on short forms.
+ */
 .ui-modal-body {
-  @apply min-h-0 flex-1 overflow-y-auto;
+  @apply min-h-0 overflow-y-auto;
+  flex: 1 1 auto;
 }
 
 .ui-modal-form {
-  @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+  @apply flex min-h-0 flex-col overflow-hidden;
+  flex: 1 1 auto;
 }
 
 /* Component that renders a <form> (e.g. CalendarEventForm) still pins its footer. */
@@ -91,7 +105,8 @@
 }
 
 .ui-modal-body > form {
-  @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+  @apply flex min-h-0 flex-col overflow-hidden;
+  flex: 1 1 auto;
 }
 
 .ui-modal-footer {
