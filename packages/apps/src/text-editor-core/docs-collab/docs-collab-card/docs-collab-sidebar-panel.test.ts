@@ -120,4 +120,9 @@ describe("DocsCollabSidebarPanel", () => {
     expect(css).not.toMatch(/\.docs-collab-sidebar-panel__empty \{[\s\S]*px-1/);
     expect(css).not.toMatch(/\.docs-collab-sidebar-panel__empty \{[\s\S]*padding-inline/);
   });
+
+  it("matches main-header block padding so side-panel headers align with ViewHeader", () => {
+    expect(css).toMatch(/\.docs-collab-sidebar-panel__header \{[\s\S]*@apply[^;]*\bpy-4 md:py-6\b/);
+    expect(css).not.toMatch(/\.docs-collab-sidebar-panel__header \{[\s\S]*@apply[^;]*\bpy-3\.5\b/);
+  });
 });

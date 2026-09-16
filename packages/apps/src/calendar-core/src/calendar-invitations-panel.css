@@ -32,6 +32,10 @@
   .calendar-invitations-panel {
     --docs-collab-sidebar-panel-padding-x: 0.75rem;
   }
+
+  .calendar-invitations-panel .docs-collab-sidebar-panel__header {
+    @apply py-3;
+  }
 }
 
 .calendar-invitations-panel .docs-collab-sidebar-panel__scroll {
