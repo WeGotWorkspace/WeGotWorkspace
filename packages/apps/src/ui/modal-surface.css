@@ -4,7 +4,57 @@
   --modal-inset: 1rem;
   --modal-close-size: var(--control-height-md, 2.25rem);
   --modal-header-end: calc(var(--modal-close-size) + 0.5rem);
-  @apply min-w-0 overflow-x-hidden p-[length:var(--modal-inset)];
+  --modal-max-width: 32rem;
+  --modal-max-height: 100dvh;
+  @apply box-border min-w-0 overflow-x-hidden p-[length:var(--modal-inset)];
+}
+
+/**
+ * Centered Dialog / AlertDialog. Sheets keep edge layout and skip this.
+ * Clamp to the visual viewport so min-content children and translate
+ * centering cannot paint past the screen (iOS Safari especially).
+ */
+.ui-modal-surface--center {
+  width: min(100%, var(--modal-max-width));
+  max-width: min(var(--modal-max-width), 100svw);
+  max-height: min(var(--modal-max-height), 100dvh);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/*
+ * DialogContent ships `left-[50%] top-[50%] translate-x-[-50%] zoom-in-95`.
+ * Below 768px fill the viewport as a sheet and reset enter transform so
+ * WebKit cannot leave a card larger than the screen at the origin.
+ */
+@media (max-width: 767px) {
+  .ui-modal-surface.ui-modal-surface--center {
+    @apply m-0;
+    position: fixed;
+    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+    translate: 0 0;
+    scale: 1;
+    transform: none;
+    animation: none;
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    --tw-enter-scale: 1;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
+    padding-block-start: max(var(--modal-inset, 1rem), env(safe-area-inset-top, 0px));
+    padding-block-end: max(var(--modal-inset, 1rem), env(safe-area-inset-bottom, 0px));
+    padding-inline-start: max(var(--modal-inset, 1rem), env(safe-area-inset-left, 0px));
+    padding-inline-end: max(var(--modal-inset, 1rem), env(safe-area-inset-right, 0px));
+  }
 }
 
 @media (min-width: 640px) {
@@ -17,4 +67,11 @@
   @apply flex flex-col justify-center gap-1.5 text-left;
   min-height: var(--modal-close-size);
   padding-inline-end: var(--modal-header-end);
+}
+
+.ui-modal-footer {
+  @apply sticky bottom-0 z-[1];
+  margin-block-start: auto;
+  padding-block-start: 0.5rem;
+  background-color: var(--background, var(--color-cream, #ffffff));
 }
