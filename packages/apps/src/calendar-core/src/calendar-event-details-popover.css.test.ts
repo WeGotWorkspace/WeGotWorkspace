@@ -60,6 +60,12 @@ describe("calendar event details popover CSS", () => {
     expect(css).not.toMatch(
       /\.calendar-dialog-surface\.calendar-event-details-popover--dialog\s*\{[\s\S]*?max-h-\[50vh\]/,
     );
+    expect(css).toMatch(
+      /@media \(max-width: 767px\)[\s\S]*\[data-radix-popper-content-wrapper\]:has\(\.calendar-event-details-popover\)/,
+    );
+    expect(css).toMatch(
+      /\[data-radix-popper-content-wrapper\]:has\(\.calendar-event-details-popover\)[\s\S]*transform:\s*none/,
+    );
   });
 
   it("centers a flow event-card with icon detail rows and a shared footer", () => {

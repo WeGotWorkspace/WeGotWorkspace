@@ -20,7 +20,7 @@ export function TaskProjectColorPicker({
       colorLabel={colorLabel}
       swatches={TASK_LIST_DOT_COLORS}
     >
-      <ColorSwatchTrigger color={value} label={colorLabel} aria-haspopup="dialog" />
+      <ColorSwatchTrigger color={value} label={colorLabel} size="sm" aria-haspopup="dialog" />
     </SwatchColorPicker>
   );
 }

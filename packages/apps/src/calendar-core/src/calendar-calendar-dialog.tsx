@@ -284,6 +284,7 @@ export function CalendarCalendarDialog({
                 <Input
                   id="calendar-calendar-name"
                   className={NAME_COLOR_ROW_INPUT_CLASS}
+                  size="sm"
                   autoFocus={!isSubscribe && !nameReadOnly}
                   value={name}
                   disabled={busy || nameReadOnly}
@@ -302,6 +303,7 @@ export function CalendarCalendarDialog({
                   <ColorSwatchTrigger
                     color={selectedColor}
                     label={labels.calendarColorLabel}
+                    size="sm"
                     aria-haspopup="dialog"
                   />
                 </SwatchColorPicker>

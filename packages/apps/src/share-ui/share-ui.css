@@ -28,7 +28,7 @@
   --card-panel-border-color: var(--share-dialog-panel-border);
   --card-panel-bg: color-mix(in oklab, var(--card, var(--color-cream, #ffffff)) 60%, transparent);
   --card-row-subtitle-color: var(--share-dialog-muted);
-  --input-height: 2.25rem;
+  --input-height: var(--control-height-sm, 2rem);
   /* Match outline IconButtons to Input/Select (--control-border-color). */
   --button-outline-border-color: var(--control-border-color);
 }
@@ -37,15 +37,28 @@
   max-width: 36rem;
 }
 
-/* IconButton sm is input-height − 4px globally; in share rows keep full 36px hit area. */
-.share-dialog .icon-button--size-md,
-.share-access-card .icon-button--size-md {
+/*
+ * Share / access rows: [mark] [permission select] [remove]. The SelectTrigger
+ * ships `w-full` and would grow, crushing the trailing IconButton. Pin the
+ * combobox (`flex: 0`) and keep the trash square at --input-height (sm / 32px).
+ */
+.share-dialog .card__row-action button[role="combobox"],
+.share-access-card .card__row-action button[role="combobox"] {
+  flex: 0 0 auto;
+}
+
+.share-dialog .card__row-action > .icon-button,
+.share-access-card .card__row-action > .icon-button {
+  @apply shrink-0;
+  box-sizing: border-box;
   width: var(--input-height);
   height: var(--input-height);
+  min-width: var(--input-height);
+  min-height: var(--input-height);
 }
 
 /*
- * Boolean switches: compact track (~20px) inside a 36px touch row.
+ * Boolean switches: compact track (~20px) inside a 32px touch row.
  * Visual track = segment (1rem) + track padding (0.125rem × 2) = 1.25rem.
  * Touch padding lives on the wrapper only — switch geometry stays default.
  */
@@ -108,6 +121,7 @@
 
 .share-dialog__permission-select {
   @apply w-[8.125rem] shrink-0 bg-transparent text-xs;
+  flex: 0 0 auto;
   height: var(--input-height);
   min-height: var(--input-height);
 }
@@ -248,7 +262,7 @@
     --muted-foreground,
     color-mix(in oklab, var(--color-ink, #042a22) 55%, transparent)
   );
-  --input-height: 2.25rem;
+  --input-height: var(--control-height-sm, 2rem);
 }
 
 .share-principal-search-dropdown__list {

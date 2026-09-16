@@ -139,6 +139,7 @@ export function ContactsEditGroupDialog({
                 <Input
                   id="contacts-edit-group-name"
                   autoFocus
+                  size="sm"
                   value={value}
                   onChange={(event) => setValue(event.target.value)}
                 />

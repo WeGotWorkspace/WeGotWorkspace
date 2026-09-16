@@ -17,7 +17,7 @@ function DialogHeaderCloseHarness() {
           <DialogHeader>
             <DialogTitle>New event</DialogTitle>
           </DialogHeader>
-          <Input placeholder="Title" aria-label="Title" />
+          <Input placeholder="Title" aria-label="Title" size="sm" />
           <DialogFooter>
             <Button type="button" variant="primary" onClick={() => setOpen(false)}>
               Save

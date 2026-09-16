@@ -13,6 +13,7 @@ import {
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { NotesNotebookColorIcon } from "@/notes-core/src/notes-notebook-color-icon";
+import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 import "@/notes-core/src/notes-notebook-select.css";
 
@@ -43,6 +44,8 @@ export type NotesNotebookSelectProps = {
    * CalendarEventCalendarPicker. `labeled` keeps the Select trigger with visible name.
    */
   triggerVariant?: "labeled" | "swatch";
+  /** Dialog fields use `sm` (32px). Toolbar / action bar keep default `md`. */
+  size?: ControlSize;
   onNotebookChange: (notebook: NotesNotebookSelectItem) => void;
   onCreateNotebook?: () => void;
 };
@@ -135,6 +138,7 @@ export function NotesNotebookSelect({
   disabled = false,
   className,
   triggerVariant = "labeled",
+  size = "md",
   onNotebookChange,
   onCreateNotebook,
 }: NotesNotebookSelectProps): ReactElement {
@@ -149,6 +153,7 @@ export function NotesNotebookSelect({
       <ColorSwatchTrigger
         label={accessibleName}
         disabled={disabled}
+        size={size}
         icon={
           <span
             className="notes-notebook-select__option"
@@ -162,7 +167,7 @@ export function NotesNotebookSelect({
     </SelectPrimitive.Trigger>
   ) : (
     <SelectTrigger
-      size="md"
+      size={size}
       className={cn("notes-notebook-select", className)}
       aria-label={accessibleName}
       disabled={disabled}

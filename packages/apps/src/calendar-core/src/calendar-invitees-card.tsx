@@ -160,7 +160,7 @@ export function CalendarInviteesCard({
   presentation = "card",
   className,
   fieldIcon,
-  controlSize = "md",
+  controlSize = "sm",
   onChange,
   onRefreshContactCards,
 }: CalendarInviteesCardProps) {

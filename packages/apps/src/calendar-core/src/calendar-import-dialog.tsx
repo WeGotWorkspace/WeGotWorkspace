@@ -121,6 +121,7 @@ export function CalendarImportDialog({
                   id="calendar-import-destination"
                   color={selectedCalendar?.color}
                   showSwatch={!creating}
+                  size="sm"
                   label={`${labels.importDestinationLegend}: ${destinationName}`}
                   className="calendar-import-dialog__destination"
                   disabled={busy}
@@ -157,6 +158,7 @@ export function CalendarImportDialog({
                   <Input
                     id="calendar-import-name"
                     className={NAME_COLOR_ROW_INPUT_CLASS}
+                    size="sm"
                     value={name}
                     disabled={busy}
                     onChange={(event) => setName(event.target.value)}
@@ -170,6 +172,7 @@ export function CalendarImportDialog({
                     <ColorSwatchTrigger
                       color={color}
                       label={labels.calendarColorLabel}
+                      size="sm"
                       aria-haspopup="dialog"
                     />
                   </SwatchColorPicker>

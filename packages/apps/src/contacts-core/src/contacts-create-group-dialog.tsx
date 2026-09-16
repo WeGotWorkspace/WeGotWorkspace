@@ -116,6 +116,7 @@ export function ContactsCreateGroupDialog({
                 ref={nameInputRef}
                 id="contacts-create-group-name"
                 autoFocus
+                size="sm"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
               />

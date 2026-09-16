@@ -139,6 +139,10 @@
   @apply flex shrink-0 items-center gap-2;
 }
 
+.card__row-action button[role="combobox"] {
+  flex: 0 0 auto;
+}
+
 .card__row--fill .card__row-action {
   @apply min-w-0 flex-1;
 }

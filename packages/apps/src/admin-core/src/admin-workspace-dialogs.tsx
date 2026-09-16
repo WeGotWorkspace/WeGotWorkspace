@@ -52,6 +52,7 @@ export function UserDialog({ open, title, initial, onOpenChange, onSubmit }: Use
         <div className="space-y-3">
           <FormField label="Username" readOnly={Boolean(initial)}>
             <Input
+              size="sm"
               value={username}
               readOnly={Boolean(initial)}
               onChange={(event) => setUsername(event.currentTarget.value)}
@@ -60,6 +61,7 @@ export function UserDialog({ open, title, initial, onOpenChange, onSubmit }: Use
           </FormField>
           <FormField label="Display name">
             <Input
+              size="sm"
               value={displayName}
               onChange={(event) => setDisplayName(event.currentTarget.value)}
             />
@@ -67,6 +69,7 @@ export function UserDialog({ open, title, initial, onOpenChange, onSubmit }: Use
           <FormField label="Email">
             <Input
               type="email"
+              size="sm"
               value={email}
               onChange={(event) => setEmail(event.currentTarget.value)}
             />
@@ -123,6 +126,7 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
           <FormField label="New password">
             <Input
               type="password"
+              size="sm"
               value={password}
               onChange={(event) => setPassword(event.currentTarget.value)}
             />
@@ -130,6 +134,7 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
           <FormField label="Confirm password">
             <Input
               type="password"
+              size="sm"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.currentTarget.value)}
             />
@@ -205,7 +210,11 @@ export function GroupDialog({
         </DialogHeader>
         <div className="space-y-3">
           <FormField label="Group name">
-            <Input value={name} onChange={(event) => setName(event.currentTarget.value)} />
+            <Input
+              size="sm"
+              value={name}
+              onChange={(event) => setName(event.currentTarget.value)}
+            />
           </FormField>
           {initial ? (
             <FormField label="Members">
@@ -295,6 +304,7 @@ export function MailDeliveryTestDialog({
           <Input
             id="admin-mail-delivery-test-to"
             type="email"
+            size="sm"
             autoComplete="email"
             value={to}
             onChange={(event) => {

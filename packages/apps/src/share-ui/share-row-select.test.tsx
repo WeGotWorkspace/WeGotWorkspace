@@ -7,7 +7,7 @@ afterEach(() => {
 });
 
 describe("ShareRowSelect", () => {
-  it("defaults to the md trigger size", () => {
+  it("defaults to the sm trigger size", () => {
     const { container } = render(
       <ShareRowSelect
         value="edit"
@@ -18,7 +18,7 @@ describe("ShareRowSelect", () => {
     );
     const trigger = container.querySelector(".select-trigger");
     expect(trigger).not.toBeNull();
-    expect(trigger!.classList.contains("select-trigger--size-md")).toBe(true);
+    expect(trigger!.classList.contains("select-trigger--size-sm")).toBe(true);
   });
 
   it("keeps the md size class when size is md", () => {

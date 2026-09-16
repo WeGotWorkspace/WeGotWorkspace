@@ -85,6 +85,7 @@ export function SharePrincipalRow({
           displayName={displayName}
           principalId={principalId}
           subtitle={subtitle}
+          size="sm"
           labeled
           nameAccessory={
             inheritedFromPath ? <ShareInheritedLabel sharePath={inheritedFromPath} /> : null

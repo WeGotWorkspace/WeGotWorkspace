@@ -52,6 +52,7 @@ export function AddDialog({
           <Input
             autoFocus
             placeholder={kind === "notebook" ? "Notebook name" : "tag-name"}
+            size="sm"
             value={value}
             onChange={(e) => setValue(e.target.value)}
           />
@@ -111,7 +112,7 @@ export function EditDialog({
             if (v) onConfirm(v);
           }}
         >
-          <Input autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
+          <Input autoFocus size="sm" value={value} onChange={(e) => setValue(e.target.value)} />
           <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
@@ -264,6 +265,7 @@ export function TagPickerDialog({
         <Input
           autoFocus
           placeholder="Search or create tag…"
+          size="sm"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
