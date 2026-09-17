@@ -29,22 +29,23 @@ describe("WorkspaceSidebarToggle unread badge", () => {
     cleanup();
   });
 
-  it("shows the unread count on the rail/hamburger when the sidebar is closed", () => {
+  it("shows a presence unread dot (no counter) on the rail/hamburger when the sidebar is closed", () => {
     renderToggle(false);
     const toggle = screen.getByRole("button", { name: "Show sidebar (3 unread)" });
-    expect(toggle.getAttribute("data-count")).toBe("3");
-    expect(toggle.classList.contains("notification-inbox-tray__trigger")).toBe(true);
+    expect(toggle.hasAttribute("data-unread")).toBe(true);
+    expect(toggle.getAttribute("data-count")).toBeNull();
+    expect(toggle.classList.contains("notification-inbox-tray__trigger")).toBe(false);
   });
 
-  it("hides the rail/hamburger badge when the sidebar is open", () => {
+  it("hides the rail/hamburger unread dot when the sidebar is open", () => {
     renderToggle(true);
     const toggle = screen.getByRole("button", { name: "Hide sidebar" });
-    expect(toggle.getAttribute("data-count")).toBeNull();
+    expect(toggle.hasAttribute("data-unread")).toBe(false);
   });
 
-  it("omits the badge when there are no unread notifications", () => {
+  it("omits the unread dot when there are no unread notifications", () => {
     renderToggle(false, 0);
     const toggle = screen.getByRole("button", { name: "Show sidebar" });
-    expect(toggle.getAttribute("data-count")).toBeNull();
+    expect(toggle.hasAttribute("data-unread")).toBe(false);
   });
 });

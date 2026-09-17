@@ -85,9 +85,7 @@ describe("WorkspaceSidebarToggle chrome", () => {
     expect(toggleBlock).toBeDefined();
     expect(toggleBlock!).toMatch(/active=\{open\}/);
     expect(toggleBlock!).toMatch(/aria-pressed=\{open\}/);
-    expect(toggleBlock!).toMatch(
-      /className="workspace-sidebar-toggle notification-inbox-tray__trigger shrink-0"/,
-    );
+    expect(toggleBlock!).toMatch(/className="workspace-sidebar-toggle shrink-0"/);
   });
 
   it("keeps active Lucide panel/menu marks as stroke (no solid fill blob)", () => {
@@ -96,15 +94,19 @@ describe("WorkspaceSidebarToggle chrome", () => {
     );
   });
 
-  it("reuses the bell unread badge class on the closed rail/hamburger toggle", () => {
+  it("shows a presence unread dot on the closed rail/hamburger (count stays on the bell)", () => {
     const toggleBlock = tsx.match(/export function WorkspaceSidebarToggle\([\s\S]*?\n\}/)?.[0];
     expect(toggleBlock).toBeDefined();
     expect(tsx).toMatch(/useNotificationsInbox/);
-    expect(tsx).toMatch(/notification-inbox-tray\.css/);
-    expect(toggleBlock!).toMatch(/notification-inbox-tray__trigger/);
-    expect(toggleBlock!).toMatch(/data-count=\{showBadge \? String\(unreadCount\) : undefined\}/);
-    expect(toggleBlock!).toMatch(/showBadge = !open && unreadCount > 0/);
-    expect(css).toMatch(/\.workspace-sidebar-toggle \{[\s\S]*overflow-visible/);
-    expect(css).not.toMatch(/\.workspace-sidebar-toggle::after/);
+    expect(tsx).not.toMatch(/notification-inbox-tray\.css/);
+    expect(toggleBlock!).not.toMatch(/notification-inbox-tray__trigger/);
+    expect(toggleBlock!).not.toMatch(/data-count=/);
+    expect(toggleBlock!).toMatch(/data-unread=\{showUnreadDot \? "" : undefined\}/);
+    expect(toggleBlock!).toMatch(/showUnreadDot = !open && unreadCount > 0/);
+    expect(css).toMatch(/\.workspace-sidebar-toggle \{[\s\S]*relative[\s\S]*overflow-visible/);
+    expect(css).toMatch(/\.workspace-sidebar-toggle\[data-unread\]::after \{[\s\S]*content:\s*""/);
+    expect(css).toMatch(
+      /\.workspace-sidebar-toggle\[data-unread\]::after \{[\s\S]*--notification-inbox-badge-bg/,
+    );
   });
 });

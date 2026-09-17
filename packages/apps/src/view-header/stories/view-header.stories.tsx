@@ -84,7 +84,7 @@ export const WithoutSidebarToggle: Story = {
   },
 };
 
-/** Closed rail/hamburger carries the unread badge; open sidebar leaves it on the bell. */
+/** Closed rail/hamburger shows an unread presence dot; numeric count stays on the bell. */
 export const ClosedSidebarUnread: Story = {
   decorators: [
     (Story) => (
