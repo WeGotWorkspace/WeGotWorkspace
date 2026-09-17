@@ -43,7 +43,7 @@ export function NotesConflictDialog({
           <p className="notes-conflict-dialog__remaining">{L.conflictRemaining(remainingCount)}</p>
         ) : null}
         <DialogFooter className="notes-conflict-dialog__actions">
-          <Button variant="subtle" onClick={onUseServer} disabled={busy}>
+          <Button variant="outline" onClick={onUseServer} disabled={busy}>
             {L.conflictUseServer}
           </Button>
           <Button variant="primary" onClick={onKeepLocal} disabled={busy}>

@@ -6,15 +6,12 @@ import { useViewHeaderSearchQuery } from "@/view-header/src/use-view-header-sear
 
 import "./view-header.css";
 
-type ViewHeaderTitleSize = "default" | "sm";
 type ViewHeaderLayout = "inline" | "stacked" | "responsive";
 
 type ViewHeaderProps = {
   title: string;
   /** Shown instead of `title` when the header main column is narrow. */
   compactTitle?: string;
-  /** "default" = large serif title (smaller on compact headers); "sm" = medium sans-serif title (e.g. doc editor file name). */
-  titleSize?: ViewHeaderTitleSize;
   /**
    * Title-row layout for `view-header__title-cluster` + `view-header__end`.
    * "inline" (default) = one row; "stacked" = cluster then actions; "responsive" =
@@ -36,7 +33,11 @@ type ViewHeaderProps = {
    * `actions`. Stacked / narrow responsive: end of row 1.
    */
   titleTrailing?: ReactNode;
-  subtitle?: string;
+  /**
+   * Optional control immediately after the title (e.g. list count in parentheses).
+   * Stays with the title in stacked / narrow layouts.
+   */
+  titleSuffix?: ReactNode;
   /** When true, omits the workspace sidebar toggle (e.g. portaled compose dialog). */
   hideSidebarToggle?: boolean;
   sidebarOpen?: boolean;
@@ -54,12 +55,11 @@ type ViewHeaderProps = {
 export function ViewHeader({
   title,
   compactTitle,
-  titleSize = "default",
   layout = "inline",
   titlePrefix,
   titleLeading,
   titleTrailing,
-  subtitle,
+  titleSuffix,
   hideSidebarToggle = false,
   sidebarOpen = false,
   onToggleSidebar,
@@ -103,12 +103,7 @@ export function ViewHeader({
                 {titlePrefix ? (
                   <div className="view-header__title-prefix">{titlePrefix}</div>
                 ) : null}
-                <h2
-                  className={cn(
-                    "view-header__title",
-                    titleSize === "sm" && "view-header__title--sm",
-                  )}
-                >
+                <h2 className="view-header__title">
                   {compactTitle ? (
                     <>
                       <span className="view-header__title-full">{title}</span>
@@ -118,6 +113,9 @@ export function ViewHeader({
                     title
                   )}
                 </h2>
+                {titleSuffix ? (
+                  <div className="view-header__title-suffix">{titleSuffix}</div>
+                ) : null}
               </div>
             </div>
             <div className="view-header__end">
@@ -127,9 +125,6 @@ export function ViewHeader({
               ) : null}
             </div>
           </div>
-          {subtitle ? (
-            <p className={cn("field-label-row__label", "view-header__subtitle")}>{subtitle}</p>
-          ) : null}
         </div>
       </div>
       {searchPlaceholder ? (

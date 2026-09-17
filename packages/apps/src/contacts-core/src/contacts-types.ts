@@ -58,4 +58,18 @@ export type ContactsAPIOperations = {
     vcardText: string,
     opts?: { addressBookId: string; signal?: AbortSignal },
   ) => Promise<ContactCardImportResponse>;
+  /**
+   * Patch shareWith / isSubscribed only. Optional so mock-tier clients can omit it.
+   */
+  patchAddressBook?: (
+    addressBookId: string,
+    patch: AddressBookMutationPatch,
+    opts?: ContactsMutationOpts,
+  ) => Promise<AddressBook>;
+};
+
+/** AddressBook/set fields the contacts client may enqueue (no rename/delete). */
+export type AddressBookMutationPatch = {
+  shareWith?: AddressBook["shareWith"];
+  isSubscribed?: boolean;
 };

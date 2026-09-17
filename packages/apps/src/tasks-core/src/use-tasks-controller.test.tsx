@@ -173,6 +173,32 @@ describe("useTasksController URL routing", () => {
     expect(result.current.displayTasks.some((task) => task.id === "task-done")).toBe(true);
   });
 
+  it("reveals a just-completed task when show completed is turned on", () => {
+    const { result } = renderHook(() =>
+      useTasksController({
+        data: bootstrap.data,
+        operations: mockOperations,
+        initialView: "state:all",
+      }),
+    );
+
+    act(() => {
+      result.current.toggleTaskComplete("task-inbox-demo");
+    });
+    act(() => {
+      result.current.handleTaskExitAnimationEnd("task-inbox-demo");
+    });
+
+    expect(result.current.displayTasks.some((task) => task.id === "task-inbox-demo")).toBe(false);
+
+    act(() => {
+      result.current.toggleShowCompletedTasks();
+    });
+
+    expect(result.current.showCompletedTasks).toBe(true);
+    expect(result.current.displayTasks.some((task) => task.id === "task-inbox-demo")).toBe(true);
+  });
+
   it("does not offer completed toggle on the completed status view", () => {
     const { result } = renderHook(() =>
       useTasksController({

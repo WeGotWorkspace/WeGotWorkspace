@@ -2,13 +2,11 @@
 @import "./docs-collab-highlight.css";
 
 .docs-collab-card {
-  @apply cursor-pointer rounded-xl border p-4 shadow-sm transition-[box-shadow,border-color,background-color,opacity] duration-200;
+  @apply cursor-pointer border p-4 transition-[border-color,background-color,opacity] duration-200;
   --docs-collab-card-accent: var(--docs-accent, #3b82f6);
+  border-radius: var(--control-radius-button-pill);
   border-color: var(--docs-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
   background-color: var(--docs-surface, var(--color-cream, #ffffff));
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--color-ink) 5%, transparent),
-    0 1px 3px color-mix(in oklab, var(--color-ink) 4%, transparent);
 }
 
 .docs-collab-card[data-active="false"] {
@@ -28,15 +26,8 @@
 }
 
 .docs-collab-card[data-active="true"] {
-  @apply border-2 opacity-100;
+  @apply opacity-100;
   border-color: var(--docs-collab-card-accent);
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--color-ink) 5%, transparent),
-    0 0 0 1px
-      var(
-        --docs-collab-card-active-ring,
-        color-mix(in oklab, var(--docs-collab-card-accent) 12%, transparent)
-      );
 }
 
 .docs-collab-card[data-exiting="true"] {

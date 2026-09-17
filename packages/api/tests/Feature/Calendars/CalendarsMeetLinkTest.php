@@ -375,7 +375,7 @@ final class CalendarsMeetLinkTest extends WgwDatabaseTestCase
 
     private function guestHref(string $room): string
     {
-        return self::ORIGIN.'/meet/guest?room='.$room;
+        return self::ORIGIN.'/meet?room='.$room;
     }
 
     private function assertConferenceWriteSet(string $ics, string $href): void

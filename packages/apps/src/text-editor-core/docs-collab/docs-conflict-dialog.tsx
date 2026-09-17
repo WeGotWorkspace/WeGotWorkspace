@@ -38,7 +38,7 @@ export function DocsConflictDialog({
           <DialogDescription>{labels.conflictDescription(documentTitle)}</DialogDescription>
         </DialogHeader>
         <DialogFooter className="docs-conflict-dialog__actions">
-          <Button variant="subtle" onClick={onUseServer} disabled={busy}>
+          <Button variant="outline" onClick={onUseServer} disabled={busy}>
             {labels.conflictUseServer}
           </Button>
           <Button variant="primary" onClick={onKeepLocal} disabled={busy}>

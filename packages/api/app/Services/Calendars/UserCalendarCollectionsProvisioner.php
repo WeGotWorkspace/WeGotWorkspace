@@ -73,7 +73,7 @@ final class UserCalendarCollectionsProvisioner
         ];
 
         foreach ($eventCollections as [$uri, $displayName]) {
-            if ($this->ensureCalendar($caldav, $principalUri, $uri, $displayName, ['VEVENT', 'VJOURNAL'], $existingUris)) {
+            if ($this->ensureCalendar($caldav, $principalUri, $uri, $displayName, ['VEVENT'], $existingUris)) {
                 $created++;
             }
         }
@@ -94,6 +94,17 @@ final class UserCalendarCollectionsProvisioner
             if ($this->ensureCalendar($caldav, $principalUri, $uri, $displayName, ['VTODO'], $existingUris)) {
                 $created++;
             }
+        }
+
+        if ($this->ensureCalendar(
+            $caldav,
+            $principalUri,
+            CalendarCollectionUris::NOTE_GENERAL,
+            'General',
+            ['VJOURNAL'],
+            $existingUris,
+        )) {
+            $created++;
         }
 
         return ['created' => $created];
@@ -144,7 +155,7 @@ final class UserCalendarCollectionsProvisioner
         $name = trim($displayName) !== '' ? trim($displayName) : $slug;
 
         $created = false;
-        if ($this->ensureCalendar($caldav, $groupPrincipalUri, $slug, $name, ['VEVENT', 'VJOURNAL'], $existingUris)) {
+        if ($this->ensureCalendar($caldav, $groupPrincipalUri, $slug, $name, ['VEVENT'], $existingUris)) {
             $created = true;
         }
         if ($this->ensureCalendar(
@@ -153,6 +164,16 @@ final class UserCalendarCollectionsProvisioner
             CalendarCollectionUris::groupTaskListCalDavUri($slug),
             $name,
             ['VTODO'],
+            $existingUris,
+        )) {
+            $created = true;
+        }
+        if ($this->ensureCalendar(
+            $caldav,
+            $groupPrincipalUri,
+            CalendarCollectionUris::groupNotebookCalDavUri($slug),
+            $name,
+            ['VJOURNAL'],
             $existingUris,
         )) {
             $created = true;

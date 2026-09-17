@@ -73,16 +73,40 @@ final class WgwAppBootstrap
             $appRoot.'/packages/api',
             $runtimeRoot.'/packages/api',
         ];
+        $preferred = [];
 
-        // Monorepo dev only: live packages/api beside apps/wegotworkspace.
-        if (str_ends_with($normalized, '/apps/wegotworkspace')) {
-            return array_values(array_unique([
-                dirname($normalized, 2).'/packages/api',
-                ...$installCandidates,
-            ]));
+        $configured = self::configuredApiPackageRoot();
+        if ($configured !== null) {
+            $preferred[] = $configured;
         }
 
-        return array_values(array_unique($installCandidates));
+        // Host checkout: .../apps/wegotworkspace → sibling packages/api.
+        if (str_ends_with($normalized, '/apps/wegotworkspace')) {
+            $preferred[] = dirname($normalized, 2).'/packages/api';
+        }
+
+        // Docker compose.dev.yml: DocumentRoot is remapped to /var/www/install, so
+        // the /apps/wegotworkspace suffix check above does not fire. Prefer the
+        // bind-mounted live API over the nested install copy (often a stale build).
+        if ($normalized === '/var/www/install') {
+            $preferred[] = '/var/www/packages/api';
+        }
+
+        return array_values(array_unique([...$preferred, ...$installCandidates]));
+    }
+
+    private static function configuredApiPackageRoot(): ?string
+    {
+        $raw = $_SERVER['WGW_API_ROOT'] ?? $_ENV['WGW_API_ROOT'] ?? getenv('WGW_API_ROOT');
+        if (! is_string($raw)) {
+            return null;
+        }
+        $root = rtrim(str_replace('\\', '/', trim($raw)), '/');
+        if ($root === '' || str_contains($root, '..')) {
+            return null;
+        }
+
+        return $root;
     }
 
     private static function resolveApiPackageRoot(string $appRoot, string $runtimeRoot): ?string

@@ -102,4 +102,27 @@ final class AdminSettingsTest extends WgwDatabaseTestCase
             ->assertJsonPath('apps.calendars', false)
             ->assertJsonPath('apps.contacts', true);
     }
+
+    public function test_mcp_kill_switch_persists_in_admin_state(): void
+    {
+        $token = $this->adminBearerToken();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('mcp.enabled', false);
+
+        $this->withBearer($token)
+            ->putJson('/api/v1/admin/settings', [
+                'values' => [
+                    SettingKeys::MCP_ENABLED => true,
+                ],
+            ])
+            ->assertOk();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('mcp.enabled', true);
+    }
 }

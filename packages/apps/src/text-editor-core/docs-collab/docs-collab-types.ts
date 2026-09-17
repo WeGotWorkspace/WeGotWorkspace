@@ -19,6 +19,8 @@ export type DocsCollabMeshPeerStatus = DocsCollabMeshPeer & { link: DocsCollabPe
 export type DocsCollabMeshMessage =
   | { type: "sync"; u: number[]; from?: string }
   | { type: "awareness"; u: number[]; from?: string }
+  /** Gossip discovery: a connected peer forwards newly joined room peers. */
+  | { type: "peer-hint"; peers: DocsCollabMeshPeer[]; from?: string }
   | { type: "dc-open"; from: string }
   | { type: "link" };
 
@@ -41,7 +43,13 @@ export type DocsCollabUrls = {
   authTokenUrl?: string;
   authUser?: string;
   authPassword?: string;
-  documentSaveMethod?: "POST" | "PUT";
+  documentSaveMethod?: "POST" | "PUT" | "PATCH";
+  /** Notes: persist markdown via REST instead of `/files/collaboration`. */
+  persistMarkdown?: (markdown: string, authToken?: string) => Promise<void>;
+  loadDocumentMarkdown?: (authToken?: string) => Promise<string>;
+  skipYjsSnapshot?: boolean;
+  onPersistForbidden?: () => void;
+  onReconnectConflict?: () => void;
 };
 
 export const DEFAULT_DOCS_COLLAB_URLS: DocsCollabUrls = {

@@ -69,7 +69,11 @@ export function AdminRealtimeCollaborationPane({
         </div>
       </Card>
       <div className="flex justify-end">
-        <Button label="Save changes" variant="primary" onClick={controller.actions.saveSettings} />
+        <Button
+          label="Save changes"
+          variant="primary"
+          onClick={() => void controller.actions.saveSettings()}
+        />
       </div>
     </>
   );

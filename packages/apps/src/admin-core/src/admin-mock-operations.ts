@@ -86,6 +86,8 @@ function applySettingsMap(
   if (baseUri !== undefined) data.webdav.baseUri = baseUri;
   const authRealm = readString("auth_realm");
   if (authRealm !== undefined) data.webdav.authRealm = authRealm;
+  const mcpEnabled = readBool("mcp_enabled");
+  if (mcpEnabled !== undefined) data.mcp.enabled = mcpEnabled;
 
   const deliveryFrom = readString("mail_delivery_from");
   if (deliveryFrom !== undefined) data.mailDelivery.config.from = deliveryFrom;

@@ -11,6 +11,7 @@ import {
   mergeCreatedTask,
   shouldHideCompletedTaskAfterExit,
   taskAlertsEqual,
+  taskDueIsDateOnly,
   taskListName,
 } from "@/tasks-core/src/tasks-task-utils";
 import {
@@ -70,6 +71,8 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       workflowStatus,
       priority,
       due,
+      showWithoutTime,
+      timeZone,
       alerts,
     }: TasksCreateInput) => {
       if (!operations || !title.trim()) return;
@@ -81,6 +84,8 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       const status = workflowStatus ?? "needs-action";
       const taskPriority = priority === TASK_PRIORITY_NONE ? null : priority;
       const taskDue = due ?? null;
+      const taskShowWithoutTime = taskDue ? (showWithoutTime ?? true) : undefined;
+      const taskTimeZone = taskDue && showWithoutTime === false ? (timeZone ?? null) : null;
       const taskAlerts = alerts;
       const tempId = `pending-${crypto.randomUUID()}`;
       const optimistic: Task = {
@@ -91,6 +96,8 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         title: trimmedTitle,
         description: trimmedDescription,
         due: taskDue,
+        showWithoutTime: taskShowWithoutTime,
+        timeZone: taskTimeZone,
         workflowStatus: status,
         priority: taskPriority,
         isDraft: false,
@@ -109,6 +116,12 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
           workflowStatus: status,
           priority: taskPriority,
           due: taskDue,
+          ...(taskDue
+            ? {
+                showWithoutTime: taskShowWithoutTime,
+                timeZone: taskTimeZone,
+              }
+            : {}),
           alerts: taskAlerts,
         });
         setTasks((prev) =>
@@ -205,6 +218,9 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       const status = input.workflowStatus ?? "needs-action";
       const taskPriority = input.priority === TASK_PRIORITY_NONE ? null : input.priority;
       const taskDue = input.due ?? null;
+      const taskShowWithoutTime = taskDue ? (input.showWithoutTime ?? true) : undefined;
+      const taskTimeZone =
+        taskDue && input.showWithoutTime === false ? (input.timeZone ?? null) : null;
       const taskAlerts = input.alerts;
       const listChanged = input.listId !== task.taskListId;
 
@@ -214,6 +230,17 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         patch.description = trimmedDescription;
       }
       if (taskDue !== (task.due ?? null)) patch.due = taskDue;
+      if (taskDue && taskShowWithoutTime !== taskDueIsDateOnly(task.due, task.showWithoutTime)) {
+        patch.showWithoutTime = taskShowWithoutTime;
+      }
+      if (taskDue && taskTimeZone !== (task.timeZone ?? null)) {
+        patch.timeZone = taskTimeZone;
+      }
+      if (!taskDue && (task.due ?? null) !== null) {
+        patch.due = null;
+        patch.showWithoutTime = true;
+        patch.timeZone = null;
+      }
       if (status !== (task.workflowStatus ?? "needs-action")) patch.workflowStatus = status;
       const beforePriority = normalizeTaskPriority(task.priority);
       if (taskPriority !== beforePriority) patch.priority = taskPriority;
@@ -233,6 +260,8 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         title: trimmedTitle,
         description: trimmedDescription,
         due: taskDue,
+        showWithoutTime: taskShowWithoutTime,
+        timeZone: taskTimeZone,
         workflowStatus: status,
         priority: taskPriority,
         taskListId: input.listId,

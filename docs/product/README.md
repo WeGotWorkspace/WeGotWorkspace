@@ -2,6 +2,8 @@
 
 Product intent for WeGotWorkspace is **GitHub Goal issues** (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project. This folder is process only — not a second capability map.
 
+Goals, delivery issues, and comments are **English** even when maintainers discuss them in another language. See [english-only.md](../../.agents/skills/developer/english-only.md).
+
 | Audience | Where |
 |----------|--------|
 | Anyone | GitHub Goals (`type:goal`) + [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project; explore in [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) |

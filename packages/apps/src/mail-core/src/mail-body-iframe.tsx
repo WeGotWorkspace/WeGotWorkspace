@@ -9,7 +9,7 @@ function toIframeDoc(bodyHtml: string): string {
   const preparedBody = prepareMailBodyHtmlLinks(bodyHtml);
   const baseHead = `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1" />`;
   const normalizedStyle =
-    "<style>html,body{margin:0!important;overflow:hidden!important;max-width:100%!important;}body{padding:12px 4px;font-family:var(--font-sans,system-ui,-apple-system,sans-serif);font-size:16px;line-height:1.65;color:color-mix(in oklab,var(--color-ink,#1f1f1f) 82%,transparent);overflow-wrap:anywhere;word-break:break-word;}p,div,span,td,th,li{font-family:inherit;}a{color:inherit;}img,table{max-width:100%!important;height:auto!important;}</style>";
+    "<style>html,body{margin:0!important;overflow:hidden!important;max-width:100%!important;}body{padding:12px 4px;font-family:var(--font-sans,ui-sans-serif,system-ui,sans-serif);font-size:16px;line-height:1.65;color:color-mix(in oklab,var(--color-ink,#1f1f1f) 82%,transparent);overflow-wrap:anywhere;word-break:break-word;}p,div,span,td,th,li{font-family:inherit;}a{color:inherit;}img,table{max-width:100%!important;height:auto!important;}</style>";
   return `<!doctype html><html><head>${baseHead}${normalizedStyle}</head><body>${preparedBody}</body></html>`;
 }
 

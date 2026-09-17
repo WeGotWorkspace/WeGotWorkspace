@@ -43,9 +43,14 @@ final class InboxTaskListProvisionerTest extends WgwDatabaseTestCase
         $this->assertSame('tasks-inbox', InboxTaskListProvisioner::URI);
         $this->assertArrayNotHasKey(InboxTaskListProvisioner::LEGACY_URI, $byUri);
         $this->assertArrayHasKey(CalendarCollectionUris::TASK_HOME, $byUri);
+        $this->assertArrayHasKey(CalendarCollectionUris::NOTE_GENERAL, $byUri);
         $this->assertSame(
-            ['VEVENT', 'VJOURNAL'],
+            ['VEVENT'],
             $this->componentSetFor($byUri['default']),
+        );
+        $this->assertSame(
+            ['VJOURNAL'],
+            $this->componentSetFor($byUri[CalendarCollectionUris::NOTE_GENERAL]),
         );
         $this->assertSame(['VTODO'], $this->componentSetFor($byUri[InboxTaskListProvisioner::URI]));
         $this->assertSame(['VTODO'], $this->componentSetFor($byUri[CalendarCollectionUris::TASK_HOME]));

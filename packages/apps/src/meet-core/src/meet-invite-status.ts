@@ -14,17 +14,13 @@ export function meetRoomStatusAllowsHost(status: WgwMeetRoomStatusResponse): boo
 
 export function meetInviteStateFromRoomStatus(
   status: WgwMeetRoomStatusResponse,
-  options: { canHost: boolean },
+  _options: { canHost: boolean },
 ): Exclude<MeetInviteProbeState, "checking" | "error"> {
   if (!status.reserved) {
     return "missing";
   }
-  if (options.canHost) {
-    return "active";
-  }
-  if (!status.active) {
-    return "waiting-for-host";
-  }
+  // Valid invite (reserved room code or meeting collection) opens the lobby
+  // even when nobody is in the call yet. Hosts use canStartReservedRoom.
   return "active";
 }
 

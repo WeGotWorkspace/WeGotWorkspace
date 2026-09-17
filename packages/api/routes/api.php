@@ -26,6 +26,8 @@ use App\Http\Controllers\Api\V1\Calendars\CalendarFeedsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarRsvpController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSchedulingNotificationsController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarSubscriptionsController;
+use App\Http\Controllers\Api\V1\Chat\ChatChannelsController;
+use App\Http\Controllers\Api\V1\Chat\ChatMessagesController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
@@ -41,6 +43,8 @@ use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
 use App\Http\Controllers\Api\V1\Jmap\JmapStubController;
 use App\Http\Controllers\Api\V1\Mail\MailController;
 use App\Http\Controllers\Api\V1\Meetings\MeetingsController;
+use App\Http\Controllers\Api\V1\Notes\NotebooksController;
+use App\Http\Controllers\Api\V1\Notes\NotesController;
 use App\Http\Controllers\Api\V1\Plugins\ActivationController as PluginsActivationController;
 use App\Http\Controllers\Api\V1\Plugins\IndexController as PluginsIndexController;
 use App\Http\Controllers\Api\V1\Plugins\SessionController as PluginsSessionController;
@@ -48,6 +52,7 @@ use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
 use App\Http\Controllers\Api\V1\Settings\MailController as SettingsMailController;
+use App\Http\Controllers\Api\V1\Settings\McpGrantsController as SettingsMcpGrantsController;
 use App\Http\Controllers\Api\V1\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\Api\V1\Settings\StateController as SettingsStateController;
 use App\Http\Controllers\Api\V1\System\CapabilitiesController;
@@ -171,6 +176,9 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('settings/state', SettingsStateController::class);
     Route::put('settings/profile', SettingsProfileController::class);
     Route::put('settings/mail', SettingsMailController::class);
+    Route::get('settings/mcp-grants', [SettingsMcpGrantsController::class, 'index']);
+    Route::delete('settings/mcp-grants/{clientId}', [SettingsMcpGrantsController::class, 'destroy'])
+        ->where('clientId', '[A-Za-z0-9-]+');
 
     Route::get('mail/status', [MailController::class, 'status']);
     Route::get('mail/folders', [MailController::class, 'foldersIndex']);
@@ -241,6 +249,59 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         Route::delete('tasks/items/{taskId}', [TasksController::class, 'destroy'])
             ->where('taskId', '[A-Za-z0-9_.#-]+');
     });
+
+    Route::get('notes/notebooks/changes', [NotebooksController::class, 'changes']);
+    Route::get('notes/notebooks', [NotebooksController::class, 'index']);
+    Route::post('notes/notebooks', [NotebooksController::class, 'store']);
+    Route::get('notes/notebooks/{notebookId}', [NotebooksController::class, 'show'])
+        ->where('notebookId', '[A-Za-z0-9._-]+');
+    Route::patch('notes/notebooks/{notebookId}', [NotebooksController::class, 'update'])
+        ->where('notebookId', '[A-Za-z0-9._-]+');
+    Route::delete('notes/notebooks/{notebookId}', [NotebooksController::class, 'destroy'])
+        ->where('notebookId', '[A-Za-z0-9._-]+');
+    Route::get('notes/items/changes', [NotesController::class, 'changes']);
+    Route::get('notes/items', [NotesController::class, 'index']);
+    Route::post('notes/items', [NotesController::class, 'store']);
+    Route::post('notes/items/{noteId}/star', [NotesController::class, 'star'])
+        ->where('noteId', '[^/]+');
+    Route::delete('notes/items/{noteId}/star', [NotesController::class, 'unstar'])
+        ->where('noteId', '[^/]+');
+    Route::get('notes/items/{noteId}', [NotesController::class, 'show'])
+        ->where('noteId', '[^/]+');
+    Route::patch('notes/items/{noteId}', [NotesController::class, 'patch'])
+        ->where('noteId', '[^/]+');
+    Route::delete('notes/items/{noteId}', [NotesController::class, 'destroy'])
+        ->where('noteId', '[^/]+');
+
+    // Chat channels (Epic #701, chunk B): CalDAV VJOURNAL collections with
+    // chat-/dm- URI prefixes, API-only (hidden from DAV by ChatHiddenCalendarBackend).
+    Route::get('chat/channels/changes', [ChatChannelsController::class, 'changes']);
+    Route::get('chat/channels', [ChatChannelsController::class, 'index']);
+    Route::post('chat/channels', [ChatChannelsController::class, 'store']);
+    Route::get('chat/channels/{channelId}', [ChatChannelsController::class, 'show'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::patch('chat/channels/{channelId}', [ChatChannelsController::class, 'update'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::delete('chat/channels/{channelId}', [ChatChannelsController::class, 'destroy'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    // DM provisioning (Epic #701, chunk G): find-or-create the deterministic
+    // 2-person dm- collection; DM channels are immutable via the routes above.
+    Route::post('chat/dms', [ChatChannelsController::class, 'openDm']);
+    // Chat messages (Epic #701, chunk C): VJOURNAL objects, ULID ids, author-only
+    // edit/delete, transactional reaction toggles, sync-token changes feed.
+    Route::get('chat/channels/{channelId}/messages', [ChatMessagesController::class, 'index'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::post('chat/channels/{channelId}/messages', [ChatMessagesController::class, 'store'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::put('chat/channels/{channelId}/read-marker', [ChatMessagesController::class, 'putReadMarker'])
+        ->where('channelId', '[A-Za-z0-9._-]+');
+    Route::get('chat/messages/changes', [ChatMessagesController::class, 'changes']);
+    Route::patch('chat/messages/{messageId}', [ChatMessagesController::class, 'update'])
+        ->where('messageId', '[^/]+');
+    Route::delete('chat/messages/{messageId}', [ChatMessagesController::class, 'destroy'])
+        ->where('messageId', '[^/]+');
+    Route::post('chat/messages/{messageId}/reactions', [ChatMessagesController::class, 'toggleReaction'])
+        ->where('messageId', '[^/]+');
 
     Route::middleware('wgw.contacts')->group(function (): void {
         Route::post('contacts/cards/import', ContactCardImportController::class);

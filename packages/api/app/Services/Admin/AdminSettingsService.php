@@ -6,12 +6,18 @@ namespace App\Services\Admin;
 
 use App\Models\AppSetting;
 use App\Services\MailDelivery\MailDeliverySettingsStore;
+use App\Services\Mcp\McpAuditLogger;
+use App\Services\Mcp\McpEnabled;
 use App\Services\Settings\SettingKeys;
 use App\Support\TimezoneNormalizer;
 
 final class AdminSettingsService
 {
-    public function __construct(private MailDeliverySettingsStore $mailDelivery) {}
+    public function __construct(
+        private MailDeliverySettingsStore $mailDelivery,
+        private McpEnabled $mcp,
+        private McpAuditLogger $mcpAudit,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $values
@@ -22,6 +28,7 @@ final class AdminSettingsService
         $this->mailDelivery->persistAdminSave($values, $clearSmtpPassword);
         unset($values[SettingKeys::MAIL_DELIVERY_SMTP_PASSWORD], $values[SettingKeys::MAIL_DELIVERY_LAST_TEST_SEND]);
 
+        $wasMcpOn = $this->mcp->isOn();
         $allowed = array_flip(SettingKeys::all());
         $saved = [];
         foreach ($values as $key => $value) {
@@ -36,6 +43,13 @@ final class AdminSettingsService
             }
             AppSetting::setValue($key, $value);
             $saved[] = $key;
+        }
+
+        if (in_array(SettingKeys::MCP_ENABLED, $saved, true) && $wasMcpOn && ! $this->mcp->isOn()) {
+            $this->mcp->revokeAllGrants();
+            $this->mcpAudit->log(McpAuditLogger::KILL_SWITCH, 'ok', access: 'write', target: ['enabled' => false]);
+        } elseif (in_array(SettingKeys::MCP_ENABLED, $saved, true) && ! $wasMcpOn && $this->mcp->isOn()) {
+            $this->mcpAudit->log(McpAuditLogger::KILL_SWITCH, 'ok', access: 'write', target: ['enabled' => true]);
         }
 
         return ['ok' => true, 'saved' => $saved];

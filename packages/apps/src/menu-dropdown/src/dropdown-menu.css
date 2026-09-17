@@ -9,6 +9,61 @@
   border-radius: var(--control-radius);
 }
 
+/*
+ * MenuItem’s default hover is a generic currentColor wash. Inside portaled
+ * dropdowns, prefer workspace accent tokens (bridged via portal-theme-vars)
+ * so Docs/Notes/Tasks menus match sidebar chrome — not ink-gray.
+ * Severity rows keep their own hue (see .menu-item--severity-*).
+ */
+.dropdown-menu__menu-item.menu-item--interactive:hover:not(.menu-item--severity-danger),
+.dropdown-menu__menu-item.menu-item--interactive:focus:not(.menu-item--severity-danger),
+.dropdown-menu-ui__item.menu-item--interactive:hover:not(.menu-item--severity-danger) {
+  color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
+  background-color: var(
+    --menu-item-hover-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)
+  );
+}
+
+.dropdown-menu__menu-item.menu-item--severity-danger.menu-item--interactive:hover,
+.dropdown-menu__menu-item.menu-item--severity-danger.menu-item--interactive:focus,
+.dropdown-menu-ui__item.menu-item--severity-danger.menu-item--interactive:hover,
+.dropdown-menu-ui__item.menu-item--severity-danger:focus {
+  color: var(
+    --menu-item-severity-color,
+    var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
+  );
+  background-color: var(
+    --menu-item-severity-hover-background,
+    var(
+      --menu-item-danger-hover-background,
+      color-mix(
+        in oklab,
+        var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242))) 14%,
+        transparent
+      )
+    )
+  );
+}
+
+.dropdown-menu__menu-item.menu-item--surface-selected,
+.dropdown-menu-ui__item.menu-item--surface-selected {
+  color: var(--button-active-color, var(--workspace-accent, inherit));
+  background-color: var(
+    --menu-item-selected-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 18%, var(--color-cream, #ffffff))
+  );
+}
+
+.dropdown-menu__menu-item.menu-item--surface-selected:hover,
+.dropdown-menu__menu-item.menu-item--surface-selected:focus,
+.dropdown-menu-ui__item.menu-item--surface-selected:hover {
+  background-color: var(
+    --menu-item-selected-hover-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 24%, var(--color-cream, #ffffff))
+  );
+}
+
 .dropdown-menu__menu-item .menu-item__icon-slot > svg {
   width: 1rem;
   height: 1rem;

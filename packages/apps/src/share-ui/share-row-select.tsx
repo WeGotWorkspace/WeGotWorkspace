@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 
 export type ShareRowSelectOption<T extends string> = {
@@ -16,6 +17,10 @@ export type ShareRowSelectProps<T extends string> = {
   disabled?: boolean;
   title?: string;
   className?: string;
+  /** Label class. Share-dialog compact type only when using the default trigger. */
+  itemClassName?: string;
+  /** Default `sm` = 32px (dialog share rows). Contacts detail passes `md`. */
+  size?: ControlSize;
   "aria-label"?: string;
 };
 
@@ -26,15 +31,17 @@ export function ShareRowSelect<T extends string>({
   disabled = false,
   title,
   className,
+  itemClassName,
+  size = "sm",
   "aria-label": ariaLabel,
 }: ShareRowSelectProps<T>) {
+  const triggerClassName = className ?? "share-dialog__permission-select";
+  const resolvedItemClassName =
+    itemClassName ?? (className == null ? "share-dialog__permission-item" : undefined);
+
   return (
     <Select value={value} disabled={disabled} onValueChange={(next) => onChange(next as T)}>
-      <SelectTrigger
-        className={className ?? "share-dialog__permission-select"}
-        title={title}
-        aria-label={ariaLabel}
-      >
+      <SelectTrigger size={size} className={triggerClassName} title={title} aria-label={ariaLabel}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -42,12 +49,7 @@ export function ShareRowSelect<T extends string>({
           const Icon = option.icon;
           return (
             <SelectItem key={option.value} value={option.value}>
-              <span
-                className={cn(
-                  "share-dialog__permission-item",
-                  option.muted && "text-muted-foreground",
-                )}
-              >
+              <span className={cn(resolvedItemClassName, option.muted && "text-muted-foreground")}>
                 {Icon ? <Icon className="share-dialog__permission-item-icon" aria-hidden /> : null}
                 {option.label}
               </span>

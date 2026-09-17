@@ -13,9 +13,9 @@ import {
   saveSuccessState,
   shouldMarkPendingWhenUnsaved,
 } from "./docs-collab-save-queue";
-import { formatSavedDocStatus } from "./docs-collab-status";
+import { DOC_STATUS_NOTE_TOO_LARGE } from "./docs-collab-status";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
-import { docSignature, SERVER_ORIGIN } from "./docs-collab-utils";
+import { docSignature, isCollabPayloadTooLarge, SERVER_ORIGIN } from "./docs-collab-utils";
 
 function isServerDivergenceError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
@@ -29,6 +29,7 @@ type UseDocsCollabSaveOptions = {
   room: string;
   urls: DocsCollabUrls;
   setDocStatus: (status: string | ((prev: string) => string)) => void;
+  setLastSavedAt: (iso: string | null) => void;
   setPendingSync: (pending: boolean) => void;
   setFailedSync: (failed: boolean) => void;
 };
@@ -38,6 +39,7 @@ export function useDocsCollabSave({
   room,
   urls,
   setDocStatus,
+  setLastSavedAt,
   setPendingSync,
   setFailedSync,
 }: UseDocsCollabSaveOptions) {
@@ -110,13 +112,17 @@ export function useDocsCollabSave({
     refs.saveInFlightRef.current = true;
     try {
       const attemptSave = async () => {
+        if (urls.persistMarkdown) {
+          await urls.persistMarkdown(markdown, refs.authTokenRef.current);
+          return;
+        }
         await saveDocument(
           urls.documentUrl,
           markdown,
           ydoc,
           urls.room,
           refs.authTokenRef.current,
-          urls.documentSaveMethod ?? "POST",
+          urls.documentSaveMethod === "PATCH" ? "PUT" : (urls.documentSaveMethod ?? "POST"),
         );
       };
 
@@ -162,11 +168,25 @@ export function useDocsCollabSave({
       refs.saveRetryMsRef.current = success.saveRetryMs ?? 0;
       refs.nextSaveAttemptAtRef.current = success.nextSaveAttemptAt ?? 0;
       await updatePendingState(false, false);
-      setDocStatus(formatSavedDocStatus());
+      setLastSavedAt(new Date().toISOString());
+      setDocStatus("");
     } catch (err) {
       refs.saveFailedRef.current = true;
+      if (
+        urls.onPersistForbidden &&
+        /\(403\)/.test(err instanceof Error ? err.message : String(err))
+      ) {
+        urls.onPersistForbidden();
+      }
       if (isServerDivergenceError(err) && getConnectivitySnapshot()) {
         reportDocsSyncConflicts([room]);
+      }
+      if (isCollabPayloadTooLarge(err)) {
+        refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
+        refs.nextSaveAttemptAtRef.current = Number.POSITIVE_INFINITY;
+        await updatePendingState(true, true);
+        setDocStatus(DOC_STATUS_NOTE_TOO_LARGE);
+        throw err;
       }
       const failure = saveFailureState(refs.saveRetryMsRef.current);
       refs.saveRetryMsRef.current = failure.saveRetryMs ?? refs.saveRetryMsRef.current;
@@ -181,9 +201,10 @@ export function useDocsCollabSave({
     } finally {
       refs.saveInFlightRef.current = false;
     }
-  }, [markPendingWhenUnsaved, refs, room, setDocStatus, updatePendingState, urls]);
+  }, [markPendingWhenUnsaved, refs, room, setDocStatus, setLastSavedAt, updatePendingState, urls]);
 
   const scheduleSave = useCallback(() => {
+    if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) return;
     if (!refs.localDirtySinceLastSaveRef.current && !refs.pendingServerSaveRef.current) return;
     if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
     const delayMs = computeSaveDelayMs(refs.nextSaveAttemptAtRef.current);

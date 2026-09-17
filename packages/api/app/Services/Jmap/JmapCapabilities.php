@@ -21,6 +21,18 @@ final class JmapCapabilities
     public const FILENODE = 'urn:ietf:params:jmap:filenode';
 
     /**
+     * Vendor Notes envelope over CalDAV VJOURNAL. There is no IETF Notes
+     * datatype — do not advertise urn:ietf:params:jmap:notes.
+     */
+    public const NOTES = 'urn:wgw:jmap:notes';
+
+    /**
+     * Vendor Meet chat envelope over the same CalDAV VJOURNAL machinery
+     * (chat-/dm- collections). Like notes: no IETF datatype, vendor URN only.
+     */
+    public const CHAT = 'urn:wgw:jmap:chat';
+
+    /**
      * Session document version, used as the prefix of the derived session
      * state (JmapCapabilitySet::sessionState()). The full state is this
      * constant plus a digest of the enabled capability URNs, so a feature
@@ -86,7 +98,7 @@ final class JmapCapabilities
         return [
             // Storage keys each card to exactly one address book.
             'maxAddressBooksPerCard' => 1,
-            'mayCreateAddressBook' => true,
+            'mayCreateAddressBook' => false,
         ];
     }
 
@@ -115,6 +127,34 @@ final class JmapCapabilities
             'webUrlTemplate' => null,
             // Clients use FileNode/set + blob upload (roadmap non-goal).
             'webWriteUrlTemplate' => null,
+        ];
+    }
+
+    /**
+     * Vendor notes account-level capability. Session-level value is the empty object.
+     *
+     * @return array<string, mixed>
+     */
+    public static function notesAccountCapability(): array
+    {
+        return [
+            'maxNotebooksPerNote' => 1,
+            'mayCreateNotebook' => true,
+        ];
+    }
+
+    /**
+     * Vendor chat account-level capability. Session-level value is the empty
+     * object. Mutations stay on REST /chat/* (get/changes only — the client
+     * never calls ChatChannel/set or ChatMessage/set).
+     *
+     * @return array<string, mixed>
+     */
+    public static function chatAccountCapability(): array
+    {
+        return [
+            'maxChannelsPerMessage' => 1,
+            'mayCreateChannel' => true,
         ];
     }
 }

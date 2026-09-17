@@ -89,7 +89,7 @@ Incomplete or non-WGW hrefs never reserve. Read-only GET / conversion without pe
 
 **Forbidden:** `includes`, `startsWith`, or any raw-string matching.
 
-Path must be `/meet/guest` or `/meet/join`. Query `room` must match the full `xxxx-xxxx-xxxx` pattern. Partial strings do not POST.
+Path must be `/meet`, `/meet/guest`, or `/meet/join` (`/meet?room=` is canonical; guest/join remain aliases). Query `room` must match the full `xxxx-xxxx-xxxx` pattern. Partial strings do not POST.
 
 ## HTTP contract (Chunk M)
 

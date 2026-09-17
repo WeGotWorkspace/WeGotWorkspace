@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import {
+  COMPOSER_SELECT_TRIGGER_CLASS,
   CREATE_WORKFLOW_STATUSES,
   emptyTaskForm,
   orderedTaskMetaNodes,
@@ -84,6 +85,43 @@ describe("TasksTaskFormFields", () => {
     ]);
   });
 
+  it("marks list options with a tinted list icon, not a color dot", () => {
+    renderFormFields({ mode: "create" });
+
+    fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskList));
+
+    const options = screen.getAllByRole("option");
+    expect(options.length).toBeGreaterThan(0);
+    for (const option of options) {
+      expect(option.querySelector(".tasks-list-icon")).toBeTruthy();
+      expect(option.querySelector(".tasks-list-icon")?.tagName.toLowerCase()).toBe("svg");
+      expect(option.querySelector(".tasks-list-dot")).toBeNull();
+    }
+
+    const trigger = screen.getByLabelText(defaultTasksLabels.addTaskList);
+    expect(trigger.querySelector(".tasks-list-icon")).toBeTruthy();
+    expect(trigger.querySelector(".tasks-list-dot")).toBeNull();
+  });
+
+  it("uses compact md selects on the meta row, not the title field", () => {
+    renderFormFields({ mode: "create" });
+
+    const title = screen.getByLabelText(defaultTasksLabels.addTaskName);
+    expect(title.classList.contains("tasks-main-view__composer-title")).toBe(true);
+    expect(title.classList.contains("input--size-md")).toBe(false);
+    expect(title.classList.contains("input")).toBe(false);
+
+    for (const name of [
+      defaultTasksLabels.addTaskList,
+      defaultTasksLabels.addTaskStatus,
+      defaultTasksLabels.addTaskPriority,
+    ]) {
+      const trigger = screen.getByLabelText(name);
+      expect(trigger.classList.contains("select-trigger--size-md")).toBe(true);
+      expect(trigger.classList.contains(COMPOSER_SELECT_TRIGGER_CLASS)).toBe(true);
+    }
+  });
+
   it("renders the remind picker in create and edit modes", () => {
     renderFormFields({ mode: "create" });
     expect(screen.getByRole("button", { name: defaultTasksLabels.noReminders })).toBeTruthy();
@@ -124,6 +162,8 @@ describe("task form helpers", () => {
       workflowStatus: "in-process",
       priority: 1,
       due: "2026-07-08T00:00:00",
+      showWithoutTime: false,
+      timeZone: null,
       alerts: task.alerts,
     });
   });

@@ -46,6 +46,7 @@ export function DocsSuggestionsPanel({
       className="docs-suggestions-panel"
       ariaLabel={labels.suggestionsSidebarTitle}
       title={labels.suggestionsSidebarTitle}
+      count={suggestions.length}
       countLabel={
         suggestions.length === 1
           ? labels.suggestionsCountOne

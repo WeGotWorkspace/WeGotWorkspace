@@ -15,7 +15,7 @@ export type ShareDialogIconLinkProps = Omit<ComponentProps<"a">, "children"> & {
   icon: ReactNode;
 };
 
-/** IconButton look on an `<a>` — same sm/outline chrome as Drive share-row actions. */
+/** IconButton look on an `<a>` — same sm/outline chrome as share-row actions. */
 export function ShareDialogIconLink({
   label,
   icon,

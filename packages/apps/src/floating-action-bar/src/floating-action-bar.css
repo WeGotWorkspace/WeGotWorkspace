@@ -1,0 +1,69 @@
+@import "../../styles.css" reference;
+@import "../../ui/workspace-menu-item-sst.css";
+
+/**
+ * Overlay batch / selection bar — cream/white surface + neutral ink hairline.
+ * Radius uses global `--control-radius` (via `--control-radius-button-pill` alias).
+ * Soft outline + menu washes: shared `workspace-menu-item-sst.css` (14/18/24→cream)
+ * so Star/etc. do not inherit heavier workspace-root washes (Drive/Notes/Tasks 40/55).
+ * Products publish `--workspace-accent` (and usually `--button-active-color`).
+ *
+ * Enter/exit: short bottom slide + fade via `data-state` + `@starting-style`
+ * (~200ms). Parent keeps the node mounted with `open={false}` until
+ * `transitionend` unmounts (see FloatingActionBar).
+ */
+.floating-action-bar {
+  @apply absolute left-1/2 z-30 flex items-center gap-1.5 whitespace-nowrap px-2 py-2 shadow-lg;
+  /* Pin to the non-scrolling pane bottom; safe-area for notched phones. */
+  bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
+  border-radius: var(--control-radius-button-pill);
+  color: var(--color-ink);
+  background-color: var(--color-cream, #ffffff);
+  border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+  opacity: 1;
+  transform: translate(-50%, 0);
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+}
+
+.floating-action-bar[data-state="open"] {
+  @starting-style {
+    opacity: 0;
+    transform: translate(-50%, 0.5rem);
+  }
+}
+
+.floating-action-bar[data-state="closed"] {
+  opacity: 0;
+  transform: translate(-50%, 0.5rem);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-action-bar {
+    transition: none;
+  }
+
+  .floating-action-bar[data-state="open"] {
+    @starting-style {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+}
+
+.floating-action-bar__count {
+  @apply inline-flex items-center px-3 text-xs font-semibold tabular-nums leading-9;
+  color: var(--color-ink);
+}
+
+.floating-action-bar__actions {
+  @apply flex items-center gap-1.5;
+}
+
+.floating-action-bar__spacer {
+  @apply mx-0.5 self-stretch;
+  width: 1px;
+  background-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+}

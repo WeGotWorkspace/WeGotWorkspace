@@ -22,6 +22,7 @@ final class DocCollabSignalingService
     public function __construct(
         private CollabActorResolver $actors,
         private CollabRoomPolicy $rooms,
+        private CollabJoinAuthorizer $joinAuthorizer,
         private RtcSettingsService $rtcSettingsService,
     ) {
         $this->store = new HttpSignalingStore(RtcSignalingPolicy::collab());
@@ -44,8 +45,10 @@ final class DocCollabSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRows();
 
-            $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
+            $principal = $this->actors->requirePrincipal($request);
+            $ownerMarker = $this->actors->ownerMarker($principal['username']);
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            $this->joinAuthorizer->assertMayJoin($room, $principal);
             $name = mb_substr(trim((string) ($body['name'] ?? '')), 0, 64);
             if ($name === '') {
                 $this->fail('name_required');
@@ -53,6 +56,7 @@ final class DocCollabSignalingService
 
             $peerId = bin2hex(random_bytes(8));
             $now = time();
+            $this->store->deleteOwnedPeersExcept($room, $ownerMarker);
             $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, $now);
 
             if ($this->store->countPeers($room) > self::MAX_PEERS_PER_ROOM) {
@@ -69,7 +73,7 @@ final class DocCollabSignalingService
 
     /**
      * @param  array<string, mixed>  $body
-     * @return array{peers: list<array{id: string, name: string}>, messages: list<array<string, mixed>>}
+     * @return array{peers: list<array{id: string, name: string}>, messages: list<array<string, mixed>>, rosterSig: string}|array{unchanged: true, rosterSig: string}
      */
     public function poll(Request $request, array $body): array
     {
@@ -81,7 +85,9 @@ final class DocCollabSignalingService
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             $this->store->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
 
-            return $this->store->poll($room, $peerId, max(0, (int) ($body['since'] ?? 0)));
+            $knownRosterSig = is_string($body['sig'] ?? null) ? (string) $body['sig'] : null;
+
+            return $this->store->poll($room, $peerId, max(0, (int) ($body['since'] ?? 0)), $knownRosterSig);
         });
     }
 

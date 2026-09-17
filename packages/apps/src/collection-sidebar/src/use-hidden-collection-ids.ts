@@ -26,26 +26,36 @@ export function useHiddenCollectionIds<T extends { id: string; isVisible?: boole
   const seenIdsRef = useRef<ReadonlySet<string>>(
     new Set(persist.read()?.knownIds ?? itemIdsOf(items)),
   );
+  /** Empty first paint is placeholder bootstrap — do not treat it as "user un-hid everything". */
+  const hydratedFromItemsRef = useRef(items.length > 0);
 
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => {
-    return new Set(resolveHiddenCollectionIds(items, persist.read()));
+    const persisted = persist.read();
+    if (items.length === 0) {
+      return new Set(persisted?.hiddenIds ?? []);
+    }
+    return new Set(resolveHiddenCollectionIds(items, persisted));
   });
 
   useEffect(() => {
+    // Offline-first apps mount with `[]` then hydrate. Writing that empty
+    // snapshot would wipe last-session hidden ids from localStorage.
+    if (itemsRef.current.length === 0) return;
     persistRef.current.write(hiddenIds, itemIdsOf(itemsRef.current));
   }, [hiddenIds]);
 
   useEffect(() => {
+    if (items.length === 0) return;
     setHiddenIds((current) => {
-      const next = new Set(
-        resolveHiddenCollectionIds(items, {
-          hiddenIds: [...current],
-          knownIds: [...seenIdsRef.current],
-        }),
-      );
+      const persisted = persistRef.current.read();
+      const prefs = hydratedFromItemsRef.current
+        ? { hiddenIds: [...current], knownIds: [...seenIdsRef.current] }
+        : persisted;
+      const next = new Set(resolveHiddenCollectionIds(items, prefs));
       return sameHiddenIds(current, next) ? current : next;
     });
     seenIdsRef.current = new Set(itemIdsOf(items));
+    hydratedFromItemsRef.current = true;
   }, [items]);
 
   return { hiddenIds, setHiddenIds };

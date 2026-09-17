@@ -5,12 +5,14 @@ import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import {
   docsApiPathFromSearch,
   docsSearchFromApiPath,
-  openDocsFileInNewWindow,
   parseDocsRouteSearch,
 } from "@/docs-core/src/docs-route-search";
+import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
 import {
+  isAccessTokenExpired,
   wgwApiBaseUrl,
   wgwCompleteLogoutNavigation,
+  wgwCurrentAccessToken,
   wgwEnsureFreshAccessToken,
   wgwIsGuestSession,
   wgwLiveApiEnabled,
@@ -73,9 +75,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     [navigate],
   );
 
-  const handleOpenHomeFile = useCallback((apiPath: string) => {
-    openDocsFileInNewWindow(apiPath);
-  }, []);
+  const handleOpenHomeFile = useOpenDocsFile();
 
   const driveOperations = useMemo(() => createWgwDriveOperations("/"), []);
 
@@ -134,12 +134,19 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     [navigate, networkOperations, session.user.username, showError],
   );
 
-  const [collabAuthToken, setCollabAuthToken] = useState<string | undefined>(undefined);
+  const [collabAuthToken, setCollabAuthToken] = useState<string | undefined>(() => {
+    const cached = wgwCurrentAccessToken();
+    return cached && !isAccessTokenExpired() ? cached : undefined;
+  });
 
   useEffect(() => {
     if (!showCollab || !filePath) {
       setCollabAuthToken(undefined);
       return;
+    }
+    const cached = wgwCurrentAccessToken();
+    if (cached && !isAccessTokenExpired()) {
+      setCollabAuthToken(cached);
     }
     let cancelled = false;
     void (async () => {
@@ -157,13 +164,13 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     return () => {
       cancelled = true;
     };
-  }, [filePath, showCollab]);
+  }, [filePath, phase, showCollab]);
 
   const collabUrls = useMemo(() => {
     if (!showCollab || !filePath) return undefined;
     const baseUrl = wgwApiBaseUrl();
     const room = filePath.replace(/^\/+/, "");
-    const roomId = encodeFileRoomId(`/${room}`);
+    const roomId = encodeFileRoomId(room);
     const pathQuery = encodeURIComponent(room);
     return {
       signalUrl: `${baseUrl}/rooms/${encodeURIComponent(roomId)}/events`,

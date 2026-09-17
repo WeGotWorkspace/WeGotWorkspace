@@ -12,6 +12,14 @@ const storybookVitestTags =
     ? { include: ["vitest-ci"] }
     : { include: ["test"], exclude: ["live"] };
 
+/**
+ * Node 25+ enables Web Storage by default; without a backing file the global is a
+ * broken proxy that shadows jsdom's Storage (`clear`/`getItem` undefined).
+ * Disable it so jsdom (and `@vitest-environment jsdom` unit files) own Storage.
+ * @see https://github.com/vitest-dev/vitest/issues/8757
+ */
+const nodeWebStorageExecArgv = ["--no-experimental-webstorage"];
+
 export default defineConfig({
   plugins: [tsconfigPaths()],
   resolve: {
@@ -21,6 +29,7 @@ export default defineConfig({
     },
   },
   test: {
+    execArgv: nodeWebStorageExecArgv,
     projects: [
       {
         resolve: {
@@ -33,6 +42,7 @@ export default defineConfig({
           name: "unit",
           environment: "node",
           include: ["src/**/*.test.ts"],
+          execArgv: nodeWebStorageExecArgv,
         },
       },
       {
@@ -48,6 +58,7 @@ export default defineConfig({
           include: ["src/**/*.test.tsx"],
           pool: "forks",
           maxWorkers: 1,
+          execArgv: nodeWebStorageExecArgv,
           setupFiles: [path.resolve(__dirname, "src/jsdom-setup.ts")],
         },
       },

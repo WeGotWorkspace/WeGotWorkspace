@@ -2,6 +2,7 @@ import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
 import { cn } from "@/lib/utils";
+import { markUiModalSlot, wrapModalSurfaceChildren } from "@/ui/modal-surface-children";
 import "@/ui/modal-surface.css";
 import "@/ui/modal-title.css";
 import { buttonVariants } from "@/ui/button";
@@ -30,33 +31,41 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <AlertDialogPortal>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        "ui-modal-surface fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-[length:var(--control-radius)]",
+        "ui-modal-surface ui-modal-surface--center fixed z-50 w-full max-w-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-[length:var(--control-radius)]",
         className,
       )}
       {...props}
-    />
+    >
+      {wrapModalSurfaceChildren(children)}
+    </AlertDialogPrimitive.Content>
   </AlertDialogPortal>
 ));
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
 
-const AlertDialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col space-y-2 text-center sm:text-left", className)} {...props} />
+const AlertDialogHeader = markUiModalSlot(
+  ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+    <div
+      className={cn("ui-modal-header flex flex-col space-y-2 text-center sm:text-left", className)}
+      {...props}
+    />
+  ),
+  "header",
+  "AlertDialogHeader",
 );
-AlertDialogHeader.displayName = "AlertDialogHeader";
 
-const AlertDialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}
-    {...props}
-  />
+const AlertDialogFooter = markUiModalSlot(
+  ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+    <div className={cn("ui-modal-footer flex flex-row justify-end gap-2", className)} {...props} />
+  ),
+  "footer",
+  "AlertDialogFooter",
 );
-AlertDialogFooter.displayName = "AlertDialogFooter";
 
 const AlertDialogTitle = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Title>,
@@ -98,11 +107,7 @@ const AlertDialogCancel = React.forwardRef<
   <AlertDialogPrimitive.Cancel
     ref={ref}
     asChild={asChild}
-    className={
-      asChild
-        ? cn("mt-2 sm:mt-0", className)
-        : cn(buttonVariants({ variant: "outline" }), "mt-2 sm:mt-0", className)
-    }
+    className={asChild ? className : cn(buttonVariants({ variant: "outline" }), className)}
     {...props}
   />
 ));

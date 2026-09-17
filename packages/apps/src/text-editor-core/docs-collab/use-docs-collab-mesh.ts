@@ -1,7 +1,15 @@
 import { useCallback, useState } from "react";
+import { wgwHasAuthenticatedSession, wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
+import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
-import { applyAwarenessUpdate, encodeSyncStep1, handleSyncMessage } from "./docs-collab-mesh-sync";
+import { resumeDocsCollabMeshSession } from "./docs-collab-mesh-linger";
+import {
+  applyAwarenessUpdate,
+  encodeFullAwarenessBroadcast,
+  encodeSyncStep1,
+  handleSyncMessage,
+} from "./docs-collab-mesh-sync";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
 import { DocsRtcSession } from "./docs-rtc-session";
@@ -11,9 +19,10 @@ import type {
   DocsCollabSessionRefs,
   DocsCollabUrls,
 } from "./docs-collab-types";
+import { collectCollabWarningPeers } from "./docs-collab-mesh-warnings";
 import { isYDocEmpty, MESH_ORIGIN } from "./docs-collab-utils";
 
-export const PEER_FAILURE_WARNING_DELAY_MS = 6000;
+export { PEER_FAILURE_WARNING_DELAY_MS } from "./docs-collab-mesh-warnings";
 
 type UseDocsCollabMeshOptions = {
   refs: DocsCollabSessionRefs;
@@ -56,15 +65,7 @@ export function useDocsCollabMesh({
       .filter((peer) => peer.link !== "connected")
       .map(({ id, name }) => ({ id, name }));
     const now = Date.now();
-    const warning: DocsCollabMeshPeer[] = [];
-    for (const peer of roomPeerStatuses) {
-      if (peer.link === "failed" || peer.link === "disconnected" || peer.link === "closed") {
-        const failedSince = refs.failedSinceRef.current.get(peer.id) ?? now;
-        if (now - failedSince >= PEER_FAILURE_WARNING_DELAY_MS) {
-          warning.push({ id: peer.id, name: peer.name });
-        }
-      }
-    }
+    const warning = collectCollabWarningPeers(roomPeerStatuses, refs.failedSinceRef.current, now);
     return {
       peers: connectedPeers,
       connectingPeers: pendingPeers,
@@ -112,19 +113,16 @@ export function useDocsCollabMesh({
       .map(({ id, name }) => ({ id, name }));
     const now = Date.now();
     const failedNow = new Set<string>();
-    const warning: DocsCollabMeshPeer[] = [];
     for (const peer of roomPeerStatuses) {
       if (peer.link === "failed" || peer.link === "disconnected" || peer.link === "closed") {
         failedNow.add(peer.id);
         const failedSince = refs.failedSinceRef.current.get(peer.id) ?? now;
         refs.failedSinceRef.current.set(peer.id, failedSince);
-        if (now - failedSince >= PEER_FAILURE_WARNING_DELAY_MS) {
-          warning.push({ id: peer.id, name: peer.name });
-        }
       } else {
         refs.failedSinceRef.current.delete(peer.id);
       }
     }
+    const warning = collectCollabWarningPeers(roomPeerStatuses, refs.failedSinceRef.current, now);
     for (const trackedId of [...refs.failedSinceRef.current.keys()]) {
       if (!failedNow.has(trackedId) && !roomPeerStatuses.some((peer) => peer.id === trackedId)) {
         refs.failedSinceRef.current.delete(trackedId);
@@ -151,6 +149,20 @@ export function useDocsCollabMesh({
     [refs],
   );
 
+  const sendAwarenessBroadcast = useCallback(
+    (toPeerId?: string) => {
+      const awareness = refs.awarenessRef.current;
+      const mesh = refs.meshRef.current;
+      if (!awareness || !mesh) return;
+      const encoded = encodeFullAwarenessBroadcast(awareness);
+      if (!encoded) return;
+      const msg = { type: "awareness" as const, u: encoded };
+      if (toPeerId) mesh.sendTo(toPeerId, msg);
+      else mesh.broadcast(msg);
+    },
+    [refs],
+  );
+
   const handleMeshMessage = useCallback(
     (msg: DocsCollabMeshMessage) => {
       const ydoc = refs.ydocRef.current;
@@ -170,17 +182,43 @@ export function useDocsCollabMesh({
       }
       if (msg.type === "dc-open" && msg.from) {
         sendSyncStep1(msg.from);
+        sendAwarenessBroadcast(msg.from);
         trySeedFromFile();
       }
       refs.tabSyncRef.current?.relayMeshMessage(msg);
       refreshMeshUi();
       publishMeshStateToTabs();
     },
-    [markDocReady, publishMeshStateToTabs, refs, refreshMeshUi, sendSyncStep1, trySeedFromFile],
+    [
+      markDocReady,
+      publishMeshStateToTabs,
+      refs,
+      refreshMeshUi,
+      sendAwarenessBroadcast,
+      sendSyncStep1,
+      trySeedFromFile,
+    ],
   );
 
   const joinMesh = useCallback(
     async (name: string, authToken: string): Promise<DocsCollabMeshPeer[]> => {
+      if (wgwHasAuthenticatedSession() && !wgwIsGuestSession()) {
+        await getPrincipalLinkRegistry().waitForPrincipalJoinAttempt();
+      }
+
+      const resumed = resumeDocsCollabMeshSession(room);
+      if (resumed) {
+        refs.meshRef.current = resumed;
+        resumed.onMessage(handleMeshMessage);
+        refreshMeshUi();
+        publishMeshStateToTabs();
+        // Data channels are already open, so no dc-open will fire — ask the
+        // connected peers for their state against the freshly loaded Y.Doc.
+        sendSyncStep1();
+        sendAwarenessBroadcast();
+        return resumed.getRoomPeers();
+      }
+
       let rtcSettings;
       try {
         rtcSettings = await refs.wireRef.current.fetchRtcSettings({
@@ -213,6 +251,8 @@ export function useDocsCollabMesh({
       refs,
       refreshMeshUi,
       room,
+      sendAwarenessBroadcast,
+      sendSyncStep1,
       urls.collabApiBaseUrl,
       urls.collabRtcUrl,
     ],

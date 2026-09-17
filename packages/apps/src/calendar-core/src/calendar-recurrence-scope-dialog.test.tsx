@@ -98,4 +98,27 @@ describe("CalendarRecurrenceScopeDialog", () => {
 
     expect(resolve).toHaveBeenCalledWith(null);
   });
+
+  it("rsvp action uses RSVP-specific copy and omits all-events", () => {
+    const resolve = vi.fn();
+    render(
+      <CalendarRecurrenceScopeDialog
+        dialog={{ action: "rsvp", resolve }}
+        labels={defaultCalendarLabels}
+      />,
+    );
+
+    expect(screen.getByText(defaultCalendarLabels.recurrenceScopeRsvpTitle)).toBeTruthy();
+    expect(screen.getByText(defaultCalendarLabels.recurrenceScopeRsvpDescription)).toBeTruthy();
+    expect(screen.queryByText(defaultCalendarLabels.recurrenceScopeEditTitle)).toBeNull();
+    expect(
+      screen.getByRole("button", { name: defaultCalendarLabels.recurrenceScopeThisInstance }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: defaultCalendarLabels.recurrenceScopeThisAndFuture }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: defaultCalendarLabels.recurrenceScopeAllInstances }),
+    ).toBeNull();
+  });
 });

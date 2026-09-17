@@ -1,5 +1,7 @@
 import { useRef } from "react";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
+import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
+import { isDisplayCaptureSupported } from "@/meet-core/src/meet-display-capture";
 import type { MeetAPIOperations, MeetRtcSettings } from "@/meet-core/src/meet-types";
 import { useMeetCallSession } from "@/meet-core/src/use-meet-call-session";
 import { meetCanModerateKnocks, useMeetMutations } from "@/meet-core/src/use-meet-mutations";
@@ -8,6 +10,8 @@ import { useMeetRoomState } from "@/meet-core/src/use-meet-room-state";
 type UseMeetControllerArgs = {
   session: WorkspaceSession;
   defaultDisplayName: string;
+  /** False while the live bootstrap loads and identity props are placeholders. */
+  identityReady?: boolean;
   rtc: MeetRtcSettings;
   operations?: MeetAPIOperations;
   buildCallLink?: (roomCode: string) => string;
@@ -16,25 +20,32 @@ type UseMeetControllerArgs = {
 
 /**
  * Meet workspace controller: composes room state, RTC/media session, and mutation slices.
- * UI shell state lives in useMeetWorkspaceShell (custom lobby/room layout).
+ * UI shell state lives in useMeetWorkspaceShell.
  */
 export function useMeetController({
   session,
   defaultDisplayName,
+  identityReady,
   rtc,
   operations,
   buildCallLink,
   onRoomChange,
 }: UseMeetControllerArgs) {
-  const leaveRef = useRef<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)>(
-    null,
-  );
+  // Suite-level store (live app): call + media survive route unmounts. Null in
+  // mock/Storybook trees, where the per-mount fallbacks keep the old behavior.
+  const callStore = useMeetCallStoreContext();
+  const localLeaveRef = useRef<
+    null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)
+  >(null);
+  const leaveRef = callStore?.leaveRef ?? localLeaveRef;
 
   const room = useMeetRoomState({
     defaultDisplayName,
     sessionDisplayName: session.user.displayName || "Guest",
+    identityReady,
     buildCallLink,
     onRoomChange,
+    callStore: callStore ?? undefined,
   });
   const isGuestSession = !session.user.username?.trim() && !session.user.email?.trim();
 
@@ -44,6 +55,7 @@ export function useMeetController({
     operations,
     isGuestSession,
     leaveRef,
+    callStore: callStore ?? undefined,
   });
   const mutations = useMeetMutations({
     room,
@@ -51,6 +63,7 @@ export function useMeetController({
     canModerateKnocks: meetCanModerateKnocks(session),
     actingUsername: session.user.username,
     leaveRef,
+    persistentCall: Boolean(callStore),
   });
 
   return {
@@ -72,6 +85,9 @@ export function useMeetController({
     endedMessage: room.endedMessage,
     chatMessages: room.chatMessages,
     localVideoRef: callSession.localVideoRef,
+    // Live local stream for tile-based stages (MeetCallBar/MeetCallExpanded);
+    // read at render time — join/toggle state changes re-render consumers.
+    getLocalStream: callSession.getLocalStream,
     audioInputs: callSession.audioInputs,
     videoInputs: callSession.videoInputs,
     selectedMicId: callSession.selectedMicId,
@@ -82,15 +98,19 @@ export function useMeetController({
     requestJoin: mutations.requestJoin,
     admitKnocker: mutations.admitKnocker,
     denyKnocker: mutations.denyKnocker,
+    mutePeer: mutations.mutePeer,
     endCallForAll: mutations.endCallForAll,
     leave: mutations.leave,
     sendChat: mutations.sendChat,
     toggleMic: callSession.toggleMic,
     toggleVideo: callSession.toggleVideo,
+    setVideoOn: room.setVideoOn,
     toggleScreenShare: callSession.toggleScreenShare,
+    canShareScreen: isDisplayCaptureSupported(),
     switchMic: callSession.switchMic,
     switchCamera: callSession.switchCamera,
     callLink: room.callLink,
     inCall: room.inCall,
+    callActiveInAnotherTab: room.remoteCallActive,
   };
 }

@@ -1,6 +1,7 @@
 @import "../../styles.css" reference;
 
-.calendar-dialog-surface .field-label-row + .field-label-row {
+/* Scoped to this dialog only — do not leak mt into event form / popover surfaces. */
+.calendar-dialog-surface.calendar-calendar-dialog .field-label-row + .field-label-row {
   @apply mt-3;
 }
 
@@ -9,16 +10,13 @@
 }
 
 .calendar-calendar-dialog__footer {
-  @apply mt-4 gap-2 sm:gap-0;
+  @apply mt-4 flex flex-row flex-wrap items-center gap-2 sm:justify-start;
 }
 
 .calendar-calendar-dialog__footer .calendar-calendar-dialog__delete {
-  @apply w-full justify-center sm:w-auto sm:me-auto;
-  color: #b91c1c;
+  @apply me-auto;
 }
 
-@media (max-width: 639px) {
-  .calendar-calendar-dialog__footer .calendar-calendar-dialog__delete {
-    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
-  }
+.calendar-calendar-dialog__footer-end {
+  @apply ms-auto flex flex-wrap items-center gap-2;
 }

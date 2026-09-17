@@ -24,6 +24,7 @@ final class DevInstallBootstrap
         private ApiRuntimeEnvService $apiEnv,
         private WgwInstallConfig $installConfig,
         private DevCalendarEventSeeder $calendarEvents,
+        private WgwSchemaMigrator $schemaMigrator,
     ) {}
 
     /**
@@ -38,6 +39,8 @@ final class DevInstallBootstrap
 
         if ($this->paths->isInstalled()) {
             $this->jwtKeys->ensureKeys();
+            WgwRuntimeEnvBridge::apply($this->installConfig);
+            $this->schemaMigrator->migrate();
             $this->seedDevCalendarEvents($username);
 
             return false;

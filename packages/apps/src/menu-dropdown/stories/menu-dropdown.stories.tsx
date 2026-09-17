@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent, within } from "storybook/test";
-import { Archive, Mail, NotebookPen, Star } from "lucide-react";
+import { Archive, Mail, NotebookPen, Star, Trash2 } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { DropdownMenu } from "../src/dropdown-menu";
 import type { DropdownMenuItemProps } from "../src/dropdown-menu";
@@ -41,7 +41,7 @@ export const Default: Story = {
   render: (args) => (
     <DropdownMenu
       {...args}
-      trigger={<Button label="Open menu" variant="subtle" />}
+      trigger={<Button label="Open menu" variant="outline" />}
       items={baseItems}
     />
   ),
@@ -61,7 +61,7 @@ export const CheckedState: Story = {
   render: (args) => (
     <DropdownMenu
       {...args}
-      trigger={<Button label="Open menu" variant="subtle" />}
+      trigger={<Button label="Open menu" variant="outline" />}
       items={[
         {
           id: "notes",
@@ -82,6 +82,28 @@ export const CheckedState: Story = {
   ),
 };
 
+export const WithDangerItem: Story = {
+  args: {
+    ...Default.args,
+  },
+  render: (args) => (
+    <DropdownMenu
+      {...args}
+      trigger={<Button label="Open menu" variant="outline" />}
+      items={[
+        ...baseItems,
+        {
+          id: "delete",
+          label: "Delete",
+          icon: <Trash2 className="size-4" />,
+          onClick: () => {},
+          severity: "danger",
+        },
+      ]}
+    />
+  ),
+};
+
 export const Disabled: Story = {
   args: {
     ...Default.args,
@@ -90,7 +112,7 @@ export const Disabled: Story = {
   render: (args) => (
     <DropdownMenu
       {...args}
-      trigger={<Button label="Dropdown disabled" variant="subtle" disabled />}
+      trigger={<Button label="Dropdown disabled" variant="outline" disabled />}
       items={baseItems}
     />
   ),

@@ -60,10 +60,23 @@ export function useTasksController({
         shell.tasks,
         shell.visibleTasks,
         exitAnimation.exitingTaskIds,
-        exitAnimation.hiddenTaskIds,
+        shell.showCompletedTasks ? new Set() : exitAnimation.hiddenTaskIds,
       ),
-    [exitAnimation.exitingTaskIds, exitAnimation.hiddenTaskIds, shell.tasks, shell.visibleTasks],
+    [
+      exitAnimation.exitingTaskIds,
+      exitAnimation.hiddenTaskIds,
+      shell.showCompletedTasks,
+      shell.tasks,
+      shell.visibleTasks,
+    ],
   );
+
+  const toggleShowCompletedTasks = useCallback(() => {
+    if (!shell.showCompletedTasks) {
+      clearHiddenTasks();
+    }
+    shell.toggleShowCompletedTasks();
+  }, [clearHiddenTasks, shell]);
 
   const selectView = useCallback(
     (nextView: string) => {
@@ -81,7 +94,7 @@ export function useTasksController({
     visibleTasks: shell.visibleTasks,
     showCompletedTasks: shell.showCompletedTasks,
     showCompletedToggle: shell.showCompletedToggle,
-    toggleShowCompletedTasks: shell.toggleShowCompletedTasks,
+    toggleShowCompletedTasks,
     displayTasks,
     sidebarOpen: shell.sidebarOpen,
     setSidebarOpen: shell.setSidebarOpen,
@@ -113,6 +126,7 @@ export function useTasksController({
     updateProject: projectMutations.updateProject,
     patchShareWith: projectMutations.patchShareWith,
     removeSharedList: projectMutations.removeSharedList,
+    deleteList: projectMutations.deleteList,
   };
 }
 

@@ -1,0 +1,222 @@
+{
+  "ChatChannel": {
+    "type": "object",
+    "required": [
+      "id",
+      "name",
+      "kind",
+      "scope",
+      "groupSlug",
+      "myRights",
+      "isSharee"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Channel collection id (CalDAV collection uri, chat-/dm- prefixed)."
+      },
+      "name": {
+        "type": "string"
+      },
+      "color": {
+        "type": ["string", "null"]
+      },
+      "kind": {
+        "type": "string",
+        "enum": ["channel", "meeting", "dm"]
+      },
+      "scope": {
+        "type": "string",
+        "enum": ["personal", "group"]
+      },
+      "groupSlug": {
+        "type": ["string", "null"]
+      },
+      "shareWith": {
+        "description": "Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner.",
+        "oneOf": [
+          {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/JmapId"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CalendarRights"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "isSharee": {
+        "type": "boolean"
+      },
+      "myRights": {
+        "$ref": "#/components/schemas/TaskListRights"
+      },
+      "isDefault": {
+        "type": "boolean",
+        "description": "True for a group's auto-provisioned default channel: owned by the group principal, immutable through the generic channel endpoints (like DMs), name tracks the group display name."
+      },
+      "topic": {
+        "type": ["string", "null"],
+        "description": "Channel topic shown in the main header subtitle (chat_channel_meta)."
+      },
+      "guestRoomCode": {
+        "type": ["string", "null"],
+        "description": "Meeting kind: linked meet_reservations room code for guest links."
+      },
+      "dmPeer": {
+        "type": ["string", "null"],
+        "description": "dm kind: the other member's username (DM rail key); null for channel/meeting kinds."
+      },
+      "memberCount": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Roster size (owner plus sharees, groups expanded)."
+      },
+      "unreadCount": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Unread messages after the caller's read marker, own messages excluded."
+      }
+    }
+  },
+  "ChatChannelListResponse": {
+    "type": "object",
+    "required": ["list"],
+    "additionalProperties": false,
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ChatChannel"
+        }
+      }
+    }
+  },
+  "ChatChannelCreate": {
+    "type": "object",
+    "required": ["name", "kind"],
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      },
+      "kind": {
+        "type": "string",
+        "enum": ["channel", "meeting"],
+        "description": "dm channels are never created here — POST /chat/dms provisions them find-or-create."
+      },
+      "color": {
+        "type": ["string", "null"]
+      },
+      "topic": {
+        "type": ["string", "null"]
+      },
+      "groupSlug": {
+        "type": ["string", "null"]
+      },
+      "id": {
+        "$ref": "#/components/schemas/JmapId",
+        "description": "Optional client-suggested channel id (uri slug)."
+      }
+    }
+  },
+  "ChatDmOpen": {
+    "type": "object",
+    "required": ["principal"],
+    "additionalProperties": false,
+    "properties": {
+      "principal": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 190,
+        "description": "Target username — an internal workspace user other than the caller (no groups, guests, or external addresses)."
+      }
+    }
+  },
+  "ChatChannelPatch": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      },
+      "color": {
+        "type": ["string", "null"]
+      },
+      "topic": {
+        "type": ["string", "null"]
+      },
+      "groupSlug": {
+        "type": ["string", "null"],
+        "description": "Transfer ownership to principals/groups/{slug} (or back to personal with null)."
+      },
+      "shareWith": {
+        "description": "Patch share grants. Keys are JMAP ids; a null grant revokes that principal.",
+        "oneOf": [
+          {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/JmapId"
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/CalendarRights"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    }
+  },
+  "ChatChannelChangesResponse": {
+    "type": "object",
+    "required": ["oldState", "newState", "created", "updated", "destroyed"],
+    "additionalProperties": false,
+    "properties": {
+      "oldState": {
+        "type": "string",
+        "description": "Previous sync state token supplied by the client."
+      },
+      "newState": {
+        "type": "string",
+        "description": "Current sync state token to store for the next request."
+      },
+      "created": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/JmapId"
+        }
+      },
+      "updated": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/JmapId"
+        }
+      },
+      "destroyed": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/JmapId"
+        }
+      }
+    },
+    "description": "JMAP-shaped incremental sync response for channel collections."
+  }
+}

@@ -398,8 +398,14 @@ describe("calendarEventFormIsValid", () => {
   it("rejects an empty title and end before start", () => {
     const form = emptyCalendarEventForm("default", "2033-01-12");
     expect(calendarEventFormIsValid(form)).toBe(false);
+    expect(calendarEventFormIsValid({ ...form, title: "   " })).toBe(false);
     const inverted = { ...form, title: "x", endDate: "2033-01-11", endTime: "09:00" };
     expect(calendarEventFormIsValid(inverted)).toBe(false);
+  });
+
+  it("accepts an empty title when requireTitle is false", () => {
+    const form = emptyCalendarEventForm("default", "2033-01-12");
+    expect(calendarEventFormIsValid(form, { requireTitle: false })).toBe(true);
   });
 });
 

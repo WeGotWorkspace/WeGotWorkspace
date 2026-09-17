@@ -10,29 +10,67 @@ namespace App\Services\Contacts\Conversion;
 final class ContactCardVcfImportSupport
 {
     /**
+     * Split a vCard file into complete cards. Prelude, orphan END:VCARD,
+     * empty/stub tails, and a truncated last card are omitted so leftover
+     * text is never treated as a failed import block.
+     *
      * @return list<string>
      */
     public static function splitVcards(string $input): array
     {
-        $normalized = str_replace(["\r\n", "\r"], "\n", $input);
-        $parts = preg_split('/(?=BEGIN:VCARD)/i', $normalized, -1, PREG_SPLIT_NO_EMPTY);
-        if ($parts === false) {
+        $normalized = preg_replace("/^\xEF\xBB\xBF/", '', str_replace(["\r\n", "\r"], "\n", $input));
+        if (! is_string($normalized) || $normalized === '') {
             return [];
         }
 
-        $vcards = [];
-        foreach ($parts as $part) {
-            $trimmed = trim($part);
-            if ($trimmed === '') {
+        $blocks = [];
+        $current = null;
+        foreach (explode("\n", $normalized) as $line) {
+            if ($current === null) {
+                if (preg_match('/^BEGIN:VCARD\s*$/i', $line) === 1) {
+                    $current = [$line];
+                }
+
                 continue;
             }
-            if (! str_contains(strtoupper($trimmed), 'END:VCARD')) {
-                continue;
+            $current[] = $line;
+            if (preg_match('/^END:VCARD\s*$/i', $line) === 1) {
+                if (self::isImportableVcardBlock($current)) {
+                    $blocks[] = implode("\n", $current);
+                }
+                $current = null;
             }
-            $vcards[] = $trimmed;
         }
 
-        return $vcards;
+        return $blocks;
+    }
+
+    /**
+     * @param  list<string>  $lines
+     */
+    private static function isImportableVcardBlock(array $lines): bool
+    {
+        if (count($lines) < 2) {
+            return false;
+        }
+
+        $interior = [];
+        foreach (array_slice($lines, 1, -1) as $line) {
+            $trimmed = trim((string) $line);
+            if ($trimmed !== '') {
+                $interior[] = $trimmed;
+            }
+        }
+        if ($interior === []) {
+            return false;
+        }
+        foreach ($interior as $line) {
+            if (preg_match('/^(VERSION|PRODID)[:;]/i', $line) !== 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

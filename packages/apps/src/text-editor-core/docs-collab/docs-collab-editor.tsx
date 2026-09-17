@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import type { Editor } from "@tiptap/react";
+import { useEditor, type Editor, type UseEditorOptions } from "@tiptap/react";
 import { isChangeOrigin } from "@tiptap/extension-collaboration";
-import { useEditor } from "@tiptap/react";
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 import { cn } from "@/lib/utils";
@@ -20,7 +19,6 @@ import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
 import { useTextEditorSourceSync } from "@/text-editor-core/src/use-text-editor-source-sync";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import { DocsCollabCommentControl } from "./docs-collab-comment-control";
-import { DocsCollabSuggestControls } from "./docs-collab-suggest-controls";
 
 import "@/text-editor-core/src/text-editor.css";
 
@@ -34,6 +32,13 @@ export type DocsCollabEditorProps = {
   viewSource?: boolean;
   /** When false, the TipTap surface rejects typing (view / comment-only). */
   editable?: boolean;
+  /**
+   * TipTap mount focus. Default focuses the end of an editable doc (existing
+   * notes) without scrolling the caret into view — the workspace detail
+   * scrollport should stay at the top on open/select. Pass `false` when
+   * another field (e.g. a new-note title) should keep focus.
+   */
+  autofocus?: UseEditorOptions["autofocus"];
   /**
    * When true, formatting controls on the bar are disabled (comment-only share).
    * Comment control remains independently gated via `commentsDisabled`.
@@ -57,8 +62,6 @@ export type DocsCollabEditorProps = {
     | "commentsAddFromSelectionDisabledViewSource"
     | "commentsAddFromSelectionDisabledReadOnly"
   >;
-  /** When false, hide Edit/Suggest mode control. */
-  showSuggestControls?: boolean;
   commentsOverlay?: ReactNode;
   suggestionsOverlay?: ReactNode;
 };
@@ -72,6 +75,7 @@ export function DocsCollabEditor({
   sheetFill = false,
   viewSource = false,
   editable = true,
+  autofocus,
   formattingDisabled = false,
   className,
   onMarkdownChange,
@@ -84,7 +88,6 @@ export function DocsCollabEditor({
   commentsDisabled = false,
   commentsDisabledTitle,
   commentControlLabels,
-  showSuggestControls = true,
   commentsOverlay,
   suggestionsOverlay,
 }: DocsCollabEditorProps) {
@@ -116,11 +119,18 @@ export function DocsCollabEditor({
     [],
   );
 
+  const resolvedAutofocus = autofocus ?? (editable ? "end" : false);
+  // Capture mount intent only — do not re-focus when the parent later drops
+  // `autofocus={false}` (e.g. new-note title handoff).
+  const mountAutofocusRef = useRef(resolvedAutofocus);
+
   const editor = useEditor(
     {
       editable,
       enableContentCheck: false,
-      autofocus: editable ? "end" : false,
+      // TipTap's built-in autofocus scrolls the caret into view; we focus below
+      // with `scrollIntoView: false` so long notes open at the top.
+      autofocus: false,
       immediatelyRender: false,
       extensions: createCollaborativeTextEditorExtensions({
         format,
@@ -140,6 +150,13 @@ export function DocsCollabEditor({
     },
     [ydoc, awareness, format, user.color, user.name],
   );
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const pos = mountAutofocusRef.current;
+    if (pos === false) return;
+    editor.commands.focus(pos === true ? undefined : pos, { scrollIntoView: false });
+  }, [editor]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
@@ -192,11 +209,6 @@ export function DocsCollabEditor({
             onAddCommentFromSelection={onAddCommentFromSelection}
           />
         ) : undefined
-      }
-      trailing={
-        viewSource || !showSuggestControls ? undefined : (
-          <DocsCollabSuggestControls editor={editor} />
-        )
       }
     />
   ) : null;

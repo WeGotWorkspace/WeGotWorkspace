@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Dav\Server\ChatHiddenCalendarBackend;
 use App\Services\Installer\WgwInstallEnv;
 use App\Support\ApiUrlBuilder;
 use App\Support\UpdateFeedDefaults;
@@ -53,6 +54,15 @@ return [
 
     'auth_realm' => env('WGW_AUTH_REALM', 'SabreDAV'),
 
+    'chat' => [
+        /**
+         * CalDAV collection URI prefixes hidden from DAV enumeration and direct
+         * DAV access (see {@see ChatHiddenCalendarBackend}).
+         * Chat collections are API-only surfaces; notes stay DAV-visible by design.
+         */
+        'dav_hidden_prefixes' => ['chat-', 'dm-'],
+    ],
+
     'jwt' => [
         'issuer' => env('WGW_API_JWT_ISSUER', 'wegotworkspace-api'),
         'audience' => env('WGW_API_JWT_AUDIENCE', 'wegotworkspace-clients'),
@@ -80,4 +90,16 @@ return [
      */
     'public_web_url' => env('WGW_PUBLIC_WEB_URL'),
     'vite_dev_port' => env('WGW_VITE_DEV_PORT'),
+
+    /**
+     * Public MCP / OAuth origin for local tunnels (ngrok, Tailscale Funnel, …).
+     * Honored only when {@code APP_ENV} is not production. Production already has a
+     * public site origin and ignores this even if set. No trailing slash.
+     * Each developer uses their own tunnel — do not commit a live ngrok host.
+     *
+     * @see docs/env.md
+     */
+    'mcp' => [
+        'public_origin' => env('WGW_MCP_PUBLIC_ORIGIN'),
+    ],
 ];

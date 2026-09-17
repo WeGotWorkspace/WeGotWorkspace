@@ -1,10 +1,14 @@
-import { useCallback, useMemo, useRef, useSyncExternalStore, type ReactNode } from "react";
-import { CheckCircle2, Eye, RefreshCw } from "lucide-react";
-import { IconButton } from "@/button/src/button";
+import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
+import { CheckCircle2, Eye } from "lucide-react";
+import { Button, IconButton } from "@/button/src/button";
+import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
-import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
+import {
+  CollectionSidebarMark,
+  CollectionSidebarRow,
+} from "@/collection-sidebar/src/collection-sidebar-row";
 import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
@@ -14,6 +18,7 @@ import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
+import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";
 import { filterSharePrincipals, sharePrincipalsFromDirectory } from "@/share-ui/collection-share";
 import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
@@ -38,19 +43,6 @@ import { TasksNewMenu } from "@/tasks-core/src/tasks-new-menu";
 import { canWriteTaskList, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 import "./tasks-workspace.css";
 import "./tasks-main-view.css";
-
-function TasksSidebarMark({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="collection-sidebar-row__mark" role="img" aria-label={label}>
-          {children}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
-}
 
 function TasksSidebarRows({
   lists,
@@ -101,9 +93,9 @@ function TasksSidebarRows({
             editLabel={editLabel}
             badges={
               viewOnly ? (
-                <TasksSidebarMark label={viewOnlyLabel}>
+                <CollectionSidebarMark label={viewOnlyLabel}>
                   <Eye className="size-3.5" aria-hidden />
-                </TasksSidebarMark>
+                </CollectionSidebarMark>
               ) : null
             }
             rootProps={{
@@ -182,6 +174,7 @@ export function TasksWorkspace({
     updateProject,
     patchShareWith,
     removeSharedList,
+    deleteList,
   } = controller;
 
   const projectGroups = taskProjectGroupsFromBootstrap(data);
@@ -297,29 +290,48 @@ export function TasksWorkspace({
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen((open) => !open)}
             title={viewLabel}
-            subtitle={L.listTasks(displayTasks.length)}
+            titleSuffix={
+              <span
+                className="view-header__title-count"
+                aria-label={L.listTasks(displayTasks.length)}
+              >
+                ({displayTasks.length})
+              </span>
+            }
             actions={
               <div className="tasks-workspace__header-actions flex items-center gap-2">
                 {showCompletedToggle ? (
-                  <IconButton
-                    label={showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks}
-                    onClick={toggleShowCompletedTasks}
-                    icon={<CheckCircle2 aria-hidden />}
-                    size="sm"
-                    variant="subtle"
-                    active={showCompletedTasks}
-                  />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        className={cn(
+                          "tasks-workspace__show-completed",
+                          showCompletedTasks && ICON_BUTTON_ACTIVE_CLASSNAME,
+                        )}
+                        label={L.showCompletedTasks}
+                        aria-label={
+                          showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks
+                        }
+                        onClick={toggleShowCompletedTasks}
+                        icon={<CheckCircle2 aria-hidden />}
+                        size="md"
+                        variant="outline"
+                        aria-pressed={showCompletedTasks}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks}
+                    </TooltipContent>
+                  </Tooltip>
                 ) : null}
                 {onRefreshList ? (
                   <IconButton
                     label={L.refreshList}
                     onClick={onRefreshList}
                     disabled={listRefreshing}
-                    icon={
-                      <RefreshCw className={cn(listRefreshing && "animate-spin")} aria-hidden />
-                    }
-                    size="sm"
-                    variant="subtle"
+                    icon={<RefreshSpinIcon spinning={listRefreshing} />}
+                    size="md"
+                    variant="outline"
                   />
                 ) : null}
               </div>
@@ -360,6 +372,13 @@ export function TasksWorkspace({
         onSave={(input) => {
           void saveEditedTask(input);
         }}
+        onDelete={
+          editingTaskWritable && editingTask
+            ? () => {
+                requestDeleteTask(editingTask.id);
+              }
+            : undefined
+        }
       />
       <TaskProjectDialog
         dialog={projectDialog}
@@ -388,6 +407,13 @@ export function TasksWorkspace({
           projectDialog?.mode === "edit" && projectDialog.isSharee
             ? () => {
                 void removeSharedList(projectDialog.listId);
+              }
+            : undefined
+        }
+        onDelete={
+          projectDialog?.mode === "edit" && projectDialog.mayDelete
+            ? () => {
+                void deleteList(projectDialog.listId);
               }
             : undefined
         }

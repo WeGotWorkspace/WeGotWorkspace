@@ -42,6 +42,8 @@ final class CalendarSchedulingNotificationService
         $rows = Principal::query()
             ->where('uri', 'like', 'principals/%')
             ->where('uri', 'not like', 'principals/groups/%')
+            // The `principals/groups` container node is not a user either.
+            ->where('uri', '!=', 'principals/groups')
             ->orderBy('uri')
             ->get();
 
@@ -216,13 +218,15 @@ final class CalendarSchedulingNotificationService
             return $this->isOwnParticipant($username, (string) $vevent->ORGANIZER);
         }
 
-        if ($vevent instanceof VEvent && $this->isListedAttendee($username, $vevent)) {
-            return false;
+        // Missing ORGANIZER: only keep rows where this user is an ATTENDEE.
+        // Outbound copies (and post-materialization owned events) must stay out.
+        if ($vevent instanceof VEvent) {
+            return ! $this->isListedAttendee($username, $vevent);
         }
 
         $eventId = $notification['eventId'] ?? null;
         if (! is_string($eventId) || $eventId === '') {
-            return $vevent instanceof VEvent && ! $this->isListedAttendee($username, $vevent);
+            return true;
         }
 
         try {
@@ -297,9 +301,25 @@ final class CalendarSchedulingNotificationService
         $raw = is_string($row->calendardata) ? $row->calendardata : (string) $row->calendardata;
         $vcal = Reader::read($raw);
         $vevent = $vcal->VEVENT ?? null;
-        $method = strtoupper(trim((string) ($vcal->METHOD ?? 'REQUEST')));
+        $method = strtoupper(trim((string) ($vcal->METHOD ?? '')));
+        if ($method === '') {
+            $method = 'REQUEST';
+        }
         $uid = $vevent instanceof VEvent ? trim((string) ($vevent->UID ?? '')) : '';
         $copy = $uid !== '' ? $this->findEventByUid($username, $uid) : null;
+        // Inbox-only REQUESTs (copy missing) cannot be RSVP'd — materialize the
+        // invitee calendar object so the UI gets an eventId and respond works.
+        // Skip materialization when this principal is not an ATTENDEE (outbound /
+        // organizer-shaped rows with a missing ORGANIZER must not create a copy).
+        if (
+            $copy === null
+            && $uid !== ''
+            && $method === 'REQUEST'
+            && $vevent instanceof VEvent
+            && $this->isListedAttendee($username, $vevent)
+        ) {
+            $copy = $this->ensureInviteeEventCopy($username, $raw, $uid);
+        }
 
         return [
             'id' => (string) $row->uri,
@@ -319,6 +339,21 @@ final class CalendarSchedulingNotificationService
             'recurring' => $vevent instanceof VEvent && $this->isRecurring($vevent),
             'etag' => (string) $row->etag,
         ];
+    }
+
+    /**
+     * Create a default-calendar copy from a schedule-inbox REQUEST when delivery
+     * left the inbox row without a VEVENT object (or the copy was deleted).
+     */
+    private function ensureInviteeEventCopy(string $username, string $ics, string $uid): ?CalendarObject
+    {
+        try {
+            $this->events->importFromIcs($username, $ics, CalendarCollectionUris::EVENT_DEFAULT);
+        } catch (\Throwable) {
+            // Race or unimportable payload — fall through to a fresh lookup.
+        }
+
+        return $this->findEventByUid($username, $uid);
     }
 
     private function schedulingObjectFromCalendarCopy(CalendarObject $copy): SchedulingObject
@@ -469,10 +504,14 @@ final class CalendarSchedulingNotificationService
 
     private function findEventByUid(string $username, string $uid): ?CalendarObject
     {
+        // Include group calendars the user can access — invite copies may live
+        // under principals/groups/{slug}, not only principals/{username}.
+        $principalUris = $this->calendars->accessiblePrincipalUris($username);
+
         return CalendarObject::query()
             ->where('uid', $uid)
-            ->whereHas('calendar.instances', function ($query) use ($username): void {
-                $query->where('principaluri', $this->principalUri($username));
+            ->whereHas('calendar.instances', function ($query) use ($principalUris): void {
+                $query->whereIn('principaluri', $principalUris);
             })
             ->first();
     }
@@ -483,9 +522,10 @@ final class CalendarSchedulingNotificationService
     private function ownPartstat(string $username, mixed $vevent, ?CalendarObject $copy): string
     {
         if ($copy !== null) {
+            $principalUris = $this->calendars->accessiblePrincipalUris($username);
             $instance = CalendarInstance::query()
                 ->where('calendarid', (int) $copy->calendarid)
-                ->where('principaluri', $this->principalUri($username))
+                ->whereIn('principaluri', $principalUris)
                 ->first();
             if ($instance !== null) {
                 $event = $this->mapper->toCalendarEvent(

@@ -23,7 +23,7 @@ Start a **Discussion** or file a **bug**. Do not open Goal, Epic, Task, or Chore
 
 ## Maintainers
 
-Internal work follows [AGENTS.md](AGENTS.md), [GOVERNANCE.md](GOVERNANCE.md), and agent skills under `.agents/skills/`.
+Internal work follows [AGENTS.md](AGENTS.md), [GOVERNANCE.md](GOVERNANCE.md), and agent skills under `.agents/skills/`. Specs, plans, docs, and GitHub issues (including Goals and comments) are **English**, even when the discussion that produced them was not.
 
 ## Code of conduct
 

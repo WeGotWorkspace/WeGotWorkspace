@@ -34,12 +34,7 @@ const modules = [
   { name: "meet", title: "Meet - WeGotWorkspace" },
 ];
 
-const RUNTIME_FONT_PRELOADS = [
-  "GeneralSans-Variable.woff2",
-  "GeneralSans-VariableItalic.woff2",
-  "LibreCaslonCondensed.woff2",
-  "JetBrainsMono-Variable.woff2",
-];
+const RUNTIME_FONT_PRELOADS = ["LibreCaslonCondensed.woff2", "JetBrainsMono-Variable.woff2"];
 
 /** Workbox service worker artifacts generated beside dist/index.html (hashed workbox-*.js name). */
 function listPwaServiceWorkerFiles(distRoot) {

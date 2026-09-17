@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Archive, ArchiveRestore, Circle, FolderInput, Star, Trash2 } from "lucide-react";
+import type { ButtonSeverity } from "@/button/src/button.shared";
 
 export type MailActionButtonDescriptor = {
   id: "move-to-mailbox" | "mark-read-unread" | "toggle-star" | "toggle-archive" | "toggle-trash";
@@ -7,6 +8,7 @@ export type MailActionButtonDescriptor = {
   icon: ReactNode;
   onClick: () => void;
   active?: boolean;
+  severity?: ButtonSeverity;
 };
 
 type MailActionButtonLabels = Partial<{
@@ -85,6 +87,7 @@ export function buildMailActionButtons({
       ),
       onClick: toggleArchive,
       active: isArchived,
+      severity: isArchived ? undefined : "danger",
     },
     {
       id: "toggle-trash",
@@ -94,6 +97,7 @@ export function buildMailActionButtons({
       icon: <Trash2 className={`size-4 ${isTrashed ? "mail-state-accent" : ""}`} />,
       onClick: toggleTrash,
       active: isTrashed,
+      severity: isTrashed ? undefined : "danger",
     },
   ];
 }

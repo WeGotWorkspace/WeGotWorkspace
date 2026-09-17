@@ -5,6 +5,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { bridgePortalThemeFromOpenTrigger } from "@/ui/portal-theme-vars";
 import "@/ui/dropdown-menu.css";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -43,28 +44,70 @@ DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayNam
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubContent
-    ref={ref}
-    className={cn("dropdown-menu-ui__sub-content", className)}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const contentRef = React.useRef<React.ElementRef<typeof DropdownMenuPrimitive.SubContent> | null>(
+    null,
+  );
+
+  const assignContentRef = React.useCallback(
+    (node: React.ElementRef<typeof DropdownMenuPrimitive.SubContent> | null) => {
+      contentRef.current = node;
+      if (node) bridgePortalThemeFromOpenTrigger(node);
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref],
+  );
+
+  React.useLayoutEffect(() => {
+    const content = contentRef.current;
+    if (content) bridgePortalThemeFromOpenTrigger(content);
+  }, []);
+
+  return (
+    <DropdownMenuPrimitive.SubContent
+      ref={assignContentRef}
+      className={cn("dropdown-menu-ui__sub-content", className)}
+      {...props}
+    />
+  );
+});
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
-    <DropdownMenuPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
-      className={cn("dropdown-menu-ui__content", className)}
-      {...props}
-    />
-  </DropdownMenuPrimitive.Portal>
-));
+>(({ className, sideOffset = 4, ...props }, ref) => {
+  const contentRef = React.useRef<React.ElementRef<typeof DropdownMenuPrimitive.Content> | null>(
+    null,
+  );
+
+  const assignContentRef = React.useCallback(
+    (node: React.ElementRef<typeof DropdownMenuPrimitive.Content> | null) => {
+      contentRef.current = node;
+      if (node) bridgePortalThemeFromOpenTrigger(node);
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref],
+  );
+
+  React.useLayoutEffect(() => {
+    const content = contentRef.current;
+    if (content) bridgePortalThemeFromOpenTrigger(content);
+  }, []);
+
+  return (
+    <DropdownMenuPrimitive.Portal>
+      <DropdownMenuPrimitive.Content
+        ref={assignContentRef}
+        sideOffset={sideOffset}
+        className={cn("dropdown-menu-ui__content", className)}
+        {...props}
+      />
+    </DropdownMenuPrimitive.Portal>
+  );
+});
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
 const DropdownMenuItem = React.forwardRef<

@@ -9,9 +9,11 @@ import {
 } from "@/text-editor-core/src/text-editor-format-bar";
 import { createCollaborativeTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
+import { ViewHeader } from "@/view-header/src/view-header";
 import { useMockDocsCollabEditorSession } from "@/text-editor-core/stories/text-editor-collab-stories.harness";
 
 import "@/text-editor-core/src/text-editor.css";
+import "@/docs-core/src/docs-workspace.css";
 
 function SuggestControlsHarness() {
   const session = useMockDocsCollabEditorSession("Alex");
@@ -34,11 +36,16 @@ function SuggestControlsHarness() {
   );
 
   return (
-    <div className="text-editor flex min-h-[min(640px,90dvh)] w-full flex-col p-6">
+    <div className="docs-workspace flex min-h-[min(640px,90dvh)] w-full flex-col p-6">
       <p className="mb-3 text-sm text-muted-foreground">
-        Choose <strong>Suggest</strong> from the format bar dropdown to track edits, then review and
-        accept or reject proposals in the suggestions sidebar.
+        Use the header <strong>Suggest</strong> toggle to track edits, then review and accept or
+        reject proposals in the suggestions sidebar.
       </p>
+      <ViewHeader
+        title="together.md"
+        hideSidebarToggle
+        actions={<DocsCollabSuggestControls editor={editor} />}
+      />
       <TextEditorFormatBar
         editor={editor}
         groups={TEXT_EDITOR_FORMAT_BAR_FULL}
@@ -50,7 +57,6 @@ function SuggestControlsHarness() {
             onAddCommentFromSelection={() => {}}
           />
         }
-        trailing={<DocsCollabSuggestControls editor={editor} />}
       />
       <TextEditorSheet editor={editor} variant="sheet" fill className="min-h-0 flex-1" />
     </div>
@@ -65,7 +71,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Edit/suggest mode dropdown for the format bar, backed by MIT `tiptap-track-changes`. Accept/reject live in the suggestions sidebar.",
+          "Suggest-mode outline state Button (always Pencil; Tasks show-completed pattern) for the Docs collab ViewHeader, backed by MIT `tiptap-track-changes`. Accept/reject live in the suggestions sidebar.",
       },
     },
   },

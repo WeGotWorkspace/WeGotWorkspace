@@ -22,6 +22,7 @@ const signaturePath = resolve(outputRoot, "manifest.sig");
 const appReleaseEntries = [
   ".htaccess",
   "example.htaccess",
+  ".user.ini",
   "index.php",
   "bootstrap",
   "VERSION",

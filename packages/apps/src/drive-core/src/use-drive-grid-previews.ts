@@ -28,6 +28,8 @@ function isMediaPreviewable(file: DriveFile): boolean {
 
 function isTextPreviewable(file: DriveFile): boolean {
   if (file.kind === "folder") return false;
+  // Docs-editor files (.md / .txt): kind icon only — no excerpt or body preview.
+  if (isDocsEditorPreviewFile(file.title, file.apiPath)) return false;
   if (!file.apiPath && !isUsableTextExcerpt(file.excerpt ?? "", file.apiPath)) return false;
   return fileSupportsTextPreview(file.title, file.kind, file.apiPath);
 }

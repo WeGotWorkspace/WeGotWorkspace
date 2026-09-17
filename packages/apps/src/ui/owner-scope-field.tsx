@@ -42,7 +42,7 @@ export function OwnerScopeField({
   return (
     <FieldLabelRow label={labels.label} htmlFor={id}>
       <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-        <SelectTrigger id={id} className="owner-scope-field__trigger" disabled={disabled}>
+        <SelectTrigger id={id} size="sm" className="owner-scope-field__trigger" disabled={disabled}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

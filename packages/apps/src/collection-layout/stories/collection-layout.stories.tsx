@@ -14,7 +14,7 @@ type Story = StoryObj;
 export const Default: Story = {
   render: () => (
     <div className="flex h-dvh w-full">
-      <CollectionListPane detailOpenMobile={false}>
+      <CollectionListPane>
         <CollectionHeader>
           <h2
             className="text-3xl leading-none flex-1 min-w-0 truncate"
@@ -26,7 +26,7 @@ export const Default: Story = {
             className="text-[10px] mt-2 uppercase tracking-[0.18em]"
             style={{ color: "color-mix(in oklab, var(--color-ink) 45%, transparent)" }}
           >
-            12 Files
+            12 Items
           </p>
           <CollectionSearchInput value="" onChange={() => {}} placeholder="Search..." />
         </CollectionHeader>

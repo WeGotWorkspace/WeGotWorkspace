@@ -164,6 +164,7 @@ final class TaskRepository
         array $payload,
         ?string $ifMatch = null,
         ?string $ifUnmodifiedSince = null,
+        bool $requirePrecondition = true,
     ): array {
         $located = $this->findOwnedTask($username, $taskId);
         if ($located === null) {
@@ -171,7 +172,7 @@ final class TaskRepository
         }
 
         $this->collectionAccess->assertCollectionWritable($located['instance'], 'This task list is read-only.');
-        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince);
+        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
 
         $instance = $located['instance'];
         $object = $located['object'];
@@ -228,6 +229,7 @@ final class TaskRepository
         array $patch,
         ?string $ifMatch = null,
         ?string $ifUnmodifiedSince = null,
+        bool $requirePrecondition = true,
     ): array {
         $located = $this->findOwnedTask($username, $taskId);
         if ($located === null) {
@@ -235,7 +237,7 @@ final class TaskRepository
         }
 
         $this->collectionAccess->assertCollectionWritable($located['instance'], 'This task list is read-only.');
-        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince);
+        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
 
         $instance = $located['instance'];
         $object = $located['object'];
@@ -291,6 +293,7 @@ final class TaskRepository
         string $taskId,
         ?string $ifMatch = null,
         ?string $ifUnmodifiedSince = null,
+        bool $requirePrecondition = true,
     ): array {
         $located = $this->findOwnedTask($username, $taskId);
         if ($located === null) {
@@ -298,7 +301,7 @@ final class TaskRepository
         }
 
         $this->collectionAccess->assertCollectionWritable($located['instance'], 'This task list is read-only.');
-        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince);
+        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
 
         $instance = $located['instance'];
         $object = $located['object'];
@@ -505,13 +508,18 @@ final class TaskRepository
         return 'principals/'.$username;
     }
 
-    private function assertObjectPreconditions(CalendarObject $object, ?string $ifMatch, ?string $ifUnmodifiedSince): void
-    {
+    private function assertObjectPreconditions(
+        CalendarObject $object,
+        ?string $ifMatch,
+        ?string $ifUnmodifiedSince,
+        bool $requirePrecondition = true,
+    ): void {
         OptimisticConcurrency::assertPreconditions(
             $ifMatch,
             $ifUnmodifiedSince,
             is_string($object->etag) ? $object->etag : null,
             (int) ($object->lastmodified ?? 0),
+            $requirePrecondition,
         );
     }
 

@@ -5,6 +5,9 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import "@/menu-item/src/menu-item.css";
 
+/** Semantic severity for destructive / warning menu rows (hover wash + fg). */
+export type MenuItemSeverity = "danger";
+
 export type MenuItemProps = {
   label: React.ReactNode;
   description?: React.ReactNode;
@@ -15,6 +18,8 @@ export type MenuItemProps = {
   checked?: boolean;
   disabled?: boolean;
   isDropTarget?: boolean;
+  /** When set, fg + hover/focus wash use severity tokens instead of accent/ink. */
+  severity?: MenuItemSeverity;
   to?: string;
   className?: string;
   onDragEnter?: (e: React.DragEvent) => void;
@@ -37,6 +42,7 @@ export const MenuItem = React.forwardRef<
     checked,
     disabled = false,
     isDropTarget,
+    severity,
     to,
     className,
     onDragEnter,
@@ -55,6 +61,8 @@ export const MenuItem = React.forwardRef<
     : selected
       ? "menu-item--surface-selected"
       : "menu-item--surface-idle";
+
+  const severityClass = severity === "danger" ? "menu-item--severity-danger" : undefined;
 
   const row = (
     <>
@@ -86,6 +94,7 @@ export const MenuItem = React.forwardRef<
     interactive && "menu-item--interactive",
     hasDescription ? "menu-item--align-start" : "menu-item--align-center",
     surfaceClass,
+    severityClass,
     className,
   );
 

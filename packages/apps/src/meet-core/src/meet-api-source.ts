@@ -34,8 +34,9 @@ function meetBootstrapUsesAuthenticatedOps(bootstrap?: MeetAppBootstrap): boolea
 }
 
 /**
- * Signed-in createdBy / ownerPrincipal members get the manager GET body.
- * Anonymous and non-manager visitors stay on guest bootstrap + signaling.
+ * Cookie-session visitors get authenticated bootstrap + ops (locked lobby name,
+ * knock as their principal). Anonymous visitors stay on guest signaling.
+ * Host vs knock is decided later from roomStatus / channel ACL — not here.
  */
 export async function meetGuestLinkAllowsHostUpgrade(room: string | null): Promise<boolean> {
   if (!room) return false;
@@ -52,14 +53,16 @@ export async function meetGuestLinkAllowsHostUpgrade(room: string | null): Promi
   }
 }
 
-/** `/meet/guest` source: upgrade a cookie-session manager to the same host path as `/meet/join`. */
-export function createWgwMeetGuestOrHostApiSource(room: string | null): MeetApiSource {
+/** Invite-landing source: upgrade any cookie session so signed-in non-members keep their identity. */
+export function createWgwMeetGuestOrHostApiSource(_room: string | null): MeetApiSource {
   return {
     async loadBootstrap() {
-      if (await meetGuestLinkAllowsHostUpgrade(room)) {
+      try {
+        await wgwFetchPrincipal();
         return fetchMeetLiveBootstrap();
+      } catch {
+        return fetchMeetGuestBootstrap();
       }
-      return fetchMeetGuestBootstrap();
     },
     createOperations(bootstrap) {
       return meetBootstrapUsesAuthenticatedOps(bootstrap)

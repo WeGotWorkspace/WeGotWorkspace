@@ -8,13 +8,58 @@
 /**
  * Dense uppercase field caption. Parents override tone via `labelClassName` or
  * `--field-label-color` / `--field-label-font-family` on an ancestor.
+ * No letter-spacing — size comes from `--text-2xs` (minimum caption size).
  */
 .field-label-row__label {
-  @apply flex items-center gap-1.5 text-xs font-normal uppercase tracking-wider;
-  font-family: var(--field-label-font-family, var(--font-mono, ui-monospace, monospace));
+  @apply flex items-center gap-1 text-2xs font-medium uppercase;
+  font-family: var(
+    --field-label-font-family,
+    var(--font-sans, ui-sans-serif, system-ui, sans-serif)
+  );
   color: var(--field-label-color, var(--color-muted-foreground));
+}
+
+/** Sibling icons (passed `icon`, lock) match the 2xs caption optically. */
+.field-label-row__label > svg {
+  @apply size-3 shrink-0;
+}
+
+/**
+ * Empty-caption spacer: keep the band in flow (height + `space-y` gap).
+ * Do not use `display: none` (collapses) or `flex-basis` to a column width
+ * (in a column stack that becomes height).
+ */
+.field-label-row__label--reserved {
+  @apply invisible pointer-events-none select-none;
 }
 
 .field-label-row__lock {
   @apply size-3 shrink-0 opacity-60;
+}
+
+/**
+ * Icon-only label in front of the control (horizontal). Used by dense forms
+ * such as the calendar event editor.
+ */
+.field-label-row--icon {
+  @apply mb-4 flex items-start gap-2 space-y-0 last:mb-0;
+}
+
+.field-label-row__icon-label {
+  @apply inline-flex shrink-0 cursor-default items-center justify-center;
+  /* Match default control height so the icon lines up with the first row.
+   * Parents (e.g. compact event form) may set `--field-label-icon-min-height`. */
+  min-height: var(
+    --field-label-icon-min-height,
+    var(--input-height, var(--control-height-md, 2.25rem))
+  );
+  color: var(--field-label-color, var(--color-muted-foreground));
+}
+
+.field-label-row__icon-label > svg {
+  @apply size-3 shrink-0;
+}
+
+.field-label-row__control {
+  @apply min-w-0 flex-1;
 }

@@ -537,7 +537,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SettingsStateResponse"];
+                    };
                 };
             };
         };
@@ -572,7 +574,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SettingsStateResponse"];
+                    };
                 };
             };
         };
@@ -606,7 +610,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SettingsStateResponse"];
+                    };
                 };
             };
         };
@@ -1491,74 +1497,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/notes/capabilities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Notes capabilities */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notes capabilities */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/state": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Notes runtime boot state for authenticated user */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notes state */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/notes/items": {
         parameters: {
             query?: never;
@@ -1566,27 +1504,36 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List notes with optional archive/notebook/search filters */
+        /** List notes */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    notebookId?: string;
+                    starred?: boolean;
+                    status?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Notes list */
+                /** @description Notes */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["NoteListResponse"];
+                    };
                 };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
             };
         };
         put?: never;
-        /** Create a new note */
+        /** Create a note */
         post: {
             parameters: {
                 query?: never;
@@ -1594,167 +1541,25 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NoteCreate"];
+                };
+            };
             responses: {
                 /** @description Created note */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/items/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Save/update a note */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Updated note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        post?: never;
-        /** Delete a note */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deleted note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Patch note (e.g. archive) */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Updated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/notes/items/{id}/archive": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Archive a note */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Archived note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
                     content: {
-                        "application/json": components["schemas"]["NoteMutationResponse"];
+                        "application/json": components["schemas"]["Note"];
                     };
                 };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/items/{id}/restore": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Restore an archived note */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Restored note */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NoteMutationResponse"];
-                    };
-                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
+                413: components["responses"]["JmapPayloadTooLarge"];
             };
         };
         delete?: never;
@@ -1770,7 +1575,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List notebooks with active/archive counts */
+        /** List notebooks */
         get: {
             parameters: {
                 query?: never;
@@ -1780,17 +1585,20 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Notebook list */
+                /** @description Notebooks */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["NotebookListResponse"];
+                    };
                 };
+                403: components["responses"]["JmapForbidden"];
             };
         };
         put?: never;
-        /** Create notebook */
+        /** Create a notebook */
         post: {
             parameters: {
                 query?: never;
@@ -1798,77 +1606,30 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotebookCreate"];
+                };
+            };
             responses: {
-                /** @description Notebook created */
+                /** @description Created notebook */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["Notebook"];
+                    };
                 };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
             };
         };
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-    "/notes/notebooks/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete notebook (archive, move, or purge) */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    name: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notebook deleted */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Rename notebook */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    name: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Notebook renamed */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
         trace?: never;
     };
     "/plugins": {
@@ -3768,7 +3529,7 @@ export interface paths {
         };
         /**
          * Meeting room reservation status
-         * @description Guests receive { reserved, active } only. Owner-principal members and createdBy receive the full body. Missing reservation is 404.
+         * @description Guests receive { reserved, active } only. Owner-principal members and createdBy receive the full body. Missing reservation is 404. Meeting-kind collection slugs (`test`, `chat-test`) resolve as reserved.
          */
         get: {
             parameters: {
@@ -3941,7 +3702,13 @@ export interface paths {
         /** Poll events */
         get: {
             parameters: {
-                query?: never;
+                query: {
+                    peerId: string;
+                    since?: number;
+                    /** @description Roster signature (`rosterSig`) from a previous poll response. When it still matches and no messages are pending for the peer, the server answers 204 No Content. */
+                    sig?: string;
+                    sessionKey?: string;
+                };
                 header?: never;
                 path: {
                     roomId: string;
@@ -3952,6 +3719,13 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nothing new — roster unchanged for the provided `sig` and no pending messages. */
+                204: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4841,12 +4615,12 @@ export interface paths {
         };
         /**
          * List paths shared with current user
-         * @description Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients).
+         * @description Path-keyed Drive member grants. Default omits leftover `.notes` file paths so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`); `includeNotes=true` only includes old `.notes` path grants, not a Notes client API.
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description When true, include file grants under `.notes`. Default is false. */
+                    /** @description When true, include leftover Drive file grants under `.notes`. Default is false. Not used by the Notes app (VJOURNAL notebooks). */
                     includeNotes?: boolean;
                 };
                 header?: never;
@@ -5286,84 +5060,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/notes/shared-with-me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List note files shared with the current user via path grants
-         * @description Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths unless `includeNotes=true`.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Shared notes */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NotesSharedWithMeResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/notes/shared-notebooks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List shared notebook ACL rows (compat — always empty)
-         * @description Personal notebook-directory ACL shares are not a product feature. This endpoint remains for contract compatibility and returns empty `items` and `notes`. Group-membership notebooks are listed via `GET /notes/notebooks` / `GET /notes/items`.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Compat empty list (personal notebook-directory ACL shares removed). */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NotesSharedNotebooksResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/jmap/session": {
         parameters: {
             query?: never;
@@ -5373,7 +5069,7 @@ export interface paths {
         };
         /**
          * JMAP Session resource
-         * @description RFC 8620 §2 Session resource for the JMAP envelope (calendars + contacts). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.
+         * @description RFC 8620 §2 Session resource for the JMAP envelope (calendars, contacts, filenode, and the vendor `urn:wgw:jmap:notes` / `urn:wgw:jmap:chat` envelopes). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.
          */
         get: {
             parameters: {
@@ -6384,6 +6080,966 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notes/notebooks/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Notebook collection changes */
+        get: {
+            parameters: {
+                query?: {
+                    since?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notebook changes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JmapChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notes/notebooks/{notebookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a notebook */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notebookId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notebook */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notebook"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete a notebook */
+        delete: {
+            parameters: {
+                query?: {
+                    /** @description Same as NotebookDeleteOptions.onDestroyRemoveContents. Query is the reliable client path; DELETE bodies are often dropped. */
+                    onDestroyRemoveContents?: boolean;
+                };
+                header?: never;
+                path: {
+                    notebookId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotebookDeleteOptions"];
+                };
+            };
+            responses: {
+                /** @description Deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update a notebook */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notebookId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotebookPatch"];
+                };
+            };
+            responses: {
+                /** @description Updated notebook */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notebook"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        trace?: never;
+    };
+    "/notes/items/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Note item changes */
+        get: {
+            parameters: {
+                query: {
+                    notebookId: string;
+                    since?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Note changes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JmapChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notes/items/{noteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a note by VJOURNAL UID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Note */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Note"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete a note */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                412: components["responses"]["JmapPreconditionFailed"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Patch a note (If-Match required) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotePatch"];
+                };
+            };
+            responses: {
+                /** @description Updated note */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Note"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+                412: components["responses"]["JmapPreconditionFailed"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+            };
+        };
+        trace?: never;
+    };
+    "/notes/items/{noteId}/star": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Star a note for the current user */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Starred */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        /** Unstar a note */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Unstarred */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/channels/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chat channel collection changes */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Previous sync state token. */
+                    since?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Channel changes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannelChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List chat channels */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Chat channels */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannelListResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        /** Create a chat channel */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatChannelCreate"];
+                };
+            };
+            responses: {
+                /** @description Created chat channel */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannel"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/channels/{channelId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a chat channel */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Chat channel */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannel"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete a chat channel */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update a chat channel */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatChannelPatch"];
+                };
+            };
+            responses: {
+                /** @description Updated chat channel */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannel"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        trace?: never;
+    };
+    "/chat/channels/{channelId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List channel messages (cursor paging) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Return messages after this ULID cursor (exclusive), ascending. */
+                    since?: string;
+                    /** @description Return messages before this ULID cursor (exclusive), for history backfill. */
+                    before?: string;
+                    /** @description Page size cap. */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Channel messages */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatMessageListResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        /** Send a message */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatMessageCreate"];
+                };
+            };
+            responses: {
+                /** @description Created message */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatMessage"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/channels/{channelId}/read-marker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the caller's read marker */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatReadMarkerPut"];
+                };
+            };
+            responses: {
+                /** @description Read marker stored */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/messages/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Message changes for one channel */
+        get: {
+            parameters: {
+                query: {
+                    channelId: string;
+                    /** @description Previous sync state token. */
+                    since?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Message changes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatMessageChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/messages/{messageId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a message (author only, tombstone) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Message ULID. */
+                    messageId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Edit a message body (author only) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Message ULID. */
+                    messageId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatMessagePatch"];
+                };
+            };
+            responses: {
+                /** @description Updated message */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatMessage"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+            };
+        };
+        trace?: never;
+    };
+    "/chat/messages/{messageId}/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Toggle a reaction for the caller */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Message ULID. */
+                    messageId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatReactionToggleRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated message */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatMessage"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/dms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open (find-or-create) a direct message channel
+         * @description Idempotent: the DM collection uri is a deterministic, order-independent hash of both usernames, so either side opening the DM returns the same channel.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatDmOpen"];
+                };
+            };
+            responses: {
+                /** @description The DM channel (existing or newly provisioned) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannel"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/mcp-grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List connected assistant OAuth grants */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Connected assistant grants */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SettingsMcpGrantList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/mcp-grants/{clientId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a connected assistant grant */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Grant revoked */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                /** @description Grant not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6734,6 +7390,7 @@ export interface components {
             apps: components["schemas"]["AdminAppsSettings"];
             webdav: components["schemas"]["AdminWebdavSettings"];
             updates: components["schemas"]["UpdateStateResponse"];
+            mcp: components["schemas"]["AdminMcpSettings"];
             currentUser: string;
             logoutUrl: string;
         };
@@ -6787,6 +7444,8 @@ export interface components {
             mail: components["schemas"]["SettingsUserMail"];
             mailServer: components["schemas"]["SettingsUserMailServer"];
             logoutUrl: string;
+            /** @description Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs. */
+            mcpEnabled: boolean;
         };
         /**
          * @example {
@@ -7187,21 +7846,21 @@ export interface components {
             starred?: boolean | null;
             archived: boolean;
             /**
-             * @description Storage scope: personal (users/{username}/.notes) or group (groups/{slug}/.notes).
+             * @description Notebook scope: personal (caller principal) or group (group principal). Not a Drive .notes path.
              * @enum {string}
              */
             scope: "personal" | "group";
             /** @description Group slug when scope is group, null for personal notes. */
             groupSlug: string | null;
-            /** @description Metadata concurrency token from the frontmatter `updated` marker. Body-only collab saves do not advance this value. */
+            /** @description Metadata concurrency token from VJOURNAL LAST-MODIFIED / DTSTAMP. Body-only collab saves do not advance this value. */
             updatedAt: string;
-            /** @description File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards. */
+            /** @description Content timestamp. Advances when DESCRIPTION is rewritten (including collab saves). Prefer for list/footer last-edited display; use updatedAt for offline ifInState guards. */
             contentUpdatedAt?: string;
-            /** @description True when this note file or its notebook directory has direct outgoing share grants (member/team or public). Omitted or false when the owner has not shared the note. */
+            /** @description True when the notebook has outgoing collection shares. Omitted or false when unshared. */
             hasShares?: boolean;
-            /** @description True when this note file or its notebook directory has an active public link share. */
+            /** @description True when the notebook has an active public link share. */
             hasPublicShare?: boolean;
-            /** @description True when this note file or its notebook directory has active team grants (users or groups). */
+            /** @description True when the notebook has active team grants (users or groups). */
             hasTeamShare?: boolean;
         };
         NoteItemList: components["schemas"]["NoteItem"][];
@@ -7232,7 +7891,7 @@ export interface components {
             tags?: components["schemas"]["NoteTagList"];
             starred?: boolean;
             archived?: boolean;
-            /** @description Target a shared group notebook (groups/{slug}/.notes). Omit or null for the caller's personal notes. Caller must be a group member. */
+            /** @description Target a group-principal notebook. Omit or null for the caller's personal notes. Caller must be a group member. */
             groupSlug?: string | null;
         };
         /**
@@ -7245,7 +7904,7 @@ export interface components {
         NoteDeleteRequest: {
             notebook: string;
             archived: boolean;
-            /** @description Group slug when deleting a note under groups/{slug}/.notes. Omit or null for personal notes. */
+            /** @description Group slug when deleting a note in a group-principal notebook. Omit or null for personal notes. */
             groupSlug?: string | null;
         };
         NotebookListItem: {
@@ -7253,7 +7912,7 @@ export interface components {
             activeCount: number;
             archivedCount: number;
             /**
-             * @description personal = caller-owned notebook; group = membership notebook under groups/{slug}/.notes.
+             * @description personal = caller-owned notebook; group = group-principal notebook.
              * @enum {string}
              */
             scope?: "personal" | "group";
@@ -7264,7 +7923,7 @@ export interface components {
         };
         NotebookListItemList: components["schemas"]["NotebookListItem"][];
         NotebookListResponse: {
-            items: components["schemas"]["NotebookListItem"][];
+            list: components["schemas"]["Notebook"][];
         };
         NotebookMutationResponse: {
             ok: boolean;
@@ -7346,6 +8005,8 @@ export interface components {
             peerId: string;
             name?: string;
             sessionKey?: components["schemas"]["MeetSessionKey"];
+            /** @description Stable per browser profile. Same-browser rejoins evict leftover peers; a second device keeps both. */
+            browserId?: string;
         };
         /**
          * @example {
@@ -7460,9 +8121,9 @@ export interface components {
             mayRead: boolean;
             /** @description May create, update, delete, or move cards. */
             mayWrite: boolean;
-            /** @description May modify shareWith. */
+            /** @description May modify shareWith. True for personal owners and current members of a group-owned book. False on inbound sharees. */
             mayShare: boolean;
-            /** @description May delete the address book itself. */
+            /** @description False on owned and membership books. True on inbound sharees means dismiss/hide (addressbook_share_dismissals), not delete the owner's book. */
             mayDelete: boolean;
         };
         /**
@@ -7474,6 +8135,7 @@ export interface components {
          *       "sortOrder": 0,
          *       "isDefault": true,
          *       "isSubscribed": true,
+         *       "isSharee": false,
          *       "shareWith": null,
          *       "myRights": {
          *         "mayRead": true,
@@ -7484,9 +8146,9 @@ export interface components {
          *     }
          */
         AddressBook: {
-            /** @description Immutable server-set address book identifier. */
+            /** @description Immutable server-set identifier. Personal book is `default`; group membership books are `group-{slug}`; inbound shares are `shared-{addressbookId}`. */
             id: components["schemas"]["JsContactId"];
-            /** @description User-visible name. */
+            /** @description Server-set from the principal display name. Name patches are forbidden. */
             name: string;
             /** @description Long-form description; null when unset. */
             description?: string | null;
@@ -7496,10 +8158,12 @@ export interface components {
             isDefault: boolean;
             /** @description Whether the book is shown in client UI. */
             isSubscribed: boolean;
-            /** @description Principal id to rights map; null when not shared. */
+            /** @description Persisted grants. Principal ids are `username` or `groups/{slug}`. Recipients see null. mayWrite (or mayWriteAll) → edit; otherwise view. Null grant revokes. */
             shareWith?: {
                 [key: string]: components["schemas"]["AddressBookRights"];
             } | null;
+            /** @description True on inbound share listings (Shared with me). False for personal owners and group-membership books. */
+            isSharee: boolean;
             /** @description Current user's access rights for this book. */
             myRights: components["schemas"]["AddressBookRights"];
         };
@@ -7514,6 +8178,7 @@ export interface components {
          *           "sortOrder": 0,
          *           "isDefault": true,
          *           "isSubscribed": true,
+         *           "isSharee": false,
          *           "shareWith": null,
          *           "myRights": {
          *             "mayRead": true,
@@ -8462,6 +9127,7 @@ export interface components {
             /** @description Blob size in bytes. */
             size: number;
         };
+        /** @description Rejected on AddressBook/set — mayCreateAddressBook is false (one book per principal). */
         AddressBookCreate: {
             name: string;
             description?: string | null;
@@ -8469,9 +9135,15 @@ export interface components {
             id?: components["schemas"]["JsContactId"];
         };
         AddressBookPatch: {
+            /** @description Rejected — names are server-set from the principal display name. */
             name?: string;
             description?: string | null;
+            /** @description Sharees: false dismisses the inbound share for this user only (addressbook_share_dismissals). */
             isSubscribed?: boolean;
+            /** @description Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes. */
+            shareWith?: {
+                [key: string]: components["schemas"]["AddressBookRights"];
+            } | null;
         };
         AddressBookDeleteOptions: {
             /**
@@ -8698,11 +9370,13 @@ export interface components {
                 [key: string]: string;
             };
         };
-        /** @description POST body; server assigns id and @type. */
+        /** @description POST body; server assigns id and @type. title is required and must be non-empty after trim. */
         CalendarEventCreate: {
             "@type"?: unknown;
             id?: unknown;
-        } & components["schemas"]["CalendarEvent"];
+        } & components["schemas"]["CalendarEvent"] & {
+            title: string;
+        };
         /** @description PATCH request body for partial calendar event updates. Omits server-owned id and @type. */
         CalendarEventPatch: {
             title?: string;
@@ -9654,7 +10328,7 @@ export interface components {
         };
         /** @description JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute. */
         JmapSession: {
-            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. Feature-gated-off domains are absent. */
+            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel/ChatMessage get+changes, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
             capabilities: {
                 [key: string]: Record<string, never>;
             };
@@ -9899,6 +10573,231 @@ export interface components {
         };
         MeetReserveRoomResponse: components["schemas"]["MeetRoomOwnerStatus"] & {
             roomId: components["schemas"]["MeetRoomCode"];
+        };
+        Note: {
+            /** @description VJOURNAL UID */
+            id: string;
+            notebookId: string;
+            title: string | null;
+            body: string;
+            categories: string[];
+            /** @enum {string|null} */
+            status: "FINAL" | "CANCELLED" | null;
+            etag: string;
+            starred?: boolean;
+        };
+        NoteListResponse: {
+            list: components["schemas"]["Note"][];
+        };
+        NoteCreate: {
+            notebookId: string;
+            title?: string | null;
+            body?: string;
+            categories?: string[];
+            /** @enum {string|null} */
+            status?: "FINAL" | "CANCELLED" | null;
+            uid?: string;
+        };
+        NotePatch: {
+            notebookId?: string;
+            title?: string | null;
+            body?: string;
+            categories?: string[];
+            /** @enum {string|null} */
+            status?: "FINAL" | "CANCELLED" | null;
+        };
+        Notebook: {
+            id: string;
+            name: string;
+            description?: string | null;
+            color?: string | null;
+            isDefault: boolean;
+            /** @enum {string} */
+            scope: "personal" | "group";
+            groupSlug: string | null;
+            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"];
+            } | null;
+            isSharee: boolean;
+            myRights: components["schemas"]["TaskListRights"];
+            role?: string | null;
+            sortOrder?: number;
+            isSubscribed?: boolean;
+        };
+        NotebookCreate: {
+            name: string;
+            description?: string | null;
+            color?: string | null;
+            groupSlug?: string | null;
+            id?: components["schemas"]["JmapId"];
+        };
+        NotebookPatch: {
+            name?: string;
+            description?: string | null;
+            color?: string | null;
+            groupSlug?: string | null;
+            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"] | null;
+            } | null;
+        };
+        NotebookDeleteOptions: {
+            onDestroyRemoveContents?: boolean;
+        };
+        ChatChannel: {
+            /** @description Channel collection id (CalDAV collection uri, chat-/dm- prefixed). */
+            id: string;
+            name: string;
+            color?: string | null;
+            /** @enum {string} */
+            kind: "channel" | "meeting" | "dm";
+            /** @enum {string} */
+            scope: "personal" | "group";
+            groupSlug: string | null;
+            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"];
+            } | null;
+            isSharee: boolean;
+            myRights: components["schemas"]["TaskListRights"];
+            /** @description True for a group's auto-provisioned default channel: owned by the group principal, immutable through the generic channel endpoints (like DMs), name tracks the group display name. */
+            isDefault?: boolean;
+            /** @description Channel topic shown in the main header subtitle (chat_channel_meta). */
+            topic?: string | null;
+            /** @description Meeting kind: linked meet_reservations room code for guest links. */
+            guestRoomCode?: string | null;
+            /** @description dm kind: the other member's username (DM rail key); null for channel/meeting kinds. */
+            dmPeer?: string | null;
+            /** @description Roster size (owner plus sharees, groups expanded). */
+            memberCount?: number;
+            /** @description Unread messages after the caller's read marker, own messages excluded. */
+            unreadCount?: number;
+        };
+        ChatChannelListResponse: {
+            list: components["schemas"]["ChatChannel"][];
+        };
+        ChatChannelCreate: {
+            name: string;
+            /**
+             * @description dm channels are never created here — POST /chat/dms provisions them find-or-create.
+             * @enum {string}
+             */
+            kind: "channel" | "meeting";
+            color?: string | null;
+            topic?: string | null;
+            groupSlug?: string | null;
+            /** @description Optional client-suggested channel id (uri slug). */
+            id?: components["schemas"]["JmapId"];
+        };
+        ChatChannelPatch: {
+            name?: string;
+            color?: string | null;
+            topic?: string | null;
+            /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). */
+            groupSlug?: string | null;
+            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"] | null;
+            } | null;
+        };
+        /** @description JMAP-shaped incremental sync response for channel collections. */
+        ChatChannelChangesResponse: {
+            /** @description Previous sync state token supplied by the client. */
+            oldState: string;
+            /** @description Current sync state token to store for the next request. */
+            newState: string;
+            created: components["schemas"]["JmapId"][];
+            updated: components["schemas"]["JmapId"][];
+            destroyed: components["schemas"]["JmapId"][];
+        };
+        ChatReaction: {
+            emoji: string;
+            /** @description Principal usernames that toggled this emoji on. */
+            authors: string[];
+        };
+        ChatMention: {
+            /** @description Mentioned principal username. */
+            id: string;
+            displayName: string;
+        };
+        ChatMessage: {
+            /** @description Message id — client-generated ULID (VJOURNAL UID), lexicographically time-sortable. */
+            id: string;
+            channelId: string;
+            /** @description Author principal username (X-WGW-AUTHOR). */
+            authorId: string;
+            authorName: string;
+            /** @description Empty string on delete tombstones (STATUS:CANCELLED). */
+            body: string;
+            /** @description Server-assigned creation timestamp — ordering source of truth with ULID tiebreak. */
+            createdAt: components["schemas"]["JmapUTCDateTime"];
+            editedAt?: components["schemas"]["JmapUTCDateTime"] | null;
+            /** @description Set on tombstoned messages (STATUS:CANCELLED). */
+            deletedAt?: components["schemas"]["JmapUTCDateTime"] | null;
+            /** @description Thread parent message id (RELATED-TO). */
+            parentId?: string | null;
+            replyCount?: number;
+            reactions: components["schemas"]["ChatReaction"][];
+            mentions: components["schemas"]["ChatMention"][];
+        };
+        ChatMessageListResponse: {
+            list: components["schemas"]["ChatMessage"][];
+            /** @description True when more messages exist beyond the requested cursor window. */
+            hasMore: boolean;
+        };
+        ChatMessageCreate: {
+            /** @description Client-generated ULID — message id and idempotency key; retries with the same id return the existing message. */
+            id: string;
+            body: string;
+            /** @description Thread parent message id. */
+            parentId?: string | null;
+        };
+        ChatMessagePatch: {
+            /** @description Author-only body edit — bumps SEQUENCE server-side. */
+            body: string;
+        };
+        ChatReactionToggleRequest: {
+            /** @description Emoji to toggle for the caller — (emoji, author) set semantics, serialized server-side. */
+            emoji: string;
+        };
+        ChatReadMarkerPut: {
+            /** @description createdAt of the last read message. */
+            lastReadTs: components["schemas"]["JmapUTCDateTime"];
+            /** @description ULID of the last read message — tiebreak for equal timestamps; unread = (createdAt, uid) > (lastReadTs, lastReadUid). */
+            lastReadUid: string;
+        };
+        /** @description JMAP-shaped incremental sync response for messages in one channel. */
+        ChatMessageChangesResponse: {
+            /** @description Previous sync state token supplied by the client. */
+            oldState: string;
+            /** @description Current sync state token to store for the next request. */
+            newState: string;
+            created: components["schemas"]["JmapId"][];
+            updated: components["schemas"]["JmapId"][];
+            destroyed: components["schemas"]["JmapId"][];
+            /** @description True when more changes exist after newState — repeat the request. Real at chat volume, never hardcoded false. */
+            hasMoreChanges: boolean;
+        };
+        ChatDmOpen: {
+            /** @description Target username — an internal workspace user other than the caller (no groups, guests, or external addresses). */
+            principal: string;
+        };
+        AdminMcpSettings: {
+            enabled: boolean;
+            /** @description Public MCP URL to paste into assistants (`origin/mcp`). Set from WGW_MCP_PUBLIC_ORIGIN when APP_ENV is not production; null in production so the Admin UI uses the current site origin. */
+            endpointUrl?: string | null;
+        };
+        SettingsMcpGrant: {
+            clientId: string;
+            clientName: string;
+            clientOrigin: string;
+            connectedAt: string;
+            scopes: string[];
+            lastUsedAt?: string | null;
+        };
+        SettingsMcpGrantList: {
+            grants: components["schemas"]["SettingsMcpGrant"][];
         };
     };
     responses: {

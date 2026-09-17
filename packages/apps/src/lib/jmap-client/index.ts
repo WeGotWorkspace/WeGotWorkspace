@@ -1,5 +1,15 @@
 export type { JmapEventsAdapterOptions } from "./adapter/JmapEventsAdapter.js";
 export { JmapEventsAdapter } from "./adapter/JmapEventsAdapter.js";
+export type { JmapNotesAdapterOptions } from "./adapter/JmapNotesAdapter.js";
+export { JmapNotesAdapter } from "./adapter/JmapNotesAdapter.js";
+export type { JmapChatAdapterOptions } from "./adapter/JmapChatAdapter.js";
+export { JmapChatAdapter } from "./adapter/JmapChatAdapter.js";
+export { CHAT_USING, JmapChatClient } from "./chat/JmapChatClient.js";
+export type { JmapChatChannel, JmapChatMessage } from "./chat/types.js";
+export type { JmapContactsAdapterOptions } from "./adapter/JmapContactsAdapter.js";
+export { JmapContactsAdapter } from "./adapter/JmapContactsAdapter.js";
+export { NOTES_USING, JmapNotesClient } from "./notes/JmapNotesClient.js";
+export type { JmapNote, JmapNotebook } from "./notes/types.js";
 export type { DateRange } from "./calendars/JmapCalendarsClient.js";
 export { JmapCalendarsClient } from "./calendars/JmapCalendarsClient.js";
 export { JmapFileNodePathCache } from "./filenodes/JmapFileNodePathCache.js";
@@ -19,7 +29,11 @@ export type {
   JmapCalendarEventFilterCondition,
   JmapCalendarRights,
 } from "./calendars/types.js";
-export { CONTACTS_USING, JmapContactsClient } from "./contacts/JmapContactsClient.js";
+export {
+  CONTACTS_USING,
+  CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
+  JmapContactsClient,
+} from "./contacts/JmapContactsClient.js";
 export type {
   JmapAddressBook,
   JmapAddressBookRights,
@@ -35,6 +49,8 @@ export {
   type ChangesResponse,
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
+  NOTES_CAPABILITY,
+  CHAT_CAPABILITY,
   type GetResponse,
   type JmapId,
   type JmapInvocation,

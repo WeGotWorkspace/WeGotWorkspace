@@ -1,0 +1,224 @@
+{
+  "ChatReaction": {
+    "type": "object",
+    "required": ["emoji", "authors"],
+    "additionalProperties": false,
+    "properties": {
+      "emoji": {
+        "type": "string"
+      },
+      "authors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Principal usernames that toggled this emoji on."
+      }
+    }
+  },
+  "ChatMention": {
+    "type": "object",
+    "required": ["id", "displayName"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Mentioned principal username."
+      },
+      "displayName": {
+        "type": "string"
+      }
+    }
+  },
+  "ChatMessage": {
+    "type": "object",
+    "required": [
+      "id",
+      "channelId",
+      "authorId",
+      "authorName",
+      "body",
+      "createdAt",
+      "reactions",
+      "mentions"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Message id — client-generated ULID (VJOURNAL UID), lexicographically time-sortable."
+      },
+      "channelId": {
+        "type": "string"
+      },
+      "authorId": {
+        "type": "string",
+        "description": "Author principal username (X-WGW-AUTHOR)."
+      },
+      "authorName": {
+        "type": "string"
+      },
+      "body": {
+        "type": "string",
+        "description": "Empty string on delete tombstones (STATUS:CANCELLED)."
+      },
+      "createdAt": {
+        "$ref": "#/components/schemas/JmapUTCDateTime",
+        "description": "Server-assigned creation timestamp — ordering source of truth with ULID tiebreak."
+      },
+      "editedAt": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/JmapUTCDateTime"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "deletedAt": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/JmapUTCDateTime"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Set on tombstoned messages (STATUS:CANCELLED)."
+      },
+      "parentId": {
+        "type": ["string", "null"],
+        "description": "Thread parent message id (RELATED-TO)."
+      },
+      "replyCount": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "reactions": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ChatReaction"
+        }
+      },
+      "mentions": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ChatMention"
+        }
+      }
+    }
+  },
+  "ChatMessageListResponse": {
+    "type": "object",
+    "required": ["list", "hasMore"],
+    "additionalProperties": false,
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ChatMessage"
+        }
+      },
+      "hasMore": {
+        "type": "boolean",
+        "description": "True when more messages exist beyond the requested cursor window."
+      }
+    }
+  },
+  "ChatMessageCreate": {
+    "type": "object",
+    "required": ["id", "body"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Client-generated ULID — message id and idempotency key; retries with the same id return the existing message."
+      },
+      "body": {
+        "type": "string",
+        "minLength": 1
+      },
+      "parentId": {
+        "type": ["string", "null"],
+        "description": "Thread parent message id."
+      }
+    }
+  },
+  "ChatMessagePatch": {
+    "type": "object",
+    "required": ["body"],
+    "additionalProperties": false,
+    "properties": {
+      "body": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Author-only body edit — bumps SEQUENCE server-side."
+      }
+    }
+  },
+  "ChatReactionToggleRequest": {
+    "type": "object",
+    "required": ["emoji"],
+    "additionalProperties": false,
+    "properties": {
+      "emoji": {
+        "type": "string",
+        "description": "Emoji to toggle for the caller — (emoji, author) set semantics, serialized server-side."
+      }
+    }
+  },
+  "ChatReadMarkerPut": {
+    "type": "object",
+    "required": ["lastReadTs", "lastReadUid"],
+    "additionalProperties": false,
+    "properties": {
+      "lastReadTs": {
+        "$ref": "#/components/schemas/JmapUTCDateTime",
+        "description": "createdAt of the last read message."
+      },
+      "lastReadUid": {
+        "type": "string",
+        "description": "ULID of the last read message — tiebreak for equal timestamps; unread = (createdAt, uid) > (lastReadTs, lastReadUid)."
+      }
+    }
+  },
+  "ChatMessageChangesResponse": {
+    "type": "object",
+    "required": ["oldState", "newState", "created", "updated", "destroyed", "hasMoreChanges"],
+    "additionalProperties": false,
+    "properties": {
+      "oldState": {
+        "type": "string",
+        "description": "Previous sync state token supplied by the client."
+      },
+      "newState": {
+        "type": "string",
+        "description": "Current sync state token to store for the next request."
+      },
+      "created": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/JmapId"
+        }
+      },
+      "updated": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/JmapId"
+        }
+      },
+      "destroyed": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/JmapId"
+        }
+      },
+      "hasMoreChanges": {
+        "type": "boolean",
+        "description": "True when more changes exist after newState — repeat the request. Real at chat volume, never hardcoded false."
+      }
+    },
+    "description": "JMAP-shaped incremental sync response for messages in one channel."
+  }
+}

@@ -2,6 +2,8 @@ Source: ad-hoc
 
 Goal: #380
 
+> **Superseded.** Notes left Drive. Store is CalDAV VJOURNAL; live inbound is vendor `urn:wgw:jmap:notes`. See [662-notes-vjournal](../662-notes-vjournal/spec.md) and [671-notes-jmap-dexie](../671-notes-jmap-dexie/spec.md). Keep this folder as historical FileNode design only.
+
 # Notes as FileNodes
 
 Technical translation of the Notes FileNode cutover. No GitHub Task/Epic yet — file those after the PRs, parented to Goal #380 (offline AC also #381; share policy #412 unchanged).

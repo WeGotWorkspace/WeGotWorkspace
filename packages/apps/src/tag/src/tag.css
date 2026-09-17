@@ -1,6 +1,9 @@
 @import "../../styles.css" reference;
 
 .tag-group {
+  /* Soft chip radius — same global `--control-radius` (button-pill is an alias). */
+  --tag-radius: var(--control-radius);
+  /* Compact 24px default — below control-height-xs; lg aliases xs (28px). */
   --tag-height: 1.5rem;
   --tag-font-size: 0.75rem;
   --tag-icon-size: 0.75rem;
@@ -9,9 +12,9 @@
   @apply relative flex flex-wrap items-center gap-1.5;
 }
 
-/* Interactive editors (notes detail): fixed 28px (h-7) — not --input-height (grows at md+). */
+/* Interactive editors (notes detail): --control-height-xs (28px), not form md+. */
 .tag-group--size-lg {
-  --tag-height: 1.75rem;
+  --tag-height: var(--control-height-xs, 1.75rem);
   --tag-font-size: 0.8125rem;
   --tag-icon-size: 0.875rem;
   --tag-padding-inline: 0.625rem;
@@ -28,17 +31,22 @@
   line-height: 1;
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
-  border-radius: var(--control-radius-button-pill);
+  border-radius: var(--tag-radius, var(--control-radius));
   background-color: var(--tag-bg, color-mix(in oklab, var(--color-ink) 8%, transparent));
   color: var(--tag-fg, var(--color-ink));
 }
 
 .tag--size-lg {
-  --tag-height: 1.75rem;
+  --tag-height: var(--control-height-xs, 1.75rem);
   --tag-font-size: 0.8125rem;
   --tag-icon-size: 0.875rem;
   --tag-padding-inline: 0.625rem;
   --tag-gap: 0.375rem;
+}
+
+.tag--collection-tint {
+  --tag-bg: color-mix(in oklab, var(--collection-row-color, var(--color-ink)) 18%, transparent);
+  --tag-fg: color-mix(in oklab, var(--collection-row-color, var(--color-ink)) 62%, #042a22);
 }
 
 .tag__icon {
@@ -51,11 +59,21 @@
 }
 
 .tag__remove {
-  @apply inline-flex shrink-0 items-center justify-center opacity-50 transition-opacity hover:opacity-100;
+  /* Inherit chip ink/gold — UA `button { color: buttontext }` is ink-on-ink
+   * once assigned notes chips use `--notes-tag-selected-*` (ink fill). */
+  @apply relative z-10 inline-flex shrink-0 cursor-pointer items-center justify-center;
+  @apply appearance-none border-0 bg-transparent p-0 opacity-70 transition-opacity hover:opacity-100;
+  color: var(--tag-remove-fg, var(--tag-fg, inherit));
+  pointer-events: auto;
   /* Expand hit area without changing chip layout much */
   margin-inline-end: -0.25rem;
   min-width: 1.25rem;
   min-height: 1.25rem;
+}
+
+.tag__remove:focus-visible {
+  @apply opacity-100 outline-none;
+  box-shadow: 0 0 0 1px var(--tag-remove-fg, var(--tag-fg, currentColor));
 }
 
 .tag--size-lg .tag__remove,
@@ -74,16 +92,22 @@
   @apply relative inline-flex min-w-0 items-center;
 }
 
-.tag-group__add-button {
-  @apply inline-flex shrink-0 items-center font-medium outline-none;
-  gap: var(--tag-gap, 0.375rem);
-  padding-inline: var(--tag-padding-inline, 0.5rem);
+/* Idle “Add tag” and the add field share one type scale. */
+.tag-group__add-button,
+.tag-group__input {
+  @apply font-medium tracking-normal;
   font-family: var(--font-mono);
   font-size: var(--tag-font-size, 0.75rem);
   line-height: 1;
+}
+
+.tag-group__add-button {
+  @apply inline-flex shrink-0 items-center outline-none;
+  gap: var(--tag-gap, 0.375rem);
+  padding-inline: var(--tag-padding-inline, 0.5rem);
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
-  border-radius: var(--control-radius-button-pill);
+  border-radius: var(--tag-radius, var(--control-radius));
   background-color: var(--tag-group-add-bg, color-mix(in oklab, var(--color-ink) 6%, transparent));
   color: var(--tag-group-add-fg, var(--color-ink));
 }
@@ -107,17 +131,14 @@
 
 .tag-group__input {
   /* Match add-button / chip height — not --input-height (avoids toggle layout shift). */
-  @apply box-border border font-medium outline-none;
+  @apply box-border border outline-none;
   padding-inline: var(--tag-padding-inline, 0.5rem);
-  font-family: var(--font-mono);
-  font-size: var(--tag-font-size, 0.75rem);
-  line-height: 1;
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
   min-width: 7rem;
   max-width: 12rem;
   width: 8rem;
-  border-radius: var(--control-radius-button-pill);
+  border-radius: var(--tag-radius, var(--control-radius));
   border-color: var(--tag-group-input-border, var(--control-border-color));
   background-color: var(
     --tag-group-input-bg,

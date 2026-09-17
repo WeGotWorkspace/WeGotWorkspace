@@ -41,6 +41,10 @@ export async function prepareNotesForOfflineSync(page: Page): Promise<void> {
 
 export async function waitForNotesListReady(page: Page): Promise<void> {
   await expect(page.getByLabel("Loading notes…")).toHaveCount(0, { timeout: 30_000 });
+  const refresh = page.getByRole("button", { name: "Refresh notes" });
+  if ((await refresh.count()) > 0) {
+    await expect(refresh).toBeEnabled({ timeout: 30_000 });
+  }
 }
 
 export async function expectOfflineIndicator(page: Page): Promise<void> {

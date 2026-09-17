@@ -5,8 +5,11 @@ import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
   enqueueCoalescedContactUpdate,
+  enqueueOutboxMutation,
+  listOutboxMutations,
   writeContactsBootstrapToCache,
 } from "@/lib/offline/contacts-offline-store";
+import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import { flushContactsOutbox } from "@/lib/offline/contacts-outbox-flush";
 
 const username = "bob";
@@ -21,6 +24,7 @@ const bootstrap = {
         sortOrder: 0,
         isDefault: true,
         isSubscribed: true,
+        isSharee: false,
         myRights: { mayRead: true, mayWrite: true, mayShare: false, mayDelete: true },
       },
     ],
@@ -38,12 +42,14 @@ const bootstrap = {
   },
 } satisfies ContactsAppBootstrap;
 
-const { contactCardSet, getCard, pullAddressBookChanges, syncAllContactBooks } = vi.hoisted(() => ({
-  contactCardSet: vi.fn(),
-  getCard: vi.fn(),
-  pullAddressBookChanges: vi.fn(),
-  syncAllContactBooks: vi.fn(),
-}));
+const { contactCardSet, getCard, patchAddressBook, pullAddressBookChanges, syncAllContactBooks } =
+  vi.hoisted(() => ({
+    contactCardSet: vi.fn(),
+    getCard: vi.fn(),
+    patchAddressBook: vi.fn(),
+    pullAddressBookChanges: vi.fn(),
+    syncAllContactBooks: vi.fn(),
+  }));
 
 vi.mock("@/lib/api/wgw/contacts-set", () => ({
   contactCardSet,
@@ -58,6 +64,7 @@ vi.mock("@/lib/api/wgw/contacts-set", () => ({
 
 vi.mock("@/lib/api/wgw/contacts", () => ({
   getCard,
+  patchAddressBook,
   listAddressBooks: vi.fn().mockResolvedValue([
     {
       id: "default",
@@ -65,6 +72,7 @@ vi.mock("@/lib/api/wgw/contacts", () => ({
       sortOrder: 0,
       isDefault: true,
       isSubscribed: true,
+      isSharee: false,
       myRights: { mayRead: true, mayWrite: true, mayShare: false, mayDelete: true },
     },
   ]),
@@ -79,6 +87,7 @@ describe("flushContactsOutbox", () => {
   beforeEach(async () => {
     contactCardSet.mockReset();
     getCard.mockReset();
+    patchAddressBook.mockReset();
     pullAddressBookChanges.mockReset();
     pullAddressBookChanges.mockResolvedValue(undefined);
     syncAllContactBooks.mockReset();
@@ -151,5 +160,56 @@ describe("flushContactsOutbox", () => {
 
     expect(result.stateMismatches).toEqual(["jane-doe"]);
     expect(getCard).not.toHaveBeenCalled();
+  });
+
+  it("drops a notFound card update as a conflict and does not retry", async () => {
+    await enqueueCoalescedContactUpdate(
+      username,
+      "jane-doe",
+      { name: { "@type": "Name", isOrdered: false, full: "Jane B" } },
+      "state-1",
+    );
+
+    contactCardSet.mockResolvedValue({
+      created: {},
+      updated: {},
+      destroyed: {},
+      notCreated: {},
+      notUpdated: {
+        "jane-doe": { type: "notFound", description: "Address book gone" },
+      },
+      notDestroyed: {},
+    });
+
+    const result = await flushContactsOutbox(username);
+
+    expect(result.stateMismatches).toEqual(["jane-doe"]);
+    expect(getCard).not.toHaveBeenCalled();
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
+
+  it("flushes bookUpdate via AddressBook/set", async () => {
+    const shareWith = {
+      alice: { mayRead: true, mayWrite: true, mayShare: false, mayDelete: false },
+    };
+    await enqueueOutboxMutation(username, {
+      id: crypto.randomUUID(),
+      domain: CONTACTS_DOMAIN,
+      op: "bookUpdate",
+      payload: JSON.stringify({
+        addressBookId: "default",
+        patch: { shareWith, isSubscribed: true },
+      }),
+    });
+    patchAddressBook.mockResolvedValue({
+      ...bootstrap.data.addressBooks[0],
+      shareWith,
+    });
+
+    const result = await flushContactsOutbox(username);
+
+    expect(result.stateMismatches).toEqual([]);
+    expect(patchAddressBook).toHaveBeenCalledWith("default", { shareWith, isSubscribed: true });
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
   });
 });

@@ -18,7 +18,8 @@ use Sabre\DAV\Sharing\Plugin as SharingPlugin;
  * Shared CalDAV collection ACL: list accessible instances, dedupe owner vs
  * inbound sharee, sharee name/color PATCH, dismiss-on-delete, and item writes.
  * Calendar passes {@see Calendar::scopeSupportsVevent()}; Tasks
- * passes {@see Calendar::scopeVtodoOnly()}.
+ * passes {@see Calendar::scopeVtodoOnly()}; Notes passes
+ * {@see Calendar::scopeVjournalOnly()}.
  */
 final class CalendarCollectionAccess
 {

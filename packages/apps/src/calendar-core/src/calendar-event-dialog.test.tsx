@@ -79,8 +79,11 @@ describe("CalendarEventDialog", () => {
   it("keeps the calendar picker as a color swatch trigger when closed", () => {
     renderDialog();
     const trigger = screen.getByRole("button", { name: /Calendar: Personal/i });
+    expect(trigger.className).toContain("control-surface--size-sm");
     expect(trigger.querySelector(".color-swatch-trigger__dot")).toBeTruthy();
     expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
+    expect(trigger.querySelector(".color-swatch-trigger__caption")).toBeNull();
+    expect(trigger.textContent?.trim()).toBe("");
     expect(screen.queryByRole("menuitem", { name: /Personal/i })).toBeNull();
   });
 
@@ -167,6 +170,7 @@ describe("CalendarEventDialog", () => {
     renderDialog({ form, mode: "edit", onDelete: vi.fn(), locale: "en-US" });
     expect(document.querySelectorAll('input[type="time"]')).toHaveLength(0);
     expect(screen.getAllByRole("button", { name: /Jan/i }).length).toBeGreaterThanOrEqual(2);
+    expect(document.querySelector(".calendar-event-dialog__field--timezone")).toBeNull();
     expect(
       screen.queryByRole("combobox", { name: defaultCalendarLabels.eventTimeZoneLabel }),
     ).toBeNull();
@@ -219,73 +223,62 @@ describe("CalendarEventDialog", () => {
     ).toBeNull();
   });
 
-  it("groups schedule, recurrence, invitees, and alarms into cards in order", () => {
+  it("lays out schedule fields with icon FieldLabelRows, Location+Meet group, and Invitees/Alarms/Notes band", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Standup",
       recurrencePreset: "daily" as const,
     };
     renderDialog({ form, locale: "en-US" });
-    const whenTitle = screen.getByRole("heading", {
-      name: defaultCalendarLabels.eventWhenSectionTitle,
-    });
-    const repeatTitle = screen.getByRole("heading", {
-      name: defaultCalendarLabels.eventRepeatLabel,
-    });
-    const inviteesTitle = screen.getByRole("heading", {
-      name: defaultCalendarLabels.eventAttendeesLabel,
-    });
-    const alarmsTitle = screen.getByRole("heading", {
-      name: defaultCalendarLabels.eventAlarmsLabel,
-    });
-    const whenCard = whenTitle.closest(".card");
-    const repeatCard = repeatTitle.closest(".card");
-    const inviteesCard = inviteesTitle.closest(".card");
-    const alarmsCard = alarmsTitle.closest(".card");
-    expect(whenCard).not.toBeNull();
-    expect(repeatCard).not.toBeNull();
-    expect(inviteesCard).not.toBeNull();
-    expect(inviteesCard!.classList.contains("calendar-invitees-card")).toBe(true);
-    expect(alarmsCard).not.toBeNull();
-    expect(whenCard!.querySelector(".card__panel")).toBeNull();
-    expect(repeatCard!.querySelector(".card__panel")).toBeNull();
-    expect(whenCard!.querySelector(".card__row")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__fields")).not.toBeNull();
+    expect(document.querySelector(".field-label-row--icon")).not.toBeNull();
     expect(
-      whenCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventAllDayLabel}"]`),
-    ).not.toBeNull();
+      screen.getByRole("button", {
+        name: new RegExp(`${defaultCalendarLabels.eventStartLabel}:`, "i"),
+      }),
+    ).toBeTruthy();
     expect(
-      whenCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventTimeZoneLabel}"]`),
-    ).not.toBeNull();
+      screen.getByRole("button", {
+        name: new RegExp(`${defaultCalendarLabels.eventEndLabel}:`, "i"),
+      }),
+    ).toBeTruthy();
     expect(
-      whenCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventShowAs}"]`),
+      screen.getByRole("switch", { name: defaultCalendarLabels.eventAllDayLabel }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("combobox", { name: defaultCalendarLabels.eventTimeZoneLabel }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("combobox", { name: defaultCalendarLabels.eventRepeatLabel }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("combobox", { name: defaultCalendarLabels.eventRecurrenceEndsLabel }),
+    ).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: defaultCalendarLabels.eventShowAs })).toBeTruthy();
+    expect(document.querySelector(".calendar-event-dialog__divider")).toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field-group--place")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field-group--when")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__secondary")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__secondary-start")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__secondary-end")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field--meet")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field--alarms")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field--invitees")).not.toBeNull();
+    expect(document.querySelector(".calendar-event-dialog__field--notes")).not.toBeNull();
+    const placeGroup = document.querySelector(".calendar-event-dialog__field-group--place");
+    const whenGroup = document.querySelector(".calendar-event-dialog__field-group--when");
+    const meet = document.querySelector(".calendar-event-dialog__field--meet");
+    const invitees = document.querySelector(".calendar-event-dialog__field--invitees");
+    const whenMeta = document.querySelector(".calendar-event-dialog__when-meta");
+    const startCol = document.querySelector(".calendar-event-dialog__secondary-start");
+    expect(placeGroup?.contains(meet)).toBe(true);
+    expect(whenGroup?.contains(whenMeta)).toBe(true);
+    expect(startCol?.contains(invitees)).toBe(true);
+    expect(startCol?.contains(meet)).toBe(false);
+    expect(document.querySelectorAll(".calendar-event-dialog__fields > .card").length).toBe(0);
+    expect(
+      screen.queryByRole("combobox", { name: defaultCalendarLabels.eventMeetApplyTo }),
     ).toBeNull();
-    expect(
-      repeatCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventRepeatLabel}"]`),
-    ).not.toBeNull();
-    expect(
-      repeatCard!.querySelector(`[aria-label="${defaultCalendarLabels.eventRecurrenceEndsLabel}"]`),
-    ).not.toBeNull();
-
-    const cards = document.querySelectorAll(
-      ".calendar-event-dialog__fields > .calendar-event-dialog__card",
-    );
-    expect([...cards].map((card) => card.querySelector(".card__title")?.textContent)).toEqual([
-      defaultCalendarLabels.eventMeetSectionTitle,
-      defaultCalendarLabels.eventWhenSectionTitle,
-      defaultCalendarLabels.eventRepeatLabel,
-      defaultCalendarLabels.eventAttendeesLabel,
-      defaultCalendarLabels.eventAlarmsLabel,
-    ]);
-    const fieldRows = document.querySelectorAll(
-      ".calendar-event-dialog__fields > .field-label-row",
-    );
-    expect(
-      [...fieldRows].map((row) => row.querySelector(".field-label-row__label")?.textContent),
-    ).toEqual([
-      defaultCalendarLabels.eventLocationLabel,
-      defaultCalendarLabels.eventShowAs,
-      defaultCalendarLabels.eventNotesLabel,
-    ]);
   });
 
   it("shows Ends controls for editable repeating presets", () => {
@@ -298,13 +291,14 @@ describe("CalendarEventDialog", () => {
     const ends = screen.getByRole("combobox", {
       name: defaultCalendarLabels.eventRecurrenceEndsLabel,
     });
-    expect(ends.textContent).toMatch(/Never/i);
-    const untilDate = screen.getByRole("button", {
-      name: new RegExp(defaultCalendarLabels.eventRecurrenceEndsOnDate, "i"),
-    });
-    expect(untilDate.hasAttribute("disabled")).toBe(true);
+    expect(ends.textContent).toMatch(/Ends never/i);
+    expect(
+      screen.queryByRole("button", {
+        name: new RegExp(defaultCalendarLabels.eventRecurrenceEndsOnDate, "i"),
+      }),
+    ).toBeNull();
     fireEvent.click(ends);
-    fireEvent.click(screen.getByRole("option", { name: /After/i }));
+    fireEvent.click(screen.getByRole("option", { name: /Ends after/i }));
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ recurrenceEnds: "count", recurrenceCount: 10 }),
     );
@@ -338,18 +332,11 @@ describe("CalendarEventDialog", () => {
   it("shows the alarms card, adds an alarm from the trailing None row, and forwards offset changes", () => {
     const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
     const { onChange } = renderDialog({ form, locale: "en-US" });
-    expect(
-      screen.getByRole("heading", { name: defaultCalendarLabels.eventAlarmsLabel }),
-    ).toBeTruthy();
+    expect(document.querySelector(".calendar-event-dialog__field--alarms")).not.toBeNull();
     expect(screen.queryByText(defaultCalendarLabels.eventAlarmsNone)).toBeNull();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventAlarmAdd })).toBeNull();
-    expect(screen.getAllByText(defaultCalendarLabels.eventAlarmsLabel)).toHaveLength(1);
-    expect(screen.getByText(`${defaultCalendarLabels.eventAlarmRow} 1`)).toBeTruthy();
-    expect(
-      screen
-        .getByRole("heading", { name: defaultCalendarLabels.eventAlarmsLabel })
-        .closest(".share-access-card"),
-    ).not.toBeNull();
+    expect(screen.getByText(defaultCalendarLabels.eventAlarmsLabel)).toBeTruthy();
+    expect(screen.queryByText(`${defaultCalendarLabels.eventAlarmRow} 1`)).toBeNull();
 
     const emptyOffset = screen.getByRole("combobox", {
       name: defaultCalendarLabels.eventAlarmOffset,
@@ -370,8 +357,8 @@ describe("CalendarEventDialog", () => {
     cleanup();
     const next = renderDialog({ form: withAlarm, locale: "en-US" });
     expect(screen.getAllByText(defaultCalendarLabels.eventAlarmsLabel)).toHaveLength(1);
-    expect(screen.getByText(`${defaultCalendarLabels.eventAlarmRow} 1`)).toBeTruthy();
-    expect(screen.getByText(`${defaultCalendarLabels.eventAlarmRow} 2`)).toBeTruthy();
+    expect(screen.queryByText(`${defaultCalendarLabels.eventAlarmRow} 1`)).toBeNull();
+    expect(screen.queryByText(`${defaultCalendarLabels.eventAlarmRow} 2`)).toBeNull();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventAlarmAdd })).toBeNull();
     const offsets = screen.getAllByRole("combobox", {
       name: defaultCalendarLabels.eventAlarmOffset,
@@ -534,7 +521,7 @@ describe("CalendarEventDialog", () => {
     );
   });
 
-  it("keeps the invitee name visible beside a status avatar and delete control", () => {
+  it("shows participants as RSVP-washed UserChips with a remove control", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Lunch",
@@ -549,14 +536,15 @@ describe("CalendarEventDialog", () => {
     };
     renderDialog({ form });
     const name = screen.getByText("Carol");
-    const row = name.closest(".card__row");
-    expect(row).not.toBeNull();
-    expect(name.classList.contains("card__row-title")).toBe(true);
-    expect(row!.querySelector(".calendar-invitees-rsvp-tag--accepted")).toBeNull();
-    expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)).toBeTruthy();
-    expect(row!.querySelector(".calendar-invitees-status-mark svg")).toBeTruthy();
-    expect(row!.querySelector(".calendar-invitees-status-mark")?.textContent).toBe("");
-    expect(row!.querySelector(".tag")).toBeNull();
+    const chip = name.closest(".user-chip");
+    expect(chip).not.toBeNull();
+    expect(chip!.classList.contains("calendar-invitees-card__chip")).toBe(true);
+    expect(chip!.querySelector(".user-chip__mark")).toBeTruthy();
+    expect(chip!.querySelector(".calendar-invitees-rsvp-tag--accepted")).toBeNull();
+    expect(
+      screen.getByLabelText(new RegExp(`${defaultCalendarLabels.eventAttendeesRsvpNeedsAction}`)),
+    ).toBeTruthy();
+    expect(chip!.querySelector(".user-chip__mark svg")).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: /Required|Optional/i })).toBeNull();
     expect(
       screen.getByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
@@ -564,7 +552,7 @@ describe("CalendarEventDialog", () => {
     expect(name.closest(".calendar-invitees-card")).not.toBeNull();
   });
 
-  it("can remove an invitee without a role picker", () => {
+  it("can remove a participant from a UserChip", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Lunch",
@@ -578,12 +566,15 @@ describe("CalendarEventDialog", () => {
       ],
     };
     const { onChange } = renderDialog({ form });
-    expect(
-      screen.getByRole("heading", { name: defaultCalendarLabels.eventAttendeesLabel }),
-    ).toBeTruthy();
+    expect(document.querySelector(".calendar-event-dialog__field--invitees")).not.toBeNull();
     expect(screen.getByText("Carol")).toBeTruthy();
-    expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesRsvpAccepted)).toBeTruthy();
-    expect(document.querySelector(".calendar-invitees-card .tag")).toBeNull();
+    expect(
+      screen.getByLabelText(new RegExp(defaultCalendarLabels.eventAttendeesRsvpAccepted)),
+    ).toBeTruthy();
+    expect(document.querySelector(".calendar-invitees-card .user-chip")).toBeTruthy();
+    expect(
+      document.querySelector(".calendar-invitees-card .calendar-invitees-rsvp-tag--accepted"),
+    ).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: /Required|Optional/i })).toBeNull();
     fireEvent.click(
       screen.getByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
@@ -591,7 +582,7 @@ describe("CalendarEventDialog", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ attendees: [] }));
   });
 
-  it("shows RSVP on the avatar without the username", () => {
+  it("shows RSVP wash and icon on participant chips without the username meta", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Lunch",
@@ -615,17 +606,25 @@ describe("CalendarEventDialog", () => {
       invitees: [{ username: "wouter", email: "wouter@woutervroege.nl", name: "Wouter" }],
     });
     expect(screen.getByText("Wouter")).toBeTruthy();
-    expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesRsvpTentative)).toBeTruthy();
+    expect(
+      screen.getByLabelText(new RegExp(defaultCalendarLabels.eventAttendeesRsvpTentative)),
+    ).toBeTruthy();
     expect(screen.queryByText(/wouter ·/i)).toBeNull();
     expect(document.querySelector(".calendar-invitees-rsvp-tag--tentative")).toBeTruthy();
-    expect(screen.queryByLabelText(defaultCalendarLabels.eventAttendeesRsvpAccepted)).toBeNull();
+    expect(
+      screen.queryByLabelText(new RegExp(defaultCalendarLabels.eventAttendeesRsvpAccepted)),
+    ).toBeNull();
     expect(screen.getByText("Guest")).toBeTruthy();
-    expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)).toBeTruthy();
+    expect(
+      screen.getByLabelText(new RegExp(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)),
+    ).toBeTruthy();
     expect(document.querySelector(".calendar-invitees-rsvp-tag--accepted")).toBeNull();
-    expect(document.querySelectorAll(".calendar-invitees-card .tag")).toHaveLength(0);
+    expect(
+      document.querySelectorAll(".calendar-invitees-card .user-chip").length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
-  it("lists the organizer with a disabled remove control and no status chip", () => {
+  it("lists the organizer without a remove control and guests with one", () => {
     const form = {
       ...emptyCalendarEventForm("default", "2033-01-12"),
       title: "Lunch",
@@ -645,31 +644,42 @@ describe("CalendarEventDialog", () => {
     };
     renderDialog({ form, sessionEmail: "admin@localhost" });
     expect(screen.getByText("Admin")).toBeTruthy();
-    expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesOrganizer)).toBeTruthy();
+    expect(
+      screen.getByLabelText(new RegExp(defaultCalendarLabels.eventAttendeesOrganizer)),
+    ).toBeTruthy();
     expect(screen.getByText("Wouter")).toBeTruthy();
-    expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)).toBeTruthy();
-    expect(screen.queryByLabelText(defaultCalendarLabels.eventAttendeesRsvpAccepted)).toBeNull();
+    expect(
+      screen.getByLabelText(new RegExp(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)),
+    ).toBeTruthy();
+    expect(
+      screen.queryByLabelText(
+        new RegExp(`Admin, ${defaultCalendarLabels.eventAttendeesRsvpAccepted}`),
+      ),
+    ).toBeNull();
     const removeButtons = screen.getAllByRole("button", {
       name: defaultCalendarLabels.eventAttendeesRemove,
     });
-    expect(removeButtons).toHaveLength(2);
-    expect(removeButtons[0].hasAttribute("disabled")).toBe(true);
-    expect(removeButtons[1].hasAttribute("disabled")).toBe(false);
+    expect(removeButtons).toHaveLength(1);
+    expect(removeButtons[0].hasAttribute("disabled")).toBe(false);
     expect(screen.queryByRole("combobox", { name: /Admin:|Required|Optional/i })).toBeNull();
   });
 
-  it("shows the session organizer on a new event with no other invitees", () => {
+  it("shows the session organizer on a new event with no other participants", () => {
     renderDialog({
       form: { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" },
       sessionEmail: "admin@localhost",
       invitees: [{ username: "admin", email: "admin@localhost", name: "Admin" }],
     });
     expect(screen.getByText("Admin")).toBeTruthy();
-    expect(screen.getByLabelText(defaultCalendarLabels.eventAttendeesOrganizer)).toBeTruthy();
-    expect(screen.queryByLabelText(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)).toBeNull();
     expect(
-      screen.getByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
-    ).toHaveProperty("disabled", true);
+      screen.getByLabelText(new RegExp(defaultCalendarLabels.eventAttendeesOrganizer)),
+    ).toBeTruthy();
+    expect(
+      screen.queryByLabelText(new RegExp(defaultCalendarLabels.eventAttendeesRsvpNeedsAction)),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: defaultCalendarLabels.eventAttendeesRemove }),
+    ).toBeNull();
   });
 
   it("states that email delivery is unavailable when canSubmitEmail is false", () => {
@@ -945,7 +955,10 @@ describe("CalendarEventDialog", () => {
       workspaceOrigin: "https://workspace.example.com",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd }));
+    const meetTrigger = screen.getByRole("button", { name: defaultCalendarLabels.eventMeetAdd });
+    fireEvent.pointerDown(meetTrigger);
+    fireEvent.click(meetTrigger);
+    fireEvent.click(screen.getByRole("menuitem", { name: defaultCalendarLabels.eventMeetNewLink }));
     await waitFor(() => expect(meetOperations.reserveRoom).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.cancel }));
 
@@ -992,7 +1005,7 @@ describe("CalendarEventDialog", () => {
     expect(title).toHaveProperty("disabled", false);
     fireEvent.change(title, { target: { value: "Weekly standup" } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ title: "Weekly standup" }));
-    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.delete })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.cancel })).toBeTruthy();
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpAccept })).toBeNull();
@@ -1000,9 +1013,8 @@ describe("CalendarEventDialog", () => {
     const removeButtons = screen.getAllByRole("button", {
       name: defaultCalendarLabels.eventAttendeesRemove,
     });
-    expect(removeButtons).toHaveLength(2);
-    expect(removeButtons[0].hasAttribute("disabled")).toBe(true);
-    expect(removeButtons[1].hasAttribute("disabled")).toBe(false);
+    expect(removeButtons).toHaveLength(1);
+    expect(removeButtons[0].hasAttribute("disabled")).toBe(false);
   });
 
   it("locks the dialog when the invitee identity is a username alias", () => {
@@ -1070,7 +1082,7 @@ describe("CalendarEventDialog", () => {
     expect(title).toHaveProperty("disabled", false);
     fireEvent.change(title, { target: { value: "Weekly standup" } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ title: "Weekly standup" }));
-    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.delete })).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: defaultCalendarLabels.rsvpLabel })).toBeNull();
   });
@@ -1106,7 +1118,7 @@ describe("CalendarEventDialog", () => {
     });
 
     expect(screen.getByDisplayValue("Standup")).toHaveProperty("disabled", false);
-    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultCalendarLabels.delete })).toBeTruthy();
   });
 
@@ -1341,5 +1353,287 @@ describe("CalendarEventDialog", () => {
     await waitFor(() => {
       expect(onRefreshContactCards).toHaveBeenCalled();
     });
+  });
+
+  it("hides the calendar swatch, When card, and Meet picker in the Meet create layout", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Meeting",
+      meetingUrl: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
+    };
+    renderDialog({
+      form,
+      title: "New meeting",
+      submitLabel: "Create",
+      layout: {
+        hideCalendarPicker: true,
+        hideLocation: true,
+        hideWhen: true,
+        hideRecurrence: true,
+        hideAlarms: true,
+        hideShowAs: true,
+        hideInvitees: true,
+        hideNotes: true,
+        meetCopyOnly: true,
+      },
+    });
+    expect(screen.queryByRole("button", { name: /Calendar: Personal/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toBeNull();
+    expect(screen.queryByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeNull();
+    expect(screen.getByRole("button", { name: "Create" })).toBeTruthy();
+  });
+
+  it("renders afterMeetAccessory after the Meet card and disables Create with an empty title", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      meetingUrl: "https://workspace.example.com/meet?room=h8y8-ewp6-al8n",
+    };
+    renderDialog({
+      form,
+      title: "New meeting",
+      submitLabel: "Create",
+      layout: {
+        hideCalendarPicker: true,
+        hideLocation: true,
+        hideWhen: true,
+        hideRecurrence: true,
+        hideAlarms: true,
+        hideShowAs: true,
+        hideInvitees: true,
+        hideNotes: true,
+        meetCopyOnly: true,
+      },
+      afterMeetAccessory: <div>Schedule row</div>,
+    });
+    const title = screen.getByLabelText(defaultCalendarLabels.eventTitleLabel);
+    const meet = document.querySelector(".calendar-event-dialog__field--meet");
+    const accessory = screen.getByText("Schedule row");
+    expect(meet).not.toBeNull();
+    expect((title as HTMLInputElement).value).toBe("");
+    expect(title.compareDocumentPosition(meet!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      meet!.compareDocumentPosition(accessory) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  const CHANNEL_URL = "https://workspace.example.com/meet/channels/chat-01h455vb4pa9nnrjpznsav8hva";
+  const CHANNEL_GENERAL_URL = "https://workspace.example.com/meet/channels/general";
+  const MEETING_URL = "https://workspace.example.com/meet/meetings/test-meet";
+  const ROOM_URL = "https://workspace.example.com/meet/meetings/h8y8-ewp6-al8n";
+  const directoryInvitees = [
+    { username: "wouter", email: "wouter@woutervroege.nl", name: "Wouter" },
+  ];
+
+  function addTypedEmail(email: string) {
+    const add = screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd);
+    fireEvent.change(add, { target: { value: email } });
+    fireEvent.keyDown(add, { key: "Enter" });
+  }
+
+  it("prompts when an email invitee is added to a # channel Meet URL", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_GENERAL_URL,
+    };
+    renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+    expect(screen.getByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeTruthy();
+  });
+
+  it("does not prompt for a workspace invitee on a channel URL", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+    };
+    renderDialog({
+      form,
+      invitees: directoryInvitees,
+      sessionEmail: "admin@localhost",
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
+      target: { value: "wou" },
+    });
+    fireEvent.mouseDown(screen.getByRole("option", { name: /Wouter/i }));
+    expect(screen.queryByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeNull();
+  });
+
+  it("does not prompt for email invitees on a persistent meeting URL", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: MEETING_URL,
+    };
+    renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    expect(screen.queryByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeNull();
+  });
+
+  it("does not prompt for email invitees on an ad-hoc room URL", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: ROOM_URL,
+    };
+    renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    expect(screen.queryByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeNull();
+  });
+
+  it("does not prompt when opening an event that already has both", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+      attendees: [
+        {
+          email: "guest@elsewhere.test",
+          name: "guest@elsewhere.test",
+          participationStatus: "needs-action" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    renderDialog({
+      form,
+      invitees: directoryInvitees,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    expect(screen.queryByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeNull();
+    expect(
+      screen.getAllByText(defaultCalendarLabels.eventMeetEmailGuestsNoAccessHint).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("keep-both leaves the email invitee and shows the no-access hint", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+    };
+    const { onChange } = renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetChannelEmailKeepBoth }),
+    );
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meetingUrl: CHANNEL_URL,
+        attendees: [expect.objectContaining({ email: "guest@elsewhere.test" })],
+      }),
+    );
+  });
+
+  it("strip-emails keeps the channel URL and drops email-only invitees", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+      attendees: [
+        {
+          email: "wouter@woutervroege.nl",
+          name: "Wouter",
+          participationStatus: "needs-action" as const,
+          role: "required" as const,
+        },
+      ],
+    };
+    const { onChange } = renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetChannelEmailStripEmails }),
+    );
+    const last = onChange.mock.calls.at(-1)?.[0] as {
+      meetingUrl: string;
+      attendees: { email: string }[];
+    };
+    expect(last.meetingUrl).toBe(CHANNEL_URL);
+    expect(last.attendees.map((row) => row.email)).toEqual(["wouter@woutervroege.nl"]);
+  });
+
+  it("replace-with-room keeps email invitees and swaps in a guest room URL", async () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+    };
+    const reserveRoom = vi.fn().mockResolvedValue({ reserved: true, active: false });
+    const { onChange } = renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      sessionUsername: "admin",
+      workspaceOrigin: "https://workspace.example.com",
+      calendars: bootstrap.data.calendars,
+      meetOperations: {
+        roomStatus: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+        reserveRoom,
+        patchRoomExpiresAt: vi.fn().mockResolvedValue({ reserved: true, active: false }),
+      },
+    });
+    addTypedEmail("guest@elsewhere.test");
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetChannelEmailReplaceLink }),
+    );
+    await waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0] as {
+        meetingUrl: string;
+        attendees: { email: string }[];
+        meetGuestRoomOverride?: boolean;
+      };
+      expect(last.meetingUrl).toMatch(/\/meet\/meetings\/[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
+      expect(last.meetingUrl).not.toMatch(/\/guest/);
+      expect(last.attendees.map((row) => row.email)).toEqual(["guest@elsewhere.test"]);
+      expect(last.meetGuestRoomOverride).toBe(true);
+    });
+    expect(reserveRoom).toHaveBeenCalled();
+  });
+
+  it("cancel reverts the last conflicting change", () => {
+    const form = {
+      ...emptyCalendarEventForm("default", "2033-01-12"),
+      title: "Standup",
+      meetingUrl: CHANNEL_URL,
+    };
+    const { onChange } = renderDialog({
+      form,
+      invitees: directoryInvitees,
+      canSubmitEmail: true,
+      workspaceOrigin: "https://workspace.example.com",
+    });
+    addTypedEmail("guest@elsewhere.test");
+    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
+    const last = onChange.mock.calls.at(-1)?.[0] as { attendees: unknown[] };
+    expect(last.attendees).toEqual([]);
+    expect(screen.queryByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeNull();
   });
 });

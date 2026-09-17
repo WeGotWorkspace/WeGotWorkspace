@@ -23,7 +23,7 @@ function SlashMenuHarness({ query = "" }: { query?: string }) {
   return (
     <div className="text-editor flex min-h-[min(900px,90dvh)] w-full max-w-3xl flex-col p-8">
       <div className="text-editor-sheet text-editor-sheet--inline min-h-[320px] flex-1">
-        <EditorContent editor={editor} className="text-editor-sheet__surface" />
+        <EditorContent editor={editor} className="text-editor-sheet__surface paper-sheet" />
       </div>
       <TextEditorSlashMenu editor={editor} />
     </div>

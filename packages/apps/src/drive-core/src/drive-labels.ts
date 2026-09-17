@@ -1,19 +1,31 @@
+import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sidebar";
+
 export const driveLabels = {
-  sidebarMyDrive: "My Drive",
-  sidebarSharedWithMe: "Shared with me",
-  sidebarRecent: "Recent",
-  sidebarStarred: "Starred",
-  sidebarTrash: "Trash",
-  sidebarSharedDrives: "Team drives",
+  /** Primary AppSidebar home (SST with Docs; Docs uses "My Docs"). */
+  sidebarHome: filesBrowserSidebarLabels.homeDrive,
+  /**
+   * Personal-drive display label (sidebar, breadcrumbs, location, pickers).
+   * UI path key remains `"My Drive"`; string SST is {@link filesBrowserSidebarLabels.personalDrive}.
+   */
+  sidebarMyDrive: filesBrowserSidebarLabels.personalDrive,
+  sidebarSharedWithMe: filesBrowserSidebarLabels.sharedWithMe,
+  sidebarRecent: filesBrowserSidebarLabels.recent,
+  sidebarStarred: filesBrowserSidebarLabels.starred,
+  sidebarTrash: filesBrowserSidebarLabels.trash,
+  /** My Drives section title (SST with Docs; was "Team drives"). */
+  sidebarSharedDrives: filesBrowserSidebarLabels.drivesSection,
   searchPlaceholder: "Search in Drive...",
   searchViewTitle: "Search",
   listColumnName: "Name",
+  listColumnLocation: "Location",
   listColumnActions: "Actions",
   listColumnOffline: "Offline",
   emptyFolder: "This folder is empty",
   folderListingLoading: "Loading folder…",
   dropUploadHint: "Drop files to upload to",
   newButton: "New",
+  /** Chevron menu on the sidebar segmented New control. */
+  newButtonMenu: "More create options",
   newFolder: "New folder",
   uploadFiles: "Upload files",
   newMarkdown: "New document",
@@ -24,6 +36,11 @@ export const driveLabels = {
   gridView: "Grid view",
   listView: "List view",
   detailPanelToggle: "Details panel",
+  /** DocsCollabSidebarPanel title for the file detail side panel. */
+  detailSidebarTitle: "Details",
+  detailClosePanel: "Close",
+  /** Empty body when the details panel is open with no file selected. */
+  detailEmpty: "Select a file to see its details.",
   selectionDone: "Done",
   selectionStar: "Star",
   selectionMove: "Move",
@@ -86,7 +103,12 @@ export const driveLabels = {
   sharedBy: (username: string) => `Shared by ${username}`,
 } as const;
 
-export type DriveUILabels = typeof driveLabels;
+/** Writable labels bag — string fields widen so products (Docs) can SST-override. */
+export type DriveUILabels = {
+  [K in keyof typeof driveLabels]: (typeof driveLabels)[K] extends string
+    ? string
+    : (typeof driveLabels)[K];
+};
 
 export type DriveOfficeBlankKind = "doc" | "sheet" | "slides";
 

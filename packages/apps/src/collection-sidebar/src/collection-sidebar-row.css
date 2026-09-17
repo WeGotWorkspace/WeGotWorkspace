@@ -1,19 +1,87 @@
 @import "../../styles.css" reference;
 
+/* Selected wash/fg match outline icon-button--active; no visible stroke in any
+ * state (1px transparent reserves space). Accent via --button-outline-*;
+ * keyboard-only focus ring. */
 .collection-sidebar-row {
-  @apply flex min-h-8 min-w-0 items-center gap-2 rounded px-4 py-1 text-sm font-medium;
+  @apply relative flex min-w-0 items-center gap-2 text-sm font-medium;
+  min-height: var(--app-sidebar-item-height, var(--control-height-md, 2.25rem));
+  border-radius: var(--collection-sidebar-row-radius, 0.25rem);
+  /* Align leading content with section titles / app-switch glyph inset. */
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
+  border: 1px solid transparent;
+  background-color: transparent;
   color: color-mix(in oklab, var(--color-ink) 75%, transparent);
 }
 
+.collection-sidebar-row:hover:not(.collection-sidebar-row--selected) {
+  border-color: transparent;
+  color: var(
+    --collection-sidebar-row-hover-color,
+    var(--button-outline-hover-color, var(--button-outline-color, var(--color-ink)))
+  );
+  background-color: var(
+    --collection-sidebar-row-hover-bg,
+    var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+  );
+}
+
+/* Selected = outline icon-button--active washes/fg; no visible stroke (idle/hover/selected). */
 .collection-sidebar-row--selected {
-  background-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  color: var(--color-ink);
+  color: var(
+    --collection-sidebar-row-selected-color,
+    var(--button-active-color, var(--color-emerald))
+  );
+  border-color: transparent;
+  background-color: var(
+    --collection-sidebar-row-selected-bg,
+    var(
+      --button-outline-active-background,
+      var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+    )
+  );
+}
+
+.collection-sidebar-row--selected:hover {
+  color: var(
+    --collection-sidebar-row-selected-color,
+    var(--button-active-color, var(--color-emerald))
+  );
+  background-color: var(
+    --collection-sidebar-row-selected-bg,
+    var(
+      --button-outline-active-hover-background,
+      var(
+        --button-outline-active-background,
+        var(
+          --button-outline-hover-background,
+          color-mix(in oklab, var(--color-ink) 8%, transparent)
+        )
+      )
+    )
+  );
+}
+
+.collection-sidebar-row--related:not(.collection-sidebar-row--selected) {
+  background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
+}
+
+.collection-sidebar-row--nested {
+  @apply pl-10;
 }
 
 .collection-sidebar-row__visibility {
   --primary: var(--collection-row-color, var(--color-ink));
   --primary-foreground: #ffffff;
-  flex-shrink: 0;
+  /* Beat parent workspace `--checkbox-*` (Notes gold, Docs accent) so the
+   * primitive paints calendarcolor / list / notebook color, not the app accent.
+   * Keep collection-row size (16px) even if the editor overrides `--checkbox-size`. */
+  --checkbox-size: 1rem;
+  --checkbox-border-color: var(--collection-row-color, var(--color-ink));
+  --checkbox-checked-bg: var(--collection-row-color, var(--color-ink));
+  --checkbox-checked-border: var(--collection-row-color, var(--color-ink));
+  --checkbox-checked-fg: #ffffff;
+  @apply relative z-10 shrink-0;
   border-color: var(--collection-row-color, var(--color-ink));
 }
 
@@ -29,12 +97,12 @@
 }
 
 .collection-sidebar-row__dot {
-  @apply size-2.5 shrink-0 rounded-full;
+  @apply relative z-10 size-2.5 shrink-0 rounded-full;
   background-color: var(--collection-row-color, var(--color-ink));
 }
 
 .collection-sidebar-row__select {
-  @apply flex min-w-0 flex-1 items-center gap-1.5;
+  @apply flex min-w-0 flex-1 items-center gap-1.5 self-stretch;
   margin: 0;
   padding: 0;
   border: 0;
@@ -45,14 +113,67 @@
   cursor: pointer;
 }
 
+/* Stretch the select control over the row padding (same box as hover). */
+.collection-sidebar-row__select::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.collection-sidebar-row__select:focus {
+  outline: none;
+}
+
+.collection-sidebar-row:has(> .collection-sidebar-row__select:focus-visible) {
+  @apply outline-none ring-1 ring-ring;
+}
+
+.collection-sidebar-row__leading {
+  @apply relative z-10 inline-flex shrink-0 items-center justify-center;
+}
+
+.collection-sidebar-row__trailing {
+  @apply relative z-10 inline-flex shrink-0 items-center;
+}
+
 .collection-sidebar-row__title {
-  @apply inline-flex min-w-0 items-center gap-1;
+  @apply relative z-10 inline-flex min-w-0 items-center gap-1;
 }
 
 .collection-sidebar-row__name {
   @apply min-w-0 truncate;
 }
 
-.collection-sidebar-row__action.button {
-  @apply size-6 shrink-0;
+.collection-sidebar-row__mark {
+  @apply inline-flex size-3.5 shrink-0 items-center justify-center;
+  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+}
+
+.collection-sidebar-row__action.button,
+.collection-sidebar-row__expand.button {
+  @apply relative z-10 shrink-0;
+  width: var(--control-height-xs, 1.75rem);
+  height: var(--control-height-xs, 1.75rem);
+  min-width: var(--control-height-xs, 1.75rem);
+  min-height: var(--control-height-xs, 1.75rem);
+  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+}
+
+.collection-sidebar-row__action:hover,
+.collection-sidebar-row__action:focus-visible,
+.collection-sidebar-row__expand:hover,
+.collection-sidebar-row__expand:focus-visible {
+  color: var(--color-ink);
+}
+
+/* Fine pointers: hide until row hover / focus-within. Touch keeps actions visible. */
+@media (hover: hover) and (pointer: fine) {
+  .collection-sidebar-row__action.button {
+    opacity: 0;
+  }
+
+  .collection-sidebar-row:hover .collection-sidebar-row__action.button,
+  .collection-sidebar-row:focus-within .collection-sidebar-row__action.button {
+    opacity: 1;
+  }
 }

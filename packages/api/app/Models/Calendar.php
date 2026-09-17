@@ -49,9 +49,21 @@ final class Calendar extends Model
         return str_contains($components, 'VEVENT');
     }
 
+    public function supportsVjournal(): bool
+    {
+        $components = (string) ($this->components ?? '');
+
+        return str_contains($components, 'VJOURNAL');
+    }
+
     public function isVtodoOnly(): bool
     {
         return $this->supportsVtodo() && ! $this->supportsVevent();
+    }
+
+    public function isVjournalOnly(): bool
+    {
+        return $this->supportsVjournal() && ! $this->supportsVevent() && ! $this->supportsVtodo();
     }
 
     public function isMixed(): bool
@@ -88,5 +100,17 @@ final class Calendar extends Model
     public function scopeSupportsVevent(Builder $query): void
     {
         $query->where('components', 'like', '%VEVENT%');
+    }
+
+    /**
+     * VJOURNAL-only collections (notebooks). Excludes event calendars and task lists.
+     *
+     * @param  Builder<Calendar>  $query
+     */
+    public function scopeVjournalOnly(Builder $query): void
+    {
+        $query->where('components', 'like', '%VJOURNAL%')
+            ->where('components', 'not like', '%VEVENT%')
+            ->where('components', 'not like', '%VTODO%');
     }
 }

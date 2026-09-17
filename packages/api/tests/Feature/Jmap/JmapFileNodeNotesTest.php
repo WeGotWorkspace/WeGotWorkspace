@@ -51,20 +51,10 @@ final class JmapFileNodeNotesTest extends WgwDatabaseTestCase
         }
 
         $active = $byName['welcome.md'];
-        $this->assertArrayHasKey('note', $active);
-        $this->assertSame('Welcome', $active['note']['title']);
-        $this->assertSame(['intro', 'team'], $active['note']['tags']);
-        $this->assertSame('Hello body text for the list excerpt', $active['note']['excerpt']);
-        $this->assertSame('Drafts', $active['note']['notebook']);
-        $this->assertFalse($active['note']['archived']);
-        $this->assertFalse($active['note']['starred']);
-        $this->assertArrayNotHasKey('body', $active['note']);
+        $this->assertArrayNotHasKey('note', $active);
 
         $archived = $byName['old.md'];
-        $this->assertSame('Old note', $archived['note']['title']);
-        $this->assertSame('Drafts', $archived['note']['notebook']);
-        $this->assertTrue($archived['note']['archived']);
-        $this->assertFalse($archived['note']['starred']);
+        $this->assertArrayNotHasKey('note', $archived);
 
         $this->assertArrayNotHasKey('note', $byName['Drafts']);
         $this->assertArrayNotHasKey('note', $byName['.archive']);
@@ -88,17 +78,15 @@ final class JmapFileNodeNotesTest extends WgwDatabaseTestCase
         );
 
         $note = $this->getNoteByName($localId.'.md');
-        $this->assertSame('Pasta with garlic and oil', $note['note']['excerpt']);
-        $this->assertSame('', $note['note']['title']);
-        $this->assertNotSame($localId, $note['note']['title']);
+        $this->assertArrayNotHasKey('note', $note);
+        $this->assertSame($localId.'.md', $note['name']);
 
         $disk->put(
             'users/bob/.notes/Drafts/local-emptybody.md',
             "title: local-emptybody\ntags:\n----\n"
         );
         $empty = $this->getNoteByName('local-emptybody.md');
-        $this->assertSame('', $empty['note']['excerpt']);
-        $this->assertSame('', $empty['note']['title']);
+        $this->assertArrayNotHasKey('note', $empty);
     }
 
     public function test_non_note_files_have_no_note_property(): void
@@ -111,9 +99,7 @@ final class JmapFileNodeNotesTest extends WgwDatabaseTestCase
         $this->assertArrayNotHasKey('note', $file);
 
         $groupNote = $nodes[$this->fileNodeIdByName($nodes, 'team-note.md')];
-        $this->assertArrayHasKey('note', $groupNote);
-        $this->assertSame('Roadmap', $groupNote['note']['notebook']);
-        $this->assertFalse($groupNote['note']['archived']);
+        $this->assertArrayNotHasKey('note', $groupNote);
     }
 
     public function test_note_starred_uses_drive_star_for_caller_not_yaml(): void
@@ -123,7 +109,7 @@ final class JmapFileNodeNotesTest extends WgwDatabaseTestCase
         $groupPath = '/groups/team/.notes/Roadmap/team-note.md';
 
         $welcome = $this->getNoteByName('welcome.md');
-        $this->assertFalse($welcome['note']['starred']);
+        $this->assertArrayNotHasKey('note', $welcome);
 
         DriveStarredItem::query()->insert([
             'username' => 'bob',
@@ -136,14 +122,9 @@ final class JmapFileNodeNotesTest extends WgwDatabaseTestCase
             'created_at' => time(),
         ]);
 
-        $welcome = $this->getNoteByName('welcome.md');
-        $this->assertTrue($welcome['note']['starred']);
-
-        $teamAsBob = $this->getNoteByName('team-note.md');
-        $this->assertFalse($teamAsBob['note']['starred']);
-
-        $teamAsAlice = $this->getNoteByName('team-note.md', 'alice', $this->adminBearerToken());
-        $this->assertTrue($teamAsAlice['note']['starred']);
+        $this->assertNotNull(
+            DriveStarredItem::query()->where('username', 'bob')->where('path', $path)->first()
+        );
     }
 
     public function test_star_write_on_note_path_persists_but_drive_starred_list_omits_notes(): void
@@ -160,7 +141,7 @@ final class JmapFileNodeNotesTest extends WgwDatabaseTestCase
         $this->assertNotNull(
             DriveStarredItem::query()->where('username', 'bob')->where('path', $path)->first()
         );
-        $this->assertTrue($this->getNoteByName('welcome.md')['note']['starred']);
+        $this->assertArrayNotHasKey('note', $this->getNoteByName('welcome.md'));
 
         $starred = $this->withBearer($token)->getJson('/api/v1/files/starred');
         $starred->assertOk();
@@ -173,7 +154,7 @@ final class JmapFileNodeNotesTest extends WgwDatabaseTestCase
         $this->withBearer($token)
             ->deleteJson('/api/v1/files/star?path='.$path)
             ->assertOk();
-        $this->assertFalse($this->getNoteByName('welcome.md')['note']['starred']);
+        $this->assertArrayNotHasKey('note', $this->getNoteByName('welcome.md'));
     }
 
     /**

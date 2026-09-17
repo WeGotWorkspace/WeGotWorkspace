@@ -8,20 +8,37 @@ import type {
   WgwMeetRoomStatusResponse,
 } from "@/lib/api/wgw/types";
 import { meetActorPrincipal } from "@/meet-core/src/meet-invite-status";
+import {
+  buildMeetCollectionInviteLink,
+  meetChannelIdFromPathname,
+  meetMeetingIdFromPathname,
+} from "@/meet-core/src/meet-route-search";
+import { meetPublicChannelId } from "@/meet-core/src/meet-public-id";
 
 /** Same pattern as PHP `CalendarMeetLinkHref::ROOM_CODE_PATTERN`. */
 export const MEET_ROOM_CODE_PATTERN = /^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/;
+
+/**
+ * Chat-channel call room: the channel collection id lowercased (`chat-` +
+ * uri slug, ULID-based server-side; client-suggested slugs are JMAP ids).
+ * Channel rooms are persistent — never reserved or swept by the calendar
+ * reservation GC (the API's `CalendarMeetLinkHref` ignores them by design).
+ */
+export const MEET_CHAT_ROOM_PATTERN = /^chat-[a-z0-9_-]{1,250}$/;
 
 export const MEET_DRAFT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const MEET_EVENT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const CALENDAR_MEET_LINK_KEY = "meet";
 
-const MEET_JOIN_PATHS = new Set(["/meet/guest", "/meet/join"]);
+const MEET_JOIN_PATHS = new Set(["/meet", "/meet/guest", "/meet/join"]);
 
 export type CalendarMeetHrefKind = "wgw" | "https";
 
+/** `code` = ad-hoc room; `channel` / `meeting` = persistent collection path. */
+export type CalendarMeetRoomKind = "code" | "channel" | "meeting";
+
 export type ParsedCalendarMeetHref =
-  | { kind: "wgw"; href: string; room: string }
+  | { kind: "wgw"; href: string; room: string; roomKind: CalendarMeetRoomKind }
   | { kind: "https"; href: string };
 
 export type CalendarMeetReserveScope = "single" | "series" | "thisAndFuture" | "thisInstance";
@@ -29,6 +46,27 @@ export type CalendarMeetReserveScope = "single" | "series" | "thisAndFuture" | "
 export type CalendarMeetRequestOptions = {
   signal?: AbortSignal;
 };
+
+/** Chat channel the event form can attach a call link for (dm rows filtered out). */
+export type CalendarMeetChannelOption = {
+  id: string;
+  name: string;
+  kind: "channel" | "meeting";
+  guestRoomCode?: string | null;
+};
+
+/**
+ * Event-form Meet picker rows: `#` channels only, sorted A–Z (locale-aware,
+ * case-insensitive). Meeting-kind collections stay out of the list — “New
+ * meeting link” is the ad-hoc path.
+ */
+export function calendarMeetPickerChannels(
+  channels: readonly CalendarMeetChannelOption[],
+): CalendarMeetChannelOption[] {
+  return [...channels]
+    .filter((channel) => channel.kind === "channel")
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
 
 export type CalendarMeetOperations = {
   roomStatus: (
@@ -43,10 +81,16 @@ export type CalendarMeetOperations = {
     input: WgwMeetPatchRoomRequest,
     opts?: CalendarMeetRequestOptions,
   ) => Promise<WgwMeetRoomStatusResponse>;
+  /** Chat collections for the event-form picker (`calendarMeetPickerChannels` keeps `#` only). */
+  listChannels?: (opts?: CalendarMeetRequestOptions) => Promise<CalendarMeetChannelOption[]>;
 };
 
 export function isMeetRoomCode(value: string): boolean {
   return MEET_ROOM_CODE_PATTERN.test(value.trim().toLowerCase());
+}
+
+export function isMeetChatRoomId(value: string): boolean {
+  return MEET_CHAT_ROOM_PATTERN.test(value.trim().toLowerCase());
 }
 
 /** Parsed `origin` only. Rejects on parse failure. */
@@ -69,6 +113,41 @@ function normalizeMeetJoinPath(pathname: string): string {
 }
 
 /**
+ * Meet invite from any http(s) or same-app relative URL. Host is ignored so
+ * `localhost` vs `127.0.0.1` stored links still stay in the Meet app.
+ */
+export function parseMeetInvitePath(
+  href: string,
+): { room: string; roomKind: CalendarMeetRoomKind } | null {
+  const trimmed = href.trim();
+  if (!trimmed) return null;
+  let url: URL;
+  try {
+    url = trimmed.startsWith("/") ? new URL(trimmed, "https://meet.local") : new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  const path = normalizeMeetJoinPath(url.pathname);
+  const channelId = meetChannelIdFromPathname(path);
+  if (channelId) return { room: channelId.toLowerCase(), roomKind: "channel" };
+  const meetingId = meetMeetingIdFromPathname(path);
+  if (meetingId) {
+    return {
+      room: meetingId.toLowerCase(),
+      roomKind: isMeetRoomCode(meetingId) ? "code" : "meeting",
+    };
+  }
+  if (MEET_JOIN_PATHS.has(path)) {
+    const room = (url.searchParams.get("room") ?? "").trim().toLowerCase();
+    if (isMeetRoomCode(room)) return { room, roomKind: "code" };
+    if (isMeetChatRoomId(room)) return { room, roomKind: "channel" };
+    return null;
+  }
+  return null;
+}
+
+/**
  * Complete same-origin guest/join URL → `{ kind: "wgw" }`.
  * Other valid http(s) → `{ kind: "https" }`.
  * Incomplete WGW-looking values and non-http(s) → `null`.
@@ -84,7 +163,13 @@ export function parseCalendarMeetHref(
   try {
     parsed = new URL(trimmed);
   } catch {
-    return null;
+    // Sidebar/calendar join hrefs are same-origin paths (`/meet?room=`, `/meet/meetings/{id}`).
+    if (!trimmed.startsWith("/") || !workspaceOrigin) return null;
+    try {
+      parsed = new URL(trimmed, workspaceOrigin);
+    } catch {
+      return null;
+    }
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
 
@@ -92,10 +177,26 @@ export function parseCalendarMeetHref(
   const hrefOrigin = parsed.origin;
   if (configured && hrefOrigin === configured) {
     const path = normalizeMeetJoinPath(parsed.pathname);
+    const channelId = meetChannelIdFromPathname(path);
+    if (channelId) {
+      return { kind: "wgw", href: trimmed, room: channelId.toLowerCase(), roomKind: "channel" };
+    }
+    const meetingId = meetMeetingIdFromPathname(path);
+    if (meetingId) {
+      return {
+        kind: "wgw",
+        href: trimmed,
+        room: meetingId.toLowerCase(),
+        roomKind: isMeetRoomCode(meetingId) ? "code" : "meeting",
+      };
+    }
     if (MEET_JOIN_PATHS.has(path)) {
       const room = (parsed.searchParams.get("room") ?? "").trim().toLowerCase();
       if (isMeetRoomCode(room)) {
-        return { kind: "wgw", href: trimmed, room };
+        return { kind: "wgw", href: trimmed, room, roomKind: "code" };
+      }
+      if (isMeetChatRoomId(room)) {
+        return { kind: "wgw", href: trimmed, room, roomKind: "channel" };
       }
       return null;
     }
@@ -216,27 +317,66 @@ export function meetingUrlFromCalendarEvent(
   return meetingUrlFromLinks(event.links);
 }
 
+/**
+ * Reserve-managed ad-hoc room code only. Channel rooms are excluded on
+ * purpose: they are persistent and must never be expired/re-reserved by the
+ * event form's reservation lifecycle.
+ */
 export function roomCodeFromMeetingUrl(href: string, workspaceOrigin: string): string | undefined {
   const parsed = parseCalendarMeetHref(href, workspaceOrigin);
-  return parsed?.kind === "wgw" ? parsed.room : undefined;
+  return parsed?.kind === "wgw" && parsed.roomKind === "code" ? parsed.room : undefined;
 }
 
 /**
- * URL Calendar Join opens. Same-origin WGW rooms use the signed-in join route
- * so owner / group / createdBy keep host rights. External https stays as-is.
+ * URL Calendar Join opens — the unified invite path (no `/guest` segment).
+ * Legacy `/meet/guest` and `/meet/join` hrefs normalize to `/meet/meetings/{id}`
+ * or `/meet/channels/{id}`. External https stays as-is.
  */
 export function calendarMeetJoinHref(href: string, workspaceOrigin: string): string | null {
+  const invite = parseMeetInvitePath(href);
+  if (invite) {
+    if (invite.roomKind === "channel") {
+      return `/meet/channels/${encodeURIComponent(meetPublicChannelId(invite.room))}`;
+    }
+    return `/meet/meetings/${encodeURIComponent(invite.room)}`;
+  }
   const parsed = parseCalendarMeetHref(href, workspaceOrigin);
   if (!parsed) return null;
-  if (parsed.kind === "wgw") {
-    return `/meet/join?room=${encodeURIComponent(parsed.room)}`;
-  }
-  return parsed.href;
+  return parsed.kind === "https" ? parsed.href : null;
 }
 
-/** Open a calendar meeting in a new window (user-gesture safe). */
+/**
+ * Call room for a chat channel: meeting-kind channels use their
+ * `guestRoomCode`, plain channels use the channel id lowercased (the Meet
+ * room convention for in-channel calls).
+ */
+export function meetChannelCallRoom(
+  channel: Pick<CalendarMeetChannelOption, "id" | "kind" | "guestRoomCode">,
+): string {
+  const guestRoom = channel.guestRoomCode?.trim();
+  if (channel.kind === "meeting" && guestRoom) return guestRoom.toLowerCase();
+  return channel.id.trim().toLowerCase();
+}
+
+/**
+ * Invite URL: channels use `/meet/channels/{id}`, meeting-kind collections use
+ * `/meet/meetings/{id}`. Ad-hoc leftover `/meet/meetings/{code}` hrefs stay on
+ * calendar events that never became a channel.
+ */
+export function meetChannelCallHref(
+  channel: Pick<CalendarMeetChannelOption, "id" | "kind" | "guestRoomCode">,
+  workspaceOrigin: string,
+): string {
+  return buildMeetCollectionInviteLink(channel, workspaceOrigin);
+}
+
+/** Same-tab for workspace Meet paths; new window only for external https. */
 export function openCalendarMeetHref(href: string, workspaceOrigin: string): Window | null {
   const target = calendarMeetJoinHref(href, workspaceOrigin);
   if (!target) return null;
+  if (target.startsWith("/meet/")) {
+    window.location.assign(target);
+    return window;
+  }
   return window.open(target, "_blank", "noopener,noreferrer");
 }

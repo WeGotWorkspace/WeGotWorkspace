@@ -14,13 +14,6 @@
   @apply pointer-events-auto;
 }
 
-.docs-comments-floating-layer__card .docs-comments-thread-card[data-active="true"] {
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--color-ink) 5%, transparent),
-    0 8px 24px -8px color-mix(in oklab, var(--docs-accent) 28%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--docs-accent) 12%, transparent);
-}
-
 .docs-comments-floating-layer__card .docs-comments-thread-card {
   @apply overflow-y-auto;
   max-height: var(--docs-comments-thread-card-max-height, 24rem);

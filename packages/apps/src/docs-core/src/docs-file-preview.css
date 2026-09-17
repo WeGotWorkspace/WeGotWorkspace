@@ -60,19 +60,21 @@
 }
 
 .drive-workspace .drive-detail-panel__preview .docs-file-preview,
-.drive-workspace .drive-detail-panel__preview .docs-file-preview__editor {
+.drive-workspace .drive-detail-panel__preview .docs-file-preview__editor,
+.drive-detail-panel__preview .docs-file-preview,
+.drive-detail-panel__preview .docs-file-preview__editor {
   @apply absolute inset-0 h-full w-full;
 }
 
-/* Mobile detail overlay: centered letter-sized sheet with side margins. */
-.drive-workspace .drive-detail-overlay .drive-detail-panel__preview .docs-file-preview {
+/* Mobile detail SideDrawer: centered letter-sized sheet with side margins. */
+.drive-detail-panel-drawer .drive-detail-panel__preview .docs-file-preview {
   --docs-file-preview-mobile-sheet-width: min(100% - 2rem, 28rem);
   background-color: transparent;
   align-items: center;
   padding: 1rem;
 }
 
-.drive-workspace .drive-detail-overlay .drive-detail-panel__preview .docs-file-preview__editor {
+.drive-detail-panel-drawer .drive-detail-panel__preview .docs-file-preview__editor {
   position: relative;
   inset: auto;
   height: auto;
@@ -81,8 +83,7 @@
   margin-inline: auto;
 }
 
-.drive-workspace
-  .drive-detail-overlay
+.drive-detail-panel-drawer
   .drive-detail-panel__preview
   .docs-file-preview
   .text-editor-sheet--fill {
@@ -91,8 +92,7 @@
   width: 100%;
 }
 
-.drive-workspace
-  .drive-detail-overlay
+.drive-detail-panel-drawer
   .drive-detail-panel__preview
   .docs-file-preview
   .text-editor-sheet--fill

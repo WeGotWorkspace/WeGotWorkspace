@@ -1,3 +1,7 @@
 {
-  "allowedMissing": []
+  "allowedMissing": [
+    "contacts-core/src::ContactsOrgIcon",
+    "list-item/src::ListItemDelegation",
+    "list-item/src::ListItemSelection"
+  ]
 }

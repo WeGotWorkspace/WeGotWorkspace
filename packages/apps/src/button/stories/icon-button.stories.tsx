@@ -24,7 +24,7 @@ export const Default: StoryObj<typeof IconButton> = {
     label: "Favorite",
     icon: <Star />,
     size: "md",
-    variant: "subtle",
+    variant: "outline",
     onClick: () => {},
   },
   render: (args) => <IconButton {...args} />,
@@ -40,7 +40,22 @@ export const Ghost: StoryObj<typeof IconButton> = {
   args: { ...Default.args, variant: "ghost" },
 };
 
+export const DestructiveOutline: StoryObj<typeof IconButton> = {
+  ...Default,
+  args: { ...Default.args, variant: "destructive-outline" },
+};
+
 export const Disabled: StoryObj<typeof IconButton> = {
   ...Default,
   args: { ...Default.args, disabled: true },
+};
+
+export const Success: StoryObj<typeof IconButton> = {
+  ...Default,
+  args: { ...Default.args, severity: "success", label: "Resolve thread" },
+};
+
+export const Danger: StoryObj<typeof IconButton> = {
+  ...Default,
+  args: { ...Default.args, severity: "danger", label: "Delete" },
 };

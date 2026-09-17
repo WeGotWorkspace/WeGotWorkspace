@@ -1,9 +1,31 @@
 import type { ComponentProps } from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ContactsDetailActionBar } from "./contacts-detail-action-bar";
 import { defaultContactsLabels } from "./contacts-labels";
+
+const twoBooks = [
+  { id: "default", name: "Ada", isDefault: true },
+  { id: "group-eng", name: "Engineering" },
+];
+
+function stubSelectEnv() {
+  Element.prototype.scrollIntoView = vi.fn();
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
 
 afterEach(() => {
   cleanup();
@@ -35,12 +57,57 @@ describe("ContactsDetailActionBar", () => {
     const back = screen.getByRole("button", { name: "All Contacts" });
     expect(back.textContent).toContain("All Contacts");
     expect(back.className).toContain("action-bar__back");
+    expect(back.className).toContain("button--variant-outline");
   });
 
-  it("shows edit and delete actions in read mode", () => {
-    renderActionBar();
-    expect(screen.getByRole("button", { name: defaultContactsLabels.edit })).toBeTruthy();
-    expect(screen.getByRole("button", { name: defaultContactsLabels.delete })).toBeTruthy();
+  it("shows a labeled edit action first in read mode", () => {
+    const { container } = renderActionBar();
+    const row = container.querySelector(".action-bar__row");
+    expect(row).toBeTruthy();
+
+    const actions = within(row as HTMLElement);
+    const buttons = actions.getAllByRole("button");
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
+      defaultContactsLabels.edit,
+      defaultContactsLabels.downloadVCard,
+      defaultContactsLabels.delete,
+    ]);
+
+    const edit = buttons[0];
+    expect(edit.textContent).toContain(defaultContactsLabels.edit);
+    expect(edit.className).toContain("action-bar__action--labeled");
+    expect(buttons[1].textContent).not.toContain(defaultContactsLabels.downloadVCard);
+    expect(buttons[2].textContent).not.toContain(defaultContactsLabels.delete);
+  });
+
+  it("pins edit before the address-book switcher and washes delete with severity-danger", () => {
+    stubSelectEnv();
+    const { container } = renderActionBar({
+      moveAddressBook: {
+        books: twoBooks,
+        value: "default",
+        onMove: vi.fn(),
+      },
+    });
+
+    const right = container.querySelector(".action-bar__right");
+    expect(right).toBeTruthy();
+    const rightChildren = Array.from(right!.children).map((child) => child.className);
+    expect(rightChildren[0]).toContain("action-bar__row");
+    expect(rightChildren[1]).toContain("action-bar__right-leading");
+    expect(rightChildren[2]).toContain("action-bar__row");
+
+    const buttons = within(right as HTMLElement).getAllByRole("button");
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
+      defaultContactsLabels.edit,
+      defaultContactsLabels.downloadVCard,
+      defaultContactsLabels.delete,
+    ]);
+    expect(buttons[0].className).toContain("action-bar__action--labeled");
+    expect(buttons[2].className).toContain("button--severity-danger");
+    expect(
+      screen.getByRole("combobox", { name: defaultContactsLabels.personalAddressBook }),
+    ).toBeTruthy();
   });
 
   it("keeps read actions visible while editing with correct disabled states", () => {
@@ -82,5 +149,61 @@ describe("ContactsDetailActionBar", () => {
     renderActionBar({ createMode: true, editMode: false });
     expect(screen.getByRole("button", { name: defaultContactsLabels.save })).toBeTruthy();
     expect(screen.getByRole("button", { name: defaultContactsLabels.cancel })).toBeTruthy();
+  });
+
+  it("hides the address-book switcher without two destinations", () => {
+    renderActionBar({
+      moveAddressBook: {
+        books: [{ id: "default", name: "Ada", isDefault: true }],
+        value: "default",
+        onMove: vi.fn(),
+      },
+    });
+    expect(
+      screen.queryByRole("combobox", { name: defaultContactsLabels.personalAddressBook }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("combobox", { name: defaultContactsLabels.toolbarMoveToAddressBook }),
+    ).toBeNull();
+  });
+});
+
+describe("ContactsDetailActionBar address-book move", () => {
+  beforeEach(stubSelectEnv);
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("moves when choosing another writable address book and never offers create", () => {
+    const onMove = vi.fn();
+    renderActionBar({
+      moveAddressBook: {
+        books: twoBooks,
+        value: "default",
+        onMove,
+      },
+    });
+
+    const trigger = screen.getByRole("combobox", {
+      name: defaultContactsLabels.personalAddressBook,
+    });
+    expect(trigger.getAttribute("aria-label")).toBe(defaultContactsLabels.personalAddressBook);
+    expect(trigger.className).toContain("contacts-address-book-select");
+    expect(trigger.className).toContain("color-swatch-trigger");
+    expect(trigger.className).toContain("contacts-address-book-select--swatch");
+    expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
+    expect(trigger.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(trigger.querySelector(".contacts-address-book-select__name")).toBeNull();
+    fireEvent.click(trigger);
+
+    const options = screen.getAllByRole("option");
+    expect(options.map((option) => option.textContent?.trim())).toEqual([
+      defaultContactsLabels.personalAddressBook,
+      "Engineering",
+    ]);
+    expect(screen.queryByRole("option", { name: /create|new address book/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("option", { name: "Engineering" }));
+    expect(onMove).toHaveBeenCalledWith("group-eng");
   });
 });

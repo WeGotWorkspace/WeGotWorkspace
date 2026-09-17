@@ -83,7 +83,7 @@ export const Html: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const bold = canvas.getByTitle("Bold");
+    const bold = canvas.getByRole("button", { name: "Bold" });
     await userEvent.click(bold);
     await expect(bold).toHaveAttribute("aria-pressed", "true");
   },

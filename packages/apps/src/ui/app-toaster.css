@@ -25,6 +25,7 @@
   width: 100%;
   max-width: 100%;
   pointer-events: auto;
+  user-select: none;
 }
 
 /**
@@ -65,47 +66,110 @@
   line-height: inherit;
 }
 
-/* Solid surfaces — default Callout mixes are too faint on busy workspaces. */
-[data-sonner-toast] .callout {
-  --callout-bg: var(--color-ink);
-  --callout-border: color-mix(in oklab, var(--color-cream) 22%, transparent);
-  --callout-text: var(--color-cream);
-  --callout-icon-color: var(--color-cream);
-  --button-outline-color: var(--color-cream);
-  --button-outline-border-color: color-mix(in oklab, var(--color-cream) 38%, transparent);
-  --button-outline-hover-background: color-mix(in oklab, var(--color-cream) 14%, transparent);
-  --button-outline-shadow-color: var(--color-cream);
+/**
+ * Generic toast surface — cream paper, ink type, IconButton outline chrome.
+ * No app-accent or severity color coding; severity only affects default icons.
+ * Background is slightly translucent so the page peeks through a little.
+ */
+[data-sonner-toast] .callout,
+[data-sonner-toast] .callout--info,
+[data-sonner-toast] .callout--success,
+[data-sonner-toast] .callout--warning,
+[data-sonner-toast] .callout--error {
+  --callout-bg: color-mix(in oklab, var(--color-cream, #ffffff) 90%, transparent);
+  --callout-border: var(--control-border-color);
+  --callout-text: var(--color-ink);
+  --callout-icon-color: var(--color-ink);
+  --button-outline-color: var(--color-ink);
+  --button-outline-border-color: var(--control-border-color);
+  --button-outline-hover-background: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  --button-outline-shadow-color: var(--color-ink);
   background-color: var(--callout-bg);
   border-color: var(--callout-border);
   color: var(--callout-text);
-  box-shadow:
-    0 6px 24px color-mix(in oklab, var(--color-ink) 50%, transparent),
-    inset 0 1px 0 color-mix(in oklab, var(--color-cream) 14%, transparent);
+  border-radius: var(--control-radius-button-pill);
+  user-select: none;
+  box-shadow: var(
+    --control-shadow,
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 10px 30px -10px rgba(15, 23, 42, 0.12)
+  );
 }
 
-[data-sonner-toast] .callout--success {
-  --callout-icon-color: var(--color-emerald);
-  --callout-border: color-mix(in oklab, var(--color-emerald) 38%, var(--color-ink));
+/* Toast body — primary content (top line). */
+[data-sonner-toast] .menu-item__label {
+  margin-top: 0;
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-ink);
+  opacity: 1;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: unset;
 }
 
-[data-sonner-toast] .callout--error {
-  --callout-icon-color: #f4a4a4;
-  --callout-border: color-mix(in oklab, #f4a4a4 40%, var(--color-ink));
+/* App name — quiet caption under the message. */
+[data-sonner-toast] .menu-item__description {
+  margin-top: 0;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--color-ink) 62%, transparent);
+  opacity: 1;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: unset;
 }
 
-[data-sonner-toast] .callout--warning {
-  --callout-icon-color: #f0c06a;
-  --callout-border: color-mix(in oklab, #f0c06a 40%, var(--color-ink));
+/*
+ * Place the icon on the message row (grid row 1). App name sits on row 2.
+ * `display: contents` lets label/description participate in the grid.
+ */
+[data-sonner-toast] .menu-item__main--stacked {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 0.625rem;
+  row-gap: 0.125rem;
 }
 
-[data-sonner-toast] .callout--info {
-  --callout-icon-color: color-mix(in oklab, var(--color-cream) 88%, transparent);
+[data-sonner-toast] .menu-item__main--stacked .menu-item__text {
+  display: contents;
+}
+
+[data-sonner-toast] .menu-item__main--stacked .menu-item__label {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+[data-sonner-toast] .menu-item__main--stacked .menu-item__description {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+[data-sonner-toast] .menu-item__main--stacked .menu-item__icon-slot {
+  grid-column: 1;
+  grid-row: 1;
+  opacity: 1;
+}
+
+[data-sonner-toast] .app-toast-callout__title {
+  display: block;
+}
+
+[data-sonner-toast] .app-toast-callout__detail {
+  display: block;
+  margin-top: 0.125rem;
+  font-weight: 400;
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
 }
 
 [data-sonner-toast] .menu-item {
-  color: var(--color-cream);
+  color: var(--color-ink);
 }
 
-[data-sonner-toast] .menu-item__description {
-  color: color-mix(in oklab, var(--color-cream) 78%, transparent);
+[data-sonner-toast] .callout__icon {
+  color: var(--color-ink);
 }

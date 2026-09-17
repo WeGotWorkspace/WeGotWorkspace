@@ -28,7 +28,7 @@ function runStep(label, cmd, extraEnv = {}) {
 
   const result = spawnSync(cmd[0], cmd.slice(1), {
     cwd: appsRoot,
-    stdio: "inherit",
+    stdio: ["ignore", "inherit", "inherit"],
     env: { ...process.env, ...extraEnv },
   });
 

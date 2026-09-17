@@ -6,6 +6,7 @@ namespace App\Services\Admin;
 
 use App\Models\AppSetting;
 use App\Services\MailDelivery\MailDeliveryService;
+use App\Services\Mcp\McpPublicOrigin;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Settings\SettingKeys;
 use App\Services\Update\UpdateStateService;
@@ -54,6 +55,10 @@ final class AdminStateService
                 'authRealm' => (string) ($cfg[SettingKeys::AUTH_REALM] ?? 'SabreDAV'),
             ],
             'updates' => $this->updates->snapshot(),
+            'mcp' => [
+                'enabled' => (bool) AppSetting::getValue(SettingKeys::MCP_ENABLED, false),
+                'endpointUrl' => McpPublicOrigin::configuredEndpointUrl(),
+            ],
             'currentUser' => $adminUsername,
             'logoutUrl' => $this->urls->logout(),
         ];

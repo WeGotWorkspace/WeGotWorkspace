@@ -88,5 +88,6 @@ Repo root is derived from the server module location (`tools/mcp-server/dist/` �
 ## Related
 
 - [done-checklist.md](done-checklist.md) — full handoff checklist
+- [english-only.md](english-only.md) — English specs, plans, docs, GitHub issues
 - [POLICY.md](../../POLICY.md) — policy vs enforcement
 - [testing/apps-done-gate.md](../testing/apps-done-gate.md) — apps gate details

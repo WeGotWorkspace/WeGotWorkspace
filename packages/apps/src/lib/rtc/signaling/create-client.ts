@@ -5,6 +5,7 @@ import {
   type HttpSignalingFetch,
 } from "@/lib/rtc/signaling/http-client";
 import type { SignalingChannel } from "@/lib/rtc/types";
+import { readRtcBrowserId } from "@/lib/rtc/signaling/browser-id";
 import { signalingApiSegment } from "@/lib/rtc/types";
 
 export type RtcSignalingAuth = {
@@ -51,5 +52,6 @@ export function createRtcSignalingClient(
     fetchImpl: options.fetchImpl ?? createWgwSignalingFetch(),
     getAuth: options.getAuth ?? (() => ({})),
     sendFromField: options.sendFromField ?? channelDefaults.sendFromField ?? "from",
+    getBrowserId: options.channel === "meet" ? readRtcBrowserId : undefined,
   });
 }

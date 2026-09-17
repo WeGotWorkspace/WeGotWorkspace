@@ -7,6 +7,7 @@ const INITIAL_TAGS = ["architecture", "nordic", "modernism", "essay", "travel", 
 const INITIAL_NOTES: Note[] = [
   {
     id: "1",
+    title: "Endless scroll",
     category: "Essay",
     date: "12 Oct 2024",
     starred: true,
@@ -23,6 +24,7 @@ const INITIAL_NOTES: Note[] = [
   },
   {
     id: "2",
+    title: "Atlantic light",
     category: "Monograph",
     date: "08 Oct 2024",
     excerpt:
@@ -37,6 +39,7 @@ const INITIAL_NOTES: Note[] = [
   },
   {
     id: "3",
+    title: "Bauhaus today",
     category: "Research",
     date: "29 Sep 2024",
     excerpt:
@@ -51,6 +54,7 @@ const INITIAL_NOTES: Note[] = [
   },
   {
     id: "4",
+    title: "The weight of paper",
     category: "Review",
     date: "24 Sep 2024",
     archived: true,
@@ -71,6 +75,12 @@ export const notesMockAdapter: NotesAdapter = {
       notes: INITIAL_NOTES,
       notebooks: INITIAL_NOTEBOOKS,
       tags: INITIAL_TAGS,
+      notebookCollections: [
+        { id: "The Journal", name: "The Journal", color: "#14b8a6", isSharee: false },
+        { id: "Field Observations", name: "Field Observations", color: "#0ea5e9", isSharee: false },
+        { id: "Drafts", name: "Drafts", color: "#f59e0b", isSharee: false },
+        { id: "Published", name: "Published", color: "#8b5cf6", isSharee: false },
+      ],
     };
   },
 };

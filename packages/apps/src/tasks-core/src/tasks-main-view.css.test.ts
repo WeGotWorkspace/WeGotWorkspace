@@ -33,6 +33,20 @@ describe("tasks remind button label", () => {
   });
 });
 
+describe("tasks composer add actions", () => {
+  it("does not render a Cancel control in the add-task composer", () => {
+    const mainView = readFileSync(join(here, "tasks-main-view.tsx"), "utf8");
+    const actions = mainView.match(
+      /className="tasks-main-view__composer-actions"[\s\S]*?<\/div>/,
+    )?.[0];
+    expect(actions).toBeTruthy();
+    expect(actions).toMatch(/L\.addTaskButton/);
+    expect(actions).not.toMatch(/L\.cancel/);
+    expect(actions).not.toMatch(/resetDraft/);
+    expect(mainView).not.toMatch(/hasDraftContent/);
+  });
+});
+
 describe("tasks composer select chips", () => {
   it("pins compact metrics with higher specificity than select-trigger defaults", () => {
     const block = css.match(/\.select-trigger\.tasks-main-view__composer-select \{[^}]+\}/)?.[0];
@@ -40,11 +54,75 @@ describe("tasks composer select chips", () => {
     expect(block).toMatch(/height:\s*2rem/);
     expect(block).toMatch(/font-size:\s*0\.75rem/);
     expect(block).toMatch(/padding-inline:\s*0\.5rem/);
+    expect(block).toMatch(/border-radius:\s*var\(--control-radius\)/);
     expect(css).toMatch(
       /\.select-trigger\.tasks-main-view__composer-select > span \{[\s\S]*-webkit-line-clamp:\s*unset/,
     );
     expect(css).toMatch(
       /\.tasks-main-view__composer-select \.tasks-main-view__composer-select-option \{/,
     );
+  });
+
+  it("pins the shared composer chip radius so due raw buttons match selects", () => {
+    expect(css).toMatch(
+      /\.tasks-main-view__composer-select \{[\s\S]*border-radius:\s*var\(--control-radius\)/,
+    );
+  });
+
+  it("pins the remind trigger so production .button--size-md cannot win", () => {
+    const block = css.match(
+      /\.tasks-main-view__composer-select\.tasks-main-view__remind-button \{[^}]+\}/,
+    )?.[0];
+    expect(block).toMatch(/height:\s*2rem/);
+    expect(block).toMatch(/border-radius:\s*var\(--control-radius\)/);
+    expect(block).toMatch(/padding-inline:\s*0\.5rem/);
+    expect(block).toMatch(/font-size:\s*0\.75rem/);
+  });
+
+  it("lets Add task use production Button size-md metrics", () => {
+    expect(css).not.toMatch(/\.tasks-main-view__composer-actions \.button\.button--size-md \{/);
+    const actions = css.match(/\.tasks-main-view__composer-actions \{[^}]+\}/)?.[0];
+    expect(actions).toBeTruthy();
+    expect(actions).not.toMatch(/--control-height-sm:\s*2rem/);
+    expect(actions).not.toMatch(/--control-radius-button-pill:\s*var\(--control-radius\)/);
+    expect(css).not.toMatch(
+      /\.tasks-main-view__composer-meta \{[\s\S]*--control-radius-button-pill:\s*var\(--control-radius\)/,
+    );
+  });
+
+  it("pins Add task on the start (left) side of the composer actions row", () => {
+    const actions = css.match(/\.tasks-main-view__composer-actions \{[^}]+\}/)?.[0];
+    expect(actions).toMatch(/justify-start/);
+    expect(actions).not.toMatch(/justify-end/);
+  });
+
+  it("colors the assigned composer remind bell like the list-row mark", () => {
+    expect(css).toMatch(
+      /\.tasks-main-view__remind-button--active svg \{[\s\S]*var\(--button-active-color/,
+    );
+    expect(css).toMatch(
+      /\.tasks-main-view__remind-button--active svg \{[\s\S]*fill:\s*currentColor/,
+    );
+  });
+
+  it("overlays the remind badge without padding the chip or icon", () => {
+    const remind = css.match(/\.tasks-main-view__remind \{[\s\S]*?\}/)?.[0];
+    expect(remind).toBeTruthy();
+    expect(remind).toMatch(/overflow-visible/);
+    expect(remind).not.toMatch(/padding-block-start/);
+    expect(remind).not.toMatch(/--tasks-remind-pad/);
+    expect(css).not.toMatch(/--tasks-remind-pad/);
+    expect(css).toMatch(/\.tasks-main-view__remind-badge \{[\s\S]*@apply[^\n]*absolute/);
+    expect(css).toMatch(
+      /\.tasks-main-view__remind-button \.tasks-main-view__composer-select-option > svg \{[\s\S]*m-0/,
+    );
+  });
+
+  it("renders row reminders as plain meta text without a chip or truncate", () => {
+    expect(css).not.toMatch(/\.tasks-main-view__remind-row-chip/);
+    expect(css).not.toMatch(/\.tasks-main-view__remind--row[\s\S]*?\{[\s\S]*?truncate/);
+    expect(css).not.toMatch(/\.tasks-main-view__remind--row[\s\S]*?\{[\s\S]*?\bborder\b/);
+    expect(css).toMatch(/\.tasks-main-view__remind--row svg \{[\s\S]*var\(--tasks-accent/);
+    expect(css).toMatch(/\.tasks-main-view__remind--row svg \{[\s\S]*fill:\s*currentColor/);
   });
 });

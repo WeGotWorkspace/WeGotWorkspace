@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { notesDetailTintStyle } from "@/notes-core/src/notes-notebook-color";
 import "@/notes-core/src/notes-workspace.css";
 
 export type NotesStoryScopeVariant = "pane" | "list-column" | "detail";
@@ -6,9 +7,12 @@ export type NotesStoryScopeVariant = "pane" | "list-column" | "detail";
 export function NotesStoryScope({
   children,
   variant = "pane",
+  detailTint,
 }: {
   children: ReactNode;
   variant?: NotesStoryScopeVariant;
+  /** Runtime notebook color for `--notes-detail-tint` (light-washes the paper card). */
+  detailTint?: string;
 }) {
   if (variant === "list-column") {
     return (
@@ -20,7 +24,12 @@ export function NotesStoryScope({
 
   if (variant === "detail") {
     return (
-      <div className="notes-workspace notes-story-scope notes-story-scope--detail">{children}</div>
+      <div
+        className="notes-workspace notes-story-scope notes-story-scope--detail"
+        style={notesDetailTintStyle(detailTint) as CSSProperties | undefined}
+      >
+        {children}
+      </div>
     );
   }
 

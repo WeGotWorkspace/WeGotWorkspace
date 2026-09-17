@@ -11,8 +11,14 @@ export { DocsCollabCardShell } from "./docs-collab-card-shell";
 export type { DocsCollabCardShellProps, DocsCollabCardExitVariant } from "./docs-collab-card-shell";
 export { DocsCollabCardHeader } from "./docs-collab-card-header";
 export type { DocsCollabCardHeaderProps } from "./docs-collab-card-header";
-export { DocsCollabSidebarPanel } from "./docs-collab-sidebar-panel";
-export type { DocsCollabSidebarPanelProps } from "./docs-collab-sidebar-panel";
+export {
+  DocsCollabSidebarPanel,
+  DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS,
+} from "./docs-collab-sidebar-panel";
+export type {
+  DocsCollabSidebarPanelFilter,
+  DocsCollabSidebarPanelProps,
+} from "./docs-collab-sidebar-panel";
 export { useDocsCollabFloatingLayerLayout } from "./use-docs-collab-floating-layer-layout";
 export type {
   DocsCollabFloatingLayerLayout,

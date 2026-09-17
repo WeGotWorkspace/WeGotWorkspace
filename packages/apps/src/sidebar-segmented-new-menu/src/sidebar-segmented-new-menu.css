@@ -1,7 +1,11 @@
 @import "../../styles.css" reference;
 
 .sidebar-segmented-new-menu {
-  @apply flex w-full min-w-0 items-stretch gap-0;
+  @apply flex min-w-0 items-stretch gap-0;
+}
+
+.sidebar-segmented-new-menu--stretch {
+  @apply w-full;
 }
 
 .sidebar-segmented-new-menu__main--solo {
@@ -17,4 +21,8 @@
   @apply w-9 shrink-0 rounded-s-none rounded-e-[var(--control-radius-button-pill)] px-0;
   border-inline-start: 1px solid
     color-mix(in oklab, var(--button-primary-fg, #ffffff) 22%, transparent);
+}
+
+.sidebar-segmented-new-menu--sm .sidebar-segmented-new-menu__menu.button {
+  @apply w-8;
 }

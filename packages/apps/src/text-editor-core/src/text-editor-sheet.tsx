@@ -1,8 +1,10 @@
 import { EditorContent, type Editor } from "@tiptap/react";
 import { clsx } from "clsx";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import { focusTextEditorFromChromeEvent } from "@/text-editor-core/src/text-editor-chrome-focus";
 import { TextEditorSlashMenu } from "@/text-editor-core/src/text-editor-slash-menu";
 import { TextEditorTableControls } from "@/text-editor-core/src/text-editor-table-controls";
+import "@/ui/paper-sheet.css";
 
 export type TextEditorSheetVariant = "sheet" | "inline";
 
@@ -34,6 +36,10 @@ export function TextEditorSheet({
   // the shared `text-` prefix as one utility group and keeps only the last
   // `text-editor-sheet*` class, silently dropping the base + co-modifiers (e.g.
   // `--fill` next to `--paginated`). `clsx` preserves every class as authored.
+  const onChromeMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+    focusTextEditorFromChromeEvent(event, editor);
+  };
+
   return (
     <div
       className={clsx(
@@ -42,10 +48,11 @@ export function TextEditorSheet({
         fill && variant === "sheet" && "text-editor-sheet--fill",
         className,
       )}
+      onMouseDown={onChromeMouseDown}
     >
       <EditorContent
         editor={editor}
-        className={variant === "sheet" ? "text-editor-sheet__surface" : undefined}
+        className={variant === "sheet" ? "text-editor-sheet__surface paper-sheet" : undefined}
       />
       {overlay}
       {slashMenu ? <TextEditorSlashMenu editor={editor} /> : null}

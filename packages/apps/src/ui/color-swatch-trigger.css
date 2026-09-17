@@ -1,10 +1,15 @@
 @import "../styles.css" reference;
 
 .color-swatch-trigger {
+  /* Focus ring / radius / font come from `.control-surface` + `--size-*`
+   * (same path as LocaleDatePicker / SelectTrigger). Compact px for swatch+chevron. */
   @apply inline-flex w-auto shrink-0 cursor-pointer items-center justify-between gap-1.5 px-2 shadow-none;
-  @apply focus-visible:ring-2 focus-visible:ring-offset-1;
   min-width: 3.25rem;
-  height: var(--input-height, 2.25rem);
+}
+
+/* Beat `.control-surface--size-*` horizontal padding; height/font stay on the size class. */
+.control-surface.color-swatch-trigger {
+  @apply px-2;
 }
 
 /* `.control-surface` is `width: 100%` in a later production CSS chunk. Beat it with
@@ -23,6 +28,14 @@
 
 .color-swatch-trigger__dot {
   @apply size-3 shrink-0 rounded-full;
+}
+
+.color-swatch-trigger__icon {
+  @apply inline-flex size-3.5 shrink-0 items-center justify-center;
+}
+
+.color-swatch-trigger__icon > svg {
+  @apply size-3.5;
 }
 
 .color-swatch-trigger__caption {

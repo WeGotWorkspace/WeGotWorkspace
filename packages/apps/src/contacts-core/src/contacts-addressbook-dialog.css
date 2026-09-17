@@ -1,0 +1,17 @@
+@import "../../styles.css" reference;
+
+.contacts-addressbook-dialog__share {
+  @apply mt-4;
+}
+
+.contacts-addressbook-dialog__footer {
+  @apply mt-4 flex flex-row flex-wrap items-center gap-2 sm:justify-start;
+}
+
+.contacts-addressbook-dialog__footer .contacts-addressbook-dialog__remove {
+  @apply me-auto;
+}
+
+.contacts-addressbook-dialog__footer-end {
+  @apply ms-auto flex flex-wrap items-center gap-2;
+}

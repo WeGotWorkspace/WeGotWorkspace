@@ -1,6 +1,5 @@
 import type { Note } from "@/lib/models/note";
-import { readCollabOfflineContent } from "@/lib/offline/docs/docs-collab-offline-content";
-import { resolveNoteSharePath } from "@/notes-core/src/note-collab-path";
+import { readNoteCollabOfflineContent } from "@/lib/offline/notes/notes-collab-rooms";
 import {
   applyNoteBodyMarkdown,
   enrichNote,
@@ -10,13 +9,7 @@ import {
 const ENRICH_CONCURRENCY = 4;
 
 /**
- * Fill empty list previews from collab y-indexeddb snapshots after a hard reload.
- *
- * Body edits persist through the Docs collab document; a debounced save may not
- * have reached the Notes `.md` file yet, so FileNode list rows (and Dexie after
- * bootstrap) can still look empty while IndexedDB already has the typed text.
- * Opening a note hydrates the editor — this path does the same for **all** empty
- * rows without mounting TipTap in the list.
+ * Fill empty list previews from the UID-keyed y-indexeddb crash buffer.
  */
 export async function enrichNotesListPreviewsFromCollabOffline(
   username: string,
@@ -39,8 +32,7 @@ export async function enrichNotesListPreviewsFromCollabOffline(
       const index = pendingIndexes[cursor]!;
       cursor += 1;
       const note = result[index]!;
-      const path = resolveNoteSharePath(note, username, !!note.archived);
-      const markdown = await readCollabOfflineContent(path);
+      const markdown = await readNoteCollabOfflineContent(note.id);
       if (markdown == null || !markdown.trim()) continue;
       result[index] = enrichNote(applyNoteBodyMarkdown(note, markdown, { bumpDate: false }));
     }

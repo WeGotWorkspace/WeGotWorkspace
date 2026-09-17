@@ -1,19 +1,21 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { ChevronDown } from "lucide-react";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
-import type { DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
+import type { DropdownMenuEntry } from "@/menu-dropdown/src/dropdown-menu";
 import { WorkspaceAppIcon, WorkspaceHomeIcon } from "@/lib/workspace-app-icon";
-import { WORKSPACE_APP_IDS, type WorkspaceAppId } from "@/lib/workspace-app-icons";
+import { workspaceAppLabelFromPath, type WorkspaceAppId } from "@/lib/workspace-app-icons";
 import { cn } from "@/lib/utils";
+import {
+  APP_SWITCH_PRODUCT_APPS,
+  APP_SWITCH_WORKSPACE_APPS,
+  appSwitchUtilityApps,
+  type AppSwitchMenuApp,
+} from "@/app-switch-button/src/app-switch-menu-apps";
+import { useShowAdminApp } from "@/app-switch-button/src/use-show-admin-app";
 import "@/app-switch-button/src/app-switch-button.css";
 
 const TAGLINE = "we got";
-
-const WORKSPACE_APPS = WORKSPACE_APP_IDS.map((id) => ({
-  id,
-  label: id.charAt(0).toUpperCase() + id.slice(1),
-  to: `/${id}` as const,
-}));
+/** Typographic dropdown mark — same font metrics as the app name (not a Lucide glyph). */
+const CHEVRON = "▾";
 
 export type AppSwitchButtonVariant = "default" | "compact";
 
@@ -23,7 +25,7 @@ export type AppSwitchButtonProps = {
   subtitle?: string;
   /** `compact` drops the “we got” tagline and scales the mark to a single app line. */
   variant?: AppSwitchButtonVariant;
-  onSelect?: (app: (typeof WORKSPACE_APPS)[number]) => void;
+  onSelect?: (app: AppSwitchMenuApp) => void;
 };
 
 export function AppSwitchButton({
@@ -35,18 +37,26 @@ export function AppSwitchButton({
   const compact = variant === "compact";
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
-  const current =
-    WORKSPACE_APPS.find((a) => path === a.to || path.startsWith(`${a.to}/`)) ?? WORKSPACE_APPS[0];
-  const subtitle = subtitleProp ?? current.label;
+  const showAdmin = useShowAdminApp();
+  const utilityApps = appSwitchUtilityApps(showAdmin);
+  const fromPath = APP_SWITCH_WORKSPACE_APPS.find(
+    (a) => path === a.to || path.startsWith(`${a.to}/`),
+  );
+  const fromSubtitle =
+    subtitleProp && subtitleProp !== "Workspace"
+      ? APP_SWITCH_WORKSPACE_APPS.find((a) => a.label.toLowerCase() === subtitleProp.toLowerCase())
+      : undefined;
+  const current = fromSubtitle ?? fromPath ?? APP_SWITCH_WORKSPACE_APPS[0];
+  const subtitle = subtitleProp ?? workspaceAppLabelFromPath(path);
   const isWorkspaceContext = subtitleProp === "Workspace";
   const menuSurfaceKey = isWorkspaceContext ? "workspace" : current.id;
   const onSelect =
     onSelectProp ??
-    ((app: (typeof WORKSPACE_APPS)[number]) => {
+    ((app: AppSwitchMenuApp) => {
       void navigate({ to: app.to });
     });
 
-  const menuItems: DropdownMenuItemProps[] = WORKSPACE_APPS.map((app) => ({
+  const toMenuItem = (app: AppSwitchMenuApp): DropdownMenuEntry => ({
     id: app.id,
     label: app.label,
     icon: (
@@ -60,7 +70,15 @@ export function AppSwitchButton({
       if (disabled || app.id === current.id) return;
       onSelect?.(app);
     },
-  }));
+  });
+
+  const menuItems: DropdownMenuEntry[] = [
+    ...APP_SWITCH_PRODUCT_APPS.map(toMenuItem),
+    ...(APP_SWITCH_PRODUCT_APPS.length > 0 && utilityApps.length > 0
+      ? [{ type: "separator" as const, id: "app-switch-utility-sep" }]
+      : []),
+    ...utilityApps.map(toMenuItem),
+  ];
 
   return (
     <DropdownMenu
@@ -85,14 +103,15 @@ export function AppSwitchButton({
           )}
           <span className="app-switch-button__label">
             {!compact ? <span className="app-switch-button__label-top">{TAGLINE}</span> : null}
-            <span>{subtitle}</span>
-          </span>
-          {!disabled ? (
-            <span className="app-switch-button__chevron-stack">
-              <span aria-hidden />
-              <ChevronDown className="app-switch-button__chevron" aria-hidden />
+            <span className="app-switch-button__label-name">
+              {subtitle}
+              {!disabled ? (
+                <span className="app-switch-button__chevron" aria-hidden>
+                  {CHEVRON}
+                </span>
+              ) : null}
             </span>
-          ) : null}
+          </span>
         </button>
       }
       items={menuItems}

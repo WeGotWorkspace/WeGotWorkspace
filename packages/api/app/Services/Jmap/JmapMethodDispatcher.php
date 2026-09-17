@@ -16,6 +16,10 @@ use App\Services\Jmap\Methods\CalendarEventQueryMethod;
 use App\Services\Jmap\Methods\CalendarEventSetMethod;
 use App\Services\Jmap\Methods\CalendarGetMethod;
 use App\Services\Jmap\Methods\CalendarSetMethod;
+use App\Services\Jmap\Methods\ChatChannelChangesMethod;
+use App\Services\Jmap\Methods\ChatChannelGetMethod;
+use App\Services\Jmap\Methods\ChatMessageChangesMethod;
+use App\Services\Jmap\Methods\ChatMessageGetMethod;
 use App\Services\Jmap\Methods\ContactCardChangesMethod;
 use App\Services\Jmap\Methods\ContactCardGetMethod;
 use App\Services\Jmap\Methods\ContactCardQueryChangesMethod;
@@ -29,6 +33,13 @@ use App\Services\Jmap\Methods\FileNodeQueryChangesMethod;
 use App\Services\Jmap\Methods\FileNodeQueryMethod;
 use App\Services\Jmap\Methods\FileNodeSetMethod;
 use App\Services\Jmap\Methods\JmapMethodInterface;
+use App\Services\Jmap\Methods\NotebookChangesMethod;
+use App\Services\Jmap\Methods\NotebookGetMethod;
+use App\Services\Jmap\Methods\NotebookSetMethod;
+use App\Services\Jmap\Methods\NoteChangesMethod;
+use App\Services\Jmap\Methods\NoteGetMethod;
+use App\Services\Jmap\Methods\NoteQueryChangesMethod;
+use App\Services\Jmap\Methods\NoteSetMethod;
 
 /**
  * JMAP method dispatcher (RFC 8620 §3.2–3.7): processes methodCalls in
@@ -72,6 +83,20 @@ final class JmapMethodDispatcher
         FileNodeCopyMethod::class,
         FileNodeQueryMethod::class,
         FileNodeQueryChangesMethod::class,
+        // urn:wgw:jmap:notes (vendor VJOURNAL envelope)
+        NotebookGetMethod::class,
+        NotebookChangesMethod::class,
+        NotebookSetMethod::class,
+        NoteGetMethod::class,
+        NoteChangesMethod::class,
+        NoteSetMethod::class,
+        NoteQueryChangesMethod::class,
+        // urn:wgw:jmap:chat (vendor Meet chat envelope; mutations stay REST,
+        // so only get/changes are registered — meet-chat-client.md)
+        ChatChannelGetMethod::class,
+        ChatChannelChangesMethod::class,
+        ChatMessageGetMethod::class,
+        ChatMessageChangesMethod::class,
     ];
 
     /** @var array<string, JmapMethodInterface> */

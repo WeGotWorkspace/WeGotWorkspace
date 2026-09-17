@@ -6,6 +6,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { wgwApiViteProxy } from "./scripts/wgw-proxy-target";
+import { PWA_NAVIGATE_FALLBACK_DENYLIST } from "./src/lib/offline/pwa-navigate-fallback-denylist";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const wgwMonorepoRoot = path.join(__dirname, "..", "..");
@@ -63,7 +64,7 @@ export default defineConfig(({ mode }) => {
           // Control the page on first SW activation so Chrome can offer install without a manual reload.
           clientsClaim: true,
           navigateFallback: "index.html",
-          navigateFallbackDenylist: [/^\/api\//, /^\/apps\//],
+          navigateFallbackDenylist: [...PWA_NAVIGATE_FALLBACK_DENYLIST],
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
           // Lit calendar CE graph is large; keep precache when the main chunk grows past 2 MiB.
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,

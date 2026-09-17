@@ -1,6 +1,12 @@
+import type { CSSProperties } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Eye } from "lucide-react";
 import { expect, fn, userEvent, within } from "storybook/test";
-import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
+import { TooltipProvider } from "@/ui/tooltip";
+import {
+  CollectionSidebarMark,
+  CollectionSidebarRow,
+} from "@/collection-sidebar/src/collection-sidebar-row";
 
 const meta: Meta<typeof CollectionSidebarRow> = {
   title: "Shared/CollectionSidebarRow",
@@ -17,9 +23,11 @@ const meta: Meta<typeof CollectionSidebarRow> = {
     editLabel: "Edit",
   },
   render: (args) => (
-    <ul className="max-w-xs p-4">
-      <CollectionSidebarRow {...args} />
-    </ul>
+    <TooltipProvider delayDuration={0}>
+      <ul className="max-w-xs p-4">
+        <CollectionSidebarRow {...args} />
+      </ul>
+    </TooltipProvider>
   ),
 };
 
@@ -39,10 +47,93 @@ export const Default: Story = {
   },
 };
 
+export const NestedWithFold: Story = {
+  tags: ["vitest-ci"],
+  render: (args) => (
+    <TooltipProvider delayDuration={0}>
+      <ul className="max-w-xs p-4">
+        <CollectionSidebarRow
+          {...args}
+          name="Personal"
+          expanded
+          onToggleExpand={fn()}
+          expandLabel="Collapse Personal"
+        />
+        <CollectionSidebarRow name="Friends" color="#22c55e" nested selected onSelect={fn()} />
+      </ul>
+    </TooltipProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Collapse Personal" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Friends" })).toBeInTheDocument();
+  },
+};
+
 export const NoCheckbox: Story = {
   args: {
     onToggleVisibility: undefined,
     showColorDot: true,
     selected: false,
   },
+};
+
+/** Meet-style chrome: presence / unread sit inside the select hit target. */
+export const LeadingAndTrailingChrome: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    onToggleVisibility: undefined,
+    showColorDot: false,
+    selected: false,
+    name: "Ada Lovelace",
+    leading: <span data-testid="presence-dot" aria-hidden />,
+    trailing: <span data-testid="unread-count">2</span>,
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByTestId("presence-dot"));
+    await userEvent.click(canvas.getByTestId("unread-count"));
+    await expect(args.onSelect).toHaveBeenCalledTimes(2);
+  },
+};
+
+export const WithViewOnlyMark: Story = {
+  args: {
+    badges: (
+      <CollectionSidebarMark label="View only">
+        <Eye className="size-3.5" aria-hidden />
+      </CollectionSidebarMark>
+    ),
+  },
+};
+
+/** Notes/Docs set workspace `--checkbox-*`; the row must still tint from `color`. */
+export const VisibilityTintUnderWorkspaceTokens: Story = {
+  name: "Visibility tint under workspace checkbox tokens",
+  render: (args) => (
+    <TooltipProvider delayDuration={0}>
+      <div
+        className="max-w-xs p-4"
+        style={
+          {
+            "--checkbox-border-color": "color-mix(in oklab, var(--color-ink) 30%, transparent)",
+            "--checkbox-checked-bg": "#f6d176",
+            "--checkbox-checked-border": "#f6d176",
+            "--checkbox-checked-fg": "var(--color-ink)",
+          } as CSSProperties
+        }
+      >
+        <ul>
+          <CollectionSidebarRow {...args} />
+          <CollectionSidebarRow
+            name="Personal"
+            color="#22c55e"
+            visible
+            onSelect={fn()}
+            onToggleVisibility={fn()}
+          />
+        </ul>
+      </div>
+    </TooltipProvider>
+  ),
 };

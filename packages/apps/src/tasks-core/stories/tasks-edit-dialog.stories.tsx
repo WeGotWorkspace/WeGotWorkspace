@@ -31,5 +31,6 @@ export const WithReminder: Story = {
     labels: defaultTasksLabels,
     onClose: () => undefined,
     onSave: () => undefined,
+    onDelete: () => undefined,
   },
 };

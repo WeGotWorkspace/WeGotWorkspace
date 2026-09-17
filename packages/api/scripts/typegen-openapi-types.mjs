@@ -20,6 +20,7 @@ const installerTypesPath = path.resolve(generatedDir, "installer-types.ts");
 const contactsTypesPath = path.resolve(generatedDir, "contacts-types.ts");
 const calendarsTypesPath = path.resolve(generatedDir, "calendars-types.ts");
 const tasksTypesPath = path.resolve(generatedDir, "tasks-types.ts");
+const chatTypesPath = path.resolve(generatedDir, "chat-types.ts");
 
 function buildDomainTypesModule({
   domainName,
@@ -128,6 +129,12 @@ export async function generateOpenApiDomainTypes() {
     pathPrefix: "tasks",
     outputPath: tasksTypesPath,
   });
+  buildDomainTypesModule({
+    domainName: "Chat",
+    domainPrefix: "Chat",
+    pathPrefix: "chat",
+    outputPath: chatTypesPath,
+  });
 
   generateSettingsRequestZod();
 }
@@ -146,6 +153,7 @@ if (import.meta.url === new URL(process.argv[1], "file://").href) {
   process.stdout.write(`Wrote ${contactsTypesPath}\n`);
   process.stdout.write(`Wrote ${calendarsTypesPath}\n`);
   process.stdout.write(`Wrote ${tasksTypesPath}\n`);
+  process.stdout.write(`Wrote ${chatTypesPath}\n`);
   process.stdout.write(
     `Wrote ${path.resolve(packageRoot, "openapi/generated/settings-request-zod.ts")}\n`,
   );

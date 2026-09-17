@@ -1,4 +1,5 @@
 import { CALENDAR_LIST_EMPTY_LABEL } from "@/lib/calendar-elements/CalendarListView/calendar-list-empty-label";
+import type { CalendarViewId } from "@/calendar-core/src/calendar-types";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
 
 export type CalendarUILabels = {
@@ -11,8 +12,15 @@ export type CalendarUILabels = {
   showAsList: string;
   showAsCalendar: string;
   today: string;
-  previousPeriod: string;
-  nextPeriod: string;
+  /** Prev/next accessible names — match `shiftAnchor` step unit per view. */
+  previousDay: string;
+  nextDay: string;
+  previousWeek: string;
+  nextWeek: string;
+  previousMonth: string;
+  nextMonth: string;
+  previousYear: string;
+  nextYear: string;
   newEvent: string;
   /** Accessible name for the New event menu chevron. */
   newEventMenu: string;
@@ -50,6 +58,8 @@ export type CalendarUILabels = {
   changeCalendarOwnerConfirm: string;
   subscribeCalendar: string;
   subscribeCalendarTitle: string;
+  /** Primary action in the subscribe dialog. */
+  subscribeCalendarSubmit: string;
   subscribeUrlLabel: string;
   subscribeUrlPlaceholder: string;
   unsubscribeCalendar: string;
@@ -99,8 +109,11 @@ export type CalendarUILabels = {
   toastEventSaveFailed: string;
   recurrenceScopeEditTitle: string;
   recurrenceScopeDeleteTitle: string;
+  /** Scope prompt when changing RSVP on a repeating invitation. */
+  recurrenceScopeRsvpTitle: string;
   recurrenceScopeEditDescription: string;
   recurrenceScopeDeleteDescription: string;
+  recurrenceScopeRsvpDescription: string;
   recurrenceScopeThisInstance: string;
   recurrenceScopeThisAndFuture: string;
   /** Delete only — destroy the master series. */
@@ -118,10 +131,20 @@ export type CalendarUILabels = {
   /** Floating / wall-clock option (no fixed TZID). */
   eventTimeZoneLocalLabel: string;
   eventLocationLabel: string;
+  /** Placeholder for the location field (e.g. "Add location"). */
+  eventLocationPlaceholder: string;
   /** Card heading for the meeting URL field. */
   eventMeetSectionTitle: string;
-  /** Accessible name for the generate-Meet icon button. */
+  /** Accessible name for the Meet actions menu trigger. */
   eventMeetAdd: string;
+  /** Menu item: generate an ad-hoc meeting link. */
+  eventMeetNewLink: string;
+  /** Channel-list heading inside the Meet actions menu. */
+  eventMeetPickChannel: string;
+  eventMeetChannelsLoading: string;
+  /** Shown as a retryable menu item when the channel list fetch fails. */
+  eventMeetChannelsError: string;
+  eventMeetChannelsEmpty: string;
   /** Confirm title when generating over a non-empty meeting URL. */
   eventMeetReplaceTitle: string;
   eventMeetReplaceDescription: string;
@@ -133,11 +156,19 @@ export type CalendarUILabels = {
   eventMeetApplyTo: string;
   /** GET 404 / swept room — same copy as Meet missing-invite. */
   eventMeetDeadLink: string;
+  /** Channel URL + email-only invitees — choice dialog. */
+  eventMeetChannelEmailTitle: string;
+  eventMeetChannelEmailDescription: string;
+  eventMeetChannelEmailKeepBoth: string;
+  eventMeetChannelEmailStripEmails: string;
+  eventMeetChannelEmailReplaceLink: string;
+  /** Persistent hint after keeping both. */
+  eventMeetEmailGuestsNoAccessHint: string;
   eventNotesLabel: string;
   /** Compact details popover — opens the existing event dialog. */
   eventDetailsEdit: string;
   eventDetailsMoreInvitees: (count: number) => string;
-  /** Standalone card heading and select label for busy/free availability. */
+  /** Standalone field label for busy/free “Show as”. */
   eventShowAs: string;
   eventShowAsBusy: string;
   eventShowAsFree: string;
@@ -165,6 +196,8 @@ export type CalendarUILabels = {
   eventRecurrenceEndsAfter: string;
   eventRecurrenceEndsCountSuffix: string;
   save: string;
+  /** Primary submit on the edit surface (popover / dialog). */
+  saveChanges: string;
   cancel: string;
   delete: string;
   invitationsSection: string;
@@ -238,8 +271,14 @@ export const defaultCalendarLabels: CalendarUILabels = {
   showAsList: "List view",
   showAsCalendar: "Calendar view",
   today: "Today",
-  previousPeriod: "Previous",
-  nextPeriod: "Next",
+  previousDay: "Previous day",
+  nextDay: "Next day",
+  previousWeek: "Previous week",
+  nextWeek: "Next week",
+  previousMonth: "Previous month",
+  nextMonth: "Next month",
+  previousYear: "Previous year",
+  nextYear: "Next year",
   newEvent: "New event",
   newEventMenu: "More calendar actions",
   importIcs: "Import ICS",
@@ -279,6 +318,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   changeCalendarOwnerConfirm: "Change owner",
   subscribeCalendar: "Subscribe to a calendar",
   subscribeCalendarTitle: "Subscribe to calendar",
+  subscribeCalendarSubmit: "Subscribe",
   subscribeUrlLabel: "Calendar URL",
   subscribeUrlPlaceholder: "https://… or webcal://…",
   unsubscribeCalendar: "Unsubscribe",
@@ -291,7 +331,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
     "It disappears from your list. The owner’s share is unchanged, so it can be added again later.",
   subscribedCalendarBadge: "Subscribed calendar",
   publishCalendarTitle: "Public feed",
-  publishCalendarEnabledHint: "Anyone with the link can subscribe in Google, Apple, or Outlook.",
+  publishCalendarEnabledHint: "Anyone with the link can subscribe. Access is view only",
   publishCalendarDisabledHint: "Turn on to publish this calendar as an ICS / webcal feed.",
   publishCalendarHttpsLabel: "Web address",
   copyHttpsUrl: "Copy link",
@@ -328,10 +368,13 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastEventSaveFailed: "Could not save event",
   recurrenceScopeEditTitle: "You're changing a repeating event.",
   recurrenceScopeDeleteTitle: "You're deleting a repeating event.",
+  recurrenceScopeRsvpTitle: "You're updating your RSVP for a repeating event.",
   recurrenceScopeEditDescription:
     "Do you want to change only this occurrence, or this and all future events?",
   recurrenceScopeDeleteDescription:
     "Do you want to delete only this occurrence, this and all future events, or the entire series?",
+  recurrenceScopeRsvpDescription:
+    "Do you want to update your RSVP for only this occurrence, or this and all future events?",
   recurrenceScopeThisInstance: "Only this event",
   recurrenceScopeThisAndFuture: "All future events",
   recurrenceScopeAllInstances: "All events",
@@ -346,8 +389,14 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventTimeZoneLabel: "Time zone",
   eventTimeZoneLocalLabel: "Local (floating)",
   eventLocationLabel: "Location",
+  eventLocationPlaceholder: "Add location",
   eventMeetSectionTitle: "Meet",
   eventMeetAdd: "Create Meet Room URL",
+  eventMeetNewLink: "New meeting link",
+  eventMeetPickChannel: "Attach a Meet channel link",
+  eventMeetChannelsLoading: "Loading channels…",
+  eventMeetChannelsError: "Could not load channels. Try again",
+  eventMeetChannelsEmpty: "No channels yet",
   eventMeetReplaceTitle: "Replace Meet link?",
   eventMeetReplaceDescription:
     "A new meeting link will replace the current one. The previous room will expire, and anyone with the current join URL will lose access.",
@@ -357,7 +406,15 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventMeetUrlPlaceholder: "https://…",
   eventMeetApplyTo: "Apply Meet to",
   eventMeetDeadLink: "This meeting is not active. Ask the host for a fresh invite link.",
-  eventNotesLabel: "Notes",
+  eventMeetChannelEmailTitle: "Email guests can't join this Meet channel",
+  eventMeetChannelEmailDescription:
+    "This meeting uses a members-only Meet channel. People invited by email only cannot join the Meet. They can still receive a calendar invitation and RSVP. Workspace members keep Meet access.",
+  eventMeetChannelEmailKeepBoth: "Ignore",
+  eventMeetChannelEmailStripEmails: "Remove Email Invites",
+  eventMeetChannelEmailReplaceLink: "Use Meeting Link",
+  eventMeetEmailGuestsNoAccessHint:
+    "Email guests will receive a calendar invite but cannot join this Meet. The channel is members-only.",
+  eventNotesLabel: "Description",
   eventDetailsEdit: "Edit",
   eventDetailsMoreInvitees: (count) => (count === 1 ? "+1 more" : `+${count} more`),
   eventShowAs: "Show as",
@@ -379,11 +436,12 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventAlarm1Day: "1 day before",
   eventRepeatLabel: "Repeat",
   eventRecurrenceEndsLabel: "Ends",
-  eventRecurrenceEndsNever: "Never",
-  eventRecurrenceEndsOnDate: "On date",
-  eventRecurrenceEndsAfter: "After",
+  eventRecurrenceEndsNever: "Ends never",
+  eventRecurrenceEndsOnDate: "Ends on date",
+  eventRecurrenceEndsAfter: "Ends after",
   eventRecurrenceEndsCountSuffix: "times",
   save: "Save",
+  saveChanges: "Save",
   cancel: "Cancel",
   delete: "Delete",
   invitationsSection: "Invitations",
@@ -401,15 +459,15 @@ export const defaultCalendarLabels: CalendarUILabels = {
   invitationsToggleShow: "Show invitations",
   invitationsToggleHide: "Hide invitations",
   invitationsOrganizerUnknown: "Organizer",
-  eventAttendeesLabel: "Invitees",
+  eventAttendeesLabel: "Participants",
   eventAttendeesHint: "Add teammates, contacts, or anyone with an email address.",
-  eventAttendeesAdd: "Add people",
-  eventAttendeesEmpty: "No invitees yet.",
-  eventAttendeesEmailPlaceholder: "Add people…",
+  eventAttendeesAdd: "Add participants",
+  eventAttendeesEmpty: "No participants yet.",
+  eventAttendeesEmailPlaceholder: "Add participants…",
   eventAttendeesEmailAdd: "Add email",
   eventAttendeesEmailUnavailable:
     "Email delivery is unavailable. External invitees are saved on the event but will not receive an invitation.",
-  eventAttendeesRemove: "Remove invitee",
+  eventAttendeesRemove: "Remove participant",
   eventAttendeesSearchEmpty: "No people found",
   eventAttendeesTeammate: "Teammate",
   eventAttendeesContactWork: "Work",
@@ -452,4 +510,31 @@ export const defaultCalendarLabels: CalendarUILabels = {
 
 export function mergeCalendarLabels(overrides?: Partial<CalendarUILabels>): CalendarUILabels {
   return { ...defaultCalendarLabels, ...overrides };
+}
+
+/** Tooltip / aria-label pair for header prev/next — same unit `shiftAnchor` steps. */
+export function calendarPeriodNavLabels(
+  view: CalendarViewId,
+  labels: Pick<
+    CalendarUILabels,
+    | "previousDay"
+    | "nextDay"
+    | "previousWeek"
+    | "nextWeek"
+    | "previousMonth"
+    | "nextMonth"
+    | "previousYear"
+    | "nextYear"
+  >,
+): { previous: string; next: string } {
+  switch (view) {
+    case "day":
+      return { previous: labels.previousDay, next: labels.nextDay };
+    case "week":
+      return { previous: labels.previousWeek, next: labels.nextWeek };
+    case "month":
+      return { previous: labels.previousMonth, next: labels.nextMonth };
+    case "year":
+      return { previous: labels.previousYear, next: labels.nextYear };
+  }
 }

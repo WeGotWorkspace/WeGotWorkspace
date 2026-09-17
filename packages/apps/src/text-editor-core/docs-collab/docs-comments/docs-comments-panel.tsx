@@ -54,6 +54,7 @@ export function DocsCommentsPanel({
       className="docs-comments-panel"
       ariaLabel={labels.commentsSidebarTitle}
       title={labels.commentsSidebarTitle}
+      count={displayThreads.length}
       countLabel={
         displayThreads.length === 1
           ? labels.commentsCountOne

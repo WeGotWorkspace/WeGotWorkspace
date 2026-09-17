@@ -1,10 +1,17 @@
 @import "../styles.css" reference;
+@import "./workspace-menu-item-sst.css";
 
 /**
  * Text field primitives. Optional overrides: `--input-height`, `--input-background`,
  * `--input-background-focus`, `--input-background-disabled`, `--input-color-disabled`,
  * `--input-placeholder-color`, `--input-shadow`, `--input-border-focus`, `--control-border-color`.
- * Compact toolbar selects / search: `--size-sm` uses `--control-height-sm` + `--control-radius-button-pill`.
+ * Size (`xs` … `xl`) changes height, padding, and font-size only.
+ * Default `md` = 36px — action bar / view header / event form density.
+ * Spacious forms use `lg` (40px); sidebar New / hero CTAs use `xl` (44px).
+ * Desktop xs/sm/md type is <16px. iOS Safari focus-zoom floor (1rem below 768px)
+ * lives in `styles.css` — do not re-set font-size here or at product callsites.
+ * Radius stays global `--control-radius` on the shared surface — do not remap
+ * soft chrome on layout ancestors. True capsules use `--control-radius-pill`.
  * Search variant: leading icon + trailing clear when the field has a value.
  */
 .control-surface,
@@ -25,16 +32,82 @@
   );
 }
 
+/* Picker triggers share Button outline focus — not text-field border chrome. */
+.control-surface,
+.select-trigger {
+  @apply focus-visible:ring-1 focus-visible:ring-ring;
+}
+
 .control-surface,
 .input,
 .select-trigger {
   @apply items-center px-[var(--input-padding-x,0.75rem)] py-1;
-  min-height: var(--control-height-md, var(--input-height, 2.25rem));
-  height: var(--control-height-md, var(--input-height, 2.25rem));
+  min-height: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
 }
 
 .input {
   @apply file:border-0 file:bg-transparent file:font-medium file:text-foreground;
+}
+
+.input[type="date"] {
+  @apply cursor-pointer;
+}
+
+.input[type="date"]::-webkit-calendar-picker-indicator {
+  @apply cursor-pointer;
+  opacity: 1;
+}
+
+/*
+ * WebKit/Blink time fields paint value text in datetime-edit pseudos with UA
+ * font metrics that ignore the host `.input` size class. Inherit so type=time
+ * matches text Input / Textarea / LocaleDatePicker (`--input-font-size`).
+ * Native time internals are not flex children (Safari keeps the clock next to
+ * the value). Pin the picker with a fixed trailing inset so it lines up with
+ * Select / LocaleDatePicker glyphs (WebKit indicator paint box differs from Lucide).
+ */
+.input[type="time"] {
+  @apply relative;
+}
+
+.input[type="time"]::-webkit-calendar-picker-indicator {
+  @apply size-3.5 shrink-0 cursor-pointer;
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: 0.4rem;
+  transform: translateY(-50%);
+  margin: 0;
+  opacity: 0.6;
+}
+
+/*
+ * WebKit hides the native clock glyph when the field is disabled. Keep it
+ * visible (LocaleDatePicker still shows its calendar icon) but non-interactive.
+ */
+.input[type="time"]:disabled::-webkit-calendar-picker-indicator,
+.input[type="time"]:read-only::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  pointer-events: none;
+  cursor: default;
+  display: block;
+}
+
+.input[type="time"]::-webkit-datetime-edit {
+  @apply min-w-0;
+  padding-inline-end: 1.25rem;
+}
+
+.input[type="time"]::-webkit-datetime-edit,
+.input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.input[type="time"]::-webkit-datetime-edit-text,
+.input[type="time"]::-webkit-datetime-edit-hour-field,
+.input[type="time"]::-webkit-datetime-edit-minute-field,
+.input[type="time"]::-webkit-datetime-edit-second-field,
+.input[type="time"]::-webkit-datetime-edit-ampm-field {
+  font: inherit;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 .input::file-selector-button {
@@ -48,18 +121,93 @@
 
 .select-trigger {
   @apply justify-between whitespace-nowrap;
-  @apply data-[placeholder]:text-muted-foreground data-[state=open]:text-foreground;
+  @apply data-[placeholder]:text-muted-foreground;
   @apply disabled:cursor-not-allowed;
   @apply [&>span]:line-clamp-1;
+  /* Align idle text/chevron with outline Button / SegmentedControl. */
+  color: var(--select-trigger-color, var(--button-outline-color, var(--color-ink)));
+}
+
+.select-trigger__icon {
+  /* Match LocaleDatePicker / time picker trailing glyph (size-3.5). */
+  @apply size-3.5 shrink-0;
+  color: inherit;
+  opacity: 0.6;
+}
+
+/*
+ * Size padding via `--input-padding-x` (base surface already applies it).
+ * Keeps native time picker `inset-inline-end` aligned with Select / LocaleDatePicker.
+ */
+.select-trigger--size-xs,
+.input--size-xs,
+.control-surface--size-xs {
+  --input-padding-x: 0.5rem; /* px-2 */
+  min-height: var(--control-height-xs, 1.75rem);
+  height: var(--control-height-xs, 1.75rem);
+  font-size: var(--input-font-size-xs, 0.75rem);
 }
 
 .select-trigger--size-sm,
-.input--size-sm {
-  @apply px-3;
-  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  border-radius: var(--control-radius-button-pill);
-  font-size: calc(var(--input-font-size, 0.875rem) - 0.0625rem);
+.input--size-sm,
+.control-surface--size-sm {
+  --input-padding-x: 0.625rem; /* px-2.5 */
+  min-height: var(--control-height-sm, 2rem);
+  height: var(--control-height-sm, 2rem);
+  font-size: var(--input-font-size-sm, 0.875rem);
+}
+
+.select-trigger--size-md,
+.input--size-md,
+.control-surface--size-md {
+  --input-padding-x: 0.75rem; /* px-3 */
+  min-height: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
+  font-size: var(--input-font-size-md, 0.875rem);
+}
+
+.select-trigger--size-lg,
+.input--size-lg,
+.control-surface--size-lg {
+  --input-padding-x: 0.75rem;
+  min-height: var(--control-height-lg, 2.5rem);
+  height: var(--control-height-lg, 2.5rem);
+  font-size: var(--input-font-size-lg, 1rem);
+}
+
+.select-trigger--size-xl,
+.input--size-xl,
+.control-surface--size-xl {
+  --input-padding-x: 0.75rem;
+  min-height: var(--control-height-xl, 2.75rem);
+  height: var(--control-height-xl, 2.75rem);
+  font-size: var(--input-font-size-xl, 1rem);
+}
+
+/* Textarea: size affects padding + font only; height stays auto. */
+.textarea--size-xs {
+  @apply px-2 py-1;
+  font-size: var(--input-font-size-xs, 0.75rem);
+}
+
+.textarea--size-sm {
+  @apply px-2.5 py-1.5;
+  font-size: var(--input-font-size-sm, 0.875rem);
+}
+
+.textarea--size-md {
+  @apply px-3 py-2;
+  font-size: var(--input-font-size-md, 0.875rem);
+}
+
+.textarea--size-lg {
+  @apply px-3 py-2;
+  font-size: var(--input-font-size-lg, 1rem);
+}
+
+.textarea--size-xl {
+  @apply px-3 py-2;
+  font-size: var(--input-font-size-xl, 1rem);
 }
 
 .input--search {
@@ -133,17 +281,68 @@
   @apply cursor-default;
 }
 
-.control-surface:focus:not(:disabled),
-.control-surface:focus-visible:not(:disabled),
-.control-surface[data-state="open"]:not(:disabled),
-.input:focus:not(:read-only),
+/* Text fields: keyboard-only border focus — mouse click must not paint chrome. */
 .input:focus-visible:not(:read-only),
-.textarea:focus:not(:read-only),
-.textarea:focus-visible:not(:read-only),
-.select-trigger:focus:not(:disabled),
+.textarea:focus-visible:not(:read-only) {
+  background-color: var(--input-background-focus, #ffffff);
+  border-color: var(--input-border-focus, var(--ring));
+}
+
+/* Open select keeps the elevated surface without relying on :focus (pointer open). */
+.control-surface[data-state="open"]:not(:disabled),
 .select-trigger[data-state="open"]:not(:disabled) {
   background-color: var(--input-background-focus, #ffffff);
   border-color: var(--input-border-focus, var(--ring));
+}
+
+/**
+ * Select item states — quiet cream-surface washes (14/18/24), not sidebar chip
+ * saturation (40/55/65 via `--button-outline-*`). Accent + fg still come from
+ * portaled `--workspace-accent` / `--button-*-color` via `bridgePortalThemeVars`.
+ * Soft washes: shared `workspace-menu-item-sst.css` (`--menu-item-*`).
+ */
+.select-ui__item {
+  @apply relative flex w-full cursor-default select-none items-center py-1.5 pl-2 pr-8 text-sm outline-none transition-colors;
+  border-radius: var(--control-radius);
+}
+
+.select-ui__item[data-highlighted],
+.select-ui__item:focus {
+  background-color: var(
+    --menu-item-hover-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)
+  );
+  color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
+}
+
+.select-ui__item[data-state="checked"] {
+  background-color: var(
+    --menu-item-selected-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 18%, var(--color-cream, #ffffff))
+  );
+  color: var(--button-active-color, var(--workspace-accent, inherit));
+}
+
+.select-ui__item[data-state="checked"][data-highlighted],
+.select-ui__item[data-state="checked"]:focus {
+  background-color: var(
+    --menu-item-selected-hover-background,
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 24%, var(--color-cream, #ffffff))
+  );
+  color: var(--button-active-color, var(--workspace-accent, inherit));
+}
+
+.select-ui__item[data-disabled] {
+  @apply pointer-events-none opacity-50;
+}
+
+.select-ui__item-indicator {
+  @apply absolute right-2 flex h-3.5 w-3.5 items-center justify-center;
+}
+
+.select-ui__item-check {
+  @apply h-4 w-4;
+  color: var(--button-active-color, var(--workspace-accent, currentColor));
 }
 
 .input::placeholder,

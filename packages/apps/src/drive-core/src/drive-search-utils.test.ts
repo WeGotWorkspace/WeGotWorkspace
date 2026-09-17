@@ -31,9 +31,9 @@ describe("apiPathFromSearchSourceKey", () => {
 });
 
 describe("driveLocationLabel", () => {
-  it("labels the viewer personal drive as My Drive", () => {
-    expect(driveLocationLabel("users/alice/notes.md", "alice")).toBe("My Drive");
-    expect(driveLocationLabel("users/alice/notes.md")).toBe("My Drive");
+  it("labels the viewer personal drive as Personal", () => {
+    expect(driveLocationLabel("users/alice/notes.md", "alice")).toBe("Personal");
+    expect(driveLocationLabel("users/alice/notes.md")).toBe("Personal");
   });
 
   it("labels foreign personal drives as Shared by {owner}", () => {
@@ -89,7 +89,7 @@ describe("driveFileFromSearchResult", () => {
       kind: "doc",
       size: "2.0 KB",
       apiPath: "/users/alice/notes.md",
-      location: "My Drive",
+      location: "Personal",
     });
     expect(file.date).toBe(new Date(1_700_000_000 * 1000).toLocaleDateString());
   });

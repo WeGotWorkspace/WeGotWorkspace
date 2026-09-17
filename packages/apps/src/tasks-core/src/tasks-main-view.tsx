@@ -23,13 +23,12 @@ import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import { TaskListDot } from "@/tasks-core/src/tasks-list-dot";
+import { TaskListIcon } from "@/tasks-core/src/tasks-list-icon";
 import {
   canWriteTaskList,
   composerDefaultDueForView,
-  formatComposerDueDateLabel,
+  formatComposerDueLabel,
   isTaskCompleted,
-  parseDueDateValue,
   taskListName,
   taskListTitle,
   type TaskWorkflowStatus,
@@ -110,14 +109,11 @@ function TaskRow({
   const listName = taskListName(task.taskListId, taskLists);
   const taskList = taskLists.find((list) => list.id === task.taskListId);
   const workflowStatus = (task.workflowStatus ?? "needs-action") as TaskWorkflowStatus;
-  const dueDate = parseDueDateValue(task.due);
-  const dueLabel = dueDate
-    ? formatComposerDueDateLabel(dueDate, {
-        dueToday: L.dueToday,
-        dueYesterday: L.dueYesterday,
-        dueTomorrow: L.dueTomorrow,
-      })
-    : null;
+  const dueLabel = formatComposerDueLabel(task.due, task.showWithoutTime, {
+    dueToday: L.dueToday,
+    dueYesterday: L.dueYesterday,
+    dueTomorrow: L.dueTomorrow,
+  });
 
   useEffect(() => {
     if (!isExiting || !prefersReducedMotion()) return;
@@ -184,7 +180,7 @@ function TaskRow({
             ) : null,
             list: (
               <span className="tasks-main-view__meta-item">
-                <TaskListDot list={taskList ?? task.taskListId} />
+                <TaskListIcon list={taskList ?? task.taskListId} />
                 <span>{listName}</span>
               </span>
             ),
@@ -214,8 +210,8 @@ function TaskRow({
             <IconButton
               label={L.taskActions}
               icon={<MoreVertical className="size-4" />}
-              size="sm"
-              variant="subtle"
+              size="md"
+              variant="outline"
               disabled={isExiting || !canMutate}
             />
           }
@@ -233,6 +229,7 @@ function TaskRow({
               icon: <Trash2 className="size-4" />,
               onClick: () => onDeleteTask(task.id),
               disabled: !canMutate,
+              severity: "danger",
             },
           ]}
         />
@@ -268,19 +265,14 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
       ...emptyTaskForm(defaultListId),
       due: composerDefaultDueForView(view),
     }));
-    const viewDefaultDue = composerDefaultDueForView(view);
     const displayLists = allTaskLists ?? taskLists;
 
-    useImperativeHandle(
-      ref,
-      () => ({
-        focusComposerTitle: () => {
-          titleRef.current?.focus();
-          titleRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        },
-      }),
-      [],
-    );
+    const focusComposerTitle = useCallback(() => {
+      titleRef.current?.focus();
+      titleRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    }, []);
+
+    useImperativeHandle(ref, () => ({ focusComposerTitle }), [focusComposerTitle]);
 
     const resetDraft = useCallback(() => {
       setDraft({
@@ -315,14 +307,12 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
         if (!draft.title.trim()) return;
         onCreateTask(draft);
         resetDraft();
+        // After a click submit the button stays focused and then becomes
+        // disabled; defer so that click target cannot steal focus back.
+        queueMicrotask(focusComposerTitle);
       },
-      [draft, onCreateTask, resetDraft],
+      [draft, focusComposerTitle, onCreateTask, resetDraft],
     );
-
-    const hasDraftContent =
-      draft.title.trim().length > 0 ||
-      draft.description.trim().length > 0 ||
-      (draft.due !== null && draft.due !== viewDefaultDue);
 
     return (
       <div className="tasks-main-view">
@@ -374,21 +364,10 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
                 />
 
                 <div className="tasks-main-view__composer-actions">
-                  {hasDraftContent ? (
-                    <Button
-                      type="button"
-                      variant="subtle"
-                      size="sm"
-                      onClick={resetDraft}
-                      disabled={!canCreate}
-                    >
-                      {L.cancel}
-                    </Button>
-                  ) : null}
                   <Button
                     type="submit"
                     variant="primary"
-                    size="sm"
+                    size="md"
                     className="tasks-main-view__add-submit"
                     disabled={!canCreate || !draft.title.trim()}
                   >

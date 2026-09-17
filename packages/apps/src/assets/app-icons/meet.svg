@@ -1,5 +1,5 @@
 <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="512" height="512" fill="var(--wai-bg, #06B6D4)"/>
+<rect width="512" height="512" fill="var(--wai-bg, #1E1230)"/>
 <path d="M285.143 179H140.857C124.92 179 112 191.928 112 207.875V304.125C112 320.072 124.92 333 140.857 333H285.143C301.08 333 314 320.072 314 304.125V207.875C314 191.928 301.08 179 285.143 179Z" fill="var(--wai-fg, white)"/>
 <path d="M333 217.412L400 174V338L333 294.588V217.412Z" fill="var(--wai-fg, white)"/>
 </svg>

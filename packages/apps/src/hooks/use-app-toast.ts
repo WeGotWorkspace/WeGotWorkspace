@@ -2,6 +2,7 @@ import { createElement, useCallback } from "react";
 import type { ReactNode } from "react";
 import { toast as sonnerToast } from "sonner";
 import type { CalloutSeverity } from "@/callout/src/callout";
+import { workspaceAppLabelFromPath } from "@/lib/workspace-app-icons";
 import { AppToastCallout } from "@/ui/app-toast-callout";
 
 const DEFAULT_DURATION_MS = 4000;
@@ -32,14 +33,21 @@ export type AppToastApi = {
   showError: (title: string, options?: Omit<AppToastShowOptions, "severity">) => string | number;
 };
 
+/** Active suite app label — same path rule as the app-switch subtitle. */
+function activeWorkspaceAppName(): string {
+  if (typeof window === "undefined") return "Workspace";
+  return workspaceAppLabelFromPath(window.location.pathname);
+}
+
 /**
  * App-wide toast surface: Sonner hosts {@link AppToastCallout} so toasts share
- * {@link Callout} severity, spacing, and optional undo.
+ * {@link Callout} spacing and optional undo. Chrome is generic (no accent /
+ * severity color coding); the Callout title is the active suite app name.
  */
 export function useAppToast(): AppToastApi {
   const show = useCallback((title: string, options?: AppToastShowOptions) => {
     const {
-      severity = "success",
+      severity = "info",
       description,
       duration = DEFAULT_DURATION_MS,
       icon,
@@ -53,11 +61,13 @@ export function useAppToast(): AppToastApi {
 
     const showUndo = Boolean(canUndo && onUndo);
     const showRetry = Boolean(canRetry && onRetry);
+    const appName = activeWorkspaceAppName();
 
     return sonnerToast.custom(
       (id) =>
         createElement(AppToastCallout, {
           toastId: id,
+          appName,
           title,
           message: description,
           severity,

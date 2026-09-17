@@ -2,14 +2,18 @@ import { describe, expect, it, vi } from "vitest";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 import {
+  applyDocsHomeGroupDisplayNames,
+  buildDocsFolderPickerRootLabels,
   buildDocsHomeDrives,
   collectGroupRoots,
   collectGroupRootsFromDirectory,
+  docsHomeGroupSlugFromPrincipalId,
   fallbackUntitledMarkdownName,
   fetchGroupRootsFromDrive,
   mergeGroupRoots,
   newDocumentApiPath,
   nextUntitledMarkdownName,
+  resolveDocsDriveLabel,
   resolveDocsHomeCreateDialogBrowsePath,
   resolveNewDocumentName,
 } from "@/docs-core/src/docs-home-drives";
@@ -32,13 +36,48 @@ function file(partial: Partial<DriveFile> & { id: string }): DriveFile {
 }
 
 describe("collectGroupRootsFromDirectory", () => {
-  it("extracts group folder names from a /groups listing", () => {
+  it("extracts group folder slugs and prefers entry names as labels", () => {
     const entries = [
       { type: "dir", path: "/groups/Engineering", name: "Engineering" },
       { type: "dir", path: "/groups/design", name: "design" },
+      { type: "dir", path: "/groups/administrators", name: "administrators" },
       { type: "file", path: "/groups/readme.txt", name: "readme.txt" },
     ];
-    expect(collectGroupRootsFromDirectory(entries)).toEqual(["design", "Engineering"]);
+    expect(collectGroupRootsFromDirectory(entries)).toEqual([
+      { slug: "administrators", label: "administrators" },
+      { slug: "design", label: "design" },
+      { slug: "Engineering", label: "Engineering" },
+    ]);
+  });
+});
+
+describe("applyDocsHomeGroupDisplayNames", () => {
+  it("replaces slug labels with principal display names", () => {
+    expect(
+      applyDocsHomeGroupDisplayNames(
+        [
+          { slug: "administrators", label: "administrators" },
+          { slug: "design", label: "design" },
+        ],
+        [
+          { id: "principals/groups/administrators", displayName: "Administrators" },
+          { id: "groups/design", displayName: "Design" },
+        ],
+      ),
+    ).toEqual([
+      { slug: "administrators", label: "Administrators" },
+      { slug: "design", label: "Design" },
+    ]);
+  });
+});
+
+describe("docsHomeGroupSlugFromPrincipalId", () => {
+  it("strips principals/groups and groups prefixes", () => {
+    expect(docsHomeGroupSlugFromPrincipalId("principals/groups/administrators")).toBe(
+      "administrators",
+    );
+    expect(docsHomeGroupSlugFromPrincipalId("groups/eng")).toBe("eng");
+    expect(docsHomeGroupSlugFromPrincipalId("eng")).toBe("eng");
   });
 });
 
@@ -51,7 +90,9 @@ describe("fetchGroupRootsFromDrive", () => {
         },
       })),
     } as unknown as DriveAPIOperations;
-    await expect(fetchGroupRootsFromDrive(operations)).resolves.toEqual(["Engineering"]);
+    await expect(fetchGroupRootsFromDrive(operations)).resolves.toEqual([
+      { slug: "Engineering", label: "Engineering" },
+    ]);
     expect(operations.listDirectory).toHaveBeenCalledWith("/groups", undefined);
   });
 
@@ -69,7 +110,10 @@ describe("collectGroupRoots", () => {
       file({ id: "4", apiPath: "/groups/engineering/onboarding.md" }),
       file({ id: "5" }),
     ];
-    expect(collectGroupRoots(files)).toEqual(["design", "engineering"]);
+    expect(collectGroupRoots(files)).toEqual([
+      { slug: "design", label: "design" },
+      { slug: "engineering", label: "engineering" },
+    ]);
   });
 
   it("returns an empty list when no group files are present", () => {
@@ -79,26 +123,100 @@ describe("collectGroupRoots", () => {
 
 describe("mergeGroupRoots", () => {
   it("unions and sorts without dropping previously discovered roots", () => {
-    expect(mergeGroupRoots(["engineering"], ["design", "engineering"])).toEqual([
-      "design",
-      "engineering",
+    expect(
+      mergeGroupRoots(
+        [{ slug: "engineering", label: "Engineering" }],
+        [
+          { slug: "design", label: "design" },
+          { slug: "engineering", label: "engineering" },
+        ],
+      ),
+    ).toEqual([
+      { slug: "design", label: "design" },
+      { slug: "engineering", label: "Engineering" },
     ]);
+  });
+
+  it("returns the previous reference when the merge is a no-op", () => {
+    const previous = [
+      { slug: "design", label: "design" },
+      { slug: "engineering", label: "Engineering" },
+    ];
+    const merged = mergeGroupRoots(previous, [
+      { slug: "engineering", label: "engineering" },
+      { slug: "design", label: "design" },
+    ]);
+    expect(merged).toBe(previous);
+  });
+
+  it("returns previous when next is empty", () => {
+    const previous = [{ slug: "eng", label: "Engineering" }];
+    expect(mergeGroupRoots(previous, [])).toBe(previous);
+  });
+});
+
+describe("resolveDocsDriveLabel", () => {
+  const groups = [
+    { slug: "administrators", label: "Administrators" },
+    { slug: "eng", label: "Engineering" },
+  ];
+
+  it("maps personal path keys and prefixes to Personal", () => {
+    expect(
+      resolveDocsDriveLabel("My Drive", { personalDriveLabel: "Personal", groupRoots: groups }),
+    ).toBe("Personal");
+    expect(
+      resolveDocsDriveLabel("users/alice", { personalDriveLabel: "Personal", groupRoots: groups }),
+    ).toBe("Personal");
+  });
+
+  it("maps group path prefixes and Drive UI paths to principal labels", () => {
+    expect(
+      resolveDocsDriveLabel("groups/administrators", {
+        personalDriveLabel: "Personal",
+        groupRoots: groups,
+      }),
+    ).toBe("Administrators");
+    expect(
+      resolveDocsDriveLabel("Groups/eng", { personalDriveLabel: "Personal", groupRoots: groups }),
+    ).toBe("Engineering");
+  });
+});
+
+describe("buildDocsFolderPickerRootLabels", () => {
+  it("keys Drive UI paths to Docs SST labels", () => {
+    expect(
+      buildDocsFolderPickerRootLabels(
+        [{ slug: "administrators", label: "Administrators" }],
+        "Personal",
+      ),
+    ).toEqual({
+      "My Drive": "Personal",
+      "Groups/administrators": "Administrators",
+    });
   });
 });
 
 describe("buildDocsHomeDrives", () => {
-  it("lists My Drive first, then each group drive", () => {
-    const drives = buildDocsHomeDrives("alice", ["engineering", "design"], "My Drive");
+  it("lists Personal first, then each group drive with its label", () => {
+    const drives = buildDocsHomeDrives(
+      "alice",
+      [
+        { slug: "engineering", label: "Engineering" },
+        { slug: "design", label: "design" },
+      ],
+      "Personal",
+    );
     expect(drives).toEqual([
-      { key: "users/alice", label: "My Drive", pathPrefix: "users/alice" },
-      { key: "groups/engineering", label: "engineering", pathPrefix: "groups/engineering" },
+      { key: "users/alice", label: "Personal", pathPrefix: "users/alice" },
+      { key: "groups/engineering", label: "Engineering", pathPrefix: "groups/engineering" },
       { key: "groups/design", label: "design", pathPrefix: "groups/design" },
     ]);
   });
 
-  it("omits My Drive when the username is blank", () => {
-    expect(buildDocsHomeDrives("  ", ["eng"], "My Drive")).toEqual([
-      { key: "groups/eng", label: "eng", pathPrefix: "groups/eng" },
+  it("omits Personal when the username is blank", () => {
+    expect(buildDocsHomeDrives("  ", [{ slug: "eng", label: "Eng" }], "Personal")).toEqual([
+      { key: "groups/eng", label: "Eng", pathPrefix: "groups/eng" },
     ]);
   });
 });
@@ -121,65 +239,52 @@ describe("newDocumentApiPath", () => {
   });
 });
 
-function listingOperations(names: string[]): DriveAPIOperations {
-  const state = {
-    directory: { files: names.map((name) => ({ name })) },
-  } as unknown as DriveUIData;
-  return { listDirectory: vi.fn(async () => state) } as unknown as DriveAPIOperations;
-}
-
 describe("nextUntitledMarkdownName", () => {
-  it("returns Untitled.md when nothing collides", () => {
+  it("starts at Untitled.md and increments", () => {
     expect(nextUntitledMarkdownName([])).toBe("Untitled.md");
-  });
-
-  it("increments to the first free suffix, case-insensitively", () => {
-    expect(nextUntitledMarkdownName(["untitled.md", "Untitled 2.md"])).toBe("Untitled 3.md");
+    expect(nextUntitledMarkdownName(["Untitled.md"])).toBe("Untitled 2.md");
+    expect(nextUntitledMarkdownName(["Untitled.md", "Untitled 2.md"])).toBe("Untitled 3.md");
   });
 });
 
 describe("fallbackUntitledMarkdownName", () => {
-  it("builds a filesystem-safe timestamped name", () => {
-    expect(fallbackUntitledMarkdownName(new Date("2026-06-19T10:12:30.000Z"))).toBe(
-      "Untitled 2026-06-19 10-12-30.md",
-    );
-  });
-});
-
-describe("resolveNewDocumentName", () => {
-  it("uses the live directory listing and never overwrites an existing file", async () => {
-    const operations = listingOperations(["Untitled.md", "Roadmap.md"]);
-    await expect(resolveNewDocumentName(operations, "/users/alice", [])).resolves.toBe(
-      "Untitled 2.md",
-    );
-    expect(operations.listDirectory).toHaveBeenCalledWith("/users/alice");
-  });
-
-  it("falls back to a timestamped name when the listing fails", async () => {
-    const operations = {
-      listDirectory: vi.fn(async () => {
-        throw new Error("offline");
-      }),
-    } as unknown as DriveAPIOperations;
-    const name = await resolveNewDocumentName(operations, "/users/alice", [
-      file({ id: "1", title: "Untitled.md" }),
-    ]);
-    expect(name).not.toBe("Untitled.md");
-    expect(name).toMatch(/^Untitled .+\.md$/);
-  });
-
-  it("derives from loaded files when no live operations are available", async () => {
-    const files = [file({ id: "1", title: "Untitled.md" })];
-    await expect(resolveNewDocumentName(undefined, "/users/alice", files)).resolves.toBe(
-      "Untitled 2.md",
+  it("includes a timestamp suffix", () => {
+    expect(fallbackUntitledMarkdownName(new Date("2026-01-02T03:04:05.000Z"))).toBe(
+      "Untitled 2026-01-02 03-04-05.md",
     );
   });
 });
 
 describe("resolveDocsHomeCreateDialogBrowsePath", () => {
-  it("maps the selected drive prefix to a folder picker path", () => {
+  it("maps drive prefixes to Drive UI browse paths", () => {
     expect(resolveDocsHomeCreateDialogBrowsePath(null)).toBe("My Drive");
     expect(resolveDocsHomeCreateDialogBrowsePath("users/alice")).toBe("My Drive");
-    expect(resolveDocsHomeCreateDialogBrowsePath("groups/engineering")).toBe("Groups/engineering");
+    expect(resolveDocsHomeCreateDialogBrowsePath("groups/Engineering")).toBe("Groups/Engineering");
+    expect(resolveDocsHomeCreateDialogBrowsePath("groups/engineering/nested")).toBe(
+      "Groups/engineering",
+    );
+  });
+});
+
+describe("resolveNewDocumentName", () => {
+  it("uses the live directory listing when operations are available", async () => {
+    const operations = {
+      listDirectory: vi.fn(async () => {
+        const data = {} as DriveUIData;
+        data.directory = {
+          files: [{ name: "Untitled.md" }, { name: "Untitled 2.md" }],
+        } as DriveUIData["directory"];
+        return data;
+      }),
+    } as unknown as Pick<DriveAPIOperations, "listDirectory">;
+    await expect(resolveNewDocumentName(operations, "/users/alice", [])).resolves.toBe(
+      "Untitled 3.md",
+    );
+  });
+
+  it("falls back to loaded files without operations", async () => {
+    await expect(
+      resolveNewDocumentName(undefined, "/users/alice", [file({ id: "1", title: "Untitled.md" })]),
+    ).resolves.toBe("Untitled 2.md");
   });
 });

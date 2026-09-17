@@ -20,8 +20,27 @@ function animationTarget(node: HTMLElement): HTMLElement {
 }
 
 /**
+ * True when `nextIds` keeps the relative order of items shared with `prevIds`
+ * (pure insert and/or delete — not a reorder).
+ */
+export function isListRelativeOrderPreserved(
+  prevIds: readonly string[],
+  nextIds: readonly string[],
+): boolean {
+  if (nextIds.length === 0) return true;
+  let i = 0;
+  for (const id of prevIds) {
+    if (id === nextIds[i]) i += 1;
+    if (i === nextIds.length) return true;
+  }
+  return i === nextIds.length;
+}
+
+/**
  * FLIP-animates `[data-list-item-id]` rows when their DOM order changes.
- * No-op when order is unchanged or `prefers-reduced-motion` is set.
+ * No-op when order is unchanged, `prefers-reduced-motion` is set, or the change
+ * is a pure removal/insertion (swipe-archive already animates the row out —
+ * FLIP would briefly translate siblings back and cause a jump).
  */
 export function useListReorderAnimation(
   containerRef: RefObject<HTMLElement | null>,
@@ -29,6 +48,7 @@ export function useListReorderAnimation(
   options?: { durationMs?: number; disabled?: boolean },
 ) {
   const prevRectsRef = useRef(new Map<string, number>());
+  const prevIdsRef = useRef<readonly string[]>([]);
   const prevOrderKeyRef = useRef("");
   const durationMs = options?.durationMs ?? DEFAULT_DURATION_MS;
   const disabled = options?.disabled ?? false;
@@ -46,10 +66,24 @@ export function useListReorderAnimation(
       nextTops.set(id, animationTarget(node).getBoundingClientRect().top);
     }
 
+    const prevIds = prevIdsRef.current;
+    const nextIds = orderKey.length === 0 ? [] : orderKey.split("\0");
     const orderChanged = orderKey !== prevOrderKeyRef.current;
+    // Swipe destructive remove already collapsed the row; FLIP on pure removals
+    // reapplies the gap for one frame (jump). Same for pure inserts.
+    const pureStructuralChange =
+      orderChanged &&
+      prevIds.length > 0 &&
+      (isListRelativeOrderPreserved(prevIds, nextIds) ||
+        isListRelativeOrderPreserved(nextIds, prevIds));
     const skipAnimate =
-      disabled || !orderChanged || prevOrderKeyRef.current === "" || prefersReducedMotion();
+      disabled ||
+      !orderChanged ||
+      prevOrderKeyRef.current === "" ||
+      prefersReducedMotion() ||
+      pureStructuralChange;
     prevOrderKeyRef.current = orderKey;
+    prevIdsRef.current = nextIds;
 
     if (skipAnimate) {
       prevRectsRef.current = nextTops;
@@ -91,5 +125,7 @@ export function useListReorderAnimation(
     return () => {
       for (const cleanup of cleanupFns) cleanup();
     };
+    // `orderKey` captures id identity/order; omit `itemIds` so new array refs
+    // from `.map()` do not re-run this every parent render.
   }, [containerRef, disabled, durationMs, orderKey]);
 }

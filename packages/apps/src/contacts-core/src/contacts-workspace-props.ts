@@ -10,6 +10,8 @@ export type ContactsWorkspaceProps = {
   operations?: ContactsAPIOperations;
   /** Show list-column spinner while contacts bootstrap (shell + sidebar visible). */
   listLoading?: boolean;
+  /** Manual refresh / reconnect in flight — button busy only; list stays visible. */
+  listRefreshing?: boolean;
   /** Refetch address books and cards without reloading the whole app shell. */
   onRefreshList?: () => void;
   /** Invoked when the user chooses log out; navigation is owned by the app shell. */

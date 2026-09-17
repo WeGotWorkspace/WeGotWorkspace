@@ -1,13 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, within } from "storybook/test";
 import { Star } from "lucide-react";
-import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { ActionBar } from "@/action-bar/src/action-bar";
-import { DocsCollabPresence } from "@/text-editor-core/docs-collab/docs-collab-presence";
+import { DocsCollabPresenceChrome } from "@/text-editor-core/docs-collab/docs-collab-presence-chrome";
 import { TooltipProvider } from "@/ui/tooltip";
 import { NoteDetailView } from "../src/note-detail-view";
-import { NotesDetailFooter } from "@/notes-core/src/notes-detail-footer";
+import { notesLastEditedTag } from "@/notes-core/src/notes-last-edited-tag";
+import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 
 import "@/notes-core/src/notes-workspace.css";
+import "@/note-detail-view/src/note-text-editor-body.css";
 
 const meta: Meta<typeof NoteDetailView> = {
   title: "Apps/Notes/Note Detail View",
@@ -31,6 +33,8 @@ type Story = StoryObj<typeof NoteDetailView>;
 const base = {
   noteId: "demo-1",
   contentRevision: "6 May 2026",
+  title: "Endless scroll",
+  onTitleChange: () => {},
   tags: ["ideas", "draft"],
   availableTags: ["ideas", "draft", "focus", "shipping"],
   body: ["First paragraph of the note.", "Second paragraph with more detail."],
@@ -46,6 +50,38 @@ export const Editable: Story = {
   },
 };
 
+/** Long wrapping SUMMARY — descenders (g, y) stay visible; no ellipsis. */
+export const LongTitle: Story = {
+  args: {
+    ...base,
+    title: "Typography going through wrapping titles and lengthy summaries",
+    pullQuote: undefined,
+    body: [
+      "# Section heading",
+      "## Subsection",
+      "### Heading three",
+      "First paragraph of the note.",
+    ],
+  },
+};
+
+/** Empty SUMMARY — document-title scale, not a tiny form input. */
+export const EmptyTitle: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...base,
+    title: "",
+    pullQuote: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const title = canvas.getByRole("textbox", { name: "Title" }) as HTMLTextAreaElement;
+    expect(title.tagName).toBe("TEXTAREA");
+    expect(title.classList.contains("note-detail-view__title")).toBe(true);
+    expect(title.placeholder).toBe("Title");
+  },
+};
+
 export const ReadOnly: Story = {
   args: {
     ...base,
@@ -54,32 +90,12 @@ export const ReadOnly: Story = {
   },
 };
 
-/** Static layout preview: presence in the action bar, meta in the pinned footer. */
+/** Static layout preview: presence left in the pinned footer; actions stay in the bar. */
 export const CollabChromePreview: Story = {
   render: () => (
     <div className="notes-workspace notes-story-scope notes-story-scope--detail flex min-h-[24rem] flex-col">
       <ActionBar
         onBack={() => {}}
-        rightLeading={
-          <div className="note-detail-view__collab-chrome">
-            <span
-              className="note-detail-view__pending-sync"
-              role="status"
-              aria-live="polite"
-              aria-label="Unsaved changes"
-            >
-              <LoadingSpinner size="sm" />
-            </span>
-            <DocsCollabPresence
-              localUser={{ displayName: "Alex Example" }}
-              peers={[
-                { id: "peer-1", name: "Sam Lee" },
-                { id: "peer-2", name: "Jordan Kim" },
-              ]}
-              connectingPeers={[{ id: "peer-3", name: "Casey Wu" }]}
-            />
-          </div>
-        }
         rightActions={[
           {
             id: "star",
@@ -90,14 +106,30 @@ export const CollabChromePreview: Story = {
         ]}
       />
       <div className="workspace-detail-pane__scroll flex-1">
-        <article className="note-detail-view max-w-[680px] mx-auto">
+        <article className="note-detail-view paper-sheet">
           <p className="text-muted-foreground text-sm">
-            Collab session chrome preview — presence sits in the action bar; edited meta pins in the
-            footer.
+            Collab session chrome preview — presence sits left in the footer; edited meta pins on
+            the right.
           </p>
         </article>
       </div>
-      <NotesDetailFooter lastEdited="6 May 2026" />
+      <WorkspaceDetailFooter
+        className="notes-detail-footer"
+        start={
+          <DocsCollabPresenceChrome
+            localUser={{ displayName: "Alex Example" }}
+            peers={[
+              { id: "peer-1", name: "Sam Lee" },
+              { id: "peer-2", name: "Jordan Kim" },
+            ]}
+            connectingPeers={[{ id: "peer-3", name: "Casey Wu" }]}
+          />
+        }
+        tags={notesLastEditedTag({
+          lastEdited: "6 May 2026",
+          editedLabel: "Last edited",
+        })}
+      />
     </div>
   ),
 };

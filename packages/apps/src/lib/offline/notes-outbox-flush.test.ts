@@ -4,10 +4,11 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { Note } from "@/lib/models/note";
-import { hasDocsCollabOfflinePersistence } from "@/lib/offline/docs/docs-collab-offline-availability";
+import { hasNoteCollabOfflinePersistence } from "@/lib/offline/notes/notes-collab-rooms";
 import {
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
+  readNotesBootstrapFromCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
@@ -15,7 +16,7 @@ import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";
-import { noteCollabPath } from "@/notes-core/src/note-collab-path";
+import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
 
 const username = "bob";
 
@@ -39,14 +40,12 @@ const bootstrap = {
   },
 };
 
-const { updateNoteItem, createNoteItem, deleteNoteItem, listOwnedNotesFromFileNodes } = vi.hoisted(
-  () => ({
-    updateNoteItem: vi.fn(),
-    createNoteItem: vi.fn(),
-    deleteNoteItem: vi.fn(),
-    listOwnedNotesFromFileNodes: vi.fn(),
-  }),
-);
+const { updateNoteItem, createNoteItem, deleteNoteItem, archiveNoteItem } = vi.hoisted(() => ({
+  updateNoteItem: vi.fn(),
+  createNoteItem: vi.fn(),
+  deleteNoteItem: vi.fn(),
+  archiveNoteItem: vi.fn(),
+}));
 
 vi.mock("@/lib/api/wgw/notes", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/notes")>();
@@ -55,14 +54,7 @@ vi.mock("@/lib/api/wgw/notes", async (importOriginal) => {
     updateNoteItem,
     createNoteItem,
     deleteNoteItem,
-  };
-});
-
-vi.mock("@/lib/api/wgw/notes-filenode", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/api/wgw/notes-filenode")>();
-  return {
-    ...actual,
-    listOwnedNotesFromFileNodes,
+    archiveNoteItem,
   };
 });
 
@@ -70,23 +62,12 @@ vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: vi.fn(() => true),
 }));
 
-function fileNodeListing(updatedAt = "2024-10-12T10:00:00.000Z") {
-  return {
-    notes: [{ ...note, updatedAt }],
-    notebooks: ["Drafts"],
-    notebookRows: [],
-    sharedNotebooks: [],
-    username,
-  };
-}
-
 describe("flushNotesOutbox", () => {
   beforeEach(async () => {
     updateNoteItem.mockReset();
     createNoteItem.mockReset();
     deleteNoteItem.mockReset();
-    listOwnedNotesFromFileNodes.mockReset();
-    listOwnedNotesFromFileNodes.mockResolvedValue(fileNodeListing());
+    archiveNoteItem.mockReset();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
     await db.meta.clear();
@@ -114,19 +95,41 @@ describe("flushNotesOutbox", () => {
     expect(result.stateMismatches).toEqual([]);
   });
 
-  it("reports a conflict when server updatedAt is newer than the cached base", async () => {
+  it("reports a conflict when the server rejects a stale If-Match", async () => {
     await enqueueCoalescedNoteUpdate(
       username,
       note.id,
       { ...note, body: ["Local edit"] },
-      note.date,
+      '"etag-stale"',
     );
 
-    listOwnedNotesFromFileNodes.mockResolvedValue(fileNodeListing("2024-10-13T10:00:00.000Z"));
+    updateNoteItem.mockRejectedValue(Object.assign(new Error("precondition"), { status: 412 }));
 
     const result = await flushNotesOutbox(username);
     expect(result.stateMismatches).toEqual(["note-1"]);
-    expect(updateNoteItem).not.toHaveBeenCalled();
+    expect(updateNoteItem).toHaveBeenCalledTimes(2);
+    expect(updateNoteItem.mock.calls[0]?.[1]).toMatchObject({ etag: '"etag-stale"' });
+    expect(updateNoteItem.mock.calls[1]?.[1]).not.toMatchObject({ etag: '"etag-stale"' });
+  });
+
+  it("retries a stale-etag tag upsert after create without reporting a conflict", async () => {
+    const tempId = "local-just-created";
+    const serverId = "11111111-2222-3333-4444-555555555555";
+    const tagged = { ...note, id: serverId, tags: ["focus"], etag: '"etag-minted"' };
+    await upsertNoteInCache(username, tagged, true);
+    await enqueueCoalescedNoteUpdate(username, serverId, tagged, '"etag-stale"', tempId);
+
+    updateNoteItem
+      .mockRejectedValueOnce(Object.assign(new Error("precondition"), { status: 412 }))
+      .mockResolvedValueOnce({ ...tagged, etag: '"etag-tag"' });
+
+    const result = await flushNotesOutbox(username);
+    expect(result.stateMismatches).toEqual([]);
+    expect(updateNoteItem).toHaveBeenCalledTimes(2);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const row = await notesNotesTable(db).get(serverId);
+    expect(row?.pendingSync).toBe(false);
+    expect(JSON.parse(row?.data ?? "{}").tags).toEqual(["focus"]);
   });
 
   it("creates a server note and drops the local temp id from cache", async () => {
@@ -139,13 +142,12 @@ describe("flushNotesOutbox", () => {
 
     await enqueueCoalescedNoteUpdate(username, tempId, offlineNote, offlineNote.date, tempId);
 
-    updateNoteItem.mockRejectedValue(Object.assign(new Error("not found"), { status: 404 }));
     const saved = { ...note, id: "server-note-99", body: ["Created offline"] };
     createNoteItem.mockResolvedValue(saved);
 
     const result = await flushNotesOutbox(username);
 
-    expect(updateNoteItem).toHaveBeenCalledOnce();
+    expect(updateNoteItem).not.toHaveBeenCalled();
     expect(createNoteItem).toHaveBeenCalledOnce();
     expect(result.bootstrap?.data.notes.some((row) => row.id === "server-note-99")).toBe(true);
     expect(result.bootstrap?.data.notes.some((row) => row.id === tempId)).toBe(false);
@@ -155,19 +157,10 @@ describe("flushNotesOutbox", () => {
     const tempId = "local-body-id";
     const savedId = "server-body-id";
     const notebook = "Drafts";
-    const tempPath = noteCollabPath({
-      scope: { kind: "personal", username },
-      notebook,
-      noteId: tempId,
-    });
-    const savedPath = noteCollabPath({
-      scope: { kind: "personal", username },
-      notebook,
-      noteId: savedId,
-    });
+    const tempRoom = noteCollabRoomKey(tempId);
     const ydoc = new Y.Doc();
     ydoc.getXmlFragment("default").insert(0, [new Y.XmlElement("paragraph")]);
-    const persistence = new IndexeddbPersistence(tempPath, ydoc);
+    const persistence = new IndexeddbPersistence(tempRoom, ydoc);
     await persistence.whenSynced;
     await persistence.destroy();
     ydoc.destroy();
@@ -180,13 +173,12 @@ describe("flushNotesOutbox", () => {
     };
     await enqueueCoalescedNoteUpdate(username, tempId, offlineNote, offlineNote.date, tempId);
 
-    updateNoteItem.mockRejectedValue(Object.assign(new Error("not found"), { status: 404 }));
     createNoteItem.mockResolvedValue({ ...offlineNote, id: savedId });
 
     await flushNotesOutbox(username);
 
-    await expect(hasDocsCollabOfflinePersistence(tempPath)).resolves.toBe(false);
-    await expect(hasDocsCollabOfflinePersistence(savedPath)).resolves.toBe(true);
+    await expect(hasNoteCollabOfflinePersistence(tempId)).resolves.toBe(false);
+    await expect(hasNoteCollabOfflinePersistence(savedId)).resolves.toBe(true);
   });
 
   it("clears pendingSync after a successful flush", async () => {
@@ -230,14 +222,73 @@ describe("flushNotesOutbox", () => {
     expect(result.bootstrap?.data.notes.some((row) => row.id === note.id)).toBe(false);
   });
 
-  it("records Drive stars by path when flushing a starred upsert", async () => {
-    const starredNote = { ...note, starred: true };
-    await enqueueCoalescedNoteUpdate(username, starredNote.id, starredNote, starredNote.date);
+  it("flushes an archived delete with the cached If-Match etag", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "delete-archived-1",
+      domain: NOTES_DOMAIN,
+      op: "delete",
+      payload: JSON.stringify({
+        noteId: note.id,
+        notebook: note.notebook,
+        archived: true,
+        etag: '"etag-archived"',
+      }),
+    });
+    deleteNoteItem.mockResolvedValue(undefined);
+
+    await flushNotesOutbox(username);
+
+    expect(deleteNoteItem).toHaveBeenCalledWith(note.id, {
+      notebook: note.notebook,
+      archived: true,
+      etag: '"etag-archived"',
+    });
+  });
+
+  it("drops Dexie and outbox when a queued archive hits 404", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "archive-row-1",
+      domain: NOTES_DOMAIN,
+      op: "archive",
+      payload: JSON.stringify({ noteId: note.id }),
+    });
+    archiveNoteItem.mockRejectedValue(Object.assign(new Error("not found"), { status: 404 }));
+
+    const result = await flushNotesOutbox(username);
+
+    expect(archiveNoteItem).toHaveBeenCalledOnce();
+    expect(result.bootstrap?.data.notes.some((row) => row.id === note.id)).toBe(false);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await db.outbox.toArray()).toHaveLength(0);
+    expect(await notesNotesTable(db).get(note.id)).toBeUndefined();
+  });
+
+  it("keeps a queued archive on 412 instead of dropping local", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "archive-row-412",
+      domain: NOTES_DOMAIN,
+      op: "archive",
+      payload: JSON.stringify({ noteId: note.id }),
+    });
+    archiveNoteItem.mockRejectedValue(Object.assign(new Error("precondition"), { status: 412 }));
+
+    await flushNotesOutbox(username);
+
+    expect((await readNotesBootstrapFromCache(username))?.data.notes[0]?.id).toBe(note.id);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await db.outbox.toArray()).toHaveLength(1);
+  });
+
+  it("replays starred upserts through REST metadata (not Drive /files/star)", async () => {
+    const starredNote = { ...note, starred: true, etag: '"etag-1"' };
+    await enqueueCoalescedNoteUpdate(username, starredNote.id, starredNote, starredNote.etag);
     updateNoteItem.mockResolvedValue(starredNote);
 
     await flushNotesOutbox(username);
 
-    const { readDocsStarredPaths } = await import("@/lib/offline/docs/docs-stars-store");
-    expect(await readDocsStarredPaths(username)).toEqual(["/users/bob/.notes/Drafts/note-1.md"]);
+    expect(updateNoteItem).toHaveBeenCalledWith(
+      starredNote.id,
+      expect.objectContaining({ starred: true, etag: '"etag-1"' }),
+    );
   });
 });

@@ -26,7 +26,7 @@ If that file is missing or empty, re-upload the full deploy ZIP — do not uploa
 
 ### nginx / Plesk
 
-Apache `.htaccess` rewrite rules are included for typical shared Apache hosts. On **nginx** (common on Plesk), ensure requests are routed to `index.php` (Plesk often sets this automatically when PHP is enabled for the domain). Without that, `/install/` may 404 even when files are on disk.
+Apache `.htaccess` rewrite rules are included for typical shared Apache hosts. On **nginx** (common on Plesk), ensure requests are routed to `index.php` (Plesk often sets this automatically when PHP is enabled for the domain). Without that, `/install/` may 404 even when files are on disk. Also set `client_max_body_size 32m;` so uploads are not rejected before PHP (`post_max_size` / `upload_max_filesize` are aligned to 32M; lockstep-tested in `UploadLimitParityTest`). `.user.ini` / `.htaccess` also set `display_errors=0` so PHP's line-0 `post_max_size` warning cannot leak HTML before the JSON 413.
 
 ## 2) First request bootstrap
 
@@ -69,6 +69,10 @@ The requirements check lists **Extension: imap (optional)**. It is not required 
 After setup, sign in with your new account and connect clients using the same site URL.
 
 If your install is in a subfolder, set `RewriteBase` in `.htaccess` to that subfolder path.
+
+### MCP / OAuth discovery (origin root)
+
+Assistants discover this instance at `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource` on the **same origin** users open in the browser. The ZIP layout already rewrites those paths to Laravel via `index.php`. If you only expose Laravel under `Alias /api` (or another prefix) and the document root is not this install shell, add rewrite or alias rules so those two `.well-known` paths (and `/.well-known/oauth-protected-resource/<path>`) still reach Laravel. Do not tell clients to use `/api/.well-known/…`. Details: [docs/mcp-connect.md](docs/mcp-connect.md).
 
 ### Apache PWA icons (Debian/Ubuntu)
 

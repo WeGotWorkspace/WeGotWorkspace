@@ -1,5 +1,5 @@
 import type React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSharedTasksLists, createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
@@ -92,6 +92,16 @@ function selectComposerDueDay(dayOffset: number, now = new Date()): void {
   const dayButton = document.querySelector(`button[data-day="${calendarDataDay(targetDay)}"]`);
   expect(dayButton).toBeTruthy();
   fireEvent.click(dayButton!);
+}
+
+/** Real clicks focus the target; fireEvent.click does not. */
+function clickAsUser(element: HTMLElement): void {
+  element.focus();
+  fireEvent.pointerDown(element);
+  fireEvent.mouseDown(element);
+  fireEvent.pointerUp(element);
+  fireEvent.mouseUp(element);
+  fireEvent.click(element);
 }
 
 describe("TasksMainView composer", () => {
@@ -232,11 +242,31 @@ describe("TasksMainView composer", () => {
       workflowStatus: "needs-action",
       priority: 0,
       due: null,
+      showWithoutTime: true,
+      timeZone: null,
       alerts: undefined,
     });
   });
 
-  it("submits task when pressing Enter in description with non-empty title", () => {
+  it("focuses the task name after clicking Add task", async () => {
+    const onCreateTask = vi.fn();
+    renderComposer(onCreateTask);
+
+    fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
+      target: { value: "New task" },
+    });
+
+    clickAsUser(screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }));
+
+    expect(onCreateTask).toHaveBeenCalledTimes(1);
+    const title = screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLInputElement;
+    expect(title.value).toBe("");
+    await waitFor(() => {
+      expect(document.activeElement).toBe(title);
+    });
+  });
+
+  it("submits task when pressing Enter in description with non-empty title", async () => {
     const onCreateTask = vi.fn();
     renderComposer(onCreateTask);
 
@@ -257,14 +287,18 @@ describe("TasksMainView composer", () => {
       workflowStatus: "needs-action",
       priority: 0,
       due: null,
+      showWithoutTime: true,
+      timeZone: null,
       alerts: undefined,
     });
-    expect((screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLInputElement).value).toBe(
-      "",
-    );
+    const title = screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLInputElement;
+    expect(title.value).toBe("");
     expect(
       (screen.getByLabelText(defaultTasksLabels.descriptionLabel) as HTMLTextAreaElement).value,
     ).toBe("");
+    await waitFor(() => {
+      expect(document.activeElement).toBe(title);
+    });
   });
 
   it("does not submit when pressing Enter in description with empty title", () => {
@@ -355,6 +389,8 @@ describe("TasksMainView composer", () => {
       workflowStatus: "in-process",
       priority: 0,
       due: null,
+      showWithoutTime: true,
+      timeZone: null,
       alerts: undefined,
     });
   });
@@ -417,6 +453,8 @@ describe("TasksMainView composer", () => {
       workflowStatus: "needs-action",
       priority: 1,
       due: null,
+      showWithoutTime: true,
+      timeZone: null,
       alerts: undefined,
     });
   });
@@ -599,7 +637,7 @@ describe("TasksMainView composer", () => {
 
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }));
 
-    const expectedDue = `${targetDay.getFullYear()}-${String(targetDay.getMonth() + 1).padStart(2, "0")}-${String(targetDay.getDate()).padStart(2, "0")}T00:00:00`;
+    const expectedDue = `${targetDay.getFullYear()}-${String(targetDay.getMonth() + 1).padStart(2, "0")}-${String(targetDay.getDate()).padStart(2, "0")}`;
 
     expect(onCreateTask).toHaveBeenCalledWith({
       title: "Due task",
@@ -608,6 +646,8 @@ describe("TasksMainView composer", () => {
       workflowStatus: "needs-action",
       priority: 0,
       due: expectedDue,
+      showWithoutTime: true,
+      timeZone: null,
       alerts: undefined,
     });
   });
@@ -628,8 +668,6 @@ describe("TasksMainView composer", () => {
     const dayButton = document.querySelector(`button[data-day="${dataDay}"]`);
     expect(dayButton).toBeTruthy();
     fireEvent.click(dayButton!);
-
-    fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.noDue }));
 
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }));
@@ -641,6 +679,8 @@ describe("TasksMainView composer", () => {
       workflowStatus: "needs-action",
       priority: 0,
       due: null,
+      showWithoutTime: true,
+      timeZone: null,
       alerts: undefined,
     });
   });
@@ -770,10 +810,22 @@ describe("TasksMainView task rows", () => {
     const row = screen.getByText(taskTitleForTest(task.title)).closest(".tasks-main-view__row");
     expect(row?.querySelector(".tasks-main-view__remind--row")).toBeNull();
     expect(row?.querySelector(".tasks-main-view__remind-badge")).toBeNull();
+    expect(row?.textContent).not.toContain("No reminders");
     expect(row?.querySelector('[role="img"]')).toBeNull();
   });
 
-  it("shows a display-only alarm badge on rows with two alerts", () => {
+  it("shows the shared reminder label on rows with one alert", () => {
+    const task = bootstrap.data.tasks.find((item) => item.id === "task-review-spec")!;
+    renderMainView({ displayTasks: [task] });
+
+    const row = screen.getByText(taskTitleForTest(task.title)).closest(".tasks-main-view__row");
+    expect(row?.textContent).toContain("Reminding 30 mins before");
+    expect(row?.querySelector(".tasks-main-view__remind--row")).toBeTruthy();
+    expect(row?.querySelector(".tasks-main-view__remind-row-chip")).toBeNull();
+    expect(row?.querySelector("button.tasks-main-view__remind-button")).toBeNull();
+  });
+
+  it("shows a display-only labeled reminder on rows with two alerts", () => {
     const task = bootstrap.data.tasks.find((item) => item.id === "task-two-reminders")!;
     const onEditTask = vi.fn();
     renderMainView({ displayTasks: [task], onEditTask });
@@ -782,9 +834,11 @@ describe("TasksMainView task rows", () => {
       .getByText(taskTitleForTest(task.title))
       .closest(".tasks-main-view__row") as HTMLElement;
     expect(row).toBeTruthy();
+    expect(row.textContent).toContain("2 reminders");
     expect(row.querySelector(".tasks-main-view__remind-badge")?.textContent).toBe("2");
-    const mark = row.querySelector('[role="img"]') as HTMLElement | null;
-    expect(mark?.getAttribute("aria-label")).toBe("Reminding 1 hour and 30 mins before");
+    const mark = row.querySelector(".tasks-main-view__remind--row") as HTMLElement | null;
+    expect(mark).toBeTruthy();
+    expect(row.querySelector(".tasks-main-view__remind-row-chip")).toBeNull();
     expect(row.querySelector("button.tasks-main-view__remind-button")).toBeNull();
 
     fireEvent.click(mark!);
@@ -808,7 +862,8 @@ describe("TasksMainView task rows", () => {
     expect(items[0]?.querySelector(".tasks-main-view__remind--row")).toBeNull();
     expect(items.at(-1)?.querySelector(".tasks-main-view__remind--row")).toBeTruthy();
     expect(items[0]?.textContent).toBeTruthy();
-    expect(items[1]?.querySelector(".tasks-list-dot")).toBeTruthy();
+    expect(items[1]?.querySelector(".tasks-list-icon")).toBeTruthy();
+    expect(items[1]?.querySelector(".tasks-list-dot")).toBeNull();
   });
 
   it("shows due date label on task rows when due is set", () => {

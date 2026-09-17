@@ -73,9 +73,9 @@ describe("ShareLinkSection password show-once", () => {
     const updatePublicPassword = vi.fn(async () => "river-maple-42");
     renderLinkSection(atPathWithPassword(false), mutationsStub({ updatePublicPassword }));
 
-    const passwordToggle = screen.getByRole("group", { name: shareLabels.requirePassword });
+    const passwordToggle = screen.getByRole("switch", { name: shareLabels.requirePassword });
     await act(async () => {
-      fireEvent.click(passwordToggle.querySelector('button[aria-label="On"]')!);
+      fireEvent.click(passwordToggle);
     });
 
     expect(updatePublicPassword).toHaveBeenCalled();
@@ -90,9 +90,9 @@ describe("ShareLinkSection password show-once", () => {
       mutationsStub({ updatePublicPassword }),
     );
 
-    const passwordToggle = screen.getByRole("group", { name: shareLabels.requirePassword });
+    const passwordToggle = screen.getByRole("switch", { name: shareLabels.requirePassword });
     await act(async () => {
-      fireEvent.click(passwordToggle.querySelector('button[aria-label="On"]')!);
+      fireEvent.click(passwordToggle);
     });
     expect(passwordInput().value).toBe("river-maple-42");
 

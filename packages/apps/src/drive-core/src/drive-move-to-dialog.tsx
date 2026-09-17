@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
 import {
   Dialog,
@@ -26,6 +26,8 @@ export function DriveMoveToDialog({
   operations,
   currentUsername,
   groupRootNames,
+  rootLabels,
+  rootIcon,
   dialogSurfaceClassName = "drive-dialog-surface",
   onClose,
   onConfirm,
@@ -40,6 +42,10 @@ export function DriveMoveToDialog({
   operations?: DriveAPIOperations;
   currentUsername: string;
   groupRootNames: Set<string>;
+  /** Optional UI-path → display label for drive roots (Docs: Personal / principal names). */
+  rootLabels?: Readonly<Record<string, string>>;
+  /** Optional icon for drive-root rows (Docs: HardDrive). */
+  rootIcon?: ReactNode;
   /** Portaled dialog theme class (repeat app accent tokens outside the workspace root). */
   dialogSurfaceClassName?: string;
   onClose: () => void;
@@ -71,6 +77,8 @@ export function DriveMoveToDialog({
             operations={operations}
             currentUsername={currentUsername}
             groupRootNames={groupRootNames}
+            rootLabels={rootLabels}
+            rootIcon={rootIcon}
             onDestinationChange={handleDestinationChange}
           />
         ) : null}

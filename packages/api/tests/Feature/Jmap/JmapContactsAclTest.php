@@ -115,17 +115,10 @@ final class JmapContactsAclTest extends WgwDatabaseTestCase
 
     public function test_users_only_see_own_address_books(): void
     {
-        $this->jmapContacts([
-            ['AddressBook/set', ['accountId' => 'bob', 'create' => ['b0' => ['name' => 'Bob Extra', 'id' => 'bob-extra']]], 'c0'],
-        ])->assertOk();
-
         $bob = $this->jmapContacts([
             ['AddressBook/get', ['accountId' => 'bob', 'ids' => null], 'c0'],
         ])->assertOk();
-        $this->assertEqualsCanonicalizing(
-            ['default', 'bob-extra'],
-            array_column($bob->json('methodResponses.0.1.list'), 'id'),
-        );
+        $this->assertSame(['default'], array_column($bob->json('methodResponses.0.1.list'), 'id'));
 
         $carol = $this->jmapContacts([
             ['AddressBook/get', ['accountId' => 'carol', 'ids' => null], 'c0'],

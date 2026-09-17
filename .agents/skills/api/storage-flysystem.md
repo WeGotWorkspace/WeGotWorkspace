@@ -1,7 +1,9 @@
 # Storage (Flysystem — single API)
 
-All **user/group files**, **notes markdown**, **office documents**, and **WebDAV file nodes** go through Laravel **Flysystem** (`Storage` facade or injected `Illuminate\Contracts\Filesystem\Filesystem`).
+All **user/group files**, **office documents**, and **WebDAV file nodes** go through Laravel **Flysystem** (`Storage` facade or injected `Illuminate\Contracts\Filesystem\Filesystem`).
 **One path policy, one adapter config** — not scattered `Paths::data()` + PHP filesystem calls.
+
+Notes bodies are **not** Flysystem files: they are CalDAV VJOURNAL `DESCRIPTION` rows (PDO). The `wgw_notes` disk is leftover/migrator plumbing, not the Notes store.
 
 ## Configuration (`config/filesystems.php`)
 
@@ -11,7 +13,7 @@ Define explicit disks (names are examples; keep stable once chosen):
 |------|------|----------|
 | `wgw_data` | install `data/` dir | updates log, locks, secrets, non-DAV state |
 | `wgw_files` | `data/files/` | drive, office, WebDAV tree (`users/`, `groups/`) |
-| `wgw_notes` | `data/files/users/{user}/.notes/` **or** prefix on `wgw_files` | notes markdown |
+| `wgw_notes` | same `data/files/` root as `wgw_files` (legacy) | leftover `.notes` trees / migrator only — not the VJOURNAL store |
 
 - Resolve roots from `WGW_*` keys in `packages/api/.env` in a **service provider** (set disk roots at boot) — not `Paths::data()` in services.
 - Optional later: `s3` disk with same logical paths; domain code stays on `Storage::disk('wgw_files')`.
@@ -40,8 +42,8 @@ file_put_contents(Paths::data().'/files/'.$path, $contents);
 
 ## Notes
 
-- Note bodies are files on disk: read/write via Flysystem (`wgw_notes` or prefixed paths on `wgw_files`), not ad hoc `mkdir` + `file_put_contents` in repositories.
-- Frontmatter codec stays pure PHP; persistence is storage only.
+- Product notes are CalDAV VJOURNAL (`NoteRepository` / `NotebookRepository`), not markdown files under `.notes/`.
+- Leftover Drive `.notes` trees (migration source) still go through Flysystem when a migrator or FileNode index touches them — never ad hoc `mkdir` + `file_put_contents`.
 
 ## Forbidden
 

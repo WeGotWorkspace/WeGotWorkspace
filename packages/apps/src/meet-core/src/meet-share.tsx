@@ -12,7 +12,7 @@ export function MeetShareButton({ link, onCopy }: MeetShareButtonProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <IconButton icon={<LinkIcon />} label={meetLabels.shareLink} variant="subtle" />
+        <IconButton icon={<LinkIcon />} label={meetLabels.shareLink} variant="outline" />
       </PopoverTrigger>
       <PopoverContent align="end" className="meet-popover-surface w-96 p-3">
         <div className="space-y-2">
@@ -29,6 +29,7 @@ export function MeetShareButton({ link, onCopy }: MeetShareButtonProps) {
               onClick={onCopy}
               label={meetLabels.copyLink}
               icon={<Copy />}
+              variant="outline"
               showTooltip={false}
             />
           </div>
@@ -56,6 +57,7 @@ export function MeetShareInline({ link, onCopy }: MeetShareInlineProps) {
           onClick={onCopy}
           label={meetLabels.copyLink}
           icon={<Copy />}
+          variant="outline"
           showTooltip={false}
         />
       </div>

@@ -1,0 +1,105 @@
+{
+  "Note": {
+    "type": "object",
+    "required": ["id", "notebookId", "title", "body", "categories", "status", "etag"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "VJOURNAL UID"
+      },
+      "notebookId": {
+        "type": "string"
+      },
+      "title": {
+        "type": ["string", "null"]
+      },
+      "body": {
+        "type": "string"
+      },
+      "categories": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "status": {
+        "type": ["string", "null"],
+        "enum": ["FINAL", "CANCELLED", null]
+      },
+      "etag": {
+        "type": "string"
+      },
+      "starred": {
+        "type": "boolean"
+      }
+    }
+  },
+  "NoteListResponse": {
+    "type": "object",
+    "required": ["list"],
+    "additionalProperties": false,
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Note"
+        }
+      }
+    }
+  },
+  "NoteCreate": {
+    "type": "object",
+    "required": ["notebookId"],
+    "additionalProperties": false,
+    "properties": {
+      "notebookId": {
+        "type": "string"
+      },
+      "title": {
+        "type": ["string", "null"]
+      },
+      "body": {
+        "type": "string"
+      },
+      "categories": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "status": {
+        "type": ["string", "null"],
+        "enum": ["FINAL", "CANCELLED", null]
+      },
+      "uid": {
+        "type": "string"
+      }
+    }
+  },
+  "NotePatch": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "notebookId": {
+        "type": "string"
+      },
+      "title": {
+        "type": ["string", "null"]
+      },
+      "body": {
+        "type": "string"
+      },
+      "categories": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "status": {
+        "type": ["string", "null"],
+        "enum": ["FINAL", "CANCELLED", null]
+      }
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import { useId, useLayoutEffect, useRef, type FocusEvent, type KeyboardEvent } from "react";
 import { TagGroup } from "@/tag/src/tag";
 import { cn } from "@/lib/utils";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
@@ -6,6 +7,20 @@ import {
   NoteTextEditorBody,
   type NoteCollabConfig,
 } from "@/note-detail-view/src/note-text-editor-body";
+import { TextareaAutosize } from "@/ui/textarea-autosize";
+import "@/note-detail-view/src/note-detail-view.css";
+
+function focusNoteBodyFromTitle(titleEl: HTMLTextAreaElement): void {
+  const root = titleEl.closest(".note-detail-view");
+  const body = root?.querySelector<HTMLElement>(".note-text-editor-body [contenteditable='true']");
+  body?.focus();
+}
+
+function handleTitleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
+  if (event.key !== "Enter" || event.shiftKey) return;
+  event.preventDefault();
+  focusNoteBodyFromTitle(event.currentTarget);
+}
 
 export type NoteDetailViewProps = {
   /** Used for React keys on editors when switching notes. */
@@ -26,6 +41,18 @@ export type NoteDetailViewProps = {
    * Default `true`.
    */
   showTags?: boolean;
+  /** VJOURNAL SUMMARY. Required in the product; empty until autofill or the user types. */
+  title?: string;
+  onTitleChange?: (title: string) => void;
+  titlePlaceholder?: string;
+  /**
+   * After create: land in the title. Stays applied across `noteId` remap
+   * (`local-*` → server id) so a remounted body cannot steal focus.
+   * Omit when opening an existing note.
+   */
+  autoFocusTitle?: boolean;
+  /** User moved focus out of the title (not an unmount). Parent should drop auto-focus. */
+  onAutoFocusTitleConsumed?: () => void;
   pullQuote?: string;
   /** Body paragraphs; seeded into the collab document via {@link noteBodyToMarkdown}. */
   body: string[];
@@ -48,6 +75,11 @@ export function NoteDetailView({
   onTagAdd,
   onTagRemove,
   showTags = true,
+  title = "",
+  onTitleChange,
+  titlePlaceholder = "Title",
+  autoFocusTitle = false,
+  onAutoFocusTitleConsumed,
   pullQuote,
   body,
   collab,
@@ -60,11 +92,45 @@ export function NoteDetailView({
   const useCollabSurface = collab != null;
   const tagsReadOnly = readOnly || onTagAdd == null;
 
+  const titleReadOnly = readOnly || onTitleChange == null;
+  const titleFieldId = useId();
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const leftTitleRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!autoFocusTitle || titleReadOnly || leftTitleRef.current) return;
+    titleRef.current?.focus();
+  }, [autoFocusTitle, noteId, titleReadOnly]);
+
+  function handleTitleBlur(event: FocusEvent<HTMLTextAreaElement>): void {
+    if (!autoFocusTitle || !event.relatedTarget) return;
+    leftTitleRef.current = true;
+    onAutoFocusTitleConsumed?.();
+  }
+
   return (
-    <article className={cn("note-detail-view max-w-[680px] mx-auto", className)}>
+    <article className={cn("note-detail-view paper-sheet", className)}>
+      <label className="note-detail-view__title-label" htmlFor={titleFieldId}>
+        {titlePlaceholder}
+      </label>
+      <TextareaAutosize
+        ref={titleRef}
+        id={titleFieldId}
+        className="note-detail-view__title"
+        value={title}
+        placeholder={titlePlaceholder}
+        readOnly={titleReadOnly}
+        autoFocus={autoFocusTitle && !titleReadOnly}
+        minRows={1}
+        maxRows={12}
+        wrap="soft"
+        onChange={titleReadOnly ? undefined : (event) => onTitleChange(event.target.value)}
+        onKeyDown={titleReadOnly ? undefined : handleTitleKeyDown}
+        onBlur={titleReadOnly ? undefined : handleTitleBlur}
+      />
       {showTags ? (
         <TagGroup
-          className="note-detail-view__tag-group py-6 mb-6"
+          className="note-detail-view__tag-group"
           size="lg"
           tags={tags}
           readonly={tagsReadOnly}
@@ -81,7 +147,10 @@ export function NoteDetailView({
       ) : null}
 
       {useCollabSurface ? (
-        <NoteCollabEditorSurface editable={!readOnly} />
+        <NoteCollabEditorSurface
+          editable={!readOnly}
+          autofocus={autoFocusTitle ? false : undefined}
+        />
       ) : (
         <NoteTextEditorBody
           noteId={noteId}

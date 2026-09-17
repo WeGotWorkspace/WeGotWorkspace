@@ -1,0 +1,37 @@
+@import "../../styles.css" reference;
+
+.chat-message-list {
+  @apply relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col;
+  --chat-list-surface: #ffffff;
+  --list-sticky-header-bg: #ffffff;
+  background-color: var(--chat-list-surface, #ffffff);
+}
+
+.chat-message-list__scroll {
+  @apply min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto;
+}
+
+.chat-message-list__jump {
+  @apply absolute bottom-3 left-1/2 z-10 -translate-x-1/2 shadow-md;
+}
+
+.chat-message-list__day-section {
+  @apply flex min-w-0 max-w-full flex-col;
+}
+
+.chat-message-list .list-sticky-header {
+  @apply px-5;
+}
+
+.chat-message-list__empty {
+  @apply flex flex-1 items-center justify-center px-4 py-12 text-sm;
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 45%, transparent));
+}
+
+.chat-message-list__group {
+  @apply flex min-w-0 max-w-full flex-col;
+}
+
+.chat-message-list__group + .chat-message-list__group {
+  @apply mt-2;
+}

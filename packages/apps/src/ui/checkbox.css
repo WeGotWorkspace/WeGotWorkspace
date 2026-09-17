@@ -1,0 +1,35 @@
+@import "../styles.css" reference;
+
+/**
+ * Shared checkbox tokens. Parents override `--checkbox-*` (Notes gold, Docs blue).
+ * Defaults match the Radix `Checkbox` primitive: size-4, radius-sm, primary fill, ring-1.
+ */
+.checkbox {
+  @apply grid place-content-center shrink-0 border shadow;
+  @apply focus-visible:outline-none focus-visible:ring-1;
+  width: var(--checkbox-size, 1rem);
+  height: var(--checkbox-size, 1rem);
+  border-radius: var(--checkbox-radius, var(--radius-sm));
+  border-color: var(--checkbox-border-color, var(--primary));
+  background-color: var(--checkbox-bg, transparent);
+  color: var(--checkbox-checked-fg, var(--primary-foreground));
+  --tw-ring-color: var(--checkbox-ring-color, var(--ring));
+}
+
+.checkbox:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.checkbox[data-state="checked"] {
+  background-color: var(--checkbox-checked-bg, var(--primary));
+  border-color: var(--checkbox-checked-border, var(--checkbox-checked-bg, var(--primary)));
+  color: var(--checkbox-checked-fg, var(--primary-foreground));
+}
+
+.checkbox__indicator {
+  @apply grid place-content-center text-current;
+}
+
+.checkbox__icon {
+  @apply size-4;
+}

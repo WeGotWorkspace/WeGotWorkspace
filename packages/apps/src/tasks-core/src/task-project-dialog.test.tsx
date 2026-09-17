@@ -1,12 +1,13 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   TaskProjectDialog,
   taskProjectDialogLabelsFrom,
 } from "@/tasks-core/src/task-project-dialog";
-import { TaskListDot } from "@/tasks-core/src/tasks-list-dot";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASK_LIST_COLOR, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
+import { TooltipProvider } from "@/ui/tooltip";
 
 const dialogLabels = taskProjectDialogLabelsFrom(defaultTasksLabels);
 
@@ -14,6 +15,10 @@ const groups = [
   { slug: "team", displayName: "Team" },
   { slug: "studio", displayName: "Studio Crew" },
 ];
+
+function render(ui: ReactNode) {
+  return rtlRender(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
+}
 
 function openColorPicker() {
   fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.projectColorLabel }));
@@ -238,11 +243,9 @@ describe("TaskProjectDialog", () => {
   it("shows hashed color when API color is null", () => {
     const listId = "roadmap";
 
-    const { container: reference } = render(<TaskListDot list={{ id: listId, color: null }} />);
-    const referenceColor = (reference.querySelector(".tasks-list-dot") as HTMLElement).style
-      .backgroundColor;
-
-    cleanup();
+    const probe = document.createElement("span");
+    probe.style.backgroundColor = taskListDotColor({ id: listId, color: null });
+    const referenceColor = probe.style.backgroundColor;
 
     render(
       <TaskProjectDialog
@@ -377,5 +380,79 @@ describe("TaskProjectDialog", () => {
       screen.getAllByRole("button", { name: defaultTasksLabels.removeSharedList }).at(-1)!,
     );
     expect(onRemoveShared).toHaveBeenCalledTimes(1);
+  });
+
+  it("confirms owner delete when mayDelete and onDelete are set", () => {
+    const onDelete = vi.fn();
+
+    render(
+      <TaskProjectDialog
+        dialog={{
+          mode: "edit",
+          listId: "work",
+          name: "Work",
+          color: "#6366f1",
+          scope: "personal",
+          groupSlug: null,
+          mayDelete: true,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        onDelete={onDelete}
+        labels={dialogLabels}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.deleteList }));
+    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.delete }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides owner delete when mayDelete is false even if onDelete is set", () => {
+    render(
+      <TaskProjectDialog
+        dialog={{
+          mode: "edit",
+          listId: "inbox",
+          name: "Inbox",
+          color: null,
+          scope: "personal",
+          groupSlug: null,
+          mayDelete: false,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        onDelete={vi.fn()}
+        labels={dialogLabels}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: defaultTasksLabels.deleteList })).toBeNull();
+  });
+
+  it("hides owner delete without mayDelete or onDelete", () => {
+    render(
+      <TaskProjectDialog
+        dialog={{
+          mode: "edit",
+          listId: "work",
+          name: "Work",
+          color: "#6366f1",
+          scope: "personal",
+          groupSlug: null,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        labels={dialogLabels}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: defaultTasksLabels.deleteList })).toBeNull();
   });
 });

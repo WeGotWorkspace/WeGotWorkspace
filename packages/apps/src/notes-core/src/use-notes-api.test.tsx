@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import { useNotesAPI } from "./use-notes-api";
 import type { NotesApiSource } from "./notes-api-source";
 
@@ -16,6 +17,9 @@ const mockPatchBootstrap = vi.fn();
 const mockLoadBootstrap = vi.fn();
 const mockFlush = vi.fn();
 const mockOnReconnect = vi.fn();
+const mockInbound = vi.fn();
+const mockShow = vi.fn();
+const mockShowError = vi.fn();
 let mockOnline = true;
 
 vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
@@ -38,6 +42,15 @@ vi.mock("@/lib/offline/notes-offline-store", () => ({
   readNotesBootstrapFromCache: vi.fn(),
 }));
 
+vi.mock("@/lib/offline/notes-inbound-sync", () => ({
+  syncNotesInboundFromRest: (...args: unknown[]) => mockInbound(...args),
+}));
+
+vi.mock("@/lib/api/wgw/http", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api/wgw/http")>("@/lib/api/wgw/http");
+  return { ...actual, wgwLiveApiEnabled: () => false };
+});
+
 vi.mock("@/lib/offline/notes-bootstrap-sync", () => ({
   notifyNotesBootstrapUpdated: vi.fn(),
   subscribeNotesBootstrapUpdated: vi.fn(() => () => undefined),
@@ -50,6 +63,15 @@ vi.mock("@/hooks/use-connectivity", () => ({
   },
 }));
 
+vi.mock("@/hooks/use-app-toast", () => ({
+  useAppToast: () => ({
+    show: mockShow,
+    showError: mockShowError,
+    showSuccess: vi.fn(),
+    dismiss: vi.fn(),
+  }),
+}));
+
 describe("useNotesAPI", () => {
   beforeEach(async () => {
     mockOnline = true;
@@ -57,14 +79,18 @@ describe("useNotesAPI", () => {
     mockLoadBootstrap.mockReset();
     mockFlush.mockReset();
     mockOnReconnect.mockReset();
+    mockInbound.mockReset();
+    mockShow.mockReset();
+    mockShowError.mockReset();
     mockFlush.mockResolvedValue({ stateMismatches: [], bootstrap: null });
     mockLoadBootstrap.mockResolvedValue(bootstrap);
+    mockInbound.mockResolvedValue({ changed: true, usedFullResync: false });
     const { readNotesBootstrapFromCache } = await import("@/lib/offline/notes-offline-store");
     vi.mocked(readNotesBootstrapFromCache).mockResolvedValue(bootstrap);
     vi.useRealTimers();
   });
 
-  it("refreshList reloads bootstrap and patches workspace data", async () => {
+  it("refreshList pulls /changes into Dexie without a full bootstrap", async () => {
     const source: NotesApiSource = {
       loadBootstrap: mockLoadBootstrap,
       createOperations: () => undefined,
@@ -76,19 +102,47 @@ describe("useNotesAPI", () => {
       result.current.refreshList();
     });
 
-    expect(result.current.listLoading).toBe(true);
+    expect(result.current.listLoading).toBe(false);
+    expect(result.current.listRefreshing).toBe(true);
 
     await waitFor(() => {
-      expect(result.current.listLoading).toBe(false);
+      expect(result.current.listRefreshing).toBe(false);
     });
 
-    expect(mockLoadBootstrap).toHaveBeenCalledTimes(1);
-    expect(mockPatchBootstrap).toHaveBeenCalledTimes(1);
-    expect(mockPatchBootstrap.mock.calls[0]?.[0]()).toEqual(bootstrap);
+    expect(mockInbound).toHaveBeenCalled();
+    expect(mockLoadBootstrap).not.toHaveBeenCalled();
+    expect(mockPatchBootstrap).toHaveBeenCalled();
     expect(result.current.bootstrapRevision).toBe(1);
+    expect(result.current.listLoading).toBe(false);
+    expect(mockShow).toHaveBeenCalledWith(
+      defaultNotesLabels.toastListUpdated,
+      expect.objectContaining({ icon: expect.anything() }),
+    );
+    expect(mockShowError).not.toHaveBeenCalled();
   });
 
-  it("flushes the outbox, reloads bootstrap, and notifies other tabs on reconnect", async () => {
+  it("refreshList shows an error toast when inbound refresh fails", async () => {
+    mockInbound.mockRejectedValue(new Error("network"));
+    const source: NotesApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+
+    const { result } = renderHook(() => useNotesAPI(source));
+
+    act(() => {
+      result.current.refreshList();
+    });
+
+    await waitFor(() => {
+      expect(result.current.listRefreshing).toBe(false);
+    });
+
+    expect(mockShow).not.toHaveBeenCalled();
+    expect(mockShowError).toHaveBeenCalledWith(defaultNotesLabels.toastListRefreshFailed);
+  });
+
+  it("flushes the outbox, then inbound /changes, on reconnect", async () => {
     const source: NotesApiSource = {
       loadBootstrap: mockLoadBootstrap,
       createOperations: () => undefined,
@@ -104,9 +158,8 @@ describe("useNotesAPI", () => {
 
     await waitFor(() => {
       expect(mockFlush).toHaveBeenCalledTimes(1);
-      expect(mockLoadBootstrap).toHaveBeenCalledTimes(1);
-      expect(mockPatchBootstrap).toHaveBeenCalledTimes(1);
-      expect(mockPatchBootstrap.mock.calls[0]?.[0]()).toEqual(bootstrap);
+      expect(mockInbound).toHaveBeenCalled();
+      expect(mockLoadBootstrap).not.toHaveBeenCalled();
       expect(notifyNotesBootstrapUpdated).toHaveBeenCalledWith("demo@example.com");
     });
   });
@@ -126,7 +179,7 @@ describe("useNotesAPI", () => {
     expect(onSyncConflict).toHaveBeenCalledWith(["note-1"]);
   });
 
-  it("silently reloads bootstrap on an interval while online", async () => {
+  it("does not call fetchNotesVjournalBootstrap on the interval", async () => {
     vi.useFakeTimers();
     Object.defineProperty(document, "hidden", { configurable: true, value: false });
 
@@ -135,7 +188,7 @@ describe("useNotesAPI", () => {
       createOperations: () => undefined,
     };
 
-    const { result } = renderHook(() => useNotesAPI(source));
+    renderHook(() => useNotesAPI(source));
 
     expect(mockLoadBootstrap).not.toHaveBeenCalled();
 
@@ -143,10 +196,8 @@ describe("useNotesAPI", () => {
       await vi.advanceTimersByTimeAsync(10_000);
     });
 
-    expect(mockLoadBootstrap).toHaveBeenCalledTimes(1);
-    expect(mockPatchBootstrap).toHaveBeenCalledTimes(1);
-    expect(result.current.listLoading).toBe(false);
-    expect(result.current.bootstrapRevision).toBe(1);
+    expect(mockLoadBootstrap).not.toHaveBeenCalled();
+    expect(mockInbound).toHaveBeenCalled();
   });
 
   it("does not poll bootstrap while offline", async () => {
@@ -166,5 +217,6 @@ describe("useNotesAPI", () => {
     });
 
     expect(mockLoadBootstrap).not.toHaveBeenCalled();
+    expect(mockInbound).not.toHaveBeenCalled();
   });
 });

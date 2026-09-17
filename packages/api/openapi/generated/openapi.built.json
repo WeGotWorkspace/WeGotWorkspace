@@ -1145,6 +1145,9 @@
                     "updates": {
                         "$ref": "#/components/schemas/UpdateStateResponse"
                     },
+                    "mcp": {
+                        "$ref": "#/components/schemas/AdminMcpSettings"
+                    },
                     "currentUser": {
                         "type": "string"
                     },
@@ -1161,6 +1164,7 @@
                     "apps",
                     "webdav",
                     "updates",
+                    "mcp",
                     "currentUser",
                     "logoutUrl"
                 ]
@@ -1335,6 +1339,10 @@
                     },
                     "logoutUrl": {
                         "type": "string"
+                    },
+                    "mcpEnabled": {
+                        "type": "boolean",
+                        "description": "Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs."
                     }
                 },
                 "required": [
@@ -1342,7 +1350,8 @@
                     "groups",
                     "mail",
                     "mailServer",
-                    "logoutUrl"
+                    "logoutUrl",
+                    "mcpEnabled"
                 ]
             },
             "SettingsProfileRequest": {
@@ -2401,7 +2410,7 @@
                             "personal",
                             "group"
                         ],
-                        "description": "Storage scope: personal (users/{username}/.notes) or group (groups/{slug}/.notes)."
+                        "description": "Notebook scope: personal (caller principal) or group (group principal). Not a Drive .notes path."
                     },
                     "groupSlug": {
                         "type": [
@@ -2412,23 +2421,23 @@
                     },
                     "updatedAt": {
                         "type": "string",
-                        "description": "Metadata concurrency token from the frontmatter `updated` marker. Body-only collab saves do not advance this value."
+                        "description": "Metadata concurrency token from VJOURNAL LAST-MODIFIED / DTSTAMP. Body-only collab saves do not advance this value."
                     },
                     "contentUpdatedAt": {
                         "type": "string",
-                        "description": "File mtime for the note document. Advances when the body is rewritten (including collab saves). Prefer for list/footer “last edited” display; use updatedAt for offline ifInState guards."
+                        "description": "Content timestamp. Advances when DESCRIPTION is rewritten (including collab saves). Prefer for list/footer last-edited display; use updatedAt for offline ifInState guards."
                     },
                     "hasShares": {
                         "type": "boolean",
-                        "description": "True when this note file or its notebook directory has direct outgoing share grants (member/team or public). Omitted or false when the owner has not shared the note."
+                        "description": "True when the notebook has outgoing collection shares. Omitted or false when unshared."
                     },
                     "hasPublicShare": {
                         "type": "boolean",
-                        "description": "True when this note file or its notebook directory has an active public link share."
+                        "description": "True when the notebook has an active public link share."
                     },
                     "hasTeamShare": {
                         "type": "boolean",
-                        "description": "True when this note file or its notebook directory has active team grants (users or groups)."
+                        "description": "True when the notebook has active team grants (users or groups)."
                     }
                 },
                 "required": [
@@ -2505,7 +2514,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Target a shared group notebook (groups/{slug}/.notes). Omit or null for the caller's personal notes. Caller must be a group member."
+                        "description": "Target a group-principal notebook. Omit or null for the caller's personal notes. Caller must be a group member."
                     }
                 },
                 "required": [
@@ -2536,7 +2545,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Group slug when deleting a note under groups/{slug}/.notes. Omit or null for personal notes."
+                        "description": "Group slug when deleting a note in a group-principal notebook. Omit or null for personal notes."
                     }
                 },
                 "required": [
@@ -2567,7 +2576,7 @@
                             "personal",
                             "group"
                         ],
-                        "description": "personal = caller-owned notebook; group = membership notebook under groups/{slug}/.notes."
+                        "description": "personal = caller-owned notebook; group = group-principal notebook."
                     },
                     "groupSlug": {
                         "type": [
@@ -2595,17 +2604,18 @@
             },
             "NotebookListResponse": {
                 "type": "object",
+                "required": [
+                    "list"
+                ],
+                "additionalProperties": false,
                 "properties": {
-                    "items": {
+                    "list": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/NotebookListItem"
+                            "$ref": "#/components/schemas/Notebook"
                         }
                     }
-                },
-                "required": [
-                    "items"
-                ]
+                }
             },
             "NotebookMutationResponse": {
                 "type": "object",
@@ -2842,6 +2852,11 @@
                     },
                     "sessionKey": {
                         "$ref": "#/components/schemas/MeetSessionKey"
+                    },
+                    "browserId": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{32}$",
+                        "description": "Stable per browser profile. Same-browser rejoins evict leftover peers; a second device keeps both."
                     }
                 },
                 "required": [
@@ -3181,11 +3196,11 @@
                     },
                     "mayShare": {
                         "type": "boolean",
-                        "description": "May modify shareWith."
+                        "description": "May modify shareWith. True for personal owners and current members of a group-owned book. False on inbound sharees."
                     },
                     "mayDelete": {
                         "type": "boolean",
-                        "description": "May delete the address book itself."
+                        "description": "False on owned and membership books. True on inbound sharees means dismiss/hide (addressbook_share_dismissals), not delete the owner's book."
                     }
                 },
                 "additionalProperties": false,
@@ -3199,18 +3214,19 @@
                     "sortOrder",
                     "isDefault",
                     "isSubscribed",
+                    "isSharee",
                     "myRights"
                 ],
                 "properties": {
                     "id": {
                         "$ref": "#/components/schemas/JsContactId",
-                        "description": "Immutable server-set address book identifier."
+                        "description": "Immutable server-set identifier. Personal book is `default`; group membership books are `group-{slug}`; inbound shares are `shared-{addressbookId}`."
                     },
                     "name": {
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 255,
-                        "description": "User-visible name."
+                        "description": "Server-set from the principal display name. Name patches are forbidden."
                     },
                     "description": {
                         "type": [
@@ -3246,7 +3262,11 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Principal id to rights map; null when not shared."
+                        "description": "Persisted grants. Principal ids are `username` or `groups/{slug}`. Recipients see null. mayWrite (or mayWriteAll) → edit; otherwise view. Null grant revokes."
+                    },
+                    "isSharee": {
+                        "type": "boolean",
+                        "description": "True on inbound share listings (Shared with me). False for personal owners and group-membership books."
                     },
                     "myRights": {
                         "$ref": "#/components/schemas/AddressBookRights",
@@ -3262,6 +3282,7 @@
                     "sortOrder": 0,
                     "isDefault": true,
                     "isSubscribed": true,
+                    "isSharee": false,
                     "shareWith": null,
                     "myRights": {
                         "mayRead": true,
@@ -3295,6 +3316,7 @@
                             "sortOrder": 0,
                             "isDefault": true,
                             "isSubscribed": true,
+                            "isSharee": false,
                             "shareWith": null,
                             "myRights": {
                                 "mayRead": true,
@@ -5256,6 +5278,7 @@
                 "required": [
                     "name"
                 ],
+                "description": "Rejected on AddressBook/set — mayCreateAddressBook is false (one book per principal).",
                 "properties": {
                     "name": {
                         "type": "string",
@@ -5281,7 +5304,8 @@
                     "name": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 255
+                        "maxLength": 255,
+                        "description": "Rejected — names are server-set from the principal display name."
                     },
                     "description": {
                         "type": [
@@ -5290,7 +5314,25 @@
                         ]
                     },
                     "isSubscribed": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Sharees: false dismisses the inbound share for this user only (addressbook_share_dismissals)."
+                    },
+                    "shareWith": {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "propertyNames": {
+                                    "$ref": "#/components/schemas/JsContactId"
+                                },
+                                "additionalProperties": {
+                                    "$ref": "#/components/schemas/AddressBookRights"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes."
                     }
                 },
                 "additionalProperties": false
@@ -5838,7 +5880,8 @@
                         "$ref": "#/components/schemas/JmapIdBooleanMap"
                     },
                     "title": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                     },
                     "description": {
                         "type": [
@@ -6045,15 +6088,28 @@
                     },
                     {
                         "$ref": "#/components/schemas/CalendarEvent"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "title"
+                        ],
+                        "properties": {
+                            "title": {
+                                "type": "string",
+                                "minLength": 1
+                            }
+                        }
                     }
                 ],
-                "description": "POST body; server assigns id and @type."
+                "description": "POST body; server assigns id and @type. title is required and must be non-empty after trim."
             },
             "CalendarEventPatch": {
                 "type": "object",
                 "properties": {
                     "title": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1
                     },
                     "description": {
                         "type": [
@@ -9477,7 +9533,7 @@
                 "properties": {
                     "capabilities": {
                         "type": "object",
-                        "description": "Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. Feature-gated-off domains are absent.",
+                        "description": "Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel/ChatMessage get+changes, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent.",
                         "additionalProperties": {
                             "type": "object"
                         }
@@ -10296,6 +10352,930 @@
                         }
                     }
                 ]
+            },
+            "Note": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "notebookId",
+                    "title",
+                    "body",
+                    "categories",
+                    "status",
+                    "etag"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "VJOURNAL UID"
+                    },
+                    "notebookId": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "FINAL",
+                            "CANCELLED",
+                            null
+                        ]
+                    },
+                    "etag": {
+                        "type": "string"
+                    },
+                    "starred": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "NoteListResponse": {
+                "type": "object",
+                "required": [
+                    "list"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Note"
+                        }
+                    }
+                }
+            },
+            "NoteCreate": {
+                "type": "object",
+                "required": [
+                    "notebookId"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "notebookId": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "FINAL",
+                            "CANCELLED",
+                            null
+                        ]
+                    },
+                    "uid": {
+                        "type": "string"
+                    }
+                }
+            },
+            "NotePatch": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "notebookId": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "FINAL",
+                            "CANCELLED",
+                            null
+                        ]
+                    }
+                }
+            },
+            "Notebook": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "isDefault",
+                    "scope",
+                    "groupSlug",
+                    "myRights",
+                    "isSharee"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "isDefault": {
+                        "type": "boolean"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "shareWith": {
+                        "description": "Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner.",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "propertyNames": {
+                                    "$ref": "#/components/schemas/JmapId"
+                                },
+                                "additionalProperties": {
+                                    "$ref": "#/components/schemas/CalendarRights"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "isSharee": {
+                        "type": "boolean"
+                    },
+                    "myRights": {
+                        "$ref": "#/components/schemas/TaskListRights"
+                    },
+                    "role": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "sortOrder": {
+                        "type": "integer"
+                    },
+                    "isSubscribed": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "NotebookCreate": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "id": {
+                        "$ref": "#/components/schemas/JmapId"
+                    }
+                }
+            },
+            "NotebookPatch": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "shareWith": {
+                        "description": "Patch share grants. Keys are JMAP ids; a null grant revokes that principal.",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "propertyNames": {
+                                    "$ref": "#/components/schemas/JmapId"
+                                },
+                                "additionalProperties": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/CalendarRights"
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                }
+            },
+            "NotebookDeleteOptions": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "onDestroyRemoveContents": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "ChatChannel": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "kind",
+                    "scope",
+                    "groupSlug",
+                    "myRights",
+                    "isSharee"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Channel collection id (CalDAV collection uri, chat-/dm- prefixed)."
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "channel",
+                            "meeting",
+                            "dm"
+                        ]
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": [
+                            "personal",
+                            "group"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "shareWith": {
+                        "description": "Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner.",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "propertyNames": {
+                                    "$ref": "#/components/schemas/JmapId"
+                                },
+                                "additionalProperties": {
+                                    "$ref": "#/components/schemas/CalendarRights"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "isSharee": {
+                        "type": "boolean"
+                    },
+                    "myRights": {
+                        "$ref": "#/components/schemas/TaskListRights"
+                    },
+                    "isDefault": {
+                        "type": "boolean",
+                        "description": "True for a group's auto-provisioned default channel: owned by the group principal, immutable through the generic channel endpoints (like DMs), name tracks the group display name."
+                    },
+                    "topic": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Channel topic shown in the main header subtitle (chat_channel_meta)."
+                    },
+                    "guestRoomCode": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Meeting kind: linked meet_reservations room code for guest links."
+                    },
+                    "dmPeer": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "dm kind: the other member's username (DM rail key); null for channel/meeting kinds."
+                    },
+                    "memberCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Roster size (owner plus sharees, groups expanded)."
+                    },
+                    "unreadCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Unread messages after the caller's read marker, own messages excluded."
+                    }
+                }
+            },
+            "ChatChannelListResponse": {
+                "type": "object",
+                "required": [
+                    "list"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ChatChannel"
+                        }
+                    }
+                }
+            },
+            "ChatChannelCreate": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "kind"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "channel",
+                            "meeting"
+                        ],
+                        "description": "dm channels are never created here — POST /chat/dms provisions them find-or-create."
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "topic": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "id": {
+                        "$ref": "#/components/schemas/JmapId",
+                        "description": "Optional client-suggested channel id (uri slug)."
+                    }
+                }
+            },
+            "ChatChannelPatch": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "topic": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "groupSlug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Transfer ownership to principals/groups/{slug} (or back to personal with null)."
+                    },
+                    "shareWith": {
+                        "description": "Patch share grants. Keys are JMAP ids; a null grant revokes that principal.",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "propertyNames": {
+                                    "$ref": "#/components/schemas/JmapId"
+                                },
+                                "additionalProperties": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/CalendarRights"
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                }
+            },
+            "ChatChannelChangesResponse": {
+                "type": "object",
+                "required": [
+                    "oldState",
+                    "newState",
+                    "created",
+                    "updated",
+                    "destroyed"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "oldState": {
+                        "type": "string",
+                        "description": "Previous sync state token supplied by the client."
+                    },
+                    "newState": {
+                        "type": "string",
+                        "description": "Current sync state token to store for the next request."
+                    },
+                    "created": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "updated": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "destroyed": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    }
+                },
+                "description": "JMAP-shaped incremental sync response for channel collections."
+            },
+            "ChatReaction": {
+                "type": "object",
+                "required": [
+                    "emoji",
+                    "authors"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "emoji": {
+                        "type": "string"
+                    },
+                    "authors": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Principal usernames that toggled this emoji on."
+                    }
+                }
+            },
+            "ChatMention": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "displayName"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Mentioned principal username."
+                    },
+                    "displayName": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ChatMessage": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "channelId",
+                    "authorId",
+                    "authorName",
+                    "body",
+                    "createdAt",
+                    "reactions",
+                    "mentions"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Message id — client-generated ULID (VJOURNAL UID), lexicographically time-sortable."
+                    },
+                    "channelId": {
+                        "type": "string"
+                    },
+                    "authorId": {
+                        "type": "string",
+                        "description": "Author principal username (X-WGW-AUTHOR)."
+                    },
+                    "authorName": {
+                        "type": "string"
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Empty string on delete tombstones (STATUS:CANCELLED)."
+                    },
+                    "createdAt": {
+                        "$ref": "#/components/schemas/JmapUTCDateTime",
+                        "description": "Server-assigned creation timestamp — ordering source of truth with ULID tiebreak."
+                    },
+                    "editedAt": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/JmapUTCDateTime"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "deletedAt": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/JmapUTCDateTime"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Set on tombstoned messages (STATUS:CANCELLED)."
+                    },
+                    "parentId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Thread parent message id (RELATED-TO)."
+                    },
+                    "replyCount": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "reactions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ChatReaction"
+                        }
+                    },
+                    "mentions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ChatMention"
+                        }
+                    }
+                }
+            },
+            "ChatMessageListResponse": {
+                "type": "object",
+                "required": [
+                    "list",
+                    "hasMore"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ChatMessage"
+                        }
+                    },
+                    "hasMore": {
+                        "type": "boolean",
+                        "description": "True when more messages exist beyond the requested cursor window."
+                    }
+                }
+            },
+            "ChatMessageCreate": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "body"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Client-generated ULID — message id and idempotency key; retries with the same id return the existing message."
+                    },
+                    "body": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "parentId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Thread parent message id."
+                    }
+                }
+            },
+            "ChatMessagePatch": {
+                "type": "object",
+                "required": [
+                    "body"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Author-only body edit — bumps SEQUENCE server-side."
+                    }
+                }
+            },
+            "ChatReactionToggleRequest": {
+                "type": "object",
+                "required": [
+                    "emoji"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "emoji": {
+                        "type": "string",
+                        "description": "Emoji to toggle for the caller — (emoji, author) set semantics, serialized server-side."
+                    }
+                }
+            },
+            "ChatReadMarkerPut": {
+                "type": "object",
+                "required": [
+                    "lastReadTs",
+                    "lastReadUid"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "lastReadTs": {
+                        "$ref": "#/components/schemas/JmapUTCDateTime",
+                        "description": "createdAt of the last read message."
+                    },
+                    "lastReadUid": {
+                        "type": "string",
+                        "description": "ULID of the last read message — tiebreak for equal timestamps; unread = (createdAt, uid) > (lastReadTs, lastReadUid)."
+                    }
+                }
+            },
+            "ChatMessageChangesResponse": {
+                "type": "object",
+                "required": [
+                    "oldState",
+                    "newState",
+                    "created",
+                    "updated",
+                    "destroyed",
+                    "hasMoreChanges"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "oldState": {
+                        "type": "string",
+                        "description": "Previous sync state token supplied by the client."
+                    },
+                    "newState": {
+                        "type": "string",
+                        "description": "Current sync state token to store for the next request."
+                    },
+                    "created": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "updated": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "destroyed": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JmapId"
+                        }
+                    },
+                    "hasMoreChanges": {
+                        "type": "boolean",
+                        "description": "True when more changes exist after newState — repeat the request. Real at chat volume, never hardcoded false."
+                    }
+                },
+                "description": "JMAP-shaped incremental sync response for messages in one channel."
+            },
+            "ChatDmOpen": {
+                "type": "object",
+                "required": [
+                    "principal"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "principal": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 190,
+                        "description": "Target username — an internal workspace user other than the caller (no groups, guests, or external addresses)."
+                    }
+                }
+            },
+            "AdminMcpSettings": {
+                "type": "object",
+                "required": [
+                    "enabled"
+                ],
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "endpointUrl": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Public MCP URL to paste into assistants (`origin/mcp`). Set from WGW_MCP_PUBLIC_ORIGIN when APP_ENV is not production; null in production so the Admin UI uses the current site origin."
+                    }
+                }
+            },
+            "SettingsMcpGrant": {
+                "type": "object",
+                "required": [
+                    "clientId",
+                    "clientName",
+                    "clientOrigin",
+                    "connectedAt",
+                    "scopes"
+                ],
+                "properties": {
+                    "clientId": {
+                        "type": "string"
+                    },
+                    "clientName": {
+                        "type": "string"
+                    },
+                    "clientOrigin": {
+                        "type": "string"
+                    },
+                    "connectedAt": {
+                        "type": "string"
+                    },
+                    "scopes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "lastUsedAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                }
+            },
+            "SettingsMcpGrantList": {
+                "type": "object",
+                "required": [
+                    "grants"
+                ],
+                "properties": {
+                    "grants": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SettingsMcpGrant"
+                        }
+                    }
+                }
             }
         },
         "responses": {
@@ -10779,7 +11759,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Settings state"
+                        "description": "Settings state",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsStateResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -10798,7 +11785,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Updated settings state"
+                        "description": "Updated settings state",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsStateResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -10817,7 +11811,14 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Updated settings state"
+                        "description": "Updated settings state",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsStateResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -11553,96 +12554,36 @@
                 }
             }
         },
-        "/notes/capabilities": {
-            "get": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Notes capabilities",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Notes capabilities"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/notes/state": {
-            "get": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Notes runtime boot state for authenticated user",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Notes state"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
         "/notes/items": {
             "get": {
                 "tags": [
                     "Notes"
                 ],
-                "summary": "List notes with optional archive/notebook/search filters",
+                "summary": "List notes",
                 "security": [
                     {
                         "bearerAuth": []
                     }
                 ],
-                "responses": {
-                    "200": {
-                        "description": "Notes list"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "post": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Create a new note",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created note"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/notes/items/{id}": {
-            "put": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Save/update a note",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
+                "x-wgw-access": "user",
                 "parameters": [
                     {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
+                        "name": "notebookId",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "starred",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
                         "schema": {
                             "type": "string"
                         }
@@ -11650,132 +12591,69 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Updated note"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Delete a note",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Deleted note"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "patch": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Patch note (e.g. archive)",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Updated"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/notes/items/{id}/archive": {
-            "post": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Archive a note",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Archived note",
+                        "description": "Notes",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/NoteMutationResponse"
+                                    "$ref": "#/components/schemas/NoteListResponse"
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
                     }
                 }
-            }
-        },
-        "/notes/items/{id}/restore": {
+            },
             "post": {
                 "tags": [
                     "Notes"
                 ],
-                "summary": "Restore an archived note",
+                "summary": "Create a note",
                 "security": [
                     {
                         "bearerAuth": []
                     }
                 ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NoteCreate"
+                            }
                         }
                     }
-                ],
+                },
                 "responses": {
-                    "200": {
-                        "description": "Restored note",
+                    "201": {
+                        "description": "Created note",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/NoteMutationResponse"
+                                    "$ref": "#/components/schemas/Note"
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
                     }
                 }
             }
@@ -11785,91 +12663,71 @@
                 "tags": [
                     "Notes"
                 ],
-                "summary": "List notebooks with active/archive counts",
+                "summary": "List notebooks",
                 "security": [
                     {
                         "bearerAuth": []
                     }
                 ],
+                "x-wgw-access": "user",
                 "responses": {
                     "200": {
-                        "description": "Notebook list"
+                        "description": "Notebooks",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotebookListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
                     }
-                },
-                "x-wgw-access": "user"
+                }
             },
             "post": {
                 "tags": [
                     "Notes"
                 ],
-                "summary": "Create notebook",
+                "summary": "Create a notebook",
                 "security": [
                     {
                         "bearerAuth": []
                     }
                 ],
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotebookCreate"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "201": {
-                        "description": "Notebook created"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/notes/notebooks/{name}": {
-            "patch": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Rename notebook",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
+                        "description": "Created notebook",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notebook"
+                                }
+                            }
                         }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
                     }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Notebook renamed"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "Delete notebook (archive, move, or purge)",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Notebook deleted"
-                    }
-                },
-                "x-wgw-access": "user"
+                }
             }
         },
         "/plugins": {
@@ -13219,7 +14077,7 @@
                     "Meetings"
                 ],
                 "summary": "Meeting room reservation status",
-                "description": "Guests receive { reserved, active } only. Owner-principal members and createdBy receive the full body. Missing reservation is 404.",
+                "description": "Guests receive { reserved, active } only. Owner-principal members and createdBy receive the full body. Missing reservation is 404. Meeting-kind collection slugs (`test`, `chat-test`) resolve as reserved.",
                 "parameters": [
                     {
                         "name": "roomId",
@@ -13383,11 +14241,47 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "peerId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "sig",
+                        "in": "query",
+                        "required": false,
+                        "description": "Roster signature (`rosterSig`) from a previous poll response. When it still matches and no messages are pending for the peer, the server answers 204 No Content.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sessionKey",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK"
+                    },
+                    "204": {
+                        "description": "Nothing new — roster unchanged for the provided `sig` and no pending messages."
                     }
                 },
                 "x-wgw-access": "guest"
@@ -14358,7 +15252,7 @@
                     "Files"
                 ],
                 "summary": "List paths shared with current user",
-                "description": "Path-keyed member grants. Default omits `.notes` so Drive Shared with me stays note-free. Pass `includeNotes=true` to include note-path grants (Notes clients).",
+                "description": "Path-keyed Drive member grants. Default omits leftover `.notes` file paths so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`); `includeNotes=true` only includes old `.notes` path grants, not a Notes client API.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -14373,7 +15267,7 @@
                             "type": "boolean",
                             "default": false
                         },
-                        "description": "When true, include file grants under `.notes`. Default is false."
+                        "description": "When true, include leftover Drive file grants under `.notes`. Default is false. Not used by the Notes app (VJOURNAL notebooks)."
                     }
                 ],
                 "responses": {
@@ -14847,67 +15741,13 @@
                 "x-wgw-access": "user"
             }
         },
-        "/notes/shared-with-me": {
-            "get": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "List note files shared with the current user via path grants",
-                "description": "Returns file grants under `.notes` (single notes). Drive `GET /files/shared-with-me` excludes these paths unless `includeNotes=true`.",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Shared notes",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotesSharedWithMeResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/notes/shared-notebooks": {
-            "get": {
-                "tags": [
-                    "Notes"
-                ],
-                "summary": "List shared notebook ACL rows (compat — always empty)",
-                "description": "Personal notebook-directory ACL shares are not a product feature. This endpoint remains for contract compatibility and returns empty `items` and `notes`. Group-membership notebooks are listed via `GET /notes/notebooks` / `GET /notes/items`.",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Compat empty list (personal notebook-directory ACL shares removed).",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotesSharedNotebooksResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
         "/jmap/session": {
             "get": {
                 "tags": [
                     "JMAP"
                 ],
                 "summary": "JMAP Session resource",
-                "description": "RFC 8620 §2 Session resource for the JMAP envelope (calendars + contacts). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.",
+                "description": "RFC 8620 §2 Session resource for the JMAP envelope (calendars, contacts, filenode, and the vendor `urn:wgw:jmap:notes` / `urn:wgw:jmap:chat` envelopes). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -15988,6 +16828,1256 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notes/notebooks/changes": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Notebook collection changes",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notebook changes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapChangesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                }
+            }
+        },
+        "/notes/notebooks/{notebookId}": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Fetch a notebook",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "notebookId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notebook",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notebook"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Update a notebook",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "notebookId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotebookPatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated notebook",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notebook"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Delete a notebook",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "notebookId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "onDestroyRemoveContents",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "description": "Same as NotebookDeleteOptions.onDestroyRemoveContents. Query is the reliable client path; DELETE bodies are often dropped."
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotebookDeleteOptions"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
+            }
+        },
+        "/notes/items/changes": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Note item changes",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "notebookId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Note changes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapChangesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/notes/items/{noteId}": {
+            "get": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Fetch a note by VJOURNAL UID",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Note",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Note"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Patch a note (If-Match required)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotePatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated note",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Note"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/JmapPreconditionFailed"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Delete a note",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/JmapPreconditionFailed"
+                    }
+                }
+            }
+        },
+        "/notes/items/{noteId}/star": {
+            "post": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Star a note for the current user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Starred",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Unstar a note",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unstarred",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/chat/channels/changes": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Chat channel collection changes",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Previous sync state token."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Channel changes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannelChangesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                }
+            }
+        },
+        "/chat/channels": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "List chat channels",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "responses": {
+                    "200": {
+                        "description": "Chat channels",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannelListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Create a chat channel",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatChannelCreate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created chat channel",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannel"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
+            }
+        },
+        "/chat/channels/{channelId}": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Fetch a chat channel",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chat channel",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannel"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Update a chat channel",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatChannelPatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated chat channel",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannel"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Delete a chat channel",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
+            }
+        },
+        "/chat/channels/{channelId}/messages": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "List channel messages (cursor paging)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Return messages after this ULID cursor (exclusive), ascending."
+                    },
+                    {
+                        "name": "before",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Return messages before this ULID cursor (exclusive), for history backfill."
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Page size cap."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Channel messages",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatMessageListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send a message",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatMessageCreate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created message",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatMessage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
+                    }
+                }
+            }
+        },
+        "/chat/channels/{channelId}/read-marker": {
+            "put": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Set the caller's read marker",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatReadMarkerPut"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Read marker stored",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/chat/messages/changes": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Message changes for one channel",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "channelId",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Previous sync state token."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message changes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatMessageChangesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/chat/messages/{messageId}": {
+            "patch": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Edit a message body (author only)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "messageId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Message ULID."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatMessagePatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated message",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatMessage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Delete a message (author only, tombstone)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "messageId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Message ULID."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/chat/messages/{messageId}/reactions": {
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Toggle a reaction for the caller",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "messageId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Message ULID."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatReactionToggleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated message",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatMessage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            }
+        },
+        "/chat/dms": {
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Open (find-or-create) a direct message channel",
+                "description": "Idempotent: the DM collection uri is a deterministic, order-independent hash of both usernames, so either side opening the DM returns the same channel.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatDmOpen"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The DM channel (existing or newly provisioned)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatChannel"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                }
+            }
+        },
+        "/settings/mcp-grants": {
+            "get": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "List connected assistant OAuth grants",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Connected assistant grants",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsMcpGrantList"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/settings/mcp-grants/{clientId}": {
+            "delete": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Revoke a connected assistant grant",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "clientId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Grant revoked",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Grant not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"

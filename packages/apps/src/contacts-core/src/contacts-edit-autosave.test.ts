@@ -19,6 +19,7 @@ const sampleDraft: ContactEditDraft = {
   department: "",
   organization: "",
   notes: "",
+  birthday: "",
 };
 
 describe("contacts-edit-autosave", () => {

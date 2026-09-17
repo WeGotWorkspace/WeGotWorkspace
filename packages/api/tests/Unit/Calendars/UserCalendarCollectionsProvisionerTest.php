@@ -43,8 +43,11 @@ final class UserCalendarCollectionsProvisionerTest extends WgwDatabaseTestCase
         $this->assertArrayHasKey(CalendarCollectionUris::TASK_HOME, $byUri);
         $this->assertArrayHasKey(CalendarCollectionUris::TASK_WORK, $byUri);
 
-        $this->assertSame(['VEVENT', 'VJOURNAL'], $this->componentSetFor($byUri[CalendarCollectionUris::EVENT_HOME]));
+        $this->assertArrayHasKey(CalendarCollectionUris::NOTE_GENERAL, $byUri);
+        $this->assertSame(['VEVENT'], $this->componentSetFor($byUri[CalendarCollectionUris::EVENT_HOME]));
         $this->assertSame(['VTODO'], $this->componentSetFor($byUri[CalendarCollectionUris::TASK_HOME]));
+        $this->assertSame(['VJOURNAL'], $this->componentSetFor($byUri[CalendarCollectionUris::NOTE_GENERAL]));
+        $this->assertSame('General', (string) ($byUri[CalendarCollectionUris::NOTE_GENERAL]['{DAV:}displayname'] ?? ''));
         $this->assertSame('Home', (string) ($byUri[CalendarCollectionUris::EVENT_HOME]['{DAV:}displayname'] ?? ''));
         $this->assertSame('Home', (string) ($byUri[CalendarCollectionUris::TASK_HOME]['{DAV:}displayname'] ?? ''));
 
@@ -89,8 +92,10 @@ final class UserCalendarCollectionsProvisionerTest extends WgwDatabaseTestCase
 
         $this->assertArrayHasKey('engineering', $byUri);
         $this->assertArrayHasKey('tasks-engineering', $byUri);
-        $this->assertSame(['VEVENT', 'VJOURNAL'], $this->componentSetFor($byUri['engineering']));
+        $this->assertArrayHasKey(CalendarCollectionUris::groupNotebookCalDavUri('engineering'), $byUri);
+        $this->assertSame(['VEVENT'], $this->componentSetFor($byUri['engineering']));
         $this->assertSame(['VTODO'], $this->componentSetFor($byUri['tasks-engineering']));
+        $this->assertSame(['VJOURNAL'], $this->componentSetFor($byUri[CalendarCollectionUris::groupNotebookCalDavUri('engineering')]));
         $this->assertSame(CalendarColorPalette::forUri('engineering'), $this->colorFor($byUri['engineering']));
         $this->assertSame(
             CalendarColorPalette::forUri(CalendarCollectionUris::groupTaskListCalDavUri('engineering')),

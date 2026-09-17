@@ -20,7 +20,8 @@ When the user says **greenfield**, **new API**, or work under `packages/api/`:
 | Route naming / REST layout | [rest-design.md](rest-design.md) |
 | Auth / JWT | [auth.md](auth.md) |
 | Stack overview | [stack.md](stack.md) |
-| File storage / notes / drive | [storage-flysystem.md](storage-flysystem.md) |
+| File storage / drive | [storage-flysystem.md](storage-flysystem.md) |
+| Notes (VJOURNAL + vendor JMAP) | [docs/architecture/notes.md](../../../docs/architecture/notes.md), [671-notes-jmap-dexie](../../specs/671-notes-jmap-dexie/spec.md) |
 | WebDAV | [sabredav.md](sabredav.md) |
 | Plugins / activation | [plugins](../plugins/SKILL.md) |
 | Meet / room signaling | `packages/api/docs/meet-signaling.md` — or [meet](../meet/SKILL.md) for UI + RTC |

@@ -82,6 +82,22 @@ export function resolveDriveOfflineUsername(sessionUsername: string | undefined)
   return resolveOfflineUsername(DRIVE_DOMAIN, sessionUsername);
 }
 
+const MEET_CHAT_DOMAIN = "meet-chat";
+
+/** Meet-chat-domain wrapper over the generic offline account session helpers. */
+export function rememberOfflineMeetChatUsername(username: string): void {
+  rememberOfflineUsername(MEET_CHAT_DOMAIN, username);
+}
+
+export function readOfflineMeetChatUsername(): string | null {
+  return readOfflineUsername(MEET_CHAT_DOMAIN);
+}
+
+/** Session username first, then the last cached meet-chat account from localStorage. */
+export function resolveMeetChatOfflineUsername(sessionUsername: string | undefined): string | null {
+  return resolveOfflineUsername(MEET_CHAT_DOMAIN, sessionUsername);
+}
+
 const TASKS_DOMAIN = "tasks";
 
 /** Tasks-domain wrapper over the generic offline account session helpers. */

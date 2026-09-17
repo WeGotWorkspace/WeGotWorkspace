@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { getCard } from "@/lib/api/wgw/contacts";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
@@ -43,7 +43,6 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
   const params = useParams({ strict: false }) as { groupCardId?: string; contactId?: string };
   const rawSearch = useSearch({ strict: false }) as Record<string, unknown>;
 
-  const handleContactChangeRef = useRef<(contactId: string) => void>(() => undefined);
   const cardsRef = useRef<ContactCard[]>([]);
 
   const [conflictQueue, setConflictQueue] = useState<string[]>([]);
@@ -69,6 +68,7 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
     retry,
     successVersion,
     listLoading,
+    listRefreshing,
     refreshList,
     data,
     session,
@@ -270,20 +270,23 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
 
   const handleContactChange = useCallback(
     (contactId: string) => {
+      if (currentContactRef.current === contactId) return;
       currentContactRef.current = contactId;
       const view = currentViewRef.current;
-      if (!contactId) {
-        if (view.startsWith("group:")) {
-          const groupId = view.slice("group:".length);
-          void navigate({
-            to: "/contacts/groups/$groupCardId",
-            params: { groupCardId: groupId },
-            replace: true,
-          });
-        } else {
+      startTransition(() => {
+        if (!contactId) {
+          if (view.startsWith("group:")) {
+            const groupId = view.slice("group:".length);
+            void navigate({
+              to: "/contacts/groups/$groupCardId",
+              params: { groupCardId: groupId },
+              replace: true,
+            });
+            return;
+          }
           void navigate({ to: "/contacts/all", replace: true });
+          return;
         }
-      } else {
         if (view.startsWith("group:")) {
           const groupId = view.slice("group:".length);
           void navigate({
@@ -291,19 +294,17 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
             params: { groupCardId: groupId, contactId },
             replace: true,
           });
-        } else {
-          void navigate({
-            to: "/contacts/all/$contactId",
-            params: { contactId },
-            replace: true,
-          });
+          return;
         }
-      }
+        void navigate({
+          to: "/contacts/all/$contactId",
+          params: { contactId },
+          replace: true,
+        });
+      });
     },
     [navigate],
   );
-
-  handleContactChangeRef.current = handleContactChange;
 
   return (
     <>
@@ -320,6 +321,7 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
             session={session}
             operations={operations}
             listLoading={listLoading}
+            listRefreshing={listRefreshing}
             onRefreshList={refreshList}
             initialView={initialView}
             initialContactId={initialContactId}

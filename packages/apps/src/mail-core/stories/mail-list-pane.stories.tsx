@@ -51,7 +51,7 @@ function MailListPaneHarness({ preset = "default" }: { preset?: MailListPanePres
 
   return (
     <MailStoryScope variant="list-column">
-      <CollectionListWorkspace detailOpenMobile={false} {...listProps} />
+      <CollectionListWorkspace {...listProps} />
       {controller.confirmDialog}
     </MailStoryScope>
   );

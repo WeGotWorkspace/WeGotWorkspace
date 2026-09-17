@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/button/src/button";
+import { IconButton } from "@/button/src/icon-button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
@@ -20,6 +22,7 @@ type TasksEditDialogProps = {
   readOnly?: boolean;
   onClose: () => void;
   onSave: (value: TasksTaskFormValue) => void;
+  onDelete?: () => void;
 };
 
 export function TasksEditDialog({
@@ -30,6 +33,7 @@ export function TasksEditDialog({
   readOnly = false,
   onClose,
   onSave,
+  onDelete,
 }: TasksEditDialogProps) {
   const [form, setForm] = useState(() => emptyTaskForm(task?.taskListId ?? "default"));
 
@@ -66,13 +70,27 @@ export function TasksEditDialog({
               disabled={readOnly}
             />
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              {labels.cancel}
-            </Button>
-            <Button type="submit" disabled={!trimmedTitle || readOnly}>
-              {labels.saveTaskButton}
-            </Button>
+          <DialogFooter className="tasks-edit-dialog__footer">
+            {onDelete && !readOnly ? (
+              <IconButton
+                type="button"
+                variant="outline"
+                severity="danger"
+                size="md"
+                className="tasks-edit-dialog__delete"
+                icon={<Trash2 className="size-3.5" aria-hidden />}
+                label={labels.delete}
+                onClick={onDelete}
+              />
+            ) : null}
+            <div className="tasks-edit-dialog__footer-end">
+              <Button type="button" variant="outline" onClick={onClose}>
+                {labels.cancel}
+              </Button>
+              <Button type="submit" disabled={!trimmedTitle || readOnly}>
+                {labels.saveTaskButton}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -174,6 +174,14 @@ export async function listCachedAddressBookIds(username: string): Promise<string
   return books.map((book) => book.id).filter((id): id is string => Boolean(id && id.length > 0));
 }
 
+export async function listCachedCardsForAddressBook(
+  username: string,
+  addressBookId: string,
+): Promise<OfflineContactCardRow[]> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return contactsCardsTable(db).where("addressBookId").equals(addressBookId).toArray();
+}
+
 export async function replaceAllAddressBooksInCache(
   username: string,
   books: AddressBook[],

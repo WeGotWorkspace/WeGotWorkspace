@@ -95,15 +95,37 @@ describe("wegotworkspace notes routes", () => {
     expect(archiveMatch?.params).toMatchObject({ noteId: "n-456" });
 
     const notebookHistory = createMemoryHistory({
-      initialEntries: ["/notes/Drafts/n-789"],
+      initialEntries: ["/notes/notebooks/notes-drafts/n-789"],
     });
     const notebookRouter = createWeGotWorkspaceRouter({ mode: "mock", history: notebookHistory });
     await notebookRouter.load();
 
-    const notebookMatch = notebookRouter.state.matches.find((match) => match.params.notebookSlug);
+    const notebookMatch = notebookRouter.state.matches.find((match) => match.params.notebookId);
     expect(notebookMatch?.params).toMatchObject({
-      notebookSlug: "Drafts",
+      notebookId: "notes-drafts",
       noteId: "n-789",
     });
+  });
+
+  it("keeps reserved views when a notebook id matches a view slug", async () => {
+    const starredHistory = createMemoryHistory({
+      initialEntries: ["/notes/starred"],
+    });
+    const starredRouter = createWeGotWorkspaceRouter({ mode: "mock", history: starredHistory });
+    await starredRouter.load();
+    expect(starredRouter.state.location.pathname).toBe("/notes/starred");
+    expect(starredRouter.state.matches.some((match) => match.params.notebookId)).toBe(false);
+
+    await starredRouter.navigate({
+      to: "/notes/notebooks/$notebookId",
+      params: { notebookId: "starred" },
+    });
+    expect(starredRouter.state.location.pathname).toBe("/notes/notebooks/starred");
+    const notebookMatch = starredRouter.state.matches.find((match) => match.params.notebookId);
+    expect(notebookMatch?.params).toMatchObject({ notebookId: "starred" });
+
+    await starredRouter.navigate({ to: "/notes/starred" });
+    expect(starredRouter.state.location.pathname).toBe("/notes/starred");
+    expect(starredRouter.state.matches.some((match) => match.params.notebookId)).toBe(false);
   });
 });

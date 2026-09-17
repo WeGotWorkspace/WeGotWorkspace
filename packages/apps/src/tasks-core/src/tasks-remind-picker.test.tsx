@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { remindButtonLabel, tasksAlarmRowLabels } from "@/tasks-core/src/tasks-alert-mapping";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TasksRemindIndicator, TasksRemindPicker } from "@/tasks-core/src/tasks-remind-picker";
-import { offsetReminderAlert, taskAlertsFromList } from "@/tasks-core/src/tasks-task-utils";
+import {
+  absoluteReminderAlert,
+  offsetReminderAlert,
+  taskAlertsFromList,
+} from "@/tasks-core/src/tasks-task-utils";
 import type { Task } from "@/tasks-core/src/tasks-types";
 import { TooltipProvider } from "@/ui/tooltip";
 import "@/tasks-core/src/tasks-main-view.css";
@@ -101,7 +105,7 @@ describe("TasksRemindPicker", () => {
 
     const trigger = remindButton(alerts);
     expect(trigger.classList.contains("tasks-main-view__remind-button--active")).toBe(true);
-    expect(trigger.textContent).toContain("Reminding 1 hour and 30 mins before");
+    expect(trigger.textContent).toContain("2 reminders");
     expect(document.querySelector(".tasks-main-view__remind-badge")?.textContent).toBe("2");
   });
 
@@ -138,22 +142,33 @@ describe("TasksRemindIndicator", () => {
   it("hides entirely when the task has no alerts", () => {
     render(<TasksRemindIndicator labels={defaultTasksLabels} alerts={undefined} />);
 
+    expect(screen.queryByText("No reminders")).toBeNull();
     expect(screen.queryByRole("img", { name: /Reminding|No reminders/ })).toBeNull();
     expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
     expect(screen.queryByRole("button", { name: /Reminding|No reminders/ })).toBeNull();
   });
 
-  it("shows a non-interactive bell when one alarm is set", () => {
+  it("shows the shared offset label next to the bell when one alarm is set", () => {
     const alerts = taskAlertsFromList([offsetReminderAlert("-PT30M")]);
     render(<TasksRemindIndicator labels={defaultTasksLabels} alerts={alerts} />);
 
-    expect(screen.getByRole("img", { name: "Reminding 30 mins before" })).toBeTruthy();
+    expect(screen.getByText("Reminding 30 mins before")).toBeTruthy();
+    expect(document.querySelector(".tasks-main-view__remind--row")).toBeTruthy();
+    expect(document.querySelector(".tasks-main-view__remind-row-chip")).toBeNull();
     expect(document.querySelector(".tasks-main-view__remind-badge")).toBeNull();
     expect(screen.queryByRole("button", { name: /Reminding|No reminders/ })).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("shows a count badge and accessible name when more than one alarm is set", () => {
+  it("shows Remind me for a single absolute alarm", () => {
+    const alerts = taskAlertsFromList([absoluteReminderAlert("2026-07-08T17:00:00")]);
+    render(<TasksRemindIndicator labels={defaultTasksLabels} alerts={alerts} />);
+
+    expect(screen.getByText(defaultTasksLabels.remindMe)).toBeTruthy();
+    expect(screen.queryByText("No reminders")).toBeNull();
+  });
+
+  it("shows the shared count label when more than one alarm is set", () => {
     render(
       <TasksRemindIndicator
         labels={defaultTasksLabels}
@@ -164,7 +179,7 @@ describe("TasksRemindIndicator", () => {
       />,
     );
 
-    expect(screen.getByRole("img", { name: "Reminding 1 hour and 30 mins before" })).toBeTruthy();
+    expect(screen.getByText("2 reminders")).toBeTruthy();
     expect(document.querySelector(".tasks-main-view__remind-badge")?.textContent).toBe("2");
     expect(screen.queryByRole("button", { name: /Reminding|No reminders/ })).toBeNull();
   });

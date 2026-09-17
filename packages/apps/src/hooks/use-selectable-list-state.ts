@@ -1,10 +1,25 @@
-import { useCallback, useState } from "react";
+import { startTransition, useCallback, useState } from "react";
+import { COLLECTION_DETAIL_OVERLAY_MEDIA_QUERY } from "@/workspace-app/src/collection-detail-breakpoint";
 
 type UseSelectableListStateOptions = {
   initialId?: string;
   visibleIds: string[];
   onPrimarySelect?: (id: string) => void;
 };
+
+/**
+ * Overlay viewports run `openMobileDetail` inside `startViewTransition` + `flushSync`.
+ * Deferring that with `startTransition` drops the note id / URL update and leaves
+ * the empty detail pane on screen with no back control.
+ */
+function runPrimarySelect(select: () => void): void {
+  const overlay = window.matchMedia?.(COLLECTION_DETAIL_OVERLAY_MEDIA_QUERY)?.matches;
+  if (overlay) {
+    select();
+    return;
+  }
+  startTransition(select);
+}
 
 export function useSelectableListState({
   initialId,
@@ -15,49 +30,58 @@ export function useSelectableListState({
   const [lastClickedId, setLastClickedId] = useState<string>(initialId ?? "");
   const [selectionMode, setSelectionMode] = useState(false);
 
-  const handleSelect = (id: string, e: React.MouseEvent) => {
-    if (selectionMode) {
-      const next = selectedIds.includes(id)
-        ? selectedIds.filter((x) => x !== id)
-        : [...selectedIds, id];
-      setSelectedIds(next);
+  const handleSelect = useCallback(
+    (id: string, e: React.MouseEvent) => {
+      if (selectionMode) {
+        const next = selectedIds.includes(id)
+          ? selectedIds.filter((x) => x !== id)
+          : [...selectedIds, id];
+        setSelectedIds(next);
+        setLastClickedId(id);
+        if (next.length === 1) {
+          runPrimarySelect(() => {
+            onPrimarySelect?.(next[0]!);
+          });
+        }
+        return;
+      }
+
+      if (e.shiftKey) {
+        const a = visibleIds.indexOf(lastClickedId);
+        const b = visibleIds.indexOf(id);
+        if (a === -1 || b === -1) {
+          setSelectedIds([id]);
+        } else {
+          const [start, end] = a < b ? [a, b] : [b, a];
+          setSelectedIds(visibleIds.slice(start, end + 1));
+        }
+        return;
+      }
+
+      if (e.metaKey || e.ctrlKey) {
+        const next = selectedIds.includes(id)
+          ? selectedIds.filter((x) => x !== id)
+          : [...selectedIds, id];
+        setSelectedIds(next);
+        setLastClickedId(id);
+        // Single leftover selection must drive the open/active row — otherwise
+        // isActive and isSelected highlight two different rows in single-select UI.
+        if (next.length === 1) {
+          runPrimarySelect(() => {
+            onPrimarySelect?.(next[0]!);
+          });
+        }
+        return;
+      }
+
+      setSelectedIds([id]);
       setLastClickedId(id);
-      if (next.length === 1) {
-        onPrimarySelect?.(next[0]!);
-      }
-      return;
-    }
-
-    if (e.shiftKey) {
-      const a = visibleIds.indexOf(lastClickedId);
-      const b = visibleIds.indexOf(id);
-      if (a === -1 || b === -1) {
-        setSelectedIds([id]);
-      } else {
-        const [start, end] = a < b ? [a, b] : [b, a];
-        setSelectedIds(visibleIds.slice(start, end + 1));
-      }
-      return;
-    }
-
-    if (e.metaKey || e.ctrlKey) {
-      const next = selectedIds.includes(id)
-        ? selectedIds.filter((x) => x !== id)
-        : [...selectedIds, id];
-      setSelectedIds(next);
-      setLastClickedId(id);
-      // Single leftover selection must drive the open/active row — otherwise
-      // isActive and isSelected highlight two different rows in single-select UI.
-      if (next.length === 1) {
-        onPrimarySelect?.(next[0]!);
-      }
-      return;
-    }
-
-    setSelectedIds([id]);
-    setLastClickedId(id);
-    onPrimarySelect?.(id);
-  };
+      runPrimarySelect(() => {
+        onPrimarySelect?.(id);
+      });
+    },
+    [lastClickedId, onPrimarySelect, selectedIds, selectionMode, visibleIds],
+  );
 
   const enterSelectionFor = useCallback((id: string) => {
     setSelectionMode(true);

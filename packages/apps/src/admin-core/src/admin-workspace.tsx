@@ -18,14 +18,21 @@ import { AdminUsersPane } from "@/admin-core/src/admin-users-pane";
 import { AdminRealtimeCollaborationPane } from "@/admin-core/src/admin-realtime-collaboration-pane";
 import { AdminPluginsPane } from "@/admin-core/src/admin-plugins-pane";
 import { AdminSearchPane } from "@/admin-core/src/admin-search-pane";
+import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { AdminWebdavPane } from "@/admin-core/src/admin-webdav-pane";
 import { AdminWorkspaceModals } from "@/admin-core/src/admin-workspace-modals";
 import { cn } from "@/lib/utils";
 import "@/admin-core/src/admin-workspace.css";
 
 export function AdminWorkspace(props: AdminWorkspaceProps) {
-  const { data, session, className, onLogout } = props;
-  const controller = useAdminController({ data, operations: props.operations });
+  const { data, session, className, onLogout, section, initialSection, onSectionChange } = props;
+  const controller = useAdminController({
+    data,
+    operations: props.operations,
+    section,
+    initialSection,
+    onSectionChange,
+  });
 
   useDocumentTitle(controller.currentSection.label);
 
@@ -94,7 +101,6 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
         mainHeader={
           <ViewHeader
             title={controller.currentSection.label}
-            subtitle={controller.currentSection.description}
             sidebarOpen={controller.sidebarOpen}
             onToggleSidebar={() => controller.setSidebarOpen((value) => !value)}
           />
@@ -133,6 +139,12 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
               />
             ) : null}
             {controller.section === "search" ? <AdminSearchPane controller={controller} /> : null}
+            {controller.section === "mcp" ? (
+              <AdminMcpPane
+                controller={controller}
+                mcpEndpointUrl={data.mcp.endpointUrl ?? undefined}
+              />
+            ) : null}
           </>
         }
       />

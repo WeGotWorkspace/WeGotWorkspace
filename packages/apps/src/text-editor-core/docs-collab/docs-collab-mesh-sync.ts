@@ -48,3 +48,12 @@ export function encodeAwarenessBroadcast(
   const encoded = awarenessProtocol.encodeAwarenessUpdate(awareness, changed);
   return Array.from(encoded);
 }
+
+/** Full local awareness snapshot for proactive send on dc-open (before mesh existed at join). */
+export function encodeFullAwarenessBroadcast(
+  awareness: awarenessProtocol.Awareness,
+): number[] | null {
+  const clientIds = [...awareness.getStates().keys()];
+  if (clientIds.length === 0) return null;
+  return encodeAwarenessBroadcast(awareness, clientIds);
+}

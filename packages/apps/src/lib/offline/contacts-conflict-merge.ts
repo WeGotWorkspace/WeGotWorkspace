@@ -434,6 +434,8 @@ export function buildMergedContactEditDraft(
       choices,
     ),
     notesId: pickDraftField("notesId", "notes", localDraft, serverDraft, choices),
+    birthday: localDraft.birthday,
+    birthdayId: localDraft.birthdayId,
   };
 }
 

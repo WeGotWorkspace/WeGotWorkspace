@@ -62,8 +62,8 @@ export function MultiSelectionView({
               onClick={action.onClick}
               active={action.active}
               icon={action.icon}
-              size="lg"
-              variant="subtle"
+              size="xl"
+              variant="outline"
             />
           ))}
         </div>

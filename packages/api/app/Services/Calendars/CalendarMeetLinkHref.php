@@ -11,8 +11,11 @@ final class CalendarMeetLinkHref
 {
     public const ROOM_CODE_PATTERN = '/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/';
 
+    /** Same alphabet as the Meet UI `createMeetRoomCode` (no I/L/O/0/1). */
+    public const ROOM_CODE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
+
     /** @var list<string> */
-    private const JOIN_PATHS = ['/meet/guest', '/meet/join'];
+    private const JOIN_PATHS = ['/meet', '/meet/guest', '/meet/join'];
 
     public function workspaceOrigin(): ?string
     {
@@ -49,6 +52,9 @@ final class CalendarMeetLinkHref
         }
 
         $path = '/'.trim((string) ($parts['path'] ?? ''), '/');
+        if (preg_match('#^/meet/meetings/([a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4})$#', strtolower($path), $matches) === 1) {
+            return $matches[1];
+        }
         if (! in_array($path, self::JOIN_PATHS, true)) {
             return null;
         }
@@ -61,5 +67,39 @@ final class CalendarMeetLinkHref
         }
 
         return $room;
+    }
+
+    /** Ad-hoc leftover room `xxxx-xxxx-xxxx` for `/meet/meetings/{code}`. */
+    public function allocateAdHocRoomCode(): string
+    {
+        $alphabet = self::ROOM_CODE_ALPHABET;
+        $max = strlen($alphabet) - 1;
+        $raw = '';
+        for ($i = 0; $i < 12; $i++) {
+            $raw .= $alphabet[random_int(0, $max)];
+        }
+
+        return substr($raw, 0, 4).'-'.substr($raw, 4, 4).'-'.substr($raw, 8, 4);
+    }
+
+    public function meetingsPath(string $code): string
+    {
+        return '/meet/meetings/'.strtolower($code);
+    }
+
+    public function channelPath(string $channelId): string
+    {
+        return '/meet/channels/'.$channelId;
+    }
+
+    public function absoluteHref(string $path): string
+    {
+        $origin = $this->workspaceOrigin();
+        $normalized = '/'.ltrim($path, '/');
+        if ($origin === null || $origin === '') {
+            return $normalized;
+        }
+
+        return rtrim($origin, '/').$normalized;
     }
 }

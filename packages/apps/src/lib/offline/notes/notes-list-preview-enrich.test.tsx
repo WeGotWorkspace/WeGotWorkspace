@@ -4,10 +4,9 @@ import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
 import type { Note } from "@/lib/models/note";
 import { enrichNotesListPreviewsFromCollabOffline } from "@/lib/offline/notes/notes-list-preview-enrich";
-import { noteCollabPath } from "@/notes-core/src/note-collab-path";
+import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
 import { noteListTitle } from "@/notes-core/src/notes-note-utils";
 import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
-import { docsCollabRoomKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { collabDocumentFormat } from "@/text-editor-core/docs-collab/docs-collab-utils";
 
 async function seedCollabRoom(room: string, content: string): Promise<void> {
@@ -40,12 +39,7 @@ describe("enrichNotesListPreviewsFromCollabOffline", () => {
       wordCount: 3,
     };
 
-    const path = noteCollabPath({
-      scope: { kind: "personal", username },
-      notebook: "Drafts",
-      noteId: empty.id,
-    });
-    await seedCollabRoom(docsCollabRoomKey(path), "Typed offline — survives hard reload");
+    await seedCollabRoom(noteCollabRoomKey(empty.id), "Typed offline — survives hard reload");
 
     const enriched = await enrichNotesListPreviewsFromCollabOffline(username, [
       empty,
@@ -72,12 +66,7 @@ describe("enrichNotesListPreviewsFromCollabOffline", () => {
     }));
 
     for (const note of notes) {
-      const path = noteCollabPath({
-        scope: { kind: "personal", username },
-        notebook: "Drafts",
-        noteId: note.id,
-      });
-      await seedCollabRoom(docsCollabRoomKey(path), `Preview for ${note.id}`);
+      await seedCollabRoom(noteCollabRoomKey(note.id), `Preview for ${note.id}`);
     }
 
     const enriched = await enrichNotesListPreviewsFromCollabOffline(username, notes);
@@ -101,12 +90,7 @@ describe("enrichNotesListPreviewsFromCollabOffline", () => {
       tags: [],
       wordCount: 1,
     };
-    const path = noteCollabPath({
-      scope: { kind: "personal", username },
-      notebook: "Drafts",
-      noteId: localId,
-    });
-    await seedCollabRoom(docsCollabRoomKey(path), "Typed after offline create");
+    await seedCollabRoom(noteCollabRoomKey(localId), "Typed after offline create");
 
     const enriched = await enrichNotesListPreviewsFromCollabOffline(username, [stuckOnId]);
     expect(noteListTitle(enriched[0]!)).toBe("Typed after offline create");

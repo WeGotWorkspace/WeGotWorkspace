@@ -3,6 +3,7 @@ import {
   compareNotesDesc,
   formatNoteDateForDetail,
   formatNoteDateForList,
+  formatNoteLastEdited,
   parseNoteTimestamp,
 } from "@/notes-core/src/notes-date-utils";
 
@@ -85,6 +86,18 @@ describe("formatNoteDateForList", () => {
 
   it("returns raw string when timestamp is invalid", () => {
     expect(formatNoteDateForList("draft")).toBe("draft");
+  });
+});
+
+describe("formatNoteLastEdited", () => {
+  it("uses updatedAt when display date is the em-dash placeholder", () => {
+    expect(formatNoteLastEdited({ date: "—", updatedAt: "2026-08-10T12:00:00.000Z" })).toBe(
+      formatNoteDateForList("2026-08-10T12:00:00.000Z"),
+    );
+  });
+
+  it("returns empty when neither date nor updatedAt is a timestamp", () => {
+    expect(formatNoteLastEdited({ date: "—" })).toBe("");
   });
 });
 

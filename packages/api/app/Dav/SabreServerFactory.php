@@ -11,12 +11,14 @@ use App\Dav\Server\AppCalendarRoot;
 use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
 use App\Dav\Server\CalendarMeetLinkPlugin;
+use App\Dav\Server\ChatHiddenCalendarBackend;
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Dav\Server\GroupFilesPrincipalCollection;
 use App\Dav\Server\PropIdEnsuringPlugin;
 use App\Dav\Server\SearchIndexPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Services\Calendars\CalendarMeetLinkWriteHook;
+use App\Services\Chat\ChatCollectionUris;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
@@ -66,7 +68,9 @@ final class SabreServerFactory
             $nodes[] = new AppCalDAVPrincipalCollection($principalBackend, $authPlugin);
         }
         if ($cal) {
-            $caldavBackend = new CalDAV\Backend\PDO($pdo);
+            // Chat/DM collections are API-only: hidden from home-set enumeration
+            // and direct DAV access on this server-side backend instance only.
+            $caldavBackend = new ChatHiddenCalendarBackend($pdo, ChatCollectionUris::hiddenDavPrefixes());
             $nodes[] = new AppCalendarRoot($principalBackend, $caldavBackend, $authPlugin);
         }
         if ($card) {

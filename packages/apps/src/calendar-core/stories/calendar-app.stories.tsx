@@ -9,6 +9,10 @@ import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-ope
 import { createSeededCalendarAppBootstrap } from "@/lib/api/mock/calendar-seed";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
+import {
+  calendarSearchRange,
+  formatCalendarSearchScopeLabel,
+} from "@/calendar-core/src/calendar-search";
 import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
 import type { CalendarSurfaceStore } from "@/calendar-core/src/use-calendar-surface";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
@@ -628,7 +632,9 @@ export const SearchNoMatch: Story = {
     const noMatchScope = canvasElement.querySelector(".calendar-search-results__scope");
     expect(noMatchScope?.textContent).toContain("Personal");
     expect(noMatchScope?.textContent).toContain("Work");
-    expect(noMatchScope?.textContent).toMatch(/Aug 2025/);
+    // Scope window is relative to the real "today" — compute the expected start label.
+    const scopeStart = formatCalendarSearchScopeLabel("{start}", calendarSearchRange(), "en-US");
+    expect(noMatchScope?.textContent).toContain(scopeStart);
     expect(noMatchScope?.querySelectorAll(".tag").length).toBeGreaterThan(1);
     await expect(canvas.queryByText(/Downloaded /)).toBeNull();
     await expect(canvas.queryByText(defaultCalendarLabels.noEventsInRange)).toBeNull();
@@ -648,7 +654,7 @@ export const SearchTruncated: Story = {
         expect(canvas.queryByText(/Visible calendars/)).toBeNull();
         const scope = canvasElement.querySelector(".calendar-search-results__scope");
         expect(scope?.textContent).toContain("Personal");
-        expect(scope?.textContent).toMatch(/Aug 2025/);
+        expect(scope?.textContent).toMatch(/[A-Z][a-z]{2} \d{4}/);
         expect(scope?.querySelectorAll(".tag").length).toBeGreaterThan(1);
         expect(canvasElement.querySelector(".calendar-search-results__caption")).toBeNull();
         expect(canvas.queryByText("Showing the next 100")).toBeNull();
@@ -658,7 +664,7 @@ export const SearchTruncated: Story = {
         expect(items?.length).toBeGreaterThan(0);
         expect(items?.length).toBeLessThanOrEqual(100);
         const headingDates = [
-          ...(list?.shadowRoot?.querySelectorAll(".agenda-day-date") ?? []),
+          ...(list?.shadowRoot?.querySelectorAll(".list-sticky-header__rest") ?? []),
         ].map((node) => node.textContent ?? "");
         expect(headingDates.some((label) => /\d{4}/.test(label))).toBe(true);
       },
@@ -750,7 +756,7 @@ export const SearchClearImmediate: Story = {
 function labeledTodayButton(root: ParentNode): HTMLButtonElement {
   const button = root.querySelector(".calendar-header-today");
   if (!(button instanceof HTMLButtonElement)) {
-    throw new Error("labeled Today control not found");
+    throw new Error("Today control not found");
   }
   return button;
 }

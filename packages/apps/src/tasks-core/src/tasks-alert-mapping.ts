@@ -121,12 +121,18 @@ function sortedQuantities(rows: CalendarEventAlertFormValue[], negated: boolean)
 export function remindButtonLabel(
   labels: Pick<
     TasksUILabels,
-    "noReminders" | "remindingBefore" | "remindingAfter" | "remindingAfterClause" | "remindMe"
+    | "noReminders"
+    | "remindersCount"
+    | "remindingBefore"
+    | "remindingAfter"
+    | "remindingAfterClause"
+    | "remindMe"
   >,
   alerts: Task["alerts"] | null | undefined,
 ): string {
   const rows = taskAlertsToFormValues(alerts);
   if (rows.length === 0) return labels.noReminders;
+  if (rows.length > 1) return labels.remindersCount(rows.length);
 
   const before = sortedQuantities(rows, true);
   const after = sortedQuantities(rows, false);
@@ -142,7 +148,6 @@ export function tasksAlarmRowLabels(
 ): CalendarAlarmsCardLabels {
   return {
     eventAlarmsLabel: labels.remindMe,
-    eventAlarmRow: defaultCalendarLabels.eventAlarmRow,
     eventAlarmRemove: defaultCalendarLabels.eventAlarmRemove,
     eventAlarmOffset: defaultCalendarLabels.eventAlarmOffset,
     eventAlarmNone: defaultCalendarLabels.eventAlarmNone,

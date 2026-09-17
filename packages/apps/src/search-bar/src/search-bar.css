@@ -1,3 +1,4 @@
+/* Soft radius is global (`--control-radius`); no parent remap for search. */
 .search-bar > div {
   margin-top: 0;
 }

@@ -102,6 +102,6 @@ For local HTTPS: `docker compose -f compose.dev.yml -f compose.local.yml up -d -
 | `packages/apps` | `/var/www/packages/apps` (read-only) |
 | `docker/apache/certs` | `/etc/apache2/certs` (read-only, optional) |
 
-`WgwAppBootstrap` loads `packages/api` from the install tree (`/var/www/install/packages/api`). Monorepo bind mounts also expose `/var/www/packages/api` for dev; production installs only use paths under the install root.
+`WgwAppBootstrap` prefers the bind-mounted live API (`/var/www/packages/api`, `WGW_API_ROOT`) over a nested install copy at `/var/www/install/packages/api` (often a stale `pnpm` build). Production images use `/var/www/html` and only load `packages/api` under that install root.
 
 First boot seeds `packages/api/.env` from `.env.example` when missing; runs `composer install` when `vendor/` is absent.

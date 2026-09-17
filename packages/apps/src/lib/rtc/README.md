@@ -30,9 +30,13 @@ Signaling uses `/api/v1/rooms/{roomId}/*` (`signalingApiSegment()` returns `room
 
 ## Debug
 
-Add `?rtcDebug=1` to the URL. Logs use prefix:
+Add `?rtcDebug=1` to the page URL (declared on `/docs` and `/meet` search schemas so TanStack does not strip it). Refresh with the param on to log; without it the logger is silent.
 
-`[rtc][channel][peerId][event]`
+Docs example:
+
+`/docs?file=groups%2Fadministrators%2Fteam-notes.md&rtcDebug=1`
+
+Logs use prefix `[rtc][channel][peerId][event]` plus `tMs` (`performance.now()`) and ISO `at` on every line. Events cover join, roster, linger park/resume/drop, poll 200/204 and interval, offer/answer sent/received (SDP type + byte length only), ICE gathering/connection state, data-channel open, first remote sync/awareness, and why a peer was skipped. No tokens, no full SDP.
 
 Force TURN relay-only mode (dev/debug, not admin):
 
@@ -49,6 +53,12 @@ Manual network checks: [`docs/testing/rtc-network-matrix.md`](../../../../docs/t
 | `collab` (docs)   | Lower peer id sends offer  |
 
 Set via `initiatorRule: "higherId" | "lowerId"` on `RtcPeerMesh`.
+
+## Principal mesh (presence) — cross-window leadership
+
+Suite presence (`presence-core`) dials the workspace principal room from **one sticky leader window** (`BroadcastChannel` `wgw.principal.tab`, Phase 4 / #695). Followers proxy presence/chat/typing envelopes through the leader and do not join signaling.
+
+**Handoff blip:** when the leader window closes, a follower becomes leader and re-dials. `RTCPeerConnection` cannot transfer across windows, so expect a short **~0.5–2 s** gap on the shared presence/collab-reuse layer until the new leader’s mesh is up. Leadership does **not** bounce on `visibilitychange` hide (unlike docs-collab tab sync).
 
 ## Relay fallback
 

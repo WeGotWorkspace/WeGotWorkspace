@@ -21,6 +21,7 @@ const bootstrap = {
         sortOrder: 0,
         isDefault: true,
         isSubscribed: true,
+        isSharee: false,
         myRights: { mayRead: true, mayWrite: true, mayShare: false, mayDelete: true },
       },
     ],

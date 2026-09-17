@@ -1,6 +1,7 @@
 @import "../../styles.css" reference;
 
 .workspace-chrome-footer {
+  /* Above floating margin cards (z-20); shell `isolate` on main keeps this under the sidebar scrim. */
   @apply relative z-30 flex shrink-0 flex-nowrap items-center gap-x-3;
   box-sizing: border-box;
   padding-block: var(--workspace-chrome-footer-padding-y, 0.5rem);

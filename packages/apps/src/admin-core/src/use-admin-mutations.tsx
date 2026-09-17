@@ -3,6 +3,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import {
   adminSettingsFormToMap,
   buildAdminSettingsFormState,
+  type AdminSettingsFormState,
 } from "@/admin-core/src/admin-settings-form-utils";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
 import type { AdminShellState } from "@/admin-core/src/use-admin-shell";
@@ -35,19 +36,27 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
     setMailDelivery,
   } = shell;
 
-  const saveSettings = async () => {
+  const saveSettings = async (patch?: Partial<AdminSettingsFormState>) => {
     if (!operations?.saveSettings) {
       showError("Admin API is not ready yet");
       return;
     }
+    const previous = settingsForm;
+    const nextForm = patch ? { ...settingsForm, ...patch } : settingsForm;
+    if (patch) {
+      setSettingsForm(nextForm);
+    }
     try {
-      const next = await operations.saveSettings(adminSettingsFormToMap(settingsForm));
+      const next = await operations.saveSettings(adminSettingsFormToMap(nextForm));
       setSettingsForm(buildAdminSettingsFormState(next));
       setMailDelivery(next.mailDelivery);
       setUpdates(next.updates);
       setUpdateLogLines(next.updateLogLines);
       showSuccess("Admin settings saved");
     } catch (error) {
+      if (patch) {
+        setSettingsForm(previous);
+      }
       const message = error instanceof Error ? error.message : "Could not save admin settings";
       showError(message);
     }

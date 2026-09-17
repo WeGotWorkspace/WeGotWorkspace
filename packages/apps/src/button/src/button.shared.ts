@@ -1,19 +1,23 @@
 import { cn } from "@/lib/utils";
+import { CONTROL_SIZE_OPTIONS, controlSizeClassName, type ControlSize } from "@/ui/control-size";
 
-export const BUTTON_SIZE_OPTIONS = ["sm", "md", "lg"] as const;
-export const ICON_BUTTON_SIZE_OPTIONS = ["xs", "sm", "md", "lg"] as const;
+export const BUTTON_SIZE_OPTIONS = CONTROL_SIZE_OPTIONS;
+export const ICON_BUTTON_SIZE_OPTIONS = CONTROL_SIZE_OPTIONS;
 export const BUTTON_VARIANT_OPTIONS = [
   "primary",
   "destructive",
+  "destructive-outline",
   "outline",
   "ghost",
-  "subtle",
   "link",
 ] as const;
 
 export type ButtonVariant = (typeof BUTTON_VARIANT_OPTIONS)[number];
-export type ButtonSize = (typeof BUTTON_SIZE_OPTIONS)[number];
-export type IconButtonSize = (typeof ICON_BUTTON_SIZE_OPTIONS)[number];
+export type ButtonSize = ControlSize;
+export type IconButtonSize = ControlSize;
+
+/** Semantic severity for outline/ghost actions (fg + wash). */
+export type ButtonSeverity = "danger" | "success";
 
 /** shadcn / Radix UI kit variant names — mapped to product variants in {@link normalizeButtonVariant}. */
 export type ShadcnButtonVariant =
@@ -37,23 +41,31 @@ export const BUTTON_SIZE_ICON_CLASSNAME = "button--size-icon";
 export const ICON_BUTTON_ACTIVE_CLASSNAME = "icon-button--active";
 
 export const BUTTON_SIZE_CLASSNAMES: Record<ButtonSize, string> = {
-  sm: "button--size-sm",
-  md: "button--size-md",
-  lg: "button--size-lg",
+  xs: controlSizeClassName("button", "xs"),
+  sm: controlSizeClassName("button", "sm"),
+  md: controlSizeClassName("button", "md"),
+  lg: controlSizeClassName("button", "lg"),
+  xl: controlSizeClassName("button", "xl"),
 };
 export const ICON_BUTTON_SIZE_CLASSNAMES: Record<IconButtonSize, string> = {
-  xs: "icon-button--size-xs",
-  sm: "icon-button--size-sm",
-  md: "icon-button--size-md",
-  lg: "icon-button--size-lg",
+  xs: controlSizeClassName("icon-button", "xs"),
+  sm: controlSizeClassName("icon-button", "sm"),
+  md: controlSizeClassName("icon-button", "md"),
+  lg: controlSizeClassName("icon-button", "lg"),
+  xl: controlSizeClassName("icon-button", "xl"),
 };
 export const BUTTON_VARIANT_CLASSNAMES: Record<ButtonVariant, string> = {
   primary: "button--variant-primary",
   destructive: "button--variant-destructive",
+  "destructive-outline": "button--variant-destructive-outline",
   outline: "button--variant-outline",
   ghost: "button--variant-ghost",
-  subtle: "button--variant-subtle",
   link: "button--variant-link",
+};
+
+export const BUTTON_SEVERITY_CLASSNAMES: Record<ButtonSeverity, string> = {
+  danger: "button--severity-danger",
+  success: "button--severity-success",
 };
 
 export function normalizeButtonVariant(
@@ -66,7 +78,7 @@ export function normalizeButtonVariant(
     case "primary":
       return "primary";
     case "secondary":
-      return "subtle";
+      return "outline";
     default:
       return variant;
   }
@@ -109,3 +121,5 @@ export function buttonVariants({ variant, size, className }: ButtonVariantsOptio
     className,
   );
 }
+
+export type { ControlSize };

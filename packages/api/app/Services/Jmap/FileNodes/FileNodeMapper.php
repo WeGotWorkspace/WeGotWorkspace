@@ -93,14 +93,6 @@ final class FileNodeMapper
             'role' => null,
         ];
 
-        $note = $this->noteProjection(
-            $node,
-            $starredPaths ?? $this->starredPathsFor((string) $principal['username']),
-        );
-        if ($note !== null) {
-            $shape['note'] = $note;
-        }
-
         return $shape;
     }
 

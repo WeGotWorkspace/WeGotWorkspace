@@ -24,6 +24,7 @@ const mockAddressBooks: AddressBook[] = [
     sortOrder: 0,
     isDefault: true,
     isSubscribed: true,
+    isSharee: false,
     shareWith: null,
     myRights: fullRights,
   },
@@ -34,6 +35,7 @@ const mockAddressBooks: AddressBook[] = [
     sortOrder: 1,
     isDefault: false,
     isSubscribed: true,
+    isSharee: false,
     shareWith: null,
     myRights: {
       mayRead: true,

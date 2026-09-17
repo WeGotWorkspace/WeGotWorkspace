@@ -52,6 +52,7 @@ export function RenameFilenameField({
         ref={inputRef}
         autoFocus={autoFocus}
         className={className}
+        size="sm"
         placeholder={placeholder}
         value={baseName}
         disabled={disabled}
@@ -72,6 +73,7 @@ export function RenameFilenameField({
         ref={inputRef}
         autoFocus={autoFocus}
         className="rename-filename-field__input"
+        size="sm"
         placeholder={placeholder}
         value={baseName}
         disabled={disabled}

@@ -57,6 +57,8 @@ export const Opened: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: /Reminding / }));
+    await userEvent.click(
+      canvas.getByRole("button", { name: defaultTasksLabels.remindersCount(2) }),
+    );
   },
 };

@@ -1,0 +1,59 @@
+@import "../../styles.css" reference;
+
+.mcp-consent-page {
+  @apply flex justify-center p-6 md:p-10;
+  min-height: 100dvh;
+  background-color: var(--workspace-main-bg, var(--color-cream, #ffffff));
+  --button-primary-bg: var(--workspace-home-bg, #1b1d3a);
+  --button-primary-fg: #ffffff;
+  --switch-on-bg: var(--workspace-home-bg, #1b1d3a);
+  --card-surface-bg: var(--color-cream, #ffffff);
+}
+
+.mcp-consent-page__column {
+  @apply relative w-full max-w-xl;
+}
+
+.mcp-consent-page__header {
+  @apply relative;
+}
+
+.mcp-consent-page__avatar {
+  @apply absolute top-0 right-0;
+  /* Cream page: do not inherit settings sidebar’s white-on-dark footer tokens. */
+  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --user-avatar-fg: var(--color-ink);
+}
+
+.mcp-consent-page__title {
+  @apply m-0 mb-2 pr-14 text-4xl font-normal leading-none;
+  font-family: var(--font-serif);
+  color: var(--color-ink);
+}
+
+.mcp-consent-page__lead {
+  @apply m-0 mb-5 text-base font-normal leading-normal;
+  color: color-mix(in oklab, var(--color-ink) 78%, transparent);
+}
+
+.mcp-consent-page__origin {
+  @apply font-medium break-words;
+  color: var(--color-ink);
+}
+
+.mcp-consent-page__form {
+  @apply mt-0;
+}
+
+.mcp-consent-page__actions {
+  @apply mt-5 flex gap-3;
+}
+
+.mcp-consent-page__actions .button {
+  @apply flex-1;
+}
+
+.mcp-consent-page__outcome {
+  @apply mt-4 mb-0 text-sm;
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+}
