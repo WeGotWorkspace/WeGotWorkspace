@@ -17,7 +17,8 @@ return new class extends WgwMigration
             $table->id();
             $table->unsignedInteger('calendarid');
             $table->string('uid', 26);
-            $table->string('doc_path', 1024);
+            // 512 keeps path index under MySQL utf8mb4 index limit (3072 bytes).
+            $table->string('doc_path', 512);
             $table->string('kind', 16);
             $table->string('parent_uid', 26)->nullable();
             $table->string('change_id', 128)->nullable();
