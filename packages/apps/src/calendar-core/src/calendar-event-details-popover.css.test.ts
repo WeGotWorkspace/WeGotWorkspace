@@ -55,6 +55,15 @@ describe("calendar event details popover CSS", () => {
   it("keeps Dialog details as a centered card; full-bleed only wraps Radix popover fallback", () => {
     expect(css).toMatch(/@import "\.\/calendar-event-dialog\.css"/);
     expect(css).toMatch(
+      /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-details-popover--dialog\s*\{[\s\S]*?position:\s*fixed/,
+    );
+    expect(css).toMatch(
+      /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-details-popover--dialog\s*\{[\s\S]*?top:\s*50%/,
+    );
+    expect(css).toMatch(
+      /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-details-popover--dialog\s*\{[\s\S]*?translate:\s*-50% -50%/,
+    );
+    expect(css).toMatch(
       /\.calendar-dialog-surface\.calendar-event-details-popover--dialog\s*\{[\s\S]*?\boverflow-hidden\b/,
     );
     expect(css).not.toMatch(

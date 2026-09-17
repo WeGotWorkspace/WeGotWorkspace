@@ -121,10 +121,22 @@
   @apply ms-auto flex items-center gap-2;
 }
 
-/* Mobile (<768px) uses Dialog — compact centered card in calendar-event-dialog.css.
-   Compact-month --docked: pin Radix's transformed wrapper to the viewport bottom. */
-.calendar-dialog-surface.calendar-event-details-popover--dialog {
+/* Mobile (<768px) uses Dialog. The Popover card is `relative` (CSS-anchor /
+   Radix wrapper). That two-class `relative` beats DialogContent's `fixed`
+   utility, so the portaled card sat at the bottom of the viewport. Re-assert
+   the shared centered-card placement. Compact-month --docked stays bottom. */
+.ui-modal-surface.calendar-dialog-surface.calendar-event-details-popover--dialog {
   @apply box-border flex flex-col gap-2 overflow-hidden;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  translate: -50% -50%;
+  transform: none;
+  margin: 0;
+  justify-self: unset;
+  align-self: unset;
   position-anchor: none;
   position-area: none;
   position-try: none;
