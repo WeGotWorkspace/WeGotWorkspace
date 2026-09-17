@@ -26,6 +26,10 @@ export {
 export {
   insertDocsImage,
   insertDocsImageFromNodeId,
+  deleteDocsImageAt,
+  deleteSelectedDocsImage,
+  deselectDocsImage,
+  isDocsImageNodeSelection,
 } from "@/text-editor-core/src/text-editor-image-commands";
 export {
   createTextEditorExtensions,

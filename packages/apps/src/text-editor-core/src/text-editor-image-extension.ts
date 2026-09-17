@@ -5,6 +5,10 @@ import {
   fetchDocsImageContentByNodeId,
   type DocsImageContentFetcher,
 } from "@/text-editor-core/src/text-editor-image-content";
+import {
+  deleteSelectedDocsImage,
+  deselectDocsImage,
+} from "@/text-editor-core/src/text-editor-image-commands";
 import { createDocsImageNodeView } from "@/text-editor-core/src/text-editor-image-node-view";
 import {
   createDocsImagePastePlugin,
@@ -75,7 +79,14 @@ export const DocsImage = Image.extend({
   },
   addNodeView() {
     const fetchContent = this.options.fetchContent ?? fetchDocsImageContentByNodeId;
-    return (props: NodeViewRendererProps) => createDocsImageNodeView(props.node, fetchContent);
+    return (props: NodeViewRendererProps) => createDocsImageNodeView(props, fetchContent);
+  },
+  addKeyboardShortcuts() {
+    return {
+      Escape: () => deselectDocsImage(this.editor),
+      Backspace: () => deleteSelectedDocsImage(this.editor),
+      Delete: () => deleteSelectedDocsImage(this.editor),
+    };
   },
   addStorage() {
     return {

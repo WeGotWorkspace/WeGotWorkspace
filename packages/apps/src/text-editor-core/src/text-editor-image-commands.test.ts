@@ -8,7 +8,12 @@ import {
   createCollaborativeTextEditorExtensions,
   createTextEditorExtensions,
 } from "./text-editor-extensions";
-import { insertDocsImageFromNodeId } from "./text-editor-image-commands";
+import {
+  deleteSelectedDocsImage,
+  deselectDocsImage,
+  insertDocsImageFromNodeId,
+  isDocsImageNodeSelection,
+} from "./text-editor-image-commands";
 import { getAcceptedTextEditorContent } from "./text-editor-track-changes";
 
 const NODE_ID = "fn-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -74,5 +79,63 @@ describe("docs image parse/serialize", () => {
   it("omits the Image extension for plain text docs", () => {
     const names = createTextEditorExtensions({ format: "text" }).map((ext) => ext.name);
     expect(names).not.toContain("image");
+  });
+});
+
+function findImagePos(editor: Editor): number {
+  let pos = -1;
+  editor.state.doc.descendants((node, nodePos) => {
+    if (node.type.name === "image") {
+      pos = nodePos;
+      return false;
+    }
+    return true;
+  });
+  return pos;
+}
+
+describe("docs image delete", () => {
+  it("removes a selected image from the document without embedding blob urls", () => {
+    const fetchImageContent = vi.fn(async () => PIXEL_PNG);
+    const editor = new Editor({
+      extensions: createTextEditorExtensions({ format: "markdown", fetchImageContent }),
+      content: `Intro\n\n![Cat](drive:${NODE_ID})\n\nOutro`,
+    });
+    const pos = findImagePos(editor);
+    expect(pos).toBeGreaterThanOrEqual(0);
+    editor.commands.setNodeSelection(pos);
+    expect(isDocsImageNodeSelection(editor)).toBe(true);
+    expect(deleteSelectedDocsImage(editor)).toBe(true);
+    expect(findImageSrc(editor)).toBeNull();
+    expect(getTextEditorContent(editor, "markdown")).not.toContain(`drive:${NODE_ID}`);
+    expect(getTextEditorContent(editor, "markdown")).toContain("Intro");
+    editor.destroy();
+  });
+
+  it("deselects a selected image on Escape without removing it", () => {
+    const fetchImageContent = vi.fn(async () => PIXEL_PNG);
+    const editor = new Editor({
+      extensions: createTextEditorExtensions({ format: "markdown", fetchImageContent }),
+      content: `Intro\n\n![Cat](drive:${NODE_ID})\n\nOutro`,
+    });
+    editor.commands.setNodeSelection(findImagePos(editor));
+    expect(isDocsImageNodeSelection(editor)).toBe(true);
+    expect(deselectDocsImage(editor)).toBe(true);
+    expect(isDocsImageNodeSelection(editor)).toBe(false);
+    expect(findImageSrc(editor)).toBe(`drive:${NODE_ID}`);
+    expect(deselectDocsImage(editor)).toBe(false);
+    editor.destroy();
+  });
+
+  it("deletes a selected image with Backspace and Delete", () => {
+    const fetchImageContent = vi.fn(async () => PIXEL_PNG);
+    const editor = new Editor({
+      extensions: createTextEditorExtensions({ format: "markdown", fetchImageContent }),
+      content: `Intro\n\n![One](drive:${NODE_ID})\n\nOutro`,
+    });
+    editor.commands.setNodeSelection(findImagePos(editor));
+    expect(deleteSelectedDocsImage(editor)).toBe(true);
+    expect(findImageSrc(editor)).toBeNull();
+    editor.destroy();
   });
 });
