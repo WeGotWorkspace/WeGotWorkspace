@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
+import { toast } from "sonner";
 import { AdminUsersPane } from "@/admin-core/src/admin-users-pane";
 import { UserDialog } from "@/admin-core/src/admin-workspace-dialogs";
 import {
@@ -145,5 +146,9 @@ export const Default: Story = {
     await expect(canvas.getByText("Alice Example")).toBeInTheDocument();
     await expect(canvas.getByText("Carol Example")).toBeInTheDocument();
     await expect(canvas.getByText("Disabled")).toBeInTheDocument();
+    toast.dismiss();
+    await waitFor(() => {
+      expect(body.queryByText("User disabled")).toBeNull();
+    });
   },
 };

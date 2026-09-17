@@ -16,7 +16,8 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-user-status-tag {
   @apply shrink-0;
-  --tag-fg: #c98a1f;
+  /* Ink-mixed warning so 12px chip text meets 4.5:1 on the cream wash. */
+  --tag-fg: color-mix(in oklab, #c98a1f 32%, var(--color-ink));
   --tag-bg: color-mix(in oklab, #c98a1f 18%, var(--color-cream, #fff));
 }
 
