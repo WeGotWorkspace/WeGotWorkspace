@@ -30,10 +30,18 @@ Drive disk I/O is `WgwStorage::files()`. Observation hooks are **three**: `FileN
 | domain | action |
 |--------|--------|
 | `docs` | `shared` |
+| `docs` | `thread_activity` |
 | `calendar` | `alert_due` |
 | `calendar` | `invite` |
+| `calendar` | `rsvp` |
+| `calendar` | `shared` |
+| `notes` | `shared` |
 | `tasks` | `alert_due` |
+| `tasks` | `list_shared` |
+| `tasks` | `status_changed` |
 | `chat` | `message_posted` |
+| `chat` | `mentioned` |
+| `meet` | `started` |
 
 Recipients come from `$event->data['recipients']`. The actor is never notified. Inbox uniqueness is `(principal, dedupe_key)`. Events may set `supersede` to refresh an existing row (title/body/navigate, unread) or `clear` to delete it (CANCEL).
 
@@ -58,9 +66,15 @@ Chat-push (VAPID + `chat.message_posted`) is the beta closed-tab promise. Calend
 ## Producers
 
 - **VALARM** — `AlertDueScheduler` scans `calendarobjects` with DISPLAY/AUDIO alarms in a ~now−90s…now+30s window. Actor is `system` so owners are not skipped. Dedupe `(principal, uid, occurrence, alarm_id)`.
-- **Doc share** — `DriveShareService::createShare` notifies sharees (users and expanded group members). Comment notify is out of scope (#548 remaining gap).
-- **Chat** — `ChatMessageRepository::create` notifies `ChatChannelRepository::rosterUsernames` (Sabre `calBackend()->getInvites`). No @mention parsing.
+- **Doc share** — `DriveShareService::{createShare,updateShare}` notifies **new** member sharees under a single `docs.shared` action (navigate `/docs` vs `/drive` by path). Guest/public-link without a principal skipped.
+- **Docs thread activity** — `DocsThreadEventEmitter` / `DocsThreadRepository` fires `docs.thread_activity` to path ACL owners ∪ thread participants (authors + @mention auto-subscribe from body tokens). Navigate `/docs?file=…`. Reactions / resolve / archive do not notify.
+- **Docs @mention rows (`docs.mentioned`)** — **not shipped**; depends on Goal [#549](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/549) persistence. Cheap `@token` scan only feeds thread_activity auto-subscribe today (Task #801).
+- **Chat** — `ChatMessageRepository::create` notifies roster via `chat.message_posted`. Mentioned users ∩ roster (− author) get `chat.mentioned` only (no dual row). Mentions persist as `X-WGW-MENTIONS`. In-call ephemeral mesh chat is not on this path.
 - **Calendar invite** — `CalendarSchedulingService::deliverLocal` fans out `calendar.invite` when a local iTIP REQUEST lands in the invitee's schedule-inbox (does not replace that inbox). Invitee only; organizer skipped. Dedupe `calendar.invite:{uid}` with `supersede` on reschedule. CANCEL clears the tray row via the same action + `clear`.
+- **Calendar RSVP** — same `deliverLocal` on `METHOD=REPLY` fans `calendar.rsvp` to the organizer. Skips when organizer is the writer (guest iMIP self-loop). Supersede per `uid`+attendee.
+- **Collection access granted** — after `CalendarShareInvites::apply` on calendar / notebook / task-list `shareWith`, newly added sharees get `calendar.shared` / `notes.shared` / `tasks.list_shared` (add-only; revokes do not notify). REST/MCP v1 surface.
+- **Task status** — `TaskRepository::{update,patch}` fires `tasks.status_changed` to list ACL owners (− actor) on `workflowStatus` change. CalDAV PUT out of scope for v1.
+- **Meet started** — first `MeetReservationService::markActivated` (`activated_at` null→set) fires `meet.started` once per room to channel roster + owner/creator principals.
 
 ## HTTP
 
