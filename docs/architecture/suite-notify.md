@@ -65,3 +65,53 @@ Chat-push (VAPID + `chat.message_posted`) is the beta closed-tab promise. Calend
 ## HTTP
 
 OpenAPI-first under `/api/v1/notifications`. Tray-only UI — no new first SPA path segment, so `UiStaticServer` allowlist is unchanged. Deep links reuse existing `?return=` prefixes (`/calendar`, `/tasks`, `/docs`, `/drive`, `/meet`).
+
+## Future: per-event delivery preferences
+
+**Out of scope for #741 and the producer-expansion pass.** No prefs table, API, or UI yet. Keep the pipeline easy to extend so each allow-listed `domain.action` can later toggle **inbox** and **push** independently (e.g. Calendar: access grant → inbox on / push off; event invite → both on; meeting alarm → inbox off / push on).
+
+### Preference key shape
+
+- Scope: per **principal** (signed-in username).
+- Event key: `domain.action` (same strings as `NotifyListener` allow-list / envelope — e.g. `calendar.invite`, `calendar.alert_due`).
+- Channel: `inbox` | `push` — **independent** booleans.
+- Lookup: `(principal, domain.action, channel) → bool`. Missing row → default (below).
+- Do **not** key prefs on envelope `eventId`, dedupe key, or navigate path.
+
+### Default matrix (matches today’s behavior)
+
+Until a prefs store exists, treat every allow-listed action as:
+
+| Channel | Default |
+|---------|---------|
+| `inbox` | **on** |
+| `push`  | **on** |
+
+That matches current code: `NotifyListener` always upserts a `notifications` row and schedules a `local` delivery; `VapidPushService::sweepDue` sends VAPID when the local-ack grace expires.
+
+Product may later override **defaults** (not only user overrides) for noisy actions — e.g. `calendar.alert_due` / `tasks.alert_due` → inbox off / push on — without changing the key shape. Expansion catalog actions (`calendar.shared`, `docs.thread_activity`, …) should ship with the same both-on default unless product says otherwise.
+
+### Where to evaluate (two gates)
+
+Today inbox and push are **coupled**: every inbox create schedules local→VAPID; push payload is built from a `notifications` row. Independent toggles need **two** evaluation points:
+
+1. **`NotifyListener` (create / clear path)** — resolve `inbox` for `(principal, domain.action)`.
+   - `inbox` on → upsert / supersede / clear inbox rows as today.
+   - `inbox` off → do **not** create (or keep) a tray-visible row; still honor `clear` / cancel so stale tray rows can disappear.
+2. **`VapidPushService` (send path)** — resolve `push` for `(principal, domain.action)` using the notification’s stored `domain` + `action` (already on the row).
+   - `push` off → skip Web Push; mark the due local delivery completed so the sweep does not retry forever.
+   - `push` on + `inbox` on → today’s local-ack then VAPID race.
+   - `push` on + `inbox` off → must still deliver a payload (title/body/navigate/tag). That implies loosening today’s assumption that every push rides a tray row — e.g. push-only delivery / ephemeral payload facts, or a non-listed row. **Do not invent that schema now**; document it as the required seam when prefs land.
+
+Also gate **scheduling** of the local delivery in `NotifyListener` when `push` is off and `inbox` is on (avoid useless cron work). Prefer one small future helper (e.g. `DeliveryPreference::allows($principal, $domain, $action, $channel)`) called from both sites — defaults-only until storage exists.
+
+### What not to do now vs cheap seams
+
+| Do **not** add now | Keep / prefer |
+|--------------------|---------------|
+| Prefs table, OpenAPI, settings UI | Stable `domain` + `action` on envelope and inbox rows (already present) |
+| Speculative mute / digest / quiet-hours schema | Strict allow-list curation (`domain.action` stays the prefs grain) |
+| Filtering the inbox GET as a substitute for “inbox off” (hides rows that should never have been written) | Format-at-edge facts on the row so push-only send can format without re-reading producers |
+| Coupling new producers to a prefs API | Document expansion actions with the same key shape so defaults/overrides drop in later |
+
+See also the expansion plan note: [.agents/plans/suite-notify-inbox-expansion.md](../../.agents/plans/suite-notify-inbox-expansion.md) (Future prefs + optional Chore draft).
