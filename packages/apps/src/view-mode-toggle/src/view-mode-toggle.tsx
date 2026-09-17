@@ -1,6 +1,7 @@
 import { LayoutGrid, List as ListIcon } from "lucide-react";
 
 import { SegmentedControl } from "@/segmented-control/src/segmented-control";
+import type { ControlSize } from "@/ui/control-size";
 
 export type ViewMode = "grid" | "list";
 
@@ -10,7 +11,8 @@ export type ViewModeToggleProps = {
   gridLabel: string;
   listLabel: string;
   className?: string;
-  size?: "sm" | "md";
+  /** Default `md` = 36px — matches action-bar SelectTrigger / IconButton. */
+  size?: ControlSize;
   disabled?: boolean;
 };
 
@@ -20,7 +22,7 @@ export function ViewModeToggle({
   gridLabel,
   listLabel,
   className,
-  size = "sm",
+  size = "md",
   disabled = false,
 }: ViewModeToggleProps) {
   return (

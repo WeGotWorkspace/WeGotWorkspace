@@ -81,7 +81,7 @@ describe("canRespondInvitation", () => {
     expect(canRespondInvitation(notification({ method: "" }))).toBe(true);
     expect(canRespondInvitation(notification({ method: "CANCEL" }))).toBe(false);
     expect(canRespondInvitation(notification({ participationStatus: "accepted" }))).toBe(true);
-    expect(canRespondInvitation(notification({ eventId: null }))).toBe(false);
+    expect(canRespondInvitation(notification({ eventId: null }))).toBe(true);
   });
 });
 
@@ -178,7 +178,7 @@ describe("invitationToEventCardFields", () => {
     expect(fields.summary).toBe("Canceled standup");
   });
 
-  it("passes recurring through for the event-card repeat icon", () => {
+  it("passes recurring through for series a11y on the event-card", () => {
     const fields = invitationToEventCardFields(
       notification({ recurring: true }),
       defaultCalendarLabels,

@@ -41,7 +41,7 @@ describe("SidebarSegmentedNewMenu", () => {
         mainLabel="Meet"
         menuLabel="More call options"
         icon={<span data-testid="custom-icon" />}
-        size="sm"
+        size="md"
         stretch={false}
         onMainAction={vi.fn()}
         items={[{ id: "audio", label: "Meet (Audio Only)", onClick: vi.fn() }]}

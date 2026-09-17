@@ -8,9 +8,9 @@ import {
 import type { CalendarSurfaceCreateIntent } from "@/calendar-core/src/calendar-surface";
 
 /**
- * Create-preview for the open dialog, or the last saved create until a matching
- * occurrence is on the surface. Lit already paints this card — do not add a
- * second engine row for the same slot.
+ * Create-preview for the open create UI (popover or dialog), or the last saved
+ * create until a matching occurrence is on the surface. Lit already paints this
+ * card — do not add a second engine row for the same slot.
  */
 export function resolvePendingCreateIntent(
   editor: { mode: string; form: CalendarEventFormValue } | null,

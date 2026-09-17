@@ -9,17 +9,21 @@ const tsx = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
 const searchTsx = readFileSync(join(here, "calendar-search-results.tsx"), "utf8");
 
 describe("calendar workspace header CSS", () => {
-  it("compacts header chrome on narrow view-header containers", () => {
-    expect(css).toMatch(/@container view-header-main \(max-width: 40rem\)/);
-    expect(css).toMatch(
-      /\.calendar-workspace \.calendar-header-nav \.button\[class\*="icon-button--size"\][\s\S]*size-8/,
-    );
+  it("keeps header chrome at control md on narrow viewports", () => {
     expect(css).toMatch(
       /\.calendar-workspace \.calendar-header-actions \.calendar-view-select \{[\s\S]*min-w-0/,
     );
     expect(css).toMatch(/\.calendar-workspace \.workspace-app-layout__main-header \{[\s\S]*p-3/);
-    expect(css).toMatch(
-      /\.calendar-workspace \.calendar-header-actions \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+    /* All header controls stay size md (36px) — do not compact IconButtons /
+     * Week select while ViewModeToggle remains md. */
+    expect(css).not.toMatch(/@apply size-8/);
+    expect(css).not.toMatch(
+      /\.calendar-workspace \.calendar-header-actions \.calendar-view-select \{[^}]*\bh-8\b/,
+    );
+    /* Soft radius is global (`--control-radius`); no actions-only remap
+     * (Inbox titleTrailing must share the same token as Week / search). */
+    expect(css).not.toMatch(
+      /\.calendar-workspace \.calendar-header-actions \{[\s\S]*--control-radius:/,
     );
   });
 
@@ -104,9 +108,7 @@ describe("calendar workspace header CSS", () => {
 
   it("spaces inbox from header actions like sidebar toggle from the nav cluster", () => {
     expect(css).toMatch(/\.calendar-workspace \.view-header__end \{[\s\S]*gap-3/);
-    expect(css).toMatch(
-      /\.calendar-workspace \.calendar-invitations-trigger\.button\[class\*="icon-button--size"\][\s\S]*size-8/,
-    );
+    expect(css).not.toMatch(/calendar-invitations-trigger[^}]*@apply size-8/);
   });
 });
 
@@ -370,39 +372,11 @@ describe("calendar workspace search results", () => {
   });
 });
 
-describe("calendar event dialog title row", () => {
-  it("uses the shared name-color row so the summary field can flex", () => {
-    const dialogTsx = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
-    expect(dialogTsx).toMatch(/NameColorRow/);
-    expect(dialogTsx).toMatch(/NAME_COLOR_ROW_INPUT_CLASS/);
-    expect(css).not.toMatch(/calendar-event-dialog__title-input/);
-    expect(css).not.toMatch(/calendar-event-dialog__calendar-trigger \{[\s\S]*width:\s*auto/);
-  });
-});
-
-describe("calendar event dialog Meet field", () => {
-  it("lays out the Meet URL row with BEM + @apply", () => {
-    expect(css).toMatch(
-      /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \{[\s\S]*@apply/,
-    );
-    expect(css).toMatch(
-      /\.calendar-dialog-surface \.calendar-event-dialog__meet-row \.icon-button--size-sm \{[\s\S]*@apply/,
-    );
-    expect(css).toMatch(/\.calendar-event-dialog__meet-menu/);
-    expect(css).toMatch(/\.calendar-event-dialog__meet-menu-trigger/);
-    expect(css).toMatch(
-      /\.calendar-event-dialog__meet-menu-trigger \{[\s\S]*@apply h-9 min-h-9[\s\S]*border-radius:\s*var\(--control-radius-button-pill\)/,
-    );
-    expect(css).toContain("background-color: transparent");
-    expect(css).toContain(
-      "border-color: var(--button-outline-border-color, var(--control-border-color))",
-    );
-    expect(css).toContain("stroke-width: 1.75");
-    expect(css).toContain("--meet-accent: #2a1644");
-    expect(css).toContain("--card-title-icon-color: var(--meet-accent)");
-    expect(css).not.toMatch(/calendar-event-dialog__meet-generate/);
-    expect(css).not.toContain("calendar-event-dialog__meet-switch");
-    expect(css).toMatch(/\.calendar-event-dialog__meet-scope-trigger/);
+describe("calendar event dialog chrome ownership", () => {
+  it("imports shared dialog CSS so shell hosts keep form chrome without owning it", () => {
+    expect(css).toMatch(/@import "\.\/calendar-event-dialog\.css"/);
+    expect(css).not.toMatch(/\.calendar-dialog-surface\.calendar-event-dialog\s*\{/);
+    expect(css).not.toMatch(/\.calendar-event-dialog__fields\s*\{/);
   });
 });
 

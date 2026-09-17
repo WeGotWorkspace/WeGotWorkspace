@@ -5,90 +5,171 @@ import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarEventDetailsPopover } from "@/calendar-core/src/calendar-event-details-popover";
-import { resolveCalendarEventPreview } from "@/calendar-core/src/calendar-event-preview";
+import {
+  formatEventPreviewWhen,
+  resolveCalendarEventPreview,
+} from "@/calendar-core/src/calendar-event-preview";
 import { emptyCalendarEventForm } from "@/calendar-core/src/calendar-editor-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import { TooltipProvider } from "@/ui/tooltip";
+
+const { isMobileRef } = vi.hoisted(() => ({ isMobileRef: { current: false } }));
+
+vi.mock("@/hooks/use-mobile", () => ({
+  useIsMobile: () => isMobileRef.current,
+  MOBILE_BREAKPOINT_PX: 768,
+  MOBILE_MEDIA_QUERY: "(max-width: 767px)",
+}));
 
 const bootstrap = createCalendarAppBootstrap();
 
 function renderPopover(
   overrides: Partial<React.ComponentProps<typeof CalendarEventDetailsPopover>> = {},
 ) {
-  const onEdit = vi.fn();
   const onClose = vi.fn();
   const onRsvp = vi.fn();
+  const onDelete = vi.fn();
   const preview =
     overrides.preview ?? resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
 
   const view = render(
-    <CalendarEventDetailsPopover
-      open
-      preview={preview}
-      calendars={bootstrap.data.calendars}
-      labels={defaultCalendarLabels}
-      locale="en-US"
-      untitledLabel={defaultCalendarLabels.untitledEvent}
-      canEdit
-      onEdit={onEdit}
-      onClose={onClose}
-      {...overrides}
-    />,
+    <TooltipProvider delayDuration={0}>
+      <CalendarEventDetailsPopover
+        open
+        preview={preview}
+        calendars={bootstrap.data.calendars}
+        labels={defaultCalendarLabels}
+        locale="en-US"
+        untitledLabel={defaultCalendarLabels.untitledEvent}
+        canEdit
+        onDelete={onDelete}
+        onClose={onClose}
+        {...overrides}
+      />
+    </TooltipProvider>,
   );
 
-  return { onEdit, onClose, onRsvp, container: view.container };
+  return { onClose, onRsvp, onDelete, container: view.container };
 }
 
 describe("CalendarEventDetailsPopover", () => {
   beforeEach(() => {
     cleanup();
+    isMobileRef.current = false;
   });
 
-  it("shows title with color swatch, time, and Edit", { timeout: 10_000 }, () => {
-    const { onEdit } = renderPopover({
+  it("updates the when-row when preview form times change while open", { timeout: 10_000 }, () => {
+    const base = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+    expect(base).not.toBeNull();
+    const { rerender } = render(
+      <TooltipProvider delayDuration={0}>
+        <CalendarEventDetailsPopover
+          open
+          preview={base!}
+          calendars={bootstrap.data.calendars}
+          labels={defaultCalendarLabels}
+          locale="en-US"
+          untitledLabel={defaultCalendarLabels.untitledEvent}
+          canEdit
+          onClose={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    const initialWhen = formatEventPreviewWhen(base!.form, "en-US");
+    expect(screen.getByText(initialWhen)).toBeTruthy();
+
+    const moved = {
+      ...base!,
+      form: {
+        ...base!.form,
+        startTime: "15:00",
+        endTime: "16:00",
+      },
+    };
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <CalendarEventDetailsPopover
+          open
+          preview={moved}
+          calendars={bootstrap.data.calendars}
+          labels={defaultCalendarLabels}
+          locale="en-US"
+          untitledLabel={defaultCalendarLabels.untitledEvent}
+          canEdit
+          onClose={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    const nextWhen = formatEventPreviewWhen(moved.form, "en-US");
+    expect(nextWhen).not.toBe(initialWhen);
+    expect(screen.getByText(nextWhen)).toBeTruthy();
+    expect(screen.queryByText(initialWhen)).toBeNull();
+  });
+
+  it("shows a flow event-card with title, time, and Delete", { timeout: 10_000 }, () => {
+    const { onDelete } = renderPopover({
       origin: { left: 48, top: 96, width: 180, height: 36 },
     });
-    const heading = screen.getByRole("heading", { name: /Dentist/i });
-    expect(heading.querySelector(".calendar-event-details-popover__swatch")).toBeTruthy();
-    expect(screen.queryByText("Personal")).toBeNull();
-    expect(document.querySelector(".calendar-event-details-popover__calendar")).toBeNull();
-    expect(screen.getByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeTruthy();
     const popover = screen.getByRole("dialog", { name: /Dentist/i });
     expect(popover.className).toContain("calendar-event-details-popover");
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }));
-    expect(onEdit).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not force Edit when the user cannot write", { timeout: 10_000 }, () => {
-    renderPopover({ canEdit: false, onEdit: undefined });
-    expect(screen.getByRole("heading", { name: /Dentist/i })).toBeTruthy();
+    const eventCard = popover.querySelector("event-card.calendar-event-details-popover__event") as
+      | (HTMLElement & { summary?: string; layout?: string })
+      | null;
+    expect(eventCard).toBeTruthy();
+    expect(eventCard?.summary).toMatch(/Dentist/i);
+    expect(eventCard?.layout).toBe("flow");
+    expect(screen.queryByText("Personal")).toBeNull();
+    expect(document.querySelector(".calendar-event-details-popover__calendar")).toBeNull();
     expect(
       screen.queryByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
     ).toBeNull();
+    const remove = screen.getByRole("button", { name: defaultCalendarLabels.delete });
+    expect(remove.className).toContain("button--severity-danger");
+    fireEvent.click(remove);
+    expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
-  it(
-    "hides Edit on a read-only share even when canEdit is globally true",
-    { timeout: 10_000 },
-    () => {
-      const preview = {
-        eventId: "school-play",
-        form: { ...emptyCalendarEventForm("family", "2033-01-14"), title: "School play" },
-      };
-      renderPopover({ preview, canEdit: true });
-      expect(screen.getByRole("heading", { name: /School play/i })).toBeTruthy();
-      expect(
-        screen.queryByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
-      ).toBeNull();
-    },
-  );
+  it("hosts the editable form when edit props are provided", { timeout: 10_000 }, () => {
+    const onChange = vi.fn();
+    const onSave = vi.fn();
+    const onClose = vi.fn();
+    const preview = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+    expect(preview).not.toBeNull();
+    renderPopover({
+      preview,
+      canEdit: true,
+      edit: {
+        form: preview!.form,
+        onChange,
+        onClose,
+        onSave,
+        onDelete: vi.fn(),
+      },
+    });
+    const popover = screen.getByRole("dialog", { name: /Dentist/i });
+    expect(popover.className).toContain("calendar-event-details-popover--editable");
+    expect(
+      screen.queryByRole("heading", { name: defaultCalendarLabels.editEventTitle }),
+    ).toBeNull();
+    expect(popover.querySelector("event-card")).toBeNull();
+    expect(screen.getByDisplayValue(preview!.form.title)).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeTruthy();
+    fireEvent.change(screen.getByDisplayValue(preview!.form.title), {
+      target: { value: "Dentist visit" },
+    });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ title: "Dentist visit" }));
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.cancel }));
+    expect(onClose).toHaveBeenCalled();
+  });
 
-  it("shows Edit for a group member who is not the organizer", { timeout: 10_000 }, () => {
+  it("autofocuses the dialog root, not RSVP chrome", { timeout: 10_000 }, () => {
     const preview = {
-      eventId: "desk-review",
+      eventId: "awaiting-reply",
       form: {
-        ...emptyCalendarEventForm("group-editorial", "2033-01-12"),
-        title: "Desk review",
+        ...emptyCalendarEventForm("work", "2033-01-11"),
+        title: "Partner sync",
+        meetingUrl: "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n",
         attendees: [
           {
             email: "ada@example.test",
@@ -99,19 +180,147 @@ describe("CalendarEventDetailsPopover", () => {
           {
             email: "me@example.test",
             name: "Me",
-            participationStatus: "accepted" as const,
+            participationStatus: "needs-action" as const,
           },
         ],
       },
     };
-    const { onEdit } = renderPopover({
+    renderPopover({
       preview,
+      calendars: bootstrap.data.calendars.map((calendar) =>
+        calendar.id === "work" ? { ...calendar, mayShare: false, mayWrite: true } : calendar,
+      ),
       sessionEmail: "me@example.test",
-      canEdit: true,
+      workspaceOrigin: "https://workspace.example.com",
+      onRsvp: vi.fn(),
+      canEdit: false,
+      onDelete: undefined,
     });
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }));
-    expect(onEdit).toHaveBeenCalledTimes(1);
+    const dialog = screen.getByRole("dialog", { name: /Partner sync/i });
+    expect(document.activeElement).toBe(dialog);
+    expect(document.activeElement).not.toBe(
+      screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }),
+    );
+    expect(document.activeElement).not.toBe(
+      screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin }),
+    );
   });
+
+  it("does not force Edit when the user cannot write", { timeout: 10_000 }, () => {
+    renderPopover({ canEdit: false, onDelete: undefined });
+    expect(screen.getByRole("dialog", { name: /Dentist/i })).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.delete })).toBeNull();
+  });
+
+  it(
+    "hides edit chrome on a read-only share even when canEdit is globally true",
+    { timeout: 10_000 },
+    () => {
+      const preview = {
+        eventId: "school-play",
+        form: { ...emptyCalendarEventForm("family", "2033-01-14"), title: "School play" },
+      };
+      renderPopover({ preview, canEdit: true });
+      expect(screen.getByRole("dialog", { name: /School play/i })).toBeTruthy();
+      expect(
+        screen.queryByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
+      ).toBeNull();
+      expect(screen.queryByRole("button", { name: defaultCalendarLabels.delete })).toBeNull();
+    },
+  );
+
+  it("hosts interactive create when edit.mode is create", { timeout: 10_000 }, () => {
+    const form = emptyCalendarEventForm("default", "2033-01-12", "10:00");
+    const onSave = vi.fn();
+    renderPopover({
+      canEdit: true,
+      preview: { eventId: "", form },
+      edit: {
+        mode: "create",
+        form,
+        onChange: vi.fn(),
+        onClose: vi.fn(),
+        onSave,
+      },
+    });
+    const popover = screen.getByRole("dialog");
+    expect(popover.className).toContain("calendar-event-details-popover--editable");
+    expect(
+      screen.queryByRole("heading", { name: defaultCalendarLabels.createEventTitle }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
+    expect(popover.querySelector(".calendar-event-dialog__fields")).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.delete })).toBeNull();
+  });
+
+  it("keeps the desktop editable popover headerless", { timeout: 10_000 }, () => {
+    const preview = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+    expect(preview).not.toBeNull();
+    renderPopover({
+      preview,
+      canEdit: true,
+      edit: {
+        mode: "edit",
+        form: preview!.form,
+        onChange: vi.fn(),
+        onClose: vi.fn(),
+        onSave: vi.fn(),
+        onDelete: vi.fn(),
+      },
+    });
+    const popover = screen.getByRole("dialog", { name: /Dentist/i });
+    expect(popover.className).toContain("calendar-event-details-popover--editable");
+    expect(
+      screen.queryByRole("heading", { name: defaultCalendarLabels.editEventTitle }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
+  });
+
+  it(
+    "hosts interactive edit for a group member who is not the organizer",
+    { timeout: 10_000 },
+    () => {
+      const preview = {
+        eventId: "desk-review",
+        form: {
+          ...emptyCalendarEventForm("group-editorial", "2033-01-12"),
+          title: "Desk review",
+          attendees: [
+            {
+              email: "ada@example.test",
+              name: "Ada",
+              participationStatus: "accepted" as const,
+              isOrganizer: true,
+            },
+            {
+              email: "me@example.test",
+              name: "Me",
+              participationStatus: "accepted" as const,
+            },
+          ],
+        },
+      };
+      const onSave = vi.fn();
+      renderPopover({
+        preview,
+        sessionEmail: "me@example.test",
+        canEdit: true,
+        edit: {
+          form: preview.form,
+          onChange: vi.fn(),
+          onClose: vi.fn(),
+          onSave,
+          onDelete: vi.fn(),
+        },
+      });
+      expect(screen.getByDisplayValue("Desk review")).toBeTruthy();
+      expect(screen.getByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeTruthy();
+    },
+  );
 
   it("keeps RSVP reachable for an invitee without opening the editor", { timeout: 10_000 }, () => {
     const preview = {
@@ -139,6 +348,8 @@ describe("CalendarEventDetailsPopover", () => {
       preview,
       sessionEmail: "me@example.test",
       onRsvp,
+      canEdit: false,
+      onDelete: undefined,
     });
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }));
     expect(onRsvp).toHaveBeenCalledWith("accepted");
@@ -148,15 +359,12 @@ describe("CalendarEventDetailsPopover", () => {
     ).toBeNull();
   });
 
-  it("shows Edit for a write-share recipient who is not the organizer", { timeout: 10_000 }, () => {
-    const calendars = bootstrap.data.calendars.map((calendar) =>
-      calendar.id === "default" ? { ...calendar, mayShare: false, mayWrite: true } : calendar,
-    );
+  it("hides RSVP when onRsvp is omitted even for an invitee", { timeout: 10_000 }, () => {
     const preview = {
-      eventId: "shared-slot",
+      eventId: "awaiting-reply",
       form: {
-        ...emptyCalendarEventForm("default", "2033-01-12"),
-        title: "Shared slot",
+        ...emptyCalendarEventForm("work", "2033-01-11"),
+        title: "Partner sync",
         attendees: [
           {
             email: "ada@example.test",
@@ -167,27 +375,161 @@ describe("CalendarEventDetailsPopover", () => {
           {
             email: "me@example.test",
             name: "Me",
-            participationStatus: "accepted" as const,
+            participationStatus: "needs-action" as const,
           },
         ],
       },
     };
     renderPopover({
       preview,
-      calendars,
       sessionEmail: "me@example.test",
-      canEdit: true,
+      onRsvp: undefined,
+      canEdit: false,
+      onDelete: undefined,
     });
-    expect(
-      screen.getByRole("button", { name: defaultCalendarLabels.eventDetailsEdit }),
-    ).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /Partner sync/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpAccept })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpMaybe })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.rsvpDecline })).toBeNull();
   });
 
-  it("shifts away from viewport edges with collision padding", () => {
+  it(
+    "hosts interactive edit for a write-share recipient who is not the organizer",
+    {
+      timeout: 10_000,
+    },
+    () => {
+      const calendars = bootstrap.data.calendars.map((calendar) =>
+        calendar.id === "default" ? { ...calendar, mayShare: false, mayWrite: true } : calendar,
+      );
+      const preview = {
+        eventId: "shared-slot",
+        form: {
+          ...emptyCalendarEventForm("default", "2033-01-12"),
+          title: "Shared slot",
+          attendees: [
+            {
+              email: "ada@example.test",
+              name: "Ada",
+              participationStatus: "accepted" as const,
+              isOrganizer: true,
+            },
+            {
+              email: "me@example.test",
+              name: "Me",
+              participationStatus: "accepted" as const,
+            },
+          ],
+        },
+      };
+      renderPopover({
+        preview,
+        calendars,
+        sessionEmail: "me@example.test",
+        canEdit: true,
+        edit: {
+          form: preview.form,
+          onChange: vi.fn(),
+          onClose: vi.fn(),
+          onSave: vi.fn(),
+          onDelete: vi.fn(),
+        },
+      });
+      expect(screen.getByDisplayValue("Shared slot")).toBeTruthy();
+      expect(screen.getByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeTruthy();
+    },
+  );
+
+  it(
+    "renders as a centered Dialog below the mobile breakpoint (not a docked popover)",
+    { timeout: 10_000 },
+    () => {
+      isMobileRef.current = true;
+      const { container } = renderPopover({
+        origin: { left: 48, top: 96, width: 180, height: 36 },
+      });
+      const dialog = screen.getByRole("dialog", { name: /Dentist/i });
+      expect(dialog.className).toContain("calendar-event-details-popover--dialog");
+      expect(dialog.className).not.toContain("calendar-event-details-popover--docked");
+      expect(dialog.querySelector(".calendar-event-details-popover__body")).toBeTruthy();
+      expect(
+        container.ownerDocument.querySelector(".calendar-event-details-popover__anchor"),
+      ).toBeNull();
+      expect(
+        container.ownerDocument.querySelector("[data-radix-popper-content-wrapper]"),
+      ).toBeNull();
+    },
+  );
+
+  it(
+    "uses the New-event Dialog chrome for pointer-create on small viewports",
+    { timeout: 10_000 },
+    () => {
+      isMobileRef.current = true;
+      const form = {
+        ...emptyCalendarEventForm("default", "2033-01-12"),
+        title: "",
+        startTime: "10:00",
+        endTime: "11:00",
+      };
+      renderPopover({
+        preview: { eventId: "create-preview", form },
+        canEdit: true,
+        edit: {
+          mode: "create",
+          form,
+          onChange: vi.fn(),
+          onClose: vi.fn(),
+          onSave: vi.fn(),
+        },
+      });
+      const dialog = screen.getByRole("dialog", { name: defaultCalendarLabels.createEventTitle });
+      expect(dialog.className).toContain("calendar-event-dialog");
+      expect(dialog.className).not.toContain("calendar-event-details-popover--editable");
+      expect(
+        screen.getByRole("heading", { name: defaultCalendarLabels.createEventTitle }),
+      ).toBeTruthy();
+      expect(dialog.querySelector(".calendar-event-dialog__fields")).toBeTruthy();
+    },
+  );
+
+  it(
+    "uses Edit-event Dialog chrome for interactive edit on small viewports",
+    { timeout: 10_000 },
+    () => {
+      isMobileRef.current = true;
+      const preview = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+      expect(preview).not.toBeNull();
+      renderPopover({
+        preview,
+        canEdit: true,
+        edit: {
+          mode: "edit",
+          form: preview!.form,
+          onChange: vi.fn(),
+          onClose: vi.fn(),
+          onSave: vi.fn(),
+          onDelete: vi.fn(),
+        },
+      });
+      const dialog = screen.getByRole("dialog", { name: defaultCalendarLabels.editEventTitle });
+      expect(dialog.className).toContain("calendar-event-dialog");
+      expect(
+        screen.getByRole("heading", { name: defaultCalendarLabels.editEventTitle }),
+      ).toBeTruthy();
+    },
+  );
+
+  it("places the desktop popover beside the anchor with collision-aware centering", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const source = readFileSync(join(here, "calendar-event-details-popover.tsx"), "utf8");
+    expect(source).toMatch(/side="right"/);
+    expect(source).toMatch(/align="center"/);
+    expect(source).toContain('sticky="partial"');
     expect(source).toContain("collisionPadding={16}");
     expect(source).toContain("avoidCollisions={!docked}");
+    expect(source).toContain("useIsMobile");
+    expect(source).toContain("DialogContent");
   });
 
   it(
@@ -221,7 +563,7 @@ describe("CalendarEventDetailsPopover", () => {
     },
   );
 
-  it("shows a primary Join button below the details rows", { timeout: 10_000 }, () => {
+  it("shows a primary Join button in the footer with Delete", { timeout: 10_000 }, () => {
     const onJoinMeeting = vi.fn();
     const href = "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n";
     renderPopover({
@@ -238,9 +580,199 @@ describe("CalendarEventDetailsPopover", () => {
     });
     const join = screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
     expect(join.className).toContain("button--variant-primary");
-    expect(join.closest(".calendar-event-details-popover__meet")).toBeTruthy();
-    expect(join.closest(".calendar-event-details-popover__row")).toBeNull();
+    const primary = join.closest(".calendar-event-details-popover__footer-primary");
+    const actions = screen
+      .getByRole("button", { name: defaultCalendarLabels.delete })
+      .closest(".calendar-event-details-popover__footer-actions");
+    expect(primary).toBeTruthy();
+    expect(actions).toBeTruthy();
+    const footer = join.closest(".calendar-event-details-popover__footer");
+    expect(footer).toBeTruthy();
+    expect(
+      primary!.compareDocumentPosition(actions!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     fireEvent.click(join);
     expect(onJoinMeeting).toHaveBeenCalledWith(href);
   });
+
+  it("orders Join before RSVP in the primary footer cluster", { timeout: 10_000 }, () => {
+    const href = "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n";
+    renderPopover({
+      workspaceOrigin: "https://workspace.example.com",
+      canEdit: false,
+      onDelete: undefined,
+      onRsvp: vi.fn(),
+      sessionEmail: "me@example.test",
+      preview: {
+        eventId: "partner-meet",
+        form: {
+          ...emptyCalendarEventForm("work", "2033-01-11"),
+          title: "Partner meet",
+          meetingUrl: href,
+          attendees: [
+            {
+              email: "ada@example.test",
+              name: "Ada",
+              participationStatus: "accepted" as const,
+              isOrganizer: true,
+            },
+            {
+              email: "me@example.test",
+              name: "Me",
+              participationStatus: "needs-action" as const,
+            },
+          ],
+        },
+      },
+    });
+    const join = screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
+    const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+    const primary = join.closest(".calendar-event-details-popover__footer-primary");
+    expect(accept.closest(".calendar-event-details-popover__footer-primary")).toBe(primary);
+    expect(
+      primary!.compareDocumentPosition(accept) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("shows alarms with a bell row on the event card", { timeout: 10_000 }, () => {
+    renderPopover({
+      preview: {
+        eventId: "reminded",
+        form: {
+          ...emptyCalendarEventForm("default", "2033-01-12"),
+          title: "Reminded",
+          alerts: [{ id: "a1", action: "display", offset: "-PT15M" }],
+        },
+      },
+    });
+    expect(screen.getByText(/15 minutes/i)).toBeTruthy();
+  });
+
+  it(
+    "hosts invitation mode with disabled fields, RSVP, and interactive calendar",
+    {
+      timeout: 10_000,
+    },
+    () => {
+      const onRsvp = vi.fn();
+      const preview = {
+        eventId: "yoga-invite",
+        form: {
+          ...emptyCalendarEventForm("work", "2033-09-16", "18:30"),
+          title: "Yoga",
+          endTime: "19:30",
+          recurrencePreset: "weekly" as const,
+          attendees: [
+            {
+              email: "ada@example.test",
+              name: "Ada",
+              participationStatus: "accepted" as const,
+              isOrganizer: true,
+            },
+            {
+              email: "me@example.test",
+              name: "Me",
+              participationStatus: "accepted" as const,
+            },
+          ],
+        },
+      };
+      renderPopover({
+        preview,
+        sessionEmail: "me@example.test",
+        canEdit: false,
+        onDelete: undefined,
+        edit: {
+          mode: "invitation",
+          form: preview.form,
+          onChange: vi.fn(),
+          onClose: vi.fn(),
+          onSave: vi.fn(),
+          onRsvp,
+          sessionEmail: "me@example.test",
+        },
+      });
+      const popover = screen.getByRole("dialog", { name: /Yoga/i });
+      expect(popover.className).toContain("calendar-event-details-popover--editable");
+      expect(
+        screen.queryByRole("heading", { name: defaultCalendarLabels.editEventTitle }),
+      ).toBeNull();
+      expect(popover.querySelector("event-card")).toBeNull();
+      const title = screen.getByDisplayValue("Yoga") as HTMLInputElement;
+      expect(title.disabled).toBe(true);
+      expect(screen.queryByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeNull();
+      expect(screen.queryByRole("button", { name: defaultCalendarLabels.cancel })).toBeNull();
+      expect(screen.queryByText(defaultCalendarLabels.rsvpSeriesHint)).toBeNull();
+      const rsvpCluster = document.querySelector(".calendar-event-dialog__invitation-rsvp");
+      expect(rsvpCluster).toBeTruthy();
+      expect(rsvpCluster?.className).toContain("calendar-event-dialog__invitation-rsvp");
+      const rsvpActions = rsvpCluster?.querySelector(".calendar-rsvp-actions");
+      expect(rsvpActions?.className).toContain("calendar-rsvp-actions--sm");
+      expect(rsvpActions?.className).not.toContain("calendar-rsvp-actions--xs");
+      const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
+      const maybe = screen.getByRole("button", { name: defaultCalendarLabels.rsvpMaybe });
+      const decline = screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline });
+      expect(accept.textContent).toContain(defaultCalendarLabels.rsvpAccept);
+      expect(maybe.textContent).toContain(defaultCalendarLabels.rsvpMaybe);
+      expect(decline.textContent).toContain(defaultCalendarLabels.rsvpDecline);
+      fireEvent.click(maybe);
+      expect(onRsvp).toHaveBeenCalledWith("tentative", "work");
+      expect(document.querySelector(".calendar-event-dialog__calendar-trigger")).toBeTruthy();
+    },
+  );
+
+  it(
+    "persists calendar changes immediately in invitation mode when already accepted",
+    {
+      timeout: 10_000,
+    },
+    () => {
+      const onRsvp = vi.fn().mockResolvedValue(undefined);
+      const calendars = bootstrap.data.calendars.filter((calendar) =>
+        ["work", "default"].includes(calendar.id),
+      );
+      const preview = {
+        eventId: "yoga-invite",
+        form: {
+          ...emptyCalendarEventForm("work", "2033-09-16", "18:30"),
+          title: "Yoga",
+          attendees: [
+            {
+              email: "ada@example.test",
+              name: "Ada",
+              participationStatus: "accepted" as const,
+              isOrganizer: true,
+            },
+            {
+              email: "me@example.test",
+              name: "Me",
+              participationStatus: "accepted" as const,
+            },
+          ],
+        },
+      };
+      renderPopover({
+        preview,
+        calendars,
+        sessionEmail: "me@example.test",
+        canEdit: false,
+        onDelete: undefined,
+        edit: {
+          mode: "invitation",
+          form: preview.form,
+          onChange: vi.fn(),
+          onClose: vi.fn(),
+          onSave: vi.fn(),
+          onRsvp,
+          sessionEmail: "me@example.test",
+        },
+      });
+      const trigger = screen.getByRole("button", { name: /Calendar: Work/i }) as HTMLButtonElement;
+      expect(trigger.disabled).toBe(false);
+      fireEvent.pointerDown(trigger);
+      fireEvent.click(trigger);
+      fireEvent.click(screen.getByRole("menuitem", { name: /Personal/i }));
+      expect(onRsvp).toHaveBeenCalledWith("accepted", "default");
+    },
+  );
 });

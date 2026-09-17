@@ -38,10 +38,12 @@ describe("meet channel dialog surface", () => {
     );
   });
 
-  it("puts owner delete in the dialog footer, not a header trash icon", () => {
+  it("puts owner delete in the dialog footer as outline+danger IconButton", () => {
     expect(tsx).toMatch(/meet-channel-dialog__delete/);
     expect(tsx).toMatch(/confirmDeleteOpen/);
-    expect(tsx).not.toMatch(/Trash2/);
+    expect(tsx).toMatch(/severity="danger"/);
+    expect(tsx).toMatch(/Trash2/);
     expect(css).toMatch(/\.meet-channel-dialog__delete/);
+    expect(css).not.toMatch(/#b91c1c/);
   });
 });

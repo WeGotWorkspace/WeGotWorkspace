@@ -51,6 +51,13 @@ describe("DocsCollabSidebarPanel", () => {
     );
   });
 
+  it("does not remap --control-radius (soft radius is global)", () => {
+    expect(css).not.toMatch(
+      /\.docs-collab-sidebar-panel \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+    );
+    expect(css).not.toMatch(/\.docs-collab-sidebar-panel \{[\s\S]*--control-radius:/);
+  });
+
   it("paints portaled SideDrawer sheets from workspace-accent wash so overlay is not Sheet gray", () => {
     expect(panel).toMatch(
       /export const DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS =\s*"docs-collab-sidebar-panel-drawer"/,
@@ -68,15 +75,6 @@ describe("DocsCollabSidebarPanel", () => {
 
   it("republishes cream-surface outline button + segmented + menu washes on the drawer", () => {
     expect(css).toMatch(
-      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-outline-hover-background:\s*color-mix\(\s*in oklab,\s*var\(--workspace-accent/,
-    );
-    expect(css).toMatch(
-      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-outline-active-background:\s*color-mix\(\s*in oklab,\s*var\(--workspace-accent[\s\S]*18%/,
-    );
-    expect(css).toMatch(
-      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-outline-active-hover-background:\s*color-mix\(\s*in oklab,\s*var\(--workspace-accent[\s\S]*24%/,
-    );
-    expect(css).toMatch(
       /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-active-color:\s*var\(--docs-collab-sidebar-panel-accent-strong\)/,
     );
     expect(css).toMatch(
@@ -88,9 +86,22 @@ describe("DocsCollabSidebarPanel", () => {
     expect(css).toMatch(
       /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--segmented-control-active-fg:\s*var\(--button-active-color\)/,
     );
-    expect(css).toMatch(
-      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--menu-item-hover-background:\s*color-mix\(\s*in oklab,\s*var\(--workspace-accent/,
+    // Soft outline + menu washes live on shared `ui/workspace-menu-item-sst.css`.
+    expect(css).not.toMatch(
+      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-outline-hover-background:\s*color-mix/,
     );
+  });
+
+  it("sizes the title row to md control height so filter and close match ViewHeader", () => {
+    expect(css).toMatch(
+      /\.docs-collab-sidebar-panel__header \.view-header__title-row \{[\s\S]*--view-header-title-row-min-height:\s*var\(--control-height-md/,
+    );
+    expect(panel).toMatch(/size="md"/);
+    expect(panel).not.toMatch(/size="sm"/);
+    // SideDrawer Sheet is `.ui-modal-surface` without `--center`, so true
+    // `--control-height-md` (2.25rem / 36px) must remain available — do not
+    // reintroduce a panel-local md→sm remap that would shrink chrome again.
+    expect(css).not.toMatch(/--control-height-md:\s*var\(--control-height-sm/);
   });
 
   it("aligns header title and empty/scroll body on main-header padding (p-4 md:p-6)", () => {
@@ -108,5 +119,10 @@ describe("DocsCollabSidebarPanel", () => {
     );
     expect(css).not.toMatch(/\.docs-collab-sidebar-panel__empty \{[\s\S]*px-1/);
     expect(css).not.toMatch(/\.docs-collab-sidebar-panel__empty \{[\s\S]*padding-inline/);
+  });
+
+  it("matches main-header block padding so side-panel headers align with ViewHeader", () => {
+    expect(css).toMatch(/\.docs-collab-sidebar-panel__header \{[\s\S]*@apply[^;]*\bpy-4 md:py-6\b/);
+    expect(css).not.toMatch(/\.docs-collab-sidebar-panel__header \{[\s\S]*@apply[^;]*\bpy-3\.5\b/);
   });
 });

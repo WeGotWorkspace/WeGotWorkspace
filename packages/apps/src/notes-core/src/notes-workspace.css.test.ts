@@ -264,7 +264,7 @@ describe("notes workspace action-bar selected Star/Archive", () => {
       /\.notes-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--notes-accent\) 65%/,
     );
     expect(css).not.toMatch(
-      /\.notes-workspace \{[\s\S]*--button-active-color:\s*var\(--notes-accent-strong\)/,
+      /\.notes-workspace \{[^}]*--button-active-color:\s*var\(--notes-accent-strong\)/,
     );
     // Root sidebar chrome stays at 55% — light action-bar washes live on the
     // descendant `:is(.action-bar, …)` block, not in `.notes-workspace {`.
@@ -313,6 +313,9 @@ describe("notes workspace action-bar selected Star/Archive", () => {
     expect(workspaceAppTsx).toMatch(/\{actionBar\?\.\(chrome\)\}/);
     expect(workspaceAppTsx).toMatch(/workspace-detail-pane__scroll/);
     expect(css).toMatch(
+      /\.notes-workspace \.action-bar \.notes-notebook-select\.color-swatch-trigger \{[\s\S]*background-color:\s*var\(--color-cream/,
+    );
+    expect(css).not.toMatch(
       /\.notes-workspace \.action-bar \.notes-notebook-select\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
     );
   });

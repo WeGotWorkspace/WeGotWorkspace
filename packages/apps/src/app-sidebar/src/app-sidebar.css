@@ -40,6 +40,8 @@
   --app-switch-glyph-inset: calc(var(--app-switch-icon-size) * 112 / 512);
   /* Section titles + collection/menu rows: align to the glyph, not the tile edge. */
   --app-sidebar-item-padding-x: var(--app-switch-glyph-inset);
+  /* Collection + MenuItem row height — md chrome, not the in-row xs edit/fold hit. */
+  --app-sidebar-item-height: var(--control-height-md, 2.25rem);
   /*
    * Nav item SST (MenuItem + collection rows inherit). Hierarchy:
    * idle < hover (accent 32%→cream) < selected (55% accent→cream) <

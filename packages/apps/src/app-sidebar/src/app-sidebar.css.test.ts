@@ -12,7 +12,7 @@ describe("app sidebar overlay close", () => {
     expect(tsx).toMatch(/from "@\/button\/src\/button"/);
     expect(tsx).toMatch(/<IconButton[\s\S]*label="Close menu"/);
     expect(tsx).toMatch(/variant="outline"/);
-    expect(tsx).toMatch(/size="sm"/);
+    expect(tsx).toMatch(/size="md"/);
     expect(tsx).toMatch(/showTooltip=\{false\}/);
     expect(tsx).not.toMatch(/<button[\s\S]*aria-label="Close menu"/);
   });
@@ -47,6 +47,14 @@ describe("app sidebar padding tokens", () => {
       /--app-switch-glyph-inset:\s*calc\(var\(--app-switch-icon-size\) \* 112 \/ 512\)/,
     );
     expect(css).toMatch(/--app-sidebar-item-padding-x:\s*var\(--app-switch-glyph-inset\)/);
+  });
+});
+
+describe("app sidebar nav item height SST", () => {
+  it("publishes --app-sidebar-item-height from the md control token", () => {
+    expect(css).toMatch(
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-height:\s*var\(--control-height-md,\s*2\.25rem\)/,
+    );
   });
 });
 

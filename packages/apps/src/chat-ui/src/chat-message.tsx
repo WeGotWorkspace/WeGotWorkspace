@@ -116,7 +116,7 @@ export function ChatMessage({
         <UserAvatar
           displayName={message.authorName}
           compact
-          size="sm"
+          size="md"
           presence={presence}
           color={avatarColorForUserId(message.authorId)}
           className="chat-message__avatar"
@@ -186,7 +186,7 @@ export function ChatMessage({
               return (
                 <Popover key={action.id}>
                   <PopoverTrigger asChild>
-                    <IconButton label={label} icon={<Icon />} size="sm" variant="ghost" />
+                    <IconButton label={label} icon={<Icon />} size="md" variant="ghost" />
                   </PopoverTrigger>
                   <PopoverContent
                     align="end"
@@ -215,7 +215,7 @@ export function ChatMessage({
                 key={action.id}
                 label={label}
                 icon={<Icon />}
-                size="sm"
+                size="md"
                 variant="ghost"
                 onClick={action.onClick}
               />

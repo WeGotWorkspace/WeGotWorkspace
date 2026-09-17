@@ -33,7 +33,7 @@ describe("MeetCallToolbar", () => {
 
   it("exposes the device popover trigger as a sm outline IconButton", () => {
     expect(toolbar).toMatch(/from "@\/meet-core\/src\/meet-device-popover"/);
-    expect(toolbar).toMatch(/size="sm"/);
+    expect(toolbar).toMatch(/size="md"/);
     expect(toolbar).toMatch(/variant="outline"/);
     expect(toolbar).toMatch(/variant="destructive"/);
   });

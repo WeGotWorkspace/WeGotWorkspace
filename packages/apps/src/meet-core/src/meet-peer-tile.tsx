@@ -81,7 +81,7 @@ export function MeetPeerTile({
   const showAvatarFill = !showRemoteVideo || !remoteVideoOk;
   const mirrored = shouldMirrorMeetStream(stream, disclosedMedia?.screen);
   const playbackStream = stream && stream.getTracks().length > 0 ? stream : null;
-  const avatarSize = spotlight ? "xl" : compact ? "md" : "lg";
+  const avatarSize = spotlight ? "2xl" : compact ? "md" : "lg";
   const playbackMuted = muted ?? isSelfMute;
   const canForceMute = !isSelfMute && typeof onMuteParticipant === "function";
   const canToggleMute = isSelfMute || canForceMute;

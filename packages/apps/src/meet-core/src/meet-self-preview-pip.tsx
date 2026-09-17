@@ -313,7 +313,7 @@ export function MeetSelfPreviewPiP({
         onClick={() => void toggleBrowserPiP()}
         icon={<PictureInPicture2 />}
         label={meetLabels.openSystemPip}
-        size="sm"
+        size="md"
         variant="outline"
         className="meet-pip__pip-button"
       />

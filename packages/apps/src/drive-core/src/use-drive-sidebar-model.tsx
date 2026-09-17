@@ -9,7 +9,8 @@ import type { MenuItemProps } from "@/menu-item/src/menu-item";
 type UseDriveSidebarModelArgs = {
   labels: DriveUILabels;
   view: ViewKey;
-  sidebarGroupPaths: string[];
+  /** Group drive roots with display labels (path key + SST label). */
+  sidebarGroupRoots: ReadonlyArray<{ path: string; label: string }>;
   selectView: (view: ViewKey) => void;
   sidebarDropZoneProps: (
     targetKey: string,
@@ -38,7 +39,7 @@ function isGroupView(view: ViewKey, groupPath: string) {
 export function useDriveSidebarModel({
   labels,
   view,
-  sidebarGroupPaths,
+  sidebarGroupRoots,
   selectView,
   sidebarDropZoneProps,
   commitMoveToFolder,
@@ -84,26 +85,26 @@ export function useDriveSidebarModel({
 
   const groupSidebarItems = useMemo<MenuItemProps[]>(() => {
     const personal: MenuItemProps = {
-      label: labels.sidebarPersonalDrive,
+      label: labels.sidebarMyDrive,
       selected: isMyDriveView(view),
       onClick: () => selectView({ type: "folder", path: "My Drive" }),
       icon: <HardDrive className="size-3.5" />,
       ...sidebarDropZoneProps("My Drive", (ids) => commitMoveToFolder(ids, "My Drive")),
     };
-    const groups = sidebarGroupPaths.map((groupPath) => ({
-      label: groupPath.split("/").pop() ?? groupPath,
-      selected: isGroupView(view, groupPath),
-      onClick: () => selectView({ type: "folder", path: groupPath }),
-      icon: <DriveViewIcon view={{ type: "folder", path: groupPath }} />,
-      ...sidebarDropZoneProps(groupPath, (ids) => commitMoveToFolder(ids, groupPath)),
+    const groups = sidebarGroupRoots.map((root) => ({
+      label: root.label,
+      selected: isGroupView(view, root.path),
+      onClick: () => selectView({ type: "folder", path: root.path }),
+      icon: <DriveViewIcon view={{ type: "folder", path: root.path }} />,
+      ...sidebarDropZoneProps(root.path, (ids) => commitMoveToFolder(ids, root.path)),
     }));
     return [personal, ...groups];
   }, [
     commitMoveToFolder,
-    labels.sidebarPersonalDrive,
+    labels.sidebarMyDrive,
     selectView,
     sidebarDropZoneProps,
-    sidebarGroupPaths,
+    sidebarGroupRoots,
     view,
   ]);
 

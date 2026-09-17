@@ -17,12 +17,3 @@
   @apply overflow-y-auto;
   max-height: var(--docs-suggestion-card-max-height, 24rem);
 }
-
-.docs-suggestions-floating-layer__card .docs-suggestion-card[data-active="true"] {
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--color-ink) 5%, transparent),
-    0 8px 24px -8px
-      color-mix(in oklab, var(--text-editor-suggestion, oklch(0.85 0.15 145)) 28%, transparent),
-    0 0 0 1px
-      color-mix(in oklab, var(--text-editor-suggestion, oklch(0.85 0.15 145)) 18%, transparent);
-}

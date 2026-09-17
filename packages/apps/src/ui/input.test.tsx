@@ -14,11 +14,11 @@ describe("Input", () => {
     const { container } = render(<Input aria-label="Name" />);
     const field = container.querySelector(".input");
     expect(field).not.toBeNull();
-    expect(field!.classList.contains("input--size-sm")).toBe(false);
+    expect(field!.classList.contains("input--size-md")).toBe(true);
     expect(field!.classList.contains("input--search")).toBe(false);
   });
 
-  it("applies the compact size class for toolbar clusters", () => {
+  it("applies the sm size class for tighter fields", () => {
     const { container } = render(<Input aria-label="Name" size="sm" />);
     const field = container.querySelector(".input");
     expect(field).not.toBeNull();
@@ -58,18 +58,18 @@ describe("Input", () => {
         .classList.contains("select-trigger--size-sm"),
     ).toBe(true);
     expect(
-      screen.getByRole("textbox", { name: "md input" }).classList.contains("input--size-sm"),
-    ).toBe(false);
+      screen.getByRole("textbox", { name: "md input" }).classList.contains("input--size-md"),
+    ).toBe(true);
     expect(
       screen
         .getByRole("combobox", { name: "md select" })
-        .classList.contains("select-trigger--size-sm"),
-    ).toBe(false);
+        .classList.contains("select-trigger--size-md"),
+    ).toBe(true);
   });
 
-  it("does not set pill radius on the sm size class", () => {
+  it("does not set pill radius on size classes", () => {
     const smBlock = inputCss.match(
-      /\.select-trigger--size-sm,\s*\.input--size-sm \{[\s\S]*?\n\}/,
+      /\.select-trigger--size-sm,\s*\.input--size-sm,\s*\.control-surface--size-sm \{[\s\S]*?\n\}/,
     )?.[0];
     expect(smBlock).toBeDefined();
     expect(smBlock).not.toMatch(/control-radius-button-pill/);
@@ -77,6 +77,46 @@ describe("Input", () => {
     expect(smBlock).toMatch(/font-size:/);
     expect(inputCss).toMatch(
       /\.control-surface,\s*\.input,\s*\.textarea,\s*\.select-trigger \{[\s\S]*border-radius:\s*var\(--control-radius\)/,
+    );
+  });
+
+  it("shares md font-size tokens across Input, Textarea, and control-surface", () => {
+    const mdBlock = inputCss.match(
+      /\.select-trigger--size-md,\s*\.input--size-md,\s*\.control-surface--size-md \{[\s\S]*?\n\}/,
+    )?.[0];
+    expect(mdBlock).toBeDefined();
+    expect(mdBlock).toMatch(/font-size:\s*var\(--input-font-size-md/);
+    expect(inputCss).toMatch(/\.textarea--size-md \{[\s\S]*font-size:\s*var\(--input-font-size-md/);
+    expect(inputCss).toMatch(
+      /\.control-surface,\s*\.input,\s*\.textarea,\s*\.select-trigger \{[\s\S]*font-size:\s*var\(--input-font-size/,
+    );
+  });
+
+  it("inherits font-size into WebKit time datetime-edit fields", () => {
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]::-webkit-datetime-edit(?:,\s*\n\.input\[type="time"\]::-webkit-[\w-]+)* \{[\s\S]*font-size:\s*inherit/,
+    );
+  });
+
+  it("pins the time picker indicator to the trailing edge like LocaleDatePicker", () => {
+    expect(inputCss).toMatch(/\.input\[type="time"\]\s*\{[\s\S]*relative/);
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]::-webkit-calendar-picker-indicator\s*\{[\s\S]*inset-inline-end:\s*0\.4rem/,
+    );
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]::-webkit-datetime-edit\s*\{[\s\S]*padding-inline-end:\s*1\.25rem/,
+    );
+  });
+
+  it("keeps the time picker indicator visible when disabled or read-only", () => {
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]:disabled::-webkit-calendar-picker-indicator[\s\S]*opacity:\s*0\.6/,
+    );
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]:read-only::-webkit-calendar-picker-indicator[\s\S]*pointer-events:\s*none/,
+    );
+    expect(inputCss).toMatch(
+      /\.input\[type="time"\]:disabled::-webkit-calendar-picker-indicator[\s\S]*display:\s*block/,
     );
   });
 

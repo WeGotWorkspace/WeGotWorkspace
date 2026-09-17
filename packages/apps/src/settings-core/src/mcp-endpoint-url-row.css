@@ -6,4 +6,5 @@
 
 .mcp-endpoint-url-row.share-dialog {
   @apply max-w-none;
+  --input-height: var(--control-height-md, 2.25rem);
 }

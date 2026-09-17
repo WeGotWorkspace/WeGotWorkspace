@@ -13,6 +13,11 @@ describe("CalendarWorkspace popover → resize selection", () => {
     expect(workspace).toContain("previewCanResize");
     expect(workspace).toContain("canWriteCalendarCollection");
     expect(workspace).toContain("previewCanEdit");
-    expect(workspace).toContain("eventPreview && previewCanResize");
+    expect(workspace).toContain("liveEventPreview && previewCanResize");
+    expect(workspace).toContain("onEventTimesDraft");
+    expect(workspace).toContain("resolveLiveEventPreview");
+    expect(workspace).toContain("openInvitationPreview");
+    expect(workspace).toContain("invitation: true");
+    expect(workspace).toContain('mode: "invitation"');
   });
 });

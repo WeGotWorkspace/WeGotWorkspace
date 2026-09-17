@@ -1,5 +1,6 @@
 @import "../../styles.css" reference;
 @import "../../workspace-shell/src/workspace-split-app.css";
+@import "./calendar-event-dialog.css";
 
 /**
  * Calendar product shell: cream main pane + light indigo sidebar tint.
@@ -135,6 +136,7 @@
  * Idle Week select + outline buttons share --button-outline-color (ink).
  */
 .calendar-workspace .view-header {
+  /* Soft `--control-radius` is global (styles.css); header only owns outline washes. */
   --button-active-color: var(--calendar-accent-strong);
   --button-outline-color: var(--color-ink);
   --button-outline-hover-color: var(--calendar-accent-strong);
@@ -154,10 +156,6 @@
 .calendar-workspace .calendar-header-nav,
 .calendar-workspace .calendar-header-actions {
   @apply flex items-center gap-1;
-}
-
-.calendar-workspace .calendar-header-actions {
-  --control-radius: var(--control-radius-button-pill);
 }
 
 /*
@@ -217,15 +215,10 @@
     justify-self: end;
   }
 
-  .calendar-workspace .view-header__sidebar-toggle .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
-    @apply size-8;
-  }
-
+  /* Keep Week select shrinkable; height stays control md (36px) like IconButton
+   * / ViewModeToggle. Do not compact a subset of header chrome below md. */
   .calendar-workspace .calendar-header-actions .calendar-view-select {
-    @apply h-8 min-w-0;
+    @apply min-w-0;
   }
 
   .calendar-workspace
@@ -289,33 +282,6 @@
   width: auto;
   min-width: 7rem;
   background-color: var(--color-cream, #ffffff);
-}
-
-/* Compact chrome so the date-range title can wrap instead of ellipsizing. */
-@container view-header-main (max-width: 40rem) {
-  .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
-  .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
-    @apply size-8;
-  }
-
-  .calendar-workspace .calendar-header-actions .calendar-view-select {
-    @apply h-8 min-w-0;
-  }
-}
-
-@supports not (container-type: inline-size) {
-  @media (max-width: 40rem) {
-    .calendar-workspace .calendar-header-nav .button[class*="icon-button--size"],
-    .calendar-workspace .calendar-header-actions .button[class*="icon-button--size"],
-    .calendar-workspace .calendar-invitations-trigger.button[class*="icon-button--size"] {
-      @apply size-8;
-    }
-
-    .calendar-workspace .calendar-header-actions .calendar-view-select {
-      @apply h-8 min-w-0;
-    }
-  }
 }
 
 .calendar-workspace .calendar-sidebar-dot {
@@ -436,7 +402,7 @@
  * of the view select; max-width 1159px (SIDEBAR_OVERLAY_MEDIA_QUERY /
  * `--breakpoint-sidebar`) = CSS-repositioned as a bottom-right FAB over
  * `.workspace-app-layout__main`. No footer slab. Height comes from the
- * shared Input search size-sm (`--control-height-sm`), matching the view
+ * shared Input search size-md (`--control-height-md` = 36px), matching the view
  * dropdown — no calendar-only height hack.
  */
 .calendar-workspace .calendar-search-host {
@@ -549,272 +515,4 @@
   .calendar-workspace:has(.app-sidebar[data-open="true"]) {
     --_lc-list-heading-bg: transparent;
   }
-}
-
-/**
- * Portaled event dialog sits outside `.calendar-workspace`; repeat the accent
- * tokens so {@link Button} and form chrome match the calendar shell.
- */
-.calendar-dialog-surface .share-access-card {
-  --share-dialog-accent: var(--calendar-accent);
-}
-
-.calendar-dialog-surface {
-  --calendar-accent: #6366f1;
-  --calendar-accent-strong: #5558e8;
-  --color-emerald: var(--calendar-accent);
-  --button-primary-bg: var(--calendar-accent-strong);
-  --button-primary-fg: #ffffff;
-  --primary: var(--calendar-accent-strong);
-  --primary-foreground: #ffffff;
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
-  --card-title-icon-color: var(--calendar-accent);
-  --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
-}
-
-.calendar-dialog-surface.calendar-event-dialog {
-  @apply flex max-h-[min(90dvh,56rem)] flex-col overflow-hidden;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__form {
-  @apply flex min-h-0 flex-1 flex-col;
-  gap: 0.9rem;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__fields {
-  @apply flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto;
-  overscroll-behavior: contain;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__fields > .field-label-row {
-  @apply mb-0;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__card {
-  @apply mb-0 p-4;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__card .card__header {
-  @apply mb-3;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__card .card__header-row .button {
-  @apply shrink-0;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__repeat-trigger,
-.calendar-dialog-surface .calendar-event-dialog__timezone-trigger,
-.calendar-dialog-surface .calendar-event-dialog__show-as-trigger,
-.calendar-dialog-surface .calendar-event-dialog__meet-scope-trigger {
-  @apply w-full min-w-0;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__meet {
-  --meet-accent: #2a1644;
-  --card-title-icon-color: var(--meet-accent);
-}
-
-.calendar-dialog-surface .calendar-event-dialog__meet-row {
-  @apply flex min-w-0 w-full items-center gap-2;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__meet-row .input,
-.calendar-dialog-surface .calendar-event-dialog__meet-row input {
-  @apply min-w-0 flex-1;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__meet-row .icon-button--size-sm {
-  @apply size-9 shrink-0;
-}
-
-/*
- * ColorSwatchTrigger is an input-height control-surface (calendar picker chrome).
- * In this row it must match the adjacent outline IconButton sm (size-9).
- */
-.calendar-dialog-surface
-  .control-surface.color-swatch-trigger.calendar-event-dialog__meet-menu-trigger {
-  @apply h-9 min-h-9 w-auto shrink-0 border px-2 py-0 shadow-none;
-  min-width: 0;
-  box-sizing: border-box;
-  border-color: var(--button-outline-border-color, var(--control-border-color));
-  border-radius: var(--control-radius-button-pill);
-  background-color: transparent;
-  --loading-spinner-color: currentColor;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__meet-menu-trigger .color-swatch-trigger__icon,
-.calendar-dialog-surface
-  .calendar-event-dialog__meet-menu-trigger
-  .color-swatch-trigger__icon
-  > svg,
-.calendar-dialog-surface .calendar-event-dialog__meet-menu-trigger .color-swatch-trigger__chevron {
-  @apply size-3.5;
-}
-
-.calendar-dialog-surface
-  .calendar-event-dialog__meet-menu-trigger
-  .color-swatch-trigger__icon
-  > svg {
-  stroke-width: 1.75;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__meet-readonly {
-  @apply flex flex-col items-stretch gap-2;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__alarm-row {
-  @apply flex min-w-0 flex-wrap items-center justify-end gap-2;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__alarm-offset {
-  @apply min-w-36;
-}
-
-/* Portaled outside .calendar-dialog-surface — do not nest under that ancestor. */
-.calendar-event-dialog__calendar-menu,
-.calendar-event-dialog__meet-menu {
-  min-width: 12rem;
-}
-
-.calendar-event-dialog__calendar-option {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.calendar-event-dialog__calendar-option .calendar-sidebar-dot {
-  display: inline-block;
-  width: 0.65rem;
-  height: 0.65rem;
-  border-radius: 9999px;
-  flex-shrink: 0;
-  opacity: 1;
-}
-
-.calendar-event-dialog__calendar-name {
-  flex: 1;
-  min-width: 0;
-}
-
-.calendar-event-dialog__calendar-check {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__datetime {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__date-trigger {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.25rem;
-  padding: 0.35rem 0.7rem;
-  border-radius: 0.5rem;
-  border: 1px solid color-mix(in oklab, var(--color-ink) 14%, transparent);
-  background: var(--color-cream, #ffffff);
-  color: var(--color-ink);
-  font: inherit;
-  cursor: pointer;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__date-trigger:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-}
-
-.calendar-dialog-surface .calendar-event-dialog__date-trigger:disabled {
-  @apply cursor-not-allowed opacity-50;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__date-popover {
-  z-index: 80;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__datetime input[type="time"] {
-  width: auto;
-  min-width: 7.5rem;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__recurrence-ends {
-  @apply grid items-center gap-2;
-  grid-template-columns: minmax(6.5rem, 1fr) minmax(8.5rem, 1fr);
-}
-
-.calendar-dialog-surface .calendar-event-dialog__recurrence-ends > .select-trigger {
-  @apply w-full min-w-0;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__recurrence-ends-extra {
-  @apply flex min-h-9 min-w-0 items-center gap-1;
-}
-
-.calendar-dialog-surface
-  .calendar-event-dialog__recurrence-ends-extra
-  .calendar-event-dialog__date-trigger,
-.calendar-dialog-surface .calendar-event-dialog__recurrence-count {
-  @apply w-full;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__recurrence-count {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__recurrence-count input[type="number"] {
-  width: 4.5rem;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__recurrence-count-suffix {
-  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  font-size: 0.875rem;
-}
-
-.calendar-dialog-surface .calendar-sidebar-dot {
-  display: inline-block;
-  width: 0.65rem;
-  height: 0.65rem;
-  border-radius: 9999px;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__footer {
-  /* DialogFooter is col-reverse below `sm` with no gap; keep stacked actions separate. */
-  @apply shrink-0 gap-2 sm:gap-0;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__rsvp {
-  @apply me-auto;
-}
-
-.calendar-dialog-surface .calendar-event-dialog__footer .calendar-event-dialog__delete {
-  @apply w-full justify-center sm:w-auto sm:me-auto;
-  color: #b91c1c;
-}
-
-@media (max-width: 639px) {
-  .calendar-dialog-surface .calendar-event-dialog__footer .calendar-event-dialog__delete {
-    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
-  }
-}
-
-.calendar-dialog-surface.calendar-recurrence-scope-dialog {
-  max-inline-size: 24rem;
-}
-
-.calendar-dialog-surface .calendar-recurrence-scope {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin-block-start: 0.25rem;
-  min-inline-size: 0;
-}
-
-.calendar-dialog-surface .calendar-recurrence-scope__action {
-  inline-size: 100%;
-  justify-content: center;
 }

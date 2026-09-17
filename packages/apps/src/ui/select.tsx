@@ -6,6 +6,7 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { bridgePortalThemeFromOpenTrigger } from "@/ui/portal-theme-vars";
+import { controlSizeClassName, type ControlSize } from "@/ui/control-size";
 
 import "./input.css";
 
@@ -16,8 +17,8 @@ const SelectGroup = SelectPrimitive.Group;
 const SelectValue = SelectPrimitive.Value;
 
 type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
-  /** Height, padding, and font-size. Radius stays `--control-radius` (parent token). */
-  size?: "sm" | "md";
+  /** Height, padding, and font-size. Radius is global `--control-radius`. Default `md` = 36px. */
+  size?: ControlSize;
 };
 
 const SelectTrigger = React.forwardRef<
@@ -26,7 +27,7 @@ const SelectTrigger = React.forwardRef<
 >(({ className, children, size = "md", ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
-    className={cn("select-trigger", size === "sm" && "select-trigger--size-sm", className)}
+    className={cn("select-trigger", controlSizeClassName("select-trigger", size), className)}
     {...props}
   >
     {children}

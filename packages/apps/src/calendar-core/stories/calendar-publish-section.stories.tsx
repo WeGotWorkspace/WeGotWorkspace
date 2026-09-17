@@ -48,10 +48,9 @@ export const Published: Story = {
     await expect(httpsField).toHaveClass("share-dialog__input");
     await expect(httpsField.closest(".share-dialog__link-row")).not.toBeNull();
     await expect(canvas.getAllByRole("textbox")).toHaveLength(1);
-
-    const openLink = canvas.getByRole("link", { name: defaultCalendarLabels.openInCalendar });
-    await expect(openLink).toHaveAttribute("href", publishedFeed.webcalUrl);
-    await expect(openLink).toHaveClass("share-dialog__icon-link");
+    await expect(
+      canvas.queryByRole("link", { name: defaultCalendarLabels.openInCalendar }),
+    ).toBeNull();
 
     await userEvent.click(canvas.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }));
     await expect(args.onCopyHttps).toHaveBeenCalledOnce();

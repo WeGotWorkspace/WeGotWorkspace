@@ -72,7 +72,7 @@ export function DocsCollabSuggestControls({
             show(docsLabels.toastSwitchedToSuggestMode);
           }}
           icon={<Pencil aria-hidden />}
-          size="sm"
+          size="md"
           variant="outline"
           aria-pressed={isSuggest}
           disabled={disabled}

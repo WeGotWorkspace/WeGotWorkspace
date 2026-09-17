@@ -5,6 +5,7 @@ import { Awareness } from "y-protocols/awareness";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { docsLabels } from "@/docs-core/src/docs-labels";
+import { TooltipProvider } from "@/ui/tooltip";
 import "@/text-editor-core/src/text-editor-track-changes-augmentation";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { DocsSuggestionCard } from "./docs-suggestions/docs-suggestion-card";
@@ -332,17 +333,19 @@ describe("useDocsSuggestions", () => {
     expect(suggestion).toBeTruthy();
 
     render(
-      <DocsSuggestionCard
-        suggestion={suggestion!}
-        labels={docsLabels}
-        currentUserId="u-1"
-        active={false}
-        onSelect={() => result.current.selectSuggestion(changeId!)}
-        onAccept={() => {}}
-        onReject={() => {}}
-        onAddReply={() => {}}
-        onToggleReaction={() => {}}
-      />,
+      <TooltipProvider delayDuration={0}>
+        <DocsSuggestionCard
+          suggestion={suggestion!}
+          labels={docsLabels}
+          currentUserId="u-1"
+          active={false}
+          onSelect={() => result.current.selectSuggestion(changeId!)}
+          onAccept={() => {}}
+          onReject={() => {}}
+          onAddReply={() => {}}
+          onToggleReaction={() => {}}
+        />
+      </TooltipProvider>,
     );
 
     act(() => {

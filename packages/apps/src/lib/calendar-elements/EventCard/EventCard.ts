@@ -4,7 +4,6 @@ import { customElement, property } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { BaseElement } from "../BaseElement/BaseElement";
 import { type CalendarViewContextValue, calendarViewContext } from "../context/CalendarViewContext";
-import { renderRecurringIcon } from "../icons/RecurringIcon";
 import { getEventColorStyles, surfaceTint } from "../utils/EventColor";
 import { getLocaleDirection } from "../utils/Locale";
 import componentStyle from "./EventCard.css?inline";
@@ -155,7 +154,6 @@ export class EventCard extends BaseElement {
             <span class="event-card-summary-main">${this.summary}</span>
             ${hasMeta ? this.#renderMetaBlock(hasTimeLabel, hasLocation, location) : nothing}
           </span>
-          ${this.recurring && !this.exception ? this.#renderRecurringIcon() : nothing}
         </div>
         <slot></slot>
       </div>
@@ -180,14 +178,6 @@ export class EventCard extends BaseElement {
     return html`
       <time class="event-card-time">${timeRow}</time>
       ${hasLocation ? html`<span class="event-card-location">${location}</span>` : nothing}
-    `;
-  }
-
-  #renderRecurringIcon() {
-    return html`
-      <span class="event-card-recurring-icon-wrap" aria-hidden="true">
-        ${renderRecurringIcon({ className: "event-card-recurring-icon" })}
-      </span>
     `;
   }
 

@@ -22,7 +22,8 @@ export function DriveFileItemActionsMenu({
         onClick: action.onClick,
         checked: action.active,
         disabled: disabled || action.disabled,
-        severity: action.severity ?? (action.id === "delete" ? "danger" : undefined),
+        severity:
+          action.severity === "danger" || action.id === "delete" ? ("danger" as const) : undefined,
         className: "cursor-pointer gap-2.5",
       }))}
       trigger={

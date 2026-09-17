@@ -33,12 +33,42 @@ For shared primitives (`Button`, `IconButton`, and similar):
 - Prefer introducing new CSS variables over adding one-off variant branches in TypeScript.
 - For responsive action surfaces, prefer descriptor props (`*Actions`) over arbitrary node slots in new APIs.
 
+### Control size scale (`xs` … `xl`)
+
+Fixed heights (not viewport-relative). Shared by Button, IconButton, Input, SelectTrigger,
+LocaleDatePicker, Textarea (padding/font), SegmentedControl, UserChip, and UserAvatar:
+
+| Size | Height | Use |
+|------|--------|-----|
+| `xs` | 28px | Compact icon-only / dense chips |
+| `sm` | 32px | Tighter chrome when needed |
+| `md` | **36px** | **Default** — action bar, view header, event forms, share marks beside md inputs |
+| `lg` | 40px | Spacious forms / emphasis |
+| `xl` | 44px | Sidebar primary New / hero CTAs |
+
+Tokens: `--control-height-xs|sm|md|lg|xl`. `--input-height` aliases `md`.
+UserAvatar adds display-only `2xl` (80px) for Meet lobby / large idle tiles outside this scale.
+
+### Dialog footers
+
+Cancel / dismiss = `Button variant="outline"` (same as `AlertDialogCancel`). Primary confirm =
+default primary. Destructive side actions (Delete / Remove) = icon-only `IconButton` with
+`variant="outline"` + `severity="danger"` (Trash2), start-pinned with `me-auto` — match Calendar
+event and calendar dialogs. Confirm dialogs keep a labeled destructive primary.
+
 Refactor checklist:
 
 - Move duplicated `style={...}` presets into parent-scoped CSS variables.
 - Remove unused preset helper files after migration.
 - Verify callsites no longer hardcode icon sizing/fill when primitive already owns it.
 - Keep legacy slot props only as compatibility paths; avoid new usage when descriptor APIs exist.
+
+### Control radius
+
+- **Global soft default:** `--control-radius` (0.375rem) is the ordinary control radius for Button, IconButton, Input, Select, SegmentedControl, ColorSwatchTrigger, LocaleDatePicker, etc.
+- **Do not remap** `--control-radius` on layout ancestors (`.view-header`, side panels, search stacks) just to soften chrome — controls outside that subtree silently diverge.
+- `--control-radius-button-pill` is an **alias** of `--control-radius` (legacy `.button--pill` / chips). Prefer `--control-radius` for new code.
+- **True capsules** stay explicit: `--control-radius-pill` / `999px` (Switch track, badges). Do not force Switch onto `--control-radius`.
 
 ## Parent-scoped CSS variables and workspace styling
 

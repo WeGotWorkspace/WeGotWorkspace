@@ -191,7 +191,7 @@ export function TasksTaskFormFields({
               disabled={disabled}
             >
               <SelectTrigger
-                size="sm"
+                size="md"
                 className={COMPOSER_SELECT_TRIGGER_CLASS}
                 aria-label={L.addTaskList}
               >
@@ -215,7 +215,7 @@ export function TasksTaskFormFields({
               disabled={disabled}
             >
               <SelectTrigger
-                size="sm"
+                size="md"
                 className={COMPOSER_SELECT_TRIGGER_CLASS}
                 aria-label={L.addTaskStatus}
               >
@@ -242,7 +242,7 @@ export function TasksTaskFormFields({
               disabled={disabled}
             >
               <SelectTrigger
-                size="sm"
+                size="md"
                 className={COMPOSER_SELECT_TRIGGER_CLASS}
                 aria-label={L.addTaskPriority}
               >

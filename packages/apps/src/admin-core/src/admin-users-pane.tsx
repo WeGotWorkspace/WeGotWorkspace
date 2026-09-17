@@ -44,7 +44,7 @@ export function AdminUsersPane({
               <UserAvatar
                 displayName={user.displayName}
                 subtitle={user.username}
-                size="sm"
+                size="md"
                 className="flex-1"
               />
               <div className="flex items-center gap-1 shrink-0">
@@ -85,7 +85,7 @@ export function AdminUsersPane({
               <UserAvatar
                 displayName={group.displayName}
                 subtitle={`${groupMemberCount.get(group.id) ?? 0} member${(groupMemberCount.get(group.id) ?? 0) === 1 ? "" : "s"}`}
-                size="sm"
+                size="md"
                 className="flex-1"
               />
               <div className="flex items-center gap-1 shrink-0">

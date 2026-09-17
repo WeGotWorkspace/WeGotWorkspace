@@ -139,7 +139,7 @@ export function ChatComposer({
             <IconButton
               label={chatUiLabels.cancel}
               icon={<X />}
-              size="sm"
+              size="md"
               variant="ghost"
               onClick={onCancel}
               disabled={disabled}
@@ -148,7 +148,7 @@ export function ChatComposer({
           <IconButton
             label={chatUiLabels.send}
             icon={<Send />}
-            size="sm"
+            size="md"
             variant="ghost"
             onClick={() => {
               if (editor) submit(editor);

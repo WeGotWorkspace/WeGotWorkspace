@@ -672,7 +672,7 @@ function DocsCollabWorkspaceInner({
                           : labels.reviewToggleShow
                   }
                   icon={<MessageSquare />}
-                  size="sm"
+                  size="md"
                   variant="outline"
                   active={reviewPanelOpen}
                   disabled={viewSource}

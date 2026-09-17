@@ -1,4 +1,5 @@
 @import "../../styles.css" reference;
+@import "../../ui/workspace-menu-item-sst.css";
 
 /* ----- Root (all contexts) ----- */
 
@@ -7,7 +8,10 @@
 }
 
 .menu-item--interactive:hover {
-  background-color: color-mix(in oklab, currentColor 12%, transparent);
+  background-color: var(
+    --menu-item-hover-background,
+    color-mix(in oklab, currentColor 12%, transparent)
+  );
 }
 
 /* Sidebar nav hover: same wash + fg family as outline IconButton. */

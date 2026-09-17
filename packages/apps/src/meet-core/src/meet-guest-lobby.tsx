@@ -151,7 +151,7 @@ export function MeetGuestLobby({
                 <UserAvatar
                   displayName={displayName}
                   compact
-                  size="xl"
+                  size="2xl"
                   color={avatarColorForUserId(displayName)}
                 />
                 <p className="meet-guest-lobby__camera-off">{meetLabels.cameraOff}</p>

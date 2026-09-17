@@ -119,13 +119,16 @@ describe("contacts workspace sidebar chrome", () => {
     );
   });
 
-  it("does not override context-select radius or force a compact type face", () => {
+  it("inherits context-select item type from the trigger size (not base 1rem)", () => {
     expect(css).not.toMatch(
       /\.select-trigger\.contacts-detail-view__context-select \{[\s\S]*border-radius:/,
     );
     expect(css).not.toMatch(/\.contacts-detail-view__context-select \{[\s\S]*?text-xs/);
     expect(css).toMatch(
-      /\.contacts-detail-view__context-select-item \{[\s\S]*font-size:\s*var\(--input-font-size, 1rem\)/,
+      /\.contacts-detail-view__context-select-item \{[\s\S]*font-size:\s*inherit/,
+    );
+    expect(css).not.toMatch(
+      /\.contacts-detail-view__context-select-item \{[\s\S]*font-size:\s*var\(--input-font-size,\s*1rem\)/,
     );
   });
 
@@ -157,7 +160,7 @@ describe("contacts workspace sidebar chrome", () => {
   });
 
   it("reserves the same action-column width on editable rows and address fields", () => {
-    expect(css).toMatch(/--contacts-channel-action-size:\s*var\(\s*--control-height-sm,/);
+    expect(css).toMatch(/--contacts-channel-action-size:\s*var\(\s*--control-height-md,/);
     expect(css).toMatch(
       /\.contacts-detail-view__channel-row--editable \{[\s\S]*?grid-template-columns:\s*7rem minmax\(0, 1fr\) var\(--contacts-channel-action-size\)/,
     );
@@ -283,6 +286,9 @@ describe("contacts workspace sidebar chrome", () => {
     expect(addressBookSelect).toMatch(/ColorSwatchTrigger/);
     expect(addressBookSelect).not.toMatch(/onCreateAddressBook|__create_address_book__/);
     expect(css).toMatch(
+      /\.contacts-workspace \.action-bar \.contacts-address-book-select\.color-swatch-trigger \{[\s\S]*background-color:\s*var\(--color-cream/,
+    );
+    expect(css).not.toMatch(
       /\.contacts-workspace \.action-bar \.contacts-address-book-select\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
     );
   });

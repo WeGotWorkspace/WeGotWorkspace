@@ -103,12 +103,12 @@ describe("TasksTaskFormFields", () => {
     expect(trigger.querySelector(".tasks-list-dot")).toBeNull();
   });
 
-  it("uses compact sm selects on the meta row, not the title field", () => {
+  it("uses compact md selects on the meta row, not the title field", () => {
     renderFormFields({ mode: "create" });
 
     const title = screen.getByLabelText(defaultTasksLabels.addTaskName);
     expect(title.classList.contains("tasks-main-view__composer-title")).toBe(true);
-    expect(title.classList.contains("input--size-sm")).toBe(false);
+    expect(title.classList.contains("input--size-md")).toBe(false);
     expect(title.classList.contains("input")).toBe(false);
 
     for (const name of [
@@ -117,7 +117,7 @@ describe("TasksTaskFormFields", () => {
       defaultTasksLabels.addTaskPriority,
     ]) {
       const trigger = screen.getByLabelText(name);
-      expect(trigger.classList.contains("select-trigger--size-sm")).toBe(true);
+      expect(trigger.classList.contains("select-trigger--size-md")).toBe(true);
       expect(trigger.classList.contains(COMPOSER_SELECT_TRIGGER_CLASS)).toBe(true);
     }
   });

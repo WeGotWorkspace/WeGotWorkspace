@@ -158,7 +158,7 @@ function GrantCard({
         <IconButton
           className="settings-assistants-pane__grant-revoke"
           variant="destructive-outline"
-          size="sm"
+          size="md"
           icon={<Trash2 />}
           label={grantRevokeLabel(grant)}
           disabled={revoking}
