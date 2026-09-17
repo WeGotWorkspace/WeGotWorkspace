@@ -5,14 +5,20 @@ declare(strict_types=1);
 namespace App\Services\Meet;
 
 use App\Events\EventDispatch;
+use App\Models\CalendarObject;
 use App\Models\MeetReservation;
 use App\Services\Admin\AdminConstants;
+use App\Services\Calendars\CalendarMeetLinkHref;
+use App\Services\Calendars\CalendarPrincipalAddresses;
 use App\Services\Calendars\CalendarRepository;
+use App\Services\Calendars\Conversion\LocationConversionSupport;
 use App\Services\Chat\ChatChannelRepository;
 use App\Services\Notify\MeetStartedNotify;
 use App\Services\Settings\GroupMembershipResolver;
 use DateTimeInterface;
 use Illuminate\Support\Carbon;
+use Sabre\VObject\Component\VEvent;
+use Sabre\VObject\Reader;
 
 /**
  * Reservation persistence for Meet HTTP and the calendar ICS-write hook.
@@ -31,6 +37,8 @@ final class MeetReservationService
         private readonly CalendarRepository $calendars,
         private readonly MeetChannelJoinPolicy $channelJoinPolicy,
         private readonly ChatChannelRepository $channels,
+        private readonly CalendarPrincipalAddresses $addresses,
+        private readonly CalendarMeetLinkHref $meetHrefs,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -211,9 +219,74 @@ final class MeetReservationService
             $out[$createdBy] = $createdBy;
         }
 
-        // Calendar-linked rooms: include internal attendee principals when the ICS
-        // still references this room (best-effort via owner calendars is deferred;
-        // invitees above + channel roster cover the primary AC).
+        foreach ($this->calendarAttendeeUsernames($room) as $username) {
+            $out[$username] = $username;
+        }
+
+        return array_values($out);
+    }
+
+    /**
+     * Internal WGW principals on VEVENTs whose conference href matches this room.
+     * External mailto attendees (no principal) are skipped.
+     *
+     * @return list<string>
+     */
+    private function calendarAttendeeUsernames(string $room): array
+    {
+        $needle = strtolower(trim($room));
+        if ($needle === '') {
+            return [];
+        }
+
+        $rows = CalendarObject::query()
+            ->where('componenttype', 'VEVENT')
+            ->where('calendardata', 'like', '%'.$needle.'%')
+            ->limit(50)
+            ->get(['calendardata']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            $raw = is_string($row->calendardata) ? $row->calendardata : (string) $row->calendardata;
+            if ($raw === '') {
+                continue;
+            }
+            try {
+                $parsed = Reader::read($raw);
+            } catch (\Throwable) {
+                continue;
+            }
+            foreach ($parsed->select('VEVENT') as $vevent) {
+                if (! $vevent instanceof VEvent) {
+                    continue;
+                }
+                $href = LocationConversionSupport::conferenceHrefFromVEvent($vevent);
+                if ($href === null || $this->meetHrefs->parseWgwRoom($href) !== $needle) {
+                    continue;
+                }
+                if (! isset($vevent->ATTENDEE)) {
+                    continue;
+                }
+                foreach ($vevent->ATTENDEE as $attendee) {
+                    $mailto = trim((string) $attendee);
+                    if ($mailto === '') {
+                        continue;
+                    }
+                    $principal = $this->addresses->principalForMailto($mailto);
+                    if ($principal === null) {
+                        continue;
+                    }
+                    $uri = (string) $principal->uri;
+                    if (! str_starts_with($uri, 'principals/') || str_starts_with($uri, AdminConstants::GROUP_PREFIX)) {
+                        continue;
+                    }
+                    $username = strtolower(substr($uri, strlen('principals/')));
+                    if ($username !== '' && ! str_contains($username, '/')) {
+                        $out[$username] = $username;
+                    }
+                }
+            }
+        }
 
         return array_values($out);
     }

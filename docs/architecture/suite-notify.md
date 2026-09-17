@@ -74,7 +74,7 @@ Chat-push (VAPID + `chat.message_posted`) is the beta closed-tab promise. Calend
 - **Calendar RSVP** — same `deliverLocal` on `METHOD=REPLY` fans `calendar.rsvp` to the organizer. Skips when organizer is the writer (guest iMIP self-loop). Supersede per `uid`+attendee.
 - **Collection access granted** — after `CalendarShareInvites::apply` on calendar / notebook / task-list `shareWith`, newly added sharees get `calendar.shared` / `notes.shared` / `tasks.list_shared` (add-only; revokes do not notify). REST/MCP v1 surface.
 - **Task status** — `TaskRepository::{update,patch}` fires `tasks.status_changed` to list ACL owners (− actor) on `workflowStatus` change. CalDAV PUT out of scope for v1.
-- **Meet started** — first `MeetReservationService::markActivated` (`activated_at` null→set) fires `meet.started` once per room to channel roster + owner/creator principals.
+- **Meet started** — first `MeetReservationService::markActivated` (`activated_at` null→set) fires `meet.started` once per room to channel roster + owner/creator principals + calendar attendees that resolve to an internal WGW principal (external mailto skipped).
 
 ## HTTP
 
