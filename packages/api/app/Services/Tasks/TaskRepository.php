@@ -9,9 +9,11 @@ use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
+use App\Models\GroupMember;
 use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Notify\TaskStatusChangedNotify;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Services\Tasks\Conversion\ConversionSupport;
@@ -19,6 +21,7 @@ use App\Services\Tasks\Conversion\IcsJmapTaskConverter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 final class TaskRepository
 {
@@ -219,6 +222,8 @@ final class TaskRepository
             throw new ApiHttpException(500, 'Could not load updated task.', 'server_error');
         }
 
+        $this->notifyStatusChanged($username, $instance, $existingTask, $task);
+
         return $task;
     }
 
@@ -284,6 +289,8 @@ final class TaskRepository
         if ($task === null) {
             throw new ApiHttpException(500, 'Could not load patched task.', 'server_error');
         }
+
+        $this->notifyStatusChanged($username, $instance, $existingTask, $task);
 
         return $task;
     }
@@ -396,6 +403,90 @@ final class TaskRepository
         }
 
         return $task;
+    }
+
+    /**
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     */
+    private function notifyStatusChanged(
+        string $actor,
+        CalendarInstance $instance,
+        array $before,
+        array $after,
+    ): void {
+        $from = isset($before['workflowStatus']) && is_string($before['workflowStatus'])
+            ? $before['workflowStatus']
+            : null;
+        $to = isset($after['workflowStatus']) && is_string($after['workflowStatus'])
+            ? $after['workflowStatus']
+            : null;
+        if ($to === null || $from === $to) {
+            return;
+        }
+        $owners = $this->listAclOwnerUsernames($instance);
+        if ($owners === []) {
+            return;
+        }
+        $summary = trim((string) ($after['title'] ?? $after['summary'] ?? ''));
+        $taskId = (string) ($after['id'] ?? '');
+        $taskListId = $this->taskLists->apiIdForInstance($instance);
+        $this->eventDispatch->fireMutation(
+            $actor,
+            'tasks',
+            TaskStatusChangedNotify::ACTION,
+            'tasks/'.$taskId,
+            TaskStatusChangedNotify::eventData(
+                TaskStatusChangedNotify::actorLabel($actor),
+                $summary,
+                $taskId,
+                $from,
+                $to,
+                $taskListId,
+                $owners,
+            ),
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function listAclOwnerUsernames(CalendarInstance $instance): array
+    {
+        $owners = [];
+        $rows = CalendarInstance::query()
+            ->where('calendarid', (int) $instance->calendarid)
+            ->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
+            ->get(['principaluri']);
+        foreach ($rows as $row) {
+            $uri = (string) $row->principaluri;
+            if (str_starts_with($uri, AdminConstants::GROUP_PREFIX)) {
+                continue;
+            }
+            if (str_starts_with($uri, 'principals/')) {
+                $username = strtolower(substr($uri, strlen('principals/')));
+                if ($username !== '' && ! str_contains($username, '/')) {
+                    $owners[$username] = $username;
+                }
+            }
+        }
+
+        $principalUri = (string) $instance->principaluri;
+        if (str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)) {
+            $members = GroupMember::query()
+                ->join('principals as g', 'g.id', '=', 'groupmembers.principal_id')
+                ->join('principals as m', 'm.id', '=', 'groupmembers.member_id')
+                ->where('g.uri', $principalUri)
+                ->pluck('m.uri');
+            foreach ($members as $uri) {
+                $username = strtolower(str_replace('principals/', '', (string) $uri));
+                if ($username !== '') {
+                    $owners[$username] = $username;
+                }
+            }
+        }
+
+        return array_values($owners);
     }
 
     /**
