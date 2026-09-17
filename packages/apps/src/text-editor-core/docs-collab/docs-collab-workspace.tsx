@@ -351,6 +351,7 @@ function DocsCollabWorkspaceInner({
 
   const {
     suggestions,
+    archivedSuggestions,
     activeChangeId,
     selectSuggestion,
     clearActiveSuggestion,
@@ -456,6 +457,7 @@ function DocsCollabWorkspaceInner({
         threads={commentThreads}
         draftThread={draftThread}
         suggestions={suggestions}
+        archivedSuggestions={archivedSuggestions}
         currentUserId={session.user.username}
         activeThreadId={activeThreadId}
         activeChangeId={activeChangeId}
@@ -479,6 +481,7 @@ function DocsCollabWorkspaceInner({
       activeThreadId,
       addReply,
       addSuggestionReply,
+      archivedSuggestions,
       cancelDraft,
       commentThreads,
       draftThread,

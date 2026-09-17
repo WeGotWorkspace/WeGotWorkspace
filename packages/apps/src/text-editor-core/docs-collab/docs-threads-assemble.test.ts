@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  docsFileThreadToArchivedSuggestion,
   docsFileThreadToComment,
   docsFileThreadToSuggestion,
   splitDocsFileThreads,
@@ -89,9 +90,29 @@ describe("docs-threads-assemble", () => {
     expect(suggestion.messages.map((message) => message.body)).toEqual(["why this edit?"]);
   });
 
-  it("splits kinds and omits archived suggestion threads from the open sidecar list", () => {
+  it("splits kinds, keeps pending suggestions for Open, and maps archived journals for Resolved", () => {
     const split = splitDocsFileThreads([commentRoot, suggestionRoot, archivedSuggestion]);
     expect(split.comments).toHaveLength(1);
     expect(split.suggestions.map((thread) => thread.changeId)).toEqual(["change-1"]);
+    expect(split.archivedSuggestions.map((thread) => thread.changeId)).toEqual(["change-gone"]);
+    expect(split.archivedSuggestions[0]?.archived).toBe(true);
+    expect(split.archivedSuggestions[0]?.messages.map((message) => message.body)).toEqual([
+      "why this edit?",
+    ]);
+  });
+
+  it("maps archived journals to review cards from stored anchors without a live mark", () => {
+    const archived = docsFileThreadToArchivedSuggestion({
+      ...archivedSuggestion,
+      anchorText: "Insert hello",
+      anchorFrom: 12,
+      anchorTo: 17,
+    });
+    expect(archived.archived).toBe(true);
+    expect(archived.from).toBe(12);
+    expect(archived.to).toBe(17);
+    expect(archived.summary).toBe("Insert hello");
+    expect(archived.parts).toEqual([]);
+    expect(archived.messages.map((message) => message.body)).toEqual(["why this edit?"]);
   });
 });

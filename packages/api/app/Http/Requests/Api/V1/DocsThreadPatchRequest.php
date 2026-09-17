@@ -19,6 +19,9 @@ final class DocsThreadPatchRequest extends FormRequest
             'resolved' => ['sometimes', 'boolean'],
             'archived' => ['sometimes', 'boolean'],
             'changeId' => ['sometimes', 'nullable', 'string', 'max:128'],
+            'anchorText' => ['sometimes', 'nullable', 'string'],
+            'anchorFrom' => ['sometimes', 'nullable', 'integer'],
+            'anchorTo' => ['sometimes', 'nullable', 'integer'],
         ];
     }
 }

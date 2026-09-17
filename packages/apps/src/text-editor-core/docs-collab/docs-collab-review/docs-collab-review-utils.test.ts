@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { DocsCommentThread } from "../docs-comments-types";
 import type { DocsSuggestionWithThread } from "../docs-suggestions-types";
-import { filterReviewItemsByTab, sortReviewItemsByDocumentOrder } from "./docs-collab-review-utils";
+import {
+  countOpenReviewItems,
+  filterReviewItemsByTab,
+  sortReviewItemsByDocumentOrder,
+} from "./docs-collab-review-utils";
 
 const commentThread = (id: string, anchorFrom: number): DocsCommentThread => ({
   id,
@@ -78,7 +82,7 @@ describe("filterReviewItemsByTab", () => {
     ).toEqual(["s-1", "t-open"]);
   });
 
-  it("shows only resolved comments on the resolved tab", () => {
+  it("shows only resolved comments on the resolved tab when suggestions are still pending", () => {
     const resolved = { ...commentThread("t-done", 4), resolved: true };
     const items = filterReviewItemsByTab(
       "resolved",
@@ -94,13 +98,94 @@ describe("filterReviewItemsByTab", () => {
     }
   });
 
-  it("never places suggestion threads on the resolved tab", () => {
+  it("places archived suggestion threads on the resolved tab", () => {
     const items = filterReviewItemsByTab(
       "resolved",
       [],
-      [suggestion("s-archived-looking", 1)],
+      [suggestion("s-open", 1), { ...suggestion("s-archived", 8), archived: true }],
       null,
     );
-    expect(items).toEqual([]);
+    expect(items).toHaveLength(1);
+    expect(items[0]?.type).toBe("suggestion");
+    if (items[0]?.type === "suggestion") {
+      expect(items[0].suggestion.changeId).toBe("s-archived");
+    }
+  });
+
+  it("keeps pending suggestions off the resolved tab and off Open once archived", () => {
+    const archived = { ...suggestion("s-archived", 1), archived: true };
+    expect(
+      filterReviewItemsByTab("open", [], [archived], null).map((item) =>
+        item.type === "suggestion" ? item.suggestion.changeId : item.thread.id,
+      ),
+    ).toEqual([]);
+    expect(
+      filterReviewItemsByTab("resolved", [], [archived], null).map((item) =>
+        item.type === "suggestion" ? item.suggestion.changeId : item.thread.id,
+      ),
+    ).toEqual(["s-archived"]);
+  });
+
+  it("counts only open comments and pending suggestions for the header badge", () => {
+    const resolved = { ...commentThread("t-done", 4), resolved: true };
+    const archived = { ...suggestion("s-archived", 8), archived: true };
+    expect(
+      countOpenReviewItems(
+        [commentThread("t-open", 10), resolved],
+        [suggestion("s-1", 5), archived],
+      ),
+    ).toBe(2);
+  });
+
+  it("orders resolved items by last-message recency, newest first", () => {
+    const older = {
+      ...commentThread("t-old", 40),
+      resolved: true,
+      messages: [
+        {
+          id: "m-old",
+          body: "old",
+          createdAt: "2026-01-01T12:00:00.000Z",
+          author: { id: "u-1", name: "Alex" },
+        },
+      ],
+    };
+    const newer = {
+      ...commentThread("t-new", 4),
+      resolved: true,
+      messages: [
+        {
+          id: "m-new",
+          body: "new",
+          createdAt: "2026-01-03T12:00:00.000Z",
+          author: { id: "u-1", name: "Alex" },
+        },
+      ],
+    };
+    const archivedMid = {
+      ...suggestion("s-mid", 1),
+      archived: true,
+      messages: [
+        {
+          id: "m-mid",
+          body: "mid",
+          createdAt: "2026-01-02T12:00:00.000Z",
+          author: { id: "u-1", name: "Alex" },
+        },
+      ],
+    };
+
+    const resolvedIds = filterReviewItemsByTab("resolved", [older, newer], [archivedMid], null).map(
+      (item) => (item.type === "comment" ? item.thread.id : item.suggestion.changeId),
+    );
+    expect(resolvedIds).toEqual(["t-new", "s-mid", "t-old"]);
+
+    const openIds = filterReviewItemsByTab(
+      "open",
+      [commentThread("t-late", 30), commentThread("t-early", 8)],
+      [suggestion("s-mid-open", 18)],
+      null,
+    ).map((item) => (item.type === "comment" ? item.thread.id : item.suggestion.changeId));
+    expect(openIds).toEqual(["t-early", "s-mid-open", "t-late"]);
   });
 });

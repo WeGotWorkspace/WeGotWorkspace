@@ -139,6 +139,28 @@ final class DocsThreadJournalConverter
         return $calendar->serialize();
     }
 
+    /**
+     * @param  array{anchorText?: string|null, anchorFrom?: int|null, anchorTo?: int|null}  $anchors
+     */
+    public function applyAnchors(string $ics, array $anchors): string
+    {
+        [$calendar, $journal] = $this->readJournal($ics);
+        if (array_key_exists('anchorText', $anchors) && is_string($anchors['anchorText'])) {
+            unset($journal->{'X-WGW-ANCHOR-TEXT'});
+            $journal->add('X-WGW-ANCHOR-TEXT', $anchors['anchorText']);
+        }
+        if (array_key_exists('anchorFrom', $anchors) && is_int($anchors['anchorFrom'])) {
+            unset($journal->{'X-WGW-ANCHOR-FROM'});
+            $journal->add('X-WGW-ANCHOR-FROM', (string) $anchors['anchorFrom']);
+        }
+        if (array_key_exists('anchorTo', $anchors) && is_int($anchors['anchorTo'])) {
+            unset($journal->{'X-WGW-ANCHOR-TO'});
+            $journal->add('X-WGW-ANCHOR-TO', (string) $anchors['anchorTo']);
+        }
+
+        return $calendar->serialize();
+    }
+
     public function applyDocPath(string $ics, string $docPath): string
     {
         [$calendar, $journal] = $this->readJournal($ics);

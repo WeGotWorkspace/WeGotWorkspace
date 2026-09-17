@@ -49,6 +49,9 @@ export type DocsFileThreadPatch = {
   resolved?: boolean;
   archived?: boolean;
   changeId?: string;
+  anchorText?: string;
+  anchorFrom?: number;
+  anchorTo?: number;
 };
 
 export type DocsFileThreadChanges = {

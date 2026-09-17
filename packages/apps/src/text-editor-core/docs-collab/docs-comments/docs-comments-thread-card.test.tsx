@@ -39,4 +39,30 @@ describe("DocsCommentsThreadCard", () => {
     expect(resolve.className).toContain("button--severity-success");
     expect(screen.queryByText("Resolve")).toBeNull();
   });
+
+  it("keeps existing reaction chips visible when the thread cannot be mutated", () => {
+    renderCard({
+      canMutate: false,
+      thread: {
+        ...sampleThread,
+        resolved: true,
+        reactions: [{ emoji: "🎉", userIds: ["u-2"] }],
+        messages: [
+          ...sampleThread.messages,
+          {
+            id: "thread-1-r",
+            body: "Looks good.",
+            createdAt: "2026-06-01T10:00:00.000Z",
+            author: { id: "u-2", name: "Sam Lee" },
+          },
+        ],
+      },
+    });
+
+    expect(screen.getByText("🎉")).toBeTruthy();
+    expect(screen.getByText("1")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "🎉 Sam Lee" })).toBeTruthy();
+    expect(screen.queryByLabelText("Add reaction")).toBeNull();
+    expect(screen.queryByRole("button", { name: docsLabels.commentsResolve })).toBeNull();
+  });
 });

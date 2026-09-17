@@ -4,6 +4,10 @@
   @apply flex flex-wrap items-center gap-1.5;
 }
 
+.docs-collab-reactions__reaction-wrap {
+  @apply inline-flex;
+}
+
 .docs-collab-reactions__reaction {
   @apply inline-flex h-7 items-center gap-1 rounded-full border px-2 text-xs transition-colors;
   border-color: var(--docs-border, color-mix(in oklab, var(--color-ink) 12%, transparent));

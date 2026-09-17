@@ -134,7 +134,7 @@ export const SidebarPanel: Story = {
       <DocsCollabSidebarPanel
         ariaLabel={docsLabels.commentsSidebarTitle}
         title={docsLabels.commentsSidebarTitle}
-        count={1}
+        itemCount={1}
         countLabel={docsLabels.commentsCountOne}
         closeLabel={docsLabels.commentsCloseSidebar}
         onClose={noop}

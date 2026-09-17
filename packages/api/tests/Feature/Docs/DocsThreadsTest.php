@@ -134,7 +134,7 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
             ->assertJsonPath('list.0.id', $rootId);
     }
 
-    public function test_suggestion_posted_event_and_archive_hides_from_list(): void
+    public function test_suggestion_posted_event_and_archive_stays_in_list(): void
     {
         Event::fake([DocsThreadPosted::class]);
         $rootId = $this->ulid('AE');
@@ -154,11 +154,20 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
         $this->asBob()->patchJson($this->threadUrl($rootId), [
             'archived' => true,
             'changeId' => 'change-1',
-        ])->assertOk()->assertJsonPath('archived', true);
+            'anchorText' => 'Insert hello',
+            'anchorFrom' => 4,
+            'anchorTo' => 9,
+        ])->assertOk()->assertJsonPath('archived', true)
+            ->assertJsonPath('anchorText', 'Insert hello')
+            ->assertJsonPath('anchorFrom', 4)
+            ->assertJsonPath('anchorTo', 9);
 
         $this->assertTrue(CalendarObject::query()->where('uid', $rootId)->exists());
         $list = $this->asBob()->getJson($this->threadsPath())->assertOk()->json('list');
-        $this->assertCount(0, $list);
+        $this->assertCount(1, $list);
+        $this->assertSame($rootId, $list[0]['id']);
+        $this->assertTrue($list[0]['archived']);
+        $this->assertSame('why this edit?', $list[0]['messages'][0]['body']);
     }
 
     public function test_idempotent_create_and_changes_feed(): void
@@ -202,6 +211,21 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
         ])->assertOk()->assertJsonPath('resolved', true);
     }
 
+    public function test_suggestion_root_can_be_created_with_empty_body(): void
+    {
+        $rootId = $this->ulid('AK');
+        $this->asBob()->postJson($this->threadsPath(), [
+            'id' => $rootId,
+            'kind' => 'suggestion',
+            'changeId' => 'change-empty',
+            'body' => '',
+            'anchorText' => 'Replace draft',
+        ])->assertCreated()
+            ->assertJsonPath('id', $rootId)
+            ->assertJsonPath('archived', false)
+            ->assertJsonPath('anchorText', 'Replace draft');
+    }
+
     public function test_orphan_suggestions_are_archived_not_deleted(): void
     {
         $keep = $this->ulid('AH');
@@ -228,9 +252,15 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
 
         $this->assertTrue(CalendarObject::query()->where('uid', $orphan)->exists());
         $list = $this->asBob()->getJson($this->threadsPath())->assertOk()->json('list');
-        $this->assertCount(1, $list);
-        $this->assertSame($keep, $list[0]['id']);
-        $this->assertSame('keep', $list[0]['changeId']);
+        $this->assertCount(2, $list);
+        $byChangeId = [];
+        foreach ($list as $thread) {
+            $byChangeId[$thread['changeId']] = $thread;
+        }
+        $this->assertFalse($byChangeId['keep']['archived']);
+        $this->assertTrue($byChangeId['gone']['archived']);
+        $this->assertSame($keep, $byChangeId['keep']['id']);
+        $this->assertSame($orphan, $byChangeId['gone']['id']);
     }
 
     private function threadsPath(): string

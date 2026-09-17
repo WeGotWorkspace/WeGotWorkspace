@@ -1,5 +1,5 @@
 import type { DocsCommentThread } from "./docs-comments-types";
-import type { DocsSuggestionThread } from "./docs-suggestions-types";
+import type { DocsSuggestionThread, DocsSuggestionWithThread } from "./docs-suggestions-types";
 import type { DocsFileThread } from "./docs-threads-types";
 
 export function docsFileThreadToComment(thread: DocsFileThread): DocsCommentThread {
@@ -22,6 +22,28 @@ export function docsFileThreadToSuggestion(thread: DocsFileThread): DocsSuggesti
     changeId: thread.changeId ?? thread.id,
     messages: thread.messages.filter((message) => message.body.trim() !== ""),
     reactions: thread.reactions.length > 0 ? thread.reactions : undefined,
+  };
+}
+
+/** Journal-only card for Resolved — no live track-change group required. */
+export function docsFileThreadToArchivedSuggestion(
+  thread: DocsFileThread,
+): DocsSuggestionWithThread {
+  const messages = thread.messages.filter((message) => message.body.trim() !== "");
+  const from = thread.anchorFrom ?? Number.MAX_SAFE_INTEGER;
+  return {
+    changeId: thread.changeId ?? thread.id,
+    authorName: thread.createdBy.name,
+    authorColor: "",
+    timestamp: thread.createdAt,
+    from,
+    to: thread.anchorTo ?? from,
+    anchorText: thread.anchorText,
+    summary: thread.anchorText,
+    parts: [],
+    messages,
+    reactions: thread.reactions.length > 0 ? thread.reactions : undefined,
+    archived: true,
   };
 }
 
@@ -70,15 +92,21 @@ export function commentThreadToDocsFile(thread: DocsCommentThread, path: string)
 export function splitDocsFileThreads(threads: DocsFileThread[]): {
   comments: DocsCommentThread[];
   suggestions: DocsSuggestionThread[];
+  archivedSuggestions: DocsSuggestionWithThread[];
 } {
   const comments: DocsCommentThread[] = [];
   const suggestions: DocsSuggestionThread[] = [];
+  const archivedSuggestions: DocsSuggestionWithThread[] = [];
   for (const thread of threads) {
     if (thread.kind === "suggestion") {
-      if (!thread.archived) suggestions.push(docsFileThreadToSuggestion(thread));
+      if (thread.archived) {
+        archivedSuggestions.push(docsFileThreadToArchivedSuggestion(thread));
+      } else {
+        suggestions.push(docsFileThreadToSuggestion(thread));
+      }
       continue;
     }
     comments.push(docsFileThreadToComment(thread));
   }
-  return { comments, suggestions };
+  return { comments, suggestions, archivedSuggestions };
 }

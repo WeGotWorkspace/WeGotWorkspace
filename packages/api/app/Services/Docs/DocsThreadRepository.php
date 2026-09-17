@@ -208,7 +208,7 @@ final class DocsThreadRepository
 
     /**
      * @param  array{username: string, role: string}  $principal
-     * @param  array{resolved?: bool, archived?: bool, changeId?: string}  $payload
+     * @param  array{resolved?: bool, archived?: bool, changeId?: string, anchorText?: string, anchorFrom?: int, anchorTo?: int}  $payload
      * @return array<string, mixed>
      */
     public function patch(array $principal, string $path, string $threadId, array $payload): array
@@ -240,6 +240,17 @@ final class DocsThreadRepository
             }
             $ics = $this->converter->applyArchived($ics, (bool) $payload['archived']);
         }
+        if (
+            array_key_exists('anchorText', $payload)
+            || array_key_exists('anchorFrom', $payload)
+            || array_key_exists('anchorTo', $payload)
+        ) {
+            $ics = $this->converter->applyAnchors($ics, [
+                'anchorText' => is_string($payload['anchorText'] ?? null) ? $payload['anchorText'] : null,
+                'anchorFrom' => is_int($payload['anchorFrom'] ?? null) ? $payload['anchorFrom'] : null,
+                'anchorTo' => is_int($payload['anchorTo'] ?? null) ? $payload['anchorTo'] : null,
+            ]);
+        }
         $this->calBackend()->updateCalendarObject(
             [(int) $instance->calendarid, (int) $instance->id],
             (string) $object->uri,
@@ -263,7 +274,7 @@ final class DocsThreadRepository
             return;
         }
         $active = array_fill_keys($activeChangeIds, true);
-        foreach ($this->assembleThreads($instance, $path, includeArchivedSuggestions: true) as $thread) {
+        foreach ($this->assembleThreads($instance, $path) as $thread) {
             if (($thread['kind'] ?? '') !== DocsThreadJournalConverter::KIND_SUGGESTION) {
                 continue;
             }
@@ -463,7 +474,7 @@ final class DocsThreadRepository
     /**
      * @return list<array<string, mixed>>
      */
-    private function assembleThreads(CalendarInstance $instance, string $path, bool $includeArchivedSuggestions = false): array
+    private function assembleThreads(CalendarInstance $instance, string $path): array
     {
         $uids = DocsThreadIndex::query()
             ->where('calendarid', (int) $instance->calendarid)
@@ -504,9 +515,6 @@ final class DocsThreadRepository
         foreach ($roots as $root) {
             $kind = (string) ($root['kind'] ?? DocsThreadJournalConverter::KIND_COMMENT);
             $archived = (bool) ($root['archived'] ?? false);
-            if ($kind === DocsThreadJournalConverter::KIND_SUGGESTION && $archived && ! $includeArchivedSuggestions) {
-                continue;
-            }
             $rootId = (string) $root['id'];
             $children = $repliesByParent[$rootId] ?? [];
             usort($children, static function (array $a, array $b): int {
@@ -560,7 +568,7 @@ final class DocsThreadRepository
      */
     private function presentThread(CalendarInstance $instance, string $path, string $rootUid): array
     {
-        foreach ($this->assembleThreads($instance, $path, includeArchivedSuggestions: true) as $thread) {
+        foreach ($this->assembleThreads($instance, $path) as $thread) {
             if (($thread['id'] ?? '') === $rootUid) {
                 return $thread;
             }

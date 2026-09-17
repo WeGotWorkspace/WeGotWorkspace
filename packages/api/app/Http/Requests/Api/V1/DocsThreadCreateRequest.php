@@ -18,7 +18,7 @@ final class DocsThreadCreateRequest extends FormRequest
         return [
             'id' => ['required', 'string', 'max:26'],
             'kind' => ['required', 'string', 'in:comment,suggestion'],
-            'body' => ['required', 'string'],
+            'body' => ['present', 'nullable', 'string'],
             'changeId' => ['sometimes', 'nullable', 'string', 'max:128'],
             'anchorText' => ['sometimes', 'nullable', 'string'],
             'anchorFrom' => ['sometimes', 'nullable', 'integer'],

@@ -25,14 +25,21 @@ function cloneThread(thread: DocsFileThread): DocsFileThread {
 }
 
 function upsert(list: DocsFileThread[], thread: DocsFileThread): DocsFileThread[] {
-  const next = list.filter((item) => item.id !== thread.id);
+  const next = list.filter((item) => {
+    if (item.id === thread.id) return false;
+    if (
+      thread.kind === "suggestion" &&
+      thread.changeId &&
+      item.kind === "suggestion" &&
+      item.changeId === thread.changeId
+    ) {
+      return false;
+    }
+    return true;
+  });
   next.push(cloneThread(thread));
   next.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
   return next;
-}
-
-function visibleThreads(list: DocsFileThread[]): DocsFileThread[] {
-  return list.filter((thread) => !(thread.kind === "suggestion" && thread.archived));
 }
 
 export function createDocsThreadsMemory(
@@ -58,7 +65,7 @@ export function createDocsThreadsMemory(
     seedSuggestion(thread, seedPath = path) {
       threads = upsert(threads, suggestionThreadToDocsFile(thread, seedPath));
     },
-    snapshot: () => visibleThreads(threads).map(cloneThread),
+    snapshot: () => threads.map(cloneThread),
     get: (id) => {
       const thread = threads.find((item) => item.id === id);
       return thread ? cloneThread(thread) : undefined;
@@ -70,7 +77,7 @@ export function createDocsThreadsMemory(
       currentActor = next;
     },
     async list() {
-      return visibleThreads(threads).map(cloneThread);
+      return threads.map(cloneThread);
     },
     async create(_path, input: DocsFileThreadCreate) {
       const existing = threads.find((item) => item.id === input.id);
@@ -143,28 +150,13 @@ export function createDocsThreadsMemory(
             threads.find((item) => item.id === threadId))
           : threads.find((item) => item.id === threadId);
       if (!match) {
-        if (patch.archived) {
-          return {
-            id: threadId,
-            kind: "suggestion",
-            path,
-            changeId: patch.changeId ?? null,
-            anchorText: "",
-            anchorFrom: null,
-            anchorTo: null,
-            anchorOccurrence: null,
-            createdAt: new Date().toISOString(),
-            createdBy: { ...currentActor },
-            resolved: false,
-            archived: true,
-            messages: [],
-            reactions: [],
-          };
-        }
         throw new Error(`Thread ${threadId} not found`);
       }
       if (patch.resolved != null) match.resolved = patch.resolved;
       if (patch.archived != null) match.archived = patch.archived;
+      if (patch.anchorText != null) match.anchorText = patch.anchorText;
+      if (patch.anchorFrom != null) match.anchorFrom = patch.anchorFrom;
+      if (patch.anchorTo != null) match.anchorTo = patch.anchorTo;
       threads = upsert(threads, match);
       return cloneThread(match);
     },

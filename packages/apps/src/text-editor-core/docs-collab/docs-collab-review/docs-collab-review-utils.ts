@@ -26,7 +26,62 @@ export function isPersistedResolvedThread(thread: DocsCommentThread): boolean {
   return thread.resolved && thread.messages.length > 0;
 }
 
-/** Open = unresolved comments (+ draft) and pending suggestions; Resolved = resolved comments only. */
+export function isOpenReviewSuggestion(suggestion: DocsSuggestionWithThread): boolean {
+  return !suggestion.archived;
+}
+
+export function isResolvedReviewSuggestion(suggestion: DocsSuggestionWithThread): boolean {
+  return Boolean(suggestion.archived);
+}
+
+/** Open-tab size for the Review header badge — stable across Open / Resolved. */
+export function countOpenReviewItems(
+  threads: DocsCommentThread[],
+  suggestions: DocsSuggestionWithThread[],
+): number {
+  return (
+    threads.filter(isOpenReviewThread).length + suggestions.filter(isOpenReviewSuggestion).length
+  );
+}
+
+function toReviewItems(
+  threads: DocsCommentThread[],
+  suggestions: DocsSuggestionWithThread[],
+): DocsCollabReviewItem[] {
+  return [
+    ...threads.map((thread): DocsCollabReviewCommentItem => ({ type: "comment", thread })),
+    ...suggestions.map(
+      (suggestion): DocsCollabReviewSuggestionItem => ({ type: "suggestion", suggestion }),
+    ),
+  ];
+}
+
+function reviewItemRecency(item: DocsCollabReviewItem): string {
+  if (item.type === "comment") {
+    const last = item.thread.messages.at(-1);
+    return last?.createdAt ?? item.thread.createdAt;
+  }
+  const last = item.suggestion.messages.at(-1);
+  return last?.createdAt ?? item.suggestion.timestamp;
+}
+
+function reviewItemId(item: DocsCollabReviewItem): string {
+  return item.type === "comment" ? item.thread.id : item.suggestion.changeId;
+}
+
+/** History inbox: most recently resolved/archived first (last message time). */
+export function sortReviewItemsByRecency(
+  threads: DocsCommentThread[],
+  suggestions: DocsSuggestionWithThread[],
+): DocsCollabReviewItem[] {
+  return toReviewItems(threads, suggestions).sort((left, right) => {
+    const cmp = reviewItemRecency(right).localeCompare(reviewItemRecency(left));
+    if (cmp !== 0) return cmp;
+    return reviewItemId(left).localeCompare(reviewItemId(right));
+  });
+}
+
+/** Open = unresolved comments (+ draft) and pending suggestions; Resolved = resolved comments and archived suggestions. */
 export function filterReviewItemsByTab(
   tab: DocsCollabReviewInboxTab,
   threads: DocsCommentThread[],
@@ -34,10 +89,17 @@ export function filterReviewItemsByTab(
   editor: Editor | null,
 ): DocsCollabReviewItem[] {
   if (tab === "resolved") {
-    return sortReviewItemsByDocumentOrder(editor, threads.filter(isPersistedResolvedThread), []);
+    return sortReviewItemsByRecency(
+      threads.filter(isPersistedResolvedThread),
+      suggestions.filter(isResolvedReviewSuggestion),
+    );
   }
 
-  return sortReviewItemsByDocumentOrder(editor, threads.filter(isOpenReviewThread), suggestions);
+  return sortReviewItemsByDocumentOrder(
+    editor,
+    threads.filter(isOpenReviewThread),
+    suggestions.filter(isOpenReviewSuggestion),
+  );
 }
 
 function resolveReviewItemDocumentPosition(
@@ -77,12 +139,7 @@ export function sortReviewItemsByDocumentOrder(
   threads: DocsCommentThread[],
   suggestions: DocsSuggestionWithThread[],
 ): DocsCollabReviewItem[] {
-  const items: DocsCollabReviewItem[] = [
-    ...threads.map((thread): DocsCollabReviewCommentItem => ({ type: "comment", thread })),
-    ...suggestions.map(
-      (suggestion): DocsCollabReviewSuggestionItem => ({ type: "suggestion", suggestion }),
-    ),
-  ];
-
-  return items.sort((left, right) => compareReviewItems(editor, left, right));
+  return toReviewItems(threads, suggestions).sort((left, right) =>
+    compareReviewItems(editor, left, right),
+  );
 }

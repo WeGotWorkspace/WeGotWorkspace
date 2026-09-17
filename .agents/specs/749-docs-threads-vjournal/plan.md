@@ -47,7 +47,7 @@ See [spec.md](./spec.md).
 - **id:** `task2-archive`
 - **Skill:** workspace + api
 - **Inputs:** Chunk A `X-WGW-ARCHIVED` + PATCH; Chunk B REST client
-- **Done when:** accept/reject still uses TipTap commands; matching suggestion journal is archived; Open/Resolved UX unchanged; orphan prune archives
+- **Done when:** accept/reject still uses TipTap commands; matching suggestion journal is archived; Open loses the pending suggestion; Resolved shows archived suggestion discussion; orphan prune archives
 - **Verify with:** API feature test + Vitest on accept/reject / prune
 - **Parallel with:** none
 

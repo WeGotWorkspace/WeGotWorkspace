@@ -78,7 +78,8 @@ export const docsLabels = {
   reviewCloseSidebar: "Close review panel",
   reviewEmpty:
     "No comments or suggestions yet. Select text to comment, or switch to Suggest mode to track edits.",
-  reviewEmptyResolved: "No resolved comments yet.",
+  reviewEmptyResolved: "No resolved comments or suggestions yet.",
+  suggestionsArchivedEmpty: "Resolved suggestion",
   reviewCountOne: "1 item",
   reviewCountMany: (count: number) => `${count} items`,
   reviewToggleShow: "Show review",

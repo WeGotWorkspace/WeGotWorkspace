@@ -43,7 +43,7 @@ Replace the Yjs `comments` / `suggestionThreads` maps as the source of truth wit
 
 - Comment-grant sharee (`mayComment`, not `mayEditContent`) can POST; view-only gets 403.
 - Suggestion roots carry `X-WGW-CHANGE-ID`; comments do not.
-- `X-WGW-ARCHIVED` is not `STATUS:CANCELLED` (tombstone). Archived suggestion threads are omitted from GET list; resolved comments remain for the Resolved tab.
+- `X-WGW-ARCHIVED` is not `STATUS:CANCELLED` (tombstone). GET list includes archived suggestion threads so the client can show them on Resolved; they stay out of Open. Resolved comments remain on the Resolved tab.
 - ULID client ids: idempotent create like chat.
 - Group-owned Docs (`/groups/{slug}/…`) use the group principal’s pool.
 - Restart/reload lists threads from VJOURNAL the same way chat messages survive.

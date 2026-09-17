@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { splitDocsFileThreads } from "./docs-threads-assemble";
 import type { DocsCommentThread } from "./docs-comments-types";
-import type { DocsSuggestionThread } from "./docs-suggestions-types";
+import type { DocsSuggestionThread, DocsSuggestionWithThread } from "./docs-suggestions-types";
 import {
   isDocsThreadsSnapshotClient,
   type DocsFileThread,
@@ -14,6 +14,7 @@ export type DocsThreadsSource = {
   fileThreads: DocsFileThread[];
   comments: DocsCommentThread[];
   suggestions: DocsSuggestionThread[];
+  archivedSuggestions: DocsSuggestionWithThread[];
   upsert: (thread: DocsFileThread) => void;
   remove: (threadId: string) => void;
   reload: () => Promise<void>;
@@ -27,8 +28,18 @@ function sortThreads(threads: DocsFileThread[]): DocsFileThread[] {
 }
 
 function upsertThread(list: DocsFileThread[], thread: DocsFileThread): DocsFileThread[] {
-  const next = list.filter((item) => item.id !== thread.id);
-  if (thread.kind === "suggestion" && thread.archived) return sortThreads(next);
+  const next = list.filter((item) => {
+    if (item.id === thread.id) return false;
+    if (
+      thread.kind === "suggestion" &&
+      thread.changeId &&
+      item.kind === "suggestion" &&
+      item.changeId === thread.changeId
+    ) {
+      return false;
+    }
+    return true;
+  });
   next.push(thread);
   return sortThreads(next);
 }
@@ -109,10 +120,19 @@ export function useDocsThreadsSource({
       fileThreads,
       comments: split.comments,
       suggestions: split.suggestions,
+      archivedSuggestions: split.archivedSuggestions,
       upsert,
       remove,
       reload,
     }),
-    [fileThreads, reload, remove, split.comments, split.suggestions, upsert],
+    [
+      fileThreads,
+      reload,
+      remove,
+      split.archivedSuggestions,
+      split.comments,
+      split.suggestions,
+      upsert,
+    ],
   );
 }

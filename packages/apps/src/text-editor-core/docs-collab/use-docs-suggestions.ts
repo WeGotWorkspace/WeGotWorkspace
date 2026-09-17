@@ -27,6 +27,7 @@ export type UseDocsSuggestionsOptions = {
 
 export type UseDocsSuggestionsResult = {
   suggestions: DocsSuggestionWithThread[];
+  archivedSuggestions: DocsSuggestionWithThread[];
   activeChangeId: string | null;
   selectSuggestion: (changeId: string) => void;
   clearActiveSuggestion: () => void;
@@ -52,6 +53,24 @@ function mergeSuggestionWithThread(
     ...suggestion,
     messages: thread?.messages ?? [],
     reactions: thread?.reactions,
+  };
+}
+
+function mergeArchivedWithSnapshot(
+  archived: DocsSuggestionWithThread,
+  snapshot: DocsTrackChangeGroup | undefined,
+): DocsSuggestionWithThread {
+  if (!snapshot) return archived;
+  return {
+    ...archived,
+    authorName: archived.authorName || snapshot.authorName,
+    authorColor: archived.authorColor || snapshot.authorColor,
+    timestamp: archived.timestamp || snapshot.timestamp,
+    from: archived.from === Number.MAX_SAFE_INTEGER ? snapshot.from : archived.from,
+    to: archived.to === Number.MAX_SAFE_INTEGER ? snapshot.to : archived.to,
+    anchorText: archived.anchorText || snapshot.anchorText,
+    summary: archived.summary || snapshot.summary,
+    parts: archived.parts.length > 0 ? archived.parts : snapshot.parts,
   };
 }
 
@@ -87,6 +106,9 @@ export function useDocsSuggestions(
   const source = threadsSource ?? ownedSource;
 
   const [editorSuggestions, setEditorSuggestions] = useState<DocsTrackChangeGroup[]>([]);
+  const [archivedSnapshots, setArchivedSnapshots] = useState<Map<string, DocsTrackChangeGroup>>(
+    () => new Map(),
+  );
   const { activeChangeId, setActiveChangeId, clearActiveSuggestion } =
     useDocsSuggestionsActive(editor);
   const threads = source.suggestions;
@@ -112,6 +134,13 @@ export function useDocsSuggestions(
     () => editorSuggestions.map((suggestion) => mergeSuggestionWithThread(suggestion, threadMap)),
     [editorSuggestions, threadMap],
   );
+
+  const archivedSuggestions = useMemo(() => {
+    const liveIds = new Set(editorSuggestions.map((item) => item.changeId));
+    return source.archivedSuggestions
+      .filter((item) => !liveIds.has(item.changeId))
+      .map((item) => mergeArchivedWithSnapshot(item, archivedSnapshots.get(item.changeId)));
+  }, [archivedSnapshots, editorSuggestions, source.archivedSuggestions]);
 
   useEffect(() => {
     if (!editor || !editorHasTrackChanges(editor)) {
@@ -172,28 +201,50 @@ export function useDocsSuggestions(
     [editor, setActiveChangeId],
   );
 
+  const rememberSnapshot = useCallback((changeId: string, snapshot?: DocsTrackChangeGroup) => {
+    if (!snapshot) return;
+    setArchivedSnapshots((prev) => {
+      const next = new Map(prev);
+      next.set(changeId, snapshot);
+      return next;
+    });
+  }, []);
+
+  const snapshotForChange = useCallback(
+    (changeId: string): DocsTrackChangeGroup | undefined => {
+      if (!editor || !editorHasTrackChanges(editor)) return undefined;
+      return getDocsTrackChangeGroups(editor).find((item) => item.changeId === changeId);
+    },
+    [editor],
+  );
+
   const acceptSuggestion = useCallback(
     (changeId: string) => {
       if (!editor) return;
+      const snapshot = snapshotForChange(changeId);
+      rememberSnapshot(changeId, snapshot);
       editor.commands.acceptChange(changeId);
-      archiveSuggestion(changeId);
+      archiveSuggestion(changeId, snapshot);
       setActiveChangeId((current) => (current === changeId ? null : current));
     },
-    [archiveSuggestion, editor, setActiveChangeId],
+    [archiveSuggestion, editor, rememberSnapshot, setActiveChangeId, snapshotForChange],
   );
 
   const rejectSuggestion = useCallback(
     (changeId: string) => {
       if (!editor) return;
+      const snapshot = snapshotForChange(changeId);
+      rememberSnapshot(changeId, snapshot);
       editor.commands.rejectChange(changeId);
-      archiveSuggestion(changeId);
+      archiveSuggestion(changeId, snapshot);
       setActiveChangeId((current) => (current === changeId ? null : current));
     },
-    [archiveSuggestion, editor, setActiveChangeId],
+    [archiveSuggestion, editor, rememberSnapshot, setActiveChangeId, snapshotForChange],
   );
 
   return {
     suggestions,
+    archivedSuggestions,
     activeChangeId,
     selectSuggestion,
     clearActiveSuggestion,

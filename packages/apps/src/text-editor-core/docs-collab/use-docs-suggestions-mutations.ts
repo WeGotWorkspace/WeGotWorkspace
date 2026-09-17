@@ -1,8 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { createCommentMessage } from "./docs-suggestions/docs-suggestions-map-writes";
 import type { DocsCommentAuthor } from "./docs-comments-types";
-import type { DocsFileThread } from "./docs-threads-types";
-import type { DocsThreadsClient } from "./docs-threads-types";
+import type { DocsFileThread, DocsFileThreadCreate, DocsThreadsClient } from "./docs-threads-types";
 import type { DocsThreadsSource } from "./use-docs-threads-source";
 import { createDocsCommentId } from "./docs-comments-map";
 
@@ -13,13 +12,55 @@ type UseDocsSuggestionsMutationsOptions = {
   currentUser: DocsCommentAuthor;
 };
 
+export type DocsSuggestionArchiveSnapshot = {
+  summary: string;
+  anchorText: string;
+  from: number;
+  to: number;
+};
+
+function suggestionJournal(
+  fileThreads: DocsFileThread[],
+  changeId: string,
+): DocsFileThread | undefined {
+  return fileThreads.find((thread) => thread.kind === "suggestion" && thread.changeId === changeId);
+}
+
 function suggestionRoot(
   fileThreads: DocsFileThread[],
   changeId: string,
 ): DocsFileThread | undefined {
-  return fileThreads.find(
-    (thread) => thread.kind === "suggestion" && thread.changeId === changeId && !thread.archived,
-  );
+  const match = suggestionJournal(fileThreads, changeId);
+  return match && !match.archived ? match : undefined;
+}
+
+function archiveCreateInput(
+  changeId: string,
+  snapshot: DocsSuggestionArchiveSnapshot | undefined,
+): DocsFileThreadCreate {
+  const input: DocsFileThreadCreate = {
+    id: createDocsCommentId(),
+    kind: "suggestion",
+    changeId,
+    body: "",
+    anchorText: snapshot?.summary || snapshot?.anchorText || "",
+  };
+  if (typeof snapshot?.from === "number") input.anchorFrom = snapshot.from;
+  if (typeof snapshot?.to === "number") input.anchorTo = snapshot.to;
+  return input;
+}
+
+function applySnapshotAnchors(
+  thread: DocsFileThread,
+  snapshot: DocsSuggestionArchiveSnapshot | undefined,
+): DocsFileThread {
+  if (!snapshot) return thread;
+  return {
+    ...thread,
+    anchorText: thread.anchorText || snapshot.summary || snapshot.anchorText,
+    anchorFrom: thread.anchorFrom ?? snapshot.from,
+    anchorTo: thread.anchorTo ?? snapshot.to,
+  };
 }
 
 export function useDocsSuggestionsMutations({
@@ -28,6 +69,8 @@ export function useDocsSuggestionsMutations({
   source,
   currentUser,
 }: UseDocsSuggestionsMutationsOptions) {
+  const inflight = useRef(new Set<string>());
+
   const addReply = useCallback(
     (changeId: string, body: string) => {
       if (!client || !path) return Promise.resolve();
@@ -76,14 +119,34 @@ export function useDocsSuggestionsMutations({
   );
 
   const archiveSuggestion = useCallback(
-    (changeId: string) => {
+    (changeId: string, snapshot?: DocsSuggestionArchiveSnapshot) => {
       if (!client || !path) return Promise.resolve();
-      const existing = suggestionRoot(source.fileThreads, changeId);
-      return client
-        .patch(path, existing?.id ?? changeId, { archived: true, changeId })
-        .then((thread) => source.upsert(thread))
+      const existing = suggestionJournal(source.fileThreads, changeId);
+      if (existing?.archived) return Promise.resolve();
+      if (inflight.current.has(changeId)) return Promise.resolve();
+      inflight.current.add(changeId);
+
+      return (async () => {
+        const journal =
+          existing ?? (await client.create(path, archiveCreateInput(changeId, snapshot)));
+        const thread = await client.patch(path, journal.id, {
+          archived: true,
+          changeId,
+          ...(snapshot
+            ? {
+                anchorText: snapshot.summary || snapshot.anchorText || journal.anchorText,
+                anchorFrom: snapshot.from,
+                anchorTo: snapshot.to,
+              }
+            : {}),
+        });
+        source.upsert(applySnapshotAnchors(thread, snapshot));
+      })()
         .catch(() => {
-          // No discussion sidecar — mark accept/reject still applies.
+          // Accept/reject still applied the mark; journal persist is best-effort.
+        })
+        .finally(() => {
+          inflight.current.delete(changeId);
         });
     },
     [client, path, source],

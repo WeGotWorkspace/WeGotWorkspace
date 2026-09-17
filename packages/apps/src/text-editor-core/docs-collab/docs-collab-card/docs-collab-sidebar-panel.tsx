@@ -25,7 +25,7 @@ export type DocsCollabSidebarPanelProps<T extends string = string> = {
   ariaLabel: string;
   title: string;
   /** Numeric count shown in parentheses beside the title. */
-  count?: number;
+  itemCount?: number;
   /** Accessible label for the count (e.g. "3 open"). */
   countLabel?: string;
   closeLabel: string;
@@ -54,7 +54,7 @@ export function DocsCollabSidebarPanel<T extends string = string>({
   className,
   ariaLabel,
   title,
-  count,
+  itemCount,
   countLabel,
   closeLabel,
   onClose,
@@ -115,9 +115,13 @@ export function DocsCollabSidebarPanel<T extends string = string>({
           title={title}
           titleLeading={titleLeading}
           titleSuffix={
-            count != null ? (
-              <span className="view-header__title-count" aria-label={countLabel ?? String(count)}>
-                ({count})
+            itemCount != null ? (
+              <span
+                className="view-header__title-count"
+                aria-label={countLabel ?? `${itemCount} items`}
+                data-open-count={itemCount}
+              >
+                {`(${itemCount})`}
               </span>
             ) : null
           }

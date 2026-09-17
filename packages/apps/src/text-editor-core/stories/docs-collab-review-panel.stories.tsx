@@ -86,6 +86,23 @@ export const Resolved: Story = {
       tab="resolved"
       threads={[sampleThread, threadWithReplies, resolvedThread]}
       suggestions={[replaceSuggestion, insertSuggestion]}
+      archivedSuggestions={[
+        {
+          ...insertSuggestion,
+          changeId: "change-archived-1",
+          archived: true,
+          parts: [],
+          summary: insertSuggestion.summary,
+          messages: [
+            {
+              id: "change-archived-1-m",
+              body: "Looks good after QA.",
+              createdAt: "2026-06-02T10:00:00.000Z",
+              author: { id: "u-2", name: "Sam Lee" },
+            },
+          ],
+        },
+      ]}
       activeThreadId="thread-resolved"
       activeChangeId={null}
     />

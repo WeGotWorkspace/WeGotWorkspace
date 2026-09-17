@@ -200,6 +200,16 @@
       "changeId": {
         "type": "string",
         "description": "Alternate lookup for suggestion archive when the client keys by mark id."
+      },
+      "anchorText": {
+        "type": "string",
+        "description": "Suggestion snapshot summary or quoted text persisted when archiving."
+      },
+      "anchorFrom": {
+        "type": "integer"
+      },
+      "anchorTo": {
+        "type": "integer"
       }
     }
   },

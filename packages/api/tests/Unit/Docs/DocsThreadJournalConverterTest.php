@@ -106,6 +106,28 @@ final class DocsThreadJournalConverterTest extends TestCase
         $this->assertFalse($archived['resolved']);
     }
 
+    public function test_apply_anchors_round_trip(): void
+    {
+        $ics = $this->converter->toIcs([
+            'id' => self::ULID,
+            'body' => '',
+            'author' => 'alice',
+            'docPath' => '/users/bob/docs/plan.md',
+            'kind' => 'suggestion',
+            'changeId' => 'change-abc',
+        ], new DateTimeImmutable('now', new DateTimeZone('UTC')));
+
+        $updated = $this->converter->fromIcs($this->converter->applyAnchors($ics, [
+            'anchorText' => 'Insert hello',
+            'anchorFrom' => 12,
+            'anchorTo' => 17,
+        ]), self::ULID);
+
+        $this->assertSame('Insert hello', $updated['anchorText']);
+        $this->assertSame(12, $updated['anchorFrom']);
+        $this->assertSame(17, $updated['anchorTo']);
+    }
+
     public function test_reactions_round_trip_on_root(): void
     {
         $ics = $this->converter->toIcs([
