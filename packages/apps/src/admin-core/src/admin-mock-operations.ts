@@ -345,6 +345,7 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
           email: input.email ?? "",
           groups: input.groups ?? [],
           createdAt: new Date().toISOString(),
+          enabled: true,
         },
       ];
       return snapshot();
@@ -357,6 +358,7 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
               ...u,
               displayName: input.displayName ?? u.displayName,
               email: input.email ?? u.email,
+              enabled: input.enabled ?? u.enabled,
             }
           : u,
       );

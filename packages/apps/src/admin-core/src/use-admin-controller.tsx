@@ -21,6 +21,7 @@ export function useAdminController({
     setSidebarOpen: shell.setSidebarOpen,
     selectSection: shell.selectSection,
     users: shell.users,
+    currentUser: shell.currentUser,
     groups: shell.groups,
     plugins: shell.plugins,
     updates: shell.updates,

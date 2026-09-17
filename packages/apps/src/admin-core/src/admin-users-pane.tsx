@@ -1,9 +1,10 @@
-import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
+import { Ban, KeyRound, Pencil, Plus, Trash2, UserCheck } from "lucide-react";
 import { Card } from "@/card/src/card";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { isProtectedGroup } from "@/admin-core/src/admin-workspace-utils";
 import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
+import { cn } from "@/lib/utils";
 
 export type AdminUsersPaneProps = {
   controller: AdminControllerState;
@@ -39,36 +40,50 @@ export function AdminUsersPane({
         }
       >
         <ul className="admin-divided-list">
-          {controller.users.map((user) => (
-            <li key={user.id} className="admin-list-row">
-              <UserAvatar
-                displayName={user.displayName}
-                subtitle={user.username}
-                size="sm"
-                className="flex-1"
-              />
-              <div className="flex items-center gap-1 shrink-0">
-                <IconActionButton
-                  label={`Edit ${user.displayName}`}
-                  onClick={() => onEditUser(user.id)}
-                >
-                  <Pencil className="size-4" />
-                </IconActionButton>
-                <IconActionButton
-                  label={`Set password for ${user.displayName}`}
-                  onClick={() => onPasswordUser(user.id)}
-                >
-                  <KeyRound className="size-4" />
-                </IconActionButton>
-                <IconActionButton
-                  label={`Delete ${user.displayName}`}
-                  onClick={() => onDeleteUser(user.id)}
-                >
-                  <Trash2 className="size-4" />
-                </IconActionButton>
-              </div>
-            </li>
-          ))}
+          {controller.users.map((user) => {
+            const isSelf = user.username === controller.currentUser;
+            const enabled = user.enabled !== false;
+            return (
+              <li
+                key={user.id}
+                className={cn("admin-list-row", !enabled && "admin-list-row--disabled")}
+              >
+                <UserAvatar
+                  displayName={user.displayName}
+                  subtitle={enabled ? user.username : `${user.username} · Disabled`}
+                  size="sm"
+                  className="flex-1"
+                />
+                <div className="flex items-center gap-1 shrink-0">
+                  <IconActionButton
+                    label={`Edit ${user.displayName}`}
+                    onClick={() => onEditUser(user.id)}
+                  >
+                    <Pencil className="size-4" />
+                  </IconActionButton>
+                  <IconActionButton
+                    label={`Set password for ${user.displayName}`}
+                    onClick={() => onPasswordUser(user.id)}
+                  >
+                    <KeyRound className="size-4" />
+                  </IconActionButton>
+                  <IconActionButton
+                    label={enabled ? `Disable ${user.displayName}` : `Enable ${user.displayName}`}
+                    onClick={() => void controller.actions.setUserEnabled(user.id, !enabled)}
+                    disabled={isSelf && enabled}
+                  >
+                    {enabled ? <Ban className="size-4" /> : <UserCheck className="size-4" />}
+                  </IconActionButton>
+                  <IconActionButton
+                    label={`Delete ${user.displayName}`}
+                    onClick={() => onDeleteUser(user.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </IconActionButton>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </Card>
       <Card

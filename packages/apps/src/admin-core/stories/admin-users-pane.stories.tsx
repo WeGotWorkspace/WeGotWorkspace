@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { AdminUsersPane } from "@/admin-core/src/admin-users-pane";
@@ -9,7 +9,33 @@ import {
 import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
 
 function UsersPaneHarness() {
-  const controller = useAdminPaneStoryController();
+  const dataOverride = useMemo(
+    () => ({
+      currentUser: "alice",
+      users: [
+        {
+          id: "alice",
+          username: "alice",
+          email: "alice@example.test",
+          displayName: "Alice Example",
+          groups: ["principals/groups/administrators"],
+          createdAt: "",
+          enabled: true,
+        },
+        {
+          id: "bob",
+          username: "bob",
+          email: "bob@example.test",
+          displayName: "Bob Example",
+          groups: [],
+          createdAt: "",
+          enabled: true,
+        },
+      ],
+    }),
+    [],
+  );
+  const controller = useAdminPaneStoryController(dataOverride);
   const groupMemberCount = buildGroupMemberCountFromController(controller);
   const [lastAction, setLastAction] = useState<string | null>(null);
 
@@ -48,6 +74,13 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Alice Example")).toBeInTheDocument();
+    await expect(canvas.getByText("Bob Example")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Disable Alice Example" })).toBeDisabled();
+    await userEvent.click(canvas.getByRole("button", { name: "Disable Bob Example" }));
+    await expect(
+      await canvas.findByRole("button", { name: "Enable Bob Example" }),
+    ).toBeInTheDocument();
+    await expect(canvas.getByText("bob · Disabled")).toBeInTheDocument();
     await userEvent.click(canvas.getByRole("button", { name: "New group" }));
     await expect(canvas.getByRole("status")).toHaveTextContent("Action: new-group");
   },

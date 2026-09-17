@@ -388,6 +388,7 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
         email: input.email.trim(),
         groups: [],
         createdAt: new Date().toISOString(),
+        enabled: true,
       },
     ]);
     showSuccess("User created");
@@ -425,6 +426,34 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
       ),
     );
     showSuccess("User updated");
+    return true;
+  };
+
+  const setUserEnabled = async (userId: string, enabled: boolean) => {
+    const user = users.find((candidate) => candidate.id === userId);
+    if (!user) {
+      return false;
+    }
+    if (!enabled && user.username === shell.currentUser) {
+      showError("You cannot disable your own account.");
+      return false;
+    }
+    if (operations?.updateUser) {
+      try {
+        const next = await operations.updateUser(user.username, { enabled });
+        applyAdminData(next);
+        showSuccess(enabled ? "User enabled" : "User disabled");
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Could not update user";
+        showError(message);
+        return false;
+      }
+    }
+    setUsers((prev) =>
+      prev.map((candidate) => (candidate.id === userId ? { ...candidate, enabled } : candidate)),
+    );
+    showSuccess(enabled ? "User enabled" : "User disabled");
     return true;
   };
 
@@ -642,6 +671,7 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
       cancelSearchReindex,
       createUser,
       updateUser,
+      setUserEnabled,
       deleteUser,
       updateUserPassword,
       createGroup,

@@ -133,6 +133,7 @@ export function mapWgwAdminStateToUI(
       displayName: user.displayName,
       groups: user.groups,
       createdAt: user.createdAt,
+      enabled: user.enabled !== false,
     })),
     groups: state.groups.map((group) => ({
       id: group.id,

@@ -15,6 +15,7 @@ export function useAdminShell({ data, operations }: UseAdminShellArgs) {
   const [section, setSection] = useState<AdminSection>("users");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [users, setUsers] = useState(data.users);
+  const [currentUser, setCurrentUser] = useState(data.currentUser);
   const [groups, setGroups] = useState(data.groups);
   const [plugins, setPlugins] = useState(data.plugins);
   const [settingsForm, setSettingsForm] = useState<AdminSettingsFormState>(() =>
@@ -29,6 +30,7 @@ export function useAdminShell({ data, operations }: UseAdminShellArgs) {
 
   useEffect(() => {
     setUsers(data.users);
+    setCurrentUser(data.currentUser);
     setGroups(data.groups);
     setPlugins(data.plugins);
     setUpdates(data.updates);
@@ -39,6 +41,7 @@ export function useAdminShell({ data, operations }: UseAdminShellArgs) {
 
   const applyAdminData = (next: AdminWorkspaceProps["data"]) => {
     setUsers(next.users);
+    setCurrentUser(next.currentUser);
     setGroups(next.groups);
     setPlugins(next.plugins);
     setSettingsForm(buildAdminSettingsFormState(next));
@@ -165,6 +168,7 @@ export function useAdminShell({ data, operations }: UseAdminShellArgs) {
     selectSection,
     users,
     setUsers,
+    currentUser,
     groups,
     setGroups,
     plugins,
