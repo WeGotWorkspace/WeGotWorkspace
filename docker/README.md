@@ -10,7 +10,7 @@ Common on cPanel / Plesk / generic shared Apache:
 
 `rewrite`, `headers`, `env`, `mime`, `dir`, `alias`, `negotiation`, `setenvif`, `deflate`, `filter`, `authz_core`, `authz_host`, `auth_basic`, `ssl`
 
-`.htaccess` in the install root uses `mod_rewrite` and `mod_mime` (same as production).
+PHP extensions include `gmp` and `bcmath` (Web Push VAPID). `.htaccess` in the install root uses `mod_rewrite` and `mod_mime` (same as production).
 
 ## Quick start (HTTP)
 

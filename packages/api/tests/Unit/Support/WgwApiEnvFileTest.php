@@ -55,5 +55,23 @@ ENV);
 
         $this->assertFalse(WgwApiEnvFile::hasRealDatabaseConfig($dir.'/.env'));
         $this->assertTrue(WgwApiEnvFile::hasRealDatabaseConfig($dir.'/.env.mysql'));
+        $this->assertTrue(WgwApiEnvFile::hasDatabaseConfigKeys($dir.'/.env'));
+        $this->assertTrue(WgwApiEnvFile::hasDatabaseConfigKeys($dir.'/.env.mysql'));
+    }
+
+    public function test_strip_invalid_lines_drops_bare_emails_and_keeps_assignments(): void
+    {
+        $content = <<<'ENV'
+APP_KEY=base64:abc
+# WGW_VAPID_SUBJECT=mailto:noreply@localhost
+reply@example.com
+WGW_DB_CONNECTION=sqlite
+
+ENV;
+
+        $this->assertSame(
+            "APP_KEY=base64:abc\n# WGW_VAPID_SUBJECT=mailto:noreply@localhost\nWGW_DB_CONNECTION=sqlite\n",
+            WgwApiEnvFile::stripInvalidLines($content),
+        );
     }
 }

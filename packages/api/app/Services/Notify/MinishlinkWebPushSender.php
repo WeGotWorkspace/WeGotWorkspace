@@ -10,6 +10,11 @@ use Minishlink\WebPush\WebPush;
 
 final class MinishlinkWebPushSender implements WebPushSender
 {
+    public static function isIgnorableCalculatorWarning(string $message): bool
+    {
+        return str_contains($message, 'GMP or BCMath');
+    }
+
     /**
      * @param  array{subject: string, publicKey: string, privateKey: string}  $vapid
      */
@@ -20,6 +25,17 @@ final class MinishlinkWebPushSender implements WebPushSender
 
             return 0;
         }
+
+        $previous = set_error_handler(function (int $severity, string $message, string $file, int $line) use (&$previous): bool {
+            if (self::isIgnorableCalculatorWarning($message)) {
+                return true;
+            }
+            if (is_callable($previous)) {
+                return (bool) $previous($severity, $message, $file, $line);
+            }
+
+            return false;
+        });
 
         try {
             $webPush = new WebPush([
@@ -49,6 +65,8 @@ final class MinishlinkWebPushSender implements WebPushSender
             ]);
 
             return 0;
+        } finally {
+            restore_error_handler();
         }
     }
 }

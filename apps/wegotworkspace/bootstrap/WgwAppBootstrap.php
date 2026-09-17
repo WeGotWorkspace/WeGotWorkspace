@@ -149,6 +149,10 @@ final class WgwAppBootstrap
 
     private static function migrateLegacyConfigIfNeeded(string $appRoot, string $apiPackageRoot): void
     {
+        if (! is_file(rtrim(str_replace('\\', '/', $appRoot), '/').'/wgw-config.php')) {
+            return;
+        }
+
         \App\Services\Installer\WgwConfigMigrator::migrateAtPaths($appRoot, $apiPackageRoot, false);
     }
 

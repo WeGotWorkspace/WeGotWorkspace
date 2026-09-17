@@ -60,7 +60,7 @@ return [
          * DAV access (see {@see ChatHiddenCalendarBackend}).
          * Chat collections are API-only surfaces; notes stay DAV-visible by design.
          */
-        'dav_hidden_prefixes' => ['chat-', 'dm-'],
+        'dav_hidden_prefixes' => ['chat-', 'dm-', 'docs-threads'],
     ],
 
     'jwt' => [
@@ -79,7 +79,7 @@ return [
     ],
 
     'vapid' => [
-        'subject' => env('WGW_VAPID_SUBJECT', 'mailto:noreply@localhost'),
+        'subject' => env('WGW_VAPID_SUBJECT', 'mailto:noreply@example.com'),
         'public_key' => env('WGW_VAPID_PUBLIC_KEY'),
         'private_key' => env('WGW_VAPID_PRIVATE_KEY'),
     ],

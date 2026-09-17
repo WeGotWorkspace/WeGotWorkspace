@@ -18,7 +18,7 @@ pnpm dev
 
 | Service | URL | Notes |
 |---------|-----|-------|
-| Full app (HMR) | http://127.0.0.1:5173 | Vite dev server; proxies `/api/v1` → `:9080` |
+| Full app (HMR) | http://127.0.0.1:5173 | Vite dev server; proxies `/api/v1` → `:9080`. Registers the injectManifest service worker on localhost so Web Push can arrive. |
 | Storybook | http://127.0.0.1:6006 | Component catalog; same API proxy |
 | API (host PHP) | http://127.0.0.1:9080 | Health: `/api/v1/health` |
 
@@ -67,7 +67,7 @@ JWT keys live in `packages/api/storage/app/jwt/` (gitignored) when using `genera
 pnpm preview
 ```
 
-Builds apps (`vite build`), starts host PHP API on `:9080`, and serves the bundle via `vite preview` on **http://127.0.0.1:4173** with the same `/api/v1` proxy. Use this to exercise the PWA/service worker and offline contacts against a host API.
+Builds apps (`vite build`), starts host PHP API on `:9080`, and serves the bundle via `vite preview` on **http://127.0.0.1:4173** with the same `/api/v1` proxy. Use this to exercise the **production** PWA precache and offline contacts against a host API. Web Push on `pnpm dev` (http://127.0.0.1:5173) uses the same custom SW without the production navigation fallback, so Vite HMR is not served from Workbox.
 
 Manual split (same result as `pnpm preview` without turbo):
 

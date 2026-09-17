@@ -79,7 +79,7 @@ final class VapidPushService
     }
 
     /**
-     * Send VAPID for local deliveries that were not acked in the 30–60s window.
+     * Send VAPID for local deliveries that were not acked in the 20s local-ack window.
      */
     public function sweepDue(): int
     {
@@ -100,10 +100,13 @@ final class VapidPushService
 
                 continue;
             }
-            $this->sendNotification($notification);
+            $completed = $this->sendNotification($notification);
+            if ($completed === 0 && $this->principalHasSubscription((string) $notification->principal)) {
+                continue;
+            }
             $delivery->sent_at = $now;
             $delivery->save();
-            $sent++;
+            $sent += $completed;
         }
 
         NotificationDelivery::query()
@@ -117,20 +120,14 @@ final class VapidPushService
         return $sent;
     }
 
-    public function sendNotification(Notification $notification): void
+    public function sendNotification(Notification $notification): int
     {
-        $payload = json_encode([
-            'title' => (string) $notification->title,
-            'body' => (string) ($notification->body ?? ''),
-            'navigate' => (string) $notification->navigate,
-            'tag' => (string) ($notification->tag ?? $notification->id),
-            'renotify' => true,
-            'app_badge' => 1,
-        ], JSON_THROW_ON_ERROR);
+        $payload = json_encode($this->pushPayload($notification), JSON_THROW_ON_ERROR);
 
         $subs = PushSubscription::query()
             ->where('principal', (string) $notification->principal)
             ->get();
+        $completed = 0;
         foreach ($subs as $sub) {
             $status = $this->sender->send(
                 (string) $sub->endpoint,
@@ -141,8 +138,73 @@ final class VapidPushService
             );
             if ($status === 404 || $status === 410) {
                 $this->pruneEndpoint((string) $sub->endpoint);
+                $completed++;
+            } elseif ($status >= 200 && $status < 300) {
+                $completed++;
             }
         }
+
+        return $completed;
+    }
+
+    /**
+     * Flat fields for Chromium SW parsers; nested `notification` + `web_push: 8030`
+     * so Safari PWAs (Content-Type application/notification+json) do not fall
+     * back to a generic “Notification” toast with an empty body.
+     *
+     * @return array{
+     *     web_push: int,
+     *     notification: array{title: string, body: string, navigate: string, tag: string, renotify: bool, app_badge: int, silent: bool},
+     *     title: string,
+     *     body: string,
+     *     navigate: string,
+     *     tag: string,
+     *     renotify: bool,
+     *     app_badge: int
+     * }
+     */
+    public function pushPayload(Notification $notification): array
+    {
+        $copy = NotificationCopyFormatter::forNotification($notification);
+        $title = $copy['title'];
+        $body = (string) ($copy['body'] ?? '');
+        $path = (string) $notification->navigate;
+        if ($path === '' || ! str_starts_with($path, '/') || str_starts_with($path, '//')) {
+            $path = '/';
+        }
+        $tag = (string) ($notification->tag ?? $notification->id);
+        $absolute = $this->absoluteNavigate($path);
+
+        return [
+            'web_push' => 8030,
+            'notification' => [
+                'title' => $title,
+                'body' => $body,
+                'navigate' => $absolute,
+                'tag' => $tag,
+                'renotify' => true,
+                'app_badge' => 1,
+                'silent' => false,
+            ],
+            'title' => $title,
+            'body' => $body,
+            'navigate' => $path,
+            'tag' => $tag,
+            'renotify' => true,
+            'app_badge' => 1,
+        ];
+    }
+
+    public function absoluteNavigate(string $path): string
+    {
+        $origin = rtrim((string) (config('wgw.public_web_url') ?: config('app.url')), '/');
+
+        return $origin.$path;
+    }
+
+    private function principalHasSubscription(string $principal): bool
+    {
+        return PushSubscription::query()->where('principal', $principal)->exists();
     }
 
     /**
@@ -151,7 +213,7 @@ final class VapidPushService
     public function vapidAuth(): array
     {
         return [
-            'subject' => (string) config('wgw.vapid.subject', 'mailto:noreply@localhost'),
+            'subject' => (string) config('wgw.vapid.subject', 'mailto:noreply@example.com'),
             'publicKey' => $this->keys->publicKey(),
             'privateKey' => $this->keys->privateKey(),
         ];

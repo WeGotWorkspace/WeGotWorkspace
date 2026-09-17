@@ -64,6 +64,7 @@ Shared hosting and production Docker must run `php artisan schedule:run` every m
 Local Docker (`compose.dev.yml`) and the install compose files ship a `scheduler` sidecar with the same loop. Optional VAPID override in `packages/api/.env`:
 
 ```bash
+# Uncomment a KEY= line only — never paste a bare email.
 # WGW_VAPID_SUBJECT=mailto:noreply@example.com
 # WGW_VAPID_PUBLIC_KEY=
 # WGW_VAPID_PRIVATE_KEY=
