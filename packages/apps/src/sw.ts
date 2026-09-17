@@ -59,7 +59,10 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(openOrFocusNotificationTarget(href, path));
 });
 
-async function openOrFocusNotificationTarget(href: string, path: string): Promise<WindowClient | null> {
+async function openOrFocusNotificationTarget(
+  href: string,
+  path: string,
+): Promise<WindowClient | null> {
   const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   for (const client of clientList) {
     if (!("focus" in client)) continue;

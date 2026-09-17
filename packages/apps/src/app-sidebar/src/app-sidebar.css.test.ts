@@ -35,9 +35,7 @@ describe("app sidebar header notifications", () => {
   });
 
   it("pulls notification tray CSS into the sidebar graph so runtime index CSS owns the badge", () => {
-    expect(css).toMatch(
-      /@import\s+["'].*notification-inbox-tray\.css["']/,
-    );
+    expect(css).toMatch(/@import\s+["'].*notification-inbox-tray\.css["']/);
   });
 
   it("uses the sidebar right hairline for the bell IconButton stroke", () => {

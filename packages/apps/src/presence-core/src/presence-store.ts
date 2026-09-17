@@ -314,9 +314,7 @@ export class PresenceStore {
     if (!this.session || !this.joined || usernames.length === 0) return;
     const selfKey = this.selfUsername.trim().toLowerCase();
     const targets = new Set(
-      usernames
-        .map((name) => name.trim().toLowerCase())
-        .filter((name) => name && name !== selfKey),
+      usernames.map((name) => name.trim().toLowerCase()).filter((name) => name && name !== selfKey),
     );
     if (targets.size === 0) return;
     for (const peer of this.session.getRoomPeers()) {

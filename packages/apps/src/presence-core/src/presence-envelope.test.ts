@@ -164,9 +164,7 @@ describe("presence envelope", () => {
     expect(
       parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "notify-hint", tag: "" })),
     ).toBeNull();
-    expect(
-      parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "notify-hint", tag: 7 })),
-    ).toBeNull();
+    expect(parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "notify-hint", tag: 7 }))).toBeNull();
     expect(
       parsePresenceEnvelope(
         JSON.stringify({ v: 1, kind: "notify-hint", tag: "docs.shared", extra: true }),

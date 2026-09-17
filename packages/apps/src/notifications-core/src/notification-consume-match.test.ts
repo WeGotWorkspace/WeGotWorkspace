@@ -12,25 +12,17 @@ describe("normalizeNotificationNavigate", () => {
   });
 
   it("keeps channel and meeting public ids as-is aside from trailing slash", () => {
-    expect(normalizeNotificationNavigate("/meet/channels/01H455/")).toBe(
-      "/meet/channels/01H455",
-    );
+    expect(normalizeNotificationNavigate("/meet/channels/01H455/")).toBe("/meet/channels/01H455");
   });
 });
 
 describe("notificationMatchesNavigate", () => {
   it("matches the open Meet conversation only", () => {
+    expect(notificationMatchesNavigate({ navigate: "/meet/dms/alice" }, "/meet/dms/Alice")).toBe(
+      true,
+    );
     expect(
-      notificationMatchesNavigate(
-        { navigate: "/meet/dms/alice" },
-        "/meet/dms/Alice",
-      ),
-    ).toBe(true);
-    expect(
-      notificationMatchesNavigate(
-        { navigate: "/meet/channels/general" },
-        "/meet/channels/other",
-      ),
+      notificationMatchesNavigate({ navigate: "/meet/channels/general" }, "/meet/channels/other"),
     ).toBe(false);
     expect(notificationMatchesNavigate({ navigate: "/meet/dms/alice" }, "/meet")).toBe(false);
     expect(notificationMatchesNavigate({ navigate: "/meet/dms/alice" }, "/")).toBe(false);

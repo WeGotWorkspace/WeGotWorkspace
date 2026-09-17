@@ -66,12 +66,7 @@ export function useNotificationsMarkReadOnConsume({
     if (typeof document === "undefined") return;
     const onVisibility = () => {
       if (document.visibilityState !== "visible") return;
-      markIfVisible(
-        markRef.current,
-        navigateRef.current,
-        docsRef.current,
-        caughtUpRef.current,
-      );
+      markIfVisible(markRef.current, navigateRef.current, docsRef.current, caughtUpRef.current);
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
