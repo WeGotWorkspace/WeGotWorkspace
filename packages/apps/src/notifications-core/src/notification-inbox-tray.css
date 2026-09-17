@@ -2,13 +2,26 @@
 
 .notification-inbox-tray__trigger {
   @apply relative;
+  /*
+   * Unread badge follows the sidebar primary CTA (`Button` variant primary):
+   * `--notification-inbox-badge-*` when set, else `--button-primary-bg/fg`
+   * (Notes yellow+ink, Drive green+ink, Docs white+docs-sidebar, …). Glyph
+   * and button stroke stay parent-owned (sidebar icon chrome /
+   * `--app-sidebar-border-color`); do not pin them here.
+   */
 }
 
 .notification-inbox-tray__trigger::after {
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
-  background-color: var(--color-ink, #042a22);
-  color: var(--color-cream, #ffffff);
+  background-color: var(
+    --notification-inbox-badge-bg,
+    var(--button-primary-bg, var(--color-ink))
+  );
+  color: var(
+    --notification-inbox-badge-fg,
+    var(--button-primary-fg, var(--color-emerald))
+  );
 }
 
 .notification-inbox-tray__trigger:not([data-count])::after {
@@ -18,19 +31,25 @@
 .notification-inbox-tray__popover {
   --popover: var(--color-cream, #ffffff);
   --popover-foreground: var(--color-ink, #042a22);
-  @apply w-80 p-0;
+  @apply w-96 p-0;
 }
 
+/* Match list row / empty horizontal inset so title and icons share one edge. */
 .notification-inbox-tray__header {
-  @apply flex items-center justify-between gap-2 border-b px-3 py-2;
+  @apply border-b px-3 py-1.5;
 }
 
-.notification-inbox-tray__title {
-  @apply text-sm font-semibold;
+/* Compact ViewHeader chrome inside the tray popover. */
+.notification-inbox-tray__header .view-header {
+  @apply gap-2;
 }
 
-.notification-inbox-tray__enable {
-  @apply text-xs underline;
+.notification-inbox-tray__header .view-header__title {
+  @apply text-sm md:text-sm;
+}
+
+.notification-inbox-tray__header .view-header__actions {
+  @apply flex items-center gap-1;
 }
 
 .notification-inbox-tray__empty {
@@ -38,29 +57,81 @@
 }
 
 .notification-inbox-tray__list {
-  @apply max-h-80 overflow-y-auto p-0;
+  @apply max-h-96 list-none overflow-y-auto p-0;
 }
 
 .notification-inbox-tray__row {
-  @apply flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left;
+  @apply flex w-full items-start gap-3 px-3 py-3 text-left;
 }
 
-.notification-inbox-tray__row[data-unread="true"] {
-  @apply font-medium;
+.notification-inbox-tray__row:hover,
+.notification-inbox-tray__row:focus-visible {
+  @apply outline-none;
+  /* Same ink wash for hover and keyboard focus — no emerald outline ring. */
+  background-color: color-mix(in oklab, var(--color-ink) 4%, transparent);
+}
+
+.notification-inbox-tray__icon {
+  @apply shrink-0 pt-0.5;
+}
+
+/* Same corner radius as sidebar app-switch icons (`.workspace-app-icon--switch-trigger`). */
+.notification-inbox-tray__app-icon {
+  @apply size-9 overflow-hidden rounded-[6px];
+}
+
+.notification-inbox-tray__main {
+  @apply flex min-w-0 flex-1 flex-col gap-0.5;
+}
+
+.notification-inbox-tray__meta {
+  @apply flex items-baseline justify-between gap-2;
+}
+
+/*
+ * Domain is a clear product label (title case in TS), not muddy small-caps.
+ * Time stays quieter so domain/time read as chrome above the bold title.
+ */
+.notification-inbox-tray__domain {
+  @apply text-xs font-semibold tracking-normal text-foreground;
+}
+
+.notification-inbox-tray__time {
+  @apply shrink-0 text-xs tabular-nums text-muted-foreground;
 }
 
 .notification-inbox-tray__row-title {
-  @apply text-sm;
+  @apply block text-sm font-normal leading-snug text-foreground;
+}
+
+.notification-inbox-tray__row-title--plain {
+  @apply font-bold;
+}
+
+.notification-inbox-tray__title-actor {
+  @apply font-bold;
+}
+
+.notification-inbox-tray__title-rest {
+  @apply font-normal;
+}
+
+.notification-inbox-tray__row[data-unread="false"] .notification-inbox-tray__row-title {
+  @apply text-foreground/80;
+}
+
+.notification-inbox-tray__row[data-unread="false"] .notification-inbox-tray__row-title--plain {
+  @apply font-semibold;
+}
+
+.notification-inbox-tray__row[data-unread="false"] .notification-inbox-tray__title-actor {
+  @apply font-semibold;
+}
+
+.notification-inbox-tray__row[data-unread="false"] .notification-inbox-tray__domain {
+  @apply text-muted-foreground;
 }
 
 .notification-inbox-tray__row-body {
-  @apply text-xs text-muted-foreground;
-}
-
-.notification-inbox-host {
-  @apply pointer-events-none fixed right-16 top-3 z-40;
-}
-
-.notification-inbox-host > * {
-  @apply pointer-events-auto;
+  @apply line-clamp-2 text-sm leading-snug text-muted-foreground;
 }

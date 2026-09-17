@@ -60,7 +60,10 @@ export default defineConfig(({ mode }) => {
         // Keep updates passive to avoid cross-tab reload/remount loops when two docs tabs are open.
         registerType: "prompt",
         injectRegister: false,
-        devOptions: { enabled: false },
+        // Localhost is a secure origin: enable the injectManifest SW so VAPID
+        // push works on `pnpm dev`. type: "module" is required for the TS SW.
+        // navigateFallback stays unset so the dev precache is empty.
+        devOptions: { enabled: true, type: "module" },
         injectManifest: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,

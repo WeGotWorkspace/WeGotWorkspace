@@ -14,7 +14,7 @@
     "sync:runtime": "node scripts/sync-runtime-app-builds.mjs",
     "watch": "node scripts/watch-dev-app-builds.mjs",
     "watch:runtime": "node scripts/watch-runtime-app-builds.mjs",
-    "build:dev": "vite build --mode development",
+    "build:dev": "vite build --mode development && node scripts/sync-runtime-app-builds.mjs",
     "preview": "vite preview",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"scripts/**/*.ts\" \".storybook/**/*.ts\" vite.config.ts eslint.config.js",
     "format": "prettier --write .",
