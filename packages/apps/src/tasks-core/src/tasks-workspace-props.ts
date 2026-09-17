@@ -17,6 +17,8 @@ export type TasksWorkspaceProps = {
   onLogout?: () => void;
   className?: string;
   initialView?: string;
+  /** `?task=` deep-link — opens the edit dialog once the list is ready. */
+  initialTaskId?: string;
   onViewChange?: (view: string) => void;
 };
 

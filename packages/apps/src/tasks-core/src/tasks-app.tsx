@@ -32,7 +32,7 @@ type ConflictMergeContext = {
 };
 
 export function TasksApp({ apiSource }: TasksAppProps = {}) {
-  const { initialView, handleViewChange } = useTasksRouteSync();
+  const { initialView, initialTaskId, handleViewChange } = useTasksRouteSync();
   const tasksRef = useRef<Task[]>([]);
 
   const [conflictQueue, setConflictQueue] = useState<string[]>([]);
@@ -223,6 +223,7 @@ export function TasksApp({ apiSource }: TasksAppProps = {}) {
               bootstrapRevision={bootstrapRevision}
               onRefreshList={refreshList}
               initialView={initialView}
+              initialTaskId={initialTaskId}
               onViewChange={handleViewChange}
               onLogout={() => {
                 window.location.assign("/logout");

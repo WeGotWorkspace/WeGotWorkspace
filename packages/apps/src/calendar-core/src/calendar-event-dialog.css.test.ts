@@ -40,9 +40,8 @@ describe("calendar event dialog CSS ownership", () => {
 
   it("keeps a compact card below the mobile breakpoint (no full-bleed sheet)", () => {
     expect(css).toMatch(/@media \(max-width: 767px\)/);
-    expect(css).toMatch(
-      /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-dialog,\s*\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-details-popover--dialog/,
-    );
+    expect(css).toMatch(/\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-dialog \{/);
+    expect(css).not.toContain("calendar-event-details-popover--dialog");
     expect(css).toMatch(
       /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-dialog[\s\S]*height:\s*auto/,
     );

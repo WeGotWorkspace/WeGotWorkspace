@@ -170,6 +170,7 @@ export class CalendarListView extends CalendarViewBase {
           event.participationStatus === "tentative"
             ? event.participationStatus
             : ""}
+          .overlay=${event.overlayKind === "task" ? "task" : ""}
           style=${styleMap(colorStyles)}
         ></event-card>
       </li>

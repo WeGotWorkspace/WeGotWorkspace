@@ -19,4 +19,11 @@ export type CalendarEventEnvelope = {
   pendingOp?: CalendarEventPendingOperation;
   /** Current user's PARTSTAT when they are an attendee (not the organizer). */
   participationStatus?: CalendarEventParticipationStatus;
+  /**
+   * Render-only overlay (Tasks due dates). Never persisted through EventsAPI /
+   * Calendar JMAP. Overlay rows omit `calendarId` so calendar hide does not
+   * drop them.
+   */
+  overlayKind?: "task";
+  overlayTaskListId?: string;
 };

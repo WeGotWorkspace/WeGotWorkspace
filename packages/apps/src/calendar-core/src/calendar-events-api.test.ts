@@ -212,6 +212,52 @@ describe("createCalendarEventsApi", () => {
     expect(mapped.get("family")?.myRights).toMatchObject({ mayWriteAll: false, mayShare: false });
   });
 
+  it("ignores move, resize, and remove on task due overlay keys", () => {
+    const operations = operationsStub();
+    const overlayEvent: CalendarEvent = {
+      overlayKind: "task",
+      overlayTaskListId: "errands",
+      eventId: "task:milk",
+      data: {
+        summary: "Buy milk",
+        start: Temporal.PlainDateTime.from("2033-01-12T00:00:00"),
+        duration: Temporal.Duration.from("P1D"),
+        allDay: true,
+        color: "#6366f1",
+      },
+    };
+    const events = new Map<string, CalendarEvent>([
+      ["task:milk", overlayEvent],
+      ["standup", engineEvent("standup")],
+    ]);
+    const context = createCalendarEventsApi({
+      getEvents: () => events,
+      calendars,
+      operations,
+    });
+
+    const moved = context.move({
+      target: { key: "task:milk" },
+      scope: "single",
+      delta: Temporal.Duration.from("PT1H"),
+    });
+    expect(moved.changes).toEqual([]);
+    expect(operations.patchEvent).not.toHaveBeenCalled();
+
+    const resized = context.resizeEnd({
+      target: { key: "task:milk" },
+      scope: "single",
+      toEnd: Temporal.PlainDateTime.from("2033-01-12T01:00:00"),
+    });
+    expect(resized.changes).toEqual([]);
+    expect(operations.patchEvent).not.toHaveBeenCalled();
+
+    const removed = context.remove({ target: { key: "task:milk" }, scope: "single" });
+    expect(removed.changes).toEqual([]);
+    expect(operations.deleteEvent).not.toHaveBeenCalled();
+    expect(context.getEvents().has("task:milk")).toBe(true);
+  });
+
   it("rejects create, move, and resize on a read-only collection", async () => {
     const operations = operationsStub();
     const events = new Map<string, CalendarEvent>([

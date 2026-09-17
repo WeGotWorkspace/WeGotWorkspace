@@ -41,6 +41,10 @@ import {
   isCalendarEventException,
   isCalendarEventRecurring,
 } from "../types/calendarEventSemantics.js";
+import {
+  isTaskDueOverlayKey,
+  preserveTaskDueOverlayEvents,
+} from "@/calendar-core/src/calendar-task-due-overlay";
 
 type EventsMap = CalendarEventsMap;
 type EventEntry = [string, ApiCalendarEvent];
@@ -286,6 +290,14 @@ export abstract class CalendarViewBase extends BaseElement {
     accepted: boolean;
   }> {
     if (!this.#eventsAPI || !detail.envelope.eventId) return { handled: false, accepted: true };
+    if (
+      isTaskDueOverlayKey(detail.envelope.eventId) ||
+      isTaskDueOverlayKey(
+        resolveEventMapKey(this.events ?? new Map(), detail.envelope) ?? undefined,
+      )
+    ) {
+      return { handled: true, accepted: false };
+    }
     const events = this.#viewMapFromContext(this.#eventsAPI);
     const eventKey = resolveEventMapKey(events, detail.envelope);
     if (!eventKey) return { handled: false, accepted: true };
@@ -450,6 +462,7 @@ export abstract class CalendarViewBase extends BaseElement {
     detail: EventDeleteRequestDetail,
   ): Promise<boolean> {
     if (!this.#eventsAPI || !detail.envelope.eventId) return false;
+    if (isTaskDueOverlayKey(detail.envelope.eventId)) return true;
     const events = this.#viewMapFromContext(this.#eventsAPI);
     const eventKey = resolveEventMapKey(events, detail.envelope);
     if (!eventKey) return false;
@@ -730,9 +743,19 @@ export abstract class CalendarViewBase extends BaseElement {
 
   #applyEventsAPIOperation(operation: EventOperation): ApplyResult | undefined {
     if (!this.#eventsAPI) return undefined;
+    const targetKey =
+      "target" in operation.input &&
+      operation.input.target &&
+      "key" in operation.input.target &&
+      typeof operation.input.target.key === "string"
+        ? operation.input.target.key
+        : undefined;
+    if (isTaskDueOverlayKey(targetKey)) {
+      return { nextState: this.events ?? new Map(), changes: [], effects: [] };
+    }
     const result = this.#eventsAPI.apply(operation);
-    this.events = result.nextState;
-    return result;
+    this.events = preserveTaskDueOverlayEvents(this.events, result.nextState);
+    return { ...result, nextState: this.events };
   }
 
   #toPlainDateTime(value: Temporal.PlainDateTime): Temporal.PlainDateTime {

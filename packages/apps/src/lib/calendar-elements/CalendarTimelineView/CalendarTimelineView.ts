@@ -12,6 +12,7 @@ import "../CalendarWeekdayHeader/CalendarWeekdayHeader.js";
 import "../DayOverflowPopover/DayOverflowPopover.js";
 import "../SwipeContainer/SwipeContainer.js";
 import type { CalendarEvent as ApiCalendarEvent } from "@/lib/calendar-engine";
+import { isTaskDueOverlayEvent } from "@/calendar-core/src/calendar-task-due-overlay";
 import {
   eventSelectionOriginFromElement,
   type EventCreateRequestDetail,
@@ -133,6 +134,8 @@ type CalendarTimelineEvent = TimelineEvent & {
   recurring: boolean;
   exception: boolean;
   rsvp: "" | "needs-action" | "tentative";
+  locked?: boolean;
+  overlayKind?: "task";
 };
 
 type YearDayChip = Pick<
@@ -597,6 +600,8 @@ export class CalendarTimelineView extends CalendarViewBase {
           event.participationStatus === "needs-action" || event.participationStatus === "tentative"
             ? event.participationStatus
             : "",
+        locked: isTaskDueOverlayEvent(event),
+        overlayKind: event.overlayKind === "task" ? "task" : undefined,
       };
     });
   }
@@ -952,6 +957,7 @@ export class CalendarTimelineView extends CalendarViewBase {
 
   async #requestDeleteForKey(key: string) {
     const { event: current, recurrenceId } = this.#resolveSourceEvent(key);
+    if (isTaskDueOverlayEvent(current) || current?.overlayKind === "task") return;
     const detail: EventDeleteRequestDetail = {
       envelope: {
         accountId: current?.accountId,
@@ -1126,6 +1132,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         ?recurring=${timelineEvent.recurring}
         ?exception=${timelineEvent.exception}
         .rsvp=${timelineEvent.rsvp}
+        .overlay=${timelineEvent.overlayKind === "task" ? "task" : ""}
         .summary=${timelineEvent.summary}
         .location=${timelineEvent.location}
         .time=${timeLabel}

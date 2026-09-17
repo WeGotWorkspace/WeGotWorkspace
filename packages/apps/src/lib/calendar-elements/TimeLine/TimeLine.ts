@@ -1197,6 +1197,7 @@ export class TimeLine extends LitElement {
     if (!(eventEl instanceof HTMLElement)) return;
     const index = Number(eventEl.dataset.index);
     if (!Number.isFinite(index) || index < 0 || index >= this.events.length) return;
+    if (this.events[index]?.locked === true) return;
     this.#setHoveredResizeEventIndex(index);
   };
 
@@ -1225,6 +1226,7 @@ export class TimeLine extends LitElement {
 
     const ev = this.events[index];
     if (!ev) return;
+    if (ev.locked === true) return;
 
     // Touch: hold to activate (grid-view parity); before activation the pointer stays free
     // for native panning / a wrapper's swipe handling, and travelling cancels the gesture.
@@ -1393,6 +1395,7 @@ export class TimeLine extends LitElement {
 
     const ev = this.events[index];
     if (!ev) return;
+    if (ev.locked === true) return;
 
     e.stopPropagation();
     if (e.cancelable) e.preventDefault();
@@ -1960,7 +1963,7 @@ export class TimeLine extends LitElement {
     const dragging = this.draggingEventIndex === index;
     const selected = this.selectedEventKey !== "" && String(ev.key ?? "") === this.selectedEventKey;
     const mountHandles = shouldMountResizeHandles({
-      resizeHandlesEnabled: this.resizeHandles,
+      resizeHandlesEnabled: this.resizeHandles && ev.locked !== true,
       eventKey: ev.key,
       selectedEventKey: this.selectedEventKey,
       eventIndex: index,
