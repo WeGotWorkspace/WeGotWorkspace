@@ -217,13 +217,21 @@ final class DriveShareService
             $share->save();
             $share->timestamps = true;
 
+            $addedSharees = null;
             if (is_array($input['shareWith'] ?? null)) {
+                $beforeSharees = $this->shareeUsernames($share);
                 /** @var array<string, mixed> $shareWith */
                 $shareWith = $input['shareWith'];
                 $this->mergeShareWith($share, $shareWith);
+                $share->refresh();
+                $addedSharees = array_values(array_diff($this->shareeUsernames($share), $beforeSharees));
+            } else {
+                $share->refresh();
             }
 
-            $share->refresh();
+            if ($addedSharees !== null && $addedSharees !== []) {
+                $this->notifySharees($username, $share, $addedSharees);
+            }
 
             return $this->serializeShareForOwner($share);
         });
@@ -2058,10 +2066,20 @@ final class DriveShareService
         return $flags;
     }
 
-    private function notifySharees(string $actor, DriveShare $share): void
+    /**
+     * @param  list<string>|null  $onlyUsernames  when set, notify only these sharees (update delta)
+     */
+    private function notifySharees(string $actor, DriveShare $share, ?array $onlyUsernames = null): void
     {
         $path = (string) $share->path;
-        $recipients = $this->shareeUsernames($share);
+        $recipients = $onlyUsernames ?? $this->shareeUsernames($share);
+        if ($onlyUsernames !== null) {
+            $allowed = array_fill_keys($this->shareeUsernames($share), true);
+            $recipients = array_values(array_filter(
+                $onlyUsernames,
+                static fn (string $username): bool => isset($allowed[strtolower($username)]),
+            ));
+        }
         if ($recipients === []) {
             return;
         }

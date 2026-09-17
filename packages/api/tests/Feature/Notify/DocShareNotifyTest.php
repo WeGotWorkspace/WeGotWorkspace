@@ -53,4 +53,55 @@ final class DocShareNotifyTest extends WgwDatabaseTestCase
         $this->assertSame('/users/bob/shared.md', $alice['list'][0]['data']['path'] ?? null);
         $this->assertSame('shared.md', $alice['list'][0]['data']['fileName'] ?? null);
     }
+
+    public function test_update_share_notifies_delta_only(): void
+    {
+        $token = $this->userBearerToken();
+        $created = $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => [
+                'alice' => ['access' => 'view'],
+            ],
+        ])->assertOk()->json('data');
+
+        Notification::query()->delete();
+
+        $this->withBearer($token)->patchJson('/api/v1/files/shares/'.$created['id'], [
+            'updatedAt' => $created['updatedAt'],
+            'shareWith' => [
+                'carol' => ['access' => 'view'],
+            ],
+        ])->assertOk();
+
+        $this->assertSame(0, Notification::query()->where('principal', 'alice')->where('action', 'shared')->count());
+        $this->assertSame(1, Notification::query()->where('principal', 'carol')->where('action', 'shared')->count());
+        $this->assertSame(0, Notification::query()->where('principal', 'bob')->where('action', 'shared')->count());
+    }
+
+    public function test_update_share_revoke_only_does_not_notify(): void
+    {
+        $token = $this->userBearerToken();
+        $created = $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => [
+                'alice' => ['access' => 'view'],
+                'carol' => ['access' => 'view'],
+            ],
+        ])->assertOk()->json('data');
+
+        Notification::query()->delete();
+
+        $this->withBearer($token)->patchJson('/api/v1/files/shares/'.$created['id'], [
+            'updatedAt' => $created['updatedAt'],
+            'shareWith' => [
+                'carol' => null,
+            ],
+        ])->assertOk();
+
+        $this->assertSame(0, Notification::query()->where('action', 'shared')->count());
+    }
 }
