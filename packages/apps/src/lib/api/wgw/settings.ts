@@ -33,6 +33,8 @@ function toMail(raw: WgwSettingsUserMail): SettingsUIData["mail"] {
   return {
     imapUsername: raw.imapUsername,
     imapHasPassword: raw.imapHasPassword,
+    smtpUsername: raw.smtpUsername ?? "",
+    smtpPasswordSet: raw.smtpPasswordSet === true,
   };
 }
 

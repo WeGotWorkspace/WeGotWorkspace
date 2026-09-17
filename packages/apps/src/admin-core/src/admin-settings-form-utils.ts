@@ -2,12 +2,7 @@ import type { AdminUpdateState } from "@/admin-core/src/admin-types";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
 
 export type AdminSettingsFormState = {
-  imapHost: string;
-  imapPort: number;
-  imapSecurity: string;
-  smtpHost: string;
-  smtpPort: number;
-  smtpSecurity: string;
+  mailEnabled: boolean;
   stunUrls: string;
   turnUrls: string;
   turnUsername: string;
@@ -56,12 +51,7 @@ export function buildAdminSettingsFormState(
     return "none";
   };
   return {
-    imapHost: data.mail.imapHost,
-    imapPort: data.mail.imapPort,
-    imapSecurity: normalizeSecurity(data.mail.imapSecurity),
-    smtpHost: data.mail.smtpHost,
-    smtpPort: data.mail.smtpPort,
-    smtpSecurity: normalizeSecurity(data.mail.smtpSecurity),
+    mailEnabled: data.mail.enabled,
     stunUrls: data.rtc.stunUrls,
     turnUrls: data.rtc.turnUrls,
     turnUsername: data.rtc.turnUsername,
@@ -74,15 +64,9 @@ export function buildAdminSettingsFormState(
     authRealm: data.webdav.authRealm,
     mailDeliveryFrom: data.mailDelivery.config.from,
     mailDeliveryTransport: data.mailDelivery.config.transport,
-    mailDeliverySmtpHost: data.mailDelivery.config.smtpHost || data.mail.smtpHost,
-    mailDeliverySmtpPort: data.mailDelivery.config.smtpHost
-      ? data.mailDelivery.config.smtpPort
-      : data.mail.smtpPort,
-    mailDeliverySmtpSecurity: normalizeSecurity(
-      data.mailDelivery.config.smtpHost
-        ? data.mailDelivery.config.smtpSecurity
-        : data.mail.smtpSecurity,
-    ),
+    mailDeliverySmtpHost: data.mailDelivery.config.smtpHost,
+    mailDeliverySmtpPort: data.mailDelivery.config.smtpPort,
+    mailDeliverySmtpSecurity: normalizeSecurity(data.mailDelivery.config.smtpSecurity),
     mailDeliverySmtpUsername: data.mailDelivery.config.smtpUsername,
     mailDeliverySmtpPassword: "",
     mcpEnabled: data.mcp.enabled,
@@ -93,12 +77,7 @@ export function adminSettingsFormToMap(
   state: AdminSettingsFormState,
 ): Record<string, string | number | boolean> {
   const values: Record<string, string | number | boolean> = {
-    mail_imap_host: state.imapHost,
-    mail_imap_port: state.imapPort,
-    mail_imap_security: state.imapSecurity,
-    mail_smtp_host: state.smtpHost,
-    mail_smtp_port: state.smtpPort,
-    mail_smtp_security: state.smtpSecurity,
+    mail_enabled: state.mailEnabled,
     rtc_stun_url: state.stunUrls,
     rtc_turn_url: state.turnUrls,
     rtc_turn_username: state.turnUsername,

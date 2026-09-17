@@ -404,6 +404,12 @@
                     "mail_imap_security": {
                         "type": "string"
                     },
+                    "mail_imap_username": {
+                        "type": "string"
+                    },
+                    "mail_imap_password": {
+                        "type": "string"
+                    },
                     "mail_smtp_host": {
                         "type": "string"
                     },
@@ -411,6 +417,12 @@
                         "type": "string"
                     },
                     "mail_smtp_security": {
+                        "type": "string"
+                    },
+                    "mail_smtp_username": {
+                        "type": "string"
+                    },
+                    "mail_smtp_password": {
                         "type": "string"
                     },
                     "meet_enabled": {
@@ -696,33 +708,14 @@
             },
             "AdminMailSettings": {
                 "type": "object",
+                "description": "Instance Mail-app kill-switch. IMAP/SMTP hosts live on each user's Settings mailbox account.",
                 "properties": {
-                    "imapHost": {
-                        "type": "string"
-                    },
-                    "imapPort": {
-                        "type": "integer"
-                    },
-                    "imapSecurity": {
-                        "type": "string"
-                    },
-                    "smtpHost": {
-                        "type": "string"
-                    },
-                    "smtpPort": {
-                        "type": "integer"
-                    },
-                    "smtpSecurity": {
-                        "type": "string"
+                    "enabled": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
-                    "imapHost",
-                    "imapPort",
-                    "imapSecurity",
-                    "smtpHost",
-                    "smtpPort",
-                    "smtpSecurity"
+                    "enabled"
                 ]
             },
             "AdminRtcSettings": {
@@ -1284,11 +1277,19 @@
                     },
                     "imapHasPassword": {
                         "type": "boolean"
+                    },
+                    "smtpUsername": {
+                        "type": "string"
+                    },
+                    "smtpPasswordSet": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
                     "imapUsername",
-                    "imapHasPassword"
+                    "imapHasPassword",
+                    "smtpUsername",
+                    "smtpPasswordSet"
                 ]
             },
             "SettingsUserMailServer": {
@@ -1380,17 +1381,52 @@
                     },
                     "imapPassword": {
                         "type": "string"
+                    },
+                    "imapHost": {
+                        "type": "string"
+                    },
+                    "imapPort": {
+                        "type": "integer"
+                    },
+                    "imapSecurity": {
+                        "type": "string"
+                    },
+                    "smtpHost": {
+                        "type": "string"
+                    },
+                    "smtpPort": {
+                        "type": "integer"
+                    },
+                    "smtpSecurity": {
+                        "type": "string"
+                    },
+                    "smtpUsername": {
+                        "type": "string"
+                    },
+                    "smtpPassword": {
+                        "type": "string"
+                    },
+                    "clearImapPassword": {
+                        "type": "boolean"
+                    },
+                    "clearSmtpPassword": {
+                        "type": "boolean"
                     }
                 },
                 "example": {
                     "imapUsername": "alice@example.test",
-                    "imapPassword": "secret"
+                    "imapPassword": "secret",
+                    "imapHost": "imap.example.test",
+                    "smtpHost": "smtp.example.test"
                 }
             },
             "MailStatusResponse": {
                 "type": "object",
                 "properties": {
                     "extImap": {
+                        "type": "boolean"
+                    },
+                    "instanceEnabled": {
                         "type": "boolean"
                     },
                     "serversConfigured": {
@@ -1404,6 +1440,29 @@
                     },
                     "ready": {
                         "type": "boolean"
+                    },
+                    "error": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "smtp": {
+                        "type": "object",
+                        "properties": {
+                            "host": {
+                                "type": "string"
+                            },
+                            "port": {
+                                "type": "integer"
+                            },
+                            "security": {
+                                "type": "string"
+                            },
+                            "tcpReachable": {
+                                "type": "boolean"
+                            }
+                        }
                     }
                 }
             },
@@ -12130,7 +12189,17 @@
                         }
                     }
                 },
-                "x-wgw-access": "user"
+                "x-wgw-access": "user",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SettingsMailRequest"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/mail/status": {
@@ -12138,7 +12207,7 @@
                 "tags": [
                     "Mail"
                 ],
-                "summary": "Mail runtime status",
+                "summary": "Mail runtime status (instance kill-switch + per-user mailbox readiness)",
                 "security": [
                     {
                         "bearerAuth": []
@@ -12146,355 +12215,27 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Mail status"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/folders": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "List mail folders",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Mail folder tree"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Create mail folder",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Folder created"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "patch": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Move mail folder",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Folder moved"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Delete mail folder",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Folder deleted"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/messages": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "List messages in a folder",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Message list"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Send message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Sent"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/messages/attachments": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "List attachment metadata for messages",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Attachment metadata",
+                        "description": "Mail status",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/MailAttachmentsResponse"
+                                    "$ref": "#/components/schemas/MailStatusResponse"
                                 }
                             }
                         }
-                    }
-                }
-            }
-        },
-        "/mail/message": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Get a single message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Message payload",
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/MailMessageResponse"
+                                    "$ref": "#/components/schemas/Error"
                                 }
                             }
                         }
-                    }
-                }
-            },
-            "patch": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Patch read/starred flags on a message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Message updated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/OkResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/MailMessagePatchRequest"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Permanently delete a message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Message deleted"
-                    }
-                }
-            }
-        },
-        "/mail/message/attachment": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Download a message attachment",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Attachment stream",
-                        "content": {
-                            "application/octet-stream": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/BinaryPayload"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/mail/move": {
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Move message to another folder",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "required": [
-                                    "fromFolder",
-                                    "toFolder",
-                                    "uid"
-                                ],
-                                "properties": {
-                                    "fromFolder": {
-                                        "type": "string"
-                                    },
-                                    "toFolder": {
-                                        "type": "string"
-                                    },
-                                    "uid": {
-                                        "type": "integer"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Message moved"
                     }
                 },
                 "x-wgw-access": "user"
-            }
-        },
-        "/mail/send": {
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Send an email",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Message sent",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MailSendResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/MailSendRequest"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/mail/draft": {
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Save a message draft",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Draft saved",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MailDraftResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/MailDraftRequest"
-                            }
-                        }
-                    }
-                }
             }
         },
         "/drive/user": {
@@ -14204,144 +13945,6 @@
                 "responses": {
                     "200": {
                         "description": "Paths"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/drafts": {
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Save draft",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Saved"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/messages/{messageId}": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Get message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "patch": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Patch message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Delete message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/messages/{messageId}/attachments": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "List attachments",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "messageId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Attachments"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/messages/{messageId}/attachments/{attachmentId}": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Download attachment",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "messageId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "attachmentId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Attachment"
                     }
                 },
                 "x-wgw-access": "user"

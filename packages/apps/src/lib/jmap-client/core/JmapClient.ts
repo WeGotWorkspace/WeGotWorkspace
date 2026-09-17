@@ -3,6 +3,7 @@ import {
   CALENDARS_CAPABILITY,
   CONTACTS_CAPABILITY,
   CORE_CAPABILITY,
+  MAIL_CAPABILITY,
   NOTES_CAPABILITY,
   type JmapId,
   type JmapInvocation,
@@ -67,9 +68,10 @@ export class JmapClient {
     const hasCalendars = CALENDARS_CAPABILITY in session.capabilities;
     const hasContacts = CONTACTS_CAPABILITY in session.capabilities;
     const hasNotes = NOTES_CAPABILITY in session.capabilities;
-    if (!hasCalendars && !hasContacts && !hasNotes) {
+    const hasMail = MAIL_CAPABILITY in session.capabilities;
+    if (!hasCalendars && !hasContacts && !hasNotes && !hasMail) {
       throw new JmapRequestError(
-        `Server does not advertise ${CALENDARS_CAPABILITY}, ${CONTACTS_CAPABILITY}, or ${NOTES_CAPABILITY}`,
+        `Server does not advertise ${CALENDARS_CAPABILITY}, ${CONTACTS_CAPABILITY}, ${NOTES_CAPABILITY}, or ${MAIL_CAPABILITY}`,
       );
     }
     this.#session = session;

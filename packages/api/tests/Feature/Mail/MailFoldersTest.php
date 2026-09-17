@@ -23,56 +23,19 @@ final class MailFoldersTest extends WgwDatabaseTestCase
         parent::tearDown();
     }
 
-    public function test_create_folder_requires_name(): void
+    public function test_removed_folder_rest_paths_return_not_found(): void
     {
         $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');
+        $token = $this->userBearerToken();
 
-        $this->withBearer($this->userBearerToken())->postJson('/api/v1/mail/folders', [])
-            ->assertStatus(400)
-            ->assertJson(['error' => 'name_required']);
-    }
-
-    public function test_move_inbox_folder_is_rejected(): void
-    {
-        $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');
-
-        $this->withBearer($this->userBearerToken())->patchJson('/api/v1/mail/folders', [
+        $this->withBearer($token)->postJson('/api/v1/mail/folders', [])->assertNotFound();
+        $this->withBearer($token)->patchJson('/api/v1/mail/folders', [
             'folder' => $this->inboxFolderToken(),
             'parentMailbox' => '',
-        ])
-            ->assertStatus(400)
-            ->assertJson(['error' => 'cannot_move']);
-    }
-
-    public function test_move_starred_virtual_folder_is_rejected(): void
-    {
-        $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');
-
-        $this->withBearer($this->userBearerToken())->patchJson('/api/v1/mail/folders', [
-            'folder' => '__starred__',
-            'parentMailbox' => '',
-        ])
-            ->assertStatus(400)
-            ->assertJson(['error' => 'cannot_move']);
-    }
-
-    public function test_delete_inbox_folder_is_rejected(): void
-    {
-        $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');
-
-        $this->withBearer($this->userBearerToken())->deleteJson('/api/v1/mail/folders', [
+        ])->assertNotFound();
+        $this->withBearer($token)->deleteJson('/api/v1/mail/folders', [
             'folder' => $this->inboxFolderToken(),
-        ])
-            ->assertStatus(400)
-            ->assertJson(['error' => 'cannot_delete']);
-    }
-
-    public function test_delete_folder_without_folder_param_is_rejected(): void
-    {
-        $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');
-
-        $this->withBearer($this->userBearerToken())->deleteJson('/api/v1/mail/folders', [])
-            ->assertStatus(400)
-            ->assertJson(['error' => 'cannot_delete']);
+        ])->assertNotFound();
+        $this->withBearer($token)->deleteJson('/api/v1/mail/folders', [])->assertNotFound();
     }
 }

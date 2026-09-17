@@ -51,18 +51,8 @@ function applySettingsMap(
     return typeof v === "boolean" ? v : undefined;
   };
 
-  const imapHost = readString("mail_imap_host");
-  if (imapHost !== undefined) data.mail.imapHost = imapHost;
-  const imapPort = readNumber("mail_imap_port");
-  if (imapPort !== undefined) data.mail.imapPort = imapPort;
-  const imapSecurity = readString("mail_imap_security");
-  if (imapSecurity !== undefined) data.mail.imapSecurity = imapSecurity;
-  const smtpHost = readString("mail_smtp_host");
-  if (smtpHost !== undefined) data.mail.smtpHost = smtpHost;
-  const smtpPort = readNumber("mail_smtp_port");
-  if (smtpPort !== undefined) data.mail.smtpPort = smtpPort;
-  const smtpSecurity = readString("mail_smtp_security");
-  if (smtpSecurity !== undefined) data.mail.smtpSecurity = smtpSecurity;
+  const mailEnabled = readBool("mail_enabled");
+  if (mailEnabled !== undefined) data.mail.enabled = mailEnabled;
 
   const stunUrls = readString("rtc_stun_url");
   if (stunUrls !== undefined) data.rtc.stunUrls = stunUrls;

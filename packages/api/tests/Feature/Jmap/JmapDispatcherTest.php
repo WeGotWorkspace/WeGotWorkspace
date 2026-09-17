@@ -182,7 +182,7 @@ final class JmapDispatcherTest extends WgwDatabaseTestCase
 
     public function test_unsupported_capability_is_a_request_level_unknown_capability_error(): void
     {
-        $this->jmap([['Core/echo', [], 'c0']], ['urn:ietf:params:jmap:mail'])
+        $this->jmap([['Core/echo', [], 'c0']], ['urn:example:unsupported'])
             ->assertStatus(400)
             ->assertJsonPath('type', 'urn:ietf:params:jmap:error:unknownCapability');
     }

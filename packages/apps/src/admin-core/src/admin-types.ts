@@ -75,12 +75,7 @@ export type AdminGroup = {
 };
 
 export type AdminMailSettings = {
-  imapHost: string;
-  imapPort: number;
-  imapSecurity: string;
-  smtpHost: string;
-  smtpPort: number;
-  smtpSecurity: string;
+  enabled: boolean;
 };
 
 export type AdminRtcSettings = {

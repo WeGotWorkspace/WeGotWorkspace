@@ -32,6 +32,10 @@ final class JmapCapabilities
      */
     public const CHAT = 'urn:wgw:jmap:chat';
 
+    public const MAIL = 'urn:ietf:params:jmap:mail';
+
+    public const SUBMISSION = 'urn:ietf:params:jmap:submission';
+
     /**
      * Session document version, used as the prefix of the derived session
      * state (JmapCapabilitySet::sessionState()). The full state is this
@@ -155,6 +159,36 @@ final class JmapCapabilities
         return [
             'maxChannelsPerMessage' => 1,
             'mayCreateChannel' => true,
+        ];
+    }
+
+    /**
+     * RFC 8621 §2 account-level mail capability.
+     *
+     * @return array<string, mixed>
+     */
+    public static function mailAccountCapability(): array
+    {
+        return [
+            'maxMailboxes' => 1000,
+            'maxMailboxDepth' => null,
+            'maxSizeMailboxName' => 255,
+            'maxSizeAttachmentsPerEmail' => 50_000_000,
+            'emailQuerySortOptions' => ['receivedAt', 'sentAt'],
+            'mayCreateTopLevelMailbox' => true,
+        ];
+    }
+
+    /**
+     * RFC 8621 §7 account-level submission capability.
+     *
+     * @return array<string, mixed>
+     */
+    public static function submissionAccountCapability(): array
+    {
+        return [
+            'maxDelayedSend' => 0,
+            'submissionExtensions' => (object) [],
         ];
     }
 }

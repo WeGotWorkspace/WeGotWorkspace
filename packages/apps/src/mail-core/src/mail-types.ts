@@ -51,10 +51,10 @@ export type MailAPIOperations = {
   saveDraft: (input: WgwMailDraftRequest, opts?: { signal?: AbortSignal }) => Promise<void>;
   sendMessage: (input: WgwMailSendRequest, opts?: { signal?: AbortSignal }) => Promise<void>;
   fetchMessageDetail: (
-    message: Pick<Mail, "folder" | "uid">,
+    message: Pick<Mail, "id" | "folder" | "uid">,
   ) => Promise<WgwMailMessageDetail | null>;
   downloadAttachment: (
-    message: Pick<Mail, "folder" | "uid">,
+    message: Pick<Mail, "id" | "folder" | "uid">,
     attachment: MailAttachment,
     opts?: { signal?: AbortSignal },
   ) => Promise<Blob>;

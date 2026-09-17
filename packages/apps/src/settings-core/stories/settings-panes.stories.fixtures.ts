@@ -27,16 +27,28 @@ export function getMailFormDefaults(
   return {
     imapUsername: data.mail.imapUsername || data.user.email,
     imapPassword: "",
+    imapHost: data.mailServer.imapHost,
+    imapPort: String(data.mailServer.imapPort),
+    imapSecurity: "ssl",
+    smtpHost: data.mailServer.smtpHost,
+    smtpPort: String(data.mailServer.smtpPort),
+    smtpSecurity: "ssl",
+    smtpUsername: data.mail.smtpUsername,
+    smtpPassword: "",
     ...overrides,
   };
 }
 
-export function getMailStoryMeta(overrides: { imapHasPassword?: boolean } = {}) {
+export function getMailStoryMeta(
+  overrides: { imapHasPassword?: boolean; smtpPasswordSet?: boolean } = {},
+) {
   const { data } = createSettingsAppBootstrap();
   return {
     server: data.mailServer,
     imapHasPassword: overrides.imapHasPassword ?? data.mail.imapHasPassword,
+    smtpPasswordSet: overrides.smtpPasswordSet ?? data.mail.smtpPasswordSet,
     savedImapUsername: data.mail.imapUsername,
+    savedSmtpUsername: data.mail.smtpUsername,
   };
 }
 

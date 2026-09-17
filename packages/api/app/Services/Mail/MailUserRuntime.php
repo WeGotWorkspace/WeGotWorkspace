@@ -8,54 +8,98 @@ use App\Support\WgwSettings;
 
 final class MailUserRuntime
 {
+    public const ERROR_INSTANCE_DISABLED = 'MAIL_INSTANCE_DISABLED';
+
+    public const ERROR_SETTINGS_MISSING = 'MAIL_SETTINGS_MISSING';
+
+    public const ERROR_IMAP_EXTENSION = 'imap_extension_required';
+
     /**
+     * Instance kill-switch for the Mail app / JMAP mail URN / MCP mail tools.
+     *
      * @param  array<string, mixed>  $cfg
-     * @param  array{imapUsername: string, imapPassword: string}|null  $account
      */
-    public static function isReady(array $cfg, ?array $account): bool
+    public static function isInstanceEnabled(array $cfg): bool
     {
-        return MailServerSettings::serversConfigured($cfg)
-            && MailCredentialService::isAccountConfigured($account);
+        return (bool) ($cfg[WgwSettings::MAIL_ENABLED] ?? true);
+    }
+
+    /**
+     * User mailbox account is ready (this user's endpoints + login), independent
+     * of the instance kill-switch and of ext-imap.
+     *
+     * @param  array<string, mixed>|null  $account
+     */
+    public static function isReady(?array $account): bool
+    {
+        return MailCredentialService::isAccountConfigured($account);
     }
 
     /**
      * @return array{
      *   displayName: string,
      *   emailAddress: string,
+     *   mailAccountId: string,
      *   imap: array{host: string, port: int, security: string, username: string, password: string},
      *   smtp: array{host: string, port: int, security: string, username: string, password: string}
      * }|null
      */
     public static function resolve(string $username, MailCredentialService $credentials): ?array
     {
-        $cfg = WgwSettings::normalized();
         $account = $credentials->loadAccount($username);
-        if (! self::isReady($cfg, $account)) {
+        if (! self::isReady($account)) {
             return null;
         }
 
         $identity = MailPrincipalIdentityService::fetch($username);
-        $end = MailServerSettings::endpoints($cfg);
         $u = $credentials->effectiveImapUsername($username, $account);
-        $p = $account['imapPassword'];
+        $p = (string) $account['imapPassword'];
+        $smtpUser = trim((string) ($account['smtpUsername'] ?? ''));
+        $smtpPass = (string) ($account['smtpPassword'] ?? '');
+        if ($smtpUser === '') {
+            $smtpUser = $u;
+            $smtpPass = $p;
+        }
 
         return [
             'displayName' => $identity['displayName'],
             'emailAddress' => $identity['emailAddress'],
+            'mailAccountId' => MailCredentialService::MAIL_ACCOUNT_PRIMARY,
             'imap' => [
-                'host' => $end['imap']['host'],
-                'port' => $end['imap']['port'],
-                'security' => $end['imap']['security'],
+                'host' => (string) $account['imapHost'],
+                'port' => (int) $account['imapPort'],
+                'security' => (string) $account['imapSecurity'],
                 'username' => $u,
                 'password' => $p,
             ],
             'smtp' => [
-                'host' => $end['smtp']['host'],
-                'port' => $end['smtp']['port'],
-                'security' => $end['smtp']['security'],
-                'username' => $u,
-                'password' => $p,
+                'host' => (string) $account['smtpHost'],
+                'port' => (int) $account['smtpPort'],
+                'security' => (string) $account['smtpSecurity'],
+                'username' => $smtpUser,
+                'password' => $smtpPass,
             ],
         ];
+    }
+
+    /**
+     * Distinct status error: instance-off vs user-empty vs missing ext-imap.
+     *
+     * @param  array<string, mixed>  $cfg
+     * @param  array<string, mixed>|null  $account
+     */
+    public static function statusError(array $cfg, ?array $account, bool $extImap): ?string
+    {
+        if (! self::isInstanceEnabled($cfg)) {
+            return self::ERROR_INSTANCE_DISABLED;
+        }
+        if (! $extImap) {
+            return self::ERROR_IMAP_EXTENSION;
+        }
+        if (! self::isReady($account)) {
+            return self::ERROR_SETTINGS_MISSING;
+        }
+
+        return null;
     }
 }

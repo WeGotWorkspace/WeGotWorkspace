@@ -25,7 +25,7 @@ describe("adminSettingsFormToMap", () => {
     expect(values.mail_delivery_smtp_password).toBe("new-secret");
   });
 
-  it("prefills SMTP host from Mail-app settings when delivery host is empty", () => {
+  it("does not copy Mail-app IMAP/SMTP hosts into delivery settings", () => {
     const { data } = createAdminAppBootstrap({
       data: {
         ...createAdminAppBootstrap().data,
@@ -33,7 +33,11 @@ describe("adminSettingsFormToMap", () => {
       },
     });
     const form = buildAdminSettingsFormState(data);
-    expect(form.mailDeliverySmtpHost).toBe(data.mail.smtpHost);
+    expect(form.mailDeliverySmtpHost).toBe("");
+    expect(form).not.toHaveProperty("smtpHost");
+    const values = adminSettingsFormToMap(form);
+    expect(values).not.toHaveProperty("mail_smtp_host");
+    expect(values.mail_enabled).toBe(true);
   });
 
   it("includes mcp_enabled from the form", () => {

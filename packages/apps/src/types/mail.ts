@@ -25,4 +25,6 @@ export type Mail = Note & {
   detailLoaded?: boolean;
   /** Attachment metadata, populated from message detail payloads. */
   attachments?: MailAttachment[];
+  threadId?: string;
+  mailboxIds?: Record<string, boolean>;
 };

@@ -1,0 +1,10 @@
+{
+  "AdminMailSettings": {
+    "type": "object",
+    "description": "Instance Mail-app kill-switch. IMAP/SMTP hosts live on each user's Settings mailbox account.",
+    "properties": {
+      "enabled": { "type": "boolean" }
+    },
+    "required": ["enabled"]
+  }
+}

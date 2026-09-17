@@ -1,0 +1,75 @@
+{
+  "SettingsUserMail": {
+    "type": "object",
+    "properties": {
+      "imapUsername": { "type": "string" },
+      "imapHasPassword": { "type": "boolean" },
+      "smtpUsername": { "type": "string" },
+      "smtpPasswordSet": { "type": "boolean" }
+    },
+    "required": ["imapUsername", "imapHasPassword", "smtpUsername", "smtpPasswordSet"]
+  },
+  "SettingsUserMailServer": {
+    "type": "object",
+    "properties": {
+      "imapHost": { "type": "string" },
+      "imapPort": { "type": "integer" },
+      "imapSecurity": { "type": "string" },
+      "smtpHost": { "type": "string" },
+      "smtpPort": { "type": "integer" },
+      "smtpSecurity": { "type": "string" }
+    },
+    "required": [
+      "imapHost",
+      "imapPort",
+      "imapSecurity",
+      "smtpHost",
+      "smtpPort",
+      "smtpSecurity"
+    ]
+  },
+  "SettingsMailRequest": {
+    "type": "object",
+    "properties": {
+      "imapUsername": { "type": "string" },
+      "imapPassword": { "type": "string" },
+      "imapHost": { "type": "string" },
+      "imapPort": { "type": "integer" },
+      "imapSecurity": { "type": "string" },
+      "smtpHost": { "type": "string" },
+      "smtpPort": { "type": "integer" },
+      "smtpSecurity": { "type": "string" },
+      "smtpUsername": { "type": "string" },
+      "smtpPassword": { "type": "string" },
+      "clearImapPassword": { "type": "boolean" },
+      "clearSmtpPassword": { "type": "boolean" }
+    },
+    "example": {
+      "imapUsername": "alice@example.test",
+      "imapPassword": "secret",
+      "imapHost": "imap.example.test",
+      "smtpHost": "smtp.example.test"
+    }
+  },
+  "MailStatusResponse": {
+    "type": "object",
+    "properties": {
+      "extImap": { "type": "boolean" },
+      "instanceEnabled": { "type": "boolean" },
+      "serversConfigured": { "type": "boolean" },
+      "accountConfigured": { "type": "boolean" },
+      "configured": { "type": "boolean" },
+      "ready": { "type": "boolean" },
+      "error": { "type": ["string", "null"] },
+      "smtp": {
+        "type": "object",
+        "properties": {
+          "host": { "type": "string" },
+          "port": { "type": "integer" },
+          "security": { "type": "string" },
+          "tcpReachable": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

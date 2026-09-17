@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Installer;
 
+use App\Services\Mail\MailCredentialService;
 use App\Services\Settings\SettingKeys;
 use App\Support\AppPaths;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwRuntimeEnvBridge;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 final class InstallerWizardService
 {
@@ -23,6 +25,7 @@ final class InstallerWizardService
         private ApiRuntimeEnvService $apiEnv,
         private WgwInstallEnv $installEnv,
         private WgwInstallConfig $installConfig,
+        private MailCredentialService $mailCredentials,
     ) {}
 
     /**
@@ -346,12 +349,12 @@ final class InstallerWizardService
                         SettingKeys::CALENDAR_ENABLED => $enableCalendars,
                         SettingKeys::CONTACTS_ENABLED => $enableContacts,
                         SettingKeys::MAIL_ENABLED => $mailEnabled,
-                        SettingKeys::MAIL_IMAP_HOST => $mailEnabled ? trim((string) ($payload['mail_imap_host'] ?? '')) : '',
-                        SettingKeys::MAIL_IMAP_PORT => $mailEnabled ? (int) ($payload['mail_imap_port'] ?? 993) : 993,
-                        SettingKeys::MAIL_IMAP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_imap_security'] ?? 'ssl'), 'ssl') : '',
-                        SettingKeys::MAIL_SMTP_HOST => $mailEnabled ? trim((string) ($payload['mail_smtp_host'] ?? '')) : '',
-                        SettingKeys::MAIL_SMTP_PORT => $mailEnabled ? (int) ($payload['mail_smtp_port'] ?? 587) : 587,
-                        SettingKeys::MAIL_SMTP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_smtp_security'] ?? 'starttls'), 'starttls') : '',
+                        SettingKeys::MAIL_IMAP_HOST => '',
+                        SettingKeys::MAIL_IMAP_PORT => 993,
+                        SettingKeys::MAIL_IMAP_SECURITY => '',
+                        SettingKeys::MAIL_SMTP_HOST => '',
+                        SettingKeys::MAIL_SMTP_PORT => 587,
+                        SettingKeys::MAIL_SMTP_SECURITY => '',
                         SettingKeys::RTC_STUN_URL => $meetEnabled ? trim((string) ($payload['rtc_stun_url'] ?? '')) : '',
                         SettingKeys::RTC_TURN_URL => $meetEnabled ? trim((string) ($payload['rtc_turn_url'] ?? '')) : '',
                         SettingKeys::RTC_TURN_USERNAME => $meetEnabled ? trim((string) ($payload['rtc_turn_username'] ?? '')) : '',
@@ -372,6 +375,7 @@ final class InstallerWizardService
         try {
             $this->envWriter->writeBootstrap($bootstrap);
             WgwRuntimeEnvBridge::apply($this->installConfig);
+            DB::purge('wgw');
         } catch (\Throwable) {
             throw new \RuntimeException('Could not write packages/api/.env.');
         }
@@ -382,6 +386,10 @@ final class InstallerWizardService
 
         $this->apiEnv->ensure($this->paths->installRoot(), $this->resolveAppUrlForInstall());
         @chmod($this->paths->lockFile(), 0600);
+
+        if ($mailEnabled) {
+            $this->seedInstallingAdminMailbox($username, $email, $pass, $payload);
+        }
 
         $this->saveWizardState([
             'step' => 'done',
@@ -642,6 +650,37 @@ final class InstallerWizardService
         }
 
         return 'Could not connect to the database. Check your settings.';
+    }
+
+    /**
+     * When the wizard enables Mail, seed the installing admin's personal
+     * mailbox row so the post-install path is not "mailbox not configured".
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function seedInstallingAdminMailbox(string $username, string $email, string $adminPassword, array $payload): void
+    {
+        $imapUsername = trim((string) ($payload['mail_imap_username'] ?? ''));
+        if ($imapUsername === '') {
+            $imapUsername = $email;
+        }
+        $imapPassword = (string) ($payload['mail_imap_password'] ?? '');
+        if ($imapPassword === '') {
+            $imapPassword = $adminPassword;
+        }
+
+        $this->mailCredentials->saveAccount($username, [
+            'imapUsername' => $imapUsername,
+            'imapPassword' => $imapPassword,
+            'imapHost' => trim((string) ($payload['mail_imap_host'] ?? '')),
+            'imapPort' => (int) ($payload['mail_imap_port'] ?? 993),
+            'imapSecurity' => $this->normalizeMailSecurity((string) ($payload['mail_imap_security'] ?? 'ssl'), 'ssl'),
+            'smtpHost' => trim((string) ($payload['mail_smtp_host'] ?? '')),
+            'smtpPort' => (int) ($payload['mail_smtp_port'] ?? 587),
+            'smtpSecurity' => $this->normalizeMailSecurity((string) ($payload['mail_smtp_security'] ?? 'starttls'), 'starttls'),
+            'smtpUsername' => trim((string) ($payload['mail_smtp_username'] ?? '')),
+            'smtpPassword' => (string) ($payload['mail_smtp_password'] ?? ''),
+        ]);
     }
 
     private function normalizeMailSecurity(string $value, string $fallback): string

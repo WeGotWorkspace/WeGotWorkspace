@@ -26,13 +26,22 @@ use App\Services\Jmap\Methods\ContactCardQueryChangesMethod;
 use App\Services\Jmap\Methods\ContactCardQueryMethod;
 use App\Services\Jmap\Methods\ContactCardSetMethod;
 use App\Services\Jmap\Methods\CoreEchoMethod;
+use App\Services\Jmap\Methods\EmailChangesMethod;
+use App\Services\Jmap\Methods\EmailGetMethod;
+use App\Services\Jmap\Methods\EmailQueryMethod;
+use App\Services\Jmap\Methods\EmailSetMethod;
+use App\Services\Jmap\Methods\EmailSubmissionSetMethod;
 use App\Services\Jmap\Methods\FileNodeChangesMethod;
 use App\Services\Jmap\Methods\FileNodeCopyMethod;
 use App\Services\Jmap\Methods\FileNodeGetMethod;
 use App\Services\Jmap\Methods\FileNodeQueryChangesMethod;
 use App\Services\Jmap\Methods\FileNodeQueryMethod;
 use App\Services\Jmap\Methods\FileNodeSetMethod;
+use App\Services\Jmap\Methods\IdentityGetMethod;
 use App\Services\Jmap\Methods\JmapMethodInterface;
+use App\Services\Jmap\Methods\MailboxChangesMethod;
+use App\Services\Jmap\Methods\MailboxGetMethod;
+use App\Services\Jmap\Methods\MailboxSetMethod;
 use App\Services\Jmap\Methods\NotebookChangesMethod;
 use App\Services\Jmap\Methods\NotebookGetMethod;
 use App\Services\Jmap\Methods\NotebookSetMethod;
@@ -40,6 +49,7 @@ use App\Services\Jmap\Methods\NoteChangesMethod;
 use App\Services\Jmap\Methods\NoteGetMethod;
 use App\Services\Jmap\Methods\NoteQueryChangesMethod;
 use App\Services\Jmap\Methods\NoteSetMethod;
+use App\Services\Jmap\Methods\ThreadGetMethod;
 
 /**
  * JMAP method dispatcher (RFC 8620 §3.2–3.7): processes methodCalls in
@@ -97,6 +107,18 @@ final class JmapMethodDispatcher
         ChatChannelChangesMethod::class,
         ChatMessageGetMethod::class,
         ChatMessageChangesMethod::class,
+        // urn:ietf:params:jmap:mail (RFC 8621)
+        MailboxGetMethod::class,
+        MailboxChangesMethod::class,
+        MailboxSetMethod::class,
+        EmailGetMethod::class,
+        EmailChangesMethod::class,
+        EmailSetMethod::class,
+        EmailQueryMethod::class,
+        ThreadGetMethod::class,
+        IdentityGetMethod::class,
+        // urn:ietf:params:jmap:submission
+        EmailSubmissionSetMethod::class,
     ];
 
     /** @var array<string, JmapMethodInterface> */

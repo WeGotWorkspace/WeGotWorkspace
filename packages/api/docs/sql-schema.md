@@ -23,6 +23,7 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `principals` | `App\Models\Principal` | DAV principals, profile `email` / `displayname` |
 | `groupmembers` | `App\Models\GroupMember` | Group membership join |
 | `app_settings` | `App\Models\AppSetting` | Key/value site settings (string PK `name`) |
+| `mail_user_credentials` | `App\Models\MailUserCredential` | Per-user Mail-app IMAP/SMTP account (PK `username`). Endpoints + optional SMTP login live here; instance `mail_imap_*` / `mail_smtp_*` are not the send/receive path. |
 | `api_refresh_tokens` | `App\Models\ApiRefreshToken` | JWT refresh tokens (`token_hash` PK) |
 | `api_password_reset_tokens` | `App\Models\ApiPasswordResetToken` | Hashed one-time password-reset tokens (`token_hash` PK) |
 | `api_revoked_tokens` | `App\Models\ApiRevokedToken` | Revoked JWT JTIs |
@@ -48,6 +49,8 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `addressbook_shares` | `App\Models\AddressBookShare` | RFC 9670 AddressBook shareWith grants (`addressbookid` + `principaluri` + Sabre access 2/3). No calendarinstances analog. |
 | `addressbook_share_dismissals` | `App\Models\AddressBookShareDismissal` | Per-user hide of an inbound address-book share (`username` + `addressbookid`). Owner shareWith is unchanged; restore deletes the row. |
 | `docs_thread_index` | `App\Models\DocsThreadIndex` | Path index for Docs comment/suggestion VJOURNAL threads (`uid` + `doc_path` + kind). Indexes: unique `uid`; `(calendarid, doc_path)` hot path; standalone `doc_path` for rename/delete; `(calendarid, change_id)`. `doc_path` is varchar(512) for MySQL utf8mb4 index limits. |
+| `jmap_mail_sync` | `App\Models\JmapMailSync` | Per user × mail account × mailbox IMAP sync cursor (`uidvalidity`, `uidnext`, window flags hash). |
+| `jmap_mail_messages` | `App\Models\JmapMailMessage` | Cached envelope-visible messages (`uid`, flags hash, `thread_key`) namespaced by `mail_account_id`. |
 
 Sabre-owned tables (`locks`, `propertystorage`, `calendarchanges`, …) have no app models yet; access them through Sabre backends or add models when a domain needs direct queries.
 
