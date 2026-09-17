@@ -26,6 +26,15 @@ const DEFAULT_DATA: AdminUIData = {
       createdAt: "",
       enabled: true,
     },
+    {
+      id: "carol",
+      username: "carol",
+      email: "carol@example.test",
+      displayName: "Carol Example",
+      groups: [],
+      createdAt: "",
+      enabled: false,
+    },
   ],
   groups: [
     {

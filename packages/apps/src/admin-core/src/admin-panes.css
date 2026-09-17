@@ -14,8 +14,35 @@
   @apply flex items-center gap-3 py-3 first:pt-0 last:pb-0;
 }
 
-:is(.admin-workspace, .admin-dialog-surface) .admin-list-row--disabled {
-  @apply opacity-55;
+:is(.admin-workspace, .admin-dialog-surface) .admin-user-status-tag {
+  @apply shrink-0;
+  --tag-fg: #c98a1f;
+  --tag-bg: color-mix(in oklab, #c98a1f 18%, var(--color-cream, #fff));
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-list-row__actions {
+  @apply flex shrink-0 items-center gap-1;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-list-row__enabled-switch {
+  @apply inline-flex items-center justify-center;
+  min-height: var(--control-height-md, 2.25rem);
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-list-row__enabled-switch .switch {
+  align-self: center;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-user-dialog__footer {
+  @apply flex flex-row flex-wrap items-center gap-2;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-user-dialog__footer .admin-user-dialog__delete {
+  @apply me-auto;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-user-dialog__footer-end {
+  @apply ms-auto flex flex-wrap items-center gap-2;
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-group-avatar-slot {
