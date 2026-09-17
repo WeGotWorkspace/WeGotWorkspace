@@ -55,7 +55,10 @@
     "type": "object",
     "properties": {
       "extImap": { "type": "boolean" },
-      "instanceEnabled": { "type": "boolean" },
+      "instanceEnabled": {
+        "type": "boolean",
+        "description": "Always true. Mail is not instance-gated; readiness is per-user IMAP/SMTP."
+      },
       "serversConfigured": { "type": "boolean" },
       "accountConfigured": { "type": "boolean" },
       "configured": { "type": "boolean" },

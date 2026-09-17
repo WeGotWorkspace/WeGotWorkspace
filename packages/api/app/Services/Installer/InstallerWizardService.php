@@ -348,7 +348,7 @@ final class InstallerWizardService
                         SettingKeys::FILES_ENABLED => $enableFiles,
                         SettingKeys::CALENDAR_ENABLED => $enableCalendars,
                         SettingKeys::CONTACTS_ENABLED => $enableContacts,
-                        SettingKeys::MAIL_ENABLED => $mailEnabled,
+                        SettingKeys::MAIL_ENABLED => true,
                         SettingKeys::MAIL_IMAP_HOST => '',
                         SettingKeys::MAIL_IMAP_PORT => 993,
                         SettingKeys::MAIL_IMAP_SECURITY => '',
@@ -653,8 +653,8 @@ final class InstallerWizardService
     }
 
     /**
-     * When the wizard enables Mail, seed the installing admin's personal
-     * mailbox row so the post-install path is not "mailbox not configured".
+     * When the wizard configured a mailbox, seed the installing admin's personal
+     * row so the post-install path is not "mailbox not configured".
      *
      * @param  array<string, mixed>  $payload
      */

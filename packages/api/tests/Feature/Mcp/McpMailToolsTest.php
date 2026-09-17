@@ -33,12 +33,12 @@ final class McpMailToolsTest extends WgwDatabaseTestCase
         parent::tearDown();
     }
 
-    public function test_catalog_hides_mail_tools_when_instance_kill_switch_is_off(): void
+    public function test_catalog_always_includes_mail_tools(): void
     {
         $this->setAppSettings([WgwSettings::MAIL_ENABLED => false]);
         $tools = app(McpToolCatalog::class)->enabledTools();
-        $this->assertNotContains(MailStatusTool::class, $tools);
-        $this->assertNotContains(MailSendTool::class, $tools);
+        $this->assertContains(MailStatusTool::class, $tools);
+        $this->assertContains(MailSendTool::class, $tools);
     }
 
     public function test_mail_status_reports_this_users_smtp_not_instance_host(): void

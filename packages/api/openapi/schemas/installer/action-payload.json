@@ -20,7 +20,10 @@
       "email": { "type": "string" },
       "password": { "type": "string" },
       "password_confirm": { "type": "string" },
-      "mail_enabled": { "type": "boolean" },
+      "mail_enabled": {
+        "type": "boolean",
+        "description": "When true, seed the installing admin’s IMAP/SMTP row. Not an instance Mail kill-switch."
+      },
       "mail_imap_host": { "type": "string" },
       "mail_imap_port": { "type": "string" },
       "mail_imap_security": { "type": "string" },

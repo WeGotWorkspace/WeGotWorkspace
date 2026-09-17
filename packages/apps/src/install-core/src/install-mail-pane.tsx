@@ -39,10 +39,10 @@ export function InstallMailPane({
 
   return (
     <>
-      <Card title="Mail feature">
+      <Card title="Admin mailbox">
         <InstallFeatureRow
-          label="Enable webmail"
-          desc="Configure the installing admin’s mailbox now so Mail is ready after install."
+          label="Configure mailbox now"
+          desc="Optional. Saves IMAP and SMTP on the installing admin so Mail is ready after install. Anyone can fill this later in Settings."
           value={mail.enabled}
           onChange={(value) => setMail((current) => ({ ...current, enabled: value }))}
         />

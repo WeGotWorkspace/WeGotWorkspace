@@ -4,29 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Mail;
 
-use App\Support\WgwSettings;
-
 final class MailUserRuntime
 {
-    public const ERROR_INSTANCE_DISABLED = 'MAIL_INSTANCE_DISABLED';
-
     public const ERROR_SETTINGS_MISSING = 'MAIL_SETTINGS_MISSING';
 
     public const ERROR_IMAP_EXTENSION = 'imap_extension_required';
 
     /**
-     * Instance kill-switch for the Mail app / JMAP mail URN / MCP mail tools.
-     *
-     * @param  array<string, mixed>  $cfg
-     */
-    public static function isInstanceEnabled(array $cfg): bool
-    {
-        return (bool) ($cfg[WgwSettings::MAIL_ENABLED] ?? true);
-    }
-
-    /**
-     * User mailbox account is ready (this user's endpoints + login), independent
-     * of the instance kill-switch and of ext-imap.
+     * User mailbox account is ready (this user's endpoints + login).
      *
      * @param  array<string, mixed>|null  $account
      */
@@ -83,16 +68,12 @@ final class MailUserRuntime
     }
 
     /**
-     * Distinct status error: instance-off vs user-empty vs missing ext-imap.
+     * Distinct status error: missing ext-imap vs user-empty mailbox.
      *
-     * @param  array<string, mixed>  $cfg
      * @param  array<string, mixed>|null  $account
      */
-    public static function statusError(array $cfg, ?array $account, bool $extImap): ?string
+    public static function statusError(?array $account, bool $extImap): ?string
     {
-        if (! self::isInstanceEnabled($cfg)) {
-            return self::ERROR_INSTANCE_DISABLED;
-        }
         if (! $extImap) {
             return self::ERROR_IMAP_EXTENSION;
         }

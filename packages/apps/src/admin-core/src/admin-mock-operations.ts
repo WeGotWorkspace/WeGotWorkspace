@@ -51,9 +51,6 @@ function applySettingsMap(
     return typeof v === "boolean" ? v : undefined;
   };
 
-  const mailEnabled = readBool("mail_enabled");
-  if (mailEnabled !== undefined) data.mail.enabled = mailEnabled;
-
   const stunUrls = readString("rtc_stun_url");
   if (stunUrls !== undefined) data.rtc.stunUrls = stunUrls;
   const turnUrls = readString("rtc_turn_url");

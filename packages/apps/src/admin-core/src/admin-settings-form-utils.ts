@@ -2,7 +2,6 @@ import type { AdminUpdateState } from "@/admin-core/src/admin-types";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
 
 export type AdminSettingsFormState = {
-  mailEnabled: boolean;
   stunUrls: string;
   turnUrls: string;
   turnUsername: string;
@@ -51,7 +50,6 @@ export function buildAdminSettingsFormState(
     return "none";
   };
   return {
-    mailEnabled: data.mail.enabled,
     stunUrls: data.rtc.stunUrls,
     turnUrls: data.rtc.turnUrls,
     turnUsername: data.rtc.turnUsername,
@@ -77,7 +75,6 @@ export function adminSettingsFormToMap(
   state: AdminSettingsFormState,
 ): Record<string, string | number | boolean> {
   const values: Record<string, string | number | boolean> = {
-    mail_enabled: state.mailEnabled,
     rtc_stun_url: state.stunUrls,
     rtc_turn_url: state.turnUrls,
     rtc_turn_username: state.turnUsername,

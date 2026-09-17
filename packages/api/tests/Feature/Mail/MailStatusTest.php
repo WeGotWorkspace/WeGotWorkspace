@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Mail;
 
 use App\Services\Mail\MailUserRuntime;
-use App\Support\WgwSettings;
 use Tests\Support\MailTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -97,19 +96,9 @@ final class MailStatusTest extends WgwDatabaseTestCase
             ->assertJsonStructure(['smtp' => ['tcpReachable']]);
     }
 
-    public function test_status_instance_disabled_is_distinct_from_user_empty(): void
+    public function test_status_stays_not_configured_when_user_has_no_mailbox(): void
     {
-        $this->setAppSettings([WgwSettings::MAIL_ENABLED => false]);
         $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');
-
-        $this->withBearer($this->userBearerToken())->getJson('/api/v1/mail/status')
-            ->assertOk()
-            ->assertJsonPath('instanceEnabled', false)
-            ->assertJsonPath('accountConfigured', true)
-            ->assertJsonPath('ready', false)
-            ->assertJsonPath('error', MailUserRuntime::ERROR_INSTANCE_DISABLED);
-
-        $this->setAppSettings([WgwSettings::MAIL_ENABLED => true]);
 
         $this->withBearer($this->adminBearerToken())->getJson('/api/v1/mail/status')
             ->assertOk()

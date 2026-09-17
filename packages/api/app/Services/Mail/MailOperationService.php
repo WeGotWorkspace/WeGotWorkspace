@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Mail;
 
-use App\Support\WgwSettings;
 use IMAP\Connection;
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -109,10 +108,8 @@ final class MailOperationService
 
     private function handleStatus(string $username): array
     {
-        $cfg = WgwSettings::normalized();
         $account = $this->credentials->loadAccount($username);
         $ext = ImapExtension::loaded();
-        $instanceEnabled = MailUserRuntime::isInstanceEnabled($cfg);
         $accountConfigured = MailCredentialService::isAccountConfigured($account);
         $runtime = MailUserRuntime::resolve($username, $this->credentials);
         $smtpSource = $runtime['smtp'] ?? [
@@ -121,11 +118,11 @@ final class MailOperationService
             'security' => (string) ($account['smtpSecurity'] ?? 'starttls'),
         ];
         $smtp = MailSmtpTransportConfig::normalize($smtpSource);
-        $error = MailUserRuntime::statusError($cfg, $account, $ext);
+        $error = MailUserRuntime::statusError($account, $ext);
 
         return [
             'extImap' => $ext,
-            'instanceEnabled' => $instanceEnabled,
+            'instanceEnabled' => true,
             'serversConfigured' => $accountConfigured,
             'accountConfigured' => $accountConfigured,
             'ready' => $error === null,
@@ -1345,13 +1342,6 @@ final class MailOperationService
 
     private function handleSend(string $username, array $j): array
     {
-        $cfg = WgwSettings::normalized();
-        if (! MailUserRuntime::isInstanceEnabled($cfg)) {
-            throw new MailResponseException(403, [
-                'error' => MailUserRuntime::ERROR_INSTANCE_DISABLED,
-                'message' => 'Mail is disabled for this instance.',
-            ]);
-        }
         $cred = MailUserRuntime::resolve($username, $this->credentials);
         if ($cred === null) {
             throw new MailResponseException(400, [
@@ -1508,13 +1498,6 @@ final class MailOperationService
     {
         if (! ImapExtension::loaded()) {
             throw new MailResponseException(503, ['error' => 'imap_extension_required']);
-        }
-        $cfg = WgwSettings::normalized();
-        if (! MailUserRuntime::isInstanceEnabled($cfg)) {
-            throw new MailResponseException(403, [
-                'error' => MailUserRuntime::ERROR_INSTANCE_DISABLED,
-                'message' => 'Mail is disabled for this instance.',
-            ]);
         }
         $cred = MailUserRuntime::resolve($username, $this->credentials);
         if ($cred === null) {

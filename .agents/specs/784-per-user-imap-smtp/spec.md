@@ -3,11 +3,11 @@ Goal: #382
 
 # Per-user IMAP and SMTP for the Mail app
 
-Technical translation of Task #784. Mail-app send/receive uses **this user’s** stored IMAP/SMTP endpoints and login. Admin Email delivery (`mail_delivery_*`) stays instance-wide. `mail_enabled` is an instance **feature kill-switch**, independent of whether any user filled Settings.
+Technical translation of Task #784. Mail-app send/receive uses **this user’s** stored IMAP/SMTP endpoints and login. Admin Email delivery (`mail_delivery_*`) stays instance-wide. There is **no** instance Mail kill-switch: the Mail app, JMAP mail URN, and MCP mail tools follow this user’s mailbox row (and `ext-imap`).
 
 ## Goal
 
-Move Mail-app IMAP and SMTP off instance `mail_imap_*` / `mail_smtp_*` onto the existing one-row-per-user `mail_user_credentials` table (plus optional SMTP login). Settings Mail pane edits the full mailbox account. The installer, when Mail is enabled, seeds the installing admin’s personal row so the post-install path is not “mailbox not configured”.
+Move Mail-app IMAP and SMTP off instance `mail_imap_*` / `mail_smtp_*` onto the existing one-row-per-user `mail_user_credentials` table (plus optional SMTP login). Settings Mail pane edits the full mailbox account. The installer can seed the installing admin’s personal row from the wizard mailbox fields so the post-install path is not “mailbox not configured”.
 
 ## Non-goals
 
@@ -19,7 +19,7 @@ Move Mail-app IMAP and SMTP off instance `mail_imap_*` / `mail_smtp_*` onto the 
 ## Affected packages
 
 - packages/api
-- packages/apps (Settings Mail pane, Admin Mail pane, installer Mail pane)
+- packages/apps (Settings Mail pane, installer Mail pane)
 - docs (`packages/api/docs/mail/`)
 
 ## Technical constraints
@@ -27,8 +27,8 @@ Move Mail-app IMAP and SMTP off instance `mail_imap_*` / `mail_smtp_*` onto the 
 - Secrets stay AES-256-GCM; GET never echoes passwords (`imapHasPassword` / `smtpPasswordSet`)
 - PUT omit or `""` password leaves the stored secret; non-empty replaces; `clearImapPassword` / `clearSmtpPassword` clears
 - Empty SMTP login fields reuse IMAP login
-- `MailUserRuntime::resolve` must not read Admin Mail pane hosts
-- Distinct errors: instance-off (`MAIL_INSTANCE_DISABLED`) vs user-empty (`MAIL_SETTINGS_MISSING`)
+- `MailUserRuntime::resolve` must not read instance `mail_imap_*` / `mail_smtp_*` hosts
+- Distinct errors: missing ext-imap vs user-empty (`MAIL_SETTINGS_MISSING`)
 - One-shot migration copies instance IMAP/SMTP endpoints onto existing credential rows that already have an IMAP username
 - `mailAccountId` stays the constant `primary` (one row per user)
 

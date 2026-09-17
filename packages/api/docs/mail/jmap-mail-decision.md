@@ -97,4 +97,4 @@ OSS is always a mail **client** against arbitrary external IMAP. The IMAP→JMAP
 
 ### Per-user IMAP + SMTP
 
-Mail-app hosts live on `mail_user_credentials`, not instance `mail_imap_*` / `mail_smtp_*`. `mail_enabled` is the instance kill-switch for the Mail app / JMAP mail URN / MCP mail tools. Admin Email delivery (`mail_delivery_*`) is unchanged.
+Mail-app hosts live on `mail_user_credentials`, not instance `mail_imap_*` / `mail_smtp_*`. There is no instance Mail kill-switch: JMAP mail and MCP mail tools follow this user’s mailbox row (and `ext-imap`). Admin Email delivery (`mail_delivery_*`) is unchanged.

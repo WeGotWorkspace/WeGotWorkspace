@@ -24,29 +24,14 @@ final class AdminSettingsTest extends WgwDatabaseTestCase
         parent::tearDown();
     }
 
-    public function test_mail_kill_switch_persists_in_admin_state(): void
+    public function test_admin_state_mail_is_always_enabled(): void
     {
         $token = $this->adminBearerToken();
 
-        $response = $this->withBearer($token)
+        $this->withBearer($token)
             ->putJson('/api/v1/admin/settings', [
                 'values' => [
                     SettingKeys::MAIL_ENABLED => false,
-                ],
-            ]);
-        $response->assertOk()->assertJsonPath('ok', true);
-        $saved = $response->json('saved');
-        $this->assertContains(SettingKeys::MAIL_ENABLED, $saved);
-
-        $this->withBearer($token)
-            ->getJson('/api/v1/admin/state')
-            ->assertOk()
-            ->assertJsonPath('mail.enabled', false);
-
-        $this->withBearer($token)
-            ->putJson('/api/v1/admin/settings', [
-                'values' => [
-                    SettingKeys::MAIL_ENABLED => true,
                 ],
             ])
             ->assertOk();

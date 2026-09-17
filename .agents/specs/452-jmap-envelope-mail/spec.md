@@ -41,7 +41,7 @@ Bring mail behind the JMAP envelope with `urn:ietf:params:jmap:mail` (and `urn:i
 - Mixed-mailbox batch (INBOX then Sent): sequential SELECT on that session
 - Message deleted between `Email/query` and back-referenced `Email/get` → `notFound` entry
 - Write-then-sync (M2): after `Email/set`, next `Email/changes` takes the incremental path
-- Capability omitted when `mail_enabled` is off **or** this user is not ready **or** no `ext-imap` (distinct reasons)
+- Capability omitted when this user is not ready **or** no `ext-imap` (distinct reasons)
 
 ## Verification
 

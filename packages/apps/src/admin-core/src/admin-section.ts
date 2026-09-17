@@ -4,7 +4,6 @@ export const ADMIN_DEFAULT_SECTION: AdminSection = "users";
 
 export const ADMIN_SECTIONS = [
   "users",
-  "mail",
   "email-delivery",
   "collaboration",
   "webdav",
@@ -42,7 +41,7 @@ export type AdminNavigateTarget =
   | { to: "/admin"; params?: never }
   | { to: "/admin/$section"; params: { section: Exclude<AdminSection, "users"> } };
 
-/** TanStack `to` must be the route pattern (`/admin/$section`), not `/admin/mail`. */
+/** TanStack `to` must be the route pattern (`/admin/$section`), not `/admin/plugins`. */
 export function adminNavigateTarget(section: AdminSection): AdminNavigateTarget {
   if (section === "users") {
     return { to: "/admin" };

@@ -1,6 +1,5 @@
 export type AdminSection =
   | "users"
-  | "mail"
   | "email-delivery"
   | "collaboration"
   | "webdav"

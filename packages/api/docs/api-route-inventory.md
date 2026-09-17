@@ -45,7 +45,7 @@ Artifact-based REST surface. **Authoritative contract:** `openapi/openapi.json` 
 
 | Route | Access | Notes |
 |-------|--------|-------|
-| `GET /api/v1/mail/status` | user | Instance kill-switch + per-user mailbox readiness. Mailbox CRUD and send/receive are JMAP (`/jmap`). |
+| `GET /api/v1/mail/status` | user | Per-user mailbox readiness. Mailbox CRUD and send/receive are JMAP (`/jmap`). |
 
 ## Search + Workspace
 

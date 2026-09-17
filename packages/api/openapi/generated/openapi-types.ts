@@ -6830,6 +6830,7 @@ export interface components {
             email?: string;
             password?: string;
             password_confirm?: string;
+            /** @description When true, seed the installing admin’s IMAP/SMTP row. Not an instance Mail kill-switch. */
             mail_enabled?: boolean;
             mail_imap_host?: string;
             mail_imap_port?: string;
@@ -6975,7 +6976,7 @@ export interface components {
             name: string;
             displayName: string;
         };
-        /** @description Instance Mail-app kill-switch. IMAP/SMTP hosts live on each user's Settings mailbox account. */
+        /** @description Legacy field. Mail is always available; each user configures IMAP/SMTP in Settings. `enabled` is always true. */
         AdminMailSettings: {
             enabled: boolean;
         };
@@ -7165,6 +7166,7 @@ export interface components {
         };
         MailStatusResponse: {
             extImap?: boolean;
+            /** @description Always true. Mail is not instance-gated; readiness is per-user IMAP/SMTP. */
             instanceEnabled?: boolean;
             serversConfigured?: boolean;
             accountConfigured?: boolean;

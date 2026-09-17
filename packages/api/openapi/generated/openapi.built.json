@@ -393,7 +393,8 @@
                         "type": "string"
                     },
                     "mail_enabled": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "When true, seed the installing admin’s IMAP/SMTP row. Not an instance Mail kill-switch."
                     },
                     "mail_imap_host": {
                         "type": "string"
@@ -708,7 +709,7 @@
             },
             "AdminMailSettings": {
                 "type": "object",
-                "description": "Instance Mail-app kill-switch. IMAP/SMTP hosts live on each user's Settings mailbox account.",
+                "description": "Legacy field. Mail is always available; each user configures IMAP/SMTP in Settings. `enabled` is always true.",
                 "properties": {
                     "enabled": {
                         "type": "boolean"
@@ -1427,7 +1428,8 @@
                         "type": "boolean"
                     },
                     "instanceEnabled": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Always true. Mail is not instance-gated; readiness is per-user IMAP/SMTP."
                     },
                     "serversConfigured": {
                         "type": "boolean"

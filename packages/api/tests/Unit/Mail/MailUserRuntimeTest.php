@@ -60,22 +60,15 @@ final class MailUserRuntimeTest extends WgwDatabaseTestCase
         $this->assertNotSame($bob['smtp']['host'], $alice['smtp']['host']);
     }
 
-    public function test_status_error_splits_instance_off_from_user_empty(): void
+    public function test_status_error_splits_missing_extension_from_user_empty(): void
     {
-        $cfgOff = [WgwSettings::MAIL_ENABLED => false];
-        $cfgOn = [WgwSettings::MAIL_ENABLED => true];
-
-        $this->assertSame(
-            MailUserRuntime::ERROR_INSTANCE_DISABLED,
-            MailUserRuntime::statusError($cfgOff, null, true),
-        );
         $this->assertSame(
             MailUserRuntime::ERROR_SETTINGS_MISSING,
-            MailUserRuntime::statusError($cfgOn, null, true),
+            MailUserRuntime::statusError(null, true),
         );
         $this->assertSame(
             MailUserRuntime::ERROR_IMAP_EXTENSION,
-            MailUserRuntime::statusError($cfgOn, ['imapUsername' => 'x'], false),
+            MailUserRuntime::statusError(['imapUsername' => 'x'], false),
         );
     }
 }

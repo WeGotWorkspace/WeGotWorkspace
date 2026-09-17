@@ -4,7 +4,7 @@ Derived from [spec.md](./spec.md). Sequential with the Mail JMAP program; parall
 
 ## Goal
 
-Per-user mailbox account in Settings; instance kill-switch only; wizard seeds admin.
+Per-user mailbox account in Settings; wizard can seed admin mailbox.
 
 ## Non-goals
 
@@ -26,13 +26,13 @@ None. Must land before M1 (#786) so `MailUserRuntime` is not built on instance h
 - **Skill:** api, workspace
 - **Inputs:** existing `mail_user_credentials`, Settings/Admin panes, installer wizard
 - **Done when:** AC on #784
-- **Verify with:** `pnpm test:api-done-gate`; Settings mail stories; Admin mail pane no longer saves `mail_smtp_host`
+- **Verify with:** `pnpm test:api-done-gate`; Settings mail stories
 - **Parallel with:** `chunk-a-fixture` (#785)
 
 ## Test plan
 
 - [ ] Settings PUT/GET omit/clear password matrix
 - [ ] User A SMTP ≠ user B
-- [ ] `mail_enabled=false` vs user-empty error split
+- [ ] User-empty vs missing ext-imap error split
 - [ ] MailDelivery still uses `mail_delivery_*` only
 - [ ] MCP `mail_send` / `mail_status` pin user SMTP

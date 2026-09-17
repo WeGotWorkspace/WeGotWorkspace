@@ -37,7 +37,7 @@ describe("adminSettingsFormToMap", () => {
     expect(form).not.toHaveProperty("smtpHost");
     const values = adminSettingsFormToMap(form);
     expect(values).not.toHaveProperty("mail_smtp_host");
-    expect(values.mail_enabled).toBe(true);
+    expect(values).not.toHaveProperty("mail_enabled");
   });
 
   it("includes mcp_enabled from the form", () => {

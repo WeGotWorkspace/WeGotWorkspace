@@ -1,7 +1,7 @@
 {
   "AdminMailSettings": {
     "type": "object",
-    "description": "Instance Mail-app kill-switch. IMAP/SMTP hosts live on each user's Settings mailbox account.",
+    "description": "Legacy field. Mail is always available; each user configures IMAP/SMTP in Settings. `enabled` is always true.",
     "properties": {
       "enabled": { "type": "boolean" }
     },

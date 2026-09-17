@@ -9,11 +9,10 @@ use App\Services\Jmap\JmapCapabilities;
 use App\Services\Mail\ImapExtension;
 use App\Services\Mail\MailCredentialService;
 use App\Services\Mail\MailUserRuntime;
-use App\Support\WgwSettings;
 
 /**
- * urn:ietf:params:jmap:mail — omitted when the instance kill-switch is off,
- * this user has no mailbox account, or ext-imap is missing.
+ * urn:ietf:params:jmap:mail — omitted when this user has no mailbox account
+ * or ext-imap is missing.
  *
  * Request is resolved lazily: JmapCapabilitySet may be a long-lived binding,
  * and injecting Request in the constructor would freeze the first principal.
@@ -31,10 +30,6 @@ final class MailCapabilityProvider implements JmapCapabilityProviderInterface
 
     public function isEnabled(): bool
     {
-        $cfg = WgwSettings::normalized();
-        if (! MailUserRuntime::isInstanceEnabled($cfg)) {
-            return false;
-        }
         if (! ImapExtension::loaded()) {
             return false;
         }

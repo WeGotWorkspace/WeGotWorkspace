@@ -34,7 +34,7 @@ final class AdminStateService
             'users' => $this->users->listSummaries(),
             'groups' => $this->groups->listGroupSummaries(),
             'mail' => [
-                'enabled' => (bool) ($cfg[SettingKeys::MAIL_ENABLED] ?? true),
+                'enabled' => true,
             ],
             'mailDelivery' => $this->mailDelivery->adminState(),
             'rtc' => $this->rtcSettings(),

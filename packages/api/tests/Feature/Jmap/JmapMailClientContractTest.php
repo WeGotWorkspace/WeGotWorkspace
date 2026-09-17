@@ -280,15 +280,17 @@ final class JmapMailClientContractTest extends WgwDatabaseTestCase
         $this->assertContains($createdId, $changes->json('methodResponses.0.1.created'));
     }
 
-    public function test_mail_capability_omitted_when_instance_disabled(): void
+    #[RequiresPhpExtension('imap')]
+    public function test_mail_capability_follows_user_mailbox_not_a_kill_switch(): void
     {
         $this->setAppSettings([WgwSettings::MAIL_ENABLED => false]);
+        $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');
         $session = $this->withBearer($this->userBearerToken())
             ->getJson('/api/v1/jmap/session')
             ->assertOk()
             ->json();
-        $this->assertArrayNotHasKey(JmapCapabilities::MAIL, $session['capabilities']);
-        $this->assertArrayNotHasKey(JmapCapabilities::SUBMISSION, $session['capabilities']);
+        $this->assertArrayHasKey(JmapCapabilities::MAIL, $session['capabilities']);
+        $this->assertArrayHasKey(JmapCapabilities::SUBMISSION, $session['capabilities']);
     }
 
     public function test_mail_capability_omitted_when_user_has_no_mailbox(): void
