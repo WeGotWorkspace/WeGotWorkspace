@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dav;
 
+use App\Models\User;
 use App\Services\Auth\UiSessionService;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\Storage;
@@ -87,5 +88,51 @@ final class SabreWebdavGetTest extends WgwDatabaseTestCase
 
         $response->assertSuccessful();
         $this->assertSame($payload, $response->streamedContent());
+    }
+
+    public function test_propfind_rejects_disabled_user_with_basic_auth(): void
+    {
+        User::query()->where('username', 'alice')->update(['enabled' => false]);
+
+        $auth = 'Basic '.base64_encode('alice:secret');
+        $response = $this->call('PROPFIND', '/files', [], [], [], [
+            'HTTP_AUTHORIZATION' => $auth,
+            'HTTP_DEPTH' => '0',
+            'HTTP_ACCEPT' => '*/*',
+        ]);
+
+        $response->assertStatus(401);
+    }
+
+    public function test_propfind_rejects_disabled_user_with_still_valid_cookie(): void
+    {
+        $realm = (string) (WgwSettings::normalized()[WgwSettings::AUTH_REALM] ?? 'SabreDAV');
+        $cookie = $this->app->make(UiSessionService::class)->buildCookie('alice', $realm, '/');
+        User::query()->where('username', 'alice')->update(['enabled' => false]);
+
+        $_COOKIE['sabre_ui_auth'] = $cookie->getValue();
+        $response = $this->withUnencryptedCookie('sabre_ui_auth', $cookie->getValue())
+            ->call('PROPFIND', '/files', [], [], [], [
+                'HTTP_DEPTH' => '0',
+                'HTTP_ACCEPT' => '*/*',
+            ]);
+
+        $response->assertStatus(401);
+        unset($_COOKIE['sabre_ui_auth']);
+    }
+
+    public function test_propfind_succeeds_after_reenable(): void
+    {
+        User::query()->where('username', 'alice')->update(['enabled' => false]);
+        User::query()->where('username', 'alice')->update(['enabled' => true]);
+
+        $auth = 'Basic '.base64_encode('alice:secret');
+        $response = $this->call('PROPFIND', '/files', [], [], [], [
+            'HTTP_AUTHORIZATION' => $auth,
+            'HTTP_DEPTH' => '0',
+            'HTTP_ACCEPT' => '*/*',
+        ]);
+
+        $response->assertSuccessful();
     }
 }

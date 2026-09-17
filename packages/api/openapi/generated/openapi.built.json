@@ -548,6 +548,9 @@
                     },
                     "groups": {
                         "$ref": "#/components/schemas/AdminUserGroupList"
+                    },
+                    "enabled": {
+                        "type": "boolean"
                     }
                 },
                 "example": {
@@ -555,7 +558,8 @@
                     "email": "alice@example.test",
                     "groups": [
                         "principals/groups/support"
-                    ]
+                    ],
+                    "enabled": true
                 }
             },
             "AdminGroupCreateRequest": {
@@ -656,6 +660,9 @@
                     },
                     "createdAt": {
                         "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -664,7 +671,8 @@
                     "email",
                     "displayName",
                     "groups",
-                    "createdAt"
+                    "createdAt",
+                    "enabled"
                 ]
             },
             "AdminGroupSummary": {

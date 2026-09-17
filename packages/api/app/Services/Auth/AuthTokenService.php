@@ -17,6 +17,7 @@ final class AuthTokenService
         private LoginRateLimiter $rateLimiter,
         private SabreCredentialValidator $credentials,
         private AdminRoleResolver $adminRoles,
+        private UserEnabledGuard $enabled,
     ) {}
 
     /**
@@ -81,6 +82,9 @@ final class AuthTokenService
         if ($principal === null) {
             throw new ApiHttpException(401, 'Invalid refresh token.', 'unauthorized');
         }
+        if (! $this->enabled->isEnabled($principal['username'])) {
+            throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
+        }
 
         return $this->issueTokenPair($principal['username'], $principal['role']);
     }
@@ -117,6 +121,9 @@ final class AuthTokenService
         }
         if ($this->jwtConfig->signingConfig() === null) {
             throw new ApiHttpException(503, 'JWT key configuration missing.', 'config_error');
+        }
+        if (! $this->enabled->isEnabled($username)) {
+            throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
 
         $role = $this->adminRoles->isAdmin($username) ? 'admin' : 'user';

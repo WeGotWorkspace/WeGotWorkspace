@@ -39,6 +39,7 @@ final class User extends Model implements AuthenticatableContract, OAuthenticata
         'username',
         'digest',
         'digesta1',
+        'enabled',
     ];
 
     /** @var list<string> */
@@ -46,6 +47,21 @@ final class User extends Model implements AuthenticatableContract, OAuthenticata
         'digest',
         'digesta1',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'enabled' => 'boolean',
+        ];
+    }
+
+    public function isEnabled(): bool
+    {
+        return $this->enabled !== false;
+    }
 
     public function principalUri(): string
     {

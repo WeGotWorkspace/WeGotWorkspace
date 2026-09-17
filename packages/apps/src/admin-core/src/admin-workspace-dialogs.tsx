@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/button/src/button";
+import { Trash2 } from "lucide-react";
+import { Button, IconButton } from "@/button/src/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -19,16 +30,26 @@ type UserDialogProps = {
   initial?: { username: string; displayName: string; email: string };
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: { username: string; displayName: string; email: string }) => void;
+  onDelete?: () => void | Promise<void>;
 };
 
-export function UserDialog({ open, title, initial, onOpenChange, onSubmit }: UserDialogProps) {
+export function UserDialog({
+  open,
+  title,
+  initial,
+  onOpenChange,
+  onSubmit,
+  onDelete,
+}: UserDialogProps) {
   const [username, setUsername] = useState(initial?.username ?? "");
   const [displayName, setDisplayName] = useState(initial?.displayName ?? "");
   const [email, setEmail] = useState(initial?.email ?? "");
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const wasOpenRef = useRef(false);
   useEffect(() => {
     if (!open) {
       wasOpenRef.current = false;
+      setConfirmDeleteOpen(false);
       return;
     }
     if (wasOpenRef.current) return;
@@ -38,53 +59,109 @@ export function UserDialog({ open, title, initial, onOpenChange, onSubmit }: Use
     setEmail(initial?.email ?? "");
   }, [open, initial?.username, initial?.displayName, initial?.email]);
 
+  const canDelete = Boolean(initial && onDelete);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="admin-dialog-surface">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            {initial
-              ? "Update display name and email. Username cannot be changed."
-              : "Create a new user account."}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <FormField label="Username" readOnly={Boolean(initial)}>
-            <Input
-              value={username}
-              readOnly={Boolean(initial)}
-              onChange={(event) => setUsername(event.currentTarget.value)}
-              placeholder="jane.doe"
-            />
-          </FormField>
-          <FormField label="Display name">
-            <Input
-              value={displayName}
-              onChange={(event) => setDisplayName(event.currentTarget.value)}
-            />
-          </FormField>
-          <FormField label="Email">
-            <Input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.currentTarget.value)}
-            />
-          </FormField>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => onSubmit({ username, displayName, email })}
-            disabled={!username.trim() || !displayName.trim() || !email.trim()}
-          >
-            Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="admin-dialog-surface">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>
+              {initial
+                ? "Update display name and email. Username cannot be changed."
+                : "Create a new user account."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <FormField label="Username" readOnly={Boolean(initial)}>
+              <Input
+                size="sm"
+                value={username}
+                readOnly={Boolean(initial)}
+                onChange={(event) => setUsername(event.currentTarget.value)}
+                placeholder="jane.doe"
+              />
+            </FormField>
+            <FormField label="Display name">
+              <Input
+                size="sm"
+                value={displayName}
+                onChange={(event) => setDisplayName(event.currentTarget.value)}
+              />
+            </FormField>
+            <FormField label="Email">
+              <Input
+                type="email"
+                size="sm"
+                value={email}
+                onChange={(event) => setEmail(event.currentTarget.value)}
+              />
+            </FormField>
+          </div>
+          <DialogFooter className="admin-user-dialog__footer">
+            {canDelete ? (
+              <IconButton
+                type="button"
+                variant="outline"
+                severity="danger"
+                size="md"
+                className="admin-user-dialog__delete"
+                icon={<Trash2 className="size-3.5" aria-hidden />}
+                label="Delete user"
+                onClick={() => setConfirmDeleteOpen(true)}
+              />
+            ) : null}
+            <div className="admin-user-dialog__footer-end">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => onSubmit({ username, displayName, email })}
+                disabled={!username.trim() || !displayName.trim() || !email.trim()}
+              >
+                Save
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={confirmDeleteOpen}
+        onOpenChange={(next) => {
+          if (!next) setConfirmDeleteOpen(false);
+        }}
+      >
+        <AlertDialogContent className="admin-dialog-surface">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {initial
+                ? `${initial.displayName} (@${initial.username}) will be permanently removed and unassigned from all groups.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button variant="outline">Cancel</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                onClick={async (event) => {
+                  event.preventDefault();
+                  await onDelete?.();
+                  setConfirmDeleteOpen(false);
+                }}
+              >
+                Delete
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -123,6 +200,7 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
           <FormField label="New password">
             <Input
               type="password"
+              size="sm"
               value={password}
               onChange={(event) => setPassword(event.currentTarget.value)}
             />
@@ -130,13 +208,14 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
           <FormField label="Confirm password">
             <Input
               type="password"
+              size="sm"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.currentTarget.value)}
             />
           </FormField>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
@@ -205,7 +284,11 @@ export function GroupDialog({
         </DialogHeader>
         <div className="space-y-3">
           <FormField label="Group name">
-            <Input value={name} onChange={(event) => setName(event.currentTarget.value)} />
+            <Input
+              size="sm"
+              value={name}
+              onChange={(event) => setName(event.currentTarget.value)}
+            />
           </FormField>
           {initial ? (
             <FormField label="Members">
@@ -215,7 +298,7 @@ export function GroupDialog({
                     <UserAvatar
                       displayName={user.displayName}
                       subtitle={user.username}
-                      size="sm"
+                      size="md"
                       className="flex-1"
                     />
                     <Switch
@@ -234,7 +317,7 @@ export function GroupDialog({
           ) : null}
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={() => onSubmit({ name, memberUserIds })} disabled={!name.trim()}>
@@ -295,6 +378,7 @@ export function MailDeliveryTestDialog({
           <Input
             id="admin-mail-delivery-test-to"
             type="email"
+            size="sm"
             autoComplete="email"
             value={to}
             onChange={(event) => {
@@ -304,7 +388,7 @@ export function MailDeliveryTestDialog({
           />
         </FormField>
         <DialogFooter>
-          <Button variant="ghost" disabled={submitting} onClick={() => onOpenChange(false)}>
+          <Button variant="outline" disabled={submitting} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button

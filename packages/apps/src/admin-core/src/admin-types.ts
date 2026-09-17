@@ -65,6 +65,7 @@ export type AdminUser = {
   displayName: string;
   groups: string[];
   createdAt: string;
+  enabled: boolean;
 };
 
 export type AdminGroup = {
@@ -255,7 +256,13 @@ export type AdminAPIOperations = {
   ) => Promise<AdminUIData>;
   updateUser: (
     username: string,
-    input: { displayName?: string; email?: string; password?: string; groups?: string[] },
+    input: {
+      displayName?: string;
+      email?: string;
+      password?: string;
+      groups?: string[];
+      enabled?: boolean;
+    },
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUIData>;
   deleteUser: (username: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
