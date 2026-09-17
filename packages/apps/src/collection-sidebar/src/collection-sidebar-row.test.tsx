@@ -83,6 +83,7 @@ describe("CollectionSidebarRow", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(onEdit).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Edit" }).className).toMatch(/icon-button--size-xs/);
   });
 
   it("renders a leading mark inside the select control", () => {

@@ -40,42 +40,26 @@
 }
 
 /**
- * Narrow viewports (<768px / useIsMobile): fill the viewport as a sheet.
- * Shared by CalendarEventDialog, details Dialog (create/edit), and read-only
- * details `--dialog`. Desktop Dialog / Popover keep the compact max-height above.
- *
- * DialogContent ships `left-[50%] top-[50%] translate-x-[-50%] zoom-in-95`.
- * iOS Safari applies the enter `transform` after `inset: 0`, which keeps a
- * compact card pinned toward the origin. Reset placement + animation here
- * (three-class selector beats the utilities; `animation: none` skips enter).
+ * Narrow viewports (<768px / useIsMobile): align with shared centered card
+ * (visible overlay gutters, height: auto until max). Lift the desktop 75vh
+ * cap so tall event forms can use the shared mobile max-height.
  */
 @media (max-width: 767px) {
   .ui-modal-surface.calendar-dialog-surface.calendar-event-dialog,
   .ui-modal-surface.calendar-dialog-surface.calendar-event-details-popover--dialog {
-    @apply m-0 flex w-full max-h-none max-w-none flex-col overflow-hidden;
-    position: fixed;
-    inset: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    border-radius: 0;
-    width: auto;
     height: auto;
-    max-inline-size: none;
-    translate: 0 0;
-    scale: 1;
-    transform: none;
-    animation: none;
-    --tw-translate-x: 0;
-    --tw-translate-y: 0;
-    --tw-enter-scale: 1;
-    --tw-enter-translate-x: 0;
-    --tw-enter-translate-y: 0;
-    padding-block-start: max(var(--modal-inset, 1rem), env(safe-area-inset-top, 0px));
-    padding-block-end: max(var(--modal-inset, 1rem), env(safe-area-inset-bottom, 0px));
-    padding-inline-start: max(var(--modal-inset, 1rem), env(safe-area-inset-left, 0px));
-    padding-inline-end: max(var(--modal-inset, 1rem), env(safe-area-inset-right, 0px));
+    max-height: min(
+      var(--modal-max-height, 100dvh),
+      calc(
+        100dvh - (2 * max(0.75rem, env(safe-area-inset-top, 0px), env(safe-area-inset-bottom, 0px)))
+      )
+    );
+    max-inline-size: min(
+      var(--calendar-event-dialog-max-inline-size),
+      calc(
+        100svw - (2 * max(0.75rem, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)))
+      )
+    );
   }
 
   .calendar-dialog-surface.calendar-event-dialog > .ui-modal-header,
@@ -84,12 +68,14 @@
   }
 
   .calendar-dialog-surface.calendar-event-dialog > .calendar-event-dialog__form {
-    @apply min-h-0 flex-1;
+    @apply min-h-0;
+    flex: 1 1 auto;
   }
 }
 
 .calendar-dialog-surface .calendar-event-dialog__form {
-  @apply flex min-h-0 flex-1 flex-col;
+  @apply flex min-h-0 flex-col;
+  flex: 1 1 auto;
   gap: 0.5rem;
 }
 

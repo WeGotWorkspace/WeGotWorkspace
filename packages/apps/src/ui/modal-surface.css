@@ -6,13 +6,6 @@
   --modal-header-end: calc(var(--modal-close-size) + 0.5rem);
   --modal-max-width: 32rem;
   --modal-max-height: 100dvh;
-  /*
-   * Dialog form density: sm / 32px at every breakpoint. Remap the default md
-   * height so Input / Select / Textarea / control-surface paint 32px without
-   * per-dialog size sprinkles. View-header is outside this surface and stays md.
-   */
-  --control-height-md: var(--control-height-sm, 2rem);
-  --input-height: var(--control-height-sm, 2rem);
   @apply box-border min-w-0 overflow-x-hidden p-[length:var(--modal-inset)];
 }
 
@@ -30,47 +23,69 @@
  * Centered Dialog / AlertDialog. Sheets keep edge layout and skip this.
  * Clamp to the visual viewport so min-content children and translate
  * centering cannot paint past the screen (iOS Safari especially).
+ *
+ * Dialog form density: remapped here (not on all `.ui-modal-surface`) so
+ * SideDrawer / Sheet chrome keeps true `--control-height-md` (36px) and
+ * matches main ViewHeader IconButtons. Centered dialogs still paint sm /
+ * 32px Inputs without per-dialog size sprinkles.
  */
 .ui-modal-surface--center {
+  --control-height-md: var(--control-height-sm, 2rem);
+  --input-height: var(--control-height-sm, 2rem);
+  @apply flex flex-col;
+  /* Center with the individual `translate` property only — never also set
+   * `transform: translate(...)`. Prod Lightning CSS drops `translate: none`
+   * as an "initial" value, so Tailwind `translate-x/y-[-50%]` utilities then
+   * stack with a transform translate and shove the card off-screen. Dev keeps
+   * `translate: none`, which is why the same markup looks fine locally. */
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
   width: min(100%, var(--modal-max-width));
   max-width: min(var(--modal-max-width), 100svw);
+  height: auto;
   max-height: min(var(--modal-max-height), 100dvh);
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
+  gap: 1rem;
 }
 
 /*
- * DialogContent ships `left-[50%] top-[50%] translate-x-[-50%] zoom-in-95`.
- * Below 768px fill the viewport as a sheet and reset enter transform so
- * WebKit cannot leave a card larger than the screen at the origin.
+ * Below 768px keep a centered CARD with modest gutters so DialogOverlay
+ * (bg-black/80) stays visible around the edges — not a full-bleed sheet.
+ * Height follows content until max-height; then the body scrolls.
+ * Disable enter zoom so WebKit cannot leave a mis-scaled card; keep using
+ * `translate` (not `transform`) for the -50% center so minifiers cannot
+ * reintroduce a double offset against leftover utilities.
  */
 @media (max-width: 767px) {
   .ui-modal-surface.ui-modal-surface--center {
+    --modal-mobile-inline-gutter: max(
+      0.75rem,
+      env(safe-area-inset-left, 0px),
+      env(safe-area-inset-right, 0px)
+    );
+    --modal-mobile-block-gutter: max(
+      0.75rem,
+      env(safe-area-inset-top, 0px),
+      env(safe-area-inset-bottom, 0px)
+    );
     @apply m-0;
     position: fixed;
-    inset: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: auto;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    width: min(var(--modal-max-width), calc(100svw - (2 * var(--modal-mobile-inline-gutter))));
+    max-width: min(var(--modal-max-width), calc(100svw - (2 * var(--modal-mobile-inline-gutter))));
     height: auto;
-    max-width: none;
-    max-height: none;
-    border-radius: 0;
-    translate: 0 0;
+    max-height: min(var(--modal-max-height), calc(100dvh - (2 * var(--modal-mobile-block-gutter))));
+    translate: -50% -50%;
     scale: 1;
     transform: none;
     animation: none;
-    --tw-translate-x: 0;
-    --tw-translate-y: 0;
     --tw-enter-scale: 1;
     --tw-enter-translate-x: 0;
     --tw-enter-translate-y: 0;
-    padding-block-start: max(var(--modal-inset, 1rem), env(safe-area-inset-top, 0px));
-    padding-block-end: max(var(--modal-inset, 1rem), env(safe-area-inset-bottom, 0px));
-    padding-inline-start: max(var(--modal-inset, 1rem), env(safe-area-inset-left, 0px));
-    padding-inline-end: max(var(--modal-inset, 1rem), env(safe-area-inset-right, 0px));
   }
 }
 
@@ -81,14 +96,38 @@
 }
 
 .ui-modal-header {
-  @apply flex flex-col justify-center gap-1.5 text-left;
+  @apply flex shrink-0 flex-col justify-center gap-1.5 text-left;
   min-height: var(--modal-close-size);
   padding-inline-end: var(--modal-header-end);
 }
 
+/*
+ * Body/form grow with content (flex-basis: auto). When the surface hits
+ * max-height they shrink (min-height: 0) and the body scrolls — no empty
+ * stretch that pins the footer to the viewport bottom on short forms.
+ */
+.ui-modal-body {
+  @apply min-h-0 overflow-y-auto;
+  flex: 1 1 auto;
+}
+
+.ui-modal-form {
+  @apply flex min-h-0 flex-col overflow-hidden;
+  flex: 1 1 auto;
+}
+
+/* Component that renders a <form> (e.g. CalendarEventForm) still pins its footer. */
+.ui-modal-body:has(> form) {
+  @apply flex flex-col overflow-hidden;
+}
+
+.ui-modal-body > form {
+  @apply flex min-h-0 flex-col overflow-hidden;
+  flex: 1 1 auto;
+}
+
 .ui-modal-footer {
-  @apply sticky bottom-0 z-[1];
-  margin-block-start: auto;
+  @apply shrink-0;
   padding-block-start: 0.5rem;
   background-color: var(--background, var(--color-cream, #ffffff));
 }

@@ -38,20 +38,24 @@ describe("calendar event dialog CSS ownership", () => {
     expect(formTsx).toMatch(/!form\.allDay \? \(/);
   });
 
-  it("fills the viewport as a sheet below the mobile breakpoint", () => {
+  it("keeps a compact card below the mobile breakpoint (no full-bleed sheet)", () => {
     expect(css).toMatch(/@media \(max-width: 767px\)/);
     expect(css).toMatch(
       /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-dialog,\s*\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-details-popover--dialog/,
     );
-    expect(css).toMatch(/inset:\s*0/);
-    expect(css).toMatch(/border-radius:\s*0/);
-    expect(css).toMatch(/position:\s*fixed/);
-    expect(css).toMatch(/transform:\s*none/);
-    expect(css).toMatch(/animation:\s*none/);
+    expect(css).toMatch(
+      /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-dialog[\s\S]*height:\s*auto/,
+    );
     expect(css).toMatch(/safe-area-inset-top/);
     expect(css).toMatch(/safe-area-inset-bottom/);
+    expect(css).not.toMatch(
+      /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-dialog[\s\S]*inset:\s*0/,
+    );
+    expect(css).not.toMatch(
+      /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-dialog[\s\S]*border-radius:\s*0/,
+    );
     expect(css).toMatch(
-      /\.calendar-event-dialog > \.calendar-event-dialog__form\s*\{[\s\S]*?\bflex-1\b/,
+      /\.calendar-event-dialog > \.calendar-event-dialog__form\s*\{[\s\S]*?flex:\s*1 1 auto/,
     );
   });
 
