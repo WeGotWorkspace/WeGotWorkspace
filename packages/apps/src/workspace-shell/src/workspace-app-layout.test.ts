@@ -36,7 +36,7 @@ describe("WorkspaceUserFooter logout chrome", () => {
     expect(tsx).toMatch(/import \{ IconButton \} from "@\/button\/src\/button"/);
     expect(footerBlock).toMatch(/label="Log out"/);
     expect(footerBlock).toMatch(/variant="outline"/);
-    expect(footerBlock).toMatch(/size="sm"/);
+    expect(footerBlock).toMatch(/size="md"/);
     expect(footerBlock).not.toMatch(/variant="subtle"/);
     expect(tsx).not.toMatch(/size-9/);
     expect(tsx).not.toMatch(/linkHoverClassName/);
@@ -72,7 +72,7 @@ describe("WorkspaceSidebarToggle chrome", () => {
     const toggleBlock = tsx.match(/export function WorkspaceSidebarToggle\([\s\S]*?\n\}/)?.[0];
     expect(toggleBlock).toBeDefined();
     expect(toggleBlock!).toMatch(/variant="outline"/);
-    expect(toggleBlock!).toMatch(/size="sm"/);
+    expect(toggleBlock!).toMatch(/size="md"/);
     expect(toggleBlock!).not.toMatch(/variant="subtle"/);
     expect(toggleBlock!).not.toMatch(/WORKSPACE_SIDEBAR_TOGGLE_STYLE/);
     expect(toggleBlock!).not.toMatch(/hoverClassName/);
@@ -85,12 +85,26 @@ describe("WorkspaceSidebarToggle chrome", () => {
     expect(toggleBlock).toBeDefined();
     expect(toggleBlock!).toMatch(/active=\{open\}/);
     expect(toggleBlock!).toMatch(/aria-pressed=\{open\}/);
-    expect(toggleBlock!).toMatch(/className="workspace-sidebar-toggle shrink-0"/);
+    expect(toggleBlock!).toMatch(
+      /className="workspace-sidebar-toggle notification-inbox-tray__trigger shrink-0"/,
+    );
   });
 
   it("keeps active Lucide panel/menu marks as stroke (no solid fill blob)", () => {
     expect(css).toMatch(
       /\.workspace-sidebar-toggle\.button\.icon-button--active \.button__icon > svg \{[\s\S]*fill:\s*none/,
     );
+  });
+
+  it("reuses the bell unread badge class on the closed rail/hamburger toggle", () => {
+    const toggleBlock = tsx.match(/export function WorkspaceSidebarToggle\([\s\S]*?\n\}/)?.[0];
+    expect(toggleBlock).toBeDefined();
+    expect(tsx).toMatch(/useNotificationsInbox/);
+    expect(tsx).toMatch(/notification-inbox-tray\.css/);
+    expect(toggleBlock!).toMatch(/notification-inbox-tray__trigger/);
+    expect(toggleBlock!).toMatch(/data-count=\{showBadge \? String\(unreadCount\) : undefined\}/);
+    expect(toggleBlock!).toMatch(/showBadge = !open && unreadCount > 0/);
+    expect(css).toMatch(/\.workspace-sidebar-toggle \{[\s\S]*overflow-visible/);
+    expect(css).not.toMatch(/\.workspace-sidebar-toggle::after/);
   });
 });

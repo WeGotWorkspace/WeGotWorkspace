@@ -613,6 +613,12 @@ describe("PresenceStore Meet fanout", () => {
     expect(session.sentTo[0]?.envelope).toEqual(channelMessage);
   });
 
+  it("sendToUsernames matches peer usernames case-insensitively", async () => {
+    const { session, store } = await online();
+    store.sendToUsernames(["Bob"], channelMessage);
+    expect(session.sentTo.map((row) => row.peerId).sort()).toEqual(["bob-aaa111", "bob-tab222"]);
+  });
+
   it("emits inbound channel-message when authorId matches the sender username", async () => {
     const { session, store } = await online();
     const listener = vi.fn();
@@ -720,6 +726,32 @@ describe("PresenceStore Meet fanout", () => {
       "channel-reaction",
       "channel-changed",
     ]);
+  });
+
+  it("emits inbound notify-hint with optional tag", async () => {
+    const { session, store } = await online();
+    const listener = vi.fn();
+    store.subscribeNotifyHint(listener);
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "notify-hint", tag: "chat.message_posted" },
+    });
+    session.emit({
+      type: "envelope",
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "notify-hint" },
+    });
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenNthCalledWith(1, {
+      kind: "notify-hint",
+      senderUsername: "bob",
+      tag: "chat.message_posted",
+    });
+    expect(listener).toHaveBeenNthCalledWith(2, {
+      kind: "notify-hint",
+      senderUsername: "bob",
+    });
   });
 });
 

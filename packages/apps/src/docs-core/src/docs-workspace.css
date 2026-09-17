@@ -81,18 +81,7 @@
     var(--docs-accent) 24%,
     var(--color-cream, #ffffff)
   );
-  /* Quiet menu washes for portaled row/action DropdownMenus (portal-theme-vars). */
-  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-selected-background: color-mix(
-    in oklab,
-    var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --menu-item-selected-hover-background: color-mix(
-    in oklab,
-    var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
+  /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24). */
 
   --foreground: var(--docs-text);
   --color-foreground: var(--docs-text);
@@ -122,7 +111,7 @@
   }
 
   .docs-collab-suggest-controls.button {
-    width: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
+    width: var(--control-height-md, 2.25rem);
     @apply shrink-0 flex-none px-0;
   }
 }
@@ -132,9 +121,10 @@
   @apply gap-3;
 }
 
-/* Docs home reuses Drive grid/list under `.drive-workspace` for layout selectors.
-   Remap drive accent tokens so tiles, list rows, and portaled menus use docs blue. */
-.docs-workspace .drive-workspace {
+/* Docs home and portaled Docs dialogs reuse Drive grid/list under `.drive-workspace`
+   for layout selectors. Remap drive accent tokens so tiles, list rows, view toggle,
+   and portaled menus use docs blue — not Drive green. Drive itself stays green. */
+:is(.docs-workspace, .docs-dialog-surface) .drive-workspace {
   --drive-accent: var(--docs-accent);
   --workspace-accent: var(--docs-accent);
   --color-emerald: var(--docs-accent);
@@ -152,17 +142,7 @@
     var(--docs-accent) 24%,
     var(--color-cream, #ffffff)
   );
-  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-selected-background: color-mix(
-    in oklab,
-    var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --menu-item-selected-hover-background: color-mix(
-    in oklab,
-    var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
+  /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 @media (min-width: 768px) {
@@ -242,6 +222,17 @@
   --button-outline-hover-background: color-mix(in oklab, #000000 10%, var(--docs-sidebar));
   --button-outline-active-background: color-mix(in oklab, #000000 16%, var(--docs-sidebar));
   --button-outline-active-hover-background: color-mix(in oklab, #000000 22%, var(--docs-sidebar));
+}
+
+/*
+ * Bell lives in the header (sibling of scroll). Mirror sidebar New primary
+ * (white on docs-sidebar), not workspace-root accent-on-white.
+ */
+.docs-workspace .app-sidebar__notifications {
+  --button-primary-bg: #ffffff;
+  --button-primary-fg: var(--docs-sidebar);
+  --notification-inbox-badge-bg: #ffffff;
+  --notification-inbox-badge-fg: var(--docs-sidebar);
 }
 
 .docs-workspace .app-sidebar__footer {
@@ -377,25 +368,14 @@
   --docs-accent-strong: color-mix(in oklab, var(--docs-accent) 70%, #0f172a);
   --workspace-accent: var(--docs-accent);
   --destination-picker-accent: var(--docs-accent);
+  --drive-accent: var(--docs-accent);
   --color-emerald: var(--docs-accent);
   --button-primary-bg: var(--docs-accent);
   --button-primary-fg: #ffffff;
   --primary: var(--docs-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--docs-accent-strong);
-  --button-outline-hover-color: var(--docs-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
-  --menu-item-selected-background: color-mix(
-    in oklab,
-    var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --menu-item-selected-hover-background: color-mix(
-    in oklab,
-    var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 .docs-workspace__editor {
@@ -404,13 +384,6 @@
 
 .docs-workspace .docs-comments-floating-layer {
   --docs-accent: #3b82f6;
-}
-
-.docs-workspace .docs-comments-floating-layer__card .docs-comments-thread-card[data-active="true"] {
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--color-ink) 5%, transparent),
-    0 8px 24px -8px color-mix(in oklab, var(--docs-accent) 28%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--docs-accent) 12%, transparent);
 }
 
 .docs-workspace .text-editor {

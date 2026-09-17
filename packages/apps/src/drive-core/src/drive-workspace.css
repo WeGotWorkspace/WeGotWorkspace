@@ -72,6 +72,17 @@
   --button-primary-fg: var(--color-ink);
 }
 
+/*
+ * Bell lives in the header (sibling of scroll). Mirror New CTA: Drive green +
+ * ink. Literal ink avoids the notifications `--color-ink` glyph remap.
+ */
+.drive-workspace .app-sidebar__notifications {
+  --button-primary-bg: var(--drive-accent);
+  --button-primary-fg: #042a22;
+  --notification-inbox-badge-bg: var(--drive-accent);
+  --notification-inbox-badge-fg: #042a22;
+}
+
 /** App switcher lockup: classic Drive brand tile (green + white glyph). */
 .drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--drive-accent);
@@ -176,14 +187,18 @@
  */
 .drive-dialog-surface {
   --drive-accent: #10b981;
+  --drive-accent-strong: color-mix(in oklab, var(--drive-accent) 55%, var(--color-ink));
   --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #ffffff));
+  --workspace-accent: var(--drive-accent);
   --destination-picker-accent: var(--drive-accent);
   --color-emerald: var(--drive-accent);
   --button-primary-bg: var(--drive-accent);
   --button-primary-fg: #ffffff;
   --primary: var(--drive-accent);
   --primary-foreground: #ffffff;
+  --button-active-color: var(--drive-accent-strong);
   --field-label-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 .drive-workspace .drive-main-pane__body {

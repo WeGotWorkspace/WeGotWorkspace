@@ -26,9 +26,9 @@ test.describe("Calendar month resize stacking (Storybook)", () => {
     test.setTimeout(90_000);
     await page.goto(`/iframe.html?id=${CALENDAR_SEEDED_WIDE}&viewMode=story`);
 
-    const closeMenu = page.getByRole("button", { name: "Close menu" });
-    if (await closeMenu.isVisible().catch(() => false)) {
-      await closeMenu.click();
+    const scrim = page.locator(".app-sidebar__scrim");
+    if (await scrim.isVisible().catch(() => false)) {
+      await scrim.click();
     }
 
     await expect

@@ -7,6 +7,7 @@ import type {
   PresenceEnvelope,
   PresenceMeetFanoutEvent,
   PresenceMeshSession,
+  PresenceNotifyHintEvent,
   PresenceSnapshot,
   PresenceUserStatus,
 } from "@/presence-core/src/presence-types";
@@ -86,6 +87,8 @@ export class PresenceStore {
   private readonly listeners = new Set<() => void>();
 
   private readonly meetListeners = new Set<(event: PresenceMeetFanoutEvent) => void>();
+
+  private readonly notifyHintListeners = new Set<(event: PresenceNotifyHintEvent) => void>();
 
   private session: PresenceMeshSession | null = null;
 
@@ -172,6 +175,14 @@ export class PresenceStore {
     };
   };
 
+  /** Suite-notify wake hints — refresh inbox via HTTP; do not trust `tag` as content. */
+  subscribeNotifyHint = (listener: (event: PresenceNotifyHintEvent) => void): (() => void) => {
+    this.notifyHintListeners.add(listener);
+    return () => {
+      this.notifyHintListeners.delete(listener);
+    };
+  };
+
   getSnapshot = (): PresenceSnapshot => this.snapshot;
 
   /** Whether this window currently owns the principal mesh dial (cross-window mode). */
@@ -251,6 +262,7 @@ export class PresenceStore {
     }
     this.channelTypingUntil.clear();
     this.meetListeners.clear();
+    this.notifyHintListeners.clear();
     const session = this.session;
     this.session = null;
     this.followerSession = null;
@@ -294,18 +306,21 @@ export class PresenceStore {
   }
 
   /**
-   * Targeted send for Meet payloads. Looks up every live peer id for each
+   * Targeted send for Meet / notify-hint payloads. Looks up every live peer id for each
    * username (multi-tab) and never broadcasts — missing peers just miss the
-   * hint and wait for the JMAP/room-status poll.
+   * hint and wait for the poll / VAPID path.
    */
   sendToUsernames(usernames: readonly string[], envelope: PresenceEnvelope): void {
     if (!this.session || !this.joined || usernames.length === 0) return;
+    const selfKey = this.selfUsername.trim().toLowerCase();
     const targets = new Set(
-      usernames.map((name) => name.trim()).filter((name) => name && name !== this.selfUsername),
+      usernames
+        .map((name) => name.trim().toLowerCase())
+        .filter((name) => name && name !== selfKey),
     );
     if (targets.size === 0) return;
     for (const peer of this.session.getRoomPeers()) {
-      const username = peer.user ?? "";
+      const username = (peer.user ?? "").trim().toLowerCase();
       if (!targets.has(username)) continue;
       this.session.sendTo(peer.id, envelope);
     }
@@ -532,11 +547,24 @@ export class PresenceStore {
         active: envelope.active,
         ...(envelope.audioOnly === true ? { audioOnly: true as const } : {}),
       });
+      return;
+    }
+
+    if (envelope.kind === "notify-hint") {
+      this.emitNotifyHint({
+        kind: "notify-hint",
+        senderUsername,
+        ...(envelope.tag ? { tag: envelope.tag } : {}),
+      });
     }
   }
 
   private emitMeetFanout(event: PresenceMeetFanoutEvent): void {
     for (const listener of this.meetListeners) listener(event);
+  }
+
+  private emitNotifyHint(event: PresenceNotifyHintEvent): void {
+    for (const listener of this.notifyHintListeners) listener(event);
   }
 
   private handleChannelTyping(channelId: string, username: string, stop: boolean): void {

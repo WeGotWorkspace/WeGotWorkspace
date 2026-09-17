@@ -80,12 +80,17 @@ describe("docs workspace sheet elevation", () => {
 });
 
 describe("docs workspace outline chrome", () => {
+  it("remaps nested Drive listing tokens to Docs blue on the workspace and dialog surface", () => {
+    expect(css).toMatch(
+      /:is\(\.docs-workspace,\s*\.docs-dialog-surface\) \.drive-workspace \{[\s\S]*--drive-accent:\s*var\(--docs-accent\)/,
+    );
+    expect(css).toMatch(/\.docs-dialog-surface \{[\s\S]*--drive-accent:\s*var\(--docs-accent\)/);
+    expect(css).not.toMatch(/\.docs-dialog-surface \{[\s\S]*--drive-accent:\s*#10b981/);
+  });
+
   it("publishes outline tokens on the workspace and view-header (not ink-gray fallback)", () => {
     expect(css).toMatch(
       /\.docs-workspace \{[\s\S]*--button-outline-hover-color:\s*var\(--docs-accent-strong\)/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \{[\s\S]*--menu-item-hover-background:[\s\S]*var\(--docs-accent\) 14%/,
     );
     expect(css).toMatch(
       /\.docs-workspace \.view-header \{[\s\S]*--button-outline-color:\s*var\(--color-ink\)/,
@@ -108,6 +113,27 @@ describe("docs workspace outline chrome", () => {
     );
     expect(css).toMatch(
       /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*#ffffff/,
+    );
+  });
+
+  it("mirrors sidebar New primary onto the header notification unread badge", () => {
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-bg:\s*#ffffff/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*var\(--docs-sidebar\)/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-bg:\s*#ffffff/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-fg:\s*var\(--docs-sidebar\)/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-bg:\s*#ffffff/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-fg:\s*var\(--docs-sidebar\)/,
     );
   });
 

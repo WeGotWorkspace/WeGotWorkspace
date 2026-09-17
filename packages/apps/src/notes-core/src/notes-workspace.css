@@ -250,6 +250,19 @@
   --button-primary-fg: var(--color-ink, #042a22);
 }
 
+/*
+ * Bell lives in the header (sibling of scroll). Pin the unread badge to the
+ * same pair as New note on `.app-sidebar__scroll`: warm yellow fill + dark ink
+ * label (`--notes-accent` / `--color-ink`). Literals avoid the notifications
+ * `--color-ink` remap (glyph chrome) and the tray fallback of ink-bg + emerald-fg.
+ */
+.notes-workspace .app-sidebar__notifications {
+  --button-primary-bg: #f6d176;
+  --button-primary-fg: #042a22;
+  --notification-inbox-badge-bg: #f6d176;
+  --notification-inbox-badge-fg: #042a22;
+}
+
 /**
  * App switcher lockup: yellow tile + yellow-tint notepad. Default invert uses
  * `--app-sidebar-color` as the tile. Do not mix sidebar ink into the
@@ -282,13 +295,17 @@
 
 .notes-dialog-surface {
   --notes-accent: #f6d176;
+  --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 32%, var(--color-ink));
+  --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
   --button-primary-bg: var(--notes-accent);
   --button-primary-fg: var(--color-ink, #042a22);
   --primary: var(--notes-accent);
   --primary-foreground: var(--color-ink);
+  --button-active-color: var(--notes-accent-strong);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --segmented-control-track-active-bg: var(--color-ink);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 /* Isolate from assigned CATEGORIES ink/gold (`--tag-bg` / `--tag-fg`). */
@@ -312,12 +329,9 @@
 
 /*
  * Detail header notebook switcher: ColorSwatchTrigger (CalendarEventCalendarPicker)
- * — cream pill, sm height to match adjacent IconButtons, icon + chevron, no caption.
+ * — cream surface; height/radius come from the shared primitive.
  */
 .notes-workspace .action-bar .notes-notebook-select.color-swatch-trigger {
-  --control-radius: var(--control-radius-button-pill);
-  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
   background-color: var(--color-cream, #ffffff);
 }
 

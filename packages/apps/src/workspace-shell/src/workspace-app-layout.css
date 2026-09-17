@@ -56,9 +56,14 @@
  * Open sidebar: accent glyph via `.icon-button--active` + parent `--button-active-color`.
  * Lucide panel/menu marks are stroke-based — keep fill none so active does not solid-blob.
  * Product headers (e.g. Calendar `.view-header`) own accent wash tokens / overrides.
+ * Unread badge: reuse `.notification-inbox-tray__trigger` (primary CTA fill + on-color).
  */
 .workspace-sidebar-toggle.button.icon-button--active .button__icon > svg {
   fill: none;
+}
+
+.workspace-sidebar-toggle {
+  @apply overflow-visible;
 }
 
 /* Right-hand panel slide (mirrors app-sidebar open/close on the opposite edge). */

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ChevronLeft, ChevronRight, Inbox, PenSquare, Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
+import { NotificationsInboxValueProvider } from "@/notifications-core/src/notifications-inbox-context";
 import { ViewHeader } from "@/view-header/src/view-header";
 import "./view-header.stories.css";
 
@@ -41,14 +42,14 @@ export const Default: Story = {
           label="Compose"
           onClick={() => {}}
           icon={<PenSquare />}
-          size="sm"
+          size="md"
           variant="outline"
         />
         <IconButton
           label="Delete"
           onClick={() => {}}
           icon={<Trash2 />}
-          size="sm"
+          size="md"
           variant="outline"
         />
       </div>
@@ -83,20 +84,45 @@ export const WithoutSidebarToggle: Story = {
   },
 };
 
+/** Closed rail/hamburger carries the unread badge; open sidebar leaves it on the bell. */
+export const ClosedSidebarUnread: Story = {
+  decorators: [
+    (Story) => (
+      <NotificationsInboxValueProvider
+        value={{
+          items: [],
+          unreadCount: 3,
+          onOpenItem: () => undefined,
+          onMarkAllRead: () => undefined,
+          markReadWhere: async () => undefined,
+          onEnablePush: () => undefined,
+          pushEnabled: true,
+        }}
+      >
+        <Story />
+      </NotificationsInboxValueProvider>
+    ),
+  ],
+  args: {
+    ...Default.args,
+    sidebarOpen: false,
+  },
+};
+
 const periodNav = (
   <div className="view-header-story-nav">
     <IconButton
       label="Previous period"
       icon={<ChevronLeft />}
       onClick={() => {}}
-      size="sm"
+      size="md"
       variant="outline"
     />
     <IconButton
       label="Next period"
       icon={<ChevronRight />}
       onClick={() => {}}
-      size="sm"
+      size="md"
       variant="outline"
     />
   </div>
@@ -118,7 +144,7 @@ export const Stacked: Story = {
     layout: "stacked",
     titleLeading: periodNav,
     titleTrailing: (
-      <IconButton label="Inbox" icon={<Inbox />} onClick={() => {}} size="sm" variant="outline" />
+      <IconButton label="Inbox" icon={<Inbox />} onClick={() => {}} size="md" variant="outline" />
     ),
     actions: periodActions,
   },

@@ -1,8 +1,10 @@
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { IconButton } from "@/button/src/button";
+import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
 import { SidebarLogo } from "@/sidebar-logo/src/sidebar-logo";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
+import "@/notifications-core/src/notification-inbox-tray.css";
 import "@/workspace-shell/src/workspace-app-layout.css";
 
 type WorkspaceAppLayoutBaseProps = {
@@ -147,7 +149,7 @@ export function WorkspaceUserFooter({
         icon={<LogOut />}
         onClick={handleLogout}
         variant="outline"
-        size="sm"
+        size="md"
       />
     </div>
   );
@@ -170,9 +172,16 @@ export function WorkspacePanelScrim({ open, onClick }: { open: boolean; onClick:
 }
 
 export function WorkspaceSidebarToggle({ open, onToggle }: WorkspaceSidebarToggleProps) {
+  const unreadCount = useNotificationsInbox()?.unreadCount ?? 0;
+  const showBadge = !open && unreadCount > 0;
+  const label = open
+    ? "Hide sidebar"
+    : showBadge
+      ? `Show sidebar (${unreadCount} unread)`
+      : "Show sidebar";
   return (
     <IconButton
-      label={open ? "Hide sidebar" : "Show sidebar"}
+      label={label}
       onClick={onToggle}
       icon={
         <>
@@ -185,10 +194,11 @@ export function WorkspaceSidebarToggle({ open, onToggle }: WorkspaceSidebarToggl
         </>
       }
       variant="outline"
-      size="sm"
+      size="md"
       active={open}
       aria-pressed={open}
-      className="workspace-sidebar-toggle shrink-0"
+      className="workspace-sidebar-toggle notification-inbox-tray__trigger shrink-0"
+      data-count={showBadge ? String(unreadCount) : undefined}
     />
   );
 }

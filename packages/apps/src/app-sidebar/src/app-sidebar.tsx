@@ -1,12 +1,8 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { type CSSProperties, type ReactNode } from "react";
 import { AppSwitchButton } from "@/app-switch-button/src/app-switch-button";
-import { IconButton } from "@/button/src/button";
 import { cn } from "@/lib/utils";
-import {
-  SIDEBAR_OVERLAY_MEDIA_QUERY,
-  isSidebarOverlayViewport,
-} from "@/workspace-shell/src/sidebar-breakpoint";
+import { NotificationInboxTray } from "@/notifications-core/src/notification-inbox-tray";
+import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
 import "@/app-sidebar/src/app-sidebar.css";
 
 export type AppSidebarProps = {
@@ -26,18 +22,6 @@ export type AppSidebarProps = {
   className?: string;
 };
 
-function useIsSidebarOverlay() {
-  const [isOverlay, setIsOverlay] = useState(isSidebarOverlayViewport);
-  useEffect(() => {
-    const mql = window.matchMedia(SIDEBAR_OVERLAY_MEDIA_QUERY);
-    const onChange = () => setIsOverlay(mql.matches);
-    onChange();
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-  return isOverlay;
-}
-
 export function AppSidebar({
   open,
   onCloseMobile,
@@ -49,7 +33,7 @@ export function AppSidebar({
   appSwitchSubtitle,
   className,
 }: AppSidebarProps) {
-  const isOverlay = useIsSidebarOverlay();
+  const inbox = useNotificationsInbox();
   return (
     <>
       {open ? <div className="app-sidebar__scrim" onClick={onCloseMobile} aria-hidden /> : null}
@@ -58,16 +42,17 @@ export function AppSidebar({
           <div className="app-sidebar__header-main">
             <AppSwitchButton disabled={appSwitchDisabled} subtitle={appSwitchSubtitle} />
           </div>
-          {isOverlay ? (
-            <IconButton
-              label="Close menu"
-              icon={<X className="size-4" aria-hidden />}
-              size="sm"
-              variant="outline"
-              showTooltip={false}
-              onClick={onCloseMobile}
-              className="app-sidebar__close"
-            />
+          {inbox ? (
+            <div className="app-sidebar__notifications">
+              <NotificationInboxTray
+                items={inbox.items}
+                unreadCount={inbox.unreadCount}
+                onOpenItem={inbox.onOpenItem}
+                onMarkAllRead={inbox.onMarkAllRead}
+                onEnablePush={inbox.onEnablePush}
+                pushEnabled={inbox.pushEnabled}
+              />
+            </div>
           ) : null}
         </header>
 

@@ -63,9 +63,10 @@ export type PresenceSnapshot = {
  *
  * Meet acceleration kinds (`channel-message`, `channel-message-patch`,
  * `channel-message-destroy`, `channel-reaction`, `channel-changed`,
- * `call-active`) are hints — server + JMAP/room-status poll stay
- * authoritative. Senders must `sendTo` members, never workspace-broadcast
- * those kinds. Apply lives in `meet-mesh-sot` (SST).
+ * `call-active`) and suite `notify-hint` are hints — server + poll / VAPID
+ * stay authoritative. Senders must `sendTo` members, never workspace-broadcast
+ * those kinds. Meet apply lives in `meet-mesh-sot` (SST); notify-hint only
+ * wakes the inbox refresh.
  */
 export type PresenceEnvelope =
   | { v: 1; kind: "presence"; status: PresenceUserStatus }
@@ -90,7 +91,8 @@ export type PresenceEnvelope =
       on: boolean;
     }
   | { v: 1; kind: "channel-changed"; channel: string }
-  | { v: 1; kind: "call-active"; channel: string; active: boolean; audioOnly?: boolean };
+  | { v: 1; kind: "call-active"; channel: string; active: boolean; audioOnly?: boolean }
+  | { v: 1; kind: "notify-hint"; tag?: string };
 
 /** Inbound Meet acceleration events (after sender-username checks). */
 export type PresenceMeetFanoutEvent =
@@ -125,6 +127,13 @@ export type PresenceMeetFanoutEvent =
       active: boolean;
       audioOnly?: boolean;
     };
+
+/** Inbound suite-notify wake signal (payload is not inbox SoT). */
+export type PresenceNotifyHintEvent = {
+  kind: "notify-hint";
+  senderUsername: string;
+  tag?: string;
+};
 
 export type PresenceMeshEvent =
   | { type: "roster" }
