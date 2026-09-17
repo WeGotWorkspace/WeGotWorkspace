@@ -211,6 +211,9 @@ describe("calendar workspace ICS import", () => {
 describe("calendar workspace sidebar heading", () => {
   it("does not render Plus or subscribe icon buttons on the My calendars heading", () => {
     expect(tsx).toMatch(/<SidebarSection title=\{L\.myCalendarsSection\}>/);
+    expect(tsx).toMatch(/<SidebarSection title=\{L\.tasksSection\}>/);
+    expect(tsx).toMatch(/<SidebarSection title=\{L\.sharedTaskListsSection\}>/);
+    expect(tsx).toMatch(/CalendarTaskDueSidebarRows/);
     expect(tsx).not.toMatch(/headingActions=/);
     expect(tsx).not.toMatch(/onAdd=\{canCreateCalendar/);
     expect(tsx).not.toMatch(/addLabel=\{L\.newCalendar\}/);

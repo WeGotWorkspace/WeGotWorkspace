@@ -45,8 +45,7 @@
  * cap so tall event forms can use the shared mobile max-height.
  */
 @media (max-width: 767px) {
-  .ui-modal-surface.calendar-dialog-surface.calendar-event-dialog,
-  .ui-modal-surface.calendar-dialog-surface.calendar-event-details-popover--dialog {
+  .ui-modal-surface.calendar-dialog-surface.calendar-event-dialog {
     height: auto;
     max-height: min(
       var(--modal-max-height, 100dvh),
@@ -62,8 +61,7 @@
     );
   }
 
-  .calendar-dialog-surface.calendar-event-dialog > .ui-modal-header,
-  .calendar-dialog-surface.calendar-event-details-popover--dialog > .ui-modal-header {
+  .calendar-dialog-surface.calendar-event-dialog > .ui-modal-header {
     @apply shrink-0;
   }
 

@@ -120,6 +120,7 @@ export function TasksWorkspace({
   onLogout,
   className,
   initialView,
+  initialTaskId,
   onViewChange,
 }: TasksWorkspaceProps) {
   const composerRef = useRef<TasksMainViewHandle>(null);
@@ -131,6 +132,7 @@ export function TasksWorkspace({
     operations,
     bootstrapRevision,
     initialView,
+    initialTaskId,
     onViewChange,
   });
 

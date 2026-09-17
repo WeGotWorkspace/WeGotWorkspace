@@ -3,6 +3,7 @@ import { useLocation, useParams, useRouter } from "@tanstack/react-router";
 import {
   isTasksPathname,
   tasksNavigateTarget,
+  tasksTaskIdFromSearch,
   tasksViewFromLocation,
   type TasksRouteParams,
 } from "@/tasks-core/src/tasks-route-search";
@@ -37,6 +38,9 @@ export function useTasksRouteSync() {
 
   return {
     initialView,
+    initialTaskId: isTasksPathname(location.pathname)
+      ? tasksTaskIdFromSearch(location.search as Record<string, unknown>) || undefined
+      : undefined,
     handleViewChange,
   };
 }

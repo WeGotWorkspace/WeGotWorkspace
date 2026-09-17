@@ -449,7 +449,9 @@ describe("CalendarEventDetailsPopover", () => {
         origin: { left: 48, top: 96, width: 180, height: 36 },
       });
       const dialog = screen.getByRole("dialog", { name: /Dentist/i });
-      expect(dialog.className).toContain("calendar-event-details-popover--dialog");
+      expect(dialog.className).toContain("calendar-dialog-surface");
+      expect(dialog.className).toContain("ui-modal-surface--center");
+      expect(dialog.className).not.toContain("calendar-event-details-popover--dialog");
       expect(dialog.className).not.toContain("calendar-event-details-popover--docked");
       expect(dialog.querySelector(".calendar-event-details-popover__body")).toBeTruthy();
       expect(

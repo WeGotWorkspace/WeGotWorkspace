@@ -320,12 +320,6 @@ export function CalendarEventDetailsPopover({
   ) : null;
 
   if (isMobile) {
-    const dialogClassName = [
-      "calendar-dialog-surface",
-      editable
-        ? "calendar-event-dialog"
-        : "calendar-event-details-popover calendar-event-details-popover--dialog",
-    ].join(" ");
     return (
       <Dialog
         open={open}
@@ -334,7 +328,9 @@ export function CalendarEventDetailsPopover({
         }}
       >
         <DialogContent
-          className={dialogClassName}
+          className={
+            editable ? "calendar-dialog-surface calendar-event-dialog" : "calendar-dialog-surface"
+          }
           lang={locale}
           aria-describedby={undefined}
           onOpenAutoFocus={(event) => {

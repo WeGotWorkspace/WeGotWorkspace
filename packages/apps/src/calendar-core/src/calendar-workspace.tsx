@@ -63,6 +63,15 @@ import {
 } from "@/calendar-core/src/calendar-event-preview";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
+import { CalendarTaskDuePopover } from "@/calendar-core/src/calendar-task-due-popover";
+import {
+  CalendarTaskDueSidebarRows,
+  partitionCalendarTaskDueSidebarLists,
+} from "@/calendar-core/src/calendar-task-due-sidebar";
+import { parseTaskDueOverlayKey } from "@/calendar-core/src/calendar-task-due-overlay";
+import { useCalendarOverlayHiddenIds } from "@/calendar-core/src/use-calendar-overlay-hidden-ids";
+import { useCalendarTaskDueOverlay } from "@/calendar-core/src/use-calendar-task-due-overlay";
+import type { TaskDueOverlayMarker } from "@/calendar-core/src/calendar-task-due-overlay";
 import {
   calendarDirectoryGroupsFromBootstrap,
   personalOwnerLabel,
@@ -228,6 +237,8 @@ export function CalendarWorkspace({
   meetOperations,
   workspaceOrigin,
   onJoinMeeting,
+  taskDueBootstrap,
+  onOpenTaskInTasks,
 }: CalendarWorkspaceProps) {
   const controller = useCalendarController({
     data,
@@ -247,6 +258,16 @@ export function CalendarWorkspace({
     sessionEmail: organizerAddress(session.user)?.email,
     sessionName: session.user.displayName,
   });
+  const { hiddenOverlayTaskListIds, toggleOverlayTaskListVisibility } =
+    useCalendarOverlayHiddenIds();
+  const taskDueOverlay = useCalendarTaskDueOverlay({
+    preset: taskDueBootstrap ?? null,
+    hiddenListIds: hiddenOverlayTaskListIds,
+  });
+  const { ownedLists: overlayOwnedLists, sharedLists: overlaySharedLists } = useMemo(
+    () => partitionCalendarTaskDueSidebarLists(taskDueOverlay.taskLists),
+    [taskDueOverlay.taskLists],
+  );
   const {
     L,
     locale,
@@ -430,6 +451,10 @@ export function CalendarWorkspace({
     /** When true, the popover hosts the editor form for this selection. */
     interactiveEdit?: boolean;
   } | null>(null);
+  const [taskDuePreview, setTaskDuePreview] = useState<{
+    marker: TaskDueOverlayMarker;
+    origin?: CalendarEventSelectionOrigin;
+  } | null>(null);
   const [eventTimesDraft, setEventTimesDraft] = useState<CalendarEventTimesDraft | null>(null);
   const liveEventPreview = useMemo(() => {
     if (!eventPreview) return null;
@@ -576,6 +601,7 @@ export function CalendarWorkspace({
 
   const closeEventPreview = useCallback(() => {
     setEventPreview(null);
+    setTaskDuePreview(null);
     setEventTimesDraft(null);
   }, []);
 
@@ -598,6 +624,18 @@ export function CalendarWorkspace({
 
   const openEventPreview = useCallback(
     (key: string, origin?: CalendarEventSelectionOrigin) => {
+      const overlayTaskId = parseTaskDueOverlayKey(key);
+      if (overlayTaskId) {
+        const marker =
+          taskDueOverlay.markers.find((entry) => entry.key === key) ??
+          taskDueOverlay.markers.find((entry) => entry.taskId === overlayTaskId);
+        if (!marker) return;
+        setEventTimesDraft(null);
+        closeEditor();
+        setEventPreview(null);
+        setTaskDuePreview({ marker, origin });
+        return;
+      }
       const model = resolveCalendarEventPreview(key, {
         events: data.events,
         surfaceEvents: surface?.events,
@@ -618,6 +656,7 @@ export function CalendarWorkspace({
           isOrganizer: sessionIsOrganizer,
         });
       setEventTimesDraft(null);
+      setTaskDuePreview(null);
       if (canInteractiveEdit) {
         void openEditEventKey(key);
         setEventPreview({ model, origin, interactiveEdit: true });
@@ -645,6 +684,7 @@ export function CalendarWorkspace({
       pendingDeletedEventIds,
       session.user,
       surface?.events,
+      taskDueOverlay.markers,
     ],
   );
 
@@ -871,6 +911,26 @@ export function CalendarWorkspace({
                 />
               </SidebarSection>
             ) : null}
+            {overlayOwnedLists.length > 0 ? (
+              <SidebarSection title={L.tasksSection}>
+                <CalendarTaskDueSidebarRows
+                  lists={overlayOwnedLists}
+                  hiddenListIds={hiddenOverlayTaskListIds}
+                  viewOnlyLabel={L.viewOnlyCalendarBadge}
+                  onToggleVisibility={toggleOverlayTaskListVisibility}
+                />
+              </SidebarSection>
+            ) : null}
+            {overlaySharedLists.length > 0 ? (
+              <SidebarSection title={L.sharedTaskListsSection}>
+                <CalendarTaskDueSidebarRows
+                  lists={overlaySharedLists}
+                  hiddenListIds={hiddenOverlayTaskListIds}
+                  viewOnlyLabel={L.viewOnlyCalendarBadge}
+                  onToggleVisibility={toggleOverlayTaskListVisibility}
+                />
+              </SidebarSection>
+            ) : null}
           </AppSidebar>
         }
         mainHeader={
@@ -1005,6 +1065,7 @@ export function CalendarWorkspace({
                   presentation={litSurface.presentation}
                   startDate={anchor}
                   events={surfaceEventsForView ?? surface?.events ?? new Map()}
+                  taskDueMarkers={taskDueOverlay.overlayEvents}
                   visibleCalendarIds={[...visibleCalendarIds]}
                   selectedCalendarId={defaultCalendarId}
                   contextValue={surface?.contextValue}
@@ -1029,9 +1090,11 @@ export function CalendarWorkspace({
                   }
                   pendingCreateIntent={pendingCreateIntent}
                   selectedEventKey={
-                    liveEventPreview && previewCanResize
-                      ? eventPreviewOccurrenceKey(liveEventPreview)
-                      : ""
+                    taskDuePreview
+                      ? taskDuePreview.marker.key
+                      : liveEventPreview && previewCanResize
+                        ? eventPreviewOccurrenceKey(liveEventPreview)
+                        : ""
                   }
                 />
               </div>
@@ -1210,6 +1273,17 @@ export function CalendarWorkspace({
                   }
                 : undefined
           }
+        />
+      ) : null}
+      {taskDuePreview ? (
+        <CalendarTaskDuePopover
+          open
+          marker={taskDuePreview.marker}
+          labels={L}
+          locale={locale}
+          origin={taskDuePreview.origin}
+          onClose={closeEventPreview}
+          onOpenInTasks={onOpenTaskInTasks}
         />
       ) : null}
       {menuCreateOpen && editor?.mode === "create" ? (

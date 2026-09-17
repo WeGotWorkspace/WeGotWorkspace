@@ -37,6 +37,8 @@ export type CalendarSurfaceProps = {
   /** ISO date for the view anchor (view-group aligns its own grid start). */
   startDate: string;
   events: CalendarEventsMap;
+  /** Render-only Tasks due markers merged after calendar visibility filter. */
+  taskDueMarkers?: CalendarEventsMap;
   visibleCalendarIds?: string[];
   selectedCalendarId?: string;
   contextValue?: EventsAPIContextValue;
@@ -99,6 +101,7 @@ export function CalendarSurface({
   presentation,
   startDate,
   events,
+  taskDueMarkers,
   visibleCalendarIds,
   selectedCalendarId,
   contextValue,
@@ -130,6 +133,7 @@ export function CalendarSurface({
     host.presentation = presentation;
     host.startDate = startDate;
     host.events = events;
+    host.taskDueMarkers = taskDueMarkers ?? new Map();
     host.visibleCalendarIds = visibleCalendarIds;
     host.selectedCalendarId = selectedCalendarId;
     // Keep EventsAPI selection aligned with the React sidebar create-target.
@@ -153,6 +157,7 @@ export function CalendarSurface({
     presentation,
     startDate,
     events,
+    taskDueMarkers,
     visibleCalendarIds,
     selectedCalendarId,
     contextValue,

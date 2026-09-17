@@ -1,0 +1,24 @@
+@import "../../styles.css" reference;
+
+.calendar-task-due-popover__body {
+  @apply relative z-10 flex flex-col gap-1.5 p-1;
+}
+
+.calendar-task-due-popover__title {
+  @apply m-0 font-medium leading-snug;
+  font-size: 0.875rem;
+}
+
+.calendar-task-due-popover__when,
+.calendar-task-due-popover__list {
+  @apply m-0 flex min-w-0 items-center gap-2 font-light leading-snug;
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
+}
+
+.calendar-task-due-popover__dot {
+  @apply size-2.5 shrink-0 rounded-full;
+}
+
+.calendar-task-due-popover__footer {
+  @apply mt-2 flex items-center justify-end;
+}
