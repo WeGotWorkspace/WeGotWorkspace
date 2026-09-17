@@ -67,6 +67,11 @@ import { useDocsComments } from "./use-docs-comments";
 import { useDocsSuggestions } from "./use-docs-suggestions";
 import { useDocsCollab } from "./use-docs-collab";
 import type { DocsCollabUrls } from "./use-docs-collab";
+import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
+import { createDocsThreadsLiveClient } from "./docs-threads-live";
+import { createDocsThreadsMemory } from "./docs-threads-memory";
+import { docsThreadsPathFromRoom } from "./docs-threads-path";
+import { useDocsThreadsSource } from "./use-docs-threads-source";
 import { useDocsCollabFailedSync } from "./use-docs-collab-failed-sync";
 import { DocsConflictDialog } from "./docs-conflict-dialog";
 import {
@@ -253,6 +258,23 @@ function DocsCollabWorkspaceInner({
     wire,
   });
   const showFailedSync = useDocsCollabFailedSync(urls?.room);
+  const docPath = docsThreadsPathFromRoom(urls?.room);
+  const liveThreads = Boolean(docPath) && wgwLiveApiEnabled();
+  const threadsClient = useMemo(
+    () =>
+      liveThreads
+        ? createDocsThreadsLiveClient()
+        : createDocsThreadsMemory(docPath ?? "/docs/test-together.md", {
+            id: session.user.username ?? session.user.displayName,
+            name: session.user.displayName?.trim() || session.user.username || "User",
+          }),
+    [docPath, liveThreads, session.user.displayName, session.user.username],
+  );
+  const threadsSource = useDocsThreadsSource({
+    client: threadsClient,
+    path: docPath ?? "/docs/test-together.md",
+    poll: liveThreads,
+  });
   const [conflictOpen, setConflictOpen] = useState(false);
   const [resolvingConflict, setResolvingConflict] = useState(false);
 
@@ -336,6 +358,10 @@ function DocsCollabWorkspaceInner({
     },
     commentsVisible: reviewPanelOpen,
     canMutateComments: permissions.canComment,
+    docPath,
+    threadsClient,
+    threadsSource,
+    pollThreads: liveThreads,
   });
 
   const {
@@ -356,6 +382,7 @@ function DocsCollabWorkspaceInner({
 
   const {
     suggestions,
+    archivedSuggestions,
     activeChangeId,
     selectSuggestion,
     clearActiveSuggestion,
@@ -370,6 +397,10 @@ function DocsCollabWorkspaceInner({
       id: session.user.username ?? session.user.displayName,
       name: session.user.displayName?.trim() || session.user.username || "User",
     },
+    docPath,
+    threadsClient,
+    threadsSource,
+    pollThreads: liveThreads,
   });
 
   useEffect(() => {
@@ -457,6 +488,7 @@ function DocsCollabWorkspaceInner({
         threads={commentThreads}
         draftThread={draftThread}
         suggestions={suggestions}
+        archivedSuggestions={archivedSuggestions}
         currentUserId={session.user.username}
         activeThreadId={activeThreadId}
         activeChangeId={activeChangeId}
@@ -480,6 +512,7 @@ function DocsCollabWorkspaceInner({
       activeThreadId,
       addReply,
       addSuggestionReply,
+      archivedSuggestions,
       cancelDraft,
       commentThreads,
       draftThread,

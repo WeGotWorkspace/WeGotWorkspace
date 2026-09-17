@@ -162,6 +162,29 @@ final class ChatCollectionsDavExposureTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('reserved for API-only collections', (string) $response->getContent());
     }
 
+    public function test_docs_thread_pool_is_dav_invisible_while_notes_stay_dav_visible(): void
+    {
+        $rootId = '01J6Y6M0R2V9GKJ4W1T8Q3ZBEX';
+        $this->asUser('alice')->postJson('/api/v1/files/threads?path='.urlencode('/users/alice/docs/plan.md'), [
+            'id' => $rootId,
+            'kind' => 'comment',
+            'body' => 'a thread',
+            'anchorText' => 'Plan',
+        ])->assertCreated();
+
+        $home = $this->dav('PROPFIND', '/calendars/alice/', depth: '1');
+        $home->assertStatus(207);
+        $this->assertStringContainsString('notes-general', (string) $home->getContent());
+        $this->assertStringNotContainsString('docs-threads', (string) $home->getContent());
+        $this->dav('PROPFIND', '/calendars/alice/docs-threads/', depth: '1')->assertNotFound();
+        $this->dav('GET', '/calendars/alice/docs-threads/'.$rootId.'.ics')->assertNotFound();
+
+        $shadow = $this->dav('MKCOL', '/calendars/alice/docs-threads-shadow/', $this->mkcolCalendarXml(), [
+            'CONTENT_TYPE' => 'application/xml',
+        ]);
+        $shadow->assertForbidden();
+    }
+
     private function asUser(string $username)
     {
         return $this->withBearer($this->issueBearerTokenFor($username));

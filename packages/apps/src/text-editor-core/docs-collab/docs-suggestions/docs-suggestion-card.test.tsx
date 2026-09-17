@@ -243,4 +243,87 @@ describe("DocsSuggestionCard", () => {
     expect(screen.queryByText("Accept")).toBeNull();
     expect(screen.queryByText("Reject")).toBeNull();
   });
+
+  it("hides accept, reject, and composer when the suggestion is archived", () => {
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={{ ...insertSuggestion, archived: true }}
+        labels={docsLabels}
+        currentUserId="u-1"
+        active
+        canMutate={false}
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: docsLabels.suggestionsAccept })).toBeNull();
+    expect(screen.queryByRole("button", { name: docsLabels.suggestionsReject })).toBeNull();
+    expect(screen.queryByLabelText(docsLabels.commentsReplyPlaceholder)).toBeNull();
+    expect(screen.getByLabelText(insertSuggestion.summary)).toBeTruthy();
+  });
+
+  it("shows a fallback body when an archived suggestion has no snapshot text", () => {
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={{
+          ...insertSuggestion,
+          archived: true,
+          parts: [],
+          summary: "",
+          anchorText: "",
+          reactions: [{ emoji: "👍", userIds: ["u-2"] }],
+          messages: [
+            {
+              id: "s-empty-m",
+              body: "hmm",
+              createdAt: "2026-06-01T09:10:00.000Z",
+              author: { id: "u-2", name: "Sam Lee" },
+            },
+          ],
+        }}
+        labels={docsLabels}
+        currentUserId="u-1"
+        active
+        canMutate={false}
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.getByLabelText(docsLabels.suggestionsArchivedEmpty)).toBeTruthy();
+    expect(screen.getByText("hmm")).toBeTruthy();
+  });
+
+  it("keeps existing reaction chips visible on archived cards without an add control", () => {
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={{
+          ...insertSuggestion,
+          archived: true,
+          reactions: [{ emoji: "👍", userIds: ["u-2"] }],
+        }}
+        labels={docsLabels}
+        currentUserId="u-1"
+        active
+        canMutate={false}
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.getByText("👍")).toBeTruthy();
+    expect(screen.getByText("1")).toBeTruthy();
+    expect(screen.getByLabelText("👍 u-2")).toBeTruthy();
+    expect(screen.queryByLabelText("Add reaction")).toBeNull();
+  });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import "@/text-editor-core/src/text-editor-track-changes-augmentation";
 import {
@@ -9,22 +9,25 @@ import {
 } from "@/text-editor-core/src/text-editor-track-changes";
 import type * as Y from "yjs";
 import type { DocsCommentAuthor } from "./docs-comments-types";
-import {
-  deleteSuggestionThread,
-  pruneOrphanSuggestionThreads,
-} from "./docs-suggestions/docs-suggestions-map-writes";
+import { createDocsThreadsMemory, type DocsThreadsMemoryClient } from "./docs-threads-memory";
+import type { DocsThreadsClient } from "./docs-threads-types";
 import type { DocsSuggestionWithThread } from "./docs-suggestions-types";
 import { useDocsSuggestionsActive } from "./use-docs-suggestions-active";
 import { useDocsSuggestionsMutations } from "./use-docs-suggestions-mutations";
-import { useDocsSuggestionsSync } from "./use-docs-suggestions-sync";
+import { useDocsThreadsSource, type DocsThreadsSource } from "./use-docs-threads-source";
 
 export type UseDocsSuggestionsOptions = {
   ydoc: Y.Doc | null;
   currentUser: DocsCommentAuthor;
+  docPath?: string | null;
+  threadsClient?: DocsThreadsClient | null;
+  threadsSource?: DocsThreadsSource;
+  pollThreads?: boolean;
 };
 
 export type UseDocsSuggestionsResult = {
   suggestions: DocsSuggestionWithThread[];
+  archivedSuggestions: DocsSuggestionWithThread[];
   activeChangeId: string | null;
   selectSuggestion: (changeId: string) => void;
   clearActiveSuggestion: () => void;
@@ -53,17 +56,62 @@ function mergeSuggestionWithThread(
   };
 }
 
+function mergeArchivedWithSnapshot(
+  archived: DocsSuggestionWithThread,
+  snapshot: DocsTrackChangeGroup | undefined,
+): DocsSuggestionWithThread {
+  if (!snapshot) return archived;
+  return {
+    ...archived,
+    authorName: archived.authorName || snapshot.authorName,
+    authorColor: archived.authorColor || snapshot.authorColor,
+    timestamp: archived.timestamp || snapshot.timestamp,
+    from: archived.from === Number.MAX_SAFE_INTEGER ? snapshot.from : archived.from,
+    to: archived.to === Number.MAX_SAFE_INTEGER ? snapshot.to : archived.to,
+    anchorText: archived.anchorText || snapshot.anchorText,
+    summary: archived.summary || snapshot.summary,
+    parts: archived.parts.length > 0 ? archived.parts : snapshot.parts,
+  };
+}
+
+const FALLBACK_DOC_PATH = "/users/bob/docs/plan.md";
+
+function isMemoryClient(client: DocsThreadsClient): client is DocsThreadsMemoryClient {
+  return "setActor" in client;
+}
+
 export function useDocsSuggestions(
   editor: Editor | null,
   options?: UseDocsSuggestionsOptions,
 ): UseDocsSuggestionsResult {
-  const ydoc = options?.ydoc ?? null;
   const currentUser = options?.currentUser ?? { id: "", name: "" };
+  const docPath = options?.docPath ?? null;
+  const threadsClient = options?.threadsClient;
+  const threadsSource = options?.threadsSource;
+
+  const fallbackClient = useRef<DocsThreadsClient | null>(null);
+  if (fallbackClient.current == null && threadsClient == null) {
+    fallbackClient.current = createDocsThreadsMemory(docPath ?? FALLBACK_DOC_PATH, currentUser);
+  }
+  const resolvedClient = threadsClient ?? fallbackClient.current;
+  if (resolvedClient && isMemoryClient(resolvedClient)) {
+    resolvedClient.setActor(currentUser);
+  }
+
+  const ownedSource = useDocsThreadsSource({
+    client: threadsSource ? null : resolvedClient,
+    path: threadsSource ? null : (docPath ?? FALLBACK_DOC_PATH),
+    poll: Boolean(options?.pollThreads && !threadsSource),
+  });
+  const source = threadsSource ?? ownedSource;
 
   const [editorSuggestions, setEditorSuggestions] = useState<DocsTrackChangeGroup[]>([]);
+  const [archivedSnapshots, setArchivedSnapshots] = useState<Map<string, DocsTrackChangeGroup>>(
+    () => new Map(),
+  );
   const { activeChangeId, setActiveChangeId, clearActiveSuggestion } =
     useDocsSuggestionsActive(editor);
-  const threads = useDocsSuggestionsSync(ydoc);
+  const threads = source.suggestions;
 
   const threadMap = useMemo(() => {
     const map = new Map<
@@ -86,6 +134,13 @@ export function useDocsSuggestions(
     () => editorSuggestions.map((suggestion) => mergeSuggestionWithThread(suggestion, threadMap)),
     [editorSuggestions, threadMap],
   );
+
+  const archivedSuggestions = useMemo(() => {
+    const liveIds = new Set(editorSuggestions.map((item) => item.changeId));
+    return source.archivedSuggestions
+      .filter((item) => !liveIds.has(item.changeId))
+      .map((item) => mergeArchivedWithSnapshot(item, archivedSnapshots.get(item.changeId)));
+  }, [archivedSnapshots, editorSuggestions, source.archivedSuggestions]);
 
   useEffect(() => {
     if (!editor || !editorHasTrackChanges(editor)) {
@@ -113,14 +168,22 @@ export function useDocsSuggestions(
     };
   }, [editor, setActiveChangeId]);
 
+  const { addReply, toggleReaction, archiveSuggestion } = useDocsSuggestionsMutations({
+    client: resolvedClient,
+    path: docPath ?? FALLBACK_DOC_PATH,
+    source,
+    currentUser,
+  });
+
   useEffect(() => {
-    if (!ydoc || !editor || !editorHasTrackChanges(editor)) return;
-    // Read change ids from the editor directly — `editorSuggestions` can still be
-    // empty on the first render after the editor attaches, which would otherwise
-    // prune every persisted thread on load/refresh.
+    if (!editor || !editorHasTrackChanges(editor) || !resolvedClient) return;
     const activeChangeIds = new Set(getDocsTrackChangeGroups(editor).map((item) => item.changeId));
-    pruneOrphanSuggestionThreads(ydoc, activeChangeIds);
-  }, [editor, editorSuggestions, ydoc]);
+    for (const thread of source.fileThreads) {
+      if (thread.kind !== "suggestion" || thread.archived) continue;
+      if (!thread.changeId || activeChangeIds.has(thread.changeId)) continue;
+      archiveSuggestion(thread.changeId);
+    }
+  }, [archiveSuggestion, editor, editorSuggestions, resolvedClient, source.fileThreads]);
 
   const selectSuggestion = useCallback(
     (changeId: string) => {
@@ -138,30 +201,50 @@ export function useDocsSuggestions(
     [editor, setActiveChangeId],
   );
 
+  const rememberSnapshot = useCallback((changeId: string, snapshot?: DocsTrackChangeGroup) => {
+    if (!snapshot) return;
+    setArchivedSnapshots((prev) => {
+      const next = new Map(prev);
+      next.set(changeId, snapshot);
+      return next;
+    });
+  }, []);
+
+  const snapshotForChange = useCallback(
+    (changeId: string): DocsTrackChangeGroup | undefined => {
+      if (!editor || !editorHasTrackChanges(editor)) return undefined;
+      return getDocsTrackChangeGroups(editor).find((item) => item.changeId === changeId);
+    },
+    [editor],
+  );
+
   const acceptSuggestion = useCallback(
     (changeId: string) => {
       if (!editor) return;
+      const snapshot = snapshotForChange(changeId);
+      rememberSnapshot(changeId, snapshot);
       editor.commands.acceptChange(changeId);
-      if (ydoc) deleteSuggestionThread(ydoc, changeId);
+      archiveSuggestion(changeId, snapshot);
       setActiveChangeId((current) => (current === changeId ? null : current));
     },
-    [editor, setActiveChangeId, ydoc],
+    [archiveSuggestion, editor, rememberSnapshot, setActiveChangeId, snapshotForChange],
   );
 
   const rejectSuggestion = useCallback(
     (changeId: string) => {
       if (!editor) return;
+      const snapshot = snapshotForChange(changeId);
+      rememberSnapshot(changeId, snapshot);
       editor.commands.rejectChange(changeId);
-      if (ydoc) deleteSuggestionThread(ydoc, changeId);
+      archiveSuggestion(changeId, snapshot);
       setActiveChangeId((current) => (current === changeId ? null : current));
     },
-    [editor, setActiveChangeId, ydoc],
+    [archiveSuggestion, editor, rememberSnapshot, setActiveChangeId, snapshotForChange],
   );
-
-  const { addReply, toggleReaction } = useDocsSuggestionsMutations({ ydoc, currentUser });
 
   return {
     suggestions,
+    archivedSuggestions,
     activeChangeId,
     selectSuggestion,
     clearActiveSuggestion,

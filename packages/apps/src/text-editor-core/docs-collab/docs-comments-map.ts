@@ -1,23 +1,11 @@
 import type * as Y from "yjs";
+import { createChatMessageUlid } from "@/lib/offline/meet-chat/chat-ulid";
 import { parseDocsCommentThread } from "./docs-comments/docs-comments-schema";
 import { DOCS_COMMENTS_MAP_KEY, type DocsCommentThread } from "./docs-comments-types";
 
-function createRandomSuffix(length = 7): string {
-  const alphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
-  const values = new Uint32Array(length);
-  crypto.getRandomValues(values);
-  let out = "";
-  for (let i = 0; i < length; i += 1) {
-    out += alphabet[values[i]! % alphabet.length];
-  }
-  return out;
-}
-
+/** Client ULID — same idempotency key the live threads API uses for VJOURNAL UID. */
 export function createDocsCommentId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `comment-${Date.now()}-${createRandomSuffix()}`;
+  return createChatMessageUlid();
 }
 
 export { parseDocsCommentThread } from "./docs-comments/docs-comments-schema";

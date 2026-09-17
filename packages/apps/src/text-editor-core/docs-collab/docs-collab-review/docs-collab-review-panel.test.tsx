@@ -30,6 +30,7 @@ const resolvedThread: DocsCommentThread = {
   ...openThread,
   id: "thread-resolved",
   resolved: true,
+  reactions: [{ emoji: "🎉", userIds: ["u-2"] }],
   messages: [
     {
       id: "thread-resolved-m",
@@ -51,6 +52,23 @@ const suggestion: DocsSuggestionWithThread = {
   summary: "Replace world",
   parts: [],
   messages: [],
+};
+
+const archivedSuggestion: DocsSuggestionWithThread = {
+  ...suggestion,
+  changeId: "change-archived",
+  archived: true,
+  parts: [],
+  summary: "Insert hello",
+  reactions: [{ emoji: "👍", userIds: ["u-2"] }],
+  messages: [
+    {
+      id: "s-archived-m",
+      body: "why this edit?",
+      createdAt: "2026-01-01T00:03:00.000Z",
+      author: { id: "u-1", name: "Alex" },
+    },
+  ],
 };
 
 const noop = () => {};
@@ -114,6 +132,57 @@ describe("DocsCollabReviewPanel", () => {
     expect(screen.queryByText("Open comment")).toBeNull();
     expect(screen.queryByLabelText(docsLabels.commentsResolve)).toBeNull();
     expect(screen.queryByText("Replace world")).toBeNull();
+    expect(screen.getByText("🎉")).toBeTruthy();
+    expect(screen.queryByLabelText("Add reaction")).toBeNull();
+  });
+
+  it("shows archived suggestion threads on the resolved tab without accept or reply", () => {
+    renderPanel({ archivedSuggestions: [archivedSuggestion] });
+    fireEvent.click(screen.getByRole("button", { name: docsLabels.reviewTabResolved }));
+
+    expect(screen.getByText("Resolved comment")).toBeTruthy();
+    expect(screen.getByText("Insert hello")).toBeTruthy();
+    expect(screen.getByText("why this edit?")).toBeTruthy();
+    expect(screen.queryByText("Replace world")).toBeNull();
+    expect(screen.queryByLabelText(docsLabels.suggestionsAccept)).toBeNull();
+    expect(screen.queryByLabelText(docsLabels.suggestionsReject)).toBeNull();
+    expect(screen.queryByLabelText(docsLabels.commentsReplyPlaceholder)).toBeNull();
+    expect(screen.getByText("👍")).toBeTruthy();
+    expect(screen.queryByLabelText("Add reaction")).toBeNull();
+  });
+
+  it("lists an archived suggestion on Resolved when the editor has no live mark", () => {
+    renderPanel({
+      threads: [resolvedThread],
+      suggestions: [],
+      archivedSuggestions: [archivedSuggestion],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: docsLabels.reviewTabResolved }));
+
+    expect(screen.getByText("Insert hello")).toBeTruthy();
+    expect(screen.getByText("why this edit?")).toBeTruthy();
+    expect(screen.queryByLabelText(docsLabels.suggestionsAccept)).toBeNull();
+  });
+
+  it("keeps the header count on the open-tab total when viewing Resolved", () => {
+    renderPanel({ archivedSuggestions: [archivedSuggestion] });
+
+    const count = () => document.querySelector(".view-header__title-count")?.textContent;
+    expect(count()).toBe("(2)");
+    expect(
+      document.querySelector(".view-header__title-count")?.getAttribute("data-open-count"),
+    ).toBe("2");
+
+    fireEvent.click(screen.getByRole("button", { name: docsLabels.reviewTabResolved }));
+
+    expect(count()).toBe("(2)");
+    expect(
+      document.querySelector(".view-header__title-count")?.getAttribute("data-open-count"),
+    ).toBe("2");
+    expect(screen.getByText("Resolved comment")).toBeTruthy();
+    expect(screen.getByText("Insert hello")).toBeTruthy();
+    expect(screen.queryByText("Open comment")).toBeNull();
   });
 
   it("shows the resolved empty state", () => {

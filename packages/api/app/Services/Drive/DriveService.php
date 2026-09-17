@@ -6,6 +6,7 @@ namespace App\Services\Drive;
 
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Docs\DocsThreadRepository;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
@@ -29,6 +30,7 @@ final class DriveService
         private AdminRoleResolver $adminRoles,
         private SearchIndexerService $search,
         private FileNodeIndexService $fileNodes,
+        private DocsThreadRepository $docsThreads,
         private DocAttachmentsService $docAttachments,
     ) {}
 
@@ -42,6 +44,15 @@ final class DriveService
             $operation();
         } catch (\Throwable $e) {
             Log::warning('file_node_index_sync_failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function syncDocsThreads(callable $operation): void
+    {
+        try {
+            $operation();
+        } catch (\Throwable $e) {
+            Log::warning('docs_thread_path_sync_failed', ['error' => $e->getMessage()]);
         }
     }
 
@@ -209,6 +220,7 @@ final class DriveService
             $this->reindexSubtree($toKey);
         }
         $this->syncFileNodeIndex(fn () => $this->fileNodes->recordMove($fromKey, $toKey));
+        $this->syncDocsThreads(fn () => $this->docsThreads->retargetPath($fromPath, $toPath));
         $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
 
         return 'Renamed';
@@ -234,10 +246,12 @@ final class DriveService
                 $disk->deleteDirectory($key);
                 $this->search->deleteDavPath('files/'.$key);
                 $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDelete($key));
+                $this->syncDocsThreads(fn () => $this->docsThreads->dropPath($path));
             } elseif ($disk->exists($key)) {
                 $disk->delete($key);
                 $this->search->deleteDavPath('files/'.$key);
                 $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDelete($key));
+                $this->syncDocsThreads(fn () => $this->docsThreads->dropPath($path));
             }
             $this->docAttachments->destroyDocsBestEffort($docIds);
         }
