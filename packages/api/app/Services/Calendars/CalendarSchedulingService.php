@@ -10,6 +10,7 @@ use App\Models\CalendarObject;
 use App\Models\Principal;
 use App\Services\Calendars\Conversion\ParticipantConversionSupport;
 use App\Services\Notify\CalendarInviteNotify;
+use App\Services\Notify\CalendarRsvpNotify;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use Illuminate\Support\Facades\DB;
@@ -399,6 +400,9 @@ final class CalendarSchedulingService
         if ($method === 'REQUEST') {
             $this->notifyInviteRequest($actorUsername, $principalUri, $message);
         }
+        if ($method === 'REPLY') {
+            $this->notifyRsvpReply($actorUsername, $principalUri, $message);
+        }
     }
 
     /**
@@ -475,6 +479,30 @@ final class CalendarSchedulingService
             [
                 'recipients' => [$invitee],
                 ...CalendarInviteNotify::clearData($trimmedUid),
+            ],
+        );
+    }
+
+    private function notifyRsvpReply(string $actorUsername, string $principalUri, Message $message): void
+    {
+        $organizer = $this->usernameFromPrincipalUri($principalUri);
+        if ($organizer === '' || strcasecmp($organizer, $actorUsername) === 0) {
+            // Organizer is the writer (e.g. guest iMIP token path) — no self-notify loop.
+            return;
+        }
+        $copy = CalendarRsvpNotify::fromITipMessage($actorUsername, $message);
+        if ($copy === null) {
+            return;
+        }
+        $uid = trim((string) ($message->uid ?? ''));
+        $this->eventDispatch->fireMutation(
+            $actorUsername,
+            'calendar',
+            CalendarRsvpNotify::ACTION,
+            $uid !== '' ? 'calendars/rsvp/'.$uid : 'calendars/rsvp',
+            [
+                'recipients' => [$organizer],
+                ...$copy,
             ],
         );
     }
