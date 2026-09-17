@@ -38,6 +38,7 @@ import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { resolveDocsCollabPermissionsWhileLoading } from "@/docs-core/src/docs-collab-permissions";
 import { ShareDialog } from "@/share-ui/share-dialog";
+import { useNotificationsMarkReadOnConsume } from "@/notifications-core/src/use-notifications-mark-read-on-consume";
 
 function DocsCollabDocumentTitle({ fileName }: { fileName: string }) {
   useDocumentTitle(fileNameToBrowserTitle(fileName));
@@ -56,6 +57,10 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     () => docsApiPathFromSearch(parseDocsRouteSearch(search as Record<string, unknown>).file),
     [search],
   );
+
+  useNotificationsMarkReadOnConsume({
+    docsApiPath: filePath,
+  });
 
   const handleLogout = useCallback(() => {
     if (wgwIsGuestSession()) {
@@ -229,6 +234,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
                 showShare={collabMayShare === true}
                 shareLabel={docsLabels.share}
                 permissions={collabPermissions}
+                driveOperations={driveOperations}
+                driveUsername={session.user.username}
+                docApiPath={filePath}
                 onShare={
                   filePath
                     ? () =>

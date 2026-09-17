@@ -26,10 +26,12 @@ import {
   MEET_CHANNELS_ROUTE,
   MEET_MEETINGS_ROUTE,
   meetLegacyRedirect,
+  meetNavigatePathFromSelection,
   meetNavigateTargetFromSelection,
   meetSelectionFromRouteParams,
   type MeetChatRouteParams,
 } from "@/meet-core/src/meet-chat-route";
+import { useNotificationsMarkReadOnConsume } from "@/notifications-core/src/use-notifications-mark-read-on-consume";
 import {
   meetChannelIdsEqual,
   meetCollectionIdFromPublic,
@@ -280,6 +282,17 @@ function MeetChatLiveWorkspace({
     markChannelRead: operationsWithMesh?.markChannelRead,
     selectedLatestMessageId: selectedReadSignal.latestMessageId,
     selectedUnreadCount: selectedReadSignal.unreadCount,
+    caughtUp,
+  });
+
+  const selectedSuiteNavigate = useMemo(() => {
+    if (!selectedChannelId) return null;
+    const row = channels.find((channel) => channel.id === selectedChannelId);
+    return meetNavigatePathFromSelection(selectedChannelId, row);
+  }, [channels, selectedChannelId]);
+
+  useNotificationsMarkReadOnConsume({
+    navigate: selectedSuiteNavigate,
     caughtUp,
   });
 

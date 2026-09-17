@@ -5,6 +5,7 @@ import {
   MEET_MEETINGS_ROUTE,
   meetIsAdHocMeetingId,
   meetLegacyRedirect,
+  meetNavigatePathFromSelection,
   meetNavigateTargetFromSelection,
   meetSelectionFromRouteParams,
 } from "@/meet-core/src/meet-chat-route";
@@ -76,6 +77,18 @@ describe("meetNavigateTargetFromSelection", () => {
       to: MEET_DMS_ROUTE,
       params: { peerId: "alice" },
     });
+  });
+});
+
+describe("meetNavigatePathFromSelection", () => {
+  it("builds suite-notify navigate paths from selection keys", () => {
+    expect(meetNavigatePathFromSelection("dm:Alice")).toBe("/meet/dms/alice");
+    expect(meetNavigatePathFromSelection("chat-design-reviews")).toBe(
+      "/meet/channels/design-reviews",
+    );
+    expect(meetNavigatePathFromSelection("chat-test-meet", { kind: "meeting" })).toBe(
+      "/meet/meetings/test-meet",
+    );
   });
 });
 
