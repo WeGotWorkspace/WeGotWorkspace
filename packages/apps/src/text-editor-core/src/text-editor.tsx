@@ -37,6 +37,8 @@ export type TextEditorProps = {
    */
   viewSource?: boolean;
   className?: string;
+  /** Opens the Docs image picker from the format bar / slash menu. */
+  onInsertImage?: () => void;
   onUpdate?: (payload: { editor: Editor; content: string }) => void;
   /** Called when the TipTap instance is created or destroyed (e.g. document outline). */
   onEditorReady?: (editor: Editor | null) => void;
@@ -56,6 +58,7 @@ export function TextEditor({
   sheetFill = false,
   viewSource = false,
   className,
+  onInsertImage,
   onUpdate,
   onEditorReady,
 }: TextEditorProps) {
@@ -95,6 +98,7 @@ export function TextEditor({
       groups={[...formatBarConfig.groups]}
       showPrint={formatBarConfig.showPrint}
       className={formatBarConfig.className}
+      onInsertImage={onInsertImage}
     />
   ) : null;
 
@@ -104,6 +108,7 @@ export function TextEditor({
       variant={sheetVariant}
       fill={sheetFill}
       slashMenu={format !== "text"}
+      onInsertImage={onInsertImage}
       className="min-h-0 flex-1"
     />
   );

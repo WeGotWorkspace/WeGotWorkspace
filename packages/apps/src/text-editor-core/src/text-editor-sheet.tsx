@@ -16,6 +16,8 @@ export type TextEditorSheetProps = {
   fill?: boolean;
   /** Slash command menu (off for plain `.txt` mode). */
   slashMenu?: boolean;
+  /** Opens the Docs image picker from the slash menu. */
+  onInsertImage?: () => void;
   /** Absolutely positioned overlays (e.g. margin comment cards). */
   overlay?: ReactNode;
   className?: string;
@@ -29,6 +31,7 @@ export function TextEditorSheet({
   variant = "sheet",
   fill = false,
   slashMenu = true,
+  onInsertImage,
   overlay,
   className,
 }: TextEditorSheetProps) {
@@ -55,7 +58,7 @@ export function TextEditorSheet({
         className={variant === "sheet" ? "text-editor-sheet__surface paper-sheet" : undefined}
       />
       {overlay}
-      {slashMenu ? <TextEditorSlashMenu editor={editor} /> : null}
+      {slashMenu ? <TextEditorSlashMenu editor={editor} onInsertImage={onInsertImage} /> : null}
       <TextEditorTableControls editor={editor} />
     </div>
   );

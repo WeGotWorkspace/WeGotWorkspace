@@ -12,6 +12,7 @@ import {
   resolveTextEditorFormatBarConfig,
 } from "@/text-editor-core/src/text-editor-format-bar";
 import { createCollaborativeTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
+import type { DocsImageContentFetcher } from "@/text-editor-core/src/text-editor-image-content";
 import { getCommentMarkIdFromTarget } from "@/text-editor-core/src/text-editor-comment-commands";
 import { getTrackChangeIdFromTarget } from "@/text-editor-core/src/text-editor-track-changes";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
@@ -64,6 +65,9 @@ export type DocsCollabEditorProps = {
   >;
   commentsOverlay?: ReactNode;
   suggestionsOverlay?: ReactNode;
+  /** Opens the Docs Drive image picker from slash + toolbar. */
+  onInsertImage?: () => void;
+  fetchImageContent?: DocsImageContentFetcher;
 };
 
 export function DocsCollabEditor({
@@ -90,6 +94,8 @@ export function DocsCollabEditor({
   commentControlLabels,
   commentsOverlay,
   suggestionsOverlay,
+  onInsertImage,
+  fetchImageContent,
 }: DocsCollabEditorProps) {
   const effectiveOnContentChange = onContentChange ?? onMarkdownChange;
   const onContentChangeRef = useRef(effectiveOnContentChange);
@@ -138,6 +144,7 @@ export function DocsCollabEditor({
         document: ydoc,
         awareness,
         user,
+        fetchImageContent,
       }),
       editorProps,
       onUpdate: ({ transaction, editor: ed }) => {
@@ -199,6 +206,7 @@ export function DocsCollabEditor({
       showPrint={formatBarConfig.showPrint}
       formattingDisabled={formattingDisabled}
       className={formatBarConfig.className}
+      onInsertImage={onInsertImage}
       commentControl={
         !viewSource && commentControlLabels && onAddCommentFromSelection ? (
           <DocsCollabCommentControl
@@ -219,6 +227,7 @@ export function DocsCollabEditor({
       variant="sheet"
       fill={sheetFill}
       slashMenu={format !== "text" && editable}
+      onInsertImage={onInsertImage}
       overlay={
         commentsOverlay || suggestionsOverlay ? (
           <>
