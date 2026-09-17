@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "notification-inbox-tray.css"), "utf8");
+const tsx = readFileSync(join(here, "notification-inbox-tray.tsx"), "utf8");
 
 describe("notification inbox tray placement", () => {
   it("does not pin the tray as a viewport overlay (sidebar owns the bell)", () => {
@@ -20,6 +21,15 @@ describe("notification inbox tray placement", () => {
 });
 
 describe("notification inbox tray bell chrome", () => {
+  it("uses md IconButton so the bell matches WorkspaceSidebarToggle", () => {
+    const trigger = tsx.match(
+      /<IconButton[\s\S]*?className="notification-inbox-tray__trigger"[\s\S]*?\/>/,
+    )?.[0];
+    expect(trigger).toBeDefined();
+    expect(trigger!).toMatch(/size="md"/);
+    expect(trigger!).not.toMatch(/size="sm"/);
+  });
+
   it("uses the primary button fill and on-color for the unread badge, not icon chrome or the button stroke", () => {
     expect(css).toMatch(
       /\.notification-inbox-tray__trigger::after \{[\s\S]*background-color:\s*var\(\s*--notification-inbox-badge-bg,\s*var\(\s*--button-primary-bg/,

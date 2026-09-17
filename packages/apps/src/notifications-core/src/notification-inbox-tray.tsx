@@ -47,7 +47,7 @@ export function NotificationInboxTray({
           icon={<Bell aria-hidden />}
           label={label}
           variant="outline"
-          size="sm"
+          size="md"
           showTooltip={false}
           className="notification-inbox-tray__trigger"
           data-count={unreadCount > 0 ? String(unreadCount) : undefined}
