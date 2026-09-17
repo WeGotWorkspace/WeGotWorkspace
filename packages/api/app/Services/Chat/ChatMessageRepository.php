@@ -13,6 +13,7 @@ use App\Models\ChatReadMarker;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Chat\Conversion\ChatMessageJournalConverter;
+use App\Services\Notify\ChatMentionedNotify;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\QueryException;
@@ -182,11 +183,13 @@ final class ChatMessageRepository
             }
         }
 
+        $mentions = $this->normalizeMentions($payload['mentions'] ?? null);
         $ics = $this->converter->toIcs([
             'id' => $uid,
             'body' => $body,
             'author' => $username,
             'parentId' => $parentId,
+            'mentions' => $mentions,
         ], new DateTimeImmutable('now', new DateTimeZone('UTC')));
 
         try {
@@ -210,17 +213,7 @@ final class ChatMessageRepository
             throw new ApiHttpException(500, 'Could not load created message.', 'server_error');
         }
 
-        $roster = $this->channels->rosterUsernames($instance, null);
-        $this->eventDispatch->fireMutation(
-            $username,
-            'chat',
-            'message_posted',
-            $channelId,
-            [
-                'recipients' => $roster,
-                ...$this->messagePostedNotifyData($instance, $username, $body, $uid),
-            ],
-        );
+        $this->notifyMessageCreate($instance, $username, $body, $uid, $mentions);
 
         return ['message' => $this->presentSingle($object, $instance), 'created' => true];
     }
@@ -488,7 +481,7 @@ final class ChatMessageRepository
     /**
      * Contract shape: replyCount is derived from the live thread (children
      * that are not tombstones), authorName from the principal directory,
-     * mentions stay client-side in v1.
+     * mentions from persisted X-WGW-MENTIONS (empty when absent).
      *
      * @param  list<array<string, mixed>>  $window
      * @param  list<array<string, mixed>>  $all
@@ -524,7 +517,7 @@ final class ChatMessageRepository
                 'parentId' => $message['parentId'] ?? null,
                 'replyCount' => $replyCounts[(string) $message['id']] ?? 0,
                 'reactions' => $message['reactions'] ?? [],
-                'mentions' => [],
+                'mentions' => is_array($message['mentions'] ?? null) ? $message['mentions'] : [],
             ];
         }
 
@@ -553,6 +546,95 @@ final class ChatMessageRepository
         }
 
         return $names;
+    }
+
+    /**
+     * @param  list<array{id: string, displayName: string}>  $mentions
+     */
+    private function notifyMessageCreate(
+        CalendarInstance $instance,
+        string $authorUsername,
+        string $body,
+        string $messageUid,
+        array $mentions,
+    ): void {
+        $roster = $this->channels->rosterUsernames($instance, null);
+        $rosterSet = [];
+        foreach ($roster as $username) {
+            $rosterSet[strtolower($username)] = strtolower($username);
+        }
+        $mentioned = [];
+        foreach ($mentions as $mention) {
+            $id = strtolower(trim((string) ($mention['id'] ?? '')));
+            if ($id === '' || $id === strtolower($authorUsername) || ! isset($rosterSet[$id])) {
+                continue;
+            }
+            $mentioned[$id] = $id;
+        }
+        $postedRecipients = array_values(array_filter(
+            array_values($rosterSet),
+            static fn (string $username): bool => ! isset($mentioned[$username]),
+        ));
+        $postedData = $this->messagePostedNotifyData($instance, $authorUsername, $body, $messageUid);
+        if ($postedRecipients !== []) {
+            $this->eventDispatch->fireMutation(
+                $authorUsername,
+                'chat',
+                'message_posted',
+                (string) $instance->uri,
+                [
+                    'recipients' => $postedRecipients,
+                    ...$postedData,
+                ],
+            );
+        }
+        if ($mentioned !== []) {
+            $this->eventDispatch->fireMutation(
+                $authorUsername,
+                'chat',
+                ChatMentionedNotify::ACTION,
+                (string) $instance->uri,
+                [
+                    'recipients' => array_values($mentioned),
+                    ...ChatMentionedNotify::eventData(
+                        (string) $instance->uri,
+                        (string) ($postedData['channelKind'] ?? ChatChannelMeta::KIND_CHANNEL),
+                        (string) ($postedData['channelName'] ?? ''),
+                        $authorUsername,
+                        (string) ($postedData['actor'] ?? $authorUsername),
+                        $body,
+                        $messageUid,
+                        array_values($mentioned),
+                    ),
+                ],
+            );
+        }
+    }
+
+    /**
+     * @return list<array{id: string, displayName: string}>
+     */
+    private function normalizeMentions(mixed $raw): array
+    {
+        if (! is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        foreach ($raw as $entry) {
+            if (! is_array($entry) || ! is_string($entry['id'] ?? null)) {
+                continue;
+            }
+            $id = strtolower(trim((string) $entry['id']));
+            if ($id === '' || isset($out[$id]) || Principal::forUsername($id) === null) {
+                continue;
+            }
+            $display = isset($entry['displayName']) && is_string($entry['displayName'])
+                ? trim($entry['displayName'])
+                : $id;
+            $out[$id] = ['id' => $id, 'displayName' => $display !== '' ? $display : $id];
+        }
+
+        return array_values($out);
     }
 
     /**

@@ -11231,6 +11231,8 @@ export interface components {
             body: string;
             /** @description Thread parent message id. */
             parentId?: string | null;
+            /** @description Validated @principals to persist and notify ( ∩ channel roster; unknown tokens ignored). */
+            mentions?: components["schemas"]["ChatMention"][];
         };
         ChatMessagePatch: {
             /** @description Author-only body edit — bumps SEQUENCE server-side. */

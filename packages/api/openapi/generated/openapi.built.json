@@ -11101,6 +11101,13 @@
                             "null"
                         ],
                         "description": "Thread parent message id."
+                    },
+                    "mentions": {
+                        "type": "array",
+                        "description": "Validated @principals to persist and notify ( ∩ channel roster; unknown tokens ignored).",
+                        "items": {
+                            "$ref": "#/components/schemas/ChatMention"
+                        }
                     }
                 }
             },
