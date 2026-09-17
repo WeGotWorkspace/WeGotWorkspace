@@ -85,13 +85,17 @@ final class NotificationInboxService
      */
     public function serialize(Notification $row): array
     {
+        $copy = NotificationCopyFormatter::forNotification($row);
+        $data = is_array($row->data) && $row->data !== [] ? $row->data : null;
+
         return [
             'id' => (string) $row->id,
             'eventId' => (string) $row->event_id,
             'domain' => (string) $row->domain,
             'action' => (string) $row->action,
-            'title' => (string) $row->title,
-            'body' => $row->body !== null ? (string) $row->body : null,
+            'data' => $data,
+            'title' => $copy['title'],
+            'body' => $copy['body'],
             'navigate' => (string) $row->navigate,
             'tag' => $row->tag !== null ? (string) $row->tag : null,
             'readAt' => $row->read_at?->toIso8601String(),
@@ -99,7 +103,10 @@ final class NotificationInboxService
         ];
     }
 
-    public function recordLocalDelivery(Notification $row, int $delaySeconds = 45): void
+    public function recordLocalDelivery(
+        Notification $row,
+        int $delaySeconds = NotificationDelivery::LOCAL_ACK_GRACE_SECONDS,
+    ): void
     {
         $exists = NotificationDelivery::query()
             ->where('notification_id', $row->id)

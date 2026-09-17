@@ -8,8 +8,13 @@
       "eventId": { "type": "string", "minLength": 1 },
       "domain": { "type": "string" },
       "action": { "type": "string" },
-      "title": { "type": "string" },
-      "body": { "type": ["string", "null"] },
+      "data": {
+        "type": ["object", "null"],
+        "additionalProperties": true,
+        "description": "Structured notification facts (actor, path, snippet, start/end, …). When present, clients format title/body; API title/body are also formatted at read time."
+      },
+      "title": { "type": "string", "description": "Display title (formatted from data when present)." },
+      "body": { "type": ["string", "null"], "description": "Display body (formatted from data when present)." },
       "navigate": { "type": "string", "description": "In-app path (allowlisted SPA prefix)." },
       "tag": { "type": ["string", "null"] },
       "readAt": { "type": ["string", "null"], "format": "date-time" },

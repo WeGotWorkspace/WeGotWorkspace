@@ -48,6 +48,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'oauth_refresh_tokens',
             'mcp_audit_events',
             'mcp_sessions',
+            'docs_thread_index',
             'notifications',
             'notification_deliveries',
             'push_subscriptions',

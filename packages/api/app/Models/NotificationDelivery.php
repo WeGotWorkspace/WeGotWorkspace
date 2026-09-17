@@ -16,6 +16,12 @@ final class NotificationDelivery extends Model
 
     public const CHANNEL_VAPID = 'vapid';
 
+    /**
+     * Seconds after create before a local delivery is due for VAPID.
+     * Must stay longer than the 15s inbox poll so a live tab can ack first.
+     */
+    public const LOCAL_ACK_GRACE_SECONDS = 20;
+
     protected $table = 'notification_deliveries';
 
     public $incrementing = false;

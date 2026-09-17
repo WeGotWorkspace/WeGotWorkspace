@@ -6,11 +6,15 @@ namespace App\Events;
 
 use App\Models\Notification;
 use App\Models\NotificationDelivery;
+use App\Services\Notify\NotificationCopyFormatter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * Curated notify consumer. Allow-list only — most WorkspaceEvents are ignored.
+ *
+ * Stores structured facts in {@see Notification::$data}; title/body columns are
+ * denormalized via {@see NotificationCopyFormatter} for legacy readers.
  */
 final class NotifyListener implements WorkspaceEventListener
 {
@@ -18,6 +22,7 @@ final class NotifyListener implements WorkspaceEventListener
     private const ALLOW_LIST = [
         ['docs', 'shared'],
         ['calendar', 'alert_due'],
+        ['calendar', 'invite'],
         ['tasks', 'alert_due'],
         ['chat', 'message_posted'],
     ];
@@ -31,6 +36,10 @@ final class NotifyListener implements WorkspaceEventListener
         $recipients = $this->recipients($event);
         foreach ($recipients as $principal) {
             if ($principal === '' || strcasecmp($principal, $event->actor) === 0) {
+                continue;
+            }
+            if (($event->data['clear'] ?? false) === true) {
+                $this->clearInbox($event, $principal);
                 continue;
             }
             $this->upsertInbox($event, $principal);
@@ -71,6 +80,20 @@ final class NotifyListener implements WorkspaceEventListener
         return array_values($out);
     }
 
+    private function clearInbox(WorkspaceEvent $event, string $principal): void
+    {
+        $dedupe = $this->dedupeKey($event, $principal);
+        $existing = Notification::query()
+            ->where('principal', $principal)
+            ->where('dedupe_key', $dedupe)
+            ->first();
+        if ($existing === null) {
+            return;
+        }
+        NotificationDelivery::query()->where('notification_id', $existing->id)->delete();
+        $existing->delete();
+    }
+
     private function upsertInbox(WorkspaceEvent $event, string $principal): void
     {
         $dedupe = $this->dedupeKey($event, $principal);
@@ -78,7 +101,27 @@ final class NotifyListener implements WorkspaceEventListener
             ->where('principal', $principal)
             ->where('dedupe_key', $dedupe)
             ->first();
+        $facts = NotificationCopyFormatter::factsFromEventData($event->data);
+        $navigate = $this->stringData($event, 'navigate', '/');
+        $tag = $this->stringData($event, 'tag', $event->domain.'.'.$event->action);
+        $copy = $this->copyForWrite($event, $facts);
+
         if ($existing !== null) {
+            if (($event->data['supersede'] ?? false) !== true) {
+                return;
+            }
+            $existing->fill([
+                'event_id' => $event->eventId,
+                'domain' => $event->domain,
+                'action' => $event->action,
+                'data' => $facts,
+                'title' => $copy['title'],
+                'body' => $copy['body'],
+                'navigate' => $navigate ?? '/',
+                'tag' => $tag,
+                'read_at' => null,
+            ])->save();
+
             return;
         }
 
@@ -90,10 +133,11 @@ final class NotifyListener implements WorkspaceEventListener
             'event_id' => $event->eventId,
             'domain' => $event->domain,
             'action' => $event->action,
-            'title' => $this->stringData($event, 'title', $this->defaultTitle($event)),
-            'body' => $this->stringData($event, 'body', null),
-            'navigate' => $this->stringData($event, 'navigate', '/'),
-            'tag' => $this->stringData($event, 'tag', $event->domain.'.'.$event->action),
+            'data' => $facts,
+            'title' => $copy['title'],
+            'body' => $copy['body'],
+            'navigate' => $navigate ?? '/',
+            'tag' => $tag,
             'dedupe_key' => $dedupe,
             'read_at' => null,
             'created_at' => $now,
@@ -104,11 +148,35 @@ final class NotifyListener implements WorkspaceEventListener
             'notification_id' => $row->id,
             'principal' => $principal,
             'channel' => NotificationDelivery::CHANNEL_LOCAL,
-            'due_at' => $now->copy()->addSeconds(45),
+            'due_at' => $now->copy()->addSeconds(NotificationDelivery::LOCAL_ACK_GRACE_SECONDS),
             'acked_at' => null,
             'sent_at' => null,
             'created_at' => $now,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $facts
+     * @return array{title: string, body: string|null}
+     */
+    private function copyForWrite(WorkspaceEvent $event, ?array $facts): array
+    {
+        $legacyTitle = $this->stringData($event, 'title', $this->defaultTitle($event)) ?? $this->defaultTitle($event);
+        $legacyBody = $this->stringData($event, 'body', null);
+        if ($facts === null || $facts === []) {
+            return [
+                'title' => $legacyTitle,
+                'body' => $legacyBody,
+            ];
+        }
+
+        return NotificationCopyFormatter::format(
+            $event->domain,
+            $event->action,
+            $facts,
+            $legacyTitle,
+            $legacyBody,
+        );
     }
 
     private function dedupeKey(WorkspaceEvent $event, string $principal): string
@@ -136,6 +204,7 @@ final class NotifyListener implements WorkspaceEventListener
         return match ($event->domain.'.'.$event->action) {
             'docs.shared' => 'A document was shared with you',
             'calendar.alert_due' => 'Calendar reminder',
+            'calendar.invite' => 'Calendar invitation',
             'tasks.alert_due' => 'Task reminder',
             'chat.message_posted' => 'New chat message',
             default => 'Notification',

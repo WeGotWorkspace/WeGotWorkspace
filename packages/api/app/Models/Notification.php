@@ -27,6 +27,7 @@ final class Notification extends Model
         'event_id',
         'domain',
         'action',
+        'data',
         'title',
         'body',
         'navigate',
@@ -38,6 +39,7 @@ final class Notification extends Model
 
     /** @var array<string, string> */
     protected $casts = [
+        'data' => 'array',
         'read_at' => 'datetime',
         'created_at' => 'datetime',
     ];

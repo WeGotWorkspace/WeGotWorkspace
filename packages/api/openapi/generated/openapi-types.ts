@@ -3100,8 +3100,11 @@ export interface paths {
         /** Download file content */
         get: {
             parameters: {
-                query: {
-                    path: string;
+                query?: {
+                    /** @description Virtual drive path. Required when `id` is omitted. */
+                    path?: string;
+                    /** @description FileNode id (`fn-…`). Streams bytes when the caller mayView the path, including inherited Doc ACL on `.attachments/{docId}/`. */
+                    id?: string;
                 };
                 header?: never;
                 path?: never;
@@ -7038,6 +7041,258 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/files/threads/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Docs thread changes for a file path */
+        get: {
+            parameters: {
+                query: {
+                    path: string;
+                    since?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Path-scoped calendarchanges */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThreadChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Docs comment and suggestion threads */
+        get: {
+            parameters: {
+                query: {
+                    path: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Assembled threads for the Doc */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThreadListResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        /** Create a Docs comment or suggestion thread */
+        post: {
+            parameters: {
+                query: {
+                    path: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocsFileThreadCreate"];
+                };
+            };
+            responses: {
+                /** @description Created thread */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThread"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/threads/{threadId}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reply to a Docs thread */
+        post: {
+            parameters: {
+                query: {
+                    path: string;
+                };
+                header?: never;
+                path: {
+                    threadId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocsFileThreadReplyCreate"];
+                };
+            };
+            responses: {
+                /** @description Updated thread */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThread"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/threads/{threadId}/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Toggle a reaction on a Docs thread root */
+        post: {
+            parameters: {
+                query: {
+                    path: string;
+                };
+                header?: never;
+                path: {
+                    threadId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocsFileThreadReactionToggle"];
+                };
+            };
+            responses: {
+                /** @description Updated thread */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThread"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/threads/{threadId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Resolve or archive a Docs thread */
+        patch: {
+            parameters: {
+                query: {
+                    path: string;
+                };
+                header?: never;
+                path: {
+                    threadId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocsFileThreadPatch"];
+                };
+            };
+            responses: {
+                /** @description Updated thread */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThread"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
         trace?: never;
     };
     "/notifications": {
@@ -11023,12 +11278,103 @@ export interface components {
         SettingsMcpGrantList: {
             grants: components["schemas"]["SettingsMcpGrant"][];
         };
+        DocsFileThreadAuthor: {
+            /** @description Author principal username. */
+            id: string;
+            name: string;
+        };
+        DocsFileThreadMessage: {
+            /** @description Client-generated ULID (VJOURNAL UID). */
+            id: string;
+            body: string;
+            createdAt: components["schemas"]["JmapUTCDateTime"];
+            author: components["schemas"]["DocsFileThreadAuthor"];
+        };
+        DocsFileThreadReaction: {
+            emoji: string;
+            /** @description Principal usernames that toggled this emoji on the thread root. */
+            userIds: string[];
+        };
+        DocsFileThread: {
+            /** @description Thread root ULID (VJOURNAL UID of the first message). */
+            id: string;
+            /** @enum {string} */
+            kind: "comment" | "suggestion";
+            /** @description Doc virtual path (X-WGW-DOC-PATH). */
+            path: string;
+            /** @description Suggestion mark join key (X-WGW-CHANGE-ID). Null for comment threads. */
+            changeId?: string | null;
+            anchorText: string;
+            anchorFrom?: number | null;
+            anchorTo?: number | null;
+            anchorOccurrence?: number | null;
+            createdAt: components["schemas"]["JmapUTCDateTime"];
+            createdBy: components["schemas"]["DocsFileThreadAuthor"];
+            /** @description X-WGW-RESOLVED on comment roots. */
+            resolved: boolean;
+            /** @description X-WGW-ARCHIVED on suggestion roots — not STATUS:CANCELLED. */
+            archived: boolean;
+            messages: components["schemas"]["DocsFileThreadMessage"][];
+            reactions: components["schemas"]["DocsFileThreadReaction"][];
+        };
+        DocsFileThreadListResponse: {
+            list: components["schemas"]["DocsFileThread"][];
+        };
+        DocsFileThreadCreate: {
+            /** @description Client-generated ULID — thread root id and idempotency key. */
+            id: string;
+            /** @enum {string} */
+            kind: "comment" | "suggestion";
+            /** @description First message body. Empty string is allowed for suggestion roots created to hold reactions only. */
+            body: string;
+            /** @description Required for suggestion threads — editor track-change id. */
+            changeId?: string | null;
+            anchorText?: string;
+            anchorFrom?: number;
+            anchorTo?: number;
+            anchorOccurrence?: number;
+        };
+        DocsFileThreadReplyCreate: {
+            /** @description Client-generated ULID for the reply message. */
+            id: string;
+            body: string;
+        };
+        DocsFileThreadPatch: {
+            /** @description Set X-WGW-RESOLVED on a comment root. */
+            resolved?: boolean;
+            /** @description Set X-WGW-ARCHIVED on a suggestion root. */
+            archived?: boolean;
+            /** @description Alternate lookup for suggestion archive when the client keys by mark id. */
+            changeId?: string;
+            /** @description Suggestion snapshot summary or quoted text persisted when archiving. */
+            anchorText?: string;
+            anchorFrom?: number;
+            anchorTo?: number;
+        };
+        DocsFileThreadReactionToggle: {
+            emoji: string;
+        };
+        /** @description Path-scoped calendarchanges feed for the owner's docs-threads pool. */
+        DocsFileThreadChangesResponse: {
+            oldState: string;
+            newState: string;
+            created: string[];
+            updated: string[];
+            destroyed: string[];
+            hasMoreChanges: boolean;
+        };
         Notification: {
             id: string;
             eventId: string;
             domain: string;
             action: string;
+            /** @description Structured notification facts (actor, path, snippet, start/end, …). When present, clients format title/body; API title/body are also formatted at read time. */
+            data?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Display title (formatted from data when present). */
             title: string;
+            /** @description Display body (formatted from data when present). */
             body?: string | null;
             /** @description In-app path (allowlisted SPA prefix). */
             navigate: string;
