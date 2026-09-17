@@ -42,6 +42,7 @@ describe("CalendarWorkspace create UI routing", () => {
     expect(popover).toContain("useIsMobile");
     expect(popover).toContain("DialogContent");
     expect(popover).toMatch(/controlSize="sm"/);
-    expect(popover).toContain("calendar-event-details-popover--dialog");
+    expect(popover).toContain("calendar-event-dialog");
+    expect(popover).not.toContain("calendar-event-details-popover--dialog");
   });
 });

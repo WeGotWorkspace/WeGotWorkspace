@@ -85,8 +85,9 @@ describe("CalendarTaskDuePopover", () => {
     );
 
     const dialog = screen.getByRole("dialog");
+    expect(dialog.className).toContain("calendar-dialog-surface");
     expect(dialog.className).toContain("ui-modal-surface--center");
-    expect(dialog.className).toContain("calendar-event-details-popover--dialog");
+    expect(dialog.className).not.toContain("calendar-event-details-popover");
     expect(
       screen.getByRole("button", { name: defaultCalendarLabels.taskDueOpenInTasks }).className,
     ).toContain("button--variant-outline");

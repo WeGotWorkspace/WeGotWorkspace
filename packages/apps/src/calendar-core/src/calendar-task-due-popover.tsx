@@ -57,9 +57,8 @@ export function CalendarTaskDuePopover({
         }
       : { left: fallbackLeft, top: fallbackTop, width: 0, height: 0 };
 
-  const body = (
-    <div className="calendar-task-due-popover__body">
-      <p className="calendar-task-due-popover__title">{title}</p>
+  const details = (
+    <>
       <p className="calendar-task-due-popover__when">{when}</p>
       <p className="calendar-task-due-popover__list">
         <span
@@ -83,17 +82,17 @@ export function CalendarTaskDuePopover({
           />
         </footer>
       ) : null}
-    </div>
+    </>
   );
 
   if (isMobile) {
     return (
       <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-        <DialogContent className="calendar-dialog-surface calendar-event-details-popover calendar-event-details-popover--dialog calendar-task-due-popover">
+        <DialogContent className="calendar-dialog-surface">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
-          {body}
+          <div className="calendar-task-due-popover__body">{details}</div>
         </DialogContent>
       </Dialog>
     );
@@ -122,7 +121,10 @@ export function CalendarTaskDuePopover({
         align="center"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
-        {body}
+        <div className="calendar-task-due-popover__body">
+          <p className="calendar-task-due-popover__title">{title}</p>
+          {details}
+        </div>
       </PopoverContent>
     </Popover>
   );

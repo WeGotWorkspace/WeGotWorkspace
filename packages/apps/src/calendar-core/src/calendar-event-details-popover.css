@@ -25,9 +25,6 @@
   position-try-fallbacks:
     flip-inline, --calendar-event-details-try-start, --calendar-event-details-try-end, flip-block,
     --calendar-event-details-try-above, --calendar-event-details-try-below;
-  /* Isolate Lit event-card from timeline stack vars so flow width stays 100%. */
-  --_lc-days: 1;
-  --_lc-width: 1;
 }
 
 .calendar-dialog-surface.calendar-event-details-popover--editable {
@@ -76,6 +73,9 @@
   @apply relative block w-full min-w-0 max-w-full overflow-hidden;
   cursor: default;
   touch-action: auto;
+  /* Isolate Lit event-card from timeline stack vars so flow width stays 100%. */
+  --_lc-days: 1;
+  --_lc-width: 1;
 }
 
 /* Match event-card heading start inset (accent bar clearance: 13px) so title
@@ -121,34 +121,12 @@
   @apply ms-auto flex items-center gap-2;
 }
 
-/* Mobile (<768px) uses Dialog. The Popover card is `relative` (CSS-anchor /
-   Radix wrapper). That two-class `relative` beats DialogContent's `fixed`
-   utility, so the portaled card sat at the bottom of the viewport. Re-assert
-   the shared centered-card placement. Compact-month --docked stays bottom. */
-.ui-modal-surface.calendar-dialog-surface.calendar-event-details-popover--dialog {
-  @apply box-border flex flex-col gap-2 overflow-hidden;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  right: auto;
-  bottom: auto;
-  translate: -50% -50%;
-  transform: none;
-  margin: 0;
-  justify-self: unset;
-  align-self: unset;
-  position-anchor: none;
-  position-area: none;
-  position-try: none;
-  position-try-fallbacks: none;
-}
-
 /*
  * iOS Safari: if JS still mounts the desktop Popover below 768px (useIsMobile
  * first paint / innerWidth vs CSS), Radix's wrapper is `left:0; top:0` plus a
  * `transform` iOS often drops — compact card at the origin. Pin that wrapper
- * only. Dialog-hosted details (`--dialog` / ui-modal-surface--center) stay a
- * centered card with gutters — do not full-bleed those.
+ * only. Mobile Dialog uses the shared `ui-modal-surface--center` card — do not
+ * put `.calendar-event-details-popover` on DialogContent.
  */
 @media (max-width: 767px) {
   [data-radix-popper-content-wrapper]:has(.calendar-event-details-popover) {
