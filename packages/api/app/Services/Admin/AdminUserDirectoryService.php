@@ -13,7 +13,7 @@ final class AdminUserDirectoryService
     public function __construct(private GroupDirectoryService $groups) {}
 
     /**
-     * @return list<array{id: string, username: string, email: string, displayName: string, groups: list<string>, createdAt: string}>
+     * @return list<array{id: string, username: string, email: string, displayName: string, groups: list<string>, createdAt: string, enabled: bool}>
      */
     public function listSummaries(): array
     {
@@ -41,6 +41,7 @@ final class AdminUserDirectoryService
                 'displayName' => trim((string) ($principalRow?->displayname ?? '')) ?: $username,
                 'groups' => $memberOf,
                 'createdAt' => '',
+                'enabled' => $user->isEnabled(),
             ];
         }
 

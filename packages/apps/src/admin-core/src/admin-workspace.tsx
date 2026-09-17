@@ -57,7 +57,6 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
   const [newUserOpen, setNewUserOpen] = useState(false);
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [passwordUserId, setPasswordUserId] = useState<string | null>(null);
-  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [newGroupOpen, setNewGroupOpen] = useState(false);
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [deleteGroupId, setDeleteGroupId] = useState<string | null>(null);
@@ -67,7 +66,6 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
 
   const editingUser = controller.users.find((user) => user.id === editUserId) ?? null;
   const passwordUser = controller.users.find((user) => user.id === passwordUserId) ?? null;
-  const deletingUser = controller.users.find((user) => user.id === deleteUserId) ?? null;
   const editingGroup = controller.groups.find((group) => group.id === editGroupId) ?? null;
   const deletingGroup = controller.groups.find((group) => group.id === deleteGroupId) ?? null;
 
@@ -114,7 +112,6 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
                 onNewUser={() => setNewUserOpen(true)}
                 onEditUser={setEditUserId}
                 onPasswordUser={setPasswordUserId}
-                onDeleteUser={setDeleteUserId}
                 onNewGroup={() => setNewGroupOpen(true)}
                 onEditGroup={setEditGroupId}
                 onDeleteGroup={setDeleteGroupId}
@@ -157,7 +154,6 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
         setNewUserOpen={setNewUserOpen}
         setEditUserId={setEditUserId}
         setPasswordUserId={setPasswordUserId}
-        setDeleteUserId={setDeleteUserId}
         newGroupOpen={newGroupOpen}
         setNewGroupOpen={setNewGroupOpen}
         setEditGroupId={setEditGroupId}
@@ -170,7 +166,6 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
         setUpdatingNow={setUpdatingNow}
         editingUser={editingUser}
         passwordUser={passwordUser}
-        deletingUser={deletingUser}
         editingGroup={editingGroup}
         deletingGroup={deletingGroup}
       />

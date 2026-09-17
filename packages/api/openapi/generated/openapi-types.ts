@@ -7481,7 +7481,8 @@ export interface components {
          *       "email": "alice@example.test",
          *       "groups": [
          *         "principals/groups/support"
-         *       ]
+         *       ],
+         *       "enabled": true
          *     }
          */
         AdminUserUpdateRequest: {
@@ -7489,6 +7490,7 @@ export interface components {
             email?: string;
             password?: string;
             groups?: components["schemas"]["AdminUserGroupList"];
+            enabled?: boolean;
         };
         /**
          * @example {
@@ -7536,6 +7538,7 @@ export interface components {
             displayName: string;
             groups: components["schemas"]["AdminUserGroupList"];
             createdAt: string;
+            enabled: boolean;
         };
         AdminGroupSummary: {
             id: string;

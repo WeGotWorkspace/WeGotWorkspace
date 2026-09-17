@@ -24,6 +24,16 @@ const DEFAULT_DATA: AdminUIData = {
       displayName: "Alice Example",
       groups: ["principals/groups/administrators"],
       createdAt: "",
+      enabled: true,
+    },
+    {
+      id: "carol",
+      username: "carol",
+      email: "carol@example.test",
+      displayName: "Carol Example",
+      groups: [],
+      createdAt: "",
+      enabled: false,
     },
   ],
   groups: [
@@ -112,7 +122,7 @@ const DEFAULT_DATA: AdminUIData = {
     lastResult: null,
     logLines: [],
   },
-  currentUser: "",
+  currentUser: "alice",
   logoutUrl: "/logout",
   updateLogLines: [],
 };
