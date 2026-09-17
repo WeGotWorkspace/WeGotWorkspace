@@ -100,6 +100,15 @@ See [spec.md](./spec.md).
 - **Verify with:** Feature tests
 - **Parallel with:** `chunk-s-alarms`, `chunk-share-docs`, `chunk-v-vapid`
 
+### Chunk Format: store facts, format at edge
+
+- **id:** `chunk-format-at-edge`
+- **Skill:** api, apps-ui
+- **Inputs:** producers + inbox + VAPID + tray
+- **Done when:** `notifications.data` stores facts; TS tray + PHP VAPID formatters share copy rules; OpenAPI exposes `data`; legacy title/body fallback
+- **Verify with:** Unit tests (TS+PHP); VAPID feature test; Storybook fixtures
+- **Parallel with:** none (lands after producers)
+
 ## Test plan
 
 - [ ] Chunk 0: architecture assertions on write/observation paths

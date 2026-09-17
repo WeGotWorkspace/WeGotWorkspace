@@ -57,7 +57,7 @@ First-time host API JWT (without full install tree): copy `packages/api/.env.exa
 
 ## Offline / PWA (contacts pilot)
 
-`pnpm preview` serves the production build with the same `/api/v1` proxy — use for service worker and offline contacts. Copy `packages/apps/.env.example` → `.env.local` when needed. Details: [`docs/dev-layout.md`](../../../docs/dev-layout.md#preview-built-ui-no-hmr).
+`pnpm dev` on http://127.0.0.1:5173 registers the injectManifest service worker so Web Push can arrive (localhost is a secure origin). `pnpm preview` serves the production build with the same `/api/v1` proxy — use that for production precache and offline contacts. Copy `packages/apps/.env.example` → `.env.local` when needed. Details: [`docs/dev-layout.md`](../../../docs/dev-layout.md#preview-built-ui-no-hmr).
 
 ## HTTPS + WebDAV (optional)
 

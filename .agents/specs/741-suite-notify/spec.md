@@ -37,18 +37,20 @@ One suite-wide mutation envelope (`WorkspaceEvent` PHP DTO) with dual dispatch (
 - Keep `BestEffortSearchIndexSync` call sites; add `fire` beside them. Drive observation hooks **three** writers: `FileNodeSetService`, `DriveService`, DAV plugin. `WgwStorage::files()` is the disk.
 - Chat is DAV-hidden: fire from `ChatMessageRepository::create` only. Publicize `ChatChannelRepository::rosterUsernames` (Sabre `getInvites`, not a Chat API). No @mention parsing.
 - LAMP: Laravel `withSchedule` + host cron `* * * * * php artisan schedule:run`. No `queue:work` daemon.
-- Notify curation: `NotifyListener` allow-list `(docs, shared)`, `(calendar, alert_due)`, `(tasks, alert_due)`, `(chat, message_posted)`.
+- Notify curation: `NotifyListener` allow-list `(docs, shared)`, `(calendar, alert_due)`, `(calendar, invite)`, `(tasks, alert_due)`, `(chat, message_posted)`.
 - Two `wgw` tables: `notifications` (inbox) and `notification_deliveries` (local|vapid attempts). Send is a scheduled row, never inline in the DAV/REST write.
+- **Store raw facts, format at the edge:** producers put structured fields in event/`notifications.data` (actor, path, snippet, start/end, …). Display `title`/`body` are formatted by tray TypeScript (`formatNotificationCopy`) and by PHP `NotificationCopyFormatter` immediately before VAPID send (and at inbox API read). Legacy title/body columns remain for rows without `data`.
 - VitePWA `generateSW` cannot host a custom `push` handler — switch to `injectManifest` + custom SW that still precaches.
 - OpenAPI first for new routes. Tray-only UI (no new top-level SPA segment) unless a route is added, in which case `UiStaticServer` allowlist must update.
 - Chat-push (VAPID + chat producer) **is** the beta gap-close for chat. Calendar closed-tab is **not**.
+- Open-tab acceleration (optional): principal presence mesh `notify-hint` wakes inbox re-GET when peers are online; server notifications rows remain SoT. No dedicated Meet A/V room.
 
 ## Edge cases
 
 - DAV actor missing: skip notify-worthy events; do not attribute to a fake user.
 - Plugin may emit coarse `written`; services that already loaded old ICS may emit `created` / `updated`. Curation ignores most of these.
 - Recurring VALARM: unique `(principal, uid, occurrence, alarm_id)` — duplicate cron ticks must not duplicate inbox rows.
-- Local-ack race: channel=`local` ack in 30–60s window skips VAPID; no ack sends; 410/404 prunes the subscription.
+- Local-ack race: channel=`local` ack in the 20s window (longer than the 15s inbox poll) skips VAPID; no ack sends; 410/404 prunes the subscription. Cron sweep stays `* * * * *` (60s).
 - Sharee (not actor) gets Doc-share inbox rows. Group shares expand via existing principal resolution.
 - Chat: N-member channel → N−1 rows; DM → 1; author never notified.
 - Unauthenticated deep link: existing `?return=` login continue on allowlisted in-app paths.
