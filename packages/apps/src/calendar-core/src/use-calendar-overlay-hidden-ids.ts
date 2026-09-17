@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   persistHiddenOverlayTaskListIds,
   readHiddenOverlayTaskListIds,
@@ -9,10 +9,18 @@ export function useCalendarOverlayHiddenIds() {
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(
     () => new Set(readHiddenOverlayTaskListIds()),
   );
+  const skipHydrationPersist = useRef(true);
+
+  useEffect(() => {
+    if (skipHydrationPersist.current) {
+      skipHydrationPersist.current = false;
+      return;
+    }
+    persistHiddenOverlayTaskListIds(hiddenIds);
+  }, [hiddenIds]);
 
   const setHiddenOverlayTaskListIds = useCallback((next: ReadonlySet<string>) => {
     setHiddenIds(next);
-    persistHiddenOverlayTaskListIds(next);
   }, []);
 
   const toggleOverlayTaskListVisibility = useCallback((listId: string) => {
@@ -20,7 +28,6 @@ export function useCalendarOverlayHiddenIds() {
       const next = new Set(current);
       if (next.has(listId)) next.delete(listId);
       else next.add(listId);
-      persistHiddenOverlayTaskListIds(next);
       return next;
     });
   }, []);

@@ -206,7 +206,9 @@ export function preserveTaskDueOverlayEvents(
 
 /**
  * Calendar visibility filter that still paints overlay rows (no calendarId).
- * Empty `visibleCalendarIds` hides every VEVENT but keeps task dues.
+ * Empty `visibleCalendarIds` hides every VEVENT but keeps task dues already
+ * sitting in `events`. Live Tasks dues are merged separately via
+ * `taskDueMarkers` on `wgw-calendar-surface` after this filter.
  */
 export function filterVisibleCalendarEventsKeepingOverlay(
   events: CalendarEventsMap,

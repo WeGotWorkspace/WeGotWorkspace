@@ -85,6 +85,12 @@ export class WgwCalendarSurface extends LitElement {
   }
 
   get #visibleEvents(): EventsMap {
+    // Two overlay entry points, different owners:
+    // 1. `events` may already contain overlay rows (CalendarViewBase preserve
+    //    after EventsAPI apply, tests, later overlays such as birthday #620).
+    //    The filter must keep those when every calendar is hidden.
+    // 2. Live Tasks dues are injected via `taskDueMarkers` *after* the filter
+    //    so they never need a calendarId and stay out of the VEVENT map.
     const filtered = filterVisibleCalendarEventsKeepingOverlay(
       this.events,
       this.visibleCalendarIds,
