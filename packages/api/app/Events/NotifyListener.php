@@ -21,10 +21,18 @@ final class NotifyListener implements WorkspaceEventListener
     /** @var list<array{0: string, 1: string}> */
     private const ALLOW_LIST = [
         ['docs', 'shared'],
+        ['docs', 'thread_activity'],
         ['calendar', 'alert_due'],
         ['calendar', 'invite'],
+        ['calendar', 'rsvp'],
+        ['calendar', 'shared'],
+        ['notes', 'shared'],
         ['tasks', 'alert_due'],
+        ['tasks', 'list_shared'],
+        ['tasks', 'status_changed'],
         ['chat', 'message_posted'],
+        ['chat', 'mentioned'],
+        ['meet', 'started'],
     ];
 
     public function handle(WorkspaceEvent $event): void
@@ -40,6 +48,7 @@ final class NotifyListener implements WorkspaceEventListener
             }
             if (($event->data['clear'] ?? false) === true) {
                 $this->clearInbox($event, $principal);
+
                 continue;
             }
             $this->upsertInbox($event, $principal);
@@ -203,10 +212,18 @@ final class NotifyListener implements WorkspaceEventListener
     {
         return match ($event->domain.'.'.$event->action) {
             'docs.shared' => 'A document was shared with you',
+            'docs.thread_activity' => 'New activity on a document',
             'calendar.alert_due' => 'Calendar reminder',
             'calendar.invite' => 'Calendar invitation',
+            'calendar.rsvp' => 'Calendar RSVP update',
+            'calendar.shared' => 'A calendar was shared with you',
+            'notes.shared' => 'A notebook was shared with you',
             'tasks.alert_due' => 'Task reminder',
+            'tasks.list_shared' => 'A task list was shared with you',
+            'tasks.status_changed' => 'Task status changed',
             'chat.message_posted' => 'New chat message',
+            'chat.mentioned' => 'You were mentioned in chat',
+            'meet.started' => 'A meeting started',
             default => 'Notification',
         };
     }

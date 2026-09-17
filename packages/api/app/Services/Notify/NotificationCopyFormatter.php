@@ -52,9 +52,15 @@ final class NotificationCopyFormatter
 
         return match ($key) {
             'docs.shared' => DocsSharedNotify::formatCopy($data),
+            'docs.thread_activity' => DocsThreadActivityNotify::formatCopy($data),
             'calendar.alert_due', 'tasks.alert_due' => AlertDueNotify::formatCopy($domain, $data),
             'calendar.invite' => CalendarInviteNotify::formatCopy($data),
+            'calendar.rsvp' => CalendarRsvpNotify::formatCopy($data),
+            'calendar.shared', 'notes.shared', 'tasks.list_shared' => CollectionSharedNotify::formatCopy($domain, $data),
+            'tasks.status_changed' => TaskStatusChangedNotify::formatCopy($data),
             'chat.message_posted' => ChatMessagePostedNotify::formatCopy($data),
+            'chat.mentioned' => ChatMentionedNotify::formatCopy($data),
+            'meet.started' => MeetStartedNotify::formatCopy($data),
             default => [
                 'title' => $legacyTitle !== '' ? $legacyTitle : 'Notification',
                 'body' => $legacyBody,

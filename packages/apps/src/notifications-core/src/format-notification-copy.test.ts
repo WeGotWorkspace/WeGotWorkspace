@@ -67,6 +67,122 @@ describe("formatNotificationCopy", () => {
     });
   });
 
+  it("formats docs.thread_activity comment and reply", () => {
+    const comment = formatNotificationCopy({
+      domain: "docs",
+      action: "thread_activity",
+      title: "legacy",
+      body: null,
+      data: {
+        actor: "Alice",
+        fileName: "plan.md",
+        kind: "comment",
+        isReply: false,
+        snippet: "please clarify",
+      },
+    });
+    expect(comment).toEqual({
+      title: "Alice left a comment on plan.md",
+      titleActor: "Alice",
+      titleRest: " left a comment on plan.md",
+      body: "please clarify",
+    });
+
+    const reply = formatNotificationCopy({
+      domain: "docs",
+      action: "thread_activity",
+      title: "legacy",
+      body: null,
+      data: {
+        actor: "Bob",
+        fileName: "plan.md",
+        kind: "comment",
+        isReply: true,
+        snippet: "done",
+      },
+    });
+    expect(reply.title).toBe("Bob replied on plan.md");
+  });
+
+  it("formats calendar.rsvp, collection shared, task status, chat mention, meet started", () => {
+    expect(
+      formatNotificationCopy({
+        domain: "calendar",
+        action: "rsvp",
+        title: "legacy",
+        body: null,
+        data: {
+          actor: "Carol",
+          summary: "Standup",
+          participationStatus: "accepted",
+          start: "2030-01-15T10:00:00Z",
+          end: "2030-01-15T10:30:00Z",
+        },
+      }).title,
+    ).toBe("Carol accepted Standup");
+
+    expect(
+      formatNotificationCopy({
+        domain: "calendar",
+        action: "shared",
+        title: "legacy",
+        body: null,
+        data: { actor: "Bob", calendarName: "Work", access: "write" },
+      }),
+    ).toEqual({
+      title: "Bob shared Work with you",
+      titleActor: "Bob",
+      titleRest: " shared Work with you",
+      body: "calendar access: write",
+    });
+
+    expect(
+      formatNotificationCopy({
+        domain: "tasks",
+        action: "status_changed",
+        title: "legacy",
+        body: null,
+        data: {
+          actor: "Alice",
+          summary: "Pay rent",
+          fromStatus: "needs-action",
+          toStatus: "completed",
+        },
+      }).title,
+    ).toBe("Alice completed Pay rent");
+
+    expect(
+      formatNotificationCopy({
+        domain: "chat",
+        action: "mentioned",
+        title: "legacy",
+        body: null,
+        data: {
+          actor: "Alice",
+          channelKind: "channel",
+          channelName: "General",
+          snippet: "hey @bob",
+          isDm: false,
+        },
+      }).title,
+    ).toBe("Alice mentioned you in #general");
+
+    expect(
+      formatNotificationCopy({
+        domain: "meet",
+        action: "started",
+        title: "legacy",
+        body: null,
+        data: { actor: "Alice", room: "abc-room" },
+      }),
+    ).toEqual({
+      title: "Alice started a meeting",
+      titleActor: "Alice",
+      titleRest: " started a meeting",
+      body: "abc-room",
+    });
+  });
+
   it("formats calendar.alert_due and tasks.alert_due when labels", () => {
     const start = "2026-09-12T12:15:00+00:00";
     const end = "2026-09-12T13:15:00+00:00";
