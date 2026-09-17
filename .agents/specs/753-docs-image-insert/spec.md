@@ -47,7 +47,7 @@ Yjs / markdown stores **reference only** (`drive:fn-{imageNodeId}`), never bytes
 
 ### Index allowlist (re-grep Chunk 0, origin/main)
 
-[`FileNodeIndexService::isIndexedDotSegment`](packages/api/app/Services/Jmap/FileNodes/FileNodeIndexService.php) currently excepts:
+[`FileNodeIndexService::isIndexedDotSegment`](../../../packages/api/app/Services/Jmap/FileNodes/FileNodeIndexService.php) currently excepts:
 
 - `PRODUCT_TRASH_DIR` = `.Trash`
 - `PRODUCT_NOTES_DIR` = `.notes`

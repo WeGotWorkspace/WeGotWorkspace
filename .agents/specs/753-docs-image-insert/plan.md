@@ -68,7 +68,7 @@ See [spec.md](./spec.md#non-goals). In particular: no Notes/Chat/Mail, no server
 - **id:** `ui-docs-image-insert`
 - **Skill:** workspace (collab: pure lib vs thin orchestrator per [collab-hooks.md](../../skills/workspace/collab-hooks.md))
 - **Inputs:** A + B; `text-editor-slash-menu.tsx`, format bar, `DocsCollabEditor`. Task [#756](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/756).
-- **Done when:** slash + toolbar open picker or upload; paste/drop image files upload then `setImage`; custom Image attrs round-trip `![alt](drive:fn-…)` in markdown + Yjs; node view resolves via authenticated download to `blob:`; external `https://` images still work; `.txt` docs stay image-free; track-changes/export does not embed bytes
+- **Done when:** slash + toolbar open picker or upload; paste/drop image files upload then `setImage`; custom Image attrs round-trip markdown images whose src is a `drive:fn-` reference, plus Yjs; node view resolves via authenticated download to `blob:`; external `https://` images still work; `.txt` docs stay image-free; track-changes/export does not embed bytes
 - **Verify with:** Vitest on parse/serialize + RTL on insert; stories with fixture `drive:fn-` images
 - **Parallel with:** none (after A + B)
 
