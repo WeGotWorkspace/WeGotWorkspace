@@ -7,7 +7,6 @@ namespace App\Services\Notify;
 use App\Events\EventDispatch;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
-use App\Services\Notify\AlertDueNotify;
 use App\Services\VObject\ICalendarAlarmTrigger;
 use DateInterval;
 use DateTimeImmutable;

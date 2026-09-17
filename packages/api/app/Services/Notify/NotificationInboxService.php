@@ -106,8 +106,7 @@ final class NotificationInboxService
     public function recordLocalDelivery(
         Notification $row,
         int $delaySeconds = NotificationDelivery::LOCAL_ACK_GRACE_SECONDS,
-    ): void
-    {
+    ): void {
         $exists = NotificationDelivery::query()
             ->where('notification_id', $row->id)
             ->where('channel', NotificationDelivery::CHANNEL_LOCAL)
