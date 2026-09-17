@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dav;
 
+use App\Models\Principal;
+use App\Services\Admin\AdminConstants;
 use App\Services\Drive\DocAttachmentPaths;
+use App\Services\Drive\DocAttachmentsService;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\WgwDatabaseTestCase;
@@ -91,5 +95,64 @@ final class DocAttachmentsDavTest extends WgwDatabaseTestCase
             [],
             ['HTTP_AUTHORIZATION' => $auth],
         )->assertStatus(403);
+    }
+
+    public function test_http_move_relocates_attachments_across_group_trees(): void
+    {
+        Principal::query()->firstOrCreate(
+            ['uri' => AdminConstants::GROUP_CONTAINER_URI],
+            ['displayname' => 'Groups', 'email' => null],
+        );
+        $team = $this->seedWgwGroup('principals/groups/team', 'Team');
+        $ops = $this->seedWgwGroup('principals/groups/ops', 'Ops');
+        $alice = Principal::forUsername('alice');
+        $this->assertNotNull($alice);
+        $this->addPrincipalToGroup($team, $alice);
+        $this->addPrincipalToGroup($ops, $alice);
+
+        mkdir($this->dataDir.'/files/groups/team', 0775, true);
+        mkdir($this->dataDir.'/files/groups/ops', 0775, true);
+
+        $auth = 'Basic '.base64_encode('alice:secret');
+
+        $this->call(
+            'PUT',
+            '/files/groups/team/cross.md',
+            [],
+            [],
+            [],
+            [
+                'HTTP_AUTHORIZATION' => $auth,
+                'CONTENT_TYPE' => 'text/markdown',
+            ],
+            "# cross\n",
+        )->assertSuccessful();
+
+        $doc = app(FileNodeIndexService::class)->liveByKey('groups/team/cross.md');
+        $this->assertNotNull($doc);
+        $image = app(DocAttachmentsService::class)->storeImageForDoc($doc->node_id, 'PNGDATA', 'png');
+        $this->assertTrue(Storage::disk('wgw_files')->exists(
+            'groups/team/.attachments/'.$doc->node_id.'/'.$image->name,
+        ));
+
+        $this->call(
+            'MOVE',
+            '/files/groups/team/cross.md',
+            [],
+            [],
+            [],
+            [
+                'HTTP_AUTHORIZATION' => $auth,
+                'HTTP_DESTINATION' => '/files/groups/ops/cross.md',
+            ],
+        )->assertSuccessful();
+
+        $this->assertTrue(Storage::disk('wgw_files')->exists('groups/ops/cross.md'));
+        $this->assertTrue(Storage::disk('wgw_files')->exists(
+            'groups/ops/.attachments/'.$doc->node_id.'/'.$image->name,
+        ));
+        $this->assertFalse(Storage::disk('wgw_files')->directoryExists(
+            'groups/team/.attachments/'.$doc->node_id,
+        ));
     }
 }
