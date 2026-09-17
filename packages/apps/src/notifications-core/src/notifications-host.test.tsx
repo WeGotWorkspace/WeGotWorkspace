@@ -176,22 +176,23 @@ describe("NotificationsHost", () => {
     });
 
     // Immediate hint GET + scheduled retries at 300ms and 1200ms.
-    expect(listNotifications.mock.calls.length).toBeGreaterThan(baseline);
+    expect(vi.mocked(listNotifications).mock.calls.length).toBeGreaterThan(baseline);
     await vi.advanceTimersByTimeAsync(1_200);
-    expect(listNotifications.mock.calls.length).toBeGreaterThanOrEqual(baseline + 3);
+    expect(vi.mocked(listNotifications).mock.calls.length).toBeGreaterThanOrEqual(baseline + 3);
   });
 
   it("does not let a slow in-flight GET overwrite a newer notify-hint refresh", async () => {
-    let resolveSlow:
-      | ((value: { list: (typeof unreadItem)[]; unreadCount: number }) => void)
-      | null = null;
+    type InboxPayload = { list: (typeof unreadItem)[]; unreadCount: number };
+    const slow = {
+      resolve: null as null | ((value: InboxPayload) => void),
+    };
     let call = 0;
-    vi.mocked(listNotifications).mockImplementation(() => {
+    vi.mocked(listNotifications).mockImplementation((): Promise<InboxPayload> => {
       call += 1;
       if (call === 1) {
         // Mount refresh — hang until after the hint so we can prove abort/ignore.
-        return new Promise((resolve) => {
-          resolveSlow = resolve;
+        return new Promise<InboxPayload>((resolve) => {
+          slow.resolve = resolve;
         });
       }
       return Promise.resolve({ list: [unreadItem], unreadCount: 1 });
@@ -208,9 +209,9 @@ describe("NotificationsHost", () => {
     session.peers = [{ id: "bob-1", name: "Bob", user: "bob" }];
     session.emit({ type: "roster" });
 
-    let inbox: ReturnType<typeof useNotificationsInbox> = null;
+    const probe = { inbox: null as ReturnType<typeof useNotificationsInbox> };
     function Probe() {
-      inbox = useNotificationsInbox();
+      probe.inbox = useNotificationsInbox();
       return null;
     }
 
@@ -224,7 +225,7 @@ describe("NotificationsHost", () => {
 
     await waitFor(() => {
       expect(call).toBe(1);
-      expect(resolveSlow).not.toBeNull();
+      expect(slow.resolve).not.toBeNull();
     });
 
     session.emit({
@@ -234,15 +235,15 @@ describe("NotificationsHost", () => {
     });
 
     await waitFor(() => {
-      expect(inbox?.unreadCount).toBe(1);
-      expect(inbox?.items).toHaveLength(1);
+      expect(probe.inbox?.unreadCount).toBe(1);
+      expect(probe.inbox?.items).toHaveLength(1);
     });
 
     // Slow mount GET resolves empty after abort — must not wipe the hint result.
-    resolveSlow?.({ list: [], unreadCount: 0 });
+    slow.resolve?.({ list: [], unreadCount: 0 });
     await Promise.resolve();
-    expect(inbox?.unreadCount).toBe(1);
-    expect(inbox?.items).toHaveLength(1);
+    expect(probe.inbox?.unreadCount).toBe(1);
+    expect(probe.inbox?.items).toHaveLength(1);
   });
 
   it("does not render a viewport overlay bell (AppSidebar owns the tray)", () => {
