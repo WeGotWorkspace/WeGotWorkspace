@@ -2,18 +2,18 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createInstallWorkspaceStoryArgs } from "@/lib/api/mock/install-bootstrap";
 import { InstallApp } from "@/install-core/src/install-app";
 import { createDefaultInstallApiSource } from "@/install-core/src/install-api-source";
-import { InstallWorkspace } from "@/install-core/src/install-workspace";
+import { InstallFirstRunWorkspace } from "@/install-core/src/install-first-run-workspace";
 
-const meta: Meta<typeof InstallWorkspace> = {
+const meta: Meta<typeof InstallFirstRunWorkspace> = {
   title: "Apps/Install",
-  component: InstallWorkspace,
+  component: InstallFirstRunWorkspace,
   parameters: {
     layout: "fullscreen",
   },
 };
 
 export default meta;
-type Story = StoryObj<typeof InstallWorkspace>;
+type Story = StoryObj<typeof InstallFirstRunWorkspace>;
 
 export const Default: Story = {
   args: createInstallWorkspaceStoryArgs(),

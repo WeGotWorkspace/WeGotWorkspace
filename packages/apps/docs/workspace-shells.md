@@ -17,7 +17,7 @@ Shared layout CSS for split and collection lives under `packages/apps/src/worksp
 | You are building…                                                                            | Use                      | Why                                                                                                                                             |
 | -------------------------------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Multi-section settings, admin, or config                                                     | **Split**                | Section nav in sidebar; one pane at a time in scrollable main                                                                                   |
-| Installer / wizard with sidebar steps                                                        | **Split**                | Same chrome as settings; wizard panes swap in `main`                                                                                            |
+| Installer first-run (`/install`)                                                             | **Custom** (first-run)   | Login-like centered column (`AuthenticationPage`); quiet dots; not Admin sidebar                                                                |
 | File browser or document library (folder tree + main)                                        | **Split**                | Tree/nav in sidebar; browser or editor in main                                                                                                  |
 | Meet **product** workspace (named channels + chat + optional call)                           | **Split**                | Same sidebar + main as Tasks/Docs; the call stage is a resizable rail inside `main`, not a reason to stay Custom                                |
 | Mailbox, notes, or any **list + detail** collection                                          | **Collection**           | Shared list/detail/mobile back behavior via `WorkspaceApp`                                                                                      |
@@ -31,7 +31,12 @@ When unsure: if the primary interaction is **pick an item from a list, show deta
 Agent-readable routing — read this before scaffolding a new `*-core` package:
 
 ```
-IF product = multi-section config OR admin OR install wizard OR drive browser OR docs library OR Meet channel workspace
+IF product = installer first-run (`/install`)
+  THEN shell = custom (first-run)
+  THEN entry = InstallFirstRunWorkspace + AuthenticationPage (hideHeader / hideFooter)
+  THEN do NOT use WorkspaceAppLayout or a labeled Setup-steps sidebar
+
+IF product = multi-section config OR admin OR drive browser OR docs library OR Meet channel workspace
   THEN shell = split
   THEN entry = WorkspaceAppLayout(sidebar, mainHeader?, main)
   THEN blueprint = feature-blueprint.md
@@ -58,22 +63,22 @@ IF product = login or standalone screen with global header only
 
 Verified against current `*-workspace.tsx` (or equivalent) sources:
 
-| Package                    | Shell                    | Entry file                                                                                                                   |
-| -------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `admin-core`               | Split                    | `admin-core/src/admin-workspace.tsx`                                                                                         |
-| `calendar-core`            | Split                    | `calendar-core/src/calendar-workspace.tsx`                                                                                   |
-| `docs-core`                | Split                    | `docs-core/src/docs-workspace.tsx`                                                                                           |
-| `drive-core`               | Split                    | `drive-core/src/drive-workspace.tsx`                                                                                         |
-| `install-core`             | Split                    | `install-core/src/install-workspace.tsx`                                                                                     |
-| `settings-core`            | Split                    | `settings-core/src/settings-workspace.tsx`                                                                                   |
-| `mail-core`                | Collection               | `mail-core/src/mail-workspace.tsx`                                                                                           |
-| `notes-core`               | Collection               | `notes-core/src/notes-workspace.tsx`                                                                                         |
-| `meet-core`                | Split                    | `meet-core/src/meet-workspace.tsx` — channels + chat + optional `MeetCallStage`                                              |
-| `meet-core` (live `/meet`) | Split                    | `meet-core/src/meet-chat-app.tsx` — `MeetChatApp`: hybrid chat client + real RTC call stage in `MeetWorkspace`               |
-| `meet-core` (guest invite) | Split (stripped)         | `meet-core/src/meet-app.tsx` — live `/meet/guest`, unauthorized `/meet/channels/{id}`, `/meet/join` mount `MeetGuestChannel` |
-| `meet-core` (guest)        | Split (stripped)         | `meet-core/src/meet-guest-channel.tsx` — `MeetGuestChannel`: one room, no channel sidebar (`hideSidebarToggle`)              |
-| `login-core`               | Custom (header only)     | `login-core/src/login-screen.tsx` — not a product workspace                                                                  |
-| `text-editor-core`         | Split (collab submodule) | `text-editor-core/docs-collab/docs-collab-workspace.tsx` — editor primitive + docs collab demo, not a routed app             |
+| Package                    | Shell                    | Entry file                                                                                                                    |
+| -------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `admin-core`               | Split                    | `admin-core/src/admin-workspace.tsx`                                                                                          |
+| `calendar-core`            | Split                    | `calendar-core/src/calendar-workspace.tsx`                                                                                    |
+| `docs-core`                | Split                    | `docs-core/src/docs-workspace.tsx`                                                                                            |
+| `drive-core`               | Split                    | `drive-core/src/drive-workspace.tsx`                                                                                          |
+| `install-core`             | Custom (first-run)       | `install-core/src/install-first-run-workspace.tsx` — live `/install`; unused Split panes remain under `install-workspace.tsx` |
+| `settings-core`            | Split                    | `settings-core/src/settings-workspace.tsx`                                                                                    |
+| `mail-core`                | Collection               | `mail-core/src/mail-workspace.tsx`                                                                                            |
+| `notes-core`               | Collection               | `notes-core/src/notes-workspace.tsx`                                                                                          |
+| `meet-core`                | Split                    | `meet-core/src/meet-workspace.tsx` — channels + chat + optional `MeetCallStage`                                               |
+| `meet-core` (live `/meet`) | Split                    | `meet-core/src/meet-chat-app.tsx` — `MeetChatApp`: hybrid chat client + real RTC call stage in `MeetWorkspace`                |
+| `meet-core` (guest invite) | Split (stripped)         | `meet-core/src/meet-app.tsx` — live `/meet/guest`, unauthorized `/meet/channels/{id}`, `/meet/join` mount `MeetGuestChannel`  |
+| `meet-core` (guest)        | Split (stripped)         | `meet-core/src/meet-guest-channel.tsx` — `MeetGuestChannel`: one room, no channel sidebar (`hideSidebarToggle`)               |
+| `login-core`               | Custom (header only)     | `login-core/src/login-screen.tsx` — not a product workspace                                                                   |
+| `text-editor-core`         | Split (collab submodule) | `text-editor-core/docs-collab/docs-collab-workspace.tsx` — editor primitive + docs collab demo, not a routed app              |
 
 ## Required imports and CSS
 

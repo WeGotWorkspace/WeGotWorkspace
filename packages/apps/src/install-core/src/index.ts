@@ -17,3 +17,5 @@ export { InstallFirstRunReady } from "./install-first-run-ready";
 export type { InstallFirstRunReadyProps } from "./install-first-run-ready";
 export { InstallFirstRunServerAttention } from "./install-first-run-server";
 export type { InstallFirstRunServerAttentionProps } from "./install-first-run-server";
+export { InstallFirstRunWorkspace } from "./install-first-run-workspace";
+export type { InstallFirstRunWorkspaceProps } from "./install-first-run-workspace";

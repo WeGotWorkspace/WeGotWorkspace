@@ -21,6 +21,12 @@ final class WgwInstallEnv
         return $this->configBool('headless');
     }
 
+    /** True when `WGW_INSTALL_DB_DRIVER` is set — first-run skips the Database screen. */
+    public function hasDatabaseFromEnv(): bool
+    {
+        return $this->configString('db_driver') !== null;
+    }
+
     /**
      * Partial wizard state merged into bootstrap/runtime responses (never includes passwords).
      *

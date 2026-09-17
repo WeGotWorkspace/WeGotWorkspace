@@ -1,7 +1,7 @@
 import { buildWgwLoginHref } from "@/lib/api/wgw/route-guard";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import type { InstallApiSource } from "@/install-core/src/install-api-source";
-import { InstallWorkspace } from "@/install-core/src/install-workspace";
+import { InstallFirstRunWorkspace } from "@/install-core/src/install-first-run-workspace";
 import { useInstallAPI } from "@/install-core/src/use-install-api";
 
 export type InstallAppProps = {
@@ -20,16 +20,16 @@ export function InstallApp({ apiSource }: InstallAppProps = {}) {
       errorTitle="Could not load installer"
       successVersion={successVersion}
       render={(key) => (
-        <InstallWorkspace
+        <InstallFirstRunWorkspace
           key={key}
           data={data}
           operations={operations}
-          onInstallRedirect={(url) => {
+          onOpenWorkspace={() => {
             if (typeof window !== "undefined") {
-              window.location.assign(url);
+              window.location.assign(buildWgwLoginHref("/"));
             }
           }}
-          onOpenAdmin={() => {
+          onOpenServerSettings={() => {
             if (typeof window !== "undefined") {
               window.location.assign(buildWgwLoginHref("/admin"));
             }

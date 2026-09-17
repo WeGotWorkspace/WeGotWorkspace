@@ -48,8 +48,10 @@ test.describe("Install wizard", () => {
     const bootstrapResponse = await bootstrap;
     expect(bootstrapResponse.ok()).toBeTruthy();
 
-    await expect(page.getByText("What you'll set up")).toBeVisible({
+    await expect(page.getByText("An open source workspace, truly yours.")).toBeVisible({
       timeout: 15_000,
     });
+    await expect(page.getByRole("button", { name: "Get started" })).toBeVisible();
+    await expect(page.getByText("What you'll set up")).toHaveCount(0);
   });
 });

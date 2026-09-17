@@ -417,6 +417,7 @@ final class InstallerWizardService
                 'checks' => $this->env->checkAll('sqlite'),
                 'already_installed' => true,
                 'admin_updates_url' => InstallerWebBase::url($webBase, '/admin/updates'),
+                'db_from_env' => $this->installEnv->hasDatabaseFromEnv(),
             ];
         }
 
@@ -442,6 +443,7 @@ final class InstallerWizardService
             'enable_contacts' => (bool) ($state['enable_contacts'] ?? true),
             'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? true),
             'checks' => $this->env->checkAll($driver),
+            'db_from_env' => $this->installEnv->hasDatabaseFromEnv(),
         ];
 
         foreach (['admin_username', 'admin_email', 'admin_display_name'] as $adminKey) {
