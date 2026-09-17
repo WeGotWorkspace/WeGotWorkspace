@@ -9,6 +9,7 @@ use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\Principal;
 use App\Services\Calendars\Conversion\ParticipantConversionSupport;
+use App\Services\Notify\CalendarInviteNotify;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use Illuminate\Support\Facades\DB;
@@ -314,7 +315,7 @@ final class CalendarSchedulingService
             return;
         }
 
-        $this->deliverLocal($message, (string) $recipient->uri);
+        $this->deliverLocal($username, $message, (string) $recipient->uri);
     }
 
     private function isOrganizerRequestToSelf(Message $message, Principal $recipient): bool
@@ -344,11 +345,11 @@ final class CalendarSchedulingService
         return false;
     }
 
-    private function deliverLocal(Message $message, string $principalUri): void
+    private function deliverLocal(string $actorUsername, Message $message, string $principalUri): void
     {
         $method = strtoupper((string) ($message->method ?? ''));
         if ($method === 'CANCEL') {
-            $this->consumeCancel($principalUri, $message);
+            $this->consumeCancel($actorUsername, $principalUri, $message);
 
             return;
         }
@@ -368,34 +369,35 @@ final class CalendarSchedulingService
         }
 
         $newObject = (new Broker)->processMessage($message, $current);
-        if ($newObject === null) {
-            return;
+        if ($newObject !== null) {
+            $serialized = $newObject->serialize();
+            if ($existing !== null) {
+                $instance = $this->instanceForObject($principalUri, $existing);
+                if ($instance !== null) {
+                    $caldav->updateCalendarObject(
+                        [(int) $instance->calendarid, (int) $instance->id],
+                        (string) $existing->uri,
+                        $serialized,
+                    );
+                    $this->indexPath($principalUri, (string) $instance->uri, (string) $existing->uri);
+                }
+            } else {
+                $instance = $this->defaultCalendarInstance($principalUri);
+                if ($instance !== null) {
+                    $eventUri = 'invite-'.Str::uuid()->toString().'.ics';
+                    $caldav->createCalendarObject(
+                        [(int) $instance->calendarid, (int) $instance->id],
+                        $eventUri,
+                        $serialized,
+                    );
+                    $this->indexPath($principalUri, (string) $instance->uri, $eventUri);
+                }
+            }
         }
 
-        $serialized = $newObject->serialize();
-        if ($existing !== null) {
-            $instance = $this->instanceForObject($principalUri, $existing);
-            if ($instance === null) {
-                return;
-            }
-            $caldav->updateCalendarObject(
-                [(int) $instance->calendarid, (int) $instance->id],
-                (string) $existing->uri,
-                $serialized,
-            );
-            $this->indexPath($principalUri, (string) $instance->uri, (string) $existing->uri);
-        } else {
-            $instance = $this->defaultCalendarInstance($principalUri);
-            if ($instance === null) {
-                return;
-            }
-            $eventUri = 'invite-'.Str::uuid()->toString().'.ics';
-            $caldav->createCalendarObject(
-                [(int) $instance->calendarid, (int) $instance->id],
-                $eventUri,
-                $serialized,
-            );
-            $this->indexPath($principalUri, (string) $instance->uri, $eventUri);
+        // Suite tray fan-out after schedule-inbox land (does not replace the inbox).
+        if ($method === 'REQUEST') {
+            $this->notifyInviteRequest($actorUsername, $principalUri, $message);
         }
     }
 
@@ -404,9 +406,10 @@ final class CalendarSchedulingService
      * CANCEL itself, and remove a still-tentative invitee copy. Do not leave a
      * non-actionable CANCEL card in the invitations sidebar.
      */
-    private function consumeCancel(string $principalUri, Message $message): void
+    private function consumeCancel(string $actorUsername, string $principalUri, Message $message): void
     {
         $this->deleteSchedulingObjectsForUid($principalUri, (string) $message->uid);
+        $this->notifyInviteClear($actorUsername, $principalUri, (string) $message->uid);
 
         $existing = $this->findEventByUid($principalUri, (string) $message->uid);
         if ($existing === null) {
@@ -432,6 +435,55 @@ final class CalendarSchedulingService
 
         $caldav->updateCalendarObject($calendarId, (string) $existing->uri, $newObject->serialize());
         $this->indexPath($principalUri, (string) $instance->uri, (string) $existing->uri);
+    }
+
+    private function notifyInviteRequest(string $actorUsername, string $principalUri, Message $message): void
+    {
+        $invitee = $this->usernameFromPrincipalUri($principalUri);
+        if ($invitee === '') {
+            return;
+        }
+        $copy = CalendarInviteNotify::fromITipMessage($actorUsername, $message);
+        if ($copy === null) {
+            return;
+        }
+        $uid = trim((string) ($message->uid ?? ''));
+        $this->eventDispatch->fireMutation(
+            $actorUsername,
+            'calendar',
+            CalendarInviteNotify::ACTION,
+            $uid !== '' ? 'calendars/invite/'.$uid : 'calendars/invite',
+            [
+                'recipients' => [$invitee],
+                ...$copy,
+            ],
+        );
+    }
+
+    private function notifyInviteClear(string $actorUsername, string $principalUri, string $uid): void
+    {
+        $invitee = $this->usernameFromPrincipalUri($principalUri);
+        $trimmedUid = trim($uid);
+        if ($invitee === '' || $trimmedUid === '') {
+            return;
+        }
+        $this->eventDispatch->fireMutation(
+            $actorUsername,
+            'calendar',
+            CalendarInviteNotify::ACTION,
+            'calendars/invite/'.$trimmedUid,
+            [
+                'recipients' => [$invitee],
+                ...CalendarInviteNotify::clearData($trimmedUid),
+            ],
+        );
+    }
+
+    private function usernameFromPrincipalUri(string $principalUri): string
+    {
+        return str_starts_with($principalUri, 'principals/')
+            ? substr($principalUri, strlen('principals/'))
+            : $principalUri;
     }
 
     private function deleteSchedulingObjectsForUid(string $principalUri, string $uid): void

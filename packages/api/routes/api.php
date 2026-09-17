@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\V1\Chat\ChatChannelsController;
 use App\Http\Controllers\Api\V1\Chat\ChatMessagesController;
 use App\Http\Controllers\Api\V1\Contacts\ContactCardImportController;
 use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesController;
+use App\Http\Controllers\Api\V1\Files\DocsThreadsController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
 use App\Http\Controllers\Api\V1\Files\DriveShareSessionsController;
 use App\Http\Controllers\Api\V1\Files\FilesController;
@@ -163,6 +164,18 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('inviteId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
     Route::get('files/shared-with-me', [DriveSharesController::class, 'sharedWithMe']);
     Route::post('files/share-sessions/accept', [DriveShareSessionsController::class, 'accept']);
+
+    // Docs comment/suggestion threads (Task #749): VJOURNAL in a DAV-hidden
+    // owner pool, keyed by ?path=, ACL via DriveShareAuthorizer only.
+    Route::get('files/threads/changes', [DocsThreadsController::class, 'changes']);
+    Route::get('files/threads', [DocsThreadsController::class, 'index']);
+    Route::post('files/threads', [DocsThreadsController::class, 'store']);
+    Route::post('files/threads/{threadId}/replies', [DocsThreadsController::class, 'reply'])
+        ->where('threadId', '[^/]+');
+    Route::post('files/threads/{threadId}/reactions', [DocsThreadsController::class, 'toggleReaction'])
+        ->where('threadId', '[^/]+');
+    Route::patch('files/threads/{threadId}', [DocsThreadsController::class, 'patch'])
+        ->where('threadId', '[^/]+');
 
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/context', [FilesController::class, 'context']);

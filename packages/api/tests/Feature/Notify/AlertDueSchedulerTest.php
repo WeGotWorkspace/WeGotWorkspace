@@ -38,6 +38,10 @@ final class AlertDueSchedulerTest extends WgwDatabaseTestCase
         $rows = Notification::query()->where('principal', 'bob')->where('action', 'alert_due')->get();
         $this->assertCount(1, $rows);
         $this->assertSame('/calendar', $rows[0]->navigate);
+        $this->assertSame('Standup', $rows[0]->title);
+        $this->assertSame('Sat 12 Sep · 12:15 – 13:15', $rows[0]->body);
+        $this->assertIsArray($rows[0]->data);
+        $this->assertSame('Standup', $rows[0]->data['summary'] ?? null);
 
         $again = app(AlertDueScheduler::class)->scan($now);
         $this->assertGreaterThanOrEqual(1, $again);
@@ -55,5 +59,7 @@ final class AlertDueSchedulerTest extends WgwDatabaseTestCase
         $row = Notification::query()->where('principal', 'bob')->where('domain', 'tasks')->where('action', 'alert_due')->first();
         $this->assertNotNull($row);
         $this->assertSame('/tasks', $row->navigate);
+        $this->assertSame('Pay rent', $row->title);
+        $this->assertSame('Due Sat 12 Sep · 12:10', $row->body);
     }
 }

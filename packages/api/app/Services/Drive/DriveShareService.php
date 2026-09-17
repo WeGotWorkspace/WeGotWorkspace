@@ -13,6 +13,7 @@ use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Auth\JwtTokenService;
+use App\Services\Notify\DocsSharedNotify;
 use App\Services\Settings\GroupDirectoryService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
@@ -2060,12 +2061,10 @@ final class DriveShareService
     private function notifySharees(string $actor, DriveShare $share): void
     {
         $path = (string) $share->path;
-        $isDoc = str_ends_with(strtolower($path), '.md');
         $recipients = $this->shareeUsernames($share);
         if ($recipients === []) {
             return;
         }
-        $name = basename($path) ?: $path;
         $this->eventDispatch->fireMutation(
             $actor,
             'docs',
@@ -2073,10 +2072,11 @@ final class DriveShareService
             $path,
             [
                 'recipients' => $recipients,
-                'title' => $name.' was shared with you',
-                'body' => $actor.' shared a document with you.',
-                'navigate' => $isDoc ? '/docs' : '/drive',
-                'tag' => 'docs.shared:'.$share->id,
+                ...DocsSharedNotify::eventData(
+                    DocsSharedNotify::actorLabel($actor),
+                    $path,
+                    (string) $share->id,
+                ),
                 'path' => $path,
             ],
         );

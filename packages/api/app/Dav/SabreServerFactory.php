@@ -23,6 +23,7 @@ use App\Services\Calendars\CalendarMeetLinkWriteHook;
 use App\Services\Chat\ChatCollectionUris;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
+use App\Services\Drive\DocAttachmentsService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Search\SearchIndexerService;
 use App\Support\WgwInstallConfig;
@@ -41,6 +42,7 @@ final class SabreServerFactory
         private WgwInstallConfig $install,
         private SearchIndexerService $searchIndexer,
         private FileNodeIndexService $fileNodeIndex,
+        private DocAttachmentsService $docAttachments,
         private CalendarMeetLinkWriteHook $meetLinkHook,
         private EventDispatch $eventDispatch,
     ) {}
@@ -100,7 +102,7 @@ final class SabreServerFactory
         $server->addPlugin($authPlugin);
         $server->addPlugin(new WebdavWriteGuardPlugin);
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
-        $server->addPlugin(new FileNodeIndexPlugin($this->fileNodeIndex));
+        $server->addPlugin(new FileNodeIndexPlugin($this->fileNodeIndex, $this->docAttachments));
         $server->addPlugin(new EventDispatchPlugin($this->eventDispatch));
         $locksPath = rtrim($this->install->dataDir(), '/').'/webdav-locks.dat';
         $server->addPlugin(new Locks\Plugin(new Locks\Backend\File($locksPath)));

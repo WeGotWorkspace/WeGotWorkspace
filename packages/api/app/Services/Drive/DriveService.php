@@ -7,6 +7,7 @@ namespace App\Services\Drive;
 use App\Events\EventDispatch;
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Docs\DocsThreadRepository;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
@@ -30,6 +31,8 @@ final class DriveService
         private AdminRoleResolver $adminRoles,
         private SearchIndexerService $search,
         private FileNodeIndexService $fileNodes,
+        private DocsThreadRepository $docsThreads,
+        private DocAttachmentsService $docAttachments,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -43,6 +46,15 @@ final class DriveService
             $operation();
         } catch (\Throwable $e) {
             Log::warning('file_node_index_sync_failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function syncDocsThreads(callable $operation): void
+    {
+        try {
+            $operation();
+        } catch (\Throwable $e) {
+            Log::warning('docs_thread_path_sync_failed', ['error' => $e->getMessage()]);
         }
     }
 
@@ -211,6 +223,8 @@ final class DriveService
             $this->reindexSubtree($toKey);
         }
         $this->syncFileNodeIndex(fn () => $this->fileNodes->recordMove($fromKey, $toKey));
+        $this->syncDocsThreads(fn () => $this->docsThreads->retargetPath($fromPath, $toPath));
+        $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
 
         return 'Renamed';
     }
@@ -230,15 +244,19 @@ final class DriveService
             $path = $this->paths->normalizeVirtualPath((string) ($item['path'] ?? '/'));
             $this->authorizer->assertMayManageStructure($path, $principal);
             $key = $this->paths->virtualToStorageKey($path);
+            $docIds = $this->docAttachments->docNodeIdsForDestroyKey($key);
             if ($disk->directoryExists($key)) {
                 $disk->deleteDirectory($key);
                 $this->search->deleteDavPath('files/'.$key);
                 $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDelete($key));
+                $this->syncDocsThreads(fn () => $this->docsThreads->dropPath($path));
             } elseif ($disk->exists($key)) {
                 $disk->delete($key);
                 $this->search->deleteDavPath('files/'.$key);
                 $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDelete($key));
+                $this->syncDocsThreads(fn () => $this->docsThreads->dropPath($path));
             }
+            $this->docAttachments->destroyDocsBestEffort($docIds);
         }
 
         return 'Deleted';
@@ -397,6 +415,47 @@ final class DriveService
         $this->assertReadableFile($principal, $path);
         $virtual = $this->paths->normalizeVirtualPath($path);
 
+        return $this->streamDownload($virtual);
+    }
+
+    /**
+     * Stream a file by FileNode id. Callers who mayView the path (including
+     * inherited Doc ACL on `.attachments/{docId}/`) succeed even when the
+     * node is outside FileNode account roots.
+     */
+    public function downloadResponseByNodeId(array $principal, string $nodeId): StreamedResponse
+    {
+        $virtual = $this->assertReadableNodeId($principal, $nodeId);
+
+        return $this->streamDownload($virtual);
+    }
+
+    /**
+     * @param  array{username: string, role: string}  $principal
+     */
+    public function assertReadableNodeId(array $principal, string $nodeId): string
+    {
+        $this->assertFilesEnabled();
+        $node = $this->fileNodes->liveByNodeId($nodeId);
+        if ($node === null || $node->is_dir) {
+            throw new \RuntimeException('File not found.');
+        }
+        $virtual = $this->paths->normalizeVirtualPath('/'.ltrim((string) $node->storage_key, '/'));
+        try {
+            $this->authorizer->assertMayRead($virtual, $principal);
+        } catch (\InvalidArgumentException $e) {
+            throw new DriveForbiddenException($e->getMessage(), 0, $e);
+        }
+        $key = $this->paths->virtualToStorageKey($virtual);
+        if (! $this->disk()->fileExists($key)) {
+            throw new \RuntimeException('File not found.');
+        }
+
+        return $virtual;
+    }
+
+    private function streamDownload(string $virtual): StreamedResponse
+    {
         $disk = $this->disk();
         $key = $this->paths->virtualToStorageKey($virtual);
 
@@ -528,7 +587,7 @@ final class DriveService
             if (! $this->mayIncludeInListing($virt, $principal, $listingContext)) {
                 continue;
             }
-            if ($this->isHiddenNotesPath($virt)) {
+            if ($this->isHiddenBrowsePath($virt)) {
                 continue;
             }
             $out[] = $this->serializeEntry($virt, true, 0, (int) ($disk->lastModified($dirKey) ?? time()), $principal, $listingContext);
@@ -538,7 +597,7 @@ final class DriveService
             if (! $this->mayIncludeInListing($virt, $principal, $listingContext)) {
                 continue;
             }
-            if ($this->isHiddenNotesPath($virt)) {
+            if ($this->isHiddenBrowsePath($virt)) {
                 continue;
             }
             $out[] = $this->serializeEntry(
@@ -609,7 +668,7 @@ final class DriveService
             } catch (\InvalidArgumentException) {
                 continue;
             }
-            if ($this->isHiddenNotesPath($virt)) {
+            if ($this->isHiddenBrowsePath($virt)) {
                 continue;
             }
             $name = basename($virt);
@@ -636,7 +695,7 @@ final class DriveService
             } catch (\InvalidArgumentException) {
                 continue;
             }
-            if ($this->isHiddenNotesPath($virt)) {
+            if ($this->isHiddenBrowsePath($virt)) {
                 continue;
             }
             $name = basename($virt);
@@ -817,6 +876,12 @@ final class DriveService
     private function isHiddenNotesPath(string $virtualPath): bool
     {
         return preg_match('#/(?:users|groups)/[^/]+/\.notes(?:/|$)#', $virtualPath) === 1;
+    }
+
+    private function isHiddenBrowsePath(string $virtualPath): bool
+    {
+        return $this->isHiddenNotesPath($virtualPath)
+            || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath);
     }
 
     private function isTrashDestination(string $destination): bool

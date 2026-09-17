@@ -7,6 +7,7 @@ namespace App\Services\Notify;
 use App\Events\EventDispatch;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
+use App\Services\Notify\AlertDueNotify;
 use App\Services\VObject\ICalendarAlarmTrigger;
 use DateInterval;
 use DateTimeImmutable;
@@ -141,6 +142,14 @@ final class AlertDueScheduler
                 }
                 $occurrenceKey = $occurrenceStart->setTimezone(new DateTimeZone('UTC'))->format('Ymd\THis\Z');
                 $dedupe = $domain.'.alert_due:'.$uid.':'.$occurrenceKey.':'.$alarmIndex;
+                $copy = AlertDueNotify::eventData(
+                    $domain,
+                    $summary,
+                    $occurrenceStart,
+                    $this->endDate($component, $occurrenceStart),
+                    $navigate,
+                    $dedupe,
+                );
                 $this->events->fireMutation(
                     actor: 'system',
                     domain: $domain,
@@ -148,10 +157,7 @@ final class AlertDueScheduler
                     target: $uid,
                     data: [
                         'recipients' => $owners,
-                        'title' => $summary !== '' ? $summary : ($domain === 'tasks' ? 'Task reminder' : 'Calendar reminder'),
-                        'body' => $domain === 'tasks' ? 'A task reminder is due.' : 'An event reminder is due.',
-                        'navigate' => $navigate,
-                        'tag' => $dedupe,
+                        ...$copy,
                         'dedupe_key' => $dedupe,
                         'trigger' => $parsed,
                     ],

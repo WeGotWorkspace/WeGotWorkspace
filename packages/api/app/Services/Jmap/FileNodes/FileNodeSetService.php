@@ -6,6 +6,8 @@ namespace App\Services\Jmap\FileNodes;
 
 use App\Events\EventDispatch;
 use App\Models\JmapFileNode;
+use App\Services\Drive\DocAttachmentPaths;
+use App\Services\Drive\DocAttachmentsService;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Notes\NoteMarkdownCodec;
 use App\Services\Search\BestEffortSearchIndexSync;
@@ -68,6 +70,7 @@ final class FileNodeSetService
         private readonly StoragePaths $paths,
         private readonly SearchIndexerService $search,
         private readonly BestEffortSearchIndexSync $searchSync,
+        private readonly DocAttachmentsService $docAttachments,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -188,6 +191,7 @@ final class FileNodeSetService
         }
 
         $disk = $this->storage->files();
+        $docIds = $this->docAttachments->docNodeIdsForDestroyKey($key);
         if ($node->is_dir) {
             $disk->deleteDirectory($key);
         } elseif ($disk->fileExists($key)) {
@@ -195,6 +199,7 @@ final class FileNodeSetService
         }
         $this->index->recordDelete($key);
         $this->syncSearchDelete($key);
+        $this->docAttachments->destroyDocsBestEffort($docIds);
     }
 
     /**
@@ -283,7 +288,9 @@ final class FileNodeSetService
             throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Could not index the created node.']);
         }
 
-        $this->syncSearchIndex($key);
+        $node = $this->finalizeAttachmentFileName($node, $parent);
+
+        $this->syncSearchIndex((string) $node->storage_key);
 
         return $this->mapper->toFileNode($node, $principal);
     }
@@ -365,6 +372,7 @@ final class FileNodeSetService
                 }
                 $node = $this->index->recordMove($fromKey, $toKey) ?? $node;
                 $this->syncSearchMove($fromKey, $toKey);
+                $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
             }
         }
 
@@ -412,6 +420,29 @@ final class FileNodeSetService
         }
 
         return $serverSet === [] ? null : $serverSet;
+    }
+
+    private function finalizeAttachmentFileName(JmapFileNode $node, JmapFileNode $parent): JmapFileNode
+    {
+        if ($node->is_dir) {
+            return $node;
+        }
+        $parsed = DocAttachmentPaths::parseStorageKey((string) $parent->storage_key);
+        if ($parsed === null || ! DocAttachmentPaths::isDocFolderKey((string) $parent->storage_key, $parsed['docNodeId'])) {
+            return $node;
+        }
+        $ext = pathinfo((string) $node->name, PATHINFO_EXTENSION);
+        $finalName = $node->node_id.($ext !== '' ? '.'.$ext : '');
+        if ((string) $node->name === $finalName) {
+            return $node;
+        }
+        $fromKey = (string) $node->storage_key;
+        $toKey = $parent->storage_key.'/'.$finalName;
+        if (! $this->storage->files()->move($fromKey, $toKey)) {
+            throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Could not store the attachment.']);
+        }
+
+        return $this->index->recordMove($fromKey, $toKey) ?? $node;
     }
 
     private function syncSearchIndex(string $storageKey): void

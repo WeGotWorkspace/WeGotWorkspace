@@ -47,5 +47,10 @@ final class DocShareNotifyTest extends WgwDatabaseTestCase
             ->assertOk()
             ->json();
         $this->assertSame('/docs', $alice['list'][0]['navigate']);
+        $this->assertSame('Bob shared shared.md with you', $alice['list'][0]['title']);
+        $this->assertSame('/users/bob/shared.md', $alice['list'][0]['body']);
+        $this->assertSame('Bob', $alice['list'][0]['data']['actor'] ?? null);
+        $this->assertSame('/users/bob/shared.md', $alice['list'][0]['data']['path'] ?? null);
+        $this->assertSame('shared.md', $alice['list'][0]['data']['fileName'] ?? null);
     }
 }

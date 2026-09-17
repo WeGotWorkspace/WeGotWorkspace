@@ -278,7 +278,7 @@ Artisan::command('wgw:notify:vapid-sweep', function (VapidPushService $push): in
     $this->info(sprintf('Swept VAPID fallback; sent %d payload(s).', $sent));
 
     return self::SUCCESS;
-})->purpose('Send Web Push for local deliveries that were not acked in the 30–60s window');
+})->purpose('Send Web Push for local deliveries that were not acked in the 20s local-ack window');
 
 Artisan::command('wgw:vapid-keys', function (InstallerVapidKeyGenerator $vapid): int {
     $vapid->ensureKeys();

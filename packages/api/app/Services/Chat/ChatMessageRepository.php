@@ -8,6 +8,7 @@ use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
+use App\Models\ChatChannelMeta;
 use App\Models\ChatReadMarker;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionAccess;
@@ -210,7 +211,6 @@ final class ChatMessageRepository
         }
 
         $roster = $this->channels->rosterUsernames($instance, null);
-        $preview = mb_substr(trim($body), 0, 140);
         $this->eventDispatch->fireMutation(
             $username,
             'chat',
@@ -218,10 +218,7 @@ final class ChatMessageRepository
             $channelId,
             [
                 'recipients' => $roster,
-                'title' => 'New chat message',
-                'body' => $preview !== '' ? $preview : 'New message',
-                'navigate' => '/meet',
-                'tag' => 'chat.message:'.$uid,
+                ...$this->messagePostedNotifyData($instance, $username, $body, $uid),
             ],
         );
 
@@ -556,6 +553,42 @@ final class ChatMessageRepository
         }
 
         return $names;
+    }
+
+    /**
+     * @return array{
+     *     actor: string,
+     *     actorUsername: string,
+     *     channelKind: string,
+     *     channelName: string,
+     *     channelUri: string,
+     *     snippet: string,
+     *     isDm: bool,
+     *     navigate: string,
+     *     tag: string
+     * }
+     */
+    private function messagePostedNotifyData(
+        CalendarInstance $instance,
+        string $authorUsername,
+        string $body,
+        string $messageUid,
+    ): array {
+        $kind = ChatChannelMeta::query()
+            ->where('calendarid', (int) $instance->calendarid)
+            ->value('kind');
+        $kind = is_string($kind) && $kind !== '' ? $kind : ChatChannelMeta::KIND_CHANNEL;
+        $displayNames = $this->displayNames([$authorUsername]);
+
+        return ChatMessagePostedNotify::eventData(
+            (string) $instance->uri,
+            $kind,
+            trim((string) ($instance->displayname ?? '')),
+            $authorUsername,
+            $displayNames[$authorUsername] ?? $authorUsername,
+            $body,
+            $messageUid,
+        );
     }
 
     private function findObjectByUid(int $calendarId, string $uid): ?CalendarObject
