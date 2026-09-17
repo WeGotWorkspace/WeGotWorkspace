@@ -20,6 +20,12 @@ vi.mock("@/lib/offline/offline-session", () => ({
   readOfflineTasksUsername: () => mockReadUsername(),
 }));
 
+const mockReadOnline = vi.fn(() => true);
+
+vi.mock("@/lib/offline/core/browser-online", () => ({
+  readBrowserOnline: () => mockReadOnline(),
+}));
+
 vi.mock("@/lib/offline/use-offline-reconnect-flush", () => ({
   useOfflineReconnectFlush: ({
     enabled,
@@ -83,6 +89,9 @@ describe("useCalendarTaskDueOverlay", () => {
     mockLoadHybrid.mockReset();
     mockReadCache.mockReset();
     mockOnReconnect.mockReset();
+    mockReadOnline.mockReset();
+    mockReadOnline.mockReturnValue(true);
+    mockReadCache.mockResolvedValue(null);
     mockLoadHybrid.mockResolvedValue({ data: preset, session: {} });
     Object.defineProperty(document, "hidden", { configurable: true, value: false });
   });
@@ -147,6 +156,31 @@ describe("useCalendarTaskDueOverlay", () => {
     Object.defineProperty(document, "hidden", { configurable: true, value: true });
     await act(async () => {
       document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(mockLoadHybrid).not.toHaveBeenCalled();
+  });
+
+  it("paints Dexie cache before live hybrid resolves", async () => {
+    mockReadCache.mockResolvedValue({ data: preset, session: {} });
+    mockLoadHybrid.mockImplementation(() => new Promise(() => undefined));
+
+    const { result } = renderHook(() => useCalendarTaskDueOverlay({ hiddenListIds: new Set() }));
+
+    await waitFor(() => {
+      expect(result.current.overlayEvents.has("task:milk")).toBe(true);
+    });
+    expect(result.current.taskLists).toHaveLength(1);
+    expect(mockLoadHybrid).toHaveBeenCalled();
+  });
+
+  it("skips live hybrid when cache painted while offline", async () => {
+    mockReadOnline.mockReturnValue(false);
+    mockReadCache.mockResolvedValue({ data: preset, session: {} });
+
+    const { result } = renderHook(() => useCalendarTaskDueOverlay({ hiddenListIds: new Set() }));
+
+    await waitFor(() => {
+      expect(result.current.overlayEvents.has("task:milk")).toBe(true);
     });
     expect(mockLoadHybrid).not.toHaveBeenCalled();
   });

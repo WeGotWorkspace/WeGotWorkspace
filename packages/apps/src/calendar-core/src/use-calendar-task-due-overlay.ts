@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { loadTasksBootstrapHybrid } from "@/lib/offline/tasks-hybrid-operations";
 import { readTasksBootstrapFromCache } from "@/lib/offline/tasks-offline-store";
 import { readOfflineTasksUsername } from "@/lib/offline/offline-session";
@@ -53,8 +54,9 @@ export type UseCalendarTaskDueOverlayArgs = {
 };
 
 /**
- * Thin Calendar overlay reader. Hydrates Tasks Dexie/hybrid independently of
- * Calendar JMAP. Reconnect / visibilitychange re-run **tasks** bootstrap only.
+ * Thin Calendar overlay reader. Hydrates Tasks Dexie first (same cache-then-network
+ * as Tasks `useHybridBootstrap`), then live hybrid. Reconnect / visibilitychange
+ * re-run **tasks** bootstrap only — never Calendar JMAP.
  */
 export function useCalendarTaskDueOverlay({
   preset,
@@ -80,7 +82,7 @@ export function useCalendarTaskDueOverlay({
         const cached = await readCachedTasksData();
         if (cached) applyData(cached);
       } catch {
-        // Overlay stays empty; Calendar itself is unchanged.
+        // Overlay stays on whatever already painted; Calendar itself is unchanged.
       }
     } finally {
       refreshInFlightRef.current = false;
@@ -91,15 +93,29 @@ export function useCalendarTaskDueOverlay({
     if (presetMode) return;
     let cancelled = false;
     void (async () => {
+      let paintedFromCache = false;
+      try {
+        const cached = await readCachedTasksData();
+        if (cancelled) return;
+        if (cached) {
+          applyData(cached);
+          paintedFromCache = true;
+        }
+      } catch {
+        // Cache miss is fine; live hydrate still runs.
+      }
+      if (cancelled) return;
+      if (paintedFromCache && !readBrowserOnline()) return;
       try {
         const bootstrap = await loadTasksBootstrapHybrid();
         if (!cancelled) applyData(bootstrap.data);
       } catch {
+        if (cancelled) return;
         try {
           const cached = await readCachedTasksData();
-          if (!cancelled && cached) applyData(cached);
+          if (cached) applyData(cached);
         } catch {
-          if (!cancelled) applyData({ taskLists: [], tasks: [] });
+          // Keep cache paint if any; otherwise overlay stays empty.
         }
       }
     })();

@@ -52,7 +52,7 @@ describe("calendar event details popover CSS", () => {
     expect(css).toMatch(/\.calendar-event-details-popover__footer\s*\{[\s\S]*?\bshrink-0\b/);
   });
 
-  it("defers mobile Dialog full-viewport sheet sizing to shared event-dialog CSS", () => {
+  it("keeps Dialog details as a centered card; full-bleed only wraps Radix popover fallback", () => {
     expect(css).toMatch(/@import "\.\/calendar-event-dialog\.css"/);
     expect(css).toMatch(
       /\.calendar-dialog-surface\.calendar-event-details-popover--dialog\s*\{[\s\S]*?\boverflow-hidden\b/,
@@ -65,6 +65,9 @@ describe("calendar event details popover CSS", () => {
     );
     expect(css).toMatch(
       /\[data-radix-popper-content-wrapper\]:has\(\.calendar-event-details-popover\)[\s\S]*transform:\s*none/,
+    );
+    expect(css).toMatch(
+      /\[data-radix-popper-content-wrapper\] \.calendar-dialog-surface\.calendar-event-details-popover/,
     );
   });
 

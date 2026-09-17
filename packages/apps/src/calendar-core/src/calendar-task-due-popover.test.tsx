@@ -60,7 +60,35 @@ describe("CalendarTaskDuePopover", () => {
 
     expect(screen.getByText("Buy milk")).toBeTruthy();
     expect(screen.getByText("Errands")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.taskDueOpenInTasks }));
+    const openInTasks = screen.getByRole("button", {
+      name: defaultCalendarLabels.taskDueOpenInTasks,
+    });
+    expect(openInTasks.className).toContain("button--variant-outline");
+    expect(openInTasks.className).not.toContain("button--variant-primary");
+    fireEvent.click(openInTasks);
     expect(onOpenInTasks).toHaveBeenCalledWith("/tasks/lists/errands?task=milk");
+  });
+
+  it("opens a centered Dialog on mobile", () => {
+    isMobileRef.current = true;
+    render(
+      <TooltipProvider delayDuration={0}>
+        <CalendarTaskDuePopover
+          open
+          marker={marker}
+          labels={defaultCalendarLabels}
+          locale="en-US"
+          onClose={vi.fn()}
+          onOpenInTasks={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.className).toContain("ui-modal-surface--center");
+    expect(dialog.className).toContain("calendar-event-details-popover--dialog");
+    expect(
+      screen.getByRole("button", { name: defaultCalendarLabels.taskDueOpenInTasks }).className,
+    ).toContain("button--variant-outline");
   });
 });

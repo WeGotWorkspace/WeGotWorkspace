@@ -35,9 +35,9 @@ export type CalendarUILabels = {
   toastImportOffline: string;
   myCalendarsSection: string;
   sharedWithMeSection: string;
-  /** Owned + group task lists in the Calendar sidebar overlay. */
+  /** Owned + group reminder lists in the Calendar sidebar overlay. */
   tasksSection: string;
-  /** Inbound shared task lists. Distinct from calendar Shared with me. */
+  /** Inbound shared reminder lists. Distinct from calendar Shared with me. */
   sharedTaskListsSection: string;
   untitledTask: string;
   taskDueOpenInTasks: string;
@@ -299,8 +299,8 @@ export const defaultCalendarLabels: CalendarUILabels = {
   toastImportOffline: "ICS import requires an internet connection",
   myCalendarsSection: "My calendars",
   sharedWithMeSection: "Shared with me",
-  tasksSection: "Tasks",
-  sharedTaskListsSection: "Shared task lists",
+  tasksSection: "Reminders",
+  sharedTaskListsSection: "Shared reminders",
   untitledTask: "Untitled task",
   taskDueOpenInTasks: "Open in Tasks",
   taskDueListLabel: "List",

@@ -71,7 +71,7 @@ export class EventCard extends BaseElement {
   @property({ type: String, reflect: true })
   rsvp: "" | "needs-action" | "tentative" = "";
 
-  /** Distinct chrome for render-only overlay cards (Tasks due dates). */
+  /** Overlay kind reflected on the host (`task` for due-date overlay cards). */
   @property({ type: String, reflect: true, attribute: "data-overlay" })
   overlay = "";
 

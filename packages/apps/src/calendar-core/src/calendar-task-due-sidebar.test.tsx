@@ -41,6 +41,11 @@ describe("Calendar task due sidebar", () => {
     cleanup();
   });
 
+  it("labels overlay sections Reminders, not Tasks", () => {
+    expect(defaultCalendarLabels.tasksSection).toBe("Reminders");
+    expect(defaultCalendarLabels.sharedTaskListsSection).toBe("Shared reminders");
+  });
+
   it("lists owned lists separately from inbound shared lists", () => {
     const { ownedLists, sharedLists } =
       partitionCalendarTaskDueSidebarLists(createSharedTasksLists());

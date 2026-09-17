@@ -121,7 +121,7 @@
   @apply ms-auto flex items-center gap-2;
 }
 
-/* Mobile (<768px) uses Dialog — full-viewport sheet lives in calendar-event-dialog.css.
+/* Mobile (<768px) uses Dialog — compact centered card in calendar-event-dialog.css.
    Compact-month --docked: pin Radix's transformed wrapper to the viewport bottom. */
 .calendar-dialog-surface.calendar-event-details-popover--dialog {
   @apply box-border flex flex-col gap-2 overflow-hidden;
@@ -134,8 +134,9 @@
 /*
  * iOS Safari: if JS still mounts the desktop Popover below 768px (useIsMobile
  * first paint / innerWidth vs CSS), Radix's wrapper is `left:0; top:0` plus a
- * `transform` iOS often drops — compact card at the origin. Pin the wrapper
- * to the viewport and let the surface fill it as a sheet.
+ * `transform` iOS often drops — compact card at the origin. Pin that wrapper
+ * only. Dialog-hosted details (`--dialog` / ui-modal-surface--center) stay a
+ * centered card with gutters — do not full-bleed those.
  */
 @media (max-width: 767px) {
   [data-radix-popper-content-wrapper]:has(.calendar-event-details-popover) {
@@ -149,8 +150,9 @@
     height: auto !important;
   }
 
-  .calendar-dialog-surface.calendar-event-details-popover,
-  .calendar-dialog-surface.calendar-event-details-popover--editable {
+  [data-radix-popper-content-wrapper] .calendar-dialog-surface.calendar-event-details-popover,
+  [data-radix-popper-content-wrapper]
+    .calendar-dialog-surface.calendar-event-details-popover--editable {
     @apply box-border flex h-full w-full max-h-none max-w-none flex-col overflow-hidden rounded-none;
     position-anchor: none;
     position-area: none;

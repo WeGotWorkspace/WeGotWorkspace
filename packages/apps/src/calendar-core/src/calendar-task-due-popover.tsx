@@ -76,6 +76,7 @@ export function CalendarTaskDuePopover({
         <footer className="calendar-task-due-popover__footer">
           <Button
             label={labels.taskDueOpenInTasks}
+            variant="outline"
             size="sm"
             onClick={() => onOpenInTasks(href)}
             icon={<ListTodo className="size-3.5" aria-hidden />}

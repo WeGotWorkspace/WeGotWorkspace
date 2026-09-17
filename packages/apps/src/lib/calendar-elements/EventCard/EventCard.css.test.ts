@@ -151,11 +151,10 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(css).toMatch(/\.event\.event--dragging[\s\S]*cursor:\s*grabbing/);
   });
 
-  it("uses a dashed accent bar for task due overlay cards", () => {
+  it("does not dash the accent bar on task due overlay cards", () => {
     const css = readCss("EventCard.css");
-    expect(css).toMatch(
-      /:host\(\[data-overlay="task"\]\)\s*\.event-card-shell::after[\s\S]*repeating-linear-gradient/,
-    );
+    expect(css).not.toMatch(/:host\(\[data-overlay="task"\]\)/);
+    expect(css).not.toMatch(/repeating-linear-gradient/);
   });
 
   it("uses a dashed accent edge and lighter fill for awaiting-reply RSVP", () => {
