@@ -224,6 +224,17 @@
   --button-outline-active-hover-background: color-mix(in oklab, #000000 22%, var(--docs-sidebar));
 }
 
+/*
+ * Bell lives in the header (sibling of scroll). Mirror sidebar New primary
+ * (white on docs-sidebar), not workspace-root accent-on-white.
+ */
+.docs-workspace .app-sidebar__notifications {
+  --button-primary-bg: #ffffff;
+  --button-primary-fg: var(--docs-sidebar);
+  --notification-inbox-badge-bg: #ffffff;
+  --notification-inbox-badge-fg: var(--docs-sidebar);
+}
+
 .docs-workspace .app-sidebar__footer {
   --color-ink: var(--app-sidebar-color);
   /* Match scroll MenuItem outline remaps so logout IconButton hover/active washes align. */

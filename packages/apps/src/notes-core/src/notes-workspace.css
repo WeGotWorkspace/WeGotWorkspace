@@ -250,6 +250,19 @@
   --button-primary-fg: var(--color-ink, #042a22);
 }
 
+/*
+ * Bell lives in the header (sibling of scroll). Pin the unread badge to the
+ * same pair as New note on `.app-sidebar__scroll`: warm yellow fill + dark ink
+ * label (`--notes-accent` / `--color-ink`). Literals avoid the notifications
+ * `--color-ink` remap (glyph chrome) and the tray fallback of ink-bg + emerald-fg.
+ */
+.notes-workspace .app-sidebar__notifications {
+  --button-primary-bg: #f6d176;
+  --button-primary-fg: #042a22;
+  --notification-inbox-badge-bg: #f6d176;
+  --notification-inbox-badge-fg: #042a22;
+}
+
 /**
  * App switcher lockup: yellow tile + yellow-tint notepad. Default invert uses
  * `--app-sidebar-color` as the tile. Do not mix sidebar ink into the

@@ -116,6 +116,27 @@ describe("docs workspace outline chrome", () => {
     );
   });
 
+  it("mirrors sidebar New primary onto the header notification unread badge", () => {
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-bg:\s*#ffffff/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*var\(--docs-sidebar\)/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-bg:\s*#ffffff/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-fg:\s*var\(--docs-sidebar\)/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-bg:\s*#ffffff/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-fg:\s*var\(--docs-sidebar\)/,
+    );
+  });
+
   it("remaps footer logout outline washes to the same ink-into-blue tokens as sidebar scroll", () => {
     expect(css).toMatch(
       /\.docs-workspace \.app-sidebar__footer \{[\s\S]*--button-outline-hover-color:\s*#ffffff/,

@@ -31,6 +31,7 @@ use Sabre\VObject\Reader;
  * - STATUS:CANCELLED + X-WGW-DELETED-AT = delete tombstone
  * - X-WGW-REACTIONS = JSON array [{emoji, authors: [username]}], rewritten
  *                   server-side inside a transaction (OR-set toggle semantics)
+ * - X-WGW-MENTIONS  = JSON array [{id, displayName}] of @principals
  */
 final class ChatMessageJournalConverter
 {
@@ -49,7 +50,7 @@ final class ChatMessageJournalConverter
     }
 
     /**
-     * @param  array{id: string, body: string, author: string, parentId?: string|null}  $message
+     * @param  array{id: string, body: string, author: string, parentId?: string|null, mentions?: list<array{id: string, displayName?: string}>}  $message
      */
     public function toIcs(array $message, DateTimeImmutable $createdAt): string
     {
@@ -66,6 +67,26 @@ final class ChatMessageJournalConverter
         $parentId = $message['parentId'] ?? null;
         if (is_string($parentId) && $parentId !== '') {
             $journal->add('RELATED-TO', self::normalizeUlid($parentId));
+        }
+        $mentions = $message['mentions'] ?? [];
+        if (is_array($mentions) && $mentions !== []) {
+            $normalized = [];
+            foreach ($mentions as $mention) {
+                if (! is_array($mention) || ! is_string($mention['id'] ?? null)) {
+                    continue;
+                }
+                $id = strtolower(trim((string) $mention['id']));
+                if ($id === '') {
+                    continue;
+                }
+                $display = isset($mention['displayName']) && is_string($mention['displayName'])
+                    ? trim($mention['displayName'])
+                    : $id;
+                $normalized[] = ['id' => $id, 'displayName' => $display !== '' ? $display : $id];
+            }
+            if ($normalized !== []) {
+                $journal->add('X-WGW-MENTIONS', json_encode(array_values($normalized), JSON_UNESCAPED_UNICODE));
+            }
         }
         $journal->SEQUENCE = 0;
 
@@ -165,6 +186,26 @@ final class ChatMessageJournalConverter
             }
         }
 
+        $mentions = [];
+        if (isset($journal->{'X-WGW-MENTIONS'})) {
+            $decoded = json_decode((string) $journal->{'X-WGW-MENTIONS'}, true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $entry) {
+                    if (! is_array($entry) || ! is_string($entry['id'] ?? null)) {
+                        continue;
+                    }
+                    $id = strtolower(trim((string) $entry['id']));
+                    if ($id === '') {
+                        continue;
+                    }
+                    $display = isset($entry['displayName']) && is_string($entry['displayName'])
+                        ? trim($entry['displayName'])
+                        : $id;
+                    $mentions[] = ['id' => $id, 'displayName' => $display !== '' ? $display : $id];
+                }
+            }
+        }
+
         return [
             'id' => $uid !== '' ? $uid : $fallbackUid,
             'authorId' => isset($journal->{'X-WGW-AUTHOR'}) ? (string) $journal->{'X-WGW-AUTHOR'} : '',
@@ -176,6 +217,7 @@ final class ChatMessageJournalConverter
                 : null,
             'parentId' => isset($journal->{'RELATED-TO'}) ? ((string) $journal->{'RELATED-TO'} ?: null) : null,
             'reactions' => $reactions,
+            'mentions' => $mentions,
             'sequence' => $sequence,
         ];
     }

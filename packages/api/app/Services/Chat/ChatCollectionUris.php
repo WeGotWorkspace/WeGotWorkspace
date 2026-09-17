@@ -53,6 +53,25 @@ final class ChatCollectionUris
         return false;
     }
 
+    /**
+     * Path segment for `/meet/channels/{id}` / `/meet/meetings/{id}` — strips
+     * `chat-` / `chat-grp-` the same way the SPA `meetPublicChannelId` helper does.
+     */
+    public static function publicUriSegment(string $uri): string
+    {
+        $id = trim($uri);
+        $lower = strtolower($id);
+        $groupPrefix = self::PREFIX_CHANNEL.'grp-';
+        if (str_starts_with($lower, $groupPrefix)) {
+            return substr($id, strlen($groupPrefix));
+        }
+        if (str_starts_with($lower, self::PREFIX_CHANNEL)) {
+            return substr($id, strlen(self::PREFIX_CHANNEL));
+        }
+
+        return $id;
+    }
+
     public static function channelUri(string $ulid): string
     {
         return self::PREFIX_CHANNEL.strtolower($ulid);

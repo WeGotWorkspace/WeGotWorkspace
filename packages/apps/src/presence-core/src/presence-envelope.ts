@@ -39,6 +39,14 @@ export function presenceCallActiveEnvelope(
     : { v: 1, kind: "call-active", channel, active };
 }
 
+/** Build a suite-notify wake hint. Optional `tag` is a reason only — never title/body. */
+export function presenceNotifyHintEnvelope(
+  tag?: string,
+): Extract<PresenceEnvelope, { kind: "notify-hint" }> {
+  const trimmed = tag?.trim();
+  return trimmed ? { v: 1, kind: "notify-hint", tag: trimmed } : { v: 1, kind: "notify-hint" };
+}
+
 /** Parse an inbound data-channel payload; unknown or malformed envelopes yield null. */
 export function parsePresenceEnvelope(raw: string): PresenceEnvelope | null {
   let data: unknown;
@@ -134,6 +142,12 @@ export function parsePresenceEnvelope(raw: string): PresenceEnvelope | null {
       envelope.active,
       envelope.audioOnly === true,
     );
+  }
+
+  if (envelope.kind === "notify-hint") {
+    if (envelope.tag === undefined) return { v: 1, kind: "notify-hint" };
+    if (typeof envelope.tag !== "string" || envelope.tag.trim() === "") return null;
+    return presenceNotifyHintEnvelope(envelope.tag);
   }
 
   return null;

@@ -79,6 +79,21 @@ export function meetNavigateTargetFromSelection(
   return { to: MEET_CHANNELS_ROUTE, params: { channelId: publicId } };
 }
 
+/** Absolute path string for suite-notify consume matching (same shape as inbox `navigate`). */
+export function meetNavigatePathFromSelection(
+  channelId: string,
+  channel?: { kind?: string | null } | null,
+): string {
+  const target = meetNavigateTargetFromSelection(channelId, channel);
+  if (target.to === MEET_DMS_ROUTE) {
+    return `/meet/dms/${encodeURIComponent(target.params.peerId.toLowerCase())}`;
+  }
+  if (target.to === MEET_MEETINGS_ROUTE) {
+    return `/meet/meetings/${encodeURIComponent(target.params.meetingId)}`;
+  }
+  return `/meet/channels/${encodeURIComponent(target.params.channelId)}`;
+}
+
 /**
  * Cheap `/meet/{legacyId}` remap. `dm:{peer}` and channel ids (including `chat-…`)
  * round-trip. Server `dm-{hash}` collections are not a 1:1 map to a directory

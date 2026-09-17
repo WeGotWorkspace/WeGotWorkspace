@@ -72,6 +72,17 @@
   --button-primary-fg: var(--color-ink);
 }
 
+/*
+ * Bell lives in the header (sibling of scroll). Mirror New CTA: Drive green +
+ * ink. Literal ink avoids the notifications `--color-ink` glyph remap.
+ */
+.drive-workspace .app-sidebar__notifications {
+  --button-primary-bg: var(--drive-accent);
+  --button-primary-fg: #042a22;
+  --notification-inbox-badge-bg: var(--drive-accent);
+  --notification-inbox-badge-fg: #042a22;
+}
+
 /** App switcher lockup: classic Drive brand tile (green + white glyph). */
 .drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--drive-accent);

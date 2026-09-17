@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parsePresenceEnvelope,
   presenceCallActiveEnvelope,
+  presenceNotifyHintEnvelope,
   serializePresenceEnvelope,
 } from "@/presence-core/src/presence-envelope";
 
@@ -146,6 +147,29 @@ describe("presence envelope", () => {
     expect(parsePresenceEnvelope(serializePresenceEnvelope(destroy))).toEqual(destroy);
     expect(parsePresenceEnvelope(serializePresenceEnvelope(reaction))).toEqual(reaction);
     expect(parsePresenceEnvelope(serializePresenceEnvelope(changed))).toEqual(changed);
+  });
+
+  it("round-trips notify-hint envelopes", () => {
+    const bare = { v: 1 as const, kind: "notify-hint" as const };
+    const tagged = presenceNotifyHintEnvelope("chat.message_posted");
+
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(bare))).toEqual(bare);
+    expect(tagged).toEqual({ v: 1, kind: "notify-hint", tag: "chat.message_posted" });
+    expect(parsePresenceEnvelope(serializePresenceEnvelope(tagged))).toEqual(tagged);
+    expect(presenceNotifyHintEnvelope("  ")).toEqual(bare);
+    expect(presenceNotifyHintEnvelope()).toEqual(bare);
+  });
+
+  it("rejects malformed notify-hint tags and ignores extras", () => {
+    expect(
+      parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "notify-hint", tag: "" })),
+    ).toBeNull();
+    expect(parsePresenceEnvelope(JSON.stringify({ v: 1, kind: "notify-hint", tag: 7 }))).toBeNull();
+    expect(
+      parsePresenceEnvelope(
+        JSON.stringify({ v: 1, kind: "notify-hint", tag: "docs.shared", extra: true }),
+      ),
+    ).toEqual({ v: 1, kind: "notify-hint", tag: "docs.shared" });
   });
 
   it("rejects malformed channel-message and call-active payloads", () => {

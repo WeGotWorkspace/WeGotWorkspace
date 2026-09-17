@@ -1,5 +1,7 @@
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { IconButton } from "@/button/src/button";
+import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
+import { useInboxBadgePulseAttr } from "@/notifications-core/src/use-inbox-badge-pulse";
 import { SidebarLogo } from "@/sidebar-logo/src/sidebar-logo";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
@@ -170,9 +172,18 @@ export function WorkspacePanelScrim({ open, onClick }: { open: boolean; onClick:
 }
 
 export function WorkspaceSidebarToggle({ open, onToggle }: WorkspaceSidebarToggleProps) {
+  const inbox = useNotificationsInbox();
+  const unreadCount = inbox?.unreadCount ?? 0;
+  const showUnreadDot = !open && unreadCount > 0;
+  const pulseAttr = useInboxBadgePulseAttr(inbox?.unreadArrivalNonce);
+  const label = open
+    ? "Hide sidebar"
+    : showUnreadDot
+      ? `Show sidebar (${unreadCount} unread)`
+      : "Show sidebar";
   return (
     <IconButton
-      label={open ? "Hide sidebar" : "Show sidebar"}
+      label={label}
       onClick={onToggle}
       icon={
         <>
@@ -189,6 +200,8 @@ export function WorkspaceSidebarToggle({ open, onToggle }: WorkspaceSidebarToggl
       active={open}
       aria-pressed={open}
       className="workspace-sidebar-toggle shrink-0"
+      data-unread={showUnreadDot ? "" : undefined}
+      data-pulse={pulseAttr}
     />
   );
 }

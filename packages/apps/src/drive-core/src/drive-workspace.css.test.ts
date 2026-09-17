@@ -56,4 +56,19 @@ describe("drive workspace sidebar primary", () => {
       /\.drive-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*var\(--color-ink\)/,
     );
   });
+
+  it("mirrors New CTA primary onto the header notification unread badge", () => {
+    expect(css).toMatch(
+      /\.drive-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-bg:\s*var\(--drive-accent\)/,
+    );
+    expect(css).toMatch(
+      /\.drive-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-fg:\s*#042a22/,
+    );
+    expect(css).toMatch(
+      /\.drive-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-bg:\s*var\(--drive-accent\)/,
+    );
+    expect(css).toMatch(
+      /\.drive-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-fg:\s*#042a22/,
+    );
+  });
 });

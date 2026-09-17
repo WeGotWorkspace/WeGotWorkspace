@@ -10,8 +10,22 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import "../src/styles.css";
+import { NotificationsInboxValueProvider } from "../src/notifications-core/src/notifications-inbox-context";
 import { AppToaster } from "../src/ui/sonner";
 import { TooltipProvider } from "../src/ui/tooltip";
+
+const STORYBOOK_INBOX = {
+  items: [] as const,
+  unreadCount: 0,
+  onOpenItem: () => undefined,
+  onMarkAllRead: () => undefined,
+  markReadWhere: async () => undefined,
+  onEnablePush: () => undefined,
+  pushEnabled: true,
+  soundMuted: false,
+  onToggleSoundMute: () => undefined,
+  unreadArrivalNonce: 0,
+};
 
 const preview: Preview = {
   tags: ["autodocs"],
@@ -63,7 +77,16 @@ const preview: Preview = {
         createElement(AppToaster),
       );
     },
-    (Story) => createElement(TooltipProvider, { delayDuration: 150 }, createElement(Story)),
+    (Story) =>
+      createElement(
+        TooltipProvider,
+        { delayDuration: 150 },
+        createElement(
+          NotificationsInboxValueProvider,
+          { value: STORYBOOK_INBOX },
+          createElement(Story),
+        ),
+      ),
   ],
   parameters: {
     controls: {

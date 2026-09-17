@@ -15,7 +15,7 @@
 }
 
 .view-header__sidebar-toggle {
-  @apply flex shrink-0 items-center;
+  @apply flex shrink-0 items-center overflow-visible;
 }
 
 /** Title cluster; sits beside the sidebar toggle. */

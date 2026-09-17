@@ -99,7 +99,7 @@ final class MeetSignalingService
                 $this->store->clearPeerAdmission($room, $peerId);
             }
             if ($this->roomHasJoinablePeer($room)) {
-                $this->reservations->markActivated($room);
+                $this->reservations->markActivated($room, $username);
             }
 
             if ($this->store->countPeers($room) > self::MAX_PEERS_PER_ROOM) {

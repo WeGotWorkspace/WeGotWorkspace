@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notes;
 
+use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
@@ -14,6 +15,7 @@ use App\Services\Calendars\CalendarShareInvites;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Chat\ChatCollectionUris;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Notify\CollectionSharedNotify;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,6 +35,7 @@ final class NotebookRepository
         private readonly DriveGroupResolver $groups,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CalendarShareInvites $shareInvites,
+        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     public function list(string $username): array
@@ -163,7 +166,7 @@ final class NotebookRepository
         }
 
         if (array_key_exists('shareWith', $payload)) {
-            $this->shareInvites->apply($instance, $groupSlug, $payload['shareWith']);
+            $this->notifyCollectionShare($username, $instance, $groupSlug, $payload['shareWith']);
         }
 
         if (array_key_exists('groupSlug', $payload)) {
@@ -533,6 +536,45 @@ final class NotebookRepository
     private function calBackendCalendarId(CalendarInstance $instance): array
     {
         return [(int) $instance->calendarid, (int) $instance->id];
+    }
+
+    private function notifyCollectionShare(
+        string $username,
+        CalendarInstance $instance,
+        ?string $groupSlug,
+        mixed $shareWith,
+    ): void {
+        $added = CollectionSharedNotify::applyAndAddedUsernames(
+            $this->shareInvites,
+            $instance,
+            $groupSlug,
+            $shareWith,
+        );
+        if ($added === []) {
+            return;
+        }
+        $grants = $this->shareInvites->shareWithForOwner($instance, $groupSlug) ?? [];
+        $mapped = $this->mapNotebook($instance, $groupSlug);
+        $name = (string) ($mapped['name'] ?? $mapped['id'] ?? 'notebook');
+        $id = (string) ($mapped['id'] ?? $instance->uri);
+        foreach ($added as $sharee) {
+            $grant = $grants[$sharee] ?? null;
+            $access = is_array($grant) && ($grant['mayWrite'] ?? false) === true ? 'write' : 'read';
+            $this->eventDispatch->fireMutation(
+                $username,
+                'notes',
+                CollectionSharedNotify::NOTES_ACTION,
+                'notes/'.$id,
+                CollectionSharedNotify::eventData(
+                    'notes',
+                    CollectionSharedNotify::actorLabel($username),
+                    $name,
+                    $id,
+                    $access,
+                    [$sharee],
+                ),
+            );
+        }
     }
 
     private function mapNotebook(CalendarInstance $instance, ?string $groupSlug = null): array

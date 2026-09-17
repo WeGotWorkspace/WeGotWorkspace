@@ -103,6 +103,17 @@ final class ApiRuntimeEnvServiceTest extends TestCase
         $this->assertSame("APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n", file_get_contents($this->apiRoot.'/.env'));
     }
 
+    public function test_ensure_strips_invalid_dotenv_lines(): void
+    {
+        file_put_contents($this->apiRoot.'/.env', "APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\nreply@example.com\n");
+
+        $service = new ApiRuntimeEnvService;
+        $result = $service->ensure($this->installRoot, 'https://other.test');
+
+        $this->assertTrue($result['sanitizedEnv']);
+        $this->assertSame("APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n", file_get_contents($this->apiRoot.'/.env'));
+    }
+
     private function rmTree(string $dir): void
     {
         $items = scandir($dir);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Collab;
 
+use App\Events\EventDispatch;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
@@ -34,6 +35,7 @@ final class DocCollabDocumentService
         private DriveShareAuthorizer $authorizer,
         private SearchIndexerService $search,
         private BestEffortSearchIndexSync $searchSync,
+        private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     public function getMarkdown(Request $request, mixed $room): string
@@ -107,6 +109,12 @@ final class DocCollabDocumentService
             $this->searchSync->sync(
                 'collab',
                 fn () => $this->search->indexFileStorageKey($documentKey),
+                'files/'.$documentKey,
+            );
+            $this->eventDispatch->fireMutation(
+                (string) ($this->actors->requirePrincipal($request)['username'] ?? ''),
+                'collab',
+                'written',
                 'files/'.$documentKey,
             );
         }

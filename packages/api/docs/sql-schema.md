@@ -47,7 +47,11 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `addressbooks` | `App\Models\Addressbook` | CardDAV address books (Contacts REST reads) |
 | `addressbook_shares` | `App\Models\AddressBookShare` | RFC 9670 AddressBook shareWith grants (`addressbookid` + `principaluri` + Sabre access 2/3). No calendarinstances analog. |
 | `addressbook_share_dismissals` | `App\Models\AddressBookShareDismissal` | Per-user hide of an inbound address-book share (`username` + `addressbookid`). Owner shareWith is unchanged; restore deletes the row. |
+| `mail_user_credentials` | `App\Models\MailUserCredential` | Per-user IMAP/SMTP credentials |
 | `docs_thread_index` | `App\Models\DocsThreadIndex` | Path index for Docs comment/suggestion VJOURNAL threads (`uid` + `doc_path` + kind). Indexes: unique `uid`; `(calendarid, doc_path)` hot path; standalone `doc_path` for rename/delete; `(calendarid, change_id)`. `doc_path` is varchar(512) for MySQL utf8mb4 index limits. |
+| `notifications` | `App\Models\Notification` | Suite notify inbox (one row per principal + event) |
+| `notification_deliveries` | `App\Models\NotificationDelivery` | Short-lived local/VAPID delivery attempts |
+| `push_subscriptions` | `App\Models\PushSubscription` | Web Push subscriptions (principal + endpoint) |
 
 Sabre-owned tables (`locks`, `propertystorage`, `calendarchanges`, …) have no app models yet; access them through Sabre backends or add models when a domain needs direct queries.
 

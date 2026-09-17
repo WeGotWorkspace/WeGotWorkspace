@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Events\EventDispatch;
+use App\Events\NotifyListener;
 use App\Models\OauthClient;
 use App\Services\Mcp\ConsentIntent;
 use App\Services\Mcp\McpOAuthSubscriber;
 use App\Services\Mcp\McpRedirectUris;
 use App\Services\Mcp\McpScopes;
 use App\Services\Mcp\PassportKeyStore;
+use App\Services\Notify\MinishlinkWebPushSender;
+use App\Services\Notify\WebPushSender;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
@@ -23,7 +27,12 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->singleton(EventDispatch::class, function ($app): EventDispatch {
+            return new EventDispatch([
+                $app->make(NotifyListener::class),
+            ]);
+        });
+        $this->app->singleton(WebPushSender::class, MinishlinkWebPushSender::class);
     }
 
     public function boot(): void

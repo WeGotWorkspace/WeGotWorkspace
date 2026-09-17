@@ -7,34 +7,44 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "app-sidebar.css"), "utf8");
 const tsx = readFileSync(join(here, "app-sidebar.tsx"), "utf8");
 
-describe("app sidebar overlay close", () => {
-  it("uses outline sm IconButton matching panel closes, not a raw button", () => {
-    expect(tsx).toMatch(/from "@\/button\/src\/button"/);
-    expect(tsx).toMatch(/<IconButton[\s\S]*label="Close menu"/);
-    expect(tsx).toMatch(/variant="outline"/);
-    expect(tsx).toMatch(/size="md"/);
-    expect(tsx).toMatch(/showTooltip=\{false\}/);
-    expect(tsx).not.toMatch(/<button[\s\S]*aria-label="Close menu"/);
+describe("app sidebar header notifications", () => {
+  it("puts the suite notification tray in the header slot, not a close button", () => {
+    expect(tsx).toMatch(/from "@\/notifications-core\/src\/notification-inbox-tray"/);
+    expect(tsx).toMatch(/useNotificationsInbox/);
+    expect(tsx).toMatch(/className="app-sidebar__notifications"/);
+    expect(tsx).toMatch(/<NotificationInboxTray/);
+    expect(tsx).not.toMatch(/label="Close menu"/);
+    expect(tsx).not.toMatch(/app-sidebar__close/);
+    expect(tsx).not.toMatch(/SIDEBAR_OVERLAY_MEDIA_QUERY/);
   });
 
-  it("renders close only in overlay viewport (SIDEBAR_OVERLAY_MEDIA_QUERY)", () => {
-    expect(tsx).toMatch(/SIDEBAR_OVERLAY_MEDIA_QUERY/);
-    expect(tsx).toMatch(/isSidebarOverlayViewport/);
-    expect(tsx).toMatch(/\{isOverlay \? \(/);
-  });
-
-  it("CSS-hides close at the same 72.5rem dock as sidebar: utilities (beats .button inline-flex)", () => {
+  it("remaps ink to sidebar icon chrome so the bell glyph matches lockup color", () => {
     expect(css).toMatch(
-      /@media\s*\(width\s*>=\s*72\.5rem\)\s*\{[\s\S]*\.app-sidebar\s+\.button\.app-sidebar__close\s*\{[\s\S]*display:\s*none\s*!important/,
+      /\.app-sidebar__notifications \{[\s\S]*--color-ink:\s*var\(\s*--sidebar-logo-close-button-color/,
     );
-    expect(css).not.toMatch(/\.app-sidebar__close \{[^}]*@apply[^;]*\bsidebar:hidden\b/);
+    expect(css).toMatch(
+      /\.app-sidebar__notifications \{[\s\S]*--button-outline-color:\s*var\(\s*--color-ink/,
+    );
+    // Badge fill lives on the tray trigger, not accent/sidebar-bg.
+    expect(css).not.toMatch(
+      /\.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-bg:\s*var\(\s*--workspace-accent/,
+    );
+    expect(css).not.toMatch(
+      /\.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-fg:\s*var\(\s*--app-sidebar-bg/,
+    );
   });
 
-  it("matches logout outline border via control-border ink wash, not a harsher override", () => {
+  it("pulls notification tray CSS into the sidebar graph so runtime index CSS owns the badge", () => {
+    expect(css).toMatch(/@import\s+["'].*notification-inbox-tray\.css["']/);
+  });
+
+  it("uses the sidebar right hairline for the bell IconButton stroke", () => {
     expect(css).toMatch(
-      /\.app-sidebar__close \{[\s\S]*--color-ink:\s*var\(\s*--sidebar-logo-close-button-color/,
+      /\.app-sidebar \{[\s\S]*border-color:\s*var\(\s*--app-sidebar-border-color/,
     );
-    expect(css).not.toMatch(/--button-outline-border-color:\s*color-mix\([^)]*28%/);
+    expect(css).toMatch(
+      /\.app-sidebar__notifications \{[\s\S]*--button-outline-border-color:\s*var\(\s*--app-sidebar-border-color/,
+    );
   });
 });
 
@@ -99,7 +109,7 @@ describe("app sidebar nav selection SST", () => {
 });
 
 describe("app sidebar header lockup alignment", () => {
-  it("top-aligns the header row so the icon tile matches close controls", () => {
+  it("top-aligns the header row so the icon tile matches the notifications control", () => {
     expect(css).toMatch(/\.app-sidebar__header \{[^}]*@apply[^;]*\bitems-start\b/);
     expect(css).toMatch(/\.app-sidebar__header-main \{[^}]*@apply[^;]*\bitems-start\b/);
     expect(css).not.toMatch(/\.app-sidebar__header \{[^}]*@apply[^;]*\bitems-center\b/);
@@ -114,7 +124,7 @@ describe("app sidebar header lockup alignment", () => {
     expect(css).toMatch(
       /\.app-sidebar__header \.app-switch-button__trigger \{[^}]*@apply[^;]*\bpt-0\b/,
     );
-    expect(css).not.toMatch(/\.app-sidebar__close \{[^}]*@apply[^;]*\bmt-1\b/);
+    expect(css).not.toMatch(/\.app-sidebar__notifications \{[^}]*@apply[^;]*\bmt-1\b/);
   });
 });
 

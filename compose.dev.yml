@@ -36,6 +36,24 @@ services:
       retries: 12
       start_period: 30s
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/apache/Dockerfile
+    environment:
+      WGW_APP_ROOT: /var/www/install
+      WGW_API_ROOT: /var/www/packages/api
+      WGW_DEV_DOMAIN: ${WGW_DEV_DOMAIN:-wegotworkspace.localhost}
+    volumes:
+      - ./apps/wegotworkspace:/var/www/install
+      - ./packages/api:/var/www/packages/api
+    depends_on:
+      web:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "while true; do php /var/www/packages/api/artisan schedule:run --no-interaction; sleep 60; done"
+
   mailhog:
     profiles: ["mail"]
     image: mailhog/mailhog:v1.0.1

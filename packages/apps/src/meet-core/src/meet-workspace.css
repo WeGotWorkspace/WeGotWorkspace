@@ -1282,7 +1282,7 @@
 }
 
 .meet-call-stage__sidebar-toggle {
-  @apply flex shrink-0 items-center;
+  @apply flex shrink-0 items-center overflow-visible;
 }
 
 .meet-call-stage__header-actions {

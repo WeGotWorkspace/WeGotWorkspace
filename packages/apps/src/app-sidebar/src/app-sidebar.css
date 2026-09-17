@@ -1,4 +1,6 @@
 @import "../../styles.css" reference;
+/* Keep tray badge ::after in the main CSS graph (runtime HTML only links index-*.css). */
+@import "../../notifications-core/src/notification-inbox-tray.css";
 
 /**
  * Sidebar chrome SST — workspace roots publish `--app-sidebar-bg`, `--app-sidebar-color`,
@@ -97,7 +99,7 @@
   /*
    * Block padding matches `.workspace-app-layout__main-header` (`p-4 md:p-6`) so
    * the app-switch icon tile tops align with ViewHeader IconButtons across the
-   * mobile overlay split. Keep `items-start` so the mark does not float above close.
+   * mobile overlay split. Keep `items-start` so the mark does not float above the bell.
    */
   @apply flex shrink-0 items-start justify-between gap-3 py-4 md:py-6;
   padding-inline: var(--app-sidebar-padding-x);
@@ -115,27 +117,25 @@
   @apply pt-0;
 }
 
-.app-sidebar__close {
-  /* Overlay mount + CSS hide; tile tops at header edge — no mt offset. */
+.app-sidebar__notifications {
+  /* Tile tops at header edge — no mt offset. */
   @apply shrink-0;
   /*
-   * Match footer logout IconButton: remap ink so outline + --control-border-color
-   * (ink 12% wash) resolve on dark chrome the same way as WorkspaceUserFooter.
+   * Bell stroke = sidebar right hairline (same token as `.app-sidebar` `border-r`).
+   */
+  --button-outline-border-color: var(
+    --app-sidebar-border-color,
+    color-mix(in oklab, var(--color-ink) 15%, transparent)
+  );
+  /*
+   * Remap ink to sidebar icon chrome so the bell glyph matches the app-switch
+   * close/lockup color (white on Docs/Mail, ink on Calendar/Drive, …).
+   * Unread badge fill/on-color stay on the tray trigger (primary CTA tokens).
    */
   --color-ink: var(--sidebar-logo-close-button-color, var(--app-sidebar-color, var(--color-ink)));
   --button-outline-color: var(--color-ink);
   --button-outline-hover-color: var(--color-ink);
   --button-outline-hover-background: color-mix(in oklab, var(--color-ink) 8%, transparent);
-}
-
-/*
- * Docked sidebar (≥ `--breakpoint-sidebar` / 72.5rem): never show close.
- * `@apply sidebar:hidden` loses to `.button { display: inline-flex }` (equal specificity).
- */
-@media (width >= 72.5rem) {
-  .app-sidebar .button.app-sidebar__close {
-    display: none !important;
-  }
 }
 
 .app-sidebar__scroll {

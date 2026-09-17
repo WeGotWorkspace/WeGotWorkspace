@@ -74,4 +74,20 @@ describe("NotesNewMenu primary tokens", () => {
       /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--color-ink/,
     );
   });
+
+  it("mirrors New note primary onto the header notification unread badge", () => {
+    // Exact New-note pair: --notes-accent #f6d176 + ink #042a22 (not ink-bg/emerald-fg fallback).
+    expect(workspaceCss).toMatch(
+      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-bg:\s*#f6d176/,
+    );
+    expect(workspaceCss).toMatch(
+      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-fg:\s*#042a22/,
+    );
+    expect(workspaceCss).toMatch(
+      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-bg:\s*#f6d176/,
+    );
+    expect(workspaceCss).toMatch(
+      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-fg:\s*#042a22/,
+    );
+  });
 });
