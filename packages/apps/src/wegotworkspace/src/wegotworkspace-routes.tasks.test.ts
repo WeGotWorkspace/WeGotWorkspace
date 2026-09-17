@@ -27,6 +27,18 @@ describe("wegotworkspace tasks routes", () => {
     expect(() => route?.options.beforeLoad?.({} as never)).toThrow();
   });
 
+  it("keeps ?task= on /tasks/lists/:listId search", async () => {
+    const history = createMemoryHistory({
+      initialEntries: [`/tasks/lists/${INBOX_TASK_LIST_ID}?task=task-inbox-demo`],
+    });
+    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    await router.load();
+
+    expect(router.state.location.search).toMatchObject({ task: "task-inbox-demo" });
+    const listMatch = router.state.matches.find((match) => match.params.listId);
+    expect(listMatch?.params).toMatchObject({ listId: INBOX_TASK_LIST_ID });
+  });
+
   it("matches state slug on /tasks/state/:stateSlug deep links", async () => {
     const history = createMemoryHistory({
       initialEntries: ["/tasks/state/today"],

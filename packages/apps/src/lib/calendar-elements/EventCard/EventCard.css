@@ -117,6 +117,14 @@
   display: var(--_lc-event-card-accent-bar-display, block);
 }
 
+:host([data-overlay="task"]) .event-card-shell::after {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--_lc-event-card-accent-color) 0 3px,
+    transparent 3px 6px
+  );
+}
+
 :host([layout="flow"]) .event-card-heading {
   @apply px-2.5 pt-2.5 pb-[9px];
 }

@@ -5,6 +5,7 @@ import type { PendingCreateGeometry } from "../CalendarTimelineView/pendingOccur
 import type { CalendarViewGroup } from "../CalendarViewGroup/CalendarViewGroup.js";
 import { eventsAPIContext, type EventsAPIContextValue } from "../context/EventsAPIContext.js";
 import "../CalendarViewGroup/CalendarViewGroup.js";
+import { filterVisibleCalendarEventsKeepingOverlay } from "@/calendar-core/src/calendar-task-due-overlay";
 
 /**
  * WGW-owned host for the vendored lit-calendar views (this file is ours, not
@@ -40,6 +41,7 @@ export class WgwCalendarSurface extends LitElement {
       timezone: { type: String },
       selectedCalendarId: { type: String, attribute: false },
       events: { attribute: false },
+      taskDueMarkers: { attribute: false },
       visibleCalendarIds: { attribute: false },
       pendingCreateIntent: { attribute: false },
       selectedEventKey: { type: String, attribute: "selected-event-key" },
@@ -53,6 +55,8 @@ export class WgwCalendarSurface extends LitElement {
   timezone?: string;
   selectedCalendarId?: string;
   events: EventsMap = new Map();
+  /** Render-only Tasks due markers; merged after calendar visibility filter. */
+  taskDueMarkers: EventsMap = new Map();
   visibleCalendarIds?: string[];
   /** Create-dialog range while the React editor is open (drag-create preview persist). */
   pendingCreateIntent: PendingCreateGeometry | null = null;
@@ -81,17 +85,14 @@ export class WgwCalendarSurface extends LitElement {
   }
 
   get #visibleEvents(): EventsMap {
-    const selected = this.visibleCalendarIds;
-    if (selected === undefined) return this.events;
-    if (selected.length === 0) return new Map();
-    const allowed = new Set(selected);
-    const filtered: EventsMap = new Map();
-    for (const [key, event] of this.events) {
-      if (!event.calendarId || allowed.has(event.calendarId)) {
-        filtered.set(key, event);
-      }
-    }
-    return filtered;
+    const filtered = filterVisibleCalendarEventsKeepingOverlay(
+      this.events,
+      this.visibleCalendarIds,
+    );
+    if (!this.taskDueMarkers || this.taskDueMarkers.size === 0) return filtered;
+    const next: EventsMap = new Map(filtered);
+    for (const [key, event] of this.taskDueMarkers) next.set(key, event);
+    return next;
   }
 
   /** Keep host props aligned when the view-group navigates on its own (day click, swipe). */

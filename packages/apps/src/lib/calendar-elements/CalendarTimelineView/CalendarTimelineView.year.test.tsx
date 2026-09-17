@@ -228,6 +228,95 @@ describe("CalendarTimelineView year mode", { timeout: 15_000 }, () => {
     const event = selected.mock.calls[0]?.[0] as CustomEvent<{ date?: string }>;
     expect(event.detail.date).toBe("2026-07-31");
   });
+
+  it("caps year-day dots at three unique colors including task overlay dues", async () => {
+    const el = document.createElement("calendar-timeline-view") as CalendarTimelineView;
+    el.mode = "year";
+    el.lang = "en-US";
+    el.startDate = "2026-08-01";
+    el.weekStart = 1;
+    el.events = new Map([
+      [
+        "standup",
+        {
+          eventId: "standup@example.test",
+          data: {
+            start: Temporal.PlainDateTime.from("2026-08-18T09:00:00"),
+            end: Temporal.PlainDateTime.from("2026-08-18T09:30:00"),
+            summary: "Standup",
+            color: "#6366f1",
+          },
+        },
+      ],
+      [
+        "dentist",
+        {
+          eventId: "dentist@example.test",
+          data: {
+            start: Temporal.PlainDateTime.from("2026-08-18T11:00:00"),
+            end: Temporal.PlainDateTime.from("2026-08-18T11:45:00"),
+            summary: "Dentist",
+            color: "#0ea5e9",
+          },
+        },
+      ],
+      [
+        "task:milk",
+        {
+          overlayKind: "task" as const,
+          overlayTaskListId: "errands",
+          eventId: "task:milk",
+          data: {
+            start: Temporal.PlainDateTime.from("2026-08-18T00:00:00"),
+            duration: Temporal.Duration.from({ days: 1 }),
+            allDay: true,
+            summary: "Buy milk",
+            color: "#f59e0b",
+          },
+        },
+      ],
+      [
+        "task:spec",
+        {
+          overlayKind: "task" as const,
+          overlayTaskListId: "sprint",
+          eventId: "task:spec",
+          data: {
+            start: Temporal.PlainDateTime.from("2026-08-18T14:00:00"),
+            duration: Temporal.Duration.from({ minutes: 30 }),
+            summary: "Review spec",
+            color: "#ef4444",
+          },
+        },
+      ],
+    ]);
+    document.body.append(el);
+    await el.updateComplete;
+
+    const august = [...(el.shadowRoot?.querySelectorAll(".month-card") ?? [])].find((card) =>
+      card.querySelector(".month-title")?.textContent?.includes("August"),
+    );
+    const day18 = [...(august?.querySelectorAll("button.year-day") ?? [])].find(
+      (button) =>
+        button.querySelector(".year-day-number")?.textContent?.includes("18") &&
+        !button.classList.contains("is-outside-month"),
+    ) as HTMLButtonElement | undefined;
+    expect(day18).toBeTruthy();
+    expect(day18!.querySelectorAll(".year-day-dot")).toHaveLength(3);
+
+    day18!.click();
+    await el.updateComplete;
+    await el.updateComplete;
+    const popover = el.shadowRoot?.querySelector("day-overflow-popover.year-day-popover") as
+      | (HTMLElement & { events?: { summary?: string }[] })
+      | null;
+    expect(popover).toBeTruthy();
+    const summaries = (popover?.events ?? []).map((entry) => entry.summary);
+    expect(summaries).toEqual(
+      expect.arrayContaining(["Standup", "Dentist", "Buy milk", "Review spec"]),
+    );
+    expect(summaries).toHaveLength(4);
+  });
 });
 
 function cssAnchorName(element: Element): string {

@@ -35,6 +35,7 @@ import type { MeetChatRouteParams } from "@/meet-core/src/meet-chat-route";
 import { NotesApp } from "@/notes-core/src/notes-app";
 import { createDefaultTasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksApp } from "@/tasks-core/src/tasks-app";
+import { validateTasksRouteSearch } from "@/tasks-core/src/tasks-route-search";
 import { SettingsApp } from "@/settings-core/src/settings-app";
 import { useSettingsRouteSync } from "@/settings-core/src/use-settings-route-sync";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
@@ -208,7 +209,7 @@ function MockContactsRoute() {
 function MockTasksRoute() {
   const onLogout = useWeGotWorkspaceLogout();
   const bootstrap = useMemo(() => createTasksAppBootstrap(), []);
-  const { initialView, handleViewChange } = useTasksRouteSync();
+  const { initialView, initialTaskId, handleViewChange } = useTasksRouteSync();
   const operations = useMemo(
     () => createDefaultTasksApiSource().createOperations(bootstrap),
     [bootstrap],
@@ -221,6 +222,7 @@ function MockTasksRoute() {
       listRefreshing={false}
       onLogout={onLogout}
       initialView={initialView}
+      initialTaskId={initialTaskId}
       onViewChange={handleViewChange}
     />
   );
@@ -663,6 +665,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/tasks/state/all",
     head: tasksPwaHead,
+    validateSearch: validateTasksRouteSearch,
     component: TasksComponent,
   });
 
@@ -670,6 +673,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/tasks/state/$stateSlug",
     head: tasksPwaHead,
+    validateSearch: validateTasksRouteSearch,
     component: TasksComponent,
   });
 
@@ -686,6 +690,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/tasks/lists/$listId",
     head: tasksPwaHead,
+    validateSearch: validateTasksRouteSearch,
     component: TasksComponent,
   });
 
@@ -693,6 +698,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/tasks/priority/$prioritySlug",
     head: tasksPwaHead,
+    validateSearch: validateTasksRouteSearch,
     component: TasksComponent,
   });
 

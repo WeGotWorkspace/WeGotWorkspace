@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { INBOX_TASK_LIST_ID } from "@/tasks-core/src/tasks-task-utils";
@@ -54,6 +54,34 @@ describe("useTasksController URL routing", () => {
         dispatchEvent: vi.fn(),
       })),
     });
+  });
+
+  it("opens the edit dialog once for a matching initialTaskId", async () => {
+    const { result, rerender } = renderHook(
+      ({ initialTaskId }: { initialTaskId?: string }) =>
+        useTasksController({ data: bootstrap.data, initialTaskId }),
+      { initialProps: { initialTaskId: "task-inbox-demo" } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.editDialog).toEqual({ taskId: "task-inbox-demo" });
+    });
+
+    act(() => {
+      result.current.closeEditTask();
+    });
+    expect(result.current.editDialog).toBeNull();
+
+    rerender({ initialTaskId: "task-inbox-demo" });
+    expect(result.current.editDialog).toBeNull();
+  });
+
+  it("does not open the edit dialog for an unknown initialTaskId", async () => {
+    const { result } = renderHook(() =>
+      useTasksController({ data: bootstrap.data, initialTaskId: "missing-task" }),
+    );
+    await act(async () => undefined);
+    expect(result.current.editDialog).toBeNull();
   });
 
   it("initialView seeds the controller view on mount", () => {

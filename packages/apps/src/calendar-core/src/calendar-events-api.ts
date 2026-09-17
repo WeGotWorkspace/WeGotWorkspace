@@ -18,6 +18,10 @@ import {
 } from "@/calendar-core/src/calendar-editor-model";
 import { recurrenceOverridesFromEngineMap } from "@/calendar-core/src/calendar-recurrence-scope";
 import { canWriteCalendarCollection } from "@/calendar-core/src/calendar-collection-write";
+import {
+  isTaskDueOverlayEvent,
+  isTaskDueOverlayKey,
+} from "@/calendar-core/src/calendar-task-due-overlay";
 import type {
   CalendarAPIOperations,
   CalendarEventPatch,
@@ -386,6 +390,20 @@ export function createCalendarEventsApi(args: CreateCalendarEventsApiArgs): Cale
 
   const apply = (operation: EventOperation): ApplyResult => {
     if (blocksCollectionWrite(operation, currentEvents(), args.calendars)) {
+      return { nextState: currentEvents(), changes: [], effects: [] };
+    }
+    const target = "target" in operation.input ? operation.input.target : undefined;
+    const targetKey =
+      target && "key" in target && typeof target.key === "string" ? target.key : undefined;
+    const targetEventId =
+      target && "eventId" in target && typeof target.eventId === "string"
+        ? target.eventId
+        : undefined;
+    if (
+      isTaskDueOverlayKey(targetKey) ||
+      isTaskDueOverlayKey(targetEventId) ||
+      (target ? isTaskDueOverlayEvent(eventForTarget(currentEvents(), target)) : false)
+    ) {
       return { nextState: currentEvents(), changes: [], effects: [] };
     }
     const api = new EventsAPI(currentEvents(), { trackPending: true });

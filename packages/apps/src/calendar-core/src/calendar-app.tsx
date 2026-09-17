@@ -186,6 +186,9 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
             meetOperations={meetOperations}
             workspaceOrigin={workspaceOrigin}
             onJoinMeeting={handleJoinMeeting}
+            onOpenTaskInTasks={(href) => {
+              window.location.assign(href);
+            }}
           />
         )}
       />

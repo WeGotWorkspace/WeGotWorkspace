@@ -5,7 +5,9 @@ import {
   patchCalendarViewPrefs,
   persistCalendarRoutePrefs,
   persistHiddenCalendarIds,
+  persistHiddenOverlayTaskListIds,
   readCalendarViewPrefs,
+  readHiddenOverlayTaskListIds,
   resolveHiddenCalendarIds,
   writeCalendarViewPrefs,
   type CalendarViewPrefs,
@@ -22,6 +24,7 @@ const validPrefs: CalendarViewPrefs = {
   presentation: "list",
   hiddenCalendarIds: ["work", "family"],
   knownCalendarIds: ["default", "work", "family"],
+  hiddenOverlayTaskListIds: ["sprint"],
 };
 
 describe("parseCalendarViewPrefs", () => {
@@ -34,9 +37,14 @@ describe("parseCalendarViewPrefs", () => {
           presentation: "cards",
           hiddenCalendarIds: ["work", 2, "", "family"],
           knownCalendarIds: ["default", "", 3, "work"],
+          hiddenOverlayTaskListIds: ["sprint", 4, ""],
         }),
       ),
-    ).toEqual({ hiddenCalendarIds: ["work", "family"], knownCalendarIds: ["default", "work"] });
+    ).toEqual({
+      hiddenCalendarIds: ["work", "family"],
+      knownCalendarIds: ["default", "work"],
+      hiddenOverlayTaskListIds: ["sprint"],
+    });
   });
 
   it("returns null for missing, corrupt, or empty payloads", () => {
@@ -100,6 +108,7 @@ describe("writeCalendarViewPrefs / patchCalendarViewPrefs", () => {
       presentation: "grid",
       hiddenCalendarIds: ["holidays"],
       knownCalendarIds: ["holidays"],
+      hiddenOverlayTaskListIds: ["sprint"],
     });
 
     patchCalendarViewPrefs({ hiddenCalendarIds: [] });
@@ -108,6 +117,7 @@ describe("writeCalendarViewPrefs / patchCalendarViewPrefs", () => {
       presentation: "grid",
       hiddenCalendarIds: [],
       knownCalendarIds: ["holidays"],
+      hiddenOverlayTaskListIds: ["sprint"],
     });
   });
 
@@ -172,11 +182,14 @@ describe("persist helpers", () => {
   it("writes route and hidden patches independently", () => {
     persistCalendarRoutePrefs("year", "list");
     persistHiddenCalendarIds(new Set(["work"]), ["default", "work", "holidays"]);
+    persistHiddenOverlayTaskListIds(new Set(["sprint"]));
     expect(readCalendarViewPrefs()).toEqual({
       view: "year",
       presentation: "list",
       hiddenCalendarIds: ["work"],
       knownCalendarIds: ["default", "work", "holidays"],
+      hiddenOverlayTaskListIds: ["sprint"],
     });
+    expect(readHiddenOverlayTaskListIds()).toEqual(["sprint"]);
   });
 });

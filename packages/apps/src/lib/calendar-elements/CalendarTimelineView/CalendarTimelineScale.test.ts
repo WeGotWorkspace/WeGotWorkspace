@@ -637,6 +637,14 @@ describe("yearGridWindow / occurrenceDayKeys", () => {
       "#00f",
     ]);
   });
+
+  it("counts task-list colors toward the same three-unique year-dot cap as events", () => {
+    expect(uniqueDayDotColors(["#0ea5e9", "#6366f1", "#f59e0b", "#3b82f6"])).toEqual([
+      "#0ea5e9",
+      "#6366f1",
+      "#f59e0b",
+    ]);
+  });
 });
 
 describe("timelineRangeOverlapsCell (per-day-cell event lookup)", () => {

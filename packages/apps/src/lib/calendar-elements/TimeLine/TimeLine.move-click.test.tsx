@@ -103,6 +103,46 @@ describe("TimeLine move click-to-select", () => {
     expect(moved).toHaveBeenCalled();
   });
 
+  it("does not start a move or mount resize handles on locked overlay events", async () => {
+    const el = document.createElement("time-line") as TimeLine;
+    el.cells = 1;
+    el.max = 1440;
+    el.step = 15;
+    el.flow = "vertical";
+    el.resizeHandles = true;
+    el.events = [{ start: 570, end: 600, key: "task:milk", color: "#6366f1", locked: true }];
+    document.body.append(el);
+    await el.updateComplete;
+
+    const moved = vi.fn();
+    el.addEventListener("timeline-event-move", moved);
+
+    const eventEl = el.shadowRoot?.querySelector(".event");
+    expect(eventEl).toBeInstanceOf(HTMLElement);
+    if (!(eventEl instanceof HTMLElement)) return;
+
+    Object.defineProperty(el, "getBoundingClientRect", {
+      value: () => ({ left: 0, top: 0, width: 200, height: 1440, right: 200, bottom: 1440 }),
+    });
+    const main = el.shadowRoot?.querySelector(".cell-main");
+    if (main instanceof HTMLElement) {
+      Object.defineProperty(main, "getBoundingClientRect", {
+        value: () => ({ left: 0, top: 0, width: 200, height: 1440, right: 200, bottom: 1440 }),
+      });
+    }
+
+    pointerOn(eventEl, "pointerenter", 40, 570);
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector("resize-handle")).toBeNull();
+
+    pointerOn(eventEl, "pointerdown", 40, 570);
+    pointerOn(window, "pointermove", 40, 650);
+    pointerOn(window, "pointerup", 40, 650);
+
+    expect(moved).not.toHaveBeenCalled();
+    expect(el.shadowRoot?.querySelector(".event--dragging")).toBeNull();
+  });
+
   it("lifts the moved card into the top-layer overlay", async () => {
     const el = document.createElement("time-line") as TimeLine;
     el.cells = 7;
