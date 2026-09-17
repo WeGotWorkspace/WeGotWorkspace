@@ -12,6 +12,7 @@ use App\Models\Principal;
 use App\Services\Docs\Conversion\DocsThreadJournalConverter;
 use App\Services\Drive\CollabDocFormats;
 use App\Services\Drive\DriveShareAuthorizer;
+use App\Services\Notify\DocsThreadActivityNotify;
 use App\Storage\StoragePaths;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -114,7 +115,18 @@ final class DocsThreadRepository
                 'change_id' => $changeId,
             ]);
             if (trim($body) !== '') {
-                $this->events->posted($kind, $path, $uid, $uid, $principal['username']);
+                $mentions = DocsThreadActivityNotify::mentionUsernamesFromBody($body);
+                $this->events->posted(
+                    $kind,
+                    $path,
+                    $uid,
+                    $uid,
+                    $principal['username'],
+                    false,
+                    [$principal['username']],
+                    $mentions,
+                    $body,
+                );
             }
         }
 
@@ -166,7 +178,22 @@ final class DocsThreadRepository
                 'change_id' => null,
             ]);
             $kind = (string) ($root['kind'] ?? DocsThreadJournalConverter::KIND_COMMENT);
-            $this->events->posted($kind, $path, $rootUid, $uid, $principal['username']);
+            $participants = $this->threadParticipantUsernames($instance, $path, $rootUid);
+            $mentions = array_values(array_unique([
+                ...$this->threadMentionUsernames($instance, $path, $rootUid),
+                ...DocsThreadActivityNotify::mentionUsernamesFromBody($body),
+            ]));
+            $this->events->posted(
+                $kind,
+                $path,
+                $rootUid,
+                $uid,
+                $principal['username'],
+                true,
+                $participants,
+                $mentions,
+                $body,
+            );
         }
 
         return $this->presentThread($instance, $path, $rootUid);
@@ -578,6 +605,67 @@ final class DocsThreadRepository
         }
 
         throw new ApiHttpException(404, 'Thread not found.', 'not_found');
+    }
+
+    /**
+     * Root author + reply authors for the thread (actor filtered later by NotifyListener).
+     *
+     * @return list<string>
+     */
+    private function threadParticipantUsernames(CalendarInstance $instance, string $path, string $rootUid): array
+    {
+        $out = [];
+        foreach ($this->threadMessages($instance, $path, $rootUid) as $message) {
+            $author = strtolower(trim((string) ($message['authorId'] ?? '')));
+            if ($author !== '') {
+                $out[$author] = $author;
+            }
+        }
+
+        return array_values($out);
+    }
+
+    /**
+     * @-tokens already present in any message body of the thread (auto-subscribe).
+     *
+     * @return list<string>
+     */
+    private function threadMentionUsernames(CalendarInstance $instance, string $path, string $rootUid): array
+    {
+        $out = [];
+        foreach ($this->threadMessages($instance, $path, $rootUid) as $message) {
+            foreach (DocsThreadActivityNotify::mentionUsernamesFromBody((string) ($message['body'] ?? '')) as $username) {
+                $out[$username] = $username;
+            }
+        }
+
+        return array_values($out);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function threadMessages(CalendarInstance $instance, string $path, string $rootUid): array
+    {
+        foreach ($this->assembleThreads($instance, $path) as $thread) {
+            if (($thread['id'] ?? '') !== $rootUid) {
+                continue;
+            }
+            $messages = [];
+            foreach ($thread['messages'] ?? [] as $presented) {
+                if (! is_array($presented)) {
+                    continue;
+                }
+                $messages[] = [
+                    'authorId' => (string) (($presented['author']['id'] ?? '') ?: ''),
+                    'body' => (string) ($presented['body'] ?? ''),
+                ];
+            }
+
+            return $messages;
+        }
+
+        return [];
     }
 
     /**

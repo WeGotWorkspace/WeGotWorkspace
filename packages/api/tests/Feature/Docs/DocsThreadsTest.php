@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Docs;
 
-use App\Events\DocsThreadPosted;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
+use App\Models\Notification;
 use App\Services\Docs\DocsThreadRepository;
-use Illuminate\Support\Facades\Event;
+use App\Services\Notify\DocsThreadActivityNotify;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\DocsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -86,8 +86,6 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
             ],
         ])->assertOk();
 
-        Event::fake([DocsThreadPosted::class]);
-
         $rootId = $this->ulid('AC');
         $this->asAlice()->postJson($this->threadsPath(), [
             'id' => $rootId,
@@ -96,12 +94,14 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
             'anchorText' => 'Plan',
         ])->assertCreated();
 
-        Event::assertDispatched(DocsThreadPosted::class, function (DocsThreadPosted $event): bool {
-            return $event->name === 'docs.comment_posted'
-                && $event->payload['path'] === self::PATH
-                && $event->payload['kind'] === 'comment'
-                && $event->payload['actor'] === 'alice';
-        });
+        $this->assertSame(1, Notification::query()
+            ->where('principal', 'bob')
+            ->where('action', DocsThreadActivityNotify::ACTION)
+            ->count());
+        $this->assertSame(0, Notification::query()
+            ->where('principal', 'alice')
+            ->where('action', DocsThreadActivityNotify::ACTION)
+            ->count());
 
         $this->assertSame(
             0,
@@ -136,7 +136,6 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
 
     public function test_suggestion_posted_event_and_archive_stays_in_list(): void
     {
-        Event::fake([DocsThreadPosted::class]);
         $rootId = $this->ulid('AE');
         $this->asBob()->postJson($this->threadsPath(), [
             'id' => $rootId,
@@ -145,11 +144,10 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
             'body' => 'why this edit?',
         ])->assertCreated();
 
-        Event::assertDispatched(DocsThreadPosted::class, function (DocsThreadPosted $event) use ($rootId): bool {
-            return $event->name === 'docs.suggestion_posted'
-                && $event->payload['threadId'] === $rootId
-                && $event->payload['kind'] === 'suggestion';
-        });
+        // Owner is the actor — no self-notify for root suggestion.
+        $this->assertSame(0, Notification::query()
+            ->where('action', DocsThreadActivityNotify::ACTION)
+            ->count());
 
         $this->asBob()->patchJson($this->threadUrl($rootId), [
             'archived' => true,
