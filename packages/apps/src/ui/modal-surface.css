@@ -23,6 +23,14 @@
   --control-height-md: var(--control-height-sm, 2rem);
   --input-height: var(--control-height-sm, 2rem);
   @apply flex flex-col;
+  /* Center with the individual `translate` property only — never also set
+   * `transform: translate(...)`. Prod Lightning CSS drops `translate: none`
+   * as an "initial" value, so Tailwind `translate-x/y-[-50%]` utilities then
+   * stack with a transform translate and shove the card off-screen. Dev keeps
+   * `translate: none`, which is why the same markup looks fine locally. */
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
   width: min(100%, var(--modal-max-width));
   max-width: min(var(--modal-max-width), 100svw);
   height: auto;
@@ -32,11 +40,12 @@
 }
 
 /*
- * DialogContent ships `left-[50%] top-[50%] translate-x-[-50%] zoom-in-95`.
  * Below 768px keep a centered CARD with modest gutters so DialogOverlay
  * (bg-black/80) stays visible around the edges — not a full-bleed sheet.
  * Height follows content until max-height; then the body scrolls.
- * Reset enter zoom so WebKit cannot leave a mis-scaled card.
+ * Disable enter zoom so WebKit cannot leave a mis-scaled card; keep using
+ * `translate` (not `transform`) for the -50% center so minifiers cannot
+ * reintroduce a double offset against leftover utilities.
  */
 @media (max-width: 767px) {
   .ui-modal-surface.ui-modal-surface--center {
@@ -60,15 +69,13 @@
     max-width: min(var(--modal-max-width), calc(100svw - (2 * var(--modal-mobile-inline-gutter))));
     height: auto;
     max-height: min(var(--modal-max-height), calc(100dvh - (2 * var(--modal-mobile-block-gutter))));
-    translate: none;
+    translate: -50% -50%;
     scale: 1;
-    transform: translate(-50%, -50%);
+    transform: none;
     animation: none;
-    --tw-translate-x: -50%;
-    --tw-translate-y: -50%;
     --tw-enter-scale: 1;
-    --tw-enter-translate-x: -50%;
-    --tw-enter-translate-y: -50%;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
   }
 }
 

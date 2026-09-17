@@ -21,6 +21,12 @@ describe("ui-modal-surface viewport clamp", () => {
     );
     expect(css).toMatch(/\.ui-modal-surface--center \{[\s\S]*@apply flex flex-col/);
     expect(css).toMatch(/\.ui-modal-surface--center \{[\s\S]*overflow:\s*hidden/);
+    // Center via individual `translate` only — not transform translate (prod
+    // strips `translate: none`, which double-offsets against TW utilities).
+    expect(css).toMatch(
+      /\.ui-modal-surface--center \{[\s\S]*top:\s*50%[\s\S]*left:\s*50%[\s\S]*translate:\s*-50%\s+-50%/,
+    );
+    expect(css).not.toMatch(/transform:\s*translate\(-50%,\s*-50%\)/);
   });
 
   it("keeps a centered card with overlay gutters below 768px (not a full-bleed sheet)", () => {
@@ -30,7 +36,7 @@ describe("ui-modal-surface viewport clamp", () => {
     expect(css).toMatch(/--modal-mobile-inline-gutter:/);
     expect(css).toMatch(/--modal-mobile-block-gutter:/);
     expect(css).toMatch(
-      /\.ui-modal-surface\.ui-modal-surface--center \{[\s\S]*height:\s*auto[\s\S]*transform:\s*translate\(-50%,\s*-50%\)[\s\S]*animation:\s*none/,
+      /\.ui-modal-surface\.ui-modal-surface--center \{[\s\S]*height:\s*auto[\s\S]*translate:\s*-50%\s+-50%[\s\S]*animation:\s*none/,
     );
     expect(css).toMatch(/safe-area-inset-top/);
     expect(css).toMatch(/safe-area-inset-bottom/);
