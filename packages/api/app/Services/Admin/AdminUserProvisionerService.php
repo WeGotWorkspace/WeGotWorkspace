@@ -8,6 +8,7 @@ use App\Models\GroupMember;
 use App\Models\MailUserCredential;
 use App\Models\Principal;
 use App\Models\User;
+use App\Services\Auth\RefreshTokenRepository;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Settings\GroupDirectoryService;
 use App\Support\AppPaths;
@@ -23,6 +24,7 @@ final class AdminUserProvisionerService
         private GroupDirectoryService $groups,
         private InstallerSeeder $installerSeeder,
         private AppPaths $paths,
+        private RefreshTokenRepository $refreshTokens,
     ) {}
 
     /**
@@ -62,7 +64,7 @@ final class AdminUserProvisionerService
     }
 
     /**
-     * @param  array{displayName?: string, email?: string, password?: string, groups?: list<string>}  $input
+     * @param  array{displayName?: string, email?: string, password?: string, groups?: list<string>, enabled?: bool}  $input
      */
     public function update(string $username, array $input, string $actingAdmin): void
     {
@@ -70,6 +72,17 @@ final class AdminUserProvisionerService
         $this->assertUsername($username);
         if (! User::query()->where('username', $username)->exists()) {
             throw new \InvalidArgumentException('User not found.');
+        }
+
+        if (array_key_exists('enabled', $input) && $input['enabled'] !== null) {
+            $enabled = (bool) $input['enabled'];
+            if (! $enabled && $username === strtolower(trim($actingAdmin))) {
+                throw new \InvalidArgumentException('You cannot disable your own account.');
+            }
+            User::query()->where('username', $username)->update(['enabled' => $enabled]);
+            if (! $enabled) {
+                $this->refreshTokens->revokeAllForUsername($username);
+            }
         }
 
         if (array_key_exists('password', $input) && $input['password'] !== null && $input['password'] !== '') {

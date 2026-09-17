@@ -24,6 +24,7 @@ final class AdminUserUpdateRequest extends FormRequest
             'password' => ['sometimes', 'nullable', 'string', 'min:10', 'max:4096'],
             'groups' => ['sometimes', 'array'],
             'groups.*' => ['string', 'max:255'],
+            'enabled' => ['sometimes', 'boolean'],
         ];
     }
 }

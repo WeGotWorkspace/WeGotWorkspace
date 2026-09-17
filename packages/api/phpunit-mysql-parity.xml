@@ -34,6 +34,7 @@
             <file>tests/Unit/Rtc/RtcSettingsServiceTest.php</file>
             <file>tests/Unit/Settings/GroupMembershipResolverTest.php</file>
             <file>tests/Unit/Mail/MailCredentialServiceImapUsernameTest.php</file>
+            <file>tests/Unit/Services/Auth/UserEnabledGuardTest.php</file>
             <file>tests/Unit/Calendars/UserCalendarCollectionsProvisionerTest.php</file>
             <file>tests/Unit/Installer/DevCalendarEventSeederTest.php</file>
             <file>tests/Unit/Calendars/CalendarMeetLinkWriteHookTest.php</file>

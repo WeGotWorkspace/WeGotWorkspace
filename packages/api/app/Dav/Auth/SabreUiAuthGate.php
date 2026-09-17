@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Dav\Auth;
 
+use App\Services\Auth\UserEnabledGuard;
+
 /**
  * Validates the signed {@code sabre_ui_auth} cookie issued after browser sign-in.
  */
@@ -79,7 +81,14 @@ final class SabreUiAuthGate
             return null;
         }
 
-        return strtolower(trim($username));
+        $username = strtolower(trim($username));
+        // Extra keyed users.enabled lookup per DAV request: HMAC/expiry alone
+        // is not enough after disable — do not cache "logged in" across requests.
+        if (! app(UserEnabledGuard::class)->isEnabled($username)) {
+            return null;
+        }
+
+        return $username;
     }
 
     /**
