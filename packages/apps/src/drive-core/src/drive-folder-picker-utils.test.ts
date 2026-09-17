@@ -6,6 +6,7 @@ import {
   createDrivePickerRootFile,
   drivePickerRootFileId,
   isDriveFileSelectListingEntry,
+  isDrivePickerRootFile,
   isDriveFolderPickerDestinationPath,
   resolveDriveFolderPickerStartPath,
 } from "@/drive-core/src/drive-folder-picker-utils";
@@ -105,6 +106,8 @@ describe("browsePathForDrivePickerFile", () => {
   it("reads synthetic drive-root ids and real folder paths", () => {
     const root = createDrivePickerRootFile("My Drive", "Personal");
     expect(root.id).toBe(drivePickerRootFileId("My Drive"));
+    expect(isDrivePickerRootFile(root)).toBe(true);
+    expect(isDrivePickerRootFile({ id: "f-studio" })).toBe(false);
     expect(browsePathForDrivePickerFile(root)).toBe("My Drive");
     expect(
       browsePathForDrivePickerFile({

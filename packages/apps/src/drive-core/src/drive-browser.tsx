@@ -11,6 +11,7 @@ import { FilePreview } from "@/file-preview/src/file-preview";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
+import { isDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
 import { SHARED_WITH_ME_UI_ROOT } from "@/drive-core/src/drive-path-utils";
 import "@/drive-core/src/drive-browser.css";
@@ -98,6 +99,14 @@ function DriveShareIndicators({
 }
 
 function DriveFileKindIcon({ file, listStyle = false }: { file: DriveFile; listStyle?: boolean }) {
+  if (isDrivePickerRootFile(file)) {
+    return (
+      <span className={cn("shrink-0 [&>svg]:size-4", listStyle && "drive-list-folder-icon")}>
+        <HardDrive className="size-4" />
+      </span>
+    );
+  }
+
   if (file.kind === "folder") {
     return (
       <span className={cn("shrink-0 [&>svg]:size-4", listStyle && "drive-list-folder-icon")}>
@@ -495,11 +504,15 @@ function FolderTile({
         onTouchEnd={pickerChrome ? undefined : lp.cancel}
         onTouchMove={pickerChrome ? undefined : lp.cancel}
       />
-      <Folder
-        className="drive-folder-tile__icon size-5 shrink-0"
-        fill="currentColor"
-        fillOpacity={0.15}
-      />
+      {isDrivePickerRootFile(file) ? (
+        <HardDrive className="drive-folder-tile__icon size-5 shrink-0" />
+      ) : (
+        <Folder
+          className="drive-folder-tile__icon size-5 shrink-0"
+          fill="currentColor"
+          fillOpacity={0.15}
+        />
+      )}
       <span className="drive-folder-tile__title">{file.title}</span>
       {isStarred ? <Star className="drive-folder-tile__star" fill="currentColor" /> : null}
       <DriveShareIndicators file={file} labels={labels} />

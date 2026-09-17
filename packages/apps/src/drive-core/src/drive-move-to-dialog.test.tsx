@@ -35,26 +35,21 @@ describe("DriveMoveToDialog", () => {
     expect(document.querySelector('input[type="file"][accept="image/*"]')).toBeNull();
   });
 
-  it("shows Insert and Upload in file-select mode", () => {
+  it("shows Insert without Upload in file-select mode", () => {
     const onSelectFile = vi.fn();
-    const onUploadFiles = vi.fn();
     render(
       <TooltipProvider delayDuration={0}>
-        <DriveMoveToDialog
-          {...sharedProps}
-          mode="file-select"
-          onSelectFile={onSelectFile}
-          onUploadFiles={onUploadFiles}
-        />
+        <DriveMoveToDialog {...sharedProps} mode="file-select" onSelectFile={onSelectFile} />
       </TooltipProvider>,
     );
 
     expect(screen.getByRole("heading", { name: driveLabels.fileSelectDialogTitle })).toBeTruthy();
     const insert = screen.getByRole("button", { name: driveLabels.fileSelectDialogInsert });
     expect((insert as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByRole("button", { name: driveLabels.fileSelectDialogUpload })).toBeTruthy();
-    expect(document.querySelector('input[type="file"][accept="image/*"]')).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Upload" })).toBeNull();
+    expect(document.querySelector('input[type="file"][accept="image/*"]')).toBeNull();
     expect(document.querySelector(".drive-grid")).toBeTruthy();
+    expect(document.querySelector("[data-drive-listing-theme]")).toBeNull();
     expect(screen.queryByRole("button", { name: driveLabels.moveDialogConfirm })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Cover-Photo-Granite.jpg" }));
@@ -67,5 +62,21 @@ describe("DriveMoveToDialog", () => {
         apiPath: "/users/alice/Cover-Photo-Granite.jpg",
       }),
     );
+  });
+
+  it("marks Docs file-select listing chrome for Docs tokens", () => {
+    render(
+      <TooltipProvider delayDuration={0}>
+        <DriveMoveToDialog
+          {...sharedProps}
+          mode="file-select"
+          dialogSurfaceClassName="docs-dialog-surface"
+          onSelectFile={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+
+    expect(document.querySelector('[data-drive-listing-theme="docs"]')).toBeTruthy();
+    expect(document.querySelector(".docs-dialog-surface")).toBeTruthy();
   });
 });

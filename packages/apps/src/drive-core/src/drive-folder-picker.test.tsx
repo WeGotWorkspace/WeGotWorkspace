@@ -89,6 +89,43 @@ describe("DriveFolderPicker", () => {
     expect(row?.className).toContain("destination-list-row--selected");
   });
 
+  it("sets Docs listing theme only when requested", () => {
+    const view = render(
+      <TooltipProvider delayDuration={0}>
+        <DriveFolderPicker
+          mode="file-select"
+          labels={driveLabels}
+          files={[]}
+          groupPaths={[]}
+          moveIds={[]}
+          initialBrowsePath="My Drive"
+          currentUsername="alice"
+          groupRootNames={new Set()}
+          onSelectedFileChange={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    expect(document.querySelector("[data-drive-listing-theme]")).toBeNull();
+
+    view.rerender(
+      <TooltipProvider delayDuration={0}>
+        <DriveFolderPicker
+          mode="file-select"
+          listingTheme="docs"
+          labels={driveLabels}
+          files={[]}
+          groupPaths={[]}
+          moveIds={[]}
+          initialBrowsePath="My Drive"
+          currentUsername="alice"
+          groupRootNames={new Set()}
+          onSelectedFileChange={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    expect(document.querySelector('[data-drive-listing-theme="docs"]')).toBeTruthy();
+  });
+
   it("uses Drive grid in file-select mode and omits non-images", () => {
     const onSelectedFileChange = vi.fn();
     render(
@@ -115,6 +152,42 @@ describe("DriveFolderPicker", () => {
     expect(screen.queryByText("interview-ada-pereira.m4a")).toBeNull();
     expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
     expect(screen.getByRole("group", { name: "View mode" })).toBeTruthy();
+  });
+
+  it("uses drive icons for file-select drive roots and folder icons for nested folders", () => {
+    render(
+      <TooltipProvider delayDuration={0}>
+        <DriveFolderPicker
+          mode="file-select"
+          labels={driveLabels}
+          files={[]}
+          groupPaths={[]}
+          moveIds={[]}
+          initialBrowsePath={DRIVE_FOLDER_PICKER_ROOT}
+          currentUsername="alice"
+          groupRootNames={new Set()}
+          rootLabels={{ "My Drive": driveLabels.sidebarMyDrive }}
+          onSelectedFileChange={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+
+    const personal = screen.getByRole("button", { name: "Personal" });
+    expect(
+      personal.closest(".drive-folder-tile")?.querySelector(".lucide-hard-drive"),
+    ).toBeTruthy();
+    expect(personal.closest(".drive-folder-tile")?.querySelector(".lucide-folder")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: driveLabels.listView }));
+    const personalRow = screen.getByText("Personal").closest("tr");
+    expect(personalRow?.querySelector(".lucide-hard-drive")).toBeTruthy();
+    expect(personalRow?.querySelector(".lucide-folder")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: driveLabels.gridView }));
+    fireEvent.click(screen.getByRole("button", { name: "Personal" }));
+    const nested = screen.getByRole("button", { name: "Studio Assets" });
+    expect(nested.closest(".drive-folder-tile")?.querySelector(".lucide-folder")).toBeTruthy();
+    expect(nested.closest(".drive-folder-tile")?.querySelector(".lucide-hard-drive")).toBeNull();
   });
 
   it("navigates folders and single-selects an image in file-select mode", () => {

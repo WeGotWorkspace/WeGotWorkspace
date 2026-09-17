@@ -64,6 +64,10 @@ export function drivePickerRootFileId(path: string): string {
   return `${DRIVE_PICKER_ROOT_FILE_ID_PREFIX}${path}`;
 }
 
+export function isDrivePickerRootFile(file: Pick<DriveFile, "id">): boolean {
+  return file.id.startsWith(DRIVE_PICKER_ROOT_FILE_ID_PREFIX);
+}
+
 export function createDrivePickerRootFile(path: string, title: string): DriveFile {
   return {
     id: drivePickerRootFileId(path),

@@ -201,6 +201,7 @@ export function DriveFolderPicker({
   groupRootNames,
   rootLabels,
   rootIcon,
+  listingTheme,
   mode = "folder-destination",
   onDestinationChange,
   onSelectedFileChange,
@@ -223,6 +224,8 @@ export function DriveFolderPicker({
   rootLabels?: Readonly<Record<string, string>>;
   /** Optional icon for drive-root rows (Docs: HardDrive). Defaults to Folder. */
   rootIcon?: ReactNode;
+  /** Docs image-insert: Docs blue chrome. Omit for Drive's own picker. */
+  listingTheme?: "docs";
   /** `file-select` uses Drive grid/list (images); default keeps DestinationPickerList. */
   mode?: DrivePickerMode;
   onDestinationChange?: (path: string | null) => void;
@@ -391,6 +394,7 @@ export function DriveFolderPicker({
   return (
     <DestinationPickerFrame
       className={fileSelect ? "destination-picker--file-select drive-workspace" : undefined}
+      listingTheme={listingTheme}
       breadcrumbs={
         fileSelect ? (
           <div className="destination-picker__breadcrumbs destination-picker__breadcrumbs--with-toggle">

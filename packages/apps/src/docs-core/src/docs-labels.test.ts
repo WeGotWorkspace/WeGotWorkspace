@@ -37,6 +37,16 @@ describe("docsLabels Drive SST re-exports", () => {
     expect(docsLabels.toastSwitchedToSuggestMode).toBe("Switched to Suggest mode");
   });
 
+  it("keeps English insert-image chooser copy", () => {
+    expect(docsLabels.insertImageTitle).toBe("Insert image");
+    expect(docsLabels.insertImageChooserDescription).toBe(
+      "Upload a file from your computer, or choose an image already in Drive.",
+    );
+    expect(docsLabels.insertImageUpload).toBe("Upload");
+    expect(docsLabels.insertImageChooseFromDrive).toBe("Choose from Drive");
+    expect(docsLabels.deleteImage).toBe("Delete image");
+  });
+
   it("keeps English last-edited footer chip clarification matching Notes", () => {
     expect(docsLabels.editedLabel).toBe("Last edited");
   });

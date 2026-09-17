@@ -72,7 +72,6 @@ export const driveLabels = {
   fileSelectDialogDescription:
     "Browse folders like in Drive. Click an image to select it, or open a folder to keep browsing.",
   fileSelectDialogInsert: "Insert",
-  fileSelectDialogUpload: "Upload",
   fileSelectEmpty: "No images in this folder",
   createMarkdownDialogTitle: "New document",
   createMarkdownDialogDescription: "Choose a name and folder before creating the document.",

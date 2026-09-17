@@ -121,9 +121,10 @@
   @apply gap-3;
 }
 
-/* Docs home reuses Drive grid/list under `.drive-workspace` for layout selectors.
-   Remap drive accent tokens so tiles, list rows, and portaled menus use docs blue. */
-.docs-workspace .drive-workspace {
+/* Docs home and portaled Docs dialogs reuse Drive grid/list under `.drive-workspace`
+   for layout selectors. Remap drive accent tokens so tiles, list rows, view toggle,
+   and portaled menus use docs blue — not Drive green. Drive itself stays green. */
+:is(.docs-workspace, .docs-dialog-surface) .drive-workspace {
   --drive-accent: var(--docs-accent);
   --workspace-accent: var(--docs-accent);
   --color-emerald: var(--docs-accent);
@@ -356,6 +357,7 @@
   --docs-accent-strong: color-mix(in oklab, var(--docs-accent) 70%, #0f172a);
   --workspace-accent: var(--docs-accent);
   --destination-picker-accent: var(--docs-accent);
+  --drive-accent: var(--docs-accent);
   --color-emerald: var(--docs-accent);
   --button-primary-bg: var(--docs-accent);
   --button-primary-fg: #ffffff;

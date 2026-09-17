@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
 import {
   Dialog,
@@ -30,6 +30,8 @@ type DriveMoveToDialogShared = {
   rootIcon?: ReactNode;
   /** Portaled dialog theme class (repeat app accent tokens outside the workspace root). */
   dialogSurfaceClassName?: string;
+  /** Docs image-insert file-select: Docs blue listing chrome (not Drive green). */
+  listingTheme?: "docs";
   onClose: () => void;
 };
 
@@ -46,7 +48,6 @@ export type DriveMoveToDialogProps = DriveMoveToDialogShared &
         moveIds?: string[];
         singleItemParent?: string;
         onSelectFile: (file: DriveFile) => void;
-        onUploadFiles?: (files: File[]) => void;
       }
   );
 
@@ -63,18 +64,20 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
     rootLabels,
     rootIcon,
     dialogSurfaceClassName = "drive-dialog-surface",
+    listingTheme,
     onClose,
   } = props;
   const fileSelect = props.mode === "file-select";
+  const docsListingTheme =
+    listingTheme ??
+    (fileSelect && dialogSurfaceClassName.includes("docs-dialog-surface") ? "docs" : undefined);
   const moveIds = fileSelect ? [] : props.moveIds;
   const singleItemParent = props.singleItemParent;
   const onConfirm = fileSelect ? undefined : props.onConfirm;
   const onSelectFile = fileSelect ? props.onSelectFile : undefined;
-  const onUploadFiles = fileSelect ? props.onUploadFiles : undefined;
   const initialBrowsePath = resolveDriveFolderPickerStartPath(view, singleItemParent);
   const [destinationPath, setDestinationPath] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
-  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const handleDestinationChange = useCallback((path: string | null) => {
     setDestinationPath(path);
@@ -114,6 +117,7 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
             groupRootNames={groupRootNames}
             rootLabels={rootLabels}
             rootIcon={rootIcon}
+            listingTheme={docsListingTheme}
             onDestinationChange={handleDestinationChange}
             onSelectedFileChange={handleSelectedFileChange}
           />
@@ -124,36 +128,16 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
             {labels.moveDialogCancel}
           </Button>
           {fileSelect ? (
-            <>
-              <input
-                ref={uploadInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                aria-hidden
-                tabIndex={-1}
-                onChange={(event) => {
-                  const chosen = event.target.files;
-                  if (chosen && chosen.length > 0) {
-                    onUploadFiles?.(Array.from(chosen));
-                  }
-                  event.target.value = "";
-                }}
-              />
-              <Button variant="outline" onClick={() => uploadInputRef.current?.click()}>
-                {labels.fileSelectDialogUpload}
-              </Button>
-              <Button
-                variant="primary"
-                disabled={confirmDisabled}
-                onClick={() => {
-                  if (!selectedFile) return;
-                  onSelectFile?.(selectedFile);
-                }}
-              >
-                {labels.fileSelectDialogInsert}
-              </Button>
-            </>
+            <Button
+              variant="primary"
+              disabled={confirmDisabled}
+              onClick={() => {
+                if (!selectedFile) return;
+                onSelectFile?.(selectedFile);
+              }}
+            >
+              {labels.fileSelectDialogInsert}
+            </Button>
           ) : (
             <Button
               variant="primary"

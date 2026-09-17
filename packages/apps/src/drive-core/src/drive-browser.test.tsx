@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
+import { createDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import "@/drive-core/src/drive-browser.css";
@@ -224,5 +225,23 @@ describe("DriveListView", () => {
 
     expect(screen.queryByRole("columnheader", { name: "Actions" })).toBeNull();
     expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
+  });
+
+  it("uses a drive icon for picker drive roots and a folder icon for nested folders", () => {
+    const root = createDrivePickerRootFile("My Drive", "Personal");
+    const nested: DriveFile = { ...FILE, id: "folder-1", title: "Assets", kind: "folder" };
+    const { container } = render(
+      <div className="drive-workspace">
+        <DriveListView {...baseBrowserProps({ items: [root, nested], itemChrome: "picker" })} />
+      </div>,
+    );
+
+    const personalRow = screen.getByText("Personal").closest("tr");
+    expect(personalRow?.querySelector(".lucide-hard-drive")).toBeTruthy();
+    expect(personalRow?.querySelector(".lucide-folder")).toBeNull();
+    const nestedRow = screen.getByText("Assets").closest("tr");
+    expect(nestedRow?.querySelector(".lucide-folder")).toBeTruthy();
+    expect(nestedRow?.querySelector(".lucide-hard-drive")).toBeNull();
+    expect(container.querySelector(".drive-list-view")).toBeTruthy();
   });
 });
