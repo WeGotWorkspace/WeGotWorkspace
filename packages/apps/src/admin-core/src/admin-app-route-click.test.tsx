@@ -66,7 +66,7 @@ describe("AdminApp sidebar → URL", { timeout: 15_000 }, () => {
     await waitFor(() => {
       expect(history.location.pathname).toBe("/admin/mail");
     });
-    expect(await screen.findByText("IMAP (incoming)")).toBeTruthy();
+    expect(await screen.findByText("Enable Mail")).toBeTruthy();
   });
 
   it("writes /admin/plugins when the user picks Plugins and back/forward restore the pane", async () => {
@@ -101,7 +101,7 @@ describe("AdminApp sidebar → URL", { timeout: 15_000 }, () => {
     await waitFor(() => {
       expect(history.location.pathname).toBe("/admin/mail");
     });
-    expect(await screen.findByText("IMAP (incoming)")).toBeTruthy();
+    expect(await screen.findByText("Enable Mail")).toBeTruthy();
   });
 
   it("canonicalizes unknown /admin/:section paths to /admin", async () => {

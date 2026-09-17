@@ -7,6 +7,7 @@ import {
   type ChangesResponse,
   type GetResponse,
   type JmapId,
+  type JmapMethodErrorArgs,
   type JmapState,
   type QueryResponse,
   type SetArgs,
@@ -166,14 +167,11 @@ export class JmapMailClient {
     const errorInvocation = response.methodResponses.find(
       ([name, , id]) => name === "error" && id === getCallId,
     );
-    throw new JmapMethodError(
-      "Email/get",
-      getCallId,
-      (errorInvocation?.[1] as { type?: string; description?: string }) ?? {
-        type: "serverFail",
-        description: "Email query+get failed",
-      },
-    );
+    const errorArgs: JmapMethodErrorArgs =
+      errorInvocation && typeof errorInvocation[1]?.type === "string"
+        ? (errorInvocation[1] as JmapMethodErrorArgs)
+        : { type: "serverFail", description: "Email query+get failed" };
+    throw new JmapMethodError("Email/get", getCallId, errorArgs);
   }
 
   async emailChanges(accountId: JmapId, sinceState: JmapState, maxChanges?: number) {

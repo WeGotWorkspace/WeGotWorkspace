@@ -41,7 +41,9 @@ final class WgwServiceProvider extends ServiceProvider
                 array_map($app->make(...), JmapMethodDispatcher::METHODS),
             ),
         );
-        $this->app->singleton(
+        // Per-request: MailCapabilityProvider gates on the JWT principal, so a
+        // singleton would freeze the first user's advertised mail URNs.
+        $this->app->scoped(
             JmapCapabilitySet::class,
             fn ($app): JmapCapabilitySet => new JmapCapabilitySet(
                 $app->make(JmapMethodDispatcher::class),

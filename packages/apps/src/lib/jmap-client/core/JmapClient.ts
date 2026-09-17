@@ -177,7 +177,11 @@ export class JmapClient {
     }
     const [responseName, responseArgs] = invocation;
     if (responseName === "error") {
-      throw new JmapMethodError(name, callId, responseArgs as JmapMethodErrorArgs);
+      const args: JmapMethodErrorArgs =
+        typeof responseArgs.type === "string"
+          ? (responseArgs as JmapMethodErrorArgs)
+          : { type: "serverFail", description: "JMAP method error", ...responseArgs };
+      throw new JmapMethodError(name, callId, args);
     }
     return responseArgs as TResponse;
   }

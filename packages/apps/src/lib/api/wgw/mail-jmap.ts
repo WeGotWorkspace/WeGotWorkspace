@@ -246,7 +246,7 @@ async function uploadRfc822(
     body: rfc822,
   });
   if (!res.ok) {
-    const body = await parseApiErrorJson(res).catch(() => null);
+    const body = parseApiErrorJson(await res.text());
     throw new Error(
       `POST /jmap/upload failed (${res.status})${body ? `: ${JSON.stringify(body)}` : ""}`,
     );
@@ -275,8 +275,8 @@ function buildRfc822(
 }
 
 export function createJmapMailOperations(_mailboxLoader?: MailMailboxLoader): MailAPIOperations {
-  const emailIdOf = (message: Pick<Mail, "id" | "folder" | "uid">) =>
-    message.id.includes(":") ? message.id : `${message.folder}:${message.uid}`;
+  const emailIdOf = (message: Pick<Mail, "folder" | "uid"> & { id?: string }) =>
+    message.id?.includes(":") ? message.id : `${message.folder}:${message.uid}`;
 
   return {
     patchMessage: async (message, patch) => {

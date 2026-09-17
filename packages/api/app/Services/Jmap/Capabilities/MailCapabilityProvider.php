@@ -10,17 +10,18 @@ use App\Services\Mail\ImapExtension;
 use App\Services\Mail\MailCredentialService;
 use App\Services\Mail\MailUserRuntime;
 use App\Support\WgwSettings;
-use Illuminate\Http\Request;
 
 /**
  * urn:ietf:params:jmap:mail — omitted when the instance kill-switch is off,
  * this user has no mailbox account, or ext-imap is missing.
+ *
+ * Request is resolved lazily: JmapCapabilitySet may be a long-lived binding,
+ * and injecting Request in the constructor would freeze the first principal.
  */
 final class MailCapabilityProvider implements JmapCapabilityProviderInterface
 {
     public function __construct(
         private MailCredentialService $credentials,
-        private Request $request,
     ) {}
 
     public function urn(): string
@@ -37,7 +38,7 @@ final class MailCapabilityProvider implements JmapCapabilityProviderInterface
         if (! ImapExtension::loaded()) {
             return false;
         }
-        $principal = $this->request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+        $principal = request()->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
         if (! is_array($principal) || ! isset($principal['username'])) {
             return false;
         }
