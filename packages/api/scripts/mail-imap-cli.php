@@ -9,6 +9,7 @@ declare(strict_types=1);
  * Usage: php mail-imap-cli.php <operation> <username> <base64-json-params>
  */
 
+use App\Services\Jmap\JmapMethodDispatcher;
 use App\Services\Mail\MailBinaryDownload;
 use App\Services\Mail\MailOperationService;
 use App\Services\Mail\MailResponseException;
@@ -65,6 +66,11 @@ try {
         'moveMessage' => $mail->moveMessage($username, $params),
         'send' => $mail->send($username, $params),
         'saveDraft' => $mail->saveDraft($username, $params),
+        'jmapDispatch' => $app->make(JmapMethodDispatcher::class)->dispatch(
+            $username,
+            is_array($params['using'] ?? null) ? $params['using'] : [],
+            is_array($params['methodCalls'] ?? null) ? $params['methodCalls'] : [],
+        ),
         default => throw new InvalidArgumentException('Unknown mail IMAP operation: '.$operation),
     };
 

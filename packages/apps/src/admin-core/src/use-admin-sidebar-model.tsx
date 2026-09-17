@@ -2,7 +2,6 @@ import {
   DatabaseBackup,
   Database,
   Search,
-  Mail,
   Send,
   MessagesSquare,
   Puzzle,
@@ -26,12 +25,6 @@ export function useAdminSidebarModel(): AdminSectionDescriptor[] {
       label: "Users & Groups",
       description: "Directory principals and memberships",
       icon: <Users className="size-3.5" />,
-    },
-    {
-      id: "mail",
-      label: "Mail",
-      description: "Server IMAP/SMTP settings",
-      icon: <Mail className="size-3.5" />,
     },
     {
       id: "email-delivery",

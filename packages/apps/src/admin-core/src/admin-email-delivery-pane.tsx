@@ -65,8 +65,8 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
 
       <Card title="From and transport">
         <p className="admin-email-delivery-pane__help">
-          Platform email is separate from the Mail app IMAP/SMTP pane. Password recovery uses this
-          From address and transport. If From is empty, outbound mail uses{" "}
+          Platform email is separate from each person’s Mail IMAP/SMTP in Settings. Password
+          recovery uses this From address and transport. If From is empty, outbound mail uses{" "}
           {MAIL_DELIVERY_PLACEHOLDER_FROM} and may land in spam. Set a real address you control.
         </p>
         <FormField htmlFor="admin-mail-delivery-from" label="From address">

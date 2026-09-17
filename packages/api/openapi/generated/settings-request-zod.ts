@@ -13,4 +13,14 @@ export const settingsProfileRequestOpenapiSchema = z.object({
 export const settingsMailRequestOpenapiSchema = z.object({
   imapUsername: z.string().optional(),
   imapPassword: z.string().optional(),
+  imapHost: z.string().optional(),
+  imapPort: z.unknown().optional(),
+  imapSecurity: z.string().optional(),
+  smtpHost: z.string().optional(),
+  smtpPort: z.unknown().optional(),
+  smtpSecurity: z.string().optional(),
+  smtpUsername: z.string().optional(),
+  smtpPassword: z.string().optional(),
+  clearImapPassword: z.unknown().optional(),
+  clearSmtpPassword: z.unknown().optional(),
 });

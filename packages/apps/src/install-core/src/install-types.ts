@@ -77,9 +77,13 @@ export type InstallMailForm = {
   imapHost: string;
   imapPort: string;
   imapSec: string;
+  imapUsername: string;
+  imapPassword: string;
   smtpHost: string;
   smtpPort: string;
   smtpSec: string;
+  smtpUsername: string;
+  smtpPassword: string;
 };
 
 export type InstallMeetForm = {

@@ -72,3 +72,29 @@ M1 cannot be contract-verified against `503 imap_connect`. Prerequisite task bef
 5. Envelope methods per the phasing table; batch-scoped IMAP session + per-batch subprocess isolation.
 6. `mb-` blob resolver on `/jmap/download`.
 7. Lifecycle contract test against the fixture; mixed-domain batch test; done gate.
+
+## Implementation notes (this epic)
+
+These pin review decisions from the Fully JMAP Mail plan. They do not reopen the build/defer gate.
+
+### Email / `mb-` ids include UIDVALIDITY
+
+Wire ids are `{mailAccountId}:{base64url(mailbox)}:{uidvalidity}:{uid}` (today `mailAccountId=primary`). After a UIDVALIDITY bump IMAP may reuse the same uid for a different message. `/changes` returns `cannotCalculateChanges`. `Email/get` and `mb-` download of an id whose uidvalidity does not match the live mailbox return `notFound` — never the new message.
+
+Mailbox ids stay `{mailAccountId}:{base64url(mailbox)}` (folder identity is the mailbox name).
+
+### Mixed-mailbox batches: one IMAP session, sequential SELECT
+
+One IMAP session per mail account per `/jmap` POST. Methods in the same POST that hit INBOX then Sent reuse that connection with sequential SELECT / `imap_reopen` (scope cut #3: no pooling). Cost is extra IMAP round-trips **inside** one HTTP request, not extra Apache forks. `MailImapProcess` isolation is per-batch when Apache isolate is on.
+
+### No `jmap_blobs` copy for `mb-`
+
+Bodies and attachments stream live via `imap_fetchbody` on `/jmap/download`. Large attachments must not land in `jmap_blobs` or its GC. Every download is a fresh IMAP fetch (no WGW blob cache). Drafts/submission still use `jb-` uploads.
+
+### IMAP adapter is the permanent OSS path
+
+OSS is always a mail **client** against arbitrary external IMAP. The IMAP→JMAP envelope is not a temporary bridge. A later native-JMAP route against hosted Stalwart is an explicit RFC, not an opportunistic shortcut in M1/M2.
+
+### Per-user IMAP + SMTP
+
+Mail-app hosts live on `mail_user_credentials`, not instance `mail_imap_*` / `mail_smtp_*`. There is no instance Mail kill-switch: JMAP mail and MCP mail tools follow this user’s mailbox row (and `ext-imap`). Admin Email delivery (`mail_delivery_*`) is unchanged.

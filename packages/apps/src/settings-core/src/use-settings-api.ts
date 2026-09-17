@@ -13,7 +13,7 @@ export function useSettingsAPI(source?: SettingsApiSource) {
     () => ({
       user: { username: "", displayName: "", email: "" },
       groups: [],
-      mail: { imapUsername: "", imapHasPassword: false },
+      mail: { imapUsername: "", imapHasPassword: false, smtpUsername: "", smtpPasswordSet: false },
       mailServer: {
         imapHost: "",
         imapPort: 0,

@@ -975,6 +975,40 @@ final class MailImapClient
         return max(0, (int) $st->unseen);
     }
 
+    /**
+     * IMAP STATUS for UIDVALIDITY / UIDNEXT / UNSEEN / MESSAGES.
+     *
+     * @return array{unseen: int, messages: int, uidnext: int, uidvalidity: int}|null
+     */
+    public static function mailboxStatus(Connection $conn, string $ref, string $mailbox): ?array
+    {
+        if (! function_exists('imap_status')) {
+            return null;
+        }
+        $st = @imap_status($conn, $ref.$mailbox, \SA_UNSEEN | \SA_MESSAGES | \SA_UIDNEXT | \SA_UIDVALIDITY);
+        if ($st === false) {
+            return null;
+        }
+
+        return [
+            'unseen' => max(0, (int) ($st->unseen ?? 0)),
+            'messages' => max(0, (int) ($st->messages ?? 0)),
+            'uidnext' => max(0, (int) ($st->uidnext ?? 0)),
+            'uidvalidity' => max(0, (int) ($st->uidvalidity ?? 0)),
+        ];
+    }
+
+    public static function appendRfc822(Connection $conn, string $ref, string $mailbox, string $rfc822, string $flags = ''): bool
+    {
+        if (! function_exists('imap_append')) {
+            return false;
+        }
+
+        return $flags !== ''
+            ? @imap_append($conn, $ref.$mailbox, $rfc822, $flags)
+            : @imap_append($conn, $ref.$mailbox, $rfc822);
+    }
+
     public static function createMailbox(Connection $conn, string $ref, string $fullUtf8Path): bool
     {
         $enc = function_exists('imap_utf7_encode') ? @imap_utf7_encode($fullUtf8Path) : $fullUtf8Path;

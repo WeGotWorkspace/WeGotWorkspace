@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Mail;
 
+use App\Services\Jmap\JmapCapabilities;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\Support\MailTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -31,6 +31,28 @@ final class MailAccessControlTest extends WgwDatabaseTestCase
     public static function guestMailRoutesProvider(): iterable
     {
         yield 'GET status' => ['GET', '/api/v1/mail/status', null];
+        yield 'POST jmap' => ['POST', '/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::MAIL],
+            'methodCalls' => [['Mailbox/get', ['accountId' => 'bob', 'ids' => null], 'c0']],
+        ]];
+        yield 'GET jmap session' => ['GET', '/api/v1/jmap/session', null];
+    }
+
+    #[DataProvider('guestMailRoutesProvider')]
+    public function test_guest_mail_routes_return_unauthorized(string $method, string $uri, ?array $body): void
+    {
+        if ($method === 'GET') {
+            $this->getJson($uri)->assertUnauthorized();
+        } else {
+            $this->json($method, $uri, $body ?? [])->assertUnauthorized();
+        }
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: string, 2: array<string, mixed>|null}>
+     */
+    public static function removedMailboxRestProvider(): iterable
+    {
         yield 'GET folders' => ['GET', '/api/v1/mail/folders', null];
         yield 'POST folders' => ['POST', '/api/v1/mail/folders', ['name' => 'Projects']];
         yield 'PATCH folders' => ['PATCH', '/api/v1/mail/folders', ['folder' => 'SU5CT1g', 'parentMailbox' => '']];
@@ -46,13 +68,15 @@ final class MailAccessControlTest extends WgwDatabaseTestCase
         yield 'GET attachment download' => ['GET', '/api/v1/mail/messages/SU5CT1g:1/attachments/1', null];
     }
 
-    #[DataProvider('guestMailRoutesProvider')]
-    public function test_guest_mail_routes_return_unauthorized(string $method, string $uri, ?array $body): void
+    #[DataProvider('removedMailboxRestProvider')]
+    public function test_removed_mailbox_rest_returns_not_found_for_guests_and_users(string $method, string $uri, ?array $body): void
     {
         if ($method === 'GET') {
-            $this->getJson($uri)->assertUnauthorized();
+            $this->getJson($uri)->assertNotFound();
+            $this->withBearer($this->userBearerToken())->getJson($uri)->assertNotFound();
         } else {
-            $this->json($method, $uri, $body ?? [])->assertUnauthorized();
+            $this->json($method, $uri, $body ?? [])->assertNotFound();
+            $this->withBearer($this->userBearerToken())->json($method, $uri, $body ?? [])->assertNotFound();
         }
     }
 
@@ -74,17 +98,21 @@ final class MailAccessControlTest extends WgwDatabaseTestCase
             ->assertJsonPath('accountConfigured', false);
     }
 
-    #[RequiresPhpExtension('imap')]
-    public function test_mail_routes_use_jwt_principal_not_other_users_credentials(): void
+    public function test_jmap_session_uses_jwt_principal_not_other_users_mailbox(): void
     {
         $this->seedMailCredentials('bob', 'bob.mail@example.test', 'mail-secret');
 
-        $this->withBearer($this->adminBearerToken())->getJson('/api/v1/mail/folders')
-            ->assertStatus(400)
-            ->assertJson(['error' => 'not_configured']);
+        $alice = $this->withBearer($this->adminBearerToken())
+            ->getJson('/api/v1/jmap/session')
+            ->assertOk()
+            ->json();
+        $this->assertArrayNotHasKey(JmapCapabilities::MAIL, $alice['capabilities']);
 
-        $this->withBearer($this->userBearerToken())->getJson('/api/v1/mail/folders')
-            ->assertStatus(503)
-            ->assertJson(['error' => 'imap_connect']);
+        $bob = $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/jmap/session')
+            ->assertOk()
+            ->json();
+        $this->assertArrayHasKey(JmapCapabilities::MAIL, $bob['capabilities']);
+        $this->assertSame('bob', $bob['primaryAccounts'][JmapCapabilities::MAIL]);
     }
 }

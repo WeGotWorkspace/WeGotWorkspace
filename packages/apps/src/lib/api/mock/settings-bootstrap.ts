@@ -22,6 +22,8 @@ const DEFAULT_DATA: SettingsUIData = {
   mail: {
     imapUsername: "demo@example.test",
     imapHasPassword: true,
+    smtpUsername: "",
+    smtpPasswordSet: false,
   },
   mailServer: {
     imapHost: "imap.northlight.studio",

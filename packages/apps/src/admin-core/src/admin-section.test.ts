@@ -13,13 +13,12 @@ describe("admin-section", () => {
   it("maps the default users pane to /admin", () => {
     expect(ADMIN_DEFAULT_SECTION).toBe("users");
     expect(adminPathFor("users")).toBe("/admin");
-    expect(adminPathFor("mail")).toBe("/admin/mail");
-    expect(adminPathFor("mcp")).toBe("/admin/mcp");
     expect(adminPathFor("email-delivery")).toBe("/admin/email-delivery");
+    expect(adminPathFor("mcp")).toBe("/admin/mcp");
     expect(adminNavigateTarget("users")).toEqual({ to: "/admin" });
-    expect(adminNavigateTarget("mail")).toEqual({
+    expect(adminNavigateTarget("email-delivery")).toEqual({
       to: "/admin/$section",
-      params: { section: "mail" },
+      params: { section: "email-delivery" },
     });
   });
 

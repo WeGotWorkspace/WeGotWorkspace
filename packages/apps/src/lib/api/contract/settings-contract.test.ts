@@ -18,6 +18,8 @@ const settingsStateFixture = {
   mail: {
     imapUsername: "alice@mail.example.test",
     imapHasPassword: true,
+    smtpUsername: "",
+    smtpPasswordSet: false,
   },
   mailServer: {
     imapHost: "imap.example.test",
@@ -92,6 +94,16 @@ describe("settings UI ↔ OpenAPI contract", () => {
           path: "mail.imapHasPassword",
           api: settingsStateFixture.mail.imapHasPassword,
           ui: ui.mail.imapHasPassword,
+        },
+        {
+          path: "mail.smtpUsername",
+          api: settingsStateFixture.mail.smtpUsername,
+          ui: ui.mail.smtpUsername,
+        },
+        {
+          path: "mail.smtpPasswordSet",
+          api: settingsStateFixture.mail.smtpPasswordSet,
+          ui: ui.mail.smtpPasswordSet,
         },
         { path: "mailServer", api: settingsStateFixture.mailServer, ui: ui.mailServer },
         { path: "logoutUrl", api: settingsStateFixture.logoutUrl, ui: ui.logoutUrl },

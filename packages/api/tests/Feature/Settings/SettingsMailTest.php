@@ -107,18 +107,112 @@ final class SettingsMailTest extends WgwDatabaseTestCase
             ->assertJsonPath('error', 'Mail password is required.');
     }
 
-    public function test_mail_servers_are_readable_from_settings_state(): void
+    public function test_mail_servers_are_empty_until_the_user_saves_them(): void
     {
         $token = $this->userBearerToken();
 
         $this->withBearer($token)->getJson('/api/v1/settings/state')
             ->assertOk()
-            ->assertJsonPath('mailServer.imapHost', 'imap.example.test')
-            ->assertJsonPath('mailServer.imapPort', 993)
-            ->assertJsonPath('mailServer.imapSecurity', 'ssl')
-            ->assertJsonPath('mailServer.smtpHost', 'smtp.example.test')
-            ->assertJsonPath('mailServer.smtpPort', 587)
-            ->assertJsonPath('mailServer.smtpSecurity', 'starttls');
+            ->assertJsonPath('mailServer.imapHost', '')
+            ->assertJsonPath('mailServer.smtpHost', '')
+            ->assertJsonPath('mail.smtpPasswordSet', false);
+    }
+
+    public function test_mail_put_saves_per_user_endpoints_and_omitted_password_keeps_secret(): void
+    {
+        $token = $this->userBearerToken();
+
+        $this->withBearer($token)->putJson('/api/v1/settings/mail', [
+            'imapUsername' => 'bob.mail@example.test',
+            'imapPassword' => 'mail-secret',
+            'imapHost' => 'imap.user.test',
+            'imapPort' => 993,
+            'imapSecurity' => 'ssl',
+            'smtpHost' => 'smtp.user.test',
+            'smtpPort' => 587,
+            'smtpSecurity' => 'starttls',
+        ])
+            ->assertOk()
+            ->assertJsonPath('mailServer.imapHost', 'imap.user.test')
+            ->assertJsonPath('mailServer.smtpHost', 'smtp.user.test')
+            ->assertJsonPath('mail.imapHasPassword', true);
+
+        $this->withBearer($token)->putJson('/api/v1/settings/mail', [
+            'smtpPort' => 2525,
+        ])
+            ->assertOk()
+            ->assertJsonPath('mailServer.smtpPort', 2525)
+            ->assertJsonPath('mailServer.imapHost', 'imap.user.test')
+            ->assertJsonPath('mail.imapHasPassword', true);
+
+        $this->withBearer($token)->putJson('/api/v1/settings/mail', [
+            'imapPassword' => '',
+            'smtpHost' => 'smtp.other.test',
+        ])
+            ->assertOk()
+            ->assertJsonPath('mailServer.smtpHost', 'smtp.other.test')
+            ->assertJsonPath('mail.imapHasPassword', true);
+    }
+
+    public function test_mail_clear_password_flags_remove_stored_secrets(): void
+    {
+        $token = $this->userBearerToken();
+
+        $this->withBearer($token)->putJson('/api/v1/settings/mail', [
+            'imapUsername' => 'bob.mail@example.test',
+            'imapPassword' => 'mail-secret',
+            'smtpUsername' => 'smtp-bob',
+            'smtpPassword' => 'smtp-secret',
+            'imapHost' => 'imap.user.test',
+            'smtpHost' => 'smtp.user.test',
+        ])->assertOk()
+            ->assertJsonPath('mail.smtpPasswordSet', true)
+            ->assertJsonPath('mail.smtpUsername', 'smtp-bob');
+
+        $this->withBearer($token)->putJson('/api/v1/settings/mail', [
+            'clearSmtpPassword' => true,
+        ])
+            ->assertOk()
+            ->assertJsonPath('mail.smtpPasswordSet', false)
+            ->assertJsonPath('mail.imapHasPassword', true);
+
+        $this->withBearer($token)->putJson('/api/v1/settings/mail', [
+            'clearImapPassword' => true,
+            'imapPassword' => 'will-be-ignored',
+        ])->assertStatus(400)
+            ->assertJsonPath('error', 'Mail password is required.');
+    }
+
+    public function test_mail_accounts_are_isolated_per_user(): void
+    {
+        $bob = $this->userBearerToken();
+        $alice = $this->adminBearerToken();
+
+        $this->withBearer($bob)->putJson('/api/v1/settings/mail', [
+            'imapUsername' => 'bob.mail@example.test',
+            'imapPassword' => 'bob-secret',
+            'imapHost' => 'imap.bob.test',
+            'smtpHost' => 'smtp.bob.test',
+            'smtpPort' => 2525,
+        ])->assertOk();
+
+        $this->withBearer($alice)->putJson('/api/v1/settings/mail', [
+            'imapUsername' => 'alice.mail@example.test',
+            'imapPassword' => 'alice-secret',
+            'imapHost' => 'imap.alice.test',
+            'smtpHost' => 'smtp.alice.test',
+            'smtpPort' => 587,
+        ])->assertOk();
+
+        $this->withBearer($bob)->getJson('/api/v1/settings/state')
+            ->assertOk()
+            ->assertJsonPath('mailServer.smtpHost', 'smtp.bob.test')
+            ->assertJsonPath('mailServer.smtpPort', 2525);
+
+        $this->withBearer($alice)->getJson('/api/v1/settings/state')
+            ->assertOk()
+            ->assertJsonPath('mailServer.smtpHost', 'smtp.alice.test')
+            ->assertJsonPath('mailServer.smtpPort', 587);
     }
 
     public function test_mail_accepts_post_with_method_override(): void

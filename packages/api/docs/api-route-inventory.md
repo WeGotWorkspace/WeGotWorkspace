@@ -43,14 +43,9 @@ Artifact-based REST surface. **Authoritative contract:** `openapi/openapi.json` 
 
 ## Mail
 
-| Route | Access |
-|-------|--------|
-| `GET /api/v1/mail/status` | user |
-| `GET/POST/PATCH/DELETE /api/v1/mail/folders` | user |
-| `GET/POST /api/v1/mail/messages` | user |
-| `POST /api/v1/mail/drafts` | user |
-| `GET/PATCH/DELETE /api/v1/mail/messages/{messageId}` | user |
-| `GET /api/v1/mail/messages/{messageId}/attachments/{attachmentId}` | user |
+| Route | Access | Notes |
+|-------|--------|-------|
+| `GET /api/v1/mail/status` | user | Per-user mailbox readiness. Mailbox CRUD and send/receive are JMAP (`/jmap`). |
 
 ## Search + Workspace
 

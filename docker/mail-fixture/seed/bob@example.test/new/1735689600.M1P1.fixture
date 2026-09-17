@@ -1,0 +1,10 @@
+Return-Path: <alice@example.test>
+From: Alice Example <alice@example.test>
+To: Bob Example <bob@example.test>
+Subject: Project kickoff
+Message-ID: <thread-root@example.test>
+Date: Thu, 01 Jan 2026 12:00:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hello Bob, kicking off the mail fixture thread.

@@ -43,8 +43,6 @@ use App\Mcp\Tools\TaskListWriteTool;
 use App\Mcp\Tools\TasksListTool;
 use App\Mcp\Tools\TaskWriteTool;
 use App\Mcp\Tools\WhoamiTool;
-use App\Models\AppSetting;
-use App\Services\Settings\SettingKeys;
 use App\Support\WgwSettings;
 
 final class McpToolCatalog
@@ -96,11 +94,8 @@ final class McpToolCatalog
             $tools[] = NotesQueryTool::class;
             $tools[] = NoteWriteTool::class;
         }
-        $mailOn = (bool) (AppSetting::getValue(SettingKeys::MAIL_ENABLED, true));
-        if ($mailOn) {
-            $tools[] = MailStatusTool::class;
-            $tools[] = MailSendTool::class;
-        }
+        $tools[] = MailStatusTool::class;
+        $tools[] = MailSendTool::class;
 
         $tools[] = MeetChannelListTool::class;
         $tools[] = MeetChannelWriteTool::class;

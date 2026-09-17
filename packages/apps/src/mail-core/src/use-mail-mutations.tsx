@@ -591,7 +591,7 @@ export function useMailMutations({ shell, list }: UseMailMutationsArgs) {
       try {
         const blob = operations
           ? await operations.downloadAttachment(
-              { folder: active.folder, uid: active.uid },
+              { id: active.id, folder: active.folder, uid: active.uid },
               attachment,
             )
           : null;

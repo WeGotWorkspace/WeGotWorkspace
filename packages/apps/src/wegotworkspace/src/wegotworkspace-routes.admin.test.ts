@@ -14,7 +14,7 @@ describe("wegotworkspace admin routes", () => {
     expect(router.state.matches.some((match) => "section" in match.params)).toBe(false);
   });
 
-  it("navigates from /admin to /admin/mail via the $section route", async () => {
+  it("navigates from /admin to /admin/email-delivery via the $section route", async () => {
     const history = createMemoryHistory({
       initialEntries: ["/admin"],
     });
@@ -22,15 +22,15 @@ describe("wegotworkspace admin routes", () => {
     await router.load();
     expect(router.state.location.pathname).toBe("/admin");
 
-    await router.navigate({ to: "/admin/$section", params: { section: "mail" } });
-    expect(router.state.location.pathname).toBe("/admin/mail");
+    await router.navigate({ to: "/admin/$section", params: { section: "email-delivery" } });
+    expect(router.state.location.pathname).toBe("/admin/email-delivery");
 
     await router.navigate({ to: "/admin/plugins" });
     expect(router.state.location.pathname).toBe("/admin/plugins");
   });
 
   it("matches sidebar section slugs on /admin/:section deep links", async () => {
-    for (const section of ["mail", "plugins", "updates", "mcp", "email-delivery"] as const) {
+    for (const section of ["plugins", "updates", "mcp", "email-delivery"] as const) {
       const history = createMemoryHistory({
         initialEntries: [`/admin/${section}`],
       });

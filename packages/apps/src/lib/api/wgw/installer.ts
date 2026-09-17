@@ -41,9 +41,13 @@ export type InstallerInstallPayload = {
   mail_imap_host: string;
   mail_imap_port: string;
   mail_imap_security: string;
+  mail_imap_username: string;
+  mail_imap_password: string;
   mail_smtp_host: string;
   mail_smtp_port: string;
   mail_smtp_security: string;
+  mail_smtp_username: string;
+  mail_smtp_password: string;
   meet_enabled: boolean;
   rtc_stun_url: string;
   rtc_turn_url: string;

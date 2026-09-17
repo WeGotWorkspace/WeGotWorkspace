@@ -9,10 +9,12 @@ use App\Models\MailUserCredential;
 
 final class MailCredentialService
 {
+    public const MAIL_ACCOUNT_PRIMARY = 'primary';
+
     public function __construct(private MailSecretService $secrets) {}
 
     /**
-     * @param  array{imapUsername: string, imapPassword: string}|null  $account
+     * @param  array<string, mixed>|null  $account
      */
     public static function isAccountConfigured(?array $account): bool
     {
@@ -20,11 +22,25 @@ final class MailCredentialService
             return false;
         }
 
-        return trim($account['imapUsername']) !== '' && ($account['imapPassword'] ?? '') !== '';
+        return trim((string) ($account['imapUsername'] ?? '')) !== ''
+            && (string) ($account['imapPassword'] ?? '') !== ''
+            && trim((string) ($account['imapHost'] ?? '')) !== ''
+            && trim((string) ($account['smtpHost'] ?? '')) !== '';
     }
 
     /**
-     * @return array{imapUsername: string, imapPassword: string}|null
+     * @return array{
+     *   imapUsername: string,
+     *   imapPassword: string,
+     *   imapHost: string,
+     *   imapPort: int,
+     *   imapSecurity: string,
+     *   smtpHost: string,
+     *   smtpPort: int,
+     *   smtpSecurity: string,
+     *   smtpUsername: string,
+     *   smtpPassword: string
+     * }|null
      */
     public function loadAccount(string $username): ?array
     {
@@ -40,20 +56,64 @@ final class MailCredentialService
         return [
             'imapUsername' => trim((string) $row->imap_username),
             'imapPassword' => $this->decryptField((string) $row->password_enc, $username, $secret),
+            'imapHost' => trim((string) ($row->imap_host ?? '')),
+            'imapPort' => self::port((int) ($row->imap_port ?? 993), 993),
+            'imapSecurity' => self::security((string) ($row->imap_security ?? 'ssl')),
+            'smtpHost' => trim((string) ($row->smtp_host ?? '')),
+            'smtpPort' => self::port((int) ($row->smtp_port ?? 587), 587),
+            'smtpSecurity' => self::security((string) ($row->smtp_security ?? 'starttls')),
+            'smtpUsername' => trim((string) ($row->smtp_username ?? '')),
+            'smtpPassword' => $this->decryptField((string) ($row->smtp_password_enc ?? ''), $username, $secret),
         ];
     }
 
+    /**
+     * Legacy helper used by existing tests and the installer seed path.
+     */
     public function save(string $username, string $imapUsername, string $imapPassword): void
+    {
+        $this->saveAccount($username, [
+            'imapUsername' => $imapUsername,
+            'imapPassword' => $imapPassword,
+        ]);
+    }
+
+    /**
+     * Partial PUT: omitted or empty passwords keep the stored secret unless a
+     * clear* flag is set. Hosts/ports omitted keep stored values.
+     *
+     * @param  array<string, mixed>  $input
+     */
+    public function saveAccount(string $username, array $input): void
     {
         $this->secrets->ensureSecretFile();
 
         $existing = $this->loadAccount($username);
         $existingUsername = is_array($existing) ? $existing['imapUsername'] : '';
         $existingPassword = is_array($existing) ? $existing['imapPassword'] : '';
+        $existingSmtpPassword = is_array($existing) ? $existing['smtpPassword'] : '';
 
-        $mergedUsername = $this->resolveImapUsername($username, $imapUsername, $existingUsername);
-        $incomingPassword = trim($imapPassword);
-        $mergedPassword = $incomingPassword !== '' ? $incomingPassword : $existingPassword;
+        $mergedUsername = $this->resolveImapUsername(
+            $username,
+            trim((string) ($input['imapUsername'] ?? '')),
+            $existingUsername,
+        );
+
+        $clearImap = (bool) ($input['clearImapPassword'] ?? false);
+        $clearSmtp = (bool) ($input['clearSmtpPassword'] ?? false);
+        $incomingPassword = trim((string) ($input['imapPassword'] ?? ''));
+        $incomingSmtpPassword = array_key_exists('smtpPassword', $input)
+            ? trim((string) $input['smtpPassword'])
+            : null;
+
+        $mergedPassword = $clearImap
+            ? ''
+            : ($incomingPassword !== '' ? $incomingPassword : $existingPassword);
+        $mergedSmtpPassword = $clearSmtp
+            ? ''
+            : (($incomingSmtpPassword !== null && $incomingSmtpPassword !== '')
+                ? $incomingSmtpPassword
+                : $existingSmtpPassword);
 
         if ($mergedUsername === '') {
             throw new ApiHttpException(400, 'Mail username is required.', 'bad_request');
@@ -74,6 +134,14 @@ final class MailCredentialService
                 'username' => $normalizedUser,
                 'imap_username' => $mergedUsername,
                 'password_enc' => $this->encryptField($mergedPassword, $normalizedUser, $secret),
+                'imap_host' => $this->mergeString($input, 'imapHost', $existing['imapHost'] ?? ''),
+                'imap_port' => $this->mergePort($input, 'imapPort', (int) ($existing['imapPort'] ?? 993), 993),
+                'imap_security' => $this->mergeSecurity($input, 'imapSecurity', (string) ($existing['imapSecurity'] ?? 'ssl')),
+                'smtp_host' => $this->mergeString($input, 'smtpHost', $existing['smtpHost'] ?? ''),
+                'smtp_port' => $this->mergePort($input, 'smtpPort', (int) ($existing['smtpPort'] ?? 587), 587),
+                'smtp_security' => $this->mergeSecurity($input, 'smtpSecurity', (string) ($existing['smtpSecurity'] ?? 'starttls')),
+                'smtp_username' => $this->mergeString($input, 'smtpUsername', $existing['smtpUsername'] ?? ''),
+                'smtp_password_enc' => $this->encryptField($mergedSmtpPassword, $normalizedUser, $secret),
                 'updated_at' => now()->toDateTimeString(),
             ]
         );
@@ -99,7 +167,7 @@ final class MailCredentialService
     }
 
     /**
-     * @param  array{imapUsername: string, imapPassword: string}|null  $account
+     * @param  array{imapUsername?: string}|null  $account
      */
     public function effectiveImapUsername(string $username, ?array $account): string
     {
@@ -109,6 +177,58 @@ final class MailCredentialService
         }
 
         return trim(MailPrincipalIdentityService::fetch($username)['emailAddress']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function mergeString(array $input, string $key, string $existing): string
+    {
+        if (! array_key_exists($key, $input) || $input[$key] === null) {
+            return $existing;
+        }
+
+        return trim((string) $input[$key]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function mergePort(array $input, string $key, int $existing, int $fallback): int
+    {
+        if (! array_key_exists($key, $input) || $input[$key] === null || $input[$key] === '') {
+            return self::port($existing, $fallback);
+        }
+
+        return self::port((int) $input[$key], $fallback);
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function mergeSecurity(array $input, string $key, string $existing): string
+    {
+        if (! array_key_exists($key, $input) || $input[$key] === null || $input[$key] === '') {
+            return self::security($existing);
+        }
+
+        return self::security((string) $input[$key]);
+    }
+
+    public static function port(int $port, int $fallback): int
+    {
+        if ($port < 1 || $port > 65535) {
+            return $fallback;
+        }
+
+        return $port;
+    }
+
+    public static function security(string $value): string
+    {
+        $s = strtolower(trim($value));
+
+        return in_array($s, ['ssl', 'starttls', 'none'], true) ? $s : 'ssl';
     }
 
     private function key(string $username, string $secret): string

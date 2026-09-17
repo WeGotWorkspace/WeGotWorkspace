@@ -8,6 +8,8 @@ use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodDispatcher;
+use App\Services\Jmap\Mail\MailImapSession;
+use App\Services\Mail\MailImapProcess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -66,7 +68,21 @@ final class JmapApiController
         }
 
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $responses = $this->dispatcher->dispatch((string) $principal['username'], $using, $methodCalls);
+        $username = (string) $principal['username'];
+        $usingMail = in_array(JmapCapabilities::MAIL, $using, true)
+            || in_array(JmapCapabilities::SUBMISSION, $using, true);
+        $session = app(MailImapSession::class);
+        try {
+            $dispatch = fn (): array => $this->dispatcher->dispatch($username, $using, $methodCalls);
+            $responses = $usingMail && MailImapProcess::shouldIsolate()
+                ? MailImapProcess::runJson('jmapDispatch', $username, [
+                    'using' => $using,
+                    'methodCalls' => $methodCalls,
+                ], $dispatch)
+                : $dispatch();
+        } finally {
+            $session->close();
+        }
 
         return response()->json([
             'methodResponses' => $responses,

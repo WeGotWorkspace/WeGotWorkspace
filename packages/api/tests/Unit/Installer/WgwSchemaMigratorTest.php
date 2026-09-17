@@ -120,6 +120,8 @@ final class WgwSchemaMigratorTest extends TestCase
             'mcp_audit_events',
             'mcp_sessions',
             'docs_thread_index',
+            'jmap_mail_sync',
+            'jmap_mail_messages',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
@@ -133,6 +135,8 @@ final class WgwSchemaMigratorTest extends TestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('drive_share_grants', 'grantee_group'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('chat_channel_meta', 'default_for_group'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('mail_user_credentials', 'imap_host'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('jmap_mail_sync', 'mail_account_id'));
     }
 
     private static function legacyAppMigrationVersion(\PDO $pdo): int

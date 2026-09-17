@@ -87,13 +87,19 @@ jobs:
       - name: Prepare Laravel env for tests
         run: |
           cp packages/api/.env.example packages/api/.env
-          php packages/api/artisan key:generate --force --no-interaction
+            php packages/api/artisan key:generate --force --no-interaction
+
+      - name: Start IMAP fixture
+        run: docker compose -f compose.dev.yml --profile mail up -d --build --wait
 
       # Shard 1 also runs greenfield-guard + the Architecture suite; later
       # shards run only their round-robin slice of unit/feature/storage tests.
       - name: API quality gate (shard ${{ matrix.shard }}/2)
         env:
           DONE_GATE_SHARD: ${{ matrix.shard }}/2
+          WGW_IMAP_FIXTURE_HOST: 127.0.0.1
+          WGW_IMAP_FIXTURE_PORT: 1143
+          WGW_SMTP_FIXTURE_PORT: 1025
         run: pnpm run ci:quality:api
 
   apps-quality:
@@ -276,6 +282,9 @@ jobs:
           cp packages/api/.env.example packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
 
+      - name: Start IMAP fixture
+        run: docker compose -f compose.dev.yml --profile mail up -d --build --wait
+
       # PR/push runs only the MySQL parity subset (DB-dialect-relevant tests),
       # split into round-robin shards. The full MySQL suite runs on main +
       # nightly via ci-mysql-full.yml.
@@ -288,4 +297,7 @@ jobs:
           WGW_TEST_MYSQL_USERNAME: root
           WGW_TEST_MYSQL_PASSWORD: root
           WGW_PHPUNIT_SHARD: ${{ matrix.shard }}/2
+          WGW_IMAP_FIXTURE_HOST: 127.0.0.1
+          WGW_IMAP_FIXTURE_PORT: 1143
+          WGW_SMTP_FIXTURE_PORT: 1025
         run: composer --working-dir packages/api run test:mysql:parity:shard

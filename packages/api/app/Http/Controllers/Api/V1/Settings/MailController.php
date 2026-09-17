@@ -28,11 +28,7 @@ final class MailController
 
         $this->syncProfileEmailFromMailLogin($principal['username'], $submittedLogin);
 
-        $this->mailCredentials->save(
-            $principal['username'],
-            $submittedLogin,
-            (string) ($validated['imapPassword'] ?? ''),
-        );
+        $this->mailCredentials->saveAccount($principal['username'], $validated);
 
         return (new SettingsStateResource(
             $this->settings->forUsername($principal['username'])

@@ -25,6 +25,8 @@ export type SettingsGroup = {
 export type SettingsMailCredentials = {
   imapUsername: string;
   imapHasPassword: boolean;
+  smtpUsername: string;
+  smtpPasswordSet: boolean;
 };
 
 export type SettingsMailServer = {

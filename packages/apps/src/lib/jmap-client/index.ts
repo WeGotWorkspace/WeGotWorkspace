@@ -10,6 +10,16 @@ export type { JmapContactsAdapterOptions } from "./adapter/JmapContactsAdapter.j
 export { JmapContactsAdapter } from "./adapter/JmapContactsAdapter.js";
 export { NOTES_USING, JmapNotesClient } from "./notes/JmapNotesClient.js";
 export type { JmapNote, JmapNotebook } from "./notes/types.js";
+export { MAIL_USING, SUBMISSION_USING, JmapMailClient } from "./mail/JmapMailClient.js";
+export type {
+  JmapEmail,
+  JmapEmailAddress,
+  JmapEmailFilterCondition,
+  JmapEmailSubmission,
+  JmapIdentity,
+  JmapMailbox,
+  JmapThread,
+} from "./mail/types.js";
 export type { DateRange } from "./calendars/JmapCalendarsClient.js";
 export { JmapCalendarsClient } from "./calendars/JmapCalendarsClient.js";
 export { JmapFileNodePathCache } from "./filenodes/JmapFileNodePathCache.js";
@@ -51,6 +61,8 @@ export {
   FILENODE_CAPABILITY,
   NOTES_CAPABILITY,
   CHAT_CAPABILITY,
+  MAIL_CAPABILITY,
+  SUBMISSION_CAPABILITY,
   type GetResponse,
   type JmapId,
   type JmapInvocation,

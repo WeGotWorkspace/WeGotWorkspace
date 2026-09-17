@@ -39,10 +39,10 @@ export function InstallMailPane({
 
   return (
     <>
-      <Card title="Mail feature">
+      <Card title="Admin mailbox">
         <InstallFeatureRow
-          label="Enable webmail"
-          desc="Configure server defaults now, user accounts later."
+          label="Configure mailbox now"
+          desc="Optional. Saves IMAP and SMTP on the installing admin so Mail is ready after install. Anyone can fill this later in Settings."
           value={mail.enabled}
           onChange={(value) => setMail((current) => ({ ...current, enabled: value }))}
         />
@@ -75,6 +75,25 @@ export function InstallMailPane({
                 />
               </FieldLabelRow>
             </div>
+            <FieldLabelRow label="IMAP username">
+              <Input
+                value={mail.imapUsername}
+                onChange={(event) =>
+                  setMail((current) => ({ ...current, imapUsername: event.target.value }))
+                }
+                placeholder="Defaults to the admin email"
+              />
+            </FieldLabelRow>
+            <FieldLabelRow label="IMAP password">
+              <Input
+                type="password"
+                value={mail.imapPassword}
+                onChange={(event) =>
+                  setMail((current) => ({ ...current, imapPassword: event.target.value }))
+                }
+                placeholder="Defaults to the admin password"
+              />
+            </FieldLabelRow>
           </Card>
           <Card title="SMTP (outgoing)">
             <FieldLabelRow label="Server">
@@ -102,6 +121,25 @@ export function InstallMailPane({
                 />
               </FieldLabelRow>
             </div>
+            <FieldLabelRow label="SMTP username (optional)">
+              <Input
+                value={mail.smtpUsername}
+                onChange={(event) =>
+                  setMail((current) => ({ ...current, smtpUsername: event.target.value }))
+                }
+                placeholder="Leave empty to reuse IMAP login"
+              />
+            </FieldLabelRow>
+            <FieldLabelRow label="SMTP password (optional)">
+              <Input
+                type="password"
+                value={mail.smtpPassword}
+                onChange={(event) =>
+                  setMail((current) => ({ ...current, smtpPassword: event.target.value }))
+                }
+                placeholder="Leave empty to reuse IMAP password"
+              />
+            </FieldLabelRow>
           </Card>
         </>
       ) : null}

@@ -1,43 +1,48 @@
-Source: #452 (body-hash: b5ecd2cc). Parent epic: #435; design gate #440 delivered and merged with recommendation **build** (PR #448 — [`packages/api/docs/mail/jmap-mail-decision.md`](../../../packages/api/docs/mail/jmap-mail-decision.md)). M1 is additionally gated on the IMAP CI fixture (#451); M2's draft stays in [issue-draft.md](./issue-draft.md) until M1 lands. Umbrella roadmap: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
+Source: #786 (body-hash: 2007b1a8). M2: #787 (body-hash: 60ef7912). Parent epic: #401. Design gate #440 delivered (PR #448 — [`packages/api/docs/mail/jmap-mail-decision.md`](../../../packages/api/docs/mail/jmap-mail-decision.md)). IMAP fixture: #785. Per-user servers: #784. Umbrella: [../000-jmap-envelope-multidomain/](../000-jmap-envelope-multidomain/spec.md).
 
-# JMAP envelope: mail (RFC 8621, phased behind a design gate)
+# JMAP envelope: mail (RFC 8621)
 
-Bring mail behind the JMAP envelope with `urn:ietf:params:jmap:mail`. **Status: draft, planning-only.** Three-step and abortable: a design + decision doc (M0) gates a read-only build (M1), which gates writes + submission (M2). M0 may legitimately conclude "defer" or "reject" — that outcome closes this folder without code.
+Bring mail behind the JMAP envelope with `urn:ietf:params:jmap:mail` (and `urn:ietf:params:jmap:submission` in M2). Delivery is no longer planning-only: M0 decided **build**. This folder is the technical translation of Tasks #786 (M1) and #787 (M2).
 
 ## External spec
 
-**RFC 8621** (final). Full conformance requires `Mailbox`, `Thread`, `Email`, `SearchSnippet`, `Identity`, `EmailSubmission`, `VacationResponse`; this plan phases it and explicitly cuts scope per phase (M0 decides the cuts; `SearchSnippet` and `VacationResponse` are expected phase-3+ candidates, not commitments).
+**RFC 8621** (final). This program ships Mailbox, Thread, Email, Identity, EmailSubmission. `SearchSnippet` and `VacationResponse` stay later.
 
-> **M0 delivered:** the decision doc lives at [`packages/api/docs/mail/jmap-mail-decision.md`](../../../packages/api/docs/mail/jmap-mail-decision.md) (#440) — recommendation: **build M1**, with an IMAP CI fixture as prerequisite and four documented scope cuts. M1's Task derives its AC from that document.
+## Substrate (locked)
 
-## Why mail is different (the substrate problem)
-
-Every other envelope domain sits on Sabre/PDO in-process; mail is **IMAP-backed** (`app/Services/Mail/MailImapClient.php`, `MailImapProcess`, `MailOperationService`) with SMTP for submission (`MailSmtpTransportConfig`, `MailFromAddressResolver`, `MailPrincipalIdentityService`). Consequences:
-
-1. **The Sabre synctoken codec does not apply.** `JmapAccountStateCodec` composes `{uri → synctoken}` maps; IMAP has no synctokens. Mail needs its own state model: per-mailbox `UIDVALIDITY`/`HIGHESTMODSEQ` (QRESYNC/CONDSTORE, RFC 7162 — only when the IMAP server advertises it) or a local sync-cache table. M0 decides; `UIDVALIDITY` change must yield `cannotCalculateChanges` (client refetches), never silently wrong deltas.
-2. **Shared-hosting constraints.** No long-lived connections, one-request-one-response, ext-imap optionality (`ImapExtension`), per-request IMAP session setup cost — an `Email/query` + `Email/get` batch should not open N connections.
-3. **Threading is not free.** RFC 8621 requires `threadId` on every Email and `Thread/get`; IMAP has no server-side thread ids — M0 picks the derivation (References/In-Reply-To walk, cached).
-4. **Blobs are load-bearing.** Bodies and attachments are blob downloads; drafts are created from uploaded blobs. Hard dependency on the blobs chunk ([../438-jmap-blobs/](../438-jmap-blobs/spec.md)).
+- Local sync-cache, not CONDSTORE/QRESYNC (`ext-imap` has no MODSEQ).
+- Email / `mb-` ids: `{mailAccountId}:{base64url(mailbox)}:{uidvalidity}:{uid}` (today `mailAccountId=primary`). Mailbox ids omit UIDVALIDITY.
+- One IMAP session per mail account per `/jmap` POST; mixed-mailbox batches sequential SELECT/`imap_reopen`. `MailImapProcess` isolation is per-batch when Apache isolate is on.
+- `mb-` download streams live `imap_fetchbody` — **no** copy into `jmap_blobs`.
+- Threads: cached `thread_key` from References/In-Reply-To (scope cut #2).
+- Flag-diff window: most recent 500 UIDs per mailbox (cut #1).
+- `Email/query` maps only `imap_search`/`imap_sort` (cut #4).
+- IMAP adapter is the permanent OSS path; native Stalwart JMAP is a later RFC.
 
 ## Non-goals
 
-- Push (RFC 8620 §7) — poll only, consistent with the envelope.
-- `SearchSnippet`, `VacationResponse`, MDN (RFC 9007), S/MIME (RFC 9219), Sieve (RFC 9661) — not in M1/M2; M0 may nominate them for later phases.
-- Replacing the mail REST endpoints (`MailController`, `Services/Mail/*`) — the envelope is additive, as everywhere else.
+- Push, SearchSnippet, VacationResponse, MDN, S/MIME, Sieve
+- Dexie / Goal #400
+- Thread UI (#398)
+- Native Stalwart bypass
+- REST sunset (#789) — envelope is additive until the app cutover lands
+- Extra `session.accounts` (keep `accountId` = principal username)
 
 ## Phases
 
-- **M0 — design + decision doc (no code).** State model, threading, connection budget, blob needs, per-phase scope cuts, and a build/defer/reject recommendation. This is the gate: M1/M2 issues are filed only on "build".
-- **M1 — read-only.** `Mailbox/get|changes`, `Email/get|query|changes`, `Thread/get`; body/attachment download via envelope blobs; mail-specific state codec per M0.
-- **M2 — writes + submission.** `Email/set` (flags, mailbox move, destroy, drafts via uploaded blobs), `Identity/get`, `EmailSubmission/set` over the existing SMTP transport.
+- **M1 (#786):** `Mailbox/get|changes`, `Email/get|query|changes`, `Thread/get`, `mb-` blobs, mail state codec, `MailCapabilityProvider` omit rules
+- **M2 (#787):** `Email/set`, `Mailbox/set`, `Identity/get` (list), `EmailSubmission/set` requiring `identityId`, write-then-sync incremental `/changes`
 
 ## Edge cases to pin in tests
 
-- `sinceState` from a mailbox whose `UIDVALIDITY` changed → `cannotCalculateChanges`, client refetch path exercised.
-- Mixed-domain batch (`Email/query` + `Calendar/get`): states don't bleed; one IMAP session per request, not per method call.
-- Message deleted server-side between `Email/query` and the back-referenced `Email/get` in the same batch → `notFound` entry, not a batch failure.
-- Write-then-sync (M2): after `Email/set`, the next `Email/changes` takes the incremental path (the calendars mismatch-13 lesson).
+- `sinceState` from a mailbox whose `UIDVALIDITY` changed → `cannotCalculateChanges`
+- Stale-id `Email/get` / `mb-` download (uidvalidity mismatch) → `notFound`, never the wrong body
+- Mixed-domain batch (`Email/query` + `Calendar/get`): states don't bleed; one IMAP session per mail account
+- Mixed-mailbox batch (INBOX then Sent): sequential SELECT on that session
+- Message deleted between `Email/query` and back-referenced `Email/get` → `notFound` entry
+- Write-then-sync (M2): after `Email/set`, next `Email/changes` takes the incremental path
+- Capability omitted when this user is not ready **or** no `ext-imap` (distinct reasons)
 
 ## Verification
 
-Lifecycle contract tests against the dev IMAP fixture; `composer done-gate`; OpenAPI + docs per phase. Full plan: [plan.md](./plan.md).
+Lifecycle contract tests against the IMAP fixture; `composer done-gate`; OpenAPI + decision-doc notes. Full plan: [plan.md](./plan.md).

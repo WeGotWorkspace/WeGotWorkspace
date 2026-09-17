@@ -1,0 +1,10 @@
+{
+  "AdminMailSettings": {
+    "type": "object",
+    "description": "Legacy field. Mail is always available; each user configures IMAP/SMTP in Settings. `enabled` is always true.",
+    "properties": {
+      "enabled": { "type": "boolean" }
+    },
+    "required": ["enabled"]
+  }
+}

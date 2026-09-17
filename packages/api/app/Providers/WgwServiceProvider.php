@@ -11,6 +11,7 @@ use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\JmapMethodDispatcher;
+use App\Services\Jmap\Mail\MailImapSession;
 use App\Storage\NoteStoragePaths;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
@@ -33,13 +34,16 @@ final class WgwServiceProvider extends ServiceProvider
         // JMAP envelope: the method-handler and capability-provider lists are
         // class constants (autowiring cannot construct lists); resolving them
         // here keeps the services free of container references.
+        $this->app->scoped(MailImapSession::class);
         $this->app->singleton(
             JmapMethodDispatcher::class,
             fn ($app): JmapMethodDispatcher => new JmapMethodDispatcher(
                 array_map($app->make(...), JmapMethodDispatcher::METHODS),
             ),
         );
-        $this->app->singleton(
+        // Per-request: MailCapabilityProvider gates on the JWT principal, so a
+        // singleton would freeze the first user's advertised mail URNs.
+        $this->app->scoped(
             JmapCapabilitySet::class,
             fn ($app): JmapCapabilitySet => new JmapCapabilitySet(
                 $app->make(JmapMethodDispatcher::class),

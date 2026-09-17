@@ -14,6 +14,33 @@ import type {
   SettingsMailServer,
 } from "@/settings-core/src/settings-types";
 
+function securityToken(raw: string, fallback: "ssl" | "starttls"): "ssl" | "starttls" | "none" {
+  const n = raw.trim().toLowerCase();
+  if (n === "ssl" || n === "ssl/tls") return "ssl";
+  if (n === "starttls") return "starttls";
+  if (n === "none") return "none";
+  return fallback;
+}
+
+function formValuesFromSaved(
+  profileEmail: string,
+  mail: SettingsMailCredentials,
+  mailServer: SettingsMailServer,
+): SettingsMailFormValues {
+  return {
+    imapUsername: mail.imapUsername.trim() || profileEmail.trim(),
+    imapPassword: "",
+    imapHost: mailServer.imapHost,
+    imapPort: String(mailServer.imapPort || 993),
+    imapSecurity: securityToken(mailServer.imapSecurity, "ssl"),
+    smtpHost: mailServer.smtpHost,
+    smtpPort: String(mailServer.smtpPort || 587),
+    smtpSecurity: securityToken(mailServer.smtpSecurity, "starttls"),
+    smtpUsername: mail.smtpUsername,
+    smtpPassword: "",
+  };
+}
+
 export function useSettingsMailForm({
   profileEmail,
   mail,
@@ -26,24 +53,28 @@ export function useSettingsMailForm({
   operations?: SettingsAPIOperations;
 }) {
   const runWithAppToast = useRunWithAppToast();
-  const defaultImapUsername = mail.imapUsername.trim() || profileEmail.trim();
   const mailForm = useForm<SettingsMailFormValues>({
     resolver: zodResolver(settingsMailFormSchema),
-    defaultValues: {
-      imapUsername: defaultImapUsername,
-      imapPassword: "",
-    },
+    defaultValues: formValuesFromSaved(profileEmail, mail, mailServer),
     mode: "onSubmit",
   });
 
   const { reset } = mailForm;
 
   useEffect(() => {
-    reset({
-      imapUsername: mail.imapUsername.trim() || profileEmail.trim(),
-      imapPassword: "",
-    });
-  }, [mail.imapUsername, profileEmail, reset]);
+    reset(formValuesFromSaved(profileEmail, mail, mailServer));
+  }, [
+    mail.imapUsername,
+    mail.smtpUsername,
+    mailServer.imapHost,
+    mailServer.imapPort,
+    mailServer.imapSecurity,
+    mailServer.smtpHost,
+    mailServer.smtpPort,
+    mailServer.smtpSecurity,
+    profileEmail,
+    reset,
+  ]);
 
   const saveMail = mailForm.handleSubmit(async (values) => {
     const requestBody = settingsMailFormToRequest(values);
@@ -53,13 +84,14 @@ export function useSettingsMailForm({
         reset({
           ...values,
           imapPassword: "",
+          smtpPassword: "",
         });
       },
       {
-        success: "Mail credentials saved",
+        success: "Mail account saved",
         successOptions: { icon: <Check className="size-4" /> },
         mapError: (error) =>
-          error instanceof Error ? error.message : "Could not save mail credentials",
+          error instanceof Error ? error.message : "Could not save mail account",
       },
     );
   });
@@ -68,8 +100,10 @@ export function useSettingsMailForm({
     form: mailForm,
     saveMail,
     imapHasPassword: mail.imapHasPassword,
+    smtpPasswordSet: mail.smtpPasswordSet,
     server: mailServer,
     savedImapUsername: mail.imapUsername,
+    savedSmtpUsername: mail.smtpUsername,
   };
 }
 
