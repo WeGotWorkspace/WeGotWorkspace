@@ -135,7 +135,7 @@ export function LoginScreen({
           <Input
             id="password"
             name="password"
-            type="password"
+            variant="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="current-password"

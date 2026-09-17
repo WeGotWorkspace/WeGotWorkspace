@@ -139,4 +139,61 @@ describe("Input", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange.mock.calls[0]?.[0]?.target).toMatchObject({ value: "" });
   });
+
+  it("renders a password field with a show/hide toggle", () => {
+    const { container } = render(
+      <Input
+        variant="password"
+        id="account-password"
+        name="password"
+        autoComplete="new-password"
+        placeholder="At least 10 characters"
+        aria-label="Password"
+      />,
+    );
+    const wrapper = container.querySelector(".input--password");
+    const field = container.querySelector("input");
+    expect(wrapper).not.toBeNull();
+    expect(wrapper!.classList.contains("input--size-md")).toBe(true);
+    expect(field).not.toBeNull();
+    expect(field!.getAttribute("type")).toBe("password");
+    expect(field!.getAttribute("id")).toBe("account-password");
+    expect(field!.getAttribute("name")).toBe("password");
+    expect(field!.getAttribute("autocomplete")).toBe("new-password");
+    expect(field!.getAttribute("placeholder")).toBe("At least 10 characters");
+    expect(screen.getByRole("button", { name: "Show password" })).toBeTruthy();
+  });
+
+  it("toggles password visibility without dropping the typed value", () => {
+    render(<Input variant="password" defaultValue="hunter2hunter" aria-label="Password" />);
+    const field = screen.getByLabelText("Password") as HTMLInputElement;
+    expect(field.type).toBe("password");
+    fireEvent.click(screen.getByRole("button", { name: "Show password" }));
+    expect(field.type).toBe("text");
+    expect(field.value).toBe("hunter2hunter");
+    expect(screen.getByRole("button", { name: "Hide password" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Hide password" }));
+    expect(field.type).toBe("password");
+    expect(field.value).toBe("hunter2hunter");
+  });
+
+  it("treats type=password as the password variant", () => {
+    const { container } = render(<Input type="password" aria-label="Password" />);
+    expect(container.querySelector(".input--password")).not.toBeNull();
+    expect(container.querySelector("input")!.getAttribute("type")).toBe("password");
+  });
+
+  it("disables the visibility toggle when the password field is disabled", () => {
+    render(<Input variant="password" aria-label="Password" disabled />);
+    expect(
+      (screen.getByRole("button", { name: "Show password" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("does not treat password/search wrappers as read-only surfaces", () => {
+    expect(inputCss).toMatch(/input\.input:read-only,/);
+    expect(inputCss).not.toMatch(/\n\.input:read-only,/);
+    expect(inputCss).toMatch(/\.input:has\(>\s*\.input__field:read-only\)/);
+    expect(inputCss).toMatch(/\.input__field \{[\s\S]*-webkit-text-fill-color:\s*inherit/);
+  });
 });

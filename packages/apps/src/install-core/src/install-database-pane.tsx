@@ -3,7 +3,6 @@ import { Card } from "@/card/src/card";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import type { InstallControllerState } from "@/install-core/src/use-install-controller";
-import { InstallPasswordInput } from "@/install-core/src/install-workspace-widgets";
 import { installWorkspacePaneClasses as c } from "@/install-core/src/install-workspace.styles";
 
 export function InstallDatabasePane({
@@ -101,11 +100,13 @@ export function InstallDatabasePane({
                 />
               </FieldLabelRow>
               <FieldLabelRow label="Password">
-                <InstallPasswordInput
+                <Input
+                  variant="password"
                   value={mysql.password}
                   onChange={(event) =>
                     setMysql((current) => ({ ...current, password: event.target.value }))
                   }
+                  placeholder="********"
                 />
               </FieldLabelRow>
             </div>

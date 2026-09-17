@@ -69,3 +69,8 @@
 .login-screen__success p {
   color: color-mix(in oklab, #ffffff 82%, transparent);
 }
+
+.login-screen .input__clear:hover,
+.login-screen .input__visibility:hover:not(:disabled) {
+  background-color: color-mix(in oklab, #ffffff 12%, transparent);
+}

@@ -2,7 +2,6 @@ import { Input } from "@/ui/input";
 import { Card } from "@/card/src/card";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import type { InstallControllerState } from "@/install-core/src/use-install-controller";
-import { InstallPasswordInput } from "@/install-core/src/install-workspace-widgets";
 import { installWorkspacePaneClasses as c } from "@/install-core/src/install-workspace.styles";
 
 export function InstallAdminPane({
@@ -46,21 +45,25 @@ export function InstallAdminPane({
       <div className={c.grid2}>
         <div className={c.fieldStack}>
           <FieldLabelRow label="Password">
-            <InstallPasswordInput
+            <Input
+              variant="password"
               value={admin.password}
               onChange={(event) =>
                 setAdmin((current) => ({ ...current, password: event.target.value }))
               }
+              placeholder="********"
             />
           </FieldLabelRow>
           <p className={c.fieldHint}>At least 10 characters.</p>
         </div>
         <FieldLabelRow label="Confirm password">
-          <InstallPasswordInput
+          <Input
+            variant="password"
             value={admin.password2}
             onChange={(event) =>
               setAdmin((current) => ({ ...current, password2: event.target.value }))
             }
+            placeholder="********"
           />
         </FieldLabelRow>
       </div>

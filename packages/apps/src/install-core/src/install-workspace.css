@@ -200,11 +200,3 @@
 .install-workspace .install-icon-button:hover {
   background-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
 }
-
-.install-workspace .install-password-toggle {
-  @apply absolute right-2 top-1/2 -translate-y-1/2 size-7 rounded-md flex items-center justify-center;
-}
-
-.install-workspace .install-password-toggle:hover {
-  background-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-}
