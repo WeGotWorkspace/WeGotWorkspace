@@ -1,11 +1,21 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarMeetChannelEmailDialog } from "@/calendar-core/src/calendar-meet-channel-email-dialog";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 
 describe("CalendarMeetChannelEmailDialog", () => {
   beforeEach(() => {
+    // Radix FocusScope schedules a deferred focus restore; keep it on fake timers
+    // so afterEach can drain it before jsdom tears down (avoids unhandled
+    // `dispatchEvent` TypeErrors that fail the jsdom shard with exit 1).
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     cleanup();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
   });
 
   it("offers ignore, strip emails, and a primary meeting-link action in the footer", () => {
