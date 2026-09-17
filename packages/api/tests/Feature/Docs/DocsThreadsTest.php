@@ -223,7 +223,20 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
         ])->assertCreated()
             ->assertJsonPath('id', $rootId)
             ->assertJsonPath('archived', false)
-            ->assertJsonPath('anchorText', 'Replace draft');
+            ->assertJsonPath('anchorText', 'Replace draft')
+            ->assertJsonPath('messages.0.body', '');
+    }
+
+    public function test_comment_root_with_empty_body_fails(): void
+    {
+        $this->asBob()->postJson($this->threadsPath(), [
+            'id' => $this->ulid('AM'),
+            'kind' => 'comment',
+            'body' => '',
+            'anchorText' => 'Plan',
+        ])->assertStatus(400)
+            ->assertJsonPath('error', 'body is required.')
+            ->assertJsonPath('code', 'bad_request');
     }
 
     public function test_orphan_suggestions_are_archived_not_deleted(): void

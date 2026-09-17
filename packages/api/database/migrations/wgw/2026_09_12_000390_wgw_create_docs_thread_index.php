@@ -23,6 +23,10 @@ return new class extends WgwMigration
             $table->string('parent_uid', 26)->nullable();
             $table->string('change_id', 128)->nullable();
             $table->unique('uid');
+            // Hot path (assembleThreads / uidsOnPath) always filters both columns.
+            // utf8mb4: unsigned int + varchar(512) stays under MySQL's 3072-byte cap.
+            $table->index(['calendarid', 'doc_path']);
+            // retargetPath / dropPath look up by doc_path without calendarid.
             $table->index('doc_path');
             $table->index(['calendarid', 'change_id']);
             $table->foreign('calendarid')

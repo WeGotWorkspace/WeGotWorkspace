@@ -47,3 +47,4 @@ Replace the Yjs `comments` / `suggestionThreads` maps as the source of truth wit
 - ULID client ids: idempotent create like chat.
 - Group-owned Docs (`/groups/{slug}/…`) use the group principal’s pool.
 - Restart/reload lists threads from VJOURNAL the same way chat messages survive.
+- Suggestion roots may have an empty DESCRIPTION; comment-kind roots and all replies still require a body.

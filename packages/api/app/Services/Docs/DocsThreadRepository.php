@@ -263,6 +263,9 @@ final class DocsThreadRepository
     /**
      * Archive every non-archived suggestion root whose changeId is not in $activeChangeIds.
      *
+     * Each orphan calls patch(), which re-runs assembleThreads(), so many
+     * orphans on one path is ~O(n²). Fine at normal Doc size.
+     *
      * @param  array{username: string, role: string}  $principal
      * @param  list<string>  $activeChangeIds
      */

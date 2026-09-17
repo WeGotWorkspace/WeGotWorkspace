@@ -88,6 +88,25 @@ final class DocsThreadJournalConverterTest extends TestCase
         $this->assertSame('change-abc', $message['changeId']);
     }
 
+    public function test_suggestion_root_with_empty_body_round_trips(): void
+    {
+        $ics = $this->converter->toIcs([
+            'id' => self::ULID,
+            'body' => '',
+            'author' => 'alice',
+            'docPath' => '/users/bob/docs/plan.md',
+            'kind' => 'suggestion',
+            'changeId' => 'change-abc',
+        ], new DateTimeImmutable('2026-09-12 12:34:56', new DateTimeZone('UTC')));
+
+        $message = $this->converter->fromIcs($ics, self::ULID);
+
+        $this->assertSame('', $message['body']);
+        $this->assertSame('suggestion', $message['kind']);
+        $this->assertSame('change-abc', $message['changeId']);
+        $this->assertNull($message['parentId']);
+    }
+
     public function test_resolved_and_archived_flags_round_trip(): void
     {
         $ics = $this->converter->toIcs([
