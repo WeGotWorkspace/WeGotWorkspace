@@ -22,6 +22,9 @@ const STORYBOOK_INBOX = {
   markReadWhere: async () => undefined,
   onEnablePush: () => undefined,
   pushEnabled: true,
+  soundMuted: false,
+  onToggleSoundMute: () => undefined,
+  unreadArrivalNonce: 0,
 };
 
 const preview: Preview = {

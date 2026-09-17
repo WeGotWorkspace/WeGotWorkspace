@@ -13,6 +13,14 @@ export type NotificationsInboxValue = {
   markReadWhere: (match: (item: NotificationInboxItem) => boolean) => Promise<void>;
   onEnablePush: () => void;
   pushEnabled: boolean;
+  /** Device-local mute for the inbox chime (localStorage). Does not affect badge pulse. */
+  soundMuted: boolean;
+  onToggleSoundMute: () => void;
+  /**
+   * Increments when newly first-seen unread ids arrive after the initial seed.
+   * Badge consumers restart a one-shot pulse when this changes.
+   */
+  unreadArrivalNonce: number;
 };
 
 const NotificationsInboxContext = createContext<NotificationsInboxValue | null>(null);
@@ -30,6 +38,8 @@ export function NotificationsInboxValueProvider({
   children: ReactNode;
 }): ReactElement {
   return (
-    <NotificationsInboxContext.Provider value={value}>{children}</NotificationsInboxContext.Provider>
+    <NotificationsInboxContext.Provider value={value}>
+      {children}
+    </NotificationsInboxContext.Provider>
   );
 }

@@ -59,6 +59,9 @@ describe("useNotificationsMarkReadOnConsume", () => {
           markReadWhere,
           onEnablePush: () => undefined,
           pushEnabled: true,
+          soundMuted: false,
+          onToggleSoundMute: () => undefined,
+          unreadArrivalNonce: 0,
         }}
       >
         <Harness navigate={null} />
@@ -76,6 +79,9 @@ describe("useNotificationsMarkReadOnConsume", () => {
           markReadWhere,
           onEnablePush: () => undefined,
           pushEnabled: true,
+          soundMuted: false,
+          onToggleSoundMute: () => undefined,
+          unreadArrivalNonce: 0,
         }}
       >
         <Harness navigate="/meet/dms/alice" />
@@ -105,6 +111,9 @@ describe("useNotificationsMarkReadOnConsume", () => {
           markReadWhere,
           onEnablePush: () => undefined,
           pushEnabled: true,
+          soundMuted: false,
+          onToggleSoundMute: () => undefined,
+          unreadArrivalNonce: 0,
         }}
       >
         <Harness />
@@ -134,6 +143,9 @@ describe("useNotificationsMarkReadOnConsume", () => {
           markReadWhere,
           onEnablePush: () => undefined,
           pushEnabled: true,
+          soundMuted: false,
+          onToggleSoundMute: () => undefined,
+          unreadArrivalNonce: 0,
         }}
       >
         <Harness />

@@ -12,6 +12,9 @@ const inboxValue = {
   markReadWhere: async () => undefined,
   onEnablePush: () => undefined,
   pushEnabled: true,
+  soundMuted: false,
+  onToggleSoundMute: () => undefined,
+  unreadArrivalNonce: 0,
 };
 
 function renderToggle(open: boolean, unreadCount = inboxValue.unreadCount) {

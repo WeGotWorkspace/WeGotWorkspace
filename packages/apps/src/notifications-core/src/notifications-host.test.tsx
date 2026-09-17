@@ -29,7 +29,11 @@ vi.mock("@/notifications-core/src/notification-click-navigate", async (importOri
 });
 
 import { wgwHasAuthenticatedSession, wgwIsGuestSession } from "@/lib/api/wgw/http";
-import { ackLocalNotification, ackNotification, listNotifications } from "@/lib/api/wgw/notifications";
+import {
+  ackLocalNotification,
+  ackNotification,
+  listNotifications,
+} from "@/lib/api/wgw/notifications";
 import { ensurePushPermissionAndSubscribe } from "@/notifications-core/src/ensure-push-subscription";
 import {
   assignNotificationNavigate,
@@ -41,6 +45,10 @@ import {
   NOTIFICATIONS_INBOX_POLL_MS,
   useNotificationsInbox,
 } from "@/notifications-core/src/notifications-provider";
+import {
+  NOTIFICATION_INBOX_SOUND_MUTED_KEY,
+  resetInboxNotificationSoundForTests,
+} from "@/notifications-core/src/notification-inbox-sound";
 import { PresenceStoreValueProvider } from "@/presence-core/src/presence-provider";
 import { createPresenceStore } from "@/presence-core/src/presence-store";
 import type {
@@ -96,11 +104,16 @@ describe("NotificationsHost", () => {
     vi.mocked(listNotifications).mockResolvedValue({ list: [], unreadCount: 0 });
     vi.mocked(ackLocalNotification).mockResolvedValue(undefined);
     vi.mocked(ackNotification).mockResolvedValue(undefined);
+    window.localStorage.removeItem(NOTIFICATION_INBOX_SOUND_MUTED_KEY);
+    resetInboxNotificationSoundForTests();
   });
 
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
+    window.localStorage.removeItem(NOTIFICATION_INBOX_SOUND_MUTED_KEY);
+    resetInboxNotificationSoundForTests();
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
       value: "visible",
@@ -117,9 +130,7 @@ describe("NotificationsHost", () => {
     render(<NotificationsHost />);
     const baseline = vi.mocked(listNotifications).mock.calls.length;
     expect(baseline).toBeGreaterThanOrEqual(1);
-    expect(listNotifications).toHaveBeenCalledWith(
-      expect.objectContaining({ unread: true }),
-    );
+    expect(listNotifications).toHaveBeenCalledWith(expect.objectContaining({ unread: true }));
 
     await vi.advanceTimersByTimeAsync(NOTIFICATIONS_INBOX_POLL_MS - 1);
     expect(listNotifications).toHaveBeenCalledTimes(baseline);
@@ -131,9 +142,7 @@ describe("NotificationsHost", () => {
   it("requests unread-only inbox rows for the bell tray", async () => {
     render(<NotificationsHost />);
     await waitFor(() => {
-      expect(listNotifications).toHaveBeenCalledWith(
-        expect.objectContaining({ unread: true }),
-      );
+      expect(listNotifications).toHaveBeenCalledWith(expect.objectContaining({ unread: true }));
     });
   });
 
@@ -173,8 +182,9 @@ describe("NotificationsHost", () => {
   });
 
   it("does not let a slow in-flight GET overwrite a newer notify-hint refresh", async () => {
-    let resolveSlow: ((value: { list: typeof unreadItem[]; unreadCount: number }) => void) | null =
-      null;
+    let resolveSlow:
+      | ((value: { list: (typeof unreadItem)[]; unreadCount: number }) => void)
+      | null = null;
     let call = 0;
     vi.mocked(listNotifications).mockImplementation(() => {
       call += 1;
@@ -263,6 +273,91 @@ describe("NotificationsHost", () => {
     await waitFor(() => {
       expect(ackLocalNotification).toHaveBeenCalledWith("n1");
     });
+  });
+
+  it("plays the inbox chime and bumps pulse nonce for post-seed arrivals; mute skips sound only", async () => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
+    const play = vi.fn(async () => undefined);
+    vi.stubGlobal(
+      "Audio",
+      vi.fn(function AudioMock(this: { currentTime: number; play: typeof play }) {
+        this.currentTime = 0;
+        this.play = play;
+      }),
+    );
+
+    let phase: "seed" | "first-new" | "second-new" = "seed";
+    vi.mocked(listNotifications).mockImplementation(async () => {
+      if (phase === "seed") return { list: [], unreadCount: 0 };
+      if (phase === "first-new") return { list: [unreadItem], unreadCount: 1 };
+      return {
+        list: [unreadItem, { ...unreadItem, id: "n2", tag: "chat.message:2" }],
+        unreadCount: 2,
+      };
+    });
+
+    const session = new FakeSession();
+    const store = createPresenceStore({
+      createSession: () => session,
+      joinMode: "eager",
+      visibility: null,
+    });
+    store.start({ username: "alice", displayName: "Alice" });
+    await Promise.resolve();
+    session.peers = [{ id: "bob-1", name: "Bob", user: "bob" }];
+    session.emit({ type: "roster" });
+
+    let inbox: ReturnType<typeof useNotificationsInbox> = null;
+    function Probe() {
+      inbox = useNotificationsInbox();
+      return null;
+    }
+
+    render(
+      <PresenceStoreValueProvider store={store}>
+        <NotificationsProvider>
+          <Probe />
+        </NotificationsProvider>
+      </PresenceStoreValueProvider>,
+    );
+
+    await waitFor(() => {
+      expect(inbox).not.toBeNull();
+      expect(inbox?.unreadArrivalNonce).toBe(0);
+    });
+    expect(play).not.toHaveBeenCalled();
+
+    phase = "first-new";
+    session.emit({
+      type: "envelope",
+      peerId: "bob-1",
+      envelope: { v: 1, kind: "notify-hint", tag: "chat.message_posted" },
+    });
+
+    await waitFor(() => {
+      expect(inbox?.unreadArrivalNonce).toBe(1);
+      expect(play).toHaveBeenCalledTimes(1);
+    });
+
+    inbox!.onToggleSoundMute();
+    await waitFor(() => {
+      expect(inbox?.soundMuted).toBe(true);
+    });
+
+    phase = "second-new";
+    session.emit({
+      type: "envelope",
+      peerId: "bob-1",
+      envelope: { v: 1, kind: "notify-hint", tag: "chat.message_posted" },
+    });
+
+    await waitFor(() => {
+      expect(inbox?.unreadArrivalNonce).toBe(2);
+    });
+    expect(play).toHaveBeenCalledTimes(1);
   });
 
   it("opening an item removes it from the unread tray list", async () => {

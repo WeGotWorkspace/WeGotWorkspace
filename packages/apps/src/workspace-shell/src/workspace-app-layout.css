@@ -72,6 +72,34 @@
   background-color: var(--notification-inbox-badge-bg, var(--button-primary-bg, var(--color-ink)));
 }
 
+/* Same one-shot as the bell badge; mute does not suppress. */
+@keyframes notification-inbox-badge-pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 0.82;
+    transform: scale(1.28);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .workspace-sidebar-toggle[data-pulse]::after {
+    animation: notification-inbox-badge-pulse 0.55s ease-out 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-sidebar-toggle[data-pulse]::after {
+    animation: none;
+  }
+}
+
 /* Right-hand panel slide (mirrors app-sidebar open/close on the opposite edge). */
 .workspace-app-layout__panel {
   @apply shrink-0 overflow-hidden will-change-transform transition-[translate,margin,border-width];

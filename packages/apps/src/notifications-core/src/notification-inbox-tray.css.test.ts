@@ -37,6 +37,16 @@ describe("notification inbox tray bell chrome", () => {
     expect(css).not.toMatch(/oklch\(\s*from var\(--notification-inbox-badge-bg/);
     expect(css).not.toMatch(/contrast-color\(\s*var\(--notification-inbox-badge-bg/);
   });
+
+  it("pulses the unread badge once on new arrival and honors prefers-reduced-motion", () => {
+    expect(css).toMatch(/@keyframes notification-inbox-badge-pulse/);
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion:\s*no-preference\) \{[\s\S]*\.notification-inbox-tray__trigger\[data-pulse\]::after \{[\s\S]*animation:\s*notification-inbox-badge-pulse/,
+    );
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion:\s*reduce\) \{[\s\S]*\.notification-inbox-tray__trigger\[data-pulse\]::after \{[\s\S]*animation:\s*none/,
+    );
+  });
 });
 
 describe("notification inbox tray row focus", () => {
@@ -44,9 +54,7 @@ describe("notification inbox tray row focus", () => {
     expect(css).toMatch(
       /\.notification-inbox-tray__row:hover,\s*\.notification-inbox-tray__row:focus-visible \{[\s\S]*background-color:\s*color-mix\(in oklab,\s*var\(--color-ink\)\s*4%,\s*transparent\)/,
     );
-    expect(css).not.toMatch(
-      /box-shadow:\s*inset 0 0 0 2px var\(--color-emerald/,
-    );
+    expect(css).not.toMatch(/box-shadow:\s*inset 0 0 0 2px var\(--color-emerald/);
   });
 });
 
@@ -73,9 +81,7 @@ describe("notification inbox tray row typography", () => {
   });
 
   it("matches sidebar app-icon corner radius and does not paint unread dots", () => {
-    expect(css).toMatch(
-      /\.notification-inbox-tray__app-icon \{[\s\S]*rounded-\[6px\]/,
-    );
+    expect(css).toMatch(/\.notification-inbox-tray__app-icon \{[\s\S]*rounded-\[6px\]/);
     expect(css).not.toMatch(/rounded-\[10px\]/);
     expect(css).not.toMatch(/notification-inbox-tray__unread-dot/);
   });

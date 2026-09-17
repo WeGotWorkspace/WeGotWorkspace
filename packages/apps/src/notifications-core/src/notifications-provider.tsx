@@ -23,6 +23,12 @@ import {
   type NotificationsInboxValue,
 } from "@/notifications-core/src/notifications-inbox-context";
 import { formatNotificationCopy } from "@/notifications-core/src/format-notification-copy";
+import {
+  playInboxNotificationSound,
+  readNotificationSoundMuted,
+  shouldPlayInboxNotificationSound,
+  writeNotificationSoundMuted,
+} from "@/notifications-core/src/notification-inbox-sound";
 import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
 import { shouldShowOsNotification } from "@/notifications-core/src/should-show-os-notification";
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
@@ -86,7 +92,13 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   const [pushEnabled, setPushEnabled] = useState(
     typeof Notification !== "undefined" && Notification.permission === "granted",
   );
+  const [soundMuted, setSoundMuted] = useState(() => readNotificationSoundMuted());
+  const [unreadArrivalNonce, setUnreadArrivalNonce] = useState(0);
   const seenRef = useRef<Set<string>>(new Set());
+  /** First successful list seeds seen ids without chime/pulse (existing unread). */
+  const seededRef = useRef(false);
+  const soundMutedRef = useRef(soundMuted);
+  soundMutedRef.current = soundMuted;
   /** Abort in-flight GETs so a slow poll cannot overwrite a newer hint refresh. */
   const refreshAbortRef = useRef<AbortController | null>(null);
   const hintRetryTimersRef = useRef<number[]>([]);
@@ -107,10 +119,21 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
       if (abort.signal.aborted) return;
       setItems(payload.list);
       setUnreadCount(payload.unreadCount);
+      let sawNewAfterSeed = false;
       for (const item of payload.list) {
         if (seenRef.current.has(item.id)) continue;
+        const afterSeed = seededRef.current;
         seenRef.current.add(item.id);
         void ackLiveInboxItem(item);
+        if (afterSeed) sawNewAfterSeed = true;
+      }
+      seededRef.current = true;
+      if (sawNewAfterSeed) {
+        setUnreadArrivalNonce((n) => n + 1);
+        const visibility = typeof document === "undefined" ? "visible" : document.visibilityState;
+        if (shouldPlayInboxNotificationSound(visibility, soundMutedRef.current)) {
+          playInboxNotificationSound();
+        }
       }
     } catch (error) {
       if (abort.signal.aborted) return;
@@ -202,6 +225,14 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
     });
   }, []);
 
+  const onToggleSoundMute = useCallback(() => {
+    setSoundMuted((prev) => {
+      const next = !prev;
+      writeNotificationSoundMuted(next);
+      return next;
+    });
+  }, []);
+
   const onMarkAllRead = useCallback(async () => {
     if (items.length === 0) return;
     const ids = items.map((item) => item.id);
@@ -232,6 +263,9 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
       markReadWhere,
       onEnablePush,
       pushEnabled,
+      soundMuted,
+      onToggleSoundMute,
+      unreadArrivalNonce,
     };
   }, [
     signedIn,
@@ -242,6 +276,9 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
     markReadWhere,
     onEnablePush,
     pushEnabled,
+    soundMuted,
+    onToggleSoundMute,
+    unreadArrivalNonce,
   ]);
 }
 

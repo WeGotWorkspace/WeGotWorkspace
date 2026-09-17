@@ -102,11 +102,20 @@ describe("WorkspaceSidebarToggle chrome", () => {
     expect(toggleBlock!).not.toMatch(/notification-inbox-tray__trigger/);
     expect(toggleBlock!).not.toMatch(/data-count=/);
     expect(toggleBlock!).toMatch(/data-unread=\{showUnreadDot \? "" : undefined\}/);
+    expect(toggleBlock!).toMatch(/data-pulse=\{pulseAttr\}/);
+    expect(toggleBlock!).toMatch(/useInboxBadgePulseAttr/);
     expect(toggleBlock!).toMatch(/showUnreadDot = !open && unreadCount > 0/);
     expect(css).toMatch(/\.workspace-sidebar-toggle \{[\s\S]*relative[\s\S]*overflow-visible/);
     expect(css).toMatch(/\.workspace-sidebar-toggle\[data-unread\]::after \{[\s\S]*content:\s*""/);
     expect(css).toMatch(
       /\.workspace-sidebar-toggle\[data-unread\]::after \{[\s\S]*--notification-inbox-badge-bg/,
+    );
+    expect(css).toMatch(/@keyframes notification-inbox-badge-pulse/);
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion:\s*no-preference\) \{[\s\S]*\.workspace-sidebar-toggle\[data-pulse\]::after \{[\s\S]*animation:\s*notification-inbox-badge-pulse/,
+    );
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion:\s*reduce\) \{[\s\S]*\.workspace-sidebar-toggle\[data-pulse\]::after \{[\s\S]*animation:\s*none/,
     );
   });
 });

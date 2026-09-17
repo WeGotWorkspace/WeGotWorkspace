@@ -1,4 +1,4 @@
-import { Bell, BellRing, CheckCheck } from "lucide-react";
+import { Bell, BellRing, CheckCheck, Volume2, VolumeX } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
 import {
@@ -8,6 +8,7 @@ import {
 } from "@/notifications-core/src/notification-inbox-row-meta";
 import { formatNotificationCopy } from "@/notifications-core/src/format-notification-copy";
 import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
+import { useInboxBadgePulseAttr } from "@/notifications-core/src/use-inbox-badge-pulse";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import { ViewHeader } from "@/view-header/src/view-header";
 import "@/notifications-core/src/notification-inbox-tray.css";
@@ -19,6 +20,10 @@ export type NotificationInboxTrayProps = {
   onMarkAllRead?: () => void;
   onEnablePush?: () => void;
   pushEnabled?: boolean;
+  soundMuted?: boolean;
+  onToggleSoundMute?: () => void;
+  /** From inbox context — restarts the unread badge pulse when it increments. */
+  unreadArrivalNonce?: number;
 };
 
 export function NotificationInboxTray({
@@ -28,8 +33,12 @@ export function NotificationInboxTray({
   onMarkAllRead,
   onEnablePush,
   pushEnabled = false,
+  soundMuted = false,
+  onToggleSoundMute,
+  unreadArrivalNonce = 0,
 }: NotificationInboxTrayProps) {
   const label = unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications";
+  const pulseAttr = useInboxBadgePulseAttr(unreadArrivalNonce);
 
   return (
     <Popover>
@@ -42,6 +51,7 @@ export function NotificationInboxTray({
           showTooltip={false}
           className="notification-inbox-tray__trigger"
           data-count={unreadCount > 0 ? String(unreadCount) : undefined}
+          data-pulse={pulseAttr}
         />
       </PopoverTrigger>
       <PopoverContent
@@ -66,6 +76,15 @@ export function NotificationInboxTray({
                     variant="outline"
                     size="sm"
                     onClick={onEnablePush}
+                  />
+                ) : null}
+                {onToggleSoundMute ? (
+                  <IconButton
+                    icon={soundMuted ? <VolumeX aria-hidden /> : <Volume2 aria-hidden />}
+                    label={soundMuted ? "Unmute notification sound" : "Mute notification sound"}
+                    variant="outline"
+                    size="sm"
+                    onClick={onToggleSoundMute}
                   />
                 ) : null}
                 {onMarkAllRead ? (
@@ -155,9 +174,7 @@ function NotificationInboxRow({
               title
             )}
           </span>
-          {body ? (
-            <span className="notification-inbox-tray__row-body">{body}</span>
-          ) : null}
+          {body ? <span className="notification-inbox-tray__row-body">{body}</span> : null}
         </span>
       </button>
     </li>

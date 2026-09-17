@@ -22,6 +22,9 @@ function AppSidebarHarness() {
         markReadWhere: async () => {},
         onEnablePush: () => {},
         pushEnabled: true,
+        soundMuted: false,
+        onToggleSoundMute: () => {},
+        unreadArrivalNonce: 0,
       }}
     >
       <AppSidebar

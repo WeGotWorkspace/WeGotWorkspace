@@ -51,6 +51,9 @@ export function AppSidebar({
                 onMarkAllRead={inbox.onMarkAllRead}
                 onEnablePush={inbox.onEnablePush}
                 pushEnabled={inbox.pushEnabled}
+                soundMuted={inbox.soundMuted}
+                onToggleSoundMute={inbox.onToggleSoundMute}
+                unreadArrivalNonce={inbox.unreadArrivalNonce}
               />
             </div>
           ) : null}

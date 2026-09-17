@@ -97,6 +97,9 @@ export const ClosedSidebarUnread: Story = {
           markReadWhere: async () => undefined,
           onEnablePush: () => undefined,
           pushEnabled: true,
+          soundMuted: false,
+          onToggleSoundMute: () => undefined,
+          unreadArrivalNonce: 0,
         }}
       >
         <Story />

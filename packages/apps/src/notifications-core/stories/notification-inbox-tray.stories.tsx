@@ -106,6 +106,8 @@ const meta = {
   args: {
     onOpenItem: fn(),
     onMarkAllRead: fn(),
+    onToggleSoundMute: fn(),
+    soundMuted: false,
   },
 } satisfies Meta<typeof NotificationInboxTray>;
 
@@ -122,6 +124,7 @@ export const Unread: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Notifications (5 unread)" }));
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.getByRole("heading", { name: "Notifications" })).toBeInTheDocument();
+    await expect(body.getByRole("button", { name: "Mute notification sound" })).toBeInTheDocument();
     await expect(body.getByRole("button", { name: "Mark all read" })).toBeInTheDocument();
     await expect(body.getAllByText("Meet").length).toBe(1);
     await expect(body.getAllByText("Calendar").length).toBeGreaterThanOrEqual(2);
@@ -131,37 +134,47 @@ export const Unread: Story = {
       body.getByText((_, el) =>
         Boolean(
           el?.classList.contains("notification-inbox-tray__row-title") &&
-            (el.textContent ?? "").replace(/\s+/g, " ").includes("Marcel sent a message in #administrators"),
+          (el.textContent ?? "")
+            .replace(/\s+/g, " ")
+            .includes("Marcel sent a message in #administrators"),
         ),
       ),
     ).toBeInTheDocument();
     const marcelActor = body.getByText((content, el) =>
-      Boolean(el?.classList.contains("notification-inbox-tray__title-actor") && content === "Marcel"),
+      Boolean(
+        el?.classList.contains("notification-inbox-tray__title-actor") && content === "Marcel",
+      ),
     );
     await expect(marcelActor.tagName).toBe("STRONG");
     await expect(
       body.getByText((_, el) =>
         Boolean(
           el?.classList.contains("notification-inbox-tray__row-title") &&
-            (el.textContent ?? "").replace(/\s+/g, " ").includes("Nathalie invited you to Zaterdag Open"),
+          (el.textContent ?? "")
+            .replace(/\s+/g, " ")
+            .includes("Nathalie invited you to Zaterdag Open"),
         ),
       ),
     ).toBeInTheDocument();
     await expect(body.getByText("Zaterdag Open")).toBeInTheDocument();
-    await expect(body.getAllByText("Sat 19 Sep · 09:00 – 12:00 · Dorpsstraat").length).toBeGreaterThanOrEqual(1);
+    await expect(
+      body.getAllByText("Sat 19 Sep · 09:00 – 12:00 · Dorpsstraat").length,
+    ).toBeGreaterThanOrEqual(1);
     await expect(body.getAllByText("Sat 19 Sep · 09:00 – 12:00").length).toBeGreaterThanOrEqual(1);
     await expect(
       body.getByText((_, el) =>
         Boolean(
           el?.classList.contains("notification-inbox-tray__row-title") &&
-            (el.textContent ?? "")
-              .replace(/\s+/g, " ")
-              .includes("Matthijs shared Agenda Anne & Co.md with you"),
+          (el.textContent ?? "")
+            .replace(/\s+/g, " ")
+            .includes("Matthijs shared Agenda Anne & Co.md with you"),
         ),
       ),
     ).toBeInTheDocument();
     await expect(body.getByText("Invoice STAK Q3")).toBeInTheDocument();
     await expect(body.queryByText("Andrea sent you a direct message")).not.toBeInTheDocument();
+    await userEvent.click(body.getByRole("button", { name: "Mute notification sound" }));
+    await expect(args.onToggleSoundMute).toHaveBeenCalled();
     await userEvent.click(body.getByRole("button", { name: "Mark all read" }));
     await expect(args.onMarkAllRead).toHaveBeenCalled();
   },
@@ -173,6 +186,22 @@ export const Empty: Story = {
     unreadCount: 0,
     onOpenItem: () => undefined,
     onMarkAllRead: () => undefined,
+  },
+};
+
+export const SoundMuted: Story = {
+  args: {
+    items: UNREAD_ITEMS,
+    unreadCount: UNREAD_ITEMS.length,
+    soundMuted: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Notifications (5 unread)" }));
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(
+      body.getByRole("button", { name: "Unmute notification sound" }),
+    ).toBeInTheDocument();
   },
 };
 
@@ -188,6 +217,7 @@ export const EnableAlerts: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Notifications (5 unread)" }));
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.getByRole("button", { name: "Enable alerts" })).toBeInTheDocument();
+    await expect(body.getByRole("button", { name: "Mute notification sound" })).toBeInTheDocument();
     await expect(body.getByRole("button", { name: "Mark all read" })).toBeInTheDocument();
   },
 };
