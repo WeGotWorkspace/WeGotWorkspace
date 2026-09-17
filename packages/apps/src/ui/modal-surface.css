@@ -9,6 +9,16 @@
   @apply box-border min-w-0 overflow-x-hidden p-[length:var(--modal-inset)];
 }
 
+/*
+ * Radix DialogContent auto-focuses this panel on open. It is not a control —
+ * suppress the native :focus-visible ring (thick blue rounded outline). Button
+ * / close / toggle rings stay on those primitives.
+ */
+.ui-modal-surface:focus,
+.ui-modal-surface:focus-visible {
+  @apply outline-none;
+}
+
 /**
  * Centered Dialog / AlertDialog. Sheets keep edge layout and skip this.
  * Clamp to the visual viewport so min-content children and translate

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
+use App\Services\Drive\DocAttachmentPaths;
 use Sabre\DAV\Exception\Forbidden;
 use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
@@ -47,6 +48,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         if (self::isStrayFilesPath($path)) {
             throw new Forbidden('Creating files or folders is only allowed under files/users/{username}/ and files/groups/{group}/.');
         }
+        if (DocAttachmentPaths::davIsProtected($path)) {
+            throw new Forbidden('The .attachments tree is server-owned.');
+        }
     }
 
     /**
@@ -70,6 +74,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         if (self::isStrayFilesPath($p)) {
             throw new Forbidden('Deleting this path under files/ is not allowed.');
         }
+        if (DocAttachmentPaths::davIsProtected($p)) {
+            throw new Forbidden('The .attachments tree is server-owned.');
+        }
     }
 
     public function beforeMethod(RequestInterface $request, ResponseInterface $response): void
@@ -86,6 +93,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         }
         if (self::isStrayFilesPath($path)) {
             throw new Forbidden('Changing this path under files/ is not allowed.');
+        }
+        if (DocAttachmentPaths::davIsProtected($path)) {
+            throw new Forbidden('The .attachments tree is server-owned.');
         }
 
         if ($method === 'DELETE') {
@@ -112,6 +122,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             }
             if (self::isStrayFilesPath($path) || self::isStrayFilesPath($destPath)) {
                 throw new Forbidden('Moving or copying to or from this path under files/ is not allowed.');
+            }
+            if (DocAttachmentPaths::davIsProtected($path) || DocAttachmentPaths::davIsProtected($destPath)) {
+                throw new Forbidden('The .attachments tree is server-owned.');
             }
             if (self::isCalendarFolderPath($path) || self::isCalendarFolderPath($destPath)) {
                 throw new Forbidden('Moving or copying calendar homes or calendar collections is not allowed.');

@@ -6,6 +6,7 @@ namespace App\Services\Jmap\FileNodes;
 
 use App\Models\JmapFileNode;
 use App\Models\JmapFileNodeMeta;
+use App\Services\Drive\DocAttachmentPaths;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -128,6 +129,7 @@ final class FileNodeIndexService
     private function isIndexedDotSegment(string $segment, bool $underNotes): bool
     {
         return $segment === self::PRODUCT_TRASH_DIR
+            || $segment === DocAttachmentPaths::DIR
             || $segment === self::PRODUCT_NOTES_DIR
             || ($segment === self::PRODUCT_NOTES_ARCHIVE_DIR && $underNotes);
     }
@@ -189,6 +191,29 @@ final class FileNodeIndexService
         });
 
         return $query->orderBy('storage_key')->get()->all();
+    }
+
+    /**
+     * Live row at `$key` plus live descendants (storage-key prefix).
+     *
+     * @return list<JmapFileNode>
+     */
+    public function liveSelfAndDescendants(string $key): array
+    {
+        $key = trim($key, '/');
+        if ($key === '') {
+            return [];
+        }
+
+        return JmapFileNode::query()
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($key): void {
+                $query->where('storage_key', $key)
+                    ->orWhere('storage_key', 'like', $this->escapeLike($key).'/%');
+            })
+            ->orderBy('storage_key')
+            ->get()
+            ->all();
     }
 
     // ---------------------------------------------------------------

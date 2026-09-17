@@ -70,4 +70,11 @@ describe("ui-modal-surface viewport clamp", () => {
       /\.ui-modal-surface \{[^}]*--control-height-md:\s*var\(--control-height-sm/,
     );
   });
+
+  it("suppresses the native focus ring on the dialog panel, not on controls", () => {
+    expect(css).toMatch(
+      /\.ui-modal-surface:focus,\s*\.ui-modal-surface:focus-visible \{[\s\S]*@apply outline-none/,
+    );
+    expect(css).not.toMatch(/:focus\s*\{[\s\S]*outline:\s*none/);
+  });
 });

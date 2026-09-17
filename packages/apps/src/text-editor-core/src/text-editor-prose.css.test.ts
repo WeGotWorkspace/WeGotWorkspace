@@ -26,6 +26,25 @@ describe("text editor prose typography tokens", () => {
     );
   });
 
+  it("keeps inserted images within the prose column", () => {
+    expect(css).toMatch(/\.text-editor-prose img \{[\s\S]*@apply max-w-full/);
+  });
+
+  it("uses the same opaque cream chip for hover and selected, not a transparent wash", () => {
+    expect(css).toMatch(
+      /\.text-editor-image:hover \.text-editor-image__delete-host,[\s\S]*\.ProseMirror-selectednode \.text-editor-image__delete-host/,
+    );
+    expect(css).toMatch(/--text-editor-image-delete-surface:\s*var\(--color-cream,\s*#ffffff\)/);
+    const chipRule = css.match(
+      /\.text-editor-image \.text-editor-image__delete,[\s\S]*?background-color:\s*var\(--text-editor-image-delete-surface\);/,
+    )?.[0];
+    expect(chipRule).toBeTruthy();
+    expect(chipRule).toMatch(/:hover/);
+    expect(chipRule).toMatch(/--color-destructive/);
+    expect(chipRule).not.toMatch(/transparent/);
+    expect(chipRule).not.toMatch(/--docs-accent/);
+  });
+
   it("uses modest equal sheet padding on small viewports (Docs + Mail share the token)", () => {
     expect(css).toMatch(
       /@media \(max-width: 768px\) \{[\s\S]*\.text-editor \{[\s\S]*--text-editor-sheet-padding:\s*1\.25rem/,

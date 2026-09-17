@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1\Files;
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Collab\DocCollabDocumentService;
+use App\Services\Drive\DriveForbiddenException;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveService;
 use App\Services\Rtc\RoomIdCodec;
@@ -54,7 +55,11 @@ final class FilesController
 
     public function content(Request $request): Response
     {
+        $nodeId = $this->queryNodeId($request);
         if ($request->isMethod('HEAD')) {
+            if ($nodeId !== null) {
+                return $this->headContentByNodeId($request, $nodeId);
+            }
             $path = $request->query('path');
             if (is_string($path) && trim($path) !== '') {
                 return $this->headContent($request);
@@ -63,7 +68,44 @@ final class FilesController
             return $this->uploadProbe();
         }
 
+        if ($nodeId !== null) {
+            return $this->downloadByNodeId($request, $nodeId);
+        }
+
         return $this->download($request);
+    }
+
+    private function headContentByNodeId(Request $request, string $nodeId): Response
+    {
+        try {
+            $this->drive->assertReadableNodeId($this->principal($request), $nodeId);
+
+            return response('', 200);
+        } catch (DriveForbiddenException $e) {
+            throw new ApiHttpException(403, $e->getMessage(), 'forbidden');
+        } catch (\InvalidArgumentException $e) {
+            throw new ApiHttpException(403, $e->getMessage(), 'forbidden');
+        } catch (\RuntimeException $e) {
+            throw new ApiHttpException(404, $e->getMessage(), 'not_found');
+        }
+    }
+
+    private function downloadByNodeId(Request $request, string $nodeId): Response
+    {
+        try {
+            $this->drive->assertFilesEnabled();
+
+            return $this->drive->downloadResponseByNodeId(
+                $this->principal($request),
+                $nodeId,
+            );
+        } catch (DriveForbiddenException $e) {
+            throw new ApiHttpException(403, $e->getMessage(), 'forbidden');
+        } catch (\InvalidArgumentException $e) {
+            throw new ApiHttpException(403, $e->getMessage(), 'forbidden');
+        } catch (\RuntimeException $e) {
+            throw new ApiHttpException(404, $e->getMessage(), 'not_found');
+        }
     }
 
     public function headContent(Request $request): Response
@@ -206,6 +248,16 @@ final class FilesController
         }
 
         return $path;
+    }
+
+    private function queryNodeId(Request $request): ?string
+    {
+        $id = $request->query('id');
+        if (! is_string($id) || trim($id) === '') {
+            return null;
+        }
+
+        return trim($id);
     }
 
     private function username(Request $request): string

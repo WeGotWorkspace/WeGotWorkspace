@@ -48,6 +48,13 @@ describe("drive browser grid + tile chrome (canonical for Docs + Drive)", () => 
     expect(docsHomeCss).not.toMatch(/\.drive-file-tile--selected/);
   });
 
+  it("does not re-fork tile/grid chrome under the folder picker", () => {
+    const pickerCss = readFileSync(join(here, "drive-folder-picker.css"), "utf8");
+    expect(pickerCss).not.toMatch(/\.drive-grid\s*\{/);
+    expect(pickerCss).not.toMatch(/\.drive-file-tile::after/);
+    expect(pickerCss).not.toMatch(/\.drive-file-tile--selected/);
+  });
+
   it("matches field-label sans captions for item labels and list heads", () => {
     expect(css).toMatch(
       /\.drive-item-label \{[\s\S]*font-family:\s*var\(\s*--field-label-font-family,\s*var\(\s*--font-sans/,

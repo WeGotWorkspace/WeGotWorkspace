@@ -1,1 +1,72 @@
+@import "../../styles.css" reference;
 @import "../../destination-picker/src/destination-picker.css";
+
+.destination-picker.destination-picker--file-select {
+  --destination-picker-body-height: 22rem;
+}
+
+.destination-picker__breadcrumbs--with-toggle {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+.destination-picker__view-toggle {
+  @apply shrink-0 pr-3;
+}
+
+.destination-picker--file-select .destination-picker__body {
+  @apply overflow-y-auto;
+}
+
+/* Compact listing padding in the dialog — do not retouch tile/grid chrome. */
+.destination-picker--file-select
+  .destination-picker__body
+  :is(.drive-grid-layout, .drive-list-view) {
+  @apply px-3 py-3;
+}
+
+/*
+ * File-select inside Docs (`data-drive-listing-theme="docs"`).
+ * `.drive-workspace` republishes Drive green (`#10b981`, `--color-emerald`) on
+ * this same node, which beats ancestor `.docs-dialog-surface` remaps. Override
+ * here with higher specificity and paint icons/toggle with `--docs-accent`.
+ */
+.destination-picker[data-drive-listing-theme="docs"] {
+  --drive-accent: var(--docs-accent, #3b82f6);
+  --color-emerald: var(--docs-accent, #3b82f6);
+  --workspace-accent: var(--docs-accent, #3b82f6);
+  --drive-accent-strong: var(
+    --docs-accent-strong,
+    color-mix(in oklab, var(--docs-accent, #3b82f6) 70%, #0f172a)
+  );
+  --button-active-color: var(--drive-accent-strong);
+  --button-outline-hover-color: var(--drive-accent-strong);
+  --button-outline-hover-background: color-mix(
+    in oklab,
+    var(--docs-accent, #3b82f6) 14%,
+    transparent
+  );
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--docs-accent, #3b82f6) 18%,
+    var(--color-cream, #ffffff)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--docs-accent, #3b82f6) 24%,
+    var(--color-cream, #ffffff)
+  );
+  --segmented-control-active-bg: var(--button-outline-active-background);
+  --segmented-control-active-fg: var(--button-active-color);
+}
+
+.destination-picker[data-drive-listing-theme="docs"]
+  :is(
+    .drive-folder-tile__icon,
+    .drive-folder-tile__star,
+    .drive-list-folder-icon,
+    .drive-list-file-icon,
+    .drive-file-tile__kind-icon,
+    .drive-file-tile__star-badge
+  ) {
+  color: var(--docs-accent, #3b82f6);
+}
