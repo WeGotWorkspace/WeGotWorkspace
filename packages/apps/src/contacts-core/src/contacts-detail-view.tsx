@@ -8,6 +8,7 @@ import {
 } from "./contact-channel-editors";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
+import { LocaleDatePicker } from "@/ui/locale-date-picker";
 import { Textarea } from "@/ui/textarea";
 import { Switch } from "@/ui/switch";
 import { cn } from "@/lib/utils";
@@ -73,6 +74,8 @@ type ContactsDetailViewProps = {
     onAdd: (idOrLabel: string) => void;
     onRemove: (groupId: string) => void;
   };
+  /** Locale for {@link LocaleDatePicker} (birthday). Default `en-US`. */
+  locale?: string;
   className?: string;
 };
 
@@ -250,6 +253,7 @@ type ContactsDetailEditFormProps = {
   labels: ContactsUILabels;
   card?: ContactCard;
   editDraft: ContactEditDraft;
+  locale: string;
   onDraftChange: (patch: Partial<ContactEditDraft>) => void;
   onUpdatePhone: ContactsDetailViewProps["onUpdatePhone"];
   onUpdateEmail: ContactsDetailViewProps["onUpdateEmail"];
@@ -269,6 +273,7 @@ function ContactsDetailEditForm({
   labels,
   card,
   editDraft,
+  locale,
   onDraftChange,
   onUpdatePhone,
   onUpdateEmail,
@@ -342,14 +347,13 @@ function ContactsDetailEditForm({
     </div>
   );
   const birthdayField = showBirthdayEditor ? (
-    <FieldLabelRow label={labels.sectionBirthday} htmlFor="contact-birthday">
-      <Input
-        id="contact-birthday"
-        type="date"
-        size="md"
-        autoComplete="bday"
+    <FieldLabelRow label={labels.sectionBirthday}>
+      <LocaleDatePicker
         value={editDraft.birthday}
-        onChange={(event) => onDraftChange({ birthday: event.target.value })}
+        locale={locale}
+        size="md"
+        label={labels.sectionBirthday}
+        onChange={(next) => onDraftChange({ birthday: next })}
       />
     </FieldLabelRow>
   ) : null;
@@ -599,6 +603,7 @@ export function ContactsDetailView({
   onRemoveEmail,
   onRemoveAddress,
   groupTags,
+  locale = "en-US",
   className,
 }: ContactsDetailViewProps) {
   const colorOverrides = useAddressBookColorOverrides();
@@ -656,6 +661,7 @@ export function ContactsDetailView({
           labels={labels}
           card={card}
           editDraft={editDraft}
+          locale={locale}
           onDraftChange={onDraftChange}
           onUpdatePhone={onUpdatePhone}
           onUpdateEmail={onUpdateEmail}

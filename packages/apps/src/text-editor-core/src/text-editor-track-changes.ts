@@ -251,7 +251,12 @@ export function getAcceptedTextEditorContent(
 
   const temp = new Editor({
     extensions: [
-      ...createTextEditorExtensions({ format }),
+      ...createTextEditorExtensions({
+        format,
+        fetchImageContent: async () => {
+          throw new Error("export does not fetch image bytes");
+        },
+      }),
       TrackChangesExtension.configure({
         author: toTrackChangesAuthor({ name: "export", color: "#6b7280" }),
       }),

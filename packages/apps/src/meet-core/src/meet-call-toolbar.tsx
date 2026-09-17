@@ -91,7 +91,7 @@ export function MeetCallToolbar({
           onClick={onToggleMic}
           icon={micOn ? <Mic /> : <MicOff />}
           label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
-          size="sm"
+          size="md"
           variant="outline"
           active={micOn}
           aria-pressed={micOn}
@@ -100,7 +100,7 @@ export function MeetCallToolbar({
           onClick={onToggleVideo}
           icon={videoOn ? <Video /> : <VideoOff />}
           label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
-          size="sm"
+          size="md"
           variant="outline"
           active={videoOn}
           aria-pressed={videoOn}
@@ -110,7 +110,7 @@ export function MeetCallToolbar({
             onClick={onToggleScreenShare}
             icon={<MonitorUp />}
             label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
-            size="sm"
+            size="md"
             variant="outline"
             active={screenOn}
             aria-pressed={screenOn}
@@ -138,7 +138,7 @@ export function MeetCallToolbar({
               <IconButton
                 icon={<PhoneOff />}
                 label={callExitLabel}
-                size="sm"
+                size="md"
                 variant="destructive"
               />
             </AlertDialogTrigger>
@@ -170,7 +170,7 @@ export function MeetCallToolbar({
             onClick={onConfirmExit}
             icon={<PhoneOff />}
             label={callExitLabel}
-            size="sm"
+            size="md"
             variant="destructive"
           />
         )}

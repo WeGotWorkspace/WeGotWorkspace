@@ -4,12 +4,10 @@ export const driveLabels = {
   /** Primary AppSidebar home (SST with Docs; Docs uses "My Docs"). */
   sidebarHome: filesBrowserSidebarLabels.homeDrive,
   /**
-   * Personal-drive path / breadcrumb / location label (`"My Drive"` UI path key).
-   * Sidebar row under My Drives uses {@link driveLabels.sidebarPersonalDrive}.
+   * Personal-drive display label (sidebar, breadcrumbs, location, pickers).
+   * UI path key remains `"My Drive"`; string SST is {@link filesBrowserSidebarLabels.personalDrive}.
    */
-  sidebarMyDrive: "My Drive",
-  /** Personal drive row under My Drives (same SST as Docs). */
-  sidebarPersonalDrive: filesBrowserSidebarLabels.personalDrive,
+  sidebarMyDrive: filesBrowserSidebarLabels.personalDrive,
   sidebarSharedWithMe: filesBrowserSidebarLabels.sharedWithMe,
   sidebarRecent: filesBrowserSidebarLabels.recent,
   sidebarStarred: filesBrowserSidebarLabels.starred,
@@ -70,6 +68,11 @@ export const driveLabels = {
   moveDialogEmpty: "No folders match your search.",
   moveDialogCancel: "Cancel",
   moveDialogConfirm: "Move here",
+  fileSelectDialogTitle: "Insert image",
+  fileSelectDialogDescription:
+    "Browse folders like in Drive. Click an image to select it, or open a folder to keep browsing.",
+  fileSelectDialogInsert: "Insert",
+  fileSelectEmpty: "No images in this folder",
   createMarkdownDialogTitle: "New document",
   createMarkdownDialogDescription: "Choose a name and folder before creating the document.",
   createMarkdownDialogNamePlaceholder: "Name",

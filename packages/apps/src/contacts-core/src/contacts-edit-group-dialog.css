@@ -14,16 +14,13 @@
 }
 
 .contacts-edit-group-dialog__footer {
-  @apply mt-4 gap-2 sm:gap-0;
+  @apply mt-4 flex flex-row flex-wrap items-center gap-2 sm:justify-start;
 }
 
 .contacts-edit-group-dialog__footer .contacts-edit-group-dialog__delete {
-  @apply w-full justify-center sm:w-auto sm:me-auto;
-  color: #b91c1c;
+  @apply me-auto;
 }
 
-@media (max-width: 639px) {
-  .contacts-edit-group-dialog__footer .contacts-edit-group-dialog__delete {
-    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
-  }
+.contacts-edit-group-dialog__footer-end {
+  @apply ms-auto flex flex-wrap items-center gap-2;
 }

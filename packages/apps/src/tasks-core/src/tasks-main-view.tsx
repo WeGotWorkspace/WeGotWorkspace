@@ -210,7 +210,7 @@ function TaskRow({
             <IconButton
               label={L.taskActions}
               icon={<MoreVertical className="size-4" />}
-              size="sm"
+              size="md"
               variant="outline"
               disabled={isExiting || !canMutate}
             />
@@ -367,7 +367,7 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
                   <Button
                     type="submit"
                     variant="primary"
-                    size="sm"
+                    size="md"
                     className="tasks-main-view__add-submit"
                     disabled={!canCreate || !draft.title.trim()}
                   >

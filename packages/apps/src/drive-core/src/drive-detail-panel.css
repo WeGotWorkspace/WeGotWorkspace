@@ -22,15 +22,7 @@
   /* Horizontal inset inherits shared panel (main-header p-4 md:p-6). */
 }
 
-.drive-detail-panel .docs-collab-sidebar-panel__header {
-  @apply py-4 md:py-6;
-}
-
-@media (max-width: 40rem) {
-  .drive-detail-panel .docs-collab-sidebar-panel__header {
-    @apply py-3;
-  }
-}
+/* Header block padding inherits shared panel (`py-4 md:py-6` = main-header). */
 
 .drive-detail-panel .docs-collab-sidebar-panel__scroll {
   @apply py-6;

@@ -150,7 +150,7 @@ export function LoginScreen({
             type="submit"
             label={submitting ? "Signing in..." : "Sign in"}
             variant="primary"
-            size="lg"
+            size="xl"
             pill
             disabled={submitting}
             className="login-screen__submit"

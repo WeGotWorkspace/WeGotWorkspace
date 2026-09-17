@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   TaskProjectDialog,
@@ -6,6 +7,7 @@ import {
 } from "@/tasks-core/src/task-project-dialog";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASK_LIST_COLOR, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
+import { TooltipProvider } from "@/ui/tooltip";
 
 const dialogLabels = taskProjectDialogLabelsFrom(defaultTasksLabels);
 
@@ -13,6 +15,10 @@ const groups = [
   { slug: "team", displayName: "Team" },
   { slug: "studio", displayName: "Studio Crew" },
 ];
+
+function render(ui: ReactNode) {
+  return rtlRender(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
+}
 
 function openColorPicker() {
   fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.projectColorLabel }));

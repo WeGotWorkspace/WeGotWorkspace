@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Code,
   Highlighter,
+  Image as ImageIcon,
   Italic,
   Link2,
   List,
@@ -59,7 +60,7 @@ function FormatBarIconButton({
       onClick={onClick}
       active={active}
       disabled={disabled}
-      size="sm"
+      size="md"
       variant="outline"
       aria-pressed={active || undefined}
     />
@@ -83,6 +84,8 @@ export type TextEditorFormatBarProps = {
   commentControl?: ReactNode;
   /** Optional controls rendered at the trailing edge of the bar. */
   trailing?: ReactNode;
+  /** Opens the Docs image picker (hidden when omitted). */
+  onInsertImage?: () => void;
   className?: string;
 };
 
@@ -93,6 +96,7 @@ export function TextEditorFormatBar({
   formattingDisabled = false,
   commentControl,
   trailing,
+  onInsertImage,
   className,
 }: TextEditorFormatBarProps) {
   const [linkOpen, setLinkOpen] = useState(false);
@@ -146,7 +150,8 @@ export function TextEditorFormatBar({
     !showLink &&
     !showComment &&
     !showPrint &&
-    !trailing
+    !trailing &&
+    !onInsertImage
   ) {
     return null;
   }
@@ -181,7 +186,7 @@ export function TextEditorFormatBar({
                 aria-label="Heading level"
                 disabled={formattingDisabled}
                 aria-pressed={headingActive || undefined}
-                size="sm"
+                size="md"
                 variant="outline"
                 className={cn(
                   "text-editor-format-bar__heading-trigger",
@@ -327,6 +332,14 @@ export function TextEditorFormatBar({
             disabled={formattingDisabled}
             onClick={openLinkDialog}
             icon={<Link2 />}
+          />
+        ) : null}
+        {onInsertImage ? (
+          <FormatBarIconButton
+            label="Insert image"
+            disabled={formattingDisabled}
+            onClick={onInsertImage}
+            icon={<ImageIcon />}
           />
         ) : null}
         {showComment && hasContentBeforeComment ? <FormatBarSeparator /> : null}

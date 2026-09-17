@@ -57,6 +57,10 @@ const meta: Meta<typeof CalendarEventDialog> = {
     onClose: fn(),
     onSave: fn(),
   },
+  globals: {
+    // Prefer a comfortable canvas for the single-column event form.
+    viewport: { value: "desktop", isRotated: false },
+  },
 };
 
 export default meta;
@@ -72,8 +76,9 @@ export const Default: Story = {
     const canvas = within(canvasElement.ownerDocument.body);
     await expect(meetMenuTrigger(canvas)).toBeEnabled();
     await expect(canvas.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toBeTruthy();
+    await expect(canvas.getByLabelText(defaultCalendarLabels.eventLocationLabel)).toBeTruthy();
     await expect(
-      canvas.getByPlaceholderText(defaultCalendarLabels.eventLocationLabel),
+      canvas.getByPlaceholderText(defaultCalendarLabels.eventLocationPlaceholder),
     ).toBeTruthy();
   },
 };

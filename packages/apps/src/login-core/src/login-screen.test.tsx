@@ -19,6 +19,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
   wgwLoginWithCredentials: vi.fn().mockResolvedValue(undefined),
   wgwEstablishMcpWebSession: vi.fn().mockResolvedValue("/oauth/authorize"),
   wgwFetchPasswordRecoveryEnabled: vi.fn().mockResolvedValue(false),
+  wgwLiveApiEnabled: () => false,
 }));
 
 describe("LoginScreen return path", () => {

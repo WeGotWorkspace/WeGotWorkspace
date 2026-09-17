@@ -31,7 +31,7 @@ final class DriveStarService
             if (! $this->paths->isPathAllowed($normalized, $username, $groupSlugs, false)) {
                 continue;
             }
-            if ($this->isHiddenNotesPath($normalized)) {
+            if ($this->isHiddenBrowsePath($normalized)) {
                 continue;
             }
             $out[] = $normalized;
@@ -60,6 +60,12 @@ final class DriveStarService
             ->where('username', $username)
             ->where('path', $path)
             ->delete();
+    }
+
+    private function isHiddenBrowsePath(string $virtualPath): bool
+    {
+        return $this->isHiddenNotesPath($virtualPath)
+            || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath);
     }
 
     private function isHiddenNotesPath(string $virtualPath): bool

@@ -9,7 +9,7 @@ use Sabre\DAV\Exception\Forbidden;
 
 /**
  * CalDAV PDO backend for the DAV server only: collections whose URI carries a
- * hidden prefix (`chat-`/`dm-` by default, see wgw.chat.dav_hidden_prefixes)
+ * hidden prefix (`chat-`/`dm-`/`docs-threads` by default, see wgw.chat.dav_hidden_prefixes)
  * never surface over WebDAV.
  *
  * Chat channels are API-only surfaces. Their VJOURNAL payload bends the spec
@@ -24,8 +24,10 @@ use Sabre\DAV\Exception\Forbidden;
  * channels (precedent for node-level guarding: WebdavWriteGuardPlugin).
  *
  * Notes collections stay DAV-visible by design — a note is semantically a real
- * journal entry and external rendering is coherent, tolerated interop. Only
- * the configured prefixes are hidden. REST/JMAP repositories construct their
+ * journal entry and external rendering is coherent, tolerated interop. Docs
+ * comment/suggestion threads use the same hide (docs-threads pool): X-WGW-*
+ * payloads would render as broken journals in a generic DAV client. Only the
+ * configured prefixes are hidden. REST/JMAP repositories construct their
  * own stock PDO backends and are unaffected.
  */
 final class ChatHiddenCalendarBackend extends CalPDO

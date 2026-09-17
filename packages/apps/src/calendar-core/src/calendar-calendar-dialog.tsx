@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/button/src/button";
+import { IconButton } from "@/button/src/icon-button";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import {
@@ -238,7 +240,10 @@ export function CalendarCalendarDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
-        <DialogContent className="calendar-dialog-surface" aria-describedby={undefined}>
+        <DialogContent
+          className="calendar-dialog-surface calendar-calendar-dialog"
+          aria-describedby={undefined}
+        >
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
@@ -279,6 +284,7 @@ export function CalendarCalendarDialog({
                 <Input
                   id="calendar-calendar-name"
                   className={NAME_COLOR_ROW_INPUT_CLASS}
+                  size="sm"
                   autoFocus={!isSubscribe && !nameReadOnly}
                   value={name}
                   disabled={busy || nameReadOnly}
@@ -297,6 +303,7 @@ export function CalendarCalendarDialog({
                   <ColorSwatchTrigger
                     color={selectedColor}
                     label={labels.calendarColorLabel}
+                    size="sm"
                     aria-haspopup="dialog"
                   />
                 </SwatchColorPicker>
@@ -340,22 +347,26 @@ export function CalendarCalendarDialog({
 
             <DialogFooter className="calendar-calendar-dialog__footer">
               {canRemove ? (
-                <Button
+                <IconButton
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  severity="danger"
+                  size="md"
                   className="calendar-calendar-dialog__delete"
+                  icon={<Trash2 className="size-3.5" aria-hidden />}
+                  label={removeLabel}
                   disabled={busy}
                   onClick={() => setConfirmDeleteOpen(true)}
-                >
-                  {removeLabel}
-                </Button>
+                />
               ) : null}
-              <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-                {labels.cancel}
-              </Button>
-              <Button type="submit" disabled={!canSubmit}>
-                {isSubscribe ? labels.subscribeCalendar : labels.save}
-              </Button>
+              <div className="calendar-calendar-dialog__footer-end">
+                <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+                  {labels.cancel}
+                </Button>
+                <Button type="submit" disabled={!canSubmit}>
+                  {isSubscribe ? labels.subscribeCalendarSubmit : labels.save}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>

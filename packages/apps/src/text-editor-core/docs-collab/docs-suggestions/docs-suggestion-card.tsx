@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
+import { IconButton } from "@/button/src/button";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
+import type { DocsCommentAuthor } from "../docs-comments-types";
 import type { DocsSuggestionWithThread } from "../docs-suggestions-types";
 import {
   DocsCollabCardHeader,
@@ -17,6 +19,8 @@ export type DocsSuggestionCardProps = {
   labels: DocsUILabels;
   currentUserId: string;
   active: boolean;
+  /** When false, hide accept/reject / composer / reaction picker (chips stay visible). */
+  canMutate?: boolean;
   onSelect: () => void;
   onAccept: () => void;
   onReject: () => void;
@@ -31,6 +35,7 @@ export function DocsSuggestionCard({
   labels,
   currentUserId,
   active,
+  canMutate = true,
   onSelect,
   onAccept,
   onReject,
@@ -44,6 +49,9 @@ export function DocsSuggestionCard({
   });
   const trimmedComposerText = composerText.trim();
   const canPost = trimmedComposerText.length > 0;
+  const reactionAuthors: DocsCommentAuthor[] = suggestion.messages.map((message) => message.author);
+  const suggestionBody = suggestion.summary || suggestion.anchorText;
+  const showFallbackBody = !suggestion.parts.length && !suggestionBody && suggestion.archived;
 
   useEffect(() => {
     if (!active) return;
@@ -76,46 +84,63 @@ export function DocsSuggestionCard({
         authorName={suggestion.authorName}
         createdAt={suggestion.timestamp}
         actions={
-          <>
-            <button
-              type="button"
-              className="docs-suggestion-card__accept"
-              aria-label={labels.suggestionsAccept}
-              onClick={(event) => {
-                event.stopPropagation();
-                runExitAnimation(onAccept);
-              }}
-            >
-              <Check className="docs-suggestion-card__accept-icon" aria-hidden />
-              Accept
-            </button>
-            <button
-              type="button"
-              className="docs-suggestion-card__reject"
-              aria-label={labels.suggestionsReject}
-              onClick={(event) => {
-                event.stopPropagation();
-                runExitAnimation(onReject);
-              }}
-            >
-              <X className="docs-suggestion-card__reject-icon" aria-hidden />
-            </button>
-          </>
+          canMutate ? (
+            <>
+              <IconButton
+                label={labels.suggestionsAccept}
+                icon={<Check />}
+                size="md"
+                variant="outline"
+                severity="success"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  runExitAnimation(onAccept);
+                }}
+              />
+              <IconButton
+                label={labels.suggestionsReject}
+                icon={<X />}
+                size="md"
+                variant="outline"
+                severity="danger"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  runExitAnimation(onReject);
+                }}
+              />
+            </>
+          ) : null
         }
       />
 
-      <SuggestionDiffBody
-        parts={suggestion.parts}
-        ariaLabel={suggestion.summary}
-        title={active ? undefined : suggestion.summary}
-      />
+      {suggestion.parts.length > 0 ? (
+        <SuggestionDiffBody
+          parts={suggestion.parts}
+          ariaLabel={suggestion.summary}
+          title={active ? undefined : suggestion.summary}
+        />
+      ) : suggestionBody || showFallbackBody ? (
+        <p
+          className="docs-suggestion-card__diff"
+          aria-label={suggestionBody || labels.suggestionsArchivedEmpty}
+          title={active ? undefined : suggestionBody || labels.suggestionsArchivedEmpty}
+        >
+          <span className="docs-collab-card__clamp">
+            {suggestionBody || labels.suggestionsArchivedEmpty}
+          </span>
+        </p>
+      ) : null}
 
-      <DocsCollabReactions
-        className="docs-suggestion-card__reactions"
-        reactions={suggestion.reactions}
-        currentUserId={currentUserId}
-        onToggleReaction={onToggleReaction}
-      />
+      {canMutate || (suggestion.reactions?.length ?? 0) > 0 ? (
+        <DocsCollabReactions
+          className="docs-suggestion-card__reactions"
+          reactions={suggestion.reactions}
+          authors={reactionAuthors}
+          currentUserId={currentUserId}
+          canMutate={canMutate}
+          onToggleReaction={onToggleReaction}
+        />
+      ) : null}
 
       {suggestion.messages.length > 0 ? (
         <ul className="docs-suggestion-card__replies" aria-live="polite">
@@ -127,7 +152,7 @@ export function DocsSuggestionCard({
         </ul>
       ) : null}
 
-      {active ? (
+      {active && canMutate ? (
         <div
           className="docs-suggestion-card__composer"
           onClick={(event) => event.stopPropagation()}

@@ -1,0 +1,9 @@
+@import "../../styles.css" reference;
+
+.docs-image-insert-chooser__actions {
+  @apply flex flex-col gap-2;
+}
+
+.docs-image-insert-chooser__actions .button {
+  @apply w-full justify-center;
+}

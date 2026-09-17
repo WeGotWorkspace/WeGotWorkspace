@@ -15,7 +15,7 @@ describe("useDriveSidebarModel", () => {
         useDriveSidebarModel({
           labels: driveLabels,
           view,
-          sidebarGroupPaths: ["Groups/eng"],
+          sidebarGroupRoots: [{ path: "Groups/eng", label: "Engineering" }],
           selectView,
           sidebarDropZoneProps,
           commitMoveToFolder,
@@ -32,7 +32,10 @@ describe("useDriveSidebarModel", () => {
     ]);
     expect(result.current.primarySidebarItems[0]?.selected).toBe(true);
 
-    expect(result.current.groupSidebarItems.map((item) => item.label)).toEqual(["Personal", "eng"]);
+    expect(result.current.groupSidebarItems.map((item) => item.label)).toEqual([
+      "Personal",
+      "Engineering",
+    ]);
     expect(result.current.groupSidebarItems[0]?.selected).toBe(true);
 
     result.current.primarySidebarItems[1]?.onClick?.();

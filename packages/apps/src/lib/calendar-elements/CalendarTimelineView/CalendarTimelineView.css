@@ -703,7 +703,7 @@ time-line::part(overflow-dot) {
    Timed/all-day lanes default to 32px, so a large month cell only fits ~3 titles before
    TimeLine clips to “+N”. Prefer a tighter lane over growing the cell. Compact (≤504px /
    force-compact) still overrides to 20px view-only bars below. Cards stay clickable and
-   keep the accent bar / recurring icon. Heading tokens fit a 12px title at this height
+   keep the accent bar. Heading tokens fit a 12px title at this height
    (EventCard’s compact heading tier is max-height 31px). 24px is the lane floor
    (WCAG 2.5.8 target size) on every pointer. */
 /* Tokens live on the host so compact `time-line.timeline-main` rules can
@@ -739,7 +739,6 @@ time-line::part(overflow-dot) {
     --_lc-event-card-heading-line-height: 1;
     --_lc-time-label-font-size: 0.625rem;
     --_lc-event-card-pointer-events: none;
-    --_lc-event-card-recurring-icon-display: none;
     --_lc-event-card-accent-bar-display: none;
     --_lc-event-card-heading-padding-inline-start: 4px;
     --_lc-event-card-heading-overflow: clip;
@@ -819,7 +818,6 @@ time-line::part(overflow-dot) {
   --_lc-event-card-heading-line-height: 1;
   --_lc-time-label-font-size: 0.625rem;
   --_lc-event-card-pointer-events: none;
-  --_lc-event-card-recurring-icon-display: none;
   --_lc-event-card-accent-bar-display: none;
   --_lc-event-card-heading-padding-inline-start: 4px;
   --_lc-event-card-heading-overflow: clip;

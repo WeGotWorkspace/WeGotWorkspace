@@ -13,7 +13,6 @@ import { NOTES_SHARE_UI_PERMISSIONS } from "@/share-ui/share-access-map";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { shareLabels } from "@/share-ui/share-labels";
-import { SharePrincipalMark } from "@/share-ui/share-principal-mark";
 import { SharePrincipalRow } from "@/share-ui/share-principal-row";
 import {
   SharePrincipalSearchDropdown,
@@ -153,14 +152,9 @@ export function CollectionShareSection({
           return (
             <SharePrincipalRow
               key={grant.id}
-              mark={
-                <SharePrincipalMark
-                  principalType={grant.isGroup ? "group" : "user"}
-                  displayName={title}
-                  principalId={grant.isGroup ? undefined : grant.id}
-                />
-              }
-              title={title}
+              principalType={grant.isGroup ? "group" : "user"}
+              displayName={title}
+              principalId={grant.isGroup ? undefined : grant.id}
               subtitle={grant.isGroup ? undefined : grant.id}
               access={permission === "edit" ? "edit" : "view"}
               editable={accessSelect && !locked && !busy}

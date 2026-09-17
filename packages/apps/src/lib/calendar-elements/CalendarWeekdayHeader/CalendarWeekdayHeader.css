@@ -159,8 +159,10 @@
 }
 
 @container (max-width: 64px) {
+  /* Switch to one-letter labels; keep start alignment so initials line up with
+     month day numbers. Year cards opt into centered initials via `[narrow]`. */
   .weekday-label {
-    @apply inline-flex w-full justify-center text-center;
+    @apply inline-flex w-full justify-start text-start;
   }
 
   .weekday-short {
@@ -171,7 +173,7 @@
     @apply inline;
   }
 
-  /* Date mode keeps the name + number pair side by side instead of centering the label. */
+  /* Date mode keeps the name + number pair side by side instead of stretching the label. */
   .weekday-date-button .weekday-label {
     @apply w-auto justify-start text-start;
   }
@@ -188,8 +190,8 @@
   }
 }
 
-/* Forced narrow variant (see the `narrow` property): mirrors the max-width: 64px container
-   block above and outranks both width queries via the :host compound selector. */
+/* Forced narrow variant (year month cards): one-letter labels centered.
+   Compact month uses the container query above (start-aligned initials). */
 :host([narrow]) .weekday-label {
   @apply inline-flex w-full justify-center text-center;
 }

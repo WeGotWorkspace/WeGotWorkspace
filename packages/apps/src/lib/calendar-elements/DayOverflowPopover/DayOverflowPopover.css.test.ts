@@ -25,7 +25,6 @@ describe("DayOverflowPopover EventCard chrome", () => {
       "--_lc-event-card-heading-padding-inline-start",
       "--_lc-time-label-font-size",
       "--_lc-event-card-pointer-events",
-      "--_lc-event-card-recurring-icon-display",
       "--_lc-event-card-accent-bar-display",
       "--_lc-event-card-heading-overflow",
       "--_lc-event-card-heading-mask",
@@ -33,5 +32,6 @@ describe("DayOverflowPopover EventCard chrome", () => {
     ]) {
       expect(hostBlock, name).toMatch(new RegExp(`${name}:\\s*initial`));
     }
+    expect(hostBlock).not.toMatch(/--_lc-event-card-recurring-icon-display/);
   });
 });

@@ -10,8 +10,14 @@ import { mergeDraftThreadWithOpenThreads } from "../docs-comments/docs-comments-
 import { DocsCollabSidebarPanel } from "../docs-collab-card";
 import type { DocsSuggestionWithThread } from "../docs-suggestions-types";
 import { DocsSuggestionCard } from "../docs-suggestions/docs-suggestion-card";
-import { filterReviewItemsByTab, type DocsCollabReviewInboxTab } from "./docs-collab-review-utils";
+import {
+  countOpenReviewItems,
+  filterReviewItemsByTab,
+  type DocsCollabReviewInboxTab,
+} from "./docs-collab-review-utils";
 import "./docs-collab-review-panel.css";
+
+const EMPTY_ARCHIVED_SUGGESTIONS: DocsSuggestionWithThread[] = [];
 
 export type DocsCollabReviewPanelProps = {
   editor: Editor | null;
@@ -23,6 +29,8 @@ export type DocsCollabReviewPanelProps = {
   threads: DocsCommentThread[];
   draftThread?: DocsCommentThread | null;
   suggestions: DocsSuggestionWithThread[];
+  /** Archived suggestion journals without a live mark — Resolved tab only. */
+  archivedSuggestions?: DocsSuggestionWithThread[];
   currentUserId: string;
   activeThreadId: string | null;
   activeChangeId: string | null;
@@ -50,6 +58,7 @@ export function DocsCollabReviewPanel({
   threads,
   draftThread = null,
   suggestions,
+  archivedSuggestions = EMPTY_ARCHIVED_SUGGESTIONS,
   currentUserId,
   activeThreadId,
   activeChangeId,
@@ -77,15 +86,24 @@ export function DocsCollabReviewPanel({
     [draftThread, threads],
   );
 
+  const allSuggestions = useMemo(
+    () => [...suggestions, ...archivedSuggestions],
+    [archivedSuggestions, suggestions],
+  );
+
   const reviewItems = useMemo(
-    () => filterReviewItemsByTab(tab, displayThreads, suggestions, editor),
-    [displayThreads, editor, suggestions, tab],
+    () => filterReviewItemsByTab(tab, displayThreads, allSuggestions, editor),
+    [allSuggestions, displayThreads, editor, tab],
+  );
+
+  const openCount = useMemo(
+    () => countOpenReviewItems(displayThreads, allSuggestions),
+    [allSuggestions, displayThreads],
   );
 
   const isEmpty = reviewItems.length === 0;
 
-  const countLabel =
-    reviewItems.length === 1 ? labels.reviewCountOne : labels.reviewCountMany(reviewItems.length);
+  const countLabel = openCount === 1 ? labels.reviewCountOne : labels.reviewCountMany(openCount);
 
   useEffect(() => {
     if (!scrollRef.current) return;
@@ -108,7 +126,7 @@ export function DocsCollabReviewPanel({
       className="docs-collab-review-panel"
       ariaLabel={labels.reviewSidebarTitle}
       title={labels.reviewSidebarTitle}
-      count={reviewItems.length}
+      itemCount={openCount}
       countLabel={countLabel}
       closeLabel={labels.reviewCloseSidebar}
       onClose={onCloseMobile}
@@ -142,6 +160,7 @@ export function DocsCollabReviewPanel({
       {reviewItems.map((item) => {
         if (item.type === "suggestion") {
           const { suggestion } = item;
+          const canMutateSuggestion = !suggestion.archived;
           return (
             <DocsSuggestionCard
               key={`suggestion-${suggestion.changeId}`}
@@ -149,18 +168,27 @@ export function DocsCollabReviewPanel({
               labels={labels}
               currentUserId={currentUserId}
               active={activeChangeId === suggestion.changeId}
+              canMutate={canMutateSuggestion}
               onSelect={() => onSelectSuggestion(suggestion.changeId)}
               onAccept={() => {
-                if (canReviewSuggestions) onAcceptSuggestion(suggestion.changeId);
+                if (canReviewSuggestions && canMutateSuggestion) {
+                  onAcceptSuggestion(suggestion.changeId);
+                }
               }}
               onReject={() => {
-                if (canReviewSuggestions) onRejectSuggestion(suggestion.changeId);
+                if (canReviewSuggestions && canMutateSuggestion) {
+                  onRejectSuggestion(suggestion.changeId);
+                }
               }}
               onAddReply={(body) => {
-                if (canMutateComments) onAddSuggestionReply(suggestion.changeId, body);
+                if (canMutateComments && canMutateSuggestion) {
+                  onAddSuggestionReply(suggestion.changeId, body);
+                }
               }}
               onToggleReaction={(emoji) => {
-                if (canMutateComments) onToggleSuggestionReaction(suggestion.changeId, emoji);
+                if (canMutateComments && canMutateSuggestion) {
+                  onToggleSuggestionReaction(suggestion.changeId, emoji);
+                }
               }}
             />
           );

@@ -224,7 +224,7 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
         {showVideo ? (
           <video ref={videoRef} autoPlay muted playsInline className="meet-mini-player__video" />
         ) : (
-          <UserAvatar displayName={snapshot.displayName || "You"} compact size="sm" />
+          <UserAvatar displayName={snapshot.displayName || "You"} compact size="md" />
         )}
       </button>
       <div className="meet-mini-player__info">
@@ -240,7 +240,7 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
           onClick={() => store.toggleMicRef.current?.()}
           icon={snapshot.micOn ? <Mic /> : <MicOff />}
           label={snapshot.micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
-          size="sm"
+          size="md"
           variant="ghost"
           className={snapshot.micOn ? undefined : "meet-mini-player__media-off"}
         />
@@ -248,7 +248,7 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
           onClick={() => store.toggleVideoRef.current?.()}
           icon={snapshot.videoOn ? <Video /> : <VideoOff />}
           label={snapshot.videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
-          size="sm"
+          size="md"
           variant="ghost"
           className={snapshot.videoOn ? undefined : "meet-mini-player__media-off"}
         />
@@ -256,14 +256,14 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
           onClick={returnToCall}
           icon={<Maximize2 />}
           label={meetLabels.returnToCall}
-          size="sm"
+          size="md"
           variant="ghost"
         />
         <IconButton
           onClick={() => void store.leaveRef.current?.()}
           icon={<PhoneOff />}
           label={meetLabels.hangUp}
-          size="sm"
+          size="md"
           variant="ghost"
           className="meet-mini-player__hang-up"
         />

@@ -23,7 +23,7 @@ export type IconButtonProps = Omit<
   size?: IconButtonSize;
   variant?: ButtonVariant;
   active?: boolean;
-  /** Destructive actions: danger fg + severity hover wash (matches MenuItem). */
+  /** Semantic actions: danger (destructive) or success (resolve/accept) fg + wash. */
   severity?: ButtonSeverity;
   showTooltip?: boolean;
   tooltipClassName?: string;

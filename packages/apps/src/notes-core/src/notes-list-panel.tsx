@@ -151,7 +151,7 @@ export function NotesListPanel({
                 onClick={onRefreshList}
                 disabled={listLoading || listRefreshing}
                 icon={<RefreshSpinIcon spinning={listRefreshing} className="size-4" />}
-                size="sm"
+                size="md"
                 variant="outline"
               />
             ) : null}
@@ -165,7 +165,7 @@ export function NotesListPanel({
                   )
                 }
                 icon={<Trash2 />}
-                size="sm"
+                size="md"
                 variant="outline"
               />
             ) : null}

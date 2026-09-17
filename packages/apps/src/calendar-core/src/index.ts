@@ -46,10 +46,15 @@ export type { CalendarRsvpViewProps } from "./calendar-rsvp-page";
 export { CalendarCalendarDialog } from "./calendar-calendar-dialog";
 export { CalendarEventDialog } from "./calendar-event-dialog";
 export type { CalendarEventDialogProps } from "./calendar-event-dialog";
+export { CalendarEventForm } from "./calendar-event-form";
+export type { CalendarEventFormProps, CalendarEventFormLayout } from "./calendar-event-form";
 export { CalendarPublishSection } from "./calendar-publish-section";
 export type { CalendarPublishSectionProps } from "./calendar-publish-section";
 export { CalendarEventDetailsPopover } from "./calendar-event-details-popover";
-export type { CalendarEventDetailsPopoverProps } from "./calendar-event-details-popover";
+export type {
+  CalendarEventDetailsPopoverProps,
+  CalendarEventDetailsPopoverEditProps,
+} from "./calendar-event-details-popover";
 export {
   attendeesFromParticipants,
   participantsFromAttendees,

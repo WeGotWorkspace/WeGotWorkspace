@@ -1,4 +1,5 @@
-import { Bell } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
+import { IconButton } from "@/button/src/icon-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import {
   alertsAfterOffsetChange,
@@ -10,7 +11,7 @@ import {
 } from "@/calendar-core/src/calendar-alerts";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
-import { ShareAccessRow } from "@/share-ui/share-access-row";
+import type { ControlSize } from "@/ui/control-size";
 import "@/share-ui/share-ui.css";
 import "@/calendar-core/src/calendar-alarms-card.css";
 
@@ -38,16 +39,20 @@ function foreignSelectLabel(alert: CalendarEventAlertFormValue): string {
   return alert.when ?? "";
 }
 
-function AlarmOffsetControls({
+function AlarmOffsetRow({
   alert,
   labels,
   disabled,
+  controlSize = "sm",
   onSelect,
+  onRemove,
 }: {
   alert: CalendarEventAlertFormValue | null;
   labels: CalendarAlarmsCardLabels;
   disabled: boolean;
+  controlSize?: ControlSize;
   onSelect: (value: CalendarAlertOffsetSelectValue) => void;
+  onRemove?: () => void;
 }) {
   const selectValue = alarmOffsetSelectValue(alert);
   const foreignValue = alert ? foreignSelectValue(alert) : null;
@@ -62,6 +67,7 @@ function AlarmOffsetControls({
         disabled={disabled}
       >
         <SelectTrigger
+          size={controlSize}
           className="calendar-event-dialog__alarm-offset"
           aria-label={labels.eventAlarmOffset}
         >
@@ -83,6 +89,16 @@ function AlarmOffsetControls({
           <SelectItem value="1d">{labels.eventAlarm1Day}</SelectItem>
         </SelectContent>
       </Select>
+      {onRemove ? (
+        <IconButton
+          label={labels.eventAlarmRemove}
+          icon={<Trash2 className="size-3.5" aria-hidden />}
+          size={controlSize}
+          variant="outline"
+          disabled={disabled}
+          onClick={onRemove}
+        />
+      ) : null}
     </div>
   );
 }
@@ -90,7 +106,6 @@ function AlarmOffsetControls({
 export type CalendarAlarmsCardLabels = Pick<
   CalendarUILabels,
   | "eventAlarmsLabel"
-  | "eventAlarmRow"
   | "eventAlarmRemove"
   | "eventAlarmOffset"
   | "eventAlarmNone"
@@ -110,6 +125,8 @@ export type CalendarAlarmsCardProps = {
   readOnly?: boolean;
   /** Tasks persist due-relative offsets; calendar leaves this unset (event start). */
   defaultRelatedTo?: "start" | "end";
+  /** Shared control height (`sm` in the compact event popover). Default `md`. */
+  controlSize?: ControlSize;
   onChange: (alerts: CalendarEventAlertFormValue[]) => void;
 };
 
@@ -119,6 +136,7 @@ export function CalendarAlarmsRows({
   disabled = false,
   readOnly = false,
   defaultRelatedTo,
+  controlSize = "sm",
   onChange,
 }: CalendarAlarmsCardProps) {
   const showTrailingNone = !readOnly;
@@ -128,36 +146,26 @@ export function CalendarAlarmsRows({
 
   return (
     <>
-      {alerts.map((alert, index) => (
-        <ShareAccessRow
+      {alerts.map((alert) => (
+        <AlarmOffsetRow
           key={alert.id}
-          title={`${labels.eventAlarmRow} ${index + 1}`}
-          trailing={
-            <AlarmOffsetControls
-              alert={alert}
-              labels={labels}
-              disabled={disabled || readOnly}
-              onSelect={(value) => commitOffset(alert.id, value)}
-            />
-          }
-          removeLabel={labels.eventAlarmRemove}
-          removeDisabled={disabled}
+          alert={alert}
+          labels={labels}
+          disabled={disabled || readOnly}
+          controlSize={controlSize}
+          onSelect={(value) => commitOffset(alert.id, value)}
           onRemove={
             readOnly ? undefined : () => onChange(alerts.filter((row) => row.id !== alert.id))
           }
         />
       ))}
       {showTrailingNone ? (
-        <ShareAccessRow
-          title={`${labels.eventAlarmRow} ${alerts.length + 1}`}
-          trailing={
-            <AlarmOffsetControls
-              alert={null}
-              labels={labels}
-              disabled={disabled}
-              onSelect={(value) => commitOffset(EMPTY_SLOT_ID, value)}
-            />
-          }
+        <AlarmOffsetRow
+          alert={null}
+          labels={labels}
+          disabled={disabled}
+          controlSize={controlSize}
+          onSelect={(value) => commitOffset(EMPTY_SLOT_ID, value)}
         />
       ) : null}
     </>

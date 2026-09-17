@@ -74,15 +74,8 @@ describe("FloatingActionBar", () => {
   });
 
   it("publishes soft accent outline washes matching view-header (not workspace-root weight)", () => {
-    expect(css).toMatch(
-      /\.floating-action-bar \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--workspace-accent[\s\S]*14%/,
-    );
-    expect(css).toMatch(
-      /\.floating-action-bar \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--workspace-accent[\s\S]*18%/,
-    );
-    expect(css).toMatch(
-      /\.floating-action-bar \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--workspace-accent[\s\S]*24%/,
-    );
+    expect(css).toMatch(/@import ["'].*workspace-menu-item-sst\.css["']/);
+    expect(css).not.toMatch(/\.floating-action-bar \{[\s\S]*--button-outline-hover-background:/);
     expect(css).not.toMatch(
       /\.floating-action-bar \{[\s\S]*--button-outline-active-background:[\s\S]*55%/,
     );

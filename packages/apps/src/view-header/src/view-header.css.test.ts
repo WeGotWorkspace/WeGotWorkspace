@@ -8,15 +8,18 @@ const css = readFileSync(join(here, "view-header.css"), "utf8");
 
 describe("view-header CSS", () => {
   it("publishes soft accent outline washes for chrome toggles (sidebar + actions)", () => {
-    expect(css).toMatch(
-      /\.view-header \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--workspace-accent[\s\S]*14%/,
+    expect(css).toMatch(/@import ["'].*workspace-menu-item-sst\.css["']/);
+    expect(css).not.toMatch(/\.view-header \{[\s\S]*--button-outline-hover-background:/);
+  });
+
+  it("does not remap --control-radius (soft radius is global)", () => {
+    expect(css).not.toMatch(
+      /\.view-header \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
     );
-    expect(css).toMatch(
-      /\.view-header \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--workspace-accent[\s\S]*18%/,
+    expect(css).not.toMatch(
+      /\.view-header__search-stack \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
     );
-    expect(css).toMatch(
-      /\.view-header \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--workspace-accent[\s\S]*24%/,
-    );
+    expect(css).not.toMatch(/\.view-header \{[\s\S]*--control-radius:/);
   });
 
   it("wraps stacked and narrow responsive titles instead of ellipsizing first", () => {

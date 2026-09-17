@@ -26,11 +26,11 @@ export function DriveDetailActionBar({ actions }: DriveDetailActionBarProps) {
           onClick: action.onClick,
           checked: action.active,
           disabled: action.disabled,
-          severity: action.severity,
+          severity: action.severity === "danger" ? ("danger" as const) : undefined,
         }))}
         contentClassName="min-w-[11rem] p-1.5"
         trigger={
-          <IconButton label="More actions" icon={<MoreHorizontal />} size="sm" variant="outline" />
+          <IconButton label="More actions" icon={<MoreHorizontal />} size="md" variant="outline" />
         }
       />
     </div>

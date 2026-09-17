@@ -59,7 +59,7 @@ describe("TextEditorFormatBar", () => {
 
     const bold = screen.getByRole("button", { name: "Bold" });
     expect(bold.className).toMatch(/button--variant-outline/);
-    expect(bold.className).toMatch(/icon-button--size-sm/);
+    expect(bold.className).toMatch(/icon-button--size-md/);
     expect(container.querySelector(".text-editor-format-bar__controls")).not.toBeNull();
 
     editor.destroy();

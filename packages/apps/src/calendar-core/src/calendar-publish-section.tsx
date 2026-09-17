@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, ExternalLink, Globe2 } from "lucide-react";
+import { Copy, Globe2 } from "lucide-react";
 import { Card } from "@/card/src/card";
 import { IconButton } from "@/button/src/icon-button";
 import { buttonVariants } from "@/button/src/button";
@@ -14,7 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { ShareDialogIconLink } from "@/share-ui/share-dialog-icon-link";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import type { CalendarFeedInfo } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
@@ -71,7 +70,6 @@ export function CalendarPublishSection({
               type="text"
               value={feed.httpsUrl}
               readOnly
-              mono
               aria-label={labels.publishCalendarHttpsLabel}
             />
             <IconButton
@@ -80,11 +78,6 @@ export function CalendarPublishSection({
               size="sm"
               variant="outline"
               onClick={onCopyHttps}
-            />
-            <ShareDialogIconLink
-              href={feed.webcalUrl}
-              label={labels.openInCalendar}
-              icon={<ExternalLink className="size-3.5" aria-hidden />}
             />
           </div>
         </div>

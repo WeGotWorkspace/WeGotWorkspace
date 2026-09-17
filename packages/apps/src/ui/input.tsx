@@ -2,14 +2,15 @@ import * as React from "react";
 import { Search, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { controlSizeClassName, type ControlSize } from "@/ui/control-size";
 
 import "./input.css";
 
-export type InputSize = "sm" | "md";
+export type InputSize = ControlSize;
 export type InputVariant = "default" | "search";
 
 export type InputProps = Omit<React.ComponentProps<"input">, "size"> & {
-  /** Height, padding, and font-size. Radius stays `--control-radius` (parent token). */
+  /** Height, padding, and font-size. Radius is global `--control-radius`. Default `md` = 36px. */
   size?: InputSize;
   variant?: InputVariant;
 };
@@ -70,7 +71,7 @@ function SearchInput({
   };
 
   return (
-    <div className={cn("input input--search", size === "sm" && "input--size-sm", className)}>
+    <div className={cn("input input--search", controlSizeClassName("input", size), className)}>
       <Search className="input__search-icon" aria-hidden />
       <input
         {...props}
@@ -114,7 +115,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         type={type}
-        className={cn("input", size === "sm" && "input--size-sm", className)}
+        className={cn("input", controlSizeClassName("input", size), className)}
         ref={ref}
         value={value}
         onChange={onChange}

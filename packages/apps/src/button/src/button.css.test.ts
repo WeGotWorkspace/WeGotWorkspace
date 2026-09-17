@@ -6,6 +6,21 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "button.css"), "utf8");
 
+describe("button radius", () => {
+  it("uses shared --control-radius for default and size variants; pill is control-radius alias", () => {
+    expect(css).toMatch(/\.button \{[\s\S]*?border-radius:\s*var\(--control-radius\)/);
+    for (const size of ["xs", "sm", "md"] as const) {
+      const block = css.slice(css.indexOf(`.button--size-${size} {`));
+      const end = block.indexOf("\n}");
+      const sizeBlock = block.slice(0, end);
+      expect(sizeBlock).not.toMatch(/border-radius/);
+    }
+    expect(css).toMatch(
+      /\.button\.button--pill \{[\s\S]*border-radius:\s*var\(--control-radius-button-pill\)/,
+    );
+  });
+});
+
 describe("button outline chrome", () => {
   it("defaults outline borders to Select/Input --control-border-color", () => {
     expect(css).toMatch(
@@ -56,6 +71,17 @@ describe("button outline chrome", () => {
     expect(css).toMatch(/\.button--severity-danger:hover[\s\S]*--button-severity-hover-background/);
     expect(css).toMatch(
       /\.button\.button--variant-outline\.button--severity-danger:hover[\s\S]*--button-severity-hover-background/,
+    );
+  });
+
+  it("washes severity-success from --color-ghost on hover, not remapped emerald/accent", () => {
+    expect(css).toMatch(/\.button--severity-success \{[\s\S]*?--color-ghost/);
+    expect(css).toMatch(/\.button--severity-success \{[\s\S]*?--button-severity-hover-background/);
+    expect(css).toMatch(
+      /\.button--severity-success:hover[\s\S]*--button-severity-hover-background/,
+    );
+    expect(css).toMatch(
+      /\.button\.button--variant-outline\.button--severity-success:hover[\s\S]*--button-severity-hover-background/,
     );
   });
 });

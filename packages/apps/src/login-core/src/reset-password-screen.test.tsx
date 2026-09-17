@@ -16,6 +16,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwResetPasswordWithToken: (...args: unknown[]) => resetPassword(...args),
+  wgwLiveApiEnabled: () => false,
 }));
 
 describe("ResetPasswordScreen", () => {

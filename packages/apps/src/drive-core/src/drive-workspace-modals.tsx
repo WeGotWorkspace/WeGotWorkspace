@@ -67,6 +67,7 @@ export function DriveWorkspaceModals({
     submitCreateMarkdown,
     files,
     sidebarGroupPaths,
+    folderPickerRootLabels,
     commitMoveToFolder,
     view,
     operations,
@@ -89,6 +90,7 @@ export function DriveWorkspaceModals({
           <Input
             autoFocus
             placeholder="Folder name"
+            size="sm"
             value={newFolderName}
             onChange={(event) => setNewFolderName(event.target.value)}
             onKeyDown={(event) => {
@@ -199,6 +201,7 @@ export function DriveWorkspaceModals({
         operations={operations}
         currentUsername={currentUsername}
         groupRootNames={groupRootNames}
+        rootLabels={folderPickerRootLabels}
         onClose={() => setMoveDialog(null)}
         onConfirm={(destinationPath) => {
           if (moveDialog) commitMoveToFolder(moveDialog.ids, destinationPath);
@@ -217,6 +220,7 @@ export function DriveWorkspaceModals({
         operations={operations}
         currentUsername={currentUsername}
         groupRootNames={groupRootNames}
+        rootLabels={folderPickerRootLabels}
         isSubmitting={markdownDialogSubmitting}
         errorMessage={markdownDialogError}
         onClose={closeMarkdownDialog}

@@ -4,7 +4,8 @@
  * state (1px transparent reserves space). Accent via --button-outline-*;
  * keyboard-only focus ring. */
 .collection-sidebar-row {
-  @apply relative flex min-h-8 min-w-0 items-center gap-2 py-1 text-sm font-medium;
+  @apply relative flex min-w-0 items-center gap-2 text-sm font-medium;
+  min-height: var(--app-sidebar-item-height, var(--control-height-md, 2.25rem));
   border-radius: var(--collection-sidebar-row-radius, 0.25rem);
   /* Align leading content with section titles / app-switch glyph inset. */
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
@@ -150,7 +151,11 @@
 
 .collection-sidebar-row__action.button,
 .collection-sidebar-row__expand.button {
-  @apply relative z-10 size-6 shrink-0;
+  @apply relative z-10 shrink-0;
+  width: var(--control-height-xs, 1.75rem);
+  height: var(--control-height-xs, 1.75rem);
+  min-width: var(--control-height-xs, 1.75rem);
+  min-height: var(--control-height-xs, 1.75rem);
   color: color-mix(in oklab, var(--color-ink) 45%, transparent);
 }
 

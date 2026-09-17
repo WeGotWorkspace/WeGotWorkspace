@@ -157,7 +157,7 @@ export function DriveWorkspace({
   const { primarySidebarItems, groupSidebarItems } = useDriveSidebarModel({
     labels: controller.labels,
     view: controller.view,
-    sidebarGroupPaths: controller.sidebarGroupPaths,
+    sidebarGroupRoots: controller.sidebarGroupRoots,
     selectView: controller.selectView,
     sidebarDropZoneProps: controller.sidebarDropZoneProps,
     commitMoveToFolder: controller.commitMoveToFolder,
@@ -467,7 +467,7 @@ function DriveMainHeader({
           <IconButton
             label={labels.detailPanelToggle}
             icon={<PanelRight className="size-4" aria-hidden />}
-            size="sm"
+            size="md"
             variant="outline"
             active={detailOpen}
             onClick={() => setDetailOpen((open) => !open)}

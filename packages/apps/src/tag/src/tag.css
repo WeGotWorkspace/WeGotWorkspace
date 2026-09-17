@@ -1,6 +1,9 @@
 @import "../../styles.css" reference;
 
 .tag-group {
+  /* Soft chip radius — same global `--control-radius` (button-pill is an alias). */
+  --tag-radius: var(--control-radius);
+  /* Compact 24px default — below control-height-xs; lg aliases xs (28px). */
   --tag-height: 1.5rem;
   --tag-font-size: 0.75rem;
   --tag-icon-size: 0.75rem;
@@ -9,9 +12,9 @@
   @apply relative flex flex-wrap items-center gap-1.5;
 }
 
-/* Interactive editors (notes detail): fixed 28px (h-7) — not --input-height (grows at md+). */
+/* Interactive editors (notes detail): --control-height-xs (28px), not form md+. */
 .tag-group--size-lg {
-  --tag-height: 1.75rem;
+  --tag-height: var(--control-height-xs, 1.75rem);
   --tag-font-size: 0.8125rem;
   --tag-icon-size: 0.875rem;
   --tag-padding-inline: 0.625rem;
@@ -28,13 +31,13 @@
   line-height: 1;
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
-  border-radius: var(--control-radius-button-pill);
+  border-radius: var(--tag-radius, var(--control-radius));
   background-color: var(--tag-bg, color-mix(in oklab, var(--color-ink) 8%, transparent));
   color: var(--tag-fg, var(--color-ink));
 }
 
 .tag--size-lg {
-  --tag-height: 1.75rem;
+  --tag-height: var(--control-height-xs, 1.75rem);
   --tag-font-size: 0.8125rem;
   --tag-icon-size: 0.875rem;
   --tag-padding-inline: 0.625rem;
@@ -104,7 +107,7 @@
   padding-inline: var(--tag-padding-inline, 0.5rem);
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
-  border-radius: var(--control-radius-button-pill);
+  border-radius: var(--tag-radius, var(--control-radius));
   background-color: var(--tag-group-add-bg, color-mix(in oklab, var(--color-ink) 6%, transparent));
   color: var(--tag-group-add-fg, var(--color-ink));
 }
@@ -135,7 +138,7 @@
   min-width: 7rem;
   max-width: 12rem;
   width: 8rem;
-  border-radius: var(--control-radius-button-pill);
+  border-radius: var(--tag-radius, var(--control-radius));
   border-color: var(--tag-group-input-border, var(--control-border-color));
   background-color: var(
     --tag-group-input-bg,

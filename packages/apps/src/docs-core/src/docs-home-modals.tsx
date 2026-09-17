@@ -84,10 +84,6 @@ export function DocsHomeModals({
     () => buildDocsFolderPickerRootLabels(groupRoots, labels.homeMyDrive),
     [groupRoots, labels.homeMyDrive],
   );
-  const pickerLabels = useMemo(
-    () => ({ ...driveLabels, sidebarMyDrive: labels.homeMyDrive }),
-    [labels.homeMyDrive],
-  );
   const folderPickerRootIcon = useMemo(() => <HardDrive />, []);
   const moveTarget = moveState ? actions.fileById(moveState.ids[0]!) : null;
   const canSubmitRename = renameName.trim().length > 0;
@@ -153,7 +149,7 @@ export function DocsHomeModals({
 
       <DriveMoveToDialog
         open={!!moveState}
-        labels={pickerLabels}
+        labels={driveLabels}
         files={files}
         groupPaths={groupPaths}
         moveIds={moveState?.ids ?? []}
@@ -172,7 +168,7 @@ export function DocsHomeModals({
       {onCloseCreateDialog && onConfirmCreateDocument ? (
         <DriveCreateMarkdownDialog
           open={createDialogOpen}
-          labels={pickerLabels}
+          labels={driveLabels}
           defaultName={createDialogDefaultName}
           initialBrowsePath={DRIVE_FOLDER_PICKER_ROOT}
           initialSelectedPath={createDialogBrowsePath}

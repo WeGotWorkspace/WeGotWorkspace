@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import type { ControlSize } from "@/ui/control-size";
 import type { UserAvatarColor } from "@/user-avatar/src/user-avatar-color";
 import "@/user-avatar/src/user-avatar.css";
 
@@ -11,13 +12,19 @@ export {
 } from "@/user-avatar/src/user-avatar-color";
 
 /**
- * Mark sizes (parent CSS may still override via layout):
- * - `xs` — collab peer stack, share dialog marks (~1.75rem)
- * - `sm` — sidebar / footer / chat (~2.25rem)
- * - `md` — mail sender row (~2.5rem)
- * - `lg` / `xl` — Meet tiles and lobby preview
+ * Mark sizes — same `xs`…`xl` scale as Input / Button / IconButton
+ * (`--control-height-*`). Extra `2xl` is display-only (lobby / hero tiles).
+ *
+ * | Size | Height |
+ * |------|--------|
+ * | xs   | 28px — collab peer stack, dense chips |
+ * | sm   | 32px |
+ * | md   | 36px — default; share rows beside md inputs |
+ * | lg   | 40px |
+ * | xl   | 44px |
+ * | 2xl  | 80px — Meet lobby / large idle tiles |
  */
-export type UserAvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
+export type UserAvatarSize = ControlSize | "2xl";
 
 /** Presence pip: online green, away amber, offline transparent + ink ring. */
 export type UserAvatarPresence = "online" | "offline" | "away";
@@ -28,6 +35,7 @@ const USER_AVATAR_SIZE_CLASS: Record<UserAvatarSize, string> = {
   md: "user-avatar--md",
   lg: "user-avatar--lg",
   xl: "user-avatar--xl",
+  "2xl": "user-avatar--2xl",
 };
 
 export type UserPresenceDotProps = {
@@ -63,13 +71,17 @@ export type UserAvatarProps = {
   displayName: string | null | undefined;
   /** Shown under the display name (e.g. email, handle). Ignored when `compact` is true. */
   subtitle?: ReactNode;
+  /** Sits beside the display name (badges, inherited labels). Ignored when `compact` is true. */
+  nameAccessory?: ReactNode;
+  /** Trailing chip on the name line (e.g. pending tag). Ignored when `compact` is true. */
+  nameEnd?: ReactNode;
   /** When set, show profile photo; falls back to initials on load error or when omitted. */
   imageSrc?: string;
   /** Replaces initials when there is no photo (e.g. a company building icon). */
   fallback?: ReactNode;
   /** Mark only — no name / subtitle column (icon-only / peer chip). */
   compact?: boolean;
-  /** Defaults to `sm`. */
+  /** Defaults to `md` (36px) — same as Input / Button. */
   size?: UserAvatarSize;
   /** Optional online/offline pip. Rendered by the primitive — do not draw a second custom dot. */
   presence?: UserAvatarPresence;
@@ -100,10 +112,12 @@ export function initialsFromDisplayName(displayName: string | null | undefined):
 export function UserAvatar({
   displayName,
   subtitle,
+  nameAccessory,
+  nameEnd,
   imageSrc,
   fallback,
   compact = false,
-  size = "sm",
+  size = "md",
   presence,
   color,
   loading,
@@ -117,12 +131,13 @@ export function UserAvatar({
   const resolvedName = displayName?.trim() || "Unknown";
   const initials = initialsFromDisplayName(resolvedName) || "?";
   const showImage = Boolean(imageSrc) && !imageFailed;
+  const hasSubtitle = subtitle != null && subtitle !== "";
 
   useEffect(() => {
     setImageFailed(false);
   }, [imageSrc]);
 
-  const sizeClass = USER_AVATAR_SIZE_CLASS[size] ?? USER_AVATAR_SIZE_CLASS.sm;
+  const sizeClass = USER_AVATAR_SIZE_CLASS[size] ?? USER_AVATAR_SIZE_CLASS.md;
 
   const markContent = showImage ? (
     <img
@@ -177,17 +192,18 @@ export function UserAvatar({
       </div>
       {!compact ? (
         <div className="user-avatar__text">
-          <div
-            className={cn(
-              "user-avatar__name",
-              subtitle != null && subtitle !== "" && "user-avatar__name--emphasized",
-            )}
-          >
-            {resolvedName}
+          <div className="user-avatar__name-line">
+            <div className="user-avatar__name-group">
+              <div
+                className={cn("user-avatar__name", hasSubtitle && "user-avatar__name--emphasized")}
+              >
+                {resolvedName}
+              </div>
+              {nameAccessory}
+            </div>
+            {nameEnd}
           </div>
-          {subtitle != null && subtitle !== "" ? (
-            <div className="user-avatar__subtitle">{subtitle}</div>
-          ) : null}
+          {hasSubtitle ? <div className="user-avatar__subtitle">{subtitle}</div> : null}
         </div>
       ) : null}
     </div>

@@ -14,6 +14,7 @@ export type UseTextEditorOptions = {
   format?: TextEditorContentFormat;
   editable?: boolean;
   placeholder?: string;
+  fetchImageContent?: CreateTextEditorExtensionsOptions["fetchImageContent"];
   onUpdate?: (payload: { editor: Editor; content: string }) => void;
 } & Pick<UseEditorOptions, "autofocus" | "editorProps">;
 
@@ -23,6 +24,7 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
     format = "html",
     editable = true,
     placeholder,
+    fetchImageContent,
     onUpdate,
     autofocus,
     editorProps,
@@ -31,6 +33,7 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
   const extensionOptions: CreateTextEditorExtensionsOptions = {
     placeholder,
     format,
+    fetchImageContent,
   };
 
   const editor = useEditor(

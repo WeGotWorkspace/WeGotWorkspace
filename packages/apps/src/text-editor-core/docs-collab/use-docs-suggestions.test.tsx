@@ -1,13 +1,22 @@
 /** @vitest-environment jsdom */
-import { act, cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { Editor } from "@tiptap/react";
 import { Awareness } from "y-protocols/awareness";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { docsLabels } from "@/docs-core/src/docs-labels";
+import { TooltipProvider } from "@/ui/tooltip";
 import "@/text-editor-core/src/text-editor-track-changes-augmentation";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
-import { getDocsSuggestionThreadsMap } from "./docs-suggestions-map";
+import { DocsCollabReviewPanel } from "./docs-collab-review/docs-collab-review-panel";
 import { DocsSuggestionCard } from "./docs-suggestions/docs-suggestion-card";
 import { createCollaborativeTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
 import * as trackChanges from "@/text-editor-core/src/text-editor-track-changes";
@@ -15,7 +24,9 @@ import {
   getDocsTrackChangeGroups,
   trackChangesAuthorIdFromName,
 } from "@/text-editor-core/src/text-editor-track-changes";
-import { useDocsSuggestions } from "./use-docs-suggestions";
+import { useTestDocsSuggestions as useDocsSuggestions } from "./docs-threads-test-client";
+import { createDocsThreadsMemory } from "./docs-threads-memory";
+import { DOCS_THREADS_TEST_PATH } from "./docs-threads-test-client";
 
 beforeEach(() => {
   document.elementFromPoint = () => null;
@@ -104,10 +115,13 @@ function createReplaceEditor(ydoc: Y.Doc, awareness: Awareness) {
 }
 
 describe("useDocsSuggestions", () => {
-  it("does not prune persisted threads before editor track changes are readable", () => {
+  it("does not prune persisted threads before editor track changes are readable", async () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
-    getDocsSuggestionThreadsMap(ydoc).set("orphan-key", {
+    const currentUser = { id: "u-1", name: "Alex" };
+    const threadsClient = createDocsThreadsMemory(DOCS_THREADS_TEST_PATH, currentUser);
+    threadsClient.seedSuggestion({
+      changeId: "orphan-key",
       messages: [],
       reactions: [{ emoji: "👍", userIds: ["u-1"] }],
     });
@@ -116,28 +130,39 @@ describe("useDocsSuggestions", () => {
     const changeId = getDocsTrackChangeGroups(editor)[0]?.changeId;
     expect(changeId).toBeTruthy();
 
-    getDocsSuggestionThreadsMap(ydoc).set(changeId!, {
+    threadsClient.seedSuggestion({
+      changeId: changeId!,
       messages: [],
       reactions: [{ emoji: "👀", userIds: ["u-1"] }],
     });
 
-    renderHook(() =>
+    const { result } = renderHook(() =>
       useDocsSuggestions(editor, {
         ydoc,
-        currentUser: { id: "u-1", name: "Alex" },
+        currentUser,
+        threadsClient,
       }),
     );
 
-    expect(getDocsSuggestionThreadsMap(ydoc).has(changeId!)).toBe(true);
-    expect(getDocsSuggestionThreadsMap(ydoc).get(changeId!)).toMatchObject({
-      reactions: [{ emoji: "👀", userIds: ["u-1"] }],
+    await act(async () => {
+      await Promise.resolve();
     });
-    expect(getDocsSuggestionThreadsMap(ydoc).has("orphan-key")).toBe(false);
+
+    const live = result.current.suggestions.find((item) => item.changeId === changeId);
+    expect(live?.reactions).toEqual([{ emoji: "👀", userIds: ["u-1"] }]);
+    expect(
+      threadsClient.snapshot().some((thread) => thread.changeId === changeId && !thread.archived),
+    ).toBe(true);
+    expect(
+      threadsClient
+        .snapshot()
+        .some((thread) => thread.changeId === "orphan-key" && !thread.archived),
+    ).toBe(false);
 
     editor.destroy();
   });
 
-  it("persists reactions through toggleReaction", () => {
+  it("persists reactions through toggleReaction", async () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const editor = createCollabEditor(ydoc, awareness);
@@ -151,13 +176,10 @@ describe("useDocsSuggestions", () => {
       }),
     );
 
-    act(() => {
-      result.current.toggleReaction(changeId!, "👍");
+    await act(async () => {
+      await result.current.toggleReaction(changeId!, "👍");
     });
 
-    expect(getDocsSuggestionThreadsMap(ydoc).get(changeId!)).toMatchObject({
-      reactions: [{ emoji: "👍", userIds: ["u-1"] }],
-    });
     expect(result.current.suggestions[0]?.reactions).toEqual([{ emoji: "👍", userIds: ["u-1"] }]);
 
     editor.destroy();
@@ -320,17 +342,19 @@ describe("useDocsSuggestions", () => {
     expect(suggestion).toBeTruthy();
 
     render(
-      <DocsSuggestionCard
-        suggestion={suggestion!}
-        labels={docsLabels}
-        currentUserId="u-1"
-        active={false}
-        onSelect={() => result.current.selectSuggestion(changeId!)}
-        onAccept={() => {}}
-        onReject={() => {}}
-        onAddReply={() => {}}
-        onToggleReaction={() => {}}
-      />,
+      <TooltipProvider delayDuration={0}>
+        <DocsSuggestionCard
+          suggestion={suggestion!}
+          labels={docsLabels}
+          currentUserId="u-1"
+          active={false}
+          onSelect={() => result.current.selectSuggestion(changeId!)}
+          onAccept={() => {}}
+          onReject={() => {}}
+          onAddReply={() => {}}
+          onToggleReaction={() => {}}
+        />
+      </TooltipProvider>,
     );
 
     act(() => {
@@ -426,6 +450,131 @@ describe("useDocsSuggestions", () => {
     });
 
     expect(result.current.activeChangeId).toBe(changeId);
+
+    editor.destroy();
+  });
+
+  it("archives the matching suggestion thread on accept without deleting the journal", async () => {
+    const ydoc = new Y.Doc();
+    const awareness = new Awareness(ydoc);
+    const currentUser = { id: "u-1", name: "Alex" };
+    const threadsClient = createDocsThreadsMemory(DOCS_THREADS_TEST_PATH, currentUser);
+    const editor = createCollabEditor(ydoc, awareness);
+    const changeId = getDocsTrackChangeGroups(editor)[0]?.changeId;
+    expect(changeId).toBeTruthy();
+
+    threadsClient.seedSuggestion({
+      changeId: changeId!,
+      messages: [
+        {
+          id: "m-1",
+          body: "why?",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          author: currentUser,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() =>
+      useDocsSuggestions(editor, {
+        ydoc,
+        currentUser,
+        threadsClient,
+      }),
+    );
+
+    expect(result.current.suggestions.some((item) => item.changeId === changeId)).toBe(true);
+
+    await act(async () => {
+      result.current.acceptSuggestion(changeId!);
+      await Promise.resolve();
+    });
+
+    expect(getDocsTrackChangeGroups(editor).some((item) => item.changeId === changeId)).toBe(false);
+    expect(result.current.suggestions.some((item) => item.changeId === changeId)).toBe(false);
+    expect(result.current.archivedSuggestions.some((item) => item.changeId === changeId)).toBe(
+      true,
+    );
+    const stored = threadsClient.get(changeId!);
+    expect(stored?.archived).toBe(true);
+    expect(threadsClient.snapshot().find((thread) => thread.changeId === changeId)?.archived).toBe(
+      true,
+    );
+    editor.destroy();
+  });
+
+  it("creates and archives a journal on accept so Resolved lists it without a live mark", async () => {
+    vi.stubGlobal("CSS", { escape: (value: string) => value });
+    const ydoc = new Y.Doc();
+    const awareness = new Awareness(ydoc);
+    const currentUser = { id: "u-1", name: "Alex" };
+    const threadsClient = createDocsThreadsMemory(DOCS_THREADS_TEST_PATH, currentUser);
+    const editor = createCollabEditor(ydoc, awareness);
+    const live = getDocsTrackChangeGroups(editor)[0];
+    expect(live?.changeId).toBeTruthy();
+    const changeId = live!.changeId;
+
+    const { result } = renderHook(() =>
+      useDocsSuggestions(editor, {
+        ydoc,
+        currentUser,
+        threadsClient,
+      }),
+    );
+
+    expect(threadsClient.snapshot().some((thread) => thread.changeId === changeId)).toBe(false);
+    expect(result.current.suggestions.some((item) => item.changeId === changeId)).toBe(true);
+
+    await act(async () => {
+      result.current.acceptSuggestion(changeId);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.archivedSuggestions.some((item) => item.changeId === changeId)).toBe(
+        true,
+      );
+    });
+    expect(getDocsTrackChangeGroups(editor).some((item) => item.changeId === changeId)).toBe(false);
+    expect(result.current.suggestions.some((item) => item.changeId === changeId)).toBe(false);
+    const stored = threadsClient.snapshot().find((thread) => thread.changeId === changeId);
+    expect(stored?.archived).toBe(true);
+    expect(stored?.anchorText).toBeTruthy();
+    expect(stored?.anchorFrom).toBe(live.from);
+    expect(stored?.anchorTo).toBe(live.to);
+
+    const noop = () => {};
+    render(
+      <TooltipProvider>
+        <DocsCollabReviewPanel
+          editor={null}
+          onCloseMobile={noop}
+          labels={docsLabels}
+          threads={[]}
+          suggestions={result.current.suggestions}
+          archivedSuggestions={result.current.archivedSuggestions}
+          currentUserId="u-1"
+          activeThreadId={null}
+          activeChangeId={null}
+          onSelectThread={noop}
+          onAddReply={noop}
+          onToggleReaction={noop}
+          onResolveThread={noop}
+          onSelectSuggestion={noop}
+          onAcceptSuggestion={noop}
+          onRejectSuggestion={noop}
+          onAddSuggestionReply={noop}
+          onToggleSuggestionReaction={noop}
+        />
+      </TooltipProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: docsLabels.reviewTabResolved }));
+    const card = document.querySelector(`[data-change-id="${changeId}"]`);
+    expect(card).toBeTruthy();
+    expect(card?.textContent?.trim()).not.toBe("");
+    expect(document.querySelector(".view-header__title-count")?.textContent).toBe("(0)");
 
     editor.destroy();
   });

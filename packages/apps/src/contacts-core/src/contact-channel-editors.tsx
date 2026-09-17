@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ContactChannelRow } from "./contact-channel-row";
 import { ContactContextTypeSelect, ContactPhoneTypeSelect } from "./contact-channel-type-select";
 import { FieldLabelRow } from "@/ui/field-label-row";
@@ -11,6 +11,54 @@ import {
   type ContactPhoneType,
 } from "@/contacts-core/src/contacts-edit-utils";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
+
+function channelValueInputId(rowId: string): string {
+  return `contact-channel-value-${rowId}`;
+}
+
+function addressFieldInputId(
+  rowId: string,
+  field: keyof Omit<ContactAddressDraft, "id" | "contextType">,
+): string {
+  const suffix =
+    field === "postalCode"
+      ? "postal"
+      : field === "street"
+        ? "street"
+        : field === "locality"
+          ? "locality"
+          : field === "region"
+            ? "region"
+            : "country";
+  return `contact-address-${suffix}-${rowId}`;
+}
+
+/** After the trailing empty slot commits, focus the new row so typing can continue. */
+function focusCommittedInput(elementId: string): void {
+  const el = document.getElementById(elementId);
+  if (!(el instanceof HTMLInputElement)) return;
+  el.focus();
+  const len = el.value.length;
+  try {
+    el.setSelectionRange(len, len);
+  } catch {
+    // Non-text inputs may reject selection ranges.
+  }
+}
+
+function useFocusAfterCommit(): (elementId: string) => void {
+  const pendingIdRef = useRef<string | null>(null);
+  const requestFocus = useCallback((elementId: string) => {
+    pendingIdRef.current = elementId;
+  }, []);
+  useLayoutEffect(() => {
+    const id = pendingIdRef.current;
+    if (!id) return;
+    pendingIdRef.current = null;
+    focusCommittedInput(id);
+  });
+  return requestFocus;
+}
 
 function useTrailingChannelSlot<T extends string>(
   emptyType: T,
@@ -35,10 +83,11 @@ function commitTrailingValue<TType extends string>(
   value: string,
   consume: () => { id: string; type: TType },
   onCommit: (id: string, value: string, type: TType) => void,
-): void {
-  if (!value) return;
+): { id: string; type: TType } | null {
+  if (!value) return null;
   const slot = consume();
   onCommit(slot.id, value, slot.type);
+  return slot;
 }
 
 type SimpleChannelRowsProps<TType extends string> = {
@@ -71,6 +120,7 @@ function SimpleChannelRows<TType extends string>({
   onRemove,
 }: SimpleChannelRowsProps<TType>) {
   const slot = useTrailingChannelSlot(emptyType);
+  const requestFocus = useFocusAfterCommit();
 
   return (
     <>
@@ -86,6 +136,7 @@ function SimpleChannelRows<TType extends string>({
           })}
         >
           <Input
+            id={channelValueInputId(row.id)}
             aria-label={valueAriaLabel}
             value={row.value}
             onChange={(event) => onUpdateValue(row.id, event.target.value)}
@@ -101,11 +152,13 @@ function SimpleChannelRows<TType extends string>({
         })}
       >
         <Input
+          id={channelValueInputId(slot.id)}
           aria-label={valueAriaLabel}
           placeholder={placeholder}
           value=""
           onChange={(event) => {
-            commitTrailingValue(event.target.value, slot.consume, onUpdateValue);
+            const taken = commitTrailingValue(event.target.value, slot.consume, onUpdateValue);
+            if (taken) requestFocus(channelValueInputId(taken.id));
           }}
         />
       </ContactChannelRow>
@@ -359,6 +412,7 @@ export function ContactAddressRows({
   onRemoveAddress: (id: string) => void;
 }) {
   const slot = useTrailingChannelSlot<ContactChannelContext>(CONTACT_CHANNEL_DEFAULT_CONTEXT);
+  const requestFocus = useFocusAfterCommit();
   const typeAriaLabel = `${labels.channelType} ${labels.sectionAddresses}`;
 
   return (
@@ -407,6 +461,7 @@ export function ContactAddressRows({
         onFieldChange={(field, value) => {
           if (!value) return;
           const taken = slot.consume();
+          requestFocus(addressFieldInputId(taken.id, field));
           onUpdateAddress(taken.id, field, value, taken.type);
         }}
       />

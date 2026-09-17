@@ -84,7 +84,7 @@ export function ResetPasswordScreen({ token }: ResetPasswordScreenProps = {}) {
               type="submit"
               label={submitting ? "Updating..." : "Update password"}
               variant="primary"
-              size="lg"
+              size="xl"
               pill
               disabled={submitting || !resolvedToken}
               className="login-screen__submit"

@@ -32,6 +32,9 @@
   --font-sans: ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --font-app: "Bebas Neue", ui-sans-serif, system-ui, sans-serif;
+  /* Dense uppercase captions (field labels, sidebar section titles) — minimum label size (12px). */
+  --text-2xs: 0.75rem;
+  --text-2xs--line-height: 1rem;
   --color-forest: #042318;
   --color-emerald: #34d399;
   --color-ink: #042a22;
@@ -141,14 +144,25 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
-  /* Shared form controls: flat inputs (no shadow) + sheet-like elevation for surfaces. */
-  --control-radius: 0.1875rem;
+  /*
+   * Shared form / chrome radius (soft 6px). Global default — Button, IconButton,
+   * Input, Select, SegmentedControl, ColorSwatchTrigger, LocaleDatePicker all
+   * consume `--control-radius`. Do not remap this per layout ancestor
+   * (`.view-header`, side panels, search stacks); that silently leaves controls
+   * outside the remapped subtree on a different radius.
+   * True capsules use `--control-radius-pill` (Switch, badges) explicitly.
+   */
+  --control-radius: 0.375rem;
   --control-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --input-shadow: none;
-  /* Capsule chips: tags, metadata labels, count badges, switches. */
+  /* Capsule chips: metadata labels, count badges, switches — not ordinary controls. */
   --control-radius-pill: 9999px;
-  /* Pill buttons, boolean switches, segmented toggles (grid/list, etc.). */
-  --control-radius-button-pill: 0.375rem;
+  /*
+   * Alias of `--control-radius` for legacy `.button--pill` / chip call sites.
+   * Prefer `--control-radius` for ordinary controls; `--control-radius-pill`
+   * for intentional full capsules only.
+   */
+  --control-radius-button-pill: var(--control-radius);
   /* Paper sheet — Docs letter surface + Notes detail card (see `.paper-sheet`). */
   --paper-sheet-bg: oklch(1 0 0);
   --sheet-shadow: 0 1px 2px #0000000a, 0 10px 30px -10px #0f172a1f;
@@ -159,20 +173,33 @@
   --panel-overlay-duration: 300ms;
   --panel-overlay-ease: cubic-bezier(0.32, 0.72, 0, 1);
   --control-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 30px -10px rgba(15, 23, 42, 0.12);
-  --input-height: 2.25rem;
+  /*
+   * Fixed control height scale (not viewport-relative).
+   * xs=28 / sm=32 / md=36 (default chrome + forms) / lg=40 / xl=44 (sidebar New).
+   * `--input-height` aliases md for legacy consumers.
+   */
+  --control-height-xs: 1.75rem;
+  --control-height-sm: 2rem;
+  --control-height-md: 2.25rem;
+  --control-height-lg: 2.5rem;
+  --control-height-xl: 2.75rem;
+  --input-height: var(--control-height-md);
   --input-padding-x: 0.75rem;
+  /*
+   * Control type scale (shared by Input, Button, Select, UserChip, …).
+   * `--input-font-size` remains the unset/base fallback (body-adjacent).
+   * Size steps: xs=12 / sm=14 / md=14 / lg=16 / xl=16.
+   * Form controls floor xs/sm/md to 1rem below 768px (iOS focus-zoom block).
+   * Buttons / chips keep this desktop scale — do not raise these tokens on :root.
+   */
   --input-font-size: 1rem;
-  /* Shared control size scale — buttons, icon-buttons, selects, segmented, toggles. */
-  --control-height-sm: calc(var(--input-height) - 0.25rem);
-  --control-height-md: var(--input-height);
-  --control-height-lg: calc(var(--input-height) + 0.25rem);
-}
-
-@media (min-width: 768px) {
-  :root {
-    --input-height: 2.5rem;
-    --input-padding-x: 0.875rem;
-  }
+  --input-font-size-xs: 0.75rem;
+  --input-font-size-sm: 0.875rem;
+  --input-font-size-md: 0.875rem;
+  --input-font-size-lg: 1rem;
+  --input-font-size-xl: 1rem;
+  /* Switch off track + pending UserChip wash — one shared gray. */
+  --switch-off-bg: color-mix(in oklab, var(--color-ink) 18%, var(--color-cream, #ffffff));
 }
 
 .dark {
@@ -227,9 +254,9 @@
     min-height: 100dvh;
   }
 
-  /* All-caps small labels (sidebar headings, table headers, eyebrows) use mono */
+  /* All-caps small labels (sidebar headings, table headers, eyebrows) use sans */
   .uppercase {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
   }
 }
 
@@ -270,15 +297,50 @@
   color: var(--color-ink);
 }
 
-/* iOS Safari zooms focused fields under 16px; keep text entry ≥1rem.
- * Document titles opt out — they use title-scale (`--text-4xl`).
- * Add-tag field opts out — it must match the add-tag button (`--tag-font-size`). */
+/*
+ * iOS Safari zooms focused form controls whose computed font-size is < 16px.
+ * Icon-only buttons and labels keep their own type — this floor is text-entry only.
+ *
+ * Unmanaged native `input` / `textarea` / `select` always use ≥1rem.
+ * Shared Input / Textarea / SelectTrigger / control-surface keep the desktop
+ * xs/sm/md scale and raise `--input-font-size*` to 1rem at max-width 767px
+ * (same breakpoint as `MOBILE_MEDIA_QUERY` / `useIsMobile`).
+ *
+ * Opt-outs from the unmanaged floor (own type scale):
+ * - `.input` / `.input__field` / `.textarea` — size-class tokens (mobile floor below)
+ * - `.note-detail-view__title` — title-scale (`--text-4xl`)
+ * - `.tag-group__input` — chip scale on desktop; included in the mobile floor
+ */
 input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not(
     [type="radio"]
   ):not([type="file"]):not([type="hidden"]):not([type="range"]):not([type="color"]):not(
     [type="image"]
-  ):not(.note-detail-view__title):not(.tag-group__input),
-textarea:not(.note-detail-view__title),
+  ):not(.note-detail-view__title):not(.tag-group__input):not(.input):not(.input__field),
+textarea:not(.note-detail-view__title):not(.textarea),
 select {
   font-size: max(1rem, 100%) !important;
+}
+
+@media (max-width: 767px) {
+  .control-surface,
+  .input,
+  .textarea,
+  .select-trigger,
+  .tag-group__input {
+    --input-font-size: 1rem;
+    --input-font-size-xs: 1rem;
+    --input-font-size-sm: 1rem;
+    --input-font-size-md: 1rem;
+    font-size: 1rem !important;
+  }
+
+  .input__field {
+    font-size: inherit !important;
+  }
+
+  .text-editor,
+  .text-editor-prose {
+    --text-editor-prose-font-size: 1rem;
+    --text-editor-source-font-size: 1rem;
+  }
 }

@@ -82,21 +82,12 @@ export const IdlePanel: Story = {
     await expect(
       within(panel as HTMLElement).queryByRole("button", { name: (n) => n === chatUiLabels.edit }),
     ).not.toBeInTheDocument();
-    const headerEdit = canvas.getByRole("button", { name: (n) => n === chatUiLabels.edit });
-    await expect(headerEdit).toBeInTheDocument();
-    await expect(headerEdit.closest(".docs-collab-sidebar-panel__header")).toBeTruthy();
-    const people = canvas.getByLabelText(meetLabels.threadPeopleCount(2));
-    await expect(people).toBeInTheDocument();
-    await expect(people.closest(".docs-collab-sidebar-panel__header-actions")).toBeTruthy();
-    const actions = people.closest(".docs-collab-sidebar-panel__header-actions");
-    expect(actions).toBeTruthy();
-    const actionChildren = [...(actions as HTMLElement).children];
-    expect(actionChildren.indexOf(people)).toBeLessThan(actionChildren.indexOf(headerEdit));
+    await expect(
+      canvas.queryByRole("button", { name: (n) => n === chatUiLabels.edit }),
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByLabelText(meetLabels.threadPeopleCount(2))).not.toBeInTheDocument();
     const close = canvas.getByLabelText(meetLabels.threadClose);
     await expect(close.closest(".view-header__title-trailing")).toBeTruthy();
-    const end = close.closest(".view-header__end");
-    expect(end).toBeTruthy();
-    expect(actions!.closest(".view-header__end")).toBe(end);
   },
 };
 

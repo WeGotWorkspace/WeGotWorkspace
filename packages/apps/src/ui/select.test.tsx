@@ -20,10 +20,10 @@ describe("SelectTrigger", () => {
     );
     const trigger = container.querySelector(".select-trigger");
     expect(trigger).not.toBeNull();
-    expect(trigger!.classList.contains("select-trigger--size-sm")).toBe(false);
+    expect(trigger!.classList.contains("select-trigger--size-md")).toBe(true);
   });
 
-  it("applies the compact size class for toolbar clusters", () => {
+  it("applies the sm size class for tighter triggers", () => {
     const { container } = render(
       <Select>
         <SelectTrigger size="sm" aria-label="View">
@@ -36,9 +36,9 @@ describe("SelectTrigger", () => {
     expect(trigger!.classList.contains("select-trigger--size-sm")).toBe(true);
   });
 
-  it("does not set pill radius on the sm size class", () => {
+  it("does not set pill radius on size classes", () => {
     const smBlock = inputCss.match(
-      /\.select-trigger--size-sm,\s*\.input--size-sm \{[\s\S]*?\n\}/,
+      /\.select-trigger--size-sm,\s*\.input--size-sm,\s*\.control-surface--size-sm \{[\s\S]*?\n\}/,
     )?.[0];
     expect(smBlock).toBeDefined();
     expect(smBlock).not.toMatch(/control-radius-button-pill/);

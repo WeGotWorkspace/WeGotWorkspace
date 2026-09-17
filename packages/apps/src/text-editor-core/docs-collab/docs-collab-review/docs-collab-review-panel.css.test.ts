@@ -36,7 +36,7 @@ describe("docs collab review panel wash", () => {
   });
 
   it("keeps Open/Resolved filter chrome on the title row", () => {
-    expect(css).toMatch(
+    expect(css).not.toMatch(
       /\.docs-collab-review-panel \.docs-collab-sidebar-panel__header \{[\s\S]*py-4 md:py-6/,
     );
     expect(css).toMatch(/\.docs-collab-review-panel__filter \{[\s\S]*w-auto/);

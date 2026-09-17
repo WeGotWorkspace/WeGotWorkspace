@@ -600,6 +600,72 @@
 
 /* Suggest-mode toolbar styles removed — mode control lives in the format bar dropdown. */
 
+.text-editor-prose img {
+  @apply max-w-full h-auto;
+}
+
+.text-editor-image {
+  @apply relative my-4 block w-fit max-w-full;
+}
+
+.text-editor-image img {
+  @apply block max-w-full h-auto;
+}
+
+/*
+ * NodeSelection on the wrapper — Docs accent, not Drive green / native cyan.
+ * 1px ring (button-scale), not the thick offset outline used on dialog chrome.
+ */
+.text-editor-image.ProseMirror-selectednode {
+  @apply outline-none;
+  border-radius: var(--control-radius);
+  box-shadow: 0 0 0 1px var(--docs-accent, var(--text-editor-comment, #3b82f6));
+}
+
+.text-editor-image__delete-host {
+  @apply absolute z-[1] opacity-0 pointer-events-none;
+  top: 0.375rem;
+  right: 0.375rem;
+}
+
+.text-editor-image:hover .text-editor-image__delete-host,
+.text-editor-image.ProseMirror-selectednode .text-editor-image__delete-host,
+.text-editor-image__delete-host:focus-within {
+  @apply opacity-100 pointer-events-auto;
+}
+
+/*
+ * Opaque cream chip in every visible state. IconButton outline+danger hover
+ * uses color-mix(..., transparent) — beat that so hover stays as readable
+ * as selected. Severity stays on the icon, not a see-through fill.
+ */
+.text-editor-image .text-editor-image__delete,
+.text-editor-image .text-editor-image__delete:hover,
+.text-editor-image .text-editor-image__delete:focus-visible,
+.text-editor-image
+  .button.button--variant-outline.button--severity-danger.text-editor-image__delete,
+.text-editor-image
+  .button.button--variant-outline.button--severity-danger.text-editor-image__delete:hover,
+.text-editor-image
+  .button.button--variant-outline.button--severity-danger.text-editor-image__delete:focus-visible {
+  --button-severity-color: var(
+    --menu-item-severity-color,
+    var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
+  );
+  --text-editor-image-delete-surface: var(--color-cream, #ffffff);
+  color: var(--button-severity-color);
+  background-color: var(--text-editor-image-delete-surface);
+  box-shadow: var(--control-shadow);
+}
+
+.text-editor-image__delete:focus-visible {
+  @apply outline-none ring-1 ring-ring;
+}
+
+.ProseMirror[contenteditable="false"] .text-editor-image__delete-host {
+  @apply hidden;
+}
+
 .text-editor-prose table {
   width: 100%;
   border-collapse: collapse;

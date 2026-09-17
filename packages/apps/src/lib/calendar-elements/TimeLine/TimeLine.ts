@@ -15,6 +15,7 @@ import type {
   TimelineEvent,
   TimelineEventCreateDetail,
   TimelineEventMoveCommitDetail,
+  TimelineEventPreviewDetail,
   TimelineEventPreviewRange,
   TimelineEventResizeCommitDetail,
   TimelineGestureKind,
@@ -575,7 +576,7 @@ export class TimeLine extends LitElement {
     this.#resizeSession = null;
     this.#moveSession = null;
     this.#createSession = null;
-    this.resizePreviewByIndex = null;
+    this.#setResizePreviewByIndex(null);
     this.draggingEventIndex = null;
     this.moveDragOffset = null;
     this.dragOverlayBoxes = [];
@@ -680,16 +681,44 @@ export class TimeLine extends LitElement {
     }
   }
 
+  #emitTimelineEventPreview(detail: TimelineEventPreviewDetail | null) {
+    this.dispatchEvent(
+      new CustomEvent<TimelineEventPreviewDetail | null>("timeline-event-preview", {
+        bubbles: true,
+        composed: true,
+        detail,
+      }),
+    );
+  }
+
+  #setResizePreviewByIndex(preview: ReadonlyMap<number, { start: number; end: number }> | null) {
+    this.resizePreviewByIndex = preview;
+    if (!preview || preview.size === 0) {
+      this.#emitTimelineEventPreview(null);
+      return;
+    }
+    // Move/resize always drafts a single event index.
+    const entry = [...preview.entries()][0];
+    if (!entry) {
+      this.#emitTimelineEventPreview(null);
+      return;
+    }
+    const [index, range] = entry;
+    this.#emitTimelineEventPreview({ index, start: range.start, end: range.end });
+  }
+
   #beginSingleEventResizePreview(index: number, start: number, end: number) {
     const preview = new Map<number, { start: number; end: number }>();
     preview.set(index, { start, end });
-    this.resizePreviewByIndex = preview;
+    this.#setResizePreviewByIndex(preview);
   }
 
   #mergeResizePreviewRange(index: number, range: { start: number; end: number }) {
+    const previous = this.resizePreviewByIndex?.get(index);
+    if (previous && previous.start === range.start && previous.end === range.end) return;
     const next = new Map(this.resizePreviewByIndex ?? []);
     next.set(index, range);
-    this.resizePreviewByIndex = next;
+    this.#setResizePreviewByIndex(next);
   }
 
   /**
@@ -912,7 +941,7 @@ export class TimeLine extends LitElement {
     const previousEnd = session.initialEnd;
 
     if (cancelled || !preview || (preview.start === previousStart && preview.end === previousEnd)) {
-      this.resizePreviewByIndex = null;
+      this.#setResizePreviewByIndex(null);
       return;
     }
 
@@ -1019,7 +1048,7 @@ export class TimeLine extends LitElement {
       !preview ||
       (preview.start === previousStart && preview.end === previousEnd)
     ) {
-      this.resizePreviewByIndex = null;
+      this.#setResizePreviewByIndex(null);
       return;
     }
 
@@ -1504,7 +1533,7 @@ export class TimeLine extends LitElement {
       !this.#resizeSession &&
       this.resizePreviewByIndex
     ) {
-      this.resizePreviewByIndex = null;
+      this.#setResizePreviewByIndex(null);
     }
     if (this.#createSession) return;
     if (changed.has("heldCreatePreview")) {
