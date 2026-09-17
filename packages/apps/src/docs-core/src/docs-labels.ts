@@ -57,6 +57,13 @@ export const docsLabels = {
   renameError: "Could not rename this document.",
   print: "Print",
   share: driveLabels.detailShare,
+  insertImageError: "Could not insert the image.",
+  insertImageTitle: "Insert image",
+  insertImageChooserDescription:
+    "Upload a file from your computer, or choose an image already in Drive.",
+  insertImageUpload: "Upload",
+  insertImageChooseFromDrive: "Choose from Drive",
+  deleteImage: "Delete image",
   viewSource: "Edit source",
   hideSource: "Hide source",
   rename: driveLabels.detailRename,

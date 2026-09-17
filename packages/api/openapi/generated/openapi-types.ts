@@ -3100,8 +3100,11 @@ export interface paths {
         /** Download file content */
         get: {
             parameters: {
-                query: {
-                    path: string;
+                query?: {
+                    /** @description Virtual drive path. Required when `id` is omitted. */
+                    path?: string;
+                    /** @description FileNode id (`fn-…`). Streams bytes when the caller mayView the path, including inherited Doc ACL on `.attachments/{docId}/`. */
+                    id?: string;
                 };
                 header?: never;
                 path?: never;
@@ -11116,6 +11119,10 @@ export interface components {
             archived?: boolean;
             /** @description Alternate lookup for suggestion archive when the client keys by mark id. */
             changeId?: string;
+            /** @description Suggestion snapshot summary or quoted text persisted when archiving. */
+            anchorText?: string;
+            anchorFrom?: number;
+            anchorTo?: number;
         };
         DocsFileThreadReactionToggle: {
             emoji: string;

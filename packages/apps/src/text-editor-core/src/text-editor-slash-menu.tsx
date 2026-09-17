@@ -7,6 +7,7 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Image as ImageIcon,
   List,
   ListChecks,
   ListOrdered,
@@ -32,7 +33,7 @@ function getSlashRange(editor: Editor) {
   return { from: from - (text.length - idx), to: from };
 }
 
-const SLASH_COMMANDS: SlashCommand[] = [
+const BASE_SLASH_COMMANDS: SlashCommand[] = [
   {
     title: "Heading 1",
     desc: "Big section title",
@@ -118,8 +119,27 @@ const SLASH_COMMANDS: SlashCommand[] = [
   },
 ];
 
+function slashCommands(onInsertImage?: () => void): SlashCommand[] {
+  if (!onInsertImage) return BASE_SLASH_COMMANDS;
+  return [
+    ...BASE_SLASH_COMMANDS,
+    {
+      title: "Image",
+      desc: "Upload or choose from Drive",
+      icon: ImageIcon,
+      keywords: "image photo picture media",
+      run: (e) => {
+        e.chain().focus().deleteRange(getSlashRange(e)).run();
+        onInsertImage();
+      },
+    },
+  ];
+}
+
 export type TextEditorSlashMenuProps = {
   editor: Editor | null;
+  /** When set, slash offers Image (opens the Docs Drive picker). */
+  onInsertImage?: () => void;
 };
 
 /** Viewport coordinates for `position: fixed` (portaled to `document.body`). */
@@ -139,7 +159,7 @@ function readSlashQuery(editor: Editor): string | null {
   return match ? match[1] : null;
 }
 
-export function TextEditorSlashMenu({ editor }: TextEditorSlashMenuProps) {
+export function TextEditorSlashMenu({ editor, onInsertImage }: TextEditorSlashMenuProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -177,7 +197,7 @@ export function TextEditorSlashMenu({ editor }: TextEditorSlashMenuProps) {
     return subscribeEditorLayoutUpdates(editor.view.dom, syncSlashMenu);
   }, [editor, open, syncSlashMenu]);
 
-  const filtered = SLASH_COMMANDS.filter((c) =>
+  const filtered = slashCommands(onInsertImage).filter((c) =>
     (c.title + " " + c.keywords).toLowerCase().includes(query.toLowerCase()),
   );
 

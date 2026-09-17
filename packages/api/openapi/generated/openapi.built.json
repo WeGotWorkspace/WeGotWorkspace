@@ -14054,10 +14054,20 @@
                     {
                         "name": "path",
                         "in": "query",
-                        "required": true,
+                        "required": false,
                         "schema": {
                             "type": "string"
-                        }
+                        },
+                        "description": "Virtual drive path. Required when `id` is omitted."
+                    },
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "FileNode id (`fn-…`). Streams bytes when the caller mayView the path, including inherited Doc ACL on `.attachments/{docId}/`."
                     }
                 ],
                 "responses": {

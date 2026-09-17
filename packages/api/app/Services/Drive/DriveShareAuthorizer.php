@@ -6,6 +6,7 @@ namespace App\Services\Drive;
 
 use App\Models\DriveShare;
 use App\Models\DriveShareSession;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Storage\StoragePaths;
 use Illuminate\Support\Carbon;
 
@@ -17,6 +18,7 @@ final class DriveShareAuthorizer
         private DriveShareGrantResolver $grantResolver,
         private DriveSharePathScope $scope,
         private CollabDocFormats $collabDocFormats,
+        private FileNodeIndexService $fileNodes,
     ) {}
 
     /**
@@ -152,6 +154,11 @@ final class DriveShareAuthorizer
                 ];
             }
 
+            $inherited = $this->inheritAttachmentContext($path, $principal);
+            if ($inherited !== null) {
+                return $inherited;
+            }
+
             $grant = $this->grantResolver->resolveMemberGrant($username, $path, $groupSlugs);
             if ($grant !== null) {
                 $isCollabDoc = $this->collabDocFormats->isCollabDocPath($path);
@@ -166,6 +173,11 @@ final class DriveShareAuthorizer
         }
 
         if ($role === 'guest' && str_starts_with($username, 'share:')) {
+            $inherited = $this->inheritAttachmentContext($path, $principal);
+            if ($inherited !== null) {
+                return $inherited;
+            }
+
             $sessionKey = substr($username, strlen('share:'));
             if ($sessionKey === false || $sessionKey === '') {
                 $this->deny();
@@ -224,6 +236,53 @@ final class DriveShareAuthorizer
         }
 
         return $session;
+    }
+
+    /**
+     * Paths under `/{users|groups}/{principal}/.attachments/{docNodeId}/` inherit
+     * the Doc FileNode's current rights. Editors may also manage files in that
+     * prefix (upload/GC) without gaining mayShare on the hidden tree.
+     *
+     * @param  array{username: string, role: string}  $principal
+     * @return array{
+     *   scopeRoot: string|null,
+     *   access: string,
+     *   rights: array{
+     *     mayView: bool,
+     *     mayComment: bool,
+     *     mayReview: bool,
+     *     mayEditContent: bool,
+     *     mayManageStructure: bool,
+     *     mayShare: bool
+     *   }
+     * }|null
+     */
+    private function inheritAttachmentContext(string $path, array $principal): ?array
+    {
+        $parsed = DocAttachmentPaths::parseStorageKey($this->paths->virtualToStorageKey($path));
+        if ($parsed === null) {
+            return null;
+        }
+        $doc = $this->fileNodes->liveByNodeId($parsed['docNodeId']);
+        if ($doc === null) {
+            return null;
+        }
+        if (DocAttachmentPaths::parseStorageKey((string) $doc->storage_key) !== null) {
+            return null;
+        }
+
+        $context = $this->resolvePathContext('/'.ltrim((string) $doc->storage_key, '/'), $principal);
+        $rights = $context['rights'];
+        if ($rights['mayEditContent']) {
+            $rights['mayManageStructure'] = true;
+        }
+        $rights['mayShare'] = false;
+
+        return [
+            'scopeRoot' => $context['scopeRoot'],
+            'access' => $context['access'],
+            'rights' => $rights,
+        ];
     }
 
     private function deny(): never

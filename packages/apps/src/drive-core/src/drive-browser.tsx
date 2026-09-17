@@ -11,6 +11,7 @@ import { FilePreview } from "@/file-preview/src/file-preview";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
+import { isDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
 import { SHARED_WITH_ME_UI_ROOT } from "@/drive-core/src/drive-path-utils";
 import "@/drive-core/src/drive-browser.css";
@@ -98,6 +99,14 @@ function DriveShareIndicators({
 }
 
 function DriveFileKindIcon({ file, listStyle = false }: { file: DriveFile; listStyle?: boolean }) {
+  if (isDrivePickerRootFile(file)) {
+    return (
+      <span className={cn("shrink-0 [&>svg]:size-4", listStyle && "drive-list-folder-icon")}>
+        <HardDrive className="size-4" />
+      </span>
+    );
+  }
+
   if (file.kind === "folder") {
     return (
       <span className={cn("shrink-0 [&>svg]:size-4", listStyle && "drive-list-folder-icon")}>
@@ -245,6 +254,7 @@ export function DriveGridView({
   canPinOffline = false,
   extraFileActions,
   pinLoadingId,
+  itemChrome = "manage",
 }: {
   items: DriveFile[];
   filePreviews: Record<string, FilePreviewPayload>;
@@ -281,6 +291,11 @@ export function DriveGridView({
   fileCanShare?: (file: DriveFile) => boolean;
   /** When set, omit rename / move / delete without full access. */
   fileCanManageStructure?: (file: DriveFile) => boolean;
+  /**
+   * `picker` hides overflow (star/rename/move/trash/share) and drag/drop.
+   * Used by Drive folder-picker file-select mode.
+   */
+  itemChrome?: "manage" | "picker";
 }) {
   const folders = items.filter((i) => i.kind === "folder");
   const files = items.filter((i) => i.kind !== "folder");
@@ -314,6 +329,7 @@ export function DriveGridView({
                 canShare={fileCanShare?.(f)}
                 canManageStructure={fileCanManageStructure?.(f)}
                 onShare={onShare ? () => onShare(f) : undefined}
+                itemChrome={itemChrome}
               />
             ))}
           </div>
@@ -355,6 +371,7 @@ export function DriveGridView({
                 canShare={fileCanShare?.(f)}
                 canManageStructure={fileCanManageStructure?.(f)}
                 onShare={onShare ? () => onShare(f) : undefined}
+                itemChrome={itemChrome}
               />
             ))}
           </div>
@@ -415,6 +432,7 @@ function FolderTile({
   canShare,
   canManageStructure,
   onShare,
+  itemChrome = "manage",
 }: {
   file: DriveFile;
   isSelected: boolean;
@@ -437,22 +455,28 @@ function FolderTile({
   canShare?: boolean;
   canManageStructure?: boolean;
   onShare?: () => void;
+  itemChrome?: "manage" | "picker";
 }) {
   const lp = useLongPress(onLongPress);
+  const pickerChrome = itemChrome === "picker";
   // Tile root is non-interactive so the actions menu is not nested inside a
   // button (axe nested-interactive); the overlay button is the click target.
   return (
     <div
-      onContextMenu={(e) => {
-        if (!isTouch) {
-          e.preventDefault();
-          onLongPress();
-        }
-      }}
-      draggable={!isTouch}
-      onDragStart={itemDragHandlers.onDragStart}
-      onDragEnd={itemDragHandlers.onDragEnd}
-      {...folderDropZone}
+      onContextMenu={
+        pickerChrome
+          ? undefined
+          : (e) => {
+              if (!isTouch) {
+                e.preventDefault();
+                onLongPress();
+              }
+            }
+      }
+      draggable={!pickerChrome && !isTouch}
+      onDragStart={pickerChrome ? undefined : itemDragHandlers.onDragStart}
+      onDragEnd={pickerChrome ? undefined : itemDragHandlers.onDragEnd}
+      {...(pickerChrome ? {} : folderDropZone)}
       className={cn(
         "group drive-folder-tile",
         selectionMode && "drive-folder-tile--selection-mode",
@@ -476,34 +500,40 @@ function FolderTile({
           onSelect(e);
         }}
         onDoubleClick={selectionMode ? undefined : onOpen}
-        onTouchStart={lp.start}
-        onTouchEnd={lp.cancel}
-        onTouchMove={lp.cancel}
+        onTouchStart={pickerChrome ? undefined : lp.start}
+        onTouchEnd={pickerChrome ? undefined : lp.cancel}
+        onTouchMove={pickerChrome ? undefined : lp.cancel}
       />
-      <Folder
-        className="drive-folder-tile__icon size-5 shrink-0"
-        fill="currentColor"
-        fillOpacity={0.15}
-      />
+      {isDrivePickerRootFile(file) ? (
+        <HardDrive className="drive-folder-tile__icon size-5 shrink-0" />
+      ) : (
+        <Folder
+          className="drive-folder-tile__icon size-5 shrink-0"
+          fill="currentColor"
+          fillOpacity={0.15}
+        />
+      )}
       <span className="drive-folder-tile__title">{file.title}</span>
       {isStarred ? <Star className="drive-folder-tile__star" fill="currentColor" /> : null}
       <DriveShareIndicators file={file} labels={labels} />
-      <DriveFileItemActions
-        labels={labels}
-        file={file}
-        isStarred={isStarred}
-        inTrash={inTrash}
-        canOpen={!selectionMode}
-        onOpen={onOpen}
-        onDownload={onDownload}
-        onStar={onStar}
-        onRename={onRename}
-        onMove={onMove}
-        onDelete={onTrash}
-        canShare={canShare}
-        canManageStructure={canManageStructure}
-        onShare={onShare}
-      />
+      {pickerChrome ? null : (
+        <DriveFileItemActions
+          labels={labels}
+          file={file}
+          isStarred={isStarred}
+          inTrash={inTrash}
+          canOpen={!selectionMode}
+          onOpen={onOpen}
+          onDownload={onDownload}
+          onStar={onStar}
+          onRename={onRename}
+          onMove={onMove}
+          onDelete={onTrash}
+          canShare={canShare}
+          canManageStructure={canManageStructure}
+          onShare={onShare}
+        />
+      )}
     </div>
   );
 }
@@ -538,6 +568,7 @@ function FileTile({
   canManageStructure,
   onShare,
   itemDragHandlers,
+  itemChrome = "manage",
 }: {
   file: DriveFile;
   preview?: FilePreviewPayload;
@@ -568,21 +599,27 @@ function FileTile({
   canShare?: boolean;
   canManageStructure?: boolean;
   onShare?: () => void;
+  itemChrome?: "manage" | "picker";
 }) {
   const lp = useLongPress(onLongPress);
+  const pickerChrome = itemChrome === "picker";
   // Same overlay pattern as FolderTile: keeps the actions menu out of the
   // interactive tile target (axe nested-interactive).
   return (
     <div
-      onContextMenu={(e) => {
-        if (!isTouch) {
-          e.preventDefault();
-          onLongPress();
-        }
-      }}
-      draggable={!isTouch}
-      onDragStart={itemDragHandlers.onDragStart}
-      onDragEnd={itemDragHandlers.onDragEnd}
+      onContextMenu={
+        pickerChrome
+          ? undefined
+          : (e) => {
+              if (!isTouch) {
+                e.preventDefault();
+                onLongPress();
+              }
+            }
+      }
+      draggable={!pickerChrome && !isTouch}
+      onDragStart={pickerChrome ? undefined : itemDragHandlers.onDragStart}
+      onDragEnd={pickerChrome ? undefined : itemDragHandlers.onDragEnd}
       className={cn(
         "group drive-file-tile",
         selectionMode && "drive-file-tile--selection-mode",
@@ -599,9 +636,9 @@ function FileTile({
           onSelect(e);
         }}
         onDoubleClick={selectionMode ? undefined : onOpen}
-        onTouchStart={lp.start}
-        onTouchEnd={lp.cancel}
-        onTouchMove={lp.cancel}
+        onTouchStart={pickerChrome ? undefined : lp.start}
+        onTouchEnd={pickerChrome ? undefined : lp.cancel}
+        onTouchMove={pickerChrome ? undefined : lp.cancel}
       />
       {isStarred ? (
         <span className="drive-file-tile__star-badge" aria-hidden="true">
@@ -643,24 +680,26 @@ function FileTile({
             canPinOffline={canPinOffline}
             onMakeOfflineAvailable={onMakeOfflineAvailable}
           />
-          <DriveFileItemActions
-            labels={labels}
-            file={file}
-            isStarred={isStarred}
-            inTrash={inTrash}
-            canOpen={!selectionMode}
-            onOpen={onOpen}
-            onDownload={onDownload}
-            onStar={onStar}
-            onRename={onRename}
-            onMove={onMove}
-            onDelete={onTrash}
-            canShare={canShare}
-            canManageStructure={canManageStructure}
-            onShare={onShare}
-            extraActions={extraActions}
-            disabled={actionsDisabled}
-          />
+          {pickerChrome ? null : (
+            <DriveFileItemActions
+              labels={labels}
+              file={file}
+              isStarred={isStarred}
+              inTrash={inTrash}
+              canOpen={!selectionMode}
+              onOpen={onOpen}
+              onDownload={onDownload}
+              onStar={onStar}
+              onRename={onRename}
+              onMove={onMove}
+              onDelete={onTrash}
+              canShare={canShare}
+              canManageStructure={canManageStructure}
+              onShare={onShare}
+              extraActions={extraActions}
+              disabled={actionsDisabled}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -776,6 +815,7 @@ export function DriveListView({
   extraFileActions,
   pinLoadingId,
   offlineBadgeLabels,
+  itemChrome = "manage",
 }: {
   items: DriveFile[];
   activeId: string | null;
@@ -815,7 +855,10 @@ export function DriveListView({
   fileCanShare?: (file: DriveFile) => boolean;
   fileCanManageStructure?: (file: DriveFile) => boolean;
   onLongPress: (id: string) => void;
+  /** `picker` hides the actions column and drag/drop. */
+  itemChrome?: "manage" | "picker";
 }) {
+  const pickerChrome = itemChrome === "picker";
   return (
     <div className="drive-list-view">
       <table className="drive-list-table">
@@ -846,9 +889,11 @@ export function DriveListView({
             <th className="drive-list-col-size drive-list-head__cell drive-list-head__cell--align-end hidden sm:table-cell">
               Size
             </th>
-            <th className="drive-list-col-actions drive-list-head__cell drive-list-head__cell--align-end">
-              {labels.listColumnActions}
-            </th>
+            {pickerChrome ? null : (
+              <th className="drive-list-col-actions drive-list-head__cell drive-list-head__cell--align-end">
+                {labels.listColumnActions}
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -885,18 +930,22 @@ export function DriveListView({
                 data-selection-mode={selectionMode ? "true" : "false"}
                 onClick={(e) => onSelect(f.id, e)}
                 onDoubleClick={selectionMode ? undefined : () => onOpen(f)}
-                onTouchStart={lp.start}
-                onTouchEnd={lp.cancel}
-                onTouchMove={lp.cancel}
-                onContextMenu={(e) => {
-                  if (!isTouch) {
-                    e.preventDefault();
-                    onLongPress(f.id);
-                  }
-                }}
-                draggable={!isTouch}
-                onDragStart={dragHandlers.onDragStart}
-                onDragEnd={dragHandlers.onDragEnd}
+                onTouchStart={pickerChrome ? undefined : lp.start}
+                onTouchEnd={pickerChrome ? undefined : lp.cancel}
+                onTouchMove={pickerChrome ? undefined : lp.cancel}
+                onContextMenu={
+                  pickerChrome
+                    ? undefined
+                    : (e) => {
+                        if (!isTouch) {
+                          e.preventDefault();
+                          onLongPress(f.id);
+                        }
+                      }
+                }
+                draggable={!pickerChrome && !isTouch}
+                onDragStart={pickerChrome ? undefined : dragHandlers.onDragStart}
+                onDragEnd={pickerChrome ? undefined : dragHandlers.onDragEnd}
                 className={cn(
                   "drive-list-row group cursor-default transition-colors",
                   isItemDragging(f.id) && "drive-list-row--dragging",
@@ -905,7 +954,10 @@ export function DriveListView({
                   isActive && !isSelected && "drive-list-row--active",
                 )}
               >
-                <td className="drive-list-col-name py-2 min-w-0" {...(isFolder ? dropZone : {})}>
+                <td
+                  className="drive-list-col-name py-2 min-w-0"
+                  {...(isFolder && !pickerChrome ? dropZone : {})}
+                >
                   <div className="drive-list-row__name flex items-center gap-2.5 min-w-0">
                     <DriveSelectionCheckbox
                       isSelected={isSelected}
@@ -965,31 +1017,33 @@ export function DriveListView({
                 <td className="drive-list-col-size py-2 text-right tabular-nums drive-list-muted hidden sm:table-cell">
                   {f.size}
                 </td>
-                <td
-                  className="drive-list-col-actions py-2"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <div className="flex justify-end">
-                    <DriveFileItemActions
-                      labels={labels}
-                      file={f}
-                      isStarred={!!starred[f.id]}
-                      inTrash={inTrash}
-                      canOpen={!selectionMode}
-                      onOpen={() => onOpen(f)}
-                      onDownload={onDownload}
-                      onStar={() => onStar(f.id)}
-                      onRename={() => onRename(f)}
-                      onMove={() => onMove(f)}
-                      onDelete={() => onTrash(f)}
-                      canShare={fileCanShare?.(f)}
-                      canManageStructure={fileCanManageStructure?.(f)}
-                      onShare={onShare ? () => onShare(f) : undefined}
-                      extraActions={extraFileActions?.(f)}
-                      disabled={isPinning}
-                    />
-                  </div>
-                </td>
+                {pickerChrome ? null : (
+                  <td
+                    className="drive-list-col-actions py-2"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="flex justify-end">
+                      <DriveFileItemActions
+                        labels={labels}
+                        file={f}
+                        isStarred={!!starred[f.id]}
+                        inTrash={inTrash}
+                        canOpen={!selectionMode}
+                        onOpen={() => onOpen(f)}
+                        onDownload={onDownload}
+                        onStar={() => onStar(f.id)}
+                        onRename={() => onRename(f)}
+                        onMove={() => onMove(f)}
+                        onDelete={() => onTrash(f)}
+                        canShare={fileCanShare?.(f)}
+                        canManageStructure={fileCanManageStructure?.(f)}
+                        onShare={onShare ? () => onShare(f) : undefined}
+                        extraActions={extraFileActions?.(f)}
+                        disabled={isPinning}
+                      />
+                    </div>
+                  </td>
+                )}
               </tr>
             );
           })}

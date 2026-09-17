@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import {
   isSaveFailureDocStatus,
   isToastDocStatus,
@@ -54,6 +55,8 @@ import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { detailFooterLastEditedTag } from "@/workspace-shell/src/detail-footer-last-edited-tag";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { DocsCollabEditor } from "./docs-collab-editor";
+import { DocsImagePickerDialog } from "./docs-image-picker-dialog";
+import { useDocsImageInsert } from "./use-docs-image-insert";
 import { DocsCollabSuggestControls } from "./docs-collab-suggest-controls";
 import { mergeCollabPresencePeers } from "./docs-collab-presence-peers";
 import { DocsCollabPresenceChrome } from "./docs-collab-presence-chrome";
@@ -110,6 +113,12 @@ export type DocsCollabWorkspaceProps = {
    * Pass locked rights while at-path is still loading.
    */
   permissions?: DocsCollabUiPermissions;
+  /** Live Drive operations for the image picker + upload (Chunk B/C). */
+  driveOperations?: DriveAPIOperations;
+  /** Signed-in Drive username for picker path mapping. */
+  driveUsername?: string;
+  /** Doc virtual path (`/users/…/file.md`) for `.attachments/{docFnId}/` uploads. */
+  docApiPath?: string;
 };
 
 function countWords(text: string): number {
@@ -143,6 +152,9 @@ export function DocsCollabWorkspace({
   shareLabel,
   showShare = false,
   permissions,
+  driveOperations,
+  driveUsername,
+  docApiPath,
 }: DocsCollabWorkspaceProps = {}) {
   const [userName, setUserName] = useState<string | null>(() => userNameProp?.trim() || null);
   const [promptDismissed, setPromptDismissed] = useState(false);
@@ -179,6 +191,9 @@ export function DocsCollabWorkspace({
       shareLabel={shareLabel}
       showShare={showShare}
       permissions={permissions ?? resolveDocsCollabPermissions(undefined)}
+      driveOperations={driveOperations}
+      driveUsername={driveUsername}
+      docApiPath={docApiPath}
     />
   );
 }
@@ -193,6 +208,9 @@ function DocsCollabWorkspaceInner({
   shareLabel,
   showShare = false,
   permissions,
+  driveOperations,
+  driveUsername,
+  docApiPath,
 }: {
   userName: string;
   documentTitle?: string;
@@ -203,6 +221,9 @@ function DocsCollabWorkspaceInner({
   shareLabel?: string;
   showShare?: boolean;
   permissions: DocsCollabUiPermissions;
+  driveOperations?: DriveAPIOperations;
+  driveUsername?: string;
+  docApiPath?: string;
 }) {
   const labels = docsLabels;
   const formatBarMode = resolveDocsCollabFormatBarMode(permissions);
@@ -293,6 +314,16 @@ function DocsCollabWorkspaceInner({
   const resolvedDocumentTitle = documentTitle?.trim() || defaultTitleFromRoom(urls?.room);
   const editorFormat = docsEditorFormatFromFileName(resolvedDocumentTitle);
   const showMarkdownOutline = resolvedDocumentTitle.toLowerCase().endsWith(".md");
+  const imageInsertEnabled = permissions.editable && editorFormat !== "text";
+  const resolvedDocApiPath = docApiPath ?? (urls?.room ? `/${urls.room}` : null);
+  const pickerUsername = driveUsername?.trim() || session.user.username || "";
+  const imageInsert = useDocsImageInsert({
+    editor,
+    docApiPath: resolvedDocApiPath,
+    operations: driveOperations,
+    enabled: imageInsertEnabled,
+    insertErrorMessage: labels.insertImageError,
+  });
   const { online } = useConnectivity();
   const { showSuccess, showError } = useAppToast();
   const commentsLayout = useDocsCommentsLayout();
@@ -763,6 +794,7 @@ function DocsCollabWorkspaceInner({
                       : labels.commentsAddFromSelectionDisabledReadOnly
                   }
                   commentControlLabels={labels}
+                  onInsertImage={imageInsertEnabled ? imageInsert.openPicker : undefined}
                 />
               ) : null}
               <WorkspaceDetailFooter
@@ -801,6 +833,15 @@ function DocsCollabWorkspaceInner({
           }
         />
         {reviewDrawer}
+        <DocsImagePickerDialog
+          open={imageInsert.pickerOpen}
+          operations={driveOperations}
+          currentUsername={pickerUsername}
+          groupRoots={imageInsert.groupRoots}
+          onClose={imageInsert.closePicker}
+          onSelectFile={imageInsert.onSelectFile}
+          onUploadFiles={imageInsert.onUploadFiles}
+        />
         <DocsConflictDialog
           open={conflictOpen}
           documentTitle={resolvedDocumentTitle}
