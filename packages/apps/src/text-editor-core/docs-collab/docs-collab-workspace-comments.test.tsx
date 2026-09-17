@@ -10,7 +10,7 @@ import {
   shouldAutoOpenCommentsForThreads,
   type DocsCommentsLayoutMode,
 } from "./use-docs-comments-layout";
-import { useDocsComments } from "./use-docs-comments";
+import { useTestDocsComments as useDocsComments } from "./docs-threads-test-client";
 
 function createEditor(content = "<p>Hello world</p>") {
   const editor = new Editor({

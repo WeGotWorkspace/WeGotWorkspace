@@ -149,8 +149,8 @@ final class DocCollabDocumentService
             $this->fail('forbidden', 403);
         }
         // View-only member grants may load the document/Yjs snapshot read-only; writes stay gated
-        // by resolveWritablePath (mayEditContent). Comment mutations are UI-enforced and still
-        // cannot persist via PUT without edit rights (or a future comment-save path).
+        // by resolveWritablePath (mayEditContent). Comment/suggestion discussion persists via
+        // REST `/files/threads` (mayComment), not this PUT.
         if (! $rights['mayView']) {
             $this->fail('forbidden', 403);
         }

@@ -60,7 +60,7 @@ return [
          * DAV access (see {@see ChatHiddenCalendarBackend}).
          * Chat collections are API-only surfaces; notes stay DAV-visible by design.
          */
-        'dav_hidden_prefixes' => ['chat-', 'dm-'],
+        'dav_hidden_prefixes' => ['chat-', 'dm-', 'docs-threads'],
     ],
 
     'jwt' => [

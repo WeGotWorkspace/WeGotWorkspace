@@ -29,7 +29,6 @@ type UseDocsCommentsThreadActionsOptions = {
 };
 
 export function useDocsCommentsThreadActions({
-  ydoc,
   editor,
   currentUser,
   openThreads,
@@ -78,7 +77,7 @@ export function useDocsCommentsThreadActions({
   );
 
   const createThreadFromSelection = useCallback((): string | null => {
-    if (!canMutateComments || !ydoc || !editor) return null;
+    if (!canMutateComments || !editor) return null;
     if (selectionOverlapsOpenComment(editor, openThreadIds)) return null;
 
     if (draftThreadRef.current) {
@@ -101,7 +100,6 @@ export function useDocsCommentsThreadActions({
     openThreadIds,
     setActiveThreadId,
     setDraftThread,
-    ydoc,
   ]);
 
   return {
