@@ -35,7 +35,7 @@ export function AuthenticationPage({
           <div className="w-full max-w-md">
             {eyebrow ? <p className="login-screen__eyebrow">{eyebrow}</p> : null}
             {beforeTitle}
-            <h2 className="login-screen__hero text-6xl md:text-7xl leading-[0.95] tracking-tight mb-10">
+            <h2 className="login-screen__hero text-6xl md:text-7xl leading-[0.95] tracking-tight">
               {title}
             </h2>
             {children}

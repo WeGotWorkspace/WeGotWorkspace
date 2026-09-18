@@ -21,7 +21,7 @@
 .login-screen__hero {
   font-family: var(--font-serif);
   color: #ffffff;
-  @apply text-balance;
+  @apply mb-4 text-balance;
 }
 
 .login-screen__eyebrow {
