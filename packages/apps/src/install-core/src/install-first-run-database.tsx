@@ -43,9 +43,19 @@ const ENGINE_OPTIONS = [
 function InstallFirstRunDatabaseTitle() {
   return (
     <>
-      <InstallFirstRunHero italic="Your" noun="data" />.
+      <InstallFirstRunHero italic="Your" noun="database" />.
     </>
   );
+}
+
+function enginePanelProps(active: boolean) {
+  return {
+    className: active
+      ? "install-first-run__engine-panel"
+      : "install-first-run__engine-panel install-first-run__engine-panel--hidden",
+    "aria-hidden": !active,
+    inert: !active,
+  };
 }
 
 export function InstallFirstRunDatabase({
@@ -92,73 +102,76 @@ export function InstallFirstRunDatabase({
           </div>
         </FieldLabelRow>
 
-        {engine === "sqlite" ? (
-          <p className="install-first-run__hint">{copy.sqliteHint}</p>
-        ) : (
-          <div className="install-first-run__mysql">
-            <div className="install-first-run__mysql-row install-first-run__mysql-row--host-port">
-              <FieldLabelRow
-                className="install-first-run__mysql-host"
-                htmlFor={mysqlHostId}
-                label={copy.mysqlHost}
-              >
+        <div className="install-first-run__engine-panels">
+          <div {...enginePanelProps(engine === "mysql")}>
+            <div className="install-first-run__mysql">
+              <div className="install-first-run__mysql-row install-first-run__mysql-row--host-port">
+                <FieldLabelRow
+                  className="install-first-run__mysql-host"
+                  htmlFor={mysqlHostId}
+                  label={copy.mysqlHost}
+                >
+                  <Input
+                    id={mysqlHostId}
+                    name="mysqlHost"
+                    value={mysql.host}
+                    onChange={(event) =>
+                      setMysql((current) => ({ ...current, host: event.target.value }))
+                    }
+                  />
+                </FieldLabelRow>
+                <FieldLabelRow htmlFor={mysqlPortId} label={copy.mysqlPort}>
+                  <Input
+                    id={mysqlPortId}
+                    name="mysqlPort"
+                    inputMode="numeric"
+                    value={mysql.port}
+                    onChange={(event) =>
+                      setMysql((current) => ({ ...current, port: event.target.value }))
+                    }
+                  />
+                </FieldLabelRow>
+              </div>
+              <FieldLabelRow htmlFor={mysqlDatabaseId} label={copy.mysqlDatabase}>
                 <Input
-                  id={mysqlHostId}
-                  name="mysqlHost"
-                  value={mysql.host}
+                  id={mysqlDatabaseId}
+                  name="mysqlDatabase"
+                  value={mysql.database}
                   onChange={(event) =>
-                    setMysql((current) => ({ ...current, host: event.target.value }))
+                    setMysql((current) => ({ ...current, database: event.target.value }))
                   }
                 />
               </FieldLabelRow>
-              <FieldLabelRow htmlFor={mysqlPortId} label={copy.mysqlPort}>
-                <Input
-                  id={mysqlPortId}
-                  name="mysqlPort"
-                  inputMode="numeric"
-                  value={mysql.port}
-                  onChange={(event) =>
-                    setMysql((current) => ({ ...current, port: event.target.value }))
-                  }
-                />
-              </FieldLabelRow>
-            </div>
-            <FieldLabelRow htmlFor={mysqlDatabaseId} label={copy.mysqlDatabase}>
-              <Input
-                id={mysqlDatabaseId}
-                name="mysqlDatabase"
-                value={mysql.database}
-                onChange={(event) =>
-                  setMysql((current) => ({ ...current, database: event.target.value }))
-                }
-              />
-            </FieldLabelRow>
-            <div className="install-first-run__mysql-row">
-              <FieldLabelRow htmlFor={mysqlUserId} label={copy.mysqlUser}>
-                <Input
-                  id={mysqlUserId}
-                  name="mysqlUser"
-                  value={mysql.username}
-                  onChange={(event) =>
-                    setMysql((current) => ({ ...current, username: event.target.value }))
-                  }
-                />
-              </FieldLabelRow>
-              <FieldLabelRow htmlFor={mysqlPasswordId} label={copy.mysqlPassword}>
-                <Input
-                  id={mysqlPasswordId}
-                  name="mysqlPassword"
-                  variant="password"
-                  value={mysql.password}
-                  autoComplete="new-password"
-                  onChange={(event) =>
-                    setMysql((current) => ({ ...current, password: event.target.value }))
-                  }
-                />
-              </FieldLabelRow>
+              <div className="install-first-run__mysql-row">
+                <FieldLabelRow htmlFor={mysqlUserId} label={copy.mysqlUser}>
+                  <Input
+                    id={mysqlUserId}
+                    name="mysqlUser"
+                    value={mysql.username}
+                    onChange={(event) =>
+                      setMysql((current) => ({ ...current, username: event.target.value }))
+                    }
+                  />
+                </FieldLabelRow>
+                <FieldLabelRow htmlFor={mysqlPasswordId} label={copy.mysqlPassword}>
+                  <Input
+                    id={mysqlPasswordId}
+                    name="mysqlPassword"
+                    variant="password"
+                    value={mysql.password}
+                    autoComplete="new-password"
+                    onChange={(event) =>
+                      setMysql((current) => ({ ...current, password: event.target.value }))
+                    }
+                  />
+                </FieldLabelRow>
+              </div>
             </div>
           </div>
-        )}
+          <div {...enginePanelProps(engine === "sqlite")}>
+            <p className="install-first-run__hint">{copy.sqliteHint}</p>
+          </div>
+        </div>
 
         <div className="login-screen__actions">
           <Button

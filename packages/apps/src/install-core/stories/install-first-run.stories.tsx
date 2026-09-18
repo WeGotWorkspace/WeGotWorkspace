@@ -59,7 +59,7 @@ export const Welcome: Story = {
 };
 
 export const Database: Story = {
-  name: "Your data",
+  name: "Your database",
   tags: ["vitest-ci"],
   render: () => <InstallFirstRunDatabase />,
   play: async ({ canvasElement }) => {
@@ -77,20 +77,22 @@ export const Database: Story = {
     await expect(canvas.getByLabelText("Port")).toBeInTheDocument();
     await expect(canvas.getByLabelText("User")).toBeInTheDocument();
     await expect(canvas.getByLabelText("Password")).toBeInTheDocument();
-    await expect(canvas.queryByText("Uses the default SQLite file.")).toBeNull();
+    const panels = canvasElement.querySelectorAll(".install-first-run__engine-panel");
+    await expect(panels).toHaveLength(2);
+    await expect(panels[1]).toHaveClass("install-first-run__engine-panel--hidden");
     await expect(canvas.queryByLabelText("Database file")).toBeNull();
     await expect(canvas.getByRole("button", { name: "Continue" })).toBeInTheDocument();
   },
 };
 
 export const DatabaseSqlite: Story = {
-  name: "Your data (SQLite)",
+  name: "Your database (SQLite)",
   tags: ["vitest-ci"],
   render: () => <InstallFirstRunDatabase initialEngine="sqlite" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Uses the default SQLite file.")).toBeInTheDocument();
-    await expect(canvas.queryByLabelText("Host")).toBeNull();
+    await expect(canvas.queryByRole("textbox", { name: "Host" })).toBeNull();
     await expect(canvas.getByRole("button", { name: "MySQL / MariaDB" })).toBeInTheDocument();
   },
 };

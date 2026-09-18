@@ -14,7 +14,7 @@ export const installFirstRunCopy = {
   passwordHint: "At least 10 characters.",
   usernameTaken: "That username is taken. Pick another.",
   usernameInvalid: "Use 2–63 letters, numbers, hyphens, or underscores.",
-  databaseTitle: "Your data.",
+  databaseTitle: "Your database.",
   databaseType: "Type",
   sqlite: "SQLite",
   mysql: "MySQL / MariaDB",

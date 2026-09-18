@@ -14,7 +14,7 @@ export type InstallFirstRunWorkspaceProps = InstallWorkspaceProps & {
 
 const SCREEN_TITLES = {
   welcome: "Install",
-  database: "Your data",
+  database: "Your database",
   account: "Your account",
   ready: "You got workspace",
   interrupt: "Needs attention",

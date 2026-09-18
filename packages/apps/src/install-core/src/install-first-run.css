@@ -79,6 +79,25 @@
   @apply flex-1;
 }
 
+.install-first-run__engine-panels {
+  interpolate-size: allow-keywords;
+}
+
+.install-first-run__engine-panel {
+  overflow: hidden;
+  height: auto;
+  opacity: 1;
+  transition:
+    height 200ms ease,
+    opacity 200ms ease;
+}
+
+.install-first-run__engine-panel--hidden {
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .install-first-run__mysql {
   @apply flex flex-col gap-4;
 }
@@ -154,5 +173,9 @@
 @media (prefers-reduced-motion: reduce) {
   .install-first-run__spinner {
     animation: none;
+  }
+
+  .install-first-run__engine-panel {
+    transition: none;
   }
 }

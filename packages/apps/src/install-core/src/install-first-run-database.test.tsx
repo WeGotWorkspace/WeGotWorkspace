@@ -16,7 +16,9 @@ vi.mock("@tanstack/react-router", () => ({
 describe("InstallFirstRunDatabase", () => {
   it("defaults to MySQL with connection fields", () => {
     render(<InstallFirstRunDatabase />);
-    expect(screen.getByRole("heading", { name: "Your data." })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Your database." })).toBeTruthy();
+    expect(document.querySelector(".install-first-run__hero-your")?.textContent).toBe("Your");
+    expect(document.querySelector(".install-first-run__hero-noun")?.textContent).toBe("database");
     const engines = within(screen.getByRole("group", { name: "Type" })).getAllByRole("button");
     expect(engines[0].getAttribute("aria-label")).toBe("MySQL / MariaDB");
     expect(engines[0].getAttribute("aria-pressed")).toBe("true");
@@ -28,7 +30,12 @@ describe("InstallFirstRunDatabase", () => {
     expect(screen.getByLabelText("Password")).toBeTruthy();
     expect(document.querySelector(".install-first-run__mysql-row--host-port")).toBeTruthy();
     expect(document.querySelector(".install-first-run__mysql-host")).toBeTruthy();
-    expect(screen.queryByText("Uses the default SQLite file.")).toBeNull();
+    const panels = document.querySelectorAll(".install-first-run__engine-panel");
+    expect(panels).toHaveLength(2);
+    expect(panels[0].classList.contains("install-first-run__engine-panel--hidden")).toBe(false);
+    expect(panels[1].classList.contains("install-first-run__engine-panel--hidden")).toBe(true);
+    expect(panels[1].getAttribute("aria-hidden")).toBe("true");
+    expect(panels[1].textContent).toContain("Uses the default SQLite file.");
     expect(screen.queryByLabelText("Database file")).toBeNull();
     const progress = screen.getByRole("list", { name: "Setup progress" });
     expect(within(progress).getAllByRole("listitem")).toHaveLength(4);
@@ -39,8 +46,11 @@ describe("InstallFirstRunDatabase", () => {
     render(<InstallFirstRunDatabase />);
     fireEvent.click(screen.getByRole("button", { name: "SQLite" }));
     expect(screen.getByText("Uses the default SQLite file.")).toBeTruthy();
-    expect(screen.queryByLabelText("Host")).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Host" })).toBeNull();
     expect(screen.queryByLabelText("Database file")).toBeNull();
+    const panels = document.querySelectorAll(".install-first-run__engine-panel");
+    expect(panels[0].classList.contains("install-first-run__engine-panel--hidden")).toBe(true);
+    expect(panels[1].classList.contains("install-first-run__engine-panel--hidden")).toBe(false);
   });
 
   it("submits sqlite without credentials", () => {
