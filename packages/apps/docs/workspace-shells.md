@@ -63,22 +63,22 @@ IF product = login or standalone screen with global header only
 
 Verified against current `*-workspace.tsx` (or equivalent) sources:
 
-| Package                    | Shell                    | Entry file                                                                                                                    |
-| -------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `admin-core`               | Split                    | `admin-core/src/admin-workspace.tsx`                                                                                          |
-| `calendar-core`            | Split                    | `calendar-core/src/calendar-workspace.tsx`                                                                                    |
-| `docs-core`                | Split                    | `docs-core/src/docs-workspace.tsx`                                                                                            |
-| `drive-core`               | Split                    | `drive-core/src/drive-workspace.tsx`                                                                                          |
-| `install-core`             | Custom (first-run)       | `install-core/src/install-first-run-workspace.tsx` — live `/install`; unused Split panes remain under `install-workspace.tsx` |
-| `settings-core`            | Split                    | `settings-core/src/settings-workspace.tsx`                                                                                    |
-| `mail-core`                | Collection               | `mail-core/src/mail-workspace.tsx`                                                                                            |
-| `notes-core`               | Collection               | `notes-core/src/notes-workspace.tsx`                                                                                          |
-| `meet-core`                | Split                    | `meet-core/src/meet-workspace.tsx` — channels + chat + optional `MeetCallStage`                                               |
-| `meet-core` (live `/meet`) | Split                    | `meet-core/src/meet-chat-app.tsx` — `MeetChatApp`: hybrid chat client + real RTC call stage in `MeetWorkspace`                |
-| `meet-core` (guest invite) | Split (stripped)         | `meet-core/src/meet-app.tsx` — live `/meet/guest`, unauthorized `/meet/channels/{id}`, `/meet/join` mount `MeetGuestChannel`  |
-| `meet-core` (guest)        | Split (stripped)         | `meet-core/src/meet-guest-channel.tsx` — `MeetGuestChannel`: one room, no channel sidebar (`hideSidebarToggle`)               |
-| `login-core`               | Custom (header only)     | `login-core/src/login-screen.tsx` — not a product workspace                                                                   |
-| `text-editor-core`         | Split (collab submodule) | `text-editor-core/docs-collab/docs-collab-workspace.tsx` — editor primitive + docs collab demo, not a routed app              |
+| Package                    | Shell                    | Entry file                                                                                                                   |
+| -------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `admin-core`               | Split                    | `admin-core/src/admin-workspace.tsx`                                                                                         |
+| `calendar-core`            | Split                    | `calendar-core/src/calendar-workspace.tsx`                                                                                   |
+| `docs-core`                | Split                    | `docs-core/src/docs-workspace.tsx`                                                                                           |
+| `drive-core`               | Split                    | `drive-core/src/drive-workspace.tsx`                                                                                         |
+| `install-core`             | Custom (first-run)       | `install-core/src/install-first-run-workspace.tsx` — live `/install`                                                         |
+| `settings-core`            | Split                    | `settings-core/src/settings-workspace.tsx`                                                                                   |
+| `mail-core`                | Collection               | `mail-core/src/mail-workspace.tsx`                                                                                           |
+| `notes-core`               | Collection               | `notes-core/src/notes-workspace.tsx`                                                                                         |
+| `meet-core`                | Split                    | `meet-core/src/meet-workspace.tsx` — channels + chat + optional `MeetCallStage`                                              |
+| `meet-core` (live `/meet`) | Split                    | `meet-core/src/meet-chat-app.tsx` — `MeetChatApp`: hybrid chat client + real RTC call stage in `MeetWorkspace`               |
+| `meet-core` (guest invite) | Split (stripped)         | `meet-core/src/meet-app.tsx` — live `/meet/guest`, unauthorized `/meet/channels/{id}`, `/meet/join` mount `MeetGuestChannel` |
+| `meet-core` (guest)        | Split (stripped)         | `meet-core/src/meet-guest-channel.tsx` — `MeetGuestChannel`: one room, no channel sidebar (`hideSidebarToggle`)              |
+| `login-core`               | Custom (header only)     | `login-core/src/login-screen.tsx` — not a product workspace                                                                  |
+| `text-editor-core`         | Split (collab submodule) | `text-editor-core/docs-collab/docs-collab-workspace.tsx` — editor primitive + docs collab demo, not a routed app             |
 
 ## Required imports and CSS
 
@@ -106,7 +106,7 @@ import "@/<product>-core/src/<product>-workspace.css";
 }
 ```
 
-**Storybook** — `*-story-scope.tsx` wraps panes with `className="<product>-workspace"` and imports the workspace CSS. Full workspace stories use `layout: "fullscreen"` on `*Workspace`. Examples: `settings-story-scope.tsx`, `admin-story-scope.tsx`, `drive-story-scope.tsx`, `install-story-scope.tsx`.
+**Storybook** — `*-story-scope.tsx` wraps panes with `className="<product>-workspace"` and imports the workspace CSS. Full workspace stories use `layout: "fullscreen"` on `*Workspace`. Examples: `settings-story-scope.tsx`, `admin-story-scope.tsx`, `drive-story-scope.tsx`. Install first-run stories use fullscreen screens directly (no split story scope).
 
 **Reference:** `packages/apps/src/settings-core/src/settings-workspace.tsx`
 
@@ -179,11 +179,12 @@ import "@/<product>-core/src/<product>-workspace.css";
 | Collection | `packages/apps/src/mail-core/src/mail-workspace.tsx`         |
 | Custom     | `packages/apps/src/login-core/src/login-screen.tsx`          |
 
-Additional split references: `admin-workspace.tsx`, `drive-workspace.tsx`, `install-workspace.tsx`, `docs-workspace.tsx`, `meet-workspace.tsx`.
+Additional split references: `admin-workspace.tsx`, `drive-workspace.tsx`, `docs-workspace.tsx`, `meet-workspace.tsx`.
 
 ### Install-specific deviations
 
-- **`useInstallAPI`** follows the shared `useWorkspaceApi` bootstrap (`data`, `session`, `operations`) like settings/admin, but **`InstallWorkspace` does not take `session`** — the installer runs before login, so sidebar chrome uses a **step progress footer** instead of `WorkspaceUserFooter`. Mock/live bootstraps still carry `mockWorkspaceSession` for API symmetry; stories use `createInstallWorkspaceStoryArgs()` to omit `session` from workspace args.
+- Live `/install` mounts **`InstallFirstRunWorkspace`** (Custom / header-first), not a Split `WorkspaceAppLayout`.
+- **`useInstallAPI`** follows the shared `useWorkspaceApi` bootstrap (`data`, `session`, `operations`) like settings/admin for API symmetry, but first-run chrome does not take `session` or show a user footer. Stories use `createInstallWorkspaceStoryArgs()` to omit `session` from workspace args.
 
 ## Related docs
 

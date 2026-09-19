@@ -10,7 +10,6 @@ Swap live `/install` onto the signed-off first-run screens and keep installer AP
 
 - Headless env key changes
 - Admin Mail / Meet / Email delivery redesign
-- Deleting unused Split panes
 
 ## Affected packages
 

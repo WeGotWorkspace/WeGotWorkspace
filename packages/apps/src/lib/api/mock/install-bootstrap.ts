@@ -5,10 +5,7 @@ import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { WgwInstallerRuntimeState } from "@/lib/api/wgw";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 
-export type InstallWorkspaceBootstrap = Pick<
-  InstallWorkspaceProps,
-  "data" | "operations" | "onInstallRedirect" | "onOpenAdmin"
->;
+export type InstallWorkspaceBootstrap = Pick<InstallWorkspaceProps, "data" | "operations">;
 
 /** API bootstrap shape: workspace props plus session for `useWorkspaceApi` chrome parity. */
 export type InstallAppBootstrap = InstallWorkspaceBootstrap & {
@@ -44,8 +41,6 @@ const DEFAULT_DATA: InstallUIData = {
 export function createInstallAppBootstrap(overrides?: {
   data?: InstallUIData;
   operations?: InstallAPIOperations;
-  onInstallRedirect?: InstallWorkspaceProps["onInstallRedirect"];
-  onOpenAdmin?: InstallWorkspaceProps["onOpenAdmin"];
 }): InstallAppBootstrap {
   const data = overrides?.data ?? DEFAULT_DATA;
   const seedState = data.state ?? DEFAULT_INSTALLER_STATE;
@@ -53,12 +48,10 @@ export function createInstallAppBootstrap(overrides?: {
     data,
     session: mockWorkspaceSession,
     operations: overrides?.operations ?? createMockInstallOperations(seedState),
-    onInstallRedirect: overrides?.onInstallRedirect ?? (() => {}),
-    onOpenAdmin: overrides?.onOpenAdmin ?? (() => {}),
   };
 }
 
-/** Story/workspace args without session — install chrome uses step progress, not user footer. */
+/** Story/workspace args without session — first-run chrome does not use a user footer. */
 export function createInstallWorkspaceStoryArgs(
   overrides?: Parameters<typeof createInstallAppBootstrap>[0],
 ): InstallWorkspaceBootstrap {

@@ -16,7 +16,6 @@ Mount live `/install` on the signed-off first-run chrome (Custom / header-first,
 - Admin Mail / Meet / Email delivery redesign
 - Installer email-delivery form
 - Per-user SMTP
-- Deleting unused Split panes in this slice (they may remain unused)
 
 ## Affected packages
 

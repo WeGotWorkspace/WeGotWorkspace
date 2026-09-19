@@ -13,7 +13,7 @@
  * Main column width (`--workspace-main-content-max-width`) is unified here so pane
  * content and {@link Card} stacks share the same measure across products.
  */
-:is(.admin-workspace, .settings-workspace, .notes-workspace, .mail-workspace, .install-workspace) {
+:is(.admin-workspace, .settings-workspace, .notes-workspace, .mail-workspace) {
   --workspace-root-bg: var(--color-cream, #ffffff);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 15%, transparent);
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 80%, transparent);
