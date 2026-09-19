@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import type { InstallFirstRunAccountValues } from "@/install-core/src/install-first-run-account";
@@ -10,6 +10,7 @@ import {
   firstRunBlockingChecks,
   firstRunDefaultEngine,
   firstRunScreenFromState,
+  formatInstallDatabaseError,
   installerHasDatabaseFromEnv,
   isUsernameTakenError,
   type InstallFirstRunScreen,
@@ -19,6 +20,7 @@ import type {
   WgwInstallerRuntimeState,
 } from "@/install-core/src/install-types";
 import type { InstallWorkspaceProps } from "@/install-core/src/install-workspace-props";
+import { wgwLoginWithCredentials } from "@/lib/api/wgw/http";
 
 export function useInstallFirstRunController({
   data,
@@ -31,6 +33,9 @@ export function useInstallFirstRunController({
   const [actionPending, setActionPending] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [usernameTaken, setUsernameTaken] = useState(false);
+  const [databaseError, setDatabaseError] = useState<string | null>(null);
+  const [openingWorkspace, setOpeningWorkspace] = useState(false);
+  const freshAdminRef = useRef<{ username: string; password: string } | null>(null);
 
   useEffect(() => {
     if (!data.state) return;
@@ -106,6 +111,7 @@ export function useInstallFirstRunController({
     async (values: InstallFirstRunDatabaseValues) => {
       if (!operations || actionPending) return;
       setActionPending(true);
+      setDatabaseError(null);
       try {
         if (values.engine === "mysql") {
           const test = await runAction(() =>
@@ -118,7 +124,8 @@ export function useInstallFirstRunController({
         await persistDatabase(values);
         setScreen("account");
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not save the database.");
+        const raw = error instanceof Error ? error.message : "Could not save the database.";
+        setDatabaseError(formatInstallDatabaseError(raw));
       } finally {
         setActionPending(false);
       }
@@ -143,6 +150,7 @@ export function useInstallFirstRunController({
           ),
         );
         setScreen("ready");
+        freshAdminRef.current = { username: values.username, password: values.password };
       } catch (error) {
         const message = error instanceof Error ? error.message : "Could not create the workspace.";
         if (isUsernameTakenError(message)) {
@@ -164,6 +172,28 @@ export function useInstallFirstRunController({
       persistDatabase,
       runAction,
     ],
+  );
+
+  const openWorkspace = useCallback(
+    async (fallback?: () => void) => {
+      if (openingWorkspace) return;
+      const credentials = freshAdminRef.current;
+      if (!credentials) {
+        fallback?.();
+        return;
+      }
+      setOpeningWorkspace(true);
+      try {
+        await wgwLoginWithCredentials(credentials.username, credentials.password);
+        freshAdminRef.current = null;
+        window.location.assign("/");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not sign in.");
+      } finally {
+        setOpeningWorkspace(false);
+      }
+    },
+    [openingWorkspace],
   );
 
   const rerunChecks = useCallback(async () => {
@@ -191,9 +221,12 @@ export function useInstallFirstRunController({
     actionPending,
     installing,
     usernameTaken,
+    databaseError,
+    openingWorkspace,
     startSetup,
     continueDatabase,
     createWorkspace,
+    openWorkspace,
     rerunChecks,
   };
 }

@@ -5,6 +5,7 @@ import { InstallFirstRunPage } from "@/install-core/src/install-first-run-page";
 
 export type InstallFirstRunReadyProps = {
   includeDatabaseStep?: boolean;
+  opening?: boolean;
   onOpenWorkspace?: () => void;
 };
 
@@ -14,6 +15,7 @@ function InstallFirstRunReadyTitle() {
 
 export function InstallFirstRunReady({
   includeDatabaseStep = true,
+  opening = false,
   onOpenWorkspace,
 }: InstallFirstRunReadyProps) {
   return (
@@ -31,6 +33,7 @@ export function InstallFirstRunReady({
           size="xl"
           pill
           className="login-screen__submit"
+          disabled={opening}
           onClick={onOpenWorkspace}
         />
       </div>

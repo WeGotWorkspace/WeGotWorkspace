@@ -25,6 +25,7 @@ export type InstallFirstRunDatabaseProps = {
   initialEngine?: InstallFirstRunDatabaseEngine;
   initialMysql?: Partial<InstallFirstRunMysqlDraft>;
   onContinue?: (values: InstallFirstRunDatabaseValues) => void;
+  connectionError?: string | null;
 };
 
 const DEFAULT_MYSQL: InstallFirstRunMysqlDraft = {
@@ -75,6 +76,7 @@ export function InstallFirstRunDatabase({
   initialEngine = "mysql",
   initialMysql,
   onContinue,
+  connectionError,
 }: InstallFirstRunDatabaseProps) {
   const mysqlHostId = useId();
   const mysqlPortId = useId();
@@ -184,6 +186,12 @@ export function InstallFirstRunDatabase({
             <p className="install-first-run__hint">{copy.sqliteHint}</p>
           </div>
         </div>
+
+        {engine === "mysql" && connectionError ? (
+          <p className="install-first-run__hint install-first-run__hint--error" role="alert">
+            {connectionError}
+          </p>
+        ) : null}
 
         <div className="login-screen__actions">
           <Button

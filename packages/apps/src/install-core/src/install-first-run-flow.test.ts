@@ -9,6 +9,7 @@ import {
   firstRunScreenFromState,
   installerHasDatabaseFromEnv,
   isUsernameTakenError,
+  formatInstallDatabaseError,
 } from "@/install-core/src/install-first-run-flow";
 import type { WgwInstallerRuntimeState } from "@/install-core/src/install-types";
 
@@ -84,6 +85,17 @@ describe("install-first-run-flow", () => {
   it("detects a taken-username error", () => {
     expect(isUsernameTakenError("That username is taken.")).toBe(true);
     expect(isUsernameTakenError("Connection failed.")).toBe(false);
+  });
+
+  it("turns a raw MySQL connection failure into a short line", () => {
+    expect(
+      formatInstallDatabaseError(
+        "Could not connect to the database: SQLSTATE[HY000] [2002] Connection refused (Connection: wgw, Host: 127.0.0.1, Port: 3306, Database: wgw, SQL: SELECT 1 AS ok)",
+      ),
+    ).toBe("Could not reach MySQL at 127.0.0.1:3306. Check the host and port, or use SQLite.");
+    expect(formatInstallDatabaseError("SQLSTATE[HY000] [1045] Access denied for user")).toBe(
+      "MySQL rejected that username or password.",
+    );
   });
 
   it("hides optional IMAP failures from the interrupt list", () => {

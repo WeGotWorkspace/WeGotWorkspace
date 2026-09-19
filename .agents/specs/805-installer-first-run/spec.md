@@ -40,3 +40,4 @@ Mount live `/install` on the signed-off first-run chrome (Custom / header-first,
 - Mid-wizard backend step (`database` / `account` / `done`) maps onto first-run screens.
 - Username invalid or taken stays on Account with the existing copy.
 - Already installed → Ready (Open workspace only), not the old Done-to-admin pane.
+- Open workspace after a successful install in this session signs in with that account and opens `/`. A later visit (credentials no longer in memory) still sends Open workspace to login.

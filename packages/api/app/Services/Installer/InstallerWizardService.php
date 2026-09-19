@@ -641,12 +641,35 @@ final class InstallerWizardService
             return 'PHP MySQL extension (pdo_mysql) is not loaded on this server. Rebuild the API container or enable pdo_mysql in PHP.';
         }
 
-        $detail = trim($e->getMessage());
-        if ($detail !== '') {
-            return 'Could not connect to the database: '.$detail;
+        $detail = $e->getMessage();
+        $host = (string) ($db['mysql_host'] ?? '127.0.0.1');
+        $port = (string) ($db['mysql_port'] ?? '3306');
+
+        if ($this->databaseErrorMatches($detail, ['2002', '2003', 'Connection refused', "Couldn't connect", 'could not find driver'])) {
+            return "Could not reach MySQL at {$host}:{$port}.";
+        }
+        if ($this->databaseErrorMatches($detail, ['1045', 'Access denied'])) {
+            return 'MySQL rejected that username or password.';
+        }
+        if ($this->databaseErrorMatches($detail, ['1049', 'Unknown database'])) {
+            return 'That database does not exist.';
         }
 
         return 'Could not connect to the database. Check your settings.';
+    }
+
+    /**
+     * @param  list<string>  $needles
+     */
+    private function databaseErrorMatches(string $detail, array $needles): bool
+    {
+        foreach ($needles as $needle) {
+            if (str_contains($detail, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function normalizeMailSecurity(string $value, string $fallback): string

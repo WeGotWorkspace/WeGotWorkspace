@@ -50,6 +50,7 @@ export function InstallFirstRunWorkspace({
           database: controller.installerState?.db.mysql_db,
           username: controller.installerState?.db.mysql_user,
         }}
+        connectionError={controller.databaseError}
         onContinue={(values) => void controller.continueDatabase(values)}
       />
     );
@@ -72,7 +73,8 @@ export function InstallFirstRunWorkspace({
     return (
       <InstallFirstRunReady
         includeDatabaseStep={controller.includeDatabaseStep}
-        onOpenWorkspace={onOpenWorkspace}
+        opening={controller.openingWorkspace}
+        onOpenWorkspace={() => void controller.openWorkspace(onOpenWorkspace)}
       />
     );
   }

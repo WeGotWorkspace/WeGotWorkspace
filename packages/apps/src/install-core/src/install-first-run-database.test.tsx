@@ -53,6 +53,13 @@ describe("InstallFirstRunDatabase", () => {
     expect(panels[1].classList.contains("install-first-run__engine-panel--hidden")).toBe(false);
   });
 
+  it("shows a connection error above Continue", () => {
+    render(
+      <InstallFirstRunDatabase connectionError="Could not reach MySQL at 127.0.0.1:3306. Check the host and port, or use SQLite." />,
+    );
+    expect(screen.getByRole("alert").textContent).toContain("Could not reach MySQL");
+  });
+
   it("submits sqlite without credentials", () => {
     const onContinue = vi.fn();
     render(<InstallFirstRunDatabase initialEngine="sqlite" onContinue={onContinue} />);

@@ -103,8 +103,10 @@ export function InstallFirstRunAccount({
 
   const usernameFormatInvalid = username.length > 0 && !usernameValid;
   const emailFormatInvalid = email.length > 0 && !emailValid;
+  const passwordTooShort = password.length > 0 && password.length < 10;
   const showUsernameInvalid = useDebouncedShowFeedback(usernameFormatInvalid);
   const showEmailInvalid = useDebouncedShowFeedback(emailFormatInvalid);
+  const showPasswordInvalid = useDebouncedShowFeedback(passwordTooShort);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -161,13 +163,14 @@ export function InstallFirstRunAccount({
               onChange={(event) => setEmail(event.target.value)}
             />
           </FieldLabelRow>
-          <p className="install-first-run__hint">{copy.emailHint}</p>
           <InstallFirstRunFieldFeedback>
             {showEmailInvalid ? (
               <p className="install-first-run__hint install-first-run__hint--error">
                 {copy.emailInvalid}
               </p>
-            ) : null}
+            ) : (
+              <p className="install-first-run__hint">{copy.emailHint}</p>
+            )}
           </InstallFirstRunFieldFeedback>
         </div>
         <div className="install-first-run__field">
@@ -185,7 +188,15 @@ export function InstallFirstRunAccount({
               onChange={(event) => setPassword(event.target.value)}
             />
           </FieldLabelRow>
-          <p className="install-first-run__hint">{copy.passwordHint}</p>
+          <InstallFirstRunFieldFeedback>
+            {showPasswordInvalid ? (
+              <p className="install-first-run__hint install-first-run__hint--error">
+                {copy.passwordHint}
+              </p>
+            ) : (
+              <p className="install-first-run__hint">{copy.passwordHint}</p>
+            )}
+          </InstallFirstRunFieldFeedback>
         </div>
 
         {installing ? (

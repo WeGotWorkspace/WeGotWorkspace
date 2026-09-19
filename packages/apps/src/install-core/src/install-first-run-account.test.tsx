@@ -145,11 +145,48 @@ describe("InstallFirstRunAccount", () => {
       vi.advanceTimersByTime(INSTALL_FIELD_FEEDBACK_SHOW_DEBOUNCE_MS);
     });
     expect(screen.getByText("Enter a valid email address.")).toBeTruthy();
+    expect(screen.queryByText("Used if you forget your password.")).toBeNull();
     expect(submit.disabled).toBe(true);
 
     fireEvent.change(email, { target: { value: "jane@example.com" } });
     expect(submit.disabled).toBe(false);
     expect(screen.queryByText("Enter a valid email address.")).toBeNull();
+    expect(screen.getByText("Used if you forget your password.")).toBeTruthy();
+  });
+
+  it("replaces the password hint with a debounced error while it is too short", () => {
+    vi.useFakeTimers();
+    render(<InstallFirstRunAccount />);
+    const password = screen.getByLabelText("Password");
+    expect(screen.getByText("At least 10 characters.")).toBeTruthy();
+    expect(
+      screen
+        .getByText("At least 10 characters.")
+        .classList.contains("install-first-run__hint--error"),
+    ).toBe(false);
+
+    fireEvent.change(password, { target: { value: "short" } });
+    expect(
+      screen
+        .getByText("At least 10 characters.")
+        .classList.contains("install-first-run__hint--error"),
+    ).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(INSTALL_FIELD_FEEDBACK_SHOW_DEBOUNCE_MS);
+    });
+    expect(
+      screen
+        .getByText("At least 10 characters.")
+        .classList.contains("install-first-run__hint--error"),
+    ).toBe(true);
+
+    fireEvent.change(password, { target: { value: "hunter2hunter" } });
+    expect(
+      screen
+        .getByText("At least 10 characters.")
+        .classList.contains("install-first-run__hint--error"),
+    ).toBe(false);
   });
 
   it("keeps Database in the progress dots after that step", () => {

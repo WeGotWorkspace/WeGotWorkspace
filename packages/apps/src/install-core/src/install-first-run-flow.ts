@@ -114,3 +114,31 @@ export function buildFirstRunDatabasePayload(
 export function isUsernameTakenError(message: string): boolean {
   return /taken|already exists/i.test(message);
 }
+
+/** Turn a raw installer/PDO failure into a short line for the Database screen. */
+export function formatInstallDatabaseError(message: string): string {
+  const text = message
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const hostPort = text.match(/Host:\s*([^,\s]+),\s*Port:\s*(\d+)/i);
+  const where = hostPort ? ` at ${hostPort[1]}:${hostPort[2]}` : "";
+
+  if (/2002|2003|connection refused|could not find driver|couldn't connect/i.test(text)) {
+    return `Could not reach MySQL${where}. Check the host and port, or use SQLite.`;
+  }
+  if (/1045|access denied/i.test(text)) {
+    return "MySQL rejected that username or password.";
+  }
+  if (/1049|unknown database/i.test(text)) {
+    return "That database does not exist.";
+  }
+  if (
+    /^could not reach mysql/i.test(text) ||
+    /^mysql rejected/i.test(text) ||
+    /^that database does not exist/i.test(text)
+  ) {
+    return text.endsWith(".") ? text : `${text}.`;
+  }
+  return "Could not connect to the database. Check your settings, or use SQLite.";
+}

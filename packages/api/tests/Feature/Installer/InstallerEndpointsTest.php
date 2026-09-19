@@ -276,6 +276,10 @@ final class InstallerEndpointsTest extends TestCase
             ->assertJsonPath('state.db_driver', 'mysql')
             ->assertJsonPath('state.db.mysql_host', '127.0.0.1')
             ->assertJsonPath('state.db.mysql_db', 'wgw');
+
+        $error = (string) $response->json('error');
+        $this->assertStringNotContainsString('SQL:', $error);
+        $this->assertStringNotContainsString('SQLSTATE', $error);
     }
 
     public function test_database_test_reports_missing_pdo_mysql_extension(): void
