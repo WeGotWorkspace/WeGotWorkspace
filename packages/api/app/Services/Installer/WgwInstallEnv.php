@@ -85,7 +85,7 @@ final class WgwInstallEnv
         if (
             $username === ''
             || $email === ''
-            || filter_var($email, FILTER_VALIDATE_EMAIL) === false
+            || ! InstallerAdminEmail::isValid($email)
             || strlen($password) < 10
         ) {
             return null;
