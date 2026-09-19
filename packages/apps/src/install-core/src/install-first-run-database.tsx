@@ -35,6 +35,19 @@ const DEFAULT_MYSQL: InstallFirstRunMysqlDraft = {
   password: "",
 };
 
+/** Object spread keeps explicit `undefined` keys, which would wipe these defaults. */
+function mysqlDraftFromInitial(
+  initial?: Partial<InstallFirstRunMysqlDraft>,
+): InstallFirstRunMysqlDraft {
+  return {
+    host: initial?.host ?? DEFAULT_MYSQL.host,
+    port: initial?.port ?? DEFAULT_MYSQL.port,
+    database: initial?.database ?? DEFAULT_MYSQL.database,
+    username: initial?.username ?? DEFAULT_MYSQL.username,
+    password: initial?.password ?? DEFAULT_MYSQL.password,
+  };
+}
+
 const ENGINE_OPTIONS = [
   { value: "mysql" as const, label: copy.mysql },
   { value: "sqlite" as const, label: copy.sqlite },
@@ -70,10 +83,9 @@ export function InstallFirstRunDatabase({
   const mysqlPasswordId = useId();
 
   const [engine, setEngine] = useState<InstallFirstRunDatabaseEngine>(initialEngine);
-  const [mysql, setMysql] = useState<InstallFirstRunMysqlDraft>({
-    ...DEFAULT_MYSQL,
-    ...initialMysql,
-  });
+  const [mysql, setMysql] = useState<InstallFirstRunMysqlDraft>(() =>
+    mysqlDraftFromInitial(initialMysql),
+  );
 
   const mysqlReady =
     mysql.host.trim().length > 0 &&

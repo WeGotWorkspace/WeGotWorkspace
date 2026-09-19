@@ -60,6 +60,23 @@ describe("InstallFirstRunDatabase", () => {
     expect(onContinue).toHaveBeenCalledWith({ engine: "sqlite" });
   });
 
+  it("keeps MySQL defaults when the API omits connection fields", () => {
+    render(
+      <InstallFirstRunDatabase
+        initialMysql={{
+          host: undefined,
+          port: undefined,
+          database: undefined,
+          username: undefined,
+        }}
+      />,
+    );
+    expect((screen.getByLabelText("Host") as HTMLInputElement).value).toBe("127.0.0.1");
+    expect((screen.getByLabelText("Port") as HTMLInputElement).value).toBe("3306");
+    expect((screen.getByLabelText("Database") as HTMLInputElement).value).toBe("wgw");
+    expect((screen.getByLabelText("User") as HTMLInputElement).value).toBe("wgw");
+  });
+
   it("submits mysql credentials by default", () => {
     const onContinue = vi.fn();
     render(<InstallFirstRunDatabase onContinue={onContinue} />);
