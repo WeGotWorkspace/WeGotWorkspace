@@ -56,7 +56,7 @@ export function AdminRealtimeCollaborationPane({
           </FormField>
           <FormField label="TURN password">
             <Input
-              type="password"
+              variant="password"
               value={controller.settingsForm.turnPassword}
               onChange={(event) =>
                 controller.setSettingsForm((prev) => ({

@@ -35,7 +35,7 @@ export function SettingsMailPane({ mail }: SettingsMailPaneProps) {
             {...settingsWorkspacePaneClasses.formTextField}
             name="imapPassword"
             label="Password"
-            type="password"
+            variant="password"
             placeholder={imapHasPassword ? "••••••••" : "Enter password"}
           />
           <FormSaveActionRow

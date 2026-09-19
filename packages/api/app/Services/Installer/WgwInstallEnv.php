@@ -21,6 +21,12 @@ final class WgwInstallEnv
         return $this->configBool('headless');
     }
 
+    /** True when `WGW_INSTALL_DB_DRIVER` is set — first-run skips the Database screen. */
+    public function hasDatabaseFromEnv(): bool
+    {
+        return $this->configString('db_driver') !== null;
+    }
+
     /**
      * Partial wizard state merged into bootstrap/runtime responses (never includes passwords).
      *
@@ -76,7 +82,12 @@ final class WgwInstallEnv
         $password = (string) ($this->configString('admin_password') ?? '');
         $display = trim((string) ($this->configString('admin_display_name') ?? '')) ?: $username;
 
-        if ($username === '' || $email === '' || strlen($password) < 10) {
+        if (
+            $username === ''
+            || $email === ''
+            || filter_var($email, FILTER_VALIDATE_EMAIL) === false
+            || strlen($password) < 10
+        ) {
             return null;
         }
 

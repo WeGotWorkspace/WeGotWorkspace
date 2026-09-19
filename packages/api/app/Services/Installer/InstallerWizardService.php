@@ -299,6 +299,9 @@ final class InstallerWizardService
         if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/', $username)) {
             throw new \RuntimeException('Username must be 2–63 characters: lowercase letters, digits, underscore, or hyphen.');
         }
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw new \RuntimeException('Enter a valid email address.');
+        }
         if (strlen($pass) < 10) {
             throw new \RuntimeException('Use a password of at least 10 characters.');
         }
@@ -334,7 +337,7 @@ final class InstallerWizardService
                     $username,
                     $pass,
                     $display,
-                    $email !== '' ? $email : null,
+                    $email,
                     $enableCalendars,
                     $enableContacts,
                     [
@@ -417,6 +420,7 @@ final class InstallerWizardService
                 'checks' => $this->env->checkAll('sqlite'),
                 'already_installed' => true,
                 'admin_updates_url' => InstallerWebBase::url($webBase, '/admin/updates'),
+                'db_from_env' => $this->installEnv->hasDatabaseFromEnv(),
             ];
         }
 
@@ -442,6 +446,7 @@ final class InstallerWizardService
             'enable_contacts' => (bool) ($state['enable_contacts'] ?? true),
             'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? true),
             'checks' => $this->env->checkAll($driver),
+            'db_from_env' => $this->installEnv->hasDatabaseFromEnv(),
         ];
 
         foreach (['admin_username', 'admin_email', 'admin_display_name'] as $adminKey) {
@@ -636,12 +641,35 @@ final class InstallerWizardService
             return 'PHP MySQL extension (pdo_mysql) is not loaded on this server. Rebuild the API container or enable pdo_mysql in PHP.';
         }
 
-        $detail = trim($e->getMessage());
-        if ($detail !== '') {
-            return 'Could not connect to the database: '.$detail;
+        $detail = $e->getMessage();
+        $host = (string) ($db['mysql_host'] ?? '127.0.0.1');
+        $port = (string) ($db['mysql_port'] ?? '3306');
+
+        if ($this->databaseErrorMatches($detail, ['2002', '2003', 'Connection refused', "Couldn't connect", 'could not find driver'])) {
+            return "Could not reach MySQL at {$host}:{$port}.";
+        }
+        if ($this->databaseErrorMatches($detail, ['1045', 'Access denied'])) {
+            return 'MySQL rejected that username or password.';
+        }
+        if ($this->databaseErrorMatches($detail, ['1049', 'Unknown database'])) {
+            return 'That database does not exist.';
         }
 
         return 'Could not connect to the database. Check your settings.';
+    }
+
+    /**
+     * @param  list<string>  $needles
+     */
+    private function databaseErrorMatches(string $detail, array $needles): bool
+    {
+        foreach ($needles as $needle) {
+            if (str_contains($detail, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function normalizeMailSecurity(string $value, string $fallback): string

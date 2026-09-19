@@ -52,7 +52,7 @@ import { folderTokenFromMailboxLabel } from "@/lib/mail/folder-token";
 import { AdminWorkspace } from "@/admin-core/src/admin-workspace";
 import { ContactsWorkspace } from "@/contacts-core/src/contacts-workspace";
 import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
-import { InstallWorkspace } from "@/install-core/src/install-workspace";
+import { InstallFirstRunWorkspace } from "@/install-core/src/install-first-run-workspace";
 import { MailWorkspace } from "@/mail-core/src/mail-workspace";
 import { mailStoryLabels } from "@/mail-core/src/mail-app.stories.fixtures";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
@@ -250,7 +250,7 @@ function MockAdminRoute() {
 
 function MockInstallRoute() {
   const bootstrap = useMemo(() => createInstallWorkspaceStoryArgs(), []);
-  return <InstallWorkspace {...bootstrap} />;
+  return <InstallFirstRunWorkspace {...bootstrap} />;
 }
 
 const AuthenticatedMeetChatApp = withWeGotWorkspaceAuth(MeetChatApp);

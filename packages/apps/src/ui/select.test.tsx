@@ -79,7 +79,7 @@ describe("SelectTrigger", () => {
     expect(inputCss).not.toMatch(/\.select-trigger:focus:not\(:disabled\)/);
     expect(inputCss).not.toMatch(/\.input:focus:not\(:read-only\)/);
     expect(inputCss).toMatch(
-      /\.input:focus-visible:not\(:read-only\),\s*\.textarea:focus-visible:not\(:read-only\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,
+      /input\.input:focus-visible:not\(:read-only\),\s*\.textarea:focus-visible:not\(:read-only\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,
     );
     expect(inputCss).toMatch(
       /\.select-trigger\[data-state="open"\]:not\(:disabled\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,

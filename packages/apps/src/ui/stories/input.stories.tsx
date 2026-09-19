@@ -20,7 +20,7 @@ const meta = {
   tags: ["autodocs", "vitest-ci"],
   argTypes: {
     size: { control: "radio", options: [...CONTROL_SIZE_OPTIONS] },
-    variant: { control: "radio", options: ["default", "search"] },
+    variant: { control: "radio", options: ["default", "search", "password"] },
   },
 } satisfies Meta<typeof Input>;
 
@@ -58,6 +58,48 @@ export const Search: Story = {
     await expect(input).toHaveValue("standup");
     await userEvent.click(canvas.getByRole("button", { name: "Clear search" }));
     await expect(input).toHaveValue("");
+  },
+};
+
+function PasswordPlayHarness() {
+  const [secret, setSecret] = React.useState("");
+  return (
+    <Input
+      variant="password"
+      size="md"
+      value={secret}
+      onChange={(event) => setSecret(event.target.value)}
+      placeholder="At least 10 characters"
+      aria-label="Password"
+      autoComplete="new-password"
+    />
+  );
+}
+
+export const Password: Story = {
+  render: () => <PasswordPlayHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByLabelText("Password") as HTMLInputElement;
+    await userEvent.type(input, "hunter2hunter");
+    await expect(input).toHaveValue("hunter2hunter");
+    await expect(input).toHaveAttribute("type", "password");
+    await userEvent.click(canvas.getByRole("button", { name: "Show password" }));
+    await expect(input).toHaveAttribute("type", "text");
+    await userEvent.click(canvas.getByRole("button", { name: "Hide password" }));
+    await expect(input).toHaveAttribute("type", "password");
+  },
+};
+
+export const PasswordVisible: Story = {
+  name: "Password (toggle)",
+  args: {
+    variant: "password",
+    size: "md",
+    placeholder: "At least 10 characters",
+    "aria-label": "Password",
+    defaultValue: "hunter2hunter",
+    autoComplete: "new-password",
   },
 };
 

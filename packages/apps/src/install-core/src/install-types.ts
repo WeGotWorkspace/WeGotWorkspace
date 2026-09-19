@@ -14,16 +14,6 @@ import type {
 } from "@/lib/api/wgw/installer";
 import type { WgwInstallerActionResponse, WgwInstallerRuntimeState } from "@/lib/api/wgw";
 
-export type InstallStepId =
-  | "welcome"
-  | "server"
-  | "database"
-  | "dav"
-  | "mail"
-  | "meet"
-  | "admin"
-  | "done";
-
 export type InstallerBackendStep =
   | "welcome"
   | "requirements"
@@ -54,51 +44,4 @@ export type InstallAPIOperations = {
   databaseNext: (payload: InstallerDatabasePayload) => Promise<WgwInstallerActionResponse>;
   siteNext: (payload: InstallerSitePayload) => Promise<WgwInstallerActionResponse>;
   install: (payload: InstallerInstallPayload) => Promise<WgwInstallerActionResponse>;
-};
-
-export type InstallDbType = "sqlite" | "mysql";
-
-export type InstallMysqlForm = {
-  host: string;
-  port: string;
-  database: string;
-  username: string;
-  password: string;
-};
-
-export type InstallDavForm = {
-  files: boolean;
-  contacts: boolean;
-  calendars: boolean;
-};
-
-export type InstallMailForm = {
-  enabled: boolean;
-  imapHost: string;
-  imapPort: string;
-  imapSec: string;
-  smtpHost: string;
-  smtpPort: string;
-  smtpSec: string;
-};
-
-export type InstallMeetForm = {
-  enabled: boolean;
-  stun: string;
-  turn: string;
-  turnUser: string;
-  turnPwd: string;
-};
-
-export type InstallAdminForm = {
-  username: string;
-  displayName: string;
-  email: string;
-  password: string;
-  password2: string;
-};
-
-export type InstallMysqlTestState = {
-  state: "idle" | "testing" | "ok" | "error";
-  message?: string;
 };

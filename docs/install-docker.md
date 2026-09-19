@@ -38,7 +38,7 @@ http://localhost:8080/install/
 
 Default host port is **8080** (`WGW_HTTP_PORT`).
 
-### MySQL wizard defaults
+### MySQL first-run defaults
 
 When using the default MySQL stack (`COMPOSE_PROFILES=mysql`), use these in the installer:
 
@@ -148,33 +148,33 @@ Change default passwords before exposing the stack to a network.
 
 ## Installer environment (`WGW_INSTALL_*`)
 
-Set these in `packages/api/.env` (Docker: the `api.env` file on the `wgw-install-config` volume). They prefill the web installer and can skip the wizard entirely when complete.
+Set these in `packages/api/.env` (Docker: the `api.env` file on the `wgw-install-config` volume). They prefill the first-run installer and can skip the web UI entirely when headless install is complete.
 
-| Variable | Wizard step | Purpose |
+| Variable | First-run screen | Purpose |
 | --- | --- | --- |
-| `WGW_INSTALL_HEADLESS` | — | `1` enables migrator `wgw:install` before web (skip wizard when all required vars set) |
-| `WGW_INSTALL_DB_DRIVER` | Database | `sqlite` or `mysql` |
+| `WGW_INSTALL_HEADLESS` | — | `1` enables migrator `wgw:install` before web (skip first-run when all required vars set) |
+| `WGW_INSTALL_DB_DRIVER` | Database | `sqlite` or `mysql` (when set, first-run skips the Database screen) |
 | `WGW_INSTALL_DB_SQLITE_PATH` | Database | SQLite path (default `wgw-content/db.sqlite`) |
 | `WGW_INSTALL_DB_HOST` | Database | MySQL host (Docker default: `db`) |
 | `WGW_INSTALL_DB_PORT` | Database | MySQL port (default `3306`) |
 | `WGW_INSTALL_DB_DATABASE` | Database | MySQL database name |
 | `WGW_INSTALL_DB_USER` | Database | MySQL user |
 | `WGW_INSTALL_DB_PASSWORD` | Database | MySQL password |
-| `WGW_INSTALL_BASE_URI` | Site | Public path prefix (e.g. `/` or `/wgw/`) |
-| `WGW_INSTALL_BASE_URI_AUTO` | Site | `1` to derive base URI from `APP_URL` or request path (headless requires this or explicit `WGW_INSTALL_BASE_URI`) |
-| `WGW_INSTALL_TIMEZONE` | Site | PHP timezone (default `UTC`) |
+| `WGW_INSTALL_BASE_URI` | (site defaults) | Public path prefix (e.g. `/` or `/wgw/`) |
+| `WGW_INSTALL_BASE_URI_AUTO` | (site defaults) | `1` to derive base URI from `APP_URL` or request path (headless requires this or explicit `WGW_INSTALL_BASE_URI`) |
+| `WGW_INSTALL_TIMEZONE` | (site defaults) | PHP timezone (default `UTC`) |
 | `WGW_INSTALL_ADMIN_USERNAME` | Account | First admin username |
 | `WGW_INSTALL_ADMIN_EMAIL` | Account | Admin email |
 | `WGW_INSTALL_ADMIN_PASSWORD` | Account | Admin password (min 10 chars; never sent to the browser) |
 | `WGW_INSTALL_ADMIN_DISPLAY_NAME` | Account | Optional display name |
-| `WGW_INSTALL_ENABLE_FILES` | Site | Optional DAV toggles (default on) |
-| `WGW_INSTALL_ENABLE_CALENDARS` | Site | Optional |
-| `WGW_INSTALL_ENABLE_CONTACTS` | Site | Optional |
+| `WGW_INSTALL_ENABLE_FILES` | (site defaults) | Optional DAV toggles (default on) |
+| `WGW_INSTALL_ENABLE_CALENDARS` | (site defaults) | Optional |
+| `WGW_INSTALL_ENABLE_CONTACTS` | (site defaults) | Optional |
 | `WGW_INSTALL_CHANNEL` | — | `docker` — disables Admin web updater (seeded automatically on Docker) |
 
-**Autofill:** partial `WGW_INSTALL_*` values pre-populate the wizard; the operator still confirms each step.
+**Autofill:** partial `WGW_INSTALL_*` values pre-populate first-run (for example database from env skips the Database screen); the operator still confirms remaining screens.
 
-**Headless:** when `WGW_INSTALL_HEADLESS=1` and all required vars are set (database, admin account, `WGW_INSTALL_BASE_URI` or `WGW_INSTALL_BASE_URI_AUTO=1`), the migrator runs `php artisan wgw:install` before Apache starts — open `/login` with no wizard clicks. Incomplete env falls back to the wizard (never half-installs). Requirements checks still run.
+**Headless:** when `WGW_INSTALL_HEADLESS=1` and all required vars are set (database, admin account, `WGW_INSTALL_BASE_URI` or `WGW_INSTALL_BASE_URI_AUTO=1`), the migrator runs `php artisan wgw:install` before Apache starts — open `/login` with no first-run clicks. Incomplete env falls back to first-run (never half-installs). Requirements checks still run.
 
 On MySQL Docker installs, [wgw-install-seed-config.sh](../docker/install/wgw-install-seed-config.sh) writes database `WGW_INSTALL_*` keys into `api.env` from compose env (`WGW_DB_*`, `MARIADB_*`).
 
@@ -207,7 +207,7 @@ Each `docker compose up` runs a **one-shot migrator** before the web container s
 
 1. **Migrator** ([wgw-install-migrate.sh](../docker/install/wgw-install-migrate.sh)): waits for MySQL (if enabled), then:
    - Seeds [wgw-install-seed-config.sh](../docker/install/wgw-install-seed-config.sh) into the `wgw-install-config` volume (`api.env` with `WGW_INSTALL_*` pre-install keys).
-   - **Fresh install** (no `wgw-content/.installed`): runs headless `wgw:install` when `WGW_INSTALL_HEADLESS=1` and env is complete; otherwise skips schema migration — the web wizard runs initial setup.
+   - **Fresh install** (no `wgw-content/.installed`): runs headless `wgw:install` when `WGW_INSTALL_HEADLESS=1` and env is complete; otherwise skips schema migration — the web first-run installer runs initial setup.
    - **Existing install**: runs `php artisan wgw:schema-migrate` (same as ZIP in-place updates).
 2. **Web** entrypoint ([docker-entrypoint.sh](../docker/install/docker-entrypoint.sh)): symlinks `api.env` → `packages/api/.env`, ensures permissions, runs `key:generate` when needed, starts Apache.
 3. **Scheduler** sidecar: loops `php artisan schedule:run` every 60 seconds (due Calendar/Task alarms and VAPID fallback). This is the Docker equivalent of host cron — **not** a `queue:work` daemon.
@@ -314,7 +314,7 @@ Maintainers: pre-release checklist (smoke job, GHCR visibility, multi-arch manif
 | Symptom | Check |
 | --- | --- |
 | `/install/` 404 | Container health: `bash setup.sh logs` or `docker compose ps`; wait for `healthy` |
-| MySQL connection failed in wizard | `COMPOSE_PROFILES=mysql`, host `db`, credentials match `.env` |
+| MySQL connection failed in first-run | `COMPOSE_PROFILES=mysql`, host `db`, credentials match `.env` |
 | Port in use | Change `WGW_HTTP_PORT` (default 8080 avoids dev stack :9080) |
 | Web won't start after upgrade | Check migrator logs: `docker compose logs migrator` — migration may have failed |
 | Config lost after recreate | Ensure `wgw-install-config` volume exists; do not use `docker compose down -v` unless intentional |
