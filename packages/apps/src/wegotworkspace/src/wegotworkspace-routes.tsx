@@ -27,7 +27,7 @@ import {
   validateMeetRouteSearch,
 } from "@/meet-core/src/meet-route-search";
 import { MEET_MEETINGS_ROUTE, meetIsAdHocMeetingId } from "@/meet-core/src/meet-chat-route";
-import { InstallApp } from "@/install-core/src/install-app";
+import { InstallerApp } from "@/installer-core/src/installer-app";
 import { MailApp } from "@/mail-core/src/mail-app";
 import { MeetChatApp } from "@/meet-core/src/meet-chat-app";
 import { MeetInviteGate, MeetChannelDeepLinkGate } from "@/meet-core/src/meet-invite-gate";
@@ -41,7 +41,7 @@ import { useSettingsRouteSync } from "@/settings-core/src/use-settings-route-syn
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
-import { createInstallWorkspaceStoryArgs } from "@/lib/api/mock/install-bootstrap";
+import { createInstallerWorkspaceStoryArgs } from "@/lib/api/mock/installer-bootstrap";
 import { createMailAppBootstrap } from "@/lib/api/mock/mail-bootstrap";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { createDocsAppBootstrap } from "@/lib/api/mock/docs-bootstrap";
@@ -52,7 +52,7 @@ import { folderTokenFromMailboxLabel } from "@/lib/mail/folder-token";
 import { AdminWorkspace } from "@/admin-core/src/admin-workspace";
 import { ContactsWorkspace } from "@/contacts-core/src/contacts-workspace";
 import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
-import { InstallFirstRunWorkspace } from "@/install-core/src/install-first-run-workspace";
+import { InstallerWorkspace } from "@/installer-core/src/installer-workspace";
 import { MailWorkspace } from "@/mail-core/src/mail-workspace";
 import { mailStoryLabels } from "@/mail-core/src/mail-app.stories.fixtures";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
@@ -248,9 +248,9 @@ function MockAdminRoute() {
   );
 }
 
-function MockInstallRoute() {
-  const bootstrap = useMemo(() => createInstallWorkspaceStoryArgs(), []);
-  return <InstallFirstRunWorkspace {...bootstrap} />;
+function MockInstallerRoute() {
+  const bootstrap = useMemo(() => createInstallerWorkspaceStoryArgs(), []);
+  return <InstallerWorkspace {...bootstrap} />;
 }
 
 const AuthenticatedMeetChatApp = withWeGotWorkspaceAuth(MeetChatApp);
@@ -765,7 +765,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/install",
     head: homePwaHead,
-    component: isLive ? InstallApp : MockInstallRoute,
+    component: isLive ? InstallerApp : MockInstallerRoute,
   });
 
   const sharePublicRoute = createRoute({

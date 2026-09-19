@@ -10,7 +10,7 @@ Use **`packages/apps/src/settings-core/`** as the reference when splitting a pro
 |-------|---------------------|-------|
 | Split (settings, admin, drive, docs) | **Yes** | `WorkspaceAppLayout` |
 | Collection (mail, notes) | **No** — list/detail via `WorkspaceApp` | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md) |
-| Custom (install first-run, login header) | **No** — bespoke layout | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md) |
+| Custom (installer, login header) | **No** — bespoke layout | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md) |
 
 ## Layers (top to bottom)
 

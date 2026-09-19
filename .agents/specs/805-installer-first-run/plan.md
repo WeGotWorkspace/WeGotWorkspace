@@ -29,9 +29,9 @@ Swap live `/install` onto the signed-off first-run screens and keep installer AP
 
 - **id:** `chunk-a-live-route`
 - **Skill:** workspace
-- **Inputs:** Epic #805 AC; `InstallFirstRun*` screens
-- **Done when:** `InstallApp` and the `/install` mock route render first-run chrome; Get started / Database / Account / Ready / interrupt call existing operations
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/install-core`
+- **Inputs:** Epic #805 AC; `Installer*Page` screens
+- **Done when:** `InstallerApp` and the `/install` mock route render first-run chrome; Get started / Database / Account / Ready / interrupt call existing operations
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/installer-core`
 - **Parallel with:** chunk-b-env-flag
 
 ### Chunk B: Env database flag + optional checks
@@ -49,7 +49,7 @@ Swap live `/install` onto the signed-off first-run screens and keep installer AP
 - **Skill:** document
 - **Inputs:** workspace-shells.md, INSTALL.md, getting-started.md, `install.wizard.spec.ts`
 - **Done when:** docs describe first-run (not eight Split steps); e2e asserts first-run copy
-- **Verify with:** e2e file review; `pnpm --dir packages/apps exec vitest run src/install-core`
+- **Verify with:** e2e file review; `pnpm --dir packages/apps exec vitest run src/installer-core`
 - **Parallel with:** none (after A+B)
 
 ## Test plan

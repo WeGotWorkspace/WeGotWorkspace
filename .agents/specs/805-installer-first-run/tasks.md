@@ -9,8 +9,8 @@ Source plan: [plan.md](./plan.md)
 
 | id | owner / agent | skill | key paths | verify command | status |
 |----|---------------|-------|-----------|----------------|--------|
-| `chunk-a-live-route` | builder | workspace | `packages/apps/src/install-core/src/install-app.tsx`, `install-first-run-workspace.tsx`, `use-install-first-run-controller.ts`, `wegotworkspace-routes.tsx` | `pnpm --dir packages/apps exec vitest run src/install-core` | done |
-| `chunk-b-env-flag` | builder | api | `packages/api/app/Services/Installer/WgwInstallEnv.php`, `InstallerWizardService.php`, `install-models.tsx` | `php vendor/bin/phpunit tests/Unit/Installer` | done |
+| `chunk-a-live-route` | builder | workspace | `packages/apps/src/installer-core/src/installer-app.tsx`, `installer-workspace.tsx`, `use-installer-controller.ts`, `wegotworkspace-routes.tsx` | `pnpm --dir packages/apps exec vitest run src/installer-core` | done |
+| `chunk-b-env-flag` | builder | api | `packages/api/app/Services/Installer/WgwInstallEnv.php`, `InstallerWizardService.php`, `installer-models.tsx` | `php vendor/bin/phpunit tests/Unit/Installer` | done |
 | `chunk-c-docs-e2e` | builder | document | `packages/apps/docs/workspace-shells.md`, `INSTALL.md`, `docs/getting-started.md`, `packages/api/e2e/install.wizard.spec.ts` | review + targeted vitest | done |
 
 ## Notes

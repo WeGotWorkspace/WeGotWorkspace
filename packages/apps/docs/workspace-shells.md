@@ -17,7 +17,7 @@ Shared layout CSS for split and collection lives under `packages/apps/src/worksp
 | You are building…                                                                            | Use                      | Why                                                                                                                                             |
 | -------------------------------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Multi-section settings, admin, or config                                                     | **Split**                | Section nav in sidebar; one pane at a time in scrollable main                                                                                   |
-| Installer first-run (`/install`)                                                             | **Custom** (first-run)   | Login-like centered column (`AuthenticationPage`); quiet dots; not Admin sidebar                                                                |
+| Installer (`/install`)                                                                       | **Custom**               | Login-like centered column (`AuthenticationPage`); quiet dots; not Admin sidebar                                                                |
 | File browser or document library (folder tree + main)                                        | **Split**                | Tree/nav in sidebar; browser or editor in main                                                                                                  |
 | Meet **product** workspace (named channels + chat + optional call)                           | **Split**                | Same sidebar + main as Tasks/Docs; the call stage is a resizable rail inside `main`, not a reason to stay Custom                                |
 | Mailbox, notes, or any **list + detail** collection                                          | **Collection**           | Shared list/detail/mobile back behavior via `WorkspaceApp`                                                                                      |
@@ -31,9 +31,9 @@ When unsure: if the primary interaction is **pick an item from a list, show deta
 Agent-readable routing — read this before scaffolding a new `*-core` package:
 
 ```
-IF product = installer first-run (`/install`)
-  THEN shell = custom (first-run)
-  THEN entry = InstallFirstRunWorkspace + AuthenticationPage (hideHeader / hideFooter)
+IF product = installer (`/install`)
+  THEN shell = custom
+  THEN entry = InstallerWorkspace + AuthenticationPage (hideHeader / hideFooter)
   THEN do NOT use WorkspaceAppLayout or a labeled Setup-steps sidebar
 
 IF product = multi-section config OR admin OR drive browser OR docs library OR Meet channel workspace
@@ -69,7 +69,7 @@ Verified against current `*-workspace.tsx` (or equivalent) sources:
 | `calendar-core`            | Split                    | `calendar-core/src/calendar-workspace.tsx`                                                                                   |
 | `docs-core`                | Split                    | `docs-core/src/docs-workspace.tsx`                                                                                           |
 | `drive-core`               | Split                    | `drive-core/src/drive-workspace.tsx`                                                                                         |
-| `install-core`             | Custom (first-run)       | `install-core/src/install-first-run-workspace.tsx` — live `/install`                                                         |
+| `installer-core`           | Custom                   | `installer-core/src/installer-workspace.tsx` — live `/install`                                                               |
 | `settings-core`            | Split                    | `settings-core/src/settings-workspace.tsx`                                                                                   |
 | `mail-core`                | Collection               | `mail-core/src/mail-workspace.tsx`                                                                                           |
 | `notes-core`               | Collection               | `notes-core/src/notes-workspace.tsx`                                                                                         |
@@ -183,8 +183,8 @@ Additional split references: `admin-workspace.tsx`, `drive-workspace.tsx`, `docs
 
 ### Install-specific deviations
 
-- Live `/install` mounts **`InstallFirstRunWorkspace`** (Custom / header-first), not a Split `WorkspaceAppLayout`.
-- **`useInstallAPI`** follows the shared `useWorkspaceApi` bootstrap (`data`, `session`, `operations`) like settings/admin for API symmetry, but first-run chrome does not take `session` or show a user footer. Stories use `createInstallWorkspaceStoryArgs()` to omit `session` from workspace args.
+- Live `/install` mounts **`InstallerWorkspace`** (Custom / header-first), not a Split `WorkspaceAppLayout`.
+- **`useInstallerAPI`** follows the shared `useWorkspaceApi` bootstrap (`data`, `session`, `operations`) like settings/admin for API symmetry, but installer chrome does not take `session` or show a user footer. Stories use `createInstallerWorkspaceStoryArgs()` to omit `session` from workspace args.
 
 ## Related docs
 
