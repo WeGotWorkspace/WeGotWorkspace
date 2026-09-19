@@ -382,4 +382,8 @@ input.input:focus-visible:not(:read-only),
     --input-placeholder-color,
     color-mix(in oklab, var(--color-muted-foreground) 42%, transparent)
   );
+  -webkit-text-fill-color: var(
+    --input-placeholder-color,
+    color-mix(in oklab, var(--color-muted-foreground) 42%, transparent)
+  );
 }

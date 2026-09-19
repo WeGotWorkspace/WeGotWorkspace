@@ -195,5 +195,8 @@ describe("Input", () => {
     expect(inputCss).not.toMatch(/\n\.input:read-only,/);
     expect(inputCss).toMatch(/\.input:has\(>\s*\.input__field:read-only\)/);
     expect(inputCss).toMatch(/\.input__field \{[\s\S]*-webkit-text-fill-color:\s*inherit/);
+    expect(inputCss).toMatch(
+      /\.input::placeholder[\s\S]*-webkit-text-fill-color:\s*var\(\s*--input-placeholder-color/,
+    );
   });
 });
