@@ -156,7 +156,6 @@ export const Installing: Story = {
       initialEmail="jane@example.com"
       initialPassword="hunter2hunter"
       installing
-      progressStepIndex={1}
     />
   ),
   play: async ({ canvasElement }) => {
@@ -165,7 +164,13 @@ export const Installing: Story = {
       canvas.getByRole("heading", { name: installFirstRunCopy.accountTitle }),
     ).toBeInTheDocument();
     await expect(canvas.getByLabelText("Email")).toHaveValue("jane@example.com");
-    await expect(canvas.getByText(installFirstRunCopy.installingStatus)).toBeInTheDocument();
+    const installProgress = within(canvas.getByRole("list", { name: "Installation progress" }));
+    await expect(installProgress.getByText("Creating your workspace")).toBeInTheDocument();
+    await expect(canvas.queryByText("Preparing your site")).toBeNull();
+    await expect(installProgress.getByRole("listitem", { current: "step" })).toHaveTextContent(
+      "Creating your workspace",
+    );
+    await expect(installProgress.getAllByRole("listitem")).toHaveLength(1);
   },
 };
 
@@ -179,7 +184,7 @@ export const Ready: Story = {
     ).toBeInTheDocument();
     await expect(canvas.getByText(installFirstRunCopy.readyLead)).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Open workspace" })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "Server settings" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Server settings" })).toBeNull();
     await expect(canvas.queryByText(/Set a From address so invites leave spam/)).toBeNull();
   },
 };

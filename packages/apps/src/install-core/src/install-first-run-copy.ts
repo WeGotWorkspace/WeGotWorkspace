@@ -1,8 +1,5 @@
-export const INSTALL_FIRST_RUN_PROGRESS_STEPS = [
-  "Checking the server",
-  "Preparing the database",
-  "Creating your workspace",
-] as const;
+/** Single user-facing label while Account → createWorkspace runs (siteNext + install + optional DB persist). */
+export const INSTALL_FIRST_RUN_PROGRESS_STEPS = ["Creating your workspace"] as const;
 
 export const installFirstRunCopy = {
   welcomeTitle: "Your work. Your space.",
@@ -29,11 +26,9 @@ export const installFirstRunCopy = {
   mysqlPassword: "Password",
   continueSetup: "Continue",
   createWorkspace: "Create workspace",
-  installingStatus: "Setting up your workspace...",
   readyTitle: "You got workspace",
   readyLead: "Your workspace is ready.",
   openWorkspace: "Open workspace",
-  serverSettings: "Server settings",
   serverTitle: "Needs attention.",
   serverLead: "This server is not ready yet. Fix the items below, then re-run the checks.",
   rerunChecks: "Re-run checks",

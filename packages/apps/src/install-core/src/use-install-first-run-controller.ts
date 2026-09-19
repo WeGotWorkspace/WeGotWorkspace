@@ -30,7 +30,6 @@ export function useInstallFirstRunController({
   );
   const [actionPending, setActionPending] = useState(false);
   const [installing, setInstalling] = useState(false);
-  const [progressStepIndex, setProgressStepIndex] = useState(0);
   const [usernameTaken, setUsernameTaken] = useState(false);
 
   useEffect(() => {
@@ -133,14 +132,11 @@ export function useInstallFirstRunController({
       setUsernameTaken(false);
       setActionPending(true);
       setInstalling(true);
-      setProgressStepIndex(0);
       try {
-        setProgressStepIndex(1);
         if (includeDatabaseStep === false && installerState?.step !== "site") {
           await persistDatabase();
         }
         await runAction(() => operations.siteNext(buildFirstRunSitePayload(installerState)));
-        setProgressStepIndex(2);
         await runAction(() =>
           operations.install(
             buildFirstRunInstallPayload(values.username, values.password, values.email),
@@ -194,7 +190,6 @@ export function useInstallFirstRunController({
     installerState,
     actionPending,
     installing,
-    progressStepIndex,
     usernameTaken,
     startSetup,
     continueDatabase,

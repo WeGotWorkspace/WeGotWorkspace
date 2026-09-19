@@ -32,7 +32,7 @@ Mount live `/install` on the signed-off first-run chrome (Custom / header-first,
 - Site payload: `enable_files`, `enable_calendars`, `enable_contacts` all true.
 - Server interrupt renders only `status === "error"` rows. API `optional: true` checks (IMAP) map to `warn` and are not shown.
 - First-run chrome: `AuthenticationPage` with `hideHeader` / `hideFooter`, dots above the headline. No logo, no copyright.
-- Navigation stays in `InstallApp` (`onOpenWorkspace`, `onOpenServerSettings`). Workspace must not `window.location.assign`.
+- Navigation stays in `InstallApp` (`onOpenWorkspace`). Workspace must not `window.location.assign`.
 
 ## Edge cases
 
@@ -40,4 +40,4 @@ Mount live `/install` on the signed-off first-run chrome (Custom / header-first,
 - Required check failure after Get started → interrupt; Re-run checks; do not continue.
 - Mid-wizard backend step (`database` / `account` / `done`) maps onto first-run screens.
 - Username invalid or taken stays on Account with the existing copy.
-- Already installed → Ready (Open workspace / Server settings), not the old Done-to-admin pane.
+- Already installed → Ready (Open workspace only), not the old Done-to-admin pane.

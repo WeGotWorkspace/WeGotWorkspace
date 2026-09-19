@@ -6,7 +6,6 @@ import { InstallFirstRunPage } from "@/install-core/src/install-first-run-page";
 export type InstallFirstRunReadyProps = {
   includeDatabaseStep?: boolean;
   onOpenWorkspace?: () => void;
-  onOpenServerSettings?: () => void;
 };
 
 function InstallFirstRunReadyTitle() {
@@ -16,7 +15,6 @@ function InstallFirstRunReadyTitle() {
 export function InstallFirstRunReady({
   includeDatabaseStep = true,
   onOpenWorkspace,
-  onOpenServerSettings,
 }: InstallFirstRunReadyProps) {
   return (
     <InstallFirstRunPage
@@ -36,15 +34,6 @@ export function InstallFirstRunReady({
           onClick={onOpenWorkspace}
         />
       </div>
-      <p className="install-first-run__secondary">
-        <button
-          type="button"
-          className="install-first-run__text-button"
-          onClick={onOpenServerSettings}
-        >
-          {copy.serverSettings}
-        </button>
-      </p>
     </InstallFirstRunPage>
   );
 }

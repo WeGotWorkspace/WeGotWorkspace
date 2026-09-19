@@ -9,7 +9,6 @@ import type { InstallWorkspaceProps } from "@/install-core/src/install-workspace
 
 export type InstallFirstRunWorkspaceProps = InstallWorkspaceProps & {
   onOpenWorkspace?: () => void;
-  onOpenServerSettings?: () => void;
 };
 
 const SCREEN_TITLES = {
@@ -24,7 +23,6 @@ export function InstallFirstRunWorkspace({
   data,
   operations,
   onOpenWorkspace,
-  onOpenServerSettings,
 }: InstallFirstRunWorkspaceProps) {
   const controller = useInstallFirstRunController({ data, operations });
   useDocumentTitle(SCREEN_TITLES[controller.screen]);
@@ -65,7 +63,6 @@ export function InstallFirstRunWorkspace({
         initialEmail={controller.installerState?.admin_email}
         usernameTaken={controller.usernameTaken}
         installing={controller.installing}
-        progressStepIndex={controller.progressStepIndex}
         onCreateWorkspace={(values) => void controller.createWorkspace(values)}
       />
     );
@@ -76,7 +73,6 @@ export function InstallFirstRunWorkspace({
       <InstallFirstRunReady
         includeDatabaseStep={controller.includeDatabaseStep}
         onOpenWorkspace={onOpenWorkspace}
-        onOpenServerSettings={onOpenServerSettings}
       />
     );
   }

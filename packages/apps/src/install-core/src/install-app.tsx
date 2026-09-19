@@ -29,11 +29,6 @@ export function InstallApp({ apiSource }: InstallAppProps = {}) {
               window.location.assign(buildWgwLoginHref("/"));
             }
           }}
-          onOpenServerSettings={() => {
-            if (typeof window !== "undefined") {
-              window.location.assign(buildWgwLoginHref("/admin"));
-            }
-          }}
         />
       )}
     />

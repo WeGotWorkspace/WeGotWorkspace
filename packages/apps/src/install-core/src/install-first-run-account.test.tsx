@@ -167,4 +167,28 @@ describe("InstallFirstRunAccount", () => {
     expect(screen.queryByText(/^Database/)).toBeNull();
     expect(screen.getByText("Your account, current")).toBeTruthy();
   });
+
+  it("shows a single install step with a spinner marker while installing", () => {
+    const { container } = render(
+      <InstallFirstRunAccount
+        initialUsername="jane"
+        initialEmail="jane@example.com"
+        initialPassword="hunter2hunter"
+        installing
+      />,
+    );
+
+    const installProgress = screen.getByRole("list", { name: "Installation progress" });
+    const items = within(installProgress).getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    expect(items[0]?.textContent).toContain("Creating your workspace");
+    expect(items[0]?.getAttribute("aria-current")).toBe("step");
+    expect(screen.queryByText("Preparing your site")).toBeNull();
+    expect(screen.queryByText("Checking the server")).toBeNull();
+    expect(screen.queryByText("Setting up your workspace...")).toBeNull();
+
+    const markers = container.querySelectorAll(".install-first-run__progress-marker");
+    expect(markers).toHaveLength(1);
+    expect(markers[0]?.querySelector(".install-first-run__spinner")).toBeTruthy();
+  });
 });

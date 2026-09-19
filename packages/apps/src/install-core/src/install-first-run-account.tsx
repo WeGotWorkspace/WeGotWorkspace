@@ -30,7 +30,6 @@ export type InstallFirstRunAccountProps = {
   includeDatabaseStep?: boolean;
   usernameTaken?: boolean;
   installing?: boolean;
-  progressStepIndex?: number;
   onCreateWorkspace?: (values: InstallFirstRunAccountValues) => void;
 };
 
@@ -87,7 +86,6 @@ export function InstallFirstRunAccount({
   includeDatabaseStep = true,
   usernameTaken = false,
   installing = false,
-  progressStepIndex = 0,
   onCreateWorkspace,
 }: InstallFirstRunAccountProps) {
   const usernameId = useId();
@@ -114,10 +112,7 @@ export function InstallFirstRunAccount({
     onCreateWorkspace?.({ username, email, password });
   };
 
-  const clampedProgress = Math.min(
-    INSTALL_FIRST_RUN_PROGRESS_STEPS.length - 1,
-    Math.max(0, progressStepIndex),
-  );
+  const progressLabel = INSTALL_FIRST_RUN_PROGRESS_STEPS[0];
 
   return (
     <InstallFirstRunPage
@@ -194,30 +189,23 @@ export function InstallFirstRunAccount({
         </div>
 
         {installing ? (
-          <div className="install-first-run__progress" role="status" aria-live="polite">
-            <p className="install-first-run__progress-status">
-              <Loader2 className="install-first-run__spinner" aria-hidden />
-              {copy.installingStatus}
-            </p>
-            <ol className="install-first-run__progress-steps" role="list">
-              {INSTALL_FIRST_RUN_PROGRESS_STEPS.map((label, index) => {
-                const current = index === clampedProgress;
-                const done = index < clampedProgress;
-                return (
-                  <li
-                    key={label}
-                    className={
-                      current
-                        ? "install-first-run__progress-step install-first-run__progress-step--current"
-                        : done
-                          ? "install-first-run__progress-step install-first-run__progress-step--done"
-                          : "install-first-run__progress-step"
-                    }
-                  >
-                    {label}
-                  </li>
-                );
-              })}
+          <div
+            className="install-first-run__progress"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <p className="sr-only">{progressLabel}</p>
+            <ol className="install-first-run__progress-steps" aria-label="Installation progress">
+              <li
+                className="install-first-run__progress-step install-first-run__progress-step--current"
+                aria-current="step"
+              >
+                <span className="install-first-run__progress-marker" aria-hidden>
+                  <Loader2 className="install-first-run__spinner" />
+                </span>
+                <span className="install-first-run__progress-label">{progressLabel}</span>
+              </li>
             </ol>
           </div>
         ) : (
