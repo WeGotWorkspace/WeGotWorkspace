@@ -48,7 +48,9 @@ export function InstallServerPane({
         <ul className={c.checkList}>
           {checks.map((check) => (
             <li key={check.id} className={c.checkRow}>
-              <InstallStatusDot status={check.status} />
+              <span className={c.checkRowIcon}>
+                <InstallStatusDot status={check.status} />
+              </span>
               <div className="flex-1 min-w-0">
                 <div className={c.checkRowLabel}>{check.label}</div>
                 <div className={c.checkRowDetail}>{check.detail}</div>

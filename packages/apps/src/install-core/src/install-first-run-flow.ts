@@ -66,11 +66,12 @@ export function buildFirstRunSitePayload(
 export function buildFirstRunInstallPayload(
   username: string,
   password: string,
+  email: string,
 ): InstallerInstallPayload {
   return {
     username,
     display_name: username,
-    email: "",
+    email: email.trim(),
     password,
     password_confirm: password,
     mail_enabled: false,

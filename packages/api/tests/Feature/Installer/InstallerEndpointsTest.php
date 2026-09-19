@@ -312,4 +312,75 @@ final class InstallerEndpointsTest extends TestCase
         $error = (string) $response->json('error');
         $this->assertStringContainsString('pdo_mysql', $error);
     }
+
+    public function test_install_rejects_missing_or_invalid_admin_email(): void
+    {
+        $this->reachAccountStep();
+
+        $missing = $this->postJson('/api/v1/installer/action', [
+            'action' => 'install',
+            'payload' => $this->installPayload(['email' => '']),
+        ]);
+        $missing->assertOk()
+            ->assertJsonPath('ok', false);
+        $this->assertSame('Enter a valid email address.', $missing->json('error'));
+
+        $invalid = $this->postJson('/api/v1/installer/action', [
+            'action' => 'install',
+            'payload' => $this->installPayload(['email' => 'not-an-email']),
+        ]);
+        $invalid->assertOk()
+            ->assertJsonPath('ok', false);
+        $this->assertSame('Enter a valid email address.', $invalid->json('error'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function installPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'username' => 'admin',
+            'display_name' => 'Admin',
+            'email' => 'admin@example.test',
+            'password' => 'longpassword',
+            'password_confirm' => 'longpassword',
+            'mail_enabled' => false,
+            'meet_enabled' => false,
+        ], $overrides);
+    }
+
+    private function reachAccountStep(): void
+    {
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'welcome_next',
+            'payload' => [],
+        ])->assertOk()->assertJsonPath('ok', true)
+            ->assertJsonPath('state.step', 'requirements');
+
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'requirements_next',
+            'payload' => ['db_driver' => 'sqlite'],
+        ])->assertOk()->assertJsonPath('state.step', 'database');
+
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'database_next',
+            'payload' => [
+                'db_driver' => 'sqlite',
+                'sqlite_path' => './wgw-content/install-email-test.sqlite',
+            ],
+        ])->assertOk()->assertJsonPath('state.step', 'site');
+
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'site_next',
+            'payload' => [
+                'timezone' => 'UTC',
+                'enable_files' => true,
+                'enable_calendars' => true,
+                'enable_contacts' => false,
+                'show_browser_ui' => true,
+            ],
+        ])->assertOk()->assertJsonPath('state.step', 'account');
+    }
 }

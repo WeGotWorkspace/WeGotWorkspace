@@ -100,7 +100,13 @@ export const DatabaseSqlite: Story = {
 export const Account: Story = {
   name: "Your account",
   tags: ["vitest-ci"],
-  render: () => <InstallFirstRunAccount initialUsername="jane" initialPassword="hunter2hunter" />,
+  render: () => (
+    <InstallFirstRunAccount
+      initialUsername="jane"
+      initialEmail="jane@example.com"
+      initialPassword="hunter2hunter"
+    />
+  ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
@@ -110,9 +116,9 @@ export const Account: Story = {
     await expect(canvas.getByText("Database, done")).toBeInTheDocument();
     await expect(canvas.getByText("Your account, current")).toBeInTheDocument();
     await expect(canvas.getByLabelText("Username")).toHaveValue("jane");
+    await expect(canvas.getByLabelText("Email")).toHaveValue("jane@example.com");
     await expect(canvas.getByLabelText("Password")).toHaveValue("hunter2hunter");
     await expect(canvas.queryByLabelText("Full name")).toBeNull();
-    await expect(canvas.queryByLabelText("Email")).toBeNull();
     await expect(canvas.queryByText(/You'll sign in as/)).toBeNull();
     await expect(canvas.getByRole("button", { name: "Show password" })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: "Use MySQL / MariaDB" })).toBeNull();
@@ -127,6 +133,7 @@ export const AccountFromEnvironment: Story = {
   render: () => (
     <InstallFirstRunAccount
       initialUsername="jane"
+      initialEmail="jane@example.com"
       initialPassword="hunter2hunter"
       includeDatabaseStep={false}
     />
@@ -137,6 +144,7 @@ export const AccountFromEnvironment: Story = {
     await expect(canvas.queryByText(/^Database/)).toBeNull();
     await expect(canvas.getByText("Your account, current")).toBeInTheDocument();
     await expect(canvas.getByLabelText("Username")).toHaveValue("jane");
+    await expect(canvas.getByLabelText("Email")).toHaveValue("jane@example.com");
   },
 };
 
@@ -145,6 +153,7 @@ export const Installing: Story = {
   render: () => (
     <InstallFirstRunAccount
       initialUsername="jane"
+      initialEmail="jane@example.com"
       initialPassword="hunter2hunter"
       installing
       progressStepIndex={1}
@@ -155,6 +164,7 @@ export const Installing: Story = {
     await expect(
       canvas.getByRole("heading", { name: installFirstRunCopy.accountTitle }),
     ).toBeInTheDocument();
+    await expect(canvas.getByLabelText("Email")).toHaveValue("jane@example.com");
     await expect(canvas.getByText(installFirstRunCopy.installingStatus)).toBeInTheDocument();
   },
 };

@@ -115,7 +115,11 @@
 }
 
 .install-workspace .install-check-row {
-  @apply flex items-center gap-3 py-3 first:pt-0 last:pb-0;
+  @apply flex items-start gap-3 py-3 first:pt-0 last:pb-0;
+}
+
+.install-workspace .install-check-row-icon {
+  @apply mt-0.5 shrink-0;
 }
 
 .install-workspace .install-check-row-label {

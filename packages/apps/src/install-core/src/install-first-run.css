@@ -58,9 +58,42 @@
   @apply cursor-not-allowed no-underline opacity-60;
 }
 
+.install-first-run__field {
+  @apply mb-3;
+}
+
+.install-first-run__field .field-label-row {
+  @apply mb-0;
+}
+
 .install-first-run__hint {
   color: color-mix(in oklab, #ffffff 62%, transparent);
   @apply mb-4 text-sm;
+}
+
+.install-first-run__field .install-first-run__hint {
+  @apply mb-0 mt-1.5;
+}
+
+.install-first-run__field-feedback {
+  interpolate-size: allow-keywords;
+  overflow: hidden;
+  height: auto;
+  opacity: 1;
+  transition:
+    height 200ms ease,
+    opacity 200ms ease;
+  @apply pt-1.5 text-sm;
+}
+
+.install-first-run__field-feedback--hidden {
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.install-first-run__field-feedback .install-first-run__hint {
+  @apply mt-0;
 }
 
 .install-first-run__hint--error {
@@ -158,6 +191,10 @@
   @apply flex items-start gap-2 text-sm;
 }
 
+.install-first-run__check-icon {
+  @apply mt-0.5 shrink-0;
+}
+
 .install-first-run__check-label {
   @apply font-medium text-white;
 }
@@ -176,6 +213,10 @@
   }
 
   .install-first-run__engine-panel {
+    transition: none;
+  }
+
+  .install-first-run__field-feedback {
     transition: none;
   }
 }

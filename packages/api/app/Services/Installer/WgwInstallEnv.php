@@ -82,7 +82,12 @@ final class WgwInstallEnv
         $password = (string) ($this->configString('admin_password') ?? '');
         $display = trim((string) ($this->configString('admin_display_name') ?? '')) ?: $username;
 
-        if ($username === '' || $email === '' || strlen($password) < 10) {
+        if (
+            $username === ''
+            || $email === ''
+            || filter_var($email, FILTER_VALIDATE_EMAIL) === false
+            || strlen($password) < 10
+        ) {
             return null;
         }
 

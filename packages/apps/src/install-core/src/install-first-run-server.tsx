@@ -32,7 +32,9 @@ export function InstallFirstRunServerAttention({
       <ul className="install-first-run__checks" role="list">
         {blocking.map((check) => (
           <li key={check.id} className="install-first-run__check">
-            <InstallStatusDot status={check.status} />
+            <span className="install-first-run__check-icon">
+              <InstallStatusDot status={check.status} />
+            </span>
             <div>
               <div className="install-first-run__check-label">{check.label}</div>
               <div className="install-first-run__check-detail">{check.detail}</div>

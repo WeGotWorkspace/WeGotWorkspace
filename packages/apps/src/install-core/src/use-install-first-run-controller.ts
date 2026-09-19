@@ -142,7 +142,9 @@ export function useInstallFirstRunController({
         await runAction(() => operations.siteNext(buildFirstRunSitePayload(installerState)));
         setProgressStepIndex(2);
         await runAction(() =>
-          operations.install(buildFirstRunInstallPayload(values.username, values.password)),
+          operations.install(
+            buildFirstRunInstallPayload(values.username, values.password, values.email),
+          ),
         );
         setScreen("ready");
       } catch (error) {

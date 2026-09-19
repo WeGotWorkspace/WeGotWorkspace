@@ -299,6 +299,9 @@ final class InstallerWizardService
         if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/', $username)) {
             throw new \RuntimeException('Username must be 2–63 characters: lowercase letters, digits, underscore, or hyphen.');
         }
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw new \RuntimeException('Enter a valid email address.');
+        }
         if (strlen($pass) < 10) {
             throw new \RuntimeException('Use a password of at least 10 characters.');
         }
@@ -334,7 +337,7 @@ final class InstallerWizardService
                     $username,
                     $pass,
                     $display,
-                    $email !== '' ? $email : null,
+                    $email,
                     $enableCalendars,
                     $enableContacts,
                     [

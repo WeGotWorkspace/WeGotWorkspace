@@ -27,7 +27,7 @@ Mount live `/install` on the signed-off first-run chrome (Custom / header-first,
 ## Technical constraints
 
 - Do not invent a new installer protocol. Reuse `welcomeNext`, `requirementsCheck` / `requirementsNext`, `databaseTest` / `databaseNext`, `siteNext`, `install`.
-- Account payload: `display_name` falls back to username; `email` may be empty (API already allows `null`).
+- Account payload requires a valid admin email; `display_name` still falls back to username; username is still not email.
 - Install payload: `mail_enabled: false`; `meet_enabled: true` with `DEFAULT_PUBLIC_STUN_URLS_CSV`; empty TURN.
 - Site payload: `enable_files`, `enable_calendars`, `enable_contacts` all true.
 - Server interrupt renders only `status === "error"` rows. API `optional: true` checks (IMAP) map to `warn` and are not shown.

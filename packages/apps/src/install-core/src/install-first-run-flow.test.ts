@@ -58,10 +58,10 @@ describe("install-first-run-flow", () => {
     expect(site.enable_calendars).toBe(true);
     expect(site.enable_contacts).toBe(true);
 
-    const install = buildFirstRunInstallPayload("jane", "hunter2hunter");
+    const install = buildFirstRunInstallPayload("jane", "hunter2hunter", " jane@example.test ");
     expect(install.username).toBe("jane");
     expect(install.display_name).toBe("jane");
-    expect(install.email).toBe("");
+    expect(install.email).toBe("jane@example.test");
     expect(install.mail_enabled).toBe(false);
     expect(install.meet_enabled).toBe(true);
     expect(install.rtc_stun_url.length).toBeGreaterThan(0);

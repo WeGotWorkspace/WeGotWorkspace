@@ -62,6 +62,7 @@ export function InstallFirstRunWorkspace({
       <InstallFirstRunAccount
         includeDatabaseStep={controller.includeDatabaseStep}
         initialUsername={controller.installerState?.admin_username}
+        initialEmail={controller.installerState?.admin_email}
         usernameTaken={controller.usernameTaken}
         installing={controller.installing}
         progressStepIndex={controller.progressStepIndex}

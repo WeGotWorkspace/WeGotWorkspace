@@ -15,6 +15,7 @@ export const installWorkspacePaneClasses = {
   dbTypeOptionActive: "install-db-type-option--active",
   checkList: "install-check-list",
   checkRow: "install-check-row",
+  checkRowIcon: "install-check-row-icon",
   checkRowLabel: "install-check-row-label",
   checkRowDetail: "install-check-row-detail",
   welcomeGrid: "install-welcome-grid",
