@@ -8,9 +8,9 @@ Use **`packages/apps/src/settings-core/`** as the reference when splitting a pro
 
 | Shell | Use this blueprint? | Entry |
 |-------|---------------------|-------|
-| Split (settings, admin, drive, install, docs) | **Yes** | `WorkspaceAppLayout` |
+| Split (settings, admin, drive, docs) | **Yes** | `WorkspaceAppLayout` |
 | Collection (mail, notes) | **No** — list/detail via `WorkspaceApp` | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md) |
-| Custom (meet, login header) | **No** — bespoke layout | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md) |
+| Custom (installer, login header) | **No** — bespoke layout | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md) |
 
 ## Layers (top to bottom)
 

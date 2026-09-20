@@ -55,14 +55,16 @@ Visit:
 
 - `https://your-domain/install/`
 
-Then follow the wizard:
-- Check requirements
-- Choose SQLite (quickest) or MySQL
-- Create the first account
+Then follow first-run setup:
+- Welcome
+- Database (MySQL / MariaDB by default, or SQLite). Skipped when `WGW_INSTALL_*` already has a database
+- First account (username and password)
+
+Required server failures interrupt setup. Optional Mail IMAP is not a first-run row — enable `php-imap` later if you want the Mail app.
 
 ### Optional: PHP `imap` extension (Mail app)
 
-The requirements check lists **Extension: imap (optional)**. It is not required to install or run WeGotWorkspace — only the Mail app (IMAP mailbox access) needs it, and it is missing on many shared hosts. Without it, mail endpoints answer `503` with `imap_extension_required` and `/api/v1/mail/status` reports `extImap: false` so the web app can explain the limitation; everything else (files, calendars, contacts, tasks, meet, …) works normally. Enable `php-imap` in your hosting control panel (or `apt install php8.3-imap`) to activate Mail.
+The Mail app (IMAP mailbox access) needs `php-imap`. It is not required to install or run WeGotWorkspace and does not block first-run. Without it, mail endpoints answer `503` with `imap_extension_required` and `/api/v1/mail/status` reports `extImap: false` so the web app can explain the limitation; everything else (files, calendars, contacts, tasks, meet, …) works normally. Enable `php-imap` in your hosting control panel (or `apt install php8.3-imap`) to activate Mail.
 
 ## 4) Done
 

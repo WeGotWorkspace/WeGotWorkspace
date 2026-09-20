@@ -3,15 +3,26 @@
 .login-screen {
   background-color: var(--workspace-home-bg, #1b1d3a);
   color: #ffffff;
+  color-scheme: dark;
   --app-switch-label-color: #ffffff;
   --field-label-color: color-mix(in oklab, #ffffff 72%, transparent);
   --input-background: color-mix(in oklab, #ffffff 12%, transparent);
   --input-background-focus: color-mix(in oklab, #ffffff 18%, transparent);
   --input-placeholder-color: color-mix(in oklab, #ffffff 42%, transparent);
-  --foreground: currentColor;
-  --color-foreground: var(--foreground);
+  /* Explicit white — @theme inline resolves --color-foreground at :root, so
+   * text-foreground alone stays dark-ink on auth fields. */
+  --foreground: #ffffff;
+  --color-foreground: #ffffff;
   --button-primary-bg: #ffffff;
   --button-primary-fg: var(--workspace-home-bg, #1b1d3a);
+}
+
+.login-screen .input,
+.login-screen .textarea,
+.login-screen .control-surface {
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
 }
 
 .login-screen .workspace-shell-header {
@@ -21,7 +32,7 @@
 .login-screen__hero {
   font-family: var(--font-serif);
   color: #ffffff;
-  @apply text-balance;
+  @apply mb-4 text-balance;
 }
 
 .login-screen__eyebrow {
@@ -68,4 +79,9 @@
 
 .login-screen__success p {
   color: color-mix(in oklab, #ffffff 82%, transparent);
+}
+
+.login-screen .input__clear:hover,
+.login-screen .input__visibility:hover:not(:disabled) {
+  background-color: color-mix(in oklab, #ffffff 12%, transparent);
 }

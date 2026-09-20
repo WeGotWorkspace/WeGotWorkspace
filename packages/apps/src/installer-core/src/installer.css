@@ -1,0 +1,206 @@
+@import "../../styles.css" reference;
+
+.installer {
+  --installer-status-ok: #4ade80;
+  --installer-status-error: #f87171;
+  --installer-status-pending: color-mix(in oklab, #ffffff 55%, transparent);
+  --installer-status-warn: #fbbf24;
+  --button-outline-color: #ffffff;
+  --button-outline-hover-color: #ffffff;
+  --button-outline-hover-background: color-mix(in oklab, #ffffff 12%, transparent);
+  --button-outline-active-background: #ffffff;
+  --button-active-color: var(--workspace-home-bg, #1b1d3a);
+  --segmented-control-color: #ffffff;
+  --segmented-control-hover-color: #ffffff;
+  --segmented-control-hover-bg: color-mix(in oklab, #ffffff 12%, transparent);
+  --segmented-control-active-fg: var(--workspace-home-bg, #1b1d3a);
+  --segmented-control-active-bg: #ffffff;
+  --segmented-control-track-border-color: color-mix(in oklab, #ffffff 28%, transparent);
+}
+
+.installer__hero-your {
+  @apply italic;
+}
+
+.installer__hero-noun {
+  @apply font-sans font-semibold not-italic;
+}
+
+.installer__dots {
+  @apply mb-6 flex list-none items-center gap-2 p-0;
+}
+
+.installer__dot {
+  @apply size-1.5 rounded-full;
+  background-color: color-mix(in oklab, #ffffff 28%, transparent);
+}
+
+.installer__dot--current,
+.installer__dot--done {
+  background-color: #ffffff;
+}
+
+.installer__lead {
+  color: color-mix(in oklab, #ffffff 78%, transparent);
+  @apply mb-8 text-lg font-medium;
+}
+
+.installer__field {
+  @apply mb-3;
+}
+
+.installer__field .field-label-row {
+  @apply mb-0;
+}
+
+.installer__hint {
+  color: color-mix(in oklab, #ffffff 62%, transparent);
+  @apply mb-4 text-sm;
+}
+
+.installer__field .installer__hint {
+  @apply mb-0 mt-1.5;
+}
+
+.installer__field-feedback {
+  interpolate-size: allow-keywords;
+  overflow: hidden;
+  height: auto;
+  opacity: 1;
+  transition:
+    height 200ms ease,
+    opacity 200ms ease;
+  @apply pt-1.5 text-sm;
+}
+
+.installer__field-feedback--hidden {
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.installer__field-feedback .installer__hint {
+  @apply mt-0;
+}
+
+.installer__hint--error {
+  color: var(--installer-status-error);
+}
+
+.installer__engine {
+  @apply w-full;
+}
+
+.installer__engine .segmented-control {
+  @apply flex w-full;
+}
+
+.installer__engine .segmented-control__button--text {
+  @apply flex-1;
+}
+
+.installer__engine-panels {
+  interpolate-size: allow-keywords;
+}
+
+.installer__engine-panel {
+  overflow: hidden;
+  height: auto;
+  opacity: 1;
+  transition:
+    height 200ms ease,
+    opacity 200ms ease;
+}
+
+.installer__engine-panel--hidden {
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.installer__mysql {
+  @apply flex flex-col gap-4;
+}
+
+.installer__mysql .field-label-row {
+  @apply mb-0;
+}
+
+.installer__mysql-row {
+  @apply grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3;
+}
+
+.installer__mysql-row > * {
+  @apply min-w-0;
+}
+
+.installer__mysql-row--host-port {
+  @apply sm:grid-cols-3;
+}
+
+.installer__mysql-host {
+  @apply sm:col-span-2;
+}
+
+.installer__progress {
+  @apply py-1;
+}
+
+.installer__spinner {
+  @apply size-3.5 shrink-0 animate-spin;
+}
+
+.installer__progress-steps {
+  @apply m-0 list-none space-y-2 p-0 text-sm;
+}
+
+.installer__progress-step {
+  @apply flex items-center gap-2;
+  color: color-mix(in oklab, #ffffff 48%, transparent);
+}
+
+.installer__progress-step--current {
+  color: #ffffff;
+}
+
+.installer__progress-marker {
+  @apply inline-flex size-4 shrink-0 items-center justify-center;
+}
+
+.installer__progress-label {
+  @apply min-w-0;
+}
+
+.installer__checks {
+  @apply mb-6 list-none space-y-3 p-0;
+}
+
+.installer__check {
+  @apply flex items-start gap-2 text-sm;
+}
+
+.installer__check-icon {
+  @apply mt-0.5 shrink-0;
+}
+
+.installer__check-label {
+  @apply font-medium text-white;
+}
+
+.installer__check-detail {
+  color: color-mix(in oklab, #ffffff 68%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .installer__spinner {
+    animation: none;
+  }
+
+  .installer__engine-panel {
+    transition: none;
+  }
+
+  .installer__field-feedback {
+    transition: none;
+  }
+}

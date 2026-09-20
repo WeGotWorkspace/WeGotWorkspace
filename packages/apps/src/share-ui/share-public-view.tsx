@@ -73,7 +73,7 @@ export function SharePublicView({
           <Input
             id="share-password"
             name="password"
-            type="password"
+            variant="password"
             value={password}
             autoComplete="current-password"
             placeholder="••••••••"

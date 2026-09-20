@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render as rtlRender, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   ContactsEditGroupDialog,
@@ -47,6 +47,15 @@ describe("ContactsEditGroupDialog", () => {
   beforeEach(() => {
     cleanup();
     stubMatchMedia();
+  });
+
+  afterEach(async () => {
+    cleanup();
+    // Focus scope schedules an unmount autofocus on a macrotask. Let it run
+    // before the jsdom window is replaced, or dispatchEvent throws.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
   });
 
   it("submits the renamed group without changing the address book", () => {

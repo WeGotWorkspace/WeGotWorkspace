@@ -54,14 +54,14 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
           {...settingsWorkspacePaneClasses.formTextField}
           name="newPassword"
           label="New password"
-          type="password"
+          variant="password"
           placeholder="At least 8 characters"
         />
         <FormTextField
           {...settingsWorkspacePaneClasses.formTextField}
           name="confirmPassword"
           label="Confirm password"
-          type="password"
+          variant="password"
         />
         <FormSaveActionRow
           className={settingsWorkspacePaneClasses.saveActionRow}
