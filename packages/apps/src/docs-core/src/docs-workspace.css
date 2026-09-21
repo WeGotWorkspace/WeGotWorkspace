@@ -6,14 +6,13 @@
   @apply min-w-0 overflow-x-hidden;
 
   /*
-   * Product chrome matches Meet / Notes / Tasks: cream paper with a quiet
-   * blue wash from the Docs icon tile (`#0045ff` — WORKSPACE_APP_ACCENT.docs).
-   * Sidebar is 28% accent→cream so the rail reads as blue-tinted paper
-   * (Meet purple reads at 20%; vivid Docs blue needs a stronger mix).
+   * Cream paper main (Meet / Notes / Tasks), but Docs keeps a full-accent
+   * sidebar exception (`#0045ff` — WORKSPACE_APP_ACCENT.docs). White ink on
+   * that rail clears AA; do not cream-mix the nav like other workspaces.
    */
   --docs-accent: #0045ff;
   --docs-accent-strong: color-mix(in oklab, var(--docs-accent) 32%, var(--color-ink));
-  --docs-sidebar: color-mix(in oklab, var(--docs-accent) 28%, var(--color-cream, #f7f4ef));
+  --docs-sidebar: var(--docs-accent);
   --workspace-accent: var(--docs-accent);
   --color-emerald: var(--docs-accent);
   --docs-surface: var(--color-cream, #f7f4ef);
@@ -55,19 +54,23 @@
   --workspace-chrome-footer-border: var(--docs-border);
 
   --app-sidebar-bg: var(--docs-sidebar);
-  /* Outline rail + review dock share the same tinted-cream sidebar language. */
-  --docs-collab-sidebar-panel-wash: var(--docs-sidebar);
-  --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --app-sidebar-color: var(--color-ink);
-  --sidebar-logo-close-button-color: var(--color-ink);
+  /* Review dock stays a light accent wash — not the saturated nav rail. */
+  --docs-collab-sidebar-panel-wash: color-mix(
+    in oklab,
+    var(--docs-accent) 10%,
+    var(--color-cream, #f7f4ef)
+  );
+  --app-sidebar-border-color: color-mix(in oklab, #ffffff 18%, transparent);
+  --app-sidebar-color: #ffffff;
+  --sidebar-logo-close-button-color: #ffffff;
   --sidebar-badge-fg: var(--docs-accent);
   --workspace-main-content-max-width: none;
-  --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
-  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  --workspace-user-footer-link-hover-bg: color-mix(in oklab, #ffffff 10%, transparent);
+  --workspace-user-footer-text-color: color-mix(in oklab, #ffffff 75%, transparent);
+  --workspace-user-footer-subtitle-color: color-mix(in oklab, #ffffff 72%, transparent);
+  --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 15%, transparent);
+  --workspace-user-footer-link-color: color-mix(in oklab, #ffffff 70%, transparent);
+  --workspace-user-footer-link-bg: color-mix(in oklab, #ffffff 8%, transparent);
 
   --button-primary-bg: var(--docs-accent);
   --button-primary-fg: #ffffff;
@@ -90,29 +93,8 @@
     var(--docs-accent) 24%,
     var(--color-cream, #f7f4ef)
   );
-  /*
-   * AppSidebar washes: brand blue → cream, stepped above the 28% rail.
-   * Ink clears AA on these mixes (hover ~9.2:1, selected ~8.0:1,
-   * selected-hover ~7.0:1); prefer ink over accent-strong. Hover wash uses
-   * cream (not transparent) so it stays lighter than selected on the tint.
-   */
-  --app-sidebar-item-hover-bg: color-mix(
-    in oklab,
-    var(--docs-accent) 34%,
-    var(--color-cream, #f7f4ef)
-  );
-  --app-sidebar-item-selected-bg: color-mix(
-    in oklab,
-    var(--docs-accent) 42%,
-    var(--color-cream, #f7f4ef)
-  );
-  --app-sidebar-item-selected-hover-bg: color-mix(
-    in oklab,
-    var(--docs-accent) 48%,
-    var(--color-cream, #f7f4ef)
-  );
-  --app-sidebar-item-selected-color: var(--color-ink);
-  /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24). */
+  /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24).
+   * Nav item SST lives on `.app-sidebar__scroll` (black→sidebar, white on-color). */
 
   --foreground: var(--docs-text);
   --color-foreground: var(--docs-text);
@@ -198,47 +180,121 @@
   @apply mx-0 flex min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
 }
 
+/*
+ * Full-accent rail: remap ink + outline chrome on the whole aside (not only
+ * scroll). Shared menu-item / field-label rules read `--color-ink`; without
+ * this remap they stay `#003311` on `#0045ff`.
+ */
 .docs-workspace .app-sidebar {
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
-  color: var(--app-sidebar-color, var(--color-ink));
+  --color-ink: #ffffff;
+  --field-label-color: color-mix(in oklab, #ffffff 72%, transparent);
+  --button-outline-color: #ffffff;
+  --button-outline-hover-color: #ffffff;
+  --button-active-color: #ffffff;
+  color: #ffffff;
 }
 
-/** App switcher lockup: docs.svg tile `#0045ff`; line marks use cream paper (`--wai-fg`). */
+/**
+ * Sidebar lockup only: white tile + docs-accent glyph on the full-accent rail
+ * (swap vs usual accent-tile / cream marks). Home grid keeps docs.svg defaults.
+ */
 .docs-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: #0045ff;
+  --app-switch-icon-bg: #ffffff;
+  --app-switch-icon-fg: var(--docs-accent);
+  background-color: #ffffff;
 }
 
 .docs-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: #0045ff;
-  --wai-fg: #f7f4ef;
+  --wai-bg: #ffffff;
+  --wai-fg: var(--docs-accent);
+  --wai-detail: var(--docs-accent);
+  --wai-detail-muted: var(--docs-accent);
+  --wai-cutout: #ffffff;
 }
 
+/**
+ * Full-accent sidebar: darken with black→sidebar mixes (white→transparent washes
+ * fail AA). White stays ≥4.5:1 (hover ~6.1:1, selected ~6.8:1; idle solid ~4.9:1).
+ * Mirror Mail scroll tokens for New primary + nav SST.
+ */
 .docs-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--docs-accent);
-  --button-primary-fg: #ffffff;
-  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--color-ink);
+  --color-ink: #ffffff;
+  --button-primary-bg: #ffffff;
+  --button-primary-fg: var(--docs-sidebar);
+  --button-outline-color: #ffffff;
+  --button-outline-hover-color: #ffffff;
+  --app-sidebar-item-hover-bg: color-mix(in oklab, #000000 10%, var(--docs-sidebar));
+  --app-sidebar-item-selected-bg: color-mix(in oklab, #000000 14%, var(--docs-sidebar));
+  --app-sidebar-item-selected-hover-bg: color-mix(in oklab, #000000 20%, var(--docs-sidebar));
+  --app-sidebar-item-selected-color: #ffffff;
+  --button-outline-hover-background: var(--app-sidebar-item-hover-bg);
+  --button-outline-active-background: var(--app-sidebar-item-selected-bg);
+  --button-outline-active-hover-background: var(--app-sidebar-item-selected-hover-bg);
+  --button-active-color: #ffffff;
 }
 
 /*
  * Bell lives in the header (sibling of scroll). Mirror sidebar New primary
- * (accent fill + white label), not an inverted chip.
+ * (white on docs-sidebar), not workspace-root accent-on-white.
  */
 .docs-workspace .app-sidebar__notifications {
-  --button-primary-bg: var(--docs-accent);
-  --button-primary-fg: #ffffff;
-  --notification-inbox-badge-bg: var(--docs-accent);
-  --notification-inbox-badge-fg: #ffffff;
+  --color-ink: #ffffff;
+  --button-primary-bg: #ffffff;
+  --button-primary-fg: var(--docs-sidebar);
+  --notification-inbox-badge-bg: #ffffff;
+  --notification-inbox-badge-fg: var(--docs-sidebar);
 }
 
 .docs-workspace .app-sidebar__footer {
-  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
-  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  --color-ink: #ffffff;
+  --button-active-color: #ffffff;
+  --button-outline-color: #ffffff;
+  --button-outline-hover-color: #ffffff;
+  --button-outline-hover-background: color-mix(in oklab, #000000 10%, var(--docs-sidebar));
+  --button-outline-active-background: color-mix(in oklab, #000000 14%, var(--docs-sidebar));
+  --button-outline-active-hover-background: color-mix(in oklab, #000000 20%, var(--docs-sidebar));
+  --workspace-user-footer-text-color: #ffffff;
+  --workspace-user-footer-subtitle-color: color-mix(in oklab, #ffffff 72%, transparent);
+  --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 18%, transparent);
+  --workspace-user-footer-link-color: #ffffff;
+}
+
+/*
+ * Belt-and-suspenders: force on-accent white for nav rows / section titles.
+ * Token remaps alone can lose to `.app-sidebar` cream-wash fallbacks +
+ * workspace-root `--button-active-color: accent-strong`.
+ */
+.docs-workspace .sidebar-section__title {
+  color: color-mix(in oklab, #ffffff 72%, transparent);
+}
+
+.docs-workspace .sidebar-section .menu-item--surface-idle {
+  color: #ffffff;
+}
+
+.docs-workspace .sidebar-section .menu-item--surface-selected {
+  background-color: var(
+    --button-outline-active-background,
+    color-mix(in oklab, #000000 14%, var(--docs-sidebar))
+  );
+  color: #ffffff;
+}
+
+.docs-workspace
+  .sidebar-section
+  .menu-item--interactive:hover:not(.menu-item--surface-selected):not(.menu-item--severity-danger) {
+  color: #ffffff;
+  background-color: var(
+    --button-outline-hover-background,
+    color-mix(in oklab, #000000 10%, var(--docs-sidebar))
+  );
+}
+
+.docs-workspace .sidebar-section .menu-item .menu-item__icon-slot {
+  color: #ffffff;
 }
 
 .docs-workspace__header-actions {
