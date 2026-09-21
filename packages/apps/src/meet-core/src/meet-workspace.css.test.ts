@@ -92,13 +92,13 @@ describe("meet workspace sidebar chrome", () => {
 
   it("brightens AppSidebar selected wash for dark plum and forces AA on-color", () => {
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklab,\s*var\(--meet-accent\) 22%,\s*var\(--color-cream/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklab,\s*var\(--meet-accent\) 32%,\s*var\(--color-cream/,
     );
     expect(css).not.toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\([^)]*var\(--meet-accent\) 22%,\s*transparent/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\([^)]*var\(--meet-accent\) 32%,\s*transparent/,
     );
     expect(css).toMatch(
-      /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--meet-accent\) 32%[\s\S]*var\(--color-cream/,
+      /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--meet-accent\) 22%[\s\S]*var\(--color-cream/,
     );
     expect(css).toMatch(
       /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--meet-accent\) 40%[\s\S]*var\(--color-cream/,

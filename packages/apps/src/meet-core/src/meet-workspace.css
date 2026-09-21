@@ -283,7 +283,7 @@
   --meet-accent: #962fa8;
   --meet-accent-strong: color-mix(in oklab, var(--meet-accent) 32%, var(--color-ink));
   --workspace-accent: var(--meet-accent);
-  --color-ink: #042a22;
+  --color-ink: #003311;
   --meet-text: var(--color-ink);
   --meet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
   --meet-call-ink-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
@@ -616,7 +616,7 @@
 .meet-knock-badge__popover {
   --meet-accent: #962fa8;
   --meet-accent-strong: color-mix(in oklab, var(--meet-accent) 32%, var(--color-ink));
-  --color-ink: #042a22;
+  --color-ink: #003311;
   --meet-text: var(--color-ink);
   --meet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
   --meet-call-ink-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
@@ -736,7 +736,7 @@
    * with a quiet purple wash from the Meet icon accent (`#962fa8`).
    * Pin ink so leftover navy `.meet-workspace` text tokens cannot leak.
    */
-  --color-ink: #042a22;
+  --color-ink: #003311;
   --meet-text: var(--color-ink);
   --meet-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --meet-sidebar: color-mix(in oklab, var(--meet-accent) 20%, var(--color-cream, #fff5e9));
@@ -784,19 +784,19 @@
     var(--color-cream, #fff5e9)
   );
   /*
-   * AppSidebar washes: brand purple → cream. Ink clears AA on these mixes
-   * (hover ~10.3:1, selected ~8.8:1, selected-hover ~7.7:1); prefer ink over
-   * accent-strong. Hover wash uses cream (not transparent) so it stays lighter
-   * than selected on the tint.
+   * AppSidebar washes: brand purple → cream. Hover is the stronger wash;
+   * selected is lighter. Ink clears AA on these mixes (selected ~10.3:1,
+   * hover ~8.8:1, selected-hover ~7.7:1); prefer ink over accent-strong.
+   * Hover wash uses cream (not transparent) so tint stays on the cream plane.
    */
   --app-sidebar-item-hover-bg: color-mix(
     in oklab,
-    var(--meet-accent) 22%,
+    var(--meet-accent) 32%,
     var(--color-cream, #fff5e9)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklab,
-    var(--meet-accent) 32%,
+    var(--meet-accent) 22%,
     var(--color-cream, #fff5e9)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
@@ -969,7 +969,7 @@
  */
 :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded) {
   /* Light paper chrome: pin ink so dark lobby `.meet-workspace` text does not leak. */
-  --color-ink: #042a22;
+  --color-ink: #003311;
   --meet-call-ink-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --meet-call-border: color-mix(in oklab, var(--meet-accent) 22%, transparent);
   --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #fff5e9));
