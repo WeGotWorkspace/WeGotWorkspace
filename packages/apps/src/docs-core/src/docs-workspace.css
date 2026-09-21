@@ -89,9 +89,10 @@
     var(--color-cream, #fff5e9)
   );
   /*
-   * AppSidebar selected wash: brand blue mixed onto cream.
-   * On-color uses `--docs-accent-strong` (32% accent → ink). Hover must use
-   * cream (not transparent) so it stays lighter than selected on the tint.
+   * AppSidebar washes: brand blue → cream. Ink clears AA on these mixes
+   * (hover ~10.5:1, selected ~9.0:1, selected-hover ~7.9:1); prefer ink over
+   * accent-strong. Hover wash uses cream (not transparent) so it stays lighter
+   * than selected on the tint.
    */
   --app-sidebar-item-hover-bg: color-mix(
     in oklab,
@@ -108,7 +109,7 @@
     var(--docs-accent) 40%,
     var(--color-cream, #fff5e9)
   );
-  --app-sidebar-item-selected-color: var(--docs-accent-strong);
+  --app-sidebar-item-selected-color: var(--color-ink);
   /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24). */
 
   --foreground: var(--docs-text);
@@ -216,6 +217,8 @@
 .docs-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--docs-accent);
   --button-primary-fg: #ffffff;
+  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
+  --button-outline-hover-color: var(--color-ink);
 }
 
 /*

@@ -147,7 +147,10 @@ describe("docs workspace outline chrome", () => {
       /\.docs-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--docs-accent\) 40%[\s\S]*var\(--color-cream/,
     );
     expect(css).toMatch(
-      /\.docs-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--docs-accent-strong\)/,
+      /\.docs-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-ink\)/,
+    );
+    expect(css).toMatch(
+      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-ink\)/,
     );
     expect(css).not.toMatch(
       /\.docs-workspace \.sidebar-section \.menu-item--surface-selected \{[\s\S]*color:\s*#ffffff/,

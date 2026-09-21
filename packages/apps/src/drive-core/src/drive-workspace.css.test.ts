@@ -47,11 +47,20 @@ describe("drive workspace outline-active tokens", () => {
     );
   });
 
-  it("does not republish --app-sidebar-item-* (shared AppSidebar wash is enough)", () => {
-    expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
-    expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
-    expect(css).not.toMatch(/--app-sidebar-item-selected-hover-bg:/);
-    expect(css).not.toMatch(/--app-sidebar-item-selected-color:/);
+  it("publishes AppSidebar item washes stepped above the 32% rail with ink on-color", () => {
+    expect(css).toMatch(
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklab,\s*var\(--drive-accent\) 42%,\s*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklab,\s*var\(--drive-accent\) 55%,\s*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklab,\s*var\(--drive-accent\) 65%,\s*var\(--color-cream/,
+    );
+    expect(css).toMatch(/--app-sidebar-item-selected-color:\s*var\(--color-ink\)/);
+    expect(css).toMatch(
+      /\.drive-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-ink\)/,
+    );
   });
 });
 

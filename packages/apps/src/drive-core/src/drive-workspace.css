@@ -38,10 +38,10 @@
 
   /*
    * Outline / menu-item language. Workspace outline tokens stay Notes/Tasks-
-   * weight for segmented/tile chrome. Sidebar nav inherits the shared
-   * AppSidebar washed recipe (40% / 55%+ink / 65%+ink + darker on-color);
-   * `--app-sidebar-item-*` remains available if Drive needs a further tweak.
-   * `.view-header` keeps its own soft SST for header IconButtons.
+   * weight for segmented/tile chrome. Sidebar base is already 32% lime→cream;
+   * shared AppSidebar hover default (32%) would be invisible, so publish a
+   * step above the rail. Ink clears AA (hover 42% ~11.4:1, selected 55% ~10.6:1,
+   * selected-hover 65% ~10.0:1).
    */
   --drive-accent-strong: color-mix(in oklab, var(--drive-accent) 32%, var(--color-ink));
   --button-primary-bg: var(--drive-accent);
@@ -59,6 +59,22 @@
     var(--drive-accent) 65%,
     var(--color-cream, #fff5e9)
   );
+  --app-sidebar-item-hover-bg: color-mix(
+    in oklab,
+    var(--drive-accent) 42%,
+    var(--color-cream, #fff5e9)
+  );
+  --app-sidebar-item-selected-bg: color-mix(
+    in oklab,
+    var(--drive-accent) 55%,
+    var(--color-cream, #fff5e9)
+  );
+  --app-sidebar-item-selected-hover-bg: color-mix(
+    in oklab,
+    var(--drive-accent) 65%,
+    var(--color-cream, #fff5e9)
+  );
+  --app-sidebar-item-selected-color: var(--color-ink);
 }
 
 .drive-workspace .workspace-app-layout__main-scroll {
@@ -73,6 +89,8 @@
   /* New CTA: black/ink on Drive green (same recipe as Tasks/Notes sidebar primaries). */
   --button-primary-bg: var(--drive-accent);
   --button-primary-fg: var(--color-ink);
+  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
+  --button-outline-hover-color: var(--color-ink);
 }
 
 /*

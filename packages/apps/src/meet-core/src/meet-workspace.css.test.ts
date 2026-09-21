@@ -104,7 +104,10 @@ describe("meet workspace sidebar chrome", () => {
       /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--meet-accent\) 40%[\s\S]*var\(--color-cream/,
     );
     expect(css).toMatch(
-      /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--meet-accent-strong\)/,
+      /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-ink\)/,
+    );
+    expect(css).toMatch(
+      /\.meet-workspace--split \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-ink\)/,
     );
   });
 

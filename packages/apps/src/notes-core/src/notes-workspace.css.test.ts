@@ -475,4 +475,13 @@ describe("notes workspace accent tokens", () => {
     );
     expect(css).not.toMatch(/--tag-group-input-bg-focus:\s*#fff(?:fff)?\b/i);
   });
+
+  it("pins AppSidebar selected/hover on-color to ink for AA on yellow washes", () => {
+    expect(css).toMatch(
+      /\.notes-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-ink\)/,
+    );
+    expect(css).toMatch(
+      /\.notes-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-ink\)/,
+    );
+  });
 });

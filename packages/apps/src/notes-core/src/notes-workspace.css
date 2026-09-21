@@ -71,6 +71,13 @@
   --button-primary-bg: var(--notes-accent);
   --button-primary-fg: var(--color-ink, #042a22);
   /*
+   * AppSidebar defaults (32/55/65% accent→cream) stay ink-safe on yellow
+   * (hover ~12.9:1, selected ~11.8:1, selected-hover ~11.4:1). Pin selected
+   * on-color so browsers without contrast-color() do not fall back to the
+   * dark-glyph mix that fails AA on light yellow washes.
+   */
+  --app-sidebar-item-selected-color: var(--color-ink);
+  /*
    * Open / selected list row: same fill as `.app-sidebar` (`--app-sidebar-bg` →
    * `--notes-sidebar`). Not a second accent wash, not `--notes-accent`, not
    * the notebook sheet tint.
@@ -255,6 +262,8 @@
   /* New note: warm-yellow fill + ink label (invert of selected chips; Tasks-style accent fill). */
   --button-primary-bg: var(--notes-accent);
   --button-primary-fg: var(--color-ink, #042a22);
+  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
+  --button-outline-hover-color: var(--color-ink);
 }
 
 /*

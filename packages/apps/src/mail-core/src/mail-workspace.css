@@ -53,15 +53,23 @@
 /**
  * Sidebar nav uses `--color-ink` in shared menu-item rules; remap to white on crimson
  * (same pattern as {@link drive-workspace.css}).
+ * White→transparent washes lighten crimson below AA for white text (even 8% fails).
+ * Darken with black→sidebar mixes instead; white stays ≥4.5:1 (hover ~6.1:1,
+ * selected ~6.8:1, selected-hover ~7.4:1; idle solid ~4.9:1).
  */
 .mail-workspace .app-sidebar__scroll {
   --color-ink: #ffffff;
   --button-primary-bg: #ffffff;
   --button-primary-fg: var(--mail-accent);
-  --button-active-color: #ffffff;
-  --button-outline-hover-background: color-mix(in oklab, #ffffff 10%, transparent);
-  --button-outline-active-background: color-mix(in oklab, #ffffff 14%, transparent);
-  --button-outline-active-hover-background: color-mix(in oklab, #ffffff 20%, transparent);
+  --button-outline-hover-color: #ffffff;
+  --app-sidebar-item-hover-bg: color-mix(in oklab, #000000 10%, var(--mail-sidebar));
+  --app-sidebar-item-selected-bg: color-mix(in oklab, #000000 14%, var(--mail-sidebar));
+  --app-sidebar-item-selected-hover-bg: color-mix(in oklab, #000000 20%, var(--mail-sidebar));
+  --app-sidebar-item-selected-color: #ffffff;
+  --button-outline-hover-background: var(--app-sidebar-item-hover-bg);
+  --button-outline-active-background: var(--app-sidebar-item-selected-bg);
+  --button-outline-active-hover-background: var(--app-sidebar-item-selected-hover-bg);
+  --button-active-color: var(--app-sidebar-item-selected-color);
 }
 
 .mail-workspace .app-sidebar__footer {
