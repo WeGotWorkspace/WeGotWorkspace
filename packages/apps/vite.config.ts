@@ -65,7 +65,7 @@ export default defineConfig(({ mode }) => {
         // navigateFallback stays unset so the dev precache is empty.
         devOptions: { enabled: true, type: "module" },
         injectManifest: {
-          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
+          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest,mp3}"],
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         },
         manifest: false,
