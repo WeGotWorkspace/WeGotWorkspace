@@ -17,8 +17,12 @@ describe("calendar event dialog CSS ownership", () => {
 
   it("defines dialog-surface accent tokens outside the workspace shell", () => {
     expect(css).toMatch(/\.calendar-dialog-surface\s*\{/);
-    expect(css).toContain("--calendar-accent: #6366f1");
-    expect(css).toContain("--button-primary-bg: var(--calendar-accent-strong)");
+    expect(css).toContain("--calendar-accent: #962fa8");
+    expect(css).toContain("--button-primary-bg: var(--calendar-accent)");
+    expect(css).not.toContain("--button-primary-bg: var(--calendar-accent-strong)");
+    expect(css).toMatch(
+      /--calendar-accent-strong:\s*color-mix\(in oklab,\s*var\(--calendar-accent\) 32%,\s*var\(--color-ink\)\)/,
+    );
   });
 
   it("keeps the event form single-column (date+time pairs stay in-row)", () => {

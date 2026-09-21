@@ -26,7 +26,7 @@
 
 /*
  * File-select inside Docs (`data-drive-listing-theme="docs"`).
- * `.drive-workspace` republishes Drive green (`#10b981`, `--color-emerald`) on
+ * `.drive-workspace` republishes Drive lime (`#8ace00`, `--color-emerald`) on
  * this same node, which beats ancestor `.docs-dialog-surface` remaps. Override
  * here with higher specificity and paint icons/toggle with `--docs-accent`.
  */

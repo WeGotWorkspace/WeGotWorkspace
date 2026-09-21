@@ -6,6 +6,28 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "drive-workspace.css"), "utf8");
 
+describe("drive workspace brand accent", () => {
+  it("uses tile lime for UI accent with cream-mix strong and accent primary fills", () => {
+    expect(css).toMatch(/\.drive-workspace \{[\s\S]*?--drive-accent:\s*#8ace00/i);
+    expect(css).toMatch(
+      /--drive-accent-strong:\s*color-mix\(in oklab,\s*var\(--drive-accent\) 32%,\s*var\(--color-ink\)\)/,
+    );
+    expect(css).toMatch(/\.drive-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--drive-accent\)/);
+    expect(css).not.toMatch(/--drive-accent:\s*#10b981/i);
+    expect(css).not.toMatch(
+      /--drive-accent-strong:\s*color-mix\(in oklab,\s*var\(--drive-accent\) 55%,\s*var\(--color-ink\)\)/,
+    );
+  });
+
+  it("uses ink on lime for dialog primary fills", () => {
+    expect(css).toMatch(/\.drive-dialog-surface \{[\s\S]*--drive-accent:\s*#8ace00/i);
+    expect(css).toMatch(
+      /\.drive-dialog-surface \{[\s\S]*--button-primary-bg:\s*var\(--drive-accent\)/,
+    );
+    expect(css).toMatch(/\.drive-dialog-surface \{[\s\S]*--button-primary-fg:\s*var\(--color-ink/);
+  });
+});
+
 describe("drive workspace outline-active tokens", () => {
   it("publishes outline-active wash tokens so selected chrome inherits Drive green", () => {
     expect(css).toMatch(/--workspace-accent:\s*var\(--drive-accent\)/);
@@ -36,16 +58,16 @@ describe("drive workspace outline-active tokens", () => {
 describe("drive workspace app-switch lockup", () => {
   it("keeps the drive.svg tile and folder hexes on the lockup", () => {
     expect(css).toMatch(
-      /\.drive-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#8ACE00/,
+      /\.drive-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#8ace00/i,
     );
     expect(css).toMatch(
-      /\.drive-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#8ACE00/,
+      /\.drive-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#8ace00/i,
     );
     expect(css).toMatch(
-      /\.drive-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#1D6635/,
+      /\.drive-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#1d6635/i,
     );
-    expect(css).toMatch(/--app-switch-icon-bg:\s*#8ACE00/);
-    expect(css).toMatch(/--app-switch-icon-fg:\s*#1D6635/);
+    expect(css).toMatch(/--app-switch-icon-bg:\s*#8ace00/i);
+    expect(css).toMatch(/--app-switch-icon-fg:\s*#1d6635/i);
     expect(css).not.toMatch(/--app-switch-icon-bg:\s*var\(--drive-accent\)/);
     expect(css).not.toMatch(/--app-switch-icon-fg:\s*var\(--color-cream/);
     expect(css).not.toMatch(/--wai-bg:\s*transparent/);

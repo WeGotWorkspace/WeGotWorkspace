@@ -23,6 +23,6 @@ describe("drive folder picker Docs listing theme", () => {
     expect(css).toMatch(
       /\[data-drive-listing-theme="docs"\][\s\S]*\.drive-list-folder-icon[\s\S]*color:\s*var\(--docs-accent/,
     );
-    expect(css).not.toMatch(/\[data-drive-listing-theme="docs"\][\s\S]*#10b981/);
+    expect(css).not.toMatch(/\[data-drive-listing-theme="docs"\][\s\S]*#8ace00/i);
   });
 });

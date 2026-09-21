@@ -7,7 +7,7 @@
  */
 .drive-detail-panel-drawer {
   --side-drawer-width: 22rem;
-  --drive-accent: #10b981;
+  --drive-accent: #8ace00;
   --workspace-accent: var(--drive-accent);
 }
 

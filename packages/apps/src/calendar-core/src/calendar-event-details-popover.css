@@ -66,7 +66,7 @@
 
 .calendar-event-details-popover__pending-sync {
   @apply absolute end-2 top-2 inline-flex size-2.5 shrink-0 items-center justify-center;
-  color: var(--calendar-accent, #6366f1);
+  color: var(--calendar-accent, #962fa8);
 }
 
 .calendar-event-details-popover__event {

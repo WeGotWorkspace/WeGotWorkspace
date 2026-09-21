@@ -8,6 +8,33 @@ const css = readFileSync(join(here, "calendar-workspace.css"), "utf8");
 const tsx = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
 const searchTsx = readFileSync(join(here, "calendar-search-results.tsx"), "utf8");
 
+describe("calendar workspace brand accent", () => {
+  it("uses icon-mark purple for UI accent with cream-mix strong and accent primary fills", () => {
+    expect(css).toMatch(/\.calendar-workspace \{[\s\S]*?--calendar-accent:\s*#962fa8/);
+    expect(css).toMatch(
+      /--calendar-accent-strong:\s*color-mix\(in oklab,\s*var\(--calendar-accent\) 32%,\s*var\(--color-ink\)\)/,
+    );
+    expect(css).toMatch(
+      /\.calendar-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--calendar-accent\)/,
+    );
+    expect(css).not.toMatch(/--button-primary-bg:\s*var\(--calendar-accent-strong\)/);
+    expect(css).not.toMatch(/--calendar-accent:\s*#6366f1/);
+    expect(css).not.toMatch(/--calendar-accent-strong:\s*#5558e8/);
+  });
+
+  it("keeps switch-trigger lockup on pink tile + purple marks", () => {
+    expect(css).toMatch(
+      /\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#ffbdc2/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#ffbdc2/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#962fa8/,
+    );
+  });
+});
+
 describe("calendar workspace header CSS", () => {
   it("keeps header chrome at control md on narrow viewports", () => {
     expect(css).toMatch(
@@ -70,7 +97,7 @@ describe("calendar workspace header CSS", () => {
     );
   });
 
-  it("brightens AppSidebar selected wash for indigo via --app-sidebar-item-*", () => {
+  it("brightens AppSidebar selected wash for purple via --app-sidebar-item-*", () => {
     expect(css).toMatch(
       /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklab,\s*var\(--calendar-accent\) 28%,\s*var\(--color-cream/,
     );

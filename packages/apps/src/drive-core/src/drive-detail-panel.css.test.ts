@@ -32,7 +32,9 @@ describe("Drive detail DocsCollabSidebarPanel shell", () => {
   });
 
   it("uses a flat tile-like preview surface with centered kind-icon fallback", () => {
-    expect(css).toMatch(/\.drive-detail-panel__preview \{[\s\S]*background-color:\s*#ffffff/);
+    expect(css).toMatch(
+      /\.drive-detail-panel__preview \{[\s\S]*background-color:\s*var\(--color-cream/,
+    );
     expect(css).toMatch(/\.drive-detail-panel__preview \{[\s\S]*color:\s*var\(--drive-accent/);
     expect(css).toMatch(
       /\.drive-detail-panel__preview \.file-preview__fallback[\s\S]*@apply flex items-center justify-center/,
@@ -79,6 +81,7 @@ describe("Drive detail DocsCollabSidebarPanel shell", () => {
 
   it("republishes Drive accent on the portaled SideDrawer; sheet wash is shared", () => {
     expect(css).toMatch(/\.drive-detail-panel-drawer \{/);
+    expect(css).toMatch(/\.drive-detail-panel-drawer \{[\s\S]*--drive-accent:\s*#8ace00/i);
     expect(css).toMatch(
       /\.drive-detail-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--drive-accent\)/,
     );

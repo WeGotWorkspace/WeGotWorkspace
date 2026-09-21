@@ -3,17 +3,16 @@
 @import "./calendar-event-dialog.css";
 
 /**
- * Calendar product shell: cream main pane + light indigo sidebar tint.
- * Nav text stays ink-on-tint; primary CTA and app switcher lockup use the
- * indigo accent with white glyphs. Import only from {@link CalendarWorkspace}.
+ * Calendar product shell: cream main pane + purple sidebar tint from icon marks
+ * (`#962fa8`). PWA/tile accent stays pink `#ffbdc2` (WORKSPACE_APP_ACCENT);
+ * UI accent and tile may diverge — same as Meet. Primary CTAs use brand purple
+ * with white glyphs. Import only from {@link CalendarWorkspace}.
  * The calendar surface itself is the vendored lit-calendar view stack
  * (shadow DOM, own styles); this file styles the React chrome around it.
  */
 .calendar-workspace {
-  --calendar-accent: #6366f1;
-  /* CTA background: darker indigo so white 16px text clears WCAG AA 4.5:1
-     (the raw accent measures 4.46:1 and fails the Storybook a11y gate). */
-  --calendar-accent-strong: #5558e8;
+  --calendar-accent: #962fa8;
+  --calendar-accent-strong: color-mix(in oklab, var(--calendar-accent) 32%, var(--color-ink));
   --calendar-sidebar: color-mix(in oklab, var(--calendar-accent) 10%, var(--color-cream, #fff5e9));
   --calendar-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
 
@@ -36,9 +35,9 @@
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
 
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
-  --button-primary-bg: var(--calendar-accent-strong);
+  --button-primary-bg: var(--calendar-accent);
   --button-primary-fg: #ffffff;
-  --primary: var(--calendar-accent-strong);
+  --primary: var(--calendar-accent);
   --primary-foreground: #ffffff;
 
   /* Outline action language for header + collection sidebar rows. */
@@ -57,7 +56,7 @@
   );
 
   /*
-   * AppSidebar selected wash: indigo (#6366f1) still reads heavy at the shared
+   * AppSidebar selected wash: brand purple still reads heavy at the shared
    * 55%/65% accent→cream mixes. Brighten via `--app-sidebar-item-*` only;
    * ink on-color clears AA on these lighter washes (accent-strong does not).
    * Hover wash stays cream-family and lighter than selected; hover fg is ink
@@ -100,7 +99,7 @@
 }
 
 .calendar-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--calendar-accent-strong);
+  --button-primary-bg: var(--calendar-accent);
   --button-primary-fg: #ffffff;
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-ink);

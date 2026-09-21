@@ -63,8 +63,8 @@ describe("portal-theme-vars", () => {
       "--button-outline-hover-background",
       "color-mix(in oklab, var(--calendar-accent) 14%, transparent)",
     );
-    source.style.setProperty("--calendar-accent", "#6366f1");
-    source.style.setProperty("--button-active-color", "#5558e8");
+    source.style.setProperty("--calendar-accent", "#962fa8");
+    source.style.setProperty("--button-active-color", "#5a1c66");
     document.body.append(source);
 
     const target = document.createElement("div");
@@ -73,11 +73,11 @@ describe("portal-theme-vars", () => {
     bridgePortalThemeVars(source, target);
 
     expect(target.style.getPropertyValue("--button-outline-hover-background")).toMatch(
-      /calendar-accent|#6366f1|rgba?\(|oklch\(/i,
+      /calendar-accent|#962fa8|rgba?\(|oklch\(/i,
     );
-    expect(target.style.getPropertyValue("--calendar-accent").trim()).toBe("#6366f1");
+    expect(target.style.getPropertyValue("--calendar-accent").trim()).toBe("#962fa8");
     expect(target.style.getPropertyValue("--button-active-color").trim()).toMatch(
-      /#5558e8|rgba?\(|oklch\(/i,
+      /#5a1c66|rgba?\(|oklch\(/i,
     );
   });
 
@@ -123,8 +123,8 @@ describe("portal-theme-vars", () => {
     const sheet = document.createElement("style");
     sheet.textContent = `
       .calendar-host {
-        --calendar-accent: #6366f1;
-        --calendar-accent-strong: #5558e8;
+        --calendar-accent: #962fa8;
+        --calendar-accent-strong: color-mix(in oklab, var(--calendar-accent) 32%, var(--color-ink));
         --color-ink: #1a1a1a;
         --color-cream: #fff5e9;
         --workspace-accent: var(--calendar-accent);
@@ -152,8 +152,8 @@ describe("portal-theme-vars", () => {
     const hover = target.style.getPropertyValue("--button-outline-hover-background");
     expect(hover.trim().length).toBeGreaterThan(0);
     expect(hover.toLowerCase()).not.toMatch(/color-ink/);
-    expect(hover).toMatch(/calendar-accent|#6366f1|rgba?\(|oklch\(/i);
-    expect(target.style.getPropertyValue("--calendar-accent").trim()).toBe("#6366f1");
+    expect(hover).toMatch(/calendar-accent|#962fa8|rgba?\(|oklch\(/i);
+    expect(target.style.getPropertyValue("--calendar-accent").trim()).toBe("#962fa8");
   });
 
   it("overwrites seed washes with concrete colors when the engine resolves them", () => {
