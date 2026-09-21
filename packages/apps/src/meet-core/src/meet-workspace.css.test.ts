@@ -109,9 +109,6 @@ describe("meet workspace sidebar chrome", () => {
       /\.meet-workspace--split \{[\s\S]*--user-avatar-fg:\s*var\(--color-ink\)/,
     );
     expect(css).toMatch(
-      /\.meet-guest-lobby__camera-off \{[\s\S]*color-mix\(in oklab,\s*var\(--color-ink\) 80%/,
-    );
-    expect(css).toMatch(
       /\.meet-workspace--split[\s\S]*--field-label-color:\s*color-mix\(in oklab,\s*var\(--color-ink\) 72%/,
     );
     expect(css).toMatch(/--app-switch-icon-fg:\s*var\(--color-cream/);
@@ -380,6 +377,7 @@ describe("meet guest invite lobby chrome", () => {
     );
     expect(css).toMatch(/\.meet-guest-channel__lobby \{[\s\S]*@apply[^;]*overflow-y-auto/);
     expect(css).toMatch(/\.meet-guest-channel__lobby \{[\s\S]*env\(safe-area-inset-bottom/);
+    expect(css).toMatch(/\.meet-guest-lobby__card \{[\s\S]*@apply[^;]*mx-auto/);
     expect(css).toMatch(/\.meet-guest-lobby__card \{[\s\S]*@apply[^;]*my-auto/);
     const lobbyRule = css.match(/\.meet-guest-channel__lobby \{[\s\S]*?\n\}/)?.[0] ?? "";
     expect(lobbyRule).not.toMatch(/items-center justify-center/);
@@ -493,7 +491,11 @@ describe("meet guest invite lobby chrome", () => {
     expect(guestLobbyCard).toMatch(/variant === "status"/);
     expect(guestLobbyCard).toMatch(/meet-guest-lobby__card--status/);
     expect(guestLobbyCard).toMatch(/meet-guest-lobby__status-body/);
-    expect(css).toMatch(/\.meet-guest-lobby__preview-idle \{[\s\S]*@apply[\s\S]*pb-16/);
+    expect(css).not.toMatch(/meet-guest-lobby__preview-idle/);
+    expect(css).not.toMatch(/meet-guest-lobby__camera-off/);
+    expect(guestLobby).not.toMatch(/UserAvatar/);
+    expect(guestLobby).not.toMatch(/meetLabels\.cameraOff/);
+    expect(guestLobby).toMatch(/controller\.displayName\.trim\(\)/);
     expect(css).toMatch(/grid-template-areas:[\s\S]*"heading"[\s\S]*"media"[\s\S]*"invite"/);
     expect(css).toMatch(
       /\.meet-guest-lobby__card--status \{[\s\S]*grid-template-areas:[\s\S]*"heading"[\s\S]*"invite"/,

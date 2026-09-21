@@ -359,9 +359,9 @@ export function meetChannelCallRoom(
 }
 
 /**
- * Invite URL: channels use `/meet/channels/{id}`, meeting-kind collections use
- * `/meet/meetings/{id}`. Ad-hoc leftover `/meet/meetings/{code}` hrefs stay on
- * calendar events that never became a channel.
+ * Invite URL: channels use `/meet/channels/{id}`; meeting-kind collections
+ * keep `/meet/meetings/{guestRoomCode}` when a reserved ad-hoc code exists,
+ * otherwise `/meet/meetings/{id}`.
  */
 export function meetChannelCallHref(
   channel: Pick<CalendarMeetChannelOption, "id" | "kind" | "guestRoomCode">,

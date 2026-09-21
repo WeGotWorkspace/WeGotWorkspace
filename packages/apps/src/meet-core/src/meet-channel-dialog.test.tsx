@@ -149,6 +149,45 @@ describe("MeetChannelDialog delete", () => {
     expect(onCopyGuestLink).toHaveBeenCalledWith(`${origin}/meet/meetings/standup`);
   });
 
+  it("copies the persisted guest room code for ad-hoc meetings", () => {
+    const origin = window.location.origin;
+    const onCopyGuestLink = vi.fn();
+    render(
+      <TooltipProvider>
+        <MeetChannelDialog
+          dialog={{
+            ...editChannel,
+            kind: "meeting",
+            name: "Standup",
+            channelId: "chat-standup",
+            guestRoomCode: "g744-8kfg-adjz",
+            mayShare: true,
+          }}
+          groups={groups}
+          personalOwnerLabel="Demo User"
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+          onCopyGuestLink={onCopyGuestLink}
+          share={{
+            online: true,
+            knownPrincipals: [],
+            onSearchPrincipals: async () => [],
+            onPatchShareWith: async () => undefined,
+          }}
+        />
+      </TooltipProvider>,
+    );
+
+    const link = screen.getByLabelText(meetLabels.meetingLinkLabel) as HTMLInputElement;
+    expect(link.value).toBe(`${origin}/meet/meetings/g744-8kfg-adjz`);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
+    fireEvent.click(screen.getByRole("button", { name: meetLabels.copyLink }));
+    expect(onCopyGuestLink).toHaveBeenCalledWith(`${origin}/meet/meetings/g744-8kfg-adjz`);
+  });
+
   it("confirms leftover meeting delete without inventing a channel id", () => {
     const onConfirm = vi.fn();
     render(

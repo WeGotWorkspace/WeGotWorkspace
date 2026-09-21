@@ -10843,6 +10843,14 @@
                     "id": {
                         "$ref": "#/components/schemas/JmapId",
                         "description": "Optional client-suggested channel id (uri slug)."
+                    },
+                    "guestRoomCode": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "pattern": "^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$",
+                        "description": "Meeting kind only: persist the reserved ad-hoc room code shown at create time. Never rewritten to the collection slug."
                     }
                 }
             },

@@ -23,7 +23,7 @@ export function buildMeetChannel(input: MeetChannelWriteInput): MeetChannel {
     isSharee: false,
     shareWith: null,
     guestAccess: meeting,
-    guestRoomCode: meeting ? createMeetRoomCode() : null,
+    guestRoomCode: meeting ? input.guestRoomCode?.trim() || createMeetRoomCode() : null,
     myRights: { mayReadItems: true, mayWriteAll: true, mayShare: true, mayDelete: true },
   };
 }

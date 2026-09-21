@@ -112,6 +112,8 @@ export type MeetChannelWriteInput = {
   kind: MeetChannelKind;
   color?: string | null;
   groupSlug?: string | null;
+  /** Meeting kind: keep the reserved ad-hoc room code shown at create. */
+  guestRoomCode?: string | null;
 };
 
 export type MeetChannelPatchInput = {
