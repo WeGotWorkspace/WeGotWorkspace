@@ -154,6 +154,7 @@ final class ChatChannelRepository
             'calendarid' => (int) $instance->calendarid,
             'kind' => $kind,
             'topic' => $topic,
+            'room_code' => $this->guestRoomCodeFromPayload($payload, $kind),
         ]);
 
         return $this->mapChannel($username, $instance, $meta);
@@ -603,6 +604,44 @@ final class ChatChannelRepository
         }
 
         return $candidate;
+    }
+
+    /**
+     * Ad-hoc meeting invite id shown at create time (`xxxx-xxxx-xxxx`).
+     * Unique across meeting channels so guest knock stays on that room.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function guestRoomCodeFromPayload(array $payload, string $kind): ?string
+    {
+        if (! array_key_exists('guestRoomCode', $payload) || $payload['guestRoomCode'] === null) {
+            return null;
+        }
+        $code = strtolower(trim((string) $payload['guestRoomCode']));
+        if ($code === '') {
+            return null;
+        }
+        if ($kind !== ChatChannelMeta::KIND_MEETING) {
+            throw new ApiHttpException(
+                400,
+                'guestRoomCode is only valid for meeting channels.',
+                'invalidProperties',
+                ['guestRoomCode'],
+            );
+        }
+        if (preg_match('/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/', $code) !== 1) {
+            throw new ApiHttpException(
+                400,
+                'guestRoomCode must be an ad-hoc room code.',
+                'invalidProperties',
+                ['guestRoomCode'],
+            );
+        }
+        if (ChatChannelMeta::query()->where('room_code', $code)->exists()) {
+            throw new ApiHttpException(409, 'Meeting room code already exists.', 'alreadyExists');
+        }
+
+        return $code;
     }
 
     private function findChannelInstance(string $principalUri, string $channelUri): ?CalendarInstance

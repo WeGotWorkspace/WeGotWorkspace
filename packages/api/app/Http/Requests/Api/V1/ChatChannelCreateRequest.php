@@ -22,6 +22,13 @@ final class ChatChannelCreateRequest extends FormRequest
             'topic' => ['sometimes', 'nullable', 'string', 'max:1024'],
             'groupSlug' => ['sometimes', 'nullable', 'string', 'regex:/^[A-Za-z0-9._-]{1,190}$/'],
             'id' => ['sometimes', 'string', 'max:190', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'guestRoomCode' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'regex:/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/',
+                'prohibited_unless:kind,meeting',
+            ],
         ];
     }
 }
