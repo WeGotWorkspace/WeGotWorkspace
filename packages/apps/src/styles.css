@@ -37,13 +37,13 @@
   --text-2xs--line-height: 1rem;
   --color-forest: #042318;
   --color-emerald: #34d399;
-  --color-ink: #042a22;
+  --color-ink: #003311;
   --color-paper: #34d399;
   --color-slate-muted: #0a3a2a;
   --color-ghost: #22c55e;
   /* Workspace pane / shell background — brand paper, never pure white. */
   --color-cream: #fff5e9;
-  /** Suite home + sign-in shell — sampled from `home.svg` `--wai-bg`; keep in sync with `WORKSPACE_HOME_ACCENT`. */
+  /** Meet / suite dark surfaces — keep in sync with `WORKSPACE_HOME_ACCENT`. Auth/installer use `--color-cream`. */
   --workspace-home-bg: #1b1d3a;
 }
 

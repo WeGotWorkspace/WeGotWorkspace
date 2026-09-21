@@ -467,7 +467,7 @@ describe("notes workspace accent tokens", () => {
     // Primary fills use accent (not accent-strong); yellow needs ink fg.
     expect(css).toMatch(/\.notes-workspace \{[\s\S]*--button-primary-bg:\s*var\(--notes-accent\)/);
     expect(css).toMatch(
-      /\.notes-workspace \{[\s\S]*--button-primary-fg:\s*var\(--color-ink(?:,\s*#042a22)?\)/,
+      /\.notes-workspace \{[\s\S]*--button-primary-fg:\s*var\(--color-ink(?:,\s*#003311)?\)/,
     );
     expect(css).not.toMatch(/--button-primary-bg:\s*var\(--notes-accent-strong\)/);
     expect(css).toMatch(

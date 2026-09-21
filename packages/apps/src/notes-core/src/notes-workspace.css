@@ -69,7 +69,7 @@
    * for WCAG — cream-on-yellow fails contrast.
    */
   --button-primary-bg: var(--notes-accent);
-  --button-primary-fg: var(--color-ink, #042a22);
+  --button-primary-fg: var(--color-ink, #003311);
   /*
    * AppSidebar defaults (32/55/65% accent→cream) stay ink-safe on yellow
    * (hover ~12.9:1, selected ~11.8:1, selected-hover ~11.4:1). Pin selected
@@ -261,7 +261,7 @@
 .notes-workspace .app-sidebar__scroll {
   /* New note: warm-yellow fill + ink label (invert of selected chips; Tasks-style accent fill). */
   --button-primary-bg: var(--notes-accent);
-  --button-primary-fg: var(--color-ink, #042a22);
+  --button-primary-fg: var(--color-ink, #003311);
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-ink);
 }
@@ -274,9 +274,9 @@
  */
 .notes-workspace .app-sidebar__notifications {
   --button-primary-bg: var(--notes-accent);
-  --button-primary-fg: #042a22;
+  --button-primary-fg: #003311;
   --notification-inbox-badge-bg: var(--notes-accent);
-  --notification-inbox-badge-fg: #042a22;
+  --notification-inbox-badge-fg: #003311;
 }
 
 /**
@@ -312,7 +312,7 @@
   --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
   --button-primary-bg: var(--notes-accent);
-  --button-primary-fg: var(--color-ink, #042a22);
+  --button-primary-fg: var(--color-ink, #003311);
   --primary: var(--notes-accent);
   --primary-foreground: var(--color-ink);
   --button-active-color: var(--notes-accent-strong);

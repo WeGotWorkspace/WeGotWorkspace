@@ -12,7 +12,7 @@ import {
 describe("notes cream/ink hex literals", () => {
   it("matches styles.css cream and ink (no pure white)", () => {
     expect(NOTES_CREAM_HEX.toLowerCase()).toBe("#fff5e9");
-    expect(NOTES_INK_HEX.toLowerCase()).toBe("#042a22");
+    expect(NOTES_INK_HEX.toLowerCase()).toBe("#003311");
     expect(NOTES_CREAM_HEX).not.toMatch(/^#fff(?:fff)?$/i);
   });
 });
@@ -80,7 +80,7 @@ describe("notebookContrastFg", () => {
 
   it("uses cream on a dark notebook fill", () => {
     expect(notebookContrastFg("#1e3a5f")).toBe("var(--color-cream)");
-    expect(notebookContrastFg("#042a22")).toBe("var(--color-cream)");
+    expect(notebookContrastFg("#003311")).toBe("var(--color-cream)");
   });
 
   it("falls back to ink when the hex is missing", () => {

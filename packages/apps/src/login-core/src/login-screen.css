@@ -1,59 +1,80 @@
 @import "../../styles.css" reference;
 
+/**
+ * Auth / gated-entry shell — brand cream surface with ink chrome
+ * (same paper as apps home). Primary fills use Admin/Settings tile green
+ * `#003311` with white fg. Do not reuse `--workspace-home-bg` (home icon navy).
+ */
 .login-screen {
-  background-color: var(--workspace-home-bg, #1b1d3a);
-  color: #ffffff;
-  color-scheme: dark;
-  --app-switch-label-color: #ffffff;
-  --field-label-color: color-mix(in oklab, #ffffff 72%, transparent);
-  --input-background: color-mix(in oklab, #ffffff 12%, transparent);
-  --input-background-focus: color-mix(in oklab, #ffffff 18%, transparent);
-  --input-placeholder-color: color-mix(in oklab, #ffffff 42%, transparent);
-  /* Explicit white — @theme inline resolves --color-foreground at :root, so
-   * text-foreground alone stays dark-ink on auth fields. */
-  --foreground: #ffffff;
-  --color-foreground: #ffffff;
-  --button-primary-bg: #ffffff;
-  --button-primary-fg: var(--workspace-home-bg, #1b1d3a);
+  background-color: var(--color-cream, #fff5e9);
+  color: var(--color-ink, #003311);
+  color-scheme: light;
+  --app-switch-label-color: var(--color-ink, #003311);
+  /* Same tagline mix surface as app sidebars (muted “we got” over lockup paper). */
+  --app-switch-lockup-bg: var(--color-cream, #fff5e9);
+  --workspace-shell-header-user-menu-bg: color-mix(
+    in oklab,
+    var(--color-ink, #003311) 12%,
+    var(--color-cream, #fff5e9)
+  );
+  --workspace-shell-header-user-menu-fg: var(--color-ink, #003311);
+  --workspace-shell-header-user-menu-border: color-mix(
+    in oklab,
+    var(--color-ink, #003311) 18%,
+    transparent
+  );
+  --field-label-color: color-mix(in oklab, var(--color-ink, #003311) 60%, transparent);
+  --input-background: color-mix(
+    in oklab,
+    var(--color-ink, #003311) 6%,
+    var(--color-cream, #fff5e9)
+  );
+  --input-background-focus: color-mix(
+    in oklab,
+    var(--color-ink, #003311) 8%,
+    var(--color-cream, #fff5e9)
+  );
+  --input-placeholder-color: color-mix(in oklab, var(--color-ink, #003311) 42%, transparent);
+  --foreground: var(--color-ink, #003311);
+  --color-foreground: var(--color-ink, #003311);
+  /* Brand dark green — same hex as WORKSPACE_APP_ACCENT.admin / settings. */
+  --button-primary-bg: #003311;
+  --button-primary-fg: #ffffff;
 }
 
 .login-screen .input,
 .login-screen .textarea,
 .login-screen .control-surface {
-  color: #ffffff;
-  -webkit-text-fill-color: #ffffff;
-  caret-color: #ffffff;
+  color: var(--color-ink, #003311);
+  -webkit-text-fill-color: var(--color-ink, #003311);
+  caret-color: var(--color-ink, #003311);
 }
 
 .login-screen .workspace-shell-header {
-  color: #ffffff;
+  color: var(--color-ink, #003311);
 }
 
 .login-screen__hero {
   font-family: var(--font-serif);
-  color: #ffffff;
+  color: var(--color-ink, #003311);
   @apply mb-4 text-balance;
 }
 
 .login-screen__eyebrow {
-  color: color-mix(in oklab, #ffffff 72%, transparent);
+  color: color-mix(in oklab, var(--color-ink, #003311) 62%, transparent);
   @apply mb-3 text-xs font-medium uppercase tracking-widest;
 }
 
 .login-screen__hint {
-  color: color-mix(in oklab, #ffffff 72%, transparent);
+  color: color-mix(in oklab, var(--color-ink, #003311) 62%, transparent);
   @apply pt-4 text-sm;
 }
 
 .login-screen__hint a {
-  color: #ffffff;
+  color: var(--color-ink, #003311);
   font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 2px;
-}
-
-.login-screen__footer {
-  color: color-mix(in oklab, #ffffff 62%, transparent);
 }
 
 .login-screen__error {
@@ -78,10 +99,10 @@
 }
 
 .login-screen__success p {
-  color: color-mix(in oklab, #ffffff 82%, transparent);
+  color: color-mix(in oklab, var(--color-ink, #003311) 78%, transparent);
 }
 
 .login-screen .input__clear:hover,
 .login-screen .input__visibility:hover:not(:disabled) {
-  background-color: color-mix(in oklab, #ffffff 12%, transparent);
+  background-color: color-mix(in oklab, var(--color-ink, #003311) 10%, transparent);
 }

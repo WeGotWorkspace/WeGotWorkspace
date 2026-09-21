@@ -173,7 +173,7 @@
 .button--severity-success {
   --button-severity-color: var(
     --button-severity-success-color,
-    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--color-ink, #042a22))
+    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--color-ink, #003311))
   );
   --button-severity-hover-background: var(
     --button-severity-success-hover-background,

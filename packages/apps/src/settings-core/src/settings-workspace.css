@@ -55,7 +55,7 @@
    * AppSidebar item washes on the 16% accent→cream rail. Near-black `#003311`
    * has a WCAG dead zone (~50–59%): neither ink nor cream clears 4.5:1.
    * Keep mixes ink-safe (hover/selected/selected-hover ≤49%). Measured oklab
-   * mixes → sRGB, ink `#042a22`: idle 16% ~10.2:1, hover 24% ~8.6:1,
+   * mixes → sRGB, ink `#003311`: idle 16% ~10.2:1, hover 24% ~8.6:1,
    * selected 36% ~6.4:1, selected-hover 44% ~5.2:1.
    */
   --app-sidebar-item-hover-bg: color-mix(

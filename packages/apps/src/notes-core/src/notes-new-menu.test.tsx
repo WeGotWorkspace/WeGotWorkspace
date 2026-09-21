@@ -68,7 +68,7 @@ describe("NotesNewMenu primary tokens", () => {
       /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--notes-accent\)/,
     );
     expect(workspaceCss).toMatch(
-      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-fg:\s*var\(--color-ink(?:,\s*#042a22)?\)/,
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-fg:\s*var\(--color-ink(?:,\s*#003311)?\)/,
     );
     expect(workspaceCss).not.toMatch(
       /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--color-ink/,
@@ -76,18 +76,18 @@ describe("NotesNewMenu primary tokens", () => {
   });
 
   it("mirrors New note primary onto the header notification unread badge", () => {
-    // Exact New-note pair: --notes-accent + ink #042a22 (not ink-bg/emerald-fg fallback).
+    // Exact New-note pair: --notes-accent + ink #003311 (not ink-bg/emerald-fg fallback).
     expect(workspaceCss).toMatch(
       /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-bg:\s*var\(--notes-accent\)/,
     );
     expect(workspaceCss).toMatch(
-      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-fg:\s*#042a22/,
+      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-fg:\s*#003311/,
     );
     expect(workspaceCss).toMatch(
       /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-bg:\s*var\(--notes-accent\)/,
     );
     expect(workspaceCss).toMatch(
-      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-fg:\s*#042a22/,
+      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-fg:\s*#003311/,
     );
   });
 });

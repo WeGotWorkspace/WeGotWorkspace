@@ -9,7 +9,7 @@
   --share-dialog-tag-fg: var(--color-ink);
   --share-dialog-muted: var(
     --muted-foreground,
-    color-mix(in oklab, var(--color-ink, #042a22) 55%, transparent)
+    color-mix(in oklab, var(--color-ink, #003311) 55%, transparent)
   );
   --card-title-icon-color: var(--share-dialog-accent);
   --card-description-color: var(--share-dialog-muted);
@@ -260,7 +260,7 @@
   --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
   --share-dialog-muted: var(
     --muted-foreground,
-    color-mix(in oklab, var(--color-ink, #042a22) 55%, transparent)
+    color-mix(in oklab, var(--color-ink, #003311) 55%, transparent)
   );
   --input-height: var(--control-height-sm, 2rem);
 }

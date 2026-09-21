@@ -99,13 +99,13 @@ describe("drive workspace sidebar primary", () => {
       /\.drive-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-bg:\s*var\(--drive-accent\)/,
     );
     expect(css).toMatch(
-      /\.drive-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-fg:\s*#042a22/,
+      /\.drive-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-fg:\s*#003311/,
     );
     expect(css).toMatch(
       /\.drive-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-bg:\s*var\(--drive-accent\)/,
     );
     expect(css).toMatch(
-      /\.drive-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-fg:\s*#042a22/,
+      /\.drive-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-fg:\s*#003311/,
     );
   });
 });
