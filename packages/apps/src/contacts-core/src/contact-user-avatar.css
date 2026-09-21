@@ -2,7 +2,7 @@
 
 /**
  * Person / org fallback swatch. `--contacts-book-color` is the sidebar
- * address-book hex (`addressBookDotColor`). Unset → mint app accent.
+ * address-book hex (`addressBookDotColor`). Unset → purple app accent.
  * Photo imgs cover the mark; do not tint `.user-avatar__image`.
  */
 .contacts-user-avatar {

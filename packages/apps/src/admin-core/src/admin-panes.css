@@ -48,8 +48,8 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-group-avatar-slot {
   @apply size-9 rounded-full flex items-center justify-center shrink-0;
-  background-color: var(--app-sidebar-bg);
-  color: var(--app-sidebar-color);
+  background-color: var(--admin-accent);
+  color: #ffffff;
 }
 
 /* --- Typography --- */
@@ -162,7 +162,7 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-fill {
   @apply h-full transition-all duration-500 ease-out;
-  background-color: var(--button-primary-bg, #2f302c);
+  background-color: var(--button-primary-bg, var(--admin-accent, #003311));
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-list {

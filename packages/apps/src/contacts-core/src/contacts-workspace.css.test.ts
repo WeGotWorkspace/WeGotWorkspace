@@ -50,22 +50,51 @@ describe("contacts workspace sidebar chrome", () => {
     expect(tsx).not.toMatch(/showColorDot/);
   });
 
-  it("uses mint #39d49b for chrome accents, mixed 12% onto cream", () => {
+  it("uses purple #962fa8 for chrome accents, mixed 10% onto cream like Calendar", () => {
     const accent = css.match(
       /\.contacts-workspace \{[\s\S]*?--contacts-accent:\s*(#[0-9a-fA-F]{6})/,
     )?.[1];
-    expect(accent?.toLowerCase()).toBe("#39d49b");
-    expect(css).toMatch(/\.contacts-dialog-surface \{[\s\S]*?--contacts-accent:\s*#39d49b/i);
-    expect(css).not.toMatch(/--contacts-accent:\s*#8b6f45/i);
+    expect(accent?.toLowerCase()).toBe("#962fa8");
+    expect(css).toMatch(/\.contacts-dialog-surface \{[\s\S]*?--contacts-accent:\s*#962fa8/i);
     expect(css).toMatch(
-      /--contacts-sidebar:\s*color-mix\(in oklab,\s*var\(--contacts-accent\) 12%,\s*var\(--color-cream/,
+      /--contacts-accent-strong:\s*color-mix\(in oklab,\s*var\(--contacts-accent\) 32%,\s*var\(--color-ink\)\)/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*var\(--color-ink/,
+      /\.contacts-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--contacts-accent\)/,
+    );
+    expect(css).toMatch(/\.contacts-workspace \{[\s\S]*?--button-primary-fg:\s*#ffffff/);
+    expect(css).toMatch(/\.contacts-workspace \{[\s\S]*?--primary:\s*var\(--contacts-accent\)/);
+    expect(css).toMatch(/\.contacts-workspace \{[\s\S]*?--primary-foreground:\s*#ffffff/);
+    expect(css).not.toMatch(/--contacts-accent:\s*#8b6f45/i);
+    expect(css).not.toMatch(/--contacts-accent:\s*#39d49b/i);
+    expect(css).not.toMatch(/--button-primary-bg:\s*var\(--contacts-accent-strong\)/);
+    expect(css).toMatch(
+      /--contacts-sidebar:\s*color-mix\(in oklab,\s*var\(--contacts-accent\) 10%,\s*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*#ffffff/,
     );
   });
 
-  it("keeps idle action icons muted ink, not mint accent", () => {
+  it("brightens AppSidebar selected wash for purple via --app-sidebar-item-*", () => {
+    expect(css).toMatch(
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklab,\s*var\(--contacts-accent\) 28%,\s*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--contacts-accent\) 38%[\s\S]*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--contacts-accent\) 48%[\s\S]*var\(--color-cream/,
+    );
+    expect(css).toMatch(
+      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-ink\)/,
+    );
+    expect(css).toMatch(
+      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-ink\)/,
+    );
+  });
+
+  it("keeps idle action icons muted ink, not purple accent", () => {
     const detailPane = css.match(
       /\.contacts-workspace \.workspace-detail-pane \.action-bar,[\s\S]*?\.contacts-workspace \.workspace-detail-pane \{[\s\S]*?\}/,
     )?.[0];
@@ -195,7 +224,7 @@ describe("contacts workspace sidebar chrome", () => {
     expect(css).toMatch(/\.contacts-detail-view__tag-group/);
   });
 
-  it("washes person avatars from the card's address-book color, not mint-only", () => {
+  it("washes person avatars from the card's address-book color, not accent-only", () => {
     expect(avatarCss).toMatch(
       /--user-avatar-bg:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--contacts-accent\)\) 24%,\s*var\(--color-cream/,
     );
@@ -236,9 +265,9 @@ describe("contacts workspace sidebar chrome", () => {
     expect(lockupBlock).not.toMatch(/#8[Bb]6[Ff]45|#b5c96a|#000\b|#111|#333/);
   });
 
-  it("tints group icons from --collection-row-color, not the mint app accent", () => {
+  it("tints group icons from --collection-row-color, not the purple app accent", () => {
     expect(groupIconCss).toMatch(/color:\s*var\(--collection-row-color,\s*var\(--color-ink\)\)/);
-    expect(groupIconCss).not.toMatch(/--contacts-accent|#39d49b/);
+    expect(groupIconCss).not.toMatch(/--contacts-accent|#39d49b|#962fa8/);
     expect(orgIconCss).toMatch(/color:\s*var\(--user-avatar-fg,\s*var\(--color-ink\)\)/);
     expect(orgIconCss).not.toMatch(/--collection-row-color/);
     expect(groupRows).toMatch(/<ContactsGroupIcon book=\{group\}/);

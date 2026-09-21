@@ -2,15 +2,16 @@
 @import "../../workspace-shell/src/workspace-split-app.css";
 
 /**
- * Contacts product shell: cream panes + mint accent (`#39d49b`).
- * Saturated mint, still ink-on-primary like Notes yellow — white on this
- * fill fails WCAG UI 3:1. Sidebar is 12% accent on cream.
+ * Contacts product shell: cream panes + brand purple from contacts.svg tile
+ * (`#962fa8` — same hex as WORKSPACE_APP_ACCENT.contacts / Calendar UI accent).
+ * Primary fills use accent with white fg. Strong is 32% accent → ink.
+ * Sidebar / nav washes match Calendar (`10%` / `28%` / `38%` / `48%`).
  * Import only from {@link ContactsWorkspace}.
  */
 .contacts-workspace {
-  --contacts-accent: #39d49b;
-  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 42%, #042a22);
-  --contacts-sidebar: color-mix(in oklab, var(--contacts-accent) 12%, var(--color-cream, #fff5e9));
+  --contacts-accent: #962fa8;
+  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 32%, var(--color-ink));
+  --contacts-sidebar: color-mix(in oklab, var(--contacts-accent) 10%, var(--color-cream, #fff5e9));
   --workspace-accent: var(--contacts-accent);
   --color-emerald: var(--contacts-accent);
   --workspace-root-bg: var(--color-cream, #fff5e9);
@@ -34,10 +35,12 @@
   --loading-spinner-color: color-mix(in oklab, var(--color-ink) 45%, transparent);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: var(--color-ink, #042a22);
+  --button-primary-fg: #ffffff;
+  --primary: var(--contacts-accent);
+  --primary-foreground: #ffffff;
   --checkbox-checked-bg: var(--contacts-accent);
   --checkbox-checked-border: var(--contacts-accent);
-  --checkbox-checked-fg: var(--color-ink);
+  --checkbox-checked-fg: #ffffff;
   --switch-on-bg: var(--contacts-accent);
 
   /* Outline action language for header + collection sidebar + action-bar. */
@@ -54,18 +57,42 @@
     var(--contacts-accent) 24%,
     var(--color-cream, #fff5e9)
   );
+
+  /*
+   * AppSidebar selected wash: brand purple still reads heavy at the shared
+   * 55%/65% accent→cream mixes. Brighten via `--app-sidebar-item-*` only —
+   * same recipe as Calendar. Ink on-color clears AA (hover 28% ~9.4:1,
+   * selected 38% ~8.0:1, selected-hover 48% ~6.7:1). Hover fg is ink on
+   * `.app-sidebar__scroll` so workspace accent-strong does not leak onto nav.
+   */
+  --app-sidebar-item-hover-bg: color-mix(
+    in oklab,
+    var(--contacts-accent) 28%,
+    var(--color-cream, #fff5e9)
+  );
+  --app-sidebar-item-selected-bg: color-mix(
+    in oklab,
+    var(--contacts-accent) 38%,
+    var(--color-cream, #fff5e9)
+  );
+  --app-sidebar-item-selected-hover-bg: color-mix(
+    in oklab,
+    var(--contacts-accent) 48%,
+    var(--color-cream, #fff5e9)
+  );
+  --app-sidebar-item-selected-color: var(--color-ink);
 }
 
 /*
- * Primary CTA only — New / Save keep mint + ink. Do not set
- * `--button-outline-color` to mint here:
+ * Primary CTA only — New / Save keep purple + white. Do not set
+ * `--button-outline-color` to accent here:
  * action-bar idle chips stay muted ink (Calendar / Notes / Tasks).
- * Accent on every outline icon leaked mint onto trash and toolbar actions.
+ * Accent on every outline icon leaked onto trash and toolbar actions.
  */
 .contacts-workspace .workspace-detail-pane .action-bar,
 .contacts-workspace .workspace-detail-pane {
   --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: var(--color-ink, #042a22);
+  --button-primary-fg: #ffffff;
 }
 
 /*
@@ -78,7 +105,9 @@
 
 .contacts-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: var(--color-ink, #042a22);
+  --button-primary-fg: #ffffff;
+  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
+  --button-outline-hover-color: var(--color-ink);
 }
 
 /**
@@ -419,7 +448,7 @@
 }
 
 .contacts-detail-view__link {
-  color: var(--contacts-accent-strong, #0f6b52);
+  color: var(--contacts-accent-strong);
   text-decoration: none;
 }
 
@@ -435,14 +464,14 @@
 }
 
 .contacts-dialog-surface {
-  --contacts-accent: #39d49b;
-  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 42%, #042a22);
+  --contacts-accent: #962fa8;
+  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 32%, var(--color-ink));
   --workspace-accent: var(--contacts-accent);
   --color-emerald: var(--contacts-accent);
   --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: var(--color-ink, #042a22);
+  --button-primary-fg: #ffffff;
   --primary: var(--contacts-accent);
-  --primary-foreground: var(--color-ink);
+  --primary-foreground: #ffffff;
   --button-active-color: var(--contacts-accent-strong);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --segmented-control-track-active-bg: var(--color-ink);
