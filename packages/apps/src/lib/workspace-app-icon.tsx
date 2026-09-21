@@ -48,7 +48,7 @@ export function WorkspaceAppIcon({ appId, className, variant = "default" }: Work
 
 type WorkspaceHomeIconProps = {
   className?: string;
-  /** Full-color artwork on the workspace home screen; `switch-trigger` mono-colors layers for sidebars. */
+  /** Default: `<img>` of `/app-icons/home.svg`. `switch-trigger`: cream tile + inlined suite mark. */
   variant?: WorkspaceAppIconVariant;
 };
 

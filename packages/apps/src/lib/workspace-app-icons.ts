@@ -56,7 +56,7 @@ export function workspaceHomeIconUiSrc(): string {
   return "/app-icons/home.svg";
 }
 
-/** Sampled from home icon background — keep in sync with `home.webmanifest` and `--workspace-home-bg`. */
+/** Suite / Meet dark-surface accent — keep in sync with `home.webmanifest` and `--workspace-home-bg`. */
 export const WORKSPACE_HOME_ACCENT = "#1B1D3A";
 
 /**

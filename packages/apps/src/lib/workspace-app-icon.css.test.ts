@@ -21,6 +21,7 @@ describe("workspace app icon radius", () => {
       /\.apps-home-screen__tile-icon--accent \{[\s\S]*border-radius:\s*var\(--workspace-app-icon-radius/,
     );
     expect(homeCss).not.toMatch(/rounded-\[6px\]/);
+    expect(homeCss).not.toMatch(/shadow-/);
   });
 });
 
@@ -30,8 +31,30 @@ describe("apps home screen shell", () => {
       /\.apps-home-screen \{[\s\S]*background-color:\s*var\(--color-cream,\s*#fff5e9\)/,
     );
     expect(homeCss).toMatch(/--app-switch-label-color:\s*var\(--color-ink/);
-    expect(homeTsx).toMatch(/sm:grid-cols-4/);
-    expect(homeTsx).not.toMatch(/grid-cols-3/);
+    expect(homeTsx).toMatch(/grid-cols-2/);
+    expect(homeTsx).toMatch(/sm:grid-cols-3/);
+    expect(homeTsx).toMatch(/md:grid-cols-4/);
+    expect(homeTsx).not.toMatch(/grid-cols-5/);
     expect(homeTsx).toMatch(/flex flex-1 items-center justify-center/);
+  });
+
+  it("scales home tile icons 25% larger from sm (128px → 160px)", () => {
+    expect(homeCss).toMatch(
+      /\.apps-home-screen__tile-icon \{[\s\S]*@apply[\s\S]*size-32[\s\S]*sm:size-40/,
+    );
+    expect(homeCss).toMatch(
+      /\.apps-home-screen__tile-icon--accent \{[\s\S]*@apply[\s\S]*size-32[\s\S]*sm:size-40/,
+    );
+  });
+});
+
+describe("workspace home switch-trigger mark", () => {
+  it("keeps a cream tile behind the solid suite mark (no legacy multicolor --wai-* remap)", () => {
+    expect(iconCss).toMatch(
+      /\.workspace-app-icon--switch-trigger-home \{[\s\S]*--app-switch-icon-bg:\s*var\(--color-cream/,
+    );
+    expect(iconCss).not.toMatch(/--wai-fg:\s*#f59f00/);
+    expect(iconCss).not.toMatch(/--wai-detail:\s*#0ca678/);
+    expect(iconCss).not.toMatch(/--wai-cutout:\s*#4c6ef5/);
   });
 });

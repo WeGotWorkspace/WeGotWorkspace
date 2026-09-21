@@ -18,6 +18,10 @@ type Story = StoryObj<typeof LoginScreen>;
 
 export const Default: Story = {
   render: () => <LoginScreen passwordRecoveryEnabled />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByText(/© .*WeGotWorkspace/)).toBeNull();
+  },
 };
 
 export const ConnectAssistant: Story = {

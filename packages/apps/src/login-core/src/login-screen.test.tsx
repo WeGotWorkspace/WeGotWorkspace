@@ -73,6 +73,11 @@ describe("LoginScreen return path", () => {
     expect(screen.queryByRole("link", { name: "Forgot password?" })).toBeNull();
   });
 
+  it("does not render a copyright year footer", () => {
+    render(<LoginScreen />);
+    expect(screen.queryByText(/© .*WeGotWorkspace/)).toBeNull();
+  });
+
   it("falls back to home when no return is provided", async () => {
     render(<LoginScreen />);
 

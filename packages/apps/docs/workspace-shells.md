@@ -33,7 +33,7 @@ Agent-readable routing — read this before scaffolding a new `*-core` package:
 ```
 IF product = installer (`/install`)
   THEN shell = custom
-  THEN entry = InstallerWorkspace + AuthenticationPage (hideHeader / hideFooter)
+  THEN entry = InstallerWorkspace + AuthenticationPage
   THEN do NOT use WorkspaceAppLayout or a labeled Setup-steps sidebar
 
 IF product = multi-section config OR admin OR drive browser OR docs library OR Meet channel workspace

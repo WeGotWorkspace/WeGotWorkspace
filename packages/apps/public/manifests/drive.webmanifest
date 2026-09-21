@@ -9,13 +9,13 @@
   "theme_color": "#8ACE00",
   "icons": [
     {
-      "src": "/app-icons/drive.svg?v=14",
+      "src": "/app-icons/drive.svg?v=15",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/drive-180.png?v=14",
+      "src": "/pwa-icons/drive-180.png?v=15",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

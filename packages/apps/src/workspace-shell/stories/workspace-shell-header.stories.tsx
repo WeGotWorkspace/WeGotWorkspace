@@ -91,7 +91,6 @@ export const Login: Story = {
     </main>
   ),
   args: {
-    appSwitchDisabled: true,
-    appSwitchSubtitle: "Workspace",
+    brandLockup: true,
   },
 };

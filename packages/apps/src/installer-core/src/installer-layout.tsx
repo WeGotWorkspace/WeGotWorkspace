@@ -81,8 +81,6 @@ export function InstallerLayout({
             <InstallerStepDots step={step} includeDatabaseStep={includeDatabaseStep} />
           ) : undefined
         }
-        hideHeader
-        hideFooter
       >
         {children}
       </AuthenticationPage>
