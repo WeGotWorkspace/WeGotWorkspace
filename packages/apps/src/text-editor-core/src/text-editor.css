@@ -444,6 +444,8 @@
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label input {
+  /* Native control stays in the a11y tree; the sibling span is the painted box.
+   * TipTap 3 hides that span inline — TextEditorTaskItem unwraps it. */
   @apply sr-only;
 }
 
