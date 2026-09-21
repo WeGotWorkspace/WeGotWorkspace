@@ -1,10 +1,21 @@
 @import "../../styles.css" reference;
 
-/** Shared suite home shell — matches `home.svg` background and sign-in screen. */
+/** Shared suite home shell — brand cream surface with ink chrome. */
 .apps-home-screen {
-  background-color: var(--workspace-home-bg, #1b1d3a);
-  color: #ffffff;
-  --app-switch-label-color: #ffffff;
+  background-color: var(--color-cream, #fff5e9);
+  color: var(--color-ink, #042a22);
+  --app-switch-label-color: var(--color-ink, #042a22);
+  --workspace-shell-header-user-menu-bg: color-mix(
+    in oklab,
+    var(--color-ink, #042a22) 12%,
+    var(--color-cream, #fff5e9)
+  );
+  --workspace-shell-header-user-menu-fg: var(--color-ink, #042a22);
+  --workspace-shell-header-user-menu-border: color-mix(
+    in oklab,
+    var(--color-ink, #042a22) 18%,
+    transparent
+  );
 }
 
 /** Home grid tile — 128px cell; 16px radius is CSS-only (SVG artwork stays square). */

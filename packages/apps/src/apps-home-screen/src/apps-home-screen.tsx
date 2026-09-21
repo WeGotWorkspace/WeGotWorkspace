@@ -38,7 +38,7 @@ export function AppsHomeScreen({
   onLogout,
 }: AppsHomeScreenProps) {
   return (
-    <section className={cn("apps-home-screen w-full min-h-dvh", className)}>
+    <section className={cn("apps-home-screen flex w-full min-h-dvh flex-col", className)}>
       <header className="workspace-shell-header shrink-0">
         <div className="workspace-shell-header__start">
           <AppSwitchButton subtitle="Workspace" />
@@ -54,8 +54,8 @@ export function AppsHomeScreen({
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-5xl px-6 pb-10 md:px-10 md:pb-14">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3">
+      <div className="flex flex-1 items-center justify-center px-6 py-10 md:px-10 md:py-14">
+        <div className="grid w-full max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4">
           {apps.map((app) => (
             <button
               key={app.id}
@@ -85,7 +85,7 @@ export function AppsHomeScreen({
                   <span className="text-current [&_svg]:size-12">{app.icon}</span>
                 </span>
               )}
-              <span className="text-sm font-medium text-white">{app.label}</span>
+              <span className="text-sm font-medium">{app.label}</span>
             </button>
           ))}
         </div>
