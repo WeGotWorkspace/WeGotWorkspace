@@ -49,12 +49,13 @@
 .agenda-day-heading.list-sticky-header {
   @apply box-border m-0 w-full border-b-0 px-1.5 pt-1 pb-2.5 md:px-1.5;
   z-index: var(--_lc-z-sticky);
-  /* Opaque surface so event cards scrolling underneath don't show through.
+  /* Opaque cream paper so event cards scrolling underneath don't show through.
+     Prefer shared sticky / workspace cream tokens — never pure white.
      Workspace can set --_lc-list-heading-bg (e.g. transparent under the
      mobile sidebar scrim) without flattening the whole calendar surface. */
   background-color: var(
     --_lc-list-heading-bg,
-    var(--lg-background-color, var(--_lc-surface-bg, light-dark(#fff, #222)))
+    var(--list-sticky-header-bg, var(--_lc-surface-bg, var(--color-cream, #fff5e9)))
   );
 }
 
@@ -94,6 +95,6 @@
   --_lc-event-card-bg-active: color-mix(
     in srgb,
     var(--_lc-event-accent-color, CanvasText) 10%,
-    var(--_lc-surface-bg, light-dark(#fff, #222))
+    var(--_lc-surface-bg, var(--color-cream, #fff5e9))
   );
 }

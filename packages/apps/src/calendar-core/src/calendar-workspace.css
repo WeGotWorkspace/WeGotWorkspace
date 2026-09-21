@@ -1,5 +1,6 @@
 @import "../../styles.css" reference;
 @import "../../workspace-shell/src/workspace-split-app.css";
+@import "../../ui/list-sticky-header-sst.css";
 @import "./calendar-event-dialog.css";
 
 /**
@@ -20,6 +21,7 @@
   --color-emerald: var(--calendar-accent);
   --workspace-root-bg: var(--color-cream, #fff5e9);
   --workspace-detail-bg: var(--color-cream, #fff5e9);
+  /* Sticky cream: shared `ui/list-sticky-header-sst.css` (`--list-sticky-header-bg`, `--_lc-surface-bg`). */
 
   --app-sidebar-bg: var(--calendar-sidebar);
   /* Alias for DocsCollabSidebarPanel wash consumers (invitations = sidebar tint). */

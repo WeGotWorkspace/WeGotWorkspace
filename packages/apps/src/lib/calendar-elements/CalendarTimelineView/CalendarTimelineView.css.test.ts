@@ -125,6 +125,19 @@ describe("CalendarTimelineView year-grid CSS", () => {
   });
 });
 
+describe("CalendarTimelineView sticky surface CSS", () => {
+  it("paints sticky sidebar and all-day shells with cream, never pure white", () => {
+    expect(css).toMatch(
+      /\.timeline-sidebar \{[\s\S]*background-color:\s*var\(--_lc-surface-bg,\s*var\(--color-cream,\s*#fff5e9\)\)/,
+    );
+    expect(css).toMatch(
+      /\.timeline-all-day-shell \{[\s\S]*background-color:\s*var\(--_lc-surface-bg,\s*var\(--color-cream,\s*#fff5e9\)\)/,
+    );
+    expect(css).not.toMatch(/--_lc-surface-bg,\s*light-dark\(\s*#fff\b/);
+    expect(css).not.toMatch(/background-color:\s*var\(--_lc-surface-bg,\s*light-dark\(\s*#fff/);
+  });
+});
+
 describe("CalendarTimelineView compact-month CSS", () => {
   it("keeps the container query and force-compact blocks in sync as slim view-only bars", () => {
     const queryBlock = extractBalancedBlock(css, COMPACT_QUERY);

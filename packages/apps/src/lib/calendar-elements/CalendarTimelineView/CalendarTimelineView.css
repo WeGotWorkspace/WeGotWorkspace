@@ -28,22 +28,22 @@
     --_lc-grid-line-color: color-mix(
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 14%,
-      var(--_lc-surface-bg, light-dark(#fff, #222))
+      var(--_lc-surface-bg, var(--color-cream, #fff5e9))
     );
     --_lc-grid-line-day-color: color-mix(
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 72%,
-      var(--_lc-surface-bg, light-dark(#fff, #222))
+      var(--_lc-surface-bg, var(--color-cream, #fff5e9))
     );
     --_lc-in-month-day-color: color-mix(
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 100%,
-      var(--_lc-surface-bg, light-dark(#fff, #222))
+      var(--_lc-surface-bg, var(--color-cream, #fff5e9))
     );
     --_lc-outside-month-day-color: color-mix(
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 63%,
-      var(--_lc-surface-bg, light-dark(#fff, #222))
+      var(--_lc-surface-bg, var(--color-cream, #fff5e9))
     );
     --_lc-grid-ghost-color: color-mix(
       in srgb,
@@ -169,7 +169,7 @@ time-line.timeline-main {
   isolation: isolate;
   height: var(--_lc-timeline-content-height);
   min-height: var(--_lc-timeline-content-height);
-  background-color: var(--_lc-surface-bg, light-dark(#fff, #222));
+  background-color: var(--_lc-surface-bg, var(--color-cream, #fff5e9));
   /* Internal layout mirrors the composed column: no weekday header row, an all-day slot as
      tall as the (measured) sticky shell — itself sticky, so it covers the top-left corner
      while scrolling — and the timed hour labels below. */
@@ -271,7 +271,7 @@ time-line.timeline-main {
   z-index: 3;
   flex: none;
   min-height: 0;
-  background-color: var(--_lc-surface-bg, light-dark(#fff, #222));
+  background-color: var(--_lc-surface-bg, var(--color-cream, #fff5e9));
   border-bottom: var(--_lc-timeline-section-divider-width) solid
     var(--_lc-timeline-section-divider-color);
 }
@@ -364,7 +364,7 @@ time-line.timeline-timed {
      stagger layout get a crisp gap; against the plain surface background the ring is invisible,
      so non-overlapping cards are unchanged. Inherits through <time-line>'s shadow tree into
      each event-card. */
-  --_lc-event-card-cutout-ring: 0 0 0 1.5px var(--_lc-surface-bg, light-dark(#fff, #222));
+  --_lc-event-card-cutout-ring: 0 0 0 1.5px var(--_lc-surface-bg, var(--color-cream, #fff5e9));
   /* Same four-side gutter as all-day bars. */
   --time-line-event-inline-inset: 1px;
 }
@@ -382,7 +382,7 @@ time-line.timeline-timed::part(viewport) {
     --time-line-grid-color: color-mix(
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 8%,
-      var(--_lc-surface-bg, light-dark(#fff, #222))
+      var(--_lc-surface-bg, var(--color-cream, #fff5e9))
     );
   }
 }

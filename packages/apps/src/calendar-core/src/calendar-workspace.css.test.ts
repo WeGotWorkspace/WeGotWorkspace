@@ -9,6 +9,11 @@ const tsx = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
 const searchTsx = readFileSync(join(here, "calendar-search-results.tsx"), "utf8");
 
 describe("calendar workspace brand accent", () => {
+  it("imports cream sticky SST so lit surfaces cannot regress to white", () => {
+    expect(css).toMatch(/@import\s+["'].*list-sticky-header-sst\.css["']/);
+    expect(css).toMatch(/Sticky cream: shared `ui\/list-sticky-header-sst\.css`/);
+  });
+
   it("uses icon-mark purple for UI accent with cream-mix strong and accent primary fills", () => {
     expect(css).toMatch(/\.calendar-workspace \{[\s\S]*?--calendar-accent:\s*#962fa8/);
     expect(css).toMatch(

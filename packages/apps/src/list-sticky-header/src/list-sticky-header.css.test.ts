@@ -14,6 +14,16 @@ describe("list-sticky-header CSS", () => {
     expect(css).toMatch(/var\(--color-cream, #fff5e9\)/);
   });
 
+  it("defaults sticky background to cream paper, never pure white", () => {
+    expect(css).toMatch(
+      /\.list-sticky-header \{[\s\S]*background-color:\s*var\(\s*--list-sticky-header-bg,\s*var\(--workspace-root-bg,\s*var\(--color-cream,\s*#fff5e9\)\)/,
+    );
+    expect(css).not.toMatch(/\.list-sticky-header \{[\s\S]*background-color:[^;]*#fff(?:fff)?\b/i);
+    expect(css).not.toMatch(/\.list-sticky-header \{[\s\S]*background-color:[^;]*\bwhite\b/i);
+    expect(css).not.toMatch(/--list-sticky-header-bg,\s*#fff(?:fff)?\b/i);
+    expect(css).not.toMatch(/--list-sticky-header-bg,\s*white\b/i);
+  });
+
   it("owns the split-label type language used by calendar list and chat days", () => {
     expect(css).toMatch(/\.list-sticky-header \{[\s\S]*flex items-baseline gap-2\.5/);
     expect(css).toMatch(/\.list-sticky-header \{[\s\S]*font-normal/);

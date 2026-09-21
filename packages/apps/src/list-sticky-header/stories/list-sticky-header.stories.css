@@ -12,5 +12,5 @@
 }
 
 .list-sticky-header-story-scroll--chat {
-  --list-sticky-header-bg: #ffffff;
+  --list-sticky-header-bg: var(--color-cream, #fff5e9);
 }
