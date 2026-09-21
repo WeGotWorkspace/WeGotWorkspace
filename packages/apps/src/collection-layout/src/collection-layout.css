@@ -2,7 +2,7 @@
 
 .collection-list-pane {
   @apply relative flex min-w-0 flex-1 shrink-0 flex-col border-r md:w-96 md:flex-none;
-  background-color: var(--workspace-root-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-root-bg, var(--color-cream, #fff5e9));
   border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
 }
 

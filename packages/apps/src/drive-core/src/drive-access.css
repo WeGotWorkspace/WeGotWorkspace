@@ -2,7 +2,7 @@
 
 .drive-workspace .drive-access-layout {
   @apply flex min-h-0 flex-1 min-w-0 flex-col;
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--color-cream, #fff5e9);
 }
 
 .drive-workspace .drive-access-layout__header {

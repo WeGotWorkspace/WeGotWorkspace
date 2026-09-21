@@ -183,7 +183,7 @@ describe("calendar event dialog Meet field", () => {
     expect(css).not.toContain("background-color: transparent");
     expect(css).not.toContain("stroke-width: 1.75");
     expect(css).not.toMatch(/color-swatch-trigger/);
-    expect(css).toContain("--meet-accent: #2a1644");
+    expect(css).toContain("--meet-accent: #962fa8");
     expect(css).toContain("--card-title-icon-color: var(--meet-accent)");
     expect(css).not.toMatch(/calendar-event-dialog__meet-generate/);
     expect(css).not.toContain("calendar-event-dialog__meet-switch");

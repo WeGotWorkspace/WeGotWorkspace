@@ -25,58 +25,29 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
   });
 
   it("maps each app to distinct artwork (no cross-app SVG reuse)", () => {
-    const pathSets = WORKSPACE_APP_IDS.map(
-      (appId) =>
-        [
-          appId,
-          [...WORKSPACE_APP_ICON_INLINE[appId].matchAll(/d="([^"]+)"/g)].map((m) => m[1]),
-        ] as const,
-    );
+    const markups = WORKSPACE_APP_IDS.map((appId) => WORKSPACE_APP_ICON_INLINE[appId]);
 
-    for (let i = 0; i < pathSets.length; i++) {
-      for (let j = i + 1; j < pathSets.length; j++) {
-        const [appA, pathsA] = pathSets[i];
-        const [appB, pathsB] = pathSets[j];
-        expect(JSON.stringify(pathsA)).not.toBe(JSON.stringify(pathsB));
-        expect(`${appA} vs ${appB}`).toBeTruthy();
+    for (let i = 0; i < markups.length; i++) {
+      for (let j = i + 1; j < markups.length; j++) {
+        expect(markups[i]).not.toBe(markups[j]);
       }
     }
   });
 
-  it("keeps notes as notepad lines, not the contacts person silhouette", () => {
+  it("keeps notes as the orange notepad, not the contacts person", () => {
     const notes = WORKSPACE_APP_ICON_INLINE.notes;
     const contacts = WORKSPACE_APP_ICON_INLINE.contacts;
 
-    expect(notes).toContain('d="M337 208H175');
-    expect(notes).not.toContain('d="M256 280C284.719');
-    expect(contacts).toContain('d="M256 280C284.719');
-    expect(contacts).not.toContain('d="M337 208H175');
-  });
-
-  it("keeps notes artwork in yellow tints, not white paper or ink", () => {
-    const notes = WORKSPACE_APP_ICON_INLINE.notes;
-
-    expect(notes).toContain("#f6d176");
-    expect(notes).toContain("#fef8ea");
-    expect(notes).toContain("#f0bc3a");
-    expect(notes).not.toContain("#fae6b4");
-    expect(notes).not.toContain("#f0c55e");
-    expect(notes).not.toContain("#f9dea0");
-    expect(notes).not.toMatch(/--wai-fg,\s*white/);
-    expect(notes).not.toMatch(/#000|#111|#333|#666|#999|#ccc/i);
-  });
-
-  it("keeps contacts artwork in mint tints, not brown gold or white paper", () => {
-    const contacts = WORKSPACE_APP_ICON_INLINE.contacts;
-
-    expect(contacts).toContain("#39d49b");
-    expect(contacts).toContain("#fef8ea");
-    expect(contacts).toContain("#26a577");
-    expect(contacts).not.toContain("#8B6F45");
-    expect(contacts).not.toContain("#8b6f45");
-    expect(contacts).not.toContain("#b5c96a");
-    expect(contacts).not.toMatch(/--wai-fg,\s*white/);
-    expect(contacts).not.toMatch(/#000|#111|#333|#666|#999|#ccc/i);
+    expect(notes).toContain('d="M0 45C0 20.147');
+    expect(notes).toContain("#ffc800");
+    expect(notes).toContain("#de4b0e");
+    expect(notes).not.toContain('d="M45 201c0-24.853');
+    expect(contacts).toContain('d="M45 201c0-24.853');
+    expect(contacts).toContain('cx="135"');
+    expect(contacts).toContain("#962fa8");
+    expect(contacts).toContain("#ffbdc2");
+    expect(contacts).not.toContain('d="M0 45C0 20.147');
+    expect(contacts).not.toContain('d="M256 280C284.719');
   });
 });
 
@@ -107,9 +78,14 @@ describe("WORKSPACE_APP_ACCENT", () => {
     }
   });
 
-  it("samples contacts from the mint launcher tile, not leftover gold", () => {
-    expect(WORKSPACE_APP_ACCENT.contacts.toLowerCase()).toBe("#39d49b");
+  it("samples contacts from the purple launcher tile", () => {
+    expect(WORKSPACE_APP_ACCENT.contacts.toLowerCase()).toBe("#962fa8");
     expect(WORKSPACE_APP_ACCENT.contacts).not.toMatch(/#8b6f45/i);
+  });
+
+  it("samples notes from brand yellow #ffc800", () => {
+    expect(WORKSPACE_APP_ACCENT.notes.toLowerCase()).toBe("#ffc800");
+    expect(WORKSPACE_APP_ACCENT.notes).not.toMatch(/#f6d176/i);
   });
 });
 

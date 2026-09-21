@@ -26,7 +26,7 @@ describe("app-toaster CSS", () => {
 
   it("uses a slightly translucent cream wash", () => {
     expect(css).toMatch(
-      /--callout-bg:\s*color-mix\(\s*in oklab,\s*var\(--color-cream,\s*#ffffff\) 90%,\s*transparent\)/,
+      /--callout-bg:\s*color-mix\(\s*in oklab,\s*var\(--color-cream,\s*#fff5e9\) 90%,\s*transparent\)/,
     );
   });
 

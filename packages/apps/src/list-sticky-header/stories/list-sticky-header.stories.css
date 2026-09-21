@@ -3,7 +3,7 @@
 .list-sticky-header-story-scroll {
   @apply h-80 max-w-md overflow-y-auto border;
   border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--color-cream, #fff5e9);
 }
 
 .list-sticky-header-story-row {

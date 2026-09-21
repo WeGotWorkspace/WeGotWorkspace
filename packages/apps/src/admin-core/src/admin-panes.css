@@ -180,7 +180,7 @@
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-dot[data-step-state="done"],
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-dot[data-step-state="active"] {
   background-color: var(--color-ink);
-  color: var(--color-cream, #ffffff);
+  color: var(--color-cream, #fff5e9);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-dot[data-step-state="pending"] {

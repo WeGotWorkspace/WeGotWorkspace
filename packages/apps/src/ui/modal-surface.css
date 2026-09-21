@@ -129,5 +129,5 @@
 .ui-modal-footer {
   @apply shrink-0;
   padding-block-start: 0.5rem;
-  background-color: var(--background, var(--color-cream, #ffffff));
+  background-color: var(--background, var(--color-cream, #fff5e9));
 }

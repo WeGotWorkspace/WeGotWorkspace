@@ -194,7 +194,7 @@ export const NotebookTint: Story = {
       getComputedStyle(tintBg).backgroundColor,
     );
     const cream = document.createElement("span");
-    cream.style.backgroundColor = "var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff))";
+    cream.style.backgroundColor = "var(--workspace-chrome-footer-bg, var(--color-cream, #fff5e9))";
     workspace!.appendChild(cream);
     expect(getComputedStyle(scroll!).backgroundColor).toBe(getComputedStyle(cream).backgroundColor);
     expect(getComputedStyle(sheet!).backgroundColor).not.toBe(
@@ -297,7 +297,7 @@ export const NotebookTintDark: Story = {
     mark.style.color = "var(--checkbox-checked-fg)";
     tagBg.style.color = "var(--note-detail-tag-bg)";
     accent.style.color = "var(--notes-detail-accent)";
-    cream.style.color = "var(--color-cream, #ffffff)";
+    cream.style.color = "var(--color-cream, #fff5e9)";
     editor!.appendChild(fill);
     editor!.appendChild(mark);
     editor!.appendChild(tagBg);

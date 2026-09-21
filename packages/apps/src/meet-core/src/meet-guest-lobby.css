@@ -21,20 +21,19 @@
 
 .meet-guest-channel__lobby .meet-guest-lobby__mark.workspace-app-icon--switch-trigger {
   @apply mb-4 size-8 rounded-md;
-  --app-switch-icon-bg: var(--meet-accent);
-  --app-switch-icon-fg: var(--color-cream, #ffffff);
-  background-color: var(--app-switch-icon-bg);
+  background-color: #ffc800;
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__mark.workspace-app-icon--switch-trigger > svg {
-  --wai-bg: transparent;
-  --wai-fg: var(--app-switch-icon-fg);
+  --wai-bg: #ffc800;
+  --wai-fg: #ffc800;
+  --wai-detail: #962fa8;
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__knock.button--variant-primary {
   @apply mt-4 w-full;
   --button-primary-bg: var(--meet-accent);
-  --button-primary-fg: var(--color-cream, #ffffff);
+  --button-primary-fg: var(--color-cream, #fff5e9);
   --button-icon-size: 1rem;
 }
 

@@ -2,9 +2,9 @@
 
 .chat-message-list {
   @apply relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col;
-  --chat-list-surface: #ffffff;
-  --list-sticky-header-bg: #ffffff;
-  background-color: var(--chat-list-surface, #ffffff);
+  --chat-list-surface: var(--color-cream, #fff5e9);
+  --list-sticky-header-bg: var(--color-cream, #fff5e9);
+  background-color: var(--chat-list-surface, var(--color-cream, #fff5e9));
 }
 
 .chat-message-list__scroll {

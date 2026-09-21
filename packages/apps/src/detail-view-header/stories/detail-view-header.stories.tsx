@@ -19,7 +19,7 @@ export const ReadonlyMailStyle: Story = {
         label: "Inbox",
         icon: <Inbox className="size-3.5 opacity-70" />,
         colors: {
-          color: "var(--color-cream, #ffffff)",
+          color: "var(--color-cream, #fff5e9)",
           backgroundColor: "color-mix(in oklab, var(--color-ink) 88%, transparent)",
         },
       },

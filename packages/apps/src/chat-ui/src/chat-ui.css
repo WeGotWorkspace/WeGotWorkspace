@@ -7,14 +7,14 @@
   --chat-body: color-mix(in oklab, var(--color-ink) 88%, transparent);
   --chat-muted: color-mix(in oklab, var(--color-ink) 45%, transparent);
   --chat-replies: color-mix(in oklab, var(--color-ink) 68%, transparent);
-  --chat-surface: var(--color-cream, #fff);
-  --chat-list-surface: var(--color-cream, #fff);
+  --chat-surface: var(--color-cream, #fff5e9);
+  --chat-list-surface: var(--color-cream, #fff5e9);
   --chat-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --chat-rule: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --chat-accent: #0e7490;
   --chat-hover: color-mix(in oklab, #06b6d4 8%, transparent);
   --chat-day-bg: var(--chat-list-surface);
-  --chat-action-surface: #fff;
+  --chat-action-surface: var(--color-cream, #fff5e9);
   --chat-reaction-bg: color-mix(in oklab, var(--color-ink) 4%, transparent);
   --user-avatar-presence-ring: var(--chat-list-surface);
   color: var(--chat-text);

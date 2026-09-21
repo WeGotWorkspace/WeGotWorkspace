@@ -218,18 +218,15 @@ describe("contacts workspace sidebar chrome", () => {
     expect(groupIconCss).not.toMatch(/border-width:\s*2px/);
   });
 
-  it("paints the sidebar mark in mint tints, not ink or leftover gold", () => {
+  it("paints the sidebar mark in the contacts.svg hexes", () => {
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-bg:\s*var\(--contacts-accent\)/,
+      /\.contacts-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#962fa8/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-fg:\s*color-mix\(\s*in oklab,\s*var\(--contacts-accent\) 14%,\s*var\(--color-cream/,
+      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#962fa8/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--app-switch-icon-fg\)/,
-    );
-    expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-cutout:\s*#26a577/,
+      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#ffbdc2/,
     );
     const lockup = css.slice(css.indexOf("App switcher lockup"));
     const lockupEnd = lockup.indexOf(".contacts-list-panel__loading");

@@ -5,17 +5,17 @@
   "scope": "/docs",
   "id": "/docs",
   "display": "standalone",
-  "background_color": "#3b82f6",
-  "theme_color": "#3b82f6",
+  "background_color": "#0045ff",
+  "theme_color": "#0045ff",
   "icons": [
     {
-      "src": "/app-icons/docs.svg?v=2",
+      "src": "/app-icons/docs.svg?v=14",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/docs-180.png?v=2",
+      "src": "/pwa-icons/docs-180.png?v=14",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

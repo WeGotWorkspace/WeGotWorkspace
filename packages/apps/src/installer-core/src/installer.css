@@ -8,7 +8,7 @@
   --button-outline-color: #ffffff;
   --button-outline-hover-color: #ffffff;
   --button-outline-hover-background: color-mix(in oklab, #ffffff 12%, transparent);
-  --button-outline-active-background: #ffffff;
+  --button-outline-active-background: var(--color-cream, #fff5e9);
   --button-active-color: var(--workspace-home-bg, #1b1d3a);
   --segmented-control-color: #ffffff;
   --segmented-control-hover-color: #ffffff;
@@ -37,7 +37,7 @@
 
 .installer__dot--current,
 .installer__dot--done {
-  background-color: #ffffff;
+  background-color: var(--color-cream, #fff5e9);
 }
 
 .installer__lead {

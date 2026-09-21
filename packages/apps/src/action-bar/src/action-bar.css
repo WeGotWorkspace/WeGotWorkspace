@@ -9,7 +9,7 @@
   border-color: var(--action-bar-border-color);
   background-color: var(
     --action-bar-bg,
-    var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff))
+    var(--workspace-chrome-footer-bg, var(--color-cream, #fff5e9))
   );
 }
 

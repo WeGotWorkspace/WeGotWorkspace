@@ -1,5 +1,9 @@
-<svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="512" height="512" fill="var(--wai-bg, #EA8C72)"/>
-<path d="M256 388C328.902 388 388 328.902 388 256C388 183.098 328.902 124 256 124C183.098 124 124 183.098 124 256C124 328.902 183.098 388 256 388Z" stroke="var(--wai-fg, white)" stroke-width="28"/>
-<path d="M196 242L232 278L316 194L336 214L232 318L176 262L196 242Z" fill="var(--wai-fg, white)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="270" height="270" fill="none" viewBox="0 0 270 270">
+<rect width="269.853" height="269.947" fill="var(--wai-bg, #ffbdc2)" rx="45"/>
+<circle cx="67.935" cy="201.563" r="22.437" fill="var(--wai-fg, #de4b0e)"/>
+<rect width="111.688" height="20.942" x="112.312" y="191.092" fill="var(--wai-fg, #de4b0e)" rx="10.471"/>
+<circle cx="67.686" cy="134.003" r="22.437" fill="var(--wai-fg, #de4b0e)"/>
+<rect width="111.688" height="20.942" x="112.063" y="123.532" fill="var(--wai-fg, #de4b0e)" rx="10.471"/>
+<circle cx="67.437" cy="67.437" r="22.437" fill="var(--wai-fg, #de4b0e)"/>
+<rect width="111.688" height="20.942" x="111.814" y="56.967" fill="var(--wai-fg, #de4b0e)" rx="10.471"/>
 </svg>

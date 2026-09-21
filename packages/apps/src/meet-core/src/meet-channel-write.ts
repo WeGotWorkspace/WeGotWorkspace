@@ -5,7 +5,7 @@ import type {
   MeetChannelWriteInput,
 } from "@/meet-core/src/meet-types";
 
-export const DEFAULT_MEET_CHANNEL_COLOR = "#2a1644";
+export const DEFAULT_MEET_CHANNEL_COLOR = "#962fa8";
 
 function nextChannelId(kind: MeetChannelWriteInput["kind"]): string {
   return `${kind}-${crypto.randomUUID()}`;

@@ -7,7 +7,7 @@
   --drive-accent: #10b981;
   --color-emerald: var(--drive-accent);
   /* Cream-tint sidebar; 32% — clearer than 12% mute, softer than solid emerald */
-  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #ffffff));
+  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #fff5e9));
   --workspace-accent: var(--drive-accent);
   --app-sidebar-bg: var(--drive-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
@@ -29,7 +29,7 @@
   --docs-collab-sidebar-panel-wash: color-mix(
     in oklab,
     var(--drive-accent) 10%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   /* Same flex-dock pattern as Calendar invitations / Docs review. */
   --drive-detail-column-width: 22rem;
@@ -49,12 +49,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--drive-accent) 55%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--drive-accent) 65%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
 }
 
@@ -83,24 +83,30 @@
   --notification-inbox-badge-fg: #042a22;
 }
 
-/** App switcher lockup: classic Drive brand tile (green + white glyph). */
+/**
+ * App switcher lockup: drive.svg literals (`#8ACE00` tile / `#1D6635` folder).
+ * Pin both the lockup variables and `--wai-*`. The shared switch-trigger rule
+ * paints `--drive-accent` (`#10b981`) on cream; that is not the artwork.
+ */
 .drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--drive-accent);
-  --app-switch-icon-fg: var(--color-cream, #ffffff);
-  background-color: var(--app-switch-icon-bg);
+  --app-switch-icon-bg: #8ace00;
+  --app-switch-icon-fg: #1d6635;
+  background-color: #8ace00;
 }
 
 .drive-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: transparent;
-  --wai-fg: var(--app-switch-icon-fg);
+  --wai-bg: #8ace00;
+  --wai-fg: #1d6635;
+  --wai-detail: #1d6635;
+  --wai-cutout: #8ace00;
 }
 
 .drive-workspace .drive-main-pane {
   @apply flex min-h-0 flex-1 flex-col min-w-0 relative w-full;
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--color-cream, #fff5e9);
 }
 
 .drive-workspace .drive-floating-upload {
@@ -122,7 +128,7 @@
   border-bottom: none;
   border-radius: var(--control-radius);
   padding: 0.875rem 1rem;
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--color-cream, #fff5e9);
   box-shadow:
     0 4px 24px color-mix(in oklab, var(--color-ink) 16%, transparent),
     0 0 0 1px color-mix(in oklab, var(--color-ink) 8%, transparent);
@@ -153,7 +159,7 @@
 .drive-workspace .drive-main-pane__breadcrumbs {
   @apply px-4 md:px-6 shrink-0;
   padding-block: 1rem;
-  background-color: color-mix(in oklab, var(--drive-accent) 7%, var(--color-cream, #ffffff));
+  background-color: color-mix(in oklab, var(--drive-accent) 7%, var(--color-cream, #fff5e9));
   border-bottom: 1px solid color-mix(in oklab, var(--drive-accent) 12%, transparent);
   --path-breadcrumb-lead-color: var(--drive-accent);
   --path-breadcrumb-lead-bg: color-mix(in oklab, var(--drive-accent) 12%, transparent);
@@ -188,7 +194,7 @@
 .drive-dialog-surface {
   --drive-accent: #10b981;
   --drive-accent-strong: color-mix(in oklab, var(--drive-accent) 55%, var(--color-ink));
-  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #ffffff));
+  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #fff5e9));
   --workspace-accent: var(--drive-accent);
   --destination-picker-accent: var(--drive-accent);
   --color-emerald: var(--drive-accent);

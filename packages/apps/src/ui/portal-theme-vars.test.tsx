@@ -85,10 +85,10 @@ describe("portal-theme-vars", () => {
     const sheet = document.createElement("style");
     sheet.textContent = `
       .notes-host {
-        --notes-accent: #f6d176;
+        --notes-accent: #ffc800;
         --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 32%, var(--color-ink));
         --color-ink: #1a1a1a;
-        --color-cream: #ffffff;
+        --color-cream: #fff5e9;
         --workspace-accent: var(--notes-accent);
         --button-outline-hover-color: var(--notes-accent-strong);
         --button-outline-hover-background: color-mix(in oklab, var(--notes-accent) 14%, transparent);
@@ -109,13 +109,13 @@ describe("portal-theme-vars", () => {
     bridgePortalThemeVars(source, target);
 
     const hover = target.style.getPropertyValue("--button-outline-hover-background");
-    expect(hover).toMatch(/notes-accent|#f6d176|rgba?\(|oklch\(/i);
+    expect(hover).toMatch(/notes-accent|#ffc800|rgba?\(|oklch\(/i);
     expect(hover.toLowerCase()).not.toMatch(/color-ink/);
     expect(hover).not.toMatch(/notes-detail/);
-    expect(target.style.getPropertyValue("--notes-accent").trim()).toBe("#f6d176");
-    expect(target.style.getPropertyValue("--color-cream").trim()).toBe("#ffffff");
+    expect(target.style.getPropertyValue("--notes-accent").trim()).toBe("#ffc800");
+    expect(target.style.getPropertyValue("--color-cream").trim()).toBe("#fff5e9");
     expect(target.style.getPropertyValue("--workspace-accent").trim()).toMatch(
-      /notes-accent|#f6d176|rgba?\(|oklch\(/i,
+      /notes-accent|#ffc800|rgba?\(|oklch\(/i,
     );
   });
 
@@ -126,7 +126,7 @@ describe("portal-theme-vars", () => {
         --calendar-accent: #6366f1;
         --calendar-accent-strong: #5558e8;
         --color-ink: #1a1a1a;
-        --color-cream: #ffffff;
+        --color-cream: #fff5e9;
         --workspace-accent: var(--calendar-accent);
         --button-outline-hover-background: color-mix(in oklab, var(--calendar-accent) 14%, transparent);
         --button-outline-active-background: color-mix(in oklab, var(--calendar-accent) 18%, var(--color-cream));

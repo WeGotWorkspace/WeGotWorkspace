@@ -1,7 +1,7 @@
 @import "../../styles.css" reference;
 
 .tasks-main-view {
-  @apply bg-[var(--workspace-root-bg,var(--color-cream,#ffffff))];
+  background-color: var(--workspace-root-bg, var(--color-cream, #fff5e9));
 }
 
 .tasks-main-view__loading {
@@ -366,7 +366,7 @@
   block-size: var(--tasks-remind-badge-size);
   font-size: var(--tasks-remind-badge-font-size);
   background-color: var(--color-ink);
-  color: var(--color-cream, #ffffff);
+  color: var(--color-cream, #fff5e9);
 }
 
 .tasks-main-view__remind--row {

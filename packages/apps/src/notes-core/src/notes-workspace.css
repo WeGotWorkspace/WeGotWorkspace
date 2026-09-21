@@ -4,8 +4,9 @@
 /**
  * Notes product shell: cream panes + a light yellow sidebar tint (Calendar /
  * Tasks chrome: accent mixed onto cream, not a full-bleed wash).
- * `--notes-accent` is the brand warm yellow (`#f6d176` — same hex as the
- * Notes icon / webmanifest). Sidebar selected chips stay that yellow on ink
+ * `--notes-accent` is the brand yellow (`#ffc800` — same hex as the
+ * Notes icon / webmanifest). All notes yellow tints mix from this token.
+ * Sidebar selected chips stay that yellow on ink
  * (WCAG AA). Detail pane / desk is the same cream as the footer and action
  * bar (`--workspace-chrome-footer-bg`), so the open-note paper card can
  * read as a tinted sheet. `--paper-sheet-bg` is cream mixed with
@@ -19,8 +20,8 @@
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
-  --notes-accent: #f6d176;
-  --notes-sidebar: color-mix(in oklab, var(--notes-accent) 12%, var(--color-cream, #ffffff));
+  --notes-accent: #ffc800;
+  --notes-sidebar: color-mix(in oklab, var(--notes-accent) 12%, var(--color-cream, #fff5e9));
   /*
    * Hover / detail strong fg: yellow is too light for Calendar-style
    * accent-on-wash selected text. 32% accent → ink (~6.5:1 on cream washes)
@@ -39,17 +40,17 @@
     var(--notes-detail-accent) 32%,
     var(--color-ink)
   );
-  --workspace-chrome-footer-bg: var(--color-cream, #ffffff);
-  --action-bar-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
+  --workspace-chrome-footer-bg: var(--color-cream, #fff5e9);
+  --action-bar-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #fff5e9));
   /*
    * Detail desk: same cream as footer / action bar. The paper card is the
    * notebook-tinted sheet — not this pane.
    */
-  --workspace-detail-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
+  --workspace-detail-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #fff5e9));
   --notes-detail-body-bg: var(--workspace-detail-bg);
   --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
-  --workspace-root-bg: var(--color-cream, #ffffff);
+  --workspace-root-bg: var(--color-cream, #fff5e9);
   --app-sidebar-bg: var(--notes-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --app-sidebar-color: var(--color-ink);
@@ -96,14 +97,14 @@
   /* Very light notebook wash on cream — not the full `--notes-detail-tint`. */
   --paper-sheet-bg: color-mix(
     in oklab,
-    var(--notes-detail-tint, var(--color-cream, #ffffff)) 11%,
-    var(--color-cream, #ffffff)
+    var(--notes-detail-tint, var(--color-cream, #fff5e9)) 11%,
+    var(--color-cream, #fff5e9)
   );
   /* Title/body: warm charcoal — 85% ink into the sheet, not full ink or gray. */
   --notes-detail-contrast-fg: color-mix(
     in oklab,
     var(--color-ink) 85%,
-    var(--paper-sheet-bg, var(--color-cream, #ffffff))
+    var(--paper-sheet-bg, var(--color-cream, #fff5e9))
   );
   /*
    * Shared horizontal inset for list + detail chrome (header / sheet / footer).
@@ -133,12 +134,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--notes-accent) 55%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--notes-accent) 65%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
 }
 
@@ -252,37 +253,34 @@
 
 /*
  * Bell lives in the header (sibling of scroll). Pin the unread badge to the
- * same pair as New note on `.app-sidebar__scroll`: warm yellow fill + dark ink
- * label (`--notes-accent` / `--color-ink`). Literals avoid the notifications
- * `--color-ink` remap (glyph chrome) and the tray fallback of ink-bg + emerald-fg.
+ * same pair as New note on `.app-sidebar__scroll`: `--notes-accent` fill + dark
+ * ink label. Literal ink hex avoids the notifications `--color-ink` remap
+ * (glyph chrome) and the tray fallback of ink-bg + emerald-fg.
  */
 .notes-workspace .app-sidebar__notifications {
-  --button-primary-bg: #f6d176;
+  --button-primary-bg: var(--notes-accent);
   --button-primary-fg: #042a22;
-  --notification-inbox-badge-bg: #f6d176;
+  --notification-inbox-badge-bg: var(--notes-accent);
   --notification-inbox-badge-fg: #042a22;
 }
 
 /**
- * App switcher lockup: yellow tile + yellow-tint notepad. Default invert uses
- * `--app-sidebar-color` as the tile. Do not mix sidebar ink into the
- * mark — that reads as muddy olive. Layers stay in the notes.svg yellow family
- * (`#f6d176` tile / `#f0bc3a` header+lines / `#fef8ea` almost-white sheet).
+ * App switcher lockup: keep notes.svg literals (`#ffc800` tile / `#de4b0e` marks).
+ * Default switch-trigger remaps `--wai-*`; pin them back to those hexes.
  */
 .notes-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--notes-accent);
-  --app-switch-icon-fg: color-mix(in oklab, var(--notes-accent) 14%, var(--color-cream, #ffffff));
-  background-color: var(--app-switch-icon-bg);
+  --app-switch-icon-bg: #ffc800;
+  background-color: #ffc800;
 }
 
 .notes-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: transparent;
-  --wai-fg: var(--app-switch-icon-fg);
-  --wai-detail: #f0bc3a;
-  --wai-cutout: #f0bc3a;
+  --wai-bg: #ffc800;
+  --wai-fg: #de4b0e;
+  --wai-detail: #de4b0e;
+  --wai-cutout: #de4b0e;
 }
 
 /**
@@ -294,7 +292,7 @@
 }
 
 .notes-dialog-surface {
-  --notes-accent: #f6d176;
+  --notes-accent: #ffc800;
   --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 32%, var(--color-ink));
   --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
@@ -322,7 +320,7 @@
 
 /* Live tree: `main.workspace-detail-pane > nav.action-bar` (WorkspaceApp). */
 .notes-workspace .workspace-detail-pane > .action-bar {
-  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #fff5e9));
   /* Default action-bar is `px-4 md:px-12` — match list / footer inset. */
   padding-inline: var(--notes-pane-padding-x);
 }
@@ -332,7 +330,7 @@
  * — cream surface; height/radius come from the shared primitive.
  */
 .notes-workspace .action-bar .notes-notebook-select.color-swatch-trigger {
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--color-cream, #fff5e9);
 }
 
 /*
@@ -349,12 +347,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--notes-accent) 18%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--notes-accent) 24%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
 }
 
@@ -368,7 +366,7 @@
   --tag-group-input-bg-focus: #ffffff;
   --tag-group-input-fg: var(--color-ink);
   --tag-group-suggestions-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --tag-group-suggestions-bg: var(--color-cream, #ffffff);
+  --tag-group-suggestions-bg: var(--color-cream, #fff5e9);
   --tag-group-suggestion-bg-active: color-mix(in oklab, var(--color-ink) 6%, transparent);
 }
 
@@ -430,19 +428,19 @@
 /* Storybook scopes — mirror workspace chrome without inline presets */
 .notes-story-scope {
   min-height: 100dvh;
-  background-color: var(--workspace-root-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-root-bg, var(--color-cream, #fff5e9));
 }
 
 .notes-story-scope--list-column {
   display: flex;
   min-height: 100dvh;
   justify-content: center;
-  background-color: var(--workspace-root-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-root-bg, var(--color-cream, #fff5e9));
 }
 
 .notes-story-scope--detail {
   min-height: 100dvh;
-  background-color: var(--workspace-detail-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-detail-bg, var(--color-cream, #fff5e9));
 }
 
 .notes-story-scope__detail-body {
@@ -451,5 +449,5 @@
 
 .notes-story-scope__action-bar-shell {
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #fff5e9));
 }

@@ -1,13 +1,23 @@
 @import "../styles.css" reference;
 
 /**
+ * Full-color launcher tiles clip in CSS. Keep SVG artwork square so Apple can
+ * apply its own mask to apple-touch PNGs.
+ */
+.workspace-app-icon--tile {
+  --workspace-app-icon-radius: 16px;
+  @apply size-full overflow-hidden object-cover;
+  border-radius: var(--workspace-app-icon-radius);
+}
+
+/**
  * Switch trigger lockup: `--app-sidebar-color` background + `--workspace-accent` artwork.
  * The same vector SVG as the default icon is inlined; `--wai-*` vars remap layers for inversion.
  */
 .workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--app-sidebar-color, var(--app-switch-label-color, currentColor));
   --app-switch-icon-fg: var(--workspace-accent, currentColor);
-  @apply block overflow-hidden rounded-[6px];
+  @apply block overflow-hidden rounded-[9px];
   background-color: var(--app-switch-icon-bg);
 }
 
@@ -21,17 +31,12 @@
   --wai-cutout: var(--app-switch-icon-bg);
 }
 
-/** Home grid tile artwork — fills the `.apps-home-screen__tile-icon` cell. */
-.workspace-app-icon--tile {
-  @apply size-full object-cover;
-}
-
 /**
  * Workspace home lockup on dark suite shells: white tile + original accent squares
  * (orange / green / blue from `home.svg`), not mono sidebar-accent inversion.
  */
 .workspace-app-icon--switch-trigger-home {
-  --app-switch-icon-bg: #ffffff;
+  --app-switch-icon-bg: var(--color-cream, #fff5e9);
 }
 
 .workspace-app-icon--switch-trigger-home svg {

@@ -13,8 +13,8 @@
   --settings-accent-bg: var(--settings-accent);
   --workspace-accent: var(--settings-accent);
   --color-emerald: var(--settings-accent);
-  --workspace-root-bg: var(--color-cream, #ffffff);
-  --workspace-main-bg: color-mix(in oklab, var(--settings-accent) 6%, var(--color-cream, #ffffff));
+  --workspace-root-bg: var(--color-cream, #fff5e9);
+  --workspace-main-bg: color-mix(in oklab, var(--settings-accent) 6%, var(--color-cream, #fff5e9));
   --app-sidebar-bg: var(--settings-accent);
   --app-sidebar-border-color: color-mix(in oklab, #ffffff 14%, transparent);
   --app-sidebar-color: #ffffff;
@@ -39,12 +39,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--settings-accent) 18%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--settings-accent) 24%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
 }
 
@@ -62,6 +62,20 @@
   color: var(--app-sidebar-color);
   --color-ink: var(--app-sidebar-color);
   --field-label-color: color-mix(in oklab, #ffffff 78%, transparent);
+}
+
+.settings-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger {
+  background-color: #003311;
+}
+
+.settings-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: #003311;
+  --wai-fg: #8ace00;
 }
 
 .settings-workspace .app-sidebar__scroll {
@@ -85,7 +99,7 @@
 }
 
 .settings-workspace .sidebar-section .menu-item.menu-item--selected .menu-item__badge {
-  background-color: #ffffff;
+  background-color: var(--color-cream, #fff5e9);
   color: var(--settings-accent);
 }
 
@@ -193,5 +207,5 @@
 /* Storybook scopes — mirror workspace chrome without inline presets */
 .settings-story-scope {
   min-height: 100dvh;
-  background-color: var(--workspace-root-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-root-bg, var(--color-cream, #fff5e9));
 }

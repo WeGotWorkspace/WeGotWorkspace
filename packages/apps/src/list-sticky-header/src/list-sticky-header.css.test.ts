@@ -11,7 +11,7 @@ describe("list-sticky-header CSS", () => {
     expect(css).toMatch(/\.list-sticky-header \{[\s\S]*sticky top-0/);
     expect(css).toMatch(/\.list-sticky-header \{[\s\S]*border-b/);
     expect(css).toMatch(/--list-sticky-header-bg/);
-    expect(css).toMatch(/var\(--color-cream, #ffffff\)/);
+    expect(css).toMatch(/var\(--color-cream, #fff5e9\)/);
   });
 
   it("owns the split-label type language used by calendar list and chat days", () => {

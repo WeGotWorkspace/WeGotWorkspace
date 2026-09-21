@@ -5,17 +5,17 @@
   "scope": "/drive",
   "id": "/drive",
   "display": "standalone",
-  "background_color": "#10b981",
-  "theme_color": "#10b981",
+  "background_color": "#8ACE00",
+  "theme_color": "#8ACE00",
   "icons": [
     {
-      "src": "/app-icons/drive.svg?v=2",
+      "src": "/app-icons/drive.svg?v=14",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/drive-180.png?v=2",
+      "src": "/pwa-icons/drive-180.png?v=14",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

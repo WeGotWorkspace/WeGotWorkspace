@@ -3,11 +3,11 @@
 .mcp-consent-page {
   @apply flex justify-center p-6 md:p-10;
   min-height: 100dvh;
-  background-color: var(--workspace-main-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-main-bg, var(--color-cream, #fff5e9));
   --button-primary-bg: var(--workspace-home-bg, #1b1d3a);
   --button-primary-fg: #ffffff;
   --switch-on-bg: var(--workspace-home-bg, #1b1d3a);
-  --card-surface-bg: var(--color-cream, #ffffff);
+  --card-surface-bg: var(--color-cream, #fff5e9);
 }
 
 .mcp-consent-page__column {

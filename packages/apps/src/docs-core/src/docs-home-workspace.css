@@ -6,7 +6,7 @@
 
 .docs-home-workspace .docs-home-pane {
   @apply flex min-h-0 h-full w-full flex-1 flex-col;
-  background-color: var(--docs-surface, var(--color-cream, #ffffff));
+  background-color: var(--docs-surface, var(--color-cream, #fff5e9));
 }
 
 .docs-home-workspace .docs-home-pane__header {

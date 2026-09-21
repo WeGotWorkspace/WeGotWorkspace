@@ -5,17 +5,17 @@
   "scope": "/settings",
   "id": "/settings",
   "display": "standalone",
-  "background_color": "#64748b",
-  "theme_color": "#64748b",
+  "background_color": "#003311",
+  "theme_color": "#003311",
   "icons": [
     {
-      "src": "/app-icons/settings.svg?v=2",
+      "src": "/app-icons/settings.svg?v=14",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/settings-180.png?v=2",
+      "src": "/pwa-icons/settings-180.png?v=14",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

@@ -24,6 +24,17 @@ const layoutCss = readFileSync(
 );
 
 describe("meet workspace sidebar chrome", () => {
+  it("uses icon purple #962fa8 as accent; primary fills use accent, not darkened strong", () => {
+    expect(css).toMatch(/\.meet-workspace \{[\s\S]*?--meet-accent:\s*#962fa8/);
+    expect(css).toMatch(
+      /--meet-accent-strong:\s*color-mix\(in oklab,\s*var\(--meet-accent\) 32%,\s*var\(--color-ink\)\)/,
+    );
+    expect(css).toMatch(/\.meet-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--meet-accent\)/);
+    expect(css).not.toMatch(/--button-primary-bg:\s*var\(--meet-accent-strong\)/);
+    expect(css).not.toMatch(/--meet-accent:\s*#2a1644/);
+    expect(css).not.toMatch(/--meet-accent-strong:\s*#1a0e2a/);
+  });
+
   it("uses the Meet lockup and segmented New menu, not section + or sidebar search", () => {
     expect(tsx).toMatch(/appSwitchSubtitle=\{meetLabels\.productName\}/);
     expect(tsx).toMatch(/<SidebarSegmentedNewMenu/);
@@ -114,8 +125,8 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(
       /\.meet-workspace--split[\s\S]*--field-label-color:\s*color-mix\(in oklab,\s*var\(--color-ink\) 72%/,
     );
-    expect(css).toMatch(/--app-switch-icon-fg:\s*var\(--color-cream/);
-    expect(css).toMatch(/--wai-fg:\s*var\(--app-switch-icon-fg\)/);
+    expect(css).toMatch(/--wai-fg:\s*#ffc800/);
+    expect(css).toMatch(/--wai-detail:\s*#962fa8/);
     expect(css).toMatch(
       /\.meet-workspace--split \.app-sidebar[\s\S]*--user-avatar-presence-ring:\s*var\(--meet-sidebar\)/,
     );
@@ -269,7 +280,7 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(/\.meet-workspace__surface--parked[\s\S]*content-visibility:\s*hidden/);
     expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?--popover:\s*var\(--color-cream/);
     expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?background-color:\s*var\(--color-cream/);
-    expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?--meet-accent:\s*#2a1644/);
+    expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?--meet-accent:\s*#962fa8/);
     expect(css.match(/\.meet-device-popover \{[\s\S]*?\n\}/)?.[0] ?? "").not.toMatch(
       /#171826|--meet-call-surface/,
     );
@@ -500,7 +511,7 @@ describe("meet guest invite lobby chrome", () => {
     );
     expect(guestLobbyCard).toMatch(/meet-guest-lobby__heading/);
     expect(guestLobbyCss).toMatch(
-      /\.meet-guest-channel__lobby \.meet-guest-lobby__mark\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-bg:\s*var\(--meet-accent\)/,
+      /\.meet-guest-channel__lobby \.meet-guest-lobby__mark\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#ffc800/,
     );
     expect(guestLobbyCss).toMatch(
       /\.meet-guest-channel__lobby \.meet-guest-lobby__knock\.button--variant-primary \{[\s\S]*--button-icon-size:\s*1rem/,
@@ -553,7 +564,7 @@ describe("meet host admit knock popover", () => {
     const popover = css.match(/\.meet-knock-badge__popover \{[\s\S]*?\n\}/)?.[0] ?? "";
     expect(knockBadge).toMatch(/className="meet-knock-badge__popover"/);
     expect(knockBadge).not.toMatch(/meet-popover-surface/);
-    expect(popover).toMatch(/--meet-accent:\s*#2a1644/);
+    expect(popover).toMatch(/--meet-accent:\s*#962fa8/);
     expect(popover).toMatch(
       /--meet-call-surface:\s*color-mix\(in oklab,\s*var\(--meet-accent\) 12%/,
     );
@@ -593,7 +604,7 @@ describe("meet in-call overlay resume", () => {
 describe("meet leave/end call dialog", () => {
   it("paints cream/dusk call chrome, not the lobby dark island", () => {
     const dialog = css.match(/\.meet-call-dialog \{[\s\S]*?\n\}/)?.[0] ?? "";
-    expect(dialog).toMatch(/--meet-accent:\s*#2a1644/);
+    expect(dialog).toMatch(/--meet-accent:\s*#962fa8/);
     expect(dialog).toMatch(
       /--meet-call-surface:\s*color-mix\(in oklab,\s*var\(--meet-accent\) 12%/,
     );

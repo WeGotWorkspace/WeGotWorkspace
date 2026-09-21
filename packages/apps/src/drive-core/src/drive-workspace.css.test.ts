@@ -34,16 +34,22 @@ describe("drive workspace outline-active tokens", () => {
 });
 
 describe("drive workspace app-switch lockup", () => {
-  it("uses green tile + cream glyph (classic Drive brand)", () => {
+  it("keeps the drive.svg tile and folder hexes on the lockup", () => {
     expect(css).toMatch(
-      /\.drive-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-bg:\s*var\(--drive-accent\)/,
+      /\.drive-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#8ACE00/,
     );
     expect(css).toMatch(
-      /\.drive-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-fg:\s*var\(--color-cream/,
+      /\.drive-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#8ACE00/,
     );
     expect(css).toMatch(
-      /\.drive-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--app-switch-icon-fg\)/,
+      /\.drive-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#1D6635/,
     );
+    expect(css).toMatch(/--app-switch-icon-bg:\s*#8ACE00/);
+    expect(css).toMatch(/--app-switch-icon-fg:\s*#1D6635/);
+    expect(css).not.toMatch(/--app-switch-icon-bg:\s*var\(--drive-accent\)/);
+    expect(css).not.toMatch(/--app-switch-icon-fg:\s*var\(--color-cream/);
+    expect(css).not.toMatch(/--wai-bg:\s*transparent/);
+    expect(css).not.toMatch(/--wai-fg:\s*var\(--app-switch-icon-fg\)/);
   });
 });
 

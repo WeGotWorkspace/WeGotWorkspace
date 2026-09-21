@@ -11,7 +11,7 @@
   --docs-sidebar: #2563eb;
   --workspace-accent: var(--docs-accent);
   --color-emerald: var(--docs-accent);
-  --docs-surface: var(--color-cream, #ffffff);
+  --docs-surface: var(--color-cream, #fff5e9);
   --background: oklch(98.5% 0.005 100);
   --docs-canvas: oklch(95% 0.006 100);
   --docs-sheet-width: 210mm;
@@ -50,7 +50,7 @@
   --docs-collab-sidebar-panel-wash: color-mix(
     in oklab,
     var(--docs-accent) 10%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   --app-sidebar-border-color: color-mix(in oklab, #ffffff 18%, transparent);
   --app-sidebar-color: #ffffff;
@@ -74,12 +74,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24). */
 
@@ -135,12 +135,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
 }
@@ -184,6 +184,18 @@
 
 .docs-workspace .app-sidebar .app-switch-button__trigger:hover {
   background-color: color-mix(in oklab, #ffffff 10%, var(--docs-sidebar));
+}
+
+.docs-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
+  background-color: #0045ff;
+}
+
+.docs-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: #0045ff;
+  --wai-fg: #fff5e9;
 }
 
 .docs-workspace .sidebar-section .menu-item--surface-idle {

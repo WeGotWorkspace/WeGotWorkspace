@@ -117,8 +117,8 @@ export const VisibilityTintUnderWorkspaceTokens: Story = {
         style={
           {
             "--checkbox-border-color": "color-mix(in oklab, var(--color-ink) 30%, transparent)",
-            "--checkbox-checked-bg": "#f6d176",
-            "--checkbox-checked-border": "#f6d176",
+            "--checkbox-checked-bg": "#ffc800",
+            "--checkbox-checked-border": "#ffc800",
             "--checkbox-checked-fg": "var(--color-ink)",
           } as CSSProperties
         }

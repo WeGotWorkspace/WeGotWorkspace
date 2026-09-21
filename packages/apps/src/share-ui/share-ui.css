@@ -26,7 +26,7 @@
   );
   --card-row-hover-bg: var(--share-dialog-row-hover);
   --card-panel-border-color: var(--share-dialog-panel-border);
-  --card-panel-bg: color-mix(in oklab, var(--card, var(--color-cream, #ffffff)) 60%, transparent);
+  --card-panel-bg: color-mix(in oklab, var(--card, var(--color-cream, #fff5e9)) 60%, transparent);
   --card-row-subtitle-color: var(--share-dialog-muted);
   --input-height: var(--control-height-sm, 2rem);
   /* Match outline IconButtons to Input/Select (--control-border-color). */

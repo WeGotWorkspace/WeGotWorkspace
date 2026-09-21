@@ -270,7 +270,7 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet {
-  --meet-accent: #2a1644;
+  --meet-accent: #962fa8;
   --card-title-icon-color: var(--meet-accent);
 }
 

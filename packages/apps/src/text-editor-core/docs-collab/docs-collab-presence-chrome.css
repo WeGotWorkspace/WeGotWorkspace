@@ -16,12 +16,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--docs-collab-presence-accent, var(--color-ink)) 18%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--docs-collab-presence-accent, var(--color-ink)) 24%,
-    var(--color-cream, #ffffff)
+    var(--color-cream, #fff5e9)
   );
   --button-outline-active-border-color: color-mix(
     in oklab,

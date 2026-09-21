@@ -6,28 +6,28 @@
  * cream `.meet-call-dialog`.
  */
 .meet-channel-dialog {
-  --meet-accent: #2a1644;
-  --meet-accent-strong: #1a0e2a;
+  --meet-accent: #962fa8;
+  --meet-accent-strong: color-mix(in oklab, var(--meet-accent) 32%, var(--color-ink));
   --workspace-accent: var(--meet-accent);
   --color-emerald: var(--meet-accent);
-  --button-primary-bg: var(--meet-accent-strong);
+  --button-primary-bg: var(--meet-accent);
   --button-primary-fg: #ffffff;
   --button-outline-color: var(--color-ink);
   --button-outline-border-color: color-mix(in oklab, var(--color-ink) 20%, transparent);
   --button-active-color: var(--meet-accent-strong);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
-  --primary: var(--meet-accent-strong);
+  --primary: var(--meet-accent);
   --primary-foreground: #ffffff;
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
   --muted-foreground: color-mix(in oklab, var(--color-ink) 55%, transparent);
-  --background: var(--color-cream, #ffffff);
-  --input-background: #ffffff;
-  --input-background-focus: #ffffff;
-  --accent: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #ffffff));
+  --background: var(--color-cream, #fff5e9);
+  --input-background: var(--color-cream, #fff5e9);
+  --input-background-focus: var(--color-cream, #fff5e9);
+  --accent: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #fff5e9));
   --accent-foreground: var(--color-ink);
-  --popover: var(--color-cream, #ffffff);
+  --popover: var(--color-cream, #fff5e9);
   --popover-foreground: var(--color-ink);
   --modal-title-foreground: var(--color-ink);
   --card-title-icon-color: var(--meet-accent);
@@ -36,7 +36,7 @@
   --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --card-panel-bg: color-mix(in oklab, var(--color-ink) 3%, transparent);
   --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--color-cream, #fff5e9);
   color: var(--color-ink);
   border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
 }

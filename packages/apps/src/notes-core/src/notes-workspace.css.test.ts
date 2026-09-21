@@ -216,22 +216,28 @@ describe("notes workspace selected tag chips", () => {
 });
 
 describe("notes workspace app-switch lockup", () => {
-  it("paints the sidebar mark in yellow tints, not ink or gray", () => {
+  it("paints the sidebar mark in the notes.svg hexes", () => {
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-bg:\s*var\(--notes-accent\)/,
+      /\.notes-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#ffc800/,
     );
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-fg:\s*color-mix\(\s*in oklab,\s*var\(--notes-accent\) 14%,\s*var\(--color-cream/,
+      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#ffc800/,
     );
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--app-switch-icon-fg\)/,
+      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#de4b0e/,
     );
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-detail:\s*#f0bc3a/,
+      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-detail:\s*#de4b0e/,
     );
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-cutout:\s*#f0bc3a/,
+      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-cutout:\s*#de4b0e/,
     );
+    expect(css).not.toMatch(/--wai-detail:\s*#f0bc3a/);
+    expect(css).not.toMatch(/--wai-cutout:\s*#f0bc3a/);
+    expect(css).not.toMatch(/--wai-detail:\s*#ba9689/i);
+    expect(css).not.toMatch(/--wai-cutout:\s*#ba9689/i);
+    expect(css).not.toMatch(/--wai-detail:\s*color-mix/);
+    expect(css).not.toMatch(/--wai-cutout:\s*color-mix/);
     const lockup = css.slice(css.indexOf("App switcher lockup"));
     const lockupEnd = lockup.indexOf(".notes-dialog-surface");
     const lockupBlock = lockupEnd === -1 ? lockup : lockup.slice(0, lockupEnd);
@@ -325,7 +331,7 @@ describe("notes workspace detail paper sheet tokens", () => {
   it("paints the paper card with a very light notebook wash on a cream desk", () => {
     expect(css).toMatch(
       new RegExp(
-        `--paper-sheet-bg:\\s*color-mix\\(\\s*in oklab,\\s*var\\(--notes-detail-tint,\\s*var\\(--color-cream,\\s*#ffffff\\)\\) ${NOTES_DETAIL_TINT_PERCENT}%,\\s*var\\(--color-cream`,
+        `--paper-sheet-bg:\\s*color-mix\\(\\s*in oklab,\\s*var\\(--notes-detail-tint,\\s*var\\(--color-cream,\\s*#fff5e9\\)\\) ${NOTES_DETAIL_TINT_PERCENT}%,\\s*var\\(--color-cream`,
       ),
     );
     expect(css).not.toMatch(/--note-detail-sheet-shadow:/);
@@ -446,12 +452,13 @@ describe("notes workspace selected list row", () => {
 });
 
 describe("notes workspace accent tokens", () => {
-  it("uses brand warm yellow #f6d176 for chrome accents, mixed 12% onto cream", () => {
+  it("uses brand yellow #ffc800 for chrome accents, mixed 12% onto cream", () => {
     const accent = css.match(
       /\.notes-workspace \{[\s\S]*?--notes-accent:\s*(#[0-9a-fA-F]{6})/,
     )?.[1];
-    expect(accent?.toLowerCase()).toBe("#f6d176");
-    expect(css).toMatch(/\.notes-dialog-surface \{[\s\S]*?--notes-accent:\s*#f6d176/i);
+    expect(accent?.toLowerCase()).toBe("#ffc800");
+    expect(css).toMatch(/\.notes-dialog-surface \{[\s\S]*?--notes-accent:\s*#ffc800/i);
+    expect(css).not.toMatch(/--notes-accent:\s*#f6d176/i);
     expect(css).not.toMatch(/--notes-accent:\s*#d4bc72/i);
     expect(css).toMatch(
       /--notes-sidebar:\s*color-mix\(in oklab,\s*var\(--notes-accent\) 12%,\s*var\(--color-cream/,
