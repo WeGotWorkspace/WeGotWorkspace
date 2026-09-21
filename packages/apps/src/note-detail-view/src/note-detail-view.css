@@ -3,7 +3,7 @@
 
 /**
  * Notes paper sheet layout on the shared `.paper-sheet` surface.
- * Fill is `--paper-sheet-bg` (notebook wash from the workspace; white
+ * Fill is `--paper-sheet-bg` (notebook wash from the workspace; cream
  * default). Inner TipTap stays flush (`note-text-editor-body` zeroes nested
  * paper-sheet tokens). Square corners come from `.paper-sheet`.
  * Notes-workspace sets `--paper-sheet-min-height` (scrollport minus desk pads)

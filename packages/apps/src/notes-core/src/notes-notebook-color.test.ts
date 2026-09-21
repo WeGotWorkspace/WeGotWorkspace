@@ -1,11 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_NOTEBOOK_COLOR,
+  NOTES_CREAM_HEX,
+  NOTES_INK_HEX,
   notebookContrastFg,
   notebookDisplayColor,
   notebookDotColor,
   notesDetailTintStyle,
 } from "@/notes-core/src/notes-notebook-color";
+
+describe("notes cream/ink hex literals", () => {
+  it("matches styles.css cream and ink (no pure white)", () => {
+    expect(NOTES_CREAM_HEX.toLowerCase()).toBe("#fff5e9");
+    expect(NOTES_INK_HEX.toLowerCase()).toBe("#042a22");
+    expect(NOTES_CREAM_HEX).not.toMatch(/^#fff(?:fff)?$/i);
+  });
+});
 
 describe("notebookDotColor", () => {
   it("uses the notebook calendarcolor when set", () => {
@@ -65,6 +75,7 @@ describe("notebookContrastFg", () => {
   it("uses ink on a light notebook fill", () => {
     expect(notebookContrastFg("#fde68a")).toBe("var(--color-ink)");
     expect(notebookContrastFg("#d4bc72")).toBe("var(--color-ink)");
+    expect(notebookContrastFg("#ffc800")).toBe("var(--color-ink)");
   });
 
   it("uses cream on a dark notebook fill", () => {

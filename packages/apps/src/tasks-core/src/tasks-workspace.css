@@ -2,9 +2,10 @@
 @import "../../workspace-shell/src/workspace-split-app.css";
 
 /**
- * Tasks product shell: cream main pane + light warm sidebar tint.
- * Nav text stays ink-on-tint; primary CTA and app switcher logo use accent fill + ink glyph.
- * Import only from {@link TasksWorkspace}.
+ * Tasks product shell: cream main pane + orange sidebar tint from icon marks
+ * (`#de4b0e`). PWA/tile accent stays pink `#ffbdc2` (WORKSPACE_APP_ACCENT);
+ * UI accent and tile may diverge — same as Meet/Calendar. Primary CTAs use
+ * brand orange with white glyphs. Import only from {@link TasksWorkspace}.
  */
 .tasks-workspace {
   /* Readable todo column — matches contacts/mail detail measure (680px). */
@@ -22,7 +23,8 @@
   --tasks-content-inset: calc(2.25rem + 0.75rem);
   --tasks-content-inset-end: 0;
 
-  --tasks-accent: #ea8c72;
+  --tasks-accent: #de4b0e;
+  --tasks-accent-strong: color-mix(in oklab, var(--tasks-accent) 32%, var(--color-ink));
   --tasks-sidebar: color-mix(in oklab, var(--tasks-accent) 12%, var(--color-cream, #fff5e9));
   --workspace-accent: var(--tasks-accent);
   --color-emerald: var(--tasks-accent);
@@ -40,32 +42,52 @@
   --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --button-primary-bg: var(--tasks-accent);
-  --button-primary-fg: var(--color-ink);
+  --button-primary-fg: #ffffff;
+  --primary: var(--tasks-accent);
+  --primary-foreground: #ffffff;
 
-  /*
-   * Outline / menu-item / collection-row language (same saturation family as Notes).
-   * Sidebar is already 12% accent on cream; mid washes blend into that tint, so
-   * selected sits at 55% accent→cream and hover at 40%. Selected-hover: 65%.
-   * On-color: ink on selected (heavy wash), 32% accent→ink on hover (~Notes recipe).
-   * Header IconButtons dial back to lighter washes below.
-   */
-  --tasks-accent-strong: color-mix(in oklab, var(--tasks-accent) 32%, var(--color-ink));
-  --button-active-color: var(--color-ink);
+  /* Outline action language for header + collection sidebar rows. */
+  --button-active-color: var(--tasks-accent-strong);
   --button-outline-hover-color: var(--tasks-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--tasks-accent) 40%, transparent);
+  --button-outline-hover-background: color-mix(in oklab, var(--tasks-accent) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklab,
-    var(--tasks-accent) 55%,
+    var(--tasks-accent) 18%,
     var(--color-cream, #fff5e9)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
-    var(--tasks-accent) 65%,
+    var(--tasks-accent) 24%,
     var(--color-cream, #fff5e9)
   );
+
+  /*
+   * AppSidebar selected wash: brand orange still reads heavy at the shared
+   * 55%/65% accent→cream mixes. Brighten via `--app-sidebar-item-*` only;
+   * ink on-color clears AA on these lighter washes (accent-strong does not).
+   * Hover wash stays cream-family and lighter than selected; hover fg is ink
+   * (idle) — workspace `--button-outline-hover-color` is accent-strong for the
+   * header and must not leak onto sidebar rows.
+   */
+  --app-sidebar-item-hover-bg: color-mix(
+    in oklab,
+    var(--tasks-accent) 28%,
+    var(--color-cream, #fff5e9)
+  );
+  --app-sidebar-item-selected-bg: color-mix(
+    in oklab,
+    var(--tasks-accent) 38%,
+    var(--color-cream, #fff5e9)
+  );
+  --app-sidebar-item-selected-hover-bg: color-mix(
+    in oklab,
+    var(--tasks-accent) 48%,
+    var(--color-cream, #fff5e9)
+  );
+  --app-sidebar-item-selected-color: var(--color-ink);
 }
 
-/* Header outline chips stay muted; sidebar keeps the saturated root washes. */
+/* Header outline chips stay on accent-strong; sidebar nav hover stays ink. */
 .tasks-workspace .view-header {
   --button-active-color: var(--tasks-accent-strong);
   --button-outline-hover-color: var(--tasks-accent-strong);
@@ -73,7 +95,9 @@
 
 .tasks-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--tasks-accent);
-  --button-primary-fg: var(--color-ink);
+  --button-primary-fg: #ffffff;
+  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
+  --button-outline-hover-color: var(--color-ink);
 }
 
 /** App switcher lockup: tasks.svg literals (`#ffbdc2` tile, `#de4b0e` marks, pink cutout). */
@@ -133,14 +157,14 @@
  * {@link Button} and {@link buttonVariants} match the tasks shell.
  */
 .tasks-dialog-surface {
-  --tasks-accent: #ea8c72;
+  --tasks-accent: #de4b0e;
   --tasks-accent-strong: color-mix(in oklab, var(--tasks-accent) 32%, var(--color-ink));
   --workspace-accent: var(--tasks-accent);
   --color-emerald: var(--tasks-accent);
   --button-primary-bg: var(--tasks-accent);
-  --button-primary-fg: var(--color-ink);
+  --button-primary-fg: #ffffff;
   --primary: var(--tasks-accent);
-  --primary-foreground: var(--color-ink);
+  --primary-foreground: #ffffff;
   --button-active-color: var(--tasks-accent-strong);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */

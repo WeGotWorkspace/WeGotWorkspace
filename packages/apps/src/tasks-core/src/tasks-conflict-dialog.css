@@ -1,7 +1,7 @@
 @import "../../styles.css" reference;
 
 .tasks-conflict-dialog.tasks-dialog-surface {
-  --button-primary-bg: #0e7490;
+  --button-primary-bg: var(--tasks-accent);
   max-width: min(42rem, calc(100vw - 2rem));
 }
 

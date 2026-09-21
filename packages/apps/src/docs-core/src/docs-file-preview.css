@@ -2,7 +2,7 @@
 
 .docs-file-preview {
   @apply flex h-full w-full min-h-0 flex-col overflow-auto;
-  background-color: color-mix(in oklab, var(--color-background, #fff) 96%, transparent);
+  background-color: color-mix(in oklab, var(--color-background, #fff5e9) 96%, transparent);
 }
 
 .docs-file-preview__editor {
@@ -21,7 +21,7 @@
   --docs-file-preview-tile-page-width: 8.5in;
   --docs-file-preview-tile-scale: 1;
   @apply overflow-hidden pointer-events-none;
-  background-color: var(--color-cream, #fff);
+  background-color: var(--color-cream, #fff5e9);
 }
 
 .docs-file-preview__tile-scale {

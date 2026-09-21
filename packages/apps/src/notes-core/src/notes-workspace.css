@@ -65,6 +65,12 @@
 
   --notes-list-star-color: var(--notes-accent);
   /*
+   * Primary fills use brand yellow (not accent-strong). Yellow needs ink fg
+   * for WCAG — cream-on-yellow fails contrast.
+   */
+  --button-primary-bg: var(--notes-accent);
+  --button-primary-fg: var(--color-ink, #042a22);
+  /*
    * Open / selected list row: same fill as `.app-sidebar` (`--app-sidebar-bg` →
    * `--notes-sidebar`). Not a second accent wash, not `--notes-accent`, not
    * the notebook sheet tint.
@@ -363,7 +369,7 @@
   --tag-remove-fg: var(--note-detail-tag-fg);
   --tag-group-input-border: color-mix(in oklab, var(--color-ink) 16%, transparent);
   --tag-group-input-bg: color-mix(in oklab, var(--color-ink) 4%, transparent);
-  --tag-group-input-bg-focus: #ffffff;
+  --tag-group-input-bg-focus: var(--color-cream, #fff5e9);
   --tag-group-input-fg: var(--color-ink);
   --tag-group-suggestions-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --tag-group-suggestions-bg: var(--color-cream, #fff5e9);

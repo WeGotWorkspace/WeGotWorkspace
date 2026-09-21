@@ -459,9 +459,20 @@ describe("notes workspace accent tokens", () => {
     expect(accent?.toLowerCase()).toBe("#ffc800");
     expect(css).toMatch(/\.notes-dialog-surface \{[\s\S]*?--notes-accent:\s*#ffc800/i);
     expect(css).not.toMatch(/--notes-accent:\s*#f6d176/i);
+    expect(css).not.toMatch(/--notes-accent:\s*#f0bc3a/i);
     expect(css).not.toMatch(/--notes-accent:\s*#d4bc72/i);
     expect(css).toMatch(
       /--notes-sidebar:\s*color-mix\(in oklab,\s*var\(--notes-accent\) 12%,\s*var\(--color-cream/,
     );
+    // Primary fills use accent (not accent-strong); yellow needs ink fg.
+    expect(css).toMatch(/\.notes-workspace \{[\s\S]*--button-primary-bg:\s*var\(--notes-accent\)/);
+    expect(css).toMatch(
+      /\.notes-workspace \{[\s\S]*--button-primary-fg:\s*var\(--color-ink(?:,\s*#042a22)?\)/,
+    );
+    expect(css).not.toMatch(/--button-primary-bg:\s*var\(--notes-accent-strong\)/);
+    expect(css).toMatch(
+      /\.notes-workspace \.note-detail-view__tag-group \{[\s\S]*--tag-group-input-bg-focus:\s*var\(--color-cream/,
+    );
+    expect(css).not.toMatch(/--tag-group-input-bg-focus:\s*#fff(?:fff)?\b/i);
   });
 });

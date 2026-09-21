@@ -349,7 +349,7 @@
 
 .tasks-main-view__remind-button--active {
   border-color: color-mix(in oklab, var(--color-ink) 28%, transparent);
-  background-color: color-mix(in oklab, var(--tasks-accent, #ea8c72) 14%, transparent);
+  background-color: color-mix(in oklab, var(--tasks-accent, #de4b0e) 14%, transparent);
 }
 
 .tasks-main-view__remind-button--active svg {
@@ -422,7 +422,7 @@
 
 .tasks-main-view__add-submit.button--variant-primary {
   background-color: var(--tasks-accent);
-  color: var(--color-ink);
+  color: var(--button-primary-fg, #ffffff);
 }
 
 .tasks-main-view__add-submit.button--variant-primary:hover {
