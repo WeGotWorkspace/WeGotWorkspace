@@ -12,7 +12,7 @@
   --docs-collab-sidebar-panel-wash-recipe: color-mix(
     in oklab,
     var(--workspace-accent, var(--color-ink)) 10%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --docs-collab-sidebar-panel-wash: var(--docs-collab-sidebar-panel-wash-recipe);
   background-color: var(--docs-collab-sidebar-panel-wash);
@@ -59,11 +59,11 @@
   --docs-collab-sidebar-panel-wash-recipe: color-mix(
     in oklab,
     var(--workspace-accent, var(--color-ink)) 10%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   background-color: var(
     --docs-collab-sidebar-panel-bg,
-    var(--docs-surface, var(--color-cream, #fff5e9))
+    var(--docs-surface, var(--color-cream, #f7f4ef))
   );
   color: var(--docs-collab-sidebar-panel-color, var(--docs-text, var(--color-ink)));
 }
@@ -89,7 +89,7 @@
   /* Solid when washed; frosted cream when bg is unset. */
   background-color: var(
     --docs-collab-sidebar-panel-bg,
-    color-mix(in oklab, var(--docs-surface, #ffffff) 72%, transparent)
+    color-mix(in oklab, var(--docs-surface, var(--color-cream, #f7f4ef)) 72%, transparent)
   );
   backdrop-filter: blur(8px);
 }
