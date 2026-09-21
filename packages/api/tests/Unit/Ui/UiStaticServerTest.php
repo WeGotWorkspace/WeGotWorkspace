@@ -76,6 +76,10 @@ final class UiStaticServerTest extends TestCase
         $this->assertNotNull($response);
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame('application/javascript; charset=utf-8', $response->headers->get('Content-Type'));
+        $cacheControl = (string) $response->headers->get('Cache-Control');
+        $this->assertStringContainsString('no-store', $cacheControl);
+        $this->assertStringContainsString('no-cache', $cacheControl);
+        $this->assertStringNotContainsString('max-age=86400', $cacheControl);
     }
 
     public function test_serves_workbox_runtime_at_site_root(): void
@@ -90,6 +94,46 @@ final class UiStaticServerTest extends TestCase
 
         $this->assertNotNull($response);
         $this->assertSame(200, $response->getStatusCode());
+    }
+
+    public function test_serves_inbox_chime_with_audio_mpeg_type(): void
+    {
+        $dist = sys_get_temp_dir().'/wgw-static-sounds-'.uniqid('', true);
+        mkdir($dist.'/sounds', 0775, true);
+        file_put_contents($dist.'/index.html', '<!doctype html><title>App</title>');
+        file_put_contents($dist.'/sounds/notification-chime.mp3', 'fake-mp3');
+
+        $server = new UiStaticServer;
+        $this->assertTrue($server->matchesShellPath('', '/sounds/notification-chime.mp3'));
+
+        $response = $server->tryServe($dist, '', '/sounds/notification-chime.mp3', false);
+
+        $this->assertNotNull($response);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('audio/mpeg', $response->headers->get('Content-Type'));
+        $this->assertInstanceOf(BinaryFileResponse::class, $response);
+        $file = $response->getFile();
+        $this->assertNotNull($file);
+        $this->assertSame('fake-mp3', (string) file_get_contents($file->getPathname()));
+    }
+
+    public function test_runtime_sync_copies_non_hashed_global_asset_prefixes(): void
+    {
+        $script = dirname(__DIR__, 5).'/packages/apps/scripts/sync-runtime-app-builds.mjs';
+        $this->assertFileExists($script);
+        $source = (string) file_get_contents($script);
+
+        foreach (UiStaticServer::globalAssetPrefixes() as $prefix) {
+            $dir = ltrim($prefix, '/');
+            if ($dir === 'assets') {
+                continue;
+            }
+            $this->assertStringContainsString(
+                '"'.$dir.'"',
+                $source,
+                'Expected sync-runtime-app-builds.mjs STATIC_PUBLIC_DIRS to include '.$dir,
+            );
+        }
     }
 
     public function test_serves_install_scoped_assets(): void

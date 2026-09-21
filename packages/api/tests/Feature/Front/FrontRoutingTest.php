@@ -190,6 +190,19 @@ final class FrontRoutingTest extends TestCase
             ->assertHeader('Content-Type', 'image/png');
     }
 
+    public function test_inbox_chime_path_serves_shell_asset(): void
+    {
+        $this->repoRoot = UiDistFixture::bootstrapMonorepoLayout();
+        $installRoot = $this->repoRoot.'/apps/wegotworkspace';
+        $data = $installRoot.'/wgw-content';
+        WgwInstallFixture::markInstalled($installRoot, $data);
+        WgwInstallFixture::syncDatabaseConnection();
+
+        $this->get('/sounds/notification-chime.mp3')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'audio/mpeg');
+    }
+
     public function test_index_html_path_serves_shell_asset(): void
     {
         $this->repoRoot = UiDistFixture::bootstrapMonorepoLayout();

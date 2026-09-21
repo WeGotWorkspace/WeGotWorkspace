@@ -36,6 +36,9 @@ const modules = [
 
 const RUNTIME_FONT_PRELOADS = ["LibreCaslonCondensed.woff2", "JetBrainsMono-Variable.woff2"];
 
+/** Public folders Vite copies into dist — keep in sync with UiStaticServer::globalAssetPrefixes(). */
+const STATIC_PUBLIC_DIRS = ["fonts", "app-icons", "pwa-icons", "manifests", "sounds"];
+
 /** Workbox service worker artifacts generated beside dist/index.html (hashed workbox-*.js name). */
 function listPwaServiceWorkerFiles(distRoot) {
   return readdirSync(distRoot).filter(
@@ -88,16 +91,14 @@ export function syncRuntimeAppBuilds() {
 
     mkdirSync(targetDist, { recursive: true });
     rmSync(targetAssetsDir, { recursive: true, force: true });
-    rmSync(resolve(targetDist, "fonts"), { recursive: true, force: true });
-    rmSync(resolve(targetDist, "app-icons"), { recursive: true, force: true });
-    rmSync(resolve(targetDist, "pwa-icons"), { recursive: true, force: true });
-    rmSync(resolve(targetDist, "manifests"), { recursive: true, force: true });
+    for (const dir of STATIC_PUBLIC_DIRS) {
+      rmSync(resolve(targetDist, dir), { recursive: true, force: true });
+    }
 
     cpSync(assetsDir, targetAssetsDir, { recursive: true });
-    cpSync(resolve(distRoot, "fonts"), resolve(targetDist, "fonts"), { recursive: true });
-    cpSync(resolve(distRoot, "app-icons"), resolve(targetDist, "app-icons"), { recursive: true });
-    cpSync(resolve(distRoot, "pwa-icons"), resolve(targetDist, "pwa-icons"), { recursive: true });
-    cpSync(resolve(distRoot, "manifests"), resolve(targetDist, "manifests"), { recursive: true });
+    for (const dir of STATIC_PUBLIC_DIRS) {
+      cpSync(resolve(distRoot, dir), resolve(targetDist, dir), { recursive: true });
+    }
 
     for (const file of pwaServiceWorkerFiles) {
       cpSync(resolve(distRoot, file), resolve(targetDist, file));
