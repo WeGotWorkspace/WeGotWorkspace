@@ -13,14 +13,22 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class UiStaticServer
 {
-    /** @var list<string> */
-    private const GLOBAL_PREFIXES = [
-        '/app-icons',
-        '/assets',
-        '/fonts',
-        '/pwa-icons',
-        '/manifests',
-    ];
+    /**
+     * Root-level static prefixes copied from `packages/apps/public/` into shell dist.
+     *
+     * @return list<string>
+     */
+    public static function globalAssetPrefixes(): array
+    {
+        return [
+            '/app-icons',
+            '/assets',
+            '/fonts',
+            '/pwa-icons',
+            '/manifests',
+            '/sounds',
+        ];
+    }
 
     public function distReady(string $distRoot): bool
     {
@@ -33,7 +41,7 @@ final class UiStaticServer
             return true;
         }
 
-        foreach (self::GLOBAL_PREFIXES as $prefix) {
+        foreach (self::globalAssetPrefixes() as $prefix) {
             $full = InstallerWebBase::url($webBase, $prefix);
             if ($path === $full || str_starts_with($path, $full.'/')) {
                 return true;
@@ -61,7 +69,7 @@ final class UiStaticServer
             return $this->serveResolvedPath($root, $this->pwaRootAssetRelativePath($webBase, $path), false);
         }
 
-        foreach (self::GLOBAL_PREFIXES as $prefix) {
+        foreach (self::globalAssetPrefixes() as $prefix) {
             $full = InstallerWebBase::url($webBase, $prefix);
             if ($path !== $full && ! str_starts_with($path, $full.'/')) {
                 continue;
@@ -176,7 +184,7 @@ final class UiStaticServer
 
         $fs = $this->mapUrlToFilesystem($root, $rel);
         if ($fs === null) {
-            if ($rel !== '' && preg_match('#^(css|js|img|fonts|assets|app-icons|pwa-icons|manifests)/#', $rel) === 1) {
+            if ($rel !== '' && preg_match('#^(css|js|img|fonts|assets|app-icons|pwa-icons|manifests|sounds)/#', $rel) === 1) {
                 return null;
             }
             if (! $allowSpaFallback) {
@@ -216,17 +224,24 @@ final class UiStaticServer
             'txt' => 'text/plain; charset=utf-8',
             'xml' => 'application/xml; charset=utf-8',
             'webmanifest' => 'application/manifest+json; charset=utf-8',
+            'mp3' => 'audio/mpeg',
             default => 'application/octet-stream',
         };
 
-        $cacheControl = ($ext === 'html' || $ext === 'htm')
+        $basename = basename($realFile);
+        $cacheControl = ($ext === 'html' || $ext === 'htm' || $this->isPwaRootAssetFile($basename))
             ? 'no-store, no-cache, must-revalidate'
             : 'public, max-age=86400';
 
-        return new BinaryFileResponse($realFile, 200, [
+        $response = new BinaryFileResponse($realFile, 200, [
             'Content-Type' => $mime,
-            'Cache-Control' => $cacheControl,
         ]);
+        if (str_contains($cacheControl, 'no-store')) {
+            $response->setPrivate();
+        }
+        $response->headers->set('Cache-Control', $cacheControl);
+
+        return $response;
     }
 
     private function mapUrlToFilesystem(string $root, string $rel): ?string
