@@ -4,7 +4,7 @@
  * state (1px transparent reserves space). Accent via --button-outline-*;
  * keyboard-only focus ring. */
 .collection-sidebar-row {
-  @apply relative flex min-w-0 items-center gap-2 text-sm font-medium;
+  @apply relative flex min-w-0 items-center gap-2 text-sm font-semibold;
   min-height: var(--app-sidebar-item-height, var(--control-height-md, 2.25rem));
   border-radius: var(--collection-sidebar-row-radius, 0.25rem);
   /* Align leading content with section titles / app-switch glyph inset. */

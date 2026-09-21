@@ -7,6 +7,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "collection-sidebar-row.css"), "utf8");
 
 describe("collection sidebar row CSS", () => {
+  it("sets collection sidebar rows to semibold (600)", () => {
+    const idle = css.match(/\.collection-sidebar-row \{[^}]+\}/)?.[0];
+    expect(idle).toMatch(/font-semibold/);
+    expect(idle).not.toMatch(/font-medium/);
+  });
+
   it("stretches the select control over the full row hover box", () => {
     expect(css).toMatch(/\.collection-sidebar-row \{[\s\S]*@apply relative flex/);
     expect(css).toMatch(
