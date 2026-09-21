@@ -3,30 +3,32 @@
 /** Shared suite home shell — brand cream surface with ink chrome. */
 .apps-home-screen {
   background-color: var(--color-cream, #fff5e9);
-  color: var(--color-ink, #042a22);
-  --app-switch-label-color: var(--color-ink, #042a22);
+  color: var(--color-ink, #003311);
+  --app-switch-label-color: var(--color-ink, #003311);
+  /* Same tagline mix surface as app sidebars (muted “we got” over lockup paper). */
+  --app-switch-lockup-bg: var(--color-cream, #fff5e9);
   --workspace-shell-header-user-menu-bg: color-mix(
     in oklab,
-    var(--color-ink, #042a22) 12%,
+    var(--color-ink, #003311) 12%,
     var(--color-cream, #fff5e9)
   );
-  --workspace-shell-header-user-menu-fg: var(--color-ink, #042a22);
+  --workspace-shell-header-user-menu-fg: var(--color-ink, #003311);
   --workspace-shell-header-user-menu-border: color-mix(
     in oklab,
-    var(--color-ink, #042a22) 18%,
+    var(--color-ink, #003311) 18%,
     transparent
   );
 }
 
-/** Home grid tile — 128px cell; 16px radius is CSS-only (SVG artwork stays square). */
+/** Home grid tile — 128px base, 160px from `sm` (+25%); 16px radius is CSS-only (SVG stays square). */
 .apps-home-screen__tile-icon {
   --workspace-app-icon-radius: 16px;
-  @apply flex size-32 overflow-hidden shadow-[0_12px_30px_-18px_rgba(0,0,0,0.55)] transition-transform group-hover:scale-[1.03];
+  @apply flex size-32 overflow-hidden transition-transform group-hover:scale-[1.03] sm:size-40;
   border-radius: var(--workspace-app-icon-radius);
 }
 
 .apps-home-screen__tile-icon--accent {
   --workspace-app-icon-radius: 16px;
-  @apply flex size-32 items-center justify-center shadow-[0_12px_30px_-18px_color-mix(in_oklab,var(--color-ink)_80%,transparent)] transition-transform group-hover:scale-[1.03];
+  @apply flex size-32 items-center justify-center transition-transform group-hover:scale-[1.03] sm:size-40;
   border-radius: var(--workspace-app-icon-radius);
 }

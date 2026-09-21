@@ -65,9 +65,12 @@ export function AppSwitchButton({
         className="app-switch-button__menu-icon size-4"
       />
     ),
-    checked: app.id === current.id,
+    // Home / Workspace lockup is not a product app — nothing is current, and every
+    // product entry must remain navigable (do not treat the fallback `current` as selected).
+    checked: !isWorkspaceContext && app.id === current.id,
     onClick: () => {
-      if (disabled || app.id === current.id) return;
+      if (disabled) return;
+      if (!isWorkspaceContext && app.id === current.id) return;
       onSelect?.(app);
     },
   });

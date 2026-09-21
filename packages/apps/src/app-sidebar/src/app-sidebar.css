@@ -36,7 +36,8 @@
   /* Outer chrome gutter — aligns with the app-switch icon tile. */
   --app-sidebar-padding-x: 1rem;
   /* Same lockup math as `.app-switch-button__icon` (two caption lines). */
-  --app-switch-lockup-line: calc(1.875rem * 0.85);
+  --app-switch-lockup-leading: 0.85;
+  --app-switch-lockup-line: calc(1.875rem * var(--app-switch-lockup-leading));
   --app-switch-icon-size: calc(2 * var(--app-switch-lockup-line));
   /* White mark inset in 512² `/app-icons/*.svg` artwork (calendar body at x=112). */
   --app-switch-glyph-inset: calc(var(--app-switch-icon-size) * 112 / 512);
