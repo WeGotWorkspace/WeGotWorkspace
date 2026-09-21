@@ -9,7 +9,7 @@ const css = readFileSync(join(here, "login-screen.css"), "utf8");
 describe("login-screen CSS", () => {
   it("uses brand cream shell with ink chrome, not navy or dark-green fill", () => {
     expect(css).toMatch(
-      /\.login-screen \{[\s\S]*?background-color:\s*var\(--color-cream,\s*#fff5e9\)/,
+      /\.login-screen \{[\s\S]*?background-color:\s*var\(--color-cream,\s*#f7f4ef\)/,
     );
     expect(css).toMatch(/\.login-screen \{[\s\S]*?color:\s*var\(--color-ink,\s*#003311\)/);
     expect(css).toMatch(/\.login-screen \{[\s\S]*?color-scheme:\s*light/);
@@ -32,7 +32,7 @@ describe("login-screen CSS", () => {
 
   it("sets app-switch lockup paper for muted tagline mix (same as sidebars)", () => {
     expect(css).toMatch(
-      /\.login-screen \{[\s\S]*?--app-switch-lockup-bg:\s*var\(--color-cream,\s*#fff5e9\)/,
+      /\.login-screen \{[\s\S]*?--app-switch-lockup-bg:\s*var\(--color-cream,\s*#f7f4ef\)/,
     );
   });
 

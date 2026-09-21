@@ -28,7 +28,7 @@ describe("workspace app icon radius", () => {
 describe("apps home screen shell", () => {
   it("uses cream background and a max 4-column centered grid", () => {
     expect(homeCss).toMatch(
-      /\.apps-home-screen \{[\s\S]*background-color:\s*var\(--color-cream,\s*#fff5e9\)/,
+      /\.apps-home-screen \{[\s\S]*background-color:\s*var\(--color-cream,\s*#f7f4ef\)/,
     );
     expect(homeCss).toMatch(/--app-switch-label-color:\s*var\(--color-ink/);
     expect(homeTsx).toMatch(/grid-cols-2/);

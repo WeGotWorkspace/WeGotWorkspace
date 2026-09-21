@@ -6,7 +6,7 @@
   --docs-collab-card-accent: var(--docs-accent, #3b82f6);
   border-radius: var(--control-radius-button-pill);
   border-color: var(--docs-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
-  background-color: var(--docs-surface, var(--color-cream, #fff5e9));
+  background-color: var(--docs-surface, var(--color-cream, #f7f4ef));
 }
 
 .docs-collab-card[data-active="false"] {

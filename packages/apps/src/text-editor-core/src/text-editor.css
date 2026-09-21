@@ -92,7 +92,7 @@
   --text-editor-format-bar-wash: color-mix(
     in oklab,
     var(--workspace-accent, var(--color-ink)) 5%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   background: var(--text-editor-format-bar-wash);
   padding: 0.375rem 0.5rem;
@@ -652,7 +652,7 @@
     --menu-item-severity-color,
     var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
   );
-  --text-editor-image-delete-surface: var(--color-cream, #fff5e9);
+  --text-editor-image-delete-surface: var(--color-cream, #f7f4ef);
   color: var(--button-severity-color);
   background-color: var(--text-editor-image-delete-surface);
   box-shadow: var(--control-shadow);

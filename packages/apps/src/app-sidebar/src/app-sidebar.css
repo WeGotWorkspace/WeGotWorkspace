@@ -27,7 +27,7 @@
   @apply fixed sidebar:static z-40 inset-y-0 left-0 shrink-0 flex h-dvh min-h-0 w-64 flex-col self-stretch border-r shadow-2xl sidebar:h-full sidebar:min-h-0 sidebar:shadow-none transition-[translate,margin,border-width] overflow-hidden will-change-transform;
   transition-duration: var(--panel-overlay-duration);
   transition-timing-function: var(--panel-overlay-ease);
-  background-color: var(--app-sidebar-bg, var(--mail-sidebar, var(--color-cream, #fff5e9)));
+  background-color: var(--app-sidebar-bg, var(--mail-sidebar, var(--color-cream, #f7f4ef)));
   border-color: var(
     --app-sidebar-border-color,
     color-mix(in oklab, var(--color-ink) 15%, transparent)
@@ -57,15 +57,15 @@
    */
   --button-outline-hover-background: var(
     --app-sidebar-item-hover-bg,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 32%, var(--color-cream, #fff5e9))
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 32%, var(--color-cream, #f7f4ef))
   );
   --button-outline-active-background: var(
     --app-sidebar-item-selected-bg,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 55%, var(--color-cream, #fff5e9))
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 55%, var(--color-cream, #f7f4ef))
   );
   --button-outline-active-hover-background: var(
     --app-sidebar-item-selected-hover-bg,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 65%, var(--color-cream, #fff5e9))
+    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 65%, var(--color-cream, #f7f4ef))
   );
   /* Fallback when contrast-color() is unavailable: keep a readable dark glyph. */
   --button-active-color: var(
@@ -90,7 +90,7 @@
       color-mix(
         in oklab,
         contrast-color(var(--button-outline-active-background)) 92%,
-        var(--color-cream, #fff5e9)
+        var(--color-cream, #f7f4ef)
       )
     );
   }

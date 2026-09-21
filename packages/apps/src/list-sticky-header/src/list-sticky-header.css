@@ -11,7 +11,7 @@
   color: var(--list-sticky-header-color, light-dark(rgb(15 23 42 / 96%), rgb(255 255 255 / 95%)));
   background-color: var(
     --list-sticky-header-bg,
-    var(--workspace-root-bg, var(--color-cream, #fff5e9))
+    var(--workspace-root-bg, var(--color-cream, #f7f4ef))
   );
   border-color: var(
     --list-sticky-header-border,

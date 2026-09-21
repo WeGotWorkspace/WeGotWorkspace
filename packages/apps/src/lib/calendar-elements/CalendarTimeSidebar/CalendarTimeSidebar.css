@@ -21,7 +21,7 @@
   background-color: var(--_lc-time-sidebar-bg, transparent);
   --_lc-time-sidebar-layer-bg: var(
     --_lc-time-sidebar-bg,
-    var(--lg-background-color, var(--_lc-surface-bg, var(--color-cream, #fff5e9)))
+    var(--lg-background-color, var(--_lc-surface-bg, var(--color-cream, #f7f4ef)))
   );
 }
 

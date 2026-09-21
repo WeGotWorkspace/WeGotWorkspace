@@ -11,11 +11,11 @@
 .contacts-workspace {
   --contacts-accent: #962fa8;
   --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 32%, var(--color-ink));
-  --contacts-sidebar: color-mix(in oklab, var(--contacts-accent) 10%, var(--color-cream, #fff5e9));
+  --contacts-sidebar: color-mix(in oklab, var(--contacts-accent) 10%, var(--color-cream, #f7f4ef));
   --workspace-accent: var(--contacts-accent);
   --color-emerald: var(--contacts-accent);
-  --workspace-root-bg: var(--color-cream, #fff5e9);
-  --workspace-detail-bg: var(--color-cream, #fff5e9);
+  --workspace-root-bg: var(--color-cream, #f7f4ef);
+  --workspace-detail-bg: var(--color-cream, #f7f4ef);
   --app-sidebar-bg: var(--contacts-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --app-sidebar-color: var(--color-ink);
@@ -50,12 +50,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--contacts-accent) 18%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--contacts-accent) 24%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
 
   /*
@@ -68,17 +68,17 @@
   --app-sidebar-item-hover-bg: color-mix(
     in oklab,
     var(--contacts-accent) 28%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklab,
     var(--contacts-accent) 38%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklab,
     var(--contacts-accent) 48%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-color: var(--color-ink);
 }
@@ -100,7 +100,7 @@
  * — cream surface; height/radius come from the shared primitive.
  */
 .contacts-workspace .action-bar .contacts-address-book-select.color-swatch-trigger {
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
 }
 
 .contacts-workspace .app-sidebar__scroll {
@@ -489,17 +489,17 @@
 
 .contacts-story-scope {
   min-height: 100dvh;
-  background-color: var(--workspace-root-bg, var(--color-cream, #fff5e9));
+  background-color: var(--workspace-root-bg, var(--color-cream, #f7f4ef));
 }
 
 .contacts-story-scope--list-column {
   display: flex;
   min-height: 100dvh;
   justify-content: center;
-  background-color: var(--workspace-root-bg, var(--color-cream, #fff5e9));
+  background-color: var(--workspace-root-bg, var(--color-cream, #f7f4ef));
 }
 
 .contacts-story-scope--detail {
   min-height: 100dvh;
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
 }

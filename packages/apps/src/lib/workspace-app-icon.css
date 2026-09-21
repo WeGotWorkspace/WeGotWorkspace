@@ -36,5 +36,5 @@
  * (`home.svg` — no `--wai-*` layers; mark fill is fixed as supplied).
  */
 .workspace-app-icon--switch-trigger-home {
-  --app-switch-icon-bg: var(--color-cream, #fff5e9);
+  --app-switch-icon-bg: var(--color-cream, #f7f4ef);
 }

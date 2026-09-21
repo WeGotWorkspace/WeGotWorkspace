@@ -10,7 +10,7 @@
     /* Brand paper — never pure white sticky / surface fallbacks. */
     --_lc-surface-bg: var(
       --_lc-app-header-bg-color,
-      var(--lg-background-color, light-dark(var(--color-cream, #fff5e9), #222))
+      var(--lg-background-color, light-dark(var(--color-cream, #f7f4ef), #222))
     );
   }
 }

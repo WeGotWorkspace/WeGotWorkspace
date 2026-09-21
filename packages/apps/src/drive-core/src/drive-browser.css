@@ -133,7 +133,7 @@
 
 .drive-workspace .drive-file-tile__footer {
   @apply relative px-3.5 py-3 sm:px-4 sm:py-3.5 flex items-center gap-2.5 border-t;
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
   border-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 14%, transparent);
   transition:
     padding 180ms ease,
@@ -196,7 +196,7 @@
 .drive-workspace .drive-file-tile {
   @apply relative overflow-hidden transition-all cursor-pointer outline-none;
   border-radius: var(--control-radius);
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
   box-shadow: none;
 }
 
@@ -248,7 +248,7 @@
 .drive-workspace .drive-file-tile__preview {
   @apply relative flex items-center justify-center overflow-hidden;
   aspect-ratio: 16 / 9;
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
   color: var(--drive-accent);
 }
 

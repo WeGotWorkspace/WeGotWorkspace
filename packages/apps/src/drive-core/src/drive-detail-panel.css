@@ -15,7 +15,7 @@
   @apply min-w-0 max-w-full overflow-hidden;
   --docs-collab-sidebar-panel-bg: var(
     --docs-collab-sidebar-panel-wash,
-    var(--docs-collab-sidebar-panel-wash-recipe, var(--color-cream, #fff5e9))
+    var(--docs-collab-sidebar-panel-wash-recipe, var(--color-cream, #f7f4ef))
   );
   --docs-collab-sidebar-panel-color: var(--color-ink);
   --docs-collab-sidebar-panel-border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
@@ -46,7 +46,7 @@
   /* Flat surface + accent kind icon — same language as `.drive-file-tile__preview`. */
   @apply relative aspect-[4/3] flex items-center justify-center mb-6 overflow-hidden;
   border-radius: var(--control-radius);
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
   color: var(--drive-accent, var(--workspace-accent, var(--color-ink)));
 }
 

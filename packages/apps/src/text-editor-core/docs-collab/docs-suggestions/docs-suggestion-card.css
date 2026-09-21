@@ -38,7 +38,7 @@
   border-color: var(--docs-border, color-mix(in oklab, var(--color-ink) 10%, transparent));
   background-color: color-mix(
     in oklab,
-    var(--docs-surface, var(--color-cream, #fff5e9)) 92%,
+    var(--docs-surface, var(--color-cream, #f7f4ef)) 92%,
     transparent
   );
 }

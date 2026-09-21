@@ -6,16 +6,16 @@
  * `#003311` with white fg. Do not reuse `--workspace-home-bg` (home icon navy).
  */
 .login-screen {
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
   color: var(--color-ink, #003311);
   color-scheme: light;
   --app-switch-label-color: var(--color-ink, #003311);
   /* Same tagline mix surface as app sidebars (muted “we got” over lockup paper). */
-  --app-switch-lockup-bg: var(--color-cream, #fff5e9);
+  --app-switch-lockup-bg: var(--color-cream, #f7f4ef);
   --workspace-shell-header-user-menu-bg: color-mix(
     in oklab,
     var(--color-ink, #003311) 12%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --workspace-shell-header-user-menu-fg: var(--color-ink, #003311);
   --workspace-shell-header-user-menu-border: color-mix(
@@ -27,12 +27,12 @@
   --input-background: color-mix(
     in oklab,
     var(--color-ink, #003311) 6%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --input-background-focus: color-mix(
     in oklab,
     var(--color-ink, #003311) 8%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --input-placeholder-color: color-mix(in oklab, var(--color-ink, #003311) 42%, transparent);
   --foreground: var(--color-ink, #003311);

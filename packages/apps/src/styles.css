@@ -42,7 +42,7 @@
   --color-slate-muted: #0a3a2a;
   --color-ghost: #22c55e;
   /* Workspace pane / shell background — brand paper, never pure white. */
-  --color-cream: #fff5e9;
+  --color-cream: #f7f4ef;
   /** Meet / suite dark surfaces — keep in sync with `WORKSPACE_HOME_ACCENT`. Auth/installer use `--color-cream`. */
   --workspace-home-bg: #1b1d3a;
 }
@@ -112,12 +112,12 @@
 
 :root {
   --radius: 0.625rem;
-  /* Match `--color-cream` (#fff5e9) — never pure white app surfaces. */
-  --background: oklch(0.975 0.019 72.6);
+  /* Match `--color-cream` (#f7f4ef) — never pure white app surfaces. */
+  --background: oklch(0.968 0.007 80.7);
   --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(0.975 0.019 72.6);
+  --card: oklch(0.968 0.007 80.7);
   --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(0.975 0.019 72.6);
+  --popover: oklch(0.968 0.007 80.7);
   --popover-foreground: oklch(0.129 0.042 264.695);
   --primary: oklch(0.208 0.042 265.755);
   --primary-foreground: oklch(0.984 0.003 247.858);
@@ -200,7 +200,7 @@
   --input-font-size-lg: 1rem;
   --input-font-size-xl: 1rem;
   /* Switch off track + pending UserChip wash — one shared gray. */
-  --switch-off-bg: color-mix(in oklab, var(--color-ink) 18%, var(--color-cream, #fff5e9));
+  --switch-off-bg: color-mix(in oklab, var(--color-ink) 18%, var(--color-cream, #f7f4ef));
 }
 
 .dark {

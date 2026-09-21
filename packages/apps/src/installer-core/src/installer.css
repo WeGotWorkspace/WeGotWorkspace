@@ -12,7 +12,7 @@
   --button-outline-color: var(--color-ink, #003311);
   --button-outline-hover-color: var(--color-ink, #003311);
   --button-outline-hover-background: color-mix(in oklab, var(--color-ink, #003311) 8%, transparent);
-  --button-outline-active-background: color-mix(in oklab, #003311 14%, var(--color-cream, #fff5e9));
+  --button-outline-active-background: color-mix(in oklab, #003311 14%, var(--color-cream, #f7f4ef));
   --button-active-color: #003311;
   --segmented-control-color: var(--color-ink, #003311);
   --segmented-control-hover-color: var(--color-ink, #003311);

@@ -288,8 +288,8 @@
   --meet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
   --meet-call-ink-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --meet-call-border: color-mix(in oklab, var(--meet-accent) 22%, transparent);
-  --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #fff5e9));
-  --meet-call-surface: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #fff5e9));
+  --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #f7f4ef));
+  --meet-call-surface: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #f7f4ef));
   --meet-panel: var(--meet-call-surface);
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
@@ -339,17 +339,17 @@
   --color-foreground: var(--color-ink);
   --muted-foreground: var(--meet-muted);
   --color-muted-foreground: var(--meet-muted);
-  --background: var(--color-cream, #fff5e9);
-  --popover: var(--color-cream, #fff5e9);
+  --background: var(--color-cream, #f7f4ef);
+  --popover: var(--color-cream, #f7f4ef);
   --popover-foreground: var(--color-ink);
-  --color-popover: var(--color-cream, #fff5e9);
+  --color-popover: var(--color-cream, #f7f4ef);
   --color-popover-foreground: var(--color-ink);
-  --input-background: var(--color-cream, #fff5e9);
-  --input-background-focus: var(--color-cream, #fff5e9);
-  --accent: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #fff5e9));
+  --input-background: var(--color-cream, #f7f4ef);
+  --input-background-focus: var(--color-cream, #f7f4ef);
+  --accent: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #f7f4ef));
   --accent-foreground: var(--color-ink);
   @apply w-80;
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
   color: var(--color-ink);
   border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
 }
@@ -364,10 +364,10 @@
 
 .meet-device-popover .meet-workspace__form .meet-device-row__trigger,
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger {
-  --input-background: var(--color-cream, #fff5e9);
-  --input-background-focus: var(--color-cream, #fff5e9);
+  --input-background: var(--color-cream, #f7f4ef);
+  --input-background-focus: var(--color-cream, #f7f4ef);
   @apply h-9 min-h-9 border px-3;
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
   color: var(--color-ink);
   border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   box-shadow: none;
@@ -377,7 +377,7 @@
 .meet-device-popover .meet-workspace__form .meet-device-row__trigger[data-state="open"],
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger:focus,
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger[data-state="open"] {
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
   color: var(--color-ink);
   border-color: color-mix(in oklab, var(--meet-accent) 45%, var(--color-ink) 12%, transparent);
 }
@@ -621,8 +621,8 @@
   --meet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
   --meet-call-ink-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --meet-call-border: color-mix(in oklab, var(--meet-accent) 22%, transparent);
-  --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #fff5e9));
-  --meet-call-surface: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #fff5e9));
+  --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #f7f4ef));
+  --meet-call-surface: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #f7f4ef));
   --meet-panel: var(--meet-call-surface);
   --meet-panel-soft: var(--meet-call-empty);
   --popover: var(--meet-call-surface);
@@ -638,15 +638,15 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--meet-accent) 18%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--meet-accent) 24%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-primary-bg: var(--meet-accent);
-  --button-primary-fg: var(--color-cream, #fff5e9);
+  --button-primary-fg: var(--color-cream, #f7f4ef);
   @apply w-80 rounded-xl p-2;
   background-color: var(--meet-call-surface);
   color: var(--color-ink);
@@ -739,8 +739,8 @@
   --color-ink: #003311;
   --meet-text: var(--color-ink);
   --meet-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
-  --meet-sidebar: color-mix(in oklab, var(--meet-accent) 20%, var(--color-cream, #fff5e9));
-  --meet-surface: var(--color-cream, #fff5e9);
+  --meet-sidebar: color-mix(in oklab, var(--meet-accent) 20%, var(--color-cream, #f7f4ef));
+  --meet-surface: var(--color-cream, #f7f4ef);
   --workspace-accent: var(--meet-accent);
   --workspace-root-bg: var(--meet-surface);
   --workspace-main-content-max-width: none;
@@ -776,12 +776,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--meet-accent) 18%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--meet-accent) 24%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   /*
    * AppSidebar washes: brand purple → cream. Hover is the stronger wash;
@@ -792,29 +792,29 @@
   --app-sidebar-item-hover-bg: color-mix(
     in oklab,
     var(--meet-accent) 32%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklab,
     var(--meet-accent) 22%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklab,
     var(--meet-accent) 40%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-color: var(--color-ink);
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
   --workspace-main-bg: var(--meet-surface);
   --workspace-main-header-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --chat-list-surface: var(--color-cream, #fff5e9);
+  --chat-list-surface: var(--color-cream, #f7f4ef);
   --chat-hover: color-mix(in oklab, var(--meet-accent) 8%, transparent);
   --chat-accent: var(--meet-accent-strong);
   --chat-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --chat-day-bg: var(--chat-list-surface);
-  --chat-action-surface: var(--color-cream, #fff5e9);
+  --chat-action-surface: var(--color-cream, #f7f4ef);
   --user-avatar-presence-ring: var(--chat-list-surface);
   background-color: var(--meet-surface);
   color: var(--color-ink);
@@ -839,7 +839,7 @@
 
 .meet-workspace .workspace-app-layout__main-content {
   @apply mx-0 flex h-full min-h-0 min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
-  background-color: var(--meet-surface, var(--color-cream, #fff5e9));
+  background-color: var(--meet-surface, var(--color-cream, #f7f4ef));
 }
 
 /*
@@ -910,12 +910,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--meet-accent) 18%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--meet-accent) 24%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-active-color: var(--meet-accent-strong);
 }
@@ -972,7 +972,7 @@
   --color-ink: #003311;
   --meet-call-ink-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
   --meet-call-border: color-mix(in oklab, var(--meet-accent) 22%, transparent);
-  --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #fff5e9));
+  --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #f7f4ef));
   color: var(--color-ink);
   --button-active-color: var(--meet-accent-strong);
   --button-outline-color: var(--color-ink);
@@ -981,19 +981,19 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--meet-accent) 18%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--meet-accent) 24%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
 }
 
 :is(.meet-call-bar, .meet-call-stage--expanded, .meet-call-expanded) {
-  --meet-call-surface: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #fff5e9));
+  --meet-call-surface: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #f7f4ef));
   background-color: var(--meet-call-surface);
 }
 
@@ -1005,12 +1005,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--meet-accent) 18%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--meet-accent) 24%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
 }
 
@@ -1243,11 +1243,11 @@
 .meet-workspace__rail.workspace-app-layout__panel,
 .meet-call-stage__chat {
   @apply flex h-full min-h-0 shrink-0 flex-col overflow-hidden rounded-none;
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
   color: var(--color-ink);
-  --chat-list-surface: var(--color-cream, #fff5e9);
-  --user-avatar-presence-ring: var(--color-cream, #fff5e9);
-  --docs-surface: var(--color-cream, #fff5e9);
+  --chat-list-surface: var(--color-cream, #f7f4ef);
+  --user-avatar-presence-ring: var(--color-cream, #f7f4ef);
+  --docs-surface: var(--color-cream, #f7f4ef);
   --docs-collab-sidebar-panel-color: var(--color-ink);
   --docs-collab-sidebar-panel-border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
 }
@@ -1510,8 +1510,8 @@
    */
   --meet-text: var(--color-ink);
   --meet-muted: color-mix(in oklab, var(--color-ink) 72%, transparent);
-  --meet-panel: color-mix(in oklab, var(--meet-accent) 8%, var(--color-cream, #fff5e9));
-  --meet-panel-soft: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #fff5e9));
+  --meet-panel: color-mix(in oklab, var(--meet-accent) 8%, var(--color-cream, #f7f4ef));
+  --meet-panel-soft: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #f7f4ef));
   --meet-border: color-mix(in oklab, var(--color-ink) 10%, transparent);
   --meet-border-strong: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --field-label-color: color-mix(in oklab, var(--color-ink) 72%, transparent);
@@ -1522,19 +1522,19 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--meet-accent) 18%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--meet-accent) 24%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
   --button-primary-bg: var(--meet-accent);
-  --button-primary-fg: var(--color-cream, #fff5e9);
+  --button-primary-fg: var(--color-cream, #f7f4ef);
   /* Same camera-off fill as live call tiles (`.meet-peer-tile` / `__fill`). */
-  --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #fff5e9));
+  --meet-call-empty: color-mix(in oklab, var(--meet-accent) 6%, var(--color-cream, #f7f4ef));
   background-color: var(--meet-surface);
   color: var(--color-ink);
   padding-top: max(1.5rem, calc(env(safe-area-inset-top, 0px) + 0.75rem));
@@ -1558,10 +1558,10 @@
     "heading"
     "media"
     "invite";
-  background-color: var(--color-cream, #fff5e9);
-  --card-surface-bg: var(--color-cream, #fff5e9);
-  --input-background: var(--color-cream, #fff5e9);
-  --input-background-focus: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
+  --card-surface-bg: var(--color-cream, #f7f4ef);
+  --input-background: var(--color-cream, #f7f4ef);
+  --input-background-focus: var(--color-cream, #f7f4ef);
   box-shadow: 0 18px 48px color-mix(in oklab, var(--color-ink) 10%, transparent);
 }
 
@@ -1704,8 +1704,8 @@
 .meet-guest-channel__lobby .meet-guest-lobby__name .meet-workspace__display-name-input {
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
-  --input-background: var(--color-cream, #fff5e9);
-  --input-background-focus: var(--color-cream, #fff5e9);
+  --input-background: var(--color-cream, #f7f4ef);
+  --input-background-focus: var(--color-cream, #f7f4ef);
   color: var(--color-ink);
 }
 

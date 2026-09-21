@@ -22,12 +22,12 @@
   --foreground: var(--color-ink);
   --color-foreground: var(--color-ink);
   --muted-foreground: color-mix(in oklab, var(--color-ink) 55%, transparent);
-  --background: var(--color-cream, #fff5e9);
-  --input-background: var(--color-cream, #fff5e9);
-  --input-background-focus: var(--color-cream, #fff5e9);
-  --accent: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #fff5e9));
+  --background: var(--color-cream, #f7f4ef);
+  --input-background: var(--color-cream, #f7f4ef);
+  --input-background-focus: var(--color-cream, #f7f4ef);
+  --accent: color-mix(in oklab, var(--meet-accent) 12%, var(--color-cream, #f7f4ef));
   --accent-foreground: var(--color-ink);
-  --popover: var(--color-cream, #fff5e9);
+  --popover: var(--color-cream, #f7f4ef);
   --popover-foreground: var(--color-ink);
   --modal-title-foreground: var(--color-ink);
   --card-title-icon-color: var(--meet-accent);
@@ -36,7 +36,7 @@
   --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --card-panel-bg: color-mix(in oklab, var(--color-ink) 3%, transparent);
   --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
   color: var(--color-ink);
   border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
 }

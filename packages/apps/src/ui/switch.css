@@ -63,7 +63,7 @@
   height: var(--switch-thumb-size);
   margin-inline-start: var(--switch-pad);
   border-radius: var(--switch-thumb-radius, 999px);
-  background-color: var(--switch-thumb-bg, var(--color-cream, #fff5e9));
+  background-color: var(--switch-thumb-bg, var(--color-cream, #f7f4ef));
   transform: translateX(0);
   transition: transform 150ms ease;
 }

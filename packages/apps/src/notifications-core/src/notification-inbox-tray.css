@@ -51,7 +51,7 @@
 }
 
 .notification-inbox-tray__popover {
-  --popover: var(--color-cream, #fff5e9);
+  --popover: var(--color-cream, #f7f4ef);
   --popover-foreground: var(--color-ink, #003311);
   @apply w-96 p-0;
 }

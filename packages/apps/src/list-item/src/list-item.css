@@ -2,7 +2,7 @@
 
 .list-item__button {
   @apply relative w-full text-left px-4 py-3 md:px-6 md:py-4 border-b block select-none outline-none focus:outline-none;
-  background-color: var(--list-item-bg, var(--list-item-base-bg, var(--color-cream, #fff5e9)));
+  background-color: var(--list-item-bg, var(--list-item-base-bg, var(--color-cream, #f7f4ef)));
   border-color: var(
     --list-item-border-color,
     color-mix(in oklab, var(--color-ink) 10%, transparent)

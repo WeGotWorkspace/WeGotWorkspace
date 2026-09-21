@@ -12,11 +12,11 @@
 .admin-workspace {
   --admin-accent: #003311;
   --admin-accent-strong: color-mix(in oklab, var(--admin-accent) 32%, var(--color-ink));
-  --admin-sidebar: color-mix(in oklab, var(--admin-accent) 16%, var(--color-cream, #fff5e9));
+  --admin-sidebar: color-mix(in oklab, var(--admin-accent) 16%, var(--color-cream, #f7f4ef));
   --workspace-accent: var(--admin-accent);
   --color-emerald: var(--admin-accent);
-  --workspace-root-bg: var(--color-cream, #fff5e9);
-  --workspace-main-bg: color-mix(in oklab, var(--admin-accent) 6%, var(--color-cream, #fff5e9));
+  --workspace-root-bg: var(--color-cream, #f7f4ef);
+  --workspace-main-bg: color-mix(in oklab, var(--admin-accent) 6%, var(--color-cream, #f7f4ef));
   --app-sidebar-bg: var(--admin-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --app-sidebar-color: var(--color-ink);
@@ -42,12 +42,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--admin-accent) 18%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--admin-accent) 24%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
 
   /*
@@ -60,17 +60,17 @@
   --app-sidebar-item-hover-bg: color-mix(
     in oklab,
     var(--admin-accent) 24%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklab,
     var(--admin-accent) 36%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklab,
     var(--admin-accent) 44%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-color: var(--color-ink);
 }
@@ -132,5 +132,5 @@
 /* Storybook pane stories: cream canvas without inline layout presets. */
 .admin-workspace.admin-story-scope {
   min-height: 100dvh;
-  background-color: var(--workspace-root-bg, var(--color-cream, #fff5e9));
+  background-color: var(--workspace-root-bg, var(--color-cream, #f7f4ef));
 }

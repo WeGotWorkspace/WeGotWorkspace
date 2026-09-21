@@ -88,7 +88,7 @@ describe("portal-theme-vars", () => {
         --notes-accent: #ffc800;
         --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 32%, var(--color-ink));
         --color-ink: #1a1a1a;
-        --color-cream: #fff5e9;
+        --color-cream: #f7f4ef;
         --workspace-accent: var(--notes-accent);
         --button-outline-hover-color: var(--notes-accent-strong);
         --button-outline-hover-background: color-mix(in oklab, var(--notes-accent) 14%, transparent);
@@ -113,7 +113,7 @@ describe("portal-theme-vars", () => {
     expect(hover.toLowerCase()).not.toMatch(/color-ink/);
     expect(hover).not.toMatch(/notes-detail/);
     expect(target.style.getPropertyValue("--notes-accent").trim()).toBe("#ffc800");
-    expect(target.style.getPropertyValue("--color-cream").trim()).toBe("#fff5e9");
+    expect(target.style.getPropertyValue("--color-cream").trim()).toBe("#f7f4ef");
     expect(target.style.getPropertyValue("--workspace-accent").trim()).toMatch(
       /notes-accent|#ffc800|rgba?\(|oklch\(/i,
     );
@@ -126,7 +126,7 @@ describe("portal-theme-vars", () => {
         --calendar-accent: #962fa8;
         --calendar-accent-strong: color-mix(in oklab, var(--calendar-accent) 32%, var(--color-ink));
         --color-ink: #1a1a1a;
-        --color-cream: #fff5e9;
+        --color-cream: #f7f4ef;
         --workspace-accent: var(--calendar-accent);
         --button-outline-hover-background: color-mix(in oklab, var(--calendar-accent) 14%, transparent);
         --button-outline-active-background: color-mix(in oklab, var(--calendar-accent) 18%, var(--color-cream));

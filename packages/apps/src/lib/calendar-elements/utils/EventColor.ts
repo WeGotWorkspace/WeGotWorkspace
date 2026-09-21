@@ -41,7 +41,7 @@ export function surfaceTint(
   lightPercent: number,
   darkPercent = lightPercent + 8,
 ): string {
-  const surface = "var(--_lc-surface-bg, var(--color-cream, #fff5e9))";
+  const surface = "var(--_lc-surface-bg, var(--color-cream, #f7f4ef))";
   return `light-dark(color-mix(in srgb, ${color} ${lightPercent}%, ${surface}), color-mix(in srgb, ${color} ${darkPercent}%, ${surface}))`;
 }
 

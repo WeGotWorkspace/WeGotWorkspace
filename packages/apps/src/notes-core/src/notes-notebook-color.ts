@@ -3,7 +3,7 @@ export const DEFAULT_NOTEBOOK_COLOR = "#14b8a6";
 
 /** Same hexes as `--color-ink` / `--color-cream` in `styles.css`. */
 export const NOTES_INK_HEX = "#003311";
-export const NOTES_CREAM_HEX = "#fff5e9";
+export const NOTES_CREAM_HEX = "#f7f4ef";
 
 /**
  * Calendar event-card light wash (`surfaceTint(color, 11)` in srgb).

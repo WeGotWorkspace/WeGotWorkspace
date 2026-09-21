@@ -25,11 +25,11 @@
 
   --tasks-accent: #de4b0e;
   --tasks-accent-strong: color-mix(in oklab, var(--tasks-accent) 32%, var(--color-ink));
-  --tasks-sidebar: color-mix(in oklab, var(--tasks-accent) 12%, var(--color-cream, #fff5e9));
+  --tasks-sidebar: color-mix(in oklab, var(--tasks-accent) 12%, var(--color-cream, #f7f4ef));
   --workspace-accent: var(--tasks-accent);
   --color-emerald: var(--tasks-accent);
-  --workspace-root-bg: var(--color-cream, #fff5e9);
-  --workspace-detail-bg: var(--color-cream, #fff5e9);
+  --workspace-root-bg: var(--color-cream, #f7f4ef);
+  --workspace-detail-bg: var(--color-cream, #f7f4ef);
   --app-sidebar-bg: var(--tasks-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --app-sidebar-color: var(--color-ink);
@@ -53,12 +53,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--tasks-accent) 18%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--tasks-accent) 24%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
 
   /*
@@ -71,17 +71,17 @@
   --app-sidebar-item-hover-bg: color-mix(
     in oklab,
     var(--tasks-accent) 28%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklab,
     var(--tasks-accent) 38%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklab,
     var(--tasks-accent) 48%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-color: var(--color-ink);
 }
@@ -171,7 +171,7 @@
 
 .tasks-story-scope {
   min-height: 100dvh;
-  background-color: var(--workspace-root-bg, var(--color-cream, #fff5e9));
+  background-color: var(--workspace-root-bg, var(--color-cream, #f7f4ef));
 }
 
 .tasks-story-scope--main {

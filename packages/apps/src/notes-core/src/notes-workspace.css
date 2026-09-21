@@ -21,7 +21,7 @@
  */
 .notes-workspace {
   --notes-accent: #ffc800;
-  --notes-sidebar: color-mix(in oklab, var(--notes-accent) 12%, var(--color-cream, #fff5e9));
+  --notes-sidebar: color-mix(in oklab, var(--notes-accent) 12%, var(--color-cream, #f7f4ef));
   /*
    * Hover / detail strong fg: yellow is too light for Calendar-style
    * accent-on-wash selected text. 32% accent → ink (~6.5:1 on cream washes)
@@ -40,17 +40,17 @@
     var(--notes-detail-accent) 32%,
     var(--color-ink)
   );
-  --workspace-chrome-footer-bg: var(--color-cream, #fff5e9);
-  --action-bar-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #fff5e9));
+  --workspace-chrome-footer-bg: var(--color-cream, #f7f4ef);
+  --action-bar-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #f7f4ef));
   /*
    * Detail desk: same cream as footer / action bar. The paper card is the
    * notebook-tinted sheet — not this pane.
    */
-  --workspace-detail-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #fff5e9));
+  --workspace-detail-bg: var(--workspace-chrome-footer-bg, var(--color-cream, #f7f4ef));
   --notes-detail-body-bg: var(--workspace-detail-bg);
   --workspace-accent: var(--notes-accent);
   --color-emerald: var(--notes-accent);
-  --workspace-root-bg: var(--color-cream, #fff5e9);
+  --workspace-root-bg: var(--color-cream, #f7f4ef);
   --app-sidebar-bg: var(--notes-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --app-sidebar-color: var(--color-ink);
@@ -110,14 +110,14 @@
   /* Very light notebook wash on cream — not the full `--notes-detail-tint`. */
   --paper-sheet-bg: color-mix(
     in oklab,
-    var(--notes-detail-tint, var(--color-cream, #fff5e9)) 11%,
-    var(--color-cream, #fff5e9)
+    var(--notes-detail-tint, var(--color-cream, #f7f4ef)) 11%,
+    var(--color-cream, #f7f4ef)
   );
   /* Title/body: warm charcoal — 85% ink into the sheet, not full ink or gray. */
   --notes-detail-contrast-fg: color-mix(
     in oklab,
     var(--color-ink) 85%,
-    var(--paper-sheet-bg, var(--color-cream, #fff5e9))
+    var(--paper-sheet-bg, var(--color-cream, #f7f4ef))
   );
   /*
    * Shared horizontal inset for list + detail chrome (header / sheet / footer).
@@ -147,12 +147,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--notes-accent) 55%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--notes-accent) 65%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
 }
 
@@ -335,7 +335,7 @@
 
 /* Live tree: `main.workspace-detail-pane > nav.action-bar` (WorkspaceApp). */
 .notes-workspace .workspace-detail-pane > .action-bar {
-  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #fff5e9));
+  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #f7f4ef));
   /* Default action-bar is `px-4 md:px-12` — match list / footer inset. */
   padding-inline: var(--notes-pane-padding-x);
 }
@@ -345,7 +345,7 @@
  * — cream surface; height/radius come from the shared primitive.
  */
 .notes-workspace .action-bar .notes-notebook-select.color-swatch-trigger {
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
 }
 
 /*
@@ -362,12 +362,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--notes-accent) 18%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--notes-accent) 24%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
 }
 
@@ -378,10 +378,10 @@
   --tag-remove-fg: var(--note-detail-tag-fg);
   --tag-group-input-border: color-mix(in oklab, var(--color-ink) 16%, transparent);
   --tag-group-input-bg: color-mix(in oklab, var(--color-ink) 4%, transparent);
-  --tag-group-input-bg-focus: var(--color-cream, #fff5e9);
+  --tag-group-input-bg-focus: var(--color-cream, #f7f4ef);
   --tag-group-input-fg: var(--color-ink);
   --tag-group-suggestions-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --tag-group-suggestions-bg: var(--color-cream, #fff5e9);
+  --tag-group-suggestions-bg: var(--color-cream, #f7f4ef);
   --tag-group-suggestion-bg-active: color-mix(in oklab, var(--color-ink) 6%, transparent);
 }
 
@@ -443,19 +443,19 @@
 /* Storybook scopes — mirror workspace chrome without inline presets */
 .notes-story-scope {
   min-height: 100dvh;
-  background-color: var(--workspace-root-bg, var(--color-cream, #fff5e9));
+  background-color: var(--workspace-root-bg, var(--color-cream, #f7f4ef));
 }
 
 .notes-story-scope--list-column {
   display: flex;
   min-height: 100dvh;
   justify-content: center;
-  background-color: var(--workspace-root-bg, var(--color-cream, #fff5e9));
+  background-color: var(--workspace-root-bg, var(--color-cream, #f7f4ef));
 }
 
 .notes-story-scope--detail {
   min-height: 100dvh;
-  background-color: var(--workspace-detail-bg, var(--color-cream, #fff5e9));
+  background-color: var(--workspace-detail-bg, var(--color-cream, #f7f4ef));
 }
 
 .notes-story-scope__detail-body {
@@ -464,5 +464,5 @@
 
 .notes-story-scope__action-bar-shell {
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #fff5e9));
+  background-color: var(--workspace-chrome-footer-bg, var(--color-cream, #f7f4ef));
 }

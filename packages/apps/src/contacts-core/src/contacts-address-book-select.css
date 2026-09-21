@@ -3,7 +3,7 @@
 .contacts-address-book-select.select-trigger {
   width: auto;
   min-width: 7rem;
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
 }
 
 .contacts-address-book-select.select-trigger > span {

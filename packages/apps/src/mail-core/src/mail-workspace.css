@@ -9,7 +9,7 @@
   --mail-sidebar: #d9254f;
   --workspace-accent: var(--mail-accent);
   --color-emerald: var(--mail-accent);
-  --workspace-root-bg: var(--color-cream, #fff5e9);
+  --workspace-root-bg: var(--color-cream, #f7f4ef);
   --app-sidebar-bg: var(--mail-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, #ffffff 18%, transparent);
   --app-sidebar-color: #ffffff;
@@ -23,7 +23,7 @@
   --workspace-user-footer-link-color: color-mix(in oklab, #ffffff 70%, transparent);
   --workspace-user-footer-link-bg: color-mix(in oklab, #ffffff 8%, transparent);
 
-  --mail-detail-tag-primary-fg: var(--color-cream, #fff5e9);
+  --mail-detail-tag-primary-fg: var(--color-cream, #f7f4ef);
   --mail-detail-tag-primary-bg: color-mix(in oklab, var(--color-ink) 88%, transparent);
   --mail-detail-tag-muted-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
   --mail-detail-tag-muted-fg: color-mix(in oklab, var(--color-ink) 58%, transparent);
@@ -165,9 +165,9 @@
   --destination-picker-accent: var(--mail-accent);
   --color-emerald: var(--mail-accent);
   --button-primary-bg: var(--mail-sidebar);
-  --button-primary-fg: var(--color-cream, #fff5e9);
+  --button-primary-fg: var(--color-cream, #f7f4ef);
   --primary: var(--mail-sidebar);
-  --primary-foreground: var(--color-cream, #fff5e9);
+  --primary-foreground: var(--color-cream, #f7f4ef);
   --button-active-color: var(--mail-accent-strong);
   --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
   --segmented-control-track-active-bg: var(--color-ink);
@@ -175,7 +175,7 @@
 }
 
 .mail-compose-dialog-surface {
-  background: var(--color-cream, #fff5e9);
+  background: var(--color-cream, #f7f4ef);
 }
 
 .mail-compose-dialog.mail-compose-dialog-surface {
@@ -298,7 +298,7 @@
   z-index: 10;
   flex-shrink: 0;
   border-bottom: 1px solid color-mix(in oklab, var(--color-ink) 10%, transparent);
-  background: var(--color-cream, #fff5e9);
+  background: var(--color-cream, #f7f4ef);
   backdrop-filter: none;
 }
 
@@ -350,7 +350,7 @@
   margin: 0;
   padding: 1rem 1.5rem 1.25rem;
   border-top: 1px solid color-mix(in oklab, var(--color-ink) 10%, transparent);
-  background: var(--color-cream, #fff5e9);
+  background: var(--color-cream, #f7f4ef);
 }
 
 .mail-compose-dialog__footer-start,
@@ -421,7 +421,7 @@
 
 .mail-story-scope--detail {
   min-height: 100dvh;
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
 }
 
 .mail-story-scope--compose-dialog {
@@ -430,5 +430,5 @@
 
 .mail-story-scope__action-bar-shell {
   border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
 }

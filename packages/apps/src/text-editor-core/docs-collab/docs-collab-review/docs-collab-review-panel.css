@@ -16,7 +16,7 @@
   --docs-collab-sidebar-panel-wash-recipe: color-mix(
     in oklab,
     var(--docs-accent, #3b82f6) 10%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --docs-collab-sidebar-panel-bg: var(
     --docs-collab-sidebar-panel-wash,

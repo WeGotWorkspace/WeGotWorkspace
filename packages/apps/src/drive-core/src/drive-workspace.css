@@ -8,7 +8,7 @@
   --drive-accent: #8ace00;
   --color-emerald: var(--drive-accent);
   /* Cream-tint sidebar; 32% — clearer than 12% mute, softer than solid lime */
-  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #fff5e9));
+  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #f7f4ef));
   --workspace-accent: var(--drive-accent);
   --app-sidebar-bg: var(--drive-sidebar);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
@@ -30,7 +30,7 @@
   --docs-collab-sidebar-panel-wash: color-mix(
     in oklab,
     var(--drive-accent) 10%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   /* Same flex-dock pattern as Calendar invitations / Docs review. */
   --drive-detail-column-width: 22rem;
@@ -52,27 +52,27 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--drive-accent) 55%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--drive-accent) 65%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-hover-bg: color-mix(
     in oklab,
     var(--drive-accent) 42%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklab,
     var(--drive-accent) 55%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklab,
     var(--drive-accent) 65%,
-    var(--color-cream, #fff5e9)
+    var(--color-cream, #f7f4ef)
   );
   --app-sidebar-item-selected-color: var(--color-ink);
 }
@@ -127,7 +127,7 @@
 
 .drive-workspace .drive-main-pane {
   @apply flex min-h-0 flex-1 flex-col min-w-0 relative w-full;
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
 }
 
 .drive-workspace .drive-floating-upload {
@@ -149,7 +149,7 @@
   border-bottom: none;
   border-radius: var(--control-radius);
   padding: 0.875rem 1rem;
-  background-color: var(--color-cream, #fff5e9);
+  background-color: var(--color-cream, #f7f4ef);
   box-shadow:
     0 4px 24px color-mix(in oklab, var(--color-ink) 16%, transparent),
     0 0 0 1px color-mix(in oklab, var(--color-ink) 8%, transparent);
@@ -180,7 +180,7 @@
 .drive-workspace .drive-main-pane__breadcrumbs {
   @apply px-4 md:px-6 shrink-0;
   padding-block: 1rem;
-  background-color: color-mix(in oklab, var(--drive-accent) 7%, var(--color-cream, #fff5e9));
+  background-color: color-mix(in oklab, var(--drive-accent) 7%, var(--color-cream, #f7f4ef));
   border-bottom: 1px solid color-mix(in oklab, var(--drive-accent) 12%, transparent);
   --path-breadcrumb-lead-color: var(--drive-accent);
   --path-breadcrumb-lead-bg: color-mix(in oklab, var(--drive-accent) 12%, transparent);
@@ -215,7 +215,7 @@
 .drive-dialog-surface {
   --drive-accent: #8ace00;
   --drive-accent-strong: color-mix(in oklab, var(--drive-accent) 32%, var(--color-ink));
-  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #fff5e9));
+  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #f7f4ef));
   --workspace-accent: var(--drive-accent);
   --destination-picker-accent: var(--drive-accent);
   --color-emerald: var(--drive-accent);
