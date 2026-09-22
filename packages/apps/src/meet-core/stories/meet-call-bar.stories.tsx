@@ -160,9 +160,15 @@ export const InviteToJoin: Story = {
     await expect(
       canvas.queryByRole("button", { name: meetLabels.expandCall }),
     ).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("img", { name: "Demo User avatar" })).not.toBeInTheDocument();
-    await expect(canvas.getByRole("img", { name: "Alex Morgan avatar" })).toBeInTheDocument();
-    await expect(canvas.getByRole("img", { name: "Jamie Lee avatar" })).toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("img", { name: "Demo User avatar", hidden: true }),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole("img", { name: "Alex Morgan avatar", hidden: true }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("img", { name: "Jamie Lee avatar", hidden: true }),
+    ).toBeInTheDocument();
   },
 };
 

@@ -42,7 +42,7 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { name: "Access" })).toBeInTheDocument();
     await expect(canvas.getAllByText(/Engineering/i).length).toBeGreaterThan(0);
-    await userEvent.click(canvas.getByRole("button", { name: /alice/i }));
+    await userEvent.click(await canvas.findByRole("button", { name: /^alice$/i }));
     await expect(await screen.findByRole("heading", { name: "alice" })).toBeInTheDocument();
   },
 };

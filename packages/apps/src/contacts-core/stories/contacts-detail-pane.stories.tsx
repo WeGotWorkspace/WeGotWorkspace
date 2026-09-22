@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fireEvent } from "storybook/test";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {
   addressesAfterFieldChange,
@@ -186,12 +186,15 @@ export const Editable: Story = {
     const birthday = canvas.getByRole("button", { name: /Birthday:/ });
     await expect(birthday).toHaveClass("locale-date-picker");
     await expect(birthday).toHaveAccessibleName(/1985/);
-    fireEvent.click(birthday);
-    const day = canvasElement.ownerDocument.querySelector<HTMLButtonElement>(
-      'button[data-day]:not([data-selected-single="true"])',
-    );
-    expect(day).toBeTruthy();
-    fireEvent.click(day!);
+    await userEvent.click(birthday);
+    const day = await waitFor(() => {
+      const found = canvasElement.ownerDocument.querySelector<HTMLButtonElement>(
+        'button[data-day]:not([data-selected-single="true"])',
+      );
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    await userEvent.click(day);
     await expect(canvas.getByRole("button", { name: /Birthday:/ })).not.toHaveAccessibleName(
       /Apr 23, 1985|April 23, 1985/,
     );
