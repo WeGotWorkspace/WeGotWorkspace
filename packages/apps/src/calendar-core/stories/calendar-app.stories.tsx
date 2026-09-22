@@ -827,9 +827,11 @@ export const Empty: Story = {
     initialPresentation: "list",
   },
   play: async ({ canvasElement }) => {
-    await expect
-      .poll(() => queryDeep(canvasElement, ".collection-state__body")?.textContent)
-      .toBe(defaultCalendarLabels.noEventsInRange);
+    await waitFor(() => {
+      expect(queryDeep(canvasElement, ".collection-state__body")?.textContent).toBe(
+        defaultCalendarLabels.noEventsInRange,
+      );
+    });
     await expect(queryDeep(canvasElement, ".collection-state__icon")).toBeTruthy();
   },
 };

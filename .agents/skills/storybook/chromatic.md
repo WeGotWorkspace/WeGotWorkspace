@@ -20,6 +20,7 @@ Chromatic captures Storybook snapshots for visual regression. Enablement is trac
 | `autoAcceptChanges` | `"main"` only | Pushes to `main` update baselines; never all branches |
 | `onlyChanged` (TurboSnap) | `true` | Limits snapshot count to stories affected by the diff |
 | Live stories | `parameters.chromatic.disableSnapshot: true` | `Features/Workspace/Live` and `Features/Workspace/Live/Shell` are not snapshotted |
+| `prefersReducedMotion` | `"reduce"` in Storybook preview | Capture emulates reduced motion. `.storybook/chromatic-reduced-motion.css` collapses CSS animations so Radix menus and dialogs unmount during `play` |
 | Repo variable `CHROMATIC_ENABLED` | must be `true` | Chromatic job is skipped when unset / not `true` |
 
 Free tier is ~5k snapshots/month; TurboSnap and smoke-only Storybook Vitest help stay within budget. Full mock-tier catalog is **111 exported surfaces** (~101 story files); Live titles are excluded from Chromatic.

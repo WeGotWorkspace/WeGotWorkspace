@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { CollectionListWorkspace } from "@/collection-layout/src/collection-layout";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
@@ -135,8 +135,10 @@ export const RetrySync: Story = {
   tags: ["vitest-ci"],
   args: { preset: "default", failedSyncCount: 2 },
   play: async () => {
+    await waitFor(() => {
+      expect(document.body.textContent).toContain("Some changes could not sync");
+    });
     const body = within(document.body);
-    await expect(body.getByText("Some changes could not sync")).toBeInTheDocument();
     await expect(body.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   },
 };

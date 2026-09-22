@@ -1,0 +1,17 @@
+/*
+ * Chromatic sets `prefers-reduced-motion: reduce` while it captures.
+ * Radix menus and dialogs wait for CSS exit animations before they unmount.
+ * Chromatic pauses those animations, so the closed layer stays mounted and
+ * the rest of the page stays aria-hidden. A near-zero duration lets the
+ * animationend event fire and the play function continue.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

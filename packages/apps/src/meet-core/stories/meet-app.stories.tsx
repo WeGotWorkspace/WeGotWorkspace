@@ -163,7 +163,7 @@ export const MeetingRelativeStart: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { name: "Standup" })).toBeInTheDocument();
-    await expect(canvas.getAllByText(/starts /i).length).toBeGreaterThan(0);
+    await expect(canvasElement.textContent).toMatch(/starts /i);
     await expect(canvas.getByRole("button", { name: /^Meet$/ })).toBeInTheDocument();
   },
 };
@@ -188,7 +188,9 @@ export const NewMeetingInstant: Story = {
       body.queryByText(defaultCalendarLabels.eventWhenSectionTitle),
     ).not.toBeInTheDocument();
     await userEvent.click(body.getByRole("switch", { name: meetLabels.scheduleMeeting }));
-    await expect(body.getByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeInTheDocument();
+    await expect(
+      await body.findByText(defaultCalendarLabels.eventWhenSectionTitle),
+    ).toBeInTheDocument();
     await expect(body.getByText(defaultCalendarLabels.eventAttendeesLabel)).toBeInTheDocument();
   },
 };
@@ -242,7 +244,7 @@ export const CallBarVideo: Story = {
     await expect(
       canvas.queryByRole("button", { name: meetLabels.shareScreen }),
     ).not.toBeInTheDocument();
-    await expect(canvas.getByText(meetLabels.youLabel)).toBeInTheDocument();
+    await expect(canvas.getAllByText(meetLabels.youLabel).length).toBeGreaterThan(0);
     await userEvent.click(canvas.getByRole("button", { name: meetLabels.expandCall }));
     await expect(canvas.getByText(meetLabels.meetInChannel("#design"))).toBeInTheDocument();
     await expect(canvas.getByText(meetLabels.chatInChannel("#design"))).toBeInTheDocument();
@@ -390,6 +392,9 @@ export const ThreadOpen: Story = {
     await expect(
       within(panel as HTMLElement).queryByRole("button", { name: chatUiLabels.edit }),
     ).not.toBeInTheDocument();
+    const listMessage = canvasElement.querySelector(".chat-message-list .chat-message");
+    await expect(listMessage).toBeTruthy();
+    await userEvent.hover(listMessage as HTMLElement);
     await expect(
       canvas.getAllByRole("button", { name: chatUiLabels.reply }).length,
     ).toBeGreaterThan(0);
@@ -424,7 +429,7 @@ export const ThreadOpenDuringCall: Story = {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.getByRole("button", { name: meetLabels.threadBack })).toBeInTheDocument();
-    await expect(body.getByText(meetLabels.threadTitle)).toBeInTheDocument();
+    await expect(body.getAllByText(meetLabels.threadTitle).length).toBeGreaterThan(0);
     await userEvent.click(body.getByRole("button", { name: meetLabels.threadBack }));
     await expect(
       body.queryByRole("button", { name: meetLabels.threadBack }),

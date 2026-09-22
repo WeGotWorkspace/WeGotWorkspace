@@ -87,7 +87,9 @@ export const Scheduled: Story = {
     await expect(meetLink.value).toMatch(/\/meet\/meetings\//);
     await expect(meetLink.value).not.toMatch(/\/guest/);
     await expect(body.getByRole("button", { name: meetLabels.createChannelButton })).toBeDisabled();
-    await expect(body.getByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeInTheDocument();
+    await expect(
+      await body.findByText(defaultCalendarLabels.eventWhenSectionTitle),
+    ).toBeInTheDocument();
     await expect(body.getByText(defaultCalendarLabels.eventAttendeesLabel)).toBeInTheDocument();
     await expect(body.getByText(defaultCalendarLabels.eventNotesLabel)).toBeInTheDocument();
     const calendarTrigger = body.getByRole("button", { name: /Calendar: Personal/i });
@@ -152,7 +154,9 @@ export const Edit: Story = {
     await expect(
       body.queryByRole("switch", { name: meetLabels.scheduleMeeting }),
     ).not.toBeInTheDocument();
-    await expect(body.getByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeInTheDocument();
+    await expect(
+      await body.findByText(defaultCalendarLabels.eventWhenSectionTitle),
+    ).toBeInTheDocument();
     await expect(body.getByText(defaultCalendarLabels.eventAttendeesLabel)).toBeInTheDocument();
     await expect(
       body.getByRole("button", { name: defaultCalendarLabels.delete }),

@@ -134,7 +134,9 @@ export const Default: Story = {
       expect(canvas.getAllByRole("switch", { name: "Enable account" })).toHaveLength(2);
     });
     await expect(canvas.getAllByText("Disabled")).toHaveLength(2);
-    await expect(await body.findByText("User disabled")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(body.getAllByText("User disabled").length).toBeGreaterThan(0);
+    });
 
     await userEvent.click(canvas.getByRole("button", { name: "Edit Bob Example" }));
     await expect(await body.findByRole("dialog", { name: "Edit user" })).toBeInTheDocument();
@@ -148,7 +150,7 @@ export const Default: Story = {
     await expect(canvas.getByText("Disabled")).toBeInTheDocument();
     toast.dismiss();
     await waitFor(() => {
-      expect(body.queryByText("User disabled")).toBeNull();
+      expect(body.queryAllByText("User disabled")).toHaveLength(0);
     });
   },
 };

@@ -10,6 +10,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import "../src/styles.css";
+import "./chromatic-reduced-motion.css";
 import { NotificationsInboxValueProvider } from "../src/notifications-core/src/notifications-inbox-context";
 import { AppToaster } from "../src/ui/sonner";
 import { TooltipProvider } from "../src/ui/tooltip";
@@ -118,6 +119,9 @@ const preview: Preview = {
       },
     },
 
+    chromatic: {
+      prefersReducedMotion: "reduce",
+    },
     a11y: {
       // 'todo' - show a11y violations in the test UI only
       // 'error' - fail CI on a11y violations (Storybook Vitest smoke sets STORYBOOK_VITEST_SMOKE=1)
