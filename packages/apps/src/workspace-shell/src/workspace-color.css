@@ -72,7 +72,7 @@
  */
 .docs-workspace,
 .docs-dialog-surface {
-  --app-sidebar-bg: var(--workspace-accent);
+  --app-sidebar-bg: #0045ff;
   --app-sidebar-color: #ffffff;
   --app-sidebar-border-color: color-mix(in oklch, #ffffff 18%, transparent);
   --app-sidebar-item-hover-bg: color-mix(in oklch, #000000 10%, var(--app-sidebar-bg));

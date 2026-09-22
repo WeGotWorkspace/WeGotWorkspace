@@ -79,9 +79,7 @@ describe("settings workspace outline chrome", () => {
     expect(css).not.toMatch(/--app-sidebar-bg:\s*var\(--workspace-accent\)\s*;/);
     expect(css).toMatch(/--app-sidebar-color:\s*var\(--color-ink\)/);
     expect(css).toMatch(/--sidebar-logo-close-button-color:\s*var\(--color-ink\)/);
-    expect(css).toMatch(
-      /--workspace-user-footer-text-color:\s*color-mix\(in oklch,\s*var\(--color-ink\) 70%/,
-    );
+    expect(css).toMatch(/--workspace-user-footer-text-color:\s*var\(--color-ink\)/);
     expect(css).not.toMatch(/--app-sidebar-bg:\s*var\(--workspace-accent\)/);
     expect(css).not.toMatch(/--app-sidebar-color:\s*#ffffff/);
     expect(css).not.toMatch(

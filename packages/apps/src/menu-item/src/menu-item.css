@@ -5,6 +5,8 @@
 
 .menu-item {
   @apply flex w-full gap-2 rounded px-4 py-2 text-left text-sm outline-none transition-[color,background-color,box-shadow];
+  /* Beat UA `buttonface` (#efefef) so white-on-accent rails stay AA. */
+  background-color: transparent;
 }
 
 .menu-item--interactive:hover {

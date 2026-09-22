@@ -34,7 +34,7 @@ describe("workspace-color.css shared tint recipes", () => {
     );
     expect(colorCss).not.toMatch(/in oklab/);
     expect(colorCss).toMatch(
-      /\.docs-workspace,\s*\.docs-dialog-surface \{[\s\S]*--app-sidebar-bg:\s*var\(--workspace-accent\)/,
+      /\.docs-workspace,\s*\.docs-dialog-surface \{[\s\S]*--app-sidebar-bg:\s*#0045ff/,
     );
     expect(colorCss).toMatch(
       /\.docs-workspace,\s*\.docs-dialog-surface \{[\s\S]*--app-sidebar-color:\s*#ffffff/,

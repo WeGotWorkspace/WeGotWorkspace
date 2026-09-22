@@ -15,7 +15,7 @@
 .calendar-workspace {
   --workspace-accent: var(--color-we-got-prince);
   --workspace-sidebar-mix: 10%;
-  --calendar-muted: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --calendar-muted: color-mix(in oklch, var(--color-ink) 80%, var(--color-cream));
 
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--color-cream);
@@ -29,12 +29,17 @@
   --sidebar-logo-close-button-color: var(--color-ink);
   --sidebar-badge-fg: var(--workspace-accent);
   --workspace-user-footer-link-hover-bg: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-text-color: color-mix(in oklch, var(--color-ink) 70%, transparent);
+  --workspace-user-footer-text-color: color-mix(in oklch, var(--color-ink) 80%, var(--color-cream));
+  --workspace-user-footer-subtitle-color: color-mix(
+    in oklch,
+    var(--color-ink) 80%,
+    var(--color-cream)
+  );
   --workspace-user-footer-border-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 85%, var(--color-cream));
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-ink) 6%, transparent);
 
-  --field-label-color: color-mix(in oklch, var(--color-ink) 68%, transparent);
+  --field-label-color: var(--color-ink);
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);

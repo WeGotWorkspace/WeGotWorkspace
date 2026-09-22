@@ -88,7 +88,7 @@ describe("docs workspace outline chrome", () => {
     expect(colorCss).toMatch(
       /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
     );
-    expect(css).toMatch(/--app-sidebar-bg:\s*var\(--workspace-accent\)/);
+    expect(css).toMatch(/--app-sidebar-bg:\s*#0045ff/);
     expect(css).not.toMatch(
       /--app-sidebar-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\)\s+\d+%,\s*var\(--color-cream/,
     );
@@ -161,7 +161,7 @@ describe("docs workspace outline chrome", () => {
   });
 
   it("uses white-on-accent sidebar chrome with Mail-style darkened washes", () => {
-    expect(css).toMatch(/--app-sidebar-bg:\s*var\(--workspace-accent\)/);
+    expect(css).toMatch(/--app-sidebar-bg:\s*#0045ff/);
     expect(css).toMatch(/--app-sidebar-color:\s*#ffffff/);
     expect(css).toMatch(/\.docs-workspace \.app-sidebar \{[\s\S]*--color-ink:\s*#ffffff/);
     expect(css).toMatch(
@@ -180,13 +180,13 @@ describe("docs workspace outline chrome", () => {
       /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*#ffffff/,
     );
     expect(css).toMatch(
-      /\.docs-workspace \.sidebar-section \.menu-item--surface-idle \{[\s\S]*color:\s*#ffffff/,
+      /\.docs-workspace \.app-sidebar \.sidebar-section \.menu-item--surface-idle \{[\s\S]*color:\s*#ffffff/,
     );
     expect(css).toMatch(
-      /\.docs-workspace \.sidebar-section \.menu-item--surface-selected \{[\s\S]*color:\s*#ffffff/,
+      /\.docs-workspace \.app-sidebar \.sidebar-section \.menu-item--surface-selected \{[\s\S]*color:\s*#ffffff/,
     );
     expect(css).toMatch(
-      /\.docs-workspace \.sidebar-section \.menu-item \.menu-item__icon-slot \{[\s\S]*color:\s*#ffffff/,
+      /\.docs-workspace \.app-sidebar \.sidebar-section \.menu-item \.menu-item__icon-slot \{[\s\S]*color:\s*#ffffff/,
     );
   });
 

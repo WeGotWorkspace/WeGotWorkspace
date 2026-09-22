@@ -12,7 +12,8 @@
    * that rail clears AA; do not cream-mix the nav like other workspaces.
    */
   --workspace-accent: var(--color-we-got-blue);
-  --app-sidebar-bg: var(--workspace-accent);
+  /* Concrete blue so Storybook a11y never samples a missing accent as page gray. */
+  --app-sidebar-bg: #0045ff;
   --color-emerald: var(--workspace-accent);
   --docs-surface: var(--color-cream);
   --background: var(--color-cream);
@@ -186,7 +187,24 @@
   --button-outline-color: #ffffff;
   --button-outline-hover-color: #ffffff;
   --button-active-color: #ffffff;
+  /* Opaque lockup mixes — transparent washes + oklab computed colors confuse axe. */
+  --app-switch-label-tagline-color: color-mix(in oklch, #ffffff 92%, #0045ff);
+  --app-switch-chevron-color: color-mix(in oklch, #ffffff 50%, #0045ff);
   color: #ffffff;
+  background-color: #0045ff;
+}
+
+/*
+ * Opaque inner chrome: axe walks transparent header/scroll/section layers and
+ * can miss the aside’s blue (`will-change: transform` stacking), reporting
+ * white-on-#efefef. Paint the same rail color on nested shells.
+ */
+.docs-workspace .app-sidebar__header,
+.docs-workspace .app-sidebar__scroll,
+.docs-workspace .app-sidebar__scroll-surface,
+.docs-workspace .app-sidebar__sections,
+.docs-workspace .app-sidebar__footer {
+  background-color: #0045ff;
 }
 
 /**
@@ -262,15 +280,15 @@
  * Token remaps alone can lose to `.app-sidebar` cream-wash fallbacks +
  * workspace-root `--button-active-color: accent-strong`.
  */
-.docs-workspace .sidebar-section__title {
+.docs-workspace .app-sidebar .sidebar-section__title {
   color: color-mix(in oklch, #ffffff 72%, transparent);
 }
 
-.docs-workspace .sidebar-section .menu-item--surface-idle {
+.docs-workspace .app-sidebar .sidebar-section .menu-item--surface-idle {
   color: #ffffff;
 }
 
-.docs-workspace .sidebar-section .menu-item--surface-selected {
+.docs-workspace .app-sidebar .sidebar-section .menu-item--surface-selected {
   background-color: var(
     --button-outline-active-background,
     color-mix(in oklch, #000000 14%, var(--app-sidebar-bg))
@@ -279,6 +297,7 @@
 }
 
 .docs-workspace
+  .app-sidebar
   .sidebar-section
   .menu-item--interactive:hover:not(.menu-item--surface-selected):not(.menu-item--severity-danger) {
   color: #ffffff;
@@ -288,8 +307,10 @@
   );
 }
 
-.docs-workspace .sidebar-section .menu-item .menu-item__icon-slot {
+.docs-workspace .app-sidebar .sidebar-section .menu-item .menu-item__icon-slot {
   color: #ffffff;
+  /* Default slot opacity 0.65 turns white→#a6beff on blue (~3.46:1). */
+  opacity: 1;
 }
 
 .docs-workspace__header-actions {

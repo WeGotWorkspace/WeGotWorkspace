@@ -6,6 +6,8 @@
   @apply inline-flex min-w-0 items-start gap-2 rounded-lg pr-2 pl-1 py-1 -ml-1 transition-colors outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
   user-select: none;
   color: var(--app-switch-label-color, currentColor);
+  /* Beat UA `buttonface` (#efefef) under white lockup labels on accent rails. */
+  background-color: transparent;
   /* Single leading token — shared by icon height + `.app-switch-button__label` (BrandLockup too). */
   --app-switch-lockup-leading: 0.85;
   --app-switch-lockup-line: calc(1.875rem * var(--app-switch-lockup-leading));

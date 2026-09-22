@@ -21,12 +21,17 @@
   --sidebar-logo-close-button-color: var(--color-ink);
   --sidebar-badge-fg: var(--workspace-accent);
   --workspace-user-footer-link-hover-bg: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-text-color: color-mix(in oklch, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-subtitle-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-text-color: var(--color-ink);
+  --workspace-user-footer-subtitle-color: color-mix(
+    in oklch,
+    var(--color-ink) 80%,
+    var(--color-cream)
+  );
   --workspace-user-footer-border-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 85%, var(--color-cream));
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-ink) 6%, transparent);
-  --field-label-color: color-mix(in oklch, var(--color-ink) 68%, transparent);
+  --field-label-color: var(--color-ink);
+  --user-avatar-subtitle-color: color-mix(in oklch, var(--color-ink) 80%, var(--color-cream));
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
@@ -100,10 +105,14 @@
 }
 
 .admin-workspace .app-sidebar__footer {
-  --workspace-user-footer-text-color: color-mix(in oklch, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-subtitle-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-text-color: var(--color-ink);
+  --workspace-user-footer-subtitle-color: color-mix(
+    in oklch,
+    var(--color-ink) 80%,
+    var(--color-cream)
+  );
   --workspace-user-footer-border-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 85%, var(--color-cream));
 }
 
 /**
