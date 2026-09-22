@@ -110,6 +110,20 @@ describe("buildBrandingWorkspaceOverrideCss", () => {
     });
     expect(css).toMatch(/\.workspace-app-icon--switch-trigger svg \{\s*--wai-bg: #ffbdc2;/);
   });
+
+  it("inverts wai-bg and wai-fg on the Docs sidebar icon only", () => {
+    const css = buildBrandingWorkspaceOverrideCss("docs-workspace", {
+      "--workspace-accent": "#0045ff",
+      "--wai-bg": "#0045ff",
+      "--wai-fg": "#ffffff",
+    });
+    expect(css).toMatch(
+      /\.branding-playground-root \.docs-workspace \{\s*--workspace-accent: #0045ff;\s*--wai-bg: #0045ff;\s*--wai-fg: #ffffff;/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-icon--switch-trigger svg \{\s*--wai-bg: #ffffff;\s*--wai-fg: #0045ff;/,
+    );
+  });
 });
 
 describe("syncBrandingCsspropsToRoot", () => {

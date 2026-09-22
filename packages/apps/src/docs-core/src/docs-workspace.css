@@ -212,20 +212,20 @@
 }
 
 /**
- * Sidebar lockup: blue tile + white marks, same pair as docs.svg.
+ * Sidebar lockup inverts docs.svg: white tile + blue marks on the blue rail.
  */
 .docs-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--workspace-accent);
-  --app-switch-icon-fg: #ffffff;
-  background-color: var(--workspace-accent);
+  --app-switch-icon-bg: #ffffff;
+  --app-switch-icon-fg: var(--workspace-accent);
+  background-color: #ffffff;
 }
 
 .docs-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--workspace-accent);
-  --wai-fg: #ffffff;
+  --wai-bg: #ffffff;
+  --wai-fg: var(--workspace-accent);
 }
 
 /**

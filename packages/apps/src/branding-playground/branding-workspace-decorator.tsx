@@ -27,8 +27,6 @@ export type BrandingStoryArgs = {
 
 type CsspropSeedEntry = { key: string; value: string };
 
-const WAI_CSSPROP_KEYS = ["wai-bg", "wai-fg"] as const;
-
 function csspropEntriesFromParameters(parameters: Record<string, unknown>): CsspropSeedEntry[] {
   const cssprops = parameters.cssprops as BrandingCsspropsMap | undefined;
   if (!cssprops || typeof cssprops !== "object") return [];
@@ -58,6 +56,24 @@ export function resolveBrandingIconMarkup(
     return WORKSPACE_APP_ICON_INLINE[preset];
   }
   return undefined;
+}
+
+/**
+ * Docs sidebar inverts the sheet pair (white tile + blue marks on the blue rail).
+ * Workspace-level `--wai-*` stays the source pair for every other surface.
+ */
+function sidebarSwitchTriggerWaiDecls(
+  workspaceClass: string,
+  values: Record<string, string>,
+): string {
+  const bg = values["--wai-bg"];
+  const fg = values["--wai-fg"];
+  if (bg === undefined && fg === undefined) return "";
+  const invert = workspaceClass === "docs-workspace" && bg !== undefined && fg !== undefined;
+  const lines: string[] = [];
+  if (bg !== undefined) lines.push(`  --wai-bg: ${invert ? fg : bg};`);
+  if (fg !== undefined) lines.push(`  --wai-fg: ${invert ? bg : fg};`);
+  return lines.join("\n");
 }
 
 function docsSidebarOverrideCss(
@@ -127,10 +143,7 @@ export function buildBrandingWorkspaceOverrideCss(
     .map(([prop, value]) => `  ${prop}: ${value};`)
     .join("\n");
 
-  const waiDecls = Object.entries(values)
-    .filter(([prop]) => (WAI_CSSPROP_KEYS as readonly string[]).includes(prop.slice(2)))
-    .map(([prop, value]) => `  ${prop}: ${value};`)
-    .join("\n");
+  const waiDecls = sidebarSwitchTriggerWaiDecls(workspaceClass, values);
 
   return `
 .branding-playground-root .${workspaceClass} {
