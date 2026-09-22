@@ -102,7 +102,7 @@ const TABLET_SEARCH_VIEWPORT = {
   type: "tablet" as const,
 };
 
-/** Chrome Default lives under Branding/Calendar — sidebar subscription / sharee SST. */
+/** Chrome Default lives under Themes/Calendar — sidebar subscription / sharee SST. */
 export const SeededMonthSidebar: Story = {
   name: "Seeded month sidebar",
   tags: ["vitest-ci"],

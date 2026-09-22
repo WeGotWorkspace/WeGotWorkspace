@@ -43,7 +43,7 @@ const preview: Preview = {
 
       const renderStory = () => createElement(Story);
       // Keep in sync with WORKSPACE_APP_IDS + auth/install shells so
-      // `parameters.routerPath` (e.g. Branding stories) resolves without falling through.
+      // `parameters.routerPath` (e.g. Themes stories) resolves without falling through.
       const routes = [
         createRoute({ getParentRoute: () => rootRoute, path: "/", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "login", component: renderStory }),
@@ -95,6 +95,11 @@ const preview: Preview = {
       ),
   ],
   parameters: {
+    options: {
+      storySort: {
+        order: ["Foundations", "Themes", "UI", "Layout", "Features"],
+      },
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,

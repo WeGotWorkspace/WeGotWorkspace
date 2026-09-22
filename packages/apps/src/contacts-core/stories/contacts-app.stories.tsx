@@ -18,7 +18,7 @@ const meta: Meta<typeof ContactsWorkspace> = {
 export default meta;
 type Story = StoryObj<typeof ContactsWorkspace>;
 
-/** Chrome Default lives under Branding/Contacts — list/detail edit + create SST. */
+/** Chrome Default lives under Themes/Contacts — list/detail edit + create SST. */
 export const WorkspaceInteractions: Story = {
   name: "Workspace interactions",
   tags: ["vitest-ci"],

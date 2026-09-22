@@ -16,7 +16,7 @@ type Story = StoryObj<typeof NotesWorkspace>;
 
 const bootstrap = createNotesAppBootstrap();
 
-/** Chrome Default lives under Branding/Notes — shared-notebook sidebar layout. */
+/** Chrome Default lives under Themes/Notes — shared-notebook sidebar layout. */
 export const WithSharedSections: Story = {
   args: {
     ...createNotesAppBootstrap({

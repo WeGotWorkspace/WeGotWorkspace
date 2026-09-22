@@ -16,7 +16,7 @@ const brandingMeta = createBrandingStoryMeta({
 
 const meta = {
   ...brandingMeta,
-  title: "Branding/Contacts",
+  title: "Themes/Contacts",
   tags: ["vitest-ci"],
 } satisfies Meta<typeof ContactsWorkspace>;
 

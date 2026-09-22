@@ -12,7 +12,7 @@ const brandingMeta = createBrandingStoryMeta({
 
 const meta = {
   ...brandingMeta,
-  title: "Branding/Admin",
+  title: "Themes/Admin",
   tags: ["vitest-ci"],
 } satisfies Meta<typeof AdminWorkspace>;
 

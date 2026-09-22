@@ -16,7 +16,7 @@ const brandingMeta = createBrandingStoryMeta({
 
 const meta = {
   ...brandingMeta,
-  title: "Branding/Drive",
+  title: "Themes/Drive",
   tags: ["vitest-ci"],
 } satisfies Meta<typeof DriveWorkspace>;
 

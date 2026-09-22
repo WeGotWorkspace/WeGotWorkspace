@@ -39,7 +39,7 @@ Pane and browser styling lives under `.drive-workspace` in `drive-workspace.css`
 
 | Story                                            | Purpose                                        |
 | ------------------------------------------------ | ---------------------------------------------- |
-| `Branding/Drive`                                 | Full workspace chrome + branding knobs         |
+| `Themes/Drive`                                   | Full workspace chrome + branding knobs         |
 | `Features/Drive`                                 | Shared with me view (non-branding)             |
 | `Features/Drive/Panes/DriveMainPane`             | Main column (grid/list, selection, detail)     |
 | `Features/Drive/Components/DriveDetailActionBar` | Detail toolbar variants                        |

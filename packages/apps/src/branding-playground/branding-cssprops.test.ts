@@ -234,7 +234,7 @@ describe("createBrandingStoryMeta defaults", () => {
   });
 
   it.each(["tasks", "meet", "docs"] as const)(
-    "Branding/%s meta matches Apps production accents without inventing sidebar chrome",
+    "Themes/%s meta matches Apps production accents without inventing sidebar chrome",
     (appId) => {
       const meta = createBrandingStoryMeta({
         appId,

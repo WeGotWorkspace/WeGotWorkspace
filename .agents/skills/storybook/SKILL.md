@@ -53,13 +53,15 @@ Reference: `packages/apps/src/button/stories/button.stories.tsx`.
 
 Top-level groups (CSF `title` only — do not move story files to match):
 
-- `Foundations/` — short docs for Colors, Typography, Spacing (CSS tokens; live knobs stay in Branding)
-- `Branding/` — designer catalog (workspace chrome + auth/installer; accents / cream/ink / icons)
+- `Foundations/` — short docs for Colors, Typography, Spacing (CSS tokens; live knobs stay in Themes)
+- `Themes/` — designer catalog (workspace chrome + auth/installer; accents / cream/ink / icons)
 - `UI/Primitives/` — context-agnostic controls (Button, Input, Dialog, Menu Item, …)
 - `UI/Patterns/` — compositions with no product noun (Detail View Header, Action Bar, Chat, …)
 - `Layout/` — page frame (App Sidebar, Shell Header, Brand Lockup, …)
 - `Features/{App}/` — product panes/components (Mail, Notes, Drive, Docs, Calendar, Contacts, Tasks, Meet, Admin, Settings)
 - `Features/Workspace/` — WeGotWorkspace mock shell; live API under `Features/Workspace/Live/…`
+
+Sidebar order is set explicitly in `packages/apps/.storybook/preview.ts` (`parameters.options.storySort`): **Foundations → Themes → UI → Layout → Features**. Nested stories stay alphabetical within each group.
 
 No top-level `Shared/` or `Forms/`. Rule when unsure: product noun → Features; reusable without a product word → UI or Layout; page frame / routing chrome → Layout.
 

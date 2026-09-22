@@ -17,7 +17,7 @@ const meta: Meta<typeof TasksWorkspace> = {
 export default meta;
 type Story = StoryObj<typeof TasksWorkspace>;
 
-/** Chrome Default lives under Branding/Tasks — shared-list layout. */
+/** Chrome Default lives under Themes/Tasks — shared-list layout. */
 export const SharedWithMe: Story = {
   args: {
     ...createSharedTasksAppBootstrap(),

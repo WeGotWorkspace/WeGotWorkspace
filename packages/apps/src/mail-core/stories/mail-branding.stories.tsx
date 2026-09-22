@@ -26,7 +26,7 @@ const brandingMeta = createBrandingStoryMeta({
 
 const meta = {
   ...brandingMeta,
-  title: "Branding/Mail",
+  title: "Themes/Mail",
   tags: ["vitest-ci"],
 } satisfies Meta<typeof MailWorkspace>;
 

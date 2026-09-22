@@ -6,39 +6,39 @@ Try app accents, cream/ink, and icon artwork without editing CSS. Winning values
 
 1. From the monorepo root: `pnpm dev:storybook` (or full `pnpm dev`).
 2. Open [http://127.0.0.1:6006](http://127.0.0.1:6006).
-3. In the sidebar, open **Branding** — this is the designer catalog (one story per app plus Home, Login, and Installer):
+3. In the sidebar, open **Themes** — this is the designer catalog (one story per app plus Home, Login, and Installer):
 
-| Story                                 | What you see                                                   |
-| ------------------------------------- | -------------------------------------------------------------- |
-| `Branding/Mail` … `Branding/Settings` | Mock workspace chrome (sidebar, lockup, CTAs)                  |
-| `Branding/Home`                       | Suite home grid + BrandLockup                                  |
-| `Branding/Login`                      | Cream auth shell + BrandLockup — full state matrix (below)     |
-| `Branding/Installer`                  | Same cream shell — interactive full flow + step matrix (below) |
+| Story                             | What you see                                                   |
+| --------------------------------- | -------------------------------------------------------------- |
+| `Themes/Mail` … `Themes/Settings` | Mock workspace chrome (sidebar, lockup, CTAs)                  |
+| `Themes/Home`                     | Suite home grid + BrandLockup                                  |
+| `Themes/Login`                    | Cream auth shell + BrandLockup — full state matrix (below)     |
+| `Themes/Installer`                | Same cream shell — interactive full flow + step matrix (below) |
 
 Stories are offline mock fixtures — no live API required.
 
-Storybook sidebar groups: **`Foundations/`** (token docs), **`Branding/`** (designer chrome), **`UI/`** (primitives + patterns), **`Layout/`** (page frame), and **`Features/`** (product + Workspace). Prefer **Branding/** when reviewing accents, cream/ink, or icon artwork.
+Storybook sidebar groups: **`Foundations/`** (token docs), **`Themes/`** (designer chrome), **`UI/`** (primitives + patterns), **`Layout/`** (page frame), and **`Features/`** (product + Workspace). Prefer **Themes/** when reviewing accents, cream/ink, or icon artwork.
 
-### What lives outside `Branding/`
+### What lives outside `Themes/`
 
-| Group              | Examples                                                                                                               |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| Foundations        | `Foundations/Colors`, `Foundations/Typography`, `Foundations/Spacing` (pointers at CSS tokens; knobs stay in Branding) |
-| UI/Primitives      | `UI/Primitives/Button`, `UI/Primitives/Input`, `UI/Primitives/Dialog`, …                                               |
-| UI/Patterns        | `UI/Patterns/Detail View Header`, Action Bar, Chat, …                                                                  |
-| Layout             | `Layout/App Sidebar`, `Layout/Shell Header`, `Layout/Brand Lockup`, `Layout/Authentication Page`                       |
-| Features/{App}     | `Features/Mail/Panes/…`, `Features/Meet/Components/…`, `Features/Admin/Panes/…`                                        |
-| Features/Workspace | Mock shell `Features/Workspace`, live `Features/Workspace/Live`                                                        |
+| Group              | Examples                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Foundations        | `Foundations/Colors`, `Foundations/Typography`, `Foundations/Spacing` (pointers at CSS tokens; knobs stay in Themes) |
+| UI/Primitives      | `UI/Primitives/Button`, `UI/Primitives/Input`, `UI/Primitives/Dialog`, …                                             |
+| UI/Patterns        | `UI/Patterns/Detail View Header`, Action Bar, Chat, …                                                                |
+| Layout             | `Layout/App Sidebar`, `Layout/Shell Header`, `Layout/Brand Lockup`, `Layout/Authentication Page`                     |
+| Features/{App}     | `Features/Mail/Panes/…`, `Features/Meet/Components/…`, `Features/Admin/Panes/…`                                      |
+| Features/Workspace | Mock shell `Features/Workspace`, live `Features/Workspace/Live`                                                      |
 
-Product workspace **chrome Defaults** live under `Branding/{App}` (and Login/Installer matrices under `Branding/Login` / `Branding/Installer`). Do **not** duplicate those Defaults under Features.
+Product workspace **chrome Defaults** live under `Themes/{App}` (and Login/Installer matrices under `Themes/Login` / `Themes/Installer`). Do **not** duplicate those Defaults under Features.
 
 Designer URL examples (Storybook id encoding may vary slightly):
 
-- [Branding/Login](http://127.0.0.1:6006/?path=/story/branding-login--login)
-- [Branding/Installer](http://127.0.0.1:6006/?path=/story/branding-installer--welcome)
-- [Branding/Installer — Interactive flow](http://127.0.0.1:6006/?path=/story/branding-installer--interactive-flow)
+- [Themes/Login](http://127.0.0.1:6006/?path=/story/themes-login--login)
+- [Themes/Installer](http://127.0.0.1:6006/?path=/story/themes-installer--welcome)
+- [Themes/Installer — Interactive flow](http://127.0.0.1:6006/?path=/story/themes-installer--interactive-flow)
 
-### Login state matrix (`Branding/Login`)
+### Login state matrix (`Themes/Login`)
 
 | Story                      | State                                               |
 | -------------------------- | --------------------------------------------------- |
@@ -49,7 +49,7 @@ Designer URL examples (Storybook id encoding may vary slightly):
 | `Reset / form`             | Reset-password form with valid token                |
 | `Reset / invalid token`    | Reset-password with empty / missing token           |
 
-### Installer (`Branding/Installer`)
+### Installer (`Themes/Installer`)
 
 | Story                                      | State                                                                                                           |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
@@ -154,4 +154,4 @@ Storybook does **not** write to the repo. When a combination looks right:
 3. If you changed the mark: attach the **SVG markup** (or the file) from `svgMarkup` / your export.
 4. Send screenshot + table (+ SVG) to engineering. They update `packages/apps/src/{app}-core/src/*-workspace.css` and/or `packages/apps/public/app-icons/*.svg` (inline copies live under `workspace-app-icon-svgs`).
 
-Production CSS remains the source of truth; Branding stories only override via a decorator and an optional icon context.
+Production CSS remains the source of truth; Themes stories only override via a decorator and an optional icon context.

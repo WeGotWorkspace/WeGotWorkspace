@@ -36,7 +36,7 @@ Section and form styling lives under `.admin-workspace` in `admin-workspace.css`
 
 | Story                                | Purpose                                        |
 | ------------------------------------ | ---------------------------------------------- |
-| `Branding/Admin`                     | Full workspace chrome + branding knobs         |
+| `Themes/Admin`                       | Full workspace chrome + branding knobs         |
 | `Features/Admin/Panes/Users`         | User and group management                      |
 | `Features/Admin/Panes/Backups`       | Backup configuration                           |
 | `Features/Admin/Panes/Updates`       | Update channel / version state                 |

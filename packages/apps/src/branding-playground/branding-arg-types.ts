@@ -1,7 +1,7 @@
 import type { InputType } from "storybook/internal/types";
 import { BRANDING_ICON_PRESET_OPTIONS } from "./branding-cssprops";
 
-/** Controls for SVG slot — shared by every Branding/* story. */
+/** Controls for SVG slot — shared by every Themes/* story. */
 export const brandingIconArgTypes = {
   iconPreset: {
     control: "select",

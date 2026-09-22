@@ -25,7 +25,7 @@ Every **exported** UI surface under `packages/apps/src/**` that ships to users n
 | Product pane / workspace / app | `*-core/stories/…`, title `Features/{Product}/…` |
 | Live API shells | `wegotworkspace/stories/…`, title `Features/Workspace/Live/…` |
 | Token docs | `foundations/stories/…`, title `Foundations/…` |
-| Designer chrome catalog | `*-branding.stories.tsx`, title `Branding/{App}` |
+| Designer chrome catalog | `*-branding.stories.tsx`, title `Themes/{App}` |
 
 Minimum per export:
 

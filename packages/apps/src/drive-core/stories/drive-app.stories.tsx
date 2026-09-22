@@ -17,7 +17,7 @@ const meta: Meta<typeof DriveWorkspace> = {
 export default meta;
 type Story = StoryObj<typeof DriveWorkspace>;
 
-/** Chrome Default lives under Branding/Drive — Shared with me view. */
+/** Chrome Default lives under Themes/Drive — Shared with me view. */
 export const SharedWithMe: Story = {
   args: {
     ...createDriveAppBootstrap(),

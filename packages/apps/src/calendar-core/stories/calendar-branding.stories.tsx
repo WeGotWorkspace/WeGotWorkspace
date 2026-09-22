@@ -20,7 +20,7 @@ const brandingMeta = createBrandingStoryMeta({
 
 const meta = {
   ...brandingMeta,
-  title: "Branding/Calendar",
+  title: "Themes/Calendar",
   tags: ["vitest-ci"],
 } satisfies Meta<typeof CalendarWorkspace>;
 

@@ -37,7 +37,7 @@ List and workspace tokens live under `.notes-workspace` in `notes-workspace.css`
 
 | Story                                    | Purpose                                        |
 | ---------------------------------------- | ---------------------------------------------- |
-| `Branding/Notes`                         | Full workspace chrome + branding knobs         |
+| `Themes/Notes`                           | Full workspace chrome + branding knobs         |
 | `Features/Notes`                         | Shared-notebook sidebar layout (non-branding)  |
 | `Features/Notes/Panes/List`              | List column harness                            |
 | `Features/Notes/Panes/Detail`            | Note detail view                               |

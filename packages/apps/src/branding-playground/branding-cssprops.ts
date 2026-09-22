@@ -12,7 +12,7 @@ export type BrandingCsspropEntry = {
 
 export type BrandingCsspropsMap = Record<string, BrandingCsspropEntry>;
 
-/** Shared cream / ink suite tokens every Branding/* story documents. */
+/** Shared cream / ink suite tokens every Themes/* story documents. */
 export function sharedBrandingCssprops(): BrandingCsspropsMap {
   return {
     "color-cream": {
@@ -208,7 +208,7 @@ export const BRANDING_APP_WAI_DEFAULTS: Record<
  * Omits `--app-sidebar-bg` and `--app-sidebar-color` so the decorator’s `inherit`
  * bridge cannot wipe `*-workspace.css` (cream-mix / Docs full-accent rail +
  * on-color). Accent stays editable; sidebar tint still tracks accent via the
- * production color-mix. Docs Branding uses Controls `fullAccentSidebar` for the
+ * production color-mix. Docs Themes uses Controls `fullAccentSidebar` for the
  * rail comparison instead of a `--app-sidebar-bg` cssprop default.
  */
 export function defaultAppBrandingCssprops(appId: WorkspaceAppId): BrandingCsspropsMap {
@@ -231,7 +231,7 @@ export function defaultHomeBrandingCssprops(): BrandingCsspropsMap {
 
 /**
  * Auth / installer cream shell — suite cream/ink only (no home navy, no app accent).
- * Used by `Branding/Login` and `Branding/Installer` (`.login-screen`).
+ * Used by `Themes/Login` and `Themes/Installer` (`.login-screen`).
  */
 export function defaultAuthBrandingCssprops(): BrandingCsspropsMap {
   return sharedBrandingCssprops();

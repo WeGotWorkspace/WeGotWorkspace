@@ -29,7 +29,7 @@ const brandingMeta = createBrandingStoryMeta({
 
 const meta = {
   ...brandingMeta,
-  title: "Branding/Docs",
+  title: "Themes/Docs",
   tags: ["vitest-ci"],
 } satisfies Meta<typeof DocsHomeWorkspace>;
 

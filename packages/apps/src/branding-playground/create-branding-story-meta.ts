@@ -44,16 +44,16 @@ export type CreateBrandingStoryMetaOptions<TComponent = ComponentType> = {
    * full-accent rail vs cream-mix wash comparison.
    */
   fullAccentSidebar?: boolean;
-  /** Storybook title override; defaults to `Branding/{Label}`. */
+  /** Storybook title override; defaults to `Themes/{Label}`. */
   title?: string;
   component?: TComponent;
   parameters?: Meta["parameters"];
 };
 
 function brandingTitle(appId: BrandingPlaygroundAppId): string {
-  if (appId === "home") return "Branding/Home";
-  if (appId === "auth") return "Branding/Auth";
-  return `Branding/${workspaceAppLabel(appId)}`;
+  if (appId === "home") return "Themes/Home";
+  if (appId === "auth") return "Themes/Auth";
+  return `Themes/${workspaceAppLabel(appId)}`;
 }
 
 /**
@@ -82,7 +82,7 @@ function baseCssprops(
 }
 
 /**
- * CSF3 meta factory for designer `Branding/*` stories.
+ * CSF3 meta factory for designer `Themes/*` stories.
  *
  * Storybook’s CSF indexer requires a **literal** `title` on an object export.
  * Spread the factory result, then restate `title`:
@@ -97,7 +97,7 @@ function baseCssprops(
  * });
  * const meta = {
  *   ...brandingMeta,
- *   title: "Branding/Mail",
+ *   title: "Themes/Mail",
  *   tags: ["vitest-ci"],
  * } satisfies Meta<typeof MailWorkspace>;
  * export default meta;
@@ -136,7 +136,7 @@ export function createBrandingStoryMeta<TComponent extends ComponentType>(
   const meta = {
     title,
     component,
-    // Include Branding/* in CI Storybook Vitest smoke (`STORYBOOK_VITEST_SMOKE=1`).
+    // Include Themes/* in CI Storybook Vitest smoke (`STORYBOOK_VITEST_SMOKE=1`).
     tags: ["vitest-ci"],
     parameters: {
       layout: "fullscreen" as const,

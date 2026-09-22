@@ -21,7 +21,7 @@ type Story = StoryObj<typeof DocsWorkspace>;
 
 const bootstrap = createDocsAppBootstrap();
 
-/** Chrome Default lives under Branding/Docs — empty editor state. */
+/** Chrome Default lives under Themes/Docs — empty editor state. */
 export const Empty: Story = {
   name: "No document",
   args: {

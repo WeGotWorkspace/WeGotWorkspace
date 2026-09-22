@@ -28,7 +28,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<MeetWorkspaceStoryArgs>;
 
-/** Chrome Default lives under Branding/Meet — join/leave call SST. */
+/** Chrome Default lives under Themes/Meet — join/leave call SST. */
 export const Default: Story = {
   name: "Live channel call",
   args: {

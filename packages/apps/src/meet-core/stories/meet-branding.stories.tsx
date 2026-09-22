@@ -17,7 +17,7 @@ const brandingMeta = createBrandingStoryMeta({
 
 const meta = {
   ...brandingMeta,
-  title: "Branding/Meet",
+  title: "Themes/Meet",
   tags: ["vitest-ci"],
 } satisfies Meta<typeof MeetWorkspaceStoryHarness>;
 

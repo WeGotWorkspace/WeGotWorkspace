@@ -26,7 +26,7 @@ const brandingMeta = createBrandingStoryMeta({
 
 const meta = {
   ...brandingMeta,
-  title: "Branding/Home",
+  title: "Themes/Home",
   tags: ["vitest-ci"],
 } satisfies Meta;
 
