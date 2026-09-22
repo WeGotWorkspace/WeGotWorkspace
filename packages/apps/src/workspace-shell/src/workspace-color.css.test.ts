@@ -34,6 +34,15 @@ describe("workspace-color.css shared tint recipes", () => {
     );
     expect(colorCss).not.toMatch(/in oklab/);
     expect(colorCss).toMatch(
+      /\.admin-workspace,\s*\.settings-workspace \{[\s\S]*--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 18%,\s*var\(--color-we-got-soft\)/,
+    );
+    expect(colorCss).toMatch(
+      /\.admin-workspace,\s*\.settings-workspace \{[\s\S]*--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 24%,\s*var\(--color-we-got-soft\)/,
+    );
+    expect(colorCss).toMatch(
+      /\.admin-workspace,\s*\.settings-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-soft\)/,
+    );
+    expect(colorCss).toMatch(
       /\.docs-workspace,\s*\.docs-dialog-surface \{[\s\S]*--app-sidebar-bg:\s*#0045ff/,
     );
     expect(colorCss).toMatch(

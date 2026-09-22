@@ -70,28 +70,9 @@
   );
 
   /*
-   * AppSidebar item washes on the 16% accent→cream rail. Near-black `#003311`
-   * has a WCAG dead zone on Soft cream when mixes get too dense: neither ink
-   * nor cream clears 4.5:1. Keep mixes ink-safe (hover/selected/selected-hover
-   * well below ~45%). Soft paper is warmer than the old #f7f4ef, so stay
-   * conservative vs the prior 24/36/44 ladder.
+   * Item washes live with Settings in `workspace-color.css` (18/24/32). A local
+   * copy here used to lose to a later import of that sheet.
    */
-  --app-sidebar-item-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 14%,
-    var(--color-we-got-soft)
-  );
-  --app-sidebar-item-selected-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 20%,
-    var(--color-we-got-soft)
-  );
-  --app-sidebar-item-selected-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 28%,
-    var(--color-we-got-soft)
-  );
-  --app-sidebar-item-selected-color: var(--color-we-got-dark);
 }
 
 /*

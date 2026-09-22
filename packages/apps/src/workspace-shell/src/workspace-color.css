@@ -10,8 +10,8 @@
  * - `--wai-*` layers the switch mark actually uses
  * - Docs: full-accent sidebar + white on-color
  *
- * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark. Default item washes match AppSidebar (32 / 55 / 65); products that
- * already brightened or darkened for AA keep local overrides.
+ * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark. Default item washes match AppSidebar (32 / 55 / 65). Admin and
+ * Settings share a lighter Dark-accent ladder below; other products keep local overrides when AA needs them.
  */
 :is(
   .admin-workspace,
@@ -71,6 +71,33 @@
 
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;
+}
+
+/*
+ * Admin and Settings share Dark (`#003311`) on a 16% rail. The 32/55/65 ladder
+ * above crosses a contrast dead zone on Soft cream: past ~45% neither ink nor
+ * cream clears 4.5:1. This lighter ladder stays ink-safe and sits just above
+ * the rail (hover 18 / selected 24 / selected-hover 32) so the wash reads.
+ * Kept here so a later import of this sheet cannot split the two apps.
+ */
+.admin-workspace,
+.settings-workspace {
+  --app-sidebar-item-hover-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 18%,
+    var(--color-we-got-soft)
+  );
+  --app-sidebar-item-selected-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 24%,
+    var(--color-we-got-soft)
+  );
+  --app-sidebar-item-selected-hover-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 32%,
+    var(--color-we-got-soft)
+  );
+  --app-sidebar-item-selected-color: var(--color-we-got-dark);
 }
 
 /**

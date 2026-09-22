@@ -90,20 +90,11 @@ describe("settings workspace outline chrome", () => {
     );
   });
 
-  it("uses stronger sidebar item washes with ink on-color for AA", () => {
-    expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 14%,\s*var\(--color-we-got-soft/,
-    );
-    expect(css).toMatch(
-      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 20%,\s*var\(--color-we-got-soft/,
-    );
-    expect(css).toMatch(
-      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-we-got-soft/,
-    );
-    expect(css).toMatch(/--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/);
-    expect(css).not.toMatch(/--app-sidebar-item-selected-color:\s*var\(--color-we-got-soft/);
-    expect(css).not.toMatch(
-      /--app-sidebar-item-selected-color:\s*var\(--workspace-accent-strong\)/,
+  it("leaves sidebar item washes to the shared Dark-accent ladder", () => {
+    expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
+    expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
+    expect(colorCss).toMatch(
+      /\.admin-workspace,\s*\.settings-workspace \{[\s\S]*--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 18%/,
     );
     expect(css).toMatch(
       /\.settings-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
