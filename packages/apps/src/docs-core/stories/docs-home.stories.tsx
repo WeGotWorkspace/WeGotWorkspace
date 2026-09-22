@@ -126,7 +126,11 @@ export const ShareFromRowMenu: Story = {
     if (!row) throw new Error("Expected Roadmap 2026 in a list row");
 
     await userEvent.click(within(row).getByRole("button", { name: "More actions" }));
-    await userEvent.click(await body.findByRole("menuitem", { name: driveLabels.detailShare }));
+    // MenuItem does not forward Radix item props, so the row is a button inside the menu.
+    const menu = await body.findByRole("menu");
+    await userEvent.click(
+      await within(menu).findByRole("button", { name: driveLabels.detailShare }),
+    );
     await expect(
       await body.findByRole("dialog", { name: "Share Roadmap 2026" }),
     ).toBeInTheDocument();

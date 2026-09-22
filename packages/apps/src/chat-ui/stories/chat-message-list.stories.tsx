@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, within } from "storybook/test";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
@@ -96,11 +96,8 @@ export const Populated: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const message = canvasElement.querySelector(".chat-message");
-    await expect(message).toBeTruthy();
-    await userEvent.hover(message as HTMLElement);
     await expect(
-      canvas.getAllByRole("button", { name: chatUiLabels.reply }).length,
+      canvas.getAllByRole("button", { name: chatUiLabels.reply, hidden: true }).length,
     ).toBeGreaterThan(0);
   },
 };

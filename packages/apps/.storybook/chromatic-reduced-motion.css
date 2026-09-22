@@ -1,17 +1,14 @@
 /*
- * Chromatic sets `prefers-reduced-motion: reduce` while it captures.
- * Radix menus and dialogs wait for CSS exit animations before they unmount.
- * Chromatic pauses those animations, so the closed layer stays mounted and
- * the rest of the page stays aria-hidden. A near-zero duration lets the
- * animationend event fire and the play function continue.
+ * Storybook-only. Chromatic pauses CSS animations, and Radix menus and
+ * dialogs wait for animationend before they unmount. A paused exit animation
+ * leaves the layer mounted and aria-hides the rest of the page, so the next
+ * play step cannot find the trigger. `animation: none` makes Presence skip
+ * that wait in both local Vitest and Chromatic capture.
  */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+*,
+*::before,
+*::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
 }

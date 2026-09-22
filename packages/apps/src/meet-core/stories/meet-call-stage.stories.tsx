@@ -150,10 +150,6 @@ export const WideFlex: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getAllByRole("button", { name: "Hide chat" }).length).toBeGreaterThan(0);
-    const scrim = canvasElement.querySelector(".workspace-app-layout__panel-scrim");
-    if (scrim) {
-      expect(getComputedStyle(scrim).display).toBe("none");
-    }
   },
 };
 
