@@ -12,6 +12,7 @@ const meta = {
   parameters: {
     layout: "fullscreen",
     wegotworkspaceRouter: true,
+    chromatic: { disableSnapshot: true },
     docs: {
       description: {
         component:

@@ -191,12 +191,6 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: node tools/git/check-pr-body-attribution.mjs
 
-      - name: Chromatic (optional)
-        if: vars.CHROMATIC_ENABLED == 'true'
-        env:
-          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-        run: pnpm --filter @wgw/apps exec chromatic --build-script-name build-storybook --exit-zero-on-changes
-
       - name: Build (Composer + UI via Turborepo)
         run: pnpm run build
 
@@ -227,7 +221,8 @@ jobs:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           workingDir: packages/apps
           onlyChanged: true
-          exitZeroOnChanges: true
+          exitZeroOnChanges: false
+          autoAcceptChanges: "main"
 
   api-mysql:
     if: >-
