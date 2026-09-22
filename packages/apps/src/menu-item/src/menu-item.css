@@ -175,7 +175,7 @@
 }
 
 .sidebar-section .menu-item.menu-item--selected .menu-item__badge {
-  background-color: var(--color-ink);
+  background-color: var(--sidebar-badge-bg, var(--color-ink));
   color: var(--sidebar-badge-fg, var(--color-cream, #f7f4ef));
 }
 

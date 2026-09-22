@@ -46,6 +46,15 @@ describe("menu-item sidebar surfaces", () => {
     );
   });
 
+  it("lets workspaces theme selected count badges via --sidebar-badge-bg/fg", () => {
+    expect(css).toMatch(
+      /\.sidebar-section \.menu-item\.menu-item--selected \.menu-item__badge \{[\s\S]*background-color:\s*var\(--sidebar-badge-bg,\s*var\(--color-ink\)\)/,
+    );
+    expect(css).toMatch(
+      /\.sidebar-section \.menu-item\.menu-item--selected \.menu-item__badge \{[\s\S]*color:\s*var\(--sidebar-badge-fg/,
+    );
+  });
+
   it("washes severity-danger hover from destructive tokens, not accent", () => {
     expect(css).toMatch(/\.menu-item--severity-danger \{[\s\S]*--color-destructive/);
     expect(css).toMatch(
