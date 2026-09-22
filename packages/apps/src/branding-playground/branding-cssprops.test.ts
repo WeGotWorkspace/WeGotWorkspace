@@ -55,16 +55,9 @@ describe("waiBrandingCssprops", () => {
     expect(map["wai-fg"]?.value).toBe("#962fa8");
   });
 
-  it("emits explicit optional layers when provided", () => {
-    const map = waiBrandingCssprops({
-      bg: "#ffbdc2",
-      fg: "#de4b0e",
-      detail: "#de4b0e",
-      cutout: "#ffbdc2",
-    });
-    expect(map["wai-detail"]?.value).toBe("#de4b0e");
-    expect(map["wai-cutout"]?.value).toBe("#ffbdc2");
-    expect(map["wai-detail-muted"]).toBeUndefined();
+  it("emits only bg and fg", () => {
+    const map = waiBrandingCssprops({ bg: "#ffbdc2", fg: "#de4b0e" });
+    expect(Object.keys(map).sort()).toEqual(["wai-bg", "wai-fg"]);
   });
 });
 
@@ -98,21 +91,9 @@ describe("defaultAppBrandingCssprops", () => {
       expect(map["app-sidebar-color"]).toBeUndefined();
       expect(map["wai-bg"]?.value).toBe(wai.bg);
       expect(map["wai-fg"]?.value).toBe(wai.fg);
-      if (wai.detail !== undefined) {
-        expect(map["wai-detail"]?.value).toBe(wai.detail);
-      } else {
-        expect(map["wai-detail"]).toBeUndefined();
-      }
-      if (wai.detailMuted !== undefined) {
-        expect(map["wai-detail-muted"]?.value).toBe(wai.detailMuted);
-      } else {
-        expect(map["wai-detail-muted"]).toBeUndefined();
-      }
-      if (wai.cutout !== undefined) {
-        expect(map["wai-cutout"]?.value).toBe(wai.cutout);
-      } else {
-        expect(map["wai-cutout"]).toBeUndefined();
-      }
+      expect(map["wai-detail"]).toBeUndefined();
+      expect(map["wai-detail-muted"]).toBeUndefined();
+      expect(map["wai-cutout"]).toBeUndefined();
     },
   );
 
@@ -214,9 +195,8 @@ describe("createBrandingStoryMeta defaults", () => {
     expect(cssprops["app-sidebar-color"]).toBeUndefined();
     expect(cssprops["wai-bg"].value).toBe("#ffffff");
     expect(cssprops["wai-fg"].value).toBe("#0045ff");
-    expect(cssprops["wai-detail"].value).toBe("#0045ff");
-    expect(cssprops["wai-detail-muted"].value).toBe("#0045ff");
-    expect(cssprops["wai-cutout"].value).toBe("#ffffff");
+    expect(cssprops["wai-detail"]).toBeUndefined();
+    expect(cssprops["wai-cutout"]).toBeUndefined();
   });
 
   it("uses production calendar accent and omits fighting chrome cssprops", () => {

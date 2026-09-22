@@ -227,9 +227,6 @@
   svg {
   --wai-bg: #ffffff;
   --wai-fg: var(--workspace-accent);
-  --wai-detail: var(--workspace-accent);
-  --wai-detail-muted: var(--workspace-accent);
-  --wai-cutout: #ffffff;
 }
 
 /**

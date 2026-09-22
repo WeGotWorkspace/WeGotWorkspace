@@ -113,8 +113,7 @@
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
   --wai-bg: var(--color-we-got-dark);
-  --wai-fg: #ffffff;
-  --wai-detail: var(--color-we-got-brat);
+  --wai-fg: var(--color-we-got-brat);
 }
 
 .admin-workspace .app-sidebar__scroll {

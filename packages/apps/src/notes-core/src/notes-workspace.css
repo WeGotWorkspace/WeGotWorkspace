@@ -307,8 +307,6 @@
   --wai-bg: var(--color-we-got-yellow);
   /* Red marks on yellow: ~2.6:1 solid → mix toward ink for UI 3:1. */
   --wai-fg: color-mix(in oklch, var(--color-we-got-red) 91%, var(--color-we-got-dark));
-  --wai-detail: color-mix(in oklch, var(--color-we-got-red) 91%, var(--color-we-got-dark));
-  --wai-cutout: color-mix(in oklch, var(--color-we-got-red) 91%, var(--color-we-got-dark));
 }
 
 /**

@@ -46,10 +46,10 @@ describe("wai cssprop shapes match production switch-trigger", () => {
     ]);
   });
 
-  it("meet: bg + fg + detail (no cutout)", () => {
-    const map = waiBrandingCssprops({ bg: "#ffc800", fg: "#ffc800", detail: "#962fa8" });
-    expect(Object.keys(map).sort()).toEqual(["wai-bg", "wai-detail", "wai-fg"]);
-    expect(map).not.toHaveProperty("wai-cutout");
+  it("meet: bg + fg only", () => {
+    const map = waiBrandingCssprops({ bg: "#ffc800", fg: "#962fa8" });
+    expect(Object.keys(map).sort()).toEqual(["wai-bg", "wai-fg"]);
+    expect(map["wai-fg"]?.value).toBe("#962fa8");
   });
 });
 

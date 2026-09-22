@@ -29,17 +29,8 @@ export function sharedBrandingCssprops(): BrandingCsspropsMap {
 }
 
 /** Switch-trigger `--wai-*` layers (document real workspace defaults per app). */
-export function waiBrandingCssprops(defaults: {
-  bg: string;
-  fg: string;
-  detail?: string;
-  detailMuted?: string;
-  cutout?: string;
-}): BrandingCsspropsMap {
-  // Only emit layers the workspace CSS actually sets. Inventing cutout/detail
-  // (e.g. cutout←bg) fights production switch-trigger cascade once the
-  // branding decorator forces SVG `inherit`.
-  const map: BrandingCsspropsMap = {
+export function waiBrandingCssprops(defaults: { bg: string; fg: string }): BrandingCsspropsMap {
+  return {
     "wai-bg": {
       value: defaults.bg,
       description: 'Icon background layer (fill="var(--wai-bg, …)")',
@@ -51,28 +42,6 @@ export function waiBrandingCssprops(defaults: {
       category: "Icon layers",
     },
   };
-  if (defaults.detail !== undefined) {
-    map["wai-detail"] = {
-      value: defaults.detail,
-      description: "Secondary detail strokes/fills",
-      category: "Icon layers",
-    };
-  }
-  if (defaults.detailMuted !== undefined) {
-    map["wai-detail-muted"] = {
-      value: defaults.detailMuted,
-      description: "Muted detail layer",
-      category: "Icon layers",
-    };
-  }
-  if (defaults.cutout !== undefined) {
-    map["wai-cutout"] = {
-      value: defaults.cutout,
-      description: "Cutout / knockout (reveals sidebar color)",
-      category: "Icon layers",
-    };
-  }
-  return map;
 }
 
 export type AppBrandingCsspropsOptions = {
@@ -87,9 +56,6 @@ export type AppBrandingCsspropsOptions = {
   wai?: {
     bg: string;
     fg: string;
-    detail?: string;
-    detailMuted?: string;
-    cutout?: string;
   };
 };
 
@@ -180,25 +146,16 @@ export function createAppBrandingCssprops(
 }
 
 /** Per-app wai defaults sampled from `*-workspace.css` switch-trigger rules. */
-export const BRANDING_APP_WAI_DEFAULTS: Record<
-  WorkspaceAppId,
-  { bg: string; fg: string; detail?: string; detailMuted?: string; cutout?: string }
-> = {
+export const BRANDING_APP_WAI_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg: string }> = {
   mail: { bg: "#de4b0e", fg: "#ffbdc2" },
-  notes: { bg: "#ffc800", fg: "#de4b0e", detail: "#de4b0e", cutout: "#de4b0e" },
-  docs: {
-    bg: "#ffffff",
-    fg: "#0045ff",
-    detail: "#0045ff",
-    detailMuted: "#0045ff",
-    cutout: "#ffffff",
-  },
-  drive: { bg: "#8ace00", fg: "#1d6635", detail: "#1d6635", cutout: "#8ace00" },
-  tasks: { bg: "#ffbdc2", fg: "#de4b0e", detail: "#de4b0e", cutout: "#ffbdc2" },
+  notes: { bg: "#ffc800", fg: "#de4b0e" },
+  docs: { bg: "#ffffff", fg: "#0045ff" },
+  drive: { bg: "#8ace00", fg: "#1d6635" },
+  tasks: { bg: "#ffbdc2", fg: "#de4b0e" },
   calendar: { bg: "#ffbdc2", fg: "#962fa8" },
   contacts: { bg: "#962fa8", fg: "#ffbdc2" },
-  meet: { bg: "#ffc800", fg: "#ffc800", detail: "#962fa8" },
-  admin: { bg: "#003311", fg: "#ffffff", detail: "#8ace00" },
+  meet: { bg: "#ffc800", fg: "#962fa8" },
+  admin: { bg: "#003311", fg: "#8ace00" },
   settings: { bg: "#003311", fg: "#8ace00" },
 };
 

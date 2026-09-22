@@ -27,13 +27,7 @@ export type BrandingStoryArgs = {
 
 type CsspropSeedEntry = { key: string; value: string };
 
-const WAI_CSSPROP_KEYS = [
-  "wai-bg",
-  "wai-fg",
-  "wai-detail",
-  "wai-detail-muted",
-  "wai-cutout",
-] as const;
+const WAI_CSSPROP_KEYS = ["wai-bg", "wai-fg"] as const;
 
 function csspropEntriesFromParameters(parameters: Record<string, unknown>): CsspropSeedEntry[] {
   const cssprops = parameters.cssprops as BrandingCsspropsMap | undefined;

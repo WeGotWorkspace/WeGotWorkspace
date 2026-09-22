@@ -44,9 +44,6 @@ export const COLOR_COMPONENT_CONTRACT = [
   "--button-primary-fg",
   "--wai-bg",
   "--wai-fg",
-  "--wai-detail",
-  "--wai-detail-muted",
-  "--wai-cutout",
 ] as const;
 
 /** Brand / system face primitives. */

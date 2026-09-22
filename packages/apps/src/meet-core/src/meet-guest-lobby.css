@@ -27,8 +27,7 @@
 
 .meet-guest-channel__lobby .meet-guest-lobby__mark.workspace-app-icon--switch-trigger > svg {
   --wai-bg: #ffc800;
-  --wai-fg: #ffc800;
-  --wai-detail: #962fa8;
+  --wai-fg: #962fa8;
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__knock.button--variant-primary {

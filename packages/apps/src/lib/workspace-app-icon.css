@@ -25,10 +25,6 @@
   @apply block size-full;
   --wai-bg: transparent;
   --wai-fg: var(--app-switch-icon-fg);
-  --wai-detail: var(--app-switch-icon-fg);
-  --wai-detail-muted: var(--app-switch-icon-fg);
-  /* Card cutouts (e.g. contacts person silhouette) reveal sidebar text color. */
-  --wai-cutout: var(--app-switch-icon-bg);
 }
 
 /**

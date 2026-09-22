@@ -78,11 +78,11 @@ Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs cream-m
 
 ### CSS props (colors)
 
-| Category    | Tokens                                                                       | Purpose                                      |
-| ----------- | ---------------------------------------------------------------------------- | -------------------------------------------- |
-| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                                 | We Got Soft and We Got Dark                  |
-| App chrome  | `--workspace-accent`, optional `--app-sidebar-bg`, `--app-sidebar-color`     | Primary / CTA / badge; sidebar; nav on-color |
-| Icon layers | `--wai-bg`, `--wai-fg`, `--wai-detail`, `--wai-detail-muted`, `--wai-cutout` | Switch-trigger SVG fills                     |
+| Category    | Tokens                                                                   | Purpose                                      |
+| ----------- | ------------------------------------------------------------------------ | -------------------------------------------- |
+| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                             | We Got Soft and We Got Dark                  |
+| App chrome  | `--workspace-accent`, optional `--app-sidebar-bg`, `--app-sidebar-color` | Primary / CTA / badge; sidebar; nav on-color |
+| Icon layers | `--wai-bg`, `--wai-fg`                                                   | Switch-trigger SVG fills                     |
 
 **Accent vs `--wai-*`:** accent drives workspace chrome (sidebar mix, buttons, badges). `--wai-*` only recolors the switch-trigger mark layers. Change accent for “the app feels different”; change `--wai-*` when the lockup icon itself needs a new palette.
 
@@ -97,15 +97,12 @@ Text ≥4.5:1; UI icons ≥3:1. Measured on sRGB brand hexes after Soft cream re
 | `--color-we-got-dark` on `--color-we-got-soft` (Soft) | 13.15:1 | text PASS |
 | white on Docs `--workspace-accent` (blue)             | 6.37:1  | text PASS |
 | Docs `--wai-fg` on `--wai-bg`                         | 6.37:1  | text PASS |
-| Admin `--wai-fg` on `--wai-bg`                        | 14.17:1 | text PASS |
-| Settings `--wai-fg` on `--wai-bg`                     | 7.36:1  | text PASS |
+| Admin / Settings `--wai-fg` on `--wai-bg`             | 7.36:1  | text PASS |
 | Calendar / Contacts `--wai-fg` on `--wai-bg`          | 4.07:1  | UI PASS   |
 | Drive `--wai-fg` on `--wai-bg`                        | 3.63:1  | UI PASS   |
-| Meet `--wai-detail` on `--wai-bg`                     | 4.13:1  | UI PASS   |
+| Meet `--wai-fg` on `--wai-bg`                         | 4.13:1  | UI PASS   |
 | Mail pink on red tile (tile darkened 10%→ink)         | ~3.0:1  | UI PASS   |
 | Notes / Tasks red marks (marks mixed →ink)            | ~3.0:1  | UI PASS   |
-
-Meet `--wai-fg` equals `--wai-bg` (same-layer yellow fill); contrast is N/A — readable marks use `--wai-detail`.
 
 Home uses Soft and Dark (and `--workspace-home-bg`); it has no per-app accent. The suite mark may use fixed fills or `var(--color-we-got-soft)` / `var(--color-we-got-dark)` rather than `--wai-*`.
 
@@ -121,20 +118,15 @@ Custom switch-trigger artwork must use the same CSS variable fills as production
   <path fill="var(--wai-bg, #de4b0e)" d="…" />
   <!-- Foreground marks -->
   <path fill="var(--wai-fg, #ffbdc2)" d="…" />
-  <!-- Optional detail / muted / cutout -->
-  <path fill="var(--wai-detail, #ffbdc2)" d="…" />
-  <path fill="var(--wai-detail-muted, #ffbdc2)" d="…" />
-  <path fill="var(--wai-cutout, #de4b0e)" d="…" />
 </svg>
 ```
 
-| Token                | Role                                |
-| -------------------- | ----------------------------------- |
-| `--wai-bg`           | Icon background                     |
-| `--wai-fg`           | Foreground marks                    |
-| `--wai-detail`       | Secondary strokes/fills             |
-| `--wai-detail-muted` | Quieter detail                      |
-| `--wai-cutout`       | Knockout that reveals sidebar color |
+Knockouts that should stay the tile color use `--wai-bg`, not a third token.
+
+| Token      | Role             |
+| ---------- | ---------------- |
+| `--wai-bg` | Icon background  |
+| `--wai-fg` | Foreground marks |
 
 Hard-coded `#hex` fills ignore the Icon layers cssprops. Prefer `fill="var(--wai-…, fallback)"` with a sensible fallback for non-Storybook use.
 

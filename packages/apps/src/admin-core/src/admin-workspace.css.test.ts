@@ -79,7 +79,7 @@ describe("admin workspace outline chrome", () => {
       /\.admin-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
-      /\.admin-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-detail:\s*var\(--color-we-got-brat\)/,
+      /\.admin-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--color-we-got-brat\)/,
     );
   });
 

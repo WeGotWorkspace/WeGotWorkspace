@@ -231,16 +231,8 @@ describe("notes workspace app-switch lockup", () => {
     expect(css).toMatch(
       /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-red\) 91%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
-    expect(css).toMatch(
-      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-detail:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-red\) 91%,\s*var\(--color-we-got-dark\)\s*\)/,
-    );
-    expect(css).toMatch(
-      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-cutout:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-red\) 91%,\s*var\(--color-we-got-dark\)\s*\)/,
-    );
-    expect(css).not.toMatch(/--wai-detail:\s*#f0bc3a/);
-    expect(css).not.toMatch(/--wai-cutout:\s*#f0bc3a/);
-    expect(css).not.toMatch(/--wai-detail:\s*#ba9689/i);
-    expect(css).not.toMatch(/--wai-cutout:\s*#ba9689/i);
+    expect(css).not.toMatch(/--wai-detail/);
+    expect(css).not.toMatch(/--wai-cutout/);
     const lockup = css.slice(css.indexOf("App switcher lockup"));
     const lockupEnd = lockup.indexOf(".notes-dialog-surface");
     const lockupBlock = lockupEnd === -1 ? lockup : lockup.slice(0, lockupEnd);

@@ -926,8 +926,7 @@
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
   --wai-bg: var(--color-we-got-yellow);
-  --wai-fg: var(--color-we-got-yellow);
-  --wai-detail: var(--color-we-got-prince);
+  --wai-fg: var(--color-we-got-prince);
 }
 
 .meet-workspace__sidebar-kind-icon {

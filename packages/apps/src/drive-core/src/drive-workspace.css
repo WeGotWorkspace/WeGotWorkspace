@@ -137,8 +137,6 @@
   svg {
   --wai-bg: var(--color-we-got-brat);
   --wai-fg: #1d6635;
-  --wai-detail: #1d6635;
-  --wai-cutout: var(--color-we-got-brat);
 }
 
 .drive-workspace .drive-main-pane {
