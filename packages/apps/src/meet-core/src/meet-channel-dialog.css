@@ -6,7 +6,7 @@
  * cream `.meet-call-dialog`.
  */
 .meet-channel-dialog {
-  --workspace-accent: var(--color-we-got-prince);
+  --workspace-accent: var(--color-we-got-sand);
   --workspace-accent-strong: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
@@ -14,13 +14,13 @@
   );
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-we-got-dark);
   --button-outline-color: var(--color-we-got-dark);
   --button-outline-border-color: color-mix(in oklab, var(--color-we-got-dark) 20%, transparent);
   --button-active-color: var(--workspace-accent-strong);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--color-we-got-dark);
   --field-label-color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
   --foreground: var(--color-we-got-dark);
   --color-foreground: var(--color-we-got-dark);

@@ -73,7 +73,7 @@ export const BRANDING_APP_ACCENT_DEFAULTS: Record<WorkspaceAppId, string> = {
   drive: "#8ace00",
   docs: "#0045ff",
   settings: "#003311",
-  meet: "#962fa8",
+  meet: "#ba9689",
   admin: "#003311",
 };
 

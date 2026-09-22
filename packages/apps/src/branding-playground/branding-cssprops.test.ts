@@ -24,7 +24,7 @@ describe("BRANDING_APP_ACCENT_DEFAULTS", () => {
   it("matches production UI accents (not PWA tile) for calendar, tasks, meet, contacts", () => {
     expect(BRANDING_APP_ACCENT_DEFAULTS.calendar).toBe("#962fa8");
     expect(BRANDING_APP_ACCENT_DEFAULTS.tasks).toBe("#de4b0e");
-    expect(BRANDING_APP_ACCENT_DEFAULTS.meet).toBe("#962fa8");
+    expect(BRANDING_APP_ACCENT_DEFAULTS.meet).toBe("#ba9689");
     expect(BRANDING_APP_ACCENT_DEFAULTS.contacts).toBe("#a3c4e8");
     expect(BRANDING_APP_ACCENT_DEFAULTS.calendar).not.toBe(WORKSPACE_APP_ACCENT.calendar);
     expect(BRANDING_APP_ACCENT_DEFAULTS.tasks).not.toBe(WORKSPACE_APP_ACCENT.tasks);

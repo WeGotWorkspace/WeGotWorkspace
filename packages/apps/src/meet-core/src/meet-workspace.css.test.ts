@@ -25,9 +25,9 @@ const layoutCss = readFileSync(
 );
 
 describe("meet workspace sidebar chrome", () => {
-  it("uses icon purple #962fa8 as accent; primary fills use accent, not darkened strong", () => {
+  it("uses Sand as accent; primary fills use accent, not darkened strong", () => {
     expect(css).toMatch(
-      /\.meet-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-prince\)/,
+      /\.meet-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(colorCss).toMatch(
       /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
@@ -291,7 +291,7 @@ describe("meet workspace sidebar chrome", () => {
       /\.meet-device-popover \{[\s\S]*?background-color:\s*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /\.meet-device-popover \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-prince\)/,
+      /\.meet-device-popover \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(css.match(/\.meet-device-popover \{[\s\S]*?\n\}/)?.[0] ?? "").not.toMatch(
       /#171826|--meet-call-surface/,
@@ -586,7 +586,7 @@ describe("meet host admit knock popover", () => {
     const popover = css.match(/\.meet-knock-badge__popover \{[\s\S]*?\n\}/)?.[0] ?? "";
     expect(knockBadge).toMatch(/className="meet-knock-badge__popover"/);
     expect(knockBadge).not.toMatch(/meet-popover-surface/);
-    expect(popover).toMatch(/--workspace-accent:\s*var\(--color-we-got-prince\)/);
+    expect(popover).toMatch(/--workspace-accent:\s*var\(--color-we-got-sand\)/);
     expect(popover).toMatch(
       /--meet-call-surface:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 12%/,
     );
@@ -626,7 +626,7 @@ describe("meet in-call overlay resume", () => {
 describe("meet leave/end call dialog", () => {
   it("paints cream/dusk call chrome, not the lobby dark island", () => {
     const dialog = css.match(/\.meet-call-dialog \{[\s\S]*?\n\}/)?.[0] ?? "";
-    expect(dialog).toMatch(/--workspace-accent:\s*var\(--color-we-got-prince\)/);
+    expect(dialog).toMatch(/--workspace-accent:\s*var\(--color-we-got-sand\)/);
     expect(dialog).toMatch(
       /--meet-call-surface:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 12%/,
     );
