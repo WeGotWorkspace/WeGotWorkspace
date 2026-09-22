@@ -9,7 +9,7 @@ import {
 } from "@/lib/workspace-app-icons";
 
 const meta: Meta<typeof AppSwitchButton> = {
-  title: "Shared/App Switch Button",
+  title: "Layout/App Switch Button",
   component: AppSwitchButton,
   parameters: {
     layout: "centered",

@@ -50,7 +50,7 @@ function MeetStreamVideoStory({ hasStream, mirrored }: MeetStreamVideoStoryArgs)
 }
 
 const meta = {
-  title: "Shared/Meet/Components/MeetStreamVideo",
+  title: "Features/Meet/Components/MeetStreamVideo",
   component: MeetStreamVideo,
   render: (args) => <MeetStreamVideoStory {...args} />,
   parameters: {

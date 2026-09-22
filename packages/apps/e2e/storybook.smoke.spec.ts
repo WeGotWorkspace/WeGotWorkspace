@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-/** Mock-tier WeGotWorkspace login shell (Shared/WeGotWorkspace → Default). */
-const WGW_LOGIN_STORY = "shared-wegotworkspace--default";
+/** Mock-tier WeGotWorkspace login shell (Features/Workspace → Default). */
+const WGW_LOGIN_STORY = "features-workspace--default";
 
 test.describe("Apps UI smoke (Storybook)", () => {
   test("WeGotWorkspace mock login story renders sign-in shell", async ({ page }) => {

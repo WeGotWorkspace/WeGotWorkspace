@@ -8,7 +8,7 @@ import { CardRow } from "../src/card-row";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 
 const meta: Meta<typeof Card> = {
-  title: "Shared/Card",
+  title: "UI/Primitives/Card",
   component: Card,
 };
 

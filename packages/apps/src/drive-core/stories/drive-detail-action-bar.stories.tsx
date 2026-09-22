@@ -7,7 +7,7 @@ import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
 import "@/drive-core/src/drive-detail-panel.css";
 
 const meta = {
-  title: "Shared/Drive/Components/DriveDetailActionBar",
+  title: "Features/Drive/Components/DriveDetailActionBar",
   component: DriveDetailActionBar,
   tags: ["autodocs"],
   render: (args) => <DriveDetailActionBar {...args} />,

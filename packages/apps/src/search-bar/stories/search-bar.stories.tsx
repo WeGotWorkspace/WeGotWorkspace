@@ -3,7 +3,7 @@ import { expect, userEvent, within } from "storybook/test";
 import { SearchBar } from "@/search-bar/src/search-bar";
 
 const meta = {
-  title: "Shared/SearchBar",
+  title: "UI/Primitives/Search Bar",
   component: SearchBar,
   tags: ["autodocs", "vitest-ci"],
 } satisfies Meta<typeof SearchBar>;

@@ -42,7 +42,7 @@ async function chooseNewMeetLink(canvas: ReturnType<typeof within>) {
 const bootstrap = createCalendarAppBootstrap();
 
 const meta: Meta<typeof CalendarEventDialog> = {
-  title: "Shared/Calendar/EventDialog",
+  title: "Features/Calendar/EventDialog",
   component: CalendarEventDialog,
   args: {
     open: true,

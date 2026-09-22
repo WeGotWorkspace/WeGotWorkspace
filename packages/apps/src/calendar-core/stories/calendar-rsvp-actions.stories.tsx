@@ -5,7 +5,7 @@ import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarRsvpActions, CalendarRsvpSelect } from "@/calendar-core/src/calendar-rsvp-actions";
 
 const meta: Meta<typeof CalendarRsvpActions> = {
-  title: "Shared/Calendar/RsvpActions",
+  title: "Features/Calendar/RsvpActions",
   component: CalendarRsvpActions,
   args: {
     labels: defaultCalendarLabels,

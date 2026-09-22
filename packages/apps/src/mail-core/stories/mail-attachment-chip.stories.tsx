@@ -4,7 +4,7 @@ import { MailAttachmentChip } from "@/mail-core/src/mail-attachment-chip";
 import { MailStoryScope } from "./mail-story-scope";
 
 const meta: Meta<typeof MailAttachmentChip> = {
-  title: "Shared/Mail/Components/AttachmentChip",
+  title: "Features/Mail/Components/AttachmentChip",
   component: MailAttachmentChip,
   render: (args) => (
     <TooltipProvider delayDuration={150}>

@@ -15,7 +15,7 @@ function SearchPaneHarness({ dataOverride }: { dataOverride?: AdminStoryDataOver
 }
 
 const meta = {
-  title: "Shared/Admin/Panes/Search",
+  title: "Features/Admin/Panes/Search",
   component: AdminSearchPane,
   parameters: {
     layout: "fullscreen",

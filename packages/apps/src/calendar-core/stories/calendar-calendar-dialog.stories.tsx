@@ -84,7 +84,7 @@ function EditOwnedShareHarness({
 }
 
 const meta: Meta<typeof CalendarCalendarDialog> = {
-  title: "Shared/Calendar/CalendarDialog",
+  title: "Features/Calendar/CalendarDialog",
   component: CalendarCalendarDialog,
   decorators: [
     (Story) => (

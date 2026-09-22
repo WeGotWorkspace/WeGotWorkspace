@@ -9,7 +9,7 @@ import { offsetReminderAlert } from "@/tasks-core/src/tasks-task-utils";
 const reminded = createTasksAppBootstrap().data.tasks[2];
 
 const meta: Meta<typeof TasksRemindPicker> = {
-  title: "Shared/Tasks/Panes/RemindMe",
+  title: "Features/Tasks/Panes/RemindMe",
   component: TasksRemindPicker,
   tags: ["vitest-ci"],
   decorators: [

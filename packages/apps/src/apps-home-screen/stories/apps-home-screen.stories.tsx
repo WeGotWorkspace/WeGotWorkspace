@@ -3,7 +3,7 @@ import { AppsHomeScreen } from "../src/apps-home-screen";
 import { WORKSPACE_APP_ACCENT } from "@/lib/workspace-app-icons";
 
 const meta: Meta<typeof AppsHomeScreen> = {
-  title: "Shared/Apps Home Screen",
+  title: "Features/Workspace/Apps Home Screen",
   component: AppsHomeScreen,
   parameters: {
     layout: "fullscreen",

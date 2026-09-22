@@ -29,7 +29,7 @@ Addons in use: `@storybook/addon-a11y`, `@ljcl/storybook-addon-cssprops`, `@stor
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 const meta: Meta<typeof Component> = {
-  title: "Shared/ComponentName",
+  title: "UI/Primitives/ComponentName",
   component: Component,
   argTypes: { /* knobs */ },
 };
@@ -51,11 +51,16 @@ Reference: `packages/apps/src/button/stories/button.stories.tsx`.
 
 ## Title namespaces
 
-Only two top-level groups:
+Top-level groups (CSF `title` only — do not move story files to match):
 
+- `Foundations/` — short docs for Colors, Typography, Spacing (CSS tokens; live knobs stay in Branding)
 - `Branding/` — designer catalog (workspace chrome + auth/installer; accents / cream/ink / icons)
-- `Shared/` — everything else: primitives, product panes/components, unique non-branding workspace variants, WeGotWorkspace mock shells, and live API under `Shared/Live/…`
+- `UI/Primitives/` — context-agnostic controls (Button, Input, Dialog, Menu Item, …)
+- `UI/Patterns/` — compositions with no product noun (Detail View Header, Action Bar, Chat, …)
+- `Layout/` — page frame (App Sidebar, Shell Header, Brand Lockup, …)
+- `Features/{App}/` — product panes/components (Mail, Notes, Drive, Docs, Calendar, Contacts, Tasks, Meet, Admin, Settings)
+- `Features/Workspace/` — WeGotWorkspace mock shell; live API under `Features/Workspace/Live/…`
 
-Keep titles stable; they are the catalog index.
+No top-level `Shared/` or `Forms/`. Rule when unsure: product noun → Features; reusable without a product word → UI or Layout; page frame / routing chrome → Layout.
 
 **Policy vs CI:** [.agents/POLICY.md](../../POLICY.md). **Done verification:** [developer/done-checklist.md](../developer/done-checklist.md) (UI section).

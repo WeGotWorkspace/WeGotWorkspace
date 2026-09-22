@@ -48,7 +48,7 @@ function ContactsAddressBookSelectHarness({
 }
 
 const meta: Meta<typeof ContactsAddressBookSelectHarness> = {
-  title: "Shared/Contacts/Components/ContactsAddressBookSelect",
+  title: "Features/Contacts/Components/ContactsAddressBookSelect",
   component: ContactsAddressBookSelectHarness,
   tags: ["autodocs"],
   args: {

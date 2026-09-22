@@ -3,7 +3,7 @@ import { MailAttachments } from "../src/mail-attachments";
 import { MailStoryScope } from "./mail-story-scope";
 
 const meta: Meta<typeof MailAttachments> = {
-  title: "Shared/Mail/Panes/Attachments",
+  title: "Features/Mail/Panes/Attachments",
   component: MailAttachments,
   render: (args) => (
     <MailStoryScope variant="pane">

@@ -13,7 +13,7 @@ import "@/docs-core/src/docs-workspace.css";
 import "@/text-editor-core/docs-collab/docs-collab-presence.css";
 
 const meta: Meta<typeof UserAvatar> = {
-  title: "Shared/User Avatar",
+  title: "UI/Primitives/User Avatar",
   component: UserAvatar,
   argTypes: {
     size: {

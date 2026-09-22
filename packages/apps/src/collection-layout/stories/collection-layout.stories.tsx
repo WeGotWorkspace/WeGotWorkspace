@@ -5,7 +5,7 @@ import { CollectionHeader, CollectionListPane } from "@/collection-layout/src/co
 import { CollectionSearchInput } from "@/collection-search-input/src/collection-search-input";
 
 const meta: Meta = {
-  title: "Shared/Collection Layout",
+  title: "UI/Patterns/Collection Layout",
 };
 
 export default meta;

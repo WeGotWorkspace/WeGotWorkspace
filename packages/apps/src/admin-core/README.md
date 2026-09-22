@@ -34,18 +34,18 @@ Section and form styling lives under `.admin-workspace` in `admin-workspace.css`
 
 ## Storybook
 
-| Story                              | Purpose                                        |
-| ---------------------------------- | ---------------------------------------------- |
-| `Branding/Admin`                   | Full workspace chrome + branding knobs         |
-| `Shared/Admin/Panes/Users`         | User and group management                      |
-| `Shared/Admin/Panes/Backups`       | Backup configuration                           |
-| `Shared/Admin/Panes/Updates`       | Update channel / version state                 |
-| `Shared/Admin/Panes/Mail`          | IMAP/SMTP settings                             |
-| `Shared/Admin/Panes/WebDAV`        | WebDAV credentials and paths                   |
-| `Shared/Admin/Panes/Search`        | Unified search indexing                        |
-| `Shared/Admin/Panes/Plugins`       | Plugin enablement                              |
-| `Shared/Admin/Panes/Collaboration` | RTC / STUN / TURN settings                     |
-| `Shared/WeGotWorkspace`            | Full shell (login → home → all apps, mock API) |
+| Story                                | Purpose                                        |
+| ------------------------------------ | ---------------------------------------------- |
+| `Branding/Admin`                     | Full workspace chrome + branding knobs         |
+| `Features/Admin/Panes/Users`         | User and group management                      |
+| `Features/Admin/Panes/Backups`       | Backup configuration                           |
+| `Features/Admin/Panes/Updates`       | Update channel / version state                 |
+| `Features/Admin/Panes/Mail`          | IMAP/SMTP settings                             |
+| `Features/Admin/Panes/WebDAV`        | WebDAV credentials and paths                   |
+| `Features/Admin/Panes/Search`        | Unified search indexing                        |
+| `Features/Admin/Panes/Plugins`       | Plugin enablement                              |
+| `Features/Admin/Panes/Collaboration` | RTC / STUN / TURN settings                     |
+| `Features/Workspace`                 | Full shell (login → home → all apps, mock API) |
 
 ## Further reading
 

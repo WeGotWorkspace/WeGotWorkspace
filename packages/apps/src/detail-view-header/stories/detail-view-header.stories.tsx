@@ -4,7 +4,7 @@ import { BookOpen, CalendarDays, Inbox } from "lucide-react";
 import { DetailViewHeader } from "@/detail-view-header/src/detail-view-header";
 
 const meta: Meta<typeof DetailViewHeader> = {
-  title: "Shared/Detail View Header",
+  title: "UI/Patterns/Detail View Header",
   component: DetailViewHeader,
 };
 
@@ -19,7 +19,7 @@ export const ReadonlyMailStyle: Story = {
         label: "Inbox",
         icon: <Inbox className="size-3.5 opacity-70" />,
         colors: {
-          color: "var(--color-cream, #f7f4ef)",
+          color: "var(--color-cream)",
           backgroundColor: "color-mix(in oklab, var(--color-ink) 88%, transparent)",
         },
       },

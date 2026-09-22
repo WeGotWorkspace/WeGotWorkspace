@@ -17,20 +17,20 @@ Try app accents, cream/ink, and icon artwork without editing CSS. Winning values
 
 Stories are offline mock fixtures — no live API required.
 
-Storybook has **only two top-level groups**: **`Branding/`** (designer chrome) and **`Shared/`** (everything else). Prefer **Branding/** when reviewing accents, cream/ink, or icon artwork.
+Storybook sidebar groups: **`Foundations/`** (token docs), **`Branding/`** (designer chrome), **`UI/`** (primitives + patterns), **`Layout/`** (page frame), and **`Features/`** (product + Workspace). Prefer **Branding/** when reviewing accents, cream/ink, or icon artwork.
 
-### What lives under `Shared/`
+### What lives outside `Branding/`
 
-| Keep under `Shared/`      | Examples                                                                                                                                                                           |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Primitives / composites   | `Shared/Buttons/Button`, `Shared/App Sidebar`, …                                                                                                                                   |
-| Pane / component matrices | `Shared/Mail/Panes/…`, `Shared/Meet/Components/…`, `Shared/Admin/Panes/…`                                                                                                          |
-| Unique product variants   | Notes shared notebooks, Drive/Tasks shared-with-me, Docs empty/.txt, Settings MCP-off, Meet call/knock matrix, Calendar search/views, Contacts workspace SST, Docs home browse SST |
-| Mock shells               | `Shared/WeGotWorkspace`, `Shared/WeGotWorkspace/Shell`                                                                                                                             |
-| Live API                  | `Shared/Live/WeGotWorkspace`, `Shared/Live/WeGotWorkspace/Shell`                                                                                                                   |
-| Workspace chrome pieces   | `Shared/Workspace/ShellHeader`, `Shared/AuthenticationPage`, Settings MCP consent                                                                                                  |
+| Group              | Examples                                                                                                               |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Foundations        | `Foundations/Colors`, `Foundations/Typography`, `Foundations/Spacing` (pointers at CSS tokens; knobs stay in Branding) |
+| UI/Primitives      | `UI/Primitives/Button`, `UI/Primitives/Input`, `UI/Primitives/Dialog`, …                                               |
+| UI/Patterns        | `UI/Patterns/Detail View Header`, Action Bar, Chat, …                                                                  |
+| Layout             | `Layout/App Sidebar`, `Layout/Shell Header`, `Layout/Brand Lockup`, `Layout/Authentication Page`                       |
+| Features/{App}     | `Features/Mail/Panes/…`, `Features/Meet/Components/…`, `Features/Admin/Panes/…`                                        |
+| Features/Workspace | Mock shell `Features/Workspace`, live `Features/Workspace/Live`                                                        |
 
-Product workspace **chrome Defaults** live under `Branding/{App}` (and Login/Installer matrices under `Branding/Login` / `Branding/Installer`). Do **not** duplicate those Defaults under Shared.
+Product workspace **chrome Defaults** live under `Branding/{App}` (and Login/Installer matrices under `Branding/Login` / `Branding/Installer`). Do **not** duplicate those Defaults under Features.
 
 Designer URL examples (Storybook id encoding may vary slightly):
 
@@ -74,19 +74,38 @@ Two panels:
 | `iconPreset` | Quick A/B: keep **current**, swap another app’s SVG, or choose **custom** |
 | `svgMarkup`  | Paste exported SVG when `iconPreset` is **custom**                        |
 
-Docs also has **`fullAccentSidebar`**: full `--docs-accent` rail vs cream-mix wash.
+Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs cream-mix wash.
 
 ### CSS props (colors)
 
 | Category    | Tokens                                                                       | Purpose                                      |
 | ----------- | ---------------------------------------------------------------------------- | -------------------------------------------- |
-| Suite       | `--color-cream`, `--color-ink`                                               | Paper and primary ink                        |
-| App chrome  | `--{app}-accent`, optional `--{app}-sidebar`, `--app-sidebar-color`          | Primary / CTA / badge; sidebar; nav on-color |
+| Suite       | `--color-cream`, `--color-ink`                                               | Paper (We Got Soft) and primary ink (Dark)   |
+| App chrome  | `--workspace-accent`, optional `--app-sidebar-bg`, `--app-sidebar-color`     | Primary / CTA / badge; sidebar; nav on-color |
 | Icon layers | `--wai-bg`, `--wai-fg`, `--wai-detail`, `--wai-detail-muted`, `--wai-cutout` | Switch-trigger SVG fills                     |
 
 **Accent vs `--wai-*`:** accent drives workspace chrome (sidebar mix, buttons, badges). `--wai-*` only recolors the switch-trigger mark layers. Change accent for “the app feels different”; change `--wai-*` when the lockup icon itself needs a new palette.
 
-**Defaults match production UI**, not the PWA/home-tile swatch. Calendar, Tasks, and Meet use a different `--{app}-accent` in `*-workspace.css` than `WORKSPACE_APP_ACCENT` (tile theme). Sidebar mixes and `--wai-*` come from the same workspace CSS. `iconPreset` defaults to **current** (that app’s real mark).
+**Defaults match production UI**, not the PWA/home-tile swatch. Calendar, Tasks, and Meet use a different `--workspace-accent` in `*-workspace.css` than `WORKSPACE_APP_ACCENT` (tile theme). Sidebar mixes and `--wai-*` come from the same workspace CSS / `workspace-color.css`. `iconPreset` defaults to **current** (that app’s real mark).
+
+### WCAG AA ratios (resolved brand hex / Soft)
+
+Text ≥4.5:1; UI icons ≥3:1. Measured on sRGB brand hexes after Soft cream remap.
+
+| Pair                                          | Ratio   | AA        |
+| --------------------------------------------- | ------- | --------- |
+| `--color-ink` on `--color-cream` (Soft)       | 13.15:1 | text PASS |
+| white on Docs `--workspace-accent` (blue)     | 6.37:1  | text PASS |
+| Docs `--wai-fg` on `--wai-bg`                 | 6.37:1  | text PASS |
+| Admin `--wai-fg` on `--wai-bg`                | 14.17:1 | text PASS |
+| Settings `--wai-fg` on `--wai-bg`             | 7.36:1  | text PASS |
+| Calendar / Contacts `--wai-fg` on `--wai-bg`  | 4.07:1  | UI PASS   |
+| Drive `--wai-fg` on `--wai-bg`                | 3.63:1  | UI PASS   |
+| Meet `--wai-detail` on `--wai-bg`             | 4.13:1  | UI PASS   |
+| Mail pink on red tile (tile darkened 10%→ink) | ~3.0:1  | UI PASS   |
+| Notes / Tasks red marks (marks mixed →ink)    | ~3.0:1  | UI PASS   |
+
+Meet `--wai-fg` equals `--wai-bg` (same-layer yellow fill); contrast is N/A — readable marks use `--wai-detail`.
 
 Home uses cream/ink (and `--workspace-home-bg`); it has no per-app accent. The suite mark may use fixed fills or `var(--color-cream|ink, …)` rather than `--wai-*`.
 
@@ -126,11 +145,11 @@ Storybook does **not** write to the repo. When a combination looks right:
 1. **Screenshot** the story (sidebar + lockup + a primary CTA is enough).
 2. **Token table** — list final values, for example:
 
-   | Token           | Value     |
-   | --------------- | --------- |
-   | `--mail-accent` | `#de4b0e` |
-   | `--wai-bg`      | `#de4b0e` |
-   | `--wai-fg`      | `#ffbdc2` |
+   | Token                | Value     |
+   | -------------------- | --------- |
+   | `--workspace-accent` | `#de4b0e` |
+   | `--wai-bg`           | `#de4b0e` |
+   | `--wai-fg`           | `#ffbdc2` |
 
 3. If you changed the mark: attach the **SVG markup** (or the file) from `svgMarkup` / your export.
 4. Send screenshot + table (+ SVG) to engineering. They update `packages/apps/src/{app}-core/src/*-workspace.css` and/or `packages/apps/public/app-icons/*.svg` (inline copies live under `workspace-app-icon-svgs`).

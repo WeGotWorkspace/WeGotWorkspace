@@ -157,7 +157,7 @@ import "@/<product>-core/src/<product>-workspace.css";
 }
 ```
 
-**Storybook** — scope component with layout variants (see `meet-story-scope.tsx`: `root`, `in-call`, `chat-column`, …). Live `/meet` stories mount `MeetWorkspaceStoryHarness`. Guest invite stories: `Shared/Meet/Panes/MeetGuestChannel`.
+**Storybook** — scope component with layout variants (see `meet-story-scope.tsx`: `root`, `in-call`, `chat-column`, …). Live `/meet` stories mount `MeetWorkspaceStoryHarness`. Guest invite stories: `Features/Meet/Panes/MeetGuestChannel`.
 
 **Reference:** `packages/apps/src/meet-core/src/meet-guest-channel.tsx`
 

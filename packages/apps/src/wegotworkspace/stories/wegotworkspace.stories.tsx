@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { WeGotWorkspace } from "@/wegotworkspace/src/wegotworkspace";
 
 const meta: Meta<typeof WeGotWorkspace> = {
-  title: "Shared/WeGotWorkspace",
+  title: "Features/Workspace",
   component: WeGotWorkspace,
   parameters: {
     layout: "fullscreen",
@@ -11,7 +11,7 @@ const meta: Meta<typeof WeGotWorkspace> = {
       description: {
         component:
           "Mock shell for offline stories (`Default`, `Installer`). " +
-          "For the real API, open **Shared/Live/WeGotWorkspace** (`Live API`, `Live Docs`).",
+          "For the real API, open **Features/Workspace/Live** (`Live API`, `Live Docs`).",
       },
     },
   },

@@ -65,7 +65,7 @@ function NotesDetailPaneHarness({
 }
 
 const meta = {
-  title: "Shared/Notes/Panes/Detail",
+  title: "Features/Notes/Panes/Detail",
   component: NotesDetailPaneHarness,
   parameters: {
     layout: "fullscreen",
@@ -137,7 +137,7 @@ export const Editable: Story = {
         .trim(),
     ).toBe("");
     const accentProbe = document.createElement("span");
-    accentProbe.style.color = "var(--notes-accent)";
+    accentProbe.style.color = "var(--workspace-accent)";
     workspace!.appendChild(accentProbe);
     expect(getComputedStyle(accentProbe).color).toBe("rgb(246, 209, 118)");
     accentProbe.remove();
@@ -194,7 +194,7 @@ export const NotebookTint: Story = {
       getComputedStyle(tintBg).backgroundColor,
     );
     const cream = document.createElement("span");
-    cream.style.backgroundColor = "var(--workspace-chrome-footer-bg, var(--color-cream, #f7f4ef))";
+    cream.style.backgroundColor = "var(--workspace-chrome-footer-bg, var(--color-cream))";
     workspace!.appendChild(cream);
     expect(getComputedStyle(scroll!).backgroundColor).toBe(getComputedStyle(cream).backgroundColor);
     expect(getComputedStyle(sheet!).backgroundColor).not.toBe(
@@ -297,7 +297,7 @@ export const NotebookTintDark: Story = {
     mark.style.color = "var(--checkbox-checked-fg)";
     tagBg.style.color = "var(--note-detail-tag-bg)";
     accent.style.color = "var(--notes-detail-accent)";
-    cream.style.color = "var(--color-cream, #f7f4ef)";
+    cream.style.color = "var(--color-cream)";
     editor!.appendChild(fill);
     editor!.appendChild(mark);
     editor!.appendChild(tagBg);

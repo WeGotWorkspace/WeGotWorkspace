@@ -6,7 +6,7 @@ import { ViewHeader } from "@/view-header/src/view-header";
 import "./view-header.stories.css";
 
 const meta: Meta<typeof ViewHeader> = {
-  title: "Shared/View Header",
+  title: "UI/Patterns/View Header",
   component: ViewHeader,
   decorators: [
     (Story) => (

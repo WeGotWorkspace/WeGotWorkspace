@@ -24,7 +24,7 @@ const createPaginatedFetcher = createDocsHomePaginatedFetcher;
 const createMockHomeOperations = createMockDocsHomeOperations;
 
 const meta: Meta<typeof DocsHomeWorkspace> = {
-  title: "Shared/Docs/Home",
+  title: "Features/Docs/Home",
   component: DocsHomeWorkspace,
   tags: ["autodocs"],
   parameters: {

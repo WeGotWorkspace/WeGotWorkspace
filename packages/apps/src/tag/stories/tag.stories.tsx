@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Tag, TagGroup } from "../src/tag";
 
 const meta: Meta<typeof TagGroup> = {
-  title: "Shared/Tag Group",
+  title: "UI/Primitives/Tag Group",
   component: TagGroup,
 };
 

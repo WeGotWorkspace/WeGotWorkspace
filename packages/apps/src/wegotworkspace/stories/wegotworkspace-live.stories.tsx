@@ -10,7 +10,7 @@ const liveApiStoryDescription =
   "Restart Storybook after changing `.env.local`.";
 
 const meta: Meta<typeof WeGotWorkspaceLive> = {
-  title: "Shared/Live/WeGotWorkspace",
+  title: "Features/Workspace/Live",
   component: WeGotWorkspaceLive,
   tags: ["!test", "live"],
   parameters: {
@@ -19,7 +19,7 @@ const meta: Meta<typeof WeGotWorkspaceLive> = {
     docs: {
       description: {
         component:
-          "Live-tier WeGotWorkspace shell against the PHP dev API. Mock offline shells live under **Shared/WeGotWorkspace**.",
+          "Live-tier WeGotWorkspace shell against the PHP dev API. Mock offline shells live under **Features/Workspace**.",
       },
     },
   },

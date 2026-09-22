@@ -7,7 +7,7 @@ import { WeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-router
 import { withWeGotWorkspaceAuth } from "@/wegotworkspace/src/wegotworkspace-require-auth";
 
 const meta = {
-  title: "Shared/Live/WeGotWorkspace/Shell",
+  title: "Features/Workspace/Live/Shell",
   tags: ["!test", "live"],
   parameters: {
     layout: "fullscreen",
@@ -15,7 +15,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Live-tier router harnesses for WeGotWorkspace. Requires the PHP dev API (`pnpm setup:storybook-live-api`). Mock shells: **Shared/WeGotWorkspace/Shell**.",
+          "Live-tier router harnesses for WeGotWorkspace. Requires the PHP dev API (`pnpm setup:storybook-live-api`). Mock shells: **Features/Workspace/Shell**.",
       },
     },
   },

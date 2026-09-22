@@ -4,7 +4,7 @@ import { TasksWorkspace } from "@/tasks-core/src/tasks-workspace";
 import { tasksStoryOperations } from "@/tasks-core/stories/tasks-story-shared";
 
 const meta: Meta<typeof TasksWorkspace> = {
-  title: "Shared/Tasks",
+  title: "Features/Tasks",
   component: TasksWorkspace,
   parameters: {
     layout: "fullscreen",

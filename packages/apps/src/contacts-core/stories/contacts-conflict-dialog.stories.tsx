@@ -22,7 +22,7 @@ const sampleFieldRows: ContactConflictFieldRow[] = [
 ];
 
 const meta = {
-  title: "Shared/Contacts/Conflict Dialog",
+  title: "Features/Contacts/Conflict Dialog",
   component: ContactsConflictDialog,
   parameters: { layout: "fullscreen" },
   args: {

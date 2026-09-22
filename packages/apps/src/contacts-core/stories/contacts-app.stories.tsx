@@ -8,7 +8,7 @@ const bootstrap = createContactsAppBootstrap();
 const operations = createContactsStoryOperations(bootstrap.data.cards);
 
 const meta: Meta<typeof ContactsWorkspace> = {
-  title: "Shared/Contacts",
+  title: "Features/Contacts",
   component: ContactsWorkspace,
   parameters: {
     layout: "fullscreen",

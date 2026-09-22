@@ -9,7 +9,7 @@ const { data, session } = createMeetAppBootstrap();
 const groups = data.groups ?? [];
 
 const meta: Meta<typeof MeetChannelDialog> = {
-  title: "Shared/Meet/Components/MeetChannelDialog",
+  title: "Features/Meet/Components/MeetChannelDialog",
   component: MeetChannelDialog,
 };
 

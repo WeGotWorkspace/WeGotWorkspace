@@ -69,7 +69,7 @@ function bootstrapWithThisInstanceOverride() {
 }
 
 const meta: Meta<typeof CalendarWorkspace> = {
-  title: "Shared/Calendar",
+  title: "Features/Calendar",
   component: CalendarWorkspace,
   parameters: {
     layout: "fullscreen",

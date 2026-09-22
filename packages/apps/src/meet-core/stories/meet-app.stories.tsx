@@ -10,7 +10,7 @@ import {
 } from "@/meet-core/stories/meet-workspace.stories.harness";
 
 const meta = {
-  title: "Shared/Meet",
+  title: "Features/Meet",
   component: MeetWorkspaceStoryHarness,
   render: (args) => <MeetWorkspaceStoryHarness {...args} />,
   parameters: {

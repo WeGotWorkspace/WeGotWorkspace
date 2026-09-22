@@ -5,7 +5,7 @@ import type { Mail } from "@/types/mail";
 import { MailStoryScope } from "./mail-story-scope";
 
 const meta: Meta<typeof MailMultiSelectionView> = {
-  title: "Shared/Mail/Panes/Multi selection",
+  title: "Features/Mail/Panes/Multi selection",
   component: MailMultiSelectionView,
   render: (args) => (
     <MailStoryScope variant="detail">

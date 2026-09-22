@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { UploadProgress } from "@/upload-progress/src/upload-progress";
 
 const meta = {
-  title: "Shared/UploadProgress",
+  title: "UI/Patterns/Upload Progress",
   component: UploadProgress,
   tags: ["autodocs"],
   argTypes: {

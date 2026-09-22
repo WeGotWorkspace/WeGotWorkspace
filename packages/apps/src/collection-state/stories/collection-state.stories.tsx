@@ -3,7 +3,7 @@ import { Cloud } from "lucide-react";
 import { CollectionState } from "@/collection-state/src/collection-state";
 
 const meta = {
-  title: "Shared/CollectionState",
+  title: "UI/Patterns/Collection State",
   component: CollectionState,
   tags: ["autodocs"],
 } satisfies Meta<typeof CollectionState>;

@@ -3,7 +3,7 @@ import { Archive, Circle, Star } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
 
 const meta: Meta<typeof ListItem> = {
-  title: "Shared/List Item",
+  title: "UI/Primitives/List Item",
   component: ListItem,
 };
 

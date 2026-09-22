@@ -7,7 +7,7 @@ import { ChatStoryScope } from "@/chat-ui/stories/chat-story-scope";
 import { CHAT_STORY_PRINCIPALS } from "@/chat-ui/stories/chat-stories.fixtures";
 
 const meta = {
-  title: "Shared/Chat/ChatComposer",
+  title: "UI/Patterns/Chat/Chat Composer",
   component: ChatComposer,
   parameters: {
     layout: "padded",

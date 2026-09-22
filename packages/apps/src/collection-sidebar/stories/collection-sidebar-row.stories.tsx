@@ -9,7 +9,7 @@ import {
 } from "@/collection-sidebar/src/collection-sidebar-row";
 
 const meta: Meta<typeof CollectionSidebarRow> = {
-  title: "Shared/CollectionSidebarRow",
+  title: "UI/Patterns/Collection Sidebar Row",
   component: CollectionSidebarRow,
   tags: ["autodocs"],
   args: {

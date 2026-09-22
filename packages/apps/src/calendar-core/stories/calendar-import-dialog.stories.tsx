@@ -9,7 +9,7 @@ const bootstrap = createCalendarAppBootstrap();
 const sampleFile = new File(["BEGIN:VCALENDAR"], "team-offsite.ics", { type: "text/calendar" });
 
 const meta: Meta<typeof CalendarImportDialog> = {
-  title: "Shared/Calendar/ImportDialog",
+  title: "Features/Calendar/ImportDialog",
   component: CalendarImportDialog,
   args: {
     open: true,

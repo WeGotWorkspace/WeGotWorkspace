@@ -8,7 +8,7 @@ const bootstrap = createTasksAppBootstrap();
 const reminded = bootstrap.data.tasks[2]!;
 
 const meta: Meta<typeof TasksEditDialog> = {
-  title: "Shared/Tasks/Panes/Edit dialog",
+  title: "Features/Tasks/Panes/Edit dialog",
   component: TasksEditDialog,
   tags: ["vitest-ci"],
   decorators: [

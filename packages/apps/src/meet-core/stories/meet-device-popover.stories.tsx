@@ -36,7 +36,7 @@ function MeetDevicePopoverStory({ defaultOpen }: MeetDevicePopoverStoryArgs) {
 }
 
 const meta = {
-  title: "Shared/Meet/Components/MeetDevicePopover",
+  title: "Features/Meet/Components/MeetDevicePopover",
   component: MeetDevicePopover,
   render: (args) => <MeetDevicePopoverStory {...args} />,
   parameters: {

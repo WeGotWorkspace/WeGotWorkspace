@@ -3,7 +3,7 @@ import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
 import "./list-sticky-header.stories.css";
 
 const meta = {
-  title: "Shared/List Sticky Header",
+  title: "UI/Patterns/List Sticky Header",
   component: ListStickyHeader,
   parameters: {
     layout: "padded",

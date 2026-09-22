@@ -87,7 +87,7 @@ export function NotesListPaneHarness({
 }
 
 const meta = {
-  title: "Shared/Notes/Panes/List",
+  title: "Features/Notes/Panes/List",
   component: NotesListPaneHarness,
   parameters: {
     layout: "fullscreen",

@@ -59,7 +59,7 @@ function ContactsCreateGroupDialogHarness({
 }
 
 const meta: Meta<typeof ContactsCreateGroupDialogHarness> = {
-  title: "Shared/Contacts/Create group dialog",
+  title: "Features/Contacts/Create group dialog",
   component: ContactsCreateGroupDialogHarness,
   args: {
     view: "all",

@@ -43,7 +43,7 @@ function MeetCircleToggleStory({ variant, large }: MeetCircleToggleStoryArgs) {
 }
 
 const meta = {
-  title: "Shared/Meet/Components/MeetCircleToggle",
+  title: "Features/Meet/Components/MeetCircleToggle",
   component: MeetCircleToggle,
   render: (args) => (
     <MeetStoryScope>

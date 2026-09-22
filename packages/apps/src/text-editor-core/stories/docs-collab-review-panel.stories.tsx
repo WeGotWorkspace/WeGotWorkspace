@@ -43,7 +43,7 @@ const panelHandlers = {
 };
 
 const meta = {
-  title: "Shared/TextEditor/Docs collab/Review panel",
+  title: "Features/Docs/TextEditor/Docs collab/Review panel",
   component: DocsCollabReviewPanel,
   parameters: {
     layout: "fullscreen",

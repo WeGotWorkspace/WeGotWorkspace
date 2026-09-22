@@ -14,7 +14,7 @@ First paragraph with **bold** and _italic_ text.
 `;
 
 const meta: Meta<typeof NoteTextEditorBody> = {
-  title: "Shared/Notes/Components/TextEditorBody",
+  title: "Features/Notes/Components/TextEditorBody",
   component: NoteTextEditorBody,
   parameters: {
     layout: "fullscreen",

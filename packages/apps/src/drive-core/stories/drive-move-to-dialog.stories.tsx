@@ -53,7 +53,7 @@ function FileSelectHarness() {
 }
 
 const meta = {
-  title: "Shared/Drive/Components/DriveMoveToDialog",
+  title: "Features/Drive/Components/DriveMoveToDialog",
   component: DriveMoveToDialog,
   tags: ["autodocs"],
 } satisfies Meta<typeof DriveMoveToDialog>;

@@ -11,7 +11,7 @@ import {
 } from "@/workspace-shell/src/workspace-app-layout";
 
 const meta: Meta = {
-  title: "Shared/Workspace Shell",
+  title: "Layout/Workspace Shell",
 };
 
 export default meta;

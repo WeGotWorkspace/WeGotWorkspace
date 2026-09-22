@@ -62,7 +62,7 @@ function ContactsImportDialogHarness({
 }
 
 const meta: Meta<typeof ContactsImportDialogHarness> = {
-  title: "Shared/Contacts/Import dialog",
+  title: "Features/Contacts/Import dialog",
   component: ContactsImportDialogHarness,
   args: {
     view: "all",

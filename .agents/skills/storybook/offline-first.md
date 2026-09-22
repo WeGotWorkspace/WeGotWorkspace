@@ -13,7 +13,7 @@ Storybook is the **primary UI lab** for `packages/apps`. Every exported componen
 
 Live-tier stories may fail without `pnpm docker:up` / `pnpm setup:storybook-live-api` — that is acceptable. They must **not** be the only story for a component.
 
-Reference live pattern: `packages/apps/src/wegotworkspace/stories/wegotworkspace-live.stories.tsx` (`Shared/Live/WeGotWorkspace`) vs mock `wegotworkspace.stories.tsx` (`Shared/WeGotWorkspace`).
+Reference live pattern: `packages/apps/src/wegotworkspace/stories/wegotworkspace-live.stories.tsx` (`Features/Workspace/Live`) vs mock `wegotworkspace.stories.tsx` (`Features/Workspace`).
 
 ## 100% coverage target
 
@@ -21,9 +21,10 @@ Every **exported** UI surface under `packages/apps/src/**` that ships to users n
 
 | Surface | Story location |
 |---------|----------------|
-| Shared primitive / composite | `*/stories/*.stories.tsx`, title `Shared/…` |
-| Product pane / workspace / app | `*-core/stories/…`, title `Shared/{Product}/…` |
-| Live API shells | `*-core/stories/…` or `wegotworkspace/stories/…`, title `Shared/Live/…` |
+| UI primitive / pattern / layout | `*/stories/*.stories.tsx`, title `UI/…` or `Layout/…` |
+| Product pane / workspace / app | `*-core/stories/…`, title `Features/{Product}/…` |
+| Live API shells | `wegotworkspace/stories/…`, title `Features/Workspace/Live/…` |
+| Token docs | `foundations/stories/…`, title `Foundations/…` |
 | Designer chrome catalog | `*-branding.stories.tsx`, title `Branding/{App}` |
 
 Minimum per export:

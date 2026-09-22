@@ -41,7 +41,7 @@ function DialogHarness() {
 }
 
 const meta: Meta<typeof MeetCreateMeetingDialog> = {
-  title: "Shared/Meet/Components/MeetCreateMeetingDialog",
+  title: "Features/Meet/Components/MeetCreateMeetingDialog",
   component: MeetCreateMeetingDialog,
 };
 

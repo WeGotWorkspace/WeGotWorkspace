@@ -100,7 +100,7 @@ const UNREAD_ITEMS: NotificationInboxItem[] = [
 ];
 
 const meta = {
-  title: "Shared/WeGotWorkspace/Components/NotificationInboxTray",
+  title: "Features/Workspace/Components/NotificationInboxTray",
   component: NotificationInboxTray,
   tags: ["vitest-ci"],
   args: {

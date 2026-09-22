@@ -120,7 +120,7 @@ Setup, CI wiring, and maintainer checklist: [storybook/chromatic.md](../storyboo
 ## Out of scope for this gate
 
 - **Live-tier stories** (`Live …`) — manual smoke only.
-- **Apps Playwright e2e** — optional local smoke (`pnpm test:apps-e2e`); not in CI. Phase 1 loads mock-tier Storybook stories (e.g. `Shared/WeGotWorkspace` login shell). Reuse a running Storybook with `WGW_APPS_E2E_NO_SERVER=1` when `pnpm dev:ui` is already up.
+- **Apps Playwright e2e** — optional local smoke (`pnpm test:apps-e2e`); not in CI. Phase 1 loads mock-tier Storybook stories (e.g. `Features/Workspace` login shell). Reuse a running Storybook with `WGW_APPS_E2E_NO_SERVER=1` when `pnpm dev:ui` is already up.
 - **Chromatic** — optional; enable with repo variable `CHROMATIC_ENABLED=true` and `CHROMATIC_PROJECT_TOKEN` secret (see `.github/workflows/ci.yml`).
 - **Full Storybook Vitest catalog** — run locally: `pnpm --filter @wgw/apps run test:storybook`.
 

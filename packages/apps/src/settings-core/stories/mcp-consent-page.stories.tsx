@@ -12,7 +12,7 @@ import {
 } from "./mcp-consent-page.stories.fixtures";
 
 const meta = {
-  title: "Shared/Settings/Connect assistant consent",
+  title: "Features/Settings/Connect assistant consent",
   component: McpConsentPageMock,
   parameters: {
     layout: "fullscreen",

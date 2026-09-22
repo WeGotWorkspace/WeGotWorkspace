@@ -38,7 +38,7 @@ function SuggestModeHarness() {
 }
 
 const meta = {
-  title: "Shared/TextEditor/Docs collab/Suggest mode",
+  title: "Features/Docs/TextEditor/Docs collab/Suggest mode",
   component: DocsCollabEditor,
   parameters: {
     layout: "fullscreen",

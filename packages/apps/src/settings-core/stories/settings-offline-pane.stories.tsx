@@ -3,7 +3,7 @@ import { SettingsOfflinePane } from "@/settings-core/src/settings-offline-pane";
 import { SettingsStoryScope } from "./settings-story-scope";
 
 const meta = {
-  title: "Shared/Settings/Offline pane",
+  title: "Features/Settings/Offline pane",
   component: SettingsOfflinePane,
   parameters: { layout: "padded" },
   decorators: [

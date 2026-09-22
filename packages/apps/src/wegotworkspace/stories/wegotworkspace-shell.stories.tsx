@@ -3,14 +3,14 @@ import { WeGotWorkspaceApp } from "@/wegotworkspace/src/wegotworkspace-app";
 import { WeGotWorkspace } from "@/wegotworkspace/src/wegotworkspace";
 
 const meta = {
-  title: "Shared/WeGotWorkspace/Shell",
+  title: "Features/Workspace/Shell",
   parameters: {
     layout: "fullscreen",
     wegotworkspaceRouter: true,
     docs: {
       description: {
         component:
-          "Mock-tier route matrix for the WeGotWorkspace shell catalog. Each story exercises a router entry offline. Live routes live under **Shared/Live/WeGotWorkspace**.",
+          "Mock-tier route matrix for the WeGotWorkspace shell catalog. Each story exercises a router entry offline. Live routes live under **Features/Workspace/Live**.",
       },
     },
   },

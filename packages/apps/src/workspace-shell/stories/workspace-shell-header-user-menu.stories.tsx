@@ -4,7 +4,7 @@ import { MeetStoryScope } from "@/meet-core/stories/meet-story-scope";
 import { WorkspaceShellHeaderUserMenu } from "@/workspace-shell/src/workspace-shell-header-user-menu";
 
 const meta = {
-  title: "Shared/Workspace/ShellHeaderUserMenu",
+  title: "Layout/Shell Header User Menu",
   component: WorkspaceShellHeaderUserMenu,
   parameters: {
     layout: "centered",

@@ -48,7 +48,7 @@ pnpm test:meet-api
 | Layer | Path |
 |-------|------|
 | App / workspace / panes | `meet-core/src/*-app.tsx`, `meet-chat-app` + `meet-workspace` (live `/meet`, Split product), `meet-guest-channel` (invite lobby on unauthorized `/meet/meetings/{id}`, `/meet/channels/{id}`, `/meet/join`) |
-| Shared chat UI | `packages/apps/src/chat-ui/` — `Shared/Chat/*` stories (no RTC) |
+| Shared chat UI | `packages/apps/src/chat-ui/` — `UI/Patterns/Chat/*` stories (no RTC) |
 | RTC session wrapper | `meet-core/src/meet-rtc-session.ts`, `use-meet-rtc.ts` |
 | Shared RTC kernel | `lib/rtc/` — `createRtcSession`, `RtcPeerMesh`, `signaling/http-client.ts` |
 
@@ -75,10 +75,10 @@ Debug: `?rtcDebug=1` on URL. Relay-only dev: `?rtcForceRelay=1` or `VITE_WGW_RTC
 
 | Surface | What to use |
 |---------|-------------|
-| New product shell | `Shared/Meet` — `MeetWorkspaceStoryHarness` (`meet-workspace.stories.harness.tsx`, stories in `meet-app.stories.tsx`): channels + chat + optional call; chrome Default under `Branding/Meet` |
-| Shared chat primitives | `Shared/Chat/*` — message, list, composer, mentions, reactions, link previews, threads (product-agnostic; no RTC, no Meet CSS) |
-| Guest stripped channel | `Shared/Meet/Panes/MeetGuestChannel` — checking / waiting / lobby / in-channel; no channel sidebar (`hideSidebarToggle`). Live guest/invite URLs mount this. |
-| Live `/meet` | `MeetChatApp` mounts `MeetWorkspace` on the hybrid chat client + real controller (`use-meet-chat-call.ts`); `startCall` joins the deterministic channel room (`meet-channel-room.ts`). Mock `/meet` and `Shared/Meet` stories boot `MeetWorkspace` with `createMeetAppBootstrap`. |
+| New product shell | `Features/Meet` — `MeetWorkspaceStoryHarness` (`meet-workspace.stories.harness.tsx`, stories in `meet-app.stories.tsx`): channels + chat + optional call; chrome Default under `Branding/Meet` |
+| Shared chat primitives | `UI/Patterns/Chat/*` — message, list, composer, mentions, reactions, link previews, threads (product-agnostic; no RTC, no Meet CSS) |
+| Guest stripped channel | `Features/Meet/Panes/MeetGuestChannel` — checking / waiting / lobby / in-channel; no channel sidebar (`hideSidebarToggle`). Live guest/invite URLs mount this. |
+| Live `/meet` | `MeetChatApp` mounts `MeetWorkspace` on the hybrid chat client + real controller (`use-meet-chat-call.ts`); `startCall` joins the deterministic channel room (`meet-channel-room.ts`). Mock `/meet` and `Features/Meet` stories boot `MeetWorkspace` with `createMeetAppBootstrap`. |
 
 ```tsx
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";

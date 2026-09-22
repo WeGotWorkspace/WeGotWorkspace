@@ -4,7 +4,7 @@ import { CalendarMeetChannelEmailDialog } from "@/calendar-core/src/calendar-mee
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 
 const meta: Meta<typeof CalendarMeetChannelEmailDialog> = {
-  title: "Shared/Calendar/MeetChannelEmailDialog",
+  title: "Features/Calendar/MeetChannelEmailDialog",
   component: CalendarMeetChannelEmailDialog,
   args: {
     open: true,

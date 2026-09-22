@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 
 const meta = {
-  title: "Shared/FileDropOverlay",
+  title: "UI/Patterns/File Drop Overlay",
   component: FileDropOverlay,
   tags: ["autodocs"],
   parameters: {

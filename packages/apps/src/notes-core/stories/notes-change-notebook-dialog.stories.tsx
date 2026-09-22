@@ -39,7 +39,7 @@ function NotesChangeNotebookDialogHarness({
 }
 
 const meta: Meta<typeof NotesChangeNotebookDialogHarness> = {
-  title: "Shared/Notes/Components/NotesChangeNotebookDialog",
+  title: "Features/Notes/Components/NotesChangeNotebookDialog",
   component: NotesChangeNotebookDialogHarness,
   tags: ["autodocs"],
   args: {

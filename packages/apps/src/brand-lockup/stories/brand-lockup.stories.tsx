@@ -4,7 +4,7 @@ import "@/login-core/src/login-screen.css";
 import "@/workspace-shell/src/workspace-shell-header.css";
 
 const meta = {
-  title: "Shared/Brand Lockup",
+  title: "Layout/Brand Lockup",
   component: BrandLockup,
   parameters: {
     layout: "fullscreen",

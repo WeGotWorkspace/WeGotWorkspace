@@ -65,7 +65,7 @@ const sampleCalendars = [
 const noop = () => {};
 
 const meta: Meta<typeof CalendarInvitationsPanel> = {
-  title: "Shared/Calendar/Invitations",
+  title: "Features/Calendar/Invitations",
   component: CalendarInvitationsPanel,
   parameters: {
     layout: "fullscreen",

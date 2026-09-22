@@ -164,7 +164,7 @@ function ContactsDetailPaneHarness({
 }
 
 const meta = {
-  title: "Shared/Contacts/Panes/Detail",
+  title: "Features/Contacts/Panes/Detail",
   component: ContactsDetailPaneHarness,
   parameters: {
     layout: "fullscreen",

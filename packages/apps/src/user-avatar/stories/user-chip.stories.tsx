@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { UserChip } from "../src/user-chip";
 
 const meta: Meta<typeof UserChip> = {
-  title: "Shared/User Chip",
+  title: "UI/Primitives/User Chip",
   component: UserChip,
   decorators: [
     (Story) => (

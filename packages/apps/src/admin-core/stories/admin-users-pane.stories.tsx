@@ -96,7 +96,7 @@ function UsersPaneHarness() {
 }
 
 const meta = {
-  title: "Shared/Admin/Panes/Users",
+  title: "Features/Admin/Panes/Users",
   component: AdminUsersPane,
   parameters: {
     layout: "fullscreen",

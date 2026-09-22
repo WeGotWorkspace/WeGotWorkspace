@@ -85,7 +85,7 @@ function MeetCallBarStory({
 }
 
 const meta = {
-  title: "Shared/Meet/Components/MeetCallBar",
+  title: "Features/Meet/Components/MeetCallBar",
   component: MeetCallBar,
   render: (args) => <MeetCallBarStory {...args} />,
   parameters: {

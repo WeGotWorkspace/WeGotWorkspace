@@ -4,7 +4,7 @@ import { NotesWorkspace } from "@/notes-core/src/notes-workspace";
 import { notesStoryOperations } from "@/notes-core/stories/notes-story-shared";
 
 const meta: Meta<typeof NotesWorkspace> = {
-  title: "Shared/Notes",
+  title: "Features/Notes",
   component: NotesWorkspace,
   parameters: {
     layout: "fullscreen",

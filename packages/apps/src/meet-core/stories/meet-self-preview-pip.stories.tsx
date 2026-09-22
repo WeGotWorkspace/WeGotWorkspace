@@ -11,7 +11,7 @@ import {
 } from "@/meet-core/stories/meet-story-shared";
 
 const meta = {
-  title: "Shared/Meet/Components/MeetSelfPreviewPiP",
+  title: "Features/Meet/Components/MeetSelfPreviewPiP",
   component: MeetSelfPreviewPiP,
   render: (args) => <MeetSelfPreviewPiPStory {...args} />,
   parameters: {

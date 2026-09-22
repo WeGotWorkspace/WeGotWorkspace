@@ -3,7 +3,7 @@ import { defaultOfflineLabels } from "@/lib/offline/offline-labels";
 import { OfflineStatusIndicator } from "@/lib/offline/offline-status-indicator";
 
 const meta = {
-  title: "Shared/Offline Status Indicator",
+  title: "UI/Patterns/Offline Status Indicator",
   component: OfflineStatusIndicator,
   tags: ["vitest-ci"],
   parameters: {

@@ -67,7 +67,7 @@ function NotesMultiSelectionPaneHarness({
 }
 
 const meta = {
-  title: "Shared/Notes/Panes/Multi selection",
+  title: "Features/Notes/Panes/Multi selection",
   component: NotesMultiSelectionPaneHarness,
   parameters: {
     layout: "fullscreen",

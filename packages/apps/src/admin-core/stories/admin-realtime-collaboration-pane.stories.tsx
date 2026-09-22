@@ -20,7 +20,7 @@ function RealtimeCollaborationPaneHarness({
 }
 
 const meta = {
-  title: "Shared/Admin/Panes/Collaboration",
+  title: "Features/Admin/Panes/Collaboration",
   component: AdminRealtimeCollaborationPane,
   parameters: {
     layout: "fullscreen",

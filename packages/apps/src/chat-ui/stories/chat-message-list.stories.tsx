@@ -15,7 +15,7 @@ import {
 } from "@/chat-ui/stories/chat-stories.fixtures";
 
 const meta = {
-  title: "Shared/Chat/ChatMessageList",
+  title: "UI/Patterns/Chat/Chat Message List",
   component: ChatMessageList,
   parameters: {
     layout: "padded",

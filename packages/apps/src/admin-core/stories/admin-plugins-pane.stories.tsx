@@ -14,7 +14,7 @@ function PluginsPaneHarness({ dataOverride }: { dataOverride?: AdminStoryDataOve
 }
 
 const meta = {
-  title: "Shared/Admin/Panes/Plugins",
+  title: "Features/Admin/Panes/Plugins",
   component: AdminPluginsPane,
   parameters: {
     layout: "fullscreen",

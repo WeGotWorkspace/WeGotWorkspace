@@ -12,7 +12,7 @@ Reference: `packages/apps/src/app-switch-button/stories/app-switch-button.storie
 
 ```tsx
 const meta = {
-  title: "Shared/Example",
+  title: "UI/Primitives/Example",
   component: Example,
   parameters: {
     cssprops: {
