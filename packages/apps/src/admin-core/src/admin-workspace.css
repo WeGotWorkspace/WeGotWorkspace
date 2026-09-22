@@ -15,7 +15,7 @@
   --workspace-sidebar-mix: 16%;
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--color-we-got-soft);
-  --workspace-main-bg: color-mix(in oklch, var(--workspace-accent) 6%, var(--color-we-got-soft));
+  --workspace-main-bg: var(--color-we-got-soft);
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
   --sidebar-logo-close-button-color: var(--color-we-got-dark);
