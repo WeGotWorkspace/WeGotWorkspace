@@ -1541,9 +1541,9 @@
 }
 
 .meet-guest-lobby__card {
-  /* my-auto centers short status cards; when the card is taller than the
-   * lobby, auto margins collapse so the lobby can scroll from the top. */
-  @apply my-auto grid w-full max-w-5xl shrink-0 gap-8;
+  /* mx/my-auto centers the card; when it is taller than the lobby, vertical
+   * auto margins collapse so the lobby can scroll from the top. */
+  @apply mx-auto my-auto grid w-full max-w-5xl shrink-0 gap-8;
   grid-template-areas:
     "heading"
     "media"
@@ -1630,16 +1630,6 @@
 .meet-guest-lobby__preview {
   @apply mb-0 rounded-lg;
   background-color: var(--meet-call-empty);
-}
-
-.meet-guest-lobby__preview-idle {
-  /* Keep the camera-off line above the overlaid toggles on short/mobile previews. */
-  @apply flex h-full flex-col items-center justify-center gap-3 pb-16;
-}
-
-.meet-guest-lobby__camera-off {
-  @apply text-sm;
-  color: color-mix(in oklch, var(--color-ink) 80%, transparent);
 }
 
 .meet-guest-lobby__preview-controls {

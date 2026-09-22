@@ -39,8 +39,8 @@ import { meetLabels } from "@/meet-core/src/meet-labels";
 import { createMeetRoomCode } from "@/meet-core/src/meet-room-id";
 import type { MeetChannel, MeetChannelWriteInput } from "@/meet-core/src/meet-types";
 import {
+  buildMeetCollectionInviteLink,
   buildMeetGuestCallLink,
-  buildMeetMeetingInviteLink,
 } from "@/meet-core/src/meet-route-search";
 import "@/calendar-core/src/calendar-workspace.css";
 import "@/meet-core/src/meet-channel-dialog.css";
@@ -248,7 +248,14 @@ export function MeetCreateMeetingDialog({
           }
           const meetingUrl =
             nextChannel && !current.meetGuestRoomOverride
-              ? buildMeetMeetingInviteLink(nextChannel.id, workspaceOrigin)
+              ? buildMeetCollectionInviteLink(
+                  {
+                    id: nextChannel.id,
+                    kind: nextChannel.kind ?? "meeting",
+                    guestRoomCode: nextChannel.guestRoomCode ?? current.meetRoomCode,
+                  },
+                  workspaceOrigin,
+                )
               : current.meetingUrl;
           const nextForm = {
             ...current,
@@ -271,32 +278,37 @@ export function MeetCreateMeetingDialog({
           return;
         }
         if (!createEvent) return;
+        const stagedRoom = current.meetRoomCode?.trim() || roomRef.current;
         const createdChannel =
           createChannel && !current.meetGuestRoomOverride
-            ? await createChannel({ name: current.title.trim(), kind: "meeting" })
+            ? await createChannel({
+                name: current.title.trim(),
+                kind: "meeting",
+                ...(stagedRoom ? { guestRoomCode: stagedRoom } : {}),
+              })
             : undefined;
         const meetingUrl = createdChannel
-          ? buildMeetMeetingInviteLink(createdChannel.id, workspaceOrigin)
+          ? buildMeetCollectionInviteLink(
+              {
+                id: createdChannel.id,
+                kind: createdChannel.kind,
+                guestRoomCode: createdChannel.guestRoomCode ?? stagedRoom,
+              },
+              workspaceOrigin,
+            )
           : current.meetingUrl;
-        const stagedRoom = current.meetRoomCode?.trim() || roomRef.current;
-        if (createdChannel && stagedRoom) {
-          await meetOperations?.patchRoomExpiresAt?.({
-            room: stagedRoom,
-            expiresAt: meetRemoveExpiresAt(),
-          });
-        }
         const draft = withOrganizer(
           formToDraft({
             ...current,
             meetingUrl,
-            meetRoomCode: createdChannel?.guestRoomCode ?? current.meetRoomCode,
+            meetRoomCode: stagedRoom || createdChannel?.guestRoomCode || current.meetRoomCode,
           }),
           sessionEmail,
           sessionDisplayName,
         );
         const endMs = formEventEndMs(current);
-        const room = createdChannel?.guestRoomCode?.trim() || stagedRoom;
-        if (room && endMs != null && !createdChannel) {
+        const room = stagedRoom || createdChannel?.guestRoomCode?.trim();
+        if (room && endMs != null) {
           await meetOperations?.patchRoomExpiresAt?.({
             room,
             expiresAt: meetEventExpiresAt(endMs),

@@ -20,50 +20,58 @@ export function AdminRealtimeCollaborationPane({
           when direct peer-to-peer connections are blocked. Enter multiple URLs as a comma-separated
           list.
         </p>
-        <FormField label="STUN URLs">
+        <FormField htmlFor="admin-realtime-stun-urls" label="STUN URLs">
           <Input
+            id="admin-realtime-stun-urls"
             value={controller.settingsForm.stunUrls}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.target.value;
               controller.setSettingsForm((prev) => ({
                 ...prev,
-                stunUrls: event.currentTarget.value,
-              }))
-            }
+                stunUrls: value,
+              }));
+            }}
           />
         </FormField>
-        <FormField label="TURN URLs">
+        <FormField htmlFor="admin-realtime-turn-urls" label="TURN URLs">
           <Input
+            id="admin-realtime-turn-urls"
             value={controller.settingsForm.turnUrls}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.target.value;
               controller.setSettingsForm((prev) => ({
                 ...prev,
-                turnUrls: event.currentTarget.value,
-              }))
-            }
+                turnUrls: value,
+              }));
+            }}
           />
         </FormField>
         <div className="grid md:grid-cols-2 gap-3">
-          <FormField label="TURN username">
+          <FormField htmlFor="admin-realtime-turn-username" label="TURN username">
             <Input
+              id="admin-realtime-turn-username"
               value={controller.settingsForm.turnUsername}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = event.target.value;
                 controller.setSettingsForm((prev) => ({
                   ...prev,
-                  turnUsername: event.currentTarget.value,
-                }))
-              }
+                  turnUsername: value,
+                }));
+              }}
             />
           </FormField>
-          <FormField label="TURN password">
+          <FormField htmlFor="admin-realtime-turn-password" label="TURN password">
             <Input
+              id="admin-realtime-turn-password"
               variant="password"
               value={controller.settingsForm.turnPassword}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = event.target.value;
                 controller.setSettingsForm((prev) => ({
                   ...prev,
-                  turnPassword: event.currentTarget.value,
-                }))
-              }
+                  turnPassword: value,
+                }));
+              }}
             />
           </FormField>
         </div>

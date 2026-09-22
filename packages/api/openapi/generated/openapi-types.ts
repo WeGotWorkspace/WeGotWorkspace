@@ -11168,6 +11168,8 @@ export interface components {
             groupSlug?: string | null;
             /** @description Optional client-suggested channel id (uri slug). */
             id?: components["schemas"]["JmapId"];
+            /** @description Meeting kind only: persist the reserved ad-hoc room code shown at create time. Never rewritten to the collection slug. */
+            guestRoomCode?: string | null;
         };
         ChatChannelPatch: {
             name?: string;

@@ -5,8 +5,8 @@ import { DocsImage } from "@/text-editor-core/src/text-editor-image-extension";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
-import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
+import { TextEditorTaskItem } from "@/text-editor-core/src/text-editor-task-item";
 import TextAlign from "@tiptap/extension-text-align";
 import Typography from "@tiptap/extension-typography";
 import Underline from "@tiptap/extension-underline";
@@ -77,7 +77,7 @@ export function createTextEditorExtensions(
     Placeholder.configure({ placeholder }),
     Highlight.configure({ multicolor: false }),
     TaskList,
-    TaskItem.configure({ nested: true }),
+    TextEditorTaskItem.configure({ nested: true }),
     TextAlign.configure({ types: ["heading", "paragraph"] }),
     Typography,
     Table.configure({ resizable: false }),

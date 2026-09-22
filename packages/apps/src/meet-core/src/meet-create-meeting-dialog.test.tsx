@@ -84,10 +84,22 @@ describe("MeetCreateMeetingDialog", () => {
     expect(draft.calendarId).toBe("default");
     expect(draft.duration).toBe("PT30M");
     expect(draft.title).toBe("Standup");
-    expect(createChannel).toHaveBeenCalledWith({ name: "Standup", kind: "meeting" });
-    expect(draft.links?.[CALENDAR_MEET_LINK_KEY]?.href).toMatch(/\/meet\/meetings\//);
-    expect(draft.links?.[CALENDAR_MEET_LINK_KEY]?.href).not.toMatch(/chat-/);
-    expect(draft.links?.[CALENDAR_MEET_LINK_KEY]?.href).not.toMatch(/\/guest/);
+    expect(createChannel).toHaveBeenCalledWith({
+      name: "Standup",
+      kind: "meeting",
+      guestRoomCode: expect.stringMatching(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/),
+    });
+    const href = draft.links?.[CALENDAR_MEET_LINK_KEY]?.href ?? "";
+    expect(href).toMatch(/\/meet\/meetings\//);
+    expect(href).not.toMatch(/chat-/);
+    expect(href).not.toMatch(/\/guest/);
+    const reservedRoom = (meetOperations.reserveRoom.mock.calls[0]?.[0] as { room: string }).room;
+    expect(href).toBe(`${ORIGIN}/meet/meetings/${reservedRoom}`);
+    expect(createChannel.mock.calls[0]?.[0]).toEqual({
+      name: "Standup",
+      kind: "meeting",
+      guestRoomCode: reservedRoom,
+    });
   });
 
   it("shows a unified Meet URL immediately with an empty title, even while reserve is in flight", async () => {
@@ -233,7 +245,11 @@ describe("MeetCreateMeetingDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: meetLabels.createChannelButton }));
     expect(screen.queryByText(defaultCalendarLabels.eventMeetChannelEmailTitle)).toBeNull();
     await waitFor(() => expect(createEvent).toHaveBeenCalledTimes(1));
-    expect(createChannel).toHaveBeenCalledWith({ name: "Standup", kind: "meeting" });
+    expect(createChannel).toHaveBeenCalledWith({
+      name: "Standup",
+      kind: "meeting",
+      guestRoomCode: expect.stringMatching(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/),
+    });
     const draft = createEvent.mock.calls[0]?.[0] as {
       links?: Record<string, { href?: string }>;
       attendees?: { email: string }[];

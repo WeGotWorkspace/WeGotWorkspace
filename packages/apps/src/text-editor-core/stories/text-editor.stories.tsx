@@ -92,6 +92,13 @@ export const TaskList: Story = {
     await expect(boxes).toHaveLength(2);
     await expect(boxes[0]).not.toBeChecked();
     await expect(boxes[1]).toBeChecked();
+    const visual = boxes[0]?.nextElementSibling;
+    await expect(visual).toBeInstanceOf(HTMLElement);
+    if (visual instanceof HTMLElement) {
+      await expect(visual.getAttribute("aria-hidden")).toBe("true");
+      const size = Number.parseFloat(getComputedStyle(visual).width);
+      await expect(size).toBeGreaterThan(8);
+    }
     await userEvent.click(boxes[0]);
     await expect(boxes[0]).toBeChecked();
   },

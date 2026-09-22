@@ -14,38 +14,42 @@ export function AdminMailPane({ controller }: AdminMailPaneProps) {
   return (
     <>
       <Card title="IMAP (incoming)">
-        <FormField label="Server">
+        <FormField htmlFor="admin-mail-imap-host" label="Server">
           <Input
+            id="admin-mail-imap-host"
             value={controller.settingsForm.imapHost}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.target.value;
               controller.setSettingsForm((prev) => ({
                 ...prev,
-                imapHost: event.currentTarget.value,
-              }))
-            }
+                imapHost: value,
+              }));
+            }}
           />
         </FormField>
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Port">
+          <FormField htmlFor="admin-mail-imap-port" label="Port">
             <Input
+              id="admin-mail-imap-port"
               type="number"
               value={String(controller.settingsForm.imapPort)}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = Number(event.target.value) || 0;
                 controller.setSettingsForm((prev) => ({
                   ...prev,
-                  imapPort: Number(event.currentTarget.value) || 0,
-                }))
-              }
+                  imapPort: value,
+                }));
+              }}
             />
           </FormField>
-          <FormField label="Security">
+          <FormField htmlFor="admin-mail-imap-security" label="Security">
             <Select
               value={controller.settingsForm.imapSecurity || "ssl"}
               onValueChange={(value) =>
                 controller.setSettingsForm((prev) => ({ ...prev, imapSecurity: value }))
               }
             >
-              <SelectTrigger>
+              <SelectTrigger id="admin-mail-imap-security" aria-label="Security">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -60,38 +64,42 @@ export function AdminMailPane({ controller }: AdminMailPaneProps) {
         </div>
       </Card>
       <Card title="SMTP (outgoing)">
-        <FormField label="Server">
+        <FormField htmlFor="admin-mail-smtp-host" label="Server">
           <Input
+            id="admin-mail-smtp-host"
             value={controller.settingsForm.smtpHost}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.target.value;
               controller.setSettingsForm((prev) => ({
                 ...prev,
-                smtpHost: event.currentTarget.value,
-              }))
-            }
+                smtpHost: value,
+              }));
+            }}
           />
         </FormField>
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Port">
+          <FormField htmlFor="admin-mail-smtp-port" label="Port">
             <Input
+              id="admin-mail-smtp-port"
               type="number"
               value={String(controller.settingsForm.smtpPort)}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = Number(event.target.value) || 0;
                 controller.setSettingsForm((prev) => ({
                   ...prev,
-                  smtpPort: Number(event.currentTarget.value) || 0,
-                }))
-              }
+                  smtpPort: value,
+                }));
+              }}
             />
           </FormField>
-          <FormField label="Security">
+          <FormField htmlFor="admin-mail-smtp-security" label="Security">
             <Select
               value={controller.settingsForm.smtpSecurity || "ssl"}
               onValueChange={(value) =>
                 controller.setSettingsForm((prev) => ({ ...prev, smtpSecurity: value }))
               }
             >
-              <SelectTrigger>
+              <SelectTrigger id="admin-mail-smtp-security" aria-label="Security">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

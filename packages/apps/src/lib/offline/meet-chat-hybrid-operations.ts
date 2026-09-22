@@ -346,6 +346,7 @@ export function createHybridMeetChatOperations(
         kind: input.kind,
         ...(input.color !== undefined ? { color: input.color } : {}),
         ...(input.groupSlug !== undefined ? { groupSlug: input.groupSlug } : {}),
+        ...(input.guestRoomCode !== undefined ? { guestRoomCode: input.guestRoomCode } : {}),
       });
       await upsertChatChannelInCache(username, created);
       return meetChannelFromWire(created);

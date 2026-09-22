@@ -84,26 +84,30 @@ export function AdminWebdavPane({ controller }: AdminWebdavPaneProps) {
             </SelectContent>
           </Select>
         </FormField>
-        <FormField label="Auth realm">
+        <FormField htmlFor="admin-webdav-auth-realm" label="Auth realm">
           <Input
+            id="admin-webdav-auth-realm"
             value={controller.settingsForm.authRealm}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.target.value;
               controller.setSettingsForm((prev) => ({
                 ...prev,
-                authRealm: event.currentTarget.value,
-              }))
-            }
+                authRealm: value,
+              }));
+            }}
           />
         </FormField>
-        <FormField label="Base URI">
+        <FormField htmlFor="admin-webdav-base-uri" label="Base URI">
           <Input
+            id="admin-webdav-base-uri"
             value={controller.settingsForm.baseUri}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.target.value;
               controller.setSettingsForm((prev) => ({
                 ...prev,
-                baseUri: event.currentTarget.value,
-              }))
-            }
+                baseUri: value,
+              }));
+            }}
           />
         </FormField>
       </Card>
