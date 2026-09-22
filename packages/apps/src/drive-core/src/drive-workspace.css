@@ -69,6 +69,8 @@
     var(--color-cream)
   );
   --app-sidebar-item-selected-color: var(--color-ink);
+  /* Section titles on 32% lime→cream rail — slate muted fails AA; ink mix clears. */
+  --field-label-color: color-mix(in oklch, var(--color-ink) 72%, transparent);
 }
 
 .drive-workspace .workspace-app-layout__main-scroll {

@@ -320,7 +320,8 @@
 .notes-workspace .workspace-detail-footer__meta-tag--edited {
   @apply shrink-0;
   --tag-bg: color-mix(in oklch, var(--color-ink) 6%, transparent);
-  --tag-fg: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  /* 72% clears WCAG AA on cream footer wash (~4.5:1); 65% was ~4.38:1. */
+  --tag-fg: color-mix(in oklch, var(--color-ink) 72%, transparent);
 }
 
 .notes-workspace .workspace-detail-footer__meta-tag--edited .tag {

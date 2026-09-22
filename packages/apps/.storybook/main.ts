@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import tailwindcss from "@tailwindcss/vite";
 import type { StorybookConfig } from "@storybook/react-vite";
 import { resolveWgwProxyTarget } from "../scripts/wgw-proxy-target";
 
@@ -21,6 +22,8 @@ const config: StorybookConfig = {
     name: "@storybook/react-vite",
     options: {
       builder: {
+        // Avoid the apps VitePWA plugin in Storybook; still need Tailwind so
+        // `@theme` tokens from `styles.css` land on `:root` for Vitest/Chromatic.
         viteConfigPath: false,
       },
     },
@@ -38,7 +41,7 @@ const config: StorybookConfig = {
   async viteFinal(baseConfig) {
     return {
       ...baseConfig,
-      plugins: [...(baseConfig.plugins ?? [])],
+      plugins: [...(baseConfig.plugins ?? []), tailwindcss()],
       /** Load `VITE_*` / `WGW_*` from monorepo root `.env.local` (see `packages/apps/.env.example`). */
       envDir: wgwMonorepoRoot,
       server: {

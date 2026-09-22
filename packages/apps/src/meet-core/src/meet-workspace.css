@@ -481,7 +481,7 @@
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__name {
-  @apply absolute bottom-2 left-2 z-10 flex items-center gap-1.5 rounded-full border-0 bg-black/45 px-2.5 py-1 text-left text-[11px] text-white backdrop-blur;
+  @apply absolute bottom-2 left-2 z-10 flex items-center gap-1.5 rounded-full border-0 bg-black/70 px-2.5 py-1 text-left text-[11px] text-white backdrop-blur;
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) button.meet-peer-tile__name {
@@ -1049,11 +1049,22 @@
   --user-avatar-presence-ring: var(--meet-call-surface);
 }
 
-.meet-call-bar__avatars .user-avatar--colored .user-avatar__mark,
+.meet-call-bar__avatars .user-avatar--colored .user-avatar__mark {
+  color: var(--color-ink);
+}
+
+/* Lobby / dark peer tiles: light marks (ink fails on navy fills). */
+.meet-workspace .meet-peer-tile .user-avatar--colored .user-avatar__mark {
+  color: var(--meet-text, #ffffff);
+}
+
+/* Cream call chrome peer tiles + guest preview: ink on light washes. */
 .meet-workspace
-  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded, .meet-guest-lobby__preview)
+  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
+  .meet-peer-tile
   .user-avatar--colored
-  .user-avatar__mark {
+  .user-avatar__mark,
+.meet-guest-lobby__preview .user-avatar--colored .user-avatar__mark {
   color: var(--color-ink);
 }
 

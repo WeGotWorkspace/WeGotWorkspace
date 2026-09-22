@@ -193,6 +193,7 @@ function TaskRow({
             priority: !isTaskPriorityNone(task.priority) ? (
               <span
                 className="tasks-main-view__meta-item tasks-main-view__meta-item--priority"
+                role="img"
                 aria-label={priorityLabel(task.priority, L)}
               >
                 {priorityIcon(task.priority)}
@@ -336,47 +337,43 @@ export const TasksMainView = forwardRef<TasksMainViewHandle, TasksMainViewProps>
                 itemDragHandlers={itemDragHandlers}
               />
             ))}
-
-            <form
-              ref={composerFormRef}
-              className="tasks-main-view__composer"
-              onSubmit={handleSubmit}
-            >
-              <span className="tasks-main-view__composer-marker" aria-hidden>
-                <Plus />
-              </span>
-
-              <div className="tasks-main-view__composer-body">
-                <TasksTaskFormFields
-                  L={L}
-                  value={draft}
-                  onChange={setDraft}
-                  taskLists={taskLists}
-                  mode="create"
-                  disabled={!canCreate}
-                  titleRef={titleRef}
-                  onDescriptionKeyDown={(event) => {
-                    if (event.key !== "Enter" || event.shiftKey) return;
-                    event.preventDefault();
-                    if (!draft.title.trim()) return;
-                    composerFormRef.current?.requestSubmit();
-                  }}
-                />
-
-                <div className="tasks-main-view__composer-actions">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    className="tasks-main-view__add-submit"
-                    disabled={!canCreate || !draft.title.trim()}
-                  >
-                    {L.addTaskButton}
-                  </Button>
-                </div>
-              </div>
-            </form>
           </div>
+
+          <form ref={composerFormRef} className="tasks-main-view__composer" onSubmit={handleSubmit}>
+            <span className="tasks-main-view__composer-marker" aria-hidden>
+              <Plus />
+            </span>
+
+            <div className="tasks-main-view__composer-body">
+              <TasksTaskFormFields
+                L={L}
+                value={draft}
+                onChange={setDraft}
+                taskLists={taskLists}
+                mode="create"
+                disabled={!canCreate}
+                titleRef={titleRef}
+                onDescriptionKeyDown={(event) => {
+                  if (event.key !== "Enter" || event.shiftKey) return;
+                  event.preventDefault();
+                  if (!draft.title.trim()) return;
+                  composerFormRef.current?.requestSubmit();
+                }}
+              />
+
+              <div className="tasks-main-view__composer-actions">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  className="tasks-main-view__add-submit"
+                  disabled={!canCreate || !draft.title.trim()}
+                >
+                  {L.addTaskButton}
+                </Button>
+              </div>
+            </div>
+          </form>
         </div>
       </div>
     );

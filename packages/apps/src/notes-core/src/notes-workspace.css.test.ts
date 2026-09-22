@@ -151,7 +151,7 @@ describe("notes workspace last-edited footer chip", () => {
       /\.notes-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-bg:\s*color-mix\(in oklch,\s*var\(--color-ink\) 6%/,
     );
     expect(css).toMatch(
-      /\.notes-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-fg:\s*color-mix\(in oklch,\s*var\(--color-ink\) 65%/,
+      /\.notes-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-fg:\s*color-mix\(in oklch,\s*var\(--color-ink\) 72%/,
     );
     expect(css).toMatch(
       /\.notes-workspace \.workspace-detail-footer__meta-tag--edited \.tag \{[\s\S]*background-color:\s*var\(--tag-bg\)/,

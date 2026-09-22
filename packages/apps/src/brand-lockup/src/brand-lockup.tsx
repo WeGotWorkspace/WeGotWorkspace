@@ -27,6 +27,7 @@ export function BrandLockup({ className }: BrandLockupProps) {
         "app-switch-button__trigger--workspace",
         className,
       )}
+      role="img"
       aria-label="WeGotWorkspace"
     >
       <WorkspaceHomeIcon className="app-switch-button__icon" variant="switch-trigger" />

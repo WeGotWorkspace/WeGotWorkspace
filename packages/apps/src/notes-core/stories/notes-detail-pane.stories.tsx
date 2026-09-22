@@ -138,15 +138,24 @@ export const Editable: Story = {
     ).toBe("");
     const accentProbe = document.createElement("span");
     accentProbe.style.color = "var(--workspace-accent)";
+    const yellowProbe = document.createElement("span");
+    yellowProbe.style.color = "var(--color-we-got-yellow)";
     workspace!.appendChild(accentProbe);
-    expect(getComputedStyle(accentProbe).color).toBe("rgb(246, 209, 118)");
+    workspace!.appendChild(yellowProbe);
+    expect(getComputedStyle(accentProbe).color).toBe(getComputedStyle(yellowProbe).color);
+    expect(getComputedStyle(accentProbe).color).not.toBe("rgb(0, 0, 0)");
     accentProbe.remove();
+    yellowProbe.remove();
   },
 };
 
 export const NotebookTint: Story = {
   tags: ["vitest-ci"],
   args: { detailTint: "#ec4899", withTasks: true },
+  parameters: {
+    // Desk pads + distinct sheet/scroll washes apply above the flush breakpoint.
+    viewport: { value: "desktop", isRotated: false },
+  },
   play: async ({ canvasElement }) => {
     const workspace = canvasElement.querySelector(".notes-workspace") as HTMLElement | null;
     expect(workspace).toBeTruthy();
@@ -264,6 +273,9 @@ export const NotebookTint: Story = {
 export const NotebookTintDark: Story = {
   tags: ["vitest-ci"],
   args: { detailTint: "#1e3a5f", withTasks: true },
+  parameters: {
+    viewport: { value: "desktop", isRotated: false },
+  },
   play: async ({ canvasElement }) => {
     const workspace = (canvasElement.querySelector(".notes-story-scope--detail") ??
       canvasElement.querySelector(".notes-workspace")) as HTMLElement | null;
