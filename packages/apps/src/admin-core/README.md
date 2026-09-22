@@ -34,18 +34,18 @@ Section and form styling lives under `.admin-workspace` in `admin-workspace.css`
 
 ## Storybook
 
-| Story                            | Purpose                                        |
-| -------------------------------- | ---------------------------------------------- |
-| `Branding/Admin`                 | Full workspace chrome + branding knobs         |
-| `Apps/Admin/Panes/Users`         | User and group management                      |
-| `Apps/Admin/Panes/Backups`       | Backup configuration                           |
-| `Apps/Admin/Panes/Updates`       | Update channel / version state                 |
-| `Apps/Admin/Panes/Mail`          | IMAP/SMTP settings                             |
-| `Apps/Admin/Panes/WebDAV`        | WebDAV credentials and paths                   |
-| `Apps/Admin/Panes/Search`        | Unified search indexing                        |
-| `Apps/Admin/Panes/Plugins`       | Plugin enablement                              |
-| `Apps/Admin/Panes/Collaboration` | RTC / STUN / TURN settings                     |
-| `Apps/WeGotWorkspace`            | Full shell (login → home → all apps, mock API) |
+| Story                              | Purpose                                        |
+| ---------------------------------- | ---------------------------------------------- |
+| `Branding/Admin`                   | Full workspace chrome + branding knobs         |
+| `Shared/Admin/Panes/Users`         | User and group management                      |
+| `Shared/Admin/Panes/Backups`       | Backup configuration                           |
+| `Shared/Admin/Panes/Updates`       | Update channel / version state                 |
+| `Shared/Admin/Panes/Mail`          | IMAP/SMTP settings                             |
+| `Shared/Admin/Panes/WebDAV`        | WebDAV credentials and paths                   |
+| `Shared/Admin/Panes/Search`        | Unified search indexing                        |
+| `Shared/Admin/Panes/Plugins`       | Plugin enablement                              |
+| `Shared/Admin/Panes/Collaboration` | RTC / STUN / TURN settings                     |
+| `Shared/WeGotWorkspace`            | Full shell (login → home → all apps, mock API) |
 
 ## Further reading
 

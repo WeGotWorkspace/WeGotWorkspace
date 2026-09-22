@@ -54,7 +54,7 @@ function MeetThreadPlacementHarness({ callLayout }: { callLayout: MeetThreadCall
 }
 
 const meta = {
-  title: "Apps/Meet/Panes/MeetThread",
+  title: "Shared/Meet/Panes/MeetThread",
   component: MeetWorkspace,
   parameters: {
     layout: "fullscreen",

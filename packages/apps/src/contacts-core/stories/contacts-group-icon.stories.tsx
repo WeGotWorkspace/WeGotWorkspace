@@ -5,7 +5,7 @@ import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
 import { ContactsStoryScope } from "./contacts-story-scope";
 
 const meta = {
-  title: "Apps/Contacts/Group icon",
+  title: "Shared/Contacts/Group icon",
   component: ContactsGroupIcon,
   parameters: {
     layout: "centered",

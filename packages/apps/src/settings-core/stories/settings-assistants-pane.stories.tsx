@@ -69,7 +69,7 @@ function AssistantsHarness({
 }
 
 const meta = {
-  title: "Settings/Connected assistants pane",
+  title: "Shared/Settings/Connected assistants pane",
   component: SettingsAssistantsPane,
   parameters: { layout: "padded" },
 } satisfies Meta<typeof SettingsAssistantsPane>;

@@ -7,7 +7,7 @@ import { meetStoryParameters, STORY_NOOP } from "@/meet-core/stories/meet-story-
 import { MeetStoryScope } from "@/meet-core/stories/meet-story-scope";
 
 const meta = {
-  title: "Apps/Meet/Components/MeetKnockBadge",
+  title: "Shared/Meet/Components/MeetKnockBadge",
   component: MeetKnockBadge,
   render: (args) => (
     <MeetStoryScope variant="root">

@@ -43,7 +43,7 @@ function ContactsAddressBookDialogHarness({
 }
 
 const meta: Meta<typeof ContactsAddressBookDialogHarness> = {
-  title: "Apps/Contacts/Address book dialog",
+  title: "Shared/Contacts/Address book dialog",
   component: ContactsAddressBookDialogHarness,
 };
 

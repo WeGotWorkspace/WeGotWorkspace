@@ -9,7 +9,7 @@ import {
 } from "@/meet-core/stories/meet-story-shared";
 
 const meta = {
-  title: "Apps/Meet/Components/MeetShareButton",
+  title: "Shared/Meet/Components/MeetShareButton",
   component: MeetShareButton,
   render: renderInMeetScope(MeetShareButton, "root"),
   parameters: meetStoryParameters(),

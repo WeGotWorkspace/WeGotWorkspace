@@ -36,7 +36,7 @@ function ShareDialogHarness({
 }
 
 const meta = {
-  title: "Apps/Share/ShareDialog",
+  title: "Shared/Share/ShareDialog",
   component: ShareDialog,
   tags: ["autodocs"],
 } satisfies Meta<typeof ShareDialog>;

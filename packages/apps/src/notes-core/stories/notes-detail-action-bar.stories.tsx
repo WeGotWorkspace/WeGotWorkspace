@@ -62,7 +62,7 @@ function NotesDetailActionBarHarness({
 }
 
 const meta = {
-  title: "Apps/Notes/Panes/Detail action bar",
+  title: "Shared/Notes/Panes/Detail action bar",
   component: NotesDetailActionBarHarness,
   parameters: {
     layout: "fullscreen",

@@ -65,7 +65,7 @@ function NotesDetailPaneHarness({
 }
 
 const meta = {
-  title: "Apps/Notes/Panes/Detail",
+  title: "Shared/Notes/Panes/Detail",
   component: NotesDetailPaneHarness,
   parameters: {
     layout: "fullscreen",

@@ -69,7 +69,7 @@ function MailDetailActionBarHarness({
 }
 
 const meta = {
-  title: "Apps/Mail/Panes/Detail action bar",
+  title: "Shared/Mail/Panes/Detail action bar",
   component: MailDetailActionBarHarness,
   parameters: {
     layout: "fullscreen",

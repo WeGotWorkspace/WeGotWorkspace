@@ -12,7 +12,7 @@ const friendsGroup = bootstrap.data.cards.find((card) => card.id === "card-group
 const acmeCard = bootstrap.data.cards.find((card) => card.id === "card-acme");
 
 const meta = {
-  title: "Apps/Contacts/Contact user avatar",
+  title: "Shared/Contacts/Contact user avatar",
   component: ContactUserAvatar,
   parameters: {
     layout: "centered",

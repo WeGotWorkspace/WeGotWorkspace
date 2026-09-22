@@ -17,7 +17,7 @@ import {
  * toggling `callActive` and fixture peers — no `useMeetRtc`.
  */
 const meta = {
-  title: "Apps/Meet/Components/MeetCallStage",
+  title: "Shared/Meet/Components/MeetCallStage",
   component: MeetCallStage,
   render: (args) => <MeetCallStageStoryHarness {...args} />,
   parameters: {

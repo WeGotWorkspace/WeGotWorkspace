@@ -19,7 +19,7 @@ function UpdatesPaneHarness({ dataOverride }: { dataOverride?: AdminStoryDataOve
 }
 
 const meta = {
-  title: "Apps/Admin/Panes/Updates",
+  title: "Shared/Admin/Panes/Updates",
   component: AdminUpdatesPane,
   parameters: {
     layout: "fullscreen",

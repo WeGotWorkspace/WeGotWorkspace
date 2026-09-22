@@ -149,7 +149,7 @@ function ContactsListPaneHarness({
 }
 
 const meta = {
-  title: "Apps/Contacts/Panes/List",
+  title: "Shared/Contacts/Panes/List",
   component: ContactsListPaneHarness,
   parameters: {
     layout: "fullscreen",

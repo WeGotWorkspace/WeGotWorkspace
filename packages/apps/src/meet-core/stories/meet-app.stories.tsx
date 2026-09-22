@@ -10,7 +10,7 @@ import {
 } from "@/meet-core/stories/meet-workspace.stories.harness";
 
 const meta = {
-  title: "Apps/Meet",
+  title: "Shared/Meet",
   component: MeetWorkspaceStoryHarness,
   render: (args) => <MeetWorkspaceStoryHarness {...args} />,
   parameters: {
@@ -28,6 +28,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<MeetWorkspaceStoryArgs>;
 
+/** Chrome Default lives under Branding/Meet — join/leave call SST. */
 export const Default: Story = {
   name: "Live channel call",
   args: {

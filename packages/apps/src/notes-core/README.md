@@ -35,14 +35,15 @@ List and workspace tokens live under `.notes-workspace` in `notes-workspace.css`
 
 ## Storybook
 
-| Story                                | Purpose                                        |
-| ------------------------------------ | ---------------------------------------------- |
-| `Apps/Notes`                         | Full workspace with mock bootstrap             |
-| `Apps/Notes/Panes/List`              | List column harness                            |
-| `Apps/Notes/Panes/Detail`            | Note detail view                               |
-| `Apps/Notes/Panes/Detail action bar` | Detail toolbar variants                        |
-| `Apps/Notes/Panes/Multi selection`   | Batch selection surface                        |
-| `Apps/WeGotWorkspace`                | Full shell (login → home → all apps, mock API) |
+| Story                                  | Purpose                                        |
+| -------------------------------------- | ---------------------------------------------- |
+| `Branding/Notes`                       | Full workspace chrome + branding knobs         |
+| `Shared/Notes`                         | Shared-notebook sidebar layout (non-branding)  |
+| `Shared/Notes/Panes/List`              | List column harness                            |
+| `Shared/Notes/Panes/Detail`            | Note detail view                               |
+| `Shared/Notes/Panes/Detail action bar` | Detail toolbar variants                        |
+| `Shared/Notes/Panes/Multi selection`   | Batch selection surface                        |
+| `Shared/WeGotWorkspace`                | Full shell (login → home → all apps, mock API) |
 
 ## Further reading
 

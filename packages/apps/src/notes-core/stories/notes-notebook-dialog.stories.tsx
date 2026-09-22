@@ -51,7 +51,7 @@ function NotesNotebookDialogHarness({
 }
 
 const meta: Meta<typeof NotesNotebookDialogHarness> = {
-  title: "Apps/Notes/Notebook dialog",
+  title: "Shared/Notes/Notebook dialog",
   component: NotesNotebookDialogHarness,
 };
 

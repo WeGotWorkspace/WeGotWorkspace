@@ -8,7 +8,7 @@ const bootstrap = createContactsAppBootstrap();
 const operations = createContactsStoryOperations(bootstrap.data.cards);
 
 const meta: Meta<typeof ContactsWorkspace> = {
-  title: "Apps/Contacts",
+  title: "Shared/Contacts",
   component: ContactsWorkspace,
   parameters: {
     layout: "fullscreen",
@@ -18,7 +18,9 @@ const meta: Meta<typeof ContactsWorkspace> = {
 export default meta;
 type Story = StoryObj<typeof ContactsWorkspace>;
 
-export const Default: Story = {
+/** Chrome Default lives under Branding/Contacts — list/detail edit + create SST. */
+export const WorkspaceInteractions: Story = {
+  name: "Workspace interactions",
   tags: ["vitest-ci"],
   args: {
     ...bootstrap,

@@ -27,13 +27,13 @@ Pane and detail styling lives under `.mail-workspace` in `mail-workspace.css`; T
 
 ## Storybook
 
-| Story                               | Purpose                                                            |
-| ----------------------------------- | ------------------------------------------------------------------ |
-| `Branding/Mail`                     | Full workspace chrome + branding knobs (`HtmlDetail` via Branding) |
-| `Apps/Mail/Panes/List`              | List column harness                                                |
-| `Apps/Mail/Panes/Detail`            | Detail view (plain + HTML iframe + attachments)                    |
-| `Apps/Mail/Panes/Detail action bar` | Toolbar variants                                                   |
-| `Apps/Mail/Panes/Compose`           | Compose dialog surface                                             |
-| `Apps/Mail/Panes/Attachments`       | Attachment grid                                                    |
-| `Apps/Mail/Panes/Multi selection`   | Batch selection surface                                            |
-| `Apps/WeGotWorkspace`               | Full shell (login → home → all apps, mock API in Storybook)        |
+| Story                                 | Purpose                                                            |
+| ------------------------------------- | ------------------------------------------------------------------ |
+| `Branding/Mail`                       | Full workspace chrome + branding knobs (`HtmlDetail` via Branding) |
+| `Shared/Mail/Panes/List`              | List column harness                                                |
+| `Shared/Mail/Panes/Detail`            | Detail view (plain + HTML iframe + attachments)                    |
+| `Shared/Mail/Panes/Detail action bar` | Toolbar variants                                                   |
+| `Shared/Mail/Panes/Compose`           | Compose dialog surface                                             |
+| `Shared/Mail/Panes/Attachments`       | Attachment grid                                                    |
+| `Shared/Mail/Panes/Multi selection`   | Batch selection surface                                            |
+| `Shared/WeGotWorkspace`               | Full shell (login → home → all apps, mock API in Storybook)        |

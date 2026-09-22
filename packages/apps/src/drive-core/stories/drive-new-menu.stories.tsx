@@ -5,7 +5,7 @@ import { STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
 
 const meta = {
-  title: "Apps/Drive/Components/DriveNewMenu",
+  title: "Shared/Drive/Components/DriveNewMenu",
   component: DriveNewMenu,
   tags: ["autodocs"],
   render: (args) => (

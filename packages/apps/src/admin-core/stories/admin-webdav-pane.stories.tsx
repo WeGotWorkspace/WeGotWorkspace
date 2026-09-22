@@ -13,7 +13,7 @@ function WebdavPaneHarness() {
 }
 
 const meta = {
-  title: "Apps/Admin/Panes/WebDAV",
+  title: "Shared/Admin/Panes/WebDAV",
   component: AdminWebdavPane,
   parameters: {
     layout: "fullscreen",

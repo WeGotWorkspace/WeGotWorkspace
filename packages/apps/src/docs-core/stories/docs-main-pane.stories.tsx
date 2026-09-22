@@ -49,7 +49,7 @@ function DocsMainPaneHarness({
 }
 
 const meta = {
-  title: "Apps/Docs/Panes/Main",
+  title: "Shared/Docs/Panes/Main",
   component: DocsMainPane,
   parameters: {
     layout: "fullscreen",

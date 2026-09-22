@@ -8,7 +8,7 @@ import { MailStoryScope } from "./mail-story-scope";
 const L = mailStoryLabels;
 
 const meta = {
-  title: "Apps/Mail/Panes/Detail",
+  title: "Shared/Mail/Panes/Detail",
   component: MailDetailView,
   render: (args) => (
     <MailStoryScope variant="detail">

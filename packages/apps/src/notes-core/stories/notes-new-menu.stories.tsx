@@ -6,7 +6,7 @@ import "@/styles.css";
 import "@/notes-core/src/notes-workspace.css";
 
 const meta: Meta<typeof NotesNewMenu> = {
-  title: "Apps/Notes/Components/NotesNewMenu",
+  title: "Shared/Notes/Components/NotesNewMenu",
   component: NotesNewMenu,
   tags: ["autodocs"],
   args: {

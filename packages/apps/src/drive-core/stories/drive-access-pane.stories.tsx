@@ -26,7 +26,7 @@ function DriveAccessPaneHarness() {
 }
 
 const meta = {
-  title: "Apps/Drive/Panes/DriveAccessPane",
+  title: "Shared/Drive/Panes/DriveAccessPane",
   component: DriveAccessPaneHarness,
   parameters: {
     layout: "fullscreen",

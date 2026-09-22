@@ -48,7 +48,7 @@ function MailStoryHarness({ variant = "default" }: { variant?: MailStoryVariant 
 }
 
 const meta = {
-  title: "Apps/Settings/Panes/Mail",
+  title: "Shared/Settings/Panes/Mail",
   component: SettingsMailPane,
   parameters: {
     layout: "fullscreen",

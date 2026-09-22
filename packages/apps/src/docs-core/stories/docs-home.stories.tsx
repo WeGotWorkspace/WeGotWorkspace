@@ -24,7 +24,7 @@ const createPaginatedFetcher = createDocsHomePaginatedFetcher;
 const createMockHomeOperations = createMockDocsHomeOperations;
 
 const meta: Meta<typeof DocsHomeWorkspace> = {
-  title: "Apps/Docs/Home",
+  title: "Shared/Docs/Home",
   component: DocsHomeWorkspace,
   tags: ["autodocs"],
   parameters: {
@@ -43,6 +43,7 @@ const meta: Meta<typeof DocsHomeWorkspace> = {
 export default meta;
 type Story = StoryObj<typeof DocsHomeWorkspace>;
 
+/** Chrome Home lives under Branding/Docs — browse / sidebar navigation SST. */
 export const Default: Story = {
   name: "Browse (paginated)",
   tags: ["vitest-ci"],

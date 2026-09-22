@@ -8,7 +8,7 @@ import "@/docs-core/src/docs-workspace.css";
 const mockShareOperations = createMockDriveShareOperations();
 
 const meta: Meta<typeof DocsWorkspace> = {
-  title: "Apps/Docs",
+  title: "Shared/Docs",
   component: DocsWorkspace,
   tags: ["autodocs"],
   parameters: {

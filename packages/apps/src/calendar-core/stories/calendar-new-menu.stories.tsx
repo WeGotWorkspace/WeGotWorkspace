@@ -5,7 +5,7 @@ import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
 import "@/calendar-core/src/calendar-workspace.css";
 
 const meta: Meta<typeof CalendarNewMenu> = {
-  title: "Apps/Calendar/Components/CalendarNewMenu",
+  title: "Shared/Calendar/Components/CalendarNewMenu",
   component: CalendarNewMenu,
   tags: ["autodocs"],
   args: {

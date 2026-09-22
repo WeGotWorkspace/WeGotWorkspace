@@ -48,7 +48,7 @@ function ProfileStoryHarness({ variant = "default" }: { variant?: ProfileStoryVa
 }
 
 const meta = {
-  title: "Apps/Settings/Panes/Profile",
+  title: "Shared/Settings/Panes/Profile",
   component: SettingsProfilePane,
   parameters: {
     layout: "fullscreen",

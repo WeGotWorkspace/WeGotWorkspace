@@ -19,7 +19,7 @@ Guides for `packages/apps` — app library structure, rollout, and per-domain re
 
 ## Design / Storybook
 
-- [Designer branding Storybook](./branding-storybook.md) — `Branding/*` stories, accent vs `--wai-*` knobs, SVG layer contract
+- [Designer branding Storybook](./branding-storybook.md) — **`Branding/*` is the designer catalog** (accents, cream/ink, icons). Everything else lives under `Shared/` (including `Shared/Live/…`).
 
 ## Quality gates
 

@@ -5,7 +5,7 @@ import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import { ContactsStoryScope } from "./contacts-story-scope";
 
 const meta = {
-  title: "Apps/Contacts/Components/ContactsNewMenu",
+  title: "Shared/Contacts/Components/ContactsNewMenu",
   component: ContactsNewMenu,
   tags: ["autodocs"],
   args: {

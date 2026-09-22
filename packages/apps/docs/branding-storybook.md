@@ -6,7 +6,7 @@ Try app accents, cream/ink, and icon artwork without editing CSS. Winning values
 
 1. From the monorepo root: `pnpm dev:storybook` (or full `pnpm dev`).
 2. Open [http://127.0.0.1:6006](http://127.0.0.1:6006).
-3. In the sidebar, open **Branding** — one story per app plus Home, Login, and Installer:
+3. In the sidebar, open **Branding** — this is the designer catalog (one story per app plus Home, Login, and Installer):
 
 | Story                                 | What you see                                                   |
 | ------------------------------------- | -------------------------------------------------------------- |
@@ -16,6 +16,21 @@ Try app accents, cream/ink, and icon artwork without editing CSS. Winning values
 | `Branding/Installer`                  | Same cream shell — interactive full flow + step matrix (below) |
 
 Stories are offline mock fixtures — no live API required.
+
+Storybook has **only two top-level groups**: **`Branding/`** (designer chrome) and **`Shared/`** (everything else). Prefer **Branding/** when reviewing accents, cream/ink, or icon artwork.
+
+### What lives under `Shared/`
+
+| Keep under `Shared/`      | Examples                                                                                                                                                                           |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Primitives / composites   | `Shared/Buttons/Button`, `Shared/App Sidebar`, …                                                                                                                                   |
+| Pane / component matrices | `Shared/Mail/Panes/…`, `Shared/Meet/Components/…`, `Shared/Admin/Panes/…`                                                                                                          |
+| Unique product variants   | Notes shared notebooks, Drive/Tasks shared-with-me, Docs empty/.txt, Settings MCP-off, Meet call/knock matrix, Calendar search/views, Contacts workspace SST, Docs home browse SST |
+| Mock shells               | `Shared/WeGotWorkspace`, `Shared/WeGotWorkspace/Shell`                                                                                                                             |
+| Live API                  | `Shared/Live/WeGotWorkspace`, `Shared/Live/WeGotWorkspace/Shell`                                                                                                                   |
+| Workspace chrome pieces   | `Shared/Workspace/ShellHeader`, `Shared/AuthenticationPage`, Settings MCP consent                                                                                                  |
+
+Product workspace **chrome Defaults** live under `Branding/{App}` (and Login/Installer matrices under `Branding/Login` / `Branding/Installer`). Do **not** duplicate those Defaults under Shared.
 
 Designer URL examples (Storybook id encoding may vary slightly):
 

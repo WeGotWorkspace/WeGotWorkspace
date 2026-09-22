@@ -18,7 +18,7 @@ function McpPaneHarness({ enabled = false }: { enabled?: boolean }) {
 }
 
 const meta = {
-  title: "Apps/Admin/Panes/Connected assistants",
+  title: "Shared/Admin/Panes/Connected assistants",
   component: AdminMcpPane,
   parameters: {
     layout: "fullscreen",

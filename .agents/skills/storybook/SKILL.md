@@ -51,8 +51,10 @@ Reference: `packages/apps/src/button/stories/button.stories.tsx`.
 
 ## Title namespaces
 
-- `Shared/` — primitives and cross-app components
-- `Apps/{Product}/…` — product-specific panes and apps
+Only two top-level groups:
+
+- `Branding/` — designer catalog (workspace chrome + auth/installer; accents / cream/ink / icons)
+- `Shared/` — everything else: primitives, product panes/components, unique non-branding workspace variants, WeGotWorkspace mock shells, and live API under `Shared/Live/…`
 
 Keep titles stable; they are the catalog index.
 

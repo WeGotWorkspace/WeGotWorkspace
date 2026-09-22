@@ -37,13 +37,14 @@ Pane and browser styling lives under `.drive-workspace` in `drive-workspace.css`
 
 ## Storybook
 
-| Story                                        | Purpose                                        |
-| -------------------------------------------- | ---------------------------------------------- |
-| `Apps/Drive`                                 | Full workspace with mock bootstrap             |
-| `Apps/Drive/Panes/DriveMainPane`             | Main column (grid/list, selection, detail)     |
-| `Apps/Drive/Components/DriveDetailActionBar` | Detail toolbar variants                        |
-| `Apps/Drive/Components/DriveNewMenu`         | New file/folder menu                           |
-| `Apps/WeGotWorkspace`                        | Full shell (login → home → all apps, mock API) |
+| Story                                          | Purpose                                        |
+| ---------------------------------------------- | ---------------------------------------------- |
+| `Branding/Drive`                               | Full workspace chrome + branding knobs         |
+| `Shared/Drive`                                 | Shared with me view (non-branding)             |
+| `Shared/Drive/Panes/DriveMainPane`             | Main column (grid/list, selection, detail)     |
+| `Shared/Drive/Components/DriveDetailActionBar` | Detail toolbar variants                        |
+| `Shared/Drive/Components/DriveNewMenu`         | New file/folder menu                           |
+| `Shared/WeGotWorkspace`                        | Full shell (login → home → all apps, mock API) |
 
 ## Further reading
 

@@ -4,7 +4,7 @@ import { CalendarConflictDialog } from "@/calendar-core/src/calendar-conflict-di
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 
 const meta = {
-  title: "Apps/Calendar/Conflict Dialog",
+  title: "Shared/Calendar/Conflict Dialog",
   component: CalendarConflictDialog,
   parameters: { layout: "fullscreen" },
   args: {

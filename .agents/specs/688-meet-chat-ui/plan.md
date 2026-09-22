@@ -53,8 +53,8 @@ Live `/meet` stays on the current custom lobby/room so the parallel WebRTC refac
 - **id:** `shell-channels`
 - **Skill:** workspace
 - **Inputs:** T; Tasks workspace; `TaskProjectDialog`
-- **Done when:** `MeetCallWorkspace` rename of today’s shell; new `MeetWorkspace` split layout with channel sections + create/edit dialog; empty main; mock-tier `Apps/Meet` Default story; CSS full-bleed like Docs
-- **Verify with:** targeted Vitest + `Apps/Meet` Default story compiles
+- **Done when:** `MeetCallWorkspace` rename of today’s shell; new `MeetWorkspace` split layout with channel sections + create/edit dialog; empty main; mock-tier `Shared/Meet` Default story; CSS full-bleed like Docs
+- **Verify with:** targeted Vitest + `Shared/Meet` Default story compiles
 - **Parallel with:** none (unblocks E)
 
 ### Chunk B: Chat primitives
@@ -90,7 +90,7 @@ Live `/meet` stays on the current custom lobby/room so the parallel WebRTC refac
 - **Skill:** workspace + meet
 - **Inputs:** A; existing lobby/room panes (no `lib/rtc` edits)
 - **Done when:** resizable + fullscreen `MeetCallStage`; guest stripped stories using `MeetLobbyPane` then chat+stage; `ResizablePanelGroup` wrapped with BEM CSS (do not grow Tailwind-in-TSX)
-- **Verify with:** Apps/Meet call + guest stories
+- **Verify with:** Shared/Meet call + guest stories
 - **Parallel with:** B, C
 
 ### Chunk F: Compose product workspace

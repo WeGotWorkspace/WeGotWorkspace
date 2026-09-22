@@ -7,7 +7,7 @@ import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
 import { STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 
 const meta: Meta<typeof DriveWorkspace> = {
-  title: "Apps/Drive",
+  title: "Shared/Drive",
   component: DriveWorkspace,
   parameters: {
     layout: "fullscreen",

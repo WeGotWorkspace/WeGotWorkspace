@@ -1,22 +1,16 @@
-import { useMemo } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { createMemoryHistory } from "@tanstack/react-router";
-import { WgwApiRuntimeProvider } from "@/lib/api/wgw/wgw-api-runtime-provider";
 import { WeGotWorkspaceApp } from "@/wegotworkspace/src/wegotworkspace-app";
 import { WeGotWorkspace } from "@/wegotworkspace/src/wegotworkspace";
-import { WeGotWorkspaceLive } from "@/wegotworkspace/src/wegotworkspace-live";
-import { WeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-router";
-import { withWeGotWorkspaceAuth } from "@/wegotworkspace/src/wegotworkspace-require-auth";
 
 const meta = {
-  title: "Apps/WeGotWorkspace/Shell",
+  title: "Shared/WeGotWorkspace/Shell",
   parameters: {
     layout: "fullscreen",
     wegotworkspaceRouter: true,
     docs: {
       description: {
         component:
-          "Mock-tier route matrix for the WeGotWorkspace shell catalog. Each story exercises a router entry offline unless noted.",
+          "Mock-tier route matrix for the WeGotWorkspace shell catalog. Each story exercises a router entry offline. Live routes live under **Shared/Live/WeGotWorkspace**.",
       },
     },
   },
@@ -24,18 +18,6 @@ const meta = {
 
 export default meta;
 type Story = StoryObj;
-
-function LiveRouterHarness({ initialPath }: { initialPath: string }) {
-  const history = useMemo(
-    () => createMemoryHistory({ initialEntries: [initialPath] }),
-    [initialPath],
-  );
-  return (
-    <WgwApiRuntimeProvider apiBaseUrl="/api/v1">
-      <WeGotWorkspaceRouter mode="live" history={history} />
-    </WgwApiRuntimeProvider>
-  );
-}
 
 export const WegotworkspaceHome: Story = {
   name: "WegotworkspaceHome",
@@ -85,23 +67,5 @@ export const WegotworkspaceApp: Story = {
           "Production entry is WeGotWorkspaceApp (browser history + live API). Offline preview uses the mock router harness.",
       },
     },
-  },
-};
-
-export const WegotworkspaceLive: Story = {
-  name: "WegotworkspaceLive",
-  render: () => <WeGotWorkspaceLive initialPath="/login" apiBaseUrl="/api/v1" />,
-};
-
-export const WegotworkspaceLiveHome: Story = {
-  name: "WegotworkspaceLiveHome",
-  render: () => <LiveRouterHarness initialPath="/" />,
-};
-
-export const WegotworkspaceRequireAuth: Story = {
-  name: "WegotworkspaceRequireAuth",
-  render: () => {
-    void withWeGotWorkspaceAuth;
-    return <LiveRouterHarness initialPath="/drive" />;
   },
 };

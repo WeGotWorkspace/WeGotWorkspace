@@ -75,10 +75,10 @@ Debug: `?rtcDebug=1` on URL. Relay-only dev: `?rtcForceRelay=1` or `VITE_WGW_RTC
 
 | Surface | What to use |
 |---------|-------------|
-| New product shell | `Apps/Meet` — `MeetWorkspaceStoryHarness` (`meet-workspace.stories.harness.tsx`, stories in `meet-app.stories.tsx`): channels + chat + optional call |
+| New product shell | `Shared/Meet` — `MeetWorkspaceStoryHarness` (`meet-workspace.stories.harness.tsx`, stories in `meet-app.stories.tsx`): channels + chat + optional call; chrome Default under `Branding/Meet` |
 | Shared chat primitives | `Shared/Chat/*` — message, list, composer, mentions, reactions, link previews, threads (product-agnostic; no RTC, no Meet CSS) |
-| Guest stripped channel | `Apps/Meet/Panes/MeetGuestChannel` — checking / waiting / lobby / in-channel; no channel sidebar (`hideSidebarToggle`). Live guest/invite URLs mount this. |
-| Live `/meet` | `MeetChatApp` mounts `MeetWorkspace` on the hybrid chat client + real controller (`use-meet-chat-call.ts`); `startCall` joins the deterministic channel room (`meet-channel-room.ts`). Mock `/meet` and `Apps/Meet` stories boot `MeetWorkspace` with `createMeetAppBootstrap`. |
+| Guest stripped channel | `Shared/Meet/Panes/MeetGuestChannel` — checking / waiting / lobby / in-channel; no channel sidebar (`hideSidebarToggle`). Live guest/invite URLs mount this. |
+| Live `/meet` | `MeetChatApp` mounts `MeetWorkspace` on the hybrid chat client + real controller (`use-meet-chat-call.ts`); `startCall` joins the deterministic channel room (`meet-channel-room.ts`). Mock `/meet` and `Shared/Meet` stories boot `MeetWorkspace` with `createMeetAppBootstrap`. |
 
 ```tsx
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
