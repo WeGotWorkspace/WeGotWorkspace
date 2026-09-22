@@ -12,18 +12,18 @@ export type BrandingCsspropEntry = {
 
 export type BrandingCsspropsMap = Record<string, BrandingCsspropEntry>;
 
-/** Shared cream / ink suite tokens every Themes/* story documents. */
+/** Brand primitives every Themes/* story exposes. */
 export function sharedBrandingCssprops(): BrandingCsspropsMap {
   return {
-    "color-cream": {
+    "color-we-got-soft": {
       value: "#fff5e9",
-      description: "Suite paper / workspace root cream (We Got Soft)",
-      category: "Suite",
+      description: "We Got Soft",
+      category: "Primitives",
     },
-    "color-ink": {
+    "color-we-got-dark": {
       value: "#003311",
-      description: "Primary ink on light surfaces (We Got Dark)",
-      category: "Suite",
+      description: "We Got Dark",
+      category: "Primitives",
     },
   };
 }
@@ -116,16 +116,16 @@ export const BRANDING_APP_ACCENT_DEFAULTS: Record<WorkspaceAppId, string> = {
  * Docs uses full accent; Meet uses the split-chrome 20% wash.
  */
 export const BRANDING_APP_SIDEBAR_DEFAULTS: Record<WorkspaceAppId, string> = {
-  mail: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream))",
-  notes: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream))",
-  tasks: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream))",
-  calendar: "color-mix(in oklch, var(--workspace-accent) 10%, var(--color-cream))",
-  contacts: "color-mix(in oklch, var(--workspace-accent) 10%, var(--color-cream))",
-  drive: "color-mix(in oklch, var(--workspace-accent) 32%, var(--color-cream))",
+  mail: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft))",
+  notes: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft))",
+  tasks: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft))",
+  calendar: "color-mix(in oklch, var(--workspace-accent) 10%, var(--color-we-got-soft))",
+  contacts: "color-mix(in oklch, var(--workspace-accent) 10%, var(--color-we-got-soft))",
+  drive: "color-mix(in oklch, var(--workspace-accent) 32%, var(--color-we-got-soft))",
   docs: "var(--workspace-accent)",
-  admin: "color-mix(in oklch, var(--workspace-accent) 16%, var(--color-cream))",
-  settings: "color-mix(in oklch, var(--workspace-accent) 16%, var(--color-cream))",
-  meet: "color-mix(in oklch, var(--workspace-accent) 20%, var(--color-cream))",
+  admin: "color-mix(in oklch, var(--workspace-accent) 16%, var(--color-we-got-soft))",
+  settings: "color-mix(in oklch, var(--workspace-accent) 16%, var(--color-we-got-soft))",
+  meet: "color-mix(in oklch, var(--workspace-accent) 20%, var(--color-we-got-soft))",
 };
 
 /** Production `--app-sidebar-color` (ink on cream rails; white on Docs full-accent rail). */

@@ -91,8 +91,8 @@ describe("defaultAppBrandingCssprops", () => {
     (appId) => {
       const map = defaultAppBrandingCssprops(appId);
       const wai = BRANDING_APP_WAI_DEFAULTS[appId];
-      expect(map["color-cream"]?.value).toBe("#fff5e9");
-      expect(map["color-ink"]?.value).toBe("#003311");
+      expect(map["color-we-got-soft"]?.value).toBe("#fff5e9");
+      expect(map["color-we-got-dark"]?.value).toBe("#003311");
       expect(map["workspace-accent"]?.value).toBe(BRANDING_APP_ACCENT_DEFAULTS[appId]);
       expect(map["app-sidebar-bg"]).toBeUndefined();
       expect(map["app-sidebar-color"]).toBeUndefined();
@@ -133,8 +133,8 @@ describe("defaultAppBrandingCssprops", () => {
 describe("defaultHomeBrandingCssprops", () => {
   it("documents cream, ink, and workspace-home-bg", () => {
     const map = defaultHomeBrandingCssprops();
-    expect(map["color-cream"]?.value).toBe("#fff5e9");
-    expect(map["color-ink"]?.value).toBe("#003311");
+    expect(map["color-we-got-soft"]?.value).toBe("#fff5e9");
+    expect(map["color-we-got-dark"]?.value).toBe("#003311");
     expect(map["workspace-home-bg"]?.value).toBe("#1b1d3a");
   });
 });
@@ -142,8 +142,8 @@ describe("defaultHomeBrandingCssprops", () => {
 describe("defaultAuthBrandingCssprops", () => {
   it("documents cream and ink only (no home navy)", () => {
     const map = defaultAuthBrandingCssprops();
-    expect(map["color-cream"]?.value).toBe("#fff5e9");
-    expect(map["color-ink"]?.value).toBe("#003311");
+    expect(map["color-we-got-soft"]?.value).toBe("#fff5e9");
+    expect(map["color-we-got-dark"]?.value).toBe("#003311");
     expect(map["workspace-home-bg"]).toBeUndefined();
   });
 });
@@ -185,8 +185,8 @@ describe("createBrandingStoryMeta defaults", () => {
     });
     expect(meta.parameters?.routerPath).toBe("/install");
     const cssprops = meta.parameters?.cssprops as Record<string, { value: string }>;
-    expect(cssprops["color-cream"].value).toBe("#fff5e9");
-    expect(cssprops["color-ink"].value).toBe("#003311");
+    expect(cssprops["color-we-got-soft"].value).toBe("#fff5e9");
+    expect(cssprops["color-we-got-dark"].value).toBe("#003311");
     expect(cssprops["workspace-home-bg"]).toBeUndefined();
     expect(cssprops["workspace-accent"]).toBeUndefined();
   });

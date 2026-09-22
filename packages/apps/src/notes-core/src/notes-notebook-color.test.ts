@@ -73,18 +73,18 @@ describe("notebookDisplayColor", () => {
 
 describe("notebookContrastFg", () => {
   it("uses ink on a light notebook fill", () => {
-    expect(notebookContrastFg("#fde68a")).toBe("var(--color-ink)");
-    expect(notebookContrastFg("#d4bc72")).toBe("var(--color-ink)");
-    expect(notebookContrastFg("#ffc800")).toBe("var(--color-ink)");
+    expect(notebookContrastFg("#fde68a")).toBe("var(--color-we-got-dark)");
+    expect(notebookContrastFg("#d4bc72")).toBe("var(--color-we-got-dark)");
+    expect(notebookContrastFg("#ffc800")).toBe("var(--color-we-got-dark)");
   });
 
   it("uses cream on a dark notebook fill", () => {
-    expect(notebookContrastFg("#1e3a5f")).toBe("var(--color-cream)");
-    expect(notebookContrastFg("#003311")).toBe("var(--color-cream)");
+    expect(notebookContrastFg("#1e3a5f")).toBe("var(--color-we-got-soft)");
+    expect(notebookContrastFg("#003311")).toBe("var(--color-we-got-soft)");
   });
 
   it("falls back to ink when the hex is missing", () => {
-    expect(notebookContrastFg("")).toBe("var(--color-ink)");
+    expect(notebookContrastFg("")).toBe("var(--color-we-got-dark)");
   });
 });
 
@@ -93,11 +93,11 @@ describe("notesDetailTintStyle", () => {
     expect(notesDetailTintStyle(undefined)).toBeUndefined();
     expect(notesDetailTintStyle("#fde68a")).toEqual({
       ["--notes-detail-tint"]: "#fde68a",
-      ["--notes-detail-check-fg"]: "var(--color-ink)",
+      ["--notes-detail-check-fg"]: "var(--color-we-got-dark)",
     });
     expect(notesDetailTintStyle("#1e3a5f")).toEqual({
       ["--notes-detail-tint"]: "#1e3a5f",
-      ["--notes-detail-check-fg"]: "var(--color-cream)",
+      ["--notes-detail-check-fg"]: "var(--color-we-got-soft)",
     });
     expect(notesDetailTintStyle("#fde68a")).not.toHaveProperty("--notes-detail-contrast-fg");
   });

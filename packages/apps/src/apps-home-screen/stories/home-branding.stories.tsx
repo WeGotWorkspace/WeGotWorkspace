@@ -18,7 +18,7 @@ const brandingMeta = createBrandingStoryMeta({
           "Designer branding for suite home: cream/ink (and `--workspace-home-bg`) via cssprops, " +
           "home icon SVG slot (`iconPreset` / `svgMarkup` → `WorkspaceHomeIcon` used by BrandLockup), " +
           "and the dashboard tile grid. The suite mark does not use `--wai-*` layers by default — " +
-          "paste custom SVG with fixed fills or `var(--color-cream|ink, …)` as needed.",
+          "paste custom SVG with fixed fills or `var(--color-we-got-soft)` / `var(--color-we-got-dark)` as needed.",
       },
     },
   },
@@ -48,7 +48,7 @@ export const Default: Story = {
             <button
               key={app.id}
               type="button"
-              className="group flex w-full min-h-48 flex-col items-center justify-center gap-4 rounded-3xl p-3 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-ink) focus-visible:ring-offset-2"
+              className="group flex w-full min-h-48 flex-col items-center justify-center gap-4 rounded-3xl p-3 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-we-got-dark) focus-visible:ring-offset-2"
               aria-label={app.label}
             >
               {app.appId ? (

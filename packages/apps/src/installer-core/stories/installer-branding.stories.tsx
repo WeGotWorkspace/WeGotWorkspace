@@ -39,7 +39,7 @@ const brandingMeta = createBrandingStoryMeta({
       description: {
         component:
           "Designer branding for the installer cream shell (same `.login-screen` paper as Login): " +
-          "`--color-cream` / `--color-ink` via cssprops, and BrandLockup suite-mark SVG slot. " +
+          "`--color-we-got-soft` / `--color-we-got-dark` via cssprops, and BrandLockup suite-mark SVG slot. " +
           "State matrix: Welcome, database (MySQL / SQLite), account (+ env-omitted database step), " +
           "installing, ready, and server-needs-attention. " +
           "Interactive flow walks the full mock InstallerWorkspace setup (Welcome → Ready).",

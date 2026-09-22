@@ -60,7 +60,7 @@ describe("view-header CSS", () => {
       /\.view-header__title-count \{[\s\S]*text-sm font-medium leading-none md:text-lg/,
     );
     expect(css).toMatch(/\.view-header__title-count \{[\s\S]*font-family:\s*var\(--font-sans\)/);
-    expect(css).toMatch(/\.view-header__title-count \{[\s\S]*color:\s*var\(--color-ink\)/);
+    expect(css).toMatch(/\.view-header__title-count \{[\s\S]*color:\s*var\(--color-we-got-dark\)/);
     expect(css).not.toMatch(/\.view-header__title-suffix \.badge/);
   });
 

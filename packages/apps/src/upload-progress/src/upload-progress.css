@@ -1,7 +1,10 @@
 .upload-progress {
   padding: 0.625rem 1rem;
   border-bottom: 1px solid
-    var(--upload-progress-border-color, color-mix(in oklab, var(--color-ink) 8%, transparent));
+    var(
+      --upload-progress-border-color,
+      color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+    );
 }
 
 @media (min-width: 768px) {
@@ -25,13 +28,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--upload-progress-label-color, color-mix(in oklab, var(--color-ink) 85%, transparent));
+  color: var(
+    --upload-progress-label-color,
+    color-mix(in oklab, var(--color-we-got-dark) 85%, transparent)
+  );
 }
 
 .upload-progress__percent {
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-  color: var(--upload-progress-muted-color, color-mix(in oklab, var(--color-ink) 68%, transparent));
+  color: var(
+    --upload-progress-muted-color,
+    color-mix(in oklab, var(--color-we-got-dark) 68%, transparent)
+  );
 }
 
 .upload-progress__track {
@@ -42,7 +51,7 @@
   border-radius: 9999px;
   background-color: var(
     --upload-progress-track-bg,
-    color-mix(in oklab, var(--color-ink) 10%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
   );
 }
 
@@ -64,5 +73,8 @@
   margin-top: 0.25rem;
   font-size: 0.6875rem;
   line-height: 1rem;
-  color: var(--upload-progress-muted-color, color-mix(in oklab, var(--color-ink) 65%, transparent));
+  color: var(
+    --upload-progress-muted-color,
+    color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
+  );
 }

@@ -2,16 +2,16 @@
 
 .collection-list-pane {
   @apply relative flex min-w-0 flex-1 shrink-0 flex-col border-r md:w-96 md:flex-none;
-  background-color: var(--workspace-root-bg, var(--color-cream));
-  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  background-color: var(--workspace-root-bg, var(--color-we-got-soft));
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
 }
 
 .collection-header {
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
 }
 
 .collection-empty-state {
-  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .collection-list-end {

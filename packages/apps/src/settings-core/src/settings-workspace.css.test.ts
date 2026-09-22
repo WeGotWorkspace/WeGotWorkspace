@@ -13,7 +13,7 @@ describe("settings workspace outline chrome", () => {
       /\.settings-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-dark\)/,
     );
     expect(colorCss).toMatch(
-      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(css).toMatch(
       /\.settings-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,
@@ -26,7 +26,7 @@ describe("settings workspace outline chrome", () => {
 
   it("publishes outline tokens on the workspace and view-header (not mint emerald)", () => {
     expect(colorCss).toMatch(
-      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(css).toMatch(
       /\.settings-workspace \{[\s\S]*--color-emerald:\s*var\(--workspace-accent\)/,
@@ -47,7 +47,7 @@ describe("settings workspace outline chrome", () => {
       /\.settings-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--workspace-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.settings-workspace \.view-header \{[\s\S]*--button-outline-color:\s*var\(--color-ink\)/,
+      /\.settings-workspace \.view-header \{[\s\S]*--button-outline-color:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
       /\.settings-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--workspace-accent-strong\)/,
@@ -77,9 +77,9 @@ describe("settings workspace outline chrome", () => {
     expect(css).toMatch(/--workspace-sidebar-mix:\s*16%/);
     expect(css).toMatch(/--workspace-sidebar-mix:\s*16%/);
     expect(css).not.toMatch(/--app-sidebar-bg:\s*var\(--workspace-accent\)\s*;/);
-    expect(css).toMatch(/--app-sidebar-color:\s*var\(--color-ink\)/);
-    expect(css).toMatch(/--sidebar-logo-close-button-color:\s*var\(--color-ink\)/);
-    expect(css).toMatch(/--workspace-user-footer-text-color:\s*var\(--color-ink\)/);
+    expect(css).toMatch(/--app-sidebar-color:\s*var\(--color-we-got-dark\)/);
+    expect(css).toMatch(/--sidebar-logo-close-button-color:\s*var\(--color-we-got-dark\)/);
+    expect(css).toMatch(/--workspace-user-footer-text-color:\s*var\(--color-we-got-dark\)/);
     expect(css).not.toMatch(/--app-sidebar-bg:\s*var\(--workspace-accent\)/);
     expect(css).not.toMatch(/--app-sidebar-color:\s*#ffffff/);
     expect(css).not.toMatch(
@@ -92,21 +92,21 @@ describe("settings workspace outline chrome", () => {
 
   it("uses stronger sidebar item washes with ink on-color for AA", () => {
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 14%,\s*var\(--color-cream/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 14%,\s*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 20%,\s*var\(--color-cream/,
+      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 20%,\s*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-cream/,
+      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-we-got-soft/,
     );
-    expect(css).toMatch(/--app-sidebar-item-selected-color:\s*var\(--color-ink\)/);
-    expect(css).not.toMatch(/--app-sidebar-item-selected-color:\s*var\(--color-cream/);
+    expect(css).toMatch(/--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/);
+    expect(css).not.toMatch(/--app-sidebar-item-selected-color:\s*var\(--color-we-got-soft/);
     expect(css).not.toMatch(
       /--app-sidebar-item-selected-color:\s*var\(--workspace-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.settings-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-ink\)/,
+      /\.settings-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
     );
   });
 });

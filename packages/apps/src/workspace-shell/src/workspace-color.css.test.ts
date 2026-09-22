@@ -14,23 +14,23 @@ const APP_PREFIXED_COLOR_RE =
 describe("workspace-color.css shared tint recipes", () => {
   it("owns accent-strong, sidebar wash, item washes, and primary button in oklch", () => {
     expect(colorCss).toMatch(
-      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)/,
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)/,
     );
     expect(colorCss).toMatch(/--workspace-sidebar-mix:\s*12%/);
     expect(colorCss).toMatch(
-      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) var\(--workspace-sidebar-mix\),\s*var\(--color-cream\)/,
+      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) var\(--workspace-sidebar-mix\),\s*var\(--color-we-got-soft\)/,
     );
-    expect(colorCss).toMatch(/--app-sidebar-color:\s*var\(--color-ink\)/);
+    expect(colorCss).toMatch(/--app-sidebar-color:\s*var\(--color-we-got-dark\)/);
     expect(colorCss).toMatch(/--button-primary-bg:\s*var\(--workspace-accent\)/);
     expect(colorCss).toMatch(/--button-primary-fg:\s*#ffffff/);
     expect(colorCss).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-cream\)/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-soft\)/,
     );
     expect(colorCss).toMatch(
-      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 55%,\s*var\(--color-cream\)/,
+      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 55%,\s*var\(--color-we-got-soft\)/,
     );
     expect(colorCss).toMatch(
-      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 65%,\s*var\(--color-cream\)/,
+      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 65%,\s*var\(--color-we-got-soft\)/,
     );
     expect(colorCss).not.toMatch(/in oklab/);
     expect(colorCss).toMatch(

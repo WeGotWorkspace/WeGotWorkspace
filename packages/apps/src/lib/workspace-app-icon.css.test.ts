@@ -27,8 +27,10 @@ describe("workspace app icon radius", () => {
 
 describe("apps home screen shell", () => {
   it("uses cream background and a max 4-column centered grid", () => {
-    expect(homeCss).toMatch(/\.apps-home-screen \{[\s\S]*background-color:\s*var\(--color-cream\)/);
-    expect(homeCss).toMatch(/--app-switch-label-color:\s*var\(--color-ink/);
+    expect(homeCss).toMatch(
+      /\.apps-home-screen \{[\s\S]*background-color:\s*var\(--color-we-got-soft\)/,
+    );
+    expect(homeCss).toMatch(/--app-switch-label-color:\s*var\(--color-we-got-dark/);
     expect(homeTsx).toMatch(/grid-cols-2/);
     expect(homeTsx).toMatch(/sm:grid-cols-3/);
     expect(homeTsx).toMatch(/md:grid-cols-4/);
@@ -49,7 +51,7 @@ describe("apps home screen shell", () => {
 describe("workspace home switch-trigger mark", () => {
   it("keeps a cream tile behind the solid suite mark (no legacy multicolor --wai-* remap)", () => {
     expect(iconCss).toMatch(
-      /\.workspace-app-icon--switch-trigger-home \{[\s\S]*--app-switch-icon-bg:\s*var\(--color-cream/,
+      /\.workspace-app-icon--switch-trigger-home \{[\s\S]*--app-switch-icon-bg:\s*var\(--color-we-got-soft/,
     );
     expect(iconCss).not.toMatch(/--wai-fg:\s*#f59f00/);
     expect(iconCss).not.toMatch(/--wai-detail:\s*#0ca678/);

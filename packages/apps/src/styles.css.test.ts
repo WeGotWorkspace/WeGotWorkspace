@@ -29,11 +29,10 @@ describe("We Got color primitives and status semantics", () => {
     }
   });
 
-  it("aliases cream to Soft and ink to Dark", () => {
-    expect(css).toMatch(/--color-ink:\s*var\(--color-we-got-dark\)/);
-    expect(css).toMatch(/--color-cream:\s*var\(--color-we-got-soft\)/);
-    expect(css).not.toMatch(/--color-cream:\s*#f7f4ef/);
-    expect(css).not.toMatch(/--color-cream:\s*#fff5e9/);
+  it("does not alias Soft or Dark as cream or ink", () => {
+    expect(css).not.toMatch(/--color-cream\b/);
+    expect(css).not.toMatch(/--color-ink\b/);
+    expect(css).not.toMatch(/#f7f4ef/);
   });
 
   it("declares status tokens as hex then oklch(from) and aliases destructive to error", () => {

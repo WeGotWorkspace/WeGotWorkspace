@@ -33,22 +33,22 @@ describe("user avatar mark border", () => {
   it("keeps colored tile wash/border at outline-active intensity (not full-sat rings)", () => {
     // Soft wash like default outline-active / docs-collab connecting chips.
     expect(css).toMatch(
-      /--user-avatar-amber-bg:\s*color-mix\(\s*in oklab,\s*var\(--user-avatar-amber\) 14%,\s*var\(--color-cream/,
+      /--user-avatar-amber-bg:\s*color-mix\(\s*in oklab,\s*var\(--user-avatar-amber\) 14%,\s*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
       /--user-avatar-amber-border:\s*color-mix\(in oklab,\s*var\(--user-avatar-amber\) 38%,\s*transparent\)/,
     );
     // No raw hue borders (those read neon next to sidebar outline marks).
     expect(css).not.toMatch(/--user-avatar-amber-border:\s*var\(--user-avatar-amber\)\s*;/);
-    expect(css).not.toMatch(/var\(--user-avatar-amber\) 32%,\s*var\(--color-cream/);
+    expect(css).not.toMatch(/var\(--user-avatar-amber\) 32%,\s*var\(--color-we-got-soft/);
   });
 
   it("keeps hashed-tile glyphs ink-heavy so 11px initials meet 4.5:1 on cream washes", () => {
     expect(css).toMatch(
-      /--user-avatar-amber-fg:\s*color-mix\(in oklab,\s*var\(--user-avatar-amber\) 32%,\s*var\(--color-ink\)\)/,
+      /--user-avatar-amber-fg:\s*color-mix\(in oklab,\s*var\(--user-avatar-amber\) 32%,\s*var\(--color-we-got-dark\)\)/,
     );
     expect(css).not.toMatch(
-      /--user-avatar-amber-fg:\s*color-mix\(in oklab,\s*var\(--user-avatar-amber\) 72%,\s*var\(--color-ink\)\)/,
+      /--user-avatar-amber-fg:\s*color-mix\(in oklab,\s*var\(--user-avatar-amber\) 72%,\s*var\(--color-we-got-dark\)\)/,
     );
   });
 

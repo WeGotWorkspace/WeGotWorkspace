@@ -86,13 +86,13 @@ describe("portal-theme-vars", () => {
     sheet.textContent = `
       .notes-host {
         --workspace-accent: #ffc800;
-        --workspace-accent-strong: color-mix(in oklab, var(--workspace-accent) 32%, var(--color-ink));
-        --color-ink: #1a1a1a;
-        --color-cream: #fff5e9;
+        --workspace-accent-strong: color-mix(in oklab, var(--workspace-accent) 32%, var(--color-we-got-dark));
+        --color-we-got-dark: #1a1a1a;
+        --color-we-got-soft: #fff5e9;
         --button-outline-hover-color: var(--workspace-accent-strong);
         --button-outline-hover-background: color-mix(in oklab, var(--workspace-accent) 14%, transparent);
-        --button-outline-active-background: color-mix(in oklab, var(--workspace-accent) 18%, var(--color-cream));
-        --button-outline-active-hover-background: color-mix(in oklab, var(--workspace-accent) 24%, var(--color-cream));
+        --button-outline-active-background: color-mix(in oklab, var(--workspace-accent) 18%, var(--color-we-got-soft));
+        --button-outline-active-hover-background: color-mix(in oklab, var(--workspace-accent) 24%, var(--color-we-got-soft));
         --button-active-color: var(--workspace-accent-strong);
       }
     `;
@@ -112,7 +112,7 @@ describe("portal-theme-vars", () => {
     expect(hover.toLowerCase()).not.toMatch(/color-ink/);
     expect(hover).not.toMatch(/notes-detail/);
     expect(target.style.getPropertyValue("--workspace-accent").trim()).toBe("#ffc800");
-    expect(target.style.getPropertyValue("--color-cream").trim()).toBe("#fff5e9");
+    expect(target.style.getPropertyValue("--color-we-got-soft").trim()).toBe("#fff5e9");
     expect(target.style.getPropertyValue("--workspace-accent").trim()).toMatch(
       /workspace-accent|#ffc800|rgba?\(|oklch\(/i,
     );
@@ -123,12 +123,12 @@ describe("portal-theme-vars", () => {
     sheet.textContent = `
       .calendar-host {
         --workspace-accent: #962fa8;
-        --workspace-accent-strong: color-mix(in oklab, var(--workspace-accent) 32%, var(--color-ink));
-        --color-ink: #1a1a1a;
-        --color-cream: #fff5e9;
+        --workspace-accent-strong: color-mix(in oklab, var(--workspace-accent) 32%, var(--color-we-got-dark));
+        --color-we-got-dark: #1a1a1a;
+        --color-we-got-soft: #fff5e9;
         --button-outline-hover-background: color-mix(in oklab, var(--workspace-accent) 14%, transparent);
-        --button-outline-active-background: color-mix(in oklab, var(--workspace-accent) 18%, var(--color-cream));
-        --button-outline-active-hover-background: color-mix(in oklab, var(--workspace-accent) 24%, var(--color-cream));
+        --button-outline-active-background: color-mix(in oklab, var(--workspace-accent) 18%, var(--color-we-got-soft));
+        --button-outline-active-hover-background: color-mix(in oklab, var(--workspace-accent) 24%, var(--color-we-got-soft));
         --button-active-color: var(--workspace-accent-strong);
         --button-outline-hover-color: var(--workspace-accent-strong);
       }
@@ -173,7 +173,7 @@ describe("portal-theme-vars", () => {
 
     const hover = target.style.getPropertyValue("--button-outline-hover-background").trim();
     expect(hover === "#f6d176" || isResolvedCssColor(hover)).toBe(true);
-    expect(hover.toLowerCase()).not.toContain("color-ink");
+    expect(hover.toLowerCase()).not.toContain("color-we-got-dark");
 
     // Engines that resolve `background-color: var(--token)` (browsers) return a
     // concrete color from the portaled host; jsdom often echoes the var() string.

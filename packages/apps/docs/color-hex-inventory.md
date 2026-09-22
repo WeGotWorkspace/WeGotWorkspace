@@ -4,11 +4,11 @@ Leftover raw hex under `packages/apps` that are **not** We Got brand primitives 
 
 This is a tech-debt queue from the brand color-token pass. It does **not** rewrite every site. Classify each row as:
 
-| Recommendation      | Meaning                                                                                                            |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **brand primitive** | Point at `--color-we-got-*` (or an existing alias of one)                                                          |
-| **semantic alias**  | Point at `--color-error` / `--color-warning` / `--color-success` / `--color-info`, cream, ink, or a new role token |
-| **keep**            | Intentional (third-party chart, user-picked swatch, mask black/white, Meet dark stage, fixture data)               |
+| Recommendation      | Meaning                                                                                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **brand primitive** | Point at `--color-we-got-*` (or an existing alias of one)                                                                                                                                        |
+| **semantic alias**  | Point at `--color-error` / `--color-warning` / `--color-success` / `--color-info`, or a real role token. Soft and Dark are primitives (`--color-we-got-soft`, `--color-we-got-dark`), not roles. |
+| **keep**            | Intentional (third-party chart, user-picked swatch, mask black/white, Meet dark stage, fixture data)                                                                                             |
 
 Excluded from this list on purpose:
 
@@ -84,7 +84,7 @@ Excluded from this list on purpose:
 | ------------------------------------------------------------------------------------ | ------------------------------------------- | --------------------------------------------------- |
 | `CalendarTimelineView.css` / `CalendarTimeSidebar.css` / `CalendarWeekdayHeader.css` | `#ff0000`, `#222`, `#fff` grid / now-marker | **keep** (library defaults; overridden by `--lc-*`) |
 | `TimeLine.css`                                                                       | `#d0d0d0`, `#505050`, `#e0342f`, `#ff6b64`  | **keep** (timeline chrome defaults)                 |
-| `CalendarsSidebar.css`                                                               | `#f8fafc`, `#1e293b`                        | **semantic alias** → cream / future dark ink        |
+| `CalendarsSidebar.css`                                                               | `#f8fafc`, `#1e293b`                        | **brand primitive** → Soft / Dark                   |
 | `EventColor.ts` / `eventColor.ts` / JMAP defaults                                    | `#94a3b8`, `#4285f4`, `#6366f1`, …          | **keep** (user calendar colors + defaults)          |
 | `calendar-calendar-dialog.tsx`, addressbook/notebook/task color lists                | Tailwind-like swatches                      | **keep** (user-picked collection colors)            |
 
@@ -94,8 +94,8 @@ Excluded from this list on purpose:
 | ------------------------------- | ------------------------------- | ------------------------------------------- |
 | `tasks-priority.tsx`            | `#ef4444`, `#eab308`, `#3b82f6` | **semantic alias** → error / warning / info |
 | `notes-notebook-color.ts`       | `#14b8a6` default               | **keep** (notebook default swatch)          |
-| `docs-collab-sidebar-panel.css` | `#0f172a` in strong mix         | **semantic alias** → `--color-ink`          |
-| `workspace-split-app.css`       | `#2f302c` primary bg            | **semantic alias** → ink / Dark             |
+| `docs-collab-sidebar-panel.css` | `#0f172a` in strong mix         | **semantic alias** → `--color-we-got-dark`  |
+| `workspace-split-app.css`       | `#2f302c` primary bg            | **brand primitive** → `--color-we-got-dark` |
 | `workspace-app-layout.css`      | comment `#2563eb`               | docs only — ignore                          |
 
 ## Charts / swatches / icons
@@ -109,11 +109,11 @@ Excluded from this list on purpose:
 
 ## App switch / branding defaults
 
-| File                               | Hex                                      | Recommendation                                                                             |
-| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `workspace-app-icons.ts`           | `#1B1D3A` (`WORKSPACE_HOME_ACCENT`)      | **keep** (same as `--workspace-home-bg`)                                                   |
-| `branding-cssprops.ts`             | `#1d6635`, `#1b1d3a`, `#ffffff` defaults | **keep** (Storybook knobs match production)                                                |
-| Notes / Drive primary fg `#003311` | brand Dark literal on light accents      | **brand primitive** → `var(--color-we-got-dark)` / `--color-ink` when touching those files |
+| File                               | Hex                                      | Recommendation                                                                                     |
+| ---------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `workspace-app-icons.ts`           | `#1B1D3A` (`WORKSPACE_HOME_ACCENT`)      | **keep** (same as `--workspace-home-bg`)                                                           |
+| `branding-cssprops.ts`             | `#1d6635`, `#1b1d3a`, `#ffffff` defaults | **keep** (Storybook knobs match production)                                                        |
+| Notes / Drive primary fg `#003311` | brand Dark literal on light accents      | **brand primitive** → `var(--color-we-got-dark)` / `--color-we-got-dark` when touching those files |
 
 ## How to shrink this list
 

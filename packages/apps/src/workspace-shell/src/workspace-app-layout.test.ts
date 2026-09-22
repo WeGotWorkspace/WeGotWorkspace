@@ -56,13 +56,13 @@ describe("WorkspaceUserFooter logout chrome", () => {
       /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(\s*in oklab,\s*#000000 16%,\s*var\(--app-sidebar-bg/,
     );
     expect(css).toMatch(
-      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--color-ink\)/,
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).not.toMatch(
       /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--button-active-color/,
     );
     expect(css).not.toMatch(
-      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 12%,\s*transparent/,
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(in oklab,\s*var\(--color-we-got-dark\) 12%,\s*transparent/,
     );
   });
 });

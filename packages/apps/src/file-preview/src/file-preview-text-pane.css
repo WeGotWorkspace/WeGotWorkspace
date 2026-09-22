@@ -3,7 +3,7 @@
 .file-preview-text-pane {
   @apply relative flex h-full w-full min-h-0 flex-col overflow-hidden;
   background-color: color-mix(in oklab, var(--color-background, #fff) 92%, transparent);
-  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 72%, transparent);
 }
 
 .file-preview-text-pane__sheet {

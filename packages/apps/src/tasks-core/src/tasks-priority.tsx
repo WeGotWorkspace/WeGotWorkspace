@@ -24,7 +24,7 @@ export const TASK_PRIORITY_FLAG_COLORS = {
   high: "#ef4444",
   medium: "#eab308",
   low: "#3b82f6",
-  none: "color-mix(in oklab, var(--color-ink) 40%, transparent)",
+  none: "color-mix(in oklab, var(--color-we-got-dark) 40%, transparent)",
 } as const;
 
 /** Pre-fix API responses used inverted JMAP-ish values for iCal 1/5/9. */

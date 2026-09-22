@@ -37,9 +37,9 @@ describe("notes workspace detail tint (computed)", () => {
     const lightRoot = light.container.querySelector(".notes-workspace") as HTMLElement;
     expect(
       getComputedStyle(lightRoot).getPropertyValue("--notes-detail-contrast-fg").trim(),
-    ).not.toBe("var(--color-ink)");
+    ).not.toBe("var(--color-we-got-dark)");
     expect(getComputedStyle(lightRoot).getPropertyValue("--notes-detail-check-fg").trim()).toBe(
-      "var(--color-ink)",
+      "var(--color-we-got-dark)",
     );
     light.unmount();
 
@@ -47,9 +47,9 @@ describe("notes workspace detail tint (computed)", () => {
     const darkRoot = dark.container.querySelector(".notes-workspace") as HTMLElement;
     expect(
       getComputedStyle(darkRoot).getPropertyValue("--notes-detail-contrast-fg").trim(),
-    ).not.toBe("var(--color-ink)");
+    ).not.toBe("var(--color-we-got-dark)");
     expect(getComputedStyle(darkRoot).getPropertyValue("--notes-detail-check-fg").trim()).toBe(
-      "var(--color-cream)",
+      "var(--color-we-got-soft)",
     );
     dark.unmount();
   });

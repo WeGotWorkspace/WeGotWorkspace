@@ -21,7 +21,7 @@ describe("calendar event dialog CSS ownership", () => {
     expect(css).toContain("--button-primary-bg: var(--workspace-accent)");
     expect(css).not.toContain("--button-primary-bg: var(--workspace-accent-strong)");
     expect(css).toMatch(
-      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
   });
 

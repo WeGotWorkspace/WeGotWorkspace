@@ -4,7 +4,7 @@
   @apply max-w-full min-w-0 rounded-lg border p-4;
   background-color: var(--callout-bg);
   border-color: var(--callout-border);
-  color: var(--callout-text, var(--color-ink));
+  color: var(--callout-text, var(--color-we-got-dark));
 }
 
 .callout .menu-item {

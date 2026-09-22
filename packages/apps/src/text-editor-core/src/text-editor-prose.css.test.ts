@@ -34,7 +34,7 @@ describe("text editor prose typography tokens", () => {
     expect(css).toMatch(
       /\.text-editor-image:hover \.text-editor-image__delete-host,[\s\S]*\.ProseMirror-selectednode \.text-editor-image__delete-host/,
     );
-    expect(css).toMatch(/--text-editor-image-delete-surface:\s*var\(--color-cream\)/);
+    expect(css).toMatch(/--text-editor-image-delete-surface:\s*var\(--color-we-got-soft\)/);
     const chipRule = css.match(
       /\.text-editor-image \.text-editor-image__delete,[\s\S]*?background-color:\s*var\(--text-editor-image-delete-surface\);/,
     )?.[0];

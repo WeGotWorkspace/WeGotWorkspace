@@ -65,7 +65,7 @@ export const MailStyleTouch: Story = {
     },
     swipeRightAction: {
       icon: <Archive className="size-5" />,
-      color: "var(--color-ink)",
+      color: "var(--color-we-got-dark)",
       label: "Archive",
       onActivate: () => {},
     },

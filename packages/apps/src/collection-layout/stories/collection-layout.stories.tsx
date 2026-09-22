@@ -18,13 +18,13 @@ export const Default: Story = {
         <CollectionHeader>
           <h2
             className="text-3xl leading-none flex-1 min-w-0 truncate"
-            style={{ fontFamily: "var(--font-serif)", color: "var(--color-ink)" }}
+            style={{ fontFamily: "var(--font-serif)", color: "var(--color-we-got-dark)" }}
           >
             All Items
           </h2>
           <p
             className="text-[10px] mt-2 uppercase tracking-[0.18em]"
-            style={{ color: "color-mix(in oklab, var(--color-ink) 45%, transparent)" }}
+            style={{ color: "color-mix(in oklab, var(--color-we-got-dark) 45%, transparent)" }}
           >
             12 Items
           </p>

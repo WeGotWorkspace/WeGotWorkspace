@@ -44,5 +44,5 @@
 
 .color-swatch-trigger__chevron {
   @apply size-3.5 shrink-0 opacity-70;
-  color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 70%, transparent);
 }

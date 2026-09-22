@@ -18,7 +18,9 @@ describe("CalendarListView heading CSS", () => {
     expect(css).toMatch(
       /\.agenda-day-heading\.list-sticky-header \{[\s\S]*--list-sticky-header-bg/,
     );
-    expect(css).toMatch(/\.agenda-day-heading\.list-sticky-header \{[\s\S]*var\(--color-cream\)/);
+    expect(css).toMatch(
+      /\.agenda-day-heading\.list-sticky-header \{[\s\S]*var\(--color-we-got-soft\)/,
+    );
     expect(css).not.toMatch(
       /\.agenda-day-heading\.list-sticky-header \{[\s\S]*background-color:[^;]*#fff(?:fff)?\b/i,
     );

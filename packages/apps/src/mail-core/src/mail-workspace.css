@@ -13,31 +13,47 @@
 .mail-workspace {
   --workspace-accent: var(--color-we-got-red);
   --color-emerald: var(--workspace-accent);
-  --workspace-root-bg: var(--color-cream);
-  --workspace-detail-bg: var(--color-cream);
+  --workspace-root-bg: var(--color-we-got-soft);
+  --workspace-detail-bg: var(--color-we-got-soft);
 
-  --app-sidebar-border-color: color-mix(in oklch, var(--color-ink) 12%, transparent);
-  --app-sidebar-color: var(--color-ink);
-  --sidebar-logo-close-button-color: var(--color-ink);
-  --workspace-user-footer-link-hover-bg: color-mix(in oklch, var(--color-ink) 10%, transparent);
+  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
+  --app-sidebar-color: var(--color-we-got-dark);
+  --sidebar-logo-close-button-color: var(--color-we-got-dark);
+  --workspace-user-footer-link-hover-bg: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
   --mail-state-accent: var(--workspace-accent);
 
-  --workspace-user-footer-text-color: color-mix(in oklch, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-border-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-ink) 6%, transparent);
+  --workspace-user-footer-text-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 70%,
+    transparent
+  );
+  --workspace-user-footer-border-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --workspace-user-footer-link-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 65%,
+    transparent
+  );
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
 
-  --mail-detail-tag-primary-fg: var(--color-cream);
-  --mail-detail-tag-primary-bg: color-mix(in oklch, var(--color-ink) 88%, transparent);
-  --mail-detail-tag-muted-bg: color-mix(in oklch, var(--color-ink) 6%, transparent);
-  --mail-detail-tag-muted-fg: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --mail-detail-tag-primary-fg: var(--color-we-got-soft);
+  --mail-detail-tag-primary-bg: color-mix(in oklch, var(--color-we-got-dark) 88%, transparent);
+  --mail-detail-tag-muted-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
+  --mail-detail-tag-muted-fg: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
 
-  --loading-spinner-color: color-mix(in oklch, var(--color-ink) 45%, transparent);
+  --loading-spinner-color: color-mix(in oklch, var(--color-we-got-dark) 45%, transparent);
   --mail-swipe-star-color: var(--color-emerald);
-  --mail-swipe-archive-color: var(--color-ink);
+  --mail-swipe-archive-color: var(--color-we-got-dark);
 
-  --field-label-color: color-mix(in oklch, var(--color-ink) 68%, transparent);
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-ink));
+  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
+  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-we-got-dark));
   --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
@@ -52,12 +68,12 @@
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
 
   /*
@@ -67,31 +83,35 @@
    * selected-hover 48% ~8.0:1). Hover fg is ink on `.app-sidebar__scroll`
    * so workspace accent-strong does not leak onto nav rows.
    */
-  --app-sidebar-item-hover-bg: color-mix(in oklch, var(--workspace-accent) 28%, var(--color-cream));
+  --app-sidebar-item-hover-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 28%,
+    var(--color-we-got-soft)
+  );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
     var(--workspace-accent) 38%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 48%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
-  --app-sidebar-item-selected-color: var(--color-ink);
+  --app-sidebar-item-selected-color: var(--color-we-got-dark);
 }
 
 /** App switcher lockup: mail.svg literals (`#de4b0e` tile / `#ffbdc2` marks). */
 .mail-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   /* Darken tile slightly so pink marks clear WCAG UI 3:1 (~3.0:1). */
-  background-color: color-mix(in oklch, var(--color-we-got-red) 90%, var(--color-ink));
+  background-color: color-mix(in oklch, var(--color-we-got-red) 90%, var(--color-we-got-dark));
 }
 
 .mail-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: color-mix(in oklch, var(--color-we-got-red) 90%, var(--color-ink));
+  --wai-bg: color-mix(in oklch, var(--color-we-got-red) 90%, var(--color-we-got-dark));
   --wai-fg: var(--color-we-got-pink);
 }
 
@@ -102,10 +122,10 @@
 }
 
 .mail-workspace .app-sidebar__scroll {
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-ink));
+  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-we-got-dark));
   --button-primary-fg: #ffffff;
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--color-ink);
+  --button-outline-hover-color: var(--color-we-got-dark);
 }
 
 .mail-workspace .mail-state-accent {
@@ -120,7 +140,7 @@
 .mail-workspace .mail-detail-view__title {
   @apply text-title mb-8 tracking-tight;
   line-height: 1.1;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 @media (min-width: 768px) {
@@ -135,15 +155,15 @@
   width: 100%;
   padding-block: 1rem;
   margin-bottom: 2.5rem;
-  border-top: 1px solid color-mix(in oklch, var(--color-ink) 10%, transparent);
-  border-bottom: 1px solid color-mix(in oklch, var(--color-ink) 10%, transparent);
+  border-top: 1px solid color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
+  border-bottom: 1px solid color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
 }
 
 .mail-workspace .mail-detail-view__sender-row .user-avatar {
   --user-avatar-bg: var(--workspace-accent);
   --user-avatar-fg: #ffffff;
-  --user-avatar-label-color: var(--color-ink);
-  --user-avatar-subtitle-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --user-avatar-label-color: var(--color-we-got-dark);
+  --user-avatar-subtitle-color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
   --user-avatar-gap: 0.75rem;
   width: 100%;
 }
@@ -154,7 +174,7 @@
   font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
   font-size: 1rem;
   line-height: 1.75;
-  color: color-mix(in oklch, var(--color-ink) 82%, transparent);
+  color: color-mix(in oklch, var(--color-we-got-dark) 82%, transparent);
 }
 
 .mail-workspace .mail-detail-view__body-frame {
@@ -163,7 +183,7 @@
   min-height: 160px;
   overflow: hidden;
   border-radius: 0.375rem;
-  border: 1px solid color-mix(in oklch, var(--color-ink) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   background: transparent;
 }
 
@@ -185,18 +205,18 @@
   --workspace-accent: var(--color-we-got-red);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-ink));
+  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-we-got-dark));
   --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--color-ink) 68%, transparent);
-  --segmented-control-track-active-bg: var(--color-ink);
+  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
+  --segmented-control-track-active-bg: var(--color-we-got-dark);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 .mail-compose-dialog-surface {
-  background: var(--color-cream);
+  background: var(--color-we-got-soft);
 }
 
 .mail-compose-dialog.mail-compose-dialog-surface {
@@ -229,7 +249,7 @@
 .mail-compose-view__header {
   flex-shrink: 0;
   padding: 1.25rem 1.5rem 1rem;
-  border-bottom: 1px solid color-mix(in oklch, var(--color-ink) 10%, transparent);
+  border-bottom: 1px solid color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
 }
 
 .mail-compose-view__body {
@@ -318,8 +338,8 @@
   top: 0;
   z-index: 10;
   flex-shrink: 0;
-  border-bottom: 1px solid color-mix(in oklch, var(--color-ink) 10%, transparent);
-  background: var(--color-cream);
+  border-bottom: 1px solid color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
+  background: var(--color-we-got-soft);
   backdrop-filter: none;
 }
 
@@ -370,8 +390,8 @@
   gap: 0.75rem;
   margin: 0;
   padding: 1rem 1.5rem 1.25rem;
-  border-top: 1px solid color-mix(in oklch, var(--color-ink) 10%, transparent);
-  background: var(--color-cream);
+  border-top: 1px solid color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
+  background: var(--color-we-got-soft);
 }
 
 .mail-compose-dialog__footer-start,
@@ -399,7 +419,7 @@
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
 }
 
 .mail-workspace .mail-attachments__grid {
@@ -430,26 +450,26 @@
 /* Storybook scopes — mirror workspace chrome without inline presets */
 .mail-story-scope {
   min-height: 100dvh;
-  background-color: var(--workspace-root-bg, var(--color-cream));
+  background-color: var(--workspace-root-bg, var(--color-we-got-soft));
 }
 
 .mail-story-scope--list-column {
   display: flex;
   min-height: 100dvh;
   justify-content: center;
-  background-color: var(--workspace-root-bg, var(--color-cream));
+  background-color: var(--workspace-root-bg, var(--color-we-got-soft));
 }
 
 .mail-story-scope--detail {
   min-height: 100dvh;
-  background-color: var(--color-cream);
+  background-color: var(--color-we-got-soft);
 }
 
 .mail-story-scope--compose-dialog {
-  background-color: color-mix(in oklch, var(--color-ink) 20%, transparent);
+  background-color: color-mix(in oklch, var(--color-we-got-dark) 20%, transparent);
 }
 
 .mail-story-scope__action-bar-shell {
-  border-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  background-color: var(--color-cream);
+  border-color: color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
+  background-color: var(--color-we-got-soft);
 }

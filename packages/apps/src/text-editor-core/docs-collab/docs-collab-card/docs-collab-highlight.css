@@ -3,7 +3,7 @@
 .docs-collab-highlight {
   @apply text-sm leading-relaxed;
   background: var(--docs-collab-highlight-bg);
-  color: var(--docs-collab-highlight-fg, var(--docs-text, var(--color-ink)));
+  color: var(--docs-collab-highlight-fg, var(--docs-text, var(--color-we-got-dark)));
 }
 
 .docs-collab-highlight--insertion {
@@ -28,7 +28,7 @@
   );
   --docs-collab-highlight-fg: color-mix(
     in oklab,
-    var(--docs-text, var(--color-ink)) 55%,
+    var(--docs-text, var(--color-we-got-dark)) 55%,
     transparent
   );
   @apply line-through;

@@ -13,7 +13,7 @@ const brandingMeta = createBrandingStoryMeta({
     docs: {
       description: {
         component:
-          "Designer branding for the cream auth shell: `--color-cream` / `--color-ink` via cssprops, " +
+          "Designer branding for the cream auth shell: `--color-we-got-soft` / `--color-we-got-dark` via cssprops, " +
           "and BrandLockup suite-mark SVG slot (`iconPreset` / `svgMarkup`). " +
           "No per-app accent — production login uses the same paper as home, not `--workspace-home-bg`. " +
           "State matrix: sign-in (recovery on/off), connect-assistant return path, forgot success, reset form / invalid token.",

@@ -14,10 +14,10 @@ describe("mail workspace branding chrome", () => {
       /\.mail-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-red\)/,
     );
     expect(colorCss).toMatch(
-      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(css).toMatch(
-      /\.mail-workspace \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 90%,\s*var\(--color-ink\)\)/,
+      /\.mail-workspace \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 90%,\s*var\(--color-we-got-dark\)\)/,
     );
     expect(css).toMatch(/\.mail-workspace \{[\s\S]*?--button-primary-fg:\s*#ffffff/);
     expect(css).toMatch(
@@ -32,10 +32,10 @@ describe("mail workspace branding chrome", () => {
 
   it("keeps switch-trigger lockup on red tile + pink marks", () => {
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*color-mix\(in oklch,\s*var\(--color-we-got-red\) 90%,\s*var\(--color-ink\)\)/,
+      /\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*color-mix\(in oklch,\s*var\(--color-we-got-red\) 90%,\s*var\(--color-we-got-dark\)\)/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*color-mix\(in oklch,\s*var\(--color-we-got-red\) 90%,\s*var\(--color-ink\)\)/,
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*color-mix\(in oklch,\s*var\(--color-we-got-red\) 90%,\s*var\(--color-we-got-dark\)\)/,
     );
     expect(css).toMatch(
       /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--color-we-got-pink\)/,
@@ -44,23 +44,25 @@ describe("mail workspace branding chrome", () => {
 
   it("keeps AA-tuned item washes and accent-strong header chrome", () => {
     expect(colorCss).toMatch(
-      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) var\(--workspace-sidebar-mix\),\s*var\(--color-cream\)/,
-    );
-    expect(css).toMatch(/\.mail-workspace \{[\s\S]*--app-sidebar-color:\s*var\(--color-ink\)/);
-    expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-cream/,
+      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) var\(--workspace-sidebar-mix\),\s*var\(--color-we-got-soft\)/,
     );
     expect(css).toMatch(
-      /\.mail-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--color-cream/,
+      /\.mail-workspace \{[\s\S]*--app-sidebar-color:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
-      /\.mail-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--color-cream/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /\.mail-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-ink\)/,
+      /\.mail-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /\.mail-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-ink\)/,
+      /\.mail-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--color-we-got-soft/,
+    );
+    expect(css).toMatch(
+      /\.mail-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,
+    );
+    expect(css).toMatch(
+      /\.mail-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
       /\.mail-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--workspace-accent-strong\)/,
@@ -72,7 +74,7 @@ describe("mail workspace branding chrome", () => {
       /:is\(\.mail-compose-dialog-surface,\s*\.mail-dialog-surface\) \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-red\)/,
     );
     expect(css).toMatch(
-      /:is\(\.mail-compose-dialog-surface,\s*\.mail-dialog-surface\) \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 90%,\s*var\(--color-ink\)\)/,
+      /:is\(\.mail-compose-dialog-surface,\s*\.mail-dialog-surface\) \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 90%,\s*var\(--color-we-got-dark\)\)/,
     );
   });
 });

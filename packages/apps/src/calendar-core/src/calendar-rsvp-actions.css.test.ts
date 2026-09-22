@@ -18,7 +18,7 @@ describe("calendar-rsvp-actions chrome", () => {
       /\.calendar-rsvp-actions \{[\s\S]*--segmented-control-active-fg:\s*var\(\s*--button-active-color/,
     );
     expect(css).not.toMatch(
-      /\.calendar-rsvp-actions \{[\s\S]*--segmented-control-active-bg:\s*color-mix\(in oklch,\s*var\(--color-ink\)\s*8%/,
+      /\.calendar-rsvp-actions \{[\s\S]*--segmented-control-active-bg:\s*color-mix\(in oklch,\s*var\(--color-we-got-dark\)\s*8%/,
     );
   });
 

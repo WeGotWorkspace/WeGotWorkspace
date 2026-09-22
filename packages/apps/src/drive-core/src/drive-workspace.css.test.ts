@@ -13,14 +13,14 @@ describe("drive workspace brand accent", () => {
       /\.drive-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-brat\)/i,
     );
     expect(colorCss).toMatch(
-      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(css).toMatch(
       /\.drive-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
     expect(css).not.toMatch(/--workspace-accent:\s*#10b981/i);
     expect(css).not.toMatch(
-      /--workspace-accent-strong:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 55%,\s*var\(--color-ink\)\)/,
+      /--workspace-accent-strong:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 55%,\s*var\(--color-we-got-dark\)\)/,
     );
   });
 
@@ -31,7 +31,9 @@ describe("drive workspace brand accent", () => {
     expect(css).toMatch(
       /\.drive-dialog-surface \{[\s\S]*--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
-    expect(css).toMatch(/\.drive-dialog-surface \{[\s\S]*--button-primary-fg:\s*var\(--color-ink/);
+    expect(css).toMatch(
+      /\.drive-dialog-surface \{[\s\S]*--button-primary-fg:\s*var\(--color-we-got-dark/,
+    );
   });
 });
 
@@ -56,17 +58,17 @@ describe("drive workspace outline-active tokens", () => {
 
   it("publishes AppSidebar item washes stepped above the 32% rail with ink on-color", () => {
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 42%,\s*var\(--color-cream/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 42%,\s*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 55%,\s*var\(--color-cream/,
+      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 55%,\s*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 65%,\s*var\(--color-cream/,
+      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 65%,\s*var\(--color-we-got-soft/,
     );
-    expect(css).toMatch(/--app-sidebar-item-selected-color:\s*var\(--color-ink\)/);
+    expect(css).toMatch(/--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/);
     expect(css).toMatch(
-      /\.drive-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-ink\)/,
+      /\.drive-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
     );
   });
 });
@@ -85,7 +87,7 @@ describe("drive workspace app-switch lockup", () => {
     expect(css).toMatch(/--app-switch-icon-bg:\s*#8ace00/i);
     expect(css).toMatch(/--app-switch-icon-fg:\s*#1d6635/i);
     expect(css).not.toMatch(/--app-switch-icon-bg:\s*var\(--workspace-accent\)/);
-    expect(css).not.toMatch(/--app-switch-icon-fg:\s*var\(--color-cream/);
+    expect(css).not.toMatch(/--app-switch-icon-fg:\s*var\(--color-we-got-soft/);
     expect(css).not.toMatch(/--wai-bg:\s*transparent/);
     expect(css).not.toMatch(/--wai-fg:\s*var\(--app-switch-icon-fg\)/);
   });
@@ -97,7 +99,7 @@ describe("drive workspace sidebar primary", () => {
       /\.drive-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
     expect(css).toMatch(
-      /\.drive-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*var\(--color-ink\)/,
+      /\.drive-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*var\(--color-we-got-dark\)/,
     );
   });
 

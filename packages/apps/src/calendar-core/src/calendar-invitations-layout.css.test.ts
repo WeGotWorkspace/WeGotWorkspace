@@ -41,7 +41,7 @@ describe("calendar invitations dock width", () => {
       /\.calendar-invitations-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-prince\)/,
     );
     expect(panel).toMatch(
-      /\.calendar-invitations-panel-drawer \{[\s\S]*--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
+      /\.calendar-invitations-panel-drawer \{[\s\S]*--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(panel).not.toMatch(
       /\.calendar-invitations-panel-drawer \{[\s\S]*--docs-collab-sidebar-panel-wash:/,

@@ -1,7 +1,7 @@
 /** Matches provisioned General (`CalendarColorPalette::NOTE_GENERAL`). */
 export const DEFAULT_NOTEBOOK_COLOR = "#14b8a6";
 
-/** Same hexes as `--color-ink` / `--color-cream` (We Got Dark / Soft). */
+/** Same hexes as `--color-we-got-dark` / `--color-we-got-soft` (We Got Dark / Soft). */
 export const NOTES_INK_HEX = "#003311";
 export const NOTES_CREAM_HEX = "#fff5e9";
 
@@ -63,10 +63,10 @@ function contrastRatio(background: string, foreground: string): number {
  * from workspace CSS (ink mixed onto the light sheet).
  */
 export function notebookContrastFg(background: string): string {
-  if (!/^#[0-9A-F]{6}$/i.test(background.trim())) return "var(--color-ink)";
+  if (!/^#[0-9A-F]{6}$/i.test(background.trim())) return "var(--color-we-got-dark)";
   const ink = contrastRatio(background, NOTES_INK_HEX);
   const cream = contrastRatio(background, NOTES_CREAM_HEX);
-  return cream > ink ? "var(--color-cream)" : "var(--color-ink)";
+  return cream > ink ? "var(--color-we-got-soft)" : "var(--color-we-got-dark)";
 }
 
 export type NotesDetailTintStyle = {

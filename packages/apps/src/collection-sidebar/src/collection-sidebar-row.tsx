@@ -126,8 +126,8 @@ export function CollectionSidebarRow({
       )}
       style={
         {
-          "--collection-row-color": color || "var(--color-ink)",
-          "--calendar-row-color": color || "var(--color-ink)",
+          "--collection-row-color": color || "var(--color-we-got-dark)",
+          "--calendar-row-color": color || "var(--color-we-got-dark)",
           ...rootProps?.style,
         } as CSSProperties
       }

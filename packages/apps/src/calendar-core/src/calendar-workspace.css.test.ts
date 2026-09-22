@@ -20,7 +20,7 @@ describe("calendar workspace brand accent", () => {
       /\.calendar-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-prince\)/,
     );
     expect(colorCss).toMatch(
-      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(css).toMatch(
       /\.calendar-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,
@@ -76,7 +76,7 @@ describe("calendar workspace header CSS", () => {
       /\.calendar-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--workspace-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-color:\s*var\(--color-ink\)/,
+      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-color:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--workspace-accent-strong\)/,
@@ -107,19 +107,19 @@ describe("calendar workspace header CSS", () => {
 
   it("brightens AppSidebar selected wash for purple via --app-sidebar-item-*", () => {
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-cream/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--color-cream/,
+      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--color-cream/,
+      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-ink\)/,
+      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-ink\)/,
+      /\.calendar-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
     );
   });
 

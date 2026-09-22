@@ -90,8 +90,8 @@
    */
   --text-editor-format-bar-wash: color-mix(
     in oklab,
-    var(--workspace-accent, var(--color-ink)) 5%,
-    var(--color-cream)
+    var(--workspace-accent, var(--color-we-got-dark)) 5%,
+    var(--color-we-got-soft)
   );
   background: var(--text-editor-format-bar-wash);
   padding: 0.375rem 0.5rem;
@@ -651,7 +651,7 @@
     --menu-item-severity-color,
     var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
   );
-  --text-editor-image-delete-surface: var(--color-cream);
+  --text-editor-image-delete-surface: var(--color-we-got-soft);
   color: var(--button-severity-color);
   background-color: var(--text-editor-image-delete-surface);
   box-shadow: var(--control-shadow);
@@ -1037,10 +1037,10 @@
  * IconButtons stay readable on cream/oklch backgrounds.
  */
 :is(.mail-compose-dialog-surface .mail-compose-view__message-editor.text-editor) {
-  --foreground: var(--color-ink);
-  --accent: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --accent-foreground: var(--color-ink);
-  --border: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --foreground: var(--color-we-got-dark);
+  --accent: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
+  --accent-foreground: var(--color-we-got-dark);
+  --border: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
 }
 
 /* Compact body for format-bar-only Storybook previews */

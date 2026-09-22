@@ -57,7 +57,7 @@ describe("docs-collab presence avatar chrome", () => {
     );
     expect(chromeCss).not.toMatch(/--user-avatar-bg:/);
     expect(chromeCss).toMatch(
-      /\.docs-collab-presence-chrome \{[\s\S]*--user-avatar-fg:\s*var\(--color-ink\)/,
+      /\.docs-collab-presence-chrome \{[\s\S]*--user-avatar-fg:\s*var\(--color-we-got-dark\)/,
     );
 
     expect(notesCss).toMatch(

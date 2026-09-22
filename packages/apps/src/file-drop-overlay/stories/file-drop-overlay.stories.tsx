@@ -9,7 +9,7 @@ const meta = {
     layout: "fullscreen",
   },
   render: (args) => (
-    <div className="relative h-64 w-full bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+    <div className="relative h-64 w-full bg-[color-mix(in_oklab,var(--color-we-got-dark)_6%,transparent)]">
       <FileDropOverlay {...args} />
     </div>
   ),

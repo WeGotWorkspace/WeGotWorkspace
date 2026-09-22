@@ -10,7 +10,7 @@
 .dropdown-menu-ui__sub-trigger[data-state="open"] {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)
+    color-mix(in oklab, var(--workspace-accent, var(--color-we-got-dark)) 14%, transparent)
   );
   color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
 }
@@ -77,7 +77,7 @@
 .dropdown-menu-ui__item:focus:not(.menu-item--severity-danger) {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)
+    color-mix(in oklab, var(--workspace-accent, var(--color-we-got-dark)) 14%, transparent)
   );
   color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
 }
@@ -104,7 +104,7 @@
 .dropdown-menu-ui__radio-item:focus {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)
+    color-mix(in oklab, var(--workspace-accent, var(--color-we-got-dark)) 14%, transparent)
   );
   color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
 }
@@ -113,7 +113,11 @@
 .dropdown-menu-ui__radio-item[data-state="checked"] {
   background-color: var(
     --menu-item-selected-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 18%, var(--color-cream))
+    color-mix(
+      in oklab,
+      var(--workspace-accent, var(--color-we-got-dark)) 18%,
+      var(--color-we-got-soft)
+    )
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));
 }
@@ -122,7 +126,11 @@
 .dropdown-menu-ui__radio-item[data-state="checked"]:focus {
   background-color: var(
     --menu-item-selected-hover-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 24%, var(--color-cream))
+    color-mix(
+      in oklab,
+      var(--workspace-accent, var(--color-we-got-dark)) 24%,
+      var(--color-we-got-soft)
+    )
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));
 }

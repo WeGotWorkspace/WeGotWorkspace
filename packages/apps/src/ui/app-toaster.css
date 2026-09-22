@@ -76,14 +76,14 @@
 [data-sonner-toast] .callout--success,
 [data-sonner-toast] .callout--warning,
 [data-sonner-toast] .callout--error {
-  --callout-bg: color-mix(in oklab, var(--color-cream) 90%, transparent);
+  --callout-bg: color-mix(in oklab, var(--color-we-got-soft) 90%, transparent);
   --callout-border: var(--control-border-color);
-  --callout-text: var(--color-ink);
-  --callout-icon-color: var(--color-ink);
-  --button-outline-color: var(--color-ink);
+  --callout-text: var(--color-we-got-dark);
+  --callout-icon-color: var(--color-we-got-dark);
+  --button-outline-color: var(--color-we-got-dark);
   --button-outline-border-color: var(--control-border-color);
-  --button-outline-hover-background: color-mix(in oklab, var(--color-ink) 8%, transparent);
-  --button-outline-shadow-color: var(--color-ink);
+  --button-outline-hover-background: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
+  --button-outline-shadow-color: var(--color-we-got-dark);
   background-color: var(--callout-bg);
   border-color: var(--callout-border);
   color: var(--callout-text);
@@ -102,7 +102,7 @@
   font-weight: 600;
   font-size: 0.875rem;
   line-height: 1.25rem;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
   opacity: 1;
   overflow: visible;
   white-space: normal;
@@ -115,7 +115,7 @@
   font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 500;
-  color: color-mix(in oklab, var(--color-ink) 68%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
   opacity: 1;
   overflow: visible;
   white-space: normal;
@@ -163,13 +163,13 @@
   display: block;
   margin-top: 0.125rem;
   font-weight: 400;
-  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 72%, transparent);
 }
 
 [data-sonner-toast] .menu-item {
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 [data-sonner-toast] .callout__icon {
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }

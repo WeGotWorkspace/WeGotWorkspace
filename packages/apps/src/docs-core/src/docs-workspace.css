@@ -15,10 +15,10 @@
   /* Concrete blue so Storybook a11y never samples a missing accent as page gray. */
   --app-sidebar-bg: #0045ff;
   --color-emerald: var(--workspace-accent);
-  --docs-surface: var(--color-cream);
-  --background: var(--color-cream);
+  --docs-surface: var(--color-we-got-soft);
+  --background: var(--color-we-got-soft);
   /* Editor desk around the white letter — sand cream, never gray/white. */
-  --docs-canvas: var(--color-cream);
+  --docs-canvas: var(--color-we-got-soft);
   --workspace-root-bg: var(--docs-surface);
   --workspace-main-bg: var(--docs-surface);
   --workspace-chrome-footer-bg: var(--docs-surface);
@@ -39,10 +39,10 @@
   --docs-comments-column-gap: 1rem;
   --workspace-panel-width: var(--docs-comments-column-width);
   --docs-stat-tag-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
-  --docs-stat-tag-color: color-mix(in oklch, var(--workspace-accent) 88%, var(--color-ink));
-  --docs-text: var(--color-ink);
-  --docs-muted: color-mix(in oklch, var(--color-ink) 65%, transparent);
-  --docs-border: color-mix(in oklch, var(--color-ink) 12%, transparent);
+  --docs-stat-tag-color: color-mix(in oklch, var(--workspace-accent) 88%, var(--color-we-got-dark));
+  --docs-text: var(--color-we-got-dark);
+  --docs-muted: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  --docs-border: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   /*
    * Shared horizontal inset for ViewHeader (`main-header`), format bar, and
    * detail footer — matches shell `p-4` / `md:p-6` (1rem → 1.5rem).
@@ -57,7 +57,7 @@
   --docs-collab-sidebar-panel-wash: color-mix(
     in oklch,
     var(--workspace-accent) 10%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --app-sidebar-border-color: color-mix(in oklch, #ffffff 18%, transparent);
   --app-sidebar-color: #ffffff;
@@ -85,12 +85,12 @@
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24).
    * Nav item SST lives on `.app-sidebar__scroll` (black→sidebar, white on-color). */
@@ -109,7 +109,7 @@
  */
 .docs-workspace .view-header {
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--color-ink);
+  --button-outline-color: var(--color-we-got-dark);
   --button-outline-hover-color: var(--workspace-accent-strong);
 }
 
@@ -134,22 +134,26 @@
 }
 
 /* Docs home and portaled Docs dialogs reuse Drive grid/list under `.drive-workspace`
-   for layout selectors. Remap drive accent tokens so tiles, list rows, view toggle,
-   and portaled menus use docs blue — not Drive green. Drive itself stays green. */
+   for layout selectors. `.drive-workspace` sets `--workspace-accent` to Brat, which
+   would win on that element and paint tiles green. Inherit Docs blue first, then
+   point emerald and primary fills at it. Drive itself stays green. */
 :is(.docs-workspace, .docs-dialog-surface) .drive-workspace {
+  --workspace-accent: inherit;
   --color-emerald: var(--workspace-accent);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
   --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
 }
@@ -178,11 +182,11 @@
 
 /*
  * Full-accent rail: remap ink + outline chrome on the whole aside (not only
- * scroll). Shared menu-item / field-label rules read `--color-ink`; without
+ * scroll). Shared menu-item / field-label rules read `--color-we-got-dark`; without
  * this remap they stay `#003311` on `#0045ff`.
  */
 .docs-workspace .app-sidebar {
-  --color-ink: #ffffff;
+  --color-we-got-dark: #ffffff;
   --field-label-color: color-mix(in oklch, #ffffff 72%, transparent);
   --button-outline-color: #ffffff;
   --button-outline-hover-color: #ffffff;
@@ -234,7 +238,7 @@
  * Mirror Mail scroll tokens for New primary + nav SST.
  */
 .docs-workspace .app-sidebar__scroll {
-  --color-ink: #ffffff;
+  --color-we-got-dark: #ffffff;
   --button-primary-bg: #ffffff;
   --button-primary-fg: var(--app-sidebar-bg);
   --button-outline-color: #ffffff;
@@ -254,7 +258,7 @@
  * (white on docs-sidebar), not workspace-root accent-on-white.
  */
 .docs-workspace .app-sidebar__notifications {
-  --color-ink: #ffffff;
+  --color-we-got-dark: #ffffff;
   --button-primary-bg: #ffffff;
   --button-primary-fg: var(--app-sidebar-bg);
   --notification-inbox-badge-bg: #ffffff;
@@ -262,7 +266,7 @@
 }
 
 .docs-workspace .app-sidebar__footer {
-  --color-ink: #ffffff;
+  --color-we-got-dark: #ffffff;
   --button-active-color: #ffffff;
   --button-outline-color: #ffffff;
   --button-outline-hover-color: #ffffff;
@@ -315,7 +319,7 @@
 
 .docs-workspace__header-actions {
   @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
-  --button-outline-color: var(--color-ink);
+  --button-outline-color: var(--color-we-got-dark);
 }
 
 .docs-workspace__header-actions-leading {
@@ -369,8 +373,8 @@
 /* Mute last-edited chip so it stays distinct from accent word/char stats. */
 .docs-workspace .workspace-detail-footer__meta-tag--edited {
   @apply shrink-0;
-  --tag-bg: color-mix(in oklch, var(--color-ink) 6%, transparent);
-  --tag-fg: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --tag-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
+  --tag-fg: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
 }
 
 .docs-workspace .workspace-detail-footer__meta-tag--edited .tag {

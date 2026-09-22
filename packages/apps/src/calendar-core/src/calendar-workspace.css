@@ -15,31 +15,47 @@
 .calendar-workspace {
   --workspace-accent: var(--color-we-got-prince);
   --workspace-sidebar-mix: 10%;
-  --calendar-muted: color-mix(in oklch, var(--color-ink) 80%, var(--color-cream));
+  --calendar-muted: color-mix(in oklch, var(--color-we-got-dark) 80%, var(--color-we-got-soft));
 
   --color-emerald: var(--workspace-accent);
-  --workspace-root-bg: var(--color-cream);
-  --workspace-detail-bg: var(--color-cream);
+  --workspace-root-bg: var(--color-we-got-soft);
+  --workspace-detail-bg: var(--color-we-got-soft);
   /* Sticky cream: shared `ui/list-sticky-header-sst.css` (`--list-sticky-header-bg`, `--_lc-surface-bg`). */
 
   /* Alias for DocsCollabSidebarPanel wash consumers (invitations = sidebar tint). */
   --docs-collab-sidebar-panel-wash: var(--app-sidebar-bg);
-  --app-sidebar-border-color: color-mix(in oklch, var(--color-ink) 12%, transparent);
-  --app-sidebar-color: var(--color-ink);
-  --sidebar-logo-close-button-color: var(--color-ink);
+  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
+  --app-sidebar-color: var(--color-we-got-dark);
+  --sidebar-logo-close-button-color: var(--color-we-got-dark);
   --sidebar-badge-fg: var(--workspace-accent);
-  --workspace-user-footer-link-hover-bg: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-text-color: color-mix(in oklch, var(--color-ink) 80%, var(--color-cream));
+  --workspace-user-footer-link-hover-bg: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --workspace-user-footer-text-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 80%,
+    var(--color-we-got-soft)
+  );
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--color-ink) 80%,
-    var(--color-cream)
+    var(--color-we-got-dark) 80%,
+    var(--color-we-got-soft)
   );
-  --workspace-user-footer-border-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 85%, var(--color-cream));
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-ink) 6%, transparent);
+  --workspace-user-footer-border-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --workspace-user-footer-link-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 85%,
+    var(--color-we-got-soft)
+  );
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
 
-  --field-label-color: var(--color-ink);
+  --field-label-color: var(--color-we-got-dark);
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
@@ -52,12 +68,12 @@
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
 
   /*
@@ -67,18 +83,22 @@
    * selected-hover 48% ~6.7:1). Hover fg is ink on `.app-sidebar__scroll`
    * so workspace accent-strong does not leak onto nav rows.
    */
-  --app-sidebar-item-hover-bg: color-mix(in oklch, var(--workspace-accent) 28%, var(--color-cream));
+  --app-sidebar-item-hover-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 28%,
+    var(--color-we-got-soft)
+  );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
     var(--workspace-accent) 38%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 48%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
-  --app-sidebar-item-selected-color: var(--color-ink);
+  --app-sidebar-item-selected-color: var(--color-we-got-dark);
 
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
      fills the viewport instead of the default centered 42rem measure. */
@@ -88,10 +108,10 @@
   --lc-higlight-color: var(--workspace-accent);
 
   /* Docs comments/review panel tokens reused by the invitations inbox. */
-  --docs-surface: var(--color-cream);
-  --docs-text: var(--color-ink);
+  --docs-surface: var(--color-we-got-soft);
+  --docs-text: var(--color-we-got-dark);
   --docs-muted: var(--calendar-muted);
-  --docs-border: color-mix(in oklch, var(--color-ink) 12%, transparent);
+  --docs-border: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   /* 23rem fits Accept | Maybe | Decline on one line inside invitation cards. */
   --calendar-invitations-column-width: 23rem;
   --workspace-panel-width: var(--calendar-invitations-column-width);
@@ -101,7 +121,7 @@
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--color-ink);
+  --button-outline-hover-color: var(--color-we-got-dark);
 }
 
 /** App switcher lockup: calendar.svg literals (`#ffbdc2` tile / `#962fa8` marks). */
@@ -129,7 +149,7 @@
 .calendar-workspace .view-header {
   /* Soft `--control-radius` is global (styles.css); header only owns outline washes. */
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--color-ink);
+  --button-outline-color: var(--color-we-got-dark);
   --button-outline-hover-color: var(--workspace-accent-strong);
   --select-trigger-color: var(--button-outline-color);
   --segmented-control-color: var(--button-outline-color);
@@ -272,7 +292,7 @@
 .calendar-workspace .calendar-header-actions .calendar-view-select {
   width: auto;
   min-width: 7rem;
-  background-color: var(--color-cream);
+  background-color: var(--color-we-got-soft);
 }
 
 .calendar-workspace .calendar-sidebar-dot {
@@ -420,12 +440,12 @@
     bottom: max(1rem, env(safe-area-inset-bottom, 0px));
     left: auto;
     z-index: calc(var(--_lc-z-sticky, 30) + 10);
-    border-color: color-mix(in oklch, var(--color-ink) 16%, transparent);
+    border-color: color-mix(in oklch, var(--color-we-got-dark) 16%, transparent);
     box-shadow:
-      0 1px 2px color-mix(in oklch, var(--color-ink) 10%, transparent),
-      0 10px 28px color-mix(in oklch, var(--color-ink) 22%, transparent);
-    --collection-search-input-bg: color-mix(in oklch, var(--color-cream) 78%, transparent);
-    --collection-search-input-color: var(--color-ink);
+      0 1px 2px color-mix(in oklch, var(--color-we-got-dark) 10%, transparent),
+      0 10px 28px color-mix(in oklch, var(--color-we-got-dark) 22%, transparent);
+    --collection-search-input-bg: color-mix(in oklch, var(--color-we-got-soft) 78%, transparent);
+    --collection-search-input-color: var(--color-we-got-dark);
   }
 
   .calendar-workspace .calendar-search-field--expanded {
@@ -449,12 +469,16 @@
   }
 
   .calendar-workspace .calendar-search-field:focus-within {
-    --collection-search-input-bg: color-mix(in oklch, var(--color-ink) 6%, var(--color-cream));
+    --collection-search-input-bg: color-mix(
+      in oklch,
+      var(--color-we-got-dark) 6%,
+      var(--color-we-got-soft)
+    );
     @apply shadow-xl;
   }
 
   .calendar-workspace .calendar-search-field:focus-within:has(:focus-visible) {
-    outline: 2px solid color-mix(in oklch, var(--color-ink) 35%, transparent);
+    outline: 2px solid color-mix(in oklch, var(--color-we-got-dark) 35%, transparent);
     outline-offset: 1px;
   }
 }

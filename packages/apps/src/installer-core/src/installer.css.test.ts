@@ -11,15 +11,17 @@ describe("installer CSS", () => {
     expect(css).toMatch(/\.installer \{[\s\S]*?--button-active-color:\s*#003311/);
     expect(css).toMatch(/\.installer \{[\s\S]*?--segmented-control-active-bg:\s*#003311/);
     expect(css).toMatch(/\.installer \{[\s\S]*?--segmented-control-active-fg:\s*#ffffff/);
-    expect(css).toMatch(/\.installer \{[\s\S]*?--segmented-control-color:\s*var\(--color-ink\)/);
+    expect(css).toMatch(
+      /\.installer \{[\s\S]*?--segmented-control-color:\s*var\(--color-we-got-dark\)/,
+    );
     expect(css).not.toMatch(/--button-active-color:\s*var\(--workspace-home-bg/);
     expect(css).not.toMatch(/--segmented-control-active-fg:\s*var\(--workspace-home-bg/);
     expect(css).not.toMatch(/--segmented-control-color:\s*#ffffff/);
     expect(css).toMatch(
-      /\.installer__dot--current,\s*\.installer__dot--done \{[\s\S]*?background-color:\s*var\(--color-ink/,
+      /\.installer__dot--current,\s*\.installer__dot--done \{[\s\S]*?background-color:\s*var\(--color-we-got-dark/,
     );
     expect(css).toMatch(
-      /\.installer__lead \{[\s\S]*?color:\s*color-mix\(in oklab,\s*var\(--color-ink/,
+      /\.installer__lead \{[\s\S]*?color:\s*color-mix\(in oklab,\s*var\(--color-we-got-dark/,
     );
     expect(css).not.toMatch(/\.installer__check-label \{[\s\S]*text-white/);
   });

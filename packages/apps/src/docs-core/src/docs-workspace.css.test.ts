@@ -86,11 +86,11 @@ describe("docs workspace outline chrome", () => {
       /\.docs-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-blue\)/,
     );
     expect(colorCss).toMatch(
-      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(css).toMatch(/--app-sidebar-bg:\s*#0045ff/);
     expect(css).not.toMatch(
-      /--app-sidebar-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\)\s+\d+%,\s*var\(--color-cream/,
+      /--app-sidebar-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\)\s+\d+%,\s*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
       /\.docs-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,
@@ -105,8 +105,8 @@ describe("docs workspace outline chrome", () => {
   });
 
   it("paints the editor desk sand cream — never pure white or cool gray wash", () => {
-    expect(css).toMatch(/\.docs-workspace \{[\s\S]*--docs-surface:\s*var\(--color-cream\)/);
-    expect(css).toMatch(/\.docs-workspace \{[\s\S]*--docs-canvas:\s*var\(--color-cream\)/);
+    expect(css).toMatch(/\.docs-workspace \{[\s\S]*--docs-surface:\s*var\(--color-we-got-soft\)/);
+    expect(css).toMatch(/\.docs-workspace \{[\s\S]*--docs-canvas:\s*var\(--color-we-got-soft\)/);
     expect(css).toMatch(/\.docs-workspace \{[\s\S]*--workspace-main-bg:\s*var\(--docs-surface\)/);
     expect(css).toMatch(
       /\.docs-workspace__editor \.text-editor:not\(\.text-editor--view-source\) \.text-editor-sheet--fill \{[\s\S]*background-color:\s*var\(--docs-canvas\)/,
@@ -136,7 +136,7 @@ describe("docs workspace outline chrome", () => {
 
   it("remaps nested Drive listing tokens to Docs blue on the workspace and dialog surface", () => {
     expect(css).toMatch(
-      /:is\(\.docs-workspace,\s*\.docs-dialog-surface\) \.drive-workspace \{[\s\S]*--color-emerald:\s*var\(--workspace-accent\)/,
+      /:is\(\.docs-workspace,\s*\.docs-dialog-surface\) \.drive-workspace \{[\s\S]*--workspace-accent:\s*inherit;[\s\S]*--color-emerald:\s*var\(--workspace-accent\)/,
     );
     expect(css).toMatch(
       /\.docs-dialog-surface \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-blue\)/,
@@ -149,7 +149,7 @@ describe("docs workspace outline chrome", () => {
       /\.docs-workspace \{[\s\S]*--button-outline-hover-color:\s*var\(--workspace-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.docs-workspace \.view-header \{[\s\S]*--button-outline-color:\s*var\(--color-ink\)/,
+      /\.docs-workspace \.view-header \{[\s\S]*--button-outline-color:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
       /\.docs-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--workspace-accent-strong\)/,
@@ -163,7 +163,7 @@ describe("docs workspace outline chrome", () => {
   it("uses white-on-accent sidebar chrome with Mail-style darkened washes", () => {
     expect(css).toMatch(/--app-sidebar-bg:\s*#0045ff/);
     expect(css).toMatch(/--app-sidebar-color:\s*#ffffff/);
-    expect(css).toMatch(/\.docs-workspace \.app-sidebar \{[\s\S]*--color-ink:\s*#ffffff/);
+    expect(css).toMatch(/\.docs-workspace \.app-sidebar \{[\s\S]*--color-we-got-dark:\s*#ffffff/);
     expect(css).toMatch(
       /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*#000000 10%,\s*var\(--app-sidebar-bg\)/,
     );
@@ -265,10 +265,10 @@ describe("docs workspace outline chrome", () => {
 
   it("keeps the muted last-edited chip isolated from accent word/char stats", () => {
     expect(css).toMatch(
-      /\.docs-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-bg:\s*color-mix\(in oklch,\s*var\(--color-ink\) 6%/,
+      /\.docs-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-bg:\s*color-mix\(in oklch,\s*var\(--color-we-got-dark\) 6%/,
     );
     expect(css).toMatch(
-      /\.docs-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-fg:\s*color-mix\(in oklch,\s*var\(--color-ink\) 65%/,
+      /\.docs-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-fg:\s*color-mix\(in oklch,\s*var\(--color-we-got-dark\) 65%/,
     );
   });
 

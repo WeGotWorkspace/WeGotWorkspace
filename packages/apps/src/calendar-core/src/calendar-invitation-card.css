@@ -9,7 +9,7 @@
   --_lc-days: 1;
   --_lc-width: 1;
   /* Solid cream/white so the card does not blend into the tinted invitations rail. */
-  --docs-surface: var(--color-cream);
+  --docs-surface: var(--color-we-got-soft);
   background-color: var(--docs-surface);
 }
 

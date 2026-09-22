@@ -252,7 +252,7 @@ export const CollabPeerStack: Story = {
 /** Sidebar-style: chip uses footer avatar tokens, name uses shell label tone. */
 export const FooterTwoLine: Story = {
   render: () => (
-    <div className="workspace-app-layout__user-footer max-w-sm border border-[color-mix(in_oklab,var(--color-ink)_12%,transparent)] rounded-lg">
+    <div className="workspace-app-layout__user-footer max-w-sm border border-[color-mix(in_oklab,var(--color-we-got-dark)_12%,transparent)] rounded-lg">
       <UserAvatar
         displayName="Elias Linden"
         subtitle="elias@example.com"

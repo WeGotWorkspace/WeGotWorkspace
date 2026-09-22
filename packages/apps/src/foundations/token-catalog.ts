@@ -17,10 +17,8 @@ export const COLOR_WE_GOT_PRIMITIVES = [
   "--color-we-got-sand",
 ] as const;
 
-/** Suite semantic roles. */
+/** Status roles. Brand hues stay on `--color-we-got-*`. */
 export const COLOR_SEMANTIC = [
-  "--color-ink",
-  "--color-cream",
   "--color-error",
   "--color-warning",
   "--color-success",

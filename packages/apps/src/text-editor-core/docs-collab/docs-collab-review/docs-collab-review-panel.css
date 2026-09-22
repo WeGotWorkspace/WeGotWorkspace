@@ -15,7 +15,7 @@
   --docs-collab-sidebar-panel-wash-recipe: color-mix(
     in oklch,
     var(--workspace-accent, var(--color-we-got-blue)) 10%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --docs-collab-sidebar-panel-bg: var(
     --docs-collab-sidebar-panel-wash,
@@ -23,11 +23,11 @@
   );
   --docs-collab-sidebar-panel-color: var(
     --docs-comments-panel-color,
-    var(--docs-text, var(--color-ink))
+    var(--docs-text, var(--color-we-got-dark))
   );
   --docs-collab-sidebar-panel-border-color: var(
     --docs-comments-panel-border-color,
-    color-mix(in oklch, var(--color-ink) 8%, transparent)
+    color-mix(in oklch, var(--color-we-got-dark) 8%, transparent)
   );
   /* Horizontal inset inherits shared panel (main-header p-4 md:p-6 / Docs format chrome). */
 }

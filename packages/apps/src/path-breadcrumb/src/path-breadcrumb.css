@@ -13,10 +13,13 @@
   width: 2.25rem;
   height: 2.25rem;
   border-radius: var(--control-radius);
-  color: var(--path-breadcrumb-lead-color, var(--path-breadcrumb-current-color, var(--color-ink)));
+  color: var(
+    --path-breadcrumb-lead-color,
+    var(--path-breadcrumb-current-color, var(--color-we-got-dark))
+  );
   background-color: var(
     --path-breadcrumb-lead-bg,
-    color-mix(in oklab, var(--color-ink) 7%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 7%, transparent)
   );
 }
 
@@ -48,7 +51,7 @@
   flex-shrink: 0;
   color: var(
     --path-breadcrumb-separator-color,
-    color-mix(in oklab, var(--color-ink) 32%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 32%, transparent)
   );
 }
 
@@ -60,7 +63,7 @@
   font-weight: 500;
   line-height: 1.2;
   letter-spacing: -0.01em;
-  color: var(--path-breadcrumb-current-color, var(--color-ink));
+  color: var(--path-breadcrumb-current-color, var(--color-we-got-dark));
 }
 
 @media (min-width: 768px) {
@@ -79,17 +82,20 @@
   font-size: 0.9375rem;
   font-weight: 500;
   line-height: 1.2;
-  color: var(--path-breadcrumb-link-color, color-mix(in oklab, var(--color-ink) 65%, transparent));
+  color: var(
+    --path-breadcrumb-link-color,
+    color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
+  );
   transition:
     color 0.15s ease,
     background-color 0.15s ease;
 }
 
 .path-breadcrumb__link:hover {
-  color: var(--path-breadcrumb-current-color, var(--color-ink));
+  color: var(--path-breadcrumb-current-color, var(--color-we-got-dark));
   background-color: var(
     --path-breadcrumb-link-hover-bg,
-    color-mix(in oklab, var(--color-ink) 6%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)
   );
 }
 

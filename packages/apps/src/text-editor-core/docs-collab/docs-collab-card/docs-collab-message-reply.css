@@ -12,8 +12,8 @@
 
 .docs-collab-message-reply__avatar,
 .docs-comments-reply__avatar {
-  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --user-avatar-fg: var(--color-ink);
+  --user-avatar-bg: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
+  --user-avatar-fg: var(--color-we-got-dark);
 }
 
 .docs-collab-message-reply__content,
@@ -34,7 +34,7 @@
 .docs-collab-message-reply__time,
 .docs-comments-reply__time {
   @apply text-[11px] leading-tight;
-  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 65%, transparent));
+  color: var(--docs-muted, color-mix(in oklab, var(--color-we-got-dark) 65%, transparent));
 }
 
 .docs-collab-message-reply__body,

@@ -4,7 +4,7 @@
   @apply flex h-full w-full min-h-0 flex-col overflow-auto;
   background-color: color-mix(
     in oklab,
-    var(--color-background, var(--color-cream)) 96%,
+    var(--color-background, var(--color-we-got-soft)) 96%,
     transparent
   );
 }
@@ -25,7 +25,7 @@
   --docs-file-preview-tile-page-width: 8.5in;
   --docs-file-preview-tile-scale: 1;
   @apply overflow-hidden pointer-events-none;
-  background-color: var(--color-cream);
+  background-color: var(--color-we-got-soft);
 }
 
 .docs-file-preview__tile-scale {

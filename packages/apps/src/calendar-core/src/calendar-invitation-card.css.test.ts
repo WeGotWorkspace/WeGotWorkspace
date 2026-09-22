@@ -33,7 +33,7 @@ describe("calendar invitation card CSS", () => {
   it("paints a solid cream/white surface on the card shell only", () => {
     const css = readCss("calendar-invitation-card.css");
     expect(css).toMatch(
-      /\.calendar-invitation-card \{[\s\S]*--docs-surface:\s*var\(--color-cream\)/,
+      /\.calendar-invitation-card \{[\s\S]*--docs-surface:\s*var\(--color-we-got-soft\)/,
     );
     expect(css).toMatch(
       /\.calendar-invitation-card \{[\s\S]*background-color:\s*var\(--docs-surface\)/,

@@ -7,13 +7,13 @@
 
 .docs-home-workspace .docs-home-pane {
   @apply flex min-h-0 h-full w-full flex-1 flex-col;
-  background-color: var(--docs-surface, var(--color-cream));
+  background-color: var(--docs-surface, var(--color-we-got-soft));
 }
 
 .docs-home-workspace .docs-home-pane__header {
   @apply shrink-0 px-4 pb-3 pt-4 md:px-6 md:pt-6;
   border-bottom: 1px solid
-    var(--docs-border, color-mix(in oklch, var(--color-ink) 12%, transparent));
+    var(--docs-border, color-mix(in oklch, var(--color-we-got-dark) 12%, transparent));
 }
 
 .docs-home-workspace .docs-home-pane__body {

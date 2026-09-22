@@ -128,10 +128,10 @@ describe("CalendarTimelineView year-grid CSS", () => {
 describe("CalendarTimelineView sticky surface CSS", () => {
   it("paints sticky sidebar and all-day shells with cream, never pure white", () => {
     expect(css).toMatch(
-      /\.timeline-sidebar \{[\s\S]*background-color:\s*var\(--_lc-surface-bg,\s*var\(--color-cream\)\)/,
+      /\.timeline-sidebar \{[\s\S]*background-color:\s*var\(--_lc-surface-bg,\s*var\(--color-we-got-soft\)\)/,
     );
     expect(css).toMatch(
-      /\.timeline-all-day-shell \{[\s\S]*background-color:\s*var\(--_lc-surface-bg,\s*var\(--color-cream\)\)/,
+      /\.timeline-all-day-shell \{[\s\S]*background-color:\s*var\(--_lc-surface-bg,\s*var\(--color-we-got-soft\)\)/,
     );
     expect(css).not.toMatch(/--_lc-surface-bg,\s*light-dark\(\s*#fff\b/);
     expect(css).not.toMatch(/background-color:\s*var\(--_lc-surface-bg,\s*light-dark\(\s*#fff/);

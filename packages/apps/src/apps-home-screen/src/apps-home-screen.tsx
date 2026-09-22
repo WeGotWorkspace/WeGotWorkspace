@@ -55,7 +55,7 @@ export function AppsHomeScreen({
               key={app.id}
               type="button"
               onClick={app.onSelect}
-              className="group flex w-full min-h-48 flex-col items-center justify-center gap-4 rounded-3xl p-3 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-ink) focus-visible:ring-offset-2"
+              className="group flex w-full min-h-48 flex-col items-center justify-center gap-4 rounded-3xl p-3 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-we-got-dark) focus-visible:ring-offset-2"
               aria-label={app.label}
             >
               {app.appId ? (
@@ -74,7 +74,10 @@ export function AppsHomeScreen({
               ) : (
                 <span
                   className="apps-home-screen__tile-icon--accent"
-                  style={{ backgroundColor: app.accent, color: app.fg ?? "var(--color-ink)" }}
+                  style={{
+                    backgroundColor: app.accent,
+                    color: app.fg ?? "var(--color-we-got-dark)",
+                  }}
                 >
                   <span className="text-current [&_svg]:size-12">{app.icon}</span>
                 </span>

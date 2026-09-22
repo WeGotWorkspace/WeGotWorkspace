@@ -19,7 +19,10 @@ const meta: Meta<typeof AppSwitchButton> = {
         description: "Sidebar label color for the switch lockup",
       },
       "color-paper": { value: "var(--color-paper)", description: "Notes / workspace menu surface" },
-      "color-ink": { value: "var(--color-ink)", description: "Primary ink on light surfaces" },
+      "color-we-got-dark": {
+        value: "var(--color-we-got-dark)",
+        description: "Primary ink on light surfaces",
+      },
     },
   },
 };

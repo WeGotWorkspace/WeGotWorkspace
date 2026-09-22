@@ -11,12 +11,12 @@ describe("list-sticky-header CSS", () => {
     expect(css).toMatch(/\.list-sticky-header \{[\s\S]*sticky top-0/);
     expect(css).toMatch(/\.list-sticky-header \{[\s\S]*border-b/);
     expect(css).toMatch(/--list-sticky-header-bg/);
-    expect(css).toMatch(/var\(--color-cream\)/);
+    expect(css).toMatch(/var\(--color-we-got-soft\)/);
   });
 
   it("defaults sticky background to cream paper, never pure white", () => {
     expect(css).toMatch(
-      /\.list-sticky-header \{[\s\S]*background-color:\s*var\(\s*--list-sticky-header-bg,\s*var\(--workspace-root-bg,\s*var\(--color-cream\)\)/,
+      /\.list-sticky-header \{[\s\S]*background-color:\s*var\(\s*--list-sticky-header-bg,\s*var\(--workspace-root-bg,\s*var\(--color-we-got-soft\)\)/,
     );
     expect(css).not.toMatch(/\.list-sticky-header \{[\s\S]*background-color:[^;]*#fff(?:fff)?\b/i);
     expect(css).not.toMatch(/\.list-sticky-header \{[\s\S]*background-color:[^;]*\bwhite\b/i);
@@ -30,7 +30,7 @@ describe("list-sticky-header CSS", () => {
     expect(css).not.toMatch(/\.list-sticky-header \{[\s\S]*font-semibold/);
     expect(css).not.toMatch(/tracking-\[0\.04em\]/);
     expect(css).toMatch(/rgb\(15 23 42 \/ 96%\)/);
-    expect(css).not.toMatch(/color-mix\(in oklab, var\(--color-ink\) 55%/);
+    expect(css).not.toMatch(/color-mix\(in oklab, var\(--color-we-got-dark\) 55%/);
     expect(css).toMatch(/--list-sticky-header-emphasis-font-size, 15px/);
     expect(css).toMatch(/--list-sticky-header-rest-font-size, 0\.875rem/);
     expect(css).toMatch(/\.list-sticky-header__emphasis \{[\s\S]*font-\[650\]/);

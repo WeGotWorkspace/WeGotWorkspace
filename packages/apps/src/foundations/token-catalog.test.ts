@@ -59,8 +59,8 @@ describe("foundations token catalog", () => {
 
 describe("css-token-utils", () => {
   it("formats clipboard refs as var(--token)", () => {
-    expect(formatCssVarRef("--color-ink")).toBe("var(--color-ink)");
-    expect(formatCssVarRef("color-ink")).toBe("var(--color-ink)");
-    expect(toCssVarName("color-ink")).toBe("--color-ink");
+    expect(formatCssVarRef("--color-we-got-dark")).toBe("var(--color-we-got-dark)");
+    expect(formatCssVarRef("color-we-got-dark")).toBe("var(--color-we-got-dark)");
+    expect(toCssVarName("color-we-got-dark")).toBe("--color-we-got-dark");
   });
 });

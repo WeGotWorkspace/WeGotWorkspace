@@ -83,7 +83,7 @@
 .calendar-event-details-popover__details {
   @apply relative z-10 flex flex-col gap-1.5 pb-2.5 pe-2.5;
   padding-inline-start: var(--_lc-event-card-heading-padding-inline-start, 13px);
-  color: var(--_lc-event-card-text-color, var(--color-ink));
+  color: var(--_lc-event-card-text-color, var(--color-we-got-dark));
 }
 
 .calendar-event-details-popover__row {

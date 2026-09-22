@@ -44,8 +44,8 @@ function ColorSwatch({ color }: { color: string }) {
       className="size-9 shrink-0 rounded-[var(--control-radius)] border"
       style={{
         backgroundColor: color || "transparent",
-        borderColor: "color-mix(in oklch, var(--color-ink) 16%, transparent)",
-        boxShadow: "inset 0 0 0 1px color-mix(in oklch, var(--color-ink) 6%, transparent)",
+        borderColor: "color-mix(in oklch, var(--color-we-got-dark) 16%, transparent)",
+        boxShadow: "inset 0 0 0 1px color-mix(in oklch, var(--color-we-got-dark) 6%, transparent)",
       }}
     />
   );
@@ -84,7 +84,7 @@ function ColorGroup({
                 aria-hidden
                 className="flex size-9 shrink-0 items-center justify-center rounded-[var(--control-radius)] border font-mono text-[0.65rem]"
                 style={{
-                  borderColor: "color-mix(in oklch, var(--color-ink) 16%, transparent)",
+                  borderColor: "color-mix(in oklch, var(--color-we-got-dark) 16%, transparent)",
                 }}
               >
                 %
@@ -187,7 +187,7 @@ export function ColorsSheet() {
       />
       <ColorGroup
         title="Semantic"
-        note="Ink / cream aliases plus status roles (error ≠ We Got Red)."
+        note="Status roles (error ≠ We Got Red). Brand hues stay in Primitives."
         rows={semanticRows}
         filter={filter}
       />

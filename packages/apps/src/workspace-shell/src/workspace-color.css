@@ -10,8 +10,7 @@
  * - `--wai-*` layers the switch mark actually uses
  * - Docs: full-accent sidebar + white on-color
  *
- * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH after cream/ink
- * remap. Default item washes match AppSidebar (32 / 55 / 65); products that
+ * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark. Default item washes match AppSidebar (32 / 55 / 65); products that
  * already brightened or darkened for AA keep local overrides.
  */
 :is(
@@ -39,28 +38,36 @@
 ) {
   --workspace-sidebar-mix: 12%;
 
-  --workspace-accent-strong: color-mix(in oklch, var(--workspace-accent) 32%, var(--color-ink));
+  --workspace-accent-strong: color-mix(
+    in oklch,
+    var(--workspace-accent) 32%,
+    var(--color-we-got-dark)
+  );
 
   --app-sidebar-bg: color-mix(
     in oklch,
     var(--workspace-accent) var(--workspace-sidebar-mix),
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
-  --app-sidebar-border-color: color-mix(in oklch, var(--color-ink) 12%, transparent);
-  --app-sidebar-color: var(--color-ink);
+  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
+  --app-sidebar-color: var(--color-we-got-dark);
 
-  --app-sidebar-item-hover-bg: color-mix(in oklch, var(--workspace-accent) 32%, var(--color-cream));
+  --app-sidebar-item-hover-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 32%,
+    var(--color-we-got-soft)
+  );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
     var(--workspace-accent) 55%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 65%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
-  --app-sidebar-item-selected-color: var(--color-ink);
+  --app-sidebar-item-selected-color: var(--color-we-got-dark);
 
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;

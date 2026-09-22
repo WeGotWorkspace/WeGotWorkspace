@@ -11,18 +11,21 @@
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
   border: 1px solid transparent;
   background-color: transparent;
-  color: color-mix(in oklab, var(--color-ink) 75%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 75%, transparent);
 }
 
 .collection-sidebar-row:hover:not(.collection-sidebar-row--selected) {
   border-color: transparent;
   color: var(
     --collection-sidebar-row-hover-color,
-    var(--button-outline-hover-color, var(--button-outline-color, var(--color-ink)))
+    var(--button-outline-hover-color, var(--button-outline-color, var(--color-we-got-dark)))
   );
   background-color: var(
     --collection-sidebar-row-hover-bg,
-    var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+    var(
+      --button-outline-hover-background,
+      color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+    )
   );
 }
 
@@ -37,7 +40,10 @@
     --collection-sidebar-row-selected-bg,
     var(
       --button-outline-active-background,
-      var(--button-outline-hover-background, color-mix(in oklab, var(--color-ink) 8%, transparent))
+      var(
+        --button-outline-hover-background,
+        color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+      )
     )
   );
 }
@@ -55,7 +61,7 @@
         --button-outline-active-background,
         var(
           --button-outline-hover-background,
-          color-mix(in oklab, var(--color-ink) 8%, transparent)
+          color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
         )
       )
     )
@@ -63,7 +69,7 @@
 }
 
 .collection-sidebar-row--related:not(.collection-sidebar-row--selected) {
-  background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 6%, transparent);
 }
 
 .collection-sidebar-row--nested {
@@ -71,23 +77,23 @@
 }
 
 .collection-sidebar-row__visibility {
-  --primary: var(--collection-row-color, var(--color-ink));
+  --primary: var(--collection-row-color, var(--color-we-got-dark));
   --primary-foreground: #ffffff;
   /* Beat parent workspace `--checkbox-*` (Notes gold, Docs accent) so the
    * primitive paints calendarcolor / list / notebook color, not the app accent.
    * Keep collection-row size (16px) even if the editor overrides `--checkbox-size`. */
   --checkbox-size: 1rem;
-  --checkbox-border-color: var(--collection-row-color, var(--color-ink));
-  --checkbox-checked-bg: var(--collection-row-color, var(--color-ink));
-  --checkbox-checked-border: var(--collection-row-color, var(--color-ink));
+  --checkbox-border-color: var(--collection-row-color, var(--color-we-got-dark));
+  --checkbox-checked-bg: var(--collection-row-color, var(--color-we-got-dark));
+  --checkbox-checked-border: var(--collection-row-color, var(--color-we-got-dark));
   --checkbox-checked-fg: #ffffff;
   @apply relative z-10 shrink-0;
-  border-color: var(--collection-row-color, var(--color-ink));
+  border-color: var(--collection-row-color, var(--color-we-got-dark));
 }
 
 .collection-sidebar-row__visibility[data-state="checked"] {
-  background-color: var(--collection-row-color, var(--color-ink));
-  border-color: var(--collection-row-color, var(--color-ink));
+  background-color: var(--collection-row-color, var(--color-we-got-dark));
+  border-color: var(--collection-row-color, var(--color-we-got-dark));
   color: #ffffff;
 }
 
@@ -98,7 +104,7 @@
 
 .collection-sidebar-row__dot {
   @apply relative z-10 size-2.5 shrink-0 rounded-full;
-  background-color: var(--collection-row-color, var(--color-ink));
+  background-color: var(--collection-row-color, var(--color-we-got-dark));
 }
 
 .collection-sidebar-row__select {
@@ -146,7 +152,7 @@
 
 .collection-sidebar-row__mark {
   @apply inline-flex size-3.5 shrink-0 items-center justify-center;
-  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 45%, transparent);
 }
 
 .collection-sidebar-row__action.button,
@@ -156,14 +162,14 @@
   height: var(--control-height-xs, 1.75rem);
   min-width: var(--control-height-xs, 1.75rem);
   min-height: var(--control-height-xs, 1.75rem);
-  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 45%, transparent);
 }
 
 .collection-sidebar-row__action:hover,
 .collection-sidebar-row__action:focus-visible,
 .collection-sidebar-row__expand:hover,
 .collection-sidebar-row__expand:focus-visible {
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 /* Fine pointers: hide until row hover / focus-within. Touch keeps actions visible. */

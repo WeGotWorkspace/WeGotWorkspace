@@ -9,7 +9,7 @@
 
 .contacts-conflict-dialog__remaining {
   @apply text-sm;
-  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .contacts-conflict-dialog__fields {
@@ -22,7 +22,7 @@
 
 .contacts-conflict-dialog__field-label {
   @apply text-sm font-medium;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .contacts-conflict-dialog__field-options {
@@ -31,7 +31,7 @@
 
 .contacts-conflict-dialog__option {
   @apply flex items-start gap-2 rounded-md border p-3;
-  border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
 }
 
 .contacts-conflict-dialog__option-label {
@@ -40,12 +40,12 @@
 
 .contacts-conflict-dialog__option-heading {
   @apply text-xs font-medium uppercase tracking-wide;
-  color: color-mix(in oklab, var(--color-ink) 68%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
 }
 
 .contacts-conflict-dialog__value {
   @apply flex flex-col gap-0.5 text-sm;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
   white-space: pre-wrap;
   word-break: break-word;
 }

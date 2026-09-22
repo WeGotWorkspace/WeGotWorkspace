@@ -29,7 +29,7 @@ function NotesDetailActionBarHarness({
 
   if (!active) {
     return (
-      <p className="text-sm text-[color-mix(in_oklab,var(--color-ink)_55%,transparent)]">
+      <p className="text-sm text-[color-mix(in_oklab,var(--color-we-got-dark)_55%,transparent)]">
         No notes in bootstrap seed for this story.
       </p>
     );

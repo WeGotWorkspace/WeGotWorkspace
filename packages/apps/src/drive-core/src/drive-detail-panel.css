@@ -15,10 +15,14 @@
   @apply min-w-0 max-w-full overflow-hidden;
   --docs-collab-sidebar-panel-bg: var(
     --docs-collab-sidebar-panel-wash,
-    var(--docs-collab-sidebar-panel-wash-recipe, var(--color-cream))
+    var(--docs-collab-sidebar-panel-wash-recipe, var(--color-we-got-soft))
   );
-  --docs-collab-sidebar-panel-color: var(--color-ink);
-  --docs-collab-sidebar-panel-border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  --docs-collab-sidebar-panel-color: var(--color-we-got-dark);
+  --docs-collab-sidebar-panel-border-color: color-mix(
+    in oklab,
+    var(--color-we-got-dark) 8%,
+    transparent
+  );
   /* Horizontal inset inherits shared panel (main-header p-4 md:p-6). */
 }
 
@@ -46,8 +50,8 @@
   /* Flat surface + accent kind icon — same language as `.drive-file-tile__preview`. */
   @apply relative aspect-[4/3] flex items-center justify-center mb-6 overflow-hidden;
   border-radius: var(--control-radius);
-  background-color: var(--color-cream);
-  color: var(--workspace-accent, var(--workspace-accent, var(--color-ink)));
+  background-color: var(--color-we-got-soft);
+  color: var(--workspace-accent, var(--workspace-accent, var(--color-we-got-dark)));
 }
 
 .drive-detail-panel__preview > img,
@@ -82,7 +86,7 @@
 .drive-detail-panel__title {
   @apply text-base md:text-lg leading-tight mb-4 tracking-tight break-words font-semibold font-sans;
   font-family: var(--font-sans);
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .drive-detail-panel__meta {
@@ -91,20 +95,20 @@
 
 .drive-detail-panel__body {
   @apply text-sm leading-relaxed mb-3;
-  color: color-mix(in oklab, var(--color-ink) 78%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 78%, transparent);
 }
 
 .drive-detail-panel__meta-row {
   @apply flex justify-between gap-4 py-1.5 border-b;
-  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
 }
 
 .drive-detail-panel__meta-label {
   @apply text-[11px] uppercase tracking-wider;
-  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .drive-detail-panel__meta-value {
   @apply capitalize;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }

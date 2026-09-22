@@ -9,7 +9,7 @@ const css = readFileSync(join(here, "styles.css"), "utf8");
 describe("calendar BaseElement surface CSS", () => {
   it("defaults --_lc-surface-bg to cream paper, never pure white", () => {
     expect(css).toMatch(
-      /--_lc-surface-bg:\s*var\(\s*--_lc-app-header-bg-color,\s*var\(--lg-background-color,\s*light-dark\(var\(--color-cream\),\s*#222\)\)/,
+      /--_lc-surface-bg:\s*var\(\s*--_lc-app-header-bg-color,\s*var\(--lg-background-color,\s*light-dark\(var\(--color-we-got-soft\),\s*#222\)\)/,
     );
     expect(css).not.toMatch(/--_lc-surface-bg:[^;]*light-dark\(\s*#fff\b/);
     expect(css).not.toMatch(/--_lc-surface-bg:[^;]*#fff(?:fff)?\b/i);

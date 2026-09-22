@@ -11,7 +11,7 @@ type FoundationSheetChromeProps = {
 };
 
 /**
- * Shared cream/ink page frame + sticky filter for Foundations token sheets.
+ * Shared Soft/Dark page frame + sticky filter for Foundations token sheets.
  */
 export function FoundationSheetChrome({
   title,
@@ -25,10 +25,10 @@ export function FoundationSheetChrome({
 
   return (
     <div
-      className="min-h-full font-sans text-[color:var(--color-ink)]"
+      className="min-h-full font-sans text-[color:var(--color-we-got-dark)]"
       style={{
-        backgroundColor: "var(--color-cream)",
-        color: "var(--color-ink)",
+        backgroundColor: "var(--color-we-got-soft)",
+        color: "var(--color-we-got-dark)",
       }}
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-8">
@@ -41,7 +41,7 @@ export function FoundationSheetChrome({
           </h1>
           <p
             className="max-w-2xl text-sm leading-relaxed"
-            style={{ color: "color-mix(in oklch, var(--color-ink) 68%, transparent)" }}
+            style={{ color: "color-mix(in oklch, var(--color-we-got-dark) 68%, transparent)" }}
           >
             {description}
           </p>
@@ -50,7 +50,7 @@ export function FoundationSheetChrome({
         <div
           className="sticky top-0 z-10 -mx-2 flex flex-col gap-1 px-2 py-3"
           style={{
-            backgroundColor: "color-mix(in oklch, var(--color-cream) 92%, transparent)",
+            backgroundColor: "color-mix(in oklch, var(--color-we-got-soft) 92%, transparent)",
             backdropFilter: "blur(8px)",
           }}
         >
@@ -69,9 +69,9 @@ export function FoundationSheetChrome({
             placeholder={filterPlaceholder}
             className="w-full max-w-md rounded-[var(--control-radius)] border px-3 py-2 text-sm outline-none"
             style={{
-              borderColor: "color-mix(in oklch, var(--color-ink) 14%, transparent)",
-              backgroundColor: "var(--color-cream)",
-              color: "var(--color-ink)",
+              borderColor: "color-mix(in oklch, var(--color-we-got-dark) 14%, transparent)",
+              backgroundColor: "var(--color-we-got-soft)",
+              color: "var(--color-we-got-dark)",
               height: "var(--control-height-md)",
             }}
           />
@@ -99,7 +99,7 @@ export function TokenSection({ title, note, children }: TokenSectionProps) {
         {note ? (
           <p
             className="text-sm leading-relaxed"
-            style={{ color: "color-mix(in oklch, var(--color-ink) 62%, transparent)" }}
+            style={{ color: "color-mix(in oklch, var(--color-we-got-dark) 62%, transparent)" }}
           >
             {note}
           </p>
@@ -134,8 +134,8 @@ export function CopyTokenRow({ label, copyValue, meta, swatch, sample }: CopyRow
       onClick={handleCopy}
       className="group flex w-full items-center gap-3 rounded-[var(--control-radius)] border px-3 py-2.5 text-left transition-colors"
       style={{
-        borderColor: "color-mix(in oklch, var(--color-ink) 10%, transparent)",
-        backgroundColor: "color-mix(in oklch, var(--color-cream) 70%, white)",
+        borderColor: "color-mix(in oklch, var(--color-we-got-dark) 10%, transparent)",
+        backgroundColor: "color-mix(in oklch, var(--color-we-got-soft) 70%, white)",
       }}
       aria-label={`Copy ${copyValue}`}
     >
@@ -145,7 +145,7 @@ export function CopyTokenRow({ label, copyValue, meta, swatch, sample }: CopyRow
         {meta ? (
           <span
             className="mt-0.5 block truncate font-mono text-[0.7rem]"
-            style={{ color: "color-mix(in oklch, var(--color-ink) 55%, transparent)" }}
+            style={{ color: "color-mix(in oklch, var(--color-we-got-dark) 55%, transparent)" }}
           >
             {meta}
           </span>
@@ -154,7 +154,7 @@ export function CopyTokenRow({ label, copyValue, meta, swatch, sample }: CopyRow
       </span>
       <span
         className="shrink-0 text-xs font-medium"
-        style={{ color: "color-mix(in oklch, var(--color-ink) 55%, transparent)" }}
+        style={{ color: "color-mix(in oklch, var(--color-we-got-dark) 55%, transparent)" }}
       >
         {copied ? "Copied" : "Copy"}
       </span>

@@ -96,7 +96,7 @@ describe("collection sidebar row CSS", () => {
     );
     expect(css).toMatch(/\.collection-sidebar-row--selected \{[\s\S]*border-color:\s*transparent/);
     expect(css).toMatch(
-      /\.collection-sidebar-row:hover:not\(\.collection-sidebar-row--selected\) \{[\s\S]*--button-outline-hover-background[\s\S]*color-mix\(\s*in oklab,\s*var\(--color-ink\)\s*8%/,
+      /\.collection-sidebar-row:hover:not\(\.collection-sidebar-row--selected\) \{[\s\S]*--button-outline-hover-background[\s\S]*color-mix\(\s*in oklab,\s*var\(--color-we-got-dark\)\s*8%/,
     );
     expect(css).toMatch(
       /\.collection-sidebar-row:hover:not\(\.collection-sidebar-row--selected\) \{[\s\S]*--button-outline-hover-color/,
@@ -119,7 +119,7 @@ describe("collection sidebar row CSS", () => {
     expect(selected).not.toMatch(/--control-border-color/);
     expect(selected).toMatch(/--button-outline-active-background/);
     expect(selected).not.toMatch(/--collection-row-color/);
-    expect(selected).not.toMatch(/var\(--color-ink\)\s*12%/);
+    expect(selected).not.toMatch(/var\(--color-we-got-dark\)\s*12%/);
     expect(selected).not.toMatch(/--workspace-accent/);
     expect(css).toMatch(
       /\.collection-sidebar-row--selected:hover \{[\s\S]*--button-outline-active-hover-background/,

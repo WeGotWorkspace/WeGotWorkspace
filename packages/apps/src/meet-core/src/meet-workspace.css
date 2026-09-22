@@ -282,29 +282,29 @@
  */
 .meet-call-dialog {
   --workspace-accent: var(--color-we-got-prince);
-  --color-ink: var(--color-we-got-dark);
-  --meet-text: var(--color-ink);
-  --meet-muted: color-mix(in oklch, var(--color-ink) 65%, transparent);
-  --meet-call-ink-muted: color-mix(in oklch, var(--color-ink) 72%, transparent);
+  --color-we-got-dark: var(--color-we-got-dark);
+  --meet-text: var(--color-we-got-dark);
+  --meet-muted: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  --meet-call-ink-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
   --meet-call-border: color-mix(in oklch, var(--workspace-accent) 22%, transparent);
-  --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--color-cream));
-  --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream));
+  --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--color-we-got-soft));
+  --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft));
   --meet-panel: var(--meet-call-surface);
-  --foreground: var(--color-ink);
-  --color-foreground: var(--color-ink);
+  --foreground: var(--color-we-got-dark);
+  --color-foreground: var(--color-we-got-dark);
   --muted-foreground: var(--meet-muted);
   --color-muted-foreground: var(--meet-muted);
   --background: var(--meet-call-surface);
-  --modal-title-foreground: var(--color-ink);
-  --button-outline-color: var(--color-ink);
-  --button-outline-border-color: color-mix(in oklch, var(--color-ink) 20%, transparent);
+  --modal-title-foreground: var(--color-we-got-dark);
+  --button-outline-color: var(--color-we-got-dark);
+  --button-outline-border-color: color-mix(in oklch, var(--color-we-got-dark) 20%, transparent);
   --button-active-color: var(--workspace-accent-strong);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   --button-destructive-bg: var(--color-red-500, #dc2626);
   --button-destructive-fg: #ffffff;
   @apply max-w-sm;
   background-color: var(--meet-call-surface) !important;
-  color: var(--color-ink) !important;
+  color: var(--color-we-got-dark) !important;
   border-color: var(--meet-call-border) !important;
 }
 
@@ -330,26 +330,26 @@
  */
 .meet-device-popover {
   --workspace-accent: var(--color-we-got-prince);
-  --meet-text: var(--color-ink);
-  --meet-muted: color-mix(in oklch, var(--color-ink) 65%, transparent);
-  --field-label-color: color-mix(in oklch, var(--color-ink) 68%, transparent);
-  --foreground: var(--color-ink);
-  --color-foreground: var(--color-ink);
+  --meet-text: var(--color-we-got-dark);
+  --meet-muted: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
+  --foreground: var(--color-we-got-dark);
+  --color-foreground: var(--color-we-got-dark);
   --muted-foreground: var(--meet-muted);
   --color-muted-foreground: var(--meet-muted);
-  --background: var(--color-cream);
-  --popover: var(--color-cream);
-  --popover-foreground: var(--color-ink);
-  --color-popover: var(--color-cream);
-  --color-popover-foreground: var(--color-ink);
-  --input-background: var(--color-cream);
-  --input-background-focus: var(--color-cream);
-  --accent: color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream));
-  --accent-foreground: var(--color-ink);
+  --background: var(--color-we-got-soft);
+  --popover: var(--color-we-got-soft);
+  --popover-foreground: var(--color-we-got-dark);
+  --color-popover: var(--color-we-got-soft);
+  --color-popover-foreground: var(--color-we-got-dark);
+  --input-background: var(--color-we-got-soft);
+  --input-background-focus: var(--color-we-got-soft);
+  --accent: color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft));
+  --accent-foreground: var(--color-we-got-dark);
   @apply w-80;
-  background-color: var(--color-cream);
-  color: var(--color-ink);
-  border-color: color-mix(in oklch, var(--color-ink) 12%, transparent);
+  background-color: var(--color-we-got-soft);
+  color: var(--color-we-got-dark);
+  border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
 }
 
 .meet-device-popover .meet-workspace__form-devices {
@@ -362,12 +362,12 @@
 
 .meet-device-popover .meet-workspace__form .meet-device-row__trigger,
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger {
-  --input-background: var(--color-cream);
-  --input-background-focus: var(--color-cream);
+  --input-background: var(--color-we-got-soft);
+  --input-background-focus: var(--color-we-got-soft);
   @apply h-9 min-h-9 border px-3;
-  background-color: var(--color-cream);
-  color: var(--color-ink);
-  border-color: color-mix(in oklch, var(--color-ink) 12%, transparent);
+  background-color: var(--color-we-got-soft);
+  color: var(--color-we-got-dark);
+  border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   box-shadow: none;
 }
 
@@ -375,14 +375,19 @@
 .meet-device-popover .meet-workspace__form .meet-device-row__trigger[data-state="open"],
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger:focus,
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger[data-state="open"] {
-  background-color: var(--color-cream);
-  color: var(--color-ink);
-  border-color: color-mix(in oklch, var(--workspace-accent) 45%, var(--color-ink) 12%, transparent);
+  background-color: var(--color-we-got-soft);
+  color: var(--color-we-got-dark);
+  border-color: color-mix(
+    in oklch,
+    var(--workspace-accent) 45%,
+    var(--color-we-got-dark) 12%,
+    transparent
+  );
 }
 
 .meet-device-popover .meet-workspace__form .meet-device-row__trigger svg,
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger svg {
-  color: color-mix(in oklch, var(--color-ink) 45%, transparent);
+  color: color-mix(in oklch, var(--color-we-got-dark) 45%, transparent);
 }
 
 .meet-device-popover .meet-workspace__form .meet-device-row__trigger > span:first-child {
@@ -613,40 +618,40 @@
  */
 .meet-knock-badge__popover {
   --workspace-accent: var(--color-we-got-prince);
-  --color-ink: var(--color-we-got-dark);
-  --meet-text: var(--color-ink);
-  --meet-muted: color-mix(in oklch, var(--color-ink) 65%, transparent);
-  --meet-call-ink-muted: color-mix(in oklch, var(--color-ink) 72%, transparent);
+  --color-we-got-dark: var(--color-we-got-dark);
+  --meet-text: var(--color-we-got-dark);
+  --meet-muted: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  --meet-call-ink-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
   --meet-call-border: color-mix(in oklch, var(--workspace-accent) 22%, transparent);
-  --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--color-cream));
-  --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream));
+  --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--color-we-got-soft));
+  --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft));
   --meet-panel: var(--meet-call-surface);
   --meet-panel-soft: var(--meet-call-empty);
   --popover: var(--meet-call-surface);
-  --popover-foreground: var(--color-ink);
+  --popover-foreground: var(--color-we-got-dark);
   --color-popover: var(--meet-call-surface);
-  --color-popover-foreground: var(--color-ink);
-  --foreground: var(--color-ink);
-  --color-foreground: var(--color-ink);
+  --color-popover-foreground: var(--color-we-got-dark);
+  --foreground: var(--color-we-got-dark);
+  --color-foreground: var(--color-we-got-dark);
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--color-ink);
+  --button-outline-color: var(--color-we-got-dark);
   --button-outline-hover-color: var(--workspace-accent-strong);
   --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-cream);
+  --button-primary-fg: var(--color-we-got-soft);
   @apply w-80 rounded-xl p-2;
   background-color: var(--meet-call-surface);
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
   border-color: var(--meet-call-border);
 }
 
@@ -665,7 +670,7 @@
 
 .meet-knock-row__name {
   @apply truncate text-sm font-medium;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .meet-knock-row__hint {
@@ -733,49 +738,69 @@
    * with a quiet purple wash from the Meet icon accent (`#962fa8`).
    * Pin ink so leftover navy `.meet-workspace` text tokens cannot leak.
    */
-  --color-ink: var(--color-we-got-dark);
-  --meet-text: var(--color-ink);
-  --meet-muted: color-mix(in oklch, var(--color-ink) 72%, transparent);
-  --meet-surface: var(--color-cream);
+  --color-we-got-dark: var(--color-we-got-dark);
+  --meet-text: var(--color-we-got-dark);
+  --meet-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
+  --meet-surface: var(--color-we-got-soft);
   --workspace-root-bg: var(--meet-surface);
   --workspace-main-content-max-width: none;
-  --app-sidebar-border-color: color-mix(in oklch, var(--color-ink) 12%, transparent);
-  --app-sidebar-color: var(--color-ink);
-  --app-switch-label-color: var(--color-ink);
+  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
+  --app-sidebar-color: var(--color-we-got-dark);
+  --app-switch-label-color: var(--color-we-got-dark);
   --app-switch-lockup-bg: var(--app-sidebar-bg);
-  --sidebar-logo-close-button-color: var(--color-ink);
+  --sidebar-logo-close-button-color: var(--color-we-got-dark);
   --sidebar-badge-fg: var(--workspace-accent);
   --meet-unread-bg: var(--workspace-accent-strong);
   --meet-unread-fg: #ffffff;
-  --workspace-user-footer-link-hover-bg: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-text-color: color-mix(in oklch, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-subtitle-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
-  --workspace-user-footer-border-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-ink) 6%, transparent);
+  --workspace-user-footer-link-hover-bg: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --workspace-user-footer-text-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 70%,
+    transparent
+  );
+  --workspace-user-footer-subtitle-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 65%,
+    transparent
+  );
+  --workspace-user-footer-border-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --workspace-user-footer-link-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 65%,
+    transparent
+  );
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
   /*
    * SidebarSection titles use `field-label-row__label` → `--field-label-color`.
    * Root `.meet-workspace` keeps white lobby/call labels; split chrome is ink-on-tint.
    */
-  --field-label-color: color-mix(in oklch, var(--color-ink) 72%, transparent);
+  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;
   /*
    * Workspace and in-call chrome use outline IconButtons with Meet outline tokens.
    */
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--color-ink);
+  --button-outline-color: var(--color-we-got-dark);
   --button-outline-hover-color: var(--workspace-accent-strong);
   --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   /*
    * AppSidebar washes: brand purple → cream. Hover is the stronger wash;
@@ -783,35 +808,43 @@
    * hover ~8.8:1, selected-hover ~7.7:1); prefer ink over accent-strong.
    * Hover wash uses cream (not transparent) so tint stays on the cream plane.
    */
-  --app-sidebar-item-hover-bg: color-mix(in oklch, var(--workspace-accent) 32%, var(--color-cream));
+  --app-sidebar-item-hover-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 32%,
+    var(--color-we-got-soft)
+  );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
     var(--workspace-accent) 22%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 40%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
-  --app-sidebar-item-selected-color: var(--color-ink);
-  --foreground: var(--color-ink);
-  --color-foreground: var(--color-ink);
+  --app-sidebar-item-selected-color: var(--color-we-got-dark);
+  --foreground: var(--color-we-got-dark);
+  --color-foreground: var(--color-we-got-dark);
   --workspace-main-bg: var(--meet-surface);
-  --workspace-main-header-border-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --chat-list-surface: var(--color-cream);
+  --workspace-main-header-border-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --chat-list-surface: var(--color-we-got-soft);
   --chat-hover: color-mix(in oklch, var(--workspace-accent) 8%, transparent);
   --chat-accent: var(--workspace-accent-strong);
-  --chat-muted: color-mix(in oklch, var(--color-ink) 72%, transparent);
+  --chat-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
   --chat-day-bg: var(--chat-list-surface);
-  --chat-action-surface: var(--color-cream);
+  --chat-action-surface: var(--color-we-got-soft);
   --user-avatar-presence-ring: var(--chat-list-surface);
   background-color: var(--meet-surface);
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .meet-workspace--split .chat-ui {
-  --chat-muted: color-mix(in oklch, var(--color-ink) 72%, transparent);
+  --chat-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
 }
 
 .meet-workspace .workspace-app-layout__main-header {
@@ -829,7 +862,7 @@
 
 .meet-workspace .workspace-app-layout__main-content {
   @apply mx-0 flex h-full min-h-0 min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
-  background-color: var(--meet-surface, var(--color-cream));
+  background-color: var(--meet-surface, var(--color-we-got-soft));
 }
 
 /*
@@ -844,23 +877,39 @@
 
 .meet-workspace--split .app-sidebar {
   @apply h-full min-h-0 self-stretch;
-  --field-label-color: color-mix(in oklch, var(--color-ink) 68%, transparent);
+  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
   --user-avatar-presence-ring: var(--app-sidebar-bg);
-  color: var(--app-sidebar-color, var(--color-ink));
+  color: var(--app-sidebar-color, var(--color-we-got-dark));
 }
 
 .meet-workspace--split .app-sidebar__footer {
-  --workspace-user-footer-text-color: color-mix(in oklch, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-subtitle-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
-  --workspace-user-footer-border-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-text-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 70%,
+    transparent
+  );
+  --workspace-user-footer-subtitle-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 65%,
+    transparent
+  );
+  --workspace-user-footer-border-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --workspace-user-footer-link-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 65%,
+    transparent
+  );
 }
 
 .meet-workspace--split .app-sidebar__scroll {
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--color-ink);
+  --button-outline-hover-color: var(--color-we-got-dark);
 }
 
 /** App switcher lockup: meet.svg literals (`#ffc800` tile and bars / `#962fa8` shape). */
@@ -885,7 +934,7 @@
 
 .meet-workspace__upcoming-time {
   @apply max-w-[9.5rem] shrink-0 text-right text-xs font-normal leading-tight;
-  color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
 }
 
 .meet-workspace__header-kind-icon {
@@ -894,18 +943,18 @@
 
 .meet-workspace__header-actions {
   @apply flex items-center gap-2;
-  --button-outline-color: var(--color-ink);
+  --button-outline-color: var(--color-we-got-dark);
   --button-outline-hover-color: var(--workspace-accent-strong);
   --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --button-active-color: var(--workspace-accent-strong);
 }
@@ -916,7 +965,7 @@
  */
 .meet-workspace--split .view-header {
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--color-ink);
+  --button-outline-color: var(--color-we-got-dark);
   --button-outline-hover-color: var(--workspace-accent-strong);
 }
 
@@ -958,32 +1007,29 @@
  * solid mint block on `__row`. `--meet-screen-bg` stays black for video pixels.
  */
 :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded) {
-  /* Light paper chrome: pin ink so dark lobby `.meet-workspace` text does not leak. */
-  --color-ink: var(--color-we-got-dark);
-  --meet-call-ink-muted: color-mix(in oklch, var(--color-ink) 72%, transparent);
+  /* Light paper chrome: pin ink so dark lobby `.meet-workspace` text does not leak.
+   * Hex literals — Storybook Vitest may lack `@theme` oklch(from) for we-got-*. */
+  --color-ink: #003311;
+  --meet-call-ink-muted: color-mix(in oklch, #003311 72%, transparent);
   --meet-call-border: color-mix(in oklch, var(--workspace-accent) 22%, transparent);
-  --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--color-cream));
-  color: var(--color-ink);
+  --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, #fff5e9);
+  color: #003311;
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--color-ink);
+  --button-outline-color: #003311;
   --button-outline-hover-color: var(--workspace-accent-strong);
   --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--workspace-accent) 18%,
-    var(--color-cream)
-  );
+  --button-outline-active-background: color-mix(in oklch, var(--workspace-accent) 18%, #fff5e9);
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-cream)
+    #fff5e9
   );
-  --foreground: var(--color-ink);
-  --color-foreground: var(--color-ink);
+  --foreground: #003311;
+  --color-foreground: #003311;
 }
 
 :is(.meet-call-bar, .meet-call-stage--expanded, .meet-call-expanded) {
-  --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream));
+  --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, #fff5e9);
   background-color: var(--meet-call-surface);
 }
 
@@ -995,12 +1041,12 @@
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
 }
 
@@ -1029,7 +1075,7 @@
 
 .meet-call-bar__title {
   @apply truncate text-sm font-semibold;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .meet-call-bar__meta {
@@ -1050,7 +1096,7 @@
 }
 
 .meet-call-bar__avatars .user-avatar--colored .user-avatar__mark {
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 /* Lobby / dark peer tiles: light marks (ink fails on navy fills). */
@@ -1065,7 +1111,7 @@
   .user-avatar--colored
   .user-avatar__mark,
 .meet-guest-lobby__preview .user-avatar--colored .user-avatar__mark {
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .meet-call-bar__invite {
@@ -1130,14 +1176,14 @@
 .meet-workspace
   :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
   .meet-peer-tile__display-name {
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .meet-workspace
   :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
   .meet-peer-tile__speaking {
   /* Darker than --meet-live so “Speaking” clears 4.5:1 on cream tiles. */
-  color: color-mix(in oklch, var(--meet-live) 35%, var(--color-ink));
+  color: color-mix(in oklch, var(--meet-live) 35%, var(--color-we-got-dark));
 }
 
 .meet-workspace
@@ -1148,7 +1194,7 @@
 
 .meet-workspace__members {
   @apply inline-flex items-center gap-1 text-sm;
-  color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
 }
 
 .meet-workspace__members-icon {
@@ -1180,7 +1226,7 @@
 
 .meet-workspace__chat-empty {
   @apply flex flex-1 items-center justify-center px-6 text-sm;
-  color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
 }
 
 .meet-workspace__surfaces {
@@ -1238,19 +1284,23 @@
 /* Fixed-height row so the indicator never shifts the composer. */
 .meet-workspace__typing {
   @apply h-5 shrink-0 truncate px-4 text-xs italic;
-  color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
 }
 
 .meet-workspace__rail.workspace-app-layout__panel,
 .meet-call-stage__chat {
   @apply flex h-full min-h-0 shrink-0 flex-col overflow-hidden rounded-none;
-  background-color: var(--color-cream);
-  color: var(--color-ink);
-  --chat-list-surface: var(--color-cream);
-  --user-avatar-presence-ring: var(--color-cream);
-  --docs-surface: var(--color-cream);
-  --docs-collab-sidebar-panel-color: var(--color-ink);
-  --docs-collab-sidebar-panel-border-color: color-mix(in oklch, var(--color-ink) 8%, transparent);
+  background-color: var(--color-we-got-soft);
+  color: var(--color-we-got-dark);
+  --chat-list-surface: var(--color-we-got-soft);
+  --user-avatar-presence-ring: var(--color-we-got-soft);
+  --docs-surface: var(--color-we-got-soft);
+  --docs-collab-sidebar-panel-color: var(--color-we-got-dark);
+  --docs-collab-sidebar-panel-border-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 8%,
+    transparent
+  );
 }
 
 .meet-workspace__rail .chat-thread-panel__header {
@@ -1307,7 +1357,7 @@
 
 .meet-call-stage__title {
   @apply truncate text-base font-semibold;
-  color: var(--color-ink);
+  color: var(--color-ink, #003311);
 }
 
 .meet-call-stage__meta {
@@ -1491,7 +1541,7 @@
 
 .meet-call-stage__chat-header {
   @apply shrink-0 px-4 pb-2 pt-4 text-base font-semibold;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .meet-call-stage--collapsed .meet-call-stage__chat {
@@ -1508,36 +1558,34 @@
   /*
    * Guest invite landing uses the same cream/dusk product chrome as
    * `.meet-workspace--split`. Do not re-paint the navy lobby slab.
+   * Soft/dark hex literals (not only `var(--color-we-got-*)`) so Storybook
+   * Vitest still paints ink-on-cream when `@theme` oklch(from) is missing.
    */
-  --meet-text: var(--color-ink);
-  --meet-muted: color-mix(in oklch, var(--color-ink) 72%, transparent);
-  --meet-panel: color-mix(in oklch, var(--workspace-accent) 8%, var(--color-cream));
-  --meet-panel-soft: color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream));
-  --meet-border: color-mix(in oklch, var(--color-ink) 10%, transparent);
-  --meet-border-strong: color-mix(in oklch, var(--color-ink) 12%, transparent);
-  --field-label-color: color-mix(in oklch, var(--color-ink) 72%, transparent);
+  --meet-text: #003311;
+  --meet-muted: color-mix(in oklch, #003311 72%, transparent);
+  --meet-panel: color-mix(in oklch, var(--workspace-accent) 8%, #fff5e9);
+  --meet-panel-soft: color-mix(in oklch, var(--workspace-accent) 12%, #fff5e9);
+  --meet-border: color-mix(in oklch, #003311 10%, transparent);
+  --meet-border-strong: color-mix(in oklch, #003311 12%, transparent);
+  --field-label-color: color-mix(in oklch, #003311 72%, transparent);
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--color-ink);
+  --button-outline-color: #003311;
   --button-outline-hover-color: var(--workspace-accent-strong);
   --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--workspace-accent) 18%,
-    var(--color-cream)
-  );
+  --button-outline-active-background: color-mix(in oklch, var(--workspace-accent) 18%, #fff5e9);
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-cream)
+    #fff5e9
   );
-  --foreground: var(--color-ink);
-  --color-foreground: var(--color-ink);
+  --foreground: #003311;
+  --color-foreground: #003311;
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-cream);
+  --button-primary-fg: #fff5e9;
   /* Same camera-off fill as live call tiles (`.meet-peer-tile` / `__fill`). */
-  --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--color-cream));
-  background-color: var(--meet-surface);
-  color: var(--color-ink);
+  --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, #fff5e9);
+  background-color: var(--meet-surface, #fff5e9);
+  color: #003311;
   padding-top: max(1.5rem, calc(env(safe-area-inset-top, 0px) + 0.75rem));
   padding-right: max(1.5rem, calc(env(safe-area-inset-right, 0px) + 1rem));
   padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem));
@@ -1548,7 +1596,7 @@
 
 .meet-guest-channel__lobby .meet-workspace__title {
   font-family: var(--font-serif);
-  color: var(--color-ink);
+  color: var(--color-ink, #003311);
 }
 
 .meet-guest-lobby__card {
@@ -1559,11 +1607,11 @@
     "heading"
     "media"
     "invite";
-  background-color: var(--color-cream);
-  --card-surface-bg: var(--color-cream);
-  --input-background: var(--color-cream);
-  --input-background-focus: var(--color-cream);
-  box-shadow: 0 18px 48px color-mix(in oklch, var(--color-ink) 10%, transparent);
+  background-color: var(--color-we-got-soft);
+  --card-surface-bg: var(--color-we-got-soft);
+  --input-background: var(--color-we-got-soft);
+  --input-background-focus: var(--color-we-got-soft);
+  box-shadow: 0 18px 48px color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
 }
 
 .meet-guest-lobby__card--status {
@@ -1662,7 +1710,7 @@
 
 .meet-guest-lobby__mic-level-track {
   @apply relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full;
-  background-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
+  background-color: color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
 }
 
 .meet-guest-lobby__mic-level-fill {
@@ -1693,11 +1741,11 @@
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__name .meet-workspace__display-name-input {
-  --foreground: var(--color-ink);
-  --color-foreground: var(--color-ink);
-  --input-background: var(--color-cream);
-  --input-background-focus: var(--color-cream);
-  color: var(--color-ink);
+  --foreground: var(--color-we-got-dark);
+  --color-foreground: var(--color-we-got-dark);
+  --input-background: var(--color-we-got-soft);
+  --input-background-focus: var(--color-we-got-soft);
+  color: var(--color-we-got-dark);
 }
 
 .meet-guest-lobby__footer {

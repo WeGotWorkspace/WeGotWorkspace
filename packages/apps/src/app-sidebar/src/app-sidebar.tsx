@@ -14,7 +14,7 @@ export type AppSidebarProps = {
   footer?: ReactNode;
   /** Primary CTA under the header (e.g. Compose, New). */
   primaryButton?: ReactNode;
-  /** Applied to the scroll stack (primary button + sections), e.g. drive `--color-ink` override. */
+  /** Applied to the scroll stack (primary button + sections), e.g. drive `--color-we-got-dark` override. */
   scrollSurfaceStyle?: CSSProperties;
   /** Passed to `AppSwitchButton` (e.g. install shell). */
   appSwitchDisabled?: boolean;

@@ -68,10 +68,10 @@ describe("NotesNewMenu primary tokens", () => {
       /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
     expect(workspaceCss).toMatch(
-      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-fg:\s*var\(--color-ink(?:,\s*#003311)?\)/,
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-fg:\s*var\(--color-we-got-dark(?:,\s*#003311)?\)/,
     );
     expect(workspaceCss).not.toMatch(
-      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--color-ink/,
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--color-we-got-dark/,
     );
   });
 

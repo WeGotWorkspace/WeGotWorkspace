@@ -73,7 +73,7 @@ function docsSidebarOverrideCss(
   if (fullAccentSidebar === undefined) return "";
   const sidebarValue = fullAccentSidebar
     ? "#0045ff"
-    : "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream))";
+    : "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft))";
   return `
 .branding-playground-root .${workspaceClass} {
   --app-sidebar-bg: ${sidebarValue};

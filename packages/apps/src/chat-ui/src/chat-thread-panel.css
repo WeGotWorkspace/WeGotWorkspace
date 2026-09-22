@@ -6,7 +6,7 @@
 
 .chat-thread-panel__header {
   @apply flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2.5;
-  border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
+  border-color: var(--chat-border, color-mix(in oklab, var(--color-we-got-dark) 12%, transparent));
 }
 
 .chat-thread-panel__title {
@@ -20,12 +20,12 @@
 
 .chat-thread-panel__parent {
   @apply shrink-0 border-b pb-1;
-  border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
+  border-color: var(--chat-border, color-mix(in oklab, var(--color-we-got-dark) 12%, transparent));
 }
 
 .chat-thread-panel__divider {
   @apply shrink-0 px-3 py-2 text-xs font-medium;
-  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 65%, transparent));
+  color: var(--chat-muted, color-mix(in oklab, var(--color-we-got-dark) 65%, transparent));
 }
 
 .chat-thread-panel__replies {
@@ -34,10 +34,10 @@
 
 .chat-thread-panel__composer {
   @apply min-w-0 max-w-full shrink-0 border-t p-3;
-  border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
+  border-color: var(--chat-border, color-mix(in oklab, var(--color-we-got-dark) 12%, transparent));
 }
 
 .chat-thread-panel-story {
   @apply h-[36rem] w-full max-w-md overflow-hidden border;
-  border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
+  border-color: var(--chat-border, color-mix(in oklab, var(--color-we-got-dark) 12%, transparent));
 }

@@ -10,7 +10,7 @@
    * Tone classes set `--user-chip-fg/bg/border` (and `--tag-fg`).
    * Fallbacks keep a readable cream wash when no tone is applied.
    */
-  --user-chip-fg: var(--tag-fg, var(--color-ink));
+  --user-chip-fg: var(--tag-fg, var(--color-we-got-dark));
   --user-chip-mark-icon: 0.75rem;
   --user-chip-font-size: var(--input-font-size-md, 0.875rem);
   --user-chip-padding-end: 0.625rem;
@@ -27,7 +27,7 @@
     var(--user-chip-border, color-mix(in oklab, var(--user-chip-fg) 38%, transparent));
   background-color: var(
     --user-chip-bg,
-    color-mix(in oklab, var(--user-chip-fg) 16%, var(--color-cream))
+    color-mix(in oklab, var(--user-chip-fg) 16%, var(--color-we-got-soft))
   );
   color: var(--user-chip-fg);
   font-size: var(--user-chip-font-size);

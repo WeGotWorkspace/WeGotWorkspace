@@ -99,10 +99,10 @@ describe("tasks workspace header and sidebar", () => {
       /\.tasks-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-red\)/,
     );
     expect(colorCss).toMatch(
-      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 90%,\s*var\(--color-ink\)\)/,
+      /\.tasks-workspace \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 90%,\s*var\(--color-we-got-dark\)\)/,
     );
     expect(css).toMatch(/\.tasks-workspace \{[\s\S]*?--button-primary-fg:\s*#ffffff/);
     expect(css).not.toMatch(/--button-primary-bg:\s*var\(--workspace-accent-strong\)/);
@@ -118,14 +118,14 @@ describe("tasks workspace header and sidebar", () => {
       /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-pink\)/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-red\) 90%,\s*var\(--color-ink\)\s*\)/,
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-red\) 90%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
   });
 
   it("washes sidebar chrome for orange and dials header outline chips with accent-strong", () => {
     expect(tsx).toMatch(/tasks-workspace__show-completed[\s\S]*variant="outline"/);
     expect(colorCss).toMatch(
-      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(css).toMatch(
       /\.tasks-workspace \{[\s\S]*--button-active-color:\s*var\(--workspace-accent-strong\)/,
@@ -140,19 +140,19 @@ describe("tasks workspace header and sidebar", () => {
       /\.tasks-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--workspace-accent\) 24%/,
     );
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-cream/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--color-cream/,
+      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--color-cream/,
+      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-ink\)/,
+      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-ink\)/,
+      /\.tasks-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
       /\.tasks-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--workspace-accent-strong\)/,
@@ -164,7 +164,7 @@ describe("tasks workspace header and sidebar", () => {
       /\.tasks-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-red\)/,
     );
     expect(css).toMatch(
-      /\.tasks-dialog-surface \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 90%,\s*var\(--color-ink\)\)/,
+      /\.tasks-dialog-surface \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 90%,\s*var\(--color-we-got-dark\)\)/,
     );
     expect(css).not.toMatch(
       /\.tasks-workspace \.tasks-workspace__header-actions \{[\s\S]*--button-outline-active-background/,

@@ -31,7 +31,7 @@ describe("button outline chrome", () => {
 
   it("tints outline hover color via --button-outline-hover-color with outline/ink fallback", () => {
     expect(css).toMatch(
-      /\.button--variant-outline:hover \{[\s\S]*color:\s*var\(\s*--button-outline-hover-color,\s*var\(--button-outline-color,\s*var\(--color-ink\)\)\s*\)/,
+      /\.button--variant-outline:hover \{[\s\S]*color:\s*var\(\s*--button-outline-hover-color,\s*var\(--button-outline-color,\s*var\(--color-we-got-dark\)\)\s*\)/,
     );
     expect(css).toMatch(
       /\.button--variant-outline:hover \{[\s\S]*background-color:\s*var\(\s*--button-outline-hover-background/,

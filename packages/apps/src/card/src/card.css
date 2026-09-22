@@ -10,10 +10,13 @@
   --card-header-gap: 1rem;
   @apply border p-6 mb-6;
   border-radius: var(--control-radius);
-  background-color: var(--card-surface-bg, color-mix(in oklab, var(--color-ink) 3%, transparent));
+  background-color: var(
+    --card-surface-bg,
+    color-mix(in oklab, var(--color-we-got-dark) 3%, transparent)
+  );
   border-color: var(
     --card-surface-border-color,
-    color-mix(in oklab, var(--color-ink) 12%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
   );
 }
 
@@ -39,7 +42,10 @@
 
 .card__title-icon {
   @apply size-4 shrink-0;
-  color: var(--card-title-icon-color, color-mix(in oklab, var(--color-ink) 75%, transparent));
+  color: var(
+    --card-title-icon-color,
+    color-mix(in oklab, var(--color-we-got-dark) 75%, transparent)
+  );
 }
 
 .card__icon-actions {
@@ -49,13 +55,13 @@
 .card__icon-action {
   @apply size-8 flex items-center justify-center transition-colors disabled:opacity-50 disabled:pointer-events-none;
   border-radius: var(--control-radius);
-  color: var(--card-icon-action-color, var(--color-ink));
+  color: var(--card-icon-action-color, var(--color-we-got-dark));
 }
 
 .card__icon-action:hover:not(:disabled) {
   background-color: var(
     --card-icon-action-hover-bg,
-    color-mix(in oklab, var(--color-ink) 8%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
   );
 }
 
@@ -64,7 +70,7 @@
  */
 .card__title {
   @apply font-sans text-lg font-semibold tracking-tight leading-tight;
-  color: var(--card-title-color, color-mix(in oklab, var(--color-ink) 75%, transparent));
+  color: var(--card-title-color, color-mix(in oklab, var(--color-we-got-dark) 75%, transparent));
   font-size: var(--card-title-size, inherit);
   letter-spacing: var(--card-title-tracking, inherit);
 }
@@ -72,7 +78,10 @@
 .card__description {
   @apply text-xs;
   margin-block-start: var(--card-title-description-gap);
-  color: var(--card-description-color, color-mix(in oklab, var(--color-ink) 65%, transparent));
+  color: var(
+    --card-description-color,
+    color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
+  );
 }
 
 .card__title-block > .card__description:first-child {
@@ -83,9 +92,12 @@
   @apply flex flex-col gap-1 rounded-xl border p-2;
   border-color: var(
     --card-panel-border-color,
-    color-mix(in oklab, var(--color-ink) 12%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
   );
-  background-color: var(--card-panel-bg, color-mix(in oklab, var(--color-ink) 3%, transparent));
+  background-color: var(
+    --card-panel-bg,
+    color-mix(in oklab, var(--color-we-got-dark) 3%, transparent)
+  );
 }
 
 .card__row {
@@ -93,7 +105,10 @@
 }
 
 .card__row:hover {
-  background: var(--card-row-hover-bg, color-mix(in oklab, var(--color-ink) 5%, transparent));
+  background: var(
+    --card-row-hover-bg,
+    color-mix(in oklab, var(--color-we-got-dark) 5%, transparent)
+  );
 }
 
 .card__row-leading {
@@ -131,7 +146,10 @@
   line-height: var(--user-avatar-subtitle-leading, 1.25);
   color: var(
     --card-row-subtitle-color,
-    var(--user-avatar-subtitle-color, color-mix(in oklab, var(--color-ink) 65%, transparent))
+    var(
+      --user-avatar-subtitle-color,
+      color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
+    )
   );
 }
 
@@ -151,6 +169,6 @@
   @apply my-1 border-t;
   border-color: var(
     --card-panel-border-color,
-    color-mix(in oklab, var(--color-ink) 12%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
   );
 }

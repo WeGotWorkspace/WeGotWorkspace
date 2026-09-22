@@ -2,18 +2,22 @@
 
 /** Shared suite home shell — brand cream surface with ink chrome. */
 .apps-home-screen {
-  background-color: var(--color-cream);
-  color: var(--color-ink);
-  --app-switch-label-color: var(--color-ink);
+  background-color: var(--color-we-got-soft);
+  color: var(--color-we-got-dark);
+  --app-switch-label-color: var(--color-we-got-dark);
   /* Same tagline mix surface as app sidebars (muted “we got” over lockup paper). */
-  --app-switch-lockup-bg: var(--color-cream);
+  --app-switch-lockup-bg: var(--color-we-got-soft);
   --workspace-shell-header-user-menu-bg: color-mix(
     in oklab,
-    var(--color-ink) 12%,
-    var(--color-cream)
+    var(--color-we-got-dark) 12%,
+    var(--color-we-got-soft)
   );
-  --workspace-shell-header-user-menu-fg: var(--color-ink);
-  --workspace-shell-header-user-menu-border: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  --workspace-shell-header-user-menu-fg: var(--color-we-got-dark);
+  --workspace-shell-header-user-menu-border: color-mix(
+    in oklab,
+    var(--color-we-got-dark) 18%,
+    transparent
+  );
 }
 
 /** Home grid tile — 128px base, 160px from `sm` (+25%); 16px radius is CSS-only (SVG stays square). */

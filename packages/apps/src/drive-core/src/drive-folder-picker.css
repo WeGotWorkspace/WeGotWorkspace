@@ -48,12 +48,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--workspace-accent, #3b82f6) 18%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--workspace-accent, #3b82f6) 24%,
-    var(--color-cream)
+    var(--color-we-got-soft)
   );
   --segmented-control-active-bg: var(--button-outline-active-background);
   --segmented-control-active-fg: var(--button-active-color);

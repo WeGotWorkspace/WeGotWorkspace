@@ -9,24 +9,24 @@ const css = readFileSync(join(here, "app-toaster.css"), "utf8");
 describe("app-toaster CSS", () => {
   it("keeps toast chrome generic (cream surface, ink type, no accent/severity hues)", () => {
     expect(css).toMatch(
-      /\[data-sonner-toast\] \.callout(?:,[\s\S]*\.callout--error)? \{[\s\S]*--callout-bg:\s*color-mix\(\s*in oklab,\s*var\(--color-cream/,
+      /\[data-sonner-toast\] \.callout(?:,[\s\S]*\.callout--error)? \{[\s\S]*--callout-bg:\s*color-mix\(\s*in oklab,\s*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /\[data-sonner-toast\] \.callout(?:,[\s\S]*\.callout--error)? \{[\s\S]*--callout-text:\s*var\(--color-ink\)/,
+      /\[data-sonner-toast\] \.callout(?:,[\s\S]*\.callout--error)? \{[\s\S]*--callout-text:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
-      /\[data-sonner-toast\] \.callout(?:,[\s\S]*\.callout--error)? \{[\s\S]*--callout-icon-color:\s*var\(--color-ink\)/,
+      /\[data-sonner-toast\] \.callout(?:,[\s\S]*\.callout--error)? \{[\s\S]*--callout-icon-color:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).not.toMatch(/--app-toast-accent/);
     expect(css).not.toMatch(/--workspace-accent/);
-    expect(css).not.toMatch(/--callout-bg:\s*var\(--color-ink\)/);
-    expect(css).not.toMatch(/--callout-text:\s*var\(--color-cream\)/);
+    expect(css).not.toMatch(/--callout-bg:\s*var\(--color-we-got-dark\)/);
+    expect(css).not.toMatch(/--callout-text:\s*var\(--color-we-got-soft\)/);
     expect(css).not.toMatch(/#3a8f5a|#c98a1f|#b14242/);
   });
 
   it("uses a slightly translucent cream wash", () => {
     expect(css).toMatch(
-      /--callout-bg:\s*color-mix\(\s*in oklab,\s*var\(--color-cream\) 90%,\s*transparent\)/,
+      /--callout-bg:\s*color-mix\(\s*in oklab,\s*var\(--color-we-got-soft\) 90%,\s*transparent\)/,
     );
   });
 
@@ -53,7 +53,7 @@ describe("app-toaster CSS", () => {
       /\[data-sonner-toast\] \.menu-item__description \{[\s\S]*font-size:\s*0\.75rem[\s\S]*font-weight:\s*500/,
     );
     expect(css).toMatch(
-      /\[data-sonner-toast\] \.menu-item__description \{[\s\S]*color-mix\(\s*in oklab,\s*var\(--color-ink\) 68%/,
+      /\[data-sonner-toast\] \.menu-item__description \{[\s\S]*color-mix\(\s*in oklab,\s*var\(--color-we-got-dark\) 68%/,
     );
   });
 

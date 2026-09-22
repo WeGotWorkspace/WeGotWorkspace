@@ -36,7 +36,7 @@ describe("note-detail-view paper sheet CSS", () => {
 
   it("paints title from the sheet contrast token", () => {
     expect(css).toMatch(
-      /\.note-detail-view__title \{[\s\S]*color:\s*var\(--notes-detail-contrast-fg,\s*var\(--color-ink\)\)/,
+      /\.note-detail-view__title \{[\s\S]*color:\s*var\(--notes-detail-contrast-fg,\s*var\(--color-we-got-dark\)\)/,
     );
     expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-box:\s*normal;/);
     expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-box-trim:\s*none;/);

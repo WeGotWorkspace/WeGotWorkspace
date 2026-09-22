@@ -106,14 +106,16 @@ export function SpacingSheet() {
                     aria-hidden
                     className="relative block h-3 w-16 shrink-0 overflow-hidden rounded-sm"
                     style={{
-                      backgroundColor: "color-mix(in oklch, var(--color-ink) 8%, transparent)",
+                      backgroundColor:
+                        "color-mix(in oklch, var(--color-we-got-dark) 8%, transparent)",
                     }}
                   >
                     <span
                       className="absolute inset-y-0 left-0 rounded-sm"
                       style={{
                         width: `${widthPct}%`,
-                        backgroundColor: "color-mix(in oklch, var(--color-ink) 28%, transparent)",
+                        backgroundColor:
+                          "color-mix(in oklch, var(--color-we-got-dark) 28%, transparent)",
                       }}
                     />
                   </span>
@@ -150,7 +152,8 @@ export function SpacingSheet() {
                       height: `var(${row.token})`,
                       minHeight: "0.5rem",
                       maxHeight: "3.5rem",
-                      backgroundColor: "color-mix(in oklch, var(--color-ink) 22%, transparent)",
+                      backgroundColor:
+                        "color-mix(in oklch, var(--color-we-got-dark) 22%, transparent)",
                       // padding-x token is a width, not height — show as bar width instead
                       ...(row.token.includes("padding")
                         ? {
