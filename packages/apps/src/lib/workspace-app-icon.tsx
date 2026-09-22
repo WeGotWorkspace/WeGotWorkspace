@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { createContext, memo, useContext, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
   WORKSPACE_APP_ICON_INLINE,
@@ -19,6 +19,40 @@ type WorkspaceAppIconProps = {
   /** `switch-trigger` inverts colors for the app-switch lockup; `tile` fills the home grid cell. */
   variant?: WorkspaceAppIconVariant;
 };
+
+/**
+ * Optional Storybook / playground override for workspace app (and home) icon SVG markup.
+ * Absent provider → production artwork. When `svgMarkup` is set, switch-trigger inlines it
+ * and default/tile render it via a `data:` image URL.
+ */
+export type WorkspaceAppIconOverrideValue = {
+  svgMarkup?: string;
+};
+
+const WorkspaceAppIconOverrideContext = createContext<WorkspaceAppIconOverrideValue | null>(null);
+
+export function WorkspaceAppIconOverrideProvider({
+  svgMarkup,
+  children,
+}: {
+  svgMarkup?: string;
+  children: ReactNode;
+}) {
+  const value = useMemo(() => (svgMarkup ? { svgMarkup } : {}), [svgMarkup]);
+  return (
+    <WorkspaceAppIconOverrideContext.Provider value={value}>
+      {children}
+    </WorkspaceAppIconOverrideContext.Provider>
+  );
+}
+
+function useWorkspaceAppIconOverrideMarkup(): string | undefined {
+  return useContext(WorkspaceAppIconOverrideContext)?.svgMarkup;
+}
+
+function svgMarkupToDataUrl(markup: string): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+}
 
 /**
  * Stable `{ __html }` identities so React never treats a parent re-render as a
@@ -45,20 +79,30 @@ export const WorkspaceAppIcon = memo(function WorkspaceAppIcon({
   className,
   variant = "default",
 }: WorkspaceAppIconProps) {
+  const overrideMarkup = useWorkspaceAppIconOverrideMarkup();
+  const overrideHtml = useMemo(
+    () => (overrideMarkup ? { __html: overrideMarkup } : null),
+    [overrideMarkup],
+  );
+  const overrideSrc = useMemo(
+    () => (overrideMarkup ? svgMarkupToDataUrl(overrideMarkup) : null),
+    [overrideMarkup],
+  );
+
   if (variant === "switch-trigger") {
     return (
       <span
         aria-hidden
         className={cn("workspace-app-icon--switch-trigger shrink-0", className)}
         // Same SVG source as default; CSS vars on `.workspace-app-icon--switch-trigger svg` invert layers.
-        dangerouslySetInnerHTML={WORKSPACE_APP_SWITCH_TRIGGER_HTML[appId]}
+        dangerouslySetInnerHTML={overrideHtml ?? WORKSPACE_APP_SWITCH_TRIGGER_HTML[appId]}
       />
     );
   }
 
   return (
     <img
-      src={workspaceAppIconUiSrc(appId)}
+      src={overrideSrc ?? workspaceAppIconUiSrc(appId)}
       alt=""
       className={cn(
         "block shrink-0 object-cover",
@@ -81,6 +125,16 @@ export const WorkspaceHomeIcon = memo(function WorkspaceHomeIcon({
   className,
   variant = "default",
 }: WorkspaceHomeIconProps) {
+  const overrideMarkup = useWorkspaceAppIconOverrideMarkup();
+  const overrideHtml = useMemo(
+    () => (overrideMarkup ? { __html: overrideMarkup } : null),
+    [overrideMarkup],
+  );
+  const overrideSrc = useMemo(
+    () => (overrideMarkup ? svgMarkupToDataUrl(overrideMarkup) : null),
+    [overrideMarkup],
+  );
+
   if (variant === "switch-trigger") {
     return (
       <span
@@ -89,14 +143,14 @@ export const WorkspaceHomeIcon = memo(function WorkspaceHomeIcon({
           "workspace-app-icon--switch-trigger workspace-app-icon--switch-trigger-home shrink-0",
           className,
         )}
-        dangerouslySetInnerHTML={WORKSPACE_HOME_SWITCH_TRIGGER_HTML}
+        dangerouslySetInnerHTML={overrideHtml ?? WORKSPACE_HOME_SWITCH_TRIGGER_HTML}
       />
     );
   }
 
   return (
     <img
-      src={workspaceHomeIconUiSrc()}
+      src={overrideSrc ?? workspaceHomeIconUiSrc()}
       alt=""
       className={cn("block shrink-0 object-cover", className)}
       draggable={false}

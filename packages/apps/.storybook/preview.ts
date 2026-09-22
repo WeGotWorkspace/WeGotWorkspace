@@ -42,6 +42,8 @@ const preview: Preview = {
       });
 
       const renderStory = () => createElement(Story);
+      // Keep in sync with WORKSPACE_APP_IDS + auth/install shells so
+      // `parameters.routerPath` (e.g. Branding stories) resolves without falling through.
       const routes = [
         createRoute({ getParentRoute: () => rootRoute, path: "/", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "login", component: renderStory }),
@@ -57,7 +59,11 @@ const preview: Preview = {
         }),
         createRoute({ getParentRoute: () => rootRoute, path: "notes", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "mail", component: renderStory }),
+        createRoute({ getParentRoute: () => rootRoute, path: "calendar", component: renderStory }),
+        createRoute({ getParentRoute: () => rootRoute, path: "contacts", component: renderStory }),
+        createRoute({ getParentRoute: () => rootRoute, path: "tasks", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "drive", component: renderStory }),
+        createRoute({ getParentRoute: () => rootRoute, path: "docs", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "install", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "settings", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "meet", component: renderStory }),
