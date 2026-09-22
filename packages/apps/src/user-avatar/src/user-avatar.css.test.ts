@@ -45,10 +45,10 @@ describe("user avatar mark border", () => {
 
   it("keeps hashed-tile glyphs ink-heavy so 11px initials meet 4.5:1 on cream washes", () => {
     expect(css).toMatch(
-      /--user-avatar-amber-fg:\s*color-mix\(in oklab,\s*var\(--user-avatar-amber\) 32%,\s*var\(--color-we-got-dark\)\)/,
+      /--user-avatar-amber-fg:\s*color-mix\(\s*in oklab,\s*var\(--user-avatar-amber\)\s*32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(css).not.toMatch(
-      /--user-avatar-amber-fg:\s*color-mix\(in oklab,\s*var\(--user-avatar-amber\) 72%,\s*var\(--color-we-got-dark\)\)/,
+      /--user-avatar-amber-fg:\s*color-mix\(\s*in oklab,\s*var\(--user-avatar-amber\)\s*72%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
   });
 

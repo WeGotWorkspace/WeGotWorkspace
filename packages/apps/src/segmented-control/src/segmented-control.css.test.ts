@@ -154,10 +154,10 @@ describe("segmented-control chrome tokens", () => {
 
   it("hovers non-disabled segments via outline hover tokens", () => {
     expect(css).toMatch(
-      /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*color:\s*var\(\s*--segmented-control-hover-color,\s*var\(--button-outline-hover-color/,
+      /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*color:\s*var\(\s*--segmented-control-hover-color,\s*var\(\s*--button-outline-hover-color/,
     );
     expect(css).toMatch(
-      /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*background-color:\s*var\(\s*--segmented-control-hover-bg,\s*var\(--button-outline-hover-background/,
+      /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*background-color:\s*var\(\s*--segmented-control-hover-bg,\s*var\(\s*--button-outline-hover-background/,
     );
     expect(css).toMatch(
       /\.segmented-control__button--active:hover:not\(:disabled\) \{[\s\S]*background-color:\s*transparent/,

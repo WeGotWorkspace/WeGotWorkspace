@@ -176,7 +176,8 @@ function BrandingCsspropRootSync({
     if (typeof document === "undefined") return;
 
     const sync = () => {
-      onValuesRef.current(resolveBrandingCsspropValues(entriesRef.current));
+      const next = resolveBrandingCsspropValues(entriesRef.current);
+      onValuesRef.current(next);
     };
     sync();
 
@@ -210,6 +211,17 @@ function BrandingPlaygroundShell({
     return resolveBrandingCsspropValues(entries);
   });
 
+  const onCsspropValues = (next: Record<string, string>) => {
+    setCsspropValues((prev) => {
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(next);
+      if (prevKeys.length === nextKeys.length && nextKeys.every((key) => prev[key] === next[key])) {
+        return prev;
+      }
+      return next;
+    });
+  };
+
   const rootStyle = {
     minHeight: "100%",
     ...csspropValues,
@@ -223,7 +235,7 @@ function BrandingPlaygroundShell({
 
   return (
     <div className="branding-playground-root" style={rootStyle}>
-      <BrandingCsspropRootSync entries={entries} onValues={setCsspropValues} />
+      <BrandingCsspropRootSync entries={entries} onValues={onCsspropValues} />
       {styleText ? <style>{styleText}</style> : null}
       <WorkspaceAppIconOverrideProvider svgMarkup={overrideMarkup}>
         {children}
