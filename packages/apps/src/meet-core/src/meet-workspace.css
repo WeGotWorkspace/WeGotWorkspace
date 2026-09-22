@@ -282,7 +282,8 @@
  */
 .meet-call-dialog {
   --workspace-accent: var(--color-we-got-prince);
-  --color-we-got-dark: var(--color-we-got-dark);
+  /* Hex pin — avoid circular `var(--color-we-got-dark)` after Soft/Dark rename. */
+  --color-we-got-dark: #003311;
   --meet-text: var(--color-we-got-dark);
   --meet-muted: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
   --meet-call-ink-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
@@ -618,7 +619,8 @@
  */
 .meet-knock-badge__popover {
   --workspace-accent: var(--color-we-got-prince);
-  --color-we-got-dark: var(--color-we-got-dark);
+  /* Hex pin — avoid circular `var(--color-we-got-dark)` after Soft/Dark rename. */
+  --color-we-got-dark: #003311;
   --meet-text: var(--color-we-got-dark);
   --meet-muted: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
   --meet-call-ink-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
@@ -736,9 +738,9 @@
   /*
    * Product workspace chrome matches Notes / Tasks / Calendar: cream paper
    * with a quiet purple wash from the Meet icon accent (`#962fa8`).
-   * Pin ink so leftover navy `.meet-workspace` text tokens cannot leak.
+   * Pin Dark so leftover navy `.meet-workspace` text tokens cannot leak.
    */
-  --color-we-got-dark: var(--color-we-got-dark);
+  --color-we-got-dark: #003311;
   --meet-text: var(--color-we-got-dark);
   --meet-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
   --meet-surface: var(--color-we-got-soft);
@@ -1007,9 +1009,9 @@
  * solid mint block on `__row`. `--meet-screen-bg` stays black for video pixels.
  */
 :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded) {
-  /* Light paper chrome: pin ink so dark lobby `.meet-workspace` text does not leak.
+  /* Light paper chrome: pin Dark so dark lobby `.meet-workspace` text does not leak.
    * Hex literals — Storybook Vitest may lack `@theme` oklch(from) for we-got-*. */
-  --color-ink: #003311;
+  --color-we-got-dark: #003311;
   --meet-call-ink-muted: color-mix(in oklch, #003311 72%, transparent);
   --meet-call-border: color-mix(in oklch, var(--workspace-accent) 22%, transparent);
   --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, #fff5e9);
@@ -1357,7 +1359,7 @@
 
 .meet-call-stage__title {
   @apply truncate text-base font-semibold;
-  color: var(--color-ink, #003311);
+  color: var(--color-we-got-dark, #003311);
 }
 
 .meet-call-stage__meta {
@@ -1596,7 +1598,7 @@
 
 .meet-guest-channel__lobby .meet-workspace__title {
   font-family: var(--font-serif);
-  color: var(--color-ink, #003311);
+  color: var(--color-we-got-dark, #003311);
 }
 
 .meet-guest-lobby__card {
