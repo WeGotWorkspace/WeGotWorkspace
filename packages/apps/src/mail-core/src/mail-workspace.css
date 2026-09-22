@@ -101,18 +101,17 @@
   --app-sidebar-item-selected-color: var(--color-we-got-dark);
 }
 
-/** App switcher lockup: mail.svg literals (`#de4b0e` tile / `#ffbdc2` marks). */
+/** App switcher lockup: mail.svg literals (`#de4b0e` tile / white flap). */
 .mail-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  /* Darken tile slightly so pink marks clear WCAG UI 3:1 (~3.0:1). */
-  background-color: color-mix(in oklch, var(--color-we-got-red) 90%, var(--color-we-got-dark));
+  background-color: var(--color-we-got-red);
 }
 
 .mail-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: color-mix(in oklch, var(--color-we-got-red) 90%, var(--color-we-got-dark));
-  --wai-fg: var(--color-we-got-pink);
+  --wai-bg: var(--color-we-got-red);
+  --wai-fg: #ffffff;
 }
 
 /* Header outline chips stay on accent-strong; sidebar nav hover stays ink. */

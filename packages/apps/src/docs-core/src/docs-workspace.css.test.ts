@@ -119,15 +119,15 @@ describe("docs workspace outline chrome", () => {
     );
   });
 
-  it("swaps sidebar lockup to white tile + docs-accent marks (not transparent + white)", () => {
+  it("paints the sidebar lockup blue tile + white marks (not transparent)", () => {
     expect(css).toMatch(
-      /\.docs-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#ffffff/,
+      /\.docs-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*var\(--workspace-accent\)/,
     );
     expect(css).toMatch(
-      /\.docs-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#ffffff/,
+      /\.docs-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--workspace-accent\)/,
     );
     expect(css).toMatch(
-      /\.docs-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--workspace-accent\)/,
+      /\.docs-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#ffffff/,
     );
     expect(css).not.toMatch(
       /\.docs-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*transparent/,

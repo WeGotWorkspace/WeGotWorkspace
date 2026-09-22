@@ -30,15 +30,15 @@ describe("mail workspace branding chrome", () => {
     expect(css).not.toMatch(/--button-primary-bg:\s*var\(--workspace-accent-strong\)/);
   });
 
-  it("keeps switch-trigger lockup on red tile + pink marks", () => {
+  it("keeps switch-trigger lockup on red tile + white flap", () => {
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*color-mix\(in oklch,\s*var\(--color-we-got-red\) 90%,\s*var\(--color-we-got-dark\)\)/,
+      /\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-red\)/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*color-mix\(in oklch,\s*var\(--color-we-got-red\) 90%,\s*var\(--color-we-got-dark\)\)/,
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-red\)/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--color-we-got-pink\)/,
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#ffffff/,
     );
   });
 

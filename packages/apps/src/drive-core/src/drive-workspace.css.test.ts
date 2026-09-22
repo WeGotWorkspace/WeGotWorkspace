@@ -76,16 +76,16 @@ describe("drive workspace outline-active tokens", () => {
 describe("drive workspace app-switch lockup", () => {
   it("keeps the drive.svg tile and folder hexes on the lockup", () => {
     expect(css).toMatch(
-      /\.drive-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-brat\)/i,
+      /\.drive-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#ffffff/i,
     );
     expect(css).toMatch(
-      /\.drive-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-brat\)/i,
+      /\.drive-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#ffffff/i,
     );
     expect(css).toMatch(
-      /\.drive-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#1d6635/i,
+      /\.drive-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--color-we-got-brat\)/i,
     );
-    expect(css).toMatch(/--app-switch-icon-bg:\s*#8ace00/i);
-    expect(css).toMatch(/--app-switch-icon-fg:\s*#1d6635/i);
+    expect(css).toMatch(/--app-switch-icon-bg:\s*#ffffff/i);
+    expect(css).toMatch(/--app-switch-icon-fg:\s*var\(--color-we-got-brat\)/i);
     expect(css).not.toMatch(/--app-switch-icon-bg:\s*var\(--workspace-accent\)/);
     expect(css).not.toMatch(/--app-switch-icon-fg:\s*var\(--color-we-got-soft/);
     expect(css).not.toMatch(/--wai-bg:\s*transparent/);

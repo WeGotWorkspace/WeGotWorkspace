@@ -97,12 +97,15 @@ Text ≥4.5:1; UI icons ≥3:1. Measured on sRGB brand hexes after Soft cream re
 | `--color-we-got-dark` on `--color-we-got-soft` (Soft) | 13.15:1 | text PASS |
 | white on Docs `--workspace-accent` (blue)             | 6.37:1  | text PASS |
 | Docs `--wai-fg` on `--wai-bg`                         | 6.37:1  | text PASS |
-| Admin / Settings `--wai-fg` on `--wai-bg`             | 7.36:1  | text PASS |
-| Calendar / Contacts `--wai-fg` on `--wai-bg`          | 4.07:1  | UI PASS   |
-| Drive `--wai-fg` on `--wai-bg`                        | 3.63:1  | UI PASS   |
-| Meet `--wai-fg` on `--wai-bg`                         | 4.13:1  | UI PASS   |
-| Mail pink on red tile (tile darkened 10%→ink)         | ~3.0:1  | UI PASS   |
-| Notes / Tasks red marks (marks mixed →ink)            | ~3.0:1  | UI PASS   |
+| Admin / Settings Dark on white                        | 14.17:1 | text PASS |
+| Calendar white on Prince                              | 6.42:1  | text PASS |
+| Docs white on blue                                    | 6.37:1  | text PASS |
+| Mail white on Red                                     | 4.10:1  | UI PASS   |
+| Meet Sand on white                                    | 2.69:1  | UI FAIL   |
+| Drive Brat on white                                   | 1.92:1  | UI FAIL   |
+| Contacts white on Sky                                 | 1.81:1  | UI FAIL   |
+| Tasks white on Pink                                   | 1.58:1  | UI FAIL   |
+| Notes white on Yellow                                 | 1.55:1  | UI FAIL   |
 
 Home uses Soft and Dark (and `--workspace-home-bg`); it has no per-app accent. The suite mark may use fixed fills or `var(--color-we-got-soft)` / `var(--color-we-got-dark)` rather than `--wai-*`.
 

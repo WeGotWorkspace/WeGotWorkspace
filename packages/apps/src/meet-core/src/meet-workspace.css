@@ -914,19 +914,19 @@
   --button-outline-hover-color: var(--color-we-got-dark);
 }
 
-/** App switcher lockup: meet.svg literals (`#ffc800` tile and bars / `#962fa8` shape). */
+/** App switcher lockup: meet.svg literals (white tile and bars / `#ba9689` shape). */
 .meet-workspace--split
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--color-we-got-yellow);
+  background-color: #ffffff;
 }
 
 .meet-workspace--split
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-yellow);
-  --wai-fg: var(--color-we-got-prince);
+  --wai-bg: #ffffff;
+  --wai-fg: var(--color-we-got-sand);
 }
 
 .meet-workspace__sidebar-kind-icon {

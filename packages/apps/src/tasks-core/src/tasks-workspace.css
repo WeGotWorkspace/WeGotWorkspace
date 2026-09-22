@@ -112,7 +112,7 @@
   --button-outline-hover-color: var(--color-we-got-dark);
 }
 
-/** App switcher lockup: tasks.svg literals (`#ffbdc2` tile, `#de4b0e` marks). */
+/** App switcher lockup: tasks.svg literals (`#ffbdc2` tile, white marks). */
 .tasks-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   background-color: var(--color-we-got-pink);
 }
@@ -122,8 +122,7 @@
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
   --wai-bg: var(--color-we-got-pink);
-  /* Red marks on pink: ~2.6:1 solid → mix toward ink for UI 3:1. */
-  --wai-fg: color-mix(in oklch, var(--color-we-got-red) 90%, var(--color-we-got-dark));
+  --wai-fg: #ffffff;
 }
 
 /**

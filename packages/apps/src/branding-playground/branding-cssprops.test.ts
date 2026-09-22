@@ -21,25 +21,19 @@ import {
 } from "@/branding-playground/create-branding-story-meta";
 
 describe("BRANDING_APP_ACCENT_DEFAULTS", () => {
-  it("matches production UI accents (not PWA tile) for calendar, tasks, meet", () => {
+  it("matches production UI accents (not PWA tile) for calendar, tasks, meet, contacts", () => {
     expect(BRANDING_APP_ACCENT_DEFAULTS.calendar).toBe("#962fa8");
     expect(BRANDING_APP_ACCENT_DEFAULTS.tasks).toBe("#de4b0e");
     expect(BRANDING_APP_ACCENT_DEFAULTS.meet).toBe("#962fa8");
+    expect(BRANDING_APP_ACCENT_DEFAULTS.contacts).toBe("#a3c4e8");
     expect(BRANDING_APP_ACCENT_DEFAULTS.calendar).not.toBe(WORKSPACE_APP_ACCENT.calendar);
     expect(BRANDING_APP_ACCENT_DEFAULTS.tasks).not.toBe(WORKSPACE_APP_ACCENT.tasks);
     expect(BRANDING_APP_ACCENT_DEFAULTS.meet).not.toBe(WORKSPACE_APP_ACCENT.meet);
+    expect(BRANDING_APP_ACCENT_DEFAULTS.contacts).not.toBe(WORKSPACE_APP_ACCENT.contacts);
   });
 
   it("matches WORKSPACE_APP_ACCENT when tile and UI accent are the same", () => {
-    for (const appId of [
-      "mail",
-      "notes",
-      "contacts",
-      "docs",
-      "drive",
-      "admin",
-      "settings",
-    ] as const) {
+    for (const appId of ["mail", "notes", "docs", "drive", "admin", "settings"] as const) {
       expect(BRANDING_APP_ACCENT_DEFAULTS[appId].toLowerCase()).toBe(
         WORKSPACE_APP_ACCENT[appId].toLowerCase(),
       );
@@ -193,8 +187,8 @@ describe("createBrandingStoryMeta defaults", () => {
     expect(cssprops).not.toHaveProperty("app-sidebar-bg");
     expect(cssprops["workspace-accent"].value).toBe("#0045ff");
     expect(cssprops["app-sidebar-color"]).toBeUndefined();
-    expect(cssprops["wai-bg"].value).toBe("#ffffff");
-    expect(cssprops["wai-fg"].value).toBe("#0045ff");
+    expect(cssprops["wai-bg"].value).toBe("#0045ff");
+    expect(cssprops["wai-fg"].value).toBe("#ffffff");
     expect(cssprops["wai-detail"]).toBeUndefined();
     expect(cssprops["wai-cutout"]).toBeUndefined();
   });
@@ -208,8 +202,8 @@ describe("createBrandingStoryMeta defaults", () => {
     expect(cssprops["workspace-accent"].value).toBe("#962fa8");
     expect(cssprops["app-sidebar-bg"]).toBeUndefined();
     expect(cssprops["app-sidebar-color"]).toBeUndefined();
-    expect(cssprops["wai-bg"].value).toBe("#ffbdc2");
-    expect(cssprops["wai-fg"].value).toBe("#962fa8");
+    expect(cssprops["wai-bg"].value).toBe("#962fa8");
+    expect(cssprops["wai-fg"].value).toBe("#ffffff");
     expect(cssprops["wai-cutout"]).toBeUndefined();
   });
 

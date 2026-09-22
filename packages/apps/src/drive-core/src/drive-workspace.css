@@ -121,22 +121,22 @@
 }
 
 /**
- * App switcher lockup: drive.svg literals (`#8ACE00` tile / `#1D6635` folder).
+ * App switcher lockup: drive.svg literals (white tile / `#8ACE00` folder).
  * Pin both the lockup variables and `--wai-*` so artwork stays distinct from
  * any shared switch-trigger remaps (do not recolor the folder mark).
  */
 .drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: #8ace00;
-  --app-switch-icon-fg: #1d6635;
-  background-color: var(--color-we-got-brat);
+  --app-switch-icon-bg: #ffffff;
+  --app-switch-icon-fg: var(--color-we-got-brat);
+  background-color: #ffffff;
 }
 
 .drive-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-brat);
-  --wai-fg: #1d6635;
+  --wai-bg: #ffffff;
+  --wai-fg: var(--color-we-got-brat);
 }
 
 .drive-workspace .drive-main-pane {

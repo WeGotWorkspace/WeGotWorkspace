@@ -62,13 +62,13 @@ export type AppBrandingCsspropsOptions = {
 /**
  * Production UI accents from `*-workspace.css` `--workspace-accent` (brand hex).
  * May differ from `WORKSPACE_APP_ACCENT` (PWA / home-tile theme color) for
- * calendar, tasks, and meet.
+ * calendar, tasks, meet, and contacts.
  */
 export const BRANDING_APP_ACCENT_DEFAULTS: Record<WorkspaceAppId, string> = {
   notes: "#ffc800",
   mail: "#de4b0e",
   calendar: "#962fa8",
-  contacts: "#962fa8",
+  contacts: "#a3c4e8",
   tasks: "#de4b0e",
   drive: "#8ace00",
   docs: "#0045ff",
@@ -147,16 +147,16 @@ export function createAppBrandingCssprops(
 
 /** Per-app wai defaults sampled from `*-workspace.css` switch-trigger rules. */
 export const BRANDING_APP_WAI_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg: string }> = {
-  mail: { bg: "#de4b0e", fg: "#ffbdc2" },
-  notes: { bg: "#ffc800", fg: "#de4b0e" },
-  docs: { bg: "#ffffff", fg: "#0045ff" },
-  drive: { bg: "#8ace00", fg: "#1d6635" },
-  tasks: { bg: "#ffbdc2", fg: "#de4b0e" },
-  calendar: { bg: "#ffbdc2", fg: "#962fa8" },
-  contacts: { bg: "#962fa8", fg: "#ffbdc2" },
-  meet: { bg: "#ffc800", fg: "#962fa8" },
-  admin: { bg: "#003311", fg: "#8ace00" },
-  settings: { bg: "#003311", fg: "#8ace00" },
+  mail: { bg: "#de4b0e", fg: "#ffffff" },
+  notes: { bg: "#ffc800", fg: "#ffffff" },
+  docs: { bg: "#0045ff", fg: "#ffffff" },
+  drive: { bg: "#ffffff", fg: "#8ace00" },
+  tasks: { bg: "#ffbdc2", fg: "#ffffff" },
+  calendar: { bg: "#962fa8", fg: "#ffffff" },
+  contacts: { bg: "#a3c4e8", fg: "#ffffff" },
+  meet: { bg: "#ffffff", fg: "#ba9689" },
+  admin: { bg: "#ffffff", fg: "#003311" },
+  settings: { bg: "#ffffff", fg: "#003311" },
 };
 
 /**

@@ -124,19 +124,19 @@
   --button-outline-hover-color: var(--color-we-got-dark);
 }
 
-/** App switcher lockup: calendar.svg literals (`#ffbdc2` tile / `#962fa8` marks). */
+/** App switcher lockup: calendar.svg literals (`#962fa8` tile / white marks). */
 .calendar-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--color-we-got-pink);
+  background-color: var(--color-we-got-prince);
 }
 
 .calendar-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-pink);
-  --wai-fg: var(--color-we-got-prince);
+  --wai-bg: var(--color-we-got-prince);
+  --wai-fg: #ffffff;
 }
 
 /*

@@ -132,8 +132,8 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(
       /\.meet-workspace--split[\s\S]*--field-label-color:\s*color-mix\(in oklch,\s*var\(--color-we-got-dark\) 72%/,
     );
-    expect(css).toMatch(/--wai-bg:\s*var\(--color-we-got-yellow\)/);
-    expect(css).toMatch(/--wai-fg:\s*var\(--color-we-got-prince\)/);
+    expect(css).toMatch(/--wai-bg:\s*#ffffff/);
+    expect(css).toMatch(/--wai-fg:\s*var\(--color-we-got-sand\)/);
     expect(css).not.toMatch(/--wai-detail/);
     expect(css).toMatch(
       /\.meet-workspace--split \.app-sidebar[\s\S]*--user-avatar-presence-ring:\s*var\(--app-sidebar-bg\)/,
@@ -533,7 +533,7 @@ describe("meet guest invite lobby chrome", () => {
     );
     expect(guestLobbyCard).toMatch(/meet-guest-lobby__heading/);
     expect(guestLobbyCss).toMatch(
-      /\.meet-guest-channel__lobby \.meet-guest-lobby__mark\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#ffc800/,
+      /\.meet-guest-channel__lobby \.meet-guest-lobby__mark\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#ffffff/,
     );
     expect(guestLobbyCss).toMatch(
       /\.meet-guest-channel__lobby \.meet-guest-lobby__knock\.button--variant-primary \{[\s\S]*--button-icon-size:\s*1rem/,

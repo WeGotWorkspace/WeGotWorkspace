@@ -22,12 +22,12 @@
 
 .meet-guest-channel__lobby .meet-guest-lobby__mark.workspace-app-icon--switch-trigger {
   @apply mb-4 size-8 rounded-md;
-  background-color: #ffc800;
+  background-color: #ffffff;
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__mark.workspace-app-icon--switch-trigger > svg {
-  --wai-bg: #ffc800;
-  --wai-fg: #962fa8;
+  --wai-bg: #ffffff;
+  --wai-fg: #ba9689;
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__knock.button--variant-primary {

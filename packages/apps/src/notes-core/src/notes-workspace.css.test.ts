@@ -229,7 +229,7 @@ describe("notes workspace app-switch lockup", () => {
       /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-yellow\)/,
     );
     expect(css).toMatch(
-      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-red\) 91%,\s*var\(--color-we-got-dark\)\s*\)/,
+      /\.notes-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#ffffff/,
     );
     expect(css).not.toMatch(/--wai-detail/);
     expect(css).not.toMatch(/--wai-cutout/);

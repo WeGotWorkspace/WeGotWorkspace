@@ -71,15 +71,15 @@ describe("admin workspace outline chrome", () => {
     );
   });
 
-  it("keeps lockup SVG hexes (tile + lime marks) without lime as UI accent", () => {
+  it("keeps lockup SVG hexes (white tile + ink marks) without lime as UI accent", () => {
     expect(css).toMatch(
-      /\.admin-workspace[\s\S]*\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-dark\)/,
+      /\.admin-workspace[\s\S]*\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#ffffff/,
     );
     expect(css).toMatch(
-      /\.admin-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-dark\)/,
+      /\.admin-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#ffffff/,
     );
     expect(css).toMatch(
-      /\.admin-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--color-we-got-brat\)/,
+      /\.admin-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--color-we-got-dark\)/,
     );
   });
 

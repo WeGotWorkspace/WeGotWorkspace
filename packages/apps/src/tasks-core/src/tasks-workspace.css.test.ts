@@ -118,7 +118,7 @@ describe("tasks workspace header and sidebar", () => {
       /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-pink\)/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-red\) 90%,\s*var\(--color-we-got-dark\)\s*\)/,
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#ffffff/,
     );
   });
 

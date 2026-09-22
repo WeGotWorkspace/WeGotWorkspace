@@ -292,7 +292,7 @@
 }
 
 /**
- * App switcher lockup: keep notes.svg literals (`#ffc800` tile / `#de4b0e` marks).
+ * App switcher lockup: notes.svg literals (`#ffc800` tile / white marks).
  * Default switch-trigger remaps `--wai-*`; pin them back to those hexes.
  */
 .notes-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
@@ -305,8 +305,7 @@
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
   --wai-bg: var(--color-we-got-yellow);
-  /* Red marks on yellow: ~2.6:1 solid → mix toward ink for UI 3:1. */
-  --wai-fg: color-mix(in oklch, var(--color-we-got-red) 91%, var(--color-we-got-dark));
+  --wai-fg: #ffffff;
 }
 
 /**

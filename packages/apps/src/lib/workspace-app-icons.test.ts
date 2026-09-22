@@ -43,12 +43,12 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
 
     expect(notes).toContain('d="M0 45C0 20.147');
     expect(notes).toContain("#ffc800");
-    expect(notes).toContain("#de4b0e");
+    expect(notes).toContain("#ffffff");
     expect(notes).not.toContain('d="M45 201c0-24.853');
     expect(contacts).toContain('d="M45 201c0-24.853');
     expect(contacts).toContain('cx="135"');
-    expect(contacts).toContain("#962fa8");
-    expect(contacts).toContain("#ffbdc2");
+    expect(contacts).toContain("#a3c4e8");
+    expect(contacts).toContain("#ffffff");
     expect(contacts).not.toContain('d="M0 45C0 20.147');
     expect(contacts).not.toContain('d="M256 280C284.719');
   });

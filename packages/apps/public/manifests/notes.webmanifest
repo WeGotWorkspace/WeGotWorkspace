@@ -9,13 +9,13 @@
   "theme_color": "#ffc800",
   "icons": [
     {
-      "src": "/app-icons/notes.svg?v=15",
+      "src": "/app-icons/notes.svg?v=17",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/notes-180.png?v=15",
+      "src": "/pwa-icons/notes-180.png?v=17",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

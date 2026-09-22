@@ -5,8 +5,8 @@
 /**
  * Admin product shell: cream main pane + light accent→cream sidebar tint
  * (Notes / Contacts / Meet-split chrome). `--workspace-accent` is the brand tile
- * (`#003311` — same hex as WORKSPACE_APP_ACCENT.admin). Lime `#8ACE00` stays
- * on the lockup only. Primary fills use accent with white fg. Sidebar is 16%
+ * (`#003311` — same hex as WORKSPACE_APP_ACCENT.admin). The lockup is a
+ * white tile with Dark marks. Primary fills use accent with white fg. Sidebar is 16%
  * accent on cream so near-black does not read as a full-bleed dark rail.
  * Import only from {@link AdminWorkspace}.
  */
@@ -105,15 +105,15 @@
 }
 
 .admin-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--color-we-got-dark);
+  background-color: #ffffff;
 }
 
 .admin-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-dark);
-  --wai-fg: var(--color-we-got-brat);
+  --wai-bg: #ffffff;
+  --wai-fg: var(--color-we-got-dark);
 }
 
 .admin-workspace .app-sidebar__scroll {

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 271" fill="none">
-<rect width="269.853" height="269.947" fill="var(--wai-bg, #ffc800)" rx="45" transform="matrix(0 1 1 0 0 0)"/>
-<path fill="var(--wai-fg, #962fa8)" d="M270 46.027c0-25.405-20.595-46-46-46H46c-25.405 0-46 20.595-46 46v133c0 25.405 20.595 46 46 46h179c24.853 0 45-20.148 45-45zM166 225.027h-62v33.029c0 10.691 12.926 16.045 20.485 8.485z"/>
-<rect width="179" height="21.163" fill="var(--wai-bg, #ffc800)" rx="10.581" transform="matrix(-1 0 0 1 225 76.027)"/>
-<rect width="89" height="21" fill="var(--wai-bg, #ffc800)" rx="10.5" transform="matrix(-1 0 0 1 135 128.414)"/>
+<rect width="269.853" height="269.947" fill="var(--wai-bg, #ffffff)" rx="45" transform="matrix(0 1 1 0 0 0)"/>
+<path fill="var(--wai-fg, #ba9689)" d="M270 46.027c0-25.405-20.595-46-46-46H46c-25.405 0-46 20.595-46 46v133c0 25.405 20.595 46 46 46h179c24.853 0 45-20.148 45-45zM166 225.027h-62v33.029c0 10.691 12.926 16.045 20.485 8.485z"/>
+<rect width="179" height="21.163" fill="var(--wai-bg, #ffffff)" rx="10.581" transform="matrix(-1 0 0 1 225 76.027)"/>
+<rect width="89" height="21" fill="var(--wai-bg, #ffffff)" rx="10.5" transform="matrix(-1 0 0 1 135 128.414)"/>
 </svg>

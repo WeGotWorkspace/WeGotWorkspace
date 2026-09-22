@@ -21,7 +21,7 @@ describe("WorkspaceAppIconOverrideProvider", () => {
     // jsdom may expand self-closing tags; assert production artwork cues, not byte equality.
     expect(trigger?.innerHTML).toContain('viewBox="0 0 270 270"');
     expect(trigger?.innerHTML).toContain("var(--wai-bg, #de4b0e)");
-    expect(trigger?.innerHTML).toContain("var(--wai-fg, #ffbdc2)");
+    expect(trigger?.innerHTML).toContain("var(--wai-fg, #ffffff)");
     expect(container.querySelector("[data-branding-override]")).toBeNull();
   });
 

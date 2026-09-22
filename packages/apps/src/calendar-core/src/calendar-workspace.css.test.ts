@@ -30,15 +30,15 @@ describe("calendar workspace brand accent", () => {
     expect(css).not.toMatch(/--workspace-accent-strong:\s*#5558e8/);
   });
 
-  it("keeps switch-trigger lockup on pink tile + purple marks", () => {
+  it("keeps switch-trigger lockup on prince tile + white marks", () => {
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-pink\)/,
+      /\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-prince\)/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-pink\)/,
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-prince\)/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--color-we-got-prince\)/,
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#ffffff/,
     );
   });
 });
