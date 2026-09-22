@@ -14,8 +14,6 @@ const MEET_STORY_BRAND_TOKENS = {
   "--color-we-got-dark": "#003311",
   "--color-we-got-yellow": "#ffc800",
   "--color-we-got-prince": "#962fa8",
-  "--color-we-got-dark": "#003311",
-  "--color-we-got-soft": "#fff5e9",
 } as CSSProperties;
 
 export function MeetStoryScope({
