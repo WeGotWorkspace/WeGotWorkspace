@@ -14,7 +14,8 @@
 }
 
 .action-bar__back {
-  @apply max-w-[12rem] shrink min-w-0 rounded-full transition-colors;
+  /* Soft radius from `.button` (`--control-radius`); do not force a capsule. */
+  @apply max-w-[12rem] shrink min-w-0 transition-colors;
 }
 
 .action-bar__back > span:last-child {
