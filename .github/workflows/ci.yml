@@ -215,11 +215,18 @@ jobs:
       - name: Install JS workspace
         run: pnpm install --frozen-lockfile
 
+      # Chromatic CLI 13 detects packageManager "bun" and runs `bun run build-storybook`,
+      # which is not installed on the runner. Build with pnpm and upload that output.
+      - name: Build Storybook
+        working-directory: packages/apps
+        run: pnpm exec storybook build --output-dir storybook-static
+
       - name: Publish to Chromatic
         uses: chromaui/action@v13
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           workingDir: packages/apps
+          storybookBuildDir: storybook-static
           onlyChanged: true
           exitZeroOnChanges: false
           autoAcceptChanges: "main"
