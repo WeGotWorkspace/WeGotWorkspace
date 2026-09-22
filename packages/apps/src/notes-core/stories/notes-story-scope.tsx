@@ -4,6 +4,26 @@ import "@/notes-core/src/notes-workspace.css";
 
 export type NotesStoryScopeVariant = "pane" | "list-column" | "detail";
 
+/**
+ * Storybook Vitest does not emit `@theme` tokens onto `:root` (apps Vite config
+ * is disabled). Seed brand hexes on the notes root so product CSS `var(--color-*)`
+ * chains resolve without enabling `@tailwindcss/vite` for the whole catalog.
+ */
+const NOTES_STORY_BRAND_TOKENS = {
+  "--color-we-got-soft": "#fff5e9",
+  "--color-we-got-dark": "#003311",
+  "--color-we-got-yellow": "#ffc800",
+  "--color-ink": "#003311",
+  "--color-cream": "#fff5e9",
+} as CSSProperties;
+
+function notesStoryStyle(detailTint?: string): CSSProperties {
+  return {
+    ...NOTES_STORY_BRAND_TOKENS,
+    ...(notesDetailTintStyle(detailTint) as CSSProperties | undefined),
+  };
+}
+
 export function NotesStoryScope({
   children,
   variant = "pane",
@@ -16,7 +36,10 @@ export function NotesStoryScope({
 }) {
   if (variant === "list-column") {
     return (
-      <div className="notes-workspace notes-story-scope notes-story-scope--list-column">
+      <div
+        className="notes-workspace notes-story-scope notes-story-scope--list-column"
+        style={NOTES_STORY_BRAND_TOKENS}
+      >
         <div className="h-dvh w-full max-w-md shrink-0 md:w-96">{children}</div>
       </div>
     );
@@ -26,7 +49,7 @@ export function NotesStoryScope({
     return (
       <div
         className="notes-workspace notes-story-scope notes-story-scope--detail"
-        style={notesDetailTintStyle(detailTint) as CSSProperties | undefined}
+        style={notesStoryStyle(detailTint)}
       >
         {children}
       </div>
@@ -34,7 +57,7 @@ export function NotesStoryScope({
   }
 
   return (
-    <div className="notes-workspace notes-story-scope">
+    <div className="notes-workspace notes-story-scope" style={NOTES_STORY_BRAND_TOKENS}>
       <div className="mx-auto max-w-2xl p-6 md:p-10">{children}</div>
     </div>
   );
