@@ -8,7 +8,7 @@
 .meet-guest-lobby__title {
   font-family: var(--font-serif);
   /* Hex — `@theme` `we-got-dark` can compile to oklch(from) that misses Storybook :root. */
-  color: var(--color-ink, #003311);
+  color: var(--color-we-got-dark, #003311);
 }
 
 .meet-guest-lobby__title {

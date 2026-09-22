@@ -235,7 +235,7 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).not.toMatch(/#1a1a1a/);
     expect(css).not.toMatch(/#2a2a2e/);
     expect(css).toMatch(
-      /:is\(\.meet-call-bar,\s*\.meet-call-stage,\s*\.meet-call-expanded\)\s*\{[\s\S]*--button-outline-color:\s*var\(--color-we-got-dark\)/,
+      /:is\(\.meet-call-bar,\s*\.meet-call-stage,\s*\.meet-call-expanded\)\s*\{[\s\S]*--button-outline-color:\s*#003311/,
     );
     expect(css).not.toMatch(/--button-subtle-/);
     expect(css).toMatch(/\.meet-call-bar__title[\s\S]*var\(--color-we-got-dark\)/);
@@ -432,14 +432,15 @@ describe("meet guest invite lobby chrome", () => {
     const lobby = css.match(/\.meet-guest-channel__lobby \{[\s\S]*?\n\}/)?.[0] ?? "";
     const title =
       css.match(/\.meet-guest-channel__lobby \.meet-workspace__title \{[\s\S]*?\n\}/)?.[0] ?? "";
-    expect(lobby).toMatch(/--meet-text:\s*var\(--color-we-got-dark\)/);
-    expect(lobby).toMatch(/background-color:\s*var\(--meet-surface\)/);
+    /* Hex Dark/Soft — Storybook Vitest may lack `@theme` oklch(from) tokens. */
+    expect(lobby).toMatch(/--meet-text:\s*#003311/);
+    expect(lobby).toMatch(/background-color:\s*var\(--meet-surface,\s*#fff5e9\)/);
     expect(lobby).not.toMatch(/#1b1d3a/);
     expect(title).toMatch(/font-family:\s*var\(--font-serif\)/);
-    expect(title).toMatch(/color:\s*var\(--color-we-got-dark\)/);
+    expect(title).toMatch(/color:\s*var\(--color-we-got-dark,\s*#003311\)/);
     expect(title).not.toMatch(/#ffffff/);
     expect(lobby).toMatch(/--button-primary-bg:\s*var\(--workspace-accent\)/);
-    expect(lobby).toMatch(/--button-outline-color:\s*var\(--color-we-got-dark\)/);
+    expect(lobby).toMatch(/--button-outline-color:\s*#003311/);
     expect(lobby).toMatch(/--button-outline-hover-color:\s*var\(--workspace-accent-strong\)/);
   });
 
