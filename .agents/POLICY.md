@@ -11,8 +11,8 @@ Policies agents should follow for **new work**. Backlog gaps are tracked on GitH
 | **Live-tier stories** (`Live …`) | Optional smoke only; never sole coverage | Manual | [storybook/offline-first.md](skills/storybook/offline-first.md) |
 | **Story `play` functions** | Target for critical UI flows | CI via `vitest-ci` smoke stories | [testing/apps-done-gate.md](skills/testing/apps-done-gate.md) |
 | **`@storybook/addon-vitest`** | Target | CI: Storybook smoke via `pnpm test:apps-done-gate` inside `ci:quality`; full catalog locally via `test:storybook` | [storybook/offline-first.md](skills/storybook/offline-first.md) — wired in [#74](https://github.com/WeGotWorkspace/wegotworkspace/pull/74) |
-| **Apps done gate** | Run before merge-ready UI work | Husky **pre-push** when `packages/apps/**` changed; `pnpm test:apps-done-gate` (local); same gate at end of `pnpm run ci:quality` in CI on **PR HEAD** | [testing/apps-done-gate.md](skills/testing/apps-done-gate.md) |
-| **Vitest for hooks / pure logic** | Required when adding non-trivial logic | `pnpm test:apps-done-gate` (unit + jsdom projects) via `ci:quality` | [testing/ui-architecture.md](skills/testing/ui-architecture.md) |
+| **Apps done gate** | Run before merge-ready UI work | Husky **pre-push** runs the **local** gate when `packages/apps/**` changed (typecheck, OpenAPI contract, Storybook smoke, coverage). **CI** `apps-quality` sets `APPS_DONE_GATE_FULL=1` and also runs Vitest unit + jsdom | [testing/apps-done-gate.md](skills/testing/apps-done-gate.md) |
+| **Vitest for hooks / pure logic** | Required when adding non-trivial logic | CI `apps-quality` (`APPS_DONE_GATE_FULL=1`): unit project plus jsdom shards in a pool sized for GitHub-hosted runners | [testing/ui-architecture.md](skills/testing/ui-architecture.md) |
 | **UI pane RTL tests** | Encouraged for interaction-heavy panes | jsdom project (`*.test.tsx`) | [testing/ui-architecture.md](skills/testing/ui-architecture.md) |
 | **UI e2e (Playwright apps)** | Out of scope | — | — |
 | **SPA front routes ↔ UiStaticServer allowlist** | Required when adding a top-level apps router path (e.g. `/share`, `/tasks`) | Architecture: `SpaShellRouteAllowlistTest` + `FrontRoutingTest` inside `pnpm test:api-done-gate` | [api/SKILL.md](skills/api/SKILL.md) — Playwright e2e still out of scope; this contract is the substitute |
@@ -34,9 +34,9 @@ Before handoff, run [developer/done-checklist.md](skills/developer/done-checklis
 |-------|------|-----------|--------|
 | **MCP** (`wgw-verify`) | During development / handoff | `run_apps_done_gate`, `run_api_done_gate`, `run_ci_quality`, quick checks | Callable by any MCP-enabled agent — wraps same scripts as bash |
 | **pre-commit** (Husky) | Every commit | lint-staged: Prettier + ESLint on staged `@wgw/apps`; Pint on staged API PHP | Staged files only |
-| **pre-push** (Husky) | Every push | `pnpm test:apps-done-gate` when `packages/apps/**` changed in the push range; else `@wgw/apps` typecheck | Commits being pushed vs remote tip |
-| **CI** (`apps-quality`, `api-quality`) | PR / push to `main` | `pnpm run ci:quality:apps` / `ci:quality:api` on **checkout HEAD** | Branch tip only — not every commit in PR history |
+| **pre-push** (Husky) | Every push | Local apps done gate when `packages/apps/**` changed (no unit/jsdom Vitest); else `@wgw/apps` typecheck | Commits being pushed vs remote tip |
+| **CI** (`apps-quality`, `api-quality`) | PR / push to `main` | `pnpm run ci:quality:apps` / `ci:quality:api` on **checkout HEAD**. Apps job sets `APPS_DONE_GATE_FULL=1` (unit + pooled jsdom) | Branch tip only — not every commit in PR history |
 
 **CI validates the PR tip only.** Intermediate commits on a feature branch may fail the full done gate until a later fix-forward commit; that is expected. Do not add per-commit CI gates. Retroactive `pnpm test:apps-done-gate` at old SHAs is for bisect/debug, not merge blocking.
 
-**Apps UI new work:** done gate must pass before push (hook) and at CI (HEAD). See [testing/apps-done-gate.md](skills/testing/apps-done-gate.md) and [git-workflow/SKILL.md](skills/git-workflow/SKILL.md).
+**Apps UI new work:** the local done gate must pass before push (hook). CI on HEAD also runs Vitest unit and jsdom. See [testing/apps-done-gate.md](skills/testing/apps-done-gate.md) and [git-workflow/SKILL.md](skills/git-workflow/SKILL.md).

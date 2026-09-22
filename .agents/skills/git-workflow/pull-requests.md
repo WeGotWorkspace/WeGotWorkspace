@@ -4,7 +4,7 @@ Only open a PR when the user explicitly asks (e.g. "open a PR", "create a pull r
 
 ## Before push
 
-**Apps (`packages/apps/**`):** Husky pre-push runs `pnpm test:apps-done-gate` when apps files changed in the push range. Run it manually if hooks were skipped — targeted Vitest alone is insufficient for merge-ready UI work.
+**Apps (`packages/apps/**`):** Husky pre-push runs the local apps done gate when apps files changed in the push range (typecheck, OpenAPI contract, Storybook smoke, coverage). Vitest unit and jsdom run in CI. Run the local gate manually if hooks were skipped.
 
 **Full stack before merge-ready PR** (when touching API or apps):
 
