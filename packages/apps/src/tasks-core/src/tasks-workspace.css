@@ -3,10 +3,9 @@
 @import "../../workspace-shell/src/workspace-color.css";
 
 /**
- * Tasks product shell: cream main pane + orange sidebar tint from icon marks
- * (`#de4b0e`). PWA/tile accent stays pink `#ffbdc2` (WORKSPACE_APP_ACCENT);
- * UI accent and tile may diverge — same as Meet/Calendar. Primary CTAs use
- * brand orange with white glyphs. Import only from {@link TasksWorkspace}.
+ * Tasks product shell: cream main pane + Pink sidebar tint (`#ffbdc2`).
+ * Primary fills use accent with Dark fg (white on Pink is ~1.6:1).
+ * Import only from {@link TasksWorkspace}.
  */
 .tasks-workspace {
   /* Readable todo column — matches contacts/mail detail measure (680px). */
@@ -24,7 +23,7 @@
   --tasks-content-inset: calc(2.25rem + 0.75rem);
   --tasks-content-inset-end: 0;
 
-  --workspace-accent: var(--color-we-got-red);
+  --workspace-accent: var(--color-we-got-pink);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--color-we-got-soft);
   --workspace-detail-bg: var(--color-we-got-soft);
@@ -54,10 +53,10 @@
   );
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-we-got-dark));
-  --button-primary-fg: #ffffff;
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--color-we-got-dark);
 
   /* Outline action language for header + collection sidebar rows. */
   --button-active-color: var(--workspace-accent-strong);
@@ -75,10 +74,8 @@
   );
 
   /*
-   * AppSidebar selected wash: brand orange still reads heavy at the shared
-   * 55%/65% accent→cream mixes. Brighten via `--app-sidebar-item-*` only.
-   * Ink on-color clears AA (hover 28% ~10.3:1, selected 38% ~9.1:1,
-   * selected-hover 48% ~8.0:1). Hover fg is ink on `.app-sidebar__scroll`
+   * AppSidebar washes stay under the shared 55%/65% ladder. Pink is light, so
+   * ink on-color stays readable. Hover fg is ink on `.app-sidebar__scroll`
    * so workspace accent-strong does not leak onto nav rows.
    */
   --app-sidebar-item-hover-bg: color-mix(
@@ -106,8 +103,8 @@
 }
 
 .tasks-workspace .app-sidebar__scroll {
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-we-got-dark));
-  --button-primary-fg: #ffffff;
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
 }
@@ -167,12 +164,12 @@
  * {@link Button} and {@link buttonVariants} match the tasks shell.
  */
 .tasks-dialog-surface {
-  --workspace-accent: var(--color-we-got-red);
+  --workspace-accent: var(--color-we-got-pink);
   --color-emerald: var(--workspace-accent);
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-we-got-dark));
-  --button-primary-fg: #ffffff;
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--color-we-got-dark);
   --button-active-color: var(--workspace-accent-strong);
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */

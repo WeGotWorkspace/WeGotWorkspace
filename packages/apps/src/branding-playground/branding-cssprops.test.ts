@@ -21,19 +21,17 @@ import {
 } from "@/branding-playground/create-branding-story-meta";
 
 describe("BRANDING_APP_ACCENT_DEFAULTS", () => {
-  it("matches production UI accents (not PWA tile) for calendar, tasks, meet, contacts", () => {
+  it("matches production UI accents (not PWA tile) for calendar, meet, contacts", () => {
     expect(BRANDING_APP_ACCENT_DEFAULTS.calendar).toBe("#962fa8");
-    expect(BRANDING_APP_ACCENT_DEFAULTS.tasks).toBe("#de4b0e");
     expect(BRANDING_APP_ACCENT_DEFAULTS.meet).toBe("#ba9689");
     expect(BRANDING_APP_ACCENT_DEFAULTS.contacts).toBe("#a3c4e8");
     expect(BRANDING_APP_ACCENT_DEFAULTS.calendar).not.toBe(WORKSPACE_APP_ACCENT.calendar);
-    expect(BRANDING_APP_ACCENT_DEFAULTS.tasks).not.toBe(WORKSPACE_APP_ACCENT.tasks);
     expect(BRANDING_APP_ACCENT_DEFAULTS.meet).not.toBe(WORKSPACE_APP_ACCENT.meet);
     expect(BRANDING_APP_ACCENT_DEFAULTS.contacts).not.toBe(WORKSPACE_APP_ACCENT.contacts);
   });
 
   it("matches WORKSPACE_APP_ACCENT when tile and UI accent are the same", () => {
-    for (const appId of ["mail", "notes", "docs", "drive", "admin", "settings"] as const) {
+    for (const appId of ["mail", "notes", "docs", "drive", "tasks", "admin", "settings"] as const) {
       expect(BRANDING_APP_ACCENT_DEFAULTS[appId].toLowerCase()).toBe(
         WORKSPACE_APP_ACCENT[appId].toLowerCase(),
       );

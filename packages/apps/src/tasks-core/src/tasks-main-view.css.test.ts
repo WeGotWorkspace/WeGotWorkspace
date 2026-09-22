@@ -95,10 +95,10 @@ describe("tasks composer select chips", () => {
       /\.tasks-main-view__add-submit\.button--variant-primary \{[\s\S]*background-color:\s*var\(--workspace-accent\)/,
     );
     expect(css).toMatch(
-      /\.tasks-main-view__add-submit\.button--variant-primary \{[\s\S]*color:\s*var\(--button-primary-fg,\s*#ffffff\)/,
+      /\.tasks-main-view__add-submit\.button--variant-primary \{[\s\S]*color:\s*var\(--button-primary-fg,\s*var\(--color-we-got-dark\)\)/,
     );
     expect(css).toMatch(
-      /\.tasks-main-view__remind-button--active \{[\s\S]*var\(--workspace-accent,\s*#de4b0e\)/,
+      /\.tasks-main-view__remind-button--active \{[\s\S]*var\(--workspace-accent,\s*#ffbdc2\)/,
     );
     expect(css).not.toMatch(/#ea8c72/);
   });

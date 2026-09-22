@@ -62,14 +62,14 @@ export type AppBrandingCsspropsOptions = {
 /**
  * Production UI accents from `*-workspace.css` `--workspace-accent` (brand hex).
  * May differ from `WORKSPACE_APP_ACCENT` (PWA / home-tile theme color) for
- * calendar, tasks, meet, and contacts.
+ * calendar, meet, and contacts.
  */
 export const BRANDING_APP_ACCENT_DEFAULTS: Record<WorkspaceAppId, string> = {
   notes: "#ffc800",
   mail: "#de4b0e",
   calendar: "#962fa8",
   contacts: "#a3c4e8",
-  tasks: "#de4b0e",
+  tasks: "#ffbdc2",
   drive: "#8ace00",
   docs: "#0045ff",
   settings: "#003311",
