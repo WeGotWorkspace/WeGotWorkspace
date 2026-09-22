@@ -41,11 +41,12 @@
 
 .app-switch-button__label {
   /*
-   * Wordmark stack for AppSwitch + BrandLockup. Face is shared `.text-lockup`
-   * (`font-mark`). Re-assert `--font-mark` after `@apply` so base `.uppercase`
-   * (which forces `--font-sans` for UI captions) cannot clobber Bebas Neue.
-   * Leading comes from `--app-switch-lockup-leading` (not `text-3xl`'s default
-   * lh) so cream shells and sidebar triggers share one line box.
+   * Wordmark stack for AppSwitch + BrandLockup. Face is shared `text-lockup`
+   * (`font-mark` → Bebas Neue). Re-assert `--font-mark` after `@apply` so base
+   * `.uppercase` (which forces `--font-sans` for UI captions) cannot clobber
+   * the mark face. Leading comes from `--app-switch-lockup-leading` (not
+   * `text-3xl`'s default lh) so cream shells and sidebar triggers share one
+   * line box.
    */
   @apply text-lockup flex min-w-0 flex-col items-start tracking-wide text-left uppercase text-3xl font-normal;
   font-family: var(--font-mark);

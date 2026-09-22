@@ -9,13 +9,17 @@ const typeCss = readFileSync(join(here, "workspace-type.css"), "utf8");
 const stylesCss = readFileSync(join(here, "../../styles.css"), "utf8");
 
 describe("workspace-type.css shared type roles", () => {
-  it("defines title, title-lg, caption, and lockup from theme utilities", () => {
-    expect(typeCss).toMatch(/\.text-title \{[\s\S]*@apply font-serif text-3xl font-semibold/);
-    expect(typeCss).toMatch(/\.text-title-lg \{[\s\S]*@apply font-serif text-4xl font-semibold/);
+  it("defines title, title-lg, caption, and lockup as @utility (so @apply works)", () => {
     expect(typeCss).toMatch(
-      /\.text-caption \{[\s\S]*@apply font-sans text-xs leading-4 font-medium uppercase/,
+      /@utility text-title \{[\s\S]*@apply font-serif text-3xl font-semibold/,
     );
-    expect(typeCss).toMatch(/\.text-lockup \{[\s\S]*@apply font-mark/);
+    expect(typeCss).toMatch(
+      /@utility text-title-lg \{[\s\S]*@apply font-serif text-4xl font-semibold/,
+    );
+    expect(typeCss).toMatch(
+      /@utility text-caption \{[\s\S]*@apply font-sans text-xs leading-4 font-medium uppercase/,
+    );
+    expect(typeCss).toMatch(/@utility text-lockup \{[\s\S]*@apply font-mark/);
   });
 
   it("does not declare private app title face tokens", () => {
@@ -27,12 +31,20 @@ describe("font family primitives and semantic aliases", () => {
   it("aliases semantic families through We Got / system primitives", () => {
     expect(stylesCss).toMatch(/--font-we-got-serif:\s*"Libre Caslon Condensed",\s*serif/);
     expect(stylesCss).toMatch(/--font-we-got-mono:\s*"JetBrains Mono"/);
-    expect(stylesCss).toMatch(/--font-we-got-mark:\s*"Bebas Neue"/);
+    // Mark must lead with Bebas — not the system sans stack alone.
+    expect(stylesCss).toMatch(
+      /--font-we-got-mark:\s*"Bebas Neue",\s*ui-sans-serif,\s*system-ui,\s*sans-serif/,
+    );
+    expect(stylesCss).not.toMatch(/--font-we-got-mark:\s*ui-sans-serif/);
+    expect(stylesCss).not.toMatch(/--font-we-got-mark:\s*var\(--font-system-sans\)/);
+    expect(stylesCss).not.toMatch(/--font-we-got-mark:\s*var\(--font-sans\)/);
     expect(stylesCss).toMatch(/--font-system-sans:\s*ui-sans-serif,\s*system-ui,\s*sans-serif/);
     expect(stylesCss).toMatch(/--font-sans:\s*var\(--font-system-sans\)/);
     expect(stylesCss).toMatch(/--font-serif:\s*var\(--font-we-got-serif\)/);
     expect(stylesCss).toMatch(/--font-mono:\s*var\(--font-we-got-mono\)/);
     expect(stylesCss).toMatch(/--font-mark:\s*var\(--font-we-got-mark\)/);
+    expect(stylesCss).not.toMatch(/--font-mark:\s*var\(--font-sans\)/);
+    expect(stylesCss).not.toMatch(/--font-mark:\s*ui-sans-serif/);
   });
 
   it("does not set a global text-xs line-height override", () => {

@@ -3,6 +3,9 @@
 /**
  * Shared workspace type roles (Layer 3).
  *
+ * Registered as `@utility` so other sheets can `@apply` them (plain `.class`
+ * rules are not valid `@apply` candidates in Tailwind v4).
+ *
  * Families and sizes come from `@theme` utilities (`font-serif`, `text-3xl`, …).
  * Parents override a face by remapping `--font-serif` / `--font-sans` on the
  * workspace — not with private app-prefixed title face tokens.
@@ -11,18 +14,18 @@
  * `--text-xs--line-height` globally.
  */
 
-.text-title {
+@utility text-title {
   @apply font-serif text-3xl font-semibold;
 }
 
-.text-title-lg {
+@utility text-title-lg {
   @apply font-serif text-4xl font-semibold;
 }
 
-.text-caption {
+@utility text-caption {
   @apply font-sans text-xs leading-4 font-medium uppercase;
 }
 
-.text-lockup {
+@utility text-lockup {
   @apply font-mark;
 }

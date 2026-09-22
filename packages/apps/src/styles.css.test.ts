@@ -92,7 +92,12 @@ describe("product UI font tokens", () => {
     expect(css).toMatch(/--font-serif:\s*var\(--font-we-got-serif\)/);
     expect(css).toMatch(/--font-we-got-serif:\s*"Libre Caslon Condensed",\s*serif/);
     expect(css).toMatch(/--font-mark:\s*var\(--font-we-got-mark\)/);
-    expect(css).toMatch(/--font-we-got-mark:\s*"Bebas Neue"/);
+    expect(css).toMatch(
+      /--font-we-got-mark:\s*"Bebas Neue",\s*ui-sans-serif,\s*system-ui,\s*sans-serif/,
+    );
+    expect(css).not.toMatch(/--font-mark:\s*ui-sans-serif/);
+    expect(css).not.toMatch(/--font-mark:\s*var\(--font-sans\)/);
+    expect(css).not.toMatch(/--font-we-got-mark:\s*ui-sans-serif/);
   });
 
   it("applies the shared sans token on body", () => {

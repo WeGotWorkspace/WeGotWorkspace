@@ -42,6 +42,15 @@ describe("app switch button lockup alignment", () => {
     expect(brandLockupCss).not.toMatch(/\.app-switch-button__label\b/);
   });
 
+  it("pins the lockup face to --font-mark (Bebas), not product sans", () => {
+    expect(css).toMatch(
+      /\.app-switch-button__label \{[\s\S]*?@apply[^;]*\btext-lockup\b[\s\S]*?font-family:\s*var\(--font-mark\)/,
+    );
+    expect(css).not.toMatch(/\.app-switch-button__label \{[^}]*font-family:\s*var\(--font-sans\)/);
+    expect(css).not.toMatch(/\.app-switch-button__label \{[^}]*font-family:\s*var\(--font-app\)/);
+    expect(css).not.toMatch(/\.app-switch-button__label \{[^}]*font-family:\s*ui-sans-serif/);
+  });
+
   it("keeps the chevron out of the subtitle line box so leading matches BrandLockup", () => {
     expect(css).not.toMatch(/\.app-switch-button__chevron-stack/);
     expect(css).not.toMatch(/\.app-switch-button__label-name \{[^}]*@apply[^;]*\binline-flex\b/);
