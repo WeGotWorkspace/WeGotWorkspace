@@ -1,6 +1,7 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import {
-  workspaceAppIconInlineMarkup,
+  WORKSPACE_APP_ICON_INLINE,
   WORKSPACE_HOME_ICON_INLINE,
 } from "@/lib/workspace-app-icon-svgs";
 import {
@@ -19,15 +20,38 @@ type WorkspaceAppIconProps = {
   variant?: WorkspaceAppIconVariant;
 };
 
+/**
+ * Stable `{ __html }` identities so React never treats a parent re-render as a
+ * new dangerouslySetInnerHTML payload (avoids re-parsing the SVG on every poll).
+ */
+const WORKSPACE_APP_SWITCH_TRIGGER_HTML: Record<WorkspaceAppId, { __html: string }> = {
+  admin: { __html: WORKSPACE_APP_ICON_INLINE.admin },
+  calendar: { __html: WORKSPACE_APP_ICON_INLINE.calendar },
+  contacts: { __html: WORKSPACE_APP_ICON_INLINE.contacts },
+  docs: { __html: WORKSPACE_APP_ICON_INLINE.docs },
+  drive: { __html: WORKSPACE_APP_ICON_INLINE.drive },
+  mail: { __html: WORKSPACE_APP_ICON_INLINE.mail },
+  meet: { __html: WORKSPACE_APP_ICON_INLINE.meet },
+  notes: { __html: WORKSPACE_APP_ICON_INLINE.notes },
+  settings: { __html: WORKSPACE_APP_ICON_INLINE.settings },
+  tasks: { __html: WORKSPACE_APP_ICON_INLINE.tasks },
+};
+
+const WORKSPACE_HOME_SWITCH_TRIGGER_HTML = { __html: WORKSPACE_HOME_ICON_INLINE };
+
 /** Branded workspace app icon — exact user vector artwork via `/app-icons/{app}.svg`. */
-export function WorkspaceAppIcon({ appId, className, variant = "default" }: WorkspaceAppIconProps) {
+export const WorkspaceAppIcon = memo(function WorkspaceAppIcon({
+  appId,
+  className,
+  variant = "default",
+}: WorkspaceAppIconProps) {
   if (variant === "switch-trigger") {
     return (
       <span
         aria-hidden
         className={cn("workspace-app-icon--switch-trigger shrink-0", className)}
         // Same SVG source as default; CSS vars on `.workspace-app-icon--switch-trigger svg` invert layers.
-        dangerouslySetInnerHTML={{ __html: workspaceAppIconInlineMarkup(appId) }}
+        dangerouslySetInnerHTML={WORKSPACE_APP_SWITCH_TRIGGER_HTML[appId]}
       />
     );
   }
@@ -44,7 +68,7 @@ export function WorkspaceAppIcon({ appId, className, variant = "default" }: Work
       draggable={false}
     />
   );
-}
+});
 
 type WorkspaceHomeIconProps = {
   className?: string;
@@ -53,7 +77,10 @@ type WorkspaceHomeIconProps = {
 };
 
 /** Branded suite / workspace home icon — exact vector artwork via `/app-icons/home.svg`. */
-export function WorkspaceHomeIcon({ className, variant = "default" }: WorkspaceHomeIconProps) {
+export const WorkspaceHomeIcon = memo(function WorkspaceHomeIcon({
+  className,
+  variant = "default",
+}: WorkspaceHomeIconProps) {
   if (variant === "switch-trigger") {
     return (
       <span
@@ -62,7 +89,7 @@ export function WorkspaceHomeIcon({ className, variant = "default" }: WorkspaceH
           "workspace-app-icon--switch-trigger workspace-app-icon--switch-trigger-home shrink-0",
           className,
         )}
-        dangerouslySetInnerHTML={{ __html: WORKSPACE_HOME_ICON_INLINE }}
+        dangerouslySetInnerHTML={WORKSPACE_HOME_SWITCH_TRIGGER_HTML}
       />
     );
   }
@@ -75,4 +102,4 @@ export function WorkspaceHomeIcon({ className, variant = "default" }: WorkspaceH
       draggable={false}
     />
   );
-}
+});
