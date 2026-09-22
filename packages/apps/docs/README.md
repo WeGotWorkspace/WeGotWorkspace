@@ -17,6 +17,10 @@ Guides for `packages/apps` — app library structure, rollout, and per-domain re
 - [Workspace feature blueprint](../../../.agents/skills/workspace/feature-blueprint.md) — `*App`, `*Workspace`, controller, panes
 - [App library rollout pattern](./rollout-pattern.md) — migrating routes to shared shell components
 
+## Design / Storybook
+
+- [Designer branding Storybook](./branding-storybook.md) — `Branding/*` stories, accent vs `--wai-*` knobs, SVG layer contract
+
 ## Quality gates
 
 - [Apps done gate](../../../.agents/skills/testing/apps-done-gate.md) — `pnpm test:apps-done-gate`
