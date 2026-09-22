@@ -3,7 +3,7 @@
 .workspace-columns {
   @apply flex h-dvh w-full overflow-hidden relative;
   font-family: var(--font-sans);
-  background-color: var(--workspace-root-bg, var(--color-cream, #f7f4ef));
+  background-color: var(--workspace-root-bg, var(--color-cream));
   container: workspace-columns / inline-size;
 }
 
@@ -14,7 +14,7 @@
    * sidebar panel (z-40). Same pattern Calendar/Meet already applied per-product.
    */
   @apply relative isolate flex min-w-0 flex-1 flex-col;
-  background-color: var(--workspace-main-bg, var(--color-cream, #f7f4ef));
+  background-color: var(--workspace-main-bg, var(--color-cream));
 }
 
 .workspace-app-layout__main-header {
@@ -136,7 +136,7 @@
   );
   --user-avatar-subtitle-color: var(
     --workspace-user-footer-subtitle-color,
-    color-mix(in oklab, var(--color-ink) 55%, transparent)
+    color-mix(in oklab, var(--color-ink) 65%, transparent)
   );
   /*
    * Opaque mark wash: darken the sidebar (not a transparent ink glaze).
@@ -144,16 +144,12 @@
    * 16% black into `--app-sidebar-bg` keeps white glyphs AA on navy/blue
    * and ink glyphs AA on cream/mint. Do not inherit selected-chip SST.
    */
-  --user-avatar-bg: color-mix(
-    in oklab,
-    #000000 16%,
-    var(--app-sidebar-bg, var(--color-cream, #f7f4ef))
-  );
+  --user-avatar-bg: color-mix(in oklab, #000000 16%, var(--app-sidebar-bg, var(--color-cream)));
   --user-avatar-fg: var(--color-ink);
   --user-avatar-border: color-mix(in oklab, var(--color-ink) 28%, transparent);
   --user-avatar-hover-bg: color-mix(
     in oklab,
     #000000 22%,
-    var(--app-sidebar-bg, var(--color-cream, #f7f4ef))
+    var(--app-sidebar-bg, var(--color-cream))
   );
 }

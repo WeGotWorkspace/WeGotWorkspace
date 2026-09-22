@@ -14,7 +14,7 @@
  * content and {@link Card} stacks share the same measure across products.
  */
 :is(.admin-workspace, .settings-workspace, .notes-workspace, .mail-workspace) {
-  --workspace-root-bg: var(--color-cream, #f7f4ef);
+  --workspace-root-bg: var(--color-cream);
   --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 15%, transparent);
   --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 80%, transparent);
   --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
@@ -28,5 +28,5 @@
   --primary: #2f302c;
   --primary-foreground: #ffffff;
 
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --field-label-color: color-mix(in oklab, var(--color-ink) 68%, transparent);
 }

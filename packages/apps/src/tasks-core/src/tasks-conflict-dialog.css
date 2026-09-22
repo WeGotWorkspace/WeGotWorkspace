@@ -1,13 +1,13 @@
 @import "../../styles.css" reference;
 
 .tasks-conflict-dialog.tasks-dialog-surface {
-  --button-primary-bg: var(--tasks-accent);
+  --button-primary-bg: var(--workspace-accent);
   max-width: min(42rem, calc(100vw - 2rem));
 }
 
 .tasks-conflict-dialog__remaining {
   @apply text-sm;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 .tasks-conflict-dialog__fields {
@@ -38,7 +38,7 @@
 
 .tasks-conflict-dialog__option-heading {
   @apply text-xs font-medium uppercase tracking-wide;
-  color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 68%, transparent);
 }
 
 .tasks-conflict-dialog__value {

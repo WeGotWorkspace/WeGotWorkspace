@@ -6,7 +6,7 @@ import { AdminWorkspace } from "@/admin-core/src/admin-workspace";
 const brandingMeta = createBrandingStoryMeta({
   appId: "admin",
   workspaceClass: "admin-workspace",
-  accentToken: "admin-accent",
+  accentToken: "workspace-accent",
   component: AdminWorkspace,
 });
 

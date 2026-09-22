@@ -718,7 +718,6 @@ describe("now-badge x-alignment with hour labels", () => {
     expect(nowBadge).toContain("inset-inline-end: 0");
     expect(nowBadge).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 0)");
     expect(css).toContain("font-size: var(--_lc-time-label-font-size, 0.75rem)");
-    expect(css).toContain("font-size: var(--_lc-time-label-font-size, 11px)");
   });
 });
 

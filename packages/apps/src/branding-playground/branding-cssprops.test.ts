@@ -71,7 +71,7 @@ describe("waiBrandingCssprops", () => {
 describe("createAppBrandingCssprops", () => {
   it("omits sidebar and app-sidebar-color unless callers opt in", () => {
     const map = createAppBrandingCssprops("mail", { wai: BRANDING_APP_WAI_DEFAULTS.mail });
-    expect(map["mail-sidebar"]).toBeUndefined();
+    expect(map["app-sidebar-bg"]).toBeUndefined();
     expect(map["app-sidebar-color"]).toBeUndefined();
   });
 
@@ -80,7 +80,7 @@ describe("createAppBrandingCssprops", () => {
       sidebarValue: BRANDING_APP_SIDEBAR_DEFAULTS.mail,
       appSidebarColor: brandingAppSidebarColorDefault("mail"),
     });
-    expect(map["mail-sidebar"]?.value).toBe(BRANDING_APP_SIDEBAR_DEFAULTS.mail);
+    expect(map["app-sidebar-bg"]?.value).toBe(BRANDING_APP_SIDEBAR_DEFAULTS.mail);
     expect(map["app-sidebar-color"]?.value).toBe("#003311");
   });
 });
@@ -91,10 +91,10 @@ describe("defaultAppBrandingCssprops", () => {
     (appId) => {
       const map = defaultAppBrandingCssprops(appId);
       const wai = BRANDING_APP_WAI_DEFAULTS[appId];
-      expect(map["color-cream"]?.value).toBe("#f7f4ef");
+      expect(map["color-cream"]?.value).toBe("#fff5e9");
       expect(map["color-ink"]?.value).toBe("#003311");
-      expect(map[`${appId}-accent`]?.value).toBe(BRANDING_APP_ACCENT_DEFAULTS[appId]);
-      expect(map[`${appId}-sidebar`]).toBeUndefined();
+      expect(map["workspace-accent"]?.value).toBe(BRANDING_APP_ACCENT_DEFAULTS[appId]);
+      expect(map["app-sidebar-bg"]).toBeUndefined();
       expect(map["app-sidebar-color"]).toBeUndefined();
       expect(map["wai-bg"]?.value).toBe(wai.bg);
       expect(map["wai-fg"]?.value).toBe(wai.fg);
@@ -119,7 +119,7 @@ describe("defaultAppBrandingCssprops", () => {
   it("documents production sidebar mix percentages (reference; not default cssprops)", () => {
     expect(brandingAppSidebarColorDefault("docs")).toBe("#ffffff");
     expect(brandingAppSidebarColorDefault("mail")).toBe("#003311");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.docs).toBe("var(--docs-accent)");
+    expect(BRANDING_APP_SIDEBAR_DEFAULTS.docs).toBe("var(--workspace-accent)");
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.calendar).toContain("10%");
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.contacts).toContain("10%");
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.admin).toContain("16%");
@@ -133,7 +133,7 @@ describe("defaultAppBrandingCssprops", () => {
 describe("defaultHomeBrandingCssprops", () => {
   it("documents cream, ink, and workspace-home-bg", () => {
     const map = defaultHomeBrandingCssprops();
-    expect(map["color-cream"]?.value).toBe("#f7f4ef");
+    expect(map["color-cream"]?.value).toBe("#fff5e9");
     expect(map["color-ink"]?.value).toBe("#003311");
     expect(map["workspace-home-bg"]?.value).toBe("#1b1d3a");
   });
@@ -142,7 +142,7 @@ describe("defaultHomeBrandingCssprops", () => {
 describe("defaultAuthBrandingCssprops", () => {
   it("documents cream and ink only (no home navy)", () => {
     const map = defaultAuthBrandingCssprops();
-    expect(map["color-cream"]?.value).toBe("#f7f4ef");
+    expect(map["color-cream"]?.value).toBe("#fff5e9");
     expect(map["color-ink"]?.value).toBe("#003311");
     expect(map["workspace-home-bg"]).toBeUndefined();
   });
@@ -185,10 +185,10 @@ describe("createBrandingStoryMeta defaults", () => {
     });
     expect(meta.parameters?.routerPath).toBe("/install");
     const cssprops = meta.parameters?.cssprops as Record<string, { value: string }>;
-    expect(cssprops["color-cream"].value).toBe("#f7f4ef");
+    expect(cssprops["color-cream"].value).toBe("#fff5e9");
     expect(cssprops["color-ink"].value).toBe("#003311");
     expect(cssprops["workspace-home-bg"]).toBeUndefined();
-    expect(cssprops["mail-accent"]).toBeUndefined();
+    expect(cssprops["workspace-accent"]).toBeUndefined();
   });
 
   it("allows parameters.routerPath override", () => {
@@ -209,8 +209,8 @@ describe("createBrandingStoryMeta defaults", () => {
     });
     expect(meta.args.fullAccentSidebar).toBe(true);
     const cssprops = meta.parameters?.cssprops as Record<string, { value: string }>;
-    expect(cssprops).not.toHaveProperty("docs-sidebar");
-    expect(cssprops["docs-accent"].value).toBe("#0045ff");
+    expect(cssprops).not.toHaveProperty("app-sidebar-bg");
+    expect(cssprops["workspace-accent"].value).toBe("#0045ff");
     expect(cssprops["app-sidebar-color"]).toBeUndefined();
     expect(cssprops["wai-bg"].value).toBe("#ffffff");
     expect(cssprops["wai-fg"].value).toBe("#0045ff");
@@ -225,8 +225,8 @@ describe("createBrandingStoryMeta defaults", () => {
       workspaceClass: "calendar-workspace",
     });
     const cssprops = meta.parameters?.cssprops as Record<string, { value: string }>;
-    expect(cssprops["calendar-accent"].value).toBe("#962fa8");
-    expect(cssprops["calendar-sidebar"]).toBeUndefined();
+    expect(cssprops["workspace-accent"].value).toBe("#962fa8");
+    expect(cssprops["app-sidebar-bg"]).toBeUndefined();
     expect(cssprops["app-sidebar-color"]).toBeUndefined();
     expect(cssprops["wai-bg"].value).toBe("#ffbdc2");
     expect(cssprops["wai-fg"].value).toBe("#962fa8");
@@ -242,8 +242,8 @@ describe("createBrandingStoryMeta defaults", () => {
         ...(appId === "docs" ? { fullAccentSidebar: true as const } : {}),
       });
       const cssprops = meta.parameters?.cssprops as Record<string, { value: string }>;
-      expect(cssprops[`${appId}-accent`].value).toBe(BRANDING_APP_ACCENT_DEFAULTS[appId]);
-      expect(cssprops[`${appId}-sidebar`]).toBeUndefined();
+      expect(cssprops["workspace-accent"].value).toBe(BRANDING_APP_ACCENT_DEFAULTS[appId]);
+      expect(cssprops["app-sidebar-bg"]).toBeUndefined();
       expect(cssprops["app-sidebar-color"]).toBeUndefined();
       expect(cssprops["wai-bg"].value).toBe(BRANDING_APP_WAI_DEFAULTS[appId].bg);
       expect(cssprops["wai-fg"].value).toBe(BRANDING_APP_WAI_DEFAULTS[appId].fg);

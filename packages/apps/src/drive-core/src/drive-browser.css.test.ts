@@ -18,27 +18,29 @@ describe("drive browser grid + tile chrome (canonical for Docs + Drive)", () => 
   it("uses white idle tiles with ::after accent hairline and selected washes", () => {
     expect(css).toMatch(/\.drive-file-tile::after/);
     expect(css).toMatch(
-      /\.drive-file-tile--selected\s+\.drive-file-tile__preview\s*\{[\s\S]*drive-accent[\s\S]*10%/,
+      /\.drive-file-tile--selected\s+\.drive-file-tile__preview\s*\{[\s\S]*workspace-accent[\s\S]*10%/,
     );
     expect(css).toMatch(
-      /\.drive-file-tile--selected\s+\.drive-file-tile__footer\s*\{[\s\S]*drive-accent[\s\S]*14%/,
+      /\.drive-file-tile--selected\s+\.drive-file-tile__footer\s*\{[\s\S]*workspace-accent[\s\S]*14%/,
     );
     expect(css).toMatch(
-      /\.drive-folder-tile--selected\s*\{[\s\S]*drive-accent[\s\S]*12%[\s\S]*box-shadow:\s*none/,
+      /\.drive-folder-tile--selected\s*\{[\s\S]*workspace-accent[\s\S]*12%[\s\S]*box-shadow:\s*none/,
     );
-    expect(css).toMatch(/\.drive-list-row--selected\s*>\s*td\s*\{[\s\S]*drive-accent[\s\S]*12%/);
+    expect(css).toMatch(
+      /\.drive-list-row--selected\s*>\s*td\s*\{[\s\S]*workspace-accent[\s\S]*12%/,
+    );
   });
 
   it("adds idle hover washes lighter than selected accent mixes", () => {
-    expect(css).toMatch(/\.drive-folder-tile--idle:hover\s*\{[\s\S]*drive-accent[\s\S]*8%/);
+    expect(css).toMatch(/\.drive-folder-tile--idle:hover\s*\{[\s\S]*workspace-accent[\s\S]*8%/);
     expect(css).toMatch(
-      /\.drive-file-tile:not\(\.drive-file-tile--selected\):hover\s+\.drive-file-tile__preview\s*\{[\s\S]*drive-accent[\s\S]*6%/,
+      /\.drive-file-tile:not\(\.drive-file-tile--selected\):hover\s+\.drive-file-tile__preview\s*\{[\s\S]*workspace-accent[\s\S]*6%/,
     );
     expect(css).toMatch(
-      /\.drive-file-tile:not\(\.drive-file-tile--selected\):hover\s+\.drive-file-tile__footer\s*\{[\s\S]*drive-accent[\s\S]*8%/,
+      /\.drive-file-tile:not\(\.drive-file-tile--selected\):hover\s+\.drive-file-tile__footer\s*\{[\s\S]*workspace-accent[\s\S]*8%/,
     );
     expect(css).toMatch(
-      /\.drive-list-row:not\(\.drive-list-row--selected\):not\(\.drive-list-row--drop-target\):hover\s*>\s*td\s*\{[\s\S]*drive-accent[\s\S]*8%/,
+      /\.drive-list-row:not\(\.drive-list-row--selected\):not\(\.drive-list-row--drop-target\):hover\s*>\s*td\s*\{[\s\S]*workspace-accent[\s\S]*8%/,
     );
   });
 
@@ -65,8 +67,8 @@ describe("drive browser grid + tile chrome (canonical for Docs + Drive)", () => 
     expect(css).not.toMatch(
       /\.drive-item-label \{[\s\S]*font-family:\s*var\(\s*--field-label-font-family,\s*var\(\s*--font-mono/,
     );
-    expect(css).toMatch(/\.drive-item-label \{[\s\S]*@apply[\s\S]*\btext-2xs\b/);
-    expect(css).toMatch(/\.drive-list-head__cell \{[\s\S]*@apply[\s\S]*\btext-2xs\b/);
+    expect(css).toMatch(/\.drive-item-label \{[\s\S]*@apply[\s\S]*\btext-xs\b/);
+    expect(css).toMatch(/\.drive-list-head__cell \{[\s\S]*@apply[\s\S]*\btext-xs\b/);
     expect(css).not.toMatch(/\.drive-item-label \{[\s\S]*@apply[\s\S]*\btracking-/);
     expect(css).not.toMatch(/\.drive-list-head__cell \{[\s\S]*@apply[\s\S]*\btracking-/);
     expect(css).toMatch(/\.drive-item-label > svg \{[\s\S]*@apply size-3/);

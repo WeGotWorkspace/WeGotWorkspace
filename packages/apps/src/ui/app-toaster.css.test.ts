@@ -26,7 +26,7 @@ describe("app-toaster CSS", () => {
 
   it("uses a slightly translucent cream wash", () => {
     expect(css).toMatch(
-      /--callout-bg:\s*color-mix\(\s*in oklab,\s*var\(--color-cream,\s*#f7f4ef\) 90%,\s*transparent\)/,
+      /--callout-bg:\s*color-mix\(\s*in oklab,\s*var\(--color-cream\) 90%,\s*transparent\)/,
     );
   });
 
@@ -53,7 +53,7 @@ describe("app-toaster CSS", () => {
       /\[data-sonner-toast\] \.menu-item__description \{[\s\S]*font-size:\s*0\.75rem[\s\S]*font-weight:\s*500/,
     );
     expect(css).toMatch(
-      /\[data-sonner-toast\] \.menu-item__description \{[\s\S]*color-mix\(\s*in oklab,\s*var\(--color-ink\) 62%/,
+      /\[data-sonner-toast\] \.menu-item__description \{[\s\S]*color-mix\(\s*in oklab,\s*var\(--color-ink\) 68%/,
     );
   });
 

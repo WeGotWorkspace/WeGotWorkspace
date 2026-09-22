@@ -25,5 +25,5 @@
   text-align: center;
   font-size: 0.875rem;
   line-height: 1.25rem;
-  color: var(--loading-spinner-label-color, color-mix(in oklab, var(--color-ink) 50%, transparent));
+  color: var(--loading-spinner-label-color, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }

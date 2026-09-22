@@ -21,7 +21,7 @@
 }
 
 .docs-suggestion-card__diff-arrow {
-  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }
 
 .docs-suggestion-card__reactions {
@@ -36,11 +36,7 @@
 .docs-suggestion-card__composer {
   @apply sticky bottom-0 z-[1] mt-3 flex items-center gap-2 rounded-lg border px-3 py-1;
   border-color: var(--docs-border, color-mix(in oklab, var(--color-ink) 10%, transparent));
-  background-color: color-mix(
-    in oklab,
-    var(--docs-surface, var(--color-cream, #f7f4ef)) 92%,
-    transparent
-  );
+  background-color: color-mix(in oklab, var(--docs-surface, var(--color-cream)) 92%, transparent);
 }
 
 .docs-suggestion-card__composer-input {
@@ -49,7 +45,7 @@
 }
 
 .docs-suggestion-card__composer-input::placeholder {
-  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }
 
 .docs-suggestion-card__composer-post {

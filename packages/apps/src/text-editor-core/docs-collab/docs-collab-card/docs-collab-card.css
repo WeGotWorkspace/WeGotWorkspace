@@ -3,10 +3,10 @@
 
 .docs-collab-card {
   @apply cursor-pointer border p-4 transition-[border-color,background-color,opacity] duration-200;
-  --docs-collab-card-accent: var(--docs-accent, #3b82f6);
+  --docs-collab-card-accent: var(--workspace-accent, var(--color-we-got-blue));
   border-radius: var(--control-radius-button-pill);
   border-color: var(--docs-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
-  background-color: var(--docs-surface, var(--color-cream, #f7f4ef));
+  background-color: var(--docs-surface, var(--color-cream));
 }
 
 .docs-collab-card[data-active="false"] {
@@ -94,7 +94,7 @@
 
 .docs-collab-card__time {
   @apply text-[11px] leading-tight;
-  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }
 
 .docs-collab-card__actions {

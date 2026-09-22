@@ -69,23 +69,23 @@ function styleBag(): { el: { style: CSSStyleDeclaration }; style: CSSStyleDeclar
 
 describe("resolveBrandingCsspropValues", () => {
   const entries = [
-    { key: "calendar-accent", value: "#962fa8" },
+    { key: "workspace-accent", value: "#962fa8" },
     { key: "wai-bg", value: "#ffbdc2" },
   ];
 
   it("applies parameter defaults when body has no style (Docs / Canvas wipe)", () => {
     const body = styleBag();
     expect(resolveBrandingCsspropValues(entries, body.style)).toEqual({
-      "--calendar-accent": "#962fa8",
+      "--workspace-accent": "#962fa8",
       "--wai-bg": "#ffbdc2",
     });
   });
 
   it("prefers live body values from the cssprops addon", () => {
     const body = styleBag();
-    body.style.setProperty("--calendar-accent", "#ff0000");
+    body.style.setProperty("--workspace-accent", "#ff0000");
     expect(resolveBrandingCsspropValues(entries, body.style)).toEqual({
-      "--calendar-accent": "#ff0000",
+      "--workspace-accent": "#ff0000",
       "--wai-bg": "#ffbdc2",
     });
   });
@@ -94,18 +94,18 @@ describe("resolveBrandingCsspropValues", () => {
 describe("buildBrandingWorkspaceOverrideCss", () => {
   it("emits concrete token values, never inherit", () => {
     const css = buildBrandingWorkspaceOverrideCss("calendar-workspace", {
-      "--calendar-accent": "#962fa8",
+      "--workspace-accent": "#962fa8",
       "--wai-bg": "#ffbdc2",
       "--wai-fg": "#962fa8",
     });
-    expect(css).toContain("--calendar-accent: #962fa8;");
+    expect(css).toContain("--workspace-accent: #962fa8;");
     expect(css).toContain("--wai-bg: #ffbdc2;");
     expect(css).not.toMatch(/:\s*inherit\s*;/);
   });
 
   it("retargets wai layers onto the switch-trigger SVG", () => {
     const css = buildBrandingWorkspaceOverrideCss("calendar-workspace", {
-      "--calendar-accent": "#962fa8",
+      "--workspace-accent": "#962fa8",
       "--wai-bg": "#ffbdc2",
     });
     expect(css).toMatch(/\.workspace-app-icon--switch-trigger svg \{\s*--wai-bg: #ffbdc2;/);
@@ -114,7 +114,7 @@ describe("buildBrandingWorkspaceOverrideCss", () => {
 
 describe("syncBrandingCsspropsToRoot", () => {
   const entries = [
-    { key: "calendar-accent", value: "#962fa8" },
+    { key: "workspace-accent", value: "#962fa8" },
     { key: "wai-bg", value: "#ffbdc2" },
   ];
 
@@ -122,26 +122,26 @@ describe("syncBrandingCsspropsToRoot", () => {
     const root = styleBag();
     const body = styleBag();
     syncBrandingCsspropsToRoot(root.el as HTMLElement, entries, body.style);
-    expect(root.style.getPropertyValue("--calendar-accent")).toBe("#962fa8");
+    expect(root.style.getPropertyValue("--workspace-accent")).toBe("#962fa8");
     expect(root.style.getPropertyValue("--wai-bg")).toBe("#ffbdc2");
   });
 
   it("prefers body values when the cssprops addon has injected them", () => {
     const root = styleBag();
     const body = styleBag();
-    body.style.setProperty("--calendar-accent", "#ff0000");
+    body.style.setProperty("--workspace-accent", "#ff0000");
     syncBrandingCsspropsToRoot(root.el as HTMLElement, entries, body.style);
-    expect(root.style.getPropertyValue("--calendar-accent")).toBe("#ff0000");
+    expect(root.style.getPropertyValue("--workspace-accent")).toBe("#ff0000");
     expect(root.style.getPropertyValue("--wai-bg")).toBe("#ffbdc2");
   });
 
   it("restores defaults after body style is cleared (Canvas panel cleanup)", () => {
     const root = styleBag();
     const body = styleBag();
-    body.style.setProperty("--calendar-accent", "#ff0000");
+    body.style.setProperty("--workspace-accent", "#ff0000");
     syncBrandingCsspropsToRoot(root.el as HTMLElement, entries, body.style);
-    body.style.removeProperty("--calendar-accent");
+    body.style.removeProperty("--workspace-accent");
     syncBrandingCsspropsToRoot(root.el as HTMLElement, entries, body.style);
-    expect(root.style.getPropertyValue("--calendar-accent")).toBe("#962fa8");
+    expect(root.style.getPropertyValue("--workspace-accent")).toBe("#962fa8");
   });
 });

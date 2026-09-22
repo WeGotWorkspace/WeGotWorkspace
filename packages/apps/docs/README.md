@@ -19,7 +19,9 @@ Guides for `packages/apps` — app library structure, rollout, and per-domain re
 
 ## Design / Storybook
 
-- [Designer branding Storybook](./branding-storybook.md) — **`Branding/*` is the designer catalog** (accents, cream/ink, icons). Everything else lives under `Shared/` (including `Shared/Live/…`).
+- [Designer branding Storybook](./branding-storybook.md) — **`Branding/*` is the designer catalog** (accents, cream/ink, icons). Everything else lives under `Foundations/`, `UI/`, `Layout/`, and `Features/` (live shells under `Features/Workspace/Live/…`).
+- [Color hex inventory](./color-hex-inventory.md) — leftover raw hex after brand primitives (brand / semantic / keep)
+- [Type size inventory](./type-size-inventory.md) — raw `font-size` / `text-[Npx]` debt (snap vs keep)
 
 ## Quality gates
 

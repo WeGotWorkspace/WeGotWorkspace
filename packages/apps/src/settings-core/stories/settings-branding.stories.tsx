@@ -6,7 +6,7 @@ import { SettingsWorkspace } from "@/settings-core/src/settings-workspace";
 const brandingMeta = createBrandingStoryMeta({
   appId: "settings",
   workspaceClass: "settings-workspace",
-  accentToken: "settings-accent",
+  accentToken: "workspace-accent",
   component: SettingsWorkspace,
 });
 

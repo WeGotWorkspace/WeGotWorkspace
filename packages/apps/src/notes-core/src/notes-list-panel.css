@@ -36,7 +36,7 @@
 
 .notes-workspace .notes-list-panel__shared-icon,
 .notes-workspace .notes-list-panel__view-only-icon {
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 .notes-workspace .notes-list-panel__loading {

@@ -12,7 +12,7 @@
   --docs-collab-sidebar-panel-wash-recipe: color-mix(
     in oklab,
     var(--workspace-accent, var(--color-ink)) 10%,
-    var(--color-cream, #f7f4ef)
+    var(--color-cream)
   );
   --docs-collab-sidebar-panel-wash: var(--docs-collab-sidebar-panel-wash-recipe);
   background-color: var(--docs-collab-sidebar-panel-wash);
@@ -59,12 +59,9 @@
   --docs-collab-sidebar-panel-wash-recipe: color-mix(
     in oklab,
     var(--workspace-accent, var(--color-ink)) 10%,
-    var(--color-cream, #f7f4ef)
+    var(--color-cream)
   );
-  background-color: var(
-    --docs-collab-sidebar-panel-bg,
-    var(--docs-surface, var(--color-cream, #f7f4ef))
-  );
+  background-color: var(--docs-collab-sidebar-panel-bg, var(--docs-surface, var(--color-cream)));
   color: var(--docs-collab-sidebar-panel-color, var(--docs-text, var(--color-ink)));
 }
 
@@ -89,7 +86,7 @@
   /* Solid when washed; frosted cream when bg is unset. */
   background-color: var(
     --docs-collab-sidebar-panel-bg,
-    color-mix(in oklab, var(--docs-surface, var(--color-cream, #f7f4ef)) 72%, transparent)
+    color-mix(in oklab, var(--docs-surface, var(--color-cream)) 72%, transparent)
   );
   backdrop-filter: blur(8px);
 }
@@ -127,7 +124,7 @@
 /* No extra horizontal inset — scroll already matches header title inset. */
 .docs-collab-sidebar-panel__empty {
   @apply text-sm;
-  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }
 
 .docs-collab-sidebar-panel__list {

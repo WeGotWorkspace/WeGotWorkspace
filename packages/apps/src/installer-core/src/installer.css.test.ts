@@ -11,9 +11,7 @@ describe("installer CSS", () => {
     expect(css).toMatch(/\.installer \{[\s\S]*?--button-active-color:\s*#003311/);
     expect(css).toMatch(/\.installer \{[\s\S]*?--segmented-control-active-bg:\s*#003311/);
     expect(css).toMatch(/\.installer \{[\s\S]*?--segmented-control-active-fg:\s*#ffffff/);
-    expect(css).toMatch(
-      /\.installer \{[\s\S]*?--segmented-control-color:\s*var\(--color-ink,\s*#003311\)/,
-    );
+    expect(css).toMatch(/\.installer \{[\s\S]*?--segmented-control-color:\s*var\(--color-ink\)/);
     expect(css).not.toMatch(/--button-active-color:\s*var\(--workspace-home-bg/);
     expect(css).not.toMatch(/--segmented-control-active-fg:\s*var\(--workspace-home-bg/);
     expect(css).not.toMatch(/--segmented-control-color:\s*#ffffff/);

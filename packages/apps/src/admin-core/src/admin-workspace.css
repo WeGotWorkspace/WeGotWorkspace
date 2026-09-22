@@ -1,76 +1,70 @@
 @import "../../workspace-shell/src/workspace-split-app.css";
+@import "../../workspace-shell/src/workspace-color.css";
 @import "./admin-panes.css";
 
 /**
  * Admin product shell: cream main pane + light accent→cream sidebar tint
- * (Notes / Contacts / Meet-split chrome). `--admin-accent` is the brand tile
+ * (Notes / Contacts / Meet-split chrome). `--workspace-accent` is the brand tile
  * (`#003311` — same hex as WORKSPACE_APP_ACCENT.admin). Lime `#8ACE00` stays
  * on the lockup only. Primary fills use accent with white fg. Sidebar is 16%
  * accent on cream so near-black does not read as a full-bleed dark rail.
  * Import only from {@link AdminWorkspace}.
  */
 .admin-workspace {
-  --admin-accent: #003311;
-  --admin-accent-strong: color-mix(in oklab, var(--admin-accent) 32%, var(--color-ink));
-  --admin-sidebar: color-mix(in oklab, var(--admin-accent) 16%, var(--color-cream, #f7f4ef));
-  --workspace-accent: var(--admin-accent);
-  --color-emerald: var(--admin-accent);
-  --workspace-root-bg: var(--color-cream, #f7f4ef);
-  --workspace-main-bg: color-mix(in oklab, var(--admin-accent) 6%, var(--color-cream, #f7f4ef));
-  --app-sidebar-bg: var(--admin-sidebar);
-  --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --workspace-accent: var(--color-we-got-dark);
+  --workspace-sidebar-mix: 16%;
+  --color-emerald: var(--workspace-accent);
+  --workspace-root-bg: var(--color-cream);
+  --workspace-main-bg: color-mix(in oklch, var(--workspace-accent) 6%, var(--color-cream));
+  --app-sidebar-border-color: color-mix(in oklch, var(--color-ink) 12%, transparent);
   --app-sidebar-color: var(--color-ink);
   --sidebar-logo-close-button-color: var(--color-ink);
-  --sidebar-badge-fg: var(--admin-accent);
-  --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
-  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
-  --button-primary-bg: var(--admin-accent);
+  --sidebar-badge-fg: var(--workspace-accent);
+  --workspace-user-footer-link-hover-bg: color-mix(in oklch, var(--color-ink) 10%, transparent);
+  --workspace-user-footer-text-color: color-mix(in oklch, var(--color-ink) 70%, transparent);
+  --workspace-user-footer-subtitle-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-border-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
+  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-ink) 6%, transparent);
+  --field-label-color: color-mix(in oklch, var(--color-ink) 68%, transparent);
+  --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;
-  --primary: var(--admin-accent);
+  --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --segmented-control-track-active-bg: var(--button-primary-bg);
 
   /* Outline header chrome (cream main); sidebar inherits ink-on-tint SST. */
-  --button-active-color: var(--admin-accent-strong);
-  --button-outline-hover-color: var(--admin-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--admin-accent) 14%, transparent);
+  --button-active-color: var(--workspace-accent-strong);
+  --button-outline-hover-color: var(--workspace-accent-strong);
+  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
   --button-outline-active-background: color-mix(
-    in oklab,
-    var(--admin-accent) 18%,
-    var(--color-cream, #f7f4ef)
+    in oklch,
+    var(--workspace-accent) 18%,
+    var(--color-cream)
   );
   --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--admin-accent) 24%,
-    var(--color-cream, #f7f4ef)
+    in oklch,
+    var(--workspace-accent) 24%,
+    var(--color-cream)
   );
 
   /*
    * AppSidebar item washes on the 16% accent→cream rail. Near-black `#003311`
-   * has a WCAG dead zone (~50–59%): neither ink nor cream clears 4.5:1.
-   * Keep mixes ink-safe (hover/selected/selected-hover ≤49%). Measured oklab
-   * mixes → sRGB, ink `#003311`: idle 16% ~10.2:1, hover 24% ~8.6:1,
-   * selected 36% ~6.4:1, selected-hover 44% ~5.2:1.
+   * has a WCAG dead zone on Soft cream when mixes get too dense: neither ink
+   * nor cream clears 4.5:1. Keep mixes ink-safe (hover/selected/selected-hover
+   * well below ~45%). Soft paper is warmer than the old #f7f4ef, so stay
+   * conservative vs the prior 24/36/44 ladder.
    */
-  --app-sidebar-item-hover-bg: color-mix(
-    in oklab,
-    var(--admin-accent) 24%,
-    var(--color-cream, #f7f4ef)
-  );
+  --app-sidebar-item-hover-bg: color-mix(in oklch, var(--workspace-accent) 14%, var(--color-cream));
   --app-sidebar-item-selected-bg: color-mix(
-    in oklab,
-    var(--admin-accent) 36%,
-    var(--color-cream, #f7f4ef)
+    in oklch,
+    var(--workspace-accent) 20%,
+    var(--color-cream)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
-    in oklab,
-    var(--admin-accent) 44%,
-    var(--color-cream, #f7f4ef)
+    in oklch,
+    var(--workspace-accent) 28%,
+    var(--color-cream)
   );
   --app-sidebar-item-selected-color: var(--color-ink);
 }
@@ -80,36 +74,36 @@
  * soft washes come from shared `.view-header` SST.
  */
 .admin-workspace .view-header {
-  --button-active-color: var(--admin-accent-strong);
+  --button-active-color: var(--workspace-accent-strong);
   --button-outline-color: var(--color-ink);
-  --button-outline-hover-color: var(--admin-accent-strong);
+  --button-outline-hover-color: var(--workspace-accent-strong);
 }
 
 .admin-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: #003311;
+  background-color: var(--color-we-got-dark);
 }
 
 .admin-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: #003311;
+  --wai-bg: var(--color-we-got-dark);
   --wai-fg: #ffffff;
-  --wai-detail: #8ace00;
+  --wai-detail: var(--color-we-got-brat);
 }
 
 .admin-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--admin-accent);
+  --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-ink);
 }
 
 .admin-workspace .app-sidebar__footer {
-  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-subtitle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
-  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-text-color: color-mix(in oklch, var(--color-ink) 70%, transparent);
+  --workspace-user-footer-subtitle-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
+  --workspace-user-footer-border-color: color-mix(in oklch, var(--color-ink) 10%, transparent);
+  --workspace-user-footer-link-color: color-mix(in oklch, var(--color-ink) 65%, transparent);
 }
 
 /**
@@ -117,14 +111,12 @@
  * {@link Button} and {@link buttonVariants} match the admin shell.
  */
 .admin-dialog-surface {
-  --admin-accent: #003311;
-  --admin-accent-strong: color-mix(in oklab, var(--admin-accent) 32%, var(--color-ink));
-  --workspace-accent: var(--admin-accent);
-  --button-primary-bg: var(--admin-accent);
+  --workspace-accent: var(--color-we-got-dark);
+  --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;
-  --primary: var(--admin-accent);
+  --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
-  --button-active-color: var(--admin-accent-strong);
+  --button-active-color: var(--workspace-accent-strong);
   --segmented-control-track-active-bg: var(--button-primary-bg);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
@@ -132,5 +124,5 @@
 /* Storybook pane stories: cream canvas without inline layout presets. */
 .admin-workspace.admin-story-scope {
   min-height: 100dvh;
-  background-color: var(--workspace-root-bg, var(--color-cream, #f7f4ef));
+  background-color: var(--workspace-root-bg, var(--color-cream));
 }

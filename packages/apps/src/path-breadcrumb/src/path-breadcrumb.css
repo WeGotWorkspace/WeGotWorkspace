@@ -79,7 +79,7 @@
   font-size: 0.9375rem;
   font-weight: 500;
   line-height: 1.2;
-  color: var(--path-breadcrumb-link-color, color-mix(in oklab, var(--color-ink) 58%, transparent));
+  color: var(--path-breadcrumb-link-color, color-mix(in oklab, var(--color-ink) 65%, transparent));
   transition:
     color 0.15s ease,
     background-color 0.15s ease;

@@ -11,12 +11,12 @@ describe("list-sticky-header CSS", () => {
     expect(css).toMatch(/\.list-sticky-header \{[\s\S]*sticky top-0/);
     expect(css).toMatch(/\.list-sticky-header \{[\s\S]*border-b/);
     expect(css).toMatch(/--list-sticky-header-bg/);
-    expect(css).toMatch(/var\(--color-cream, #f7f4ef\)/);
+    expect(css).toMatch(/var\(--color-cream\)/);
   });
 
   it("defaults sticky background to cream paper, never pure white", () => {
     expect(css).toMatch(
-      /\.list-sticky-header \{[\s\S]*background-color:\s*var\(\s*--list-sticky-header-bg,\s*var\(--workspace-root-bg,\s*var\(--color-cream,\s*#f7f4ef\)\)/,
+      /\.list-sticky-header \{[\s\S]*background-color:\s*var\(\s*--list-sticky-header-bg,\s*var\(--workspace-root-bg,\s*var\(--color-cream\)\)/,
     );
     expect(css).not.toMatch(/\.list-sticky-header \{[\s\S]*background-color:[^;]*#fff(?:fff)?\b/i);
     expect(css).not.toMatch(/\.list-sticky-header \{[\s\S]*background-color:[^;]*\bwhite\b/i);

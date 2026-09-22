@@ -2,5 +2,5 @@
 
 .tasks-list-icon {
   @apply size-3.5 shrink-0 block;
-  color: var(--collection-row-color, var(--tasks-accent, var(--color-ink)));
+  color: var(--collection-row-color, var(--workspace-accent, var(--color-ink)));
 }

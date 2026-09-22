@@ -9,7 +9,7 @@ const bootstrap = createNotesAppBootstrap();
 const brandingMeta = createBrandingStoryMeta({
   appId: "notes",
   workspaceClass: "notes-workspace",
-  accentToken: "notes-accent",
+  accentToken: "workspace-accent",
   component: NotesWorkspace,
 });
 

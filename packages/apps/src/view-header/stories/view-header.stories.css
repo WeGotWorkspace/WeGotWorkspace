@@ -3,7 +3,7 @@
 /**
  * Story chrome publishes outline-active tokens so accent count badges
  * match selected IconButtons (wash + accent-strong fg + quiet stroke).
- * Strong fg mirrors Calendar (`--calendar-accent-strong`) for WCAG AA.
+ * Strong fg mirrors Calendar (`--workspace-accent-strong`) for WCAG AA.
  */
 .view-header-story-actions {
   --button-outline-color: var(--color-ink);
@@ -16,12 +16,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--workspace-accent) 18%,
-    var(--color-cream, #f7f4ef)
+    var(--color-cream)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--workspace-accent) 24%,
-    var(--color-cream, #f7f4ef)
+    var(--color-cream)
   );
   --button-outline-active-border-color: var(--control-border-color);
 }

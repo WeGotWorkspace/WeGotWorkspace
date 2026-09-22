@@ -7,15 +7,15 @@
  */
 .drive-detail-panel-drawer {
   --side-drawer-width: 22rem;
-  --drive-accent: #8ace00;
-  --workspace-accent: var(--drive-accent);
+  --workspace-accent: #8ace00;
+  --workspace-accent: var(--workspace-accent);
 }
 
 .drive-detail-panel {
   @apply min-w-0 max-w-full overflow-hidden;
   --docs-collab-sidebar-panel-bg: var(
     --docs-collab-sidebar-panel-wash,
-    var(--docs-collab-sidebar-panel-wash-recipe, var(--color-cream, #f7f4ef))
+    var(--docs-collab-sidebar-panel-wash-recipe, var(--color-cream))
   );
   --docs-collab-sidebar-panel-color: var(--color-ink);
   --docs-collab-sidebar-panel-border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
@@ -46,8 +46,8 @@
   /* Flat surface + accent kind icon — same language as `.drive-file-tile__preview`. */
   @apply relative aspect-[4/3] flex items-center justify-center mb-6 overflow-hidden;
   border-radius: var(--control-radius);
-  background-color: var(--color-cream, #f7f4ef);
-  color: var(--drive-accent, var(--workspace-accent, var(--color-ink)));
+  background-color: var(--color-cream);
+  color: var(--workspace-accent, var(--workspace-accent, var(--color-ink)));
 }
 
 .drive-detail-panel__preview > img,
@@ -101,7 +101,7 @@
 
 .drive-detail-panel__meta-label {
   @apply text-[11px] uppercase tracking-wider;
-  color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 .drive-detail-panel__meta-value {

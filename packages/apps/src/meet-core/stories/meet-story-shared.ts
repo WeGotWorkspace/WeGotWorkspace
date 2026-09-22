@@ -16,10 +16,10 @@ export const STORY_AUTODOCS_TAGS = ["autodocs"] as const;
 
 /**
  * Storybook 10 requires a string **literal** for `meta.title` (no runtime helpers).
- * Use `Shared/Meet/Components/<ExportName>` or `Shared/Meet/Panes/<ExportName>` in each file.
+ * Use `Features/Meet/Components/<ExportName>` or `Features/Meet/Panes/<ExportName>` in each file.
  */
-export type MeetComponentStoryTitle = `Shared/Meet/Components/${string}`;
-export type MeetPaneStoryTitle = `Shared/Meet/Panes/${string}`;
+export type MeetComponentStoryTitle = `Features/Meet/Components/${string}`;
+export type MeetPaneStoryTitle = `Features/Meet/Panes/${string}`;
 
 type MeetStoryDocsOptions = {
   /** Shown in Docs / Code panel for copy-paste (required when using a custom `render`). */

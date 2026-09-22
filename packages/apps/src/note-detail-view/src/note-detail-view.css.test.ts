@@ -49,9 +49,10 @@ describe("note-detail-view paper sheet CSS", () => {
 
 describe("note-detail-view title CSS", () => {
   it("sizes SUMMARY as a document title, not a form input", () => {
-    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-4xl/);
+    expect(css).toMatch(/\.note-detail-view__title \{[\s\S]*text-title-lg/);
     expect(css).not.toMatch(/\.note-detail-view__title \{[\s\S]*text-3xl/);
     expect(css).not.toMatch(/\.note-detail-view__title \{[\s\S]*text-sm\b/);
+    expect(css).not.toMatch(/--note-detail-title-font-family/);
     expect(styles).toMatch(/textarea:not\(\.note-detail-view__title\)/);
     expect(styles).toMatch(/:not\(\.note-detail-view__title\)/);
   });

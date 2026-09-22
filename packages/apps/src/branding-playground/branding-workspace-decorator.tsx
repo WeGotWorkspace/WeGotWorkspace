@@ -72,11 +72,11 @@ function docsSidebarOverrideCss(
 ): string {
   if (fullAccentSidebar === undefined) return "";
   const sidebarValue = fullAccentSidebar
-    ? "var(--docs-accent)"
-    : "color-mix(in oklab, var(--docs-accent) 12%, var(--color-cream, #f7f4ef))";
+    ? "var(--workspace-accent)"
+    : "color-mix(in oklab, var(--workspace-accent) 12%, var(--color-cream))";
   return `
 .branding-playground-root .${workspaceClass} {
-  --docs-sidebar: ${sidebarValue};
+  --app-sidebar-bg: ${sidebarValue};
 }
 `;
 }

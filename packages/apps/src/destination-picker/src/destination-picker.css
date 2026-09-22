@@ -23,7 +23,7 @@
     var(--destination-picker-accent, var(--color-emerald)) 12%,
     transparent
   );
-  --path-breadcrumb-link-color: color-mix(in oklab, var(--color-ink) 58%, transparent);
+  --path-breadcrumb-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
   --path-breadcrumb-current-color: var(--color-ink);
   --path-breadcrumb-link-hover-bg: color-mix(
     in oklab,

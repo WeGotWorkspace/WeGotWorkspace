@@ -10,7 +10,7 @@ import { STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 const brandingMeta = createBrandingStoryMeta({
   appId: "drive",
   workspaceClass: "drive-workspace",
-  accentToken: "drive-accent",
+  accentToken: "workspace-accent",
   component: DriveWorkspace,
 });
 

@@ -7,23 +7,19 @@
 .installer {
   --installer-status-ok: #15803d;
   --installer-status-error: #b14242;
-  --installer-status-pending: color-mix(in oklab, var(--color-ink, #003311) 45%, transparent);
+  --installer-status-pending: color-mix(in oklab, var(--color-ink) 45%, transparent);
   --installer-status-warn: #b45309;
-  --button-outline-color: var(--color-ink, #003311);
-  --button-outline-hover-color: var(--color-ink, #003311);
-  --button-outline-hover-background: color-mix(in oklab, var(--color-ink, #003311) 8%, transparent);
-  --button-outline-active-background: color-mix(in oklab, #003311 14%, var(--color-cream, #f7f4ef));
+  --button-outline-color: var(--color-ink);
+  --button-outline-hover-color: var(--color-ink);
+  --button-outline-hover-background: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  --button-outline-active-background: color-mix(in oklab, #003311 14%, var(--color-cream));
   --button-active-color: #003311;
-  --segmented-control-color: var(--color-ink, #003311);
-  --segmented-control-hover-color: var(--color-ink, #003311);
-  --segmented-control-hover-bg: color-mix(in oklab, var(--color-ink, #003311) 8%, transparent);
+  --segmented-control-color: var(--color-ink);
+  --segmented-control-hover-color: var(--color-ink);
+  --segmented-control-hover-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
   --segmented-control-active-fg: #ffffff;
   --segmented-control-active-bg: #003311;
-  --segmented-control-track-border-color: color-mix(
-    in oklab,
-    var(--color-ink, #003311) 20%,
-    transparent
-  );
+  --segmented-control-track-border-color: color-mix(in oklab, var(--color-ink) 20%, transparent);
 }
 
 .installer__hero-your {
@@ -40,16 +36,16 @@
 
 .installer__dot {
   @apply size-1.5 rounded-full;
-  background-color: color-mix(in oklab, var(--color-ink, #003311) 28%, transparent);
+  background-color: color-mix(in oklab, var(--color-ink) 28%, transparent);
 }
 
 .installer__dot--current,
 .installer__dot--done {
-  background-color: var(--color-ink, #003311);
+  background-color: var(--color-ink);
 }
 
 .installer__lead {
-  color: color-mix(in oklab, var(--color-ink, #003311) 72%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 72%, transparent);
   @apply mb-8 text-lg font-medium;
 }
 
@@ -62,7 +58,7 @@
 }
 
 .installer__hint {
-  color: color-mix(in oklab, var(--color-ink, #003311) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
   @apply mb-4 text-sm;
 }
 
@@ -164,11 +160,11 @@
 
 .installer__progress-step {
   @apply flex items-center gap-2;
-  color: color-mix(in oklab, var(--color-ink, #003311) 48%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 48%, transparent);
 }
 
 .installer__progress-step--current {
-  color: var(--color-ink, #003311);
+  color: var(--color-ink);
 }
 
 .installer__progress-marker {
@@ -193,11 +189,11 @@
 
 .installer__check-label {
   @apply font-medium;
-  color: var(--color-ink, #003311);
+  color: var(--color-ink);
 }
 
 .installer__check-detail {
-  color: color-mix(in oklab, var(--color-ink, #003311) 62%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 68%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

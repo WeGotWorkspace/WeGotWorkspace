@@ -72,7 +72,7 @@
 .card__description {
   @apply text-xs;
   margin-block-start: var(--card-title-description-gap);
-  color: var(--card-description-color, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  color: var(--card-description-color, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }
 
 .card__title-block > .card__description:first-child {
@@ -131,7 +131,7 @@
   line-height: var(--user-avatar-subtitle-leading, 1.25);
   color: var(
     --card-row-subtitle-color,
-    var(--user-avatar-subtitle-color, color-mix(in oklab, var(--color-ink) 55%, transparent))
+    var(--user-avatar-subtitle-color, color-mix(in oklab, var(--color-ink) 65%, transparent))
   );
 }
 

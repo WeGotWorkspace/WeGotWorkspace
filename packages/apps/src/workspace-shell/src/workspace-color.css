@@ -1,0 +1,82 @@
+@import "../../styles.css" reference;
+
+/**
+ * Shared workspace tint recipes (Layer 3).
+ *
+ * Each product `*-workspace.css` imports this once (same pattern as
+ * `workspace-split-app.css`), then only sets what differs:
+ * - `--workspace-accent` → brand primitive
+ * - `--workspace-sidebar-mix` when not the 12% default
+ * - `--wai-*` layers the switch mark actually uses
+ * - Docs: full-accent sidebar + white on-color
+ *
+ * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH after cream/ink
+ * remap. Default item washes match AppSidebar (32 / 55 / 65); products that
+ * already brightened or darkened for AA keep local overrides.
+ */
+:is(
+  .admin-workspace,
+  .settings-workspace,
+  .notes-workspace,
+  .mail-workspace,
+  .tasks-workspace,
+  .calendar-workspace,
+  .contacts-workspace,
+  .drive-workspace,
+  .docs-workspace,
+  .meet-workspace,
+  .admin-dialog-surface,
+  .mail-dialog-surface,
+  .mail-compose-dialog-surface,
+  .docs-dialog-surface,
+  .notes-dialog-surface,
+  .tasks-dialog-surface,
+  .calendar-dialog-surface,
+  .contacts-dialog-surface,
+  .drive-dialog-surface,
+  .meet-channel-dialog,
+  .meet-call-dialog
+) {
+  --workspace-sidebar-mix: 12%;
+
+  --workspace-accent-strong: color-mix(in oklch, var(--workspace-accent) 32%, var(--color-ink));
+
+  --app-sidebar-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) var(--workspace-sidebar-mix),
+    var(--color-cream)
+  );
+  --app-sidebar-border-color: color-mix(in oklch, var(--color-ink) 12%, transparent);
+  --app-sidebar-color: var(--color-ink);
+
+  --app-sidebar-item-hover-bg: color-mix(in oklch, var(--workspace-accent) 32%, var(--color-cream));
+  --app-sidebar-item-selected-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 55%,
+    var(--color-cream)
+  );
+  --app-sidebar-item-selected-hover-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 65%,
+    var(--color-cream)
+  );
+  --app-sidebar-item-selected-color: var(--color-ink);
+
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: #ffffff;
+}
+
+/**
+ * Docs keeps a full-accent sidebar (not the cream-mix recipe above). Declared
+ * here so a later import of this sheet cannot wipe `docs-workspace.css`.
+ */
+.docs-workspace,
+.docs-dialog-surface {
+  --app-sidebar-bg: var(--workspace-accent);
+  --app-sidebar-color: #ffffff;
+  --app-sidebar-border-color: color-mix(in oklch, #ffffff 18%, transparent);
+  --app-sidebar-item-hover-bg: color-mix(in oklch, #000000 10%, var(--app-sidebar-bg));
+  --app-sidebar-item-selected-bg: color-mix(in oklch, #000000 14%, var(--app-sidebar-bg));
+  --app-sidebar-item-selected-hover-bg: color-mix(in oklch, #000000 20%, var(--app-sidebar-bg));
+  --app-sidebar-item-selected-color: #ffffff;
+}

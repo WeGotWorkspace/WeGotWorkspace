@@ -23,7 +23,7 @@ export const brandingDocsSidebarArgTypes = {
   fullAccentSidebar: {
     control: "boolean",
     description:
-      "When true, Docs sidebar uses full --docs-accent; when false, cream-mix wash like other apps",
+      "When true, Docs sidebar uses full --workspace-accent; when false, cream-mix wash like other apps",
     table: { category: "Docs" },
   },
 } satisfies Record<string, InputType>;

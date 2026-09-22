@@ -1,9 +1,9 @@
 /** Matches provisioned General (`CalendarColorPalette::NOTE_GENERAL`). */
 export const DEFAULT_NOTEBOOK_COLOR = "#14b8a6";
 
-/** Same hexes as `--color-ink` / `--color-cream` in `styles.css`. */
+/** Same hexes as `--color-ink` / `--color-cream` (We Got Dark / Soft). */
 export const NOTES_INK_HEX = "#003311";
-export const NOTES_CREAM_HEX = "#f7f4ef";
+export const NOTES_CREAM_HEX = "#fff5e9";
 
 /**
  * Calendar event-card light wash (`surfaceTint(color, 11)` in srgb).

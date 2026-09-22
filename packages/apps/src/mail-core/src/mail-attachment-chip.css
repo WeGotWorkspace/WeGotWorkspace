@@ -49,7 +49,7 @@
 
 :is(.mail-workspace, .mail-compose-dialog-surface) .mail-attachment-chip__meta {
   @apply block w-full truncate text-xs;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 :is(.mail-workspace, .mail-compose-dialog-surface) .mail-attachment-chip__action {

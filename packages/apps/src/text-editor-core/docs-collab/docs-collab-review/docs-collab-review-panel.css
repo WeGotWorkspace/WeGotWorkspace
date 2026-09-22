@@ -7,16 +7,15 @@
  */
 .docs-collab-review-panel-drawer {
   --side-drawer-width: 22rem;
-  --docs-accent: #3b82f6;
-  --workspace-accent: var(--docs-accent);
+  --workspace-accent: var(--color-we-got-blue);
 }
 
 .docs-collab-review-panel {
   /* Same wash language as Calendar invitations / desktop review dock. */
   --docs-collab-sidebar-panel-wash-recipe: color-mix(
-    in oklab,
-    var(--docs-accent, #3b82f6) 10%,
-    var(--color-cream, #f7f4ef)
+    in oklch,
+    var(--workspace-accent, var(--color-we-got-blue)) 10%,
+    var(--color-cream)
   );
   --docs-collab-sidebar-panel-bg: var(
     --docs-collab-sidebar-panel-wash,
@@ -28,7 +27,7 @@
   );
   --docs-collab-sidebar-panel-border-color: var(
     --docs-comments-panel-border-color,
-    color-mix(in oklab, var(--color-ink) 8%, transparent)
+    color-mix(in oklch, var(--color-ink) 8%, transparent)
   );
   /* Horizontal inset inherits shared panel (main-header p-4 md:p-6 / Docs format chrome). */
 }

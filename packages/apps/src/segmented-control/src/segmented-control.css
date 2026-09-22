@@ -25,7 +25,7 @@
   );
   --segmented-control-severity-success-color: var(
     --button-severity-success-color,
-    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--color-ink, #003311))
+    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--color-ink))
   );
   --segmented-control-severity-success-hover-bg: var(
     --button-severity-success-hover-background,
@@ -179,6 +179,8 @@
 
 .segmented-control__button--active {
   color: var(--segmented-control-active-fg, var(--button-active-color, var(--color-ink)));
+  /* Fallback when the sliding thumb has not measured yet (Storybook a11y). */
+  background-color: var(--segmented-control-active-bg, transparent);
 }
 
 /* Match outline IconButton hover; Calendar `.view-header` already sets accent tokens. */

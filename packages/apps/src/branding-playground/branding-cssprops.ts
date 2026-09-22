@@ -16,13 +16,13 @@ export type BrandingCsspropsMap = Record<string, BrandingCsspropEntry>;
 export function sharedBrandingCssprops(): BrandingCsspropsMap {
   return {
     "color-cream": {
-      value: "#f7f4ef",
-      description: "Suite paper / workspace root cream",
+      value: "#fff5e9",
+      description: "Suite paper / workspace root cream (We Got Soft)",
       category: "Suite",
     },
     "color-ink": {
       value: "#003311",
-      description: "Primary ink on light surfaces",
+      description: "Primary ink on light surfaces (We Got Dark)",
       category: "Suite",
     },
   };
@@ -76,7 +76,7 @@ export function waiBrandingCssprops(defaults: {
 }
 
 export type AppBrandingCsspropsOptions = {
-  /** Token without `--`, e.g. `mail-accent`. Defaults to `{appId}-accent`. */
+  /** Token without `--`. Defaults to `workspace-accent`. */
   accentToken?: string;
   accentValue?: string;
   /** Optional direct sidebar override; omit to leave CSS color-mix as source of truth until set. */
@@ -94,7 +94,7 @@ export type AppBrandingCsspropsOptions = {
 };
 
 /**
- * Production UI accents from `*-workspace.css` `--{app}-accent`.
+ * Production UI accents from `*-workspace.css` `--workspace-accent` (brand hex).
  * May differ from `WORKSPACE_APP_ACCENT` (PWA / home-tile theme color) for
  * calendar, tasks, and meet.
  */
@@ -112,20 +112,20 @@ export const BRANDING_APP_ACCENT_DEFAULTS: Record<WorkspaceAppId, string> = {
 };
 
 /**
- * Production `--{app}-sidebar` formulas from `*-workspace.css`.
+ * Production `--app-sidebar-bg` formulas from `workspace-color.css` + mix overrides.
  * Docs uses full accent; Meet uses the split-chrome 20% wash.
  */
 export const BRANDING_APP_SIDEBAR_DEFAULTS: Record<WorkspaceAppId, string> = {
-  mail: "color-mix(in oklab, var(--mail-accent) 12%, var(--color-cream, #f7f4ef))",
-  notes: "color-mix(in oklab, var(--notes-accent) 12%, var(--color-cream, #f7f4ef))",
-  tasks: "color-mix(in oklab, var(--tasks-accent) 12%, var(--color-cream, #f7f4ef))",
-  calendar: "color-mix(in oklab, var(--calendar-accent) 10%, var(--color-cream, #f7f4ef))",
-  contacts: "color-mix(in oklab, var(--contacts-accent) 10%, var(--color-cream, #f7f4ef))",
-  drive: "color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #f7f4ef))",
-  docs: "var(--docs-accent)",
-  admin: "color-mix(in oklab, var(--admin-accent) 16%, var(--color-cream, #f7f4ef))",
-  settings: "color-mix(in oklab, var(--settings-accent) 16%, var(--color-cream, #f7f4ef))",
-  meet: "color-mix(in oklab, var(--meet-accent) 20%, var(--color-cream, #f7f4ef))",
+  mail: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream))",
+  notes: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream))",
+  tasks: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-cream))",
+  calendar: "color-mix(in oklch, var(--workspace-accent) 10%, var(--color-cream))",
+  contacts: "color-mix(in oklch, var(--workspace-accent) 10%, var(--color-cream))",
+  drive: "color-mix(in oklch, var(--workspace-accent) 32%, var(--color-cream))",
+  docs: "var(--workspace-accent)",
+  admin: "color-mix(in oklch, var(--workspace-accent) 16%, var(--color-cream))",
+  settings: "color-mix(in oklch, var(--workspace-accent) 16%, var(--color-cream))",
+  meet: "color-mix(in oklch, var(--workspace-accent) 20%, var(--color-cream))",
 };
 
 /** Production `--app-sidebar-color` (ink on cream rails; white on Docs full-accent rail). */
@@ -141,9 +141,9 @@ export function createAppBrandingCssprops(
   appId: WorkspaceAppId,
   options: AppBrandingCsspropsOptions = {},
 ): BrandingCsspropsMap {
-  const accentToken = options.accentToken ?? `${appId}-accent`;
+  const accentToken = options.accentToken ?? "workspace-accent";
   const accentValue = options.accentValue ?? BRANDING_APP_ACCENT_DEFAULTS[appId];
-  const sidebarToken = options.sidebarToken ?? `${appId}-sidebar`;
+  const sidebarToken = options.sidebarToken ?? "app-sidebar-bg";
   const map: BrandingCsspropsMap = {
     ...sharedBrandingCssprops(),
     [accentToken]: {
@@ -205,11 +205,11 @@ export const BRANDING_APP_WAI_DEFAULTS: Record<
 /**
  * Convenience: shared cream/ink + accent + production `--wai-*` for a workspace app.
  *
- * Omits `--{app}-sidebar` and `--app-sidebar-color` so the decorator’s `inherit`
+ * Omits `--app-sidebar-bg` and `--app-sidebar-color` so the decorator’s `inherit`
  * bridge cannot wipe `*-workspace.css` (cream-mix / Docs full-accent rail +
  * on-color). Accent stays editable; sidebar tint still tracks accent via the
  * production color-mix. Docs Branding uses Controls `fullAccentSidebar` for the
- * rail comparison instead of a `--docs-sidebar` cssprop default.
+ * rail comparison instead of a `--app-sidebar-bg` cssprop default.
  */
 export function defaultAppBrandingCssprops(appId: WorkspaceAppId): BrandingCsspropsMap {
   return createAppBrandingCssprops(appId, {

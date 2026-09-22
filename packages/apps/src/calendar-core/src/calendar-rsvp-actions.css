@@ -11,7 +11,7 @@
  * `.calendar-workspace`) match invitation-card RSVP. Maybe (no severity)
  * uses the same accent wash as ViewModeToggle / outline IconButton active;
  * Accept/Decline severity thumbs stay success/danger (selected-only).
- * Accent comes from `--calendar-accent` / `--workspace-accent` (dialog surface,
+ * Accent comes from `--workspace-accent` / `--workspace-accent` (dialog surface,
  * workspace, or invitations drawer) — never a flat ink gray mix.
  */
 .calendar-rsvp-actions {
@@ -20,7 +20,10 @@
   --segmented-control-color: var(--color-ink);
   --segmented-control-active-fg: var(
     --button-active-color,
-    var(--calendar-accent-strong, var(--calendar-accent, var(--workspace-accent, var(--color-ink))))
+    var(
+      --workspace-accent-strong,
+      var(--workspace-accent, var(--workspace-accent, var(--color-ink)))
+    )
   );
   --segmented-control-hover-color: var(--color-ink);
   --segmented-control-track-bg: transparent;
@@ -36,8 +39,8 @@
     --button-outline-active-background,
     color-mix(
       in oklab,
-      var(--calendar-accent, var(--workspace-accent, var(--color-ink))) 18%,
-      var(--color-cream, #f7f4ef)
+      var(--workspace-accent, var(--workspace-accent, var(--color-ink))) 18%,
+      var(--color-cream)
     )
   );
   --segmented-control-hover-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);

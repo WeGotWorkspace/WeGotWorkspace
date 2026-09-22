@@ -31,7 +31,7 @@
 .upload-progress__percent {
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-  color: var(--upload-progress-muted-color, color-mix(in oklab, var(--color-ink) 60%, transparent));
+  color: var(--upload-progress-muted-color, color-mix(in oklab, var(--color-ink) 68%, transparent));
 }
 
 .upload-progress__track {
@@ -64,5 +64,5 @@
   margin-top: 0.25rem;
   font-size: 0.6875rem;
   line-height: 1rem;
-  color: var(--upload-progress-muted-color, color-mix(in oklab, var(--color-ink) 58%, transparent));
+  color: var(--upload-progress-muted-color, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }

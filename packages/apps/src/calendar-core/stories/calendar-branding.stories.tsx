@@ -14,7 +14,7 @@ const seededSurface = calendarStaticSurfaceFor(seeded);
 const brandingMeta = createBrandingStoryMeta({
   appId: "calendar",
   workspaceClass: "calendar-workspace",
-  accentToken: "calendar-accent",
+  accentToken: "workspace-accent",
   component: CalendarWorkspace,
 });
 

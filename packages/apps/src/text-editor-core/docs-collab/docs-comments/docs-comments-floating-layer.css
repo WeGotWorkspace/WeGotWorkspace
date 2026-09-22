@@ -3,7 +3,7 @@
 .docs-comments-floating-layer {
   @apply fixed z-20 pointer-events-none overflow-x-visible overflow-y-auto bg-transparent;
   width: min(20rem, calc(100vw - 2rem));
-  --docs-accent: #3b82f6;
+  --workspace-accent: var(--color-we-got-blue);
 }
 
 .docs-comments-floating-layer__stack {

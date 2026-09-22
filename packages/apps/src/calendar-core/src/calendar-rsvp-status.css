@@ -9,9 +9,9 @@
 .calendar-invitees-status-mark--organizer {
   /* Host/organizer shares the accepted green wash (not calendar-accent purple). */
   --tag-fg: #3a8f5a;
-  --tag-bg: color-mix(in oklab, #3a8f5a 18%, var(--color-cream, #fff));
+  --tag-bg: color-mix(in oklab, #3a8f5a 18%, var(--color-cream));
   --user-chip-fg: #3a8f5a;
-  --user-chip-bg: color-mix(in oklab, #3a8f5a 18%, var(--color-cream, #fff));
+  --user-chip-bg: color-mix(in oklab, #3a8f5a 18%, var(--color-cream));
   --user-chip-border: color-mix(in oklab, #3a8f5a 42%, transparent);
 }
 
@@ -19,24 +19,27 @@
 .calendar-invitees-rsvp-tag--tentative,
 .calendar-rsvp-select--maybe.calendar-rsvp-select--selected {
   /* Maybe / tentative = app accent wash (same purple as selected Maybe RSVP thumb). */
-  --tag-fg: var(--calendar-accent-strong, var(--calendar-accent, var(--workspace-accent, #962fa8)));
+  --tag-fg: var(
+    --workspace-accent-strong,
+    var(--workspace-accent, var(--workspace-accent, #962fa8))
+  );
   --tag-bg: color-mix(
     in oklab,
-    var(--calendar-accent, var(--workspace-accent, #962fa8)) 18%,
-    var(--color-cream, #fff)
+    var(--workspace-accent, var(--workspace-accent, #962fa8)) 18%,
+    var(--color-cream)
   );
   --user-chip-fg: var(
-    --calendar-accent-strong,
-    var(--calendar-accent, var(--workspace-accent, #962fa8))
+    --workspace-accent-strong,
+    var(--workspace-accent, var(--workspace-accent, #962fa8))
   );
   --user-chip-bg: color-mix(
     in oklab,
-    var(--calendar-accent, var(--workspace-accent, #962fa8)) 18%,
-    var(--color-cream, #fff)
+    var(--workspace-accent, var(--workspace-accent, #962fa8)) 18%,
+    var(--color-cream)
   );
   --user-chip-border: color-mix(
     in oklab,
-    var(--calendar-accent, var(--workspace-accent, #962fa8)) 42%,
+    var(--workspace-accent, var(--workspace-accent, #962fa8)) 42%,
     transparent
   );
 }
@@ -45,9 +48,9 @@
 .calendar-invitees-rsvp-tag--declined,
 .calendar-rsvp-select--decline.calendar-rsvp-select--selected {
   --tag-fg: #b14242;
-  --tag-bg: color-mix(in oklab, #b14242 18%, var(--color-cream, #fff));
+  --tag-bg: color-mix(in oklab, #b14242 18%, var(--color-cream));
   --user-chip-fg: #b14242;
-  --user-chip-bg: color-mix(in oklab, #b14242 18%, var(--color-cream, #fff));
+  --user-chip-bg: color-mix(in oklab, #b14242 18%, var(--color-cream));
   --user-chip-border: color-mix(in oklab, #b14242 42%, transparent);
 }
 

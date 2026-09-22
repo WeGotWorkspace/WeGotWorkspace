@@ -3,7 +3,7 @@
 .notes-notebook-select.select-trigger {
   width: auto;
   min-width: 7rem;
-  background-color: var(--color-cream, #f7f4ef);
+  background-color: var(--color-cream);
 }
 
 .notes-notebook-select.select-trigger > span {

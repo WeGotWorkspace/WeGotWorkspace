@@ -1,4 +1,5 @@
 @import "../styles.css" reference;
+@import "../workspace-shell/src/workspace-type.css";
 
 /** Row spacing for label + control (read-only or arbitrary children). */
 .field-label-row {
@@ -6,12 +7,13 @@
 }
 
 /**
- * Dense uppercase field caption. Parents override tone via `labelClassName` or
- * `--field-label-color` / `--field-label-font-family` on an ancestor.
- * No letter-spacing — size comes from `--text-2xs` (minimum caption size).
+ * Dense uppercase field caption (shared `.text-caption`). Parents override tone
+ * via `labelClassName` or `--field-label-color` / `--field-label-font-family`
+ * on an ancestor. Face overrides prefer remapping `--font-sans` on the workspace.
+ * No letter-spacing — size is text-xs (12px) with leading-4 from `.text-caption`.
  */
 .field-label-row__label {
-  @apply flex items-center gap-1 text-2xs font-medium uppercase;
+  @apply flex items-center gap-1 text-caption;
   font-family: var(
     --field-label-font-family,
     var(--font-sans, ui-sans-serif, system-ui, sans-serif)
@@ -19,7 +21,7 @@
   color: var(--field-label-color, var(--color-muted-foreground));
 }
 
-/** Sibling icons (passed `icon`, lock) match the 2xs caption optically. */
+/** Sibling icons (passed `icon`, lock) match the caption optically. */
 .field-label-row__label > svg {
   @apply size-3 shrink-0;
 }

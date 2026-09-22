@@ -3,7 +3,7 @@
 .chat-link-preview {
   @apply flex w-full min-w-0 max-w-full overflow-hidden rounded-lg border;
   border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
-  background-color: var(--chat-surface, var(--color-cream, #f7f4ef));
+  background-color: var(--chat-surface, var(--color-cream));
 }
 
 .chat-link-preview--missing {
@@ -31,7 +31,7 @@
 
 .chat-link-preview__site {
   @apply truncate text-[11px] uppercase tracking-wide;
-  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }
 
 .chat-link-preview__title {
@@ -41,7 +41,7 @@
 .chat-link-preview__description,
 .chat-link-preview__missing {
   @apply line-clamp-2 text-xs;
-  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }
 
 .chat-link-preview__link {

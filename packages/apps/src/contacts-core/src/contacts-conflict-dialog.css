@@ -9,7 +9,7 @@
 
 .contacts-conflict-dialog__remaining {
   @apply text-sm;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 .contacts-conflict-dialog__fields {
@@ -40,7 +40,7 @@
 
 .contacts-conflict-dialog__option-heading {
   @apply text-xs font-medium uppercase tracking-wide;
-  color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 68%, transparent);
 }
 
 .contacts-conflict-dialog__value {

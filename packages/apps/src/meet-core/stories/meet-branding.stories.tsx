@@ -8,7 +8,7 @@ import {
 const brandingMeta = createBrandingStoryMeta({
   appId: "meet",
   workspaceClass: "meet-workspace",
-  accentToken: "meet-accent",
+  accentToken: "workspace-accent",
   component: MeetWorkspaceStoryHarness,
   parameters: {
     routerPath: "/meet",

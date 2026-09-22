@@ -3,13 +3,13 @@
 .share-dialog,
 .share-access-card {
   /* Accent for icons and small marks only — not section fills (see dialog surface --primary). */
-  --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
+  --share-dialog-accent: var(--workspace-accent, var(--workspace-accent, var(--primary, #10b981)));
   --workspace-accent: var(--share-dialog-accent);
   --share-dialog-tag-bg: color-mix(in oklab, var(--share-dialog-accent) 62%, transparent);
   --share-dialog-tag-fg: var(--color-ink);
   --share-dialog-muted: var(
     --muted-foreground,
-    color-mix(in oklab, var(--color-ink, #003311) 55%, transparent)
+    color-mix(in oklab, var(--color-ink) 65%, transparent)
   );
   --card-title-icon-color: var(--share-dialog-accent);
   --card-description-color: var(--share-dialog-muted);
@@ -26,7 +26,7 @@
   );
   --card-row-hover-bg: var(--share-dialog-row-hover);
   --card-panel-border-color: var(--share-dialog-panel-border);
-  --card-panel-bg: color-mix(in oklab, var(--card, var(--color-cream, #f7f4ef)) 60%, transparent);
+  --card-panel-bg: color-mix(in oklab, var(--card, var(--color-cream)) 60%, transparent);
   --card-row-subtitle-color: var(--share-dialog-muted);
   --input-height: var(--control-height-sm, 2rem);
   /* Match outline IconButtons to Input/Select (--control-border-color). */
@@ -137,7 +137,7 @@
 .share-dialog__inherited-label {
   @apply inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium;
   border-color: var(--share-dialog-panel-border);
-  background: color-mix(in oklab, var(--color-ink, #111) 6%, transparent);
+  background: color-mix(in oklab, var(--color-ink) 6%, transparent);
   color: var(--share-dialog-muted);
 }
 
@@ -198,7 +198,7 @@
 
 .share-dialog__password-row {
   @apply -mx-3 flex min-w-0 flex-wrap items-center gap-2 rounded-b-xl px-3 py-2.5;
-  background: color-mix(in oklab, var(--color-ink, #111) 6%, transparent);
+  background: color-mix(in oklab, var(--color-ink) 6%, transparent);
 }
 
 .share-dialog__password-icon {
@@ -218,7 +218,7 @@
 .share-dialog__footer {
   @apply flex items-center border-t px-6 py-3 text-xs;
   border-color: var(--share-dialog-panel-border);
-  background: color-mix(in oklab, var(--color-ink, #111) 4%, transparent);
+  background: color-mix(in oklab, var(--color-ink) 4%, transparent);
   color: var(--share-dialog-muted);
 }
 
@@ -257,10 +257,10 @@
   max-height: min(40dvh, 280px);
   overflow: auto;
   --unified-search-dropdown-width: 100%;
-  --share-dialog-accent: var(--docs-accent, var(--drive-accent, var(--primary, #10b981)));
+  --share-dialog-accent: var(--workspace-accent, var(--workspace-accent, var(--primary, #10b981)));
   --share-dialog-muted: var(
     --muted-foreground,
-    color-mix(in oklab, var(--color-ink, #003311) 55%, transparent)
+    color-mix(in oklab, var(--color-ink) 65%, transparent)
   );
   --input-height: var(--control-height-sm, 2rem);
 }

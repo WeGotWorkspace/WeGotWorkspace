@@ -34,7 +34,7 @@
 .docs-collab-message-reply__time,
 .docs-comments-reply__time {
   @apply text-[11px] leading-tight;
-  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }
 
 .docs-collab-message-reply__body,

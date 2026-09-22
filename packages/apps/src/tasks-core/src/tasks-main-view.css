@@ -1,7 +1,7 @@
 @import "../../styles.css" reference;
 
 .tasks-main-view {
-  background-color: var(--workspace-root-bg, var(--color-cream, #f7f4ef));
+  background-color: var(--workspace-root-bg, var(--color-cream));
 }
 
 .tasks-main-view__loading {
@@ -80,7 +80,7 @@
 }
 
 .tasks-main-view__complete:hover:not(:disabled) {
-  color: var(--tasks-accent);
+  color: var(--workspace-accent);
 }
 
 .tasks-main-view__complete:disabled {
@@ -88,7 +88,7 @@
 }
 
 .tasks-main-view__complete--done {
-  color: var(--tasks-accent);
+  color: var(--workspace-accent);
 }
 
 .tasks-main-view__body {
@@ -104,12 +104,12 @@
 
 .tasks-main-view__description {
   @apply mt-0.5 text-sm;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 .tasks-main-view__meta {
   @apply mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 overflow-visible text-sm;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 .tasks-main-view__meta-item {
@@ -349,11 +349,11 @@
 
 .tasks-main-view__remind-button--active {
   border-color: color-mix(in oklab, var(--color-ink) 28%, transparent);
-  background-color: color-mix(in oklab, var(--tasks-accent, #de4b0e) 14%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-accent, #de4b0e) 14%, transparent);
 }
 
 .tasks-main-view__remind-button--active svg {
-  color: var(--button-active-color, var(--tasks-accent, var(--color-emerald)));
+  color: var(--button-active-color, var(--workspace-accent, var(--color-emerald)));
   fill: currentColor;
 }
 
@@ -366,7 +366,7 @@
   block-size: var(--tasks-remind-badge-size);
   font-size: var(--tasks-remind-badge-font-size);
   background-color: var(--color-ink);
-  color: var(--color-cream, #f7f4ef);
+  color: var(--color-cream);
 }
 
 .tasks-main-view__remind--row {
@@ -378,7 +378,7 @@
 
 .tasks-main-view__remind--row svg {
   @apply size-3.5 shrink-0;
-  color: var(--button-active-color, var(--tasks-accent, var(--color-emerald)));
+  color: var(--button-active-color, var(--workspace-accent, var(--color-emerald)));
   fill: currentColor;
 }
 
@@ -421,7 +421,7 @@
 }
 
 .tasks-main-view__add-submit.button--variant-primary {
-  background-color: var(--tasks-accent);
+  background-color: var(--workspace-accent);
   color: var(--button-primary-fg, #ffffff);
 }
 

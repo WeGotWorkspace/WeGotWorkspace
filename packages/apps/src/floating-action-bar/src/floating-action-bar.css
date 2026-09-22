@@ -18,7 +18,7 @@
   bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
   border-radius: var(--control-radius-button-pill);
   color: var(--color-ink);
-  background-color: var(--color-cream, #f7f4ef);
+  background-color: var(--color-cream);
   border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
   opacity: 1;
   transform: translate(-50%, 0);

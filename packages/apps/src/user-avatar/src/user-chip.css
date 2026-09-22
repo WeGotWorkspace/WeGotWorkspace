@@ -27,7 +27,7 @@
     var(--user-chip-border, color-mix(in oklab, var(--user-chip-fg) 38%, transparent));
   background-color: var(
     --user-chip-bg,
-    color-mix(in oklab, var(--user-chip-fg) 16%, var(--color-cream, #fff))
+    color-mix(in oklab, var(--user-chip-fg) 16%, var(--color-cream))
   );
   color: var(--user-chip-fg);
   font-size: var(--user-chip-font-size);

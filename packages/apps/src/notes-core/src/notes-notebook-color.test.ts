@@ -11,7 +11,7 @@ import {
 
 describe("notes cream/ink hex literals", () => {
   it("matches styles.css cream and ink (no pure white)", () => {
-    expect(NOTES_CREAM_HEX.toLowerCase()).toBe("#f7f4ef");
+    expect(NOTES_CREAM_HEX.toLowerCase()).toBe("#fff5e9");
     expect(NOTES_INK_HEX.toLowerCase()).toBe("#003311");
     expect(NOTES_CREAM_HEX).not.toMatch(/^#fff(?:fff)?$/i);
   });

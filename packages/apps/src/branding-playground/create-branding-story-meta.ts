@@ -31,7 +31,7 @@ export type CreateBrandingStoryMetaOptions<TComponent = ComponentType> = {
    * Use `""` for Home; `login-screen` for Login / Installer.
    */
   workspaceClass: string;
-  /** Accent token without `--` (e.g. `mail-accent`). Ignored for `home` / `auth`. */
+  /** Accent token without `--` (e.g. `workspace-accent`). Ignored for `home` / `auth`. */
   accentToken?: string;
   /**
    * cssprops map (keys without `--`). Merged over
@@ -74,9 +74,9 @@ function baseCssprops(
   if (appId === "home") return defaultHomeBrandingCssprops();
   if (appId === "auth") return defaultAuthBrandingCssprops();
   const defaults = defaultAppBrandingCssprops(appId);
-  if (!accentToken || accentToken === `${appId}-accent`) return defaults;
+  if (!accentToken || accentToken === "workspace-accent") return defaults;
   // Remap default accent key when caller uses a non-standard token name.
-  const { [`${appId}-accent`]: accentEntry, ...rest } = defaults;
+  const { ["workspace-accent"]: accentEntry, ...rest } = defaults;
   if (!accentEntry) return defaults;
   return { ...rest, [accentToken]: accentEntry };
 }
@@ -92,7 +92,7 @@ function baseCssprops(
  * const brandingMeta = createBrandingStoryMeta({
  *   appId: "mail",
  *   workspaceClass: "mail-workspace",
- *   accentToken: "mail-accent",
+ *   accentToken: "workspace-accent",
  *   component: MailWorkspace,
  * });
  * const meta = {
@@ -109,7 +109,7 @@ export function createBrandingStoryMeta<TComponent extends ComponentType>(
   const {
     appId,
     workspaceClass,
-    accentToken = appId === "home" || appId === "auth" ? undefined : `${appId}-accent`,
+    accentToken = appId === "home" || appId === "auth" ? undefined : "workspace-accent",
     defaultCssprops = {},
     fullAccentSidebar = false,
     title = brandingTitle(appId),
@@ -128,9 +128,9 @@ export function createBrandingStoryMeta<TComponent extends ComponentType>(
     ...defaultCssprops,
   };
 
-  // Docs full-accent mode owns `--docs-sidebar`; drop cssprop so inherit doesn't fight the boolean.
-  if (fullAccentSidebar && "docs-sidebar" in cssprops) {
-    delete cssprops["docs-sidebar"];
+  // Docs full-accent mode owns `--app-sidebar-bg`; drop cssprop so inherit doesn't fight the boolean.
+  if (fullAccentSidebar && "app-sidebar-bg" in cssprops) {
+    delete cssprops["app-sidebar-bg"];
   }
 
   const meta = {

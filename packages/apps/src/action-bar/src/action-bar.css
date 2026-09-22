@@ -7,10 +7,7 @@
   /* Idle outline chips (incl. back) stay muted; parents publish accent hover washes. */
   --button-outline-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
   border-color: var(--action-bar-border-color);
-  background-color: var(
-    --action-bar-bg,
-    var(--workspace-chrome-footer-bg, var(--color-cream, #f7f4ef))
-  );
+  background-color: var(--action-bar-bg, var(--workspace-chrome-footer-bg, var(--color-cream)));
 }
 
 .action-bar__back {

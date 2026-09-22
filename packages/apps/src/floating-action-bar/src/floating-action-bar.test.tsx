@@ -63,7 +63,7 @@ describe("FloatingActionBar", () => {
   });
 
   it("keeps bar chrome neutral (cream bg, ink border) with slide presence", () => {
-    expect(css).toMatch(/background-color:\s*var\(--color-cream,\s*#f7f4ef\)/);
+    expect(css).toMatch(/background-color:\s*var\(--color-cream\)/);
     expect(css).toMatch(
       /border:\s*1px solid color-mix\(in oklab,\s*var\(--color-ink\)\s*12%,\s*transparent\)/,
     );

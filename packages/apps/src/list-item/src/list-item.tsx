@@ -68,7 +68,7 @@ type ListItemProps = {
 };
 
 const defaultTheme: ListItemTheme = {
-  baseBackground: "var(--color-cream, #f7f4ef)",
+  baseBackground: "var(--color-cream)",
   activeBackground:
     "var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 10%, transparent))",
   selectedBackground:
@@ -76,7 +76,7 @@ const defaultTheme: ListItemTheme = {
   borderColor: "color-mix(in oklab, var(--color-ink) 10%, transparent)",
   accentColor: "var(--color-emerald)",
   titleColor: "var(--color-ink)",
-  mutedColor: "color-mix(in oklab, var(--color-ink) 45%, transparent)",
+  mutedColor: "color-mix(in oklab, var(--color-ink) 65%, transparent)",
   bodyColor: "color-mix(in oklab, var(--color-ink) 60%, transparent)",
 };
 

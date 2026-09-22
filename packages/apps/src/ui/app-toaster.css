@@ -76,7 +76,7 @@
 [data-sonner-toast] .callout--success,
 [data-sonner-toast] .callout--warning,
 [data-sonner-toast] .callout--error {
-  --callout-bg: color-mix(in oklab, var(--color-cream, #f7f4ef) 90%, transparent);
+  --callout-bg: color-mix(in oklab, var(--color-cream) 90%, transparent);
   --callout-border: var(--control-border-color);
   --callout-text: var(--color-ink);
   --callout-icon-color: var(--color-ink);
@@ -115,7 +115,7 @@
   font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 500;
-  color: color-mix(in oklab, var(--color-ink) 62%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 68%, transparent);
   opacity: 1;
   overflow: visible;
   white-space: normal;

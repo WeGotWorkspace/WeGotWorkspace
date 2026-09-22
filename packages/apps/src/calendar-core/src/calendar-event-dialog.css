@@ -10,22 +10,20 @@
  * `.calendar-dialog-surface` keep Button / form chrome aligned with the shell.
  */
 .calendar-dialog-surface .share-access-card {
-  --share-dialog-accent: var(--calendar-accent);
+  --share-dialog-accent: var(--workspace-accent);
 }
 
 .calendar-dialog-surface {
-  --calendar-accent: #962fa8;
-  --calendar-accent-strong: color-mix(in oklab, var(--calendar-accent) 32%, var(--color-ink));
-  --workspace-accent: var(--calendar-accent);
-  --workspace-accent-strong: var(--calendar-accent-strong);
-  --color-emerald: var(--calendar-accent);
-  --button-primary-bg: var(--calendar-accent);
+  --workspace-accent: var(--color-we-got-prince);
+  --workspace-accent-strong: color-mix(in oklch, var(--workspace-accent) 32%, var(--color-ink));
+  --color-emerald: var(--workspace-accent);
+  --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: #ffffff;
-  --primary: var(--calendar-accent);
+  --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
-  --button-active-color: var(--calendar-accent-strong);
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
-  --card-title-icon-color: var(--calendar-accent);
+  --button-active-color: var(--workspace-accent-strong);
+  --field-label-color: color-mix(in oklab, var(--color-ink) 68%, transparent);
+  --card-title-icon-color: var(--workspace-accent);
   --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
   --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
@@ -270,8 +268,8 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet {
-  --meet-accent: #962fa8;
-  --card-title-icon-color: var(--meet-accent);
+  --workspace-accent: #962fa8;
+  --card-title-icon-color: var(--workspace-accent);
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet-row {

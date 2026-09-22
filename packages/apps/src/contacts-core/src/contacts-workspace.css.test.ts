@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const tsx = readFileSync(join(here, "contacts-workspace.tsx"), "utf8");
 const css = readFileSync(join(here, "contacts-workspace.css"), "utf8");
+const colorCss = readFileSync(join(here, "../../workspace-shell/src/workspace-color.css"), "utf8");
 const avatarCss = readFileSync(join(here, "contact-user-avatar.css"), "utf8");
 const groupIconCss = readFileSync(join(here, "contacts-group-icon.css"), "utf8");
 const orgIconCss = readFileSync(join(here, "contacts-org-icon.css"), "utf8");
@@ -51,26 +52,25 @@ describe("contacts workspace sidebar chrome", () => {
   });
 
   it("uses purple #962fa8 for chrome accents, mixed 10% onto cream like Calendar", () => {
-    const accent = css.match(
-      /\.contacts-workspace \{[\s\S]*?--contacts-accent:\s*(#[0-9a-fA-F]{6})/,
-    )?.[1];
-    expect(accent?.toLowerCase()).toBe("#962fa8");
-    expect(css).toMatch(/\.contacts-dialog-surface \{[\s\S]*?--contacts-accent:\s*#962fa8/i);
     expect(css).toMatch(
-      /--contacts-accent-strong:\s*color-mix\(in oklab,\s*var\(--contacts-accent\) 32%,\s*var\(--color-ink\)\)/,
+      /\.contacts-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-prince\)/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--contacts-accent\)/,
+      /\.contacts-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-prince\)/i,
+    );
+    expect(colorCss).toMatch(
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
+    );
+    expect(css).toMatch(
+      /\.contacts-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
     expect(css).toMatch(/\.contacts-workspace \{[\s\S]*?--button-primary-fg:\s*#ffffff/);
-    expect(css).toMatch(/\.contacts-workspace \{[\s\S]*?--primary:\s*var\(--contacts-accent\)/);
+    expect(css).toMatch(/\.contacts-workspace \{[\s\S]*?--primary:\s*var\(--workspace-accent\)/);
     expect(css).toMatch(/\.contacts-workspace \{[\s\S]*?--primary-foreground:\s*#ffffff/);
-    expect(css).not.toMatch(/--contacts-accent:\s*#8b6f45/i);
-    expect(css).not.toMatch(/--contacts-accent:\s*#39d49b/i);
-    expect(css).not.toMatch(/--button-primary-bg:\s*var\(--contacts-accent-strong\)/);
-    expect(css).toMatch(
-      /--contacts-sidebar:\s*color-mix\(in oklab,\s*var\(--contacts-accent\) 10%,\s*var\(--color-cream/,
-    );
+    expect(css).not.toMatch(/--workspace-accent:\s*#8b6f45/i);
+    expect(css).not.toMatch(/--workspace-accent:\s*#39d49b/i);
+    expect(css).not.toMatch(/--button-primary-bg:\s*var\(--workspace-accent-strong\)/);
+    expect(css).toMatch(/--workspace-sidebar-mix:\s*10%/);
     expect(css).toMatch(
       /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*#ffffff/,
     );
@@ -78,13 +78,13 @@ describe("contacts workspace sidebar chrome", () => {
 
   it("brightens AppSidebar selected wash for purple via --app-sidebar-item-*", () => {
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklab,\s*var\(--contacts-accent\) 28%,\s*var\(--color-cream/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-cream/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--contacts-accent\) 38%[\s\S]*var\(--color-cream/,
+      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--color-cream/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--contacts-accent\) 48%[\s\S]*var\(--color-cream/,
+      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--color-cream/,
     );
     expect(css).toMatch(
       /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-ink\)/,
@@ -99,25 +99,27 @@ describe("contacts workspace sidebar chrome", () => {
       /\.contacts-workspace \.workspace-detail-pane \.action-bar,[\s\S]*?\.contacts-workspace \.workspace-detail-pane \{[\s\S]*?\}/,
     )?.[0];
     expect(detailPane).toBeDefined();
-    expect(css).toMatch(/\.contacts-workspace \{[\s\S]*--switch-on-bg:\s*var\(--contacts-accent\)/);
-    expect(detailPane).toMatch(/--button-primary-bg:\s*var\(--contacts-accent\)/);
-    expect(detailPane).not.toMatch(/--button-subtle-color:\s*var\(--contacts-accent/);
-    expect(detailPane).not.toMatch(/--button-ghost-color:\s*var\(--contacts-accent/);
+    expect(css).toMatch(
+      /\.contacts-workspace \{[\s\S]*--switch-on-bg:\s*var\(--workspace-accent\)/,
+    );
+    expect(detailPane).toMatch(/--button-primary-bg:\s*var\(--workspace-accent\)/);
+    expect(detailPane).not.toMatch(/--button-subtle-color:\s*var\(--workspace-accent/);
+    expect(detailPane).not.toMatch(/--button-ghost-color:\s*var\(--workspace-accent/);
     expect(css).not.toMatch(/--button-subtle-/);
     expect(css).toMatch(
-      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-bg:\s*var\(--contacts-accent\)/,
+      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
   });
 
   it("washes selected action-bar icons like Calendar Today via outline tokens", () => {
     expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*--button-active-color:\s*var\(--contacts-accent-strong\)/,
+      /\.contacts-workspace \{[\s\S]*--button-active-color:\s*var\(--workspace-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--contacts-accent\) 18%/,
+      /\.contacts-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--workspace-accent\) 18%/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--contacts-accent\) 24%/,
+      /\.contacts-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--workspace-accent\) 24%/,
     );
     expect(css).not.toMatch(/\.button--variant-subtle\.icon-button--active/);
   });
@@ -226,11 +228,11 @@ describe("contacts workspace sidebar chrome", () => {
 
   it("washes person avatars from the card's address-book color, not accent-only", () => {
     expect(avatarCss).toMatch(
-      /--user-avatar-bg:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--contacts-accent\)\) 24%,\s*var\(--color-cream/,
+      /--user-avatar-bg:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--workspace-accent\)\) 24%,\s*var\(--color-cream/,
     );
     expect(avatarCss).toMatch(/--user-avatar-fg:\s*var\(--color-ink\)/);
     expect(css).not.toMatch(/--contacts-person-avatar-bg/);
-    expect(css).not.toMatch(/--contacts-list-avatar-bg:\s*var\(--contacts-accent\)/);
+    expect(css).not.toMatch(/--contacts-list-avatar-bg:\s*var\(--workspace-accent\)/);
     expect(css).not.toMatch(
       /\.contacts-list-panel__avatar \.user-avatar__mark \{[\s\S]*background-color:\s*var\(--contacts-list-avatar-bg\)/,
     );
@@ -238,7 +240,7 @@ describe("contacts workspace sidebar chrome", () => {
 
   it("rings person and org avatars with the shared 1px soft book-color tint", () => {
     expect(avatarCss).toMatch(
-      /--user-avatar-border:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--contacts-accent\)\) 38%,\s*transparent/,
+      /--user-avatar-border:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--workspace-accent\)\) 38%,\s*transparent/,
     );
     expect(avatarCss).not.toMatch(/--user-avatar-border-width/);
     expect(avatarCss).not.toMatch(/--contacts-person-avatar-border/);
@@ -249,25 +251,25 @@ describe("contacts workspace sidebar chrome", () => {
 
   it("paints the sidebar mark in the contacts.svg hexes", () => {
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#962fa8/,
+      /\.contacts-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-prince\)/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#962fa8/,
+      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-prince\)/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#ffbdc2/,
+      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--color-we-got-pink\)/,
     );
     const lockup = css.slice(css.indexOf("App switcher lockup"));
     const lockupEnd = lockup.indexOf(".contacts-list-panel__loading");
     const lockupBlock = lockupEnd === -1 ? lockup : lockup.slice(0, lockupEnd);
     expect(lockupBlock).not.toMatch(/--color-ink/);
-    expect(lockupBlock).not.toMatch(/--contacts-accent-strong/);
+    expect(lockupBlock).not.toMatch(/--workspace-accent-strong/);
     expect(lockupBlock).not.toMatch(/#8[Bb]6[Ff]45|#b5c96a|#000\b|#111|#333/);
   });
 
   it("tints group icons from --collection-row-color, not the purple app accent", () => {
     expect(groupIconCss).toMatch(/color:\s*var\(--collection-row-color,\s*var\(--color-ink\)\)/);
-    expect(groupIconCss).not.toMatch(/--contacts-accent|#39d49b|#962fa8/);
+    expect(groupIconCss).not.toMatch(/--workspace-accent|#39d49b|#962fa8/);
     expect(orgIconCss).toMatch(/color:\s*var\(--user-avatar-fg,\s*var\(--color-ink\)\)/);
     expect(orgIconCss).not.toMatch(/--collection-row-color/);
     expect(groupRows).toMatch(/<ContactsGroupIcon book=\{group\}/);

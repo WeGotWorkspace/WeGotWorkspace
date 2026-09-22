@@ -6,7 +6,7 @@
 }
 
 .multi-selection-view__label {
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 .multi-selection-view__title {

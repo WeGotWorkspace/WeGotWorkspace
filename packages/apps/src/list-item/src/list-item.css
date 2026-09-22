@@ -2,7 +2,7 @@
 
 .list-item__button {
   @apply relative w-full text-left px-4 py-3 md:px-6 md:py-4 border-b block select-none outline-none focus:outline-none;
-  background-color: var(--list-item-bg, var(--list-item-base-bg, var(--color-cream, #f7f4ef)));
+  background-color: var(--list-item-bg, var(--list-item-base-bg, var(--color-cream)));
   border-color: var(
     --list-item-border-color,
     color-mix(in oklab, var(--color-ink) 10%, transparent)
@@ -95,7 +95,7 @@
 
 .list-item__subtitle {
   @apply text-sm font-semibold truncate min-w-0 font-sans;
-  color: var(--list-item-body-color, color-mix(in oklab, var(--color-ink) 60%, transparent));
+  color: var(--list-item-body-color, color-mix(in oklab, var(--color-ink) 68%, transparent));
 }
 
 .list-item__subtitle--below {
@@ -104,7 +104,7 @@
 
 .list-item__date {
   @apply text-xs tabular-nums;
-  color: var(--list-item-muted-color, color-mix(in oklab, var(--color-ink) 45%, transparent));
+  color: var(--list-item-muted-color, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }
 
 .list-item__title {
@@ -127,7 +127,7 @@
 
 .list-item__body {
   @apply text-sm leading-relaxed line-clamp-1 min-w-0;
-  color: var(--list-item-body-color, color-mix(in oklab, var(--color-ink) 60%, transparent));
+  color: var(--list-item-body-color, color-mix(in oklab, var(--color-ink) 68%, transparent));
 }
 
 .list-item__body:has(.list-item__tags) {
@@ -141,7 +141,7 @@
 
 .list-item__tags-more {
   @apply shrink-0 text-xs tabular-nums;
-  color: var(--list-item-muted-color, color-mix(in oklab, var(--color-ink) 45%, transparent));
+  color: var(--list-item-muted-color, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }
 
 .list-item__swipe-action {

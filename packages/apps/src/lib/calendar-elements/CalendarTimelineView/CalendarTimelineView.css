@@ -28,22 +28,22 @@
     --_lc-grid-line-color: color-mix(
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 14%,
-      var(--_lc-surface-bg, var(--color-cream, #f7f4ef))
+      var(--_lc-surface-bg, var(--color-cream))
     );
     --_lc-grid-line-day-color: color-mix(
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 72%,
-      var(--_lc-surface-bg, var(--color-cream, #f7f4ef))
+      var(--_lc-surface-bg, var(--color-cream))
     );
     --_lc-in-month-day-color: color-mix(
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 100%,
-      var(--_lc-surface-bg, var(--color-cream, #f7f4ef))
+      var(--_lc-surface-bg, var(--color-cream))
     );
     --_lc-outside-month-day-color: color-mix(
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 63%,
-      var(--_lc-surface-bg, var(--color-cream, #f7f4ef))
+      var(--_lc-surface-bg, var(--color-cream))
     );
     --_lc-grid-ghost-color: color-mix(
       in srgb,
@@ -169,7 +169,7 @@ time-line.timeline-main {
   isolation: isolate;
   height: var(--_lc-timeline-content-height);
   min-height: var(--_lc-timeline-content-height);
-  background-color: var(--_lc-surface-bg, var(--color-cream, #f7f4ef));
+  background-color: var(--_lc-surface-bg, var(--color-cream));
   /* Internal layout mirrors the composed column: no weekday header row, an all-day slot as
      tall as the (measured) sticky shell — itself sticky, so it covers the top-left corner
      while scrolling — and the timed hour labels below. */
@@ -271,7 +271,7 @@ time-line.timeline-main {
   z-index: 3;
   flex: none;
   min-height: 0;
-  background-color: var(--_lc-surface-bg, var(--color-cream, #f7f4ef));
+  background-color: var(--_lc-surface-bg, var(--color-cream));
   border-bottom: var(--_lc-timeline-section-divider-width) solid
     var(--_lc-timeline-section-divider-color);
 }
@@ -364,7 +364,7 @@ time-line.timeline-timed {
      stagger layout get a crisp gap; against the plain surface background the ring is invisible,
      so non-overlapping cards are unchanged. Inherits through <time-line>'s shadow tree into
      each event-card. */
-  --_lc-event-card-cutout-ring: 0 0 0 1.5px var(--_lc-surface-bg, var(--color-cream, #f7f4ef));
+  --_lc-event-card-cutout-ring: 0 0 0 1.5px var(--_lc-surface-bg, var(--color-cream));
   /* Same four-side gutter as all-day bars. */
   --time-line-event-inline-inset: 1px;
 }
@@ -382,7 +382,7 @@ time-line.timeline-timed::part(viewport) {
     --time-line-grid-color: color-mix(
       in srgb,
       var(--lc-grid-base-color, light-dark(#222, #fff)) 8%,
-      var(--_lc-surface-bg, var(--color-cream, #f7f4ef))
+      var(--_lc-surface-bg, var(--color-cream))
     );
   }
 }
@@ -443,7 +443,7 @@ time-line.timeline-timed::part(viewport) {
 }
 
 .year-day-number {
-  @apply relative inline-flex items-center justify-center min-w-5 h-5 px-[5px] rounded-full text-[12px] font-medium leading-tight;
+  @apply relative inline-flex items-center justify-center min-w-5 h-5 px-[5px] rounded-full text-xs font-medium leading-tight;
   font-variant-numeric: tabular-nums;
 }
 
@@ -487,7 +487,7 @@ time-line.timeline-timed::part(viewport) {
    to its narrow one-letter variant — year cards are compact regardless of measured width. */
 .month-card calendar-weekday-header {
   --_lc-weekday-header-height: 20px;
-  --_lc-weekday-header-font-size: 11px;
+  --_lc-weekday-header-font-size: 0.75rem;
 }
 
 /* ============================================================================================
@@ -561,8 +561,7 @@ time-line::part(day-header) {
   min-height: 24px;
   padding-block: 3px;
   padding-inline: 6px;
-  font-size: 12px;
-  font-weight: 500;
+  @apply text-xs font-medium;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -649,8 +648,7 @@ time-line::part(overflow-button) {
   margin: 0;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
+  @apply text-xs font-medium;
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;

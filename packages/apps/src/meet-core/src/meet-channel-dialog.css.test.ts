@@ -14,14 +14,14 @@ describe("meet channel dialog surface", () => {
     expect(tsx).not.toMatch(/contentClassName = "meet-dialog-surface"/);
     expect(css).toMatch(/\.meet-channel-dialog \{/);
     expect(css).toMatch(/--modal-title-foreground:\s*var\(--color-ink\)/);
-    expect(css).toMatch(/--field-label-color:\s*color-mix\(in oklab,\s*var\(--color-ink\) 60%/);
+    expect(css).toMatch(/--field-label-color:\s*color-mix\(in oklab,\s*var\(--color-ink\) 68%/);
     expect(css).toMatch(/background-color:\s*var\(--color-cream/);
     expect(css).not.toMatch(/--meet-panel:\s*#171826/);
   });
 
   it("scopes share-ui tokens under the product dialog, not a dark island", () => {
     expect(css).toMatch(/\.meet-channel-dialog \.share-access-card \{/);
-    expect(css).toMatch(/--share-dialog-accent:\s*var\(--meet-accent\)/);
+    expect(css).toMatch(/--share-dialog-accent:\s*var\(--workspace-accent\)/);
     expect(css).toMatch(/--card-title-color:\s*var\(--color-ink\)/);
   });
 
@@ -34,7 +34,7 @@ describe("meet channel dialog surface", () => {
       /\.meet-call-dialog \{[\s\S]*?--modal-title-foreground:\s*var\(--color-ink\)/,
     );
     expect(workspaceCss).toMatch(
-      /\.meet-call-dialog \{[\s\S]*?--meet-call-surface:\s*color-mix\(in oklab,\s*var\(--meet-accent\) 12%/,
+      /\.meet-call-dialog \{[\s\S]*?--meet-call-surface:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 12%/,
     );
   });
 

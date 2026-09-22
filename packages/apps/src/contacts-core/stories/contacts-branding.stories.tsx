@@ -10,7 +10,7 @@ const operations = createContactsStoryOperations(bootstrap.data.cards);
 const brandingMeta = createBrandingStoryMeta({
   appId: "contacts",
   workspaceClass: "contacts-workspace",
-  accentToken: "contacts-accent",
+  accentToken: "workspace-accent",
   component: ContactsWorkspace,
 });
 

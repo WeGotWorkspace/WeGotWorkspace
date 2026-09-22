@@ -96,8 +96,7 @@ export function WorkspaceSidebar({ open, children }: WorkspaceSidebarProps) {
           : "-translate-x-full w-72 sidebar:w-64 sidebar:-ml-64 sidebar:border-r-0"
       }`}
       style={{
-        backgroundColor:
-          "var(--workspace-sidebar-bg, var(--color-paper, var(--color-cream, #f7f4ef)))",
+        backgroundColor: "var(--workspace-sidebar-bg, var(--color-paper, var(--color-cream)))",
         borderColor:
           "var(--workspace-sidebar-border-color, color-mix(in oklab, var(--color-ink) 15%, transparent))",
         color: "var(--workspace-sidebar-color, var(--color-ink))",

@@ -61,19 +61,19 @@ describe("docs-collab presence avatar chrome", () => {
     );
 
     expect(notesCss).toMatch(
-      /\.notes-workspace \.docs-collab-presence-chrome \{[\s\S]*--docs-collab-presence-accent:\s*var\(--notes-accent/,
+      /\.notes-workspace \.docs-collab-presence-chrome \{[\s\S]*--docs-collab-presence-accent:\s*var\(--workspace-accent/,
     );
-    expect(notesCss).not.toMatch(/--user-avatar-bg:\s*var\(--notes-accent/);
+    expect(notesCss).not.toMatch(/--user-avatar-bg:\s*var\(--workspace-accent/);
     expect(notesCss).not.toMatch(/--user-avatar-bg:\s*var\(--notes-detail-tint/);
     expect(notesCss).not.toMatch(/--user-avatar-bg:\s*var\(--notes-detail-accent/);
 
     expect(docsCss).toMatch(
-      /\.docs-workspace \.docs-collab-presence-chrome \{[\s\S]*--docs-collab-presence-accent:\s*var\(--docs-accent/,
+      /\.docs-workspace \.docs-collab-presence-chrome \{[\s\S]*--docs-collab-presence-accent:\s*var\(--workspace-accent/,
     );
-    // Docs must not solid-fill self with --docs-accent (match Notes softness).
+    // Docs must not solid-fill self with --workspace-accent (match Notes softness).
     expect(docsCss).not.toMatch(
-      /\.docs-collab-presence__avatar--self[\s\S]*--user-avatar-bg:\s*var\(--docs-accent/,
+      /\.docs-collab-presence__avatar--self[\s\S]*--user-avatar-bg:\s*var\(--workspace-accent/,
     );
-    expect(docsCss).not.toMatch(/--user-avatar-bg:\s*var\(--docs-accent/);
+    expect(docsCss).not.toMatch(/--user-avatar-bg:\s*var\(--workspace-accent/);
   });
 });

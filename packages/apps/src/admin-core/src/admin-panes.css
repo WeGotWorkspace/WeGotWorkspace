@@ -18,7 +18,7 @@
   @apply shrink-0;
   /* Ink-mixed warning so 12px chip text meets 4.5:1 on the cream wash. */
   --tag-fg: color-mix(in oklab, #c98a1f 32%, var(--color-ink));
-  --tag-bg: color-mix(in oklab, #c98a1f 18%, var(--color-cream, #fff));
+  --tag-bg: color-mix(in oklab, #c98a1f 18%, var(--color-cream));
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-list-row__actions {
@@ -48,7 +48,7 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-group-avatar-slot {
   @apply size-9 rounded-full flex items-center justify-center shrink-0;
-  background-color: var(--admin-accent);
+  background-color: var(--workspace-accent);
   color: #ffffff;
 }
 
@@ -60,12 +60,12 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-text-subtle {
   @apply text-xs truncate;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-text-caption {
   @apply text-xs truncate;
-  color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-text-muted-65 {
@@ -85,7 +85,7 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-feature-row__desc {
   @apply text-xs;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 /* --- Toolbar icon buttons in panes --- */
@@ -125,12 +125,12 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-stat-label {
   @apply text-[10px] uppercase tracking-[0.18em] mb-1;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-stat-label--strong {
   @apply text-[10px] uppercase tracking-[0.18em] font-semibold mb-1;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-stat-value {
@@ -152,7 +152,7 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-count {
   @apply text-xs tabular-nums;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-track {
@@ -162,7 +162,7 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-fill {
   @apply h-full transition-all duration-500 ease-out;
-  background-color: var(--button-primary-bg, var(--admin-accent, #003311));
+  background-color: var(--button-primary-bg, var(--workspace-accent, #003311));
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-list {
@@ -180,7 +180,7 @@
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-dot[data-step-state="done"],
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-dot[data-step-state="active"] {
   background-color: var(--color-ink);
-  color: var(--color-cream, #f7f4ef);
+  color: var(--color-cream);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-dot[data-step-state="pending"] {
@@ -222,7 +222,7 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-inline-handle {
   @apply ml-2 text-xs font-normal;
-  color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-group-member-list {

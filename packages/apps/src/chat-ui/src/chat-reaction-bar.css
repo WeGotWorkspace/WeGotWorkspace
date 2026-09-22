@@ -25,7 +25,7 @@
   @apply justify-center px-2;
   border-style: dashed;
   border-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
-  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 65%, transparent));
 }
 
 .chat-reaction-bar__reaction-add-icon {

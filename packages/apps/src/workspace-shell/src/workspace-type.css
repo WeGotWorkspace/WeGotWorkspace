@@ -1,0 +1,28 @@
+@import "../../styles.css" reference;
+
+/**
+ * Shared workspace type roles (Layer 3).
+ *
+ * Families and sizes come from `@theme` utilities (`font-serif`, `text-3xl`, …).
+ * Parents override a face by remapping `--font-serif` / `--font-sans` on the
+ * workspace — not with private app-prefixed title face tokens.
+ *
+ * Caption leading (`leading-4`) stays on `.text-caption` only; do not set
+ * `--text-xs--line-height` globally.
+ */
+
+.text-title {
+  @apply font-serif text-3xl font-semibold;
+}
+
+.text-title-lg {
+  @apply font-serif text-4xl font-semibold;
+}
+
+.text-caption {
+  @apply font-sans text-xs leading-4 font-medium uppercase;
+}
+
+.text-lockup {
+  @apply font-mark;
+}

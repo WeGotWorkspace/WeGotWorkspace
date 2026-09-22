@@ -27,5 +27,5 @@
 
 .contacts-import-dialog__progress-fill {
   @apply h-full rounded-full;
-  background: var(--contacts-accent, var(--color-ink));
+  background: var(--workspace-accent, var(--color-ink));
 }

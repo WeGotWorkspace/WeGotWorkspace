@@ -114,7 +114,7 @@ describe("CalendarTimelineView year-grid CSS", () => {
       /\.year-day:focus-visible\s*\{[\s\S]*?@apply rounded outline-2 outline-solid -outline-offset-2;/,
     );
     expect(css).toMatch(
-      /\.year-day-number\s*\{[\s\S]*?@apply relative inline-flex items-center justify-center min-w-5 h-5 px-\[5px\] rounded-full text-\[12px\] font-medium leading-tight;/,
+      /\.year-day-number\s*\{[\s\S]*?@apply relative inline-flex items-center justify-center min-w-5 h-5 px-\[5px\] rounded-full text-xs font-medium leading-tight;/,
     );
     expect(css).toMatch(
       /\.year-day-dots\s*\{[\s\S]*?@apply absolute top-full left-1\/2 inline-flex items-center gap-\[3px\] mt-px -translate-x-1\/2 pointer-events-none;/,
@@ -128,10 +128,10 @@ describe("CalendarTimelineView year-grid CSS", () => {
 describe("CalendarTimelineView sticky surface CSS", () => {
   it("paints sticky sidebar and all-day shells with cream, never pure white", () => {
     expect(css).toMatch(
-      /\.timeline-sidebar \{[\s\S]*background-color:\s*var\(--_lc-surface-bg,\s*var\(--color-cream,\s*#f7f4ef\)\)/,
+      /\.timeline-sidebar \{[\s\S]*background-color:\s*var\(--_lc-surface-bg,\s*var\(--color-cream\)\)/,
     );
     expect(css).toMatch(
-      /\.timeline-all-day-shell \{[\s\S]*background-color:\s*var\(--_lc-surface-bg,\s*var\(--color-cream,\s*#f7f4ef\)\)/,
+      /\.timeline-all-day-shell \{[\s\S]*background-color:\s*var\(--_lc-surface-bg,\s*var\(--color-cream\)\)/,
     );
     expect(css).not.toMatch(/--_lc-surface-bg,\s*light-dark\(\s*#fff\b/);
     expect(css).not.toMatch(/background-color:\s*var\(--_lc-surface-bg,\s*light-dark\(\s*#fff/);

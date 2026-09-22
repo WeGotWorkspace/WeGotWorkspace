@@ -16,7 +16,7 @@ describe("chat-message-list day chrome", () => {
     expect(tsx).toMatch(/emphasis=\{day\.emphasis\}/);
     expect(tsx).toMatch(/rest=\{day\.rest\}/);
     expect(tsx).not.toMatch(/chat-message-list__day-label/);
-    expect(css).toMatch(/--list-sticky-header-bg:\s*var\(--color-cream,\s*#f7f4ef\)/);
+    expect(css).toMatch(/--list-sticky-header-bg:\s*var\(--color-cream\)/);
     expect(css).not.toMatch(/--list-sticky-header-font-size/);
     expect(css).not.toMatch(/--list-sticky-header-color/);
     expect(css).not.toMatch(/font-semibold/);

@@ -32,8 +32,8 @@
 
 .meet-guest-channel__lobby .meet-guest-lobby__knock.button--variant-primary {
   @apply mt-4 w-full;
-  --button-primary-bg: var(--meet-accent);
-  --button-primary-fg: var(--color-cream, #f7f4ef);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-cream);
   --button-icon-size: 1rem;
 }
 

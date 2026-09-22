@@ -20,7 +20,7 @@ const bootstrap = createMailAppBootstrap();
 const brandingMeta = createBrandingStoryMeta({
   appId: "mail",
   workspaceClass: "mail-workspace",
-  accentToken: "mail-accent",
+  accentToken: "workspace-accent",
   component: MailWorkspace,
 });
 

@@ -1,12 +1,12 @@
 @import "../../styles.css" reference;
 
 .drive-workspace .drive-main-pane {
-  --field-label-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --field-label-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 /** Matches sidebar section titles (`field-label-row__label` + `--field-label-color`). */
 .drive-workspace .drive-item-label {
-  @apply flex items-center gap-1 text-2xs font-medium uppercase truncate min-w-0;
+  @apply flex items-center gap-1 text-xs font-medium uppercase truncate min-w-0;
   font-family: var(
     --field-label-font-family,
     var(--font-sans, ui-sans-serif, system-ui, sans-serif)
@@ -97,7 +97,11 @@
 }
 
 .drive-workspace .drive-folder-tile--selected {
-  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 12%, transparent);
+  background-color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-emerald)) 12%,
+    transparent
+  );
   box-shadow: none;
 }
 
@@ -106,7 +110,11 @@
 }
 
 .drive-workspace .drive-folder-tile--idle:hover {
-  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 8%, transparent);
+  background-color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-emerald)) 8%,
+    transparent
+  );
 }
 
 .drive-workspace .drive-folder-tile__icon {
@@ -133,8 +141,8 @@
 
 .drive-workspace .drive-file-tile__footer {
   @apply relative px-3.5 py-3 sm:px-4 sm:py-3.5 flex items-center gap-2.5 border-t;
-  background-color: var(--color-cream, #f7f4ef);
-  border-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 14%, transparent);
+  background-color: var(--color-cream);
+  border-color: color-mix(in oklab, var(--workspace-accent, var(--color-emerald)) 14%, transparent);
   transition:
     padding 180ms ease,
     background-color 150ms ease;
@@ -196,7 +204,7 @@
 .drive-workspace .drive-file-tile {
   @apply relative overflow-hidden transition-all cursor-pointer outline-none;
   border-radius: var(--control-radius);
-  background-color: var(--color-cream, #f7f4ef);
+  background-color: var(--color-cream);
   box-shadow: none;
 }
 
@@ -208,7 +216,7 @@
   pointer-events: none;
   border-radius: inherit;
   box-shadow: inset 0 0 0 1px
-    color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 16%, transparent);
+    color-mix(in oklab, var(--workspace-accent, var(--color-emerald)) 16%, transparent);
 }
 
 .drive-workspace .drive-file-tile--dragging {
@@ -216,11 +224,19 @@
 }
 
 .drive-workspace .drive-file-tile:not(.drive-file-tile--selected):hover .drive-file-tile__preview {
-  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 6%, transparent);
+  background-color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-emerald)) 6%,
+    transparent
+  );
 }
 
 .drive-workspace .drive-file-tile:not(.drive-file-tile--selected):hover .drive-file-tile__footer {
-  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 8%, transparent);
+  background-color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-emerald)) 8%,
+    transparent
+  );
 }
 
 .drive-workspace .drive-file-tile--selected {
@@ -229,15 +245,23 @@
 
 .drive-workspace .drive-file-tile--selected::after {
   box-shadow: inset 0 0 0 1px
-    color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 14%, transparent);
+    color-mix(in oklab, var(--workspace-accent, var(--color-emerald)) 14%, transparent);
 }
 
 .drive-workspace .drive-file-tile--selected .drive-file-tile__preview {
-  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 10%, transparent);
+  background-color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-emerald)) 10%,
+    transparent
+  );
 }
 
 .drive-workspace .drive-file-tile--selected .drive-file-tile__footer {
-  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 14%, transparent);
+  background-color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-emerald)) 14%,
+    transparent
+  );
 }
 
 .drive-workspace .drive-file-tile__star-badge {
@@ -248,8 +272,8 @@
 .drive-workspace .drive-file-tile__preview {
   @apply relative flex items-center justify-center overflow-hidden;
   aspect-ratio: 16 / 9;
-  background-color: var(--color-cream, #f7f4ef);
-  color: var(--drive-accent);
+  background-color: var(--color-cream);
+  color: var(--workspace-accent);
 }
 
 .drive-workspace .drive-file-tile__preview > img,
@@ -308,12 +332,12 @@
 
 .drive-workspace .drive-file-tile__location {
   @apply min-w-0 truncate text-xs;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 .drive-workspace .drive-location-label {
   @apply flex min-w-0 items-center gap-1.5 text-sm;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 .drive-workspace .drive-location-label__icon {
@@ -379,7 +403,7 @@
 }
 
 .drive-workspace .drive-list-head__cell {
-  @apply pb-2 pt-0 text-left font-medium text-2xs uppercase truncate;
+  @apply pb-2 pt-0 text-left font-medium text-xs uppercase truncate;
   font-family: var(
     --field-label-font-family,
     var(--font-sans, ui-sans-serif, system-ui, sans-serif)
@@ -398,7 +422,11 @@
 .drive-workspace
   .drive-list-row:not(.drive-list-row--selected):not(.drive-list-row--drop-target):hover
   > td {
-  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 8%, transparent);
+  background-color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-emerald)) 8%,
+    transparent
+  );
 }
 
 .drive-workspace .drive-list-row__name {
@@ -424,7 +452,11 @@
 }
 
 .drive-workspace .drive-list-row--selected > td {
-  background-color: color-mix(in oklab, var(--drive-accent, var(--color-emerald)) 12%, transparent);
+  background-color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-emerald)) 12%,
+    transparent
+  );
 }
 
 .drive-workspace .drive-list-row--selected > td:first-child {
@@ -459,7 +491,7 @@
 
 .drive-workspace .drive-shared-indicator {
   @apply inline-flex items-center gap-1 shrink-0;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
 }
 
 .drive-workspace .drive-shared-indicator__icon {
@@ -471,7 +503,7 @@
 }
 
 .drive-workspace .drive-list-muted {
-  color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  color: color-mix(in oklab, var(--color-ink) 68%, transparent);
 }
 
 .drive-workspace .drive-list-folder-icon {
@@ -479,5 +511,5 @@
 }
 
 .drive-workspace .drive-list-file-icon {
-  color: var(--drive-accent);
+  color: var(--workspace-accent);
 }

@@ -12,13 +12,13 @@ describe("calendar-rsvp-actions chrome", () => {
       /\.calendar-rsvp-actions \{[\s\S]*--segmented-control-active-bg:\s*var\(\s*--button-outline-active-background/,
     );
     expect(css).toMatch(
-      /\.calendar-rsvp-actions \{[\s\S]*--segmented-control-active-bg:[\s\S]*var\(--calendar-accent/,
+      /\.calendar-rsvp-actions \{[\s\S]*--segmented-control-active-bg:[\s\S]*var\(--workspace-accent/,
     );
     expect(css).toMatch(
       /\.calendar-rsvp-actions \{[\s\S]*--segmented-control-active-fg:\s*var\(\s*--button-active-color/,
     );
     expect(css).not.toMatch(
-      /\.calendar-rsvp-actions \{[\s\S]*--segmented-control-active-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\)\s*8%/,
+      /\.calendar-rsvp-actions \{[\s\S]*--segmented-control-active-bg:\s*color-mix\(in oklch,\s*var\(--color-ink\)\s*8%/,
     );
   });
 

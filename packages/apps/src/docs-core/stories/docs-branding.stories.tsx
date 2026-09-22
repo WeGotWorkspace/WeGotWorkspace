@@ -22,7 +22,7 @@ const mockOperations = createMockDocsOperations();
 const brandingMeta = createBrandingStoryMeta({
   appId: "docs",
   workspaceClass: "docs-workspace",
-  accentToken: "docs-accent",
+  accentToken: "workspace-accent",
   fullAccentSidebar: true,
   component: DocsHomeWorkspace,
 });

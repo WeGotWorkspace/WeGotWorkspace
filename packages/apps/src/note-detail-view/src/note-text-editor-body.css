@@ -45,5 +45,5 @@
 
 /* Soft wash lives on shared `.docs-collab-presence-chrome`; Notes only sets accent. */
 .notes-workspace .docs-collab-presence-chrome {
-  --docs-collab-presence-accent: var(--notes-accent, #ffc800);
+  --docs-collab-presence-accent: var(--workspace-accent, #ffc800);
 }

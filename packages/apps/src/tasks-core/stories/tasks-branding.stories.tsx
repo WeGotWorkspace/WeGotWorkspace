@@ -7,7 +7,7 @@ import { tasksStoryOperations } from "@/tasks-core/stories/tasks-story-shared";
 const brandingMeta = createBrandingStoryMeta({
   appId: "tasks",
   workspaceClass: "tasks-workspace",
-  accentToken: "tasks-accent",
+  accentToken: "workspace-accent",
   component: TasksWorkspace,
 });
 

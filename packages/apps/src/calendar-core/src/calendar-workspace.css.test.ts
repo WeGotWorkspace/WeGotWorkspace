@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "calendar-workspace.css"), "utf8");
+const colorCss = readFileSync(join(here, "../../workspace-shell/src/workspace-color.css"), "utf8");
 const tsx = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
 const searchTsx = readFileSync(join(here, "calendar-search-results.tsx"), "utf8");
 
@@ -15,27 +16,29 @@ describe("calendar workspace brand accent", () => {
   });
 
   it("uses icon-mark purple for UI accent with cream-mix strong and accent primary fills", () => {
-    expect(css).toMatch(/\.calendar-workspace \{[\s\S]*?--calendar-accent:\s*#962fa8/);
     expect(css).toMatch(
-      /--calendar-accent-strong:\s*color-mix\(in oklab,\s*var\(--calendar-accent\) 32%,\s*var\(--color-ink\)\)/,
+      /\.calendar-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-prince\)/,
+    );
+    expect(colorCss).toMatch(
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-ink\)\s*\)/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--calendar-accent\)/,
+      /\.calendar-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
-    expect(css).not.toMatch(/--button-primary-bg:\s*var\(--calendar-accent-strong\)/);
-    expect(css).not.toMatch(/--calendar-accent:\s*#6366f1/);
-    expect(css).not.toMatch(/--calendar-accent-strong:\s*#5558e8/);
+    expect(css).not.toMatch(/--button-primary-bg:\s*var\(--workspace-accent-strong\)/);
+    expect(css).not.toMatch(/--workspace-accent:\s*#6366f1/);
+    expect(css).not.toMatch(/--workspace-accent-strong:\s*#5558e8/);
   });
 
   it("keeps switch-trigger lockup on pink tile + purple marks", () => {
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#ffbdc2/,
+      /\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-pink\)/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#ffbdc2/,
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-pink\)/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#962fa8/,
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--color-we-got-prince\)/,
     );
   });
 });
@@ -61,29 +64,29 @@ describe("calendar workspace header CSS", () => {
 
   it("tints header outline hover/active with calendar accent instead of ink gray", () => {
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--button-active-color:\s*var\(--calendar-accent-strong\)/,
+      /\.calendar-workspace \{[\s\S]*--button-active-color:\s*var\(--workspace-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--calendar-accent\) 14%/,
+      /\.calendar-workspace \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--workspace-accent\) 14%/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--calendar-accent\) 18%/,
+      /\.calendar-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--workspace-accent\) 18%/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--calendar-accent-strong\)/,
+      /\.calendar-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--workspace-accent-strong\)/,
     );
     expect(css).toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-color:\s*var\(--color-ink\)/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--calendar-accent-strong\)/,
+      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--workspace-accent-strong\)/,
     );
     /* Soft washes live on shared `.view-header` SST (`--workspace-accent` 14/18/24%). */
     expect(css).not.toMatch(
-      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--calendar-accent\) 14%/,
+      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--workspace-accent\) 14%/,
     );
     expect(css).not.toMatch(
-      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--calendar-accent\) 18%/,
+      /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--workspace-accent\) 18%/,
     );
     expect(css).not.toMatch(
       /\.calendar-workspace \.view-header \{[\s\S]*--button-outline-active-border-color:/,
@@ -104,13 +107,13 @@ describe("calendar workspace header CSS", () => {
 
   it("brightens AppSidebar selected wash for purple via --app-sidebar-item-*", () => {
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklab,\s*var\(--calendar-accent\) 28%,\s*var\(--color-cream/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-cream/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--calendar-accent\) 38%[\s\S]*var\(--color-cream/,
+      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--color-cream/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--calendar-accent\) 48%[\s\S]*var\(--color-cream/,
+      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--color-cream/,
     );
     expect(css).toMatch(
       /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-ink\)/,
