@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { createSharedTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
+import { createBrandingStoryMeta } from "@/branding-playground";
+import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type { TasksAPIOperations } from "@/tasks-core/src/tasks-types";
 import { TasksWorkspace } from "@/tasks-core/src/tasks-workspace";
 
@@ -82,23 +83,25 @@ const storyOperations: TasksAPIOperations = {
   deleteTaskList: async () => undefined,
 };
 
-const meta: Meta<typeof TasksWorkspace> = {
-  title: "Apps/Tasks",
+const brandingMeta = createBrandingStoryMeta({
+  appId: "tasks",
+  workspaceClass: "tasks-workspace",
+  accentToken: "tasks-accent",
   component: TasksWorkspace,
-  parameters: {
-    layout: "fullscreen",
-  },
-  args: {
-    operations: storyOperations,
-  },
-};
+});
+
+const meta = {
+  ...brandingMeta,
+  title: "Branding/Tasks",
+  tags: ["vitest-ci"],
+} satisfies Meta<typeof TasksWorkspace>;
 
 export default meta;
 type Story = StoryObj<typeof TasksWorkspace>;
 
-/** Chrome Default lives under Branding/Tasks — shared-list layout. */
-export const SharedWithMe: Story = {
+export const Default: Story = {
   args: {
-    ...createSharedTasksAppBootstrap(),
+    ...createTasksAppBootstrap(),
+    operations: storyOperations,
   },
 };

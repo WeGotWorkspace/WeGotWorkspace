@@ -1,13 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
-
+import { expect, userEvent, waitFor, within } from "storybook/test";
+import { createBrandingStoryMeta } from "@/branding-playground";
+import { createInstallerAppBootstrap } from "@/lib/api/mock/installer-bootstrap";
 import { InstallerAccountPage } from "@/installer-core/src/installer-account-page";
+import { InstallerAttentionPage } from "@/installer-core/src/installer-attention-page";
 import { installerCopy } from "@/installer-core/src/installer-copy";
 import { InstallerDatabasePage } from "@/installer-core/src/installer-database-page";
 import { InstallerReadyPage } from "@/installer-core/src/installer-ready-page";
-import { InstallerAttentionPage } from "@/installer-core/src/installer-attention-page";
-import { InstallerWelcomePage } from "@/installer-core/src/installer-welcome-page";
 import type { InstallerServerCheck } from "@/installer-core/src/installer-types";
+import { InstallerWelcomePage } from "@/installer-core/src/installer-welcome-page";
+import { InstallerWorkspace } from "@/installer-core/src/installer-workspace";
 
 const FAILED_CHECKS: InstallerServerCheck[] = [
   {
@@ -28,15 +30,54 @@ function progressItems(canvas: ReturnType<typeof within>) {
   return within(canvas.getByRole("list", { name: "Setup progress" })).getAllByRole("listitem");
 }
 
-const meta = {
-  title: "Apps/Installer",
+const brandingMeta = createBrandingStoryMeta({
+  appId: "auth",
+  workspaceClass: "login-screen",
   parameters: {
-    layout: "fullscreen",
+    routerPath: "/install",
+    docs: {
+      description: {
+        component:
+          "Designer branding for the installer cream shell (same `.login-screen` paper as Login): " +
+          "`--color-cream` / `--color-ink` via cssprops, and BrandLockup suite-mark SVG slot. " +
+          "State matrix: Welcome, database (MySQL / SQLite), account (+ env-omitted database step), " +
+          "installing, ready, and server-needs-attention. " +
+          "Interactive flow walks the full mock InstallerWorkspace setup (Welcome → Ready).",
+      },
+    },
   },
+});
+
+const meta = {
+  ...brandingMeta,
+  title: "Branding/Installer",
+  tags: ["vitest-ci"],
 } satisfies Meta;
 
 export default meta;
 type Story = StoryObj;
+
+/** Full mock walkthrough (Welcome → database → account → ready) with branding knobs. */
+export const InteractiveFlow: Story = {
+  name: "Interactive flow",
+  tags: ["vitest-ci"],
+  render: () => {
+    const { data, operations } = createInstallerAppBootstrap();
+    return <InstallerWorkspace data={data} operations={operations} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("heading", { name: installerCopy.welcomeTitle }),
+    ).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: installerCopy.getStarted }));
+    await waitFor(() =>
+      expect(
+        canvas.getByRole("heading", { name: installerCopy.databaseTitle }),
+      ).toBeInTheDocument(),
+    );
+  },
+};
 
 export const Welcome: Story = {
   tags: ["vitest-ci"],
@@ -51,7 +92,7 @@ export const Welcome: Story = {
     await expect(progressItems(canvas)).toHaveLength(4);
     await expect(canvas.getByText("Welcome, current")).toBeInTheDocument();
     await expect(canvas.getByText("Database")).toBeInTheDocument();
-    await expect(canvas.queryByText("we got")).toBeNull();
+    // BrandLockup keeps an aria-hidden "we got" tagline; assert old marketing heroes stay gone.
     await expect(canvas.queryByText(/© .*WeGotWorkspace/)).toBeNull();
     await expect(canvas.queryByText("Files on every device")).toBeNull();
     await expect(canvas.queryByText("On your own server.")).toBeNull();
@@ -122,7 +163,6 @@ export const Account: Story = {
     await expect(canvas.queryByText(/You'll sign in as/)).toBeNull();
     await expect(canvas.getByRole("button", { name: "Show password" })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: "Use MySQL / MariaDB" })).toBeNull();
-    await expect(canvas.queryByText("we got")).toBeNull();
     await expect(canvas.queryByText(/© .*WeGotWorkspace/)).toBeNull();
   },
 };

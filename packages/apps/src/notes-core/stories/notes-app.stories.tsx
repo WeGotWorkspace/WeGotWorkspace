@@ -30,13 +30,7 @@ const storyOperations = {
   deleteNotebook: async () => {},
 };
 
-export const Default: Story = {
-  args: {
-    ...bootstrap,
-    operations: storyOperations,
-  },
-};
-
+/** Chrome Default lives under Branding/Notes — shared-notebook sidebar layout. */
 export const WithSharedSections: Story = {
   args: {
     ...createNotesAppBootstrap({

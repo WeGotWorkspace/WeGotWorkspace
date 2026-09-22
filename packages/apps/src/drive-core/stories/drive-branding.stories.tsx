@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { createBrandingStoryMeta } from "@/branding-playground";
 import {
   createDriveAppBootstrap,
   createMockDriveShareOperations,
@@ -6,34 +7,28 @@ import {
 import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
 import { STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 
-const meta: Meta<typeof DriveWorkspace> = {
-  title: "Apps/Drive",
+const brandingMeta = createBrandingStoryMeta({
+  appId: "drive",
+  workspaceClass: "drive-workspace",
+  accentToken: "drive-accent",
   component: DriveWorkspace,
-  parameters: {
-    layout: "fullscreen",
-  },
-};
+});
+
+const meta = {
+  ...brandingMeta,
+  title: "Branding/Drive",
+  tags: ["vitest-ci"],
+} satisfies Meta<typeof DriveWorkspace>;
 
 export default meta;
 type Story = StoryObj<typeof DriveWorkspace>;
 
-/** Chrome Default lives under Branding/Drive — Shared with me view. */
-export const SharedWithMe: Story = {
+export const Default: Story = {
   args: {
     ...createDriveAppBootstrap(),
     shareOperations: createMockDriveShareOperations(),
-    view: { type: "shared" },
-    onViewChange: STORY_NOOP,
     onLogout: () => {},
     onOpenDocsFile: STORY_NOOP,
     onNavigate: STORY_NOOP,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Sidebar **Shared with me** (`?view=shared`) lists member-shared files and folders from other users.",
-      },
-    },
   },
 };

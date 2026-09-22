@@ -14,12 +14,7 @@ const meta: Meta<typeof SettingsWorkspace> = {
 export default meta;
 type Story = StoryObj<typeof SettingsWorkspace>;
 
-export const Default: Story = {
-  args: {
-    ...createSettingsAppBootstrap(),
-  },
-};
-
+/** Chrome Default lives under Branding/Settings — this story covers MCP-off gating. */
 export const DisabledByAdmin: Story = {
   args: {
     ...createSettingsAppBootstrap({
