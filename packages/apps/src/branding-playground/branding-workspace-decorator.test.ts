@@ -98,8 +98,8 @@ describe("buildBrandingWorkspaceOverrideCss", () => {
       "--wai-bg": "#ffbdc2",
       "--wai-fg": "#962fa8",
     });
-    expect(css).toContain("--workspace-accent: #962fa8;");
-    expect(css).toContain("--wai-bg: #ffbdc2;");
+    expect(css).toContain("--workspace-accent: oklch(from #962fa8 l c h);");
+    expect(css).toContain("--wai-bg: oklch(from #ffbdc2 l c h);");
     expect(css).not.toMatch(/:\s*inherit\s*;/);
   });
 
@@ -108,7 +108,9 @@ describe("buildBrandingWorkspaceOverrideCss", () => {
       "--workspace-accent": "#962fa8",
       "--wai-bg": "#ffbdc2",
     });
-    expect(css).toMatch(/\.workspace-app-icon--switch-trigger svg \{\s*--wai-bg: #ffbdc2;/);
+    expect(css).toMatch(
+      /\.workspace-app-icon--switch-trigger svg \{\s*--wai-bg: oklch\(from #ffbdc2 l c h\);/,
+    );
   });
 
   it("inverts wai-bg and wai-fg on the Docs sidebar icon only", () => {
@@ -118,10 +120,10 @@ describe("buildBrandingWorkspaceOverrideCss", () => {
       "--wai-fg": "#ffffff",
     });
     expect(css).toMatch(
-      /\.branding-playground-root \.docs-workspace \{\s*--workspace-accent: #0045ff;\s*--wai-bg: #0045ff;\s*--wai-fg: #ffffff;/,
+      /\.branding-playground-root \.docs-workspace \{\s*--workspace-accent: oklch\(from #0045ff l c h\);\s*--wai-bg: oklch\(from #0045ff l c h\);\s*--wai-fg: oklch\(from #ffffff l c h\);/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger svg \{\s*--wai-bg: #ffffff;\s*--wai-fg: #0045ff;/,
+      /\.workspace-app-icon--switch-trigger svg \{\s*--wai-bg: oklch\(from #ffffff l c h\);\s*--wai-fg: oklch\(from #0045ff l c h\);/,
     );
   });
 });
@@ -136,8 +138,8 @@ describe("syncBrandingCsspropsToRoot", () => {
     const root = styleBag();
     const body = styleBag();
     syncBrandingCsspropsToRoot(root.el as HTMLElement, entries, body.style);
-    expect(root.style.getPropertyValue("--workspace-accent")).toBe("#962fa8");
-    expect(root.style.getPropertyValue("--wai-bg")).toBe("#ffbdc2");
+    expect(root.style.getPropertyValue("--workspace-accent")).toBe("oklch(from #962fa8 l c h)");
+    expect(root.style.getPropertyValue("--wai-bg")).toBe("oklch(from #ffbdc2 l c h)");
   });
 
   it("prefers body values when the cssprops addon has injected them", () => {
@@ -145,8 +147,8 @@ describe("syncBrandingCsspropsToRoot", () => {
     const body = styleBag();
     body.style.setProperty("--workspace-accent", "#ff0000");
     syncBrandingCsspropsToRoot(root.el as HTMLElement, entries, body.style);
-    expect(root.style.getPropertyValue("--workspace-accent")).toBe("#ff0000");
-    expect(root.style.getPropertyValue("--wai-bg")).toBe("#ffbdc2");
+    expect(root.style.getPropertyValue("--workspace-accent")).toBe("oklch(from #ff0000 l c h)");
+    expect(root.style.getPropertyValue("--wai-bg")).toBe("oklch(from #ffbdc2 l c h)");
   });
 
   it("restores defaults after body style is cleared (Canvas panel cleanup)", () => {
@@ -156,6 +158,6 @@ describe("syncBrandingCsspropsToRoot", () => {
     syncBrandingCsspropsToRoot(root.el as HTMLElement, entries, body.style);
     body.style.removeProperty("--workspace-accent");
     syncBrandingCsspropsToRoot(root.el as HTMLElement, entries, body.style);
-    expect(root.style.getPropertyValue("--workspace-accent")).toBe("#962fa8");
+    expect(root.style.getPropertyValue("--workspace-accent")).toBe("oklch(from #962fa8 l c h)");
   });
 });

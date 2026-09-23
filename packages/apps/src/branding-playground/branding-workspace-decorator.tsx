@@ -27,6 +27,20 @@ export type BrandingStoryArgs = {
 
 type CsspropSeedEntry = { key: string; value: string };
 
+const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+
+/**
+ * styles.css declares each brand color twice: hex, then `oklch(from #hex l c h)`.
+ * A raw hex on the workspace makes `color-mix(in oklch, …, #fff)` drop the hue
+ * (Storybook rails go accent-tinted; the app stays warm). Keep the picker on hex
+ * and apply the same oklch form the app inherits.
+ */
+export function brandColorForCascade(value: string): string {
+  const trimmed = value.trim();
+  if (HEX_COLOR.test(trimmed)) return `oklch(from ${trimmed} l c h)`;
+  return trimmed;
+}
+
 function csspropEntriesFromParameters(parameters: Record<string, unknown>): CsspropSeedEntry[] {
   const cssprops = parameters.cssprops as BrandingCsspropsMap | undefined;
   if (!cssprops || typeof cssprops !== "object") return [];
@@ -71,8 +85,8 @@ function sidebarSwitchTriggerWaiDecls(
   if (bg === undefined && fg === undefined) return "";
   const invert = workspaceClass === "docs-workspace" && bg !== undefined && fg !== undefined;
   const lines: string[] = [];
-  if (bg !== undefined) lines.push(`  --wai-bg: ${invert ? fg : bg};`);
-  if (fg !== undefined) lines.push(`  --wai-fg: ${invert ? bg : fg};`);
+  if (bg !== undefined) lines.push(`  --wai-bg: ${brandColorForCascade(invert ? fg : bg)};`);
+  if (fg !== undefined) lines.push(`  --wai-fg: ${brandColorForCascade(invert ? bg : fg)};`);
   return lines.join("\n");
 }
 
@@ -121,7 +135,7 @@ export function syncBrandingCsspropsToRoot(
 ): void {
   const values = resolveBrandingCsspropValues(entries, body);
   for (const [prop, value] of Object.entries(values)) {
-    root.style.setProperty(prop, value);
+    root.style.setProperty(prop, brandColorForCascade(value));
   }
 }
 
@@ -140,7 +154,7 @@ export function buildBrandingWorkspaceOverrideCss(
   if (!workspaceClass) return "";
 
   const decls = Object.entries(values)
-    .map(([prop, value]) => `  ${prop}: ${value};`)
+    .map(([prop, value]) => `  ${prop}: ${brandColorForCascade(value)};`)
     .join("\n");
 
   const waiDecls = sidebarSwitchTriggerWaiDecls(workspaceClass, values);
@@ -231,7 +245,9 @@ function BrandingPlaygroundShell({
 
   const rootStyle = {
     minHeight: "100%",
-    ...csspropValues,
+    ...Object.fromEntries(
+      Object.entries(csspropValues).map(([prop, value]) => [prop, brandColorForCascade(value)]),
+    ),
   } as CSSProperties;
 
   const styleText = buildBrandingWorkspaceOverrideCss(
