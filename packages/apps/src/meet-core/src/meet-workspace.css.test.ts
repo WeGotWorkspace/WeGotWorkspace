@@ -193,8 +193,16 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).toMatch(/keepCallChrome = Boolean\(resolvedStage && showCallChrome\)/);
     expect(tsx).toMatch(/meetCallStageShowsStage\(resolvedStageLayout\)/);
     expect(tsx).toMatch(/onExpand=\{\(\) => handleCallLayoutChange\("fullscreen"\)\}/);
+    expect(tsx).toMatch(/onLeave=\{visitCallToggle\}/);
+    expect(tsx).toMatch(/visitOwnsLayout/);
+    expect(tsx).toMatch(/visitCallLayout/);
+    expect(tsx).toMatch(/leaveVisitCall/);
+    expect(tsx).toMatch(/operations\?\.leaveCall\?\.\(""\)/);
     expect(tsx).toMatch(
       /meetCallStageShowsStage\(layout\) && !meetCallIsActive\(call\.callLayout\)/,
+    );
+    expect(tsx).toMatch(
+      /meetCallStageShowsStage\(resolvedStageLayout\) \? resolvedStageLayout : "fullscreen"/,
     );
     expect(tsx).toMatch(/channelTitle=\{headerTitle\}/);
     expect(tsx).toMatch(/MeetWorkspaceRail/);
@@ -588,14 +596,18 @@ describe("meet host admit knock popover", () => {
     expect(knockBadge).not.toMatch(/meet-popover-surface/);
     expect(popover).toMatch(/--workspace-accent:\s*var\(--color-we-got-sand\)/);
     expect(popover).toMatch(
-      /--meet-call-surface:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 12%/,
+      /--meet-call-surface:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 12%,\s*#fff5e9\)/,
+    );
+    expect(popover).toMatch(
+      /--meet-call-empty:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 6%,\s*#fff5e9\)/,
     );
     expect(popover).toMatch(/--popover:\s*var\(--meet-call-surface\)/);
     expect(popover).toMatch(/--button-outline-color:\s*var\(--color-we-got-dark\)/);
     expect(popover).not.toMatch(/--button-subtle-/);
     expect(popover).toMatch(/--button-primary-bg:\s*var\(--workspace-accent\)/);
-    expect(popover).toMatch(/background-color:\s*var\(--meet-call-surface\)/);
-    expect(popover).toMatch(/color:\s*var\(--color-we-got-dark\)/);
+    expect(popover).toMatch(/background-color:\s*var\(--meet-call-surface\)\s*!important/);
+    expect(popover).toMatch(/color:\s*var\(--color-we-got-dark\)\s*!important/);
+    expect(popover).not.toMatch(/var\(--workspace-surface\)/);
     expect(popover).not.toMatch(/#171826/);
     expect(css).toMatch(/\.meet-knock-row \{[\s\S]*background-color:\s*var\(--meet-call-empty\)/);
     expect(css).toMatch(/\.meet-knock-row__name \{[\s\S]*color:\s*var\(--color-we-got-dark\)/);
