@@ -56,6 +56,9 @@ describe("workspace home switch-trigger mark", () => {
     expect(iconCss).toMatch(
       /\.workspace-app-icon--switch-trigger-home \{[\s\S]*--app-switch-icon-bg:\s*var\(--color-we-got-soft/,
     );
+    expect(iconCss).toMatch(
+      /\.workspace-app-icon--switch-trigger\.workspace-app-icon--switch-trigger-home svg \{[\s\S]*--wai-fg:\s*#003311/,
+    );
     expect(iconCss).not.toMatch(/--wai-fg:\s*#f59f00/);
     expect(iconCss).not.toMatch(/--wai-detail:\s*#0ca678/);
     expect(iconCss).not.toMatch(/--wai-cutout:\s*#4c6ef5/);

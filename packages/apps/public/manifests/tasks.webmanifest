@@ -9,13 +9,13 @@
   "theme_color": "#ffbdc2",
   "icons": [
     {
-      "src": "/app-icons/tasks.svg?v=18",
+      "src": "/app-icons/tasks.svg?v=19",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/tasks-180.png?v=18",
+      "src": "/pwa-icons/tasks-180.png?v=19",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
