@@ -326,7 +326,7 @@ describe("notes workspace detail paper sheet tokens", () => {
   it("paints the paper card with a very light notebook wash on a cream desk", () => {
     expect(css).toMatch(
       new RegExp(
-        `--paper-sheet-bg:\\s*color-mix\\(\\s*in oklch,\\s*var\\(--notes-detail-tint,\\s*var\\(--workspace-surface\\)\\) ${NOTES_DETAIL_TINT_PERCENT}%,\\s*var\\(--workspace-surface`,
+        `--paper-sheet-bg:\\s*color-mix\\(\\s*in oklab,\\s*var\\(--notes-detail-tint,\\s*var\\(--workspace-surface\\)\\) ${NOTES_DETAIL_TINT_PERCENT}%,\\s*var\\(--workspace-surface`,
       ),
     );
     expect(css).not.toMatch(/--note-detail-sheet-shadow:/);

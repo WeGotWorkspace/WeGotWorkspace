@@ -11,8 +11,11 @@
  * (WCAG AA). Detail pane / desk is the same cream as the footer and action
  * bar (`--workspace-chrome-footer-bg`), so the open-note paper card can
  * read as a tinted sheet. `--paper-sheet-bg` is cream mixed with
- * `--notes-detail-tint` at 11% (same wash as Calendar event cards) — a
- * very light notebook tint, never the full collection color.
+ * `--notes-detail-tint` at 11% in oklab (same % as Calendar’s srgb
+ * `surfaceTint`) — a very light notebook wash that keeps chroma/hue,
+ * never the full collection color. Do not mix the sheet in oklch: an
+ * 11% cylindrical blend into warm Soft interpolates toward cream’s hue
+ * and reads peach for purple/teal notebooks.
  * `--notes-detail-accent` still binds to that tint so selected
  * Star/Archive, tags, and editor checks use the live notebook hue.
  * Title/body use `--notes-detail-contrast-fg` (ink mixed onto the sheet,
@@ -119,9 +122,10 @@
   --note-detail-tag-bg: color-mix(in oklch, var(--notes-detail-accent) 16%, transparent);
   --note-detail-tag-fg: var(--notes-detail-accent-strong);
   --note-detail-tag-border: color-mix(in oklch, var(--notes-detail-accent) 28%, transparent);
-  /* Very light notebook wash on cream — not the full `--notes-detail-tint`. */
+  /* Very light notebook wash on cream — not the full `--notes-detail-tint`.
+   * oklab (not oklch): small % keeps notebook chroma/hue on warm Soft. */
   --paper-sheet-bg: color-mix(
-    in oklch,
+    in oklab,
     var(--notes-detail-tint, var(--workspace-surface)) 11%,
     var(--workspace-surface)
   );

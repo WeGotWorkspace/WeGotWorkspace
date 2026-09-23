@@ -92,11 +92,11 @@ describe("notesDetailTintStyle", () => {
   it("binds the notebook hex and check-mark contrast, not full-ink sheet text", () => {
     expect(notesDetailTintStyle(undefined)).toBeUndefined();
     expect(notesDetailTintStyle("#fde68a")).toEqual({
-      ["--notes-detail-tint"]: "#fde68a",
+      ["--notes-detail-tint"]: "oklch(from #fde68a l c h)",
       ["--notes-detail-check-fg"]: "var(--color-we-got-dark)",
     });
     expect(notesDetailTintStyle("#1e3a5f")).toEqual({
-      ["--notes-detail-tint"]: "#1e3a5f",
+      ["--notes-detail-tint"]: "oklch(from #1e3a5f l c h)",
       ["--notes-detail-check-fg"]: "var(--color-we-got-soft)",
     });
     expect(notesDetailTintStyle("#fde68a")).not.toHaveProperty("--notes-detail-contrast-fg");

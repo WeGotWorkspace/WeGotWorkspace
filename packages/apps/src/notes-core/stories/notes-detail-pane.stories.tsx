@@ -160,7 +160,7 @@ export const NotebookTint: Story = {
     const workspace = canvasElement.querySelector(".notes-workspace") as HTMLElement | null;
     expect(workspace).toBeTruthy();
     expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-tint").trim()).toBe(
-      "#ec4899",
+      "oklch(from #ec4899 l c h)",
     );
     const sheet = canvasElement.querySelector(".paper-sheet") as HTMLElement | null;
     const scroll = canvasElement.querySelector(

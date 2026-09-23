@@ -29,7 +29,9 @@ describe("notes workspace detail tint (computed)", () => {
   it("binds the notebook color onto --notes-detail-tint for a single note", () => {
     const { container } = renderPane("#0ea5e9");
     const root = container.querySelector(".notes-workspace") as HTMLElement;
-    expect(getComputedStyle(root).getPropertyValue("--notes-detail-tint").trim()).toBe("#0ea5e9");
+    expect(getComputedStyle(root).getPropertyValue("--notes-detail-tint").trim()).toBe(
+      "oklch(from #0ea5e9 l c h)",
+    );
   });
 
   it("does not force full-ink sheet text; check-mark contrast still follows the fill", () => {
