@@ -122,7 +122,7 @@ Visual regression via [Chromatic](https://www.chromatic.com/) is wired as a dedi
 | Aspect | Policy |
 |--------|--------|
 | Required for merge | **No** — not a branch-protection required check until maintainers add it |
-| CI gating | **`exitZeroOnChanges: false`** — unaccepted visual diffs fail the Chromatic check |
+| CI gating | **`exitZeroOnChanges: true`** — a successful publish stays green; unaccepted visual diffs are reviewed in Chromatic |
 | Baselines | **`autoAcceptChanges: "main"`** only — `main` updates baselines; PRs still need review |
 | Snapshot scope | Dedicated job uses **`onlyChanged: true`** (TurboSnap); Live stories excluded |
 | Enablement | Repo variable `CHROMATIC_ENABLED=true` + secret `CHROMATIC_PROJECT_TOKEN` |
