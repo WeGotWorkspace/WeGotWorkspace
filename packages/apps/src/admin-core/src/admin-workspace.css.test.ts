@@ -86,7 +86,7 @@ describe("admin workspace outline chrome", () => {
   });
 
   it("uses a light accent→cream sidebar with ink chrome (not full-bleed dark tile)", () => {
-    expect(css).toMatch(/--workspace-sidebar-mix:\s*16%/);
+    expect(css).toMatch(/--workspace-sidebar-mix:\s*10%/);
     expect(css).toMatch(/--app-sidebar-color:\s*var\(--color-we-got-dark\)/);
     expect(css).toMatch(/--sidebar-logo-close-button-color:\s*var\(--color-we-got-dark\)/);
     expect(css).toMatch(/--workspace-user-footer-text-color:\s*var\(--color-we-got-dark\)/);
@@ -104,7 +104,7 @@ describe("admin workspace outline chrome", () => {
     expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
     expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(colorCss).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 18%/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 22%/,
     );
     expect(css).toMatch(
       /\.admin-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,

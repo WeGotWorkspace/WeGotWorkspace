@@ -10,7 +10,7 @@
  * - `--wai-*` layers the switch mark actually uses
  * - Docs: full-accent sidebar + white on-color
  *
- * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark. Every app shares one item ladder (18 / 24 / 32). Product files do not redeclare it.
+ * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark. Every app shares one item ladder (22 / 28 / 36), a small step above Calendar's previous 18 / 24 / 32. Product files do not redeclare it.
  *
  * Defaults use `:where` (zero specificity). Every product file imports this
  * sheet, and the app loads every product, so a later copy of these rules used
@@ -67,17 +67,17 @@
 
   --app-sidebar-item-hover-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 18%,
+    var(--workspace-accent) 22%,
     var(--workspace-surface)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 24%,
+    var(--workspace-accent) 28%,
     var(--workspace-surface)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 32%,
+    var(--workspace-accent) 36%,
     var(--workspace-surface)
   );
   --app-sidebar-item-selected-color: var(--color-we-got-dark);

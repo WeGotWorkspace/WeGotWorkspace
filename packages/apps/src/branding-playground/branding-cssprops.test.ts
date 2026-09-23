@@ -84,8 +84,8 @@ describe("defaultAppBrandingCssprops", () => {
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.docs).toContain("12%");
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.calendar).toContain("10%");
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.contacts).toContain("10%");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.admin).toContain("16%");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.settings).toContain("16%");
+    expect(BRANDING_APP_SIDEBAR_DEFAULTS.admin).toContain("10%");
+    expect(BRANDING_APP_SIDEBAR_DEFAULTS.settings).toContain("10%");
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.drive).toContain("32%");
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.meet).toContain("20%");
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.mail).toContain("12%");

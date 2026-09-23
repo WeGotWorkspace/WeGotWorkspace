@@ -89,8 +89,8 @@ export const BRANDING_APP_SIDEBAR_DEFAULTS: Record<WorkspaceAppId, string> = {
   contacts: "color-mix(in oklch, var(--workspace-accent) 10%, var(--color-we-got-soft))",
   drive: "color-mix(in oklch, var(--workspace-accent) 32%, var(--color-we-got-soft))",
   docs: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft))",
-  admin: "color-mix(in oklch, var(--workspace-accent) 16%, var(--color-we-got-soft))",
-  settings: "color-mix(in oklch, var(--workspace-accent) 16%, var(--color-we-got-soft))",
+  admin: "color-mix(in oklch, var(--workspace-accent) 10%, var(--color-we-got-soft))",
+  settings: "color-mix(in oklch, var(--workspace-accent) 10%, var(--color-we-got-soft))",
   meet: "color-mix(in oklch, var(--workspace-accent) 20%, var(--color-we-got-soft))",
 };
 

@@ -95,7 +95,7 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).not.toMatch(/--collection-sidebar-row-radius:\s*999px/);
   });
 
-  it("leaves sidebar item washes to the shared 18/24/32 ladder", () => {
+  it("leaves sidebar item washes to the shared 22/28/36 ladder", () => {
     expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
     expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(css).toMatch(
