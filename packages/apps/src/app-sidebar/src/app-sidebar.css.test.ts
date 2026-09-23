@@ -135,6 +135,21 @@ describe("app sidebar header lockup alignment", () => {
 });
 
 describe("app sidebar overlay motion", () => {
+  it("keeps sidebar fill under the status bar and home indicator", () => {
+    expect(css).toMatch(/\.app-sidebar \{[\s\S]*padding-top:\s*env\(safe-area-inset-top,\s*0px\)/);
+    expect(css).toMatch(
+      /\.app-sidebar \{[\s\S]*padding-bottom:\s*env\(safe-area-inset-bottom,\s*0px\)/,
+    );
+  });
+
+  it("dims the overlay on a pseudo element so the fixed scrim does not tint the status bar", () => {
+    expect(css).toMatch(/\.app-sidebar__scrim \{[\s\S]*\bbg-transparent\b/);
+    expect(css).not.toMatch(/\.app-sidebar__scrim \{[^}]*bg-black\/30/);
+    expect(css).toMatch(
+      /\.app-sidebar__scrim::before \{[\s\S]*background-color:\s*rgb\(0 0 0 \/ 30%\)/,
+    );
+  });
+
   it("uses shared panel-overlay duration + ease tokens", () => {
     expect(css).toMatch(
       /\.app-sidebar \{[\s\S]*transition-duration:\s*var\(--panel-overlay-duration\)/,

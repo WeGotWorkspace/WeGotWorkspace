@@ -18,6 +18,13 @@
     var(--color-we-got-dark) 18%,
     transparent
   );
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html:has(.apps-home-screen) {
+  background-color: var(--color-we-got-soft);
 }
 
 /** Home grid tile — 128px base, 160px from `sm` (+25%); radius is CSS-only (SVG stays square). */

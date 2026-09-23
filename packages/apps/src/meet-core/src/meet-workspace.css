@@ -1250,6 +1250,12 @@
   @apply hidden;
 }
 
+/* Call stage fills the screen; shell safe-area padding would letterbox the video. */
+.workspace-columns.meet-workspace--call-active .workspace-app-layout__main {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .meet-workspace__rail-surfaces {
   @apply relative grid min-h-0 min-w-0 max-w-full flex-1 overflow-hidden;
   grid-template: 1fr / 1fr;

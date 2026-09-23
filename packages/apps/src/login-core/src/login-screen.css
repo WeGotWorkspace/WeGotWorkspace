@@ -9,6 +9,11 @@
   background-color: var(--color-we-got-soft);
   color: var(--color-we-got-dark);
   color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: flex;
+  flex-direction: column;
   --app-switch-label-color: var(--color-we-got-dark);
   /* Same tagline mix surface as app sidebars (muted “we got” over lockup paper). */
   --app-switch-lockup-bg: var(--color-we-got-soft);
@@ -36,6 +41,15 @@
   /* Brand dark green — same hex as WORKSPACE_APP_ACCENT.admin / settings. */
   --button-primary-bg: #003311;
   --button-primary-fg: #ffffff;
+}
+
+html:has(.login-screen) {
+  background-color: var(--color-we-got-soft);
+}
+
+.login-screen > section {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .login-screen .input,
