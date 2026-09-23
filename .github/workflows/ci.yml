@@ -232,7 +232,9 @@ jobs:
           workingDir: packages/apps
           storybookBuildDir: storybook-static
           onlyChanged: true
-          exitZeroOnChanges: false
+          # Publish succeeded. Unaccepted visual diffs stay in the Chromatic UI
+          # and must not fail this job. main still accepts new baselines.
+          exitZeroOnChanges: true
           autoAcceptChanges: "main"
 
   api-mysql:
