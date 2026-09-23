@@ -277,13 +277,12 @@
     border-color: var(--color-border);
   }
 
-  html,
-  body {
-    /* Soft paper. iOS paints the status-bar band from this, outside the web layer. */
-    background-color: var(--color-we-got-soft, #fff5e9);
+  html {
+    background-color: var(--color-we-got-dark);
   }
 
   body {
+    background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     min-height: 100vh;
@@ -302,9 +301,15 @@
     }
   }
 
+  /*
+   * iOS paints the status-bar band from the document background, outside the
+   * web layer. Match the open sidebar fill only while installed. Browser tabs
+   * keep the previous canvas.
+   */
   html.pwa-standalone,
   html.pwa-standalone body {
     min-height: 100lvh;
+    background-color: var(--color-we-got-soft, #fff5e9);
   }
 
   html.pwa-standalone .workspace-columns,

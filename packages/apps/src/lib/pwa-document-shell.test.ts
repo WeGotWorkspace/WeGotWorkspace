@@ -17,8 +17,10 @@ describe("PWA document shell", () => {
 
   it("samples the page surface for the status bar, not ink", () => {
     expect(stylesCss).toMatch(
-      /html,\s*body \{[\s\S]*background-color:\s*var\(--color-we-got-soft,\s*#fff5e9\)/,
+      /html\.pwa-standalone,\s*html\.pwa-standalone body \{[\s\S]*background-color:\s*var\(--color-we-got-soft,\s*#fff5e9\)/,
     );
+    expect(stylesCss).toMatch(/html \{\s*background-color:\s*var\(--color-we-got-dark\);/);
+    expect(stylesCss).toMatch(/body \{\s*background-color:\s*var\(--color-background\);/);
     expect(stylesCss).not.toMatch(/html \{[^}]*background-color:\s*var\(--color-ink\)/);
     expect(stylesCss).toMatch(/html\.pwa-standalone \.app-sidebar \{[\s\S]*height:\s*100lvh/);
   });
