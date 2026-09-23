@@ -14,10 +14,9 @@ import {
 } from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
-  meetSpeakerOptionsFromAudioInputs,
-  normalizeMeetDeviceOptions,
+  meetCallDeviceMenus,
+  meetSpeakerSelectionId,
   selectedMeetDeviceOptionId,
-  selectedMeetSpeakerOptionId,
 } from "@/meet-core/src/meet-device-utils";
 import type {
   MeetAPIOperations,
@@ -218,17 +217,14 @@ export function useMeetChatCall({
 
   // Device chrome for the stage/toolbar (mirrors the retired lobby shell).
   const [speakerId, setSpeakerId] = useState("default");
-  const cameras = useMemo(
-    () => normalizeMeetDeviceOptions("videoinput", controller.videoInputs),
-    [controller.videoInputs],
-  );
-  const microphones = useMemo(
-    () => normalizeMeetDeviceOptions("audioinput", controller.audioInputs),
-    [controller.audioInputs],
-  );
-  const speakers = useMemo(
-    () => meetSpeakerOptionsFromAudioInputs(controller.audioInputs),
-    [controller.audioInputs],
+  const { cameras, microphones, speakers } = useMemo(
+    () =>
+      meetCallDeviceMenus({
+        audioInputs: controller.audioInputs,
+        audioOutputs: controller.audioOutputs,
+        videoInputs: controller.videoInputs,
+      }),
+    [controller.audioInputs, controller.audioOutputs, controller.videoInputs],
   );
 
   const onCopyLink = useCallback(() => {
@@ -252,8 +248,11 @@ export function useMeetChatCall({
     speakers,
     activeCamera: selectedMeetDeviceOptionId(cameras, controller.selectedCamId),
     activeMic: selectedMeetDeviceOptionId(microphones, controller.selectedMicId),
-    activeSpeaker: selectedMeetSpeakerOptionId(speakers, speakerId),
-    onSpeakerChange: setSpeakerId,
+    activeSpeaker: selectedMeetDeviceOptionId(speakers, speakerId),
+    onSpeakerChange: (optionId: string) => {
+      const next = meetSpeakerSelectionId(speakers, optionId);
+      if (next) setSpeakerId(next);
+    },
     onCopyLink,
     onToastInfo: (message: string) => toast.show(message, { severity: "info" }),
     onToastError: (message: string) => toast.showError(message),

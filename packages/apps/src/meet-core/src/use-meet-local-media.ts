@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
+import { useCallback, useRef, useState, type MutableRefObject } from "react";
 import {
   isDisplayCaptureSupported,
   isDisplayCaptureUnsupportedError,
@@ -12,6 +12,7 @@ import {
   meetLocalMediaGumConstraints,
 } from "@/meet-core/src/meet-media-constraints";
 import type { useMeetRtc } from "@/meet-core/src/use-meet-rtc";
+import { useMeetMediaDevices } from "@/meet-core/src/use-meet-media-devices";
 
 type MeetRtc = ReturnType<typeof useMeetRtc>;
 
@@ -69,8 +70,7 @@ export function useMeetLocalMedia({
   const [screenPreviewStream, setScreenPreviewStream] = useState<MediaStream | null>(
     () => screenStreamRef.current,
   );
-  const [audioInputs, setAudioInputs] = useState<MediaDeviceInfo[]>([]);
-  const [videoInputs, setVideoInputs] = useState<MediaDeviceInfo[]>([]);
+  const { audioInputs, audioOutputs, videoInputs, refreshDeviceList } = useMeetMediaDevices();
   const [selectedMicId, setSelectedMicIdState] = useState<string | null>(
     () => mediaHolders?.selectedMicId.current ?? null,
   );
@@ -89,17 +89,6 @@ export function useMeetLocalMedia({
   const setSelectedCamId = useCallback((deviceId: string | null) => {
     if (selectedCamHolderRef.current) selectedCamHolderRef.current.current = deviceId;
     setSelectedCamIdState(deviceId);
-  }, []);
-
-  const refreshDeviceList = useCallback(async () => {
-    if (!navigator.mediaDevices?.enumerateDevices) return;
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      setAudioInputs(devices.filter((device) => device.kind === "audioinput"));
-      setVideoInputs(devices.filter((device) => device.kind === "videoinput"));
-    } catch {
-      // Ignore read failures from unsupported browsers.
-    }
   }, []);
 
   const replaceAudioTrackOnAllPeers = useCallback(
@@ -356,15 +345,6 @@ export function useMeetLocalMedia({
     ],
   );
 
-  useEffect(() => {
-    void refreshDeviceList();
-    const media = navigator.mediaDevices;
-    if (!media) return;
-    const onDeviceChange = () => void refreshDeviceList();
-    media.addEventListener("devicechange", onDeviceChange);
-    return () => media.removeEventListener("devicechange", onDeviceChange);
-  }, [refreshDeviceList]);
-
   const getLocalStream = useCallback(() => localStreamRef.current, [localStreamRef]);
 
   return {
@@ -372,6 +352,7 @@ export function useMeetLocalMedia({
     getLocalStream,
     screenPreviewStream,
     audioInputs,
+    audioOutputs,
     videoInputs,
     selectedMicId,
     selectedCamId,
