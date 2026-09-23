@@ -68,16 +68,17 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
 });
 
 describe("WORKSPACE_HOME_ICON_INLINE", () => {
-  it("is the solid #003311 suite mark with viewBox 0 0 60 60", () => {
+  it("is a 270 suite tile: navy background, cream mark, same clover path", () => {
     expect(WORKSPACE_HOME_ICON_INLINE).toMatch(/^<svg[\s>]/);
-    expect(WORKSPACE_HOME_ICON_INLINE).toContain('viewBox="0 0 60 60"');
-    expect(WORKSPACE_HOME_ICON_INLINE).toContain('fill="#003311"');
+    expect(WORKSPACE_HOME_ICON_INLINE).toContain('viewBox="0 0 270 270"');
+    expect(WORKSPACE_HOME_ICON_INLINE).toContain('fill="var(--wai-bg, #1b1d3a)"');
+    expect(WORKSPACE_HOME_ICON_INLINE).toContain('fill="var(--wai-fg, #fff5e9)"');
     expect(WORKSPACE_HOME_ICON_INLINE).toContain(
       'd="M45 0c8.286 0 15 6.717 15 15.001s-6.715 15-15 15H45c8.284 0 15 6.715 15 15 0 8.283-6.716 14.999-15 14.999s-15-6.716-15-15c0 8.284-6.715 15-15 15C6.717 60 0 53.284 0 45s6.716-15 15-15C6.715 30 0 23.283 0 15S6.714 0 15 0s15 6.716 15 15c0-8.284 6.715-15 15-15"',
     );
-    expect(WORKSPACE_HOME_ICON_INLINE).not.toContain("--wai-bg");
+    expect(WORKSPACE_HOME_ICON_INLINE).not.toContain('width="60"');
+    expect(WORKSPACE_HOME_ICON_INLINE).not.toContain('viewBox="0 0 60 60"');
     expect(WORKSPACE_HOME_ICON_INLINE).not.toContain("250.643");
-    expect(WORKSPACE_HOME_ICON_INLINE).not.toMatch(/#1[Bb]1[Dd]3[Aa]/);
     expect(WORKSPACE_HOME_ICON_INLINE).not.toMatch(/#F59F00|#0CA678|#4C6EF5/i);
   });
 });

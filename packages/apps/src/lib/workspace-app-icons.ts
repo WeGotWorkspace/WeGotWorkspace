@@ -51,7 +51,11 @@ export function workspaceAppIconAppleTouchSrc(appId: WorkspaceAppId): string {
   return `/pwa-icons/${appId}-${APPLE_TOUCH_SIZE}.png`;
 }
 
-/** Suite / workspace home shell icon — `/app-icons/home.svg` (not a workspace app tile). */
+/**
+ * Suite launcher tile — `/app-icons/home.svg`.
+ * Full-bleed navy + cream artwork for the `/` PWA. The switch trigger remaps it
+ * to the cream lockup via `--wai-*`.
+ */
 export function workspaceHomeIconUiSrc(): string {
   return "/app-icons/home.svg";
 }

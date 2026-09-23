@@ -116,7 +116,7 @@ export const WorkspaceAppIcon = memo(function WorkspaceAppIcon({
 
 type WorkspaceHomeIconProps = {
   className?: string;
-  /** Default: `<img>` of `/app-icons/home.svg`. `switch-trigger`: cream tile + inlined suite mark. */
+  /** Default: `<img>` of the full-bleed `/app-icons/home.svg` tile. `switch-trigger`: cream tile + inlined suite mark. */
   variant?: WorkspaceAppIconVariant;
 };
 
