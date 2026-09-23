@@ -231,6 +231,59 @@ export const CallBar: Story = {
   },
 };
 
+export const CallChromeStaysOnChannel: Story = {
+  name: "Call chrome stays on its channel",
+  args: {
+    initialChannelId: "channel-design",
+    initialCallLayout: "compact",
+    liveCallChannelId: "channel-design",
+    routeChannelId: "channel-design",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole("button", { name: /# random/i }));
+    await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.devices }),
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole("button", { name: /Ada Lovelace/i }));
+    await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole("button", { name: /# design/i }));
+    await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
+  },
+};
+
+export const ParkedCallChrome: Story = {
+  name: "Parked call hides in-channel chrome",
+  args: {
+    initialChannelId: "channel-random",
+    initialCallLayout: "compact",
+    liveCallChannelId: "channel-design",
+    routeChannelId: "channel-random",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "#random" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.devices }),
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole("button", { name: /# design/i }));
+    await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
+  },
+};
+
 export const CallBarVideo: Story = {
   name: "Call bar video",
   args: {

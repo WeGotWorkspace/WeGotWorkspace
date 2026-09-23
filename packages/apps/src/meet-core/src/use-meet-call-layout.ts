@@ -23,12 +23,32 @@ export type UseMeetCallLayoutArgs = {
   resumeLayout?: MeetCallStageLayout;
 };
 
+/**
+ * Layout that belongs on the open conversation at mount. A restored live
+ * session's chrome stays on that session's channel — seeding it onto a
+ * different open conversation paints joined controls there (#836).
+ */
+export function meetInitialCallLayoutForChannel(
+  channelId: string | null,
+  initialLayout: MeetCallStageLayout,
+  liveCallChannelId?: string | null,
+): MeetCallStageLayout {
+  if (liveCallChannelId && channelId !== liveCallChannelId) return "collapsed";
+  return initialLayout;
+}
+
 function seedLayouts(
   channelId: string | null,
   initialLayout: MeetCallStageLayout,
+  liveCallChannelId?: string | null,
 ): Record<string, MeetCallStageLayout> {
-  if (!channelId || initialLayout === "collapsed") return {};
-  return { [channelId]: initialLayout };
+  if (initialLayout === "collapsed") return {};
+  const openLayout = meetInitialCallLayoutForChannel(channelId, initialLayout, liveCallChannelId);
+  if (openLayout === "collapsed") {
+    return liveCallChannelId ? { [liveCallChannelId]: initialLayout } : {};
+  }
+  if (!channelId) return {};
+  return { [channelId]: openLayout };
 }
 
 /**
@@ -43,7 +63,7 @@ export function useMeetCallLayout({
   resumeLayout,
 }: UseMeetCallLayoutArgs) {
   const [layouts, setLayouts] = useState<Record<string, MeetCallStageLayout>>(() =>
-    seedLayouts(channelId, initialLayout),
+    seedLayouts(channelId, initialLayout, liveCallChannelId),
   );
   const callLayout = (channelId && layouts[channelId]) || "collapsed";
   const callActive = meetCallIsActive(callLayout);
