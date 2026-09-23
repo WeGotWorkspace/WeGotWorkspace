@@ -7,9 +7,7 @@ import {
 const ORIGIN = "https://workspace.example.com";
 const ROOM = "h8y8-ewp6-al8n";
 
-const hostChannels = [
-  { id: "chat-standup", kind: "meeting" as const, guestRoomCode: ROOM },
-];
+const hostChannels = [{ id: "chat-standup", kind: "meeting" as const, guestRoomCode: ROOM }];
 
 describe("meetSignedInMeetingRouteJoin", () => {
   it("joins an ad-hoc code the signed-in user does not already have", () => {
@@ -38,9 +36,10 @@ describe("meetSignedInUpcomingJoin", () => {
     const sameTitle = [
       { id: "chat-other", kind: "meeting" as const, guestRoomCode: "aaaa-bbbb-cccc" },
     ];
-    expect(
-      meetSignedInUpcomingJoin(`${ORIGIN}/meet/meetings/${ROOM}`, ORIGIN, sameTitle),
-    ).toEqual({ action: "join-room", room: ROOM });
+    expect(meetSignedInUpcomingJoin(`${ORIGIN}/meet/meetings/${ROOM}`, ORIGIN, sameTitle)).toEqual({
+      action: "join-room",
+      room: ROOM,
+    });
   });
 
   it("starts the call when the room code already maps to a channel", () => {
