@@ -208,6 +208,27 @@ describe("useMeetCallLayout", () => {
     expect(result.current.callLayout).toBe("compact");
   });
 
+  it("keeps a restored live call's chrome off a different open channel", () => {
+    const { result, rerender } = renderHook(
+      ({ channelId }: { channelId: string }) =>
+        useMeetCallLayout({
+          initialLayout: "compact",
+          channelId,
+          liveCallChannelId: "channel-design",
+        }),
+      { initialProps: { channelId: "channel-random" } },
+    );
+
+    expect(result.current.callActive).toBe(false);
+    expect(result.current.callLayout).toBe("collapsed");
+    expect(result.current.isChannelJoined("channel-design")).toBe(true);
+    expect(result.current.isChannelJoined("channel-random")).toBe(false);
+
+    rerender({ channelId: "channel-design" });
+    expect(result.current.callActive).toBe(true);
+    expect(result.current.callLayout).toBe("compact");
+  });
+
   it("seeds initialLayout for the starting channel only", () => {
     const { result, rerender } = renderHook(
       ({ channelId }: { channelId: string }) =>

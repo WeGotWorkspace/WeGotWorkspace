@@ -20,6 +20,13 @@ import { STORY_NOOP } from "@/meet-core/stories/meet-story-shared";
 export type MeetWorkspaceStoryArgs = {
   initialChannelId?: string;
   initialCallLayout?: MeetCallStageLayout;
+  /**
+   * Live session owner. When this differs from the open conversation, joined
+   * chrome stays on the owner (#836).
+   */
+  liveCallChannelId?: string | null;
+  /** Pins selection the way `/meet/channels/{id}` does, so a parked call does not steal the route. */
+  routeChannelId?: string | null;
   initialThreadId?: string | null;
   initialVideoOn?: boolean;
   /** Mock-tier typing fixture (channel id -> directory user ids). */
@@ -160,6 +167,8 @@ function useMeetWorkspaceCallRoom(
 export function MeetWorkspaceStoryHarness({
   initialChannelId,
   initialCallLayout = "collapsed",
+  liveCallChannelId,
+  routeChannelId,
   initialThreadId = null,
   initialVideoOn = false,
   typingByChannel,
@@ -208,6 +217,8 @@ export function MeetWorkspaceStoryHarness({
       onLogout={() => {}}
       initialChannelId={initialChannelId}
       initialCallLayout={initialCallLayout}
+      liveCallChannelId={liveCallChannelId}
+      routeChannelId={routeChannelId}
       initialThreadId={initialThreadId}
       callStageRoom={callStageRoom}
       typingByChannel={typingByChannel}
