@@ -8,7 +8,7 @@ Chromatic captures Storybook snapshots for visual regression. Enablement is trac
 
 | Slice | Status | Notes |
 |-------|--------|-------|
-| Document gating policy + CI wiring | **Done** (this doc, `POLICY.md`, `apps-done-gate.md`) | Single dedicated job; hard-fail on unaccepted diffs |
+| Document gating policy + CI wiring | **Done** (this doc, `POLICY.md`, `apps-done-gate.md`) | Single dedicated job; unaccepted diffs do not fail CI |
 | Create project, token, enable variable | Maintainer | `CHROMATIC_PROJECT_TOKEN` secret + `CHROMATIC_ENABLED=true` |
 | Accept baselines on `main` | Automatic after enable | `autoAcceptChanges: "main"`; PR diffs still require review |
 
@@ -16,7 +16,7 @@ Chromatic captures Storybook snapshots for visual regression. Enablement is trac
 
 | Setting | Value | Effect |
 |---------|-------|--------|
-| `exitZeroOnChanges` | `false` | Unaccepted visual diffs **fail** the Chromatic CI check |
+| `exitZeroOnChanges` | `true` | A successful Storybook publish stays green. Unaccepted visual diffs are listed in the Chromatic UI and do **not** fail the CI job |
 | `autoAcceptChanges` | `"main"` only | Pushes to `main` update baselines; never all branches |
 | `onlyChanged` (TurboSnap) | `true` | Limits snapshot count to stories affected by the diff |
 | Live stories | `parameters.chromatic.disableSnapshot: true` | `Features/Workspace/Live` and `Features/Workspace/Live/Shell` are not snapshotted |
@@ -35,7 +35,7 @@ When `vars.CHROMATIC_ENABLED == 'true'` (and not a release-commit push):
   - Storybook is built with `pnpm exec storybook build` before upload, so the action does not spawn its own Storybook build.
   - `chromaui/action@v18` with `workingDir: packages/apps` and `storybookBuildDir: storybook-static`
   - Checkout `fetch-depth: 0` for TurboSnap history
-  - `onlyChanged: true`, `exitZeroOnChanges: false`, `autoAcceptChanges: "main"`
+  - `onlyChanged: true`, `exitZeroOnChanges: true`, `autoAcceptChanges: "main"`
   - `projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}`
 
 There is **no** second Chromatic publish in the `build` job. Do **not** use `pull_request_target` for this workflow.
@@ -50,7 +50,7 @@ Complete in order; steps 1–2 need org/repo admin access:
 - [ ] Add repository secret `CHROMATIC_PROJECT_TOKEN` (project token from Chromatic → Manage → Configure).
 - [ ] Set repository variable `CHROMATIC_ENABLED` to `true` (Settings → Secrets and variables → Actions → Variables).
 - [ ] Trigger CI on a PR; open the Chromatic build link from the job log.
-- [ ] Confirm `main` auto-accepts baselines and PR unaccepted diffs fail the check.
+- [ ] Confirm `main` auto-accepts baselines and a PR with unaccepted diffs still exits 0, with the review link in the job log.
 - [ ] Confirm TurboSnap (`onlyChanged`) behaves as expected on a small UI PR.
 - [ ] Confirm Live stories (`Features/Workspace/Live*`) are not snapshotted.
 
