@@ -119,15 +119,17 @@ export function buildMeetMeetingInviteLink(
 }
 
 /**
- * Member link for a collection. Named meetings use `/meet/meetings/{slug}`,
- * never the stored room code — that code is the call room, not a guest door.
+ * Member link for a collection. Channels and DMs use their slug. An ad-hoc
+ * meeting always uses its room code — never a name slug.
  */
 export function buildMeetCollectionInviteLink(
   channel: { id: string; kind?: string | null; guestRoomCode?: string | null },
   origin = "https://workspace.example.com",
 ): string {
   if (channel.kind === "meeting") {
-    return buildMeetMeetingInviteLink(channel.id, origin);
+    const room = channel.guestRoomCode?.trim().toLowerCase() ?? "";
+    const id = room && isMeetRoomCode(room) ? room : meetPublicChannelId(channel.id).toLowerCase();
+    return buildMeetMeetingInviteLink(id, origin);
   }
   return buildMeetChannelInviteLink(channel.id, origin);
 }

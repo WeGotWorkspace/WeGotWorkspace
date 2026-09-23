@@ -235,10 +235,9 @@ final class MeetSignalingService
     }
 
     /**
-     * Guests have no account. Channel-bound rooms (channels, team channels,
-     * DMs, reusable meetings, and their stored room codes) are not guest
-     * doors — join, knock, poll, and chat all stop here so call chat cannot
-     * leak. Ad-hoc rooms that do not resolve to a channel stay open.
+     * Guests have no account. Named channels, team channels, and direct
+     * messages are not guest doors — join, knock, poll, and chat stop here
+     * so that chat cannot leak. An ad-hoc meeting stays open on its room code.
      */
     private function assertGuestMayEnter(?string $username, string $room): void
     {

@@ -61,9 +61,9 @@ final class MeetingsController
     {
         $this->reservations->sweepExpiredNeverActivated();
         $username = $this->actors->tryAuthenticatedUsername($request);
-        // Named channels, DMs, and reusable meetings are not guest doors, even
-        // when a reservation row exists for the call room. Members still see
-        // `active` so in-channel call presence keeps working.
+        // Named channels, DMs, and meeting name slugs are not guest doors.
+        // An ad-hoc room code stays readable so a started meeting is not
+        // reported missing. Members still see `active` on closed rooms.
         if (($username === null || $username === '') && $this->channels->isGuestClosedRoom($roomId)) {
             throw new MeetResponseException(404, [
                 'error' => 'not_found',

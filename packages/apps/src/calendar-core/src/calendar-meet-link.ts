@@ -359,9 +359,8 @@ export function meetChannelCallRoom(
 }
 
 /**
- * Invite URL: channels use `/meet/channels/{id}`; named meetings use
- * `/meet/meetings/{id}`. The stored room code stays the call room and is
- * not a guest link.
+ * Invite URL: channels use `/meet/channels/{slug}`. Ad-hoc meetings use
+ * `/meet/meetings/{room code}`.
  */
 export function meetChannelCallHref(
   channel: Pick<CalendarMeetChannelOption, "id" | "kind" | "guestRoomCode">,

@@ -13,8 +13,11 @@ function nextChannelId(kind: MeetChannelWriteInput["kind"]): string {
 
 export function buildMeetChannel(input: MeetChannelWriteInput): MeetChannel {
   const meeting = input.kind === "meeting";
+  const guestRoomCode = meeting
+    ? input.guestRoomCode?.trim().toLowerCase() || createMeetRoomCode()
+    : null;
   return {
-    id: nextChannelId(input.kind),
+    id: guestRoomCode ? `chat-${guestRoomCode}` : nextChannelId(input.kind),
     name: input.name.trim(),
     color: input.color ?? DEFAULT_MEET_CHANNEL_COLOR,
     kind: input.kind,
@@ -22,7 +25,7 @@ export function buildMeetChannel(input: MeetChannelWriteInput): MeetChannel {
     groupSlug: input.groupSlug ?? null,
     isSharee: false,
     shareWith: null,
-    guestRoomCode: meeting ? input.guestRoomCode?.trim() || createMeetRoomCode() : null,
+    guestRoomCode,
     myRights: { mayReadItems: true, mayWriteAll: true, mayShare: true, mayDelete: true },
   };
 }

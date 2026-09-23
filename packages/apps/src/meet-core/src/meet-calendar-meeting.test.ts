@@ -747,7 +747,7 @@ describe("seedEditMeetingForm", () => {
     expect(form.title).toBe("Standup");
     expect(form.startDate).toBe("2026-09-06");
     expect(form.startTime).toBe("15:00");
-    expect(form.meetingUrl).toBe(buildMeetMeetingInviteLink(channel.id, ORIGIN));
+    expect(form.meetingUrl).toBe(buildMeetMeetingInviteLink(ROOM, ORIGIN));
     expect(form.meetRoomCode).toBe(ROOM);
   });
 

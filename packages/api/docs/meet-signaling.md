@@ -24,7 +24,7 @@ Meet **UI** is in `packages/apps` (`meet-core`); client RTC channel is `meet`.
 | Chat | `POST /rooms/{roomId}/messages` |
 | RTC config | `GET /rooms/{roomId}/configuration` |
 | Reserve room | `POST /meetings/rooms` (`room` + `ownerPrincipal`, optional `expiresAt`) |
-| Room status | `GET /meetings/rooms/{roomId}` — guests `{ reserved, active }` for an ad-hoc reservation; owner-principal member or `createdBy` get the full body; **404** = unknown. Channel-bound rooms (including meeting-kind slugs and stored room codes) are **404** for guests. Authenticated callers still see `active` on those rooms. |
+| Room status | `GET /meetings/rooms/{roomId}` — guests `{ reserved, active }` for an ad-hoc room code; owner-principal member or `createdBy` get the full body; **404** = unknown. Named channels, DMs, and meeting name slugs are **404** for guests. Authenticated callers still see `active` on those rooms. |
 | Patch expiry | `PATCH /meetings/rooms/{roomId}` (`expiresAt`; `createdBy` or owner-principal member) |
 
 For meet rooms, `roomId` equals the room code (e.g. `abcd-efgh-ijkl`).
@@ -35,7 +35,7 @@ A call in a chat channel uses the deterministic room id = the channel collection
 
 - **Channel member** (owner / sharee / group member — any ACL read access via `ChatChannelRepository`): joins directly, never knocks, and is a host (any member may admit).
 - **Internal non-member**: forced onto the knock path. A non-knock join is rejected with `knock_required` (403) unless the peer was previously admitted. Knock on a **meeting invite** (`chat-{slug}` / reserved leftover) may wait in an empty room; other channel rooms and unknown leftovers still return `room_not_active` 404 when nobody is joinable.
-- **Guest (no account)**: refused on every channel-bound room — named channels, team channels, direct messages, reusable meeting rooms, and a meeting's stored room code. Join, knock, poll, and chat return `forbidden` (403), so call chat from that conversation is not readable. `GET /meetings/rooms/{id}` for those rooms is **404** when unauthenticated, even if a reservation row exists. Ad-hoc reservations that do not resolve to a channel stay open.
+- **Guest (no account)**: refused on named channels, team channels, and direct messages. Join, knock, poll, and chat return `forbidden` (403), so that chat is not readable. An ad-hoc meeting is open on its room code (`xxxx-xxxx-xxxx`) only. A name slug that still points at a meeting is **404** on `GET /meetings/rooms/{id}` for guests.
 - **Admission** is recorded server-side when a channel *member* sends an `admit` control message through the chat endpoint: the target peer row in `meet_peers` gets `admitted = 1`, so the knocker's non-knock re-join (same peer id + owner marker) passes. The flag dies with the peer row, and every re-knock clears it. Admits from non-members still deliver but record nothing. Guests are not admittable on channel-bound rooms.
 - Rooms that resolve to no channel keep the legacy behavior exactly (guest lobby gating stays a client convention there).
 

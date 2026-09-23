@@ -58,19 +58,25 @@ describe("meet route search", () => {
     );
   });
 
-  it("keeps named meeting links on the collection slug, not the stored room code", () => {
+  it("uses the ad-hoc room code for a meeting and the slug for a channel", () => {
     expect(
       buildMeetCollectionInviteLink(
         { id: "chat-standup", kind: "meeting", guestRoomCode: "h8y8-ewp6-al8n" },
         "https://workspace.example.com",
       ),
-    ).toBe("https://workspace.example.com/meet/meetings/standup");
+    ).toBe("https://workspace.example.com/meet/meetings/h8y8-ewp6-al8n");
     expect(
       buildMeetCollectionInviteLink(
         { id: "chat-standup", kind: "meeting", guestRoomCode: null },
         "https://workspace.example.com",
       ),
     ).toBe("https://workspace.example.com/meet/meetings/standup");
+    expect(
+      buildMeetCollectionInviteLink(
+        { id: "chat-general", kind: "channel", guestRoomCode: null },
+        "https://workspace.example.com",
+      ),
+    ).toBe("https://workspace.example.com/meet/channels/general");
   });
 
   it("reads a channel id from the invite pathname", () => {

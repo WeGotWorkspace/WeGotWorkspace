@@ -148,15 +148,18 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
 
     public function test_guest_is_refused_on_a_named_meeting_while_internal_non_members_may_knock(): void
     {
-        $meetingId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+        $created = $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'Test', 'kind' => 'meeting',
-        ])->assertCreated()->json('id');
-        $this->assertSame('chat-test', $meetingId);
+        ])->assertCreated()->json();
+        $meetingId = (string) $created['id'];
+        $roomCode = (string) $created['guestRoomCode'];
+        $this->assertSame('chat-'.$roomCode, $meetingId);
+        $this->assertNotSame('chat-test', $meetingId);
 
+        // The collection uri is not a guest door. The room code is.
         $this->guestJoin($meetingId, 'peer-guest', self::KNOCK_PREFIX.'Visitor')
             ->assertStatus(403)->assertJsonPath('error', 'forbidden');
-        $this->guestJoin($meetingId, 'peer-walkin', 'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+        $this->guestJoin($roomCode, 'peer-guest', self::KNOCK_PREFIX.'Visitor')->assertOk();
 
         // Signed-in people who are not members can still knock on an empty meeting.
         $this->join('carol', $meetingId, 'peer-carol', self::KNOCK_PREFIX.'Carol')->assertOk();
@@ -192,10 +195,18 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         $this->join('alice', 'g744-8kfg-adjz', 'peer-alice', 'Alice')->assertOk();
         $this->join('carol', 'g744-8kfg-adjz', 'peer-carol', 'Carol')
             ->assertStatus(403)->assertJsonPath('error', 'knock_required');
-        $this->guestJoin('g744-8kfg-adjz', 'peer-guest', self::KNOCK_PREFIX.'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+        $this->guestJoin('g744-8kfg-adjz', 'peer-guest', self::KNOCK_PREFIX.'Visitor')->assertOk();
         $this->guestJoin('g744-8kfg-adjz', 'peer-walkin', 'Visitor')
-            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+        $sessionKey = (string) $this->guestJoin('g744-8kfg-adjz', 'peer-reader', self::KNOCK_PREFIX.'Reader')
+            ->assertOk()
+            ->json('sessionKey');
+        $this->sendChat('alice', 'g744-8kfg-adjz', 'peer-alice', 'the call is open')
+            ->assertOk();
+        $this->flushHeaders()
+            ->getJson('/api/v1/rooms/g744-8kfg-adjz/events?peerId=peer-reader&sessionKey='.$sessionKey)
+            ->assertOk()
+            ->assertJsonPath('messages.0.payload.text', 'the call is open');
     }
 
     public function test_meeting_room_code_resolves_to_the_channel_acl(): void
