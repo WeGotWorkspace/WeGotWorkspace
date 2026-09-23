@@ -120,7 +120,15 @@ final class InstallerEndpointsTest extends TestCase
                 'email' => 'admin@example.test',
                 'password' => 'longpassword',
                 'password_confirm' => 'longpassword',
-                'mail_enabled' => false,
+                'mail_enabled' => true,
+                'mail_imap_host' => 'imap.install.test',
+                'mail_imap_port' => 993,
+                'mail_imap_security' => 'ssl',
+                'mail_imap_username' => 'admin@example.test',
+                'mail_imap_password' => 'longpassword',
+                'mail_smtp_host' => 'smtp.install.test',
+                'mail_smtp_port' => 587,
+                'mail_smtp_security' => 'starttls',
                 'meet_enabled' => false,
             ],
         ]);
@@ -143,6 +151,14 @@ final class InstallerEndpointsTest extends TestCase
         $this->assertSame('SabreDAV', $stmt->fetchColumn());
         $stmt = $db->query("SELECT value FROM app_settings WHERE name = 'base_uri'");
         $this->assertSame('/', $stmt->fetchColumn());
+        $stmt = $db->query("SELECT value FROM app_settings WHERE name = 'mail_imap_host'");
+        $this->assertSame('', (string) $stmt->fetchColumn());
+        $stmt = $db->query('SELECT imap_username, imap_host, smtp_host FROM mail_user_credentials WHERE username = \'admin\'');
+        $mailbox = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $this->assertIsArray($mailbox);
+        $this->assertSame('admin@example.test', $mailbox['imap_username']);
+        $this->assertSame('imap.install.test', $mailbox['imap_host']);
+        $this->assertSame('smtp.install.test', $mailbox['smtp_host']);
 
         $this->getJson('/api/v1/installer/state')
             ->assertOk()

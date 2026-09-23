@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Mail;
 
-use App\Support\WgwSettings;
 use IMAP\Connection;
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -109,24 +108,33 @@ final class MailOperationService
 
     private function handleStatus(string $username): array
     {
-        $cfg = WgwSettings::normalized();
         $account = $this->credentials->loadAccount($username);
         $ext = ImapExtension::loaded();
-        $serversConfigured = MailServerSettings::serversConfigured($cfg);
         $accountConfigured = MailCredentialService::isAccountConfigured($account);
-        $smtp = MailSmtpTransportConfig::normalize(MailServerSettings::endpoints($cfg)['smtp']);
+        $runtime = MailUserRuntime::resolve($username, $this->credentials);
+        $smtpSource = $runtime['smtp'] ?? [
+            'host' => (string) ($account['smtpHost'] ?? ''),
+            'port' => (int) ($account['smtpPort'] ?? 587),
+            'security' => (string) ($account['smtpSecurity'] ?? 'starttls'),
+        ];
+        $smtp = MailSmtpTransportConfig::normalize($smtpSource);
+        $error = MailUserRuntime::statusError($account, $ext);
 
         return [
             'extImap' => $ext,
-            'serversConfigured' => $serversConfigured,
+            'instanceEnabled' => true,
+            'serversConfigured' => $accountConfigured,
             'accountConfigured' => $accountConfigured,
-            'ready' => $ext && MailUserRuntime::isReady($cfg, $account),
+            'ready' => $error === null,
             'configured' => $accountConfigured,
+            'error' => $error,
             'smtp' => [
                 'host' => $smtp['host'],
                 'port' => $smtp['port'],
                 'security' => $smtp['security'],
-                'tcpReachable' => MailSmtpTransportConfig::canReachTcp($smtp['host'], $smtp['port']),
+                'tcpReachable' => $smtp['host'] !== ''
+                    ? MailSmtpTransportConfig::canReachTcp($smtp['host'], $smtp['port'])
+                    : false,
             ],
         ];
     }
@@ -1336,7 +1344,10 @@ final class MailOperationService
     {
         $cred = MailUserRuntime::resolve($username, $this->credentials);
         if ($cred === null) {
-            throw new MailResponseException(400, ['error' => 'smtp_not_configured']);
+            throw new MailResponseException(400, [
+                'error' => MailUserRuntime::ERROR_SETTINGS_MISSING,
+                'message' => 'Mailbox is not configured for this user.',
+            ]);
         }
 
         $to = trim((string) ($j['to'] ?? ''));
@@ -1355,7 +1366,7 @@ final class MailOperationService
             if (! MailSmtpTransportConfig::canReachTcp($transport['host'], $transport['port'], 5.0)) {
                 throw new \RuntimeException(
                     'Cannot reach SMTP server at '.MailSmtpTransportConfig::describe($transport)
-                    .'. Check Admin mail settings (host, port, security) and that PHP can reach the host.'
+                    .'. Check Settings mail SMTP (host, port, security) and that PHP can reach the host.'
                 );
             }
             @set_time_limit($smtpTimeout + 30);
@@ -1490,7 +1501,10 @@ final class MailOperationService
         }
         $cred = MailUserRuntime::resolve($username, $this->credentials);
         if ($cred === null) {
-            throw new MailResponseException(400, ['error' => 'not_configured']);
+            throw new MailResponseException(400, [
+                'error' => MailUserRuntime::ERROR_SETTINGS_MISSING,
+                'message' => 'Mailbox is not configured for this user.',
+            ]);
         }
 
         return $cred;

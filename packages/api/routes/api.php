@@ -203,25 +203,6 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('clientId', '[A-Za-z0-9-]+');
 
     Route::get('mail/status', [MailController::class, 'status']);
-    Route::get('mail/folders', [MailController::class, 'foldersIndex']);
-    Route::post('mail/folders', [MailController::class, 'foldersStore']);
-    Route::patch('mail/folders', [MailController::class, 'foldersUpdate']);
-    Route::delete('mail/folders', [MailController::class, 'foldersDestroy']);
-    Route::get('mail/messages', [MailController::class, 'messagesIndex']);
-    Route::post('mail/messages', [MailController::class, 'messagesStore']);
-    Route::post('mail/drafts', [MailController::class, 'draftsStore']);
-    Route::post('mail/move', [MailController::class, 'move']);
-    Route::get('mail/messages/{messageId}/attachments/{attachmentId}', [MailController::class, 'messageAttachmentById'])
-        ->where('messageId', '[^/]+')
-        ->where('attachmentId', '[0-9.]+');
-    Route::get('mail/messages/{messageId}/attachments', [MailController::class, 'messageAttachmentsById'])
-        ->where('messageId', '[^/]+');
-    Route::get('mail/messages/{messageId}', [MailController::class, 'messageShowById'])
-        ->where('messageId', '[^/]+');
-    Route::patch('mail/messages/{messageId}', [MailController::class, 'messageUpdateById'])
-        ->where('messageId', '[^/]+');
-    Route::delete('mail/messages/{messageId}', [MailController::class, 'messageDestroyById'])
-        ->where('messageId', '[^/]+');
 
     Route::middleware('wgw.calendars')->group(function (): void {
         Route::post('calendars/events/import', CalendarEventImportController::class);

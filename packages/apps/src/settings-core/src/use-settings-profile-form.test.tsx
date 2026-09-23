@@ -16,7 +16,12 @@ const baseUser = {
 function createSaveProfileMock() {
   const nextData = {
     user: { ...baseUser, displayName: "Alice Updated" },
-    mail: { imapUsername: "alice@example.com", imapHasPassword: true },
+    mail: {
+      imapUsername: "alice@example.com",
+      imapHasPassword: true,
+      smtpUsername: "",
+      smtpPasswordSet: false,
+    },
     mailServer: {
       imapHost: "imap.example.com",
       imapPort: 993,

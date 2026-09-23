@@ -18,7 +18,7 @@ Public (`src/admin-core/src/index.ts`):
 
 Pane components (import from `@/admin-core/src/…`):
 
-- `AdminUsersPane`, `AdminBackupsPane`, `AdminUpdatesPane`, `AdminMailPane`
+- `AdminUsersPane`, `AdminBackupsPane`, `AdminUpdatesPane`
 - `AdminWebdavPane`, `AdminSearchPane`, `AdminPluginsPane`, `AdminRealtimeCollaborationPane`
 - `AdminWorkspaceModals`, `FeatureRow` (`admin-workspace-widgets.tsx`)
 
@@ -40,7 +40,6 @@ Section and form styling lives under `.admin-workspace` in `admin-workspace.css`
 | `Features/Admin/Panes/Users`         | User and group management                      |
 | `Features/Admin/Panes/Backups`       | Backup configuration                           |
 | `Features/Admin/Panes/Updates`       | Update channel / version state                 |
-| `Features/Admin/Panes/Mail`          | IMAP/SMTP settings                             |
 | `Features/Admin/Panes/WebDAV`        | WebDAV credentials and paths                   |
 | `Features/Admin/Panes/Search`        | Unified search indexing                        |
 | `Features/Admin/Panes/Plugins`       | Plugin enablement                              |

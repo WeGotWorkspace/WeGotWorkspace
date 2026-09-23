@@ -36,7 +36,7 @@ Least-privilege MCP: each suite app (Calendar, Notes, Contacts, Tasks, Docs, Dri
 - Search is `*.read`, not a third OAuth id. Share CRUD uses `*.write` (no `*.share`).
 - `capabilities` lists MCP tool **names** (`calendar_list`), not PHP class names.
 - Consent Blade groups each app as Read / Write with honest copy (no “manage”).
-- Register new tools in `McpToolCatalog` behind the same `WgwSettings` / `MAIL_ENABLED` gates. Do not call `User::createToken`; tests mint JWTs via `mcpBearerToken`.
+- Register new tools in `McpToolCatalog` behind the same `WgwSettings` feature gates as the rest of the instance (Mail tools are always registered; they fail per-user when the mailbox row is empty). Do not call `User::createToken`; tests mint JWTs via `mcpBearerToken`.
 - Write tools must pass through the fields the domain `create`/`update` already persists (not title-only toys). Size caps stay on the order of `drive_read` (~64KB).
 - Dual-scope Meet convenience: `meet_create_scheduled` needs `calendar.write` for the event half; if missing, create the meeting-kind channel only and return the href.
 

@@ -9,6 +9,7 @@ use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Contacts\ContactBlobService;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Jmap\FileNodes\FileNodeBlobResolver;
+use App\Services\Jmap\Mail\MailBlobResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -28,6 +29,7 @@ final class JmapBlobController
         private readonly JmapBlobService $blobs,
         private readonly ContactBlobService $contactBlobs,
         private readonly FileNodeBlobResolver $fileNodeBlobs,
+        private readonly MailBlobResolver $mailBlobs,
     ) {}
 
     public function upload(Request $request, string $accountId): JsonResponse
@@ -86,7 +88,8 @@ final class JmapBlobController
 
         $blob = $this->blobs->retrieve($username, $blobId)
             ?? $this->contactBlobs->retrieve($username, $blobId)
-            ?? $this->fileNodeBlobs->retrieve($username, $blobId);
+            ?? $this->fileNodeBlobs->retrieve($username, $blobId)
+            ?? $this->mailBlobs->retrieve($username, $blobId);
         if ($blob === null) {
             return $this->notFoundProblem('Blob not found.');
         }
@@ -96,12 +99,15 @@ final class JmapBlobController
             ? $this->sanitizeHeaderValue($type)
             : $blob['mediaType'];
 
+        $cache = str_starts_with($blobId, 'mb-')
+            ? 'private, no-store'
+            : 'private, immutable, max-age=31536000';
+
         return response($blob['contents'], 200, [
             'Content-Type' => $contentType,
             'Content-Length' => (string) strlen($blob['contents']),
             'Content-Disposition' => 'attachment; filename="'.$this->sanitizeHeaderValue($name).'"',
-            // Blob content is immutable per blobId (content-addressed).
-            'Cache-Control' => 'private, immutable, max-age=31536000',
+            'Cache-Control' => $cache,
         ]);
     }
 

@@ -23,6 +23,7 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `principals` | `App\Models\Principal` | DAV principals, profile `email` / `displayname` |
 | `groupmembers` | `App\Models\GroupMember` | Group membership join |
 | `app_settings` | `App\Models\AppSetting` | Key/value site settings (string PK `name`) |
+| `mail_user_credentials` | `App\Models\MailUserCredential` | Per-user Mail-app IMAP/SMTP account (PK `username`). Endpoints + optional SMTP login live here; instance `mail_imap_*` / `mail_smtp_*` are not the send/receive path. |
 | `api_refresh_tokens` | `App\Models\ApiRefreshToken` | JWT refresh tokens (`token_hash` PK) |
 | `api_password_reset_tokens` | `App\Models\ApiPasswordResetToken` | Hashed one-time password-reset tokens (`token_hash` PK) |
 | `api_revoked_tokens` | `App\Models\ApiRevokedToken` | Revoked JWT JTIs |
@@ -49,6 +50,8 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `addressbook_share_dismissals` | `App\Models\AddressBookShareDismissal` | Per-user hide of an inbound address-book share (`username` + `addressbookid`). Owner shareWith is unchanged; restore deletes the row. |
 | `mail_user_credentials` | `App\Models\MailUserCredential` | Per-user IMAP/SMTP credentials |
 | `docs_thread_index` | `App\Models\DocsThreadIndex` | Path index for Docs comment/suggestion VJOURNAL threads (`uid` + `doc_path` + kind). Indexes: unique `uid`; `(calendarid, doc_path)` hot path; standalone `doc_path` for rename/delete; `(calendarid, change_id)`. `doc_path` is varchar(512) for MySQL utf8mb4 index limits. |
+| `jmap_mail_sync` | `App\Models\JmapMailSync` | Per user × mail account × mailbox IMAP sync cursor (`uidvalidity`, `uidnext`, window flags hash). `mailbox` is varchar(440) so the utf8mb4 primary key stays under MySQL’s 3072-byte index limit. |
+| `jmap_mail_messages` | `App\Models\JmapMailMessage` | Cached envelope-visible messages (`uid`, flags hash, `thread_key`) namespaced by `mail_account_id`. Same `mailbox` length as `jmap_mail_sync`. |
 | `notifications` | `App\Models\Notification` | Suite notify inbox (one row per principal + event) |
 | `notification_deliveries` | `App\Models\NotificationDelivery` | Short-lived local/VAPID delivery attempts |
 | `push_subscriptions` | `App\Models\PushSubscription` | Web Push subscriptions (principal + endpoint) |

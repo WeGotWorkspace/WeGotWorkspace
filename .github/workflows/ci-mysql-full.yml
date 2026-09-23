@@ -68,6 +68,10 @@ jobs:
           cp packages/api/.env.example packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
 
+      # Only Dovecot + Mailhog — not `web`/`scheduler` (they bind-mount packages/api).
+      - name: Start IMAP fixture
+        run: docker compose -f compose.dev.yml --profile mail up -d --build --wait mailhog dovecot
+
       - name: API tests (full MySQL suite)
         env:
           WGW_TEST_DRIVER: mysql
@@ -76,4 +80,7 @@ jobs:
           WGW_TEST_MYSQL_DATABASE: wgw_test
           WGW_TEST_MYSQL_USERNAME: root
           WGW_TEST_MYSQL_PASSWORD: root
+          WGW_IMAP_FIXTURE_HOST: 127.0.0.1
+          WGW_IMAP_FIXTURE_PORT: 1143
+          WGW_SMTP_FIXTURE_PORT: 1025
         run: composer --working-dir packages/api run test:mysql

@@ -60,13 +60,13 @@ describe("AdminApp sidebar → URL", { timeout: 15_000 }, () => {
     expect(await screen.findByText("Release status")).toBeTruthy();
   });
 
-  it("restores the matching pane when the router navigates to /admin/mail", async () => {
+  it("restores the matching pane when the router navigates to /admin/email-delivery", async () => {
     const { history, router } = await renderAdminApp("/admin");
-    await router.navigate({ to: "/admin/$section", params: { section: "mail" } });
+    await router.navigate({ to: "/admin/$section", params: { section: "email-delivery" } });
     await waitFor(() => {
-      expect(history.location.pathname).toBe("/admin/mail");
+      expect(history.location.pathname).toBe("/admin/email-delivery");
     });
-    expect(await screen.findByText("IMAP (incoming)")).toBeTruthy();
+    expect(await screen.findByText("From and transport")).toBeTruthy();
   });
 
   it("writes /admin/plugins when the user picks Plugins and back/forward restore the pane", async () => {
@@ -94,14 +94,14 @@ describe("AdminApp sidebar → URL", { timeout: 15_000 }, () => {
     expect(await screen.findByText("Plugin lifecycle")).toBeTruthy();
   });
 
-  it("writes /admin/mail when the user picks Mail", async () => {
+  it("writes /admin/email-delivery when the user picks Email delivery", async () => {
     const { history } = await renderAdminApp("/admin");
-    clickSidebarSection(/^Mail$/);
+    clickSidebarSection(/^Email delivery$/);
 
     await waitFor(() => {
-      expect(history.location.pathname).toBe("/admin/mail");
+      expect(history.location.pathname).toBe("/admin/email-delivery");
     });
-    expect(await screen.findByText("IMAP (incoming)")).toBeTruthy();
+    expect(await screen.findByText("From and transport")).toBeTruthy();
   });
 
   it("canonicalizes unknown /admin/:section paths to /admin", async () => {

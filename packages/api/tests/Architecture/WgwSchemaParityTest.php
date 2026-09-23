@@ -49,6 +49,8 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'mcp_audit_events',
             'mcp_sessions',
             'docs_thread_index',
+            'jmap_mail_sync',
+            'jmap_mail_messages',
             'notifications',
             'notification_deliveries',
             'push_subscriptions',
@@ -70,5 +72,10 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('oauth_clients', 'cimd_url'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('mcp_audit_events', 'outcome'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('mail_user_credentials', 'imap_host'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('mail_user_credentials', 'smtp_host'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('jmap_mail_sync', 'mail_account_id'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('jmap_mail_sync', 'mailbox'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('notifications', 'data'));
     }
 }

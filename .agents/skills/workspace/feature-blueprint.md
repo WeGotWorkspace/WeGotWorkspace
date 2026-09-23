@@ -28,7 +28,7 @@ Structural refactors must still compose **existing** UI from `packages/apps/src/
 | Need | Use | Reference |
 |------|-----|-----------|
 | Section surface + title | **`Card`** (`@/card/src/card`) | `settings-profile-pane.tsx`, `admin-meet-pane.tsx` |
-| Label + control (uncontrolled / controller state) | **`FieldLabelRow`** + **`Input`** / **`Select`** / **`Switch`** | `admin-mail-pane.tsx`, `admin-meet-pane.tsx` |
+| Label + control (uncontrolled / controller state) | **`FieldLabelRow`** + **`Input`** / **`Select`** / **`Switch`** | `admin-meet-pane.tsx` |
 | Label + control (react-hook-form + zod) | **`Form`** + **`FormTextField`** + **`FormSaveActionRow`** | `settings-profile-pane.tsx` |
 | Boolean row with title + description | **`FeatureRow`** pattern: copy **`admin-workspace-widgets.tsx`** `FeatureRow` markup and add **`.<product>-feature-row`** rules in **`*-workspace.css`** (same structure as `admin-panes.css`) — do not invent a second TS wrapper per product unless promoting to `@/ui` |
 | Primary / ghost actions | **`Button`** / **`IconButton`** (`@/button/src/button`) with workspace CSS variables on the root class — no `*PrimaryButton` wrappers |

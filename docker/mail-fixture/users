@@ -1,0 +1,2 @@
+bob@example.test:{PLAIN}mail-secret:1000:1000::/var/mail/bob@example.test::
+alice@example.test:{PLAIN}mail-secret:1000:1000::/var/mail/alice@example.test::

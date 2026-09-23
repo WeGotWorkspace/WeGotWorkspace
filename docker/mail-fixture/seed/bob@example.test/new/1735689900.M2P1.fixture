@@ -1,0 +1,12 @@
+Return-Path: <alice@example.test>
+From: Alice Example <alice@example.test>
+To: Bob Example <bob@example.test>
+Subject: Re: Project kickoff
+Message-ID: <thread-reply@example.test>
+In-Reply-To: <thread-root@example.test>
+References: <thread-root@example.test>
+Date: Thu, 01 Jan 2026 12:05:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Following up on the kickoff — this is the In-Reply-To child.

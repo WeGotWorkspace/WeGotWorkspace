@@ -76,7 +76,6 @@ final class SettingKeys
             self::CALENDAR_ENABLED,
             self::CONTACTS_ENABLED,
             self::TASKS_ENABLED,
-            self::MAIL_ENABLED,
             self::MCP_ENABLED,
             self::RTC_STUN_URL,
             self::RTC_TURN_URL,

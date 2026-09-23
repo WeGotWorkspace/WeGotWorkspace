@@ -26,6 +26,14 @@ final class MailUserCredential extends Model
         'username',
         'imap_username',
         'password_enc',
+        'imap_host',
+        'imap_port',
+        'imap_security',
+        'smtp_host',
+        'smtp_port',
+        'smtp_security',
+        'smtp_username',
+        'smtp_password_enc',
         'updated_at',
     ];
 }

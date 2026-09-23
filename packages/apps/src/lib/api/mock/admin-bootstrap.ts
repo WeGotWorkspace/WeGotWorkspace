@@ -44,12 +44,7 @@ const DEFAULT_DATA: AdminUIData = {
     },
   ],
   mail: {
-    imapHost: "imap.example.test",
-    imapPort: 993,
-    imapSecurity: "ssl",
-    smtpHost: "smtp.example.test",
-    smtpPort: 465,
-    smtpSecurity: "ssl",
+    enabled: true,
   },
   mailDelivery: defaultMailDeliveryState({
     config: {

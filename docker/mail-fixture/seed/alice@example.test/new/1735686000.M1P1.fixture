@@ -1,0 +1,10 @@
+Return-Path: <bob@example.test>
+From: Bob Example <bob@example.test>
+To: Alice Example <alice@example.test>
+Subject: Hello from Bob
+Message-ID: <bob-solo@example.test>
+Date: Thu, 01 Jan 2026 11:00:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Solo inbox message for list tests.

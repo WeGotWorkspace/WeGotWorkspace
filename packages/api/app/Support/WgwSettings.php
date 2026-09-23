@@ -30,6 +30,8 @@ final class WgwSettings
 
     public const TASKS_ENABLED = 'tasks_enabled';
 
+    public const MAIL_ENABLED = 'mail_enabled';
+
     public const NOTES_ENABLED = 'notes_enabled';
 
     public const AUTH_REALM = 'auth_realm';
@@ -62,6 +64,7 @@ final class WgwSettings
             self::CALENDAR_ENABLED => true,
             self::CONTACTS_ENABLED => true,
             self::TASKS_ENABLED => true,
+            self::MAIL_ENABLED => true,
             self::NOTES_ENABLED => true,
             self::AUTH_REALM => 'SabreDAV',
             self::BROWSER_PLUGIN => true,

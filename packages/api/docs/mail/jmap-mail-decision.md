@@ -27,9 +27,9 @@ What `ext-imap` *does* expose is enough for an honest UIDVALIDITY/UIDNEXT model 
 
 New table **`jmap_mail_sync`** (per user × mailbox): `username`, `mailbox`, `uidvalidity`, `last_seen_uidnext`, plus a message-row table **`jmap_mail_messages`** (`username`, `mailbox`, `uid`, `flags_hash`, `message_id_hash`, `thread_key`, `internaldate`) acting as the local mirror of envelope-visible messages.
 
-- **Email/changes(sinceState):** per mailbox — `UIDVALIDITY` changed → `cannotCalculateChanges` (client refetches; pinned in tests, never silently wrong deltas). Otherwise: new UIDs ≥ cached `uidnext` → `created`; cached UIDs missing from the server → `destroyed`; flag diffs (via `imap_fetch_overview` on cached UIDs) → `updated`.
+- **Email/changes(sinceState):** per mailbox — live or cached `UIDVALIDITY` mismatch → `cannotCalculateChanges` (client refetches; pinned in tests, never silently wrong deltas; the cache is not healed first). Otherwise deltas are vs the parsed since snapshot: new UIDs ≥ that mailbox's `uidnext` → `created`; a mailbox absent from sinceState contributes its whole window as `created`; window-hash change → remaining window UIDs as `updated`; cached UIDs missing from the live window → `destroyed`.
 - **Scope cut #1 (flag-diff window):** re-fetching overviews for *every* cached UID is O(mailbox size) per sync. Flag changes are detected only within a **recent window** (the most recent 500 UIDs per mailbox, configurable); older flag flips surface on refetch, not in `/changes`. This is the honest, documented trade-off — same family as `hasMoreChanges: false` on the Sabre domains.
-- **State string:** versioned digest of `{mailbox → (uidvalidity, uidnext, window-flags-hash)}` — composed/decomposed by a mail-specific codec (the Sabre `JmapAccountStateCodec` does not apply, as the umbrella spec predicted).
+- **State string:** versioned round-trip of `{mailbox → (uidvalidity, uidnext, window-flags-hash)}` (`m1:` + base64url JSON) — composed/parsed by a mail-specific codec (the Sabre `JmapAccountStateCodec` does not apply, as the umbrella spec predicted). Legacy 32-hex digests stay syntactically valid but are unparseable → `Email/changes` returns `cannotCalculateChanges`.
 - **Email ids:** keep `{base64url(mailbox)}:{uid}` (a move = destroyed + created, which RFC 8621 permits servers to do; documented deviation from "ids SHOULD survive moves").
 
 ## Decision 2 — threading: cached derivation, not IMAP THREAD
@@ -72,3 +72,29 @@ M1 cannot be contract-verified against `503 imap_connect`. Prerequisite task bef
 5. Envelope methods per the phasing table; batch-scoped IMAP session + per-batch subprocess isolation.
 6. `mb-` blob resolver on `/jmap/download`.
 7. Lifecycle contract test against the fixture; mixed-domain batch test; done gate.
+
+## Implementation notes (this epic)
+
+These pin review decisions from the Fully JMAP Mail plan. They do not reopen the build/defer gate.
+
+### Email / `mb-` ids include UIDVALIDITY
+
+Wire ids are `{mailAccountId}:{base64url(mailbox)}:{uidvalidity}:{uid}` (today `mailAccountId=primary`). After a UIDVALIDITY bump IMAP may reuse the same uid for a different message. `/changes` returns `cannotCalculateChanges`. `Email/get` and `mb-` download of an id whose uidvalidity does not match the live mailbox return `notFound` — never the new message.
+
+Mailbox ids stay `{mailAccountId}:{base64url(mailbox)}` (folder identity is the mailbox name).
+
+### Mixed-mailbox batches: one IMAP session, sequential SELECT
+
+One IMAP session per mail account per `/jmap` POST. Methods in the same POST that hit INBOX then Sent reuse that connection with sequential SELECT / `imap_reopen` (scope cut #3: no pooling). Cost is extra IMAP round-trips **inside** one HTTP request, not extra Apache forks. `MailImapProcess` isolation is per-batch when Apache isolate is on.
+
+### No `jmap_blobs` copy for `mb-`
+
+Bodies and attachments stream live via `imap_fetchbody` on `/jmap/download`. Large attachments must not land in `jmap_blobs` or its GC. Every download is a fresh IMAP fetch (no WGW blob cache). Drafts/submission still use `jb-` uploads.
+
+### IMAP adapter is the permanent OSS path
+
+OSS is always a mail **client** against arbitrary external IMAP. The IMAP→JMAP envelope is not a temporary bridge. A later native-JMAP route against hosted Stalwart is an explicit RFC, not an opportunistic shortcut in M1/M2.
+
+### Per-user IMAP + SMTP
+
+Mail-app hosts live on `mail_user_credentials`, not instance `mail_imap_*` / `mail_smtp_*`. There is no instance Mail kill-switch: JMAP mail and MCP mail tools follow this user’s mailbox row (and `ext-imap`). Admin Email delivery (`mail_delivery_*`) is unchanged.

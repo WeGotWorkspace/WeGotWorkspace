@@ -15,6 +15,8 @@ export const CONTACTS_CAPABILITY = "urn:ietf:params:jmap:contacts";
 export const FILENODE_CAPABILITY = "urn:ietf:params:jmap:filenode";
 export const NOTES_CAPABILITY = "urn:wgw:jmap:notes";
 export const CHAT_CAPABILITY = "urn:wgw:jmap:chat";
+export const MAIL_CAPABILITY = "urn:ietf:params:jmap:mail";
+export const SUBMISSION_CAPABILITY = "urn:ietf:params:jmap:submission";
 
 export type JmapAccount = {
   name: string;

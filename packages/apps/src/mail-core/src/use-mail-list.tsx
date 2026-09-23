@@ -141,7 +141,7 @@ export function useMailList({ shell, initialActiveId = "" }: UseMailListArgs) {
     pendingDetailIdsRef.current.add(targetId);
     let cancelled = false;
     void operations
-      .fetchMessageDetail({ folder: active.folder, uid: active.uid })
+      .fetchMessageDetail({ id: active.id, folder: active.folder, uid: active.uid })
       .then((detail) => {
         pendingDetailIdsRef.current.delete(targetId);
         if (cancelled) return;

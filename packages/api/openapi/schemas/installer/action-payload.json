@@ -1,0 +1,44 @@
+{
+  "InstallerActionPayload": {
+    "type": "object",
+    "properties": {
+      "db_driver": { "$ref": "#/components/schemas/InstallerDbDriver" },
+      "sqlite_path": { "type": "string" },
+      "mysql_host": { "type": "string" },
+      "mysql_port": { "type": "integer" },
+      "mysql_db": { "type": "string" },
+      "mysql_user": { "type": "string" },
+      "mysql_password": { "type": "string" },
+      "base_uri_override": { "type": "string" },
+      "timezone": { "type": "string" },
+      "enable_files": { "type": "boolean" },
+      "enable_calendars": { "type": "boolean" },
+      "enable_contacts": { "type": "boolean" },
+      "show_browser_ui": { "type": "boolean" },
+      "username": { "type": "string" },
+      "display_name": { "type": "string" },
+      "email": { "type": "string" },
+      "password": { "type": "string" },
+      "password_confirm": { "type": "string" },
+      "mail_enabled": {
+        "type": "boolean",
+        "description": "When true, seed the installing admin’s IMAP/SMTP row. Not an instance Mail kill-switch."
+      },
+      "mail_imap_host": { "type": "string" },
+      "mail_imap_port": { "type": "string" },
+      "mail_imap_security": { "type": "string" },
+      "mail_imap_username": { "type": "string" },
+      "mail_imap_password": { "type": "string" },
+      "mail_smtp_host": { "type": "string" },
+      "mail_smtp_port": { "type": "string" },
+      "mail_smtp_security": { "type": "string" },
+      "mail_smtp_username": { "type": "string" },
+      "mail_smtp_password": { "type": "string" },
+      "meet_enabled": { "type": "boolean" },
+      "rtc_stun_url": { "type": "string" },
+      "rtc_turn_url": { "type": "string" },
+      "rtc_turn_username": { "type": "string" },
+      "rtc_turn_credential": { "type": "string" }
+    }
+  }
+}

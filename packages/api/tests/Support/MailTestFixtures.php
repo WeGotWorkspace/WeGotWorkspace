@@ -80,12 +80,35 @@ trait MailTestFixtures
         $this->addPrincipalToGroup($teamGroup, $alice);
     }
 
-    protected function seedMailCredentials(string $username, string $imapUsername, string $imapPassword): void
-    {
+    protected function seedMailCredentials(
+        string $username,
+        string $imapUsername,
+        string $imapPassword,
+        array $endpoints = [],
+    ): void {
         $service = new MailCredentialService(new MailSecretService(
             $this->app->make(WgwInstallConfig::class)
         ));
-        $service->save($username, $imapUsername, $imapPassword);
+        $service->saveAccount($username, array_merge([
+            'imapUsername' => $imapUsername,
+            'imapPassword' => $imapPassword,
+            'imapHost' => '127.0.0.1',
+            'imapPort' => 993,
+            'imapSecurity' => 'ssl',
+            'smtpHost' => '127.0.0.1',
+            'smtpPort' => 587,
+            'smtpSecurity' => 'starttls',
+        ], $endpoints));
+    }
+
+    public function seedFixtureMailbox(string $username = 'bob', ?string $imapUsername = null): void
+    {
+        $this->seedMailCredentials(
+            $username,
+            $imapUsername ?? ImapFixture::username(),
+            ImapFixture::password(),
+            ImapFixture::endpoints($imapUsername ?? ImapFixture::username()),
+        );
     }
 
     protected function inboxFolderToken(): string

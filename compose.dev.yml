@@ -61,4 +61,11 @@ services:
       - "1025:1025"
       - "8025:8025"
 
+  dovecot:
+    profiles: ["mail"]
+    build:
+      context: ./docker/mail-fixture
+    ports:
+      - "${WGW_IMAP_FIXTURE_PORT:-1143}:143"
+
 volumes: {}

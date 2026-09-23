@@ -74,7 +74,7 @@ final class DevInstallBootstrap
                 SettingKeys::CALENDAR_ENABLED => true,
                 SettingKeys::CONTACTS_ENABLED => true,
                 SettingKeys::TASKS_ENABLED => true,
-                SettingKeys::MAIL_ENABLED => false,
+                SettingKeys::MAIL_ENABLED => true,
                 SettingKeys::MAIL_IMAP_HOST => '',
                 SettingKeys::MAIL_IMAP_PORT => 993,
                 SettingKeys::MAIL_IMAP_SECURITY => '',
