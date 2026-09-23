@@ -377,6 +377,13 @@
 }
 
 .meet-device-popover .meet-workspace__form .meet-device-row__trigger {
+  /* The shared form trigger clears these to transparent. Restore the login wash. */
+  --input-background: color-mix(in oklab, var(--color-we-got-dark) 6%, var(--color-we-got-soft));
+  --input-background-focus: color-mix(
+    in oklab,
+    var(--color-we-got-dark) 8%,
+    var(--color-we-got-soft)
+  );
   background-color: var(--input-background);
 }
 

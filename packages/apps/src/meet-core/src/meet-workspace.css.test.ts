@@ -289,7 +289,7 @@ describe("meet workspace sidebar chrome", () => {
       /\.meet-device-popover \{[\s\S]*?background-color:\s*var\(--color-we-got-soft\)\s*!important/,
     );
     expect(css).toMatch(
-      /\.meet-device-popover \.meet-workspace__form \.meet-device-row__trigger \{[\s\S]*?background-color:\s*var\(--input-background\)/,
+      /\.meet-device-popover \.meet-workspace__form \.meet-device-row__trigger \{[\s\S]*?--input-background:\s*color-mix\(\s*in oklab,\s*var\(--color-we-got-dark\) 6%,\s*var\(--color-we-got-soft\)\)[\s\S]*?background-color:\s*var\(--input-background\)/,
     );
     expect(colorCss).toMatch(/\.meet-device-popover/);
     expect(css).toMatch(
