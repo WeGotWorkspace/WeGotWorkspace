@@ -34,6 +34,7 @@ vi.mock("@/meet-core/src/use-meet-local-media", () => ({
     localVideoRef: { current: null },
     screenPreviewStream: null,
     audioInputs: [],
+    audioOutputs: [],
     videoInputs: [],
     selectedMicId: null,
     selectedCamId: null,

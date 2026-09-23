@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { MeetControllerState } from "@/meet-core/src/meet-controller-state";
 import {
-  meetSpeakerOptionsFromAudioInputs,
-  normalizeMeetDeviceOptions,
+  meetCallDeviceMenus,
+  meetSpeakerSelectionId,
   selectedMeetDeviceOptionId,
 } from "@/meet-core/src/meet-device-utils";
 import { useMeetInviteProbe } from "@/meet-core/src/use-meet-invite-probe";
@@ -115,23 +115,25 @@ export function useMeetWorkspaceShell({
     showWaitingForHostScreen,
   ]);
 
-  const cameras = useMemo(
-    () => normalizeMeetDeviceOptions("videoinput", controller.videoInputs),
-    [controller.videoInputs],
-  );
-  const microphones = useMemo(
-    () => normalizeMeetDeviceOptions("audioinput", controller.audioInputs),
-    [controller.audioInputs],
-  );
-  const speakers = useMemo(
-    () => meetSpeakerOptionsFromAudioInputs(controller.audioInputs),
-    [controller.audioInputs],
+  const { cameras, microphones, speakers } = useMemo(
+    () =>
+      meetCallDeviceMenus({
+        audioInputs: controller.audioInputs,
+        audioOutputs: controller.audioOutputs,
+        videoInputs: controller.videoInputs,
+      }),
+    [controller.audioInputs, controller.audioOutputs, controller.videoInputs],
   );
 
   const participantCount = controller.peers.length + (controller.inCall ? 1 : 0);
   const activeCamera = selectedMeetDeviceOptionId(cameras, controller.selectedCamId);
   const activeMic = selectedMeetDeviceOptionId(microphones, controller.selectedMicId);
-  const activeSpeaker = speakerId || speakers[0]?.id || "default";
+  const activeSpeaker = selectedMeetDeviceOptionId(speakers, speakerId);
+
+  function selectSpeaker(optionId: string) {
+    const next = meetSpeakerSelectionId(speakers, optionId);
+    if (next) setSpeakerId(next);
+  }
 
   function sendMessage() {
     const value = draft.trim();
@@ -167,7 +169,7 @@ export function useMeetWorkspaceShell({
       activeCamera,
       activeMic,
       activeSpeaker,
-      onSpeakerChange: setSpeakerId,
+      onSpeakerChange: selectSpeaker,
       endedMessage: controller.endedMessage,
       showMissingInviteScreen,
       showInviteCheckingScreen,
@@ -190,7 +192,7 @@ export function useMeetWorkspaceShell({
       activeCamera,
       activeMic,
       activeSpeaker,
-      onSpeakerChange: setSpeakerId,
+      onSpeakerChange: selectSpeaker,
       onCopyLink: copyCallLink,
       onToastInfo: (message: string) => toast.show(message, { severity: "info" }),
       onToastError: (message: string) => toast.showError(message),
