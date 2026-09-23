@@ -3,8 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!--
+      Synchronous paint. iOS samples html/body background before module CSS and
+      otherwise keeps an opaque status-bar gap. App CSS overrides the color.
+    -->
+    <style>
+      html,
+      body {
+        background-color: #fff5e9;
+      }
+    </style>
+    <script>
+      if (
+        window.navigator.standalone === true ||
+        window.matchMedia("(display-mode: standalone)").matches
+      ) {
+        document.documentElement.classList.add("pwa-standalone");
+      }
+    </script>
     <title>WeGotWorkspace</title>
     <link
       rel="preload"
