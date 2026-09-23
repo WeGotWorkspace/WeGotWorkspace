@@ -10,10 +10,17 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import "../src/styles.css";
+// Scoped to Chromatic capture + Storybook Vitest — see chromatic-reduced-motion.css
 import "./chromatic-reduced-motion.css";
 import { NotificationsInboxValueProvider } from "../src/notifications-core/src/notifications-inbox-context";
 import { AppToaster } from "../src/ui/sonner";
 import { TooltipProvider } from "../src/ui/tooltip";
+
+// Vitest storybook project defines STORYBOOK_REDUCED_MOTION=1 (vitest.config.ts).
+// Interactive `storybook dev` leaves this unset so height/opacity transitions run.
+if (import.meta.env.STORYBOOK_REDUCED_MOTION === "1") {
+  document.documentElement.setAttribute("data-chromatic-reduced-motion", "");
+}
 
 const STORYBOOK_INBOX = {
   items: [] as const,
