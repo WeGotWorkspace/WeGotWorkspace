@@ -11,7 +11,7 @@
 .chat-message:focus-within {
   /* Above sticky day headers (z-[5]) so short-row hover actions stay visible. */
   z-index: 6;
-  background-color: var(--chat-hover, color-mix(in oklab, #06b6d4 8%, transparent));
+  background-color: var(--chat-hover, color-mix(in oklch, var(--workspace-accent) 8%, transparent));
 }
 
 .chat-message--continuation {
@@ -137,7 +137,7 @@
    and the picker closes before the cursor can reach it. */
 .chat-message:has([data-state="open"]) {
   z-index: 6;
-  background-color: var(--chat-hover, color-mix(in oklab, #06b6d4 8%, transparent));
+  background-color: var(--chat-hover, color-mix(in oklch, var(--workspace-accent) 8%, transparent));
 }
 
 .chat-message:has([data-state="open"]) .chat-message__actions {

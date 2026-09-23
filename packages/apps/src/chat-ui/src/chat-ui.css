@@ -12,7 +12,7 @@
   --chat-border: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
   --chat-rule: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
   --chat-accent: #0e7490;
-  --chat-hover: color-mix(in oklab, #06b6d4 8%, transparent);
+  --chat-hover: color-mix(in oklch, var(--workspace-accent) 8%, transparent);
   --chat-day-bg: var(--chat-list-surface);
   --chat-action-surface: var(--color-we-got-soft);
   --chat-reaction-bg: color-mix(in oklab, var(--color-we-got-dark) 4%, transparent);

@@ -61,6 +61,19 @@ describe("chat-message continuation spacing", () => {
     expect(css).toMatch(/\.chat-message:has\(\[data-state="open"\]\) \{[\s\S]*?z-index:\s*6;/);
   });
 
+  it("washes hovered messages with workspace accent, not cyan/sky", () => {
+    expect(css).toMatch(
+      /\.chat-message:hover,\s*\.chat-message:focus-within \{[\s\S]*?background-color:\s*var\(\s*--chat-hover,\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\)\s*8%,\s*transparent\s*\)/,
+    );
+    expect(css).toMatch(
+      /\.chat-message:has\(\[data-state="open"\]\) \{[\s\S]*?background-color:\s*var\(\s*--chat-hover,\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\)\s*8%,\s*transparent\s*\)/,
+    );
+    expect(css).not.toMatch(/#06b6d4/);
+    expect(chatUiCss).toMatch(
+      /--chat-hover:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\)\s*8%,\s*transparent\s*\)/,
+    );
+  });
+
   it("wraps message body text instead of overflowing a narrow rail", () => {
     expect(css).toMatch(/\.chat-message__body \{[\s\S]*?break-words/);
     expect(css).toMatch(/\.chat-message__body \{[\s\S]*?overflow-wrap:\s*anywhere/);
