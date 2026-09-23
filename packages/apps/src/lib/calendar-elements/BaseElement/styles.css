@@ -7,10 +7,13 @@
 
   :host {
     display: block;
-    /* Brand paper — never pure white sticky / surface fallbacks. */
+    /* Brand paper — app `--workspace-surface` when set, else Soft. Never pure white. */
     --_lc-surface-bg: var(
       --_lc-app-header-bg-color,
-      var(--lg-background-color, light-dark(var(--color-we-got-soft), #222))
+      var(
+        --lg-background-color,
+        var(--workspace-surface, light-dark(var(--color-we-got-soft), #222))
+      )
     );
   }
 }

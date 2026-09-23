@@ -9,8 +9,8 @@ const css = readFileSync(join(here, "list-sticky-header-sst.css"), "utf8");
 describe("list-sticky-header SST", () => {
   it("publishes cream sticky and calendar surface tokens on calendar workspace", () => {
     expect(css).toMatch(/\.calendar-workspace/);
-    expect(css).toMatch(/--list-sticky-header-bg:\s*var\(--color-we-got-soft\)/);
-    expect(css).toMatch(/--_lc-surface-bg:\s*var\(--color-we-got-soft\)/);
+    expect(css).toMatch(/--list-sticky-header-bg:\s*var\(--workspace-surface\)/);
+    expect(css).toMatch(/--_lc-surface-bg:\s*var\(--workspace-surface\)/);
   });
 
   it("never falls back sticky or calendar surface bg to pure white", () => {
@@ -27,7 +27,7 @@ describe("docs editor desk cream (parity with sticky/calendar SST)", () => {
   const docsCss = readFileSync(join(here, "../docs-core/src/docs-workspace.css"), "utf8");
 
   it("asserts docs editor desk is sand cream, not pure #ffffff", () => {
-    expect(docsCss).toMatch(/--docs-canvas:\s*var\(--color-we-got-soft\)/);
+    expect(docsCss).toMatch(/--docs-canvas:\s*var\(--workspace-surface\)/);
     expect(docsCss).toMatch(
       /\.text-editor-sheet--fill \{[\s\S]*background-color:\s*var\(--docs-canvas\)/,
     );

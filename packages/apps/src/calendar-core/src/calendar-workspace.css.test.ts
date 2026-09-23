@@ -107,13 +107,13 @@ describe("calendar workspace header CSS", () => {
 
   it("keeps AppSidebar item washes on the Admin/Settings ladder", () => {
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 18%,\s*var\(--color-we-got-soft/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 18%,\s*var\(--workspace-surface/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 24%[\s\S]*var\(--color-we-got-soft/,
+      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 24%[\s\S]*var\(--workspace-surface/,
     );
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 32%[\s\S]*var\(--color-we-got-soft/,
+      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 32%[\s\S]*var\(--workspace-surface/,
     );
     expect(css).toMatch(
       /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,

@@ -97,16 +97,16 @@ describe("meet workspace sidebar chrome", () => {
 
   it("brightens AppSidebar selected wash for dark plum and forces AA on-color", () => {
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-soft/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--workspace-surface/,
     );
     expect(css).not.toMatch(
       /--app-sidebar-item-hover-bg:\s*color-mix\([^)]*var\(--workspace-accent\) 32%,\s*transparent/,
     );
     expect(css).toMatch(
-      /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 22%[\s\S]*var\(--color-we-got-soft/,
+      /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 22%[\s\S]*var\(--workspace-surface/,
     );
     expect(css).toMatch(
-      /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 40%[\s\S]*var\(--color-we-got-soft/,
+      /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 40%[\s\S]*var\(--workspace-surface/,
     );
     expect(css).toMatch(
       /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,
@@ -286,9 +286,9 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(/workspace-app-layout__panel-scrim/);
     expect(css).toMatch(/sidebar:static sidebar:shadow-none/);
     expect(css).toMatch(/\.meet-workspace__surface--parked[\s\S]*content-visibility:\s*hidden/);
-    expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?--popover:\s*var\(--color-we-got-soft/);
+    expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?--popover:\s*var\(--workspace-surface/);
     expect(css).toMatch(
-      /\.meet-device-popover \{[\s\S]*?background-color:\s*var\(--color-we-got-soft/,
+      /\.meet-device-popover \{[\s\S]*?background-color:\s*var\(--workspace-surface/,
     );
     expect(css).toMatch(
       /\.meet-device-popover \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
@@ -314,7 +314,7 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).not.toMatch(/\.meet-call-stage--expanded[\s\S]*gap-3 overflow-hidden p-3/);
     expect(css).toMatch(/\.meet-call-stage__chat \{[\s\S]*?rounded-none/);
     expect(css).toMatch(
-      /\.meet-call-stage__chat \{[\s\S]*?background-color:\s*var\(--color-we-got-soft/,
+      /\.meet-call-stage__chat \{[\s\S]*?background-color:\s*var\(--workspace-surface/,
     );
     expect(css).not.toMatch(/\.meet-call-stage__chat \{[^}]*--meet-call-surface/);
     expect(css).not.toMatch(/\.meet-call-stage__chat \{[^}]*rounded-2xl/);

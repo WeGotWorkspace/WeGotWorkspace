@@ -1,4 +1,5 @@
 import { LitElement, unsafeCSS } from "lit";
+/** Shadow hosts must see `--workspace-surface` (styles.css). Kept inline for Lit. */
 import style from "./styles.css?inline";
 
 type PropertyDefinition = {

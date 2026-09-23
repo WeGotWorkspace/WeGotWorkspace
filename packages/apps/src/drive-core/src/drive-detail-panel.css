@@ -50,7 +50,7 @@
   /* Flat surface + accent kind icon — same language as `.drive-file-tile__preview`. */
   @apply relative aspect-[4/3] flex items-center justify-center mb-6 overflow-hidden;
   border-radius: var(--control-radius);
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
   color: var(--workspace-accent, var(--workspace-accent, var(--color-we-got-dark)));
 }
 

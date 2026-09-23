@@ -33,7 +33,7 @@ describe("Drive detail DocsCollabSidebarPanel shell", () => {
 
   it("uses a flat tile-like preview surface with centered kind-icon fallback", () => {
     expect(css).toMatch(
-      /\.drive-detail-panel__preview \{[\s\S]*background-color:\s*var\(--color-we-got-soft/,
+      /\.drive-detail-panel__preview \{[\s\S]*background-color:\s*var\(--workspace-surface/,
     );
     expect(css).toMatch(/\.drive-detail-panel__preview \{[\s\S]*color:\s*var\(--workspace-accent/);
     expect(css).toMatch(

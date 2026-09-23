@@ -58,13 +58,13 @@ describe("drive workspace outline-active tokens", () => {
 
   it("publishes AppSidebar item washes stepped above the 32% rail with ink on-color", () => {
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 42%,\s*var\(--color-we-got-soft/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 42%,\s*var\(--workspace-surface/,
     );
     expect(css).toMatch(
-      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 55%,\s*var\(--color-we-got-soft/,
+      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 55%,\s*var\(--workspace-surface/,
     );
     expect(css).toMatch(
-      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 65%,\s*var\(--color-we-got-soft/,
+      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 65%,\s*var\(--workspace-surface/,
     );
     expect(css).toMatch(/--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/);
     expect(css).toMatch(

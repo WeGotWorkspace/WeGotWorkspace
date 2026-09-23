@@ -25,12 +25,12 @@
   --foreground: var(--color-we-got-dark);
   --color-foreground: var(--color-we-got-dark);
   --muted-foreground: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
-  --background: var(--color-we-got-soft);
-  --input-background: var(--color-we-got-soft);
-  --input-background-focus: var(--color-we-got-soft);
-  --accent: color-mix(in oklab, var(--workspace-accent) 12%, var(--color-we-got-soft));
+  --background: var(--workspace-surface);
+  --input-background: var(--workspace-surface);
+  --input-background-focus: var(--workspace-surface);
+  --accent: color-mix(in oklab, var(--workspace-accent) 12%, var(--workspace-surface));
   --accent-foreground: var(--color-we-got-dark);
-  --popover: var(--color-we-got-soft);
+  --popover: var(--workspace-surface);
   --popover-foreground: var(--color-we-got-dark);
   --modal-title-foreground: var(--color-we-got-dark);
   --card-title-icon-color: var(--workspace-accent);
@@ -39,7 +39,7 @@
   --card-panel-border-color: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
   --card-panel-bg: color-mix(in oklab, var(--color-we-got-dark) 3%, transparent);
   --card-row-hover-bg: color-mix(in oklab, var(--color-we-got-dark) 5%, transparent);
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
   color: var(--color-we-got-dark);
   border-color: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
 }

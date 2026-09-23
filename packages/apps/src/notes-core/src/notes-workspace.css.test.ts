@@ -297,7 +297,7 @@ describe("notes workspace action-bar selected Star/Archive", () => {
   });
 
   it("paints the live detail-pane action bar cream, not a Storybook-only shell", () => {
-    expect(css).toMatch(/--workspace-chrome-footer-bg:\s*var\(--color-we-got-soft/);
+    expect(css).toMatch(/--workspace-chrome-footer-bg:\s*var\(--workspace-surface/);
     expect(css).toMatch(
       /--action-bar-bg:\s*var\(--workspace-chrome-footer-bg,\s*var\(--color-we-got-soft/,
     );
@@ -314,7 +314,7 @@ describe("notes workspace action-bar selected Star/Archive", () => {
     expect(workspaceAppTsx).toMatch(/\{actionBar\?\.\(chrome\)\}/);
     expect(workspaceAppTsx).toMatch(/workspace-detail-pane__scroll/);
     expect(css).toMatch(
-      /\.notes-workspace \.action-bar \.notes-notebook-select\.color-swatch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-soft/,
+      /\.notes-workspace \.action-bar \.notes-notebook-select\.color-swatch-trigger \{[\s\S]*background-color:\s*var\(--workspace-surface/,
     );
     expect(css).not.toMatch(
       /\.notes-workspace \.action-bar \.notes-notebook-select\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
@@ -326,7 +326,7 @@ describe("notes workspace detail paper sheet tokens", () => {
   it("paints the paper card with a very light notebook wash on a cream desk", () => {
     expect(css).toMatch(
       new RegExp(
-        `--paper-sheet-bg:\\s*color-mix\\(\\s*in oklch,\\s*var\\(--notes-detail-tint,\\s*var\\(--color-we-got-soft\\)\\) ${NOTES_DETAIL_TINT_PERCENT}%,\\s*var\\(--color-we-got-soft`,
+        `--paper-sheet-bg:\\s*color-mix\\(\\s*in oklch,\\s*var\\(--notes-detail-tint,\\s*var\\(--workspace-surface\\)\\) ${NOTES_DETAIL_TINT_PERCENT}%,\\s*var\\(--workspace-surface`,
       ),
     );
     expect(css).not.toMatch(/--note-detail-sheet-shadow:/);

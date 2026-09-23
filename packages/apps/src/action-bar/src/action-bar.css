@@ -9,7 +9,7 @@
   border-color: var(--action-bar-border-color);
   background-color: var(
     --action-bar-bg,
-    var(--workspace-chrome-footer-bg, var(--color-we-got-soft))
+    var(--workspace-chrome-footer-bg, var(--workspace-surface, var(--color-we-got-soft)))
   );
 }
 

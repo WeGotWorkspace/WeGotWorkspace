@@ -39,7 +39,7 @@
     var(--notes-detail-accent) 32%,
     var(--color-we-got-dark)
   );
-  --workspace-chrome-footer-bg: var(--color-we-got-soft);
+  --workspace-chrome-footer-bg: var(--workspace-surface);
   --action-bar-bg: var(--workspace-chrome-footer-bg, var(--color-we-got-soft));
   /*
    * Detail desk: same cream as footer / action bar. The paper card is the
@@ -48,7 +48,7 @@
   --workspace-detail-bg: var(--workspace-chrome-footer-bg, var(--color-we-got-soft));
   --notes-detail-body-bg: var(--workspace-detail-bg);
   --color-emerald: var(--workspace-accent);
-  --workspace-root-bg: var(--color-we-got-soft);
+  --workspace-root-bg: var(--workspace-surface);
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
   --sidebar-logo-close-button-color: var(--color-we-got-dark);
@@ -122,8 +122,8 @@
   /* Very light notebook wash on cream — not the full `--notes-detail-tint`. */
   --paper-sheet-bg: color-mix(
     in oklch,
-    var(--notes-detail-tint, var(--color-we-got-soft)) 11%,
-    var(--color-we-got-soft)
+    var(--notes-detail-tint, var(--workspace-surface)) 11%,
+    var(--workspace-surface)
   );
   /* Title/body: warm charcoal — 85% ink into the sheet, not full ink or gray. */
   --notes-detail-contrast-fg: color-mix(
@@ -159,12 +159,12 @@
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 55%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 65%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
 }
 
@@ -354,7 +354,7 @@
  * — cream surface; height/radius come from the shared primitive.
  */
 .notes-workspace .action-bar .notes-notebook-select.color-swatch-trigger {
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
 }
 
 /*
@@ -371,12 +371,12 @@
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
 }
 

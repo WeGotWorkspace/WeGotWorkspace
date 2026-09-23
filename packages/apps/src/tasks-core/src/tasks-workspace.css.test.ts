@@ -141,13 +141,13 @@ describe("tasks workspace header and sidebar", () => {
       /\.tasks-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--workspace-accent\) 24%/,
     );
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-we-got-soft/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--workspace-surface/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--color-we-got-soft/,
+      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--workspace-surface/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--color-we-got-soft/,
+      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--workspace-surface/,
     );
     expect(css).toMatch(
       /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,

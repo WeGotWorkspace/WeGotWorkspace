@@ -82,13 +82,13 @@ describe("contacts workspace sidebar chrome", () => {
 
   it("brightens AppSidebar selected wash for purple via --app-sidebar-item-*", () => {
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-we-got-soft/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--workspace-surface/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--color-we-got-soft/,
+      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--workspace-surface/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--color-we-got-soft/,
+      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--workspace-surface/,
     );
     expect(css).toMatch(
       /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,
@@ -320,7 +320,7 @@ describe("contacts workspace sidebar chrome", () => {
     expect(addressBookSelect).toMatch(/ColorSwatchTrigger/);
     expect(addressBookSelect).not.toMatch(/onCreateAddressBook|__create_address_book__/);
     expect(css).toMatch(
-      /\.contacts-workspace \.action-bar \.contacts-address-book-select\.color-swatch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-soft/,
+      /\.contacts-workspace \.action-bar \.contacts-address-book-select\.color-swatch-trigger \{[\s\S]*background-color:\s*var\(--workspace-surface/,
     );
     expect(css).not.toMatch(
       /\.contacts-workspace \.action-bar \.contacts-address-book-select\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,

@@ -12,8 +12,8 @@
   --workspace-accent: var(--color-we-got-sky);
   --workspace-sidebar-mix: 10%;
   --color-emerald: var(--workspace-accent);
-  --workspace-root-bg: var(--color-we-got-soft);
-  --workspace-detail-bg: var(--color-we-got-soft);
+  --workspace-root-bg: var(--workspace-surface);
+  --workspace-detail-bg: var(--workspace-surface);
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
   --sidebar-logo-close-button-color: var(--color-we-got-dark);
@@ -63,12 +63,12 @@
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
 
   /*
@@ -81,17 +81,17 @@
   --app-sidebar-item-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 28%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
     var(--workspace-accent) 38%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 48%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-color: var(--color-we-got-dark);
 }
@@ -113,7 +113,7 @@
  * — cream surface; height/radius come from the shared primitive.
  */
 .contacts-workspace .action-bar .contacts-address-book-select.color-swatch-trigger {
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
 }
 
 .contacts-workspace .app-sidebar__scroll {
@@ -512,5 +512,5 @@
 
 .contacts-story-scope--detail {
   min-height: 100dvh;
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
 }

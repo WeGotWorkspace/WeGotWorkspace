@@ -18,8 +18,8 @@
   --calendar-muted: color-mix(in oklch, var(--color-we-got-dark) 80%, var(--color-we-got-soft));
 
   --color-emerald: var(--workspace-accent);
-  --workspace-root-bg: var(--color-we-got-soft);
-  --workspace-detail-bg: var(--color-we-got-soft);
+  --workspace-root-bg: var(--workspace-surface);
+  --workspace-detail-bg: var(--workspace-surface);
   /* Sticky cream: shared `ui/list-sticky-header-sst.css` (`--list-sticky-header-bg`, `--_lc-surface-bg`). */
 
   /* Alias for DocsCollabSidebarPanel wash consumers (invitations = sidebar tint). */
@@ -68,12 +68,12 @@
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
 
   /*
@@ -84,17 +84,17 @@
   --app-sidebar-item-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-color: var(--color-we-got-dark);
 
@@ -106,7 +106,7 @@
   --lc-higlight-color: var(--workspace-accent);
 
   /* Docs comments/review panel tokens reused by the invitations inbox. */
-  --docs-surface: var(--color-we-got-soft);
+  --docs-surface: var(--workspace-surface);
   --docs-text: var(--color-we-got-dark);
   --docs-muted: var(--calendar-muted);
   --docs-border: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
@@ -290,7 +290,7 @@
 .calendar-workspace .calendar-header-actions .calendar-view-select {
   width: auto;
   min-width: 7rem;
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
 }
 
 .calendar-workspace .calendar-sidebar-dot {

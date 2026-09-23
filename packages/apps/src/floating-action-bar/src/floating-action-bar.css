@@ -18,7 +18,7 @@
   bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
   border-radius: var(--control-radius-button-pill);
   color: var(--color-we-got-dark);
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface, var(--color-we-got-soft));
   border: 1px solid color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
   opacity: 1;
   transform: translate(-50%, 0);

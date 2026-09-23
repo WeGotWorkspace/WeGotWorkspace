@@ -48,12 +48,12 @@
   --menu-item-selected-background: color-mix(
     in oklab,
     var(--workspace-accent, var(--color-we-got-dark)) 18%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --menu-item-selected-hover-background: color-mix(
     in oklab,
     var(--workspace-accent, var(--color-we-got-dark)) 24%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
 }
 
@@ -92,12 +92,12 @@
   --button-outline-active-background: color-mix(
     in oklab,
     var(--workspace-accent, var(--color-we-got-dark)) 18%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
     var(--workspace-accent, var(--color-we-got-dark)) 24%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --button-outline-hover-color: var(
     --button-active-color,

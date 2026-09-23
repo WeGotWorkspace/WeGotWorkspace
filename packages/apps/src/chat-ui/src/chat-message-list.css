@@ -2,8 +2,8 @@
 
 .chat-message-list {
   @apply relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col;
-  --chat-list-surface: var(--color-we-got-soft);
-  --list-sticky-header-bg: var(--color-we-got-soft);
+  --chat-list-surface: var(--workspace-surface, var(--color-we-got-soft));
+  --list-sticky-header-bg: var(--workspace-surface, var(--color-we-got-soft));
   background-color: var(--chat-list-surface, var(--color-we-got-soft));
 }
 

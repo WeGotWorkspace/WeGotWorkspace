@@ -105,8 +105,8 @@ describe("docs workspace outline chrome", () => {
   });
 
   it("paints the editor desk sand cream — never pure white or cool gray wash", () => {
-    expect(css).toMatch(/\.docs-workspace \{[\s\S]*--docs-surface:\s*var\(--color-we-got-soft\)/);
-    expect(css).toMatch(/\.docs-workspace \{[\s\S]*--docs-canvas:\s*var\(--color-we-got-soft\)/);
+    expect(css).toMatch(/\.docs-workspace \{[\s\S]*--docs-surface:\s*var\(--workspace-surface\)/);
+    expect(css).toMatch(/\.docs-workspace \{[\s\S]*--docs-canvas:\s*var\(--workspace-surface\)/);
     expect(css).toMatch(/\.docs-workspace \{[\s\S]*--workspace-main-bg:\s*var\(--docs-surface\)/);
     expect(css).toMatch(
       /\.docs-workspace__editor \.text-editor:not\(\.text-editor--view-source\) \.text-editor-sheet--fill \{[\s\S]*background-color:\s*var\(--docs-canvas\)/,

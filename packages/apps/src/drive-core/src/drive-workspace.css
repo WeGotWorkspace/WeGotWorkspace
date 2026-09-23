@@ -45,7 +45,7 @@
   --docs-collab-sidebar-panel-wash: color-mix(
     in oklch,
     var(--workspace-accent) 10%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   /* Same flex-dock pattern as Calendar invitations / Docs review. */
   --drive-detail-column-width: 22rem;
@@ -66,27 +66,27 @@
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 55%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 65%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 42%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
     var(--workspace-accent) 55%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 65%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-color: var(--color-we-got-dark);
   /* Section titles on 32% lime→cream rail — slate muted fails AA; ink mix clears. */
@@ -141,7 +141,7 @@
 
 .drive-workspace .drive-main-pane {
   @apply flex min-h-0 flex-1 flex-col min-w-0 relative w-full;
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
 }
 
 .drive-workspace .drive-floating-upload {
@@ -163,7 +163,7 @@
   border-bottom: none;
   border-radius: var(--control-radius);
   padding: 0.875rem 1rem;
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
   box-shadow:
     0 4px 24px color-mix(in oklch, var(--color-we-got-dark) 16%, transparent),
     0 0 0 1px color-mix(in oklch, var(--color-we-got-dark) 8%, transparent);
@@ -194,7 +194,7 @@
 .drive-workspace .drive-main-pane__breadcrumbs {
   @apply px-4 md:px-6 shrink-0;
   padding-block: 1rem;
-  background-color: color-mix(in oklch, var(--workspace-accent) 7%, var(--color-we-got-soft));
+  background-color: color-mix(in oklch, var(--workspace-accent) 7%, var(--workspace-surface));
   border-bottom: 1px solid color-mix(in oklch, var(--workspace-accent) 12%, transparent);
   --path-breadcrumb-lead-color: var(--workspace-accent);
   --path-breadcrumb-lead-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);

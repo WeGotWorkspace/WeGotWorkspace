@@ -44,19 +44,19 @@ describe("mail workspace branding chrome", () => {
 
   it("keeps AA-tuned item washes and accent-strong header chrome", () => {
     expect(colorCss).toMatch(
-      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) var\(--workspace-sidebar-mix\),\s*var\(--color-we-got-soft\)/,
+      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) var\(--workspace-sidebar-mix\),\s*var\(--workspace-surface\)/,
     );
     expect(css).toMatch(
       /\.mail-workspace \{[\s\S]*--app-sidebar-color:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--color-we-got-soft/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--workspace-surface/,
     );
     expect(css).toMatch(
-      /\.mail-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--color-we-got-soft/,
+      /\.mail-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--workspace-surface/,
     );
     expect(css).toMatch(
-      /\.mail-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--color-we-got-soft/,
+      /\.mail-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--workspace-surface/,
     );
     expect(css).toMatch(
       /\.mail-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,

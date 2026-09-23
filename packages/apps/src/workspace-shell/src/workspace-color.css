@@ -12,8 +12,14 @@
  *
  * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark. Default item washes match AppSidebar (32 / 55 / 65). Admin and
  * Settings share a lighter Dark-accent ladder below; other products keep local overrides when AA needs them.
+ *
+ * Defaults use `:where` (zero specificity). Every product file imports this
+ * sheet, and the app loads every product, so a later copy of these rules used
+ * to reset earlier product overrides (sidebar mix, item washes, primary fg).
+ * Storybook loads one product, so the product file won there and the two
+ * surfaces diverged. Product class rules now win in both.
  */
-:is(
+:where(
   .admin-workspace,
   .settings-workspace,
   .notes-workspace,
@@ -36,6 +42,14 @@
   .meet-channel-dialog,
   .meet-call-dialog
 ) {
+  /*
+   * App paper is a softer OKLCH tint of Soft. Login, home, forgot-password,
+   * and the installer keep the primitive `--color-we-got-soft`.
+   */
+  --workspace-surface: color-mix(in oklch, var(--color-we-got-soft) 70%, #fff);
+  --workspace-root-bg: var(--workspace-surface);
+  --workspace-main-bg: var(--workspace-surface);
+  --workspace-detail-bg: var(--workspace-surface);
   --workspace-sidebar-mix: 12%;
 
   --workspace-accent-strong: color-mix(
@@ -47,7 +61,7 @@
   --app-sidebar-bg: color-mix(
     in oklch,
     var(--workspace-accent) var(--workspace-sidebar-mix),
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
@@ -55,17 +69,17 @@
   --app-sidebar-item-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
     var(--workspace-accent) 55%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 65%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-color: var(--color-we-got-dark);
 
@@ -77,34 +91,36 @@
  * Admin and Settings share Dark (`#003311`) on a 16% rail. The 32/55/65 ladder
  * above crosses a contrast dead zone on Soft cream: past ~45% neither ink nor
  * cream clears 4.5:1. This lighter ladder stays ink-safe and sits just above
- * the rail (hover 18 / selected 24 / selected-hover 32) so the wash reads.
- * Kept here so a later import of this sheet cannot split the two apps.
+ * the rail (hover 18 / selected 24 / selected-hover 32). It lives here because
+ * the product files do not redeclare it. Calendar keeps its own copy of the
+ * same numbers in `calendar-workspace.css`.
  */
 .admin-workspace,
 .settings-workspace {
   --app-sidebar-item-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-item-selected-color: var(--color-we-got-dark);
 }
 
 /**
- * Docs keeps a full-accent sidebar (not the cream-mix recipe above). Declared
- * here so a later import of this sheet cannot wipe `docs-workspace.css`.
+ * Docs dialogs do not repeat the full-accent rail. `.docs-workspace` owns
+ * those tokens in `docs-workspace.css` — do not add that class here. A class
+ * rule in this sheet is copied again after every product file, so it would
+ * beat the product file in the app while Storybook kept the product file.
  */
-.docs-workspace,
 .docs-dialog-surface {
   --app-sidebar-bg: #0045ff;
   --app-sidebar-color: #ffffff;

@@ -15,10 +15,10 @@
   /* Concrete blue so Storybook a11y never samples a missing accent as page gray. */
   --app-sidebar-bg: #0045ff;
   --color-emerald: var(--workspace-accent);
-  --docs-surface: var(--color-we-got-soft);
-  --background: var(--color-we-got-soft);
+  --docs-surface: var(--workspace-surface);
+  --background: var(--workspace-surface);
   /* Editor desk around the white letter — sand cream, never gray/white. */
-  --docs-canvas: var(--color-we-got-soft);
+  --docs-canvas: var(--workspace-surface);
   --workspace-root-bg: var(--docs-surface);
   --workspace-main-bg: var(--docs-surface);
   --workspace-chrome-footer-bg: var(--docs-surface);
@@ -57,7 +57,7 @@
   --docs-collab-sidebar-panel-wash: color-mix(
     in oklch,
     var(--workspace-accent) 10%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --app-sidebar-border-color: color-mix(in oklch, #ffffff 18%, transparent);
   --app-sidebar-color: #ffffff;
@@ -85,12 +85,12 @@
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24).
    * Nav item SST lives on `.app-sidebar__scroll` (black→sidebar, white on-color). */
@@ -148,12 +148,12 @@
   --button-outline-active-background: color-mix(
     in oklch,
     var(--workspace-accent) 18%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
   /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
 }
