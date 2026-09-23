@@ -38,7 +38,7 @@ function DocsImageFixtureEditor() {
 }
 
 const meta = {
-  title: "Shared/TextEditor/Docs image",
+  title: "Features/Docs/TextEditor/Docs image",
   component: DocsImageFixtureEditor,
   parameters: {
     layout: "fullscreen",

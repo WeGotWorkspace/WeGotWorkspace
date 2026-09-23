@@ -2,14 +2,14 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 
 const meta = {
-  title: "Shared/FileDropOverlay",
+  title: "UI/Patterns/File Drop Overlay",
   component: FileDropOverlay,
   tags: ["autodocs"],
   parameters: {
     layout: "fullscreen",
   },
   render: (args) => (
-    <div className="relative h-64 w-full bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+    <div className="relative h-64 w-full bg-[color-mix(in_oklab,var(--color-we-got-dark)_6%,transparent)]">
       <FileDropOverlay {...args} />
     </div>
   ),

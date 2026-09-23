@@ -221,9 +221,7 @@ describe("meetChannelCallHref", () => {
       guestRoomCode: ROOM,
     };
     expect(meetChannelCallRoom(meeting)).toBe(ROOM);
-    expect(meetChannelCallHref(meeting, ORIGIN)).toBe(
-      `${ORIGIN}/meet/meetings/01h455vb4pa9nnrjpznsav8hvb`,
-    );
+    expect(meetChannelCallHref(meeting, ORIGIN)).toBe(`${ORIGIN}/meet/meetings/${ROOM}`);
   });
 
   it("falls back to the channel id when a meeting has no guestRoomCode", () => {

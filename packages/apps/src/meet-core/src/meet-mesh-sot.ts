@@ -34,7 +34,10 @@ import {
   meetMeshReceiveChannelId,
 } from "@/meet-core/src/meet-mesh-message";
 import type { ChatMessage, MeetChannel, MeetChatOperations } from "@/meet-core/src/meet-types";
-import { presenceCallActiveEnvelope } from "@/presence-core/src/presence-envelope";
+import {
+  presenceCallActiveEnvelope,
+  presenceNotifyHintEnvelope,
+} from "@/presence-core/src/presence-envelope";
 import type { PresenceEnvelope, PresenceMeetFanoutEvent } from "@/presence-core/src/presence-types";
 
 export type MeetMeshApplyResult = "applied" | "dropped";
@@ -239,6 +242,7 @@ export function wrapMeetChatOperationsWithMesh(
             kind: "channel-message",
             message: meetMeshChatMessageFromApp(saved),
           });
+          send(saved.channelId, presenceNotifyHintEnvelope("chat.message_posted"));
           return saved;
         }
       : undefined,
@@ -250,6 +254,7 @@ export function wrapMeetChatOperationsWithMesh(
             kind: "channel-message",
             message: meetMeshChatMessageFromApp(saved),
           });
+          send(saved.channelId, presenceNotifyHintEnvelope("chat.message_posted"));
           return saved;
         }
       : undefined,

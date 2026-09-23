@@ -1,6 +1,3 @@
-<svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="512" height="512" fill="var(--wai-bg, #39d49b)"/>
-<path d="M364 112H148C136.954 112 128 120.954 128 132V380C128 391.046 136.954 400 148 400H364C375.046 400 384 391.046 384 380V132C384 120.954 375.046 112 364 112Z" fill="var(--wai-fg, #fef8ea)"/>
-<path d="M256 280C284.719 280 308 256.719 308 228C308 199.281 284.719 176 256 176C227.281 176 204 199.281 204 228C204 256.719 227.281 280 256 280Z" fill="var(--wai-cutout, #26a577)"/>
-<path d="M160 360C160 314.667 192 292 256 292C320 292 352 314.667 352 360H160Z" fill="var(--wai-cutout, #26a577)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 270" fill="none">
+<g clip-path="url(#a)"><rect width="270" height="270" fill="var(--wai-bg, #a3c4e8)"/><path fill="var(--wai-fg, #ffffff)" d="M45 201c0-24.853 20.147-45 45-45h89c24.853 0 45 20.147 45 45v64c0 24.853-20.147 45-45 45H90c-24.853 0-45-20.147-45-45z"/><circle cx="135" cy="90" r="45" fill="var(--wai-fg, #ffffff)"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h270v270H0z"/></clipPath></defs>
 </svg>

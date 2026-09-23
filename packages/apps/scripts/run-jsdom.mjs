@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Sequential jsdom Vitest shards. Each child is a fresh Node process so the
- * jsdom/Lit/TipTap/Yjs heap is reclaimed between batches.
+ * Jsdom Vitest shards. Each child is a fresh Node process so the
+ * jsdom/Lit/TipTap/Yjs heap is reclaimed when that process exits.
  *
  * Files are grouped by `src/<pkg>/` (sorted keys, sorted files). Package `p`
  * starts at shard `p % N`; its files go to `(p + idx) % N`. That spreads
@@ -12,6 +12,11 @@
  * `JSDOM_SHARDS` (default 24) is the growth lever — do not raise the heap.
  * Empty packed shards are skipped when the file count is smaller than N.
  *
+ * In CI, packed shards share a pool and solo files share a smaller one
+ * (`jsdom-concurrency.mjs`). Outside CI both stay at 1 unless
+ * `JSDOM_CONCURRENCY` / `JSDOM_SOLO_CONCURRENCY` is set. Solo files never
+ * share a pool with packed shards.
+ *
  * Child argv is `run --project jsdom --maxWorkers=1 <files…>` with no
  * standalone `--`. That token is for npm/pnpm script forwarding; Vitest may
  * treat it as a filter and run the whole suite (or nothing). Vitest 4.1.5
@@ -19,18 +24,22 @@
  *
  * Every shard runs even if an earlier one failed; the process prints a
  * done-gate-style ✓/✗ summary and exits non-zero if any shard failed.
- * `--with-unit` (used by `pnpm test`) runs unit first the same way.
+ * `--with-unit` (used by `pnpm test`) runs unit first, then the jsdom pools.
  *
  *   node scripts/run-jsdom.mjs
  *   node scripts/run-jsdom.mjs --with-unit
  *   JSDOM_SHARDS=32 node scripts/run-jsdom.mjs
+ *   JSDOM_CONCURRENCY=3 JSDOM_SOLO_CONCURRENCY=2 node scripts/run-jsdom.mjs
  *   node scripts/run-jsdom.mjs --list
  *   JSDOM_LIST=1 node scripts/run-jsdom.mjs
  */
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { readdirSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { isCiEnv, jsdomConcurrency } from "./jsdom-concurrency.mjs";
 
 const appsRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const srcRoot = path.join(appsRoot, "src");
@@ -90,7 +99,7 @@ function isSoloFile(relFile) {
 /**
  * @param {string[]} files
  * @param {number} shardCount
- * @returns {string[][]}
+ * @returns {{ packed: string[][], solo: string[][] }}
  */
 function assignShards(files, shardCount) {
   const solo = files.filter(isSoloFile).sort((a, b) => a.localeCompare(b));
@@ -119,7 +128,10 @@ function assignShards(files, shardCount) {
     });
   });
 
-  return [...packed.filter((shard) => shard.length > 0), ...solo.map((file) => [file])];
+  return {
+    packed: packed.filter((shard) => shard.length > 0),
+    solo: solo.map((file) => [file]),
+  };
 }
 
 /**
@@ -139,29 +151,119 @@ function domainMix(files) {
     .join(" ");
 }
 
+/** Serializes shard logs so parallel processes do not interleave mid-dump. */
+let outputChain = Promise.resolve();
+
+/**
+ * @param {string} text
+ * @returns {Promise<void>}
+ */
+function emitBlock(text) {
+  const run = outputChain.then(
+    () =>
+      new Promise((resolve, reject) => {
+        process.stdout.write(text, (err) => (err ? reject(err) : resolve()));
+      }),
+  );
+  outputChain = run.catch(() => {});
+  return run;
+}
+
 /**
  * @param {string} label
  * @param {string[]} args
- * @returns {{ label: string, ok: boolean, detail?: string }}
+ * @returns {Promise<{ label: string, ok: boolean, detail?: string }>}
  */
 function runVitest(label, args) {
-  process.stdout.write(`\n${"─".repeat(72)}\n${label}\n${"─".repeat(72)}\n\n`);
-  const result = spawnSync(vitestBin, args, {
-    cwd: appsRoot,
-    stdio: "inherit",
-    env: process.env,
+  return new Promise((resolve) => {
+    let settled = false;
+    /** @type {Buffer[]} */
+    const chunks = [];
+    const child = spawn(vitestBin, args, {
+      cwd: appsRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: process.env,
+    });
+
+    child.stdout?.on("data", (buf) => chunks.push(buf));
+    child.stderr?.on("data", (buf) => chunks.push(buf));
+
+    /**
+     * @param {{ label: string, ok: boolean, detail?: string }} result
+     */
+    const finish = (result) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      const body = Buffer.concat(chunks).toString("utf8");
+      const banner = `\n${"─".repeat(72)}\n${label}\n${"─".repeat(72)}\n\n`;
+      const text =
+        body.length === 0 ? banner : `${banner}${body.endsWith("\n") ? body : `${body}\n`}`;
+      emitBlock(text).then(
+        () => resolve(result),
+        (error) =>
+          resolve({
+            label,
+            ok: false,
+            detail: error instanceof Error ? error.message : String(error),
+          }),
+      );
+    };
+
+    child.on("error", (error) => {
+      finish({ label, ok: false, detail: error.message });
+    });
+
+    child.on("close", (status, signal) => {
+      const ok = status === 0 && !signal;
+      const detail = ok
+        ? undefined
+        : `exit ${status ?? "unknown"}${signal ? `, signal ${signal}` : ""}`;
+      finish({ label, ok, detail });
+    });
   });
-  const ok = result.status === 0 && !result.signal;
-  const detail = ok
-    ? undefined
-    : `exit ${result.status ?? "unknown"}${result.signal ? `, signal ${result.signal}` : ""}`;
-  if (!ok) {
-    process.stderr.write(`\n${label} failed (${detail})\n`);
-  }
-  return { label, ok, detail };
 }
 
-function main() {
+/**
+ * @param {Array<{ label: string, args: string[] }>} entries
+ * @param {number} concurrency
+ * @returns {Promise<Array<{ label: string, ok: boolean, detail?: string }>>}
+ */
+async function runPool(entries, concurrency) {
+  /** @type {Array<{ label: string, ok: boolean, detail?: string }>} */
+  const results = new Array(entries.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(concurrency, entries.length) }, async () => {
+    while (cursor < entries.length) {
+      const index = cursor;
+      cursor += 1;
+      const entry = entries[index];
+      process.stdout.write(`→ ${entry.label}\n`);
+      results[index] = await runVitest(entry.label, entry.args);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+/**
+ * @param {string[][]} shards
+ * @param {number} offset
+ * @param {number} totalShards
+ * @returns {Array<{ label: string, args: string[] }>}
+ */
+function shardEntries(shards, offset, totalShards) {
+  return shards.map((shardFiles, index) => {
+    const label = `jsdom shard ${offset + index + 1}/${totalShards} (${shardFiles.length} files) ${domainMix(shardFiles)}`;
+    return {
+      label,
+      args: ["run", "--project", "jsdom", "--maxWorkers=1", ...shardFiles],
+    };
+  });
+}
+
+async function main() {
   const listOnly =
     process.argv.includes("--list") ||
     process.argv.includes("--print") ||
@@ -170,7 +272,8 @@ function main() {
   const withUnit = process.argv.includes("--with-unit");
   const shardCount = parseShardCount(process.env.JSDOM_SHARDS);
   const files = walkTestFiles(srcRoot);
-  const shards = assignShards(files, shardCount);
+  const { packed, solo } = assignShards(files, shardCount);
+  const shards = [...packed, ...solo];
   const totalShards = shards.length;
 
   if (listOnly) {
@@ -188,30 +291,44 @@ function main() {
     return;
   }
 
+  const limits = jsdomConcurrency({
+    ci: isCiEnv(process.env.CI),
+    cpus: os.cpus().length,
+    totalMemBytes: os.totalmem(),
+    packedOverride: process.env.JSDOM_CONCURRENCY,
+    soloOverride: process.env.JSDOM_SOLO_CONCURRENCY,
+  });
+  process.stdout.write(
+    `jsdom concurrency: packed ×${limits.packed}, solo ×${limits.solo} (${isCiEnv(process.env.CI) ? "CI" : "local"})\n`,
+  );
+
   /** @type {Array<{ label: string, ok: boolean, detail?: string }>} */
   const results = [];
 
   if (withUnit) {
-    results.push(runVitest("Vitest (unit)", ["run", "--project", "unit"]));
+    results.push(await runVitest("Vitest (unit)", ["run", "--project", "unit"]));
   }
 
-  for (let i = 0; i < shards.length; i += 1) {
-    const shardFiles = shards[i];
-    const label = `jsdom shard ${i + 1}/${totalShards} (${shardFiles.length} files) ${domainMix(shardFiles)}`;
-    results.push(runVitest(label, ["run", "--project", "jsdom", "--maxWorkers=1", ...shardFiles]));
-  }
+  results.push(...(await runPool(shardEntries(packed, 0, totalShards), limits.packed)));
+  results.push(...(await runPool(shardEntries(solo, packed.length, totalShards), limits.solo)));
 
   const passed = results.every((row) => row.ok);
-  process.stdout.write(`\n${"═".repeat(72)}\n`);
-  process.stdout.write(passed ? "JSDOM SHARDS: PASSED\n" : "JSDOM SHARDS: FAILED\n");
-  process.stdout.write(`${"═".repeat(72)}\n`);
+  const lines = [
+    `\n${"═".repeat(72)}\n`,
+    passed ? "JSDOM SHARDS: PASSED\n" : "JSDOM SHARDS: FAILED\n",
+    `${"═".repeat(72)}\n`,
+  ];
   for (const row of results) {
     const mark = row.ok ? "✓" : "✗";
     const detail = row.detail ? ` — ${row.detail}` : "";
-    process.stdout.write(`  ${mark} ${row.label}${detail}\n`);
+    lines.push(`  ${mark} ${row.label}${detail}\n`);
   }
-  process.stdout.write("\n");
+  lines.push("\n");
+  await emitBlock(lines.join(""));
   process.exit(passed ? 0 : 1);
 }
 
-main();
+main().catch((error) => {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.exit(1);
+});

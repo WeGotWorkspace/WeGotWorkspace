@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ChevronLeft, ChevronRight, Inbox, PenSquare, Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
+import { NotificationsInboxValueProvider } from "@/notifications-core/src/notifications-inbox-context";
 import { ViewHeader } from "@/view-header/src/view-header";
 import "./view-header.stories.css";
 
 const meta: Meta<typeof ViewHeader> = {
-  title: "Shared/View Header",
+  title: "UI/Patterns/View Header",
   component: ViewHeader,
   decorators: [
     (Story) => (
@@ -80,6 +81,34 @@ export const WithoutSidebarToggle: Story = {
   args: {
     title: "New message",
     hideSidebarToggle: true,
+  },
+};
+
+/** Closed rail/hamburger shows an unread presence dot; numeric count stays on the bell. */
+export const ClosedSidebarUnread: Story = {
+  decorators: [
+    (Story) => (
+      <NotificationsInboxValueProvider
+        value={{
+          items: [],
+          unreadCount: 3,
+          onOpenItem: () => undefined,
+          onMarkAllRead: () => undefined,
+          markReadWhere: async () => undefined,
+          onEnablePush: () => undefined,
+          pushEnabled: true,
+          soundMuted: false,
+          onToggleSoundMute: () => undefined,
+          unreadArrivalNonce: 0,
+        }}
+      >
+        <Story />
+      </NotificationsInboxValueProvider>
+    ),
+  ],
+  args: {
+    ...Default.args,
+    sidebarOpen: false,
   },
 };
 

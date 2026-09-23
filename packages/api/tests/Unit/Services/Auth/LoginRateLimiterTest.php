@@ -58,6 +58,17 @@ final class LoginRateLimiterTest extends TestCase
         $this->assertTrue($limiter->allow('alice', '203.0.113.1'));
     }
 
+    public function test_skips_limits_when_app_env_is_local(): void
+    {
+        $this->app['env'] = 'local';
+
+        $limiter = $this->app->make(LoginRateLimiter::class);
+
+        for ($i = 0; $i < 20; $i++) {
+            $this->assertTrue($limiter->allow('alice', '203.0.113.1'));
+        }
+    }
+
     public function test_respects_disable_env_flag(): void
     {
         putenv('WGW_DISABLE_LOGIN_THROTTLE=1');

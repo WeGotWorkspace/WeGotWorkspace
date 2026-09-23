@@ -14,7 +14,7 @@ import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import { meetChannelIdForRoom } from "@/meet-core/src/meet-channel-room";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { meetChannelIdsEqual, meetCollectionIdFromPublic } from "@/meet-core/src/meet-public-id";
-import { buildMeetMeetingInviteLink } from "@/meet-core/src/meet-route-search";
+import { buildMeetCollectionInviteLink } from "@/meet-core/src/meet-route-search";
 import type { MeetChannel } from "@/meet-core/src/meet-types";
 
 /** Instant Meet creates use 30 minutes, not the calendar editor's 60-minute default. */
@@ -489,12 +489,23 @@ export function seedEditMeetingForm(input: {
   leftover?: Pick<MeetUpcomingMeeting, "title" | "href"> | null;
 }): CalendarEventFormValue {
   const channelUrl = input.channel
-    ? buildMeetMeetingInviteLink(input.channel.id, input.workspaceOrigin)
+    ? buildMeetCollectionInviteLink(
+        {
+          id: input.channel.id,
+          kind: "meeting",
+          guestRoomCode: input.channel.guestRoomCode,
+        },
+        input.workspaceOrigin,
+      )
     : "";
   if (input.event) {
     const form = calendarEventToForm(input.event);
-    const meetingUrl = form.meetingUrl.trim() || channelUrl || input.leftover?.href.trim() || "";
     const room = input.channel?.guestRoomCode?.trim();
+    const meetingUrl =
+      (room ? channelUrl : form.meetingUrl.trim()) ||
+      channelUrl ||
+      input.leftover?.href.trim() ||
+      "";
     return {
       ...form,
       calendarId: form.calendarId || input.calendarId,

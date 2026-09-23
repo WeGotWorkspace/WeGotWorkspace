@@ -1,0 +1,35 @@
+/*
+ * Storybook-only. Chromatic pauses CSS animations, and Radix menus and
+ * dialogs wait for animationend before they unmount. A paused exit animation
+ * leaves the layer mounted and aria-hides the rest of the page, so the next
+ * play step cannot find the trigger. `animation: none` makes Presence skip
+ * that wait in Chromatic capture and local Vitest.
+ *
+ * Do NOT apply universally — that kills interactive Storybook transitions
+ * (e.g. installer engine-panel). Scope to:
+ * - `body.isChromatic` — added by Chromatic during capture (Capture 8+)
+ * - `html[data-chromatic-reduced-motion]` — set by preview.ts for Storybook
+ *   Vitest and Chromatic UA (play runs before body.isChromatic may exist)
+ * - `@media (prefers-reduced-motion: reduce)` — Chromatic sets this via
+ *   parameters.chromatic.prefersReducedMotion; also honors OS preference
+ */
+body.isChromatic *,
+body.isChromatic *::before,
+body.isChromatic *::after,
+html[data-chromatic-reduced-motion] *,
+html[data-chromatic-reduced-motion] *::before,
+html[data-chromatic-reduced-motion] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

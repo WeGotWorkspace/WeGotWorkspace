@@ -3,7 +3,6 @@ import { DoorOpen, Hand, Mic, MicOff, Video, VideoOff } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
-import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { MeetCircleToggle } from "@/meet-core/src/meet-circle-toggle";
 import { MeetDeviceForm } from "@/meet-core/src/meet-device-form";
 import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
@@ -26,7 +25,6 @@ export type MeetGuestLobbyProps = MeetLobbyPaneProps & {
 
 export function MeetGuestLobby({
   controller,
-  displayName,
   hasSignedInIdentity,
   invitedRoom,
   waitingForAdmission,
@@ -106,7 +104,12 @@ export function MeetGuestLobby({
     );
   }
 
+  const hasDisplayName = controller.displayName.trim().length > 0;
+  const knockDisabled =
+    waitingForAdmission || !hasDisplayName || (!hasSignedInIdentity && !invitedRoom);
+
   const join = () => {
+    if (!hasDisplayName) return;
     if (invitedRoom) {
       void (canStartReservedRoom
         ? controller.joinRoom(invitedRoom)
@@ -146,17 +149,7 @@ export function MeetGuestLobby({
                 playsInline
                 className="meet-workspace__preview-video"
               />
-            ) : (
-              <div className="meet-guest-lobby__preview-idle">
-                <UserAvatar
-                  displayName={displayName}
-                  compact
-                  size="2xl"
-                  color={avatarColorForUserId(displayName)}
-                />
-                <p className="meet-guest-lobby__camera-off">{meetLabels.cameraOff}</p>
-              </div>
-            )}
+            ) : null}
             <div className="meet-workspace__preview-controls meet-guest-lobby__preview-controls">
               <MeetCircleToggle
                 on={controller.micOn}
@@ -212,6 +205,8 @@ export function MeetGuestLobby({
                 }}
                 disabled={displayNameLocked}
                 readOnly={displayNameLocked}
+                required
+                aria-required="true"
                 className="meet-workspace__display-name-input"
               />
             </FieldLabelRow>
@@ -226,7 +221,7 @@ export function MeetGuestLobby({
                 ? "meet-guest-lobby__knock meet-guest-lobby__knock--waiting"
                 : "meet-guest-lobby__knock"
             }
-            disabled={waitingForAdmission || (!hasSignedInIdentity && !invitedRoom)}
+            disabled={knockDisabled}
             aria-busy={waitingForAdmission || undefined}
           />
           <div className="meet-guest-lobby__after-knock">

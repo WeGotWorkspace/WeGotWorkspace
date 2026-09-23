@@ -6721,6 +6721,230 @@ export interface paths {
         };
         trace?: never;
     };
+    "/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List inbox notifications */
+        get: {
+            parameters: {
+                query?: {
+                    unread?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Inbox rows for the signed-in principal */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationListResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/{id}/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a notification as read */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Updated notification */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notification"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/{id}/local-ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ack local Notification API delivery (skip VAPID fallback) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Local delivery acknowledged */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationOkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/push/vapid-public-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Install-scoped VAPID public key */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description VAPID public key */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VapidPublicKeyResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/push/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Subscribe this device to Web Push */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PushSubscriptionCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description Subscription stored */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PushSubscriptionResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        /** Unsubscribe this device from Web Push */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PushUnsubscribeRequest"];
+                };
+            };
+            responses: {
+                /** @description Subscription removed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -10394,6 +10618,8 @@ export interface components {
             groupSlug?: string | null;
             /** @description Optional client-suggested channel id (uri slug). */
             id?: components["schemas"]["JmapId"];
+            /** @description Meeting kind only: persist the reserved ad-hoc room code shown at create time. Never rewritten to the collection slug. */
+            guestRoomCode?: string | null;
         };
         ChatChannelPatch: {
             name?: string;
@@ -10457,6 +10683,8 @@ export interface components {
             body: string;
             /** @description Thread parent message id. */
             parentId?: string | null;
+            /** @description Validated @principals to persist and notify ( ∩ channel roster; unknown tokens ignored). */
+            mentions?: components["schemas"]["ChatMention"][];
         };
         ChatMessagePatch: {
             /** @description Author-only body edit — bumps SEQUENCE server-side. */
@@ -10588,6 +10816,55 @@ export interface components {
             updated: string[];
             destroyed: string[];
             hasMoreChanges: boolean;
+        };
+        Notification: {
+            id: string;
+            eventId: string;
+            domain: string;
+            action: string;
+            /** @description Structured notification facts (actor, path, snippet, start/end, …). When present, clients format title/body; API title/body are also formatted at read time. */
+            data?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Display title (formatted from data when present). */
+            title: string;
+            /** @description Display body (formatted from data when present). */
+            body?: string | null;
+            /** @description In-app path (allowlisted SPA prefix). */
+            navigate: string;
+            tag?: string | null;
+            /** Format: date-time */
+            readAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NotificationListResponse: {
+            list: components["schemas"]["Notification"][];
+            unreadCount: number;
+        };
+        NotificationOkResponse: {
+            /** @constant */
+            ok: true;
+        };
+        VapidPublicKeyResponse: {
+            /** @description URL-safe base64 VAPID public key for pushManager.subscribe. */
+            publicKey: string;
+        };
+        PushSubscriptionCreateRequest: {
+            /** Format: uri */
+            endpoint: string;
+            keys: {
+                p256dh: string;
+                auth: string;
+            };
+        };
+        PushSubscriptionResponse: {
+            id: string;
+            endpoint: string;
+        };
+        PushUnsubscribeRequest: {
+            /** Format: uri */
+            endpoint: string;
         };
     };
     responses: {

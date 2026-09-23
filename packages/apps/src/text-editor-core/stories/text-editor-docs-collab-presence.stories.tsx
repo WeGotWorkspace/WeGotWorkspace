@@ -3,7 +3,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { DocsCollabPresence } from "@/text-editor-core/docs-collab/docs-collab-presence";
 
 const meta = {
-  title: "Shared/TextEditor/Docs collab/Presence",
+  title: "Features/Docs/TextEditor/Docs collab/Presence",
   component: DocsCollabPresence,
   parameters: {
     layout: "centered",

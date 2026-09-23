@@ -10,24 +10,26 @@
  * `.calendar-dialog-surface` keep Button / form chrome aligned with the shell.
  */
 .calendar-dialog-surface .share-access-card {
-  --share-dialog-accent: var(--calendar-accent);
+  --share-dialog-accent: var(--workspace-accent);
 }
 
 .calendar-dialog-surface {
-  --calendar-accent: #6366f1;
-  --calendar-accent-strong: #5558e8;
-  --workspace-accent: var(--calendar-accent);
-  --workspace-accent-strong: var(--calendar-accent-strong);
-  --color-emerald: var(--calendar-accent);
-  --button-primary-bg: var(--calendar-accent-strong);
-  --button-primary-fg: #ffffff;
-  --primary: var(--calendar-accent-strong);
-  --primary-foreground: #ffffff;
-  --button-active-color: var(--calendar-accent-strong);
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
-  --card-title-icon-color: var(--calendar-accent);
-  --card-panel-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --card-row-hover-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
+  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent-strong: color-mix(
+    in oklch,
+    var(--workspace-accent) 32%,
+    var(--color-we-got-dark)
+  );
+  --color-emerald: var(--workspace-accent);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  --primary: var(--workspace-accent);
+  --primary-foreground: var(--color-we-got-dark);
+  --button-active-color: var(--workspace-accent-strong);
+  --field-label-color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
+  --card-title-icon-color: var(--workspace-accent);
+  --card-panel-border-color: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
+  --card-row-hover-bg: color-mix(in oklab, var(--color-we-got-dark) 5%, transparent);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   /* Desktop New event Dialog only — matches Dialog max-w-lg (~32rem). Editable
    * details popover keeps its own narrower token in details-popover.css. */
@@ -45,8 +47,7 @@
  * cap so tall event forms can use the shared mobile max-height.
  */
 @media (max-width: 767px) {
-  .ui-modal-surface.calendar-dialog-surface.calendar-event-dialog,
-  .ui-modal-surface.calendar-dialog-surface.calendar-event-details-popover--dialog {
+  .ui-modal-surface.calendar-dialog-surface.calendar-event-dialog {
     height: auto;
     max-height: min(
       var(--modal-max-height, 100dvh),
@@ -62,8 +63,7 @@
     );
   }
 
-  .calendar-dialog-surface.calendar-event-dialog > .ui-modal-header,
-  .calendar-dialog-surface.calendar-event-details-popover--dialog > .ui-modal-header {
+  .calendar-dialog-surface.calendar-event-dialog > .ui-modal-header {
     @apply shrink-0;
   }
 
@@ -272,8 +272,8 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet {
-  --meet-accent: #2a1644;
-  --card-title-icon-color: var(--meet-accent);
+  --workspace-accent: var(--color-we-got-sand);
+  --card-title-icon-color: var(--workspace-accent);
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet-row {
@@ -405,7 +405,7 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__recurrence-count-suffix {
-  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
   font-size: 0.875rem;
 }
 

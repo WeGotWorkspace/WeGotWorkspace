@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 
 const meta = {
-  title: "Shared/Loading Spinner",
+  title: "UI/Primitives/Loading Spinner",
   component: LoadingSpinner,
   tags: ["vitest-ci"],
   parameters: { layout: "padded" },

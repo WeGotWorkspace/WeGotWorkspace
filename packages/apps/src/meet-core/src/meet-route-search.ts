@@ -120,10 +120,14 @@ export function buildMeetMeetingInviteLink(
 
 /** Channel vs meeting path from collection kind. */
 export function buildMeetCollectionInviteLink(
-  channel: { id: string; kind?: string | null },
+  channel: { id: string; kind?: string | null; guestRoomCode?: string | null },
   origin = "https://workspace.example.com",
 ): string {
   if (channel.kind === "meeting") {
+    const room = channel.guestRoomCode?.trim();
+    if (room && isMeetRoomCode(room)) {
+      return buildMeetGuestCallLink(room, origin);
+    }
     return buildMeetMeetingInviteLink(channel.id, origin);
   }
   return buildMeetChannelInviteLink(channel.id, origin);

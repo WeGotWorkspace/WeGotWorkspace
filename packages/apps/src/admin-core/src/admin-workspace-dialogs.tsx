@@ -199,7 +199,7 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
         <div className="space-y-3">
           <FormField label="New password">
             <Input
-              type="password"
+              variant="password"
               size="sm"
               value={password}
               onChange={(event) => setPassword(event.currentTarget.value)}
@@ -207,7 +207,7 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
           </FormField>
           <FormField label="Confirm password">
             <Input
-              type="password"
+              variant="password"
               size="sm"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.currentTarget.value)}

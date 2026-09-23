@@ -8,7 +8,7 @@ import "@/docs-core/src/docs-workspace.css";
 const mockShareOperations = createMockDriveShareOperations();
 
 const meta: Meta<typeof DocsWorkspace> = {
-  title: "Apps/Docs",
+  title: "Features/Docs",
   component: DocsWorkspace,
   tags: ["autodocs"],
   parameters: {
@@ -20,20 +20,8 @@ export default meta;
 type Story = StoryObj<typeof DocsWorkspace>;
 
 const bootstrap = createDocsAppBootstrap();
-const mockDocument = bootstrap.data.document!;
-const mockOperations = createMockDocsOperations();
 
-export const Default: Story = {
-  args: {
-    ...bootstrap,
-    filePath: mockDocument.apiPath,
-    operations: mockOperations,
-    shareOperations: mockShareOperations,
-    onFileRenamed: () => {},
-    onLogout: () => {},
-  },
-};
-
+/** Chrome Default lives under Themes/Docs — empty editor state. */
 export const Empty: Story = {
   name: "No document",
   args: {

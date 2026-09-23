@@ -59,7 +59,8 @@ export function TextEditorSheet({
       />
       {overlay}
       {slashMenu ? <TextEditorSlashMenu editor={editor} onInsertImage={onInsertImage} /> : null}
-      <TextEditorTableControls editor={editor} />
+      {/* Table chrome is letter-sheet only — skip for inline chat/message editors. */}
+      {variant === "sheet" ? <TextEditorTableControls editor={editor} /> : null}
     </div>
   );
 }

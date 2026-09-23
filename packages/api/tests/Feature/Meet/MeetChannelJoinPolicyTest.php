@@ -133,6 +133,22 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
             ->assertStatus(403)->assertJsonPath('error', 'knock_required');
     }
 
+    public function test_persisted_ad_hoc_guest_room_code_uses_meeting_acl(): void
+    {
+        $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Standup',
+            'kind' => 'meeting',
+            'guestRoomCode' => 'g744-8kfg-adjz',
+        ])->assertCreated()->assertJsonPath('guestRoomCode', 'g744-8kfg-adjz');
+
+        $this->join('alice', 'g744-8kfg-adjz', 'peer-alice', 'Alice')->assertOk();
+        $this->join('carol', 'g744-8kfg-adjz', 'peer-carol', 'Carol')
+            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+        $this->guestJoin('g744-8kfg-adjz', 'peer-guest', self::KNOCK_PREFIX.'Visitor')->assertOk();
+        $this->guestJoin('g744-8kfg-adjz', 'peer-walkin', 'Visitor')
+            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+    }
+
     public function test_meeting_room_code_resolves_to_the_channel_acl(): void
     {
         $meetingId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [

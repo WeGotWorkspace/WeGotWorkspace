@@ -8,6 +8,7 @@ use App\Services\Installer\DevCalendarEventCatalog;
 use App\Services\Installer\DevCalendarEventSeeder;
 use App\Services\Installer\DevInstallBootstrap;
 use App\Services\Installer\InstallerJwtKeyGenerator;
+use App\Services\Installer\InstallerVapidKeyGenerator;
 use App\Services\Installer\ProductionInstallBootstrap;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
@@ -16,6 +17,8 @@ use App\Services\Jmap\FileNodes\FileNodeIndexService as JmapFileNodeIndexService
 use App\Services\Meet\MeetReservationService;
 use App\Services\Notes\EventCalendarJournalStripper;
 use App\Services\Notes\NotesFileMigrator;
+use App\Services\Notify\AlertDueScheduler;
+use App\Services\Notify\VapidPushService;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use Illuminate\Foundation\Inspiring;
@@ -262,3 +265,24 @@ Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobGarbageCollector $collec
 
     return self::SUCCESS;
 })->purpose('Delete expired, unreferenced JMAP envelope blobs (domain references are never collected)');
+
+Artisan::command('wgw:notify:due-alarms', function (AlertDueScheduler $scheduler): int {
+    $fired = $scheduler->scan();
+    $this->info(sprintf('Dispatched %d due alert event(s).', $fired));
+
+    return self::SUCCESS;
+})->purpose('Scan VALARM display alarms that are due and fire WorkspaceEvents (idempotent)');
+
+Artisan::command('wgw:notify:vapid-sweep', function (VapidPushService $push): int {
+    $sent = $push->sweepDue();
+    $this->info(sprintf('Swept VAPID fallback; sent %d payload(s).', $sent));
+
+    return self::SUCCESS;
+})->purpose('Send Web Push for local deliveries that were not acked in the 20s local-ack window');
+
+Artisan::command('wgw:vapid-keys', function (InstallerVapidKeyGenerator $vapid): int {
+    $vapid->ensureKeys();
+    $this->info('VAPID keys are ready under the install data directory (wgw-content/keys/).');
+
+    return self::SUCCESS;
+})->purpose('Create VAPID keys for Web Push when missing (idempotent)');

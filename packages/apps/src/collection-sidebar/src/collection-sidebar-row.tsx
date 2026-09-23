@@ -31,13 +31,13 @@ export type CollectionSidebarRowProps = {
   onSelect?: () => void;
   onEdit?: () => void;
   editLabel?: string;
-  /** Leading mark inside the select control (e.g. a group icon). */
+  /** Leading mark in the shared leading column (e.g. a group icon). */
   leading?: ReactNode;
   badges?: ReactNode;
   trailing?: ReactNode;
-  /** Indent under a parent collection (contacts groups under a book). */
+  /** Child under a parent collection (e.g. contacts group under a book). No extra indent. */
   nested?: boolean;
-  /** Parent of the active nested row — related wash, not selected. */
+  /** Parent of the active nested row — lighter accent wash, not selected. */
   related?: boolean;
   /** Fold state when {@link onToggleExpand} is set. Default expanded. */
   expanded?: boolean;
@@ -113,6 +113,8 @@ export function CollectionSidebarRow({
   rootProps,
 }: CollectionSidebarRowProps) {
   const blocks = rowBlocks(blockName);
+  const showColorDotLeading = showColorDot && !onToggleVisibility;
+  const hasLeading = Boolean(onToggleVisibility || leading || showColorDotLeading);
   return (
     <li
       {...rootProps}
@@ -126,30 +128,37 @@ export function CollectionSidebarRow({
       )}
       style={
         {
-          "--collection-row-color": color || "var(--color-ink)",
-          "--calendar-row-color": color || "var(--color-ink)",
+          "--collection-row-color": color || "var(--color-we-got-dark)",
+          "--calendar-row-color": color || "var(--color-we-got-dark)",
           ...rootProps?.style,
         } as CSSProperties
       }
     >
-      {onToggleVisibility ? (
-        <Checkbox
-          checked={visible}
-          aria-label={`${visible ? "Hide" : "Show"} ${name}`}
-          className={bem(blocks, "__visibility")}
-          onCheckedChange={() => onToggleVisibility()}
-          onClick={(event) => event.stopPropagation()}
-        />
+      {/* Fixed-width leading column (checkbox / icon / color-dot) so labels share one x. */}
+      {hasLeading ? (
+        <span className={bem(blocks, "__leading")}>
+          {onToggleVisibility ? (
+            <Checkbox
+              checked={visible}
+              aria-label={`${visible ? "Hide" : "Show"} ${name}`}
+              className={bem(blocks, "__visibility")}
+              onCheckedChange={() => onToggleVisibility()}
+              onClick={(event) => event.stopPropagation()}
+            />
+          ) : null}
+          {showColorDotLeading ? <span className={bem(blocks, "__dot")} aria-hidden /> : null}
+          {leading ? (
+            <span
+              className={bem(blocks, "__leading-mark")}
+              aria-hidden
+              onClick={stopIfNestedControl}
+            >
+              {leading}
+            </span>
+          ) : null}
+        </span>
       ) : null}
       <button type="button" className={bem(blocks, "__select")} onClick={() => onSelect?.()}>
-        {showColorDot && !onToggleVisibility ? (
-          <span className={bem(blocks, "__dot")} aria-hidden />
-        ) : null}
-        {leading ? (
-          <span className={bem(blocks, "__leading")} aria-hidden onClick={stopIfNestedControl}>
-            {leading}
-          </span>
-        ) : null}
         <span className={bem(blocks, "__title")}>
           <span className={bem(blocks, "__name")}>{name}</span>
           {badges}

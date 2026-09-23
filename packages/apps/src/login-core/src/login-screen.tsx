@@ -105,10 +105,7 @@ export function LoginScreen({
   const oauthConnect = isWgwOAuthAuthorizeReturnPath(resolvedReturnPath);
 
   return (
-    <AuthenticationPage
-      title="Welcome back."
-      eyebrow={oauthConnect ? "Connect assistant" : undefined}
-    >
+    <AuthenticationPage title={oauthConnect ? "Connect Assistant" : "Welcome back."}>
       {errorMessage ? (
         <p className="login-screen__error" role="alert">
           {errorMessage}
@@ -135,7 +132,7 @@ export function LoginScreen({
           <Input
             id="password"
             name="password"
-            type="password"
+            variant="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="current-password"

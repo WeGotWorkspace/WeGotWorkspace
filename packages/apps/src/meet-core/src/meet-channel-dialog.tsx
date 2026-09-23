@@ -154,7 +154,10 @@ export function MeetChannelDialog({
     typeof window !== "undefined" ? window.location.origin : "https://workspace.example.com";
   const guestLink =
     dialog?.mode === "edit"
-      ? buildMeetCollectionInviteLink({ id: dialog.channelId, kind }, workspaceOrigin)
+      ? buildMeetCollectionInviteLink(
+          { id: dialog.channelId, kind, guestRoomCode: dialog.guestRoomCode },
+          workspaceOrigin,
+        )
       : "";
 
   useEffect(() => {

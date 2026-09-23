@@ -129,6 +129,8 @@ describe("ContactsSidebarBookRows", () => {
     expect(screen.getByRole("button", { name: "Collapse Alice" })).toBeTruthy();
     const personal = screen.getByText("Personal").closest(".collection-sidebar-row");
     expect(personal?.className).toMatch(/collection-sidebar-row--related/);
+    const friends = screen.getByText("Friends").closest(".collection-sidebar-row");
+    expect(friends?.className).not.toMatch(/collection-sidebar-row--nested/);
     fireEvent.click(screen.getByRole("button", { name: "Collapse Personal" }));
     expect(screen.queryByRole("button", { name: "Friends" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Expand Personal" }));

@@ -5,7 +5,7 @@
      * use the login shell navy (--workspace-home-bg), not the cream page tint.
      */
     :root {
-        --color-ink: #042a22;
+        --color-ink: #003311;
         --color-cream: #ffffff;
         --workspace-home-bg: #1b1d3a;
         --settings-accent: var(--workspace-home-bg);

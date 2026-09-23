@@ -29,7 +29,7 @@ Do not duplicate full app routing inside every story unless testing routing beha
 Prefer fixtures from `@/lib/api/mock/`:
 
 - `createSettingsAppBootstrap`, `createMailAppBootstrap`, `createDriveAppBootstrap`, …
-- `createMockDocsOperations`, `createInstallAppBootstrap`, etc.
+- `createMockDocsOperations`, `createInstallerAppBootstrap`, etc.
 
 Stories must not import `@/lib/api/wgw/http` for data loading. See [offline-first.md](offline-first.md).
 

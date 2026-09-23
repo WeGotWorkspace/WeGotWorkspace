@@ -27,7 +27,7 @@ import {
   validateMeetRouteSearch,
 } from "@/meet-core/src/meet-route-search";
 import { MEET_MEETINGS_ROUTE, meetIsAdHocMeetingId } from "@/meet-core/src/meet-chat-route";
-import { InstallApp } from "@/install-core/src/install-app";
+import { InstallerApp } from "@/installer-core/src/installer-app";
 import { MailApp } from "@/mail-core/src/mail-app";
 import { MeetChatApp } from "@/meet-core/src/meet-chat-app";
 import { MeetInviteGate, MeetChannelDeepLinkGate } from "@/meet-core/src/meet-invite-gate";
@@ -35,12 +35,13 @@ import type { MeetChatRouteParams } from "@/meet-core/src/meet-chat-route";
 import { NotesApp } from "@/notes-core/src/notes-app";
 import { createDefaultTasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksApp } from "@/tasks-core/src/tasks-app";
+import { validateTasksRouteSearch } from "@/tasks-core/src/tasks-route-search";
 import { SettingsApp } from "@/settings-core/src/settings-app";
 import { useSettingsRouteSync } from "@/settings-core/src/use-settings-route-sync";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
-import { createInstallWorkspaceStoryArgs } from "@/lib/api/mock/install-bootstrap";
+import { createInstallerWorkspaceStoryArgs } from "@/lib/api/mock/installer-bootstrap";
 import { createMailAppBootstrap } from "@/lib/api/mock/mail-bootstrap";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { createDocsAppBootstrap } from "@/lib/api/mock/docs-bootstrap";
@@ -51,7 +52,7 @@ import { folderTokenFromMailboxLabel } from "@/lib/mail/folder-token";
 import { AdminWorkspace } from "@/admin-core/src/admin-workspace";
 import { ContactsWorkspace } from "@/contacts-core/src/contacts-workspace";
 import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
-import { InstallWorkspace } from "@/install-core/src/install-workspace";
+import { InstallerWorkspace } from "@/installer-core/src/installer-workspace";
 import { MailWorkspace } from "@/mail-core/src/mail-workspace";
 import { mailStoryLabels } from "@/mail-core/src/mail-app.stories.fixtures";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
@@ -208,7 +209,7 @@ function MockContactsRoute() {
 function MockTasksRoute() {
   const onLogout = useWeGotWorkspaceLogout();
   const bootstrap = useMemo(() => createTasksAppBootstrap(), []);
-  const { initialView, handleViewChange } = useTasksRouteSync();
+  const { initialView, initialTaskId, handleViewChange } = useTasksRouteSync();
   const operations = useMemo(
     () => createDefaultTasksApiSource().createOperations(bootstrap),
     [bootstrap],
@@ -221,6 +222,7 @@ function MockTasksRoute() {
       listRefreshing={false}
       onLogout={onLogout}
       initialView={initialView}
+      initialTaskId={initialTaskId}
       onViewChange={handleViewChange}
     />
   );
@@ -246,9 +248,9 @@ function MockAdminRoute() {
   );
 }
 
-function MockInstallRoute() {
-  const bootstrap = useMemo(() => createInstallWorkspaceStoryArgs(), []);
-  return <InstallWorkspace {...bootstrap} />;
+function MockInstallerRoute() {
+  const bootstrap = useMemo(() => createInstallerWorkspaceStoryArgs(), []);
+  return <InstallerWorkspace {...bootstrap} />;
 }
 
 const AuthenticatedMeetChatApp = withWeGotWorkspaceAuth(MeetChatApp);
@@ -663,6 +665,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/tasks/state/all",
     head: tasksPwaHead,
+    validateSearch: validateTasksRouteSearch,
     component: TasksComponent,
   });
 
@@ -670,6 +673,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/tasks/state/$stateSlug",
     head: tasksPwaHead,
+    validateSearch: validateTasksRouteSearch,
     component: TasksComponent,
   });
 
@@ -686,6 +690,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/tasks/lists/$listId",
     head: tasksPwaHead,
+    validateSearch: validateTasksRouteSearch,
     component: TasksComponent,
   });
 
@@ -693,6 +698,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/tasks/priority/$prioritySlug",
     head: tasksPwaHead,
+    validateSearch: validateTasksRouteSearch,
     component: TasksComponent,
   });
 
@@ -759,7 +765,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/install",
     head: homePwaHead,
-    component: isLive ? InstallApp : MockInstallRoute,
+    component: isLive ? InstallerApp : MockInstallerRoute,
   });
 
   const sharePublicRoute = createRoute({

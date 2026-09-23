@@ -10,7 +10,7 @@ const publishedFeed = {
 };
 
 const meta: Meta<typeof CalendarPublishSection> = {
-  title: "Apps/Calendar/PublishSection",
+  title: "Features/Calendar/PublishSection",
   component: CalendarPublishSection,
   args: {
     labels: defaultCalendarLabels,

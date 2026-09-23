@@ -237,6 +237,34 @@ final class MeetReservationTest extends WgwDatabaseTestCase
             ]);
     }
 
+    public function test_guest_get_resolves_persisted_ad_hoc_meeting_room_code(): void
+    {
+        $this->withBearer($this->issueBearerTokenFor('alice'))
+            ->postJson('/api/v1/chat/channels', [
+                'name' => 'Standup',
+                'kind' => 'meeting',
+                'guestRoomCode' => 'g744-8kfg-adjz',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('guestRoomCode', 'g744-8kfg-adjz');
+
+        $this->withoutBearer()
+            ->getJson($this->meetStatusPath('g744-8kfg-adjz'))
+            ->assertOk()
+            ->assertExactJson([
+                'reserved' => true,
+                'active' => false,
+            ]);
+
+        $this->withoutBearer()
+            ->getJson($this->meetStatusPath('standup'))
+            ->assertOk()
+            ->assertExactJson([
+                'reserved' => true,
+                'active' => false,
+            ]);
+    }
+
     public function test_guest_get_unknown_meeting_slug_is_404(): void
     {
         $this->withoutBearer()

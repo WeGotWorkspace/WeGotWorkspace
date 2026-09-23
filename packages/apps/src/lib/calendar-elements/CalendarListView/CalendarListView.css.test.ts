@@ -14,6 +14,21 @@ describe("CalendarListView heading CSS", () => {
     );
   });
 
+  it("falls sticky day headings through cream tokens, never pure white", () => {
+    expect(css).toMatch(
+      /\.agenda-day-heading\.list-sticky-header \{[\s\S]*--list-sticky-header-bg/,
+    );
+    expect(css).toMatch(
+      /\.agenda-day-heading\.list-sticky-header \{[\s\S]*var\(--color-we-got-soft\)/,
+    );
+    expect(css).not.toMatch(
+      /\.agenda-day-heading\.list-sticky-header \{[\s\S]*background-color:[^;]*#fff(?:fff)?\b/i,
+    );
+    expect(css).not.toMatch(
+      /\.agenda-day-heading\.list-sticky-header \{[\s\S]*light-dark\(\s*#fff\b/,
+    );
+  });
+
   it("reuses list-sticky-header split-label weights instead of agenda-only type", () => {
     expect(ts).toMatch(/list-sticky-header\/src\/list-sticky-header\.css\?inline/);
     expect(ts).toMatch(/class="list-sticky-header agenda-day-heading"/);

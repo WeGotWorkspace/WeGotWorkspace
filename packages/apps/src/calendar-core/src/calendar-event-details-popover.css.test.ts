@@ -43,7 +43,7 @@ describe("calendar event details popover CSS", () => {
     expect(css).not.toMatch(/@media \(max-width: 48rem\)/);
     expect(css).not.toMatch(/@media \(max-width: 768px\)/);
     expect(css).toContain("calendar-event-details-popover--docked");
-    expect(css).toContain("calendar-event-details-popover--dialog");
+    expect(css).not.toContain("calendar-event-details-popover--dialog");
     expect(css).toContain("height: max-content");
     expect(css).toContain("position-anchor: none");
     expect(css).toContain("position-try-fallbacks: none");
@@ -52,24 +52,23 @@ describe("calendar event details popover CSS", () => {
     expect(css).toMatch(/\.calendar-event-details-popover__footer\s*\{[\s\S]*?\bshrink-0\b/);
   });
 
-  it("defers mobile Dialog full-viewport sheet sizing to shared event-dialog CSS", () => {
+  it("keeps Dialog details as a centered card; full-bleed only wraps Radix popover fallback", () => {
     expect(css).toMatch(/@import "\.\/calendar-event-dialog\.css"/);
-    expect(css).toMatch(
-      /\.calendar-dialog-surface\.calendar-event-details-popover--dialog\s*\{[\s\S]*?\boverflow-hidden\b/,
-    );
-    expect(css).not.toMatch(
-      /\.calendar-dialog-surface\.calendar-event-details-popover--dialog\s*\{[\s\S]*?max-h-\[50vh\]/,
-    );
+    expect(css).not.toContain("calendar-event-details-popover--dialog");
     expect(css).toMatch(
       /@media \(max-width: 767px\)[\s\S]*\[data-radix-popper-content-wrapper\]:has\(\.calendar-event-details-popover\)/,
     );
     expect(css).toMatch(
       /\[data-radix-popper-content-wrapper\]:has\(\.calendar-event-details-popover\)[\s\S]*transform:\s*none/,
     );
+    expect(css).toMatch(
+      /\[data-radix-popper-content-wrapper\] \.calendar-dialog-surface\.calendar-event-details-popover/,
+    );
   });
 
   it("centers a flow event-card with icon detail rows and a shared footer", () => {
     expect(css).toContain("calendar-event-details-popover__event");
+    expect(css).toMatch(/\.calendar-event-details-popover__event\s*\{[\s\S]*?--_lc-days:\s*1/);
     expect(css).toContain("calendar-event-details-popover__details");
     expect(css).toContain("calendar-event-details-popover__row");
     expect(css).toContain("calendar-event-details-popover__icon");

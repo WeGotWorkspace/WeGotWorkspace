@@ -102,7 +102,7 @@ describe("TextEditorFormatBar", () => {
     expect(formatBarCss).toMatch(
       /--text-editor-format-bar-wash:\s*color-mix\(\s*in oklab,\s*var\(--workspace-accent/,
     );
-    expect(formatBarCss).toMatch(/--text-editor-format-bar-wash:[\s\S]*var\(--color-cream/);
+    expect(formatBarCss).toMatch(/--text-editor-format-bar-wash:[\s\S]*var\(--color-we-got-soft/);
     expect(formatBarCss).toMatch(/\.text-editor-format-bar__controls \{[\s\S]*gap-1\.5/);
   });
 

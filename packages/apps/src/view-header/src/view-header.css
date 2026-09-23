@@ -15,7 +15,7 @@
 }
 
 .view-header__sidebar-toggle {
-  @apply flex shrink-0 items-center;
+  @apply flex shrink-0 items-center overflow-visible;
 }
 
 /** Title cluster; sits beside the sidebar toggle. */
@@ -68,7 +68,7 @@
 .view-header__title-count {
   @apply text-sm font-medium leading-none md:text-lg;
   font-family: var(--font-sans);
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 /**
@@ -78,7 +78,7 @@
 .view-header__title {
   @apply min-w-0 truncate text-sm font-medium leading-none md:text-lg;
   font-family: var(--font-sans);
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .view-header__title-compact {

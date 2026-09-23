@@ -7,7 +7,7 @@ const SAMPLE_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='80'%3E%3Crect width='120' height='80' fill='%2322c55e'/%3E%3C/svg%3E";
 
 const meta = {
-  title: "Shared/FilePreview",
+  title: "UI/Patterns/File Preview",
   component: FilePreview,
   parameters: {
     layout: "centered",

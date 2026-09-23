@@ -34,17 +34,17 @@ Section and form styling lives under `.admin-workspace` in `admin-workspace.css`
 
 ## Storybook
 
-| Story                            | Purpose                                        |
-| -------------------------------- | ---------------------------------------------- |
-| `Apps/Admin`                     | Full workspace with mock bootstrap             |
-| `Apps/Admin/Panes/Users`         | User and group management                      |
-| `Apps/Admin/Panes/Backups`       | Backup configuration                           |
-| `Apps/Admin/Panes/Updates`       | Update channel / version state                 |
-| `Apps/Admin/Panes/WebDAV`        | WebDAV credentials and paths                   |
-| `Apps/Admin/Panes/Search`        | Unified search indexing                        |
-| `Apps/Admin/Panes/Plugins`       | Plugin enablement                              |
-| `Apps/Admin/Panes/Collaboration` | RTC / STUN / TURN settings                     |
-| `Apps/WeGotWorkspace`            | Full shell (login → home → all apps, mock API) |
+| Story                                | Purpose                                        |
+| ------------------------------------ | ---------------------------------------------- |
+| `Themes/Admin`                       | Full workspace chrome + branding knobs         |
+| `Features/Admin/Panes/Users`         | User and group management                      |
+| `Features/Admin/Panes/Backups`       | Backup configuration                           |
+| `Features/Admin/Panes/Updates`       | Update channel / version state                 |
+| `Features/Admin/Panes/WebDAV`        | WebDAV credentials and paths                   |
+| `Features/Admin/Panes/Search`        | Unified search indexing                        |
+| `Features/Admin/Panes/Plugins`       | Plugin enablement                              |
+| `Features/Admin/Panes/Collaboration` | RTC / STUN / TURN settings                     |
+| `Features/Workspace`                 | Full shell (login → home → all apps, mock API) |
 
 ## Further reading
 

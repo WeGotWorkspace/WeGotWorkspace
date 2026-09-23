@@ -9,7 +9,7 @@ import {
 import { MeetStoryScope } from "@/meet-core/stories/meet-story-scope";
 
 const meta = {
-  title: "Apps/Meet/Components/MeetPeerTile",
+  title: "Features/Meet/Components/MeetPeerTile",
   component: MeetPeerTile,
   parameters: meetStoryParameters(),
   render: (args) => (

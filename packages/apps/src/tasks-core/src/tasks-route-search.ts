@@ -81,6 +81,23 @@ export function normalizeTasksView(view: string, taskLists: TaskListRouteEntry[]
   return view;
 }
 
+export const TASKS_TASK_QUERY_PARAM = "task";
+
+export type TasksRouteSearch = {
+  task?: string;
+};
+
+export function tasksTaskIdFromSearch(search: Record<string, unknown> | undefined): string {
+  const raw = search?.[TASKS_TASK_QUERY_PARAM];
+  if (typeof raw !== "string") return "";
+  return raw.trim();
+}
+
+export function validateTasksRouteSearch(search: Record<string, unknown>): TasksRouteSearch {
+  const task = tasksTaskIdFromSearch(search);
+  return task ? { task } : {};
+}
+
 export type TasksNavigateTarget = {
   to:
     | "/tasks/state/all"

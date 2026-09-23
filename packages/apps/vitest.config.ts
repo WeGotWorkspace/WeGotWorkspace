@@ -41,7 +41,7 @@ export default defineConfig({
         test: {
           name: "unit",
           environment: "node",
-          include: ["src/**/*.test.ts"],
+          include: ["src/**/*.test.ts", "scripts/**/*.test.mjs"],
           execArgv: nodeWebStorageExecArgv,
         },
       },
@@ -67,6 +67,9 @@ export default defineConfig({
           "import.meta.env.STORYBOOK_A11Y_GATE": JSON.stringify(
             process.env.STORYBOOK_A11Y_GATE ?? "",
           ),
+          // preview.ts sets html[data-chromatic-reduced-motion] so Radix Presence
+          // does not hang on paused animationend during story play functions.
+          "import.meta.env.STORYBOOK_REDUCED_MOTION": JSON.stringify("1"),
         },
         resolve: {
           alias: {

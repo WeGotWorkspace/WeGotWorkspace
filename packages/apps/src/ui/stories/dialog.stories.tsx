@@ -30,7 +30,7 @@ function DialogHeaderCloseHarness() {
 }
 
 const meta = {
-  title: "Shared/Dialog",
+  title: "UI/Primitives/Dialog",
   component: DialogHeaderCloseHarness,
 } satisfies Meta<typeof DialogHeaderCloseHarness>;
 

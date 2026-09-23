@@ -2,7 +2,7 @@
 
 .notes-workspace .notes-list-panel__header-actions {
   /* Inherit workspace outline accent washes; idle stays ink. */
-  --button-outline-color: var(--color-ink);
+  --button-outline-color: var(--color-we-got-dark);
 }
 
 .notes-workspace .notes-list-panel__star-pip,
@@ -36,7 +36,7 @@
 
 .notes-workspace .notes-list-panel__shared-icon,
 .notes-workspace .notes-list-panel__view-only-icon {
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .notes-workspace .notes-list-panel__loading {

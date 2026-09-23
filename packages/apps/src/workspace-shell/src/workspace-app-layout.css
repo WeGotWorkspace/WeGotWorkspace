@@ -3,7 +3,7 @@
 .workspace-columns {
   @apply flex h-dvh w-full overflow-hidden relative;
   font-family: var(--font-sans);
-  background-color: var(--workspace-root-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-root-bg, var(--color-we-got-soft));
   container: workspace-columns / inline-size;
 }
 
@@ -14,7 +14,7 @@
    * sidebar panel (z-40). Same pattern Calendar/Meet already applied per-product.
    */
   @apply relative isolate flex min-w-0 flex-1 flex-col;
-  background-color: var(--workspace-main-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-main-bg, var(--color-we-got-soft));
 }
 
 .workspace-app-layout__main-header {
@@ -25,7 +25,7 @@
   @apply shrink-0 border-b p-4 md:p-6;
   border-color: var(
     --workspace-main-header-border-color,
-    color-mix(in oklab, var(--color-ink) 10%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
   );
 }
 
@@ -44,11 +44,11 @@
   padding-inline: var(--app-sidebar-padding-x, 1rem);
   color: var(
     --workspace-user-footer-text-color,
-    color-mix(in oklab, var(--color-ink) 70%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 70%, transparent)
   );
   border-color: var(
     --workspace-user-footer-border-color,
-    color-mix(in oklab, var(--color-ink) 10%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
   );
 }
 
@@ -56,9 +56,51 @@
  * Open sidebar: accent glyph via `.icon-button--active` + parent `--button-active-color`.
  * Lucide panel/menu marks are stroke-based — keep fill none so active does not solid-blob.
  * Product headers (e.g. Calendar `.view-header`) own accent wash tokens / overrides.
+ * Unread: presence-style dot only (numeric count stays on the bell tray trigger).
  */
 .workspace-sidebar-toggle.button.icon-button--active .button__icon > svg {
   fill: none;
+}
+
+.workspace-sidebar-toggle {
+  @apply relative overflow-visible;
+}
+
+.workspace-sidebar-toggle[data-unread]::after {
+  content: "";
+  @apply absolute -right-0.5 -top-0.5 size-2 rounded-full;
+  background-color: var(
+    --notification-inbox-badge-bg,
+    var(--button-primary-bg, var(--color-we-got-dark))
+  );
+}
+
+/* Same one-shot as the bell badge; mute does not suppress. */
+@keyframes notification-inbox-badge-pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 0.82;
+    transform: scale(1.28);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .workspace-sidebar-toggle[data-pulse]::after {
+    animation: notification-inbox-badge-pulse 0.55s ease-out 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-sidebar-toggle[data-pulse]::after {
+    animation: none;
+  }
 }
 
 /* Right-hand panel slide (mirrors app-sidebar open/close on the opposite edge). */
@@ -93,28 +135,27 @@
 .workspace-app-layout__user-footer .user-avatar {
   --user-avatar-label-color: var(
     --workspace-user-footer-text-color,
-    color-mix(in oklab, var(--color-ink) 70%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 70%, transparent)
   );
+  /* 72% clears WCAG AA on cream sidebar wash (~4.5:1); 65% was ~4.45:1. */
   --user-avatar-subtitle-color: var(
     --workspace-user-footer-subtitle-color,
-    color-mix(in oklab, var(--color-ink) 55%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 72%, transparent)
   );
   /*
-   * Opaque mark wash: darken the sidebar (not a transparent ink glaze).
-   * White-on-12%-white over Docs blue (#2563eb) flattened to ~4.17:1.
-   * 16% black into `--app-sidebar-bg` keeps white glyphs AA on navy/blue
-   * and ink glyphs AA on cream/mint. Do not inherit selected-chip SST.
+   * Accent wash on the sidebar surface, same family as nav item tints.
+   * Ink glyphs stay readable on the light mix. Do not inherit selected-chip SST.
    */
   --user-avatar-bg: color-mix(
-    in oklab,
-    #000000 16%,
-    var(--app-sidebar-bg, var(--color-cream, #ffffff))
+    in oklch,
+    var(--workspace-accent) 16%,
+    var(--app-sidebar-bg, var(--workspace-surface, var(--color-we-got-soft)))
   );
-  --user-avatar-fg: var(--color-ink);
-  --user-avatar-border: color-mix(in oklab, var(--color-ink) 28%, transparent);
+  --user-avatar-fg: var(--color-we-got-dark);
+  --user-avatar-border: color-mix(in oklch, var(--workspace-accent) 28%, transparent);
   --user-avatar-hover-bg: color-mix(
-    in oklab,
-    #000000 22%,
-    var(--app-sidebar-bg, var(--color-cream, #ffffff))
+    in oklch,
+    var(--workspace-accent) 22%,
+    var(--app-sidebar-bg, var(--workspace-surface, var(--color-we-got-soft)))
   );
 }

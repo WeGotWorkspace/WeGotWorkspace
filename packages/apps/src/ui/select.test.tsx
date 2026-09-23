@@ -51,7 +51,7 @@ describe("SelectTrigger", () => {
 
   it("aligns select-trigger idle color with outline button tokens", () => {
     expect(inputCss).toMatch(
-      /\.select-trigger \{[\s\S]*color:\s*var\(--select-trigger-color,\s*var\(--button-outline-color,\s*var\(--color-ink\)\)\)/,
+      /\.select-trigger \{[\s\S]*color:\s*var\(--select-trigger-color,\s*var\(--button-outline-color,\s*var\(--color-we-got-dark\)\)\)/,
     );
   });
 
@@ -79,7 +79,7 @@ describe("SelectTrigger", () => {
     expect(inputCss).not.toMatch(/\.select-trigger:focus:not\(:disabled\)/);
     expect(inputCss).not.toMatch(/\.input:focus:not\(:read-only\)/);
     expect(inputCss).toMatch(
-      /\.input:focus-visible:not\(:read-only\),\s*\.textarea:focus-visible:not\(:read-only\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,
+      /input\.input:focus-visible:not\(:read-only\),\s*\.textarea:focus-visible:not\(:read-only\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,
     );
     expect(inputCss).toMatch(
       /\.select-trigger\[data-state="open"\]:not\(:disabled\) \{[\s\S]*border-color:\s*var\(--input-border-focus/,
@@ -91,7 +91,7 @@ describe("SelectTrigger", () => {
       /\.select-ui__item\[data-highlighted\][\s\S]*--menu-item-hover-background/,
     );
     expect(inputCss).toMatch(
-      /\.select-ui__item\[data-highlighted\][\s\S]*var\(--workspace-accent,\s*var\(--color-ink\)\) 14%/,
+      /\.select-ui__item\[data-highlighted\][\s\S]*var\(--workspace-accent,\s*var\(--color-we-got-dark\)\) 14%/,
     );
     expect(inputCss).not.toMatch(
       /\.select-ui__item\[data-highlighted\][\s\S]*--button-outline-hover-background/,
@@ -108,7 +108,7 @@ describe("SelectTrigger", () => {
       /\.select-ui__item\[data-state="checked"\] \{[\s\S]*--menu-item-selected-background/,
     );
     expect(inputCss).toMatch(
-      /\.select-ui__item\[data-state="checked"\] \{[\s\S]*var\(--workspace-accent,\s*var\(--color-ink\)\) 18%/,
+      /\.select-ui__item\[data-state="checked"\] \{[\s\S]*var\(--workspace-accent,\s*var\(--color-we-got-dark\)\) 18%/,
     );
     expect(inputCss).not.toMatch(
       /\.select-ui__item\[data-state="checked"\] \{[\s\S]*--button-outline-active-background/,

@@ -72,6 +72,48 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
         $this->assertSame('meeting', $shown['kind']);
     }
 
+    public function test_kind_meeting_persists_supplied_guest_room_code(): void
+    {
+        $created = $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Standup',
+            'kind' => 'meeting',
+            'guestRoomCode' => 'g744-8kfg-adjz',
+        ])->assertCreated()->json();
+
+        $this->assertSame('meeting', $created['kind']);
+        $this->assertSame('g744-8kfg-adjz', $created['guestRoomCode']);
+
+        $shown = $this->asUser('alice')->getJson('/api/v1/chat/channels/'.$created['id'])->assertOk()->json();
+        $this->assertSame('g744-8kfg-adjz', $shown['guestRoomCode']);
+    }
+
+    public function test_guest_room_code_is_rejected_for_plain_channels_and_duplicates(): void
+    {
+        $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'General',
+            'kind' => 'channel',
+            'guestRoomCode' => 'g744-8kfg-adjz',
+        ])->assertStatus(400);
+
+        $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Standup',
+            'kind' => 'meeting',
+            'guestRoomCode' => 'not-a-room',
+        ])->assertStatus(400);
+
+        $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Standup',
+            'kind' => 'meeting',
+            'guestRoomCode' => 'g744-8kfg-adjz',
+        ])->assertCreated();
+
+        $this->asUser('bob')->postJson('/api/v1/chat/channels', [
+            'name' => 'Other',
+            'kind' => 'meeting',
+            'guestRoomCode' => 'g744-8kfg-adjz',
+        ])->assertStatus(409);
+    }
+
     public function test_channel_id_is_slug_of_initial_name_and_survives_rename(): void
     {
         $created = $this->asUser('alice')->postJson('/api/v1/chat/channels', [

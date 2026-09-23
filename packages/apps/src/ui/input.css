@@ -13,6 +13,7 @@
  * Radius stays global `--control-radius` on the shared surface — do not remap
  * soft chrome on layout ancestors. True capsules use `--control-radius-pill`.
  * Search variant: leading icon + trailing clear when the field has a value.
+ * Password variant: trailing show/hide toggle (wrapper + field + control).
  */
 .control-surface,
 .input,
@@ -125,7 +126,7 @@
   @apply disabled:cursor-not-allowed;
   @apply [&>span]:line-clamp-1;
   /* Align idle text/chevron with outline Button / SegmentedControl. */
-  color: var(--select-trigger-color, var(--button-outline-color, var(--color-ink)));
+  color: var(--select-trigger-color, var(--button-outline-color, var(--color-we-got-dark)));
 }
 
 .select-trigger__icon {
@@ -210,11 +211,13 @@
   font-size: var(--input-font-size-xl, 1rem);
 }
 
-.input--search {
+.input--search,
+.input--password {
   @apply gap-2;
 }
 
-.input--search:focus-within:not(:has(.input__field:read-only)) {
+.input--search:focus-within:not(:has(.input__field:read-only)),
+.input--password:focus-within:not(:has(.input__field:read-only)) {
   background-color: var(--input-background-focus, #ffffff);
   border-color: var(--input-border-focus, var(--ring));
 }
@@ -222,6 +225,8 @@
 .input__field {
   @apply min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 outline-none;
   color: inherit;
+  -webkit-text-fill-color: inherit;
+  caret-color: currentColor;
   font-size: inherit;
   height: auto;
   min-height: 0;
@@ -236,16 +241,28 @@
   @apply size-4 shrink-0 opacity-60;
 }
 
-.input__clear {
+.input__clear,
+.input__visibility {
   @apply flex size-6 shrink-0 items-center justify-center rounded-[6px];
 }
 
-.input__clear:hover {
-  background-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+.input__clear:hover,
+.input__visibility:hover:not(:disabled) {
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
 }
 
-.input__clear-icon {
+.input__clear-icon,
+.input__visibility-icon {
   @apply size-3.5;
+}
+
+.input__visibility:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.input__field[type="password"]::-ms-reveal,
+.input__field[type="password"]::-ms-clear {
+  display: none;
 }
 
 .input__field::placeholder {
@@ -254,11 +271,22 @@
     --input-placeholder-color,
     color-mix(in oklab, var(--color-muted-foreground) 42%, transparent)
   );
+  -webkit-text-fill-color: var(
+    --input-placeholder-color,
+    color-mix(in oklab, var(--color-muted-foreground) 42%, transparent)
+  );
 }
 
+/*
+ * `:read-only` matches every non-editable element, including password/search
+ * wrapper divs. Scope the native-input case so wrapped fields keep
+ * `--input-background` / foreground tokens; inner `readonly` still hits `:has()`.
+ */
 .control-surface:disabled,
 .input:disabled,
-.input:read-only,
+input.input:read-only,
+.input:has(> .input__field:disabled),
+.input:has(> .input__field:read-only),
 .textarea:disabled,
 .textarea:read-only,
 .select-trigger:disabled {
@@ -271,18 +299,20 @@
 
 .control-surface:disabled,
 .input:disabled,
+.input:has(> .input__field:disabled),
 .textarea:disabled,
 .select-trigger:disabled {
   @apply cursor-not-allowed;
 }
 
-.input:read-only,
+input.input:read-only,
+.input:has(> .input__field:read-only),
 .textarea:read-only {
   @apply cursor-default;
 }
 
 /* Text fields: keyboard-only border focus — mouse click must not paint chrome. */
-.input:focus-visible:not(:read-only),
+input.input:focus-visible:not(:read-only),
 .textarea:focus-visible:not(:read-only) {
   background-color: var(--input-background-focus, #ffffff);
   border-color: var(--input-border-focus, var(--ring));
@@ -310,7 +340,7 @@
 .select-ui__item:focus {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)
+    color-mix(in oklab, var(--workspace-accent, var(--color-we-got-dark)) 14%, transparent)
   );
   color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
 }
@@ -318,7 +348,11 @@
 .select-ui__item[data-state="checked"] {
   background-color: var(
     --menu-item-selected-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 18%, var(--color-cream, #ffffff))
+    color-mix(
+      in oklab,
+      var(--workspace-accent, var(--color-we-got-dark)) 18%,
+      var(--color-we-got-soft)
+    )
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));
 }
@@ -327,7 +361,11 @@
 .select-ui__item[data-state="checked"]:focus {
   background-color: var(
     --menu-item-selected-hover-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 24%, var(--color-cream, #ffffff))
+    color-mix(
+      in oklab,
+      var(--workspace-accent, var(--color-we-got-dark)) 24%,
+      var(--color-we-got-soft)
+    )
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));
 }
@@ -349,6 +387,10 @@
 .textarea::placeholder {
   opacity: 1;
   color: var(
+    --input-placeholder-color,
+    color-mix(in oklab, var(--color-muted-foreground) 42%, transparent)
+  );
+  -webkit-text-fill-color: var(
     --input-placeholder-color,
     color-mix(in oklab, var(--color-muted-foreground) 42%, transparent)
   );

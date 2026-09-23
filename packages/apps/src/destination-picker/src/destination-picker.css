@@ -15,16 +15,16 @@
 .destination-picker__breadcrumbs {
   @apply shrink-0 px-3;
   padding-block: 0.5rem;
-  background-color: color-mix(in oklab, var(--color-ink) 5%, transparent);
-  border-bottom: 1px solid color-mix(in oklab, var(--color-ink) 10%, transparent);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 5%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
   --path-breadcrumb-lead-color: var(--destination-picker-accent, var(--color-emerald));
   --path-breadcrumb-lead-bg: color-mix(
     in oklab,
     var(--destination-picker-accent, var(--color-emerald)) 12%,
     transparent
   );
-  --path-breadcrumb-link-color: color-mix(in oklab, var(--color-ink) 58%, transparent);
-  --path-breadcrumb-current-color: var(--color-ink);
+  --path-breadcrumb-link-color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
+  --path-breadcrumb-current-color: var(--color-we-got-dark);
   --path-breadcrumb-link-hover-bg: color-mix(
     in oklab,
     var(--destination-picker-accent, var(--color-emerald)) 10%,
@@ -44,7 +44,7 @@
 
 .destination-picker__scroll .destination-list-table {
   @apply w-full table-fixed text-sm;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .destination-picker__scroll .destination-list-col-name {
@@ -59,7 +59,7 @@
 
 .destination-picker__scroll .destination-list-row {
   @apply w-full cursor-pointer transition-colors;
-  border-bottom: 1px solid color-mix(in oklab, var(--color-ink) 6%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-we-got-dark) 6%, transparent);
 }
 
 .destination-picker__scroll .destination-list-row--selected {
@@ -76,7 +76,7 @@
 
 .destination-picker__scroll .destination-list-row--disabled {
   @apply cursor-default;
-  color: color-mix(in oklab, var(--color-ink) 42%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 42%, transparent);
   pointer-events: none;
 }
 

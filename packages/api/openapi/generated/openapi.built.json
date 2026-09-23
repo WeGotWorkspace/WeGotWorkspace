@@ -10904,6 +10904,14 @@
                     "id": {
                         "$ref": "#/components/schemas/JmapId",
                         "description": "Optional client-suggested channel id (uri slug)."
+                    },
+                    "guestRoomCode": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "pattern": "^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$",
+                        "description": "Meeting kind only: persist the reserved ad-hoc room code shown at create time. Never rewritten to the collection slug."
                     }
                 }
             },
@@ -11162,6 +11170,13 @@
                             "null"
                         ],
                         "description": "Thread parent message id."
+                    },
+                    "mentions": {
+                        "type": "array",
+                        "description": "Validated @principals to persist and notify ( ∩ channel roster; unknown tokens ignored).",
+                        "items": {
+                            "$ref": "#/components/schemas/ChatMention"
+                        }
                     }
                 }
             },
@@ -11646,6 +11661,180 @@
                     }
                 },
                 "description": "Path-scoped calendarchanges feed for the owner's docs-threads pool."
+            },
+            "Notification": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "eventId",
+                    "domain",
+                    "action",
+                    "title",
+                    "navigate",
+                    "createdAt"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "eventId": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "domain": {
+                        "type": "string"
+                    },
+                    "action": {
+                        "type": "string"
+                    },
+                    "data": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": true,
+                        "description": "Structured notification facts (actor, path, snippet, start/end, …). When present, clients format title/body; API title/body are also formatted at read time."
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Display title (formatted from data when present)."
+                    },
+                    "body": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Display body (formatted from data when present)."
+                    },
+                    "navigate": {
+                        "type": "string",
+                        "description": "In-app path (allowlisted SPA prefix)."
+                    },
+                    "tag": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "readAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "NotificationListResponse": {
+                "type": "object",
+                "required": [
+                    "list",
+                    "unreadCount"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Notification"
+                        }
+                    },
+                    "unreadCount": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                }
+            },
+            "NotificationOkResponse": {
+                "type": "object",
+                "required": [
+                    "ok"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "ok": {
+                        "type": "boolean",
+                        "const": true
+                    }
+                }
+            },
+            "VapidPublicKeyResponse": {
+                "type": "object",
+                "required": [
+                    "publicKey"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "publicKey": {
+                        "type": "string",
+                        "description": "URL-safe base64 VAPID public key for pushManager.subscribe."
+                    }
+                }
+            },
+            "PushSubscriptionCreateRequest": {
+                "type": "object",
+                "required": [
+                    "endpoint",
+                    "keys"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "endpoint": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "keys": {
+                        "type": "object",
+                        "required": [
+                            "p256dh",
+                            "auth"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "p256dh": {
+                                "type": "string"
+                            },
+                            "auth": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "PushSubscriptionResponse": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "endpoint"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "endpoint": {
+                        "type": "string"
+                    }
+                }
+            },
+            "PushUnsubscribeRequest": {
+                "type": "object",
+                "required": [
+                    "endpoint"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "endpoint": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                }
             }
         },
         "responses": {
@@ -18341,6 +18530,239 @@
                         "$ref": "#/components/responses/JmapNotFound"
                     }
                 }
+            }
+        },
+        "/notifications": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List inbox notifications",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "unread",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Inbox rows for the signed-in principal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notifications/{id}/ack": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark a notification as read",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated notification",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notification"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notifications/{id}/local-ack": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Ack local Notification API delivery (skip VAPID fallback)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Local delivery acknowledged",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationOkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notifications/push/vapid-public-key": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Install-scoped VAPID public key",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "VAPID public key",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VapidPublicKeyResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notifications/push/subscriptions": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Subscribe this device to Web Push",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PushSubscriptionCreateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Subscription stored",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PushSubscriptionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                },
+                "x-wgw-access": "user"
+            },
+            "delete": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Unsubscribe this device from Web Push",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PushUnsubscribeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Subscription removed"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    }
+                },
+                "x-wgw-access": "user"
             }
         }
     }

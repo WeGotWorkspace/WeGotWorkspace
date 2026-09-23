@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts;
 
+use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\Addressbook;
@@ -26,6 +27,7 @@ final class ContactCardRepository
         private readonly BestEffortSearchIndexSync $searchIndexSync,
         private readonly JmapContactStateService $contactStates,
         private readonly AddressBookRepository $books,
+        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     /**
@@ -215,6 +217,7 @@ final class ContactCardRepository
             $davPath,
             $username,
         );
+        $this->eventDispatch->fireMutation($username, 'contacts', 'created', $davPath);
 
         $card = $this->findCardInBook((int) $book->id, $cardUri);
         if ($card === null) {

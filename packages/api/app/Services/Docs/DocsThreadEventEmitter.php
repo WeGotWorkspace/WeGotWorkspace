@@ -4,27 +4,54 @@ declare(strict_types=1);
 
 namespace App\Services\Docs;
 
-use App\Events\DocsThreadPosted;
+use App\Events\EventDispatch;
+use App\Services\Notify\DocsThreadActivityNotify;
 
 /**
- * Fires docs.comment_posted / docs.suggestion_posted from the thread save-path.
+ * Fires docs.thread_activity into the suite notify pipeline from the thread save-path.
  */
 final class DocsThreadEventEmitter
 {
+    public function __construct(
+        private readonly EventDispatch $events,
+    ) {}
+
+    /**
+     * @param  list<string>  $participantUsernames  prior + current authors (actor still filtered by NotifyListener)
+     * @param  list<string>  $mentionUsernames  @principals for auto-subscribe (and future docs.mentioned)
+     */
     public function posted(
         string $kind,
         string $path,
         string $threadId,
         string $messageId,
         string $actor,
+        bool $isReply = false,
+        array $participantUsernames = [],
+        array $mentionUsernames = [],
+        ?string $snippet = null,
     ): void {
-        $name = $kind === 'suggestion' ? 'docs.suggestion_posted' : 'docs.comment_posted';
-        event(new DocsThreadPosted($name, [
-            'path' => $path,
-            'threadId' => $threadId,
-            'messageId' => $messageId,
-            'actor' => $actor,
-            'kind' => $kind,
-        ]));
+        $owners = DocsThreadActivityNotify::pathAclOwnerUsernames($path);
+        $recipients = DocsThreadActivityNotify::unionRecipients($owners, $participantUsernames, $mentionUsernames);
+        if ($recipients === []) {
+            return;
+        }
+
+        $this->events->fireMutation(
+            $actor,
+            'docs',
+            DocsThreadActivityNotify::ACTION,
+            $path,
+            DocsThreadActivityNotify::eventData(
+                DocsThreadActivityNotify::actorLabel($actor),
+                $path,
+                $threadId,
+                $messageId,
+                $kind,
+                $isReply,
+                $recipients,
+                $snippet,
+            ),
+        );
     }
 }

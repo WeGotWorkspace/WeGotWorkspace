@@ -68,16 +68,16 @@ type ListItemProps = {
 };
 
 const defaultTheme: ListItemTheme = {
-  baseBackground: "var(--color-cream, #ffffff)",
+  baseBackground: "transparent",
   activeBackground:
     "var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 10%, transparent))",
   selectedBackground:
     "var(--app-sidebar-bg, color-mix(in oklab, var(--color-emerald) 18%, transparent))",
-  borderColor: "color-mix(in oklab, var(--color-ink) 10%, transparent)",
+  borderColor: "color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)",
   accentColor: "var(--color-emerald)",
-  titleColor: "var(--color-ink)",
-  mutedColor: "color-mix(in oklab, var(--color-ink) 45%, transparent)",
-  bodyColor: "color-mix(in oklab, var(--color-ink) 60%, transparent)",
+  titleColor: "var(--color-we-got-dark)",
+  mutedColor: "color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)",
+  bodyColor: "color-mix(in oklab, var(--color-we-got-dark) 60%, transparent)",
 };
 
 const TOUCH_MOVE_CANCEL_PX = 8;

@@ -4,4 +4,14 @@
 .docs-outline-sidebar__number {
   @apply block min-w-[2.75ch] text-xs tabular-nums;
   font-family: var(--font-mono);
+  color: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
+}
+
+/* Parent `.menu-item__icon-slot` uses 0.65 opacity; that multiplies the whole
+ * subtree and drops outline nums below AA on cream. Restore full opacity. */
+.docs-workspace
+  .sidebar-section
+  .menu-item
+  .menu-item__icon-slot:has(.docs-outline-sidebar__number) {
+  opacity: 1;
 }

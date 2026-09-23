@@ -4,7 +4,7 @@ import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
 import { SettingsWorkspace } from "@/settings-core/src/settings-workspace";
 
 const meta: Meta<typeof SettingsWorkspace> = {
-  title: "Apps/Settings",
+  title: "Features/Settings",
   component: SettingsWorkspace,
   parameters: {
     layout: "fullscreen",
@@ -14,12 +14,7 @@ const meta: Meta<typeof SettingsWorkspace> = {
 export default meta;
 type Story = StoryObj<typeof SettingsWorkspace>;
 
-export const Default: Story = {
-  args: {
-    ...createSettingsAppBootstrap(),
-  },
-};
-
+/** Chrome Default lives under Themes/Settings — this story covers MCP-off gating. */
 export const DisabledByAdmin: Story = {
   args: {
     ...createSettingsAppBootstrap({

@@ -8213,6 +8213,157 @@
         "x-wgw-access": "guest"
       }
     },
+    "/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "List inbox notifications",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "unread",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inbox rows for the signed-in principal",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationListResponse" }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/JmapForbidden" }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/notifications/{id}/ack": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Mark a notification as read",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated notification",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Notification" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/JmapBadRequest" },
+          "403": { "$ref": "#/components/responses/JmapForbidden" },
+          "404": { "$ref": "#/components/responses/JmapNotFound" }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/notifications/{id}/local-ack": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Ack local Notification API delivery (skip VAPID fallback)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Local delivery acknowledged",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationOkResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/JmapBadRequest" },
+          "403": { "$ref": "#/components/responses/JmapForbidden" },
+          "404": { "$ref": "#/components/responses/JmapNotFound" }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/notifications/push/vapid-public-key": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Install-scoped VAPID public key",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "VAPID public key",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/VapidPublicKeyResponse" }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/JmapForbidden" }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/notifications/push/subscriptions": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Subscribe this device to Web Push",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PushSubscriptionCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Subscription stored",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PushSubscriptionResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/JmapBadRequest" },
+          "403": { "$ref": "#/components/responses/JmapForbidden" }
+        },
+        "x-wgw-access": "user"
+      },
+      "delete": {
+        "tags": ["Notifications"],
+        "summary": "Unsubscribe this device from Web Push",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PushUnsubscribeRequest" }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Subscription removed" },
+          "400": { "$ref": "#/components/responses/JmapBadRequest" },
+          "403": { "$ref": "#/components/responses/JmapForbidden" }
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/jmap": {
       "post": {
         "tags": [

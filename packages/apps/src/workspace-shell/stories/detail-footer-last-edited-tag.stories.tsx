@@ -7,7 +7,7 @@ import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-fo
  * Mock-tier coverage for DetailFooterLastEditedTag (shared Notes/Docs footer chip).
  */
 const meta = {
-  title: "Shared/Detail Footer Last Edited Tag",
+  title: "UI/Patterns/Detail Footer Last Edited Tag",
   parameters: {
     layout: "padded",
   },

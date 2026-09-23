@@ -43,7 +43,7 @@ function DriveMainPaneHarness({
 }
 
 const meta = {
-  title: "Apps/Drive/Panes/DriveMainPane",
+  title: "Features/Drive/Panes/DriveMainPane",
   component: DriveMainPaneHarness,
   parameters: {
     layout: "fullscreen",

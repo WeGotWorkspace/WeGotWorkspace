@@ -27,13 +27,13 @@ Pane and detail styling lives under `.mail-workspace` in `mail-workspace.css`; T
 
 ## Storybook
 
-| Story                               | Purpose                                                                    |
-| ----------------------------------- | -------------------------------------------------------------------------- |
-| `Apps/Mail`                         | Full workspace with mock bootstrap (`HtmlDetail` opens seeded HTML iframe) |
-| `Apps/Mail/Panes/List`              | List column harness                                                        |
-| `Apps/Mail/Panes/Detail`            | Detail view (plain + HTML iframe + attachments)                            |
-| `Apps/Mail/Panes/Detail action bar` | Toolbar variants                                                           |
-| `Apps/Mail/Panes/Compose`           | Compose dialog surface                                                     |
-| `Apps/Mail/Panes/Attachments`       | Attachment grid                                                            |
-| `Apps/Mail/Panes/Multi selection`   | Batch selection surface                                                    |
-| `Apps/WeGotWorkspace`               | Full shell (login → home → all apps, mock API in Storybook)                |
+| Story                                   | Purpose                                                          |
+| --------------------------------------- | ---------------------------------------------------------------- |
+| `Themes/Mail`                           | Full workspace chrome + branding knobs (`HtmlDetail` via Themes) |
+| `Features/Mail/Panes/List`              | List column harness                                              |
+| `Features/Mail/Panes/Detail`            | Detail view (plain + HTML iframe + attachments)                  |
+| `Features/Mail/Panes/Detail action bar` | Toolbar variants                                                 |
+| `Features/Mail/Panes/Compose`           | Compose dialog surface                                           |
+| `Features/Mail/Panes/Attachments`       | Attachment grid                                                  |
+| `Features/Mail/Panes/Multi selection`   | Batch selection surface                                          |
+| `Features/Workspace`                    | Full shell (login → home → all apps, mock API in Storybook)      |

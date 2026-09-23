@@ -3,18 +3,19 @@
 .action-bar {
   @apply px-4 md:px-12 h-16 md:h-20 border-b flex items-center shrink-0 gap-3;
   container: action-bar / inline-size;
-  --action-bar-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --action-bar-border-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
   /* Idle outline chips (incl. back) stay muted; parents publish accent hover washes. */
-  --button-outline-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+  --button-outline-color: color-mix(in oklab, var(--color-we-got-dark) 70%, transparent);
   border-color: var(--action-bar-border-color);
   background-color: var(
     --action-bar-bg,
-    var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff))
+    var(--workspace-chrome-footer-bg, var(--workspace-surface, var(--color-we-got-soft)))
   );
 }
 
 .action-bar__back {
-  @apply max-w-[12rem] shrink min-w-0 rounded-full transition-colors;
+  /* Soft radius from `.button` (`--control-radius`); do not force a capsule. */
+  @apply max-w-[12rem] shrink min-w-0 transition-colors;
 }
 
 .action-bar__back > span:last-child {

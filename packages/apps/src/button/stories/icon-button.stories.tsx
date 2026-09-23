@@ -3,7 +3,7 @@ import { Star } from "lucide-react";
 import { BUTTON_VARIANT_OPTIONS, ICON_BUTTON_SIZE_OPTIONS, IconButton } from "../src/button";
 
 const meta: Meta<typeof IconButton> = {
-  title: "Shared/Buttons/Icon Button",
+  title: "UI/Primitives/Icon Button",
   component: IconButton,
   argTypes: {
     size: {

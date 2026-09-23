@@ -36,7 +36,7 @@ function BackupsPaneHarness({ dataOverride }: { dataOverride?: AdminStoryDataOve
 }
 
 const meta = {
-  title: "Apps/Admin/Panes/Backups",
+  title: "Features/Admin/Panes/Backups",
   component: AdminBackupsPane,
   parameters: {
     layout: "fullscreen",

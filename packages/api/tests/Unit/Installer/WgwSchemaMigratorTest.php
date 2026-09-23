@@ -122,6 +122,9 @@ final class WgwSchemaMigratorTest extends TestCase
             'docs_thread_index',
             'jmap_mail_sync',
             'jmap_mail_messages',
+            'notifications',
+            'notification_deliveries',
+            'push_subscriptions',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
@@ -137,6 +140,9 @@ final class WgwSchemaMigratorTest extends TestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('mail_user_credentials', 'imap_host'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('jmap_mail_sync', 'mail_account_id'));
+        // Format-at-edge notify facts; without this column NotifyListener inserts are
+        // swallowed by EventDispatch and chat/docs/calendar inbox rows never appear.
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('notifications', 'data'));
     }
 
     private static function legacyAppMigrationVersion(\PDO $pdo): int

@@ -101,7 +101,7 @@ function DocsCommentsCollabDemo() {
 }
 
 const meta = {
-  title: "Shared/TextEditor/Marks",
+  title: "UI/Patterns/TextEditor/Marks",
   component: DocsCommentsCollabDemo,
   parameters: {
     layout: "fullscreen",

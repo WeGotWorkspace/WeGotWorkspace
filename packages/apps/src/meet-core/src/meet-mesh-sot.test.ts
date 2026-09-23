@@ -386,4 +386,35 @@ describe("wrapMeetChatOperationsWithMesh", () => {
       { v: 1, kind: "call-active", channel: "chat-general", active: false },
     ]);
   });
+
+  it("fans notify-hint after successful sendMessage and reply", async () => {
+    const saved = message({ id: "m1", authorId: "alice", authorName: "Alice", body: "hi" });
+    const ops: MeetChatOperations = {
+      sendMessage: vi.fn().mockResolvedValue(saved),
+      reply: vi.fn().mockResolvedValue({ ...saved, id: "m2", parentId: "m1" }),
+    };
+    const mesh = port();
+    const wrapped = wrapMeetChatOperationsWithMesh(ops, "alice", null, mesh);
+
+    await wrapped.sendMessage!("chat-general", "hi");
+    await wrapped.reply!("m1", "hi");
+
+    expect(mesh.sent.map((row) => row.envelope.kind)).toEqual([
+      "channel-message",
+      "notify-hint",
+      "channel-message",
+      "notify-hint",
+    ]);
+    expect(mesh.sent[1]?.envelope).toEqual({
+      v: 1,
+      kind: "notify-hint",
+      tag: "chat.message_posted",
+    });
+    expect(mesh.sent.map((row) => [...row.usernames])).toEqual([
+      ["bob"],
+      ["bob"],
+      ["bob"],
+      ["bob"],
+    ]);
+  });
 });

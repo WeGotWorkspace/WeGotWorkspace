@@ -12,14 +12,26 @@
  *
  * Main column width (`--workspace-main-content-max-width`) is unified here so pane
  * content and {@link Card} stacks share the same measure across products.
+ *
+ * `:where` so a later import of this file cannot reset product accents
+ * (`--button-primary-*`, `--primary`) back to `#2f302c`. The app loads every
+ * product CSS file; Storybook loads one.
  */
-:is(.admin-workspace, .settings-workspace, .notes-workspace, .mail-workspace, .install-workspace) {
-  --workspace-root-bg: var(--color-cream, #ffffff);
-  --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 15%, transparent);
-  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 80%, transparent);
-  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
-  --workspace-user-footer-link-color: var(--color-ink);
-  --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
+:where(.admin-workspace, .settings-workspace, .notes-workspace, .mail-workspace) {
+  --workspace-root-bg: var(--workspace-surface);
+  --app-sidebar-border-color: color-mix(in oklab, var(--color-we-got-dark) 15%, transparent);
+  --workspace-user-footer-text-color: color-mix(
+    in oklab,
+    var(--color-we-got-dark) 80%,
+    transparent
+  );
+  --workspace-user-footer-border-color: color-mix(
+    in oklab,
+    var(--color-we-got-dark) 18%,
+    transparent
+  );
+  --workspace-user-footer-link-color: var(--color-we-got-dark);
+  --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
 
   --workspace-main-content-max-width: 42rem;
 
@@ -28,5 +40,5 @@
   --primary: #2f302c;
   --primary-foreground: #ffffff;
 
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --field-label-color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
 }

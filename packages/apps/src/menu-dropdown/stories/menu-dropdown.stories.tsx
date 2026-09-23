@@ -7,7 +7,7 @@ import type { DropdownMenuItemProps } from "../src/dropdown-menu";
 import "./menu-dropdown.stories.css";
 
 const meta: Meta<typeof DropdownMenu> = {
-  title: "Shared/Dropdown Menu",
+  title: "UI/Primitives/Dropdown Menu",
   component: DropdownMenu,
   parameters: {
     layout: "centered",

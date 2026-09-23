@@ -344,6 +344,7 @@ export function DriveWorkspace({
         type="file"
         multiple
         className="hidden"
+        aria-label={labels.uploadFiles}
         onChange={(e) => {
           controller.handleUpload(e.target.files);
           e.target.value = "";

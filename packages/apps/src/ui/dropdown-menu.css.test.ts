@@ -14,7 +14,7 @@ describe("dropdown-menu accent washes", () => {
       /\.dropdown-menu-ui__item:focus(?::not\(\.menu-item--severity-danger\))? \{[\s\S]*--menu-item-hover-background/,
     );
     expect(css).toMatch(
-      /\.dropdown-menu-ui__item:focus(?::not\(\.menu-item--severity-danger\))? \{[\s\S]*var\(--workspace-accent,\s*var\(--color-ink\)\) 14%/,
+      /\.dropdown-menu-ui__item:focus(?::not\(\.menu-item--severity-danger\))? \{[\s\S]*var\(--workspace-accent,\s*var\(--color-we-got-dark\)\) 14%/,
     );
     expect(css).not.toMatch(
       /\.dropdown-menu-ui__item:focus(?::not\(\.menu-item--severity-danger\))? \{[\s\S]*--button-outline-hover-background/,
@@ -27,7 +27,7 @@ describe("dropdown-menu accent washes", () => {
       /\.dropdown-menu-ui__checkbox-item\[data-state="checked"\][\s\S]*--menu-item-selected-background/,
     );
     expect(css).toMatch(
-      /\.dropdown-menu-ui__checkbox-item\[data-state="checked"\][\s\S]*var\(--workspace-accent,\s*var\(--color-ink\)\) 18%/,
+      /\.dropdown-menu-ui__checkbox-item\[data-state="checked"\][\s\S]*var\(--workspace-accent,\s*var\(--color-we-got-dark\)\) 18%/,
     );
     expect(css).not.toMatch(
       /\.dropdown-menu-ui__checkbox-item\[data-state="checked"\][\s\S]*--button-outline-active-background/,

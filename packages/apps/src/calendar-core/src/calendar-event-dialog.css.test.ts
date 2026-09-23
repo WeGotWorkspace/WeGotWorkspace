@@ -17,8 +17,12 @@ describe("calendar event dialog CSS ownership", () => {
 
   it("defines dialog-surface accent tokens outside the workspace shell", () => {
     expect(css).toMatch(/\.calendar-dialog-surface\s*\{/);
-    expect(css).toContain("--calendar-accent: #6366f1");
-    expect(css).toContain("--button-primary-bg: var(--calendar-accent-strong)");
+    expect(css).toContain("--workspace-accent: var(--color-we-got-sand)");
+    expect(css).toContain("--button-primary-bg: var(--workspace-accent)");
+    expect(css).not.toContain("--button-primary-bg: var(--workspace-accent-strong)");
+    expect(css).toMatch(
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
+    );
   });
 
   it("keeps the event form single-column (date+time pairs stay in-row)", () => {
@@ -40,9 +44,8 @@ describe("calendar event dialog CSS ownership", () => {
 
   it("keeps a compact card below the mobile breakpoint (no full-bleed sheet)", () => {
     expect(css).toMatch(/@media \(max-width: 767px\)/);
-    expect(css).toMatch(
-      /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-dialog,\s*\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-details-popover--dialog/,
-    );
+    expect(css).toMatch(/\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-dialog \{/);
+    expect(css).not.toContain("calendar-event-details-popover--dialog");
     expect(css).toMatch(
       /\.ui-modal-surface\.calendar-dialog-surface\.calendar-event-dialog[\s\S]*height:\s*auto/,
     );
@@ -184,8 +187,8 @@ describe("calendar event dialog Meet field", () => {
     expect(css).not.toContain("background-color: transparent");
     expect(css).not.toContain("stroke-width: 1.75");
     expect(css).not.toMatch(/color-swatch-trigger/);
-    expect(css).toContain("--meet-accent: #2a1644");
-    expect(css).toContain("--card-title-icon-color: var(--meet-accent)");
+    expect(css).toContain("--workspace-accent: var(--color-we-got-sand)");
+    expect(css).toContain("--card-title-icon-color: var(--workspace-accent)");
     expect(css).not.toMatch(/calendar-event-dialog__meet-generate/);
     expect(css).not.toContain("calendar-event-dialog__meet-switch");
     expect(css).not.toMatch(/calendar-event-dialog__meet-scope-trigger/);

@@ -51,18 +51,18 @@ describe("WorkspaceUserFooter logout chrome", () => {
     expect(tsx).not.toMatch(/WORKSPACE_USER_LOGOUT_STYLE/);
   });
 
-  it("pins footer avatar mark to an opaque darkened sidebar wash — not selected-chip SST", () => {
+  it("pins footer avatar mark to an accent wash on the sidebar — not selected-chip SST", () => {
     expect(css).toMatch(
-      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(\s*in oklab,\s*#000000 16%,\s*var\(--app-sidebar-bg/,
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 16%,\s*var\(--app-sidebar-bg/,
     );
     expect(css).toMatch(
-      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--color-ink\)/,
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).not.toMatch(
       /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--button-active-color/,
     );
     expect(css).not.toMatch(
-      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 12%,\s*transparent/,
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(in oklab,\s*var\(--color-we-got-dark\) 12%,\s*transparent/,
     );
   });
 });
@@ -91,6 +91,31 @@ describe("WorkspaceSidebarToggle chrome", () => {
   it("keeps active Lucide panel/menu marks as stroke (no solid fill blob)", () => {
     expect(css).toMatch(
       /\.workspace-sidebar-toggle\.button\.icon-button--active \.button__icon > svg \{[\s\S]*fill:\s*none/,
+    );
+  });
+
+  it("shows a presence unread dot on the closed rail/hamburger (count stays on the bell)", () => {
+    const toggleBlock = tsx.match(/export function WorkspaceSidebarToggle\([\s\S]*?\n\}/)?.[0];
+    expect(toggleBlock).toBeDefined();
+    expect(tsx).toMatch(/useNotificationsInbox/);
+    expect(tsx).not.toMatch(/notification-inbox-tray\.css/);
+    expect(toggleBlock!).not.toMatch(/notification-inbox-tray__trigger/);
+    expect(toggleBlock!).not.toMatch(/data-count=/);
+    expect(toggleBlock!).toMatch(/data-unread=\{showUnreadDot \? "" : undefined\}/);
+    expect(toggleBlock!).toMatch(/data-pulse=\{pulseAttr\}/);
+    expect(toggleBlock!).toMatch(/useInboxBadgePulseAttr/);
+    expect(toggleBlock!).toMatch(/showUnreadDot = !open && unreadCount > 0/);
+    expect(css).toMatch(/\.workspace-sidebar-toggle \{[\s\S]*relative[\s\S]*overflow-visible/);
+    expect(css).toMatch(/\.workspace-sidebar-toggle\[data-unread\]::after \{[\s\S]*content:\s*""/);
+    expect(css).toMatch(
+      /\.workspace-sidebar-toggle\[data-unread\]::after \{[\s\S]*--notification-inbox-badge-bg/,
+    );
+    expect(css).toMatch(/@keyframes notification-inbox-badge-pulse/);
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion:\s*no-preference\) \{[\s\S]*\.workspace-sidebar-toggle\[data-pulse\]::after \{[\s\S]*animation:\s*notification-inbox-badge-pulse/,
+    );
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion:\s*reduce\) \{[\s\S]*\.workspace-sidebar-toggle\[data-pulse\]::after \{[\s\S]*animation:\s*none/,
     );
   });
 });

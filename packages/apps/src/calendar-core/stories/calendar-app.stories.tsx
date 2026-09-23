@@ -5,18 +5,18 @@ import {
   createCalendarAppBootstrap,
   MOCK_CALENDAR_ANCHOR,
 } from "@/lib/api/mock/calendar-bootstrap";
-import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-operations";
 import { createSeededCalendarAppBootstrap } from "@/lib/api/mock/calendar-seed";
-import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import {
   calendarSearchRange,
   formatCalendarSearchScopeLabel,
 } from "@/calendar-core/src/calendar-search";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
-import type { CalendarSurfaceStore } from "@/calendar-core/src/use-calendar-surface";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
-import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import { createCalendarTaskDueOverlayFixture } from "@/calendar-core/src/calendar-task-due-overlay-fixture";
+import {
+  calendarStaticSurfaceFor,
+  calendarStoryOperations,
+} from "@/calendar-core/stories/calendar-story-shared";
 
 function queryDeep(root: ParentNode, selector: string): Element | null {
   const direct = root.querySelector(selector);
@@ -68,43 +68,14 @@ function bootstrapWithThisInstanceOverride() {
   };
 }
 
-const storyEvent = {
-  "@type": "Event",
-  id: "story-event",
-  uid: "urn:uuid:story-event",
-  calendarIds: { default: true },
-  title: "Story",
-  start: "2033-01-12T09:00:00",
-  duration: "PT1H",
-  timeZone: "Etc/UTC",
-} as JmapCalendarEvent;
-
-const storyOperations: CalendarAPIOperations = {
-  createEvent: async () => storyEvent,
-  patchEvent: async () => storyEvent,
-  deleteEvent: async () => {},
-  createCalendar: async (draft) => ({
-    id: "story-cal",
-    name: draft.name,
-    color: draft.color ?? "#6366f1",
-  }),
-  patchCalendar: async (calendarId, patch) => ({
-    id: calendarId,
-    name: patch.name ?? "Calendar",
-    color: patch.color ?? "#6366f1",
-  }),
-  deleteCalendar: async () => {},
-  ...createMockCalendarIcsOperations(),
-};
-
 const meta: Meta<typeof CalendarWorkspace> = {
-  title: "Apps/Calendar",
+  title: "Features/Calendar",
   component: CalendarWorkspace,
   parameters: {
     layout: "fullscreen",
   },
   args: {
-    operations: storyOperations,
+    operations: calendarStoryOperations,
   },
 };
 
@@ -114,26 +85,10 @@ type Story = StoryObj<typeof CalendarWorkspace>;
 const bootstrap = createCalendarAppBootstrap();
 const seeded = createSeededCalendarAppBootstrap();
 
-/**
- * Deterministic read-only surface for stories: same lit views, no adapter
- * (the mock route and live app run the MockJmapServer/JMAP-backed adapter
- * with full drag interactivity).
- */
-function staticSurfaceFor(data: typeof bootstrap): CalendarSurfaceStore {
-  return {
-    events: calendarEventsToEngineMap(data.data.events, {
-      sessionEmail: data.session.user.email,
-      calendars: data.data.calendars,
-    }),
-    contextValue: undefined,
-    syncNow: () => {},
-  };
-}
-
-const staticSurface = staticSurfaceFor(bootstrap);
-const seededSurface = staticSurfaceFor(seeded);
+const staticSurface = calendarStaticSurfaceFor(bootstrap);
+const seededSurface = calendarStaticSurfaceFor(seeded);
 const overrideBootstrap = bootstrapWithThisInstanceOverride();
-const overrideSurface = staticSurfaceFor(overrideBootstrap);
+const overrideSurface = calendarStaticSurfaceFor(overrideBootstrap);
 
 const COMPACT_MONTH_VIEWPORT = {
   name: "Compact month 390",
@@ -147,7 +102,9 @@ const TABLET_SEARCH_VIEWPORT = {
   type: "tablet" as const,
 };
 
-export const Default: Story = {
+/** Chrome Default lives under Themes/Calendar — sidebar subscription / sharee SST. */
+export const SeededMonthSidebar: Story = {
+  name: "Seeded month sidebar",
   tags: ["vitest-ci"],
   args: {
     ...seeded,
@@ -353,6 +310,105 @@ export const Year: Story = {
   },
 };
 
+const taskDueOverlayBootstrap = createCalendarTaskDueOverlayFixture();
+const taskDueOverlayArgs = {
+  ...bootstrap,
+  surface: staticSurface,
+  taskDueBootstrap: taskDueOverlayBootstrap,
+  initialAnchor: MOCK_CALENDAR_ANCHOR,
+  onOpenTaskInTasks: () => {},
+};
+
+function sidebarSection(root: HTMLElement, title: string): HTMLElement {
+  const heading = within(root).getByRole("heading", { name: title });
+  const section = heading.closest(".sidebar-section");
+  if (!(section instanceof HTMLElement)) {
+    throw new Error(`sidebar section "${title}" not found`);
+  }
+  return section;
+}
+
+export const TaskDueOverlayWeek: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    ...taskDueOverlayArgs,
+    initialView: "week",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("heading", { name: defaultCalendarLabels.tasksSection }),
+    ).toBeTruthy();
+    await expect(
+      canvas.getByRole("heading", { name: defaultCalendarLabels.sharedTaskListsSection }),
+    ).toBeTruthy();
+    const tasksSection = sidebarSection(canvasElement, defaultCalendarLabels.tasksSection);
+    await expect(within(tasksSection).getByText("Personal")).toBeTruthy();
+    await expect(within(tasksSection).getByText("Work")).toBeTruthy();
+    await waitFor(() => {
+      const summaries = collectEventCardSummaries(canvasElement);
+      if (!summaries.includes("Buy milk") || !summaries.includes("Review API spec")) {
+        throw new Error("task due overlay cards not ready");
+      }
+    });
+    await userEvent.click(within(tasksSection).getByRole("checkbox", { name: "Hide Work" }));
+    await waitFor(() => {
+      const summaries = collectEventCardSummaries(canvasElement);
+      expect(summaries).toContain("Buy milk");
+      expect(summaries).not.toContain("Review API spec");
+    });
+  },
+};
+
+export const TaskDueOverlayDay: Story = {
+  args: {
+    ...taskDueOverlayArgs,
+    initialView: "day",
+  },
+};
+
+export const TaskDueOverlayMonth: Story = {
+  args: {
+    ...taskDueOverlayArgs,
+    initialView: "month",
+  },
+};
+
+export const TaskDueOverlayList: Story = {
+  args: {
+    ...taskDueOverlayArgs,
+    initialView: "week",
+    initialPresentation: "list",
+  },
+};
+
+export const TaskDueOverlayYear: Story = {
+  args: {
+    ...taskDueOverlayArgs,
+    initialView: "year",
+  },
+  play: async ({ canvasElement }) => {
+    const day12 = await waitFor(() => {
+      const view = queryDeep(canvasElement, "calendar-timeline-view");
+      const cards = [...(view?.shadowRoot?.querySelectorAll(".month-card") ?? [])];
+      const january = cards.find((card) =>
+        card.querySelector(".month-title")?.textContent?.includes("January"),
+      );
+      const button = [...(january?.querySelectorAll("button.year-day") ?? [])].find(
+        (el) =>
+          el.querySelector(".year-day-number")?.textContent?.includes("12") &&
+          !el.classList.contains("is-outside-month"),
+      );
+      if (!(button instanceof HTMLButtonElement)) {
+        throw new Error("January 12 year day not ready");
+      }
+      return button;
+    });
+    expect(day12.querySelectorAll(".year-day-dot").length).toBeLessThanOrEqual(3);
+    expect(day12.querySelectorAll(".year-day-dot").length).toBeGreaterThan(0);
+  },
+};
+
 function searchStoryEvent(
   id: string,
   title: string,
@@ -402,7 +458,7 @@ function searchStoryBootstrap(extraEvents: JmapCalendarEvent[] = []) {
   return {
     ...seeded,
     data,
-    surface: staticSurfaceFor({ ...seeded, data }),
+    surface: calendarStaticSurfaceFor({ ...seeded, data }),
     initialAnchor: browseDate.toString(),
     initialView: "week" as const,
   };
@@ -771,9 +827,11 @@ export const Empty: Story = {
     initialPresentation: "list",
   },
   play: async ({ canvasElement }) => {
-    await expect
-      .poll(() => queryDeep(canvasElement, ".collection-state__body")?.textContent)
-      .toBe(defaultCalendarLabels.noEventsInRange);
+    await waitFor(() => {
+      expect(queryDeep(canvasElement, ".collection-state__body")?.textContent).toBe(
+        defaultCalendarLabels.noEventsInRange,
+      );
+    });
     await expect(queryDeep(canvasElement, ".collection-state__icon")).toBeTruthy();
   },
 };

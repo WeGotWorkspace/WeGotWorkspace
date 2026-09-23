@@ -24,7 +24,7 @@ function TextEditorSourceDemo(args: ComponentProps<typeof TextEditorSource>) {
 }
 
 const meta = {
-  title: "Shared/TextEditor/Components/TextEditorSource",
+  title: "UI/Patterns/TextEditor/Components/TextEditorSource",
   component: TextEditorSource,
   tags: ["autodocs"],
   parameters: {

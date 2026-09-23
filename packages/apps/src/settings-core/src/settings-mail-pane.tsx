@@ -78,7 +78,7 @@ export function SettingsMailPane({ mail }: SettingsMailPaneProps) {
           {...settingsWorkspacePaneClasses.formTextField}
           name="imapPassword"
           label="IMAP password"
-          type="password"
+          variant="password"
           placeholder={imapHasPassword ? "••••••••" : "Enter password"}
         />
         <FormTextField
@@ -91,7 +91,7 @@ export function SettingsMailPane({ mail }: SettingsMailPaneProps) {
           {...settingsWorkspacePaneClasses.formTextField}
           name="smtpPassword"
           label="SMTP password (optional)"
-          type="password"
+          variant="password"
           placeholder={smtpPasswordSet ? "••••••••" : "Leave empty to reuse IMAP password"}
         />
       </Card>

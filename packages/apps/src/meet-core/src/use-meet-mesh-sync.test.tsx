@@ -109,9 +109,13 @@ describe("useMeetMeshSync", () => {
     });
 
     expect(session.broadcasts).toEqual([]);
-    expect(session.sentTo).toHaveLength(1);
+    expect(session.sentTo).toHaveLength(2);
     expect(session.sentTo[0]?.peerId).toBe("bob-aaa111");
     expect(session.sentTo[0]?.envelope.kind).toBe("channel-message");
+    expect(session.sentTo[1]).toEqual({
+      peerId: "bob-aaa111",
+      envelope: { v: 1, kind: "notify-hint", tag: "chat.message_posted" },
+    });
   });
 
   it("applies inbound call-active onto the remapped DM id", async () => {

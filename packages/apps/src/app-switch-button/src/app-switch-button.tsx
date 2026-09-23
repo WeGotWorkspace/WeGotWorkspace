@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
 import type { DropdownMenuEntry } from "@/menu-dropdown/src/dropdown-menu";
@@ -28,7 +29,11 @@ export type AppSwitchButtonProps = {
   onSelect?: (app: AppSwitchMenuApp) => void;
 };
 
-export function AppSwitchButton({
+/**
+ * Memoized so workspace/list polls and sibling inbox updates do not rebuild the
+ * switch-trigger SVG (inlined via dangerouslySetInnerHTML) every few seconds.
+ */
+export const AppSwitchButton = memo(function AppSwitchButton({
   disabled = false,
   subtitle: subtitleProp,
   variant = "default",
@@ -65,9 +70,12 @@ export function AppSwitchButton({
         className="app-switch-button__menu-icon size-4"
       />
     ),
-    checked: app.id === current.id,
+    // Home / Workspace lockup is not a product app — nothing is current, and every
+    // product entry must remain navigable (do not treat the fallback `current` as selected).
+    checked: !isWorkspaceContext && app.id === current.id,
     onClick: () => {
-      if (disabled || app.id === current.id) return;
+      if (disabled) return;
+      if (!isWorkspaceContext && app.id === current.id) return;
       onSelect?.(app);
     },
   });
@@ -119,4 +127,4 @@ export function AppSwitchButton({
       contentClassName={cn("app-switch-button__menu", `app-switch-button__menu--${menuSurfaceKey}`)}
     />
   );
-}
+});

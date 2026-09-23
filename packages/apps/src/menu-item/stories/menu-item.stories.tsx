@@ -4,7 +4,7 @@ import { Folder, Star } from "lucide-react";
 import { MenuItem } from "../src/menu-item";
 
 const meta: Meta<typeof MenuItem> = {
-  title: "Shared/Menu Item",
+  title: "UI/Primitives/Menu Item",
   component: MenuItem,
   tags: ["vitest-ci"],
 };

@@ -64,7 +64,7 @@ function SuggestControlsHarness() {
 }
 
 const meta = {
-  title: "Shared/TextEditor/Docs collab/Suggest controls",
+  title: "Features/Docs/TextEditor/Docs collab/Suggest controls",
   component: DocsCollabSuggestControls,
   parameters: {
     layout: "fullscreen",

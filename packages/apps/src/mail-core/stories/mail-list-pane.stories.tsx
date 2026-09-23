@@ -58,7 +58,7 @@ function MailListPaneHarness({ preset = "default" }: { preset?: MailListPanePres
 }
 
 const meta = {
-  title: "Apps/Mail/Panes/List",
+  title: "Features/Mail/Panes/List",
   component: MailListPaneHarness,
   parameters: {
     layout: "fullscreen",

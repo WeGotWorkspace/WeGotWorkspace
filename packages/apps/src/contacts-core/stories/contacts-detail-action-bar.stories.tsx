@@ -56,7 +56,7 @@ function ContactsDetailActionBarHarness({
 }
 
 const meta = {
-  title: "Apps/Contacts/Panes/Detail action bar",
+  title: "Features/Contacts/Panes/Detail action bar",
   component: ContactsDetailActionBarHarness,
   parameters: {
     layout: "fullscreen",

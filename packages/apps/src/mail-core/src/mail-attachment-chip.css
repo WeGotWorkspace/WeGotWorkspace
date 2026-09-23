@@ -3,7 +3,7 @@
 :is(.mail-workspace, .mail-compose-dialog-surface) .mail-attachment-chip {
   @apply flex w-full min-w-0 items-center gap-3 text-left;
   border-radius: var(--control-radius);
-  border: 1px solid color-mix(in oklab, var(--color-ink) 10%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
   padding: 0.625rem 0.75rem;
   transition: background-color 0.15s ease;
 }
@@ -16,7 +16,7 @@
 }
 
 :is(.mail-workspace, .mail-compose-dialog-surface) .mail-attachment-chip--interactive:hover {
-  background: color-mix(in oklab, var(--color-ink) 4%, transparent);
+  background: color-mix(in oklab, var(--color-we-got-dark) 4%, transparent);
 }
 
 :is(.mail-workspace, .mail-compose-dialog-surface)
@@ -30,8 +30,8 @@
   width: 2.25rem;
   height: 2.25rem;
   border-radius: var(--control-radius);
-  background: color-mix(in oklab, var(--color-ink) 8%, transparent);
-  color: color-mix(in oklab, var(--color-ink) 75%, transparent);
+  background: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 75%, transparent);
 }
 
 :is(.mail-workspace, .mail-compose-dialog-surface) .mail-attachment-chip__icon svg {
@@ -44,12 +44,12 @@
 
 :is(.mail-workspace, .mail-compose-dialog-surface) .mail-attachment-chip__name {
   @apply block w-full truncate text-sm font-medium;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 :is(.mail-workspace, .mail-compose-dialog-surface) .mail-attachment-chip__meta {
   @apply block w-full truncate text-xs;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 :is(.mail-workspace, .mail-compose-dialog-surface) .mail-attachment-chip__action {
@@ -67,7 +67,7 @@
 
 :is(.mail-workspace, .mail-compose-dialog-surface) .mail-attachment-chip__action--trailing {
   opacity: 0;
-  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
   transition: opacity 0.15s ease;
 }
 

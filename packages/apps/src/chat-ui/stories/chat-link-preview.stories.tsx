@@ -8,7 +8,7 @@ import {
 } from "@/chat-ui/stories/chat-stories.fixtures";
 
 const meta = {
-  title: "Shared/Chat/ChatLinkPreview",
+  title: "UI/Patterns/Chat/Chat Link Preview",
   component: ChatLinkPreview,
   parameters: {
     layout: "padded",

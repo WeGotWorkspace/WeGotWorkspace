@@ -54,7 +54,7 @@ function CollectionShareHarness({
 }
 
 const meta: Meta<typeof CollectionShareSection> = {
-  title: "Shared/CollectionShareSection",
+  title: "Features/Share/CollectionShareSection",
   component: CollectionShareSection,
   tags: ["autodocs"],
 };

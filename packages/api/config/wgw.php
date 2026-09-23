@@ -78,6 +78,12 @@ return [
         'refresh_ttl' => (int) env('WGW_API_JWT_REFRESH_TTL', 1209600),
     ],
 
+    'vapid' => [
+        'subject' => env('WGW_VAPID_SUBJECT', 'mailto:noreply@example.com'),
+        'public_key' => env('WGW_VAPID_PUBLIC_KEY'),
+        'private_key' => env('WGW_VAPID_PRIVATE_KEY'),
+    ],
+
     'mail' => [
         /** Set {@code WGW_MAIL_SMTP_VERIFY_TLS=false} for local/dev SMTP with self-signed certs. */
         'smtp_verify_tls' => filter_var(env('WGW_MAIL_SMTP_VERIFY_TLS', true), FILTER_VALIDATE_BOOL),

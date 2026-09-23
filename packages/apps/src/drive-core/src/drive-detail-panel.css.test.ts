@@ -32,8 +32,10 @@ describe("Drive detail DocsCollabSidebarPanel shell", () => {
   });
 
   it("uses a flat tile-like preview surface with centered kind-icon fallback", () => {
-    expect(css).toMatch(/\.drive-detail-panel__preview \{[\s\S]*background-color:\s*#ffffff/);
-    expect(css).toMatch(/\.drive-detail-panel__preview \{[\s\S]*color:\s*var\(--drive-accent/);
+    expect(css).toMatch(
+      /\.drive-detail-panel__preview \{[\s\S]*background-color:\s*var\(--workspace-surface/,
+    );
+    expect(css).toMatch(/\.drive-detail-panel__preview \{[\s\S]*color:\s*var\(--workspace-accent/);
     expect(css).toMatch(
       /\.drive-detail-panel__preview \.file-preview__fallback[\s\S]*@apply flex items-center justify-center/,
     );
@@ -70,7 +72,7 @@ describe("Drive detail DocsCollabSidebarPanel shell", () => {
 
   it("opts into the shared DocsCollabSidebarPanel accent wash like Calendar invitations", () => {
     expect(workspaceCss).toMatch(
-      /--docs-collab-sidebar-panel-wash:\s*color-mix\(\s*in oklab,\s*var\(--drive-accent\)\s*10%/,
+      /--docs-collab-sidebar-panel-wash:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\)\s*10%/,
     );
     expect(css).toMatch(
       /\.drive-detail-panel \{[\s\S]*--docs-collab-sidebar-panel-bg:\s*var\(\s*--docs-collab-sidebar-panel-wash/,
@@ -80,7 +82,10 @@ describe("Drive detail DocsCollabSidebarPanel shell", () => {
   it("republishes Drive accent on the portaled SideDrawer; sheet wash is shared", () => {
     expect(css).toMatch(/\.drive-detail-panel-drawer \{/);
     expect(css).toMatch(
-      /\.drive-detail-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--drive-accent\)/,
+      /\.drive-detail-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-sand\)/i,
+    );
+    expect(css).toMatch(
+      /\.drive-detail-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--workspace-accent\)/,
     );
     expect(css).toMatch(/@import .*docs-collab-sidebar-panel\.css/);
   });

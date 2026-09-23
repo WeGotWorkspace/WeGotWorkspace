@@ -5,7 +5,7 @@ import { Input } from "@/ui/input";
 import { FormField } from "../src";
 
 const meta: Meta<typeof FormField> = {
-  title: "Shared/Form Field",
+  title: "UI/Primitives/Form Field",
   component: FormField,
 };
 

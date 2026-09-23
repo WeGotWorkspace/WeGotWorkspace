@@ -8,9 +8,9 @@ Use **`packages/apps/src/settings-core/`** as the reference when splitting a pro
 
 | Shell | Use this blueprint? | Entry |
 |-------|---------------------|-------|
-| Split (settings, admin, drive, install, docs) | **Yes** | `WorkspaceAppLayout` |
+| Split (settings, admin, drive, docs) | **Yes** | `WorkspaceAppLayout` |
 | Collection (mail, notes) | **No** — list/detail via `WorkspaceApp` | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md) |
-| Custom (meet, login header) | **No** — bespoke layout | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md) |
+| Custom (installer, login header) | **No** — bespoke layout | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md) |
 
 ## Layers (top to bottom)
 
@@ -28,7 +28,7 @@ Structural refactors must still compose **existing** UI from `packages/apps/src/
 | Need | Use | Reference |
 |------|-----|-----------|
 | Section surface + title | **`Card`** (`@/card/src/card`) | `settings-profile-pane.tsx`, `admin-meet-pane.tsx` |
-| Label + control (uncontrolled / controller state) | **`FieldLabelRow`** + **`Input`** / **`Select`** / **`Switch`** | `admin-mail-pane.tsx`, `admin-meet-pane.tsx` |
+| Label + control (uncontrolled / controller state) | **`FieldLabelRow`** + **`Input`** / **`Select`** / **`Switch`** | `admin-meet-pane.tsx` |
 | Label + control (react-hook-form + zod) | **`Form`** + **`FormTextField`** + **`FormSaveActionRow`** | `settings-profile-pane.tsx` |
 | Boolean row with title + description | **`FeatureRow`** pattern: copy **`admin-workspace-widgets.tsx`** `FeatureRow` markup and add **`.<product>-feature-row`** rules in **`*-workspace.css`** (same structure as `admin-panes.css`) — do not invent a second TS wrapper per product unless promoting to `@/ui` |
 | Primary / ghost actions | **`Button`** / **`IconButton`** (`@/button/src/button`) with workspace CSS variables on the root class — no `*PrimaryButton` wrappers |
@@ -65,7 +65,7 @@ Structural refactors must still compose **existing** UI from `packages/apps/src/
 - [ ] Replace inline `window.location` / logout in packages with **`onLogout`** (or similar) props implemented in **`*App`**.
 - [ ] Colocate **shell CSS variables** on the workspace root class (e.g. `.settings-workspace`); panes use **shared caption** patterns (`field-label-row__label`, `--field-label-color`).
 - [ ] Panes use **`Card`**, **`FieldLabelRow`**, and (where applicable) **`Form` / `FormTextField`** — delete any interim `*Card`, `*Field`, `*FeatureRow` helpers added during the split.
-- [ ] Storybook: story file per UI component (`Apps/<Product>/Components/*` + `Panes/*`), Controls on simple props, named stories per meaningful state; no Storybook `decorators` (use `*-story-scope.tsx` in `render` when tokens need a workspace root); workspace story uses fullscreen + production root class; bootstrap returns coherent **`data` + `session`** (and **`operations`** when needed).
+- [ ] Storybook: story file per UI component (`Features/<Product>/Components/*` + `Panes/*`), Controls on simple props, named stories per meaningful state; no Storybook `decorators` (use `*-story-scope.tsx` in `render` when tokens need a workspace root); workspace chrome Default under `Themes/<Product>`; unique state matrices under `Features/<Product>`; bootstrap returns coherent **`data` + `session`** (and **`operations`** when needed).
 
 ## Anti-patterns
 

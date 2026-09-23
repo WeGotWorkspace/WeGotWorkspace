@@ -176,7 +176,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         <FormField htmlFor="admin-mail-delivery-smtp-password" label="SMTP password">
           <Input
             id="admin-mail-delivery-smtp-password"
-            type="password"
+            variant="password"
             autoComplete="new-password"
             value={controller.settingsForm.mailDeliverySmtpPassword}
             placeholder={

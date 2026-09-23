@@ -8,9 +8,9 @@ DOMAIN="${WGW_DEV_DOMAIN:-wegotworkspace.localhost}"
 CERT_PEM="/etc/apache2/certs/${DOMAIN}.pem"
 CERT_KEY="/etc/apache2/certs/${DOMAIN}-key.pem"
 
-if [ ! -f "${INSTALL_ROOT}/wgw-config.php" ] && [ -f "${INSTALL_ROOT}/wgw-config.sample.php" ]; then
-  cp "${INSTALL_ROOT}/wgw-config.sample.php" "${INSTALL_ROOT}/wgw-config.php"
-fi
+# Do not copy wgw-config.sample.php → wgw-config.php. Env-first runtime uses
+# packages/api/.env. Recreating the legacy file on every container start made
+# the request-path migrator rewrite .env (and tear it under concurrent Safari).
 
 if [ -f "${API_ROOT}/composer.json" ] && [ ! -f "${API_ROOT}/vendor/autoload.php" ]; then
   composer install --working-dir="${API_ROOT}" --no-interaction --prefer-dist

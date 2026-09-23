@@ -15,6 +15,7 @@ type UseTasksControllerArgs = {
   operations?: TasksAPIOperations;
   bootstrapRevision?: number;
   initialView?: string;
+  initialTaskId?: string;
   onViewChange?: (view: string) => void;
 };
 
@@ -24,6 +25,7 @@ export function useTasksController({
   operations,
   bootstrapRevision = 0,
   initialView,
+  initialTaskId,
   onViewChange,
 }: UseTasksControllerArgs) {
   const shell = useTasksShell({
@@ -39,6 +41,15 @@ export function useTasksController({
   const mutations = useTasksMutations({ shell, list, exitAnimation });
   const projectMutations = useTasksProjectMutations({ shell });
   const { clearHiddenTasks } = exitAnimation;
+  const openedTaskDeepLinkRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!initialTaskId) return;
+    if (openedTaskDeepLinkRef.current === initialTaskId) return;
+    if (!data.tasks.some((task) => task.id === initialTaskId)) return;
+    openedTaskDeepLinkRef.current = initialTaskId;
+    mutations.editTask(initialTaskId);
+  }, [data.tasks, initialTaskId, mutations]);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 

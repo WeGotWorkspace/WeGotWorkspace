@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMeetChannelInviteLink,
+  buildMeetCollectionInviteLink,
   buildMeetGuestCallLink,
   buildMeetInviteCallLink,
   meetCallExitMode,
@@ -55,6 +56,21 @@ describe("meet route search", () => {
     expect(buildMeetChannelInviteLink("chat-general", "https://workspace.example.com")).toBe(
       "https://workspace.example.com/meet/channels/general",
     );
+  });
+
+  it("keeps meeting invite links on the guest room code instead of the collection slug", () => {
+    expect(
+      buildMeetCollectionInviteLink(
+        { id: "chat-standup", kind: "meeting", guestRoomCode: "h8y8-ewp6-al8n" },
+        "https://workspace.example.com",
+      ),
+    ).toBe("https://workspace.example.com/meet/meetings/h8y8-ewp6-al8n");
+    expect(
+      buildMeetCollectionInviteLink(
+        { id: "chat-standup", kind: "meeting", guestRoomCode: null },
+        "https://workspace.example.com",
+      ),
+    ).toBe("https://workspace.example.com/meet/meetings/standup");
   });
 
   it("reads a channel id from the invite pathname", () => {

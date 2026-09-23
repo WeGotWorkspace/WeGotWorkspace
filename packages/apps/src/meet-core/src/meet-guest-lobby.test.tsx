@@ -15,6 +15,7 @@ import {
 function renderGuestLobby(
   overrides: {
     waitingForAdmission?: boolean;
+    displayName?: string;
     requestJoin?: () => Promise<void>;
     leave?: () => Promise<void>;
     toggleMic?: () => void;
@@ -33,12 +34,13 @@ function renderGuestLobby(
   const toggleMic = overrides.toggleMic ?? vi.fn();
   const toggleVideo = overrides.toggleVideo ?? vi.fn();
   const setDisplayName = (overrides.setDisplayName ?? vi.fn()) as Dispatch<SetStateAction<string>>;
+  const displayName = overrides.displayName ?? "Wouter";
   const controller = createMeetStoryController(localVideoRef, {
     status: "idle",
     inCall: false,
     videoOn: false,
     micOn: true,
-    displayName: "Wouter",
+    displayName,
     setDisplayName,
     requestJoin,
     leave,
@@ -50,7 +52,7 @@ function renderGuestLobby(
     <TooltipProvider>
       <MeetGuestLobby
         controller={controller}
-        displayName="Wouter"
+        displayName={displayName}
         inJoinFlow
         hasSignedInIdentity={false}
         invitedRoom="h8y8-ewp6-al8n"
@@ -83,10 +85,13 @@ describe("MeetGuestLobby", () => {
   it("shows the knock CTA on the ready card", () => {
     const { requestJoin } = renderGuestLobby();
     const heading = screen.getByRole("heading", { name: meetLabels.invitedTitle });
-    const cameraOff = screen.getByText(meetLabels.cameraOff);
+    const preview = document.querySelector(".meet-guest-lobby__preview");
+    expect(preview).toBeTruthy();
     expect(
-      heading.compareDocumentPosition(cameraOff) & Node.DOCUMENT_POSITION_FOLLOWING,
+      heading.compareDocumentPosition(preview as Node) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(screen.queryByText(meetLabels.cameraOff)).toBeNull();
+    expect(document.querySelector(".user-avatar")).toBeNull();
     expect(screen.getByDisplayValue("Wouter")).toBeTruthy();
     expect(screen.getByText(meetLabels.knockNoAccount)).toBeTruthy();
     expect(screen.getByText(meetLabels.knockNoAccount).getAttribute("aria-hidden")).toBeNull();
@@ -96,14 +101,33 @@ describe("MeetGuestLobby", () => {
     expect(document.querySelector(".meet-guest-lobby__media")).toBeTruthy();
     expect(screen.queryByText("design")).toBeNull();
     expect(screen.queryByText(/Pixels, prototypes and critiques/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: meetLabels.knockToJoin }));
+    const knock = screen.getByRole("button", { name: meetLabels.knockToJoin });
+    expect((knock as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(knock);
     expect(requestJoin).toHaveBeenCalledWith("h8y8-ewp6-al8n");
+  });
+
+  it("disables knock when no display name is given", () => {
+    const { requestJoin } = renderGuestLobby({ displayName: "" });
+    const knock = screen.getByRole("button", { name: meetLabels.knockToJoin });
+    expect((knock as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(knock);
+    expect(requestJoin).not.toHaveBeenCalled();
+  });
+
+  it("disables knock when the display name is only whitespace", () => {
+    const { requestJoin } = renderGuestLobby({ displayName: "   " });
+    const knock = screen.getByRole("button", { name: meetLabels.knockToJoin });
+    expect((knock as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(knock);
+    expect(requestJoin).not.toHaveBeenCalled();
   });
 
   it("keeps the invite fields and disables knock while waiting", () => {
     const { leave } = renderGuestLobby({ waitingForAdmission: true });
     expect(screen.getByRole("heading", { name: meetLabels.invitedTitle })).toBeTruthy();
-    expect(screen.getByText(meetLabels.cameraOff)).toBeTruthy();
+    expect(screen.queryByText(meetLabels.cameraOff)).toBeNull();
+    expect(document.querySelector(".user-avatar")).toBeNull();
     expect(screen.getByDisplayValue("Wouter")).toBeTruthy();
     const knock = screen.getByRole("button", { name: meetLabels.knockToJoin });
     expect((knock as HTMLButtonElement).disabled).toBe(true);
@@ -114,7 +138,6 @@ describe("MeetGuestLobby", () => {
     expect(screen.queryByText(meetLabels.knockWaitHint)).toBeNull();
     expect(screen.queryByText(meetLabels.knockingHint)).toBeNull();
     expect(screen.queryByText("design")).toBeNull();
-    expect(document.querySelector(".user-avatar__presence")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: meetLabels.cancelKnock }));
     expect(leave).toHaveBeenCalledTimes(1);
   });

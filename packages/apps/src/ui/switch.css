@@ -46,7 +46,7 @@
   @apply ring-1;
   box-shadow:
     0 0 0 2px var(--background, #ffffff),
-    0 0 0 4px var(--switch-ring-color, var(--ring, var(--color-ink)));
+    0 0 0 4px var(--switch-ring-color, var(--ring, var(--color-we-got-dark)));
 }
 
 .switch[data-state="on"] {
@@ -63,7 +63,7 @@
   height: var(--switch-thumb-size);
   margin-inline-start: var(--switch-pad);
   border-radius: var(--switch-thumb-radius, 999px);
-  background-color: var(--switch-thumb-bg, var(--color-cream, #ffffff));
+  background-color: var(--switch-thumb-bg, var(--color-we-got-soft));
   transform: translateX(0);
   transition: transform 150ms ease;
 }

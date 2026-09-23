@@ -4,7 +4,7 @@ import { BookOpen, CalendarDays, Inbox } from "lucide-react";
 import { DetailViewHeader } from "@/detail-view-header/src/detail-view-header";
 
 const meta: Meta<typeof DetailViewHeader> = {
-  title: "Shared/Detail View Header",
+  title: "UI/Patterns/Detail View Header",
   component: DetailViewHeader,
 };
 
@@ -19,8 +19,8 @@ export const ReadonlyMailStyle: Story = {
         label: "Inbox",
         icon: <Inbox className="size-3.5 opacity-70" />,
         colors: {
-          color: "var(--color-cream, #ffffff)",
-          backgroundColor: "color-mix(in oklab, var(--color-ink) 88%, transparent)",
+          color: "var(--color-we-got-soft)",
+          backgroundColor: "color-mix(in oklab, var(--color-we-got-dark) 88%, transparent)",
         },
       },
       {
@@ -28,15 +28,15 @@ export const ReadonlyMailStyle: Story = {
         label: "Thu, 07 May 2026, 22:34",
         icon: <CalendarDays className="size-3.5 opacity-70" />,
         colors: {
-          backgroundColor: "color-mix(in oklab, var(--color-ink) 6%, transparent)",
-          color: "color-mix(in oklab, var(--color-ink) 58%, transparent)",
+          backgroundColor: "color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)",
+          color: "color-mix(in oklab, var(--color-we-got-dark) 58%, transparent)",
         },
       },
     ],
     title: "Weekly planning and architecture follow-up",
     emptyTitleLabel: "(no subject)",
     titleClassName:
-      "text-3xl md:text-4xl font-sans text-(--color-ink) font-semibold leading-[1.1] tracking-tight mb-8",
+      "text-3xl md:text-4xl font-sans text-(--color-we-got-dark) font-semibold leading-[1.1] tracking-tight mb-8",
   },
 };
 
@@ -57,8 +57,8 @@ export const EditableNotesStyle: Story = {
             label: "Last edited Thu, 07 May 2026, 22:34",
             icon: <CalendarDays className="size-3.5 opacity-70" />,
             colors: {
-              backgroundColor: "color-mix(in oklab, var(--color-ink) 6%, transparent)",
-              color: "color-mix(in oklab, var(--color-ink) 58%, transparent)",
+              backgroundColor: "color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)",
+              color: "color-mix(in oklab, var(--color-we-got-dark) 58%, transparent)",
             },
           },
         ]}
@@ -67,7 +67,7 @@ export const EditableNotesStyle: Story = {
         onTitleChange={setTitle}
         titleKey="editable-notes-title"
         titleClassName="text-3xl md:text-4xl font-semibold leading-[1.1] tracking-tight mb-8 md:mb-10"
-        titleStyle={{ fontFamily: "var(--font-sans)", color: "var(--color-ink)" }}
+        titleStyle={{ fontFamily: "var(--font-sans)", color: "var(--color-we-got-dark)" }}
         titlePlaceholder="Untitled"
       />
     );

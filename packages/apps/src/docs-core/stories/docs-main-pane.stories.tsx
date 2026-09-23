@@ -32,7 +32,7 @@ function DocsMainPaneHarness({
         className="docs-workspace"
         style={{
           minHeight: "100dvh",
-          backgroundColor: "var(--color-cream, #ffffff)",
+          backgroundColor: "var(--color-we-got-soft)",
         }}
       >
         <div className="docs-workspace__editor mx-auto max-w-3xl px-6 py-10 md:px-12 md:py-16">
@@ -49,7 +49,7 @@ function DocsMainPaneHarness({
 }
 
 const meta = {
-  title: "Apps/Docs/Panes/Main",
+  title: "Features/Docs/Panes/Main",
   component: DocsMainPane,
   parameters: {
     layout: "fullscreen",
