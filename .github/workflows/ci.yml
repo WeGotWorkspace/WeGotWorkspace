@@ -221,9 +221,11 @@ jobs:
 
       # Build with pnpm and upload that directory so the action does not spawn
       # its own Storybook build through a different package manager.
+      # --stats-json writes preview-stats.json. TurboSnap (onlyChanged) traces
+      # changed files from that manifest; without it the publish step fails.
       - name: Build Storybook
         working-directory: packages/apps
-        run: pnpm exec storybook build --output-dir storybook-static
+        run: pnpm exec storybook build --output-dir storybook-static --stats-json
 
       - name: Publish to Chromatic
         uses: chromaui/action@v18

@@ -273,10 +273,16 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(/workspace-app-layout__panel-scrim/);
     expect(css).toMatch(/sidebar:static sidebar:shadow-none/);
     expect(css).toMatch(/\.meet-workspace__surface--parked[\s\S]*content-visibility:\s*hidden/);
-    expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?--popover:\s*var\(--workspace-surface/);
     expect(css).toMatch(
-      /\.meet-device-popover \{[\s\S]*?background-color:\s*var\(--workspace-surface/,
+      /\.meet-device-popover \{[\s\S]*?--popover:\s*var\(--workspace-surface,\s*var\(--color-we-got-soft\)\)/,
     );
+    expect(css).toMatch(
+      /\.meet-device-popover \{[\s\S]*?background-color:\s*var\(--workspace-surface,\s*var\(--color-we-got-soft\)\)\s*!important/,
+    );
+    expect(css).toMatch(
+      /\.meet-device-popover \.meet-workspace__form \.meet-device-row__trigger[\s\S]*?background-color:\s*var\(--workspace-surface,\s*var\(--color-we-got-soft\)\)/,
+    );
+    expect(colorCss).toMatch(/\.meet-device-popover/);
     expect(css).toMatch(
       /\.meet-device-popover \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
