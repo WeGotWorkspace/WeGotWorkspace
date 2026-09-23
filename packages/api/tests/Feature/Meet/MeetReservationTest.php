@@ -209,7 +209,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
             ->assertJson(['error' => 'not_found']);
     }
 
-    public function test_guest_get_resolves_meeting_collection_slug(): void
+    public function test_guest_get_does_not_open_a_named_meeting(): void
     {
         $created = $this->withBearer($this->issueBearerTokenFor('alice'))
             ->postJson('/api/v1/chat/channels', [
@@ -218,18 +218,22 @@ final class MeetReservationTest extends WgwDatabaseTestCase
             ])
             ->assertCreated()
             ->json();
-        $this->assertSame('chat-test', $created['id']);
+        $this->assertMatchesRegularExpression('/^chat-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/', (string) $created['id']);
+        $this->assertNotSame('chat-test', $created['id']);
+        $roomCode = (string) $created['guestRoomCode'];
 
         $this->withoutBearer()
             ->getJson($this->meetStatusPath('test'))
-            ->assertOk()
-            ->assertExactJson([
-                'reserved' => true,
-                'active' => false,
-            ]);
+            ->assertNotFound()
+            ->assertJson(['error' => 'not_found']);
 
         $this->withoutBearer()
             ->getJson($this->meetStatusPath('chat-test'))
+            ->assertNotFound()
+            ->assertJson(['error' => 'not_found']);
+
+        $this->withoutBearer()
+            ->getJson($this->meetStatusPath($roomCode))
             ->assertOk()
             ->assertExactJson([
                 'reserved' => true,
@@ -237,7 +241,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
             ]);
     }
 
-    public function test_guest_get_resolves_persisted_ad_hoc_meeting_room_code(): void
+    public function test_guest_get_sees_a_started_ad_hoc_meeting(): void
     {
         $this->withBearer($this->issueBearerTokenFor('alice'))
             ->postJson('/api/v1/chat/channels', [
@@ -246,7 +250,15 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'guestRoomCode' => 'g744-8kfg-adjz',
             ])
             ->assertCreated()
+            ->assertJsonPath('id', 'chat-g744-8kfg-adjz')
             ->assertJsonPath('guestRoomCode', 'g744-8kfg-adjz');
+
+        $this->withBearer($this->issueBearerTokenFor('alice'))
+            ->postJson('/api/v1/meetings/rooms', [
+                'room' => 'g744-8kfg-adjz',
+                'ownerPrincipal' => 'u:alice',
+            ])
+            ->assertCreated();
 
         $this->withoutBearer()
             ->getJson($this->meetStatusPath('g744-8kfg-adjz'))
@@ -256,13 +268,26 @@ final class MeetReservationTest extends WgwDatabaseTestCase
                 'active' => false,
             ]);
 
+        $this->withBearer($this->issueBearerTokenFor('alice'))
+            ->postJson('/api/v1/rooms/g744-8kfg-adjz/participants', [
+                'peerId' => 'peer-alice',
+                'name' => 'Alice',
+            ])
+            ->assertOk();
+
         $this->withoutBearer()
-            ->getJson($this->meetStatusPath('standup'))
+            ->getJson($this->meetStatusPath('g744-8kfg-adjz'))
             ->assertOk()
             ->assertExactJson([
                 'reserved' => true,
-                'active' => false,
+                'active' => true,
             ]);
+
+        // The name slug is not a meeting id.
+        $this->withoutBearer()
+            ->getJson($this->meetStatusPath('standup'))
+            ->assertNotFound()
+            ->assertJson(['error' => 'not_found']);
     }
 
     public function test_guest_get_unknown_meeting_slug_is_404(): void
