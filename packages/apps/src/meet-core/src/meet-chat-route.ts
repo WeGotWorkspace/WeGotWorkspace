@@ -45,6 +45,23 @@ export function meetIsAdHocMeetingId(meetingId: string | null | undefined): bool
   return Boolean(id && isMeetRoomCode(id));
 }
 
+export type MeetLiveInviteGateInput = {
+  signedIn: boolean;
+  meetingId: string | null;
+  onConversationRoute: boolean;
+  inviteRoom: string | null;
+};
+
+/**
+ * Signed-out meeting URLs and leftover `?room=` landings use the invite gate
+ * (guest lobby). A signed-in member stays on one Meet workspace for channels,
+ * DMs, persisted meetings, and ad-hoc room codes so the shell does not remount.
+ */
+export function meetLiveRouteShowsInviteGate(input: MeetLiveInviteGateInput): boolean {
+  if (input.signedIn) return false;
+  return Boolean(input.meetingId || (!input.onConversationRoute && input.inviteRoom));
+}
+
 /** URL params → workspace selection key. */
 export function meetSelectionFromRouteParams(params: MeetChatRouteParams): string | null {
   if (params.peerId) return meetDirectMessageChannelId(params.peerId);

@@ -26,12 +26,17 @@ import {
   parseMeetRouteSearch,
   validateMeetRouteSearch,
 } from "@/meet-core/src/meet-route-search";
-import { MEET_MEETINGS_ROUTE, meetIsAdHocMeetingId } from "@/meet-core/src/meet-chat-route";
+import {
+  MEET_MEETINGS_ROUTE,
+  meetIsAdHocMeetingId,
+  meetLiveRouteShowsInviteGate,
+  type MeetChatRouteParams,
+} from "@/meet-core/src/meet-chat-route";
 import { InstallerApp } from "@/installer-core/src/installer-app";
 import { MailApp } from "@/mail-core/src/mail-app";
 import { MeetChatApp } from "@/meet-core/src/meet-chat-app";
 import { MeetInviteGate, MeetChannelDeepLinkGate } from "@/meet-core/src/meet-invite-gate";
-import type { MeetChatRouteParams } from "@/meet-core/src/meet-chat-route";
+import { wgwHasAuthenticatedSession, wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { NotesApp } from "@/notes-core/src/notes-app";
 import { createDefaultTasksApiSource } from "@/tasks-core/src/tasks-api-source";
 import { TasksApp } from "@/tasks-core/src/tasks-app";
@@ -283,9 +288,18 @@ function MeetLiveRoute() {
     });
   }, [meetingId, navigate, onConversationRoute, parsedSearch, roomFromSearch]);
 
-  // One `/meet/meetings/{id}` pipeline: leftover codes and collection slugs.
-  // Signed-out → guest lobby; signed-in → MeetWorkspace.
-  if (meetingId || (!onConversationRoute && inviteRoom)) {
+  // Signed-in members stay on one MeetChatApp for channels, DMs, persisted
+  // meetings, and ad-hoc room codes. Swapping in MeetInviteGate remounts the
+  // workspace. The invite gate is only the signed-out guest lobby.
+  const signedIn = wgwLiveApiEnabled() && wgwHasAuthenticatedSession();
+  if (
+    meetLiveRouteShowsInviteGate({
+      signedIn,
+      meetingId,
+      onConversationRoute,
+      inviteRoom,
+    })
+  ) {
     return (
       <MeetInviteGate room={adHocMeeting ? meetingId : inviteRoom} channelId={persistedMeetingId} />
     );
@@ -518,9 +532,9 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
         replace: true,
       });
     },
-    // Live: Slack-like workspace. `/meet/channels/{id}` and persisted
-    // `/meet/meetings/{id}` stay mounted; only ad-hoc room codes use the
-    // invite gate. Anonymous invite landings still use the guest lobby.
+    // Live: Slack-like workspace. Signed-in channel, DM, persisted meeting,
+    // and ad-hoc room URLs stay on one MeetChatApp. The invite gate is only
+    // for signed-out landings (guest lobby).
     component: isLive ? MeetLiveRoute : MockMeetRoute,
   });
 
