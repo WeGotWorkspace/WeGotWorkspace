@@ -65,4 +65,17 @@ describe("workspace PWA manifests", () => {
     expect(manifest.theme_color?.toLowerCase()).toBe(accent);
     expect(manifest.background_color?.toLowerCase()).toBe(accent);
   });
+
+  it("publishes a full-bleed home svg instead of a 60px mark", () => {
+    const svg = readFileSync(join(import.meta.dirname, "../../public/app-icons/home.svg"), "utf8");
+    const version = WORKSPACE_PWA_ICON_CACHE_VERSION;
+    const raw = readFileSync(join(manifestsDir, "home.webmanifest"), "utf8");
+
+    expect(svg).toContain('viewBox="0 0 270 270"');
+    expect(svg).toContain('fill="var(--wai-bg, #1b1d3a)"');
+    expect(svg).toContain('fill="var(--wai-fg, #fff5e9)"');
+    expect(svg).not.toContain('width="60"');
+    expect(raw).toContain(`"/app-icons/home.svg?v=${version}"`);
+    expect(raw).toContain(`"/pwa-icons/home-180.png?v=${version}"`);
+  });
 });
