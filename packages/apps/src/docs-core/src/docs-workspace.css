@@ -33,9 +33,11 @@
   --docs-comments-column-gap: 1rem;
   --workspace-panel-width: var(--docs-comments-column-width);
   --docs-stat-tag-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
-  --docs-stat-tag-color: color-mix(in oklch, var(--workspace-accent) 88%, var(--color-we-got-dark));
+  /* Stronger than 88% Sand→Dark so word/char chips clear AA on cream footer. */
+  --docs-stat-tag-color: color-mix(in oklch, var(--workspace-accent) 40%, var(--color-we-got-dark));
   --docs-text: var(--color-we-got-dark);
-  --docs-muted: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  /* 72% clears WCAG AA on cream sidebar / footer wash; 65% failed outline nums. */
+  --docs-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
   --docs-border: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   /*
    * Shared horizontal inset for ViewHeader (`main-header`), format bar, and
@@ -235,7 +237,8 @@
 .docs-workspace .workspace-detail-footer__meta-tag--edited {
   @apply shrink-0;
   --tag-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
-  --tag-fg: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  /* Match Notes: 72% clears AA on cream footer (~4.5:1); 65% was ~2.8:1. */
+  --tag-fg: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
 }
 
 .docs-workspace .workspace-detail-footer__meta-tag--edited .tag {

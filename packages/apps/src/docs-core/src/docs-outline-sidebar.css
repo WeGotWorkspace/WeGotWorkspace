@@ -4,4 +4,7 @@
 .docs-outline-sidebar__number {
   @apply block min-w-[2.75ch] text-xs tabular-nums;
   font-family: var(--font-mono);
+  /* Beat `.menu-item__icon-slot` 0.65 opacity so outline nums stay AA on cream. */
+  color: var(--docs-muted, color-mix(in oklch, var(--color-we-got-dark) 72%, transparent));
+  opacity: 1;
 }

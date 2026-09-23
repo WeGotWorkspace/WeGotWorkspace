@@ -137,9 +137,10 @@
     --workspace-user-footer-text-color,
     color-mix(in oklab, var(--color-we-got-dark) 70%, transparent)
   );
+  /* 72% clears WCAG AA on cream sidebar wash (~4.5:1); 65% was ~4.45:1. */
   --user-avatar-subtitle-color: var(
     --workspace-user-footer-subtitle-color,
-    color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 72%, transparent)
   );
   /*
    * Accent wash on the sidebar surface, same family as nav item tints.

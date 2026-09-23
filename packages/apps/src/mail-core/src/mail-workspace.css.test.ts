@@ -17,7 +17,7 @@ describe("mail workspace branding chrome", () => {
       /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(css).toMatch(
-      /\.mail-workspace \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 90%,\s*var\(--color-we-got-dark\)\)/,
+      /\.mail-workspace \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 85%,\s*var\(--color-we-got-dark\)\)/,
     );
     expect(css).toMatch(
       /\.mail-workspace \{[\s\S]*?--button-primary-fg:\s*var\(--color-we-got-dark\)/,
@@ -66,7 +66,7 @@ describe("mail workspace branding chrome", () => {
       /:is\(\.mail-compose-dialog-surface,\s*\.mail-dialog-surface\) \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(css).toMatch(
-      /:is\(\.mail-compose-dialog-surface,\s*\.mail-dialog-surface\) \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 90%,\s*var\(--color-we-got-dark\)\)/,
+      /:is\(\.mail-compose-dialog-surface,\s*\.mail-dialog-surface\) \{[\s\S]*?--button-primary-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 85%,\s*var\(--color-we-got-dark\)\)/,
     );
   });
 });

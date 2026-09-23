@@ -203,7 +203,7 @@ describe("docs workspace outline chrome", () => {
       /\.docs-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-bg:\s*color-mix\(in oklch,\s*var\(--color-we-got-dark\) 6%/,
     );
     expect(css).toMatch(
-      /\.docs-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-fg:\s*color-mix\(in oklch,\s*var\(--color-we-got-dark\) 65%/,
+      /\.docs-workspace \.workspace-detail-footer__meta-tag--edited \{[\s\S]*--tag-fg:\s*color-mix\(in oklch,\s*var\(--color-we-got-dark\) 72%/,
     );
   });
 

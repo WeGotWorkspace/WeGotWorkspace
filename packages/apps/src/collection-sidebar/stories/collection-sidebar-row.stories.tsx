@@ -91,7 +91,10 @@ export const LeadingAndTrailingChrome: Story = {
   },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByTestId("presence-dot"));
+    // Leading chrome is decorative (`pointer-events: none`); clicks hit the
+    // stretched select control. Trailing chrome sits inside the select (its
+    // text is part of the accessible name — match by substring).
+    await userEvent.click(canvas.getByRole("button", { name: /Ada Lovelace/ }));
     await userEvent.click(canvas.getByTestId("unread-count"));
     await expect(args.onSelect).toHaveBeenCalledTimes(2);
   },
