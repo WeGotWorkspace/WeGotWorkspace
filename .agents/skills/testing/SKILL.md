@@ -27,7 +27,7 @@ paths:
 | Scope | Command |
 |-------|---------|
 | API done gate | `pnpm test:api-done-gate` or `composer done-gate` in `packages/api` |
-| Apps done gate | `pnpm test:apps-done-gate` or `pnpm run test:done-gate` in `packages/apps` |
+| Apps done gate (local) | `pnpm test:apps-done-gate` — typecheck, contract, Storybook smoke, coverage. CI adds unit + jsdom via `APPS_DONE_GATE_FULL=1` |
 | Agent docs (links + English-only) | `pnpm run check:agent-docs` |
 | Apps UI ↔ OpenAPI contract | `pnpm --filter @wgw/apps run test:contract` |
 | API PHPUnit (package) | `composer test` in `packages/api` |

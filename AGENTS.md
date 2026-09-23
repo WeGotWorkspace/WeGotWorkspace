@@ -4,7 +4,7 @@
 
 **API greenfield:** Work under `packages/api/` is a new Laravel app matching OpenAPI — no legacy PHP in tree. Do not restore `packages/api/src/`, `*Kernel`, `MailApi`, or dual autoload. Full guidance: [`.agents/skills/api/`](.agents/skills/api/).
 
-**Git:** Do not `git commit` or open PRs unless the user explicitly asks. Commits touching `packages/apps/**` require `pnpm test:apps-done-gate` before push (Husky pre-push enforces). [`.agents/skills/git-workflow/`](.agents/skills/git-workflow/).
+**Git:** Do not `git commit` or open PRs unless the user explicitly asks. Commits touching `packages/apps/**` run the local apps done gate before push (Husky pre-push: typecheck, contract, Storybook smoke, coverage). Vitest unit and jsdom run in CI. [`.agents/skills/git-workflow/`](.agents/skills/git-workflow/).
 
 **Verification:** Before handoff, call `run_apps_done_gate` / `run_api_done_gate` via the **wgw-verify** MCP server when available ([developer/mcp-verification.md](.agents/skills/developer/mcp-verification.md)). Use bash (`pnpm test:*-done-gate`) only as fallback.
 
