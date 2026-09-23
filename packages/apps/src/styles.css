@@ -277,16 +277,39 @@
     border-color: var(--color-border);
   }
 
-  html {
-    background-color: var(--color-we-got-dark);
+  html,
+  body {
+    /* Soft paper. iOS paints the status-bar band from this, outside the web layer. */
+    background-color: var(--color-we-got-soft, #fff5e9);
   }
 
   body {
-    background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     min-height: 100vh;
     min-height: 100dvh;
+  }
+
+  /*
+   * Installed PWA: large viewport fills the screen behind the status bar.
+   * Dynamic viewport is short there and leaves a gap. Browser tabs stay on dvh
+   * so the shell does not run under the Safari toolbar.
+   */
+  @media (display-mode: standalone) {
+    html .workspace-columns,
+    html .app-sidebar {
+      height: 100lvh;
+    }
+  }
+
+  html.pwa-standalone,
+  html.pwa-standalone body {
+    min-height: 100lvh;
+  }
+
+  html.pwa-standalone .workspace-columns,
+  html.pwa-standalone .app-sidebar {
+    height: 100lvh;
   }
 
   /* All-caps small labels (sidebar headings, table headers, eyebrows) use sans */

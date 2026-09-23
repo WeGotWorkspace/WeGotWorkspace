@@ -286,6 +286,9 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(
       /\.meet-workspace--call-active \.workspace-app-layout__main-header[\s\S]*hidden/,
     );
+    expect(css).toMatch(
+      /\.workspace-columns\.meet-workspace--call-active \.workspace-app-layout__main \{[\s\S]*padding-top:\s*0/,
+    );
     expect(css).toMatch(/sidebar:static/);
     expect(css).toMatch(/inset-y-0 end-0/);
     expect(css).toMatch(/docs-collab-sidebar-panel/);
