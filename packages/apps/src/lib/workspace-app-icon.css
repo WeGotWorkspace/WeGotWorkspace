@@ -3,9 +3,10 @@
 /**
  * Full-color launcher tiles clip in CSS. Keep SVG artwork square so Apple can
  * apply its own mask to apple-touch PNGs.
+ * Radius matches former tile `rx="45"` on a 270 viewBox (45/270 = 1/6).
  */
 .workspace-app-icon--tile {
-  --workspace-app-icon-radius: 16px;
+  --workspace-app-icon-radius: calc(100% / 6);
   @apply size-full overflow-hidden object-cover;
   border-radius: var(--workspace-app-icon-radius);
 }
@@ -17,7 +18,8 @@
 .workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--app-sidebar-color, var(--app-switch-label-color, currentColor));
   --app-switch-icon-fg: var(--workspace-accent, currentColor);
-  @apply block overflow-hidden rounded-[9px];
+  @apply block overflow-hidden;
+  border-radius: calc(100% / 6);
   background-color: var(--app-switch-icon-bg);
 }
 

@@ -20,15 +20,15 @@
   );
 }
 
-/** Home grid tile — 128px base, 160px from `sm` (+25%); 16px radius is CSS-only (SVG stays square). */
+/** Home grid tile — 128px base, 160px from `sm` (+25%); radius is CSS-only (SVG stays square). */
 .apps-home-screen__tile-icon {
-  --workspace-app-icon-radius: 16px;
+  --workspace-app-icon-radius: calc(100% / 6);
   @apply flex size-32 overflow-hidden transition-transform group-hover:scale-[1.03] sm:size-40;
   border-radius: var(--workspace-app-icon-radius);
 }
 
 .apps-home-screen__tile-icon--accent {
-  --workspace-app-icon-radius: 16px;
+  --workspace-app-icon-radius: calc(100% / 6);
   @apply flex size-32 items-center justify-center transition-transform group-hover:scale-[1.03] sm:size-40;
   border-radius: var(--workspace-app-icon-radius);
 }
