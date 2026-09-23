@@ -88,21 +88,19 @@ describe("app sidebar nav selection SST", () => {
     expect(css).toMatch(
       /\.app-sidebar \{[\s\S]*--button-active-color:\s*var\(\s*--app-sidebar-item-selected-color/,
     );
-    // Brighter cream washes (no ink step): hover 32%→cream < selected 55%→cream < selected-hover 65%→cream.
+    // Same recipe as workspace-color.css: 12 / 18 / 28 accent into the rail.
     expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-hover-bg[\s\S]*32%[\s\S]*var\(--color-we-got-soft/,
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-hover-bg[\s\S]*in oklch[\s\S]*12%[\s\S]*var\(--app-sidebar-bg,\s*var\(--color-we-got-soft\)\)/,
     );
     expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-bg[\s\S]*55%[\s\S]*var\(--color-we-got-soft/,
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-bg[\s\S]*in oklch[\s\S]*18%[\s\S]*var\(--app-sidebar-bg,\s*var\(--color-we-got-soft\)\)/,
     );
+    expect(css).toMatch(
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-hover-bg[\s\S]*in oklch[\s\S]*28%[\s\S]*var\(--app-sidebar-bg,\s*var\(--color-we-got-soft\)\)/,
+    );
+    expect(css).not.toMatch(/--app-sidebar-item-hover-bg,[\s\S]{0,220}in oklab/);
     expect(css).not.toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-bg[\s\S]*var\(--color-we-got-dark\)\s*10%/,
-    );
-    expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-hover-bg[\s\S]*65%[\s\S]*var\(--color-we-got-soft/,
-    );
-    expect(css).not.toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-hover-bg[\s\S]*var\(--color-we-got-dark\)\s*14%/,
+      /color-mix\(\s*in oklab,\s*var\(--workspace-accent, var\(--color-we-got-dark\)\) (?:32|55|65)%,\s*var\(--color-we-got-soft\)/,
     );
     // Contrast-aware on-color (cream-nudged); override token still wins.
     expect(css).toMatch(

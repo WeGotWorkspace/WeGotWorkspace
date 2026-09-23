@@ -95,7 +95,13 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).not.toMatch(/--collection-sidebar-row-radius:\s*999px/);
   });
 
-  it("leaves sidebar item washes to the shared 22/28/36 ladder", () => {
+  it("republishes the shared rail so split hover steps off the same color", () => {
+    expect(css).toMatch(
+      /\.meet-workspace--split \{[\s\S]*--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) var\(--workspace-sidebar-mix\),\s*var\(--workspace-surface\)/,
+    );
+  });
+
+  it("leaves sidebar item washes to the shared rail ladder", () => {
     expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
     expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(css).toMatch(

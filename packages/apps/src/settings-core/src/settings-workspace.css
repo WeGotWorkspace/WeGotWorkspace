@@ -66,8 +66,8 @@
   );
 
   /*
-   * Item washes live with Admin in `workspace-color.css` (22/28/36). A local
-   * copy here used to lose to a later import of that sheet.
+   * Item washes live in `workspace-color.css` (accent stepped into the rail).
+   * A local copy here used to lose to a later import of that sheet.
    */
 }
 

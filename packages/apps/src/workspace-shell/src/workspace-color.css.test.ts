@@ -38,13 +38,19 @@ describe("workspace-color.css shared tint recipes", () => {
     expect(colorCss).toMatch(/--button-primary-bg:\s*var\(--workspace-accent\)/);
     expect(colorCss).toMatch(/--button-primary-fg:\s*#ffffff/);
     expect(colorCss).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 22%,\s*var\(--workspace-surface\)/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 12%,\s*var\(--app-sidebar-bg\)/,
     );
     expect(colorCss).toMatch(
-      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--workspace-surface\)/,
+      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 18%,\s*var\(--app-sidebar-bg\)/,
     );
     expect(colorCss).toMatch(
-      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 36%,\s*var\(--workspace-surface\)/,
+      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--app-sidebar-bg\)/,
+    );
+    expect(colorCss).not.toMatch(
+      /--app-sidebar-item-(?:hover|selected|selected-hover)-bg:\s*color-mix\([\s\S]*?var\(--workspace-surface\)/,
+    );
+    expect(colorCss).not.toMatch(
+      /--app-sidebar-item-(?:hover|selected|selected-hover)-bg:\s*color-mix\([\s\S]*?var\(--color-we-got-soft\)/,
     );
     expect(colorCss).not.toMatch(/in oklab/);
     expect(colorCss).not.toMatch(/\.admin-workspace,\s*\.settings-workspace \{/);

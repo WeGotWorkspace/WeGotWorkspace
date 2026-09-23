@@ -770,6 +770,17 @@
   --meet-text: var(--color-we-got-dark);
   --meet-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
   --meet-surface: var(--workspace-surface);
+  /*
+   * Root `.meet-workspace` pins `--app-sidebar-bg` to `--meet-surface` for the
+   * dark lobby. Split turns that surface into paper, which dropped the 20%
+   * accent wash while row states kept a separate mix. Republish the shared
+   * rail so hover and selected step off the same color (`workspace-color.css`).
+   */
+  --app-sidebar-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) var(--workspace-sidebar-mix),
+    var(--workspace-surface)
+  );
   --workspace-root-bg: var(--meet-surface);
   --workspace-main-content-max-width: none;
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);

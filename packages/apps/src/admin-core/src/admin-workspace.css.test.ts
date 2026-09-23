@@ -104,7 +104,7 @@ describe("admin workspace outline chrome", () => {
     expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
     expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(colorCss).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 22%/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 12%,\s*var\(--app-sidebar-bg\)/,
     );
     expect(css).toMatch(
       /\.admin-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,

@@ -10,7 +10,12 @@
  * - `--wai-*` layers the switch mark actually uses
  * - Docs: full-accent sidebar + white on-color
  *
- * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark. Every app shares one item ladder (22 / 28 / 36), a small step above Calendar's previous 18 / 24 / 32. Product files do not redeclare it.
+ * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark.
+ * Sidebar row states are steps of accent mixed into the painted rail
+ * (`--app-sidebar-bg`), not a second mix into paper. 12 / 18 / 28 into the
+ * rail matches the old 12% sidebar (about 22 / 28 / 36 on paper) and stays
+ * darker than every product mix, including Drive at 32%. Product files do
+ * not redeclare the ladder. `.app-sidebar` fallbacks use this same recipe.
  *
  * Defaults use `:where` (zero specificity). Every product file imports this
  * sheet, and the app loads every product, so a later copy of these rules used
@@ -85,20 +90,25 @@
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
 
+  /*
+   * Same accent, same oklch space, base = the rail. Do not mix these into
+   * `--workspace-surface` or `--color-we-got-soft` — that ladder ignores
+   * `--workspace-sidebar-mix` and can paint lighter than the sidebar.
+   */
   --app-sidebar-item-hover-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 22%,
-    var(--workspace-surface)
+    var(--workspace-accent) 12%,
+    var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 28%,
-    var(--workspace-surface)
+    var(--workspace-accent) 18%,
+    var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 36%,
-    var(--workspace-surface)
+    var(--workspace-accent) 28%,
+    var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-color: var(--color-we-got-dark);
 

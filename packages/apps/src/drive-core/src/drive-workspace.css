@@ -52,11 +52,9 @@
   --workspace-panel-width: var(--drive-detail-column-width);
 
   /*
-   * Outline / menu-item language. Workspace outline tokens stay Notes/Tasks-
-   * weight for segmented/tile chrome. Sidebar base is already 32% lime→cream;
-   * shared AppSidebar hover default (32%) would be invisible, so publish a
-   * step above the rail. Ink clears AA (hover 42% ~11.4:1, selected 55% ~10.6:1,
-   * selected-hover 65% ~10.0:1).
+   * Outline language for segmented / tile chrome outside the sidebar.
+   * Sidebar row states are not these tokens: `.app-sidebar` steps accent
+   * into `--app-sidebar-bg` (already 32% lime), so hover stays above the rail.
    */
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: var(--color-we-got-dark);
