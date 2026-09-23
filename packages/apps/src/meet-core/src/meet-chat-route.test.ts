@@ -5,6 +5,7 @@ import {
   MEET_MEETINGS_ROUTE,
   meetIsAdHocMeetingId,
   meetLegacyRedirect,
+  meetLiveRouteShowsInviteGate,
   meetNavigatePathFromSelection,
   meetNavigateTargetFromSelection,
   meetSelectionFromRouteParams,
@@ -50,6 +51,73 @@ describe("meetIsAdHocMeetingId", () => {
     expect(meetIsAdHocMeetingId("h8y8-ewp6-al8n")).toBe(true);
     expect(meetIsAdHocMeetingId("test-meet")).toBe(false);
     expect(meetIsAdHocMeetingId(null)).toBe(false);
+  });
+});
+
+describe("meetLiveRouteShowsInviteGate", () => {
+  it("keeps a signed-in workspace mounted for channels, persisted meetings, and ad-hoc codes", () => {
+    expect(
+      meetLiveRouteShowsInviteGate({
+        signedIn: true,
+        meetingId: "h8y8-ewp6-al8n",
+        onConversationRoute: false,
+        inviteRoom: "h8y8-ewp6-al8n",
+      }),
+    ).toBe(false);
+    expect(
+      meetLiveRouteShowsInviteGate({
+        signedIn: true,
+        meetingId: "standup",
+        onConversationRoute: true,
+        inviteRoom: null,
+      }),
+    ).toBe(false);
+    expect(
+      meetLiveRouteShowsInviteGate({
+        signedIn: true,
+        meetingId: null,
+        onConversationRoute: true,
+        inviteRoom: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("uses the invite gate for signed-out meeting URLs and leftover room search", () => {
+    expect(
+      meetLiveRouteShowsInviteGate({
+        signedIn: false,
+        meetingId: "h8y8-ewp6-al8n",
+        onConversationRoute: false,
+        inviteRoom: "h8y8-ewp6-al8n",
+      }),
+    ).toBe(true);
+    expect(
+      meetLiveRouteShowsInviteGate({
+        signedIn: false,
+        meetingId: "standup",
+        onConversationRoute: true,
+        inviteRoom: null,
+      }),
+    ).toBe(true);
+    expect(
+      meetLiveRouteShowsInviteGate({
+        signedIn: false,
+        meetingId: null,
+        onConversationRoute: false,
+        inviteRoom: "h8y8-ewp6-al8n",
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps signed-out channel and DM routes on the workspace gate", () => {
+    expect(
+      meetLiveRouteShowsInviteGate({
+        signedIn: false,
+        meetingId: null,
+        onConversationRoute: true,
+        inviteRoom: "h8y8-ewp6-al8n",
+      }),
+    ).toBe(false);
   });
 });
 
