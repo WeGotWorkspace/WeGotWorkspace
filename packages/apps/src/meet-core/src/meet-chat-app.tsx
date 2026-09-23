@@ -14,18 +14,21 @@ import {
   meetResumeCallLayout,
   meetResumeLiveCallChannelId,
 } from "@/meet-core/src/meet-call-resume";
-import {
-  meetUpcomingJoinTarget,
-  upcomingMeetingsForSidebar,
-} from "@/meet-core/src/meet-calendar-meeting";
+import { upcomingMeetingsForSidebar } from "@/meet-core/src/meet-calendar-meeting";
 import { meetChannelIdForRoom, meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
+import {
+  meetSignedInMeetingRouteJoin,
+  meetSignedInUpcomingJoin,
+} from "@/meet-core/src/meet-signed-in-join";
 import { meetChannelTitle } from "@/meet-core/src/meet-channel-label";
 import type { MeetChatApiSource } from "@/meet-core/src/meet-chat-api-source";
 import { mergeAuthorPresence } from "@/meet-core/src/meet-author-presence";
 import {
   MEET_CHANNELS_ROUTE,
   MEET_MEETINGS_ROUTE,
+  meetIsAdHocMeetingId,
   meetLegacyRedirect,
+  meetMeetingPathId,
   meetNavigatePathFromSelection,
   meetNavigateTargetFromSelection,
   meetSelectionFromRouteParams,
@@ -81,7 +84,13 @@ function MeetChatLiveWorkspace({
   // Deep links: /meet/channels/$channelId and /meet/dms/$peerId ↔ workspace
   // selection. Nested children of /meet, so switching never remounts this app.
   const params = useParams({ strict: false }) as MeetChatRouteParams;
-  const routeChannelId = meetSelectionFromRouteParams(params);
+  const adHocMeetingId = meetIsAdHocMeetingId(params.meetingId)
+    ? (params.meetingId?.trim().toLowerCase() ?? null)
+    : null;
+  const adHocChannelId = adHocMeetingId ? meetChannelIdForRoom(channels, adHocMeetingId) : null;
+  const routeChannelId = meetSelectionFromRouteParams(params) ?? adHocChannelId;
+  const unmatchedAdHocRoom =
+    !listLoading && adHocMeetingId && !adHocChannelId ? adHocMeetingId : null;
   const routeChannelIdRef = useRef(routeChannelId);
   routeChannelIdRef.current = routeChannelId;
   const navigate = useNavigate();
@@ -135,26 +144,48 @@ function MeetChatLiveWorkspace({
     if (row?.kind !== "meeting") return;
     void navigate({
       to: MEET_MEETINGS_ROUTE,
-      params: { meetingId: meetPublicChannelId(row.id) },
+      params: { meetingId: meetMeetingPathId(row.id, row) },
       replace: true,
     });
   }, [channels, listLoading, navigate, params.channelId]);
 
+  // Ad-hoc meetings stay on the reserved room code, never the collection slug.
+  useEffect(() => {
+    if (!params.meetingId || listLoading || meetIsAdHocMeetingId(params.meetingId)) return;
+    const channelId = meetCollectionIdFromPublic(params.meetingId);
+    const row = channels.find((channel) => meetChannelIdsEqual(channel.id, channelId));
+    if (row?.kind !== "meeting") return;
+    const room = meetMeetingPathId(row.id, row);
+    if (!meetIsAdHocMeetingId(room) || room === params.meetingId.trim().toLowerCase()) return;
+    void navigate({
+      to: MEET_MEETINGS_ROUTE,
+      params: { meetingId: room },
+      replace: true,
+    });
+  }, [channels, listLoading, navigate, params.meetingId]);
+
   const suiteCallStore = useMeetCallStoreContext();
-  const { operations, callStageRoom, liveCallChannelId, joinedRoomCode } = useMeetChatCall({
-    session,
-    data,
-    identityReady: !listLoading,
-    channels,
-    meetOperations,
-    chatOperations,
-    selectedChannelId,
-  });
-  const resumeLiveCallChannelId = meetResumeLiveCallChannelId({
-    computed: liveCallChannelId,
-    persisted: suiteCallStore?.getSnapshot().liveCallChannelId ?? null,
-    callEngaged: Boolean(joinedRoomCode),
-  });
+  const { operations, callStageRoom, liveCallChannelId, joinedRoomCode, joinAdHocRoom } =
+    useMeetChatCall({
+      session,
+      data,
+      identityReady: !listLoading,
+      channels,
+      meetOperations,
+      chatOperations,
+    });
+  const joinedUnmappedAdHoc = Boolean(
+    joinedRoomCode &&
+    meetIsAdHocMeetingId(joinedRoomCode) &&
+    !meetChannelIdForRoom(channels, joinedRoomCode),
+  );
+  const resumeLiveCallChannelId = joinedUnmappedAdHoc
+    ? null
+    : meetResumeLiveCallChannelId({
+        computed: liveCallChannelId,
+        persisted: suiteCallStore?.getSnapshot().liveCallChannelId ?? null,
+        callEngaged: Boolean(joinedRoomCode),
+      });
 
   const calendarApi = useCalendarAPI();
   const [createdEvents, setCreatedEvents] = useState<JmapCalendarEvent[]>([]);
@@ -223,44 +254,90 @@ function MeetChatLiveWorkspace({
     onApplied: patchFromCache,
   });
 
+  const joinedInviteRef = useRef<string | null>(null);
+  const suppressRouteJoinRef = useRef(false);
   const handleJoinUpcomingMeeting = useCallback(
     (href: string) => {
-      const target = meetUpcomingJoinTarget(href, workspaceOrigin, channels);
-      if (target?.kind === "channel") {
-        handleSelectedChannelChange(target.channelId);
+      const action = meetSignedInUpcomingJoin(href, workspaceOrigin, channels);
+      if (action.action === "select-channel") {
+        handleSelectedChannelChange(action.channelId);
         return;
       }
-      if (target?.kind !== "room") return;
-      const title = upcomingMeetings.find((row) => row.href === href)?.title.trim() || "Meeting";
-      const existing = channels.find((row) => row.kind === "meeting" && row.name === title);
-      if (existing) {
-        handleSelectedChannelChange(existing.id);
+      if (action.action === "start-call") {
+        const row = channels.find((channel) => channel.id === action.channelId);
+        const room = row ? meetMeetingPathId(row.id, row) : null;
+        if (room && meetIsAdHocMeetingId(room)) joinedInviteRef.current = room;
+        handleSelectedChannelChange(action.channelId);
+        void operations?.startCall?.(action.channelId);
         return;
       }
-      void chatOperations
-        ?.createChannel?.({ name: title, kind: "meeting" })
-        .then((created) => {
-          handleSelectedChannelChange(created.id);
-          void patchFromCache();
-        })
-        .catch(() => undefined);
+      if (action.action === "join-room") {
+        const onRoom = params.meetingId?.trim().toLowerCase() === action.room;
+        if (!onRoom) {
+          void navigate({
+            to: MEET_MEETINGS_ROUTE,
+            params: { meetingId: action.room },
+          });
+          return;
+        }
+        void joinAdHocRoom(action.room);
+      }
     },
     [
       channels,
-      chatOperations,
       handleSelectedChannelChange,
-      patchFromCache,
-      upcomingMeetings,
+      joinAdHocRoom,
+      navigate,
+      operations,
+      params.meetingId,
       workspaceOrigin,
     ],
   );
 
+  // Sidebar selection of a meeting the user already has navigates to the room
+  // code. That must not also start the call; opening the link still does.
+  const handleUserSelectedChannelChange = useCallback(
+    (channelId: string | null) => {
+      const row = channelId ? channels.find((channel) => channel.id === channelId) : null;
+      const room = row ? meetMeetingPathId(row.id, row) : null;
+      if (row?.kind === "meeting" && room && meetIsAdHocMeetingId(room)) {
+        suppressRouteJoinRef.current = true;
+      }
+      handleSelectedChannelChange(channelId);
+    },
+    [channels, handleSelectedChannelChange],
+  );
   useEffect(() => {
     const meetingId = params.meetingId?.trim().toLowerCase() || null;
     if (!meetingId || listLoading) return;
+    const action = meetSignedInMeetingRouteJoin(meetingId, channels);
+    if (action.action === "start-call") {
+      if (!operations?.startCall) return;
+      const suppressed = suppressRouteJoinRef.current;
+      suppressRouteJoinRef.current = false;
+      if (joinedInviteRef.current === meetingId) return;
+      joinedInviteRef.current = meetingId;
+      handleSelectedChannelChange(action.channelId);
+      if (!suppressed) void operations.startCall(action.channelId);
+      return;
+    }
+    suppressRouteJoinRef.current = false;
+    if (action.action === "join-room") {
+      if (joinedInviteRef.current === meetingId) return;
+      joinedInviteRef.current = meetingId;
+      void joinAdHocRoom(action.room);
+      return;
+    }
     const mapped = meetChannelIdForRoom(channels, meetingId);
     if (mapped) handleSelectedChannelChange(mapped);
-  }, [channels, handleSelectedChannelChange, listLoading, params.meetingId]);
+  }, [
+    channels,
+    handleSelectedChannelChange,
+    joinAdHocRoom,
+    listLoading,
+    operations,
+    params.meetingId,
+  ]);
 
   const liveAuthorPresence = useMeetAuthorPresence();
   const { typingByChannel, onComposerTyping } = useMeetChannelTyping();
@@ -329,6 +406,11 @@ function MeetChatLiveWorkspace({
   // but this mount cannot resolve the room yet (lost DM/ad-hoc refs).
   useEffect(() => {
     if (!suiteCallStore) return;
+    if (joinedUnmappedAdHoc) {
+      suiteCallStore.setLiveCallChannelId(null);
+      suiteCallStore.setLiveCallChannelKind(null);
+      return;
+    }
     if (liveCallChannelId) {
       suiteCallStore.setLiveCallChannelId(liveCallChannelId);
       const dmPrincipal = meetDirectMessagePrincipalId(liveCallChannelId);
@@ -346,7 +428,7 @@ function MeetChatLiveWorkspace({
     if (!meetCallStatusEngaged(suiteCallStore.getSnapshot().status)) {
       suiteCallStore.clearLiveCallResume();
     }
-  }, [channels, data.directory, liveCallChannelId, suiteCallStore]);
+  }, [channels, data.directory, joinedUnmappedAdHoc, liveCallChannelId, suiteCallStore]);
 
   const workspaceData = useMemo<MeetUIData>(() => {
     const authorPresence = mergeAuthorPresence(liveAuthorPresence, data.authorPresence);
@@ -382,8 +464,9 @@ function MeetChatLiveWorkspace({
           : undefined
       }
       routeChannelId={routeChannelId}
+      unmatchedAdHocRoom={unmatchedAdHocRoom}
       liveCallChannelId={resumeLiveCallChannelId}
-      onSelectedChannelChange={handleSelectedChannelChange}
+      onSelectedChannelChange={handleUserSelectedChannelChange}
       typingByChannel={typingByChannel}
       onComposerTyping={onComposerTyping}
       callActiveByChannel={callActiveByChannel}

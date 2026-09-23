@@ -48,6 +48,7 @@ import {
   leftoverBelongsInTodaySidebar,
   leftoverMeetingStartLabel,
   leftoverUpcomingMeetings,
+  meetUpcomingAdHocRoom,
   preferredCalendarEventForMeeting,
   shouldAutoJoinScheduledMeeting,
   todaySidebarMeetingChannels,
@@ -68,7 +69,7 @@ import {
 } from "@/meet-core/src/meet-call-resume";
 import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
-import { MeetCallStage } from "@/meet-core/src/meet-call-stage";
+import { MeetCallStage, type MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import {
   meetCallBarVisible,
   meetCallChromeVisible,
@@ -106,6 +107,20 @@ import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
 import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";
 import type { MeetWorkspaceProps } from "@/meet-core/src/meet-workspace-props";
 import "@/meet-core/src/meet-workspace.css";
+
+/** Unmatched ad-hoc visit with an active knock, join, or prepare on the stage. */
+function meetVisitCallEngaged(
+  unmatchedAdHocRoom: string | null | undefined,
+  callStageRoom: MeetCallStageRoomProps | null | undefined,
+): boolean {
+  return Boolean(
+    unmatchedAdHocRoom &&
+    callStageRoom &&
+    (callStageRoom.controller.waitingForAdmission ||
+      callStageRoom.controller.inCall ||
+      callStageRoom.controller.status === "preparing"),
+  );
+}
 
 const MeetWorkspaceThread = memo(function MeetWorkspaceThread({
   parent,
@@ -234,11 +249,13 @@ function MeetUpcomingRows({
   onJoin,
   onEdit,
   editLabel,
+  unmatchedRoom = null,
 }: {
   meetings: MeetUpcomingMeeting[];
   onJoin?: (href: string) => void;
   onEdit?: (meeting: MeetUpcomingMeeting) => void;
   editLabel?: string;
+  unmatchedRoom?: string | null;
 }) {
   return (
     <>
@@ -249,6 +266,9 @@ function MeetUpcomingRows({
             key={meeting.id}
             name={meeting.title}
             color={DEFAULT_MEET_CHANNEL_COLOR}
+            selected={
+              unmatchedRoom != null && meetUpcomingAdHocRoom(meeting.href) === unmatchedRoom
+            }
             leading={<CalendarDays className="meet-workspace__sidebar-kind-icon" aria-hidden />}
             onSelect={() => onJoin?.(meeting.href)}
             onEdit={onEdit ? () => onEdit(meeting) : undefined}
@@ -335,6 +355,7 @@ export function MeetWorkspace({
   liveCallChannelId,
   onSelectedChannelChange,
   routeChannelId,
+  unmatchedAdHocRoom = null,
   typingByChannel,
   onComposerTyping,
   callActiveByChannel,
@@ -375,8 +396,8 @@ export function MeetWorkspace({
   );
   const [sidebarOpen, setSidebarOpen] = useState(() => !meetCallStageShowsStage(mountedCallLayout));
   const [channels, setChannels] = useState<MeetChannel[]>(() => data.channels ?? []);
-  const [selectedId, setSelectedId] = useState<string | null>(
-    () => initialChannelId ?? data.channels?.[0]?.id ?? null,
+  const [selectedId, setSelectedId] = useState<string | null>(() =>
+    unmatchedAdHocRoom ? null : (initialChannelId ?? data.channels?.[0]?.id ?? null),
   );
   const [dialog, setDialog] = useState<MeetChannelDialogState>(null);
   const [pendingUpcomingDelete, setPendingUpcomingDelete] = useState<MeetUpcomingMeeting | null>(
@@ -397,6 +418,12 @@ export function MeetWorkspace({
     const startsExpanded = meetCallStageShowsStage(mountedCallLayout);
     return startsExpanded || Boolean(initialThreadId) || defaultMeetWorkspacePanelOpen();
   });
+  /**
+   * Unmatched ad-hoc visit has no channel id, so `useMeetCallLayout` cannot
+   * key expand/leave. Local chrome only — hosts with a meeting channel keep
+   * the channel-keyed layout below.
+   */
+  const [visitCallLayout, setVisitCallLayout] = useState<MeetCallStageLayout>("compact");
 
   // Live bootstrap patches (inbound sync) replace the seeded rows; the mock
   // path passes a stable bootstrap, so this effect is a mount-time no-op there.
@@ -413,11 +440,15 @@ export function MeetWorkspace({
   // other way via onSelectedChannelChange, so equal values settle immediately.
   // Bare `/meet` (app switcher) restores the live call instead of the default channel.
   useEffect(() => {
+    if (unmatchedAdHocRoom) {
+      setSelectedId((current) => (current === null ? current : null));
+      return;
+    }
     const next =
       routeChannelId ?? meetShouldSelectLiveCallOnBareMeet({ routeChannelId, liveCallChannelId });
     if (next == null) return;
     setSelectedId((current) => (current === next ? current : next));
-  }, [liveCallChannelId, routeChannelId]);
+  }, [liveCallChannelId, routeChannelId, unmatchedAdHocRoom]);
 
   const sections = useMemo(() => partitionMeetChannels(channels), [channels]);
   const leftoverUpcoming = useMemo(
@@ -476,11 +507,14 @@ export function MeetWorkspace({
   );
   const selectedDm = findMeetDirectMessagePerson(dmPeople, selectedId);
   const conversationOpen = Boolean(selected || selectedDm);
+  const visitMeeting = unmatchedAdHocRoom
+    ? leftoverUpcoming.find((row) => meetUpcomingAdHocRoom(row.href) === unmatchedAdHocRoom)
+    : undefined;
   const headerTitle = selected
     ? meetChannelTitle(selected)
     : selectedDm
       ? selectedDm.displayName
-      : meetLabels.productName;
+      : (visitMeeting?.title ?? meetLabels.productName);
   const groups = useMemo(() => data.groups ?? [], [data.groups]);
   const ownerLabel = personalOwnerLabel(session);
   const knownSharePrincipals = useMemo(
@@ -676,22 +710,44 @@ export function MeetWorkspace({
     liveCallChannelId,
     resumeLayout: liveCallChannelId ? resumeCallLayout : undefined,
   });
+  const visitEngaged = meetVisitCallEngaged(unmatchedAdHocRoom, callStageRoom);
+  /** Visit chrome without a selected channel — layout is local, not channel-keyed. */
+  const visitOwnsLayout = Boolean(unmatchedAdHocRoom && !selectedId && visitEngaged);
+  useEffect(() => {
+    if (!visitOwnsLayout) setVisitCallLayout("compact");
+  }, [visitOwnsLayout]);
   const sidebarCloseFrame = useRef<number | null>(null);
+  const openExpandedChrome = useCallback(() => {
+    setCallChatOpen(defaultMeetWorkspacePanelOpen());
+    if (sidebarCloseFrame.current != null) {
+      cancelAnimationFrame(sidebarCloseFrame.current);
+    }
+    sidebarCloseFrame.current = requestAnimationFrame(() => {
+      sidebarCloseFrame.current = null;
+      setSidebarOpen(false);
+    });
+  }, []);
+  const leaveVisitCall = useCallback(() => {
+    setVisitCallLayout("compact");
+    void operations?.leaveCall?.("");
+  }, [operations]);
   const handleCallLayoutChange = useCallback(
     (layout: MeetCallStageLayout) => {
+      if (visitOwnsLayout) {
+        if (layout === "collapsed") {
+          leaveVisitCall();
+          return;
+        }
+        setVisitCallLayout(layout);
+        if (meetCallStageShowsStage(layout)) openExpandedChrome();
+        return;
+      }
       if (meetCallStageShowsStage(layout) && !meetCallIsActive(call.callLayout)) return;
       call.onLayoutChange(layout);
       if (!meetCallStageShowsStage(layout)) return;
-      setCallChatOpen(defaultMeetWorkspacePanelOpen());
-      if (sidebarCloseFrame.current != null) {
-        cancelAnimationFrame(sidebarCloseFrame.current);
-      }
-      sidebarCloseFrame.current = requestAnimationFrame(() => {
-        sidebarCloseFrame.current = null;
-        setSidebarOpen(false);
-      });
+      openExpandedChrome();
     },
-    [call.callLayout, call.onLayoutChange],
+    [call.callLayout, call.onLayoutChange, leaveVisitCall, openExpandedChrome, visitOwnsLayout],
   );
   useEffect(
     () => () => {
@@ -714,12 +770,18 @@ export function MeetWorkspace({
   const fixtureCallChannelId = callChannelId ?? initialChannelId ?? data.channels?.[0]?.id ?? null;
   const externalStageOnSelected =
     callStage != null && Boolean(selectedId) && selectedId === fixtureCallChannelId;
-  const resolvedCallActive = externalStageOnSelected ? callActive : call.callActive;
-  const resolvedStageLayout = externalStageOnSelected
-    ? resolvedCallActive
-      ? "side-by-side"
-      : "collapsed"
-    : call.callLayout;
+  const resolvedCallActive = visitOwnsLayout
+    ? Boolean(callStageRoom?.controller.inCall)
+    : externalStageOnSelected
+      ? callActive
+      : call.callActive;
+  const resolvedStageLayout = visitOwnsLayout
+    ? visitCallLayout
+    : externalStageOnSelected
+      ? resolvedCallActive
+        ? "side-by-side"
+        : "collapsed"
+      : call.callLayout;
 
   const resolvedParent = threadMessage ?? chat.activeThread?.parent ?? null;
   const resolvedOpen = threadMessage ? threadOpen : chat.threadOpen;
@@ -763,10 +825,10 @@ export function MeetWorkspace({
   );
   const onReplyChannel = useCallback(
     (message: ChatMessage) => {
-      if (meetCallStageShowsStage(call.callLayout)) setCallChatOpen(true);
+      if (meetCallStageShowsStage(resolvedStageLayout)) setCallChatOpen(true);
       openResolvedThread(message);
     },
-    [call.callLayout, openResolvedThread],
+    [openResolvedThread, resolvedStageLayout],
   );
   const onDeleteChannel = useCallback(
     (messageId: string) => {
@@ -806,7 +868,7 @@ export function MeetWorkspace({
   const builtStage =
     callStageRoom != null ? (
       <MeetCallStage
-        layout={meetCallStageShowsStage(call.callLayout) ? call.callLayout : "fullscreen"}
+        layout={meetCallStageShowsStage(resolvedStageLayout) ? resolvedStageLayout : "fullscreen"}
         channelTitle={headerTitle}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen((open) => !open)}
@@ -856,6 +918,7 @@ export function MeetWorkspace({
     ) : null);
   const threadVisible = Boolean(resolvedOpen && threadContent);
   const callToggle = onToggleCall ?? call.toggleCall;
+  const visitCallToggle = visitOwnsLayout ? leaveVisitCall : callToggle;
   const showExpandedStage = Boolean(
     resolvedStage && resolvedCallActive && meetCallStageShowsStage(resolvedStageLayout),
   );
@@ -955,9 +1018,13 @@ export function MeetWorkspace({
       onCaughtUpChange={showExpandedStage ? setChannelCaughtUp : undefined}
     />
   );
-  const showCallChrome = meetCallChromeVisible(resolvedCallActive);
-  const showCallBar = conversationOpen && meetCallBarVisible(resolvedStageLayout, meetingLive);
+  const showCallChrome =
+    meetCallChromeVisible(resolvedCallActive) ||
+    Boolean(visitEngaged && callStageRoom?.controller.inCall);
+  const showCallBar =
+    (conversationOpen && meetCallBarVisible(resolvedStageLayout, meetingLive)) || visitEngaged;
   const keepCallChrome = Boolean(resolvedStage && showCallChrome);
+  const showKnockOrCallBar = showCallBar || keepCallChrome;
   const callRoom = callStageRoom;
   // Mini-player handshake: while the live call's channel is not on screen the
   // call is "parked" here, so the suite mini-player may show inside `/meet`.
@@ -1138,6 +1205,7 @@ export function MeetWorkspace({
                 {leftoverUpcoming.length > 0 ? (
                   <MeetUpcomingRows
                     meetings={leftoverUpcoming}
+                    unmatchedRoom={unmatchedAdHocRoom}
                     onJoin={onJoinUpcomingMeeting}
                     onEdit={calendar ? (meeting) => openEditLeftover(meeting) : undefined}
                     editLabel={meetLabels.editMeeting}
@@ -1212,7 +1280,7 @@ export function MeetWorkspace({
           />
         }
         main={
-          conversationOpen ? (
+          conversationOpen || visitEngaged ? (
             <div className="meet-workspace__surfaces">
               <div
                 className={cn(
@@ -1225,9 +1293,9 @@ export function MeetWorkspace({
                 {/* Chunk-I knock chrome (chunk-H join policy): the compact bar
                     swaps to a knock-wait banner while this user waits to be let
                     in; joined members admit waiting guests from the action row. */}
-                {(showCallBar || keepCallChrome) && callRoom?.controller.waitingForAdmission ? (
-                  <MeetCallKnockWaiting channelTitle={headerTitle} onCancel={callToggle} />
-                ) : showCallBar || keepCallChrome ? (
+                {showKnockOrCallBar && callRoom?.controller.waitingForAdmission ? (
+                  <MeetCallKnockWaiting channelTitle={headerTitle} onCancel={visitCallToggle} />
+                ) : showKnockOrCallBar ? (
                   <MeetCallBar
                     elapsedLabel={showCallChrome ? (callRoom?.controller.elapsedLabel ?? "") : ""}
                     selfId={
@@ -1280,7 +1348,7 @@ export function MeetWorkspace({
                     }}
                     onSpeakerChange={callRoom?.onSpeakerChange ?? (() => {})}
                     onExpand={() => handleCallLayoutChange("fullscreen")}
-                    onLeave={callToggle}
+                    onLeave={visitCallToggle}
                     onMuteParticipant={
                       callRoom?.hasSignedInIdentity
                         ? (peerId, muted) => void callRoom.controller.mutePeer(peerId, muted)
@@ -1307,7 +1375,7 @@ export function MeetWorkspace({
                     }
                   />
                 ) : null}
-                {resolvedChat}
+                {conversationOpen ? resolvedChat : null}
               </div>
               {keepCallChrome ? (
                 <div

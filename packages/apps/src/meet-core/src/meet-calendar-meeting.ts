@@ -344,6 +344,13 @@ export function todaySidebarMeetingChannels<T extends MeetChannel>(
   );
 }
 
+/** Ad-hoc room code on an upcoming-row href, when the href is one. */
+export function meetUpcomingAdHocRoom(href: string): string | null {
+  const invite = parseMeetInvitePath(href);
+  if (!invite || invite.roomKind !== "code") return null;
+  return invite.room;
+}
+
 export type MeetUpcomingJoinTarget =
   | { kind: "channel"; channelId: string }
   | { kind: "room"; room: string }

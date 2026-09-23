@@ -162,6 +162,25 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         $this->join('carol', $meetingId, 'peer-carol', self::KNOCK_PREFIX.'Carol')->assertOk();
     }
 
+    public function test_signed_in_teammate_knock_shows_up_in_the_host_ad_hoc_room(): void
+    {
+        $room = 'g744-8kfg-adjz';
+        $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Standup',
+            'kind' => 'meeting',
+            'guestRoomCode' => $room,
+        ])->assertCreated();
+
+        $this->join('alice', $room, 'peer-alice', 'Alice')->assertOk();
+
+        $knock = $this->join('bob', $room, 'peer-bob', self::KNOCK_PREFIX.'Bob')->assertOk();
+        $this->assertContains('peer-alice', array_column($knock->json('peers'), 'id'));
+
+        $poll = $this->asUser('alice')->getJson('/api/v1/rooms/'.$room.'/events?peerId=peer-alice&since=0');
+        $poll->assertOk();
+        $this->assertContains('peer-bob', array_column($poll->json('peers'), 'id'));
+    }
+
     public function test_persisted_ad_hoc_guest_room_code_uses_meeting_acl(): void
     {
         $this->asUser('alice')->postJson('/api/v1/chat/channels', [

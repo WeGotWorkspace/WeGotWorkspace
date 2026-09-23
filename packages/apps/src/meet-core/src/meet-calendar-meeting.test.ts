@@ -14,6 +14,7 @@ import {
   leftoverBelongsInTodaySidebar,
   leftoverMeetingStartLabel,
   leftoverUpcomingMeetings,
+  meetUpcomingAdHocRoom,
   meetUpcomingJoinTarget,
   meetWindowIsTodayAndNotEnded,
   preferredCalendarEventForMeeting,
@@ -494,6 +495,11 @@ describe("meetUpcomingJoinTarget", () => {
       kind: "channel",
       channelId: "chat-standup",
     });
+  });
+
+  it("reads the ad-hoc room code from an upcoming href", () => {
+    expect(meetUpcomingAdHocRoom(`/meet/meetings/${ROOM}`)).toBe(ROOM);
+    expect(meetUpcomingAdHocRoom("/meet/channels/general")).toBeNull();
   });
 
   it("keeps unmatched ad-hoc rooms as in-app room joins", () => {

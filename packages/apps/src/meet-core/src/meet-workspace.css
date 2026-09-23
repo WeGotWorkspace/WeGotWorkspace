@@ -624,7 +624,10 @@
 
 /*
  * Host admit queue — cream/dusk like `.meet-call-bar`, not lobby dark.
- * Portaled: do not reuse `.meet-popover-surface` (`#171826`).
+ * Portaled to document.body: do not reuse `.meet-popover-surface` (`#171826`).
+ * Pin `#fff5e9` (same as call bar/stage) so color-mix stays opaque without
+ * inheriting `--workspace-surface` from `.meet-workspace`. `!important` beats
+ * PopoverContent `bg-popover` (an unresolved background var() is transparent).
  */
 .meet-knock-badge__popover {
   --workspace-accent: var(--color-we-got-sand);
@@ -634,8 +637,8 @@
   --meet-muted: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
   --meet-call-ink-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
   --meet-call-border: color-mix(in oklch, var(--workspace-accent) 22%, transparent);
-  --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--workspace-surface));
-  --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, var(--workspace-surface));
+  --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, #fff5e9);
+  --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, #fff5e9);
   --meet-panel: var(--meet-call-surface);
   --meet-panel-soft: var(--meet-call-empty);
   --popover: var(--meet-call-surface);
@@ -648,21 +651,17 @@
   --button-outline-color: var(--color-we-got-dark);
   --button-outline-hover-color: var(--workspace-accent-strong);
   --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--workspace-accent) 18%,
-    var(--workspace-surface)
-  );
+  --button-outline-active-background: color-mix(in oklch, var(--workspace-accent) 18%, #fff5e9);
   --button-outline-active-hover-background: color-mix(
     in oklch,
     var(--workspace-accent) 24%,
-    var(--workspace-surface)
+    #fff5e9
   );
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: var(--color-we-got-dark);
   @apply w-80 rounded-xl p-2;
-  background-color: var(--meet-call-surface);
-  color: var(--color-we-got-dark);
+  background-color: var(--meet-call-surface) !important;
+  color: var(--color-we-got-dark) !important;
   border-color: var(--meet-call-border);
 }
 
@@ -722,6 +721,24 @@
 .meet-call-knock-wait__hint {
   @apply text-xs;
   color: var(--meet-muted);
+}
+
+/*
+ * The bar sits in the cream chat column. `--meet-panel` is the navy lobby
+ * token, which paints dark-green ink on a black bar.
+ */
+.meet-workspace--split .meet-call-knock-wait {
+  background-color: color-mix(in oklch, var(--workspace-accent) 8%, #fff5e9);
+  border-color: color-mix(in oklch, #003311 12%, transparent);
+  color: #003311;
+}
+
+.meet-workspace--split .meet-call-knock-wait__title {
+  color: #003311;
+}
+
+.meet-workspace--split .meet-call-knock-wait__hint {
+  color: color-mix(in oklch, #003311 72%, transparent);
 }
 
 .meet-call-knock-wait--stage {
