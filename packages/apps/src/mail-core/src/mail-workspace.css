@@ -53,8 +53,8 @@
   --mail-swipe-archive-color: var(--color-we-got-dark);
 
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
-  /* 85% (was 90%) clears WCAG AA for Dark fg on Sand primary (~4.5:1). */
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 85%, var(--color-we-got-dark));
+  /* 70% (was 90%) clears WCAG AA for Dark fg on Sand primary (~4.5:1). */
+  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 70%, var(--color-we-got-dark));
   --button-primary-fg: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
   --primary-foreground: var(--color-we-got-dark);
@@ -98,8 +98,8 @@
 }
 
 .mail-workspace .app-sidebar__scroll {
-  /* 85% (was 90%) clears WCAG AA for Dark fg on Sand primary (~4.5:1). */
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 85%, var(--color-we-got-dark));
+  /* 70% (was 90%) clears WCAG AA for Dark fg on Sand primary (~4.5:1). */
+  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 70%, var(--color-we-got-dark));
   --button-primary-fg: var(--color-we-got-dark);
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
@@ -182,8 +182,8 @@
   --workspace-accent: var(--color-we-got-sand);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  /* 85% (was 90%) clears WCAG AA for Dark fg on Sand primary (~4.5:1). */
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 85%, var(--color-we-got-dark));
+  /* 70% (was 90%) clears WCAG AA for Dark fg on Sand primary (~4.5:1). */
+  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 70%, var(--color-we-got-dark));
   --button-primary-fg: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
   --primary-foreground: var(--color-we-got-dark);
