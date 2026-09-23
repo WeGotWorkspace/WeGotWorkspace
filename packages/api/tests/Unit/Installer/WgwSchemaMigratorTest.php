@@ -140,6 +140,7 @@ final class WgwSchemaMigratorTest extends TestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('mail_user_credentials', 'imap_host'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('jmap_mail_sync', 'mail_account_id'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('jmap_mail_sync', 'mailbox'));
         // Format-at-edge notify facts; without this column NotifyListener inserts are
         // swallowed by EventDispatch and chat/docs/calendar inbox rows never appear.
         $this->assertTrue(Schema::connection('wgw')->hasColumn('notifications', 'data'));

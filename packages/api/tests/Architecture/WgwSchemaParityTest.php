@@ -75,6 +75,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('mail_user_credentials', 'imap_host'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('mail_user_credentials', 'smtp_host'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('jmap_mail_sync', 'mail_account_id'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('jmap_mail_sync', 'mailbox'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('notifications', 'data'));
     }
 }

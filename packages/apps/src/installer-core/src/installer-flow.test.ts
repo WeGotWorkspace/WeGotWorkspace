@@ -66,6 +66,10 @@ describe("installer-flow", () => {
     expect(install.display_name).toBe("jane");
     expect(install.email).toBe("jane@example.test");
     expect(install.mail_enabled).toBe(false);
+    expect(install.mail_imap_username).toBe("");
+    expect(install.mail_imap_password).toBe("");
+    expect(install.mail_smtp_username).toBe("");
+    expect(install.mail_smtp_password).toBe("");
     expect(install.meet_enabled).toBe(true);
     expect(install.rtc_stun_url.length).toBeGreaterThan(0);
   });

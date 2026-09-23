@@ -13,7 +13,8 @@ return new class extends WgwMigration
             $this->wgw()->create('jmap_mail_sync', function (Blueprint $table): void {
                 $table->string('username', 255);
                 $table->string('mail_account_id', 64);
-                $table->string('mailbox', 512);
+                // utf8mb4 PK (username + mail_account_id + mailbox [+ uid]) must stay under 3072 bytes.
+                $table->string('mailbox', 440);
                 $table->unsignedBigInteger('uidvalidity')->default(0);
                 $table->unsignedBigInteger('last_seen_uidnext')->default(0);
                 $table->string('window_flags_hash', 64)->default('');
@@ -27,7 +28,7 @@ return new class extends WgwMigration
             $this->wgw()->create('jmap_mail_messages', function (Blueprint $table): void {
                 $table->string('username', 255);
                 $table->string('mail_account_id', 64);
-                $table->string('mailbox', 512);
+                $table->string('mailbox', 440);
                 $table->unsignedBigInteger('uid');
                 $table->string('flags_hash', 64)->default('');
                 $table->string('message_id_hash', 64)->default('');
