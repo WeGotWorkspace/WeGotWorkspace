@@ -5,6 +5,7 @@ import {
   meetSpeakerOptionsFromAudioInputs,
   normalizeMeetDeviceOptions,
   selectedMeetDeviceOptionId,
+  selectedMeetSpeakerOptionId,
 } from "@/meet-core/src/meet-device-utils";
 import { useMeetInviteProbe } from "@/meet-core/src/use-meet-invite-probe";
 import { meetLabels } from "@/meet-core/src/meet-labels";
@@ -131,7 +132,7 @@ export function useMeetWorkspaceShell({
   const participantCount = controller.peers.length + (controller.inCall ? 1 : 0);
   const activeCamera = selectedMeetDeviceOptionId(cameras, controller.selectedCamId);
   const activeMic = selectedMeetDeviceOptionId(microphones, controller.selectedMicId);
-  const activeSpeaker = speakerId || speakers[0]?.id || "default";
+  const activeSpeaker = selectedMeetSpeakerOptionId(speakers, speakerId);
 
   function sendMessage() {
     const value = draft.trim();

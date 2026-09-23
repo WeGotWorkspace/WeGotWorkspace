@@ -17,6 +17,7 @@ import {
   meetSpeakerOptionsFromAudioInputs,
   normalizeMeetDeviceOptions,
   selectedMeetDeviceOptionId,
+  selectedMeetSpeakerOptionId,
 } from "@/meet-core/src/meet-device-utils";
 import type {
   MeetAPIOperations,
@@ -251,7 +252,7 @@ export function useMeetChatCall({
     speakers,
     activeCamera: selectedMeetDeviceOptionId(cameras, controller.selectedCamId),
     activeMic: selectedMeetDeviceOptionId(microphones, controller.selectedMicId),
-    activeSpeaker: speakerId || speakers[0]?.id || "default",
+    activeSpeaker: selectedMeetSpeakerOptionId(speakers, speakerId),
     onSpeakerChange: setSpeakerId,
     onCopyLink,
     onToastInfo: (message: string) => toast.show(message, { severity: "info" }),

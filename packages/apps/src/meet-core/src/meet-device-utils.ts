@@ -60,6 +60,17 @@ export function selectedMeetDeviceOptionId(
   return options[0]?.id ?? "__none";
 }
 
+/** Menu value for the speaker row. `"default"` is the initial sink, not a device id. */
+export function selectedMeetSpeakerOptionId(
+  options: MeetDeviceOption[],
+  speakerId: string | null | undefined,
+): string {
+  if (speakerId && options.some((option) => option.id === speakerId)) {
+    return speakerId;
+  }
+  return options[0]?.id ?? "default";
+}
+
 export function meetDeviceIdForOption(
   options: MeetDeviceOption[],
   optionId: string,
