@@ -44,7 +44,7 @@ Rebuild `dist/` after changing server source (`pnpm --filter @wgw/mcp-server bui
 
 | Tool | Command | Timeout | When |
 |------|---------|---------|------|
-| `run_apps_done_gate` | `pnpm test:apps-done-gate` | 15 min | UI handoff / before push |
+| `run_apps_done_gate` | `pnpm test:apps-done-gate` | 15 min | Local UI gate before push (no unit/jsdom; those run in CI) |
 | `run_api_done_gate` | `pnpm test:api-done-gate` | 15 min | API handoff |
 | `run_ci_quality` | `pnpm run ci:quality` | 30 min | Pre-PR full stack |
 | `run_lint` | `pnpm lint` | 5 min | Quick check |
