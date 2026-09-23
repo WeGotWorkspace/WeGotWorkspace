@@ -149,7 +149,7 @@ describe("MeetChannelDialog delete", () => {
     expect(onCopyGuestLink).toHaveBeenCalledWith(`${origin}/meet/meetings/standup`);
   });
 
-  it("copies the persisted guest room code for ad-hoc meetings", () => {
+  it("copies the ad-hoc meeting room code, not the name slug", () => {
     const origin = window.location.origin;
     const onCopyGuestLink = vi.fn();
     render(
@@ -180,6 +180,7 @@ describe("MeetChannelDialog delete", () => {
 
     const link = screen.getByLabelText(meetLabels.meetingLinkLabel) as HTMLInputElement;
     expect(link.value).toBe(`${origin}/meet/meetings/g744-8kfg-adjz`);
+    expect(link.value).not.toContain("/standup");
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText: vi.fn().mockResolvedValue(undefined) },

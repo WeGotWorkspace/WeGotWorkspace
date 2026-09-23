@@ -30,6 +30,7 @@ import {
   MEET_MEETINGS_ROUTE,
   meetIsAdHocMeetingId,
   meetLiveRouteShowsInviteGate,
+  meetRouteIsGuestClosed,
   type MeetChatRouteParams,
 } from "@/meet-core/src/meet-chat-route";
 import { InstallerApp } from "@/installer-core/src/installer-app";
@@ -289,10 +290,17 @@ function MeetLiveRoute() {
   }, [meetingId, navigate, onConversationRoute, parsedSearch, roomFromSearch]);
 
   // Signed-in members stay on one MeetChatApp for channels, DMs, persisted
-  // meetings, and ad-hoc room codes. Swapping in MeetInviteGate remounts the
-  // workspace. The invite gate is only the signed-out guest lobby.
+  // meetings, and ad-hoc room codes. The invite gate is only the signed-out
+  // ad-hoc lobby. Channels, DMs, and saved meetings refuse guests.
   const signedIn = wgwLiveApiEnabled() && wgwHasAuthenticatedSession();
+  const guestClosed = meetRouteIsGuestClosed({
+    channelId,
+    peerId: params.peerId ?? null,
+    persistedMeetingId,
+    legacyId: params.legacyId ?? null,
+  });
   if (
+    !guestClosed &&
     meetLiveRouteShowsInviteGate({
       signedIn,
       meetingId,
@@ -300,11 +308,15 @@ function MeetLiveRoute() {
       inviteRoom,
     })
   ) {
-    return (
-      <MeetInviteGate room={adHocMeeting ? meetingId : inviteRoom} channelId={persistedMeetingId} />
-    );
+    return <MeetInviteGate room={adHocMeeting ? meetingId : inviteRoom} />;
   }
-  return <MeetChannelDeepLinkGate channelId={channelId} workspace={<AuthenticatedMeetChatApp />} />;
+  return (
+    <MeetChannelDeepLinkGate
+      channelId={channelId}
+      guestClosed={guestClosed}
+      workspace={<AuthenticatedMeetChatApp />}
+    />
+  );
 }
 
 function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
@@ -534,7 +546,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     },
     // Live: Slack-like workspace. Signed-in channel, DM, persisted meeting,
     // and ad-hoc room URLs stay on one MeetChatApp. The invite gate is only
-    // for signed-out landings (guest lobby).
+    // the signed-out ad-hoc lobby. Channels, DMs, and saved meetings refuse guests.
     component: isLive ? MeetLiveRoute : MockMeetRoute,
   });
 

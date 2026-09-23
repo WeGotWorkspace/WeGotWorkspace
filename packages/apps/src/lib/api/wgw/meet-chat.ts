@@ -113,7 +113,6 @@ export function meetChannelFromWire(row: WgwChatChannel): MeetChannel {
     shareWith: (row.shareWith ?? null) as CollectionShareWith | null,
     isSharee: row.isSharee,
     myRights: rightsFromWire(row.myRights),
-    ...(row.kind === "meeting" && row.guestRoomCode ? { guestAccess: true } : {}),
     guestRoomCode: row.guestRoomCode ?? null,
     topic: row.topic ?? null,
     ...(row.unreadCount !== undefined ? { unreadCount: row.unreadCount } : {}),

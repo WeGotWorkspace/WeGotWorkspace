@@ -106,6 +106,8 @@ Accepts `room` + `ownerPrincipal` (+ optional `expiresAt`; omit/null = no expiry
 
 **GET 404** (no row — including a sweeper-pruned never-activated room whose calendar `links` href still points at it) is **not** an unhandled error. Lobby and calendar Join treat 404 like “not reserved” (existing dead-link / missing-invite copy). Do not treat network failure the same as 404.
 
+A named channel, team channel, or direct message is not a guest door. Unauthenticated GET of those rooms is **404** even when a reservation row exists. Authenticated callers still receive `active` so in-channel call presence keeps working. An ad-hoc meeting room code stays guest-readable. A meeting name slug does not.
+
 Guest lobby: `{ reserved: true, active: false }` → **waiting for the host**. Knock still requires a joinable host. Signed-in owner-principal members can start; non-members stay guest/knock.
 
 ### `PATCH /meetings/rooms/{id}`

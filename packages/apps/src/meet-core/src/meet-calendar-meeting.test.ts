@@ -3,7 +3,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import { formToDraft } from "@/calendar-core/src/calendar-editor-model";
 import { CALENDAR_MEET_LINK_KEY } from "@/calendar-core/src/calendar-meet-link";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import { buildMeetGuestCallLink } from "@/meet-core/src/meet-route-search";
+import { buildMeetMeetingInviteLink } from "@/meet-core/src/meet-route-search";
 import {
   calendarEventLooksScheduled,
   calendarEventsForMeetingChannel,
@@ -747,7 +747,7 @@ describe("seedEditMeetingForm", () => {
     expect(form.title).toBe("Standup");
     expect(form.startDate).toBe("2026-09-06");
     expect(form.startTime).toBe("15:00");
-    expect(form.meetingUrl).toBe(buildMeetGuestCallLink(ROOM, ORIGIN));
+    expect(form.meetingUrl).toBe(buildMeetMeetingInviteLink(ROOM, ORIGIN));
     expect(form.meetRoomCode).toBe(ROOM);
   });
 
