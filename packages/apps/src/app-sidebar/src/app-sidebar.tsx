@@ -1,5 +1,6 @@
-import { type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef } from "react";
 import { AppSwitchButton } from "@/app-switch-button/src/app-switch-button";
+import { bindOpenSidebarStatusBar } from "@/app-sidebar/src/sidebar-status-bar";
 import { cn } from "@/lib/utils";
 import { NotificationInboxTray } from "@/notifications-core/src/notification-inbox-tray";
 import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
@@ -57,10 +58,17 @@ export function AppSidebar({
   appSwitchSubtitle,
   className,
 }: AppSidebarProps) {
+  const sidebarRef = useRef<HTMLElement>(null);
+  useEffect(() => bindOpenSidebarStatusBar(sidebarRef.current, open), [open]);
+
   return (
     <>
       {open ? <div className="app-sidebar__scrim" onClick={onCloseMobile} aria-hidden /> : null}
-      <aside data-open={open ? "true" : "false"} className={cn("app-sidebar", className)}>
+      <aside
+        ref={sidebarRef}
+        data-open={open ? "true" : "false"}
+        className={cn("app-sidebar", className)}
+      >
         <header className="app-sidebar__header">
           <div className="app-sidebar__header-main">
             <AppSwitchButton disabled={appSwitchDisabled} subtitle={appSwitchSubtitle} />

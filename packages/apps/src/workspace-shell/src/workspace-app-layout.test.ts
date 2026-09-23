@@ -7,6 +7,17 @@ const here = dirname(fileURLToPath(import.meta.url));
 const tsx = readFileSync(join(here, "workspace-app-layout.tsx"), "utf8");
 const css = readFileSync(join(here, "workspace-app-layout.css"), "utf8");
 
+describe("workspace-app-layout safe area", () => {
+  it("extends the main fill under the status bar only when a header is present", () => {
+    expect(css).toMatch(
+      /\.workspace-app-layout__main:has\(> \.workspace-app-layout__main-header\) \{[\s\S]*padding-top:\s*env\(safe-area-inset-top,\s*0px\)/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-layout__main:has\(> \.workspace-app-layout__main-header\) \{[\s\S]*padding-bottom:\s*env\(safe-area-inset-bottom,\s*0px\)/,
+    );
+  });
+});
+
 describe("workspace-app-layout main stacking", () => {
   it("isolates the main column so chrome z-30 stays under the AppSidebar overlay scrim", () => {
     expect(css).toMatch(/\.workspace-app-layout__main \{[\s\S]*\bisolate\b/);

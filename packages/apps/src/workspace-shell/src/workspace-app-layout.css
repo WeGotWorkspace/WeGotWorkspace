@@ -17,6 +17,16 @@
   background-color: var(--workspace-main-bg, var(--color-we-got-soft));
 }
 
+/*
+ * Header stays on its own padding. This inset only adds the status bar / home
+ * indicator, so the main fill runs under them and the header does not move up.
+ * Screens without a header (Meet guest lobby) already pad themselves.
+ */
+.workspace-app-layout__main:has(> .workspace-app-layout__main-header) {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 .workspace-app-layout__main-header {
   /*
    * Block padding (`p-4 md:p-6`) is the suite chrome rhythm — AppSidebar header

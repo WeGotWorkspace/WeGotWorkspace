@@ -33,6 +33,12 @@
     color-mix(in oklab, var(--color-we-got-dark) 15%, transparent)
   );
   color: var(--app-sidebar-color, var(--color-we-got-dark));
+  /*
+   * Safe area is padding, so the sidebar fill runs under the status bar and
+   * home indicator while the header and footer keep today's inset.
+   */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   /* Outer chrome gutter — aligns with the app-switch icon tile. */
   --app-sidebar-padding-x: 1rem;
   /* Same lockup math as `.app-switch-button__icon` (two caption lines). */
@@ -186,7 +192,18 @@
 }
 
 .app-sidebar__scrim {
-  @apply fixed inset-0 z-30 cursor-pointer bg-black/30 sidebar:hidden animate-in fade-in;
+  /*
+   * Dim lives on ::before. A background on this fixed layer is what iOS samples
+   * for the status bar, which paints the gap gray instead of the shell.
+   */
+  @apply fixed inset-0 z-30 cursor-pointer bg-transparent sidebar:hidden animate-in fade-in;
   --tw-duration: var(--panel-overlay-duration);
   animation-duration: var(--panel-overlay-duration);
+}
+
+.app-sidebar__scrim::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: rgb(0 0 0 / 30%);
 }
