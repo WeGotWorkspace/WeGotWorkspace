@@ -81,12 +81,15 @@ export function meetResumeCallNavigateTarget(input: {
   liveCallChannelKind?: string | null;
   roomCode?: string | null;
 }): MeetResumeCallNavigateTarget {
+  const room = input.roomCode?.trim();
+  if (input.liveCallChannelKind === "meeting" && room && isMeetRoomCode(room)) {
+    return { to: MEET_MEETINGS_ROUTE, params: { meetingId: room.toLowerCase() } };
+  }
   if (input.liveCallChannelId) {
     return meetNavigateTargetFromSelection(input.liveCallChannelId, {
       kind: input.liveCallChannelKind,
     });
   }
-  const room = input.roomCode?.trim();
   if (!room) return { to: "/meet" };
   if (isMeetRoomCode(room)) {
     return { to: MEET_MEETINGS_ROUTE, params: { meetingId: room.toLowerCase() } };

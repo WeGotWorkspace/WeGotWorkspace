@@ -80,26 +80,41 @@ function meetSelectionFromLegacyRedirect(target: MeetChatLegacyRedirect): string
   return null;
 }
 
+/**
+ * Path segment for a meeting channel. An ad-hoc meeting always uses its
+ * reserved room code. A meeting without one keeps the collection slug.
+ */
+export function meetMeetingPathId(
+  channelId: string,
+  channel?: { kind?: string | null; guestRoomCode?: string | null } | null,
+): string {
+  const room = channel?.kind === "meeting" ? channel.guestRoomCode?.trim().toLowerCase() : "";
+  if (room && isMeetRoomCode(room)) return room;
+  return meetPublicChannelId(channelId);
+}
+
 /** Workspace selection key → nested Meet path. Type lives in the path. */
 export function meetNavigateTargetFromSelection(
   channelId: string,
-  channel?: { kind?: string | null } | null,
+  channel?: { kind?: string | null; guestRoomCode?: string | null } | null,
 ): MeetChatNavigateTarget {
   const peerId = meetDirectMessagePrincipalId(channelId);
   if (peerId) {
     return { to: MEET_DMS_ROUTE, params: { peerId } };
   }
-  const publicId = meetPublicChannelId(channelId);
   if (channel?.kind === "meeting") {
-    return { to: MEET_MEETINGS_ROUTE, params: { meetingId: publicId } };
+    return {
+      to: MEET_MEETINGS_ROUTE,
+      params: { meetingId: meetMeetingPathId(channelId, channel) },
+    };
   }
-  return { to: MEET_CHANNELS_ROUTE, params: { channelId: publicId } };
+  return { to: MEET_CHANNELS_ROUTE, params: { channelId: meetPublicChannelId(channelId) } };
 }
 
 /** Absolute path string for suite-notify consume matching (same shape as inbox `navigate`). */
 export function meetNavigatePathFromSelection(
   channelId: string,
-  channel?: { kind?: string | null } | null,
+  channel?: { kind?: string | null; guestRoomCode?: string | null } | null,
 ): string {
   const target = meetNavigateTargetFromSelection(channelId, channel);
   if (target.to === MEET_DMS_ROUTE) {

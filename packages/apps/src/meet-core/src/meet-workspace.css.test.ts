@@ -568,6 +568,10 @@ describe("meet guest invite lobby chrome", () => {
     );
     expect(guestLobby).toMatch(/meet-guest-lobby__after-knock/);
     expect(css).not.toMatch(/meet-call-knock-wait--guest/);
+    expect(css).toMatch(/\.meet-workspace--split \.meet-call-knock-wait \{[\s\S]*color:\s*#003311/);
+    expect(css).toMatch(
+      /\.meet-workspace--split \.meet-call-knock-wait__title \{[\s\S]*color:\s*#003311/,
+    );
     const micFill = css.match(/\.meet-guest-lobby__mic-level-fill \{[\s\S]*?\n\}/)?.[0] ?? "";
     expect(micFill).toMatch(/background-color:\s*var\(--workspace-accent\)/);
     expect(micFill).not.toMatch(/--meet-live/);

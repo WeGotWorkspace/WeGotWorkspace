@@ -137,6 +137,19 @@ describe("meetResumeCallNavigateTarget", () => {
     });
   });
 
+  it("returns the room code for an ad-hoc meeting instead of the collection slug", () => {
+    expect(
+      meetResumeCallNavigateTarget({
+        liveCallChannelId: "chat-jo",
+        liveCallChannelKind: "meeting",
+        roomCode: "g744-8kfg-adjz",
+      }),
+    ).toEqual({
+      to: MEET_MEETINGS_ROUTE,
+      params: { meetingId: "g744-8kfg-adjz" },
+    });
+  });
+
   it("returns the meetings path for meeting-kind collections", () => {
     expect(
       meetResumeCallNavigateTarget({

@@ -7,6 +7,7 @@ import {
   meetLegacyRedirect,
   meetLiveRouteShowsInviteGate,
   meetNavigatePathFromSelection,
+  meetMeetingPathId,
   meetNavigateTargetFromSelection,
   meetSelectionFromRouteParams,
 } from "@/meet-core/src/meet-chat-route";
@@ -138,6 +139,21 @@ describe("meetNavigateTargetFromSelection", () => {
       to: MEET_MEETINGS_ROUTE,
       params: { meetingId: "test-meet" },
     });
+  });
+
+  it("writes an ad-hoc meeting as its room code, not the collection slug", () => {
+    expect(
+      meetNavigateTargetFromSelection("chat-jo", {
+        kind: "meeting",
+        guestRoomCode: "g744-8kfg-adjz",
+      }),
+    ).toEqual({
+      to: MEET_MEETINGS_ROUTE,
+      params: { meetingId: "g744-8kfg-adjz" },
+    });
+    expect(meetMeetingPathId("chat-jo", { kind: "meeting", guestRoomCode: "G744-8KFG-ADJZ" })).toBe(
+      "g744-8kfg-adjz",
+    );
   });
 
   it("writes DMs as /meet/dms/{peer} without dm: or dm- in the path", () => {

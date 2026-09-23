@@ -724,6 +724,24 @@
   color: var(--meet-muted);
 }
 
+/*
+ * The bar sits in the cream chat column. `--meet-panel` is the navy lobby
+ * token, which paints dark-green ink on a black bar.
+ */
+.meet-workspace--split .meet-call-knock-wait {
+  background-color: color-mix(in oklch, var(--workspace-accent) 8%, #fff5e9);
+  border-color: color-mix(in oklch, #003311 12%, transparent);
+  color: #003311;
+}
+
+.meet-workspace--split .meet-call-knock-wait__title {
+  color: #003311;
+}
+
+.meet-workspace--split .meet-call-knock-wait__hint {
+  color: color-mix(in oklch, #003311 72%, transparent);
+}
+
 .meet-call-knock-wait--stage {
   @apply m-auto max-w-md flex-col gap-4 p-8 text-center;
 }
