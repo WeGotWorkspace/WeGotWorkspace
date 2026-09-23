@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { markUiModalSlot, wrapModalSurfaceChildren } from "@/ui/modal-surface-children";
 import "@/ui/modal-surface.css";
 import "@/ui/modal-title.css";
+import "@/ui/overlay-paper.css";
 import { buttonVariants } from "@/ui/button";
 
 const AlertDialog = AlertDialogPrimitive.Root;
@@ -37,7 +38,7 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        "ui-modal-surface ui-modal-surface--center fixed z-50 w-full max-w-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-[length:var(--control-radius)]",
+        "overlay-paper ui-modal-surface ui-modal-surface--center fixed z-50 w-full max-w-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-[length:var(--control-radius)]",
         className,
       )}
       {...props}

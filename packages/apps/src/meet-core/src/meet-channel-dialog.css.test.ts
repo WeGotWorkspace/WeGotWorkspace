@@ -17,7 +17,10 @@ describe("meet channel dialog surface", () => {
     expect(css).toMatch(
       /--field-label-color:\s*color-mix\(in oklab,\s*var\(--color-we-got-dark\) 68%/,
     );
-    expect(css).toMatch(/background-color:\s*var\(--workspace-surface/);
+    expect(css).toMatch(/background-color:\s*var\(--color-we-got-soft\)/);
+    expect(css).toMatch(
+      /--input-background:\s*color-mix\(in oklab,\s*var\(--color-we-got-dark\) 6%,\s*var\(--color-we-got-soft\)\)/,
+    );
     expect(css).not.toMatch(/--meet-panel:\s*#171826/);
   });
 

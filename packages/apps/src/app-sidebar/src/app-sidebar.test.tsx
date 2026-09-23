@@ -1,8 +1,25 @@
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { NotificationsInboxValueProvider } from "@/notifications-core/src/notifications-inbox-context";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
+
+function stubMatchMedia() {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
@@ -30,6 +47,10 @@ const inboxBase = {
 };
 
 describe("AppSidebar switch-trigger icon stability", () => {
+  beforeEach(() => {
+    stubMatchMedia();
+  });
+
   afterEach(() => {
     cleanup();
   });
