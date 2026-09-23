@@ -801,9 +801,10 @@
     var(--color-we-got-dark) 70%,
     transparent
   );
+  /* 72% clears AA on the 20% sand rail; 65% was ~4.3:1 for 12px text. */
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 65%,
+    var(--color-we-got-dark) 72%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
@@ -905,9 +906,10 @@
     var(--color-we-got-dark) 70%,
     transparent
   );
+  /* 72% clears AA on the 20% sand rail; 65% was ~4.3:1 for 12px text. */
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 65%,
+    var(--color-we-got-dark) 72%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
@@ -950,7 +952,8 @@
 
 .meet-workspace__upcoming-time {
   @apply max-w-[9.5rem] shrink-0 text-right text-xs font-normal leading-tight;
-  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  /* Same 72% ink as the footer subtitle so 12px times clear AA on the sand rail. */
+  color: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
 }
 
 .meet-workspace__header-kind-icon {
