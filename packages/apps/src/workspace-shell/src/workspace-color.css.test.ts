@@ -22,6 +22,15 @@ describe("workspace-color.css shared tint recipes", () => {
       /--workspace-surface:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-soft\) 70%,\s*#fff\)/,
     );
     expect(colorCss).toMatch(
+      /--input-background:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-dark\) 6%,\s*var\(--workspace-surface\)/,
+    );
+    expect(colorCss).toMatch(
+      /--input-background-focus:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-dark\) 8%,\s*var\(--workspace-surface\)/,
+    );
+    expect(colorCss).toMatch(
+      /--input-background-disabled:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-dark\) 4%,\s*var\(--workspace-surface\)/,
+    );
+    expect(colorCss).toMatch(
       /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) var\(--workspace-sidebar-mix\),\s*var\(--workspace-surface\)/,
     );
     expect(colorCss).toMatch(/--app-sidebar-color:\s*var\(--color-we-got-dark\)/);

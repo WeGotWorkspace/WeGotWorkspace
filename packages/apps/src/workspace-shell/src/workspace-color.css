@@ -51,6 +51,24 @@
   --workspace-detail-bg: var(--workspace-surface);
   --workspace-sidebar-mix: 12%;
 
+  /*
+   * Shared field wash — same dark-into-paper recipe as login/installer
+   * (`6%` / `8%` Dark), mixed into `--workspace-surface` so fields sit on
+   * app paper the way auth fields sit on Soft. Login/installer keep Soft.
+   * `oklch` matches this sheet; auth still uses `oklab` on Soft.
+   */
+  --input-background: color-mix(in oklch, var(--color-we-got-dark) 6%, var(--workspace-surface));
+  --input-background-focus: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 8%,
+    var(--workspace-surface)
+  );
+  --input-background-disabled: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 4%,
+    var(--workspace-surface)
+  );
+
   --workspace-accent-strong: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
