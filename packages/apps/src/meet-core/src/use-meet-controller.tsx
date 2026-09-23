@@ -89,6 +89,7 @@ export function useMeetController({
     // read at render time — join/toggle state changes re-render consumers.
     getLocalStream: callSession.getLocalStream,
     audioInputs: callSession.audioInputs,
+    audioOutputs: callSession.audioOutputs,
     videoInputs: callSession.videoInputs,
     selectedMicId: callSession.selectedMicId,
     selectedCamId: callSession.selectedCamId,
