@@ -117,22 +117,23 @@ Add contract coverage when introducing a new `*UIData` mapper or changing OpenAP
 
 ## Chromatic (optional — out of done gate)
 
-Visual regression via [Chromatic](https://www.chromatic.com/) is wired in CI but **dormant** ([#85](https://github.com/WeGotWorkspace/wegotworkspace/issues/85)). It is not run by `pnpm test:apps-done-gate`.
+Visual regression via [Chromatic](https://www.chromatic.com/) is wired as a dedicated CI job ([#85](https://github.com/WeGotWorkspace/wegotworkspace/issues/85)). It is not run by `pnpm test:apps-done-gate`.
 
 | Aspect | Policy |
 |--------|--------|
-| Required for merge | **No** — optional until maintainers enable and optionally add as required check |
-| CI gating | **`exitZeroOnChanges: true`** — publish for review; unreviewed diffs do not fail CI |
-| Snapshot scope | Dedicated job uses **`onlyChanged: true`** (TurboSnap) |
+| Required for merge | **No** — not a branch-protection required check until maintainers add it |
+| CI gating | **`exitZeroOnChanges: false`** — unaccepted visual diffs fail the Chromatic check |
+| Baselines | **`autoAcceptChanges: "main"`** only — `main` updates baselines; PRs still need review |
+| Snapshot scope | Dedicated job uses **`onlyChanged: true`** (TurboSnap); Live stories excluded |
 | Enablement | Repo variable `CHROMATIC_ENABLED=true` + secret `CHROMATIC_PROJECT_TOKEN` |
 
 Setup, CI wiring, and maintainer checklist: [storybook/chromatic.md](../storybook/chromatic.md).
 
 ## Out of scope for this gate
 
-- **Live-tier stories** (`Live …`) — manual smoke only.
-- **Apps Playwright e2e** — optional local smoke (`pnpm test:apps-e2e`); not in CI. Phase 1 loads mock-tier Storybook stories (e.g. `Apps/WeGotWorkspace` login shell). Reuse a running Storybook with `WGW_APPS_E2E_NO_SERVER=1` when `pnpm dev:ui` is already up.
-- **Chromatic** — optional; enable with repo variable `CHROMATIC_ENABLED=true` and `CHROMATIC_PROJECT_TOKEN` secret (see `.github/workflows/ci.yml`).
+- **Live-tier stories** (`Live …`) — manual smoke only; also excluded from Chromatic snapshots.
+- **Apps Playwright e2e** — optional local smoke (`pnpm test:apps-e2e`); not in CI. Phase 1 loads mock-tier Storybook stories (e.g. `Features/Workspace` login shell). Reuse a running Storybook with `WGW_APPS_E2E_NO_SERVER=1` when `pnpm dev:ui` is already up.
+- **Chromatic** — optional CI job; enable with repo variable `CHROMATIC_ENABLED=true` and `CHROMATIC_PROJECT_TOKEN` secret (see `.github/workflows/ci.yml`).
 - **Full Storybook Vitest catalog** — run locally: `pnpm --filter @wgw/apps run test:storybook`.
 
 ## Definition of done (UI slice)

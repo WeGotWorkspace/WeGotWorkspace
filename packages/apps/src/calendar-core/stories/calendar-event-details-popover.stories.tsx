@@ -17,7 +17,7 @@ const lunchForm = {
 };
 
 const meta: Meta<typeof CalendarEventDetailsPopover> = {
-  title: "Apps/Calendar/EventDetailsPopover",
+  title: "Features/Calendar/EventDetailsPopover",
   component: CalendarEventDetailsPopover,
   args: {
     open: true,

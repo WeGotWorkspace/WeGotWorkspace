@@ -17,8 +17,8 @@ export function ContentLabel({ text, icon, className, style }: ContentLabelProps
     <span
       className={cn("content-label", className)}
       style={{
-        color: "var(--color-ink)",
-        backgroundColor: "color-mix(in oklab, var(--color-ink) 8%, transparent)",
+        color: "var(--color-we-got-dark)",
+        backgroundColor: "color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)",
         ...style,
       }}
     >

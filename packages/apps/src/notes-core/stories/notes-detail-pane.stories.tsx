@@ -65,7 +65,7 @@ function NotesDetailPaneHarness({
 }
 
 const meta = {
-  title: "Apps/Notes/Panes/Detail",
+  title: "Features/Notes/Panes/Detail",
   component: NotesDetailPaneHarness,
   parameters: {
     layout: "fullscreen",
@@ -137,21 +137,30 @@ export const Editable: Story = {
         .trim(),
     ).toBe("");
     const accentProbe = document.createElement("span");
-    accentProbe.style.color = "var(--notes-accent)";
+    accentProbe.style.color = "var(--workspace-accent)";
+    const sandProbe = document.createElement("span");
+    sandProbe.style.color = "var(--color-we-got-sand)";
     workspace!.appendChild(accentProbe);
-    expect(getComputedStyle(accentProbe).color).toBe("rgb(246, 209, 118)");
+    workspace!.appendChild(sandProbe);
+    expect(getComputedStyle(accentProbe).color).toBe(getComputedStyle(sandProbe).color);
+    expect(getComputedStyle(accentProbe).color).not.toBe("rgb(0, 0, 0)");
     accentProbe.remove();
+    sandProbe.remove();
   },
 };
 
 export const NotebookTint: Story = {
   tags: ["vitest-ci"],
   args: { detailTint: "#ec4899", withTasks: true },
+  parameters: {
+    // Desk pads + distinct sheet/scroll washes apply above the flush breakpoint.
+    viewport: { value: "desktop", isRotated: false },
+  },
   play: async ({ canvasElement }) => {
     const workspace = canvasElement.querySelector(".notes-workspace") as HTMLElement | null;
     expect(workspace).toBeTruthy();
     expect(getComputedStyle(workspace!).getPropertyValue("--notes-detail-tint").trim()).toBe(
-      "#ec4899",
+      "oklch(from #ec4899 l c h)",
     );
     const sheet = canvasElement.querySelector(".paper-sheet") as HTMLElement | null;
     const scroll = canvasElement.querySelector(
@@ -194,7 +203,7 @@ export const NotebookTint: Story = {
       getComputedStyle(tintBg).backgroundColor,
     );
     const cream = document.createElement("span");
-    cream.style.backgroundColor = "var(--workspace-chrome-footer-bg, var(--color-cream, #ffffff))";
+    cream.style.backgroundColor = "var(--workspace-chrome-footer-bg, var(--color-we-got-soft))";
     workspace!.appendChild(cream);
     expect(getComputedStyle(scroll!).backgroundColor).toBe(getComputedStyle(cream).backgroundColor);
     expect(getComputedStyle(sheet!).backgroundColor).not.toBe(
@@ -264,12 +273,15 @@ export const NotebookTint: Story = {
 export const NotebookTintDark: Story = {
   tags: ["vitest-ci"],
   args: { detailTint: "#1e3a5f", withTasks: true },
+  parameters: {
+    viewport: { value: "desktop", isRotated: false },
+  },
   play: async ({ canvasElement }) => {
     const workspace = (canvasElement.querySelector(".notes-story-scope--detail") ??
       canvasElement.querySelector(".notes-workspace")) as HTMLElement | null;
     expect(workspace).toBeTruthy();
     expect(workspace!.style.getPropertyValue("--notes-detail-check-fg").trim()).toBe(
-      "var(--color-cream)",
+      "var(--color-we-got-soft)",
     );
     const chip = canvasElement.querySelector(
       ".note-detail-view__tag-group .tag",
@@ -297,7 +309,7 @@ export const NotebookTintDark: Story = {
     mark.style.color = "var(--checkbox-checked-fg)";
     tagBg.style.color = "var(--note-detail-tag-bg)";
     accent.style.color = "var(--notes-detail-accent)";
-    cream.style.color = "var(--color-cream, #ffffff)";
+    cream.style.color = "var(--color-we-got-soft)";
     editor!.appendChild(fill);
     editor!.appendChild(mark);
     editor!.appendChild(tagBg);

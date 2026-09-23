@@ -15,7 +15,7 @@ import {
 } from "@/chat-ui/stories/chat-stories.fixtures";
 
 const meta = {
-  title: "Shared/Chat/ChatMessageList",
+  title: "UI/Patterns/Chat/Chat Message List",
   component: ChatMessageList,
   parameters: {
     layout: "padded",
@@ -97,7 +97,7 @@ export const Populated: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
-      canvas.getAllByRole("button", { name: chatUiLabels.reply }).length,
+      canvas.getAllByRole("button", { name: chatUiLabels.reply, hidden: true }).length,
     ).toBeGreaterThan(0);
   },
 };

@@ -1,71 +1,87 @@
 @import "../../styles.css" reference;
 @import "../../workspace-shell/src/workspace-split-app.css";
+@import "../../workspace-shell/src/workspace-color.css";
 
 /**
- * Contacts product shell: cream panes + mint accent (`#39d49b`).
- * Saturated mint, still ink-on-primary like Notes yellow — white on this
- * fill fails WCAG UI 3:1. Sidebar is 12% accent on cream.
+ * Contacts product shell: cream panes + Sky (`#a3c4e8`).
+ * Primary fills use accent with Dark fg (white on Sky is ~1.8:1). Strong is 32% accent → ink.
+ * Sidebar / nav washes match Calendar (`10%` / `28%` / `38%` / `48%`).
  * Import only from {@link ContactsWorkspace}.
  */
 .contacts-workspace {
-  --contacts-accent: #39d49b;
-  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 42%, #042a22);
-  --contacts-sidebar: color-mix(in oklab, var(--contacts-accent) 12%, var(--color-cream, #ffffff));
-  --workspace-accent: var(--contacts-accent);
-  --color-emerald: var(--contacts-accent);
-  --workspace-root-bg: var(--color-cream, #ffffff);
-  --workspace-detail-bg: var(--color-cream, #ffffff);
-  --app-sidebar-bg: var(--contacts-sidebar);
-  --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --app-sidebar-color: var(--color-ink);
-  --sidebar-logo-close-button-color: var(--color-ink);
-  --sidebar-badge-fg: var(--contacts-accent);
-  --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --workspace-accent: var(--color-we-got-sand);
+  --workspace-sidebar-mix: 10%;
+  --color-emerald: var(--workspace-accent);
+  --workspace-root-bg: var(--workspace-surface);
+  --workspace-detail-bg: var(--workspace-surface);
+  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
+  --app-sidebar-color: var(--color-we-got-dark);
+  --sidebar-logo-close-button-color: var(--color-we-got-dark);
+  --sidebar-badge-fg: var(--workspace-accent);
+  --workspace-user-footer-link-hover-bg: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
 
-  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  --workspace-user-footer-text-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 70%,
+    transparent
+  );
+  --workspace-user-footer-border-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --workspace-user-footer-link-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 65%,
+    transparent
+  );
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
 
   --contacts-pending-sync-color: #c98a1f;
   --contacts-swipe-delete-color: #dc2626;
-  --contacts-swipe-remove-color: var(--contacts-accent);
+  --contacts-swipe-remove-color: var(--workspace-accent);
   --contacts-detail-title-font-family: var(--font-serif);
-  --loading-spinner-color: color-mix(in oklab, var(--color-ink) 45%, transparent);
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
-  --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: var(--color-ink, #042a22);
-  --checkbox-checked-bg: var(--contacts-accent);
-  --checkbox-checked-border: var(--contacts-accent);
-  --checkbox-checked-fg: var(--color-ink);
-  --switch-on-bg: var(--contacts-accent);
+  --loading-spinner-color: color-mix(in oklch, var(--color-we-got-dark) 45%, transparent);
+  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  --primary: var(--workspace-accent);
+  --primary-foreground: var(--color-we-got-dark);
+  --checkbox-checked-bg: var(--workspace-accent);
+  --checkbox-checked-border: var(--workspace-accent);
+  --checkbox-checked-fg: var(--color-we-got-dark);
+  --switch-on-bg: var(--workspace-accent);
 
   /* Outline action language for header + collection sidebar + action-bar. */
-  --button-active-color: var(--contacts-accent-strong);
-  --button-outline-hover-color: var(--contacts-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--contacts-accent) 14%, transparent);
+  --button-active-color: var(--workspace-accent-strong);
+  --button-outline-hover-color: var(--workspace-accent-strong);
+  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
   --button-outline-active-background: color-mix(
-    in oklab,
-    var(--contacts-accent) 18%,
-    var(--color-cream, #ffffff)
+    in oklch,
+    var(--workspace-accent) 18%,
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--contacts-accent) 24%,
-    var(--color-cream, #ffffff)
+    in oklch,
+    var(--workspace-accent) 24%,
+    var(--workspace-surface)
   );
 }
 
 /*
- * Primary CTA only — New / Save keep mint + ink. Do not set
- * `--button-outline-color` to mint here:
+ * Primary CTA only — New / Save keep Sky + Dark. Do not set
+ * `--button-outline-color` to accent here:
  * action-bar idle chips stay muted ink (Calendar / Notes / Tasks).
- * Accent on every outline icon leaked mint onto trash and toolbar actions.
+ * Accent on every outline icon leaked onto trash and toolbar actions.
  */
 .contacts-workspace .workspace-detail-pane .action-bar,
 .contacts-workspace .workspace-detail-pane {
-  --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: var(--color-ink, #042a22);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
 }
 
 /*
@@ -73,39 +89,31 @@
  * — cream surface; height/radius come from the shared primitive.
  */
 .contacts-workspace .action-bar .contacts-address-book-select.color-swatch-trigger {
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--workspace-surface);
 }
 
 .contacts-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: var(--color-ink, #042a22);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
+  --button-outline-hover-color: var(--color-we-got-dark);
 }
 
 /**
- * App switcher lockup: mint tile + cream card. Default invert uses
- * `--app-sidebar-color` as the tile. Do not mix sidebar ink into the
- * mark — that reads as muddy teal. Layers stay in the contacts.svg mint family
- * (`#39d49b` tile / `#26a577` person / `#fef8ea` almost-white sheet).
+ * App switcher lockup: contacts.svg literals (`#a3c4e8` sky tile / white person).
  */
 .contacts-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--contacts-accent);
-  --app-switch-icon-fg: color-mix(
-    in oklab,
-    var(--contacts-accent) 14%,
-    var(--color-cream, #ffffff)
-  );
-  background-color: var(--app-switch-icon-bg);
+  background-color: var(--color-we-got-sky);
 }
 
 .contacts-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: transparent;
-  --wai-fg: var(--app-switch-icon-fg);
-  --wai-cutout: #26a577;
+  --wai-bg: var(--color-we-got-sky);
+  --wai-fg: #ffffff;
 }
 
 .contacts-list-panel__loading {
@@ -117,7 +125,7 @@
 }
 
 .contacts-workspace .collection-sidebar-row--drop-target {
-  background-color: color-mix(in oklab, var(--contacts-accent) 18%, transparent);
+  background-color: color-mix(in oklch, var(--workspace-accent) 18%, transparent);
 }
 
 .contacts-list-panel__pending-dot {
@@ -176,13 +184,13 @@
   font-size: 1.75rem;
   font-weight: 500;
   line-height: 1.2;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
   margin: 0;
 }
 
 .contacts-detail-view__subtitle {
   @apply m-0 text-[0.9375rem] leading-snug;
-  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
 }
 
 .contacts-detail-view__tag-group {
@@ -196,7 +204,7 @@
 .contacts-detail-view__section + .contacts-detail-view__section {
   margin-top: 1.75rem;
   padding-top: 1.75rem;
-  border-top: 1px solid color-mix(in oklab, var(--color-ink) 10%, transparent);
+  border-top: 1px solid color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
 }
 
 .contacts-detail-view__section-title {
@@ -204,7 +212,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
   margin: 0 0 0.75rem;
 }
 
@@ -290,13 +298,13 @@
   min-width: 0;
   font-size: 0.9375rem;
   line-height: 1.35;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .contacts-detail-view__label--none {
   font-style: italic;
   font-size: 0.9375rem;
-  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  color: color-mix(in oklch, var(--color-we-got-dark) 45%, transparent);
 }
 
 .contacts-detail-view__channel-row--editable .input,
@@ -328,7 +336,7 @@
   min-width: 0;
   font-size: 0.9375rem;
   line-height: 1.35;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .contacts-detail-view__address-entry {
@@ -420,16 +428,16 @@
   align-items: baseline;
   gap: 0.5rem;
   font-size: 0.9375rem;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .contacts-detail-view__meta {
   font-size: 0.75rem;
-  color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
 }
 
 .contacts-detail-view__link {
-  color: var(--contacts-accent-strong, #0f6b52);
+  color: var(--workspace-accent-strong);
   text-decoration: none;
 }
 
@@ -441,21 +449,19 @@
   margin: 0;
   font-size: 0.9375rem;
   line-height: 1.5;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .contacts-dialog-surface {
-  --contacts-accent: #39d49b;
-  --contacts-accent-strong: color-mix(in oklab, var(--contacts-accent) 42%, #042a22);
-  --workspace-accent: var(--contacts-accent);
-  --color-emerald: var(--contacts-accent);
-  --button-primary-bg: var(--contacts-accent);
-  --button-primary-fg: var(--color-ink, #042a22);
-  --primary: var(--contacts-accent);
-  --primary-foreground: var(--color-ink);
-  --button-active-color: var(--contacts-accent-strong);
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
-  --segmented-control-track-active-bg: var(--color-ink);
+  --workspace-accent: var(--color-we-got-sand);
+  --color-emerald: var(--workspace-accent);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  --primary: var(--workspace-accent);
+  --primary-foreground: var(--color-we-got-dark);
+  --button-active-color: var(--workspace-accent-strong);
+  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
+  --segmented-control-track-active-bg: var(--color-we-got-dark);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
@@ -470,17 +476,17 @@
 
 .contacts-story-scope {
   min-height: 100dvh;
-  background-color: var(--workspace-root-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-root-bg, var(--color-we-got-soft));
 }
 
 .contacts-story-scope--list-column {
   display: flex;
   min-height: 100dvh;
   justify-content: center;
-  background-color: var(--workspace-root-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-root-bg, var(--color-we-got-soft));
 }
 
 .contacts-story-scope--detail {
   min-height: 100dvh;
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--workspace-surface);
 }

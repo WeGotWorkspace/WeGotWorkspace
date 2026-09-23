@@ -23,7 +23,7 @@ function DocsCollabEditorHarness() {
 }
 
 const meta = {
-  title: "Shared/TextEditor/Docs collab/Editor",
+  title: "Features/Docs/TextEditor/Docs collab/Editor",
   component: DocsCollabEditor,
   parameters: {
     layout: "fullscreen",

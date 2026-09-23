@@ -22,7 +22,7 @@ const guestSession = {
 const STORY_NOOP = () => {};
 
 const meta = {
-  title: "Workspace/ShellHeader",
+  title: "Layout/Shell Header",
   component: WorkspaceShellHeader,
   parameters: {
     layout: "fullscreen",
@@ -91,7 +91,6 @@ export const Login: Story = {
     </main>
   ),
   args: {
-    appSwitchDisabled: true,
-    appSwitchSubtitle: "Workspace",
+    brandLockup: true,
   },
 };

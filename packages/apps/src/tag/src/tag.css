@@ -32,8 +32,8 @@
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
   border-radius: var(--tag-radius, var(--control-radius));
-  background-color: var(--tag-bg, color-mix(in oklab, var(--color-ink) 8%, transparent));
-  color: var(--tag-fg, var(--color-ink));
+  background-color: var(--tag-bg, color-mix(in oklab, var(--color-we-got-dark) 8%, transparent));
+  color: var(--tag-fg, var(--color-we-got-dark));
 }
 
 .tag--size-lg {
@@ -45,8 +45,12 @@
 }
 
 .tag--collection-tint {
-  --tag-bg: color-mix(in oklab, var(--collection-row-color, var(--color-ink)) 18%, transparent);
-  --tag-fg: color-mix(in oklab, var(--collection-row-color, var(--color-ink)) 62%, #042a22);
+  --tag-bg: color-mix(
+    in oklab,
+    var(--collection-row-color, var(--color-we-got-dark)) 18%,
+    transparent
+  );
+  --tag-fg: color-mix(in oklab, var(--collection-row-color, var(--color-we-got-dark)) 62%, #003311);
 }
 
 .tag__icon {
@@ -108,14 +112,17 @@
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
   border-radius: var(--tag-radius, var(--control-radius));
-  background-color: var(--tag-group-add-bg, color-mix(in oklab, var(--color-ink) 6%, transparent));
-  color: var(--tag-group-add-fg, var(--color-ink));
+  background-color: var(
+    --tag-group-add-bg,
+    color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)
+  );
+  color: var(--tag-group-add-fg, var(--color-we-got-dark));
 }
 
 .tag-group__add-button:hover {
   background-color: var(
     --tag-group-add-bg-hover,
-    color-mix(in oklab, var(--color-ink) 10%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
   );
 }
 
@@ -144,7 +151,7 @@
     --tag-group-input-bg,
     color-mix(in oklab, var(--color-background) 90%, var(--color-muted) 10%)
   );
-  color: var(--tag-group-input-fg, var(--color-ink));
+  color: var(--tag-group-input-fg, var(--color-we-got-dark));
 }
 
 .tag-group--size-lg .tag-group__input {
@@ -174,7 +181,7 @@
   background-color: var(--tag-group-suggestions-bg, var(--color-popover, #ffffff));
   box-shadow: var(
     --tag-group-suggestions-shadow,
-    0 4px 16px color-mix(in oklab, var(--color-ink) 12%, transparent)
+    0 4px 16px color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
   );
   min-width: 10rem;
 }
@@ -184,7 +191,7 @@
   font-family: var(--font-mono);
   font-size: var(--tag-font-size, 0.75rem);
   line-height: 1.25;
-  color: var(--tag-group-suggestion-fg, var(--color-ink));
+  color: var(--tag-group-suggestion-fg, var(--color-we-got-dark));
   background-color: transparent;
 }
 
@@ -197,6 +204,6 @@
 .tag-group__suggestion--active {
   background-color: var(
     --tag-group-suggestion-bg-active,
-    color-mix(in oklab, var(--color-ink) 6%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)
   );
 }

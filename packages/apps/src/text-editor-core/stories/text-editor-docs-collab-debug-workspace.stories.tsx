@@ -4,7 +4,7 @@ import { DocsCollabWorkspace as DocsCollabDebugWorkspace } from "@/text-editor-c
 import "@/text-editor-core/src/text-editor.css";
 
 const meta = {
-  title: "Shared/TextEditor/Docs collab/Debug workspace",
+  title: "Features/Docs/TextEditor/Docs collab/Debug workspace",
   component: DocsCollabDebugWorkspace,
   parameters: {
     layout: "fullscreen",

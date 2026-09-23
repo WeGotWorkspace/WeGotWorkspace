@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const tsx = readFileSync(join(here, "tasks-workspace.tsx"), "utf8");
 const css = readFileSync(join(here, "tasks-workspace.css"), "utf8");
+const colorCss = readFileSync(join(here, "../../workspace-shell/src/workspace-color.css"), "utf8");
 const formTsx = readFileSync(join(here, "tasks-task-form.tsx"), "utf8");
 const mainViewTsx = readFileSync(join(here, "tasks-main-view.tsx"), "utf8");
 const listIconCss = readFileSync(join(here, "tasks-list-icon.css"), "utf8");
@@ -93,26 +94,68 @@ describe("tasks workspace header and sidebar", () => {
     expect(tsx).toMatch(/requestDeleteTask\(editingTask\.id\)/);
   });
 
-  it("washes sidebar chrome saturated and dials header outline chips down", () => {
+  it("uses Pink for the UI accent; primary fills use accent with Dark fg", () => {
+    expect(css).toMatch(
+      /\.tasks-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
+    );
+    expect(colorCss).toMatch(
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
+    );
+    expect(css).toMatch(
+      /\.tasks-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,
+    );
+    expect(css).toMatch(
+      /\.tasks-workspace \{[\s\S]*?--button-primary-fg:\s*var\(--color-we-got-dark\)/,
+    );
+    expect(css).not.toMatch(/--button-primary-bg:\s*var\(--workspace-accent-strong\)/);
+    expect(css).not.toMatch(/--workspace-accent:\s*var\(--color-we-got-red\)/);
+  });
+
+  it("keeps switch-trigger lockup on pink tile + white marks", () => {
+    expect(css).toMatch(
+      /\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-pink\)/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-pink\)/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#ffffff/,
+    );
+  });
+
+  it("washes sidebar chrome for Pink and dials header outline chips with accent-strong", () => {
     expect(tsx).toMatch(/tasks-workspace__show-completed[\s\S]*variant="outline"/);
-    expect(css).toMatch(
-      /--tasks-accent-strong:\s*color-mix\(in oklab,\s*var\(--tasks-accent\) 32%,\s*var\(--color-ink\)\)/,
-    );
-    expect(css).toMatch(/\.tasks-workspace \{[\s\S]*--button-active-color:\s*var\(--color-ink\)/);
-    expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--tasks-accent\) 40%/,
+    expect(colorCss).toMatch(
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--tasks-accent\) 55%/,
+      /\.tasks-workspace \{[\s\S]*--button-active-color:\s*var\(--workspace-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--tasks-accent\) 65%/,
+      /\.tasks-workspace \{[\s\S]*--button-outline-hover-background:[\s\S]*var\(--workspace-accent\) 14%/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--tasks-accent-strong\)/,
+      /\.tasks-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--workspace-accent\) 18%/,
     );
     expect(css).toMatch(
-      /\.tasks-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--tasks-accent-strong\)/,
+      /\.tasks-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--workspace-accent\) 24%/,
+    );
+    expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
+    expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
+    expect(css).toMatch(
+      /\.tasks-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
+    );
+    expect(css).toMatch(
+      /\.tasks-workspace \.view-header \{[\s\S]*--button-active-color:\s*var\(--workspace-accent-strong\)/,
+    );
+    expect(css).toMatch(
+      /\.tasks-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--workspace-accent-strong\)/,
+    );
+    expect(css).toMatch(
+      /\.tasks-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
+    );
+    expect(css).toMatch(
+      /\.tasks-dialog-surface \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
     expect(css).not.toMatch(
       /\.tasks-workspace \.tasks-workspace__header-actions \{[\s\S]*--button-outline-active-background/,

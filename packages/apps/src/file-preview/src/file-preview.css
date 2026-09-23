@@ -49,7 +49,7 @@
   @apply min-h-[12rem] rounded-md border;
   border-color: color-mix(
     in oklab,
-    var(--drive-accent, var(--workspace-accent, var(--color-ink))) 18%,
+    var(--workspace-accent, var(--workspace-accent, var(--color-we-got-dark))) 18%,
     transparent
   );
 }

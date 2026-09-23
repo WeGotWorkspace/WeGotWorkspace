@@ -10,9 +10,23 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import "../src/styles.css";
+// Scoped to Chromatic capture + Storybook Vitest — see chromatic-reduced-motion.css
+import "./chromatic-reduced-motion.css";
 import { NotificationsInboxValueProvider } from "../src/notifications-core/src/notifications-inbox-context";
 import { AppToaster } from "../src/ui/sonner";
 import { TooltipProvider } from "../src/ui/tooltip";
+
+// Vitest storybook project defines STORYBOOK_REDUCED_MOTION=1 (vitest.config.ts).
+// Chromatic capture sets a Chromatic UA (and often prefers-reduced-motion) but may
+// add `body.isChromatic` only around snapshot time — set the attribute at load so
+// play functions get `animation: none` before menus/dialogs try to unmount.
+// Interactive `storybook dev` leaves both unset so height/opacity transitions run.
+const chromaticUa =
+  typeof navigator !== "undefined" &&
+  (/Chromatic/.test(navigator.userAgent) || /chromatic=true/.test(location.href));
+if (import.meta.env.STORYBOOK_REDUCED_MOTION === "1" || chromaticUa) {
+  document.documentElement.setAttribute("data-chromatic-reduced-motion", "");
+}
 
 const STORYBOOK_INBOX = {
   items: [] as const,
@@ -42,6 +56,8 @@ const preview: Preview = {
       });
 
       const renderStory = () => createElement(Story);
+      // Keep in sync with WORKSPACE_APP_IDS + auth/install shells so
+      // `parameters.routerPath` (e.g. Themes stories) resolves without falling through.
       const routes = [
         createRoute({ getParentRoute: () => rootRoute, path: "/", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "login", component: renderStory }),
@@ -57,7 +73,11 @@ const preview: Preview = {
         }),
         createRoute({ getParentRoute: () => rootRoute, path: "notes", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "mail", component: renderStory }),
+        createRoute({ getParentRoute: () => rootRoute, path: "calendar", component: renderStory }),
+        createRoute({ getParentRoute: () => rootRoute, path: "contacts", component: renderStory }),
+        createRoute({ getParentRoute: () => rootRoute, path: "tasks", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "drive", component: renderStory }),
+        createRoute({ getParentRoute: () => rootRoute, path: "docs", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "install", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "settings", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "meet", component: renderStory }),
@@ -89,6 +109,11 @@ const preview: Preview = {
       ),
   ],
   parameters: {
+    options: {
+      storySort: {
+        order: ["Foundations", "Themes", "UI", "Layout", "Features"],
+      },
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,
@@ -107,6 +132,9 @@ const preview: Preview = {
       },
     },
 
+    chromatic: {
+      prefersReducedMotion: "reduce",
+    },
     a11y: {
       // 'todo' - show a11y violations in the test UI only
       // 'error' - fail CI on a11y violations (Storybook Vitest smoke sets STORYBOOK_VITEST_SMOKE=1)

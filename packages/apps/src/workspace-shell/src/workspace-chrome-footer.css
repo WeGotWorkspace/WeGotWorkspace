@@ -13,7 +13,10 @@
   );
   backdrop-filter: blur(8px);
   border-top: 1px solid
-    var(--workspace-chrome-footer-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
+    var(
+      --workspace-chrome-footer-border,
+      color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
+    );
 }
 
 .workspace-chrome-footer__group {

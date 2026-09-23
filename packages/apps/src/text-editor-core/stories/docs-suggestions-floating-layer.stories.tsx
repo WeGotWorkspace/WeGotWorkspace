@@ -50,7 +50,7 @@ function FloatingLayerHarness() {
 }
 
 const meta = {
-  title: "Shared/TextEditor/Docs suggestions/Floating layer",
+  title: "Features/Docs/TextEditor/Docs suggestions/Floating layer",
   component: DocsSuggestionsFloatingLayer,
   parameters: {
     layout: "fullscreen",

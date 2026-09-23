@@ -43,7 +43,7 @@ function NotesNotebookSelectHarness({
 }
 
 const meta: Meta<typeof NotesNotebookSelectHarness> = {
-  title: "Apps/Notes/Components/NotesNotebookSelect",
+  title: "Features/Notes/Components/NotesNotebookSelect",
   component: NotesNotebookSelectHarness,
   tags: ["autodocs"],
   args: {

@@ -11,7 +11,7 @@
 .chat-message:focus-within {
   /* Above sticky day headers (z-[5]) so short-row hover actions stay visible. */
   z-index: 6;
-  background-color: var(--chat-hover, color-mix(in oklab, #06b6d4 8%, transparent));
+  background-color: var(--chat-hover, color-mix(in oklch, var(--workspace-accent) 8%, transparent));
 }
 
 .chat-message--continuation {
@@ -40,13 +40,13 @@
 
 .chat-message__author {
   @apply text-sm font-medium;
-  color: var(--chat-author, var(--color-ink));
+  color: var(--chat-author, var(--color-we-got-dark));
 }
 
 .chat-message__time,
 .chat-message__edited {
   @apply text-[11px] font-normal;
-  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 45%, transparent));
+  color: var(--chat-muted, color-mix(in oklab, var(--color-we-got-dark) 45%, transparent));
 }
 
 .chat-message--continuation .chat-message__body,
@@ -66,7 +66,7 @@
 .chat-message__body {
   @apply mt-0.5 min-w-0 max-w-full break-words text-sm leading-snug;
   overflow-wrap: anywhere;
-  color: var(--chat-body, color-mix(in oklab, var(--color-ink) 88%, transparent));
+  color: var(--chat-body, color-mix(in oklab, var(--color-we-got-dark) 88%, transparent));
 }
 
 .chat-message__body mark {
@@ -95,7 +95,7 @@
 
 .chat-message__deleted {
   @apply mt-0.5 text-sm italic;
-  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 45%, transparent));
+  color: var(--chat-muted, color-mix(in oklab, var(--color-we-got-dark) 45%, transparent));
 }
 
 .chat-message__previews {
@@ -104,7 +104,7 @@
 
 .chat-message__replies {
   @apply mt-1 border-0 bg-transparent p-0 text-left text-xs font-medium;
-  color: var(--chat-replies, color-mix(in oklab, var(--color-ink) 68%, transparent));
+  color: var(--chat-replies, color-mix(in oklab, var(--color-we-got-dark) 68%, transparent));
 }
 
 .chat-message__replies:hover,
@@ -123,8 +123,8 @@
 
 .chat-message__actions {
   @apply absolute top-1 right-3 hidden items-center gap-0 rounded-md border px-0.5 shadow-sm;
-  border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 10%, transparent));
-  background-color: var(--chat-action-surface, #fff);
+  border-color: var(--chat-border, color-mix(in oklab, var(--color-we-got-dark) 10%, transparent));
+  background-color: var(--chat-action-surface, var(--color-we-got-soft));
 }
 
 .chat-message:hover .chat-message__actions,
@@ -137,7 +137,7 @@
    and the picker closes before the cursor can reach it. */
 .chat-message:has([data-state="open"]) {
   z-index: 6;
-  background-color: var(--chat-hover, color-mix(in oklab, #06b6d4 8%, transparent));
+  background-color: var(--chat-hover, color-mix(in oklch, var(--workspace-accent) 8%, transparent));
 }
 
 .chat-message:has([data-state="open"]) .chat-message__actions {

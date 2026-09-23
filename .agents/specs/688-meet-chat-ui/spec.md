@@ -31,7 +31,7 @@ Turn Meet’s Storybook surface into the same **split** workspace other apps use
 - **Split shell** uses `WorkspaceAppLayout` + `AppSidebar` + `ViewHeader`. Chat is full-bleed like Docs (`--workspace-main-content-max-width: none`, zeroed main padding/scroll flex). Call stage is **not** the docs comments `panel`.
 - **Channel model** mirrors Notes/Tasks collections plus `kind: "channel" | "meeting"`. Sidebar: Channels (owned channel) → Shared with me → Meetings (owned meeting). `CollectionSidebarRow` **without** visibility checkboxes.
 - **Create/edit** clones `TaskProjectDialog` (`OwnerScopeField` + `CollectionShareSection`). Meeting kind adds guest-link copy via `MeetShareButton` / `buildMeetGuestCallLink`.
-- **Chat primitives** live in `packages/apps/src/chat-ui/` with `Shared/Chat/*` stories (product-agnostic). First consumer is Meet. Copy Docs 6-emoji reactions; do not refactor docs-collab.
+- **Chat primitives** live in `packages/apps/src/chat-ui/` with `UI/Patterns/Chat/*` stories (product-agnostic). First consumer is Meet. Copy Docs 6-emoji reactions; do not refactor docs-collab.
 - **Previews** are injected by mock operations from a static unfurl map — no network. URL detection extends `renderMeetChatBody`.
 - **Threads vs call rail:** idle → split `panel`; call active → `SideDrawer` over chat; guest → no channel sidebar (`hideSidebarToggle`).
 - **Operations DI.** Panes stay presentational. No `@/lib/api/wgw` in panes.

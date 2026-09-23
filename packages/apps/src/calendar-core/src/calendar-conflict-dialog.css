@@ -6,7 +6,7 @@
 
 .calendar-conflict-dialog__remaining {
   @apply m-0 text-sm;
-  color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .calendar-conflict-dialog__actions {

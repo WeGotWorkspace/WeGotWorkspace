@@ -90,10 +90,17 @@ describe("tasks composer select chips", () => {
     );
   });
 
-  it("pins Add task on the start (left) side of the composer actions row", () => {
-    const actions = css.match(/\.tasks-main-view__composer-actions \{[^}]+\}/)?.[0];
-    expect(actions).toMatch(/justify-start/);
-    expect(actions).not.toMatch(/justify-end/);
+  it("colors Add task primary with brand accent and light glyphs", () => {
+    expect(css).toMatch(
+      /\.tasks-main-view__add-submit\.button--variant-primary \{[\s\S]*background-color:\s*var\(--workspace-accent\)/,
+    );
+    expect(css).toMatch(
+      /\.tasks-main-view__add-submit\.button--variant-primary \{[\s\S]*color:\s*var\(--button-primary-fg,\s*var\(--color-we-got-dark\)\)/,
+    );
+    expect(css).toMatch(
+      /\.tasks-main-view__remind-button--active \{[\s\S]*var\(--workspace-accent,\s*#ffbdc2\)/,
+    );
+    expect(css).not.toMatch(/#ea8c72/);
   });
 
   it("colors the assigned composer remind bell like the list-row mark", () => {
@@ -122,7 +129,7 @@ describe("tasks composer select chips", () => {
     expect(css).not.toMatch(/\.tasks-main-view__remind-row-chip/);
     expect(css).not.toMatch(/\.tasks-main-view__remind--row[\s\S]*?\{[\s\S]*?truncate/);
     expect(css).not.toMatch(/\.tasks-main-view__remind--row[\s\S]*?\{[\s\S]*?\bborder\b/);
-    expect(css).toMatch(/\.tasks-main-view__remind--row svg \{[\s\S]*var\(--tasks-accent/);
+    expect(css).toMatch(/\.tasks-main-view__remind--row svg \{[\s\S]*var\(--workspace-accent/);
     expect(css).toMatch(/\.tasks-main-view__remind--row svg \{[\s\S]*fill:\s*currentColor/);
   });
 });

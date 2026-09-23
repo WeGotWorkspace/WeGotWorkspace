@@ -3,6 +3,7 @@ import type {
   AppSwitchButtonProps,
   AppSwitchButtonVariant,
 } from "@/app-switch-button/src/app-switch-button";
+import { BrandLockup } from "@/brand-lockup/src/brand-lockup";
 import { WorkspaceAppSwitcher } from "@/workspace-app-switcher/src/workspace-app-switcher";
 import { WorkspaceShellHeaderUserMenu } from "@/workspace-shell/src/workspace-shell-header-user-menu";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
@@ -11,11 +12,17 @@ import "@/workspace-shell/src/workspace-shell-header.css";
 
 export type WorkspaceShellHeaderProps = {
   className?: string;
-  /** Passed to `WorkspaceAppSwitcher` (e.g. login/install use `"Workspace"`). */
+  /**
+   * When true, render the static WeGotWorkspace brand lockup instead of the
+   * app switcher (unauthenticated cream shells: login / install / forgot).
+   * Signed-in home uses the app switcher with `appSwitchSubtitle="Workspace"`.
+   */
+  brandLockup?: boolean;
+  /** Passed to `WorkspaceAppSwitcher` (ignored when `brandLockup`). */
   appSwitchDisabled?: boolean;
   appSwitchSubtitle?: string;
   appSwitchVariant?: AppSwitchButtonVariant;
-  /** Rendered beside the app switcher (e.g. open document name in Docs). */
+  /** Rendered beside the app switcher / brand lockup (e.g. open document name in Docs). */
   startAccessory?: ReactNode;
   /** Rendered on the right before the account chip (e.g. word count in Docs). */
   endAccessory?: ReactNode;
@@ -34,6 +41,7 @@ export type WorkspaceShellHeaderProps = {
 
 export function WorkspaceShellHeader({
   className,
+  brandLockup = false,
   appSwitchDisabled = false,
   appSwitchSubtitle,
   appSwitchVariant,
@@ -52,12 +60,16 @@ export function WorkspaceShellHeader({
   return (
     <header className={cn("workspace-shell-header", className)}>
       <div className="workspace-shell-header__start">
-        <WorkspaceAppSwitcher
-          disabled={appSwitchDisabled}
-          subtitle={appSwitchSubtitle}
-          variant={appSwitchVariant}
-          onSelect={onAppSelect}
-        />
+        {brandLockup ? (
+          <BrandLockup />
+        ) : (
+          <WorkspaceAppSwitcher
+            disabled={appSwitchDisabled}
+            subtitle={appSwitchSubtitle}
+            variant={appSwitchVariant}
+            onSelect={onAppSelect}
+          />
+        )}
         {startAccessory ? (
           <div className="workspace-shell-header__accessory">{startAccessory}</div>
         ) : null}

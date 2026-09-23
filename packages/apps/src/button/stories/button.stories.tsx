@@ -4,7 +4,7 @@ import { PenSquare } from "lucide-react";
 import { BUTTON_SIZE_OPTIONS, BUTTON_VARIANT_OPTIONS, Button } from "../src/button";
 
 const meta: Meta<typeof Button> = {
-  title: "Shared/Buttons/Button",
+  title: "UI/Primitives/Button",
   component: Button,
   tags: ["vitest-ci"],
   argTypes: {

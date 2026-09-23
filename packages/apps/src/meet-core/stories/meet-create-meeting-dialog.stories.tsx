@@ -41,7 +41,7 @@ function DialogHarness() {
 }
 
 const meta: Meta<typeof MeetCreateMeetingDialog> = {
-  title: "Apps/Meet/Components/MeetCreateMeetingDialog",
+  title: "Features/Meet/Components/MeetCreateMeetingDialog",
   component: MeetCreateMeetingDialog,
 };
 
@@ -64,9 +64,9 @@ export const Instant: Story = {
       "aria-checked",
       "false",
     );
-    await expect(
-      body.queryByText(defaultCalendarLabels.eventWhenSectionTitle),
-    ).not.toBeInTheDocument();
+    expect(
+      body.queryAllByText(defaultCalendarLabels.eventStartLabel, { exact: true }),
+    ).toHaveLength(0);
     await expect(body.getByRole("button", { name: /Calendar: Personal/i })).toBeInTheDocument();
     await userEvent.click(body.getByRole("button", { name: /Calendar: Personal/i }));
     await expect(body.getByRole("menuitem", { name: "Work" })).toBeInTheDocument();
@@ -87,9 +87,13 @@ export const Scheduled: Story = {
     await expect(meetLink.value).toMatch(/\/meet\/meetings\//);
     await expect(meetLink.value).not.toMatch(/\/guest/);
     await expect(body.getByRole("button", { name: meetLabels.createChannelButton })).toBeDisabled();
-    await expect(body.getByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeInTheDocument();
+    await expect(
+      body.getAllByText(defaultCalendarLabels.eventStartLabel, { exact: true }).length,
+    ).toBeGreaterThan(0);
     await expect(body.getByText(defaultCalendarLabels.eventAttendeesLabel)).toBeInTheDocument();
-    await expect(body.getByText(defaultCalendarLabels.eventNotesLabel)).toBeInTheDocument();
+    await expect(body.getAllByText(defaultCalendarLabels.eventNotesLabel).length).toBeGreaterThan(
+      0,
+    );
     const calendarTrigger = body.getByRole("button", { name: /Calendar: Personal/i });
     await expect(calendarTrigger).toBeInTheDocument();
     await userEvent.click(calendarTrigger);
@@ -152,7 +156,9 @@ export const Edit: Story = {
     await expect(
       body.queryByRole("switch", { name: meetLabels.scheduleMeeting }),
     ).not.toBeInTheDocument();
-    await expect(body.getByText(defaultCalendarLabels.eventWhenSectionTitle)).toBeInTheDocument();
+    await expect(
+      body.getAllByText(defaultCalendarLabels.eventStartLabel, { exact: true }).length,
+    ).toBeGreaterThan(0);
     await expect(body.getByText(defaultCalendarLabels.eventAttendeesLabel)).toBeInTheDocument();
     await expect(
       body.getByRole("button", { name: defaultCalendarLabels.delete }),

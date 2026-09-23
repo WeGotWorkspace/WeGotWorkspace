@@ -31,9 +31,9 @@ describe("portal-theme-vars", () => {
     expect(
       collectCustomPropertyRefs("color-mix(in oklab, var(--notes-detail-accent) 14%, transparent)"),
     ).toEqual(["--notes-detail-accent"]);
-    expect(collectCustomPropertyRefs("var(--notes-detail-tint, var(--notes-accent))")).toEqual([
+    expect(collectCustomPropertyRefs("var(--notes-detail-tint, var(--workspace-accent))")).toEqual([
       "--notes-detail-tint",
-      "--notes-accent",
+      "--workspace-accent",
     ]);
   });
 
@@ -61,10 +61,10 @@ describe("portal-theme-vars", () => {
     const source = document.createElement("div");
     source.style.setProperty(
       "--button-outline-hover-background",
-      "color-mix(in oklab, var(--calendar-accent) 14%, transparent)",
+      "color-mix(in oklab, var(--workspace-accent) 14%, transparent)",
     );
-    source.style.setProperty("--calendar-accent", "#6366f1");
-    source.style.setProperty("--button-active-color", "#5558e8");
+    source.style.setProperty("--workspace-accent", "#962fa8");
+    source.style.setProperty("--button-active-color", "#5a1c66");
     document.body.append(source);
 
     const target = document.createElement("div");
@@ -73,11 +73,11 @@ describe("portal-theme-vars", () => {
     bridgePortalThemeVars(source, target);
 
     expect(target.style.getPropertyValue("--button-outline-hover-background")).toMatch(
-      /calendar-accent|#6366f1|rgba?\(|oklch\(/i,
+      /workspace-accent|#962fa8|rgba?\(|oklch\(/i,
     );
-    expect(target.style.getPropertyValue("--calendar-accent").trim()).toBe("#6366f1");
+    expect(target.style.getPropertyValue("--workspace-accent").trim()).toBe("#962fa8");
     expect(target.style.getPropertyValue("--button-active-color").trim()).toMatch(
-      /#5558e8|rgba?\(|oklch\(/i,
+      /#5a1c66|rgba?\(|oklch\(/i,
     );
   });
 
@@ -85,16 +85,15 @@ describe("portal-theme-vars", () => {
     const sheet = document.createElement("style");
     sheet.textContent = `
       .notes-host {
-        --notes-accent: #f6d176;
-        --notes-accent-strong: color-mix(in oklab, var(--notes-accent) 32%, var(--color-ink));
-        --color-ink: #1a1a1a;
-        --color-cream: #ffffff;
-        --workspace-accent: var(--notes-accent);
-        --button-outline-hover-color: var(--notes-accent-strong);
-        --button-outline-hover-background: color-mix(in oklab, var(--notes-accent) 14%, transparent);
-        --button-outline-active-background: color-mix(in oklab, var(--notes-accent) 18%, var(--color-cream));
-        --button-outline-active-hover-background: color-mix(in oklab, var(--notes-accent) 24%, var(--color-cream));
-        --button-active-color: var(--notes-accent-strong);
+        --workspace-accent: #ffc800;
+        --workspace-accent-strong: color-mix(in oklab, var(--workspace-accent) 32%, var(--color-we-got-dark));
+        --color-we-got-dark: #1a1a1a;
+        --color-we-got-soft: #fff5e9;
+        --button-outline-hover-color: var(--workspace-accent-strong);
+        --button-outline-hover-background: color-mix(in oklab, var(--workspace-accent) 14%, transparent);
+        --button-outline-active-background: color-mix(in oklab, var(--workspace-accent) 18%, var(--color-we-got-soft));
+        --button-outline-active-hover-background: color-mix(in oklab, var(--workspace-accent) 24%, var(--color-we-got-soft));
+        --button-active-color: var(--workspace-accent-strong);
       }
     `;
     document.head.append(sheet);
@@ -109,13 +108,13 @@ describe("portal-theme-vars", () => {
     bridgePortalThemeVars(source, target);
 
     const hover = target.style.getPropertyValue("--button-outline-hover-background");
-    expect(hover).toMatch(/notes-accent|#f6d176|rgba?\(|oklch\(/i);
+    expect(hover).toMatch(/workspace-accent|#ffc800|rgba?\(|oklch\(/i);
     expect(hover.toLowerCase()).not.toMatch(/color-ink/);
     expect(hover).not.toMatch(/notes-detail/);
-    expect(target.style.getPropertyValue("--notes-accent").trim()).toBe("#f6d176");
-    expect(target.style.getPropertyValue("--color-cream").trim()).toBe("#ffffff");
+    expect(target.style.getPropertyValue("--workspace-accent").trim()).toBe("#ffc800");
+    expect(target.style.getPropertyValue("--color-we-got-soft").trim()).toBe("#fff5e9");
     expect(target.style.getPropertyValue("--workspace-accent").trim()).toMatch(
-      /notes-accent|#f6d176|rgba?\(|oklch\(/i,
+      /workspace-accent|#ffc800|rgba?\(|oklch\(/i,
     );
   });
 
@@ -123,16 +122,15 @@ describe("portal-theme-vars", () => {
     const sheet = document.createElement("style");
     sheet.textContent = `
       .calendar-host {
-        --calendar-accent: #6366f1;
-        --calendar-accent-strong: #5558e8;
-        --color-ink: #1a1a1a;
-        --color-cream: #ffffff;
-        --workspace-accent: var(--calendar-accent);
-        --button-outline-hover-background: color-mix(in oklab, var(--calendar-accent) 14%, transparent);
-        --button-outline-active-background: color-mix(in oklab, var(--calendar-accent) 18%, var(--color-cream));
-        --button-outline-active-hover-background: color-mix(in oklab, var(--calendar-accent) 24%, var(--color-cream));
-        --button-active-color: var(--calendar-accent-strong);
-        --button-outline-hover-color: var(--calendar-accent-strong);
+        --workspace-accent: #962fa8;
+        --workspace-accent-strong: color-mix(in oklab, var(--workspace-accent) 32%, var(--color-we-got-dark));
+        --color-we-got-dark: #1a1a1a;
+        --color-we-got-soft: #fff5e9;
+        --button-outline-hover-background: color-mix(in oklab, var(--workspace-accent) 14%, transparent);
+        --button-outline-active-background: color-mix(in oklab, var(--workspace-accent) 18%, var(--color-we-got-soft));
+        --button-outline-active-hover-background: color-mix(in oklab, var(--workspace-accent) 24%, var(--color-we-got-soft));
+        --button-active-color: var(--workspace-accent-strong);
+        --button-outline-hover-color: var(--workspace-accent-strong);
       }
     `;
     document.head.append(sheet);
@@ -152,8 +150,8 @@ describe("portal-theme-vars", () => {
     const hover = target.style.getPropertyValue("--button-outline-hover-background");
     expect(hover.trim().length).toBeGreaterThan(0);
     expect(hover.toLowerCase()).not.toMatch(/color-ink/);
-    expect(hover).toMatch(/calendar-accent|#6366f1|rgba?\(|oklch\(/i);
-    expect(target.style.getPropertyValue("--calendar-accent").trim()).toBe("#6366f1");
+    expect(hover).toMatch(/workspace-accent|#962fa8|rgba?\(|oklch\(/i);
+    expect(target.style.getPropertyValue("--workspace-accent").trim()).toBe("#962fa8");
   });
 
   it("overwrites seed washes with concrete colors when the engine resolves them", () => {
@@ -175,7 +173,7 @@ describe("portal-theme-vars", () => {
 
     const hover = target.style.getPropertyValue("--button-outline-hover-background").trim();
     expect(hover === "#f6d176" || isResolvedCssColor(hover)).toBe(true);
-    expect(hover.toLowerCase()).not.toContain("color-ink");
+    expect(hover.toLowerCase()).not.toContain("color-we-got-dark");
 
     // Engines that resolve `background-color: var(--token)` (browsers) return a
     // concrete color from the portaled host; jsdom often echoes the var() string.

@@ -62,7 +62,7 @@ function ThreadHarness({
 }
 
 const meta = {
-  title: "Shared/Chat/Thread",
+  title: "UI/Patterns/Chat/Thread",
   component: ChatThreadPanel,
   parameters: {
     layout: "centered",

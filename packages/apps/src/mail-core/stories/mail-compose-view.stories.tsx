@@ -68,7 +68,7 @@ function MailComposeViewHarness({ mode = "new" as const }: { mode?: "new" | "rep
 }
 
 const meta = {
-  title: "Apps/Mail/Panes/Compose",
+  title: "Features/Mail/Panes/Compose",
   component: MailComposeViewHarness,
   parameters: {
     layout: "fullscreen",

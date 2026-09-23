@@ -54,6 +54,10 @@ final class LoginRateLimiter
 
     private function isDisabled(): bool
     {
+        if (app()->environment('local')) {
+            return true;
+        }
+
         $raw = strtolower(trim((string) env('WGW_DISABLE_LOGIN_THROTTLE', '')));
 
         return in_array($raw, ['1', 'true', 'yes', 'on'], true);

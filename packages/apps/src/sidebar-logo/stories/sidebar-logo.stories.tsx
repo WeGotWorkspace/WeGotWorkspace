@@ -3,7 +3,7 @@ import { SidebarLogo } from "../src/sidebar-logo";
 import { WorkspaceAppSwitcher } from "@/workspace-app-switcher/src/workspace-app-switcher";
 
 const meta: Meta<typeof SidebarLogo> = {
-  title: "Shared/App Logo",
+  title: "Layout/App Logo",
   component: SidebarLogo,
   parameters: {
     layout: "fullscreen",

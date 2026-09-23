@@ -76,11 +76,10 @@ describe("ContactsSidebarGroupRows", () => {
     expect(icon?.style.getPropertyValue("--collection-row-color")).toBe("");
   });
 
-  it("indents nested group rows under a book", () => {
+  it("aligns group rows with address-book rows (no nested indent)", () => {
     render(
       <TooltipProvider delayDuration={0}>
         <ContactsSidebarGroupRows
-          nested
           groups={[friendsGroup]}
           view="all"
           editLabel="Rename group"
@@ -92,6 +91,6 @@ describe("ContactsSidebarGroupRows", () => {
       </TooltipProvider>,
     );
     const row = screen.getByText("Friends").closest(".collection-sidebar-row");
-    expect(row?.className).toMatch(/collection-sidebar-row--nested/);
+    expect(row?.className).not.toMatch(/collection-sidebar-row--nested/);
   });
 });

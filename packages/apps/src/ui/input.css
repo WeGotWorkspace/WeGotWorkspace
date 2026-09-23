@@ -126,7 +126,7 @@
   @apply disabled:cursor-not-allowed;
   @apply [&>span]:line-clamp-1;
   /* Align idle text/chevron with outline Button / SegmentedControl. */
-  color: var(--select-trigger-color, var(--button-outline-color, var(--color-ink)));
+  color: var(--select-trigger-color, var(--button-outline-color, var(--color-we-got-dark)));
 }
 
 .select-trigger__icon {
@@ -248,7 +248,7 @@
 
 .input__clear:hover,
 .input__visibility:hover:not(:disabled) {
-  background-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
 }
 
 .input__clear-icon,
@@ -340,7 +340,7 @@ input.input:focus-visible:not(:read-only),
 .select-ui__item:focus {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 14%, transparent)
+    color-mix(in oklab, var(--workspace-accent, var(--color-we-got-dark)) 14%, transparent)
   );
   color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
 }
@@ -348,7 +348,11 @@ input.input:focus-visible:not(:read-only),
 .select-ui__item[data-state="checked"] {
   background-color: var(
     --menu-item-selected-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 18%, var(--color-cream, #ffffff))
+    color-mix(
+      in oklab,
+      var(--workspace-accent, var(--color-we-got-dark)) 18%,
+      var(--color-we-got-soft)
+    )
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));
 }
@@ -357,7 +361,11 @@ input.input:focus-visible:not(:read-only),
 .select-ui__item[data-state="checked"]:focus {
   background-color: var(
     --menu-item-selected-hover-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-ink)) 24%, var(--color-cream, #ffffff))
+    color-mix(
+      in oklab,
+      var(--workspace-accent, var(--color-we-got-dark)) 24%,
+      var(--color-we-got-soft)
+    )
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));
 }

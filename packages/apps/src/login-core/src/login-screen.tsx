@@ -105,10 +105,7 @@ export function LoginScreen({
   const oauthConnect = isWgwOAuthAuthorizeReturnPath(resolvedReturnPath);
 
   return (
-    <AuthenticationPage
-      title="Welcome back."
-      eyebrow={oauthConnect ? "Connect assistant" : undefined}
-    >
+    <AuthenticationPage title={oauthConnect ? "Connect Assistant" : "Welcome back."}>
       {errorMessage ? (
         <p className="login-screen__error" role="alert">
           {errorMessage}

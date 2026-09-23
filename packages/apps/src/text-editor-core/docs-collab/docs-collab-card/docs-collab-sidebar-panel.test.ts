@@ -49,6 +49,10 @@ describe("DocsCollabSidebarPanel", () => {
     expect(css).toMatch(
       /background-color:\s*var\(\s*--docs-collab-sidebar-panel-bg,\s*var\(--docs-surface/,
     );
+    expect(css).toMatch(
+      /color-mix\(in oklab,\s*var\(--docs-surface,\s*var\(--color-we-got-soft\)\)\s*72%/,
+    );
+    expect(css).not.toMatch(/var\(--docs-surface,\s*#ffffff\)/);
   });
 
   it("does not remap --control-radius (soft radius is global)", () => {
@@ -78,7 +82,7 @@ describe("DocsCollabSidebarPanel", () => {
       /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-active-color:\s*var\(--docs-collab-sidebar-panel-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-outline-color:\s*var\(--color-ink\)/,
+      /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--button-outline-color:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).toMatch(
       /\.docs-collab-sidebar-panel-drawer \{[\s\S]*--segmented-control-active-bg:\s*var\(--button-outline-active-background\)/,

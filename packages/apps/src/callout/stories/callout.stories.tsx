@@ -4,7 +4,7 @@ import { Button } from "@/button/src/button";
 import { Callout } from "../src/callout";
 
 const meta = {
-  title: "Shared/Callout",
+  title: "UI/Primitives/Callout",
   component: Callout,
   tags: ["vitest-ci"],
   args: {

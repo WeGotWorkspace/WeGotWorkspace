@@ -26,34 +26,34 @@
 
 /*
  * File-select inside Docs (`data-drive-listing-theme="docs"`).
- * `.drive-workspace` republishes Drive green (`#10b981`, `--color-emerald`) on
+ * `.drive-workspace` republishes Drive lime (`#8ace00`, `--color-emerald`) on
  * this same node, which beats ancestor `.docs-dialog-surface` remaps. Override
- * here with higher specificity and paint icons/toggle with `--docs-accent`.
+ * here with higher specificity and paint icons/toggle with `--workspace-accent`.
  */
 .destination-picker[data-drive-listing-theme="docs"] {
-  --drive-accent: var(--docs-accent, #3b82f6);
-  --color-emerald: var(--docs-accent, #3b82f6);
-  --workspace-accent: var(--docs-accent, #3b82f6);
-  --drive-accent-strong: var(
-    --docs-accent-strong,
-    color-mix(in oklab, var(--docs-accent, #3b82f6) 70%, #0f172a)
+  --workspace-accent: var(--workspace-accent, #3b82f6);
+  --color-emerald: var(--workspace-accent, #3b82f6);
+  --workspace-accent: var(--workspace-accent, #3b82f6);
+  --workspace-accent-strong: var(
+    --workspace-accent-strong,
+    color-mix(in oklab, var(--workspace-accent, #3b82f6) 70%, #0f172a)
   );
-  --button-active-color: var(--drive-accent-strong);
-  --button-outline-hover-color: var(--drive-accent-strong);
+  --button-active-color: var(--workspace-accent-strong);
+  --button-outline-hover-color: var(--workspace-accent-strong);
   --button-outline-hover-background: color-mix(
     in oklab,
-    var(--docs-accent, #3b82f6) 14%,
+    var(--workspace-accent, #3b82f6) 14%,
     transparent
   );
   --button-outline-active-background: color-mix(
     in oklab,
-    var(--docs-accent, #3b82f6) 18%,
-    var(--color-cream, #ffffff)
+    var(--workspace-accent, #3b82f6) 18%,
+    var(--color-we-got-soft)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
-    var(--docs-accent, #3b82f6) 24%,
-    var(--color-cream, #ffffff)
+    var(--workspace-accent, #3b82f6) 24%,
+    var(--color-we-got-soft)
   );
   --segmented-control-active-bg: var(--button-outline-active-background);
   --segmented-control-active-fg: var(--button-active-color);
@@ -68,5 +68,5 @@
     .drive-file-tile__kind-icon,
     .drive-file-tile__star-badge
   ) {
-  color: var(--docs-accent, #3b82f6);
+  color: var(--workspace-accent, #3b82f6);
 }

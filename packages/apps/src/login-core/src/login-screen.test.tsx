@@ -73,6 +73,11 @@ describe("LoginScreen return path", () => {
     expect(screen.queryByRole("link", { name: "Forgot password?" })).toBeNull();
   });
 
+  it("does not render a copyright year footer", () => {
+    render(<LoginScreen />);
+    expect(screen.queryByText(/© .*WeGotWorkspace/)).toBeNull();
+  });
+
   it("falls back to home when no return is provided", async () => {
     render(<LoginScreen />);
 
@@ -85,10 +90,10 @@ describe("LoginScreen return path", () => {
     });
   });
 
-  it("shows Connect assistant eyebrow for oauth authorize return", () => {
+  it("shows Connect Assistant title for oauth authorize return", () => {
     render(<LoginScreen returnPath="/oauth/authorize" passwordRecoveryEnabled={false} />);
-    expect(screen.getByText("Connect assistant")).toBeTruthy();
-    expect(screen.getByText("Welcome back.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Connect Assistant" })).toBeTruthy();
+    expect(screen.queryByText("Welcome back.")).toBeNull();
   });
 
   it("establishes a web session and assigns the authorize URL", async () => {

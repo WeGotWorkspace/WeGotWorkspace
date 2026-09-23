@@ -162,7 +162,7 @@ function ContactsSidebarHarness({
 }
 
 const meta: Meta<typeof ContactsSidebarHarness> = {
-  title: "Apps/Contacts/Sidebar",
+  title: "Features/Contacts/Sidebar",
   component: ContactsSidebarHarness,
   args: {
     view: "all",

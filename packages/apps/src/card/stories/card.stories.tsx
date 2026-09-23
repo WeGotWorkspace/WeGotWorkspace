@@ -8,7 +8,7 @@ import { CardRow } from "../src/card-row";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 
 const meta: Meta<typeof Card> = {
-  title: "Shared/Card",
+  title: "UI/Primitives/Card",
   component: Card,
 };
 
@@ -41,7 +41,7 @@ export const EditableFormLike: Story = {
         <Button
           label="Save"
           variant="outline"
-          style={{ backgroundColor: "#949dad", color: "var(--color-ink)" }}
+          style={{ backgroundColor: "#949dad", color: "var(--color-we-got-dark)" }}
         />
       </div>
     </Card>

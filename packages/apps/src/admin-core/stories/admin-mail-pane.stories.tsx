@@ -13,7 +13,7 @@ function MailPaneHarness() {
 }
 
 const meta = {
-  title: "Apps/Admin/Panes/Mail",
+  title: "Features/Admin/Panes/Mail",
   component: AdminMailPane,
   parameters: {
     layout: "fullscreen",

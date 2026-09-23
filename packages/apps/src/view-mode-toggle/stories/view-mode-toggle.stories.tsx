@@ -3,7 +3,7 @@ import { expect, fn, userEvent, within } from "storybook/test";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 
 const meta = {
-  title: "Shared/ViewModeToggle",
+  title: "UI/Primitives/View Mode Toggle",
   component: ViewModeToggle,
   tags: ["autodocs", "vitest-ci"],
   argTypes: {

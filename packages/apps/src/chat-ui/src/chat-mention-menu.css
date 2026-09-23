@@ -2,8 +2,8 @@
 
 .chat-mention-menu {
   @apply min-w-48 overflow-hidden rounded-md border shadow-md;
-  border-color: var(--chat-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
-  background-color: var(--chat-surface, var(--color-cream, #fff));
+  border-color: var(--chat-border, color-mix(in oklab, var(--color-we-got-dark) 12%, transparent));
+  background-color: var(--chat-surface, var(--color-we-got-soft));
 }
 
 .chat-mention-menu__list {
@@ -12,12 +12,15 @@
 
 .chat-mention-menu__option {
   @apply flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm;
-  color: var(--chat-text, var(--color-ink));
+  color: var(--chat-text, var(--color-we-got-dark));
 }
 
 .chat-mention-menu__option:hover,
 .chat-mention-menu__option[data-active="true"] {
-  background-color: var(--chat-hover, color-mix(in oklab, var(--color-ink) 6%, transparent));
+  background-color: var(
+    --chat-hover,
+    color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)
+  );
 }
 
 .chat-mention-menu__name {
@@ -26,5 +29,5 @@
 
 .chat-mention-menu__empty {
   @apply px-3 py-2 text-sm;
-  color: var(--chat-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  color: var(--chat-muted, color-mix(in oklab, var(--color-we-got-dark) 65%, transparent));
 }

@@ -39,3 +39,11 @@ export function appSwitchUtilityApps(showAdmin: boolean): AppSwitchMenuApp[] {
   if (showAdmin) return APP_SWITCH_UTILITY_APPS_ALL;
   return APP_SWITCH_UTILITY_APPS_ALL.filter((app) => app.id !== "admin");
 }
+
+/**
+ * Full chrome order shared by AppSwitch and the home/dashboard icon grid:
+ * product apps A–Z by label, then Admin / Settings (Admin only when allowed).
+ */
+export function orderedAppSwitchApps(showAdmin: boolean): AppSwitchMenuApp[] {
+  return [...APP_SWITCH_PRODUCT_APPS, ...appSwitchUtilityApps(showAdmin)];
+}

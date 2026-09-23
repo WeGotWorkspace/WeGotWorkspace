@@ -62,7 +62,7 @@ describe("notification inbox tray bell chrome", () => {
 describe("notification inbox tray row focus", () => {
   it("uses an ink background wash for hover and focus, not an emerald outline ring", () => {
     expect(css).toMatch(
-      /\.notification-inbox-tray__row:hover,\s*\.notification-inbox-tray__row:focus-visible \{[\s\S]*background-color:\s*color-mix\(in oklab,\s*var\(--color-ink\)\s*4%,\s*transparent\)/,
+      /\.notification-inbox-tray__row:hover,\s*\.notification-inbox-tray__row:focus-visible \{[\s\S]*background-color:\s*color-mix\(in oklab,\s*var\(--color-we-got-dark\)\s*4%,\s*transparent\)/,
     );
     expect(css).not.toMatch(/box-shadow:\s*inset 0 0 0 2px var\(--color-emerald/);
   });

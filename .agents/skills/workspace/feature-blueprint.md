@@ -65,7 +65,7 @@ Structural refactors must still compose **existing** UI from `packages/apps/src/
 - [ ] Replace inline `window.location` / logout in packages with **`onLogout`** (or similar) props implemented in **`*App`**.
 - [ ] Colocate **shell CSS variables** on the workspace root class (e.g. `.settings-workspace`); panes use **shared caption** patterns (`field-label-row__label`, `--field-label-color`).
 - [ ] Panes use **`Card`**, **`FieldLabelRow`**, and (where applicable) **`Form` / `FormTextField`** — delete any interim `*Card`, `*Field`, `*FeatureRow` helpers added during the split.
-- [ ] Storybook: story file per UI component (`Apps/<Product>/Components/*` + `Panes/*`), Controls on simple props, named stories per meaningful state; no Storybook `decorators` (use `*-story-scope.tsx` in `render` when tokens need a workspace root); workspace story uses fullscreen + production root class; bootstrap returns coherent **`data` + `session`** (and **`operations`** when needed).
+- [ ] Storybook: story file per UI component (`Features/<Product>/Components/*` + `Panes/*`), Controls on simple props, named stories per meaningful state; no Storybook `decorators` (use `*-story-scope.tsx` in `render` when tokens need a workspace root); workspace chrome Default under `Themes/<Product>`; unique state matrices under `Features/<Product>`; bootstrap returns coherent **`data` + `session`** (and **`operations`** when needed).
 
 ## Anti-patterns
 

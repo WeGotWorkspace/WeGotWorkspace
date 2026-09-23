@@ -13,7 +13,7 @@ import "@/docs-core/src/docs-workspace.css";
 import "@/text-editor-core/docs-collab/docs-collab-presence.css";
 
 const meta: Meta<typeof UserAvatar> = {
-  title: "Shared/User Avatar",
+  title: "UI/Primitives/User Avatar",
   component: UserAvatar,
   argTypes: {
     size: {
@@ -252,7 +252,7 @@ export const CollabPeerStack: Story = {
 /** Sidebar-style: chip uses footer avatar tokens, name uses shell label tone. */
 export const FooterTwoLine: Story = {
   render: () => (
-    <div className="workspace-app-layout__user-footer max-w-sm border border-[color-mix(in_oklab,var(--color-ink)_12%,transparent)] rounded-lg">
+    <div className="workspace-app-layout__user-footer max-w-sm border border-[color-mix(in_oklab,var(--color-we-got-dark)_12%,transparent)] rounded-lg">
       <UserAvatar
         displayName="Elias Linden"
         subtitle="elias@example.com"

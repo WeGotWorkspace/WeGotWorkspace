@@ -9,7 +9,7 @@ import {
 } from "@/lib/workspace-app-icons";
 
 const meta: Meta<typeof AppSwitchButton> = {
-  title: "Shared/App Switch Button",
+  title: "Layout/App Switch Button",
   component: AppSwitchButton,
   parameters: {
     layout: "centered",
@@ -19,7 +19,10 @@ const meta: Meta<typeof AppSwitchButton> = {
         description: "Sidebar label color for the switch lockup",
       },
       "color-paper": { value: "var(--color-paper)", description: "Notes / workspace menu surface" },
-      "color-ink": { value: "var(--color-ink)", description: "Primary ink on light surfaces" },
+      "color-we-got-dark": {
+        value: "var(--color-we-got-dark)",
+        description: "Primary ink on light surfaces",
+      },
     },
   },
 };
@@ -185,7 +188,7 @@ export const AppIcons: Story = {
           <WorkspaceAppIcon
             key={`tile-${appId}`}
             appId={appId as WorkspaceAppId}
-            className="size-32 rounded-[6px] shadow-lg"
+            className="size-32 rounded-[calc(100%/6)] shadow-lg"
           />
         ))}
       </div>

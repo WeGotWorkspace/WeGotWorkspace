@@ -10,7 +10,7 @@ import { TextEditorWithSourceToggle } from "@/text-editor-core/stories/text-edit
 import "@/text-editor-core/src/text-editor.css";
 
 const meta = {
-  title: "Shared/TextEditor/TextEditor",
+  title: "UI/Patterns/TextEditor/TextEditor",
   component: TextEditor,
   tags: ["autodocs"],
   parameters: {

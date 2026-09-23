@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import { NotesWorkspace } from "@/notes-core/src/notes-workspace";
+import { notesStoryOperations } from "@/notes-core/stories/notes-story-shared";
 
 const meta: Meta<typeof NotesWorkspace> = {
-  title: "Apps/Notes",
+  title: "Features/Notes",
   component: NotesWorkspace,
   parameters: {
     layout: "fullscreen",
@@ -15,28 +16,7 @@ type Story = StoryObj<typeof NotesWorkspace>;
 
 const bootstrap = createNotesAppBootstrap();
 
-const storyOperations = {
-  upsertNote: async (note: (typeof bootstrap.data.notes)[number]) => note,
-  deleteNote: async () => {},
-  archiveNote: async (id: string) => bootstrap.data.notes.find((note) => note.id === id)!,
-  restoreNote: async (id: string) => bootstrap.data.notes.find((note) => note.id === id)!,
-  createNotebook: async (name: string) => ({ id: name, name }),
-  patchNotebook: async (id: string, patch: { name?: string; color?: string | null }) => ({
-    id,
-    name: patch.name ?? id,
-    color: patch.color,
-  }),
-  renameNotebook: async () => {},
-  deleteNotebook: async () => {},
-};
-
-export const Default: Story = {
-  args: {
-    ...bootstrap,
-    operations: storyOperations,
-  },
-};
-
+/** Chrome Default lives under Themes/Notes — shared-notebook sidebar layout. */
 export const WithSharedSections: Story = {
   args: {
     ...createNotesAppBootstrap({
@@ -75,7 +55,7 @@ export const WithSharedSections: Story = {
         ],
       },
     }),
-    operations: storyOperations,
+    operations: notesStoryOperations,
     initialView: "nb:group-eng",
   },
 };

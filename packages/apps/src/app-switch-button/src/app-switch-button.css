@@ -1,11 +1,16 @@
 @import "../../styles.css" reference;
+@import "../../workspace-shell/src/workspace-type.css";
 
 .app-switch-button__trigger {
   /* Top-align mark with the two-line label (not vertical center of the lockup). */
   @apply inline-flex min-w-0 items-start gap-2 rounded-lg pr-2 pl-1 py-1 -ml-1 transition-colors outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
   user-select: none;
   color: var(--app-switch-label-color, currentColor);
-  --app-switch-lockup-line: calc(1.875rem * 0.85);
+  /* Beat UA `buttonface` (#efefef) under white lockup labels on accent rails. */
+  background-color: transparent;
+  /* Single leading token — shared by icon height + `.app-switch-button__label` (BrandLockup too). */
+  --app-switch-lockup-leading: 0.85;
+  --app-switch-lockup-line: calc(1.875rem * var(--app-switch-lockup-leading));
 }
 
 .app-switch-button__icon,
@@ -13,7 +18,7 @@
   @apply shrink-0;
 }
 .app-switch-button__icon {
-  /* Match the two-line label block (text-3xl × leading-[0.85]). */
+  /* Match the two-line label block (text-3xl × --app-switch-lockup-leading). */
   height: calc(2 * var(--app-switch-lockup-line));
   width: calc(2 * var(--app-switch-lockup-line));
 }
@@ -35,10 +40,23 @@
 } */
 
 .app-switch-button__label {
-  /* leading after text-3xl so lockup-line math (0.85 × 1.875rem) wins over text-3xl's default lh. */
-  @apply flex min-w-0 flex-col items-start tracking-wide text-left uppercase text-3xl leading-[0.85];
-  font-family: var(--font-app);
+  /*
+   * Wordmark stack for AppSwitch + BrandLockup. Face is shared `text-lockup`
+   * (`font-mark` → Bebas Neue). Re-assert `--font-mark` after `@apply` so base
+   * `.uppercase` (which forces `--font-sans` for UI captions) cannot clobber
+   * the mark face. Leading comes from `--app-switch-lockup-leading` (not
+   * `text-3xl`'s default lh) so cream shells and sidebar triggers share one
+   * line box.
+   */
+  @apply text-lockup flex min-w-0 flex-col items-start tracking-wide text-left uppercase text-3xl font-normal;
+  font-family: var(--font-mark);
+  line-height: var(--app-switch-lockup-leading, 0.85);
   color: var(--app-switch-label-color, currentColor);
+}
+
+.app-switch-button__label-top,
+.app-switch-button__label-name {
+  line-height: inherit;
 }
 
 .app-switch-button__label-top {
@@ -53,13 +71,23 @@
 }
 
 .app-switch-button__label-name {
-  @apply inline-flex items-baseline;
+  /* Block so line-height comes only from __label leading — not a flex row with the chevron. */
+  @apply relative block min-w-0;
+}
+
+.app-switch-button__label-name:has(.app-switch-button__chevron) {
+  /* Reserve room for the out-of-flow chevron without changing the text line box. */
+  padding-inline-end: 0.7em;
 }
 
 .app-switch-button__chevron {
-  /* Same --font-app / text-3xl / weight as the app name; muted color only. */
-  @apply inline-block shrink-0 transition-transform;
-  margin-inline-start: 0.12em;
+  /*
+   * Absolutely positioned so ▾ (line-height: 1) cannot stretch the subtitle row
+   * taller than the shared --app-switch-lockup-leading used by BrandLockup (no chevron).
+   */
+  @apply absolute shrink-0 transition-transform;
+  inset-inline-end: 0;
+  inset-block-end: 0.02em;
   line-height: 1;
   color: var(
     --app-switch-chevron-color,

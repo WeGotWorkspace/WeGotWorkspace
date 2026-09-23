@@ -3,7 +3,7 @@ import { Archive, Inbox, Send } from "lucide-react";
 import { ContentLabel } from "../src/content-label";
 
 const meta: Meta<typeof ContentLabel> = {
-  title: "Shared/Content Label",
+  title: "UI/Primitives/Content Label",
   component: ContentLabel,
   tags: ["vitest-ci"],
 };

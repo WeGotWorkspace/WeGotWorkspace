@@ -14,7 +14,10 @@
 .notification-inbox-tray__trigger::after {
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
-  background-color: var(--notification-inbox-badge-bg, var(--button-primary-bg, var(--color-ink)));
+  background-color: var(
+    --notification-inbox-badge-bg,
+    var(--button-primary-bg, var(--color-we-got-dark))
+  );
   color: var(--notification-inbox-badge-fg, var(--button-primary-fg, var(--color-emerald)));
 }
 
@@ -51,8 +54,8 @@
 }
 
 .notification-inbox-tray__popover {
-  --popover: var(--color-cream, #ffffff);
-  --popover-foreground: var(--color-ink, #042a22);
+  --popover: var(--color-we-got-soft);
+  --popover-foreground: var(--color-we-got-dark);
   @apply w-96 p-0;
 }
 
@@ -90,7 +93,7 @@
 .notification-inbox-tray__row:focus-visible {
   @apply outline-none;
   /* Same ink wash for hover and keyboard focus — no emerald outline ring. */
-  background-color: color-mix(in oklab, var(--color-ink) 4%, transparent);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 4%, transparent);
 }
 
 .notification-inbox-tray__icon {

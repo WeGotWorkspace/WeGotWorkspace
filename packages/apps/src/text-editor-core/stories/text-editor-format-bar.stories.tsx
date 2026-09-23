@@ -43,7 +43,7 @@ function TextEditorFormatBarDemo({ format, groups, showPrint, editable }: Format
 }
 
 const meta = {
-  title: "Shared/TextEditor/TextEditorFormatBar",
+  title: "UI/Patterns/TextEditor/TextEditorFormatBar",
   component: TextEditorFormatBar,
   tags: ["autodocs"],
   parameters: {

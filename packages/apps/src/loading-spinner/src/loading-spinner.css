@@ -1,6 +1,9 @@
 .loading-spinner {
   flex-shrink: 0;
-  color: var(--loading-spinner-color, color-mix(in oklab, var(--color-ink) 45%, transparent));
+  color: var(
+    --loading-spinner-color,
+    color-mix(in oklab, var(--color-we-got-dark) 45%, transparent)
+  );
 }
 
 .loading-spinner--sm {
@@ -25,5 +28,8 @@
   text-align: center;
   font-size: 0.875rem;
   line-height: 1.25rem;
-  color: var(--loading-spinner-label-color, color-mix(in oklab, var(--color-ink) 50%, transparent));
+  color: var(
+    --loading-spinner-label-color,
+    color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
+  );
 }

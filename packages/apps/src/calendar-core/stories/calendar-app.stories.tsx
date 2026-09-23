@@ -5,19 +5,18 @@ import {
   createCalendarAppBootstrap,
   MOCK_CALENDAR_ANCHOR,
 } from "@/lib/api/mock/calendar-bootstrap";
-import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-operations";
 import { createSeededCalendarAppBootstrap } from "@/lib/api/mock/calendar-seed";
-import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import {
   calendarSearchRange,
   formatCalendarSearchScopeLabel,
 } from "@/calendar-core/src/calendar-search";
-import type { CalendarAPIOperations } from "@/calendar-core/src/calendar-types";
-import type { CalendarSurfaceStore } from "@/calendar-core/src/use-calendar-surface";
 import { CalendarWorkspace } from "@/calendar-core/src/calendar-workspace";
 import { createCalendarTaskDueOverlayFixture } from "@/calendar-core/src/calendar-task-due-overlay-fixture";
-import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import {
+  calendarStaticSurfaceFor,
+  calendarStoryOperations,
+} from "@/calendar-core/stories/calendar-story-shared";
 
 function queryDeep(root: ParentNode, selector: string): Element | null {
   const direct = root.querySelector(selector);
@@ -69,43 +68,14 @@ function bootstrapWithThisInstanceOverride() {
   };
 }
 
-const storyEvent = {
-  "@type": "Event",
-  id: "story-event",
-  uid: "urn:uuid:story-event",
-  calendarIds: { default: true },
-  title: "Story",
-  start: "2033-01-12T09:00:00",
-  duration: "PT1H",
-  timeZone: "Etc/UTC",
-} as JmapCalendarEvent;
-
-const storyOperations: CalendarAPIOperations = {
-  createEvent: async () => storyEvent,
-  patchEvent: async () => storyEvent,
-  deleteEvent: async () => {},
-  createCalendar: async (draft) => ({
-    id: "story-cal",
-    name: draft.name,
-    color: draft.color ?? "#6366f1",
-  }),
-  patchCalendar: async (calendarId, patch) => ({
-    id: calendarId,
-    name: patch.name ?? "Calendar",
-    color: patch.color ?? "#6366f1",
-  }),
-  deleteCalendar: async () => {},
-  ...createMockCalendarIcsOperations(),
-};
-
 const meta: Meta<typeof CalendarWorkspace> = {
-  title: "Apps/Calendar",
+  title: "Features/Calendar",
   component: CalendarWorkspace,
   parameters: {
     layout: "fullscreen",
   },
   args: {
-    operations: storyOperations,
+    operations: calendarStoryOperations,
   },
 };
 
@@ -115,26 +85,10 @@ type Story = StoryObj<typeof CalendarWorkspace>;
 const bootstrap = createCalendarAppBootstrap();
 const seeded = createSeededCalendarAppBootstrap();
 
-/**
- * Deterministic read-only surface for stories: same lit views, no adapter
- * (the mock route and live app run the MockJmapServer/JMAP-backed adapter
- * with full drag interactivity).
- */
-function staticSurfaceFor(data: typeof bootstrap): CalendarSurfaceStore {
-  return {
-    events: calendarEventsToEngineMap(data.data.events, {
-      sessionEmail: data.session.user.email,
-      calendars: data.data.calendars,
-    }),
-    contextValue: undefined,
-    syncNow: () => {},
-  };
-}
-
-const staticSurface = staticSurfaceFor(bootstrap);
-const seededSurface = staticSurfaceFor(seeded);
+const staticSurface = calendarStaticSurfaceFor(bootstrap);
+const seededSurface = calendarStaticSurfaceFor(seeded);
 const overrideBootstrap = bootstrapWithThisInstanceOverride();
-const overrideSurface = staticSurfaceFor(overrideBootstrap);
+const overrideSurface = calendarStaticSurfaceFor(overrideBootstrap);
 
 const COMPACT_MONTH_VIEWPORT = {
   name: "Compact month 390",
@@ -148,7 +102,9 @@ const TABLET_SEARCH_VIEWPORT = {
   type: "tablet" as const,
 };
 
-export const Default: Story = {
+/** Chrome Default lives under Themes/Calendar — sidebar subscription / sharee SST. */
+export const SeededMonthSidebar: Story = {
+  name: "Seeded month sidebar",
   tags: ["vitest-ci"],
   args: {
     ...seeded,
@@ -502,7 +458,7 @@ function searchStoryBootstrap(extraEvents: JmapCalendarEvent[] = []) {
   return {
     ...seeded,
     data,
-    surface: staticSurfaceFor({ ...seeded, data }),
+    surface: calendarStaticSurfaceFor({ ...seeded, data }),
     initialAnchor: browseDate.toString(),
     initialView: "week" as const,
   };
@@ -871,9 +827,11 @@ export const Empty: Story = {
     initialPresentation: "list",
   },
   play: async ({ canvasElement }) => {
-    await expect
-      .poll(() => queryDeep(canvasElement, ".collection-state__body")?.textContent)
-      .toBe(defaultCalendarLabels.noEventsInRange);
+    await waitFor(() => {
+      expect(queryDeep(canvasElement, ".collection-state__body")?.textContent).toBe(
+        defaultCalendarLabels.noEventsInRange,
+      );
+    });
     await expect(queryDeep(canvasElement, ".collection-state__icon")).toBeTruthy();
   },
 };

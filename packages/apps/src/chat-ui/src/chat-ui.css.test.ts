@@ -14,3 +14,12 @@ describe("chat-ui font tokens", () => {
     expect(css).not.toMatch(/system-ui/);
   });
 });
+
+describe("chat-ui hover wash", () => {
+  it("uses the workspace accent wash, not a hardcoded cyan/sky hover", () => {
+    expect(css).toMatch(
+      /--chat-hover:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\)\s*8%,\s*transparent\s*\)/,
+    );
+    expect(css).not.toMatch(/#06b6d4/);
+  });
+});

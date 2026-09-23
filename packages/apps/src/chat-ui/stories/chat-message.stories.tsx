@@ -26,7 +26,7 @@ const actions: ChatMessageAction[] = [
 ];
 
 const meta = {
-  title: "Shared/Chat/ChatMessage",
+  title: "UI/Patterns/Chat/Chat Message",
   component: ChatMessage,
   parameters: {
     layout: "padded",

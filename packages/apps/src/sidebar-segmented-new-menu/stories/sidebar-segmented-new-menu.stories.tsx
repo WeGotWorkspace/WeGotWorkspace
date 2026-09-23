@@ -3,7 +3,7 @@ import { expect, fn, userEvent, within } from "storybook/test";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 
 const meta: Meta<typeof SidebarSegmentedNewMenu> = {
-  title: "Shared/SidebarSegmentedNewMenu",
+  title: "UI/Patterns/Sidebar Segmented New Menu",
   component: SidebarSegmentedNewMenu,
   tags: ["autodocs"],
   args: {
