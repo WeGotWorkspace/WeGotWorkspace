@@ -269,7 +269,7 @@ describe("contacts workspace sidebar chrome", () => {
     expect(orgIconCss).toMatch(/color:\s*var\(--user-avatar-fg,\s*var\(--color-we-got-dark\)\)/);
     expect(orgIconCss).not.toMatch(/--collection-row-color/);
     expect(groupRows).toMatch(/<ContactsGroupIcon book=\{group\}/);
-    expect(groupRows).toMatch(/nested=\{nested\}/);
+    expect(groupRows).not.toMatch(/nested=\{/);
     expect(tsx).toMatch(/addressBookIds=\{editingGroup\?\.addressBookIds\}/);
     expect(tsx).toMatch(/books=\{addressBooks\}/);
   });

@@ -21,6 +21,7 @@ describe("collection sidebar row CSS", () => {
     expect(css).toMatch(
       /\.collection-sidebar-row:has\(> \.collection-sidebar-row__select:focus-visible\)/,
     );
+    expect(css).toMatch(/\.collection-sidebar-row__leading \{[\s\S]*@apply relative z-10/);
     expect(css).toMatch(/\.collection-sidebar-row__visibility \{[\s\S]*@apply relative z-10/);
     expect(css).toMatch(/\.collection-sidebar-row__action\.button,[\s\S]*@apply relative z-10/);
     expect(css).toMatch(/\.collection-sidebar-row__trailing \{[\s\S]*@apply relative z-10/);
@@ -63,11 +64,16 @@ describe("collection sidebar row CSS", () => {
     expect(css.match(/\.collection-sidebar-row__name \{[^}]+\}/)?.[0]).not.toMatch(/flex-1/);
   });
 
-  it("indents nested rows and keeps the fold toggle visible", () => {
-    expect(css).toMatch(/\.collection-sidebar-row--nested \{[\s\S]*@apply pl-10/);
-    expect(css).toMatch(
-      /\.collection-sidebar-row--related:not\(\.collection-sidebar-row--selected\)/,
+  it("keeps nested as a semantic flag without indent and washes related with workspace accent", () => {
+    expect(css).not.toMatch(/\.collection-sidebar-row--nested \{[\s\S]*@apply pl-10/);
+    expect(css).not.toMatch(/\.collection-sidebar-row--nested \{[\s\S]*padding/);
+    const related = css.match(
+      /\.collection-sidebar-row--related:not\(\.collection-sidebar-row--selected\) \{[^}]+\}/,
+    )?.[0];
+    expect(related).toMatch(
+      /--collection-sidebar-row-related-bg[\s\S]*color-mix\(\s*in oklch,\s*var\(--workspace-accent\)\s*10%,\s*transparent/,
     );
+    expect(related).not.toMatch(/--color-we-got-dark/);
     expect(css).toMatch(
       /\.collection-sidebar-row__expand\.button \{[\s\S]*min-height:\s*var\(--control-height-xs/,
     );
@@ -76,9 +82,25 @@ describe("collection sidebar row CSS", () => {
     expect(hoverHide).not.toMatch(/collection-sidebar-row__expand/);
   });
 
+  it("pins a fixed-width leading column for checkbox, icon, and color-dot", () => {
+    const idle = css.match(/\.collection-sidebar-row \{[^}]+\}/)?.[0];
+    expect(idle).toMatch(/--collection-sidebar-row-leading-size:\s*1rem/);
+    const leading = css.match(/\.collection-sidebar-row__leading \{[^}]+\}/)?.[0];
+    expect(leading).toMatch(/width:\s*var\(\s*--collection-sidebar-row-leading-size,\s*1rem\s*\)/);
+    expect(leading).toMatch(
+      /min-width:\s*var\(\s*--collection-sidebar-row-leading-size,\s*1rem\s*\)/,
+    );
+    expect(leading).toMatch(/height:\s*var\(\s*--collection-sidebar-row-leading-size,\s*1rem\s*\)/);
+    expect(leading).toMatch(/items-center justify-center/);
+    expect(leading).toMatch(/pointer-events:\s*none/);
+    expect(css).toMatch(/\.collection-sidebar-row__visibility \{[\s\S]*pointer-events:\s*auto/);
+  });
+
   it("tints the visibility checkbox from --collection-row-color, not parent --checkbox-*", () => {
     const visibility = css.match(/\.collection-sidebar-row__visibility \{[^}]+\}/)?.[0];
-    expect(visibility).toMatch(/--checkbox-size:\s*1rem/);
+    expect(visibility).toMatch(
+      /--checkbox-size:\s*var\(\s*--collection-sidebar-row-leading-size,\s*1rem\s*\)/,
+    );
     expect(visibility).toMatch(/--checkbox-checked-bg:\s*var\(--collection-row-color/);
     expect(visibility).toMatch(/--checkbox-checked-border:\s*var\(--collection-row-color/);
     expect(visibility).toMatch(/--checkbox-checked-fg:\s*#ffffff/);
