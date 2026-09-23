@@ -78,17 +78,18 @@ describe("defaultAppBrandingCssprops", () => {
     },
   );
 
-  it("documents production sidebar mix percentages (reference; not default cssprops)", () => {
+  it("documents one production sidebar formula for every app", () => {
     expect(brandingAppSidebarColorDefault("docs")).toBe("#003311");
     expect(brandingAppSidebarColorDefault("mail")).toBe("#003311");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.docs).toContain("12%");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.calendar).toContain("10%");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.contacts).toContain("10%");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.admin).toContain("10%");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.settings).toContain("10%");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.drive).toContain("32%");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.meet).toContain("20%");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.mail).toContain("12%");
+    const values = new Set(Object.values(BRANDING_APP_SIDEBAR_DEFAULTS));
+    expect(values.size).toBe(1);
+    const formula = BRANDING_APP_SIDEBAR_DEFAULTS.mail;
+    expect(formula).toContain("12%");
+    expect(formula).toContain("var(--workspace-surface)");
+    expect(formula).not.toMatch(/10%|20%|32%|var\(--color-we-got-soft\)/);
+    for (const appId of WORKSPACE_APP_IDS) {
+      expect(BRANDING_APP_SIDEBAR_DEFAULTS[appId]).toBe(formula);
+    }
   });
 });
 

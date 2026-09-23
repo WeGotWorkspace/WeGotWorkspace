@@ -7,9 +7,7 @@
   @apply min-w-0 overflow-x-hidden;
   /* Brand lime from drive.svg tile — same hex as WORKSPACE_APP_ACCENT.drive. */
   --workspace-accent: var(--color-we-got-sand);
-  --workspace-sidebar-mix: 32%;
   --color-emerald: var(--workspace-accent);
-  /* Cream-tint sidebar; 32% — clearer than 12% mute, softer than solid lime */
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
   --sidebar-logo-close-button-color: var(--color-we-got-dark);
@@ -41,7 +39,7 @@
   --file-drop-overlay-card-color: var(--workspace-accent);
   --drive-detail-tag-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);
   --drive-detail-tag-fg: var(--workspace-accent);
-  /* Alias for DocsCollabSidebarPanel wash (detail panel = 10% accent, not 32% nav). */
+  /* Alias for DocsCollabSidebarPanel wash (detail panel = 10% accent, not the nav rail). */
   --docs-collab-sidebar-panel-wash: color-mix(
     in oklch,
     var(--workspace-accent) 10%,
@@ -53,8 +51,7 @@
 
   /*
    * Outline language for segmented / tile chrome outside the sidebar.
-   * Sidebar row states are not these tokens: `.app-sidebar` steps accent
-   * into `--app-sidebar-bg` (already 32% lime), so hover stays above the rail.
+   * Sidebar row states are the shared rail ladder in `workspace-color.css`.
    */
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: var(--color-we-got-dark);

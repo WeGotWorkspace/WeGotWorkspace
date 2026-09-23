@@ -7,7 +7,6 @@
   @apply flex h-dvh w-full flex-col;
 
   --workspace-accent: var(--color-we-got-sand);
-  --workspace-sidebar-mix: 20%;
   --meet-surface: var(--workspace-home-bg, #1b1d3a);
   --meet-panel: #171826;
   --meet-panel-soft: #20223a;
@@ -28,8 +27,6 @@
   --meet-screen-bg: #000000;
   --meet-pip-border: rgba(255, 255, 255, 0.22);
 
-  /* Dark lobby: shared sheet sets a cream sidebar wash; pin back to navy. */
-  --app-sidebar-bg: var(--meet-surface);
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: var(--color-we-got-dark);
   --button-active-color: var(--meet-text);
@@ -770,17 +767,6 @@
   --meet-text: var(--color-we-got-dark);
   --meet-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
   --meet-surface: var(--workspace-surface);
-  /*
-   * Root `.meet-workspace` pins `--app-sidebar-bg` to `--meet-surface` for the
-   * dark lobby. Split turns that surface into paper, which dropped the 20%
-   * accent wash while row states kept a separate mix. Republish the shared
-   * rail so hover and selected step off the same color (`workspace-color.css`).
-   */
-  --app-sidebar-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) var(--workspace-sidebar-mix),
-    var(--workspace-surface)
-  );
   --workspace-root-bg: var(--meet-surface);
   --workspace-main-content-max-width: none;
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
@@ -801,7 +787,7 @@
     var(--color-we-got-dark) 70%,
     transparent
   );
-  /* 72% clears AA on the 20% sand rail; 65% was ~4.3:1 for 12px text. */
+  /* 72% clears AA on the shared sand rail; 65% was ~4.3:1 for 12px text. */
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
     var(--color-we-got-dark) 72%,
@@ -906,7 +892,7 @@
     var(--color-we-got-dark) 70%,
     transparent
   );
-  /* 72% clears AA on the 20% sand rail; 65% was ~4.3:1 for 12px text. */
+  /* 72% clears AA on the shared sand rail; 65% was ~4.3:1 for 12px text. */
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
     var(--color-we-got-dark) 72%,

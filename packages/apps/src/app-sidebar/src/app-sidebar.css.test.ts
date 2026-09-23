@@ -88,15 +88,20 @@ describe("app sidebar nav selection SST", () => {
     expect(css).toMatch(
       /\.app-sidebar \{[\s\S]*--button-active-color:\s*var\(\s*--app-sidebar-item-selected-color/,
     );
-    // Same recipe as workspace-color.css: 12 / 18 / 28 accent into the rail.
+    expect(css).not.toMatch(/--app-sidebar-item-hover-bg\s*:/);
+    expect(css).not.toMatch(/--app-sidebar-item-selected-bg\s*:/);
+    expect(css).not.toMatch(/--app-sidebar-item-selected-hover-bg\s*:/);
     expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-hover-bg[\s\S]*in oklch[\s\S]*12%[\s\S]*var\(--app-sidebar-bg,\s*var\(--color-we-got-soft\)\)/,
+      /--button-outline-hover-background:\s*var\(--app-sidebar-item-hover-bg\)\s*;/,
     );
     expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-bg[\s\S]*in oklch[\s\S]*18%[\s\S]*var\(--app-sidebar-bg,\s*var\(--color-we-got-soft\)\)/,
+      /--button-outline-active-background:\s*var\(--app-sidebar-item-selected-bg\)\s*;/,
     );
     expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-hover-bg[\s\S]*in oklch[\s\S]*28%[\s\S]*var\(--app-sidebar-bg,\s*var\(--color-we-got-soft\)\)/,
+      /--button-outline-active-hover-background:\s*var\(--app-sidebar-item-selected-hover-bg\)\s*;/,
+    );
+    expect(css).not.toMatch(
+      /--button-outline-(?:hover|active|active-hover)-background:\s*var\(\s*--app-sidebar-item-[\w-]+,\s*color-mix/,
     );
     expect(css).not.toMatch(/--app-sidebar-item-hover-bg,[\s\S]{0,220}in oklab/);
     expect(css).not.toMatch(

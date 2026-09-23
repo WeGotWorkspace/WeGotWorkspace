@@ -51,7 +51,7 @@ describe("contacts workspace sidebar chrome", () => {
     expect(tsx).not.toMatch(/showColorDot/);
   });
 
-  it("uses Sky #a3c4e8 for chrome accents, mixed 10% onto cream like Calendar", () => {
+  it("uses Sky #a3c4e8 for chrome accents and leaves the rail to the shared recipe", () => {
     expect(css).toMatch(
       /\.contacts-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
@@ -74,7 +74,10 @@ describe("contacts workspace sidebar chrome", () => {
     expect(css).not.toMatch(/--workspace-accent:\s*#8b6f45/i);
     expect(css).not.toMatch(/--workspace-accent:\s*#39d49b/i);
     expect(css).not.toMatch(/--button-primary-bg:\s*var\(--workspace-accent-strong\)/);
-    expect(css).toMatch(/--workspace-sidebar-mix:\s*10%/);
+    expect(css).not.toMatch(/--workspace-sidebar-mix:/);
+    expect(colorCss).toMatch(
+      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 12%,\s*var\(--workspace-surface\)/,
+    );
     expect(css).toMatch(
       /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*var\(--color-we-got-dark\)/,
     );

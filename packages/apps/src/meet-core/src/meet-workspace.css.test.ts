@@ -85,20 +85,19 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).not.toMatch(/meet-workspace__sidebar-search/);
   });
 
-  it("washes Meet accent onto cream like Notes/Tasks/Calendar, not a solid teal slab", () => {
-    expect(css).toMatch(/--workspace-sidebar-mix:\s*20%/);
+  it("leaves the rail to the shared recipe and pins only the shell header to navy", () => {
+    expect(css).not.toMatch(/--workspace-sidebar-mix:/);
+    expect(css).not.toMatch(/--app-sidebar-bg:\s*color-mix/);
+    expect(css.match(/--app-sidebar-bg:/g)).toEqual(["--app-sidebar-bg:"]);
+    expect(css).toMatch(
+      /\.meet-workspace \.workspace-shell-header \{[\s\S]*?--app-sidebar-bg:\s*var\(--meet-surface\)/,
+    );
     expect(css).not.toMatch(
       /\.meet-workspace--split \{[\s\S]*--app-sidebar-bg:\s*var\(--workspace-accent\)\s*;/,
     );
     expect(css).toMatch(/--app-sidebar-color:\s*var\(--color-we-got-dark\)/);
     expect(css).not.toMatch(/--app-sidebar-bg:\s*var\(--workspace-accent-strong\)/);
     expect(css).not.toMatch(/--collection-sidebar-row-radius:\s*999px/);
-  });
-
-  it("republishes the shared rail so split hover steps off the same color", () => {
-    expect(css).toMatch(
-      /\.meet-workspace--split \{[\s\S]*--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) var\(--workspace-sidebar-mix\),\s*var\(--workspace-surface\)/,
-    );
   });
 
   it("leaves sidebar item washes to the shared rail ladder", () => {

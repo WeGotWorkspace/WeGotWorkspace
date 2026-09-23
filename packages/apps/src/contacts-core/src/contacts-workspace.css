@@ -10,7 +10,6 @@
  */
 .contacts-workspace {
   --workspace-accent: var(--color-we-got-sand);
-  --workspace-sidebar-mix: 10%;
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);

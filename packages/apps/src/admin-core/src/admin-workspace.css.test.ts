@@ -86,7 +86,10 @@ describe("admin workspace outline chrome", () => {
   });
 
   it("uses a light accent→cream sidebar with ink chrome (not full-bleed dark tile)", () => {
-    expect(css).toMatch(/--workspace-sidebar-mix:\s*10%/);
+    expect(css).not.toMatch(/--workspace-sidebar-mix:/);
+    expect(colorCss).toMatch(
+      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 12%,\s*var\(--workspace-surface\)/,
+    );
     expect(css).toMatch(/--app-sidebar-color:\s*var\(--color-we-got-dark\)/);
     expect(css).toMatch(/--sidebar-logo-close-button-color:\s*var\(--color-we-got-dark\)/);
     expect(css).toMatch(/--workspace-user-footer-text-color:\s*var\(--color-we-got-dark\)/);

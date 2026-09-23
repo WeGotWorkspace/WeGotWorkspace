@@ -45,7 +45,7 @@ describe("mail workspace branding chrome", () => {
 
   it("keeps AA-tuned item washes and accent-strong header chrome", () => {
     expect(colorCss).toMatch(
-      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) var\(--workspace-sidebar-mix\),\s*var\(--workspace-surface\)/,
+      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 12%,\s*var\(--workspace-surface\)/,
     );
     expect(css).toMatch(
       /\.mail-workspace \{[\s\S]*--app-sidebar-color:\s*var\(--color-we-got-dark\)/,
