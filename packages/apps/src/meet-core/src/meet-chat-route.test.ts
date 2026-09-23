@@ -6,7 +6,9 @@ import {
   meetIsAdHocMeetingId,
   meetLegacyRedirect,
   meetLiveRouteShowsInviteGate,
+  meetRouteIsGuestClosed,
   meetNavigatePathFromSelection,
+  meetMeetingPathId,
   meetNavigateTargetFromSelection,
   meetSelectionFromRouteParams,
 } from "@/meet-core/src/meet-chat-route";
@@ -109,6 +111,15 @@ describe("meetLiveRouteShowsInviteGate", () => {
     ).toBe(true);
   });
 
+  it("closes channels, DMs, and saved meetings to guests and leaves ad-hoc codes open", () => {
+    expect(meetRouteIsGuestClosed({ channelId: "general" })).toBe(true);
+    expect(meetRouteIsGuestClosed({ peerId: "alice" })).toBe(true);
+    expect(meetRouteIsGuestClosed({ persistedMeetingId: "chat-standup" })).toBe(true);
+    expect(meetRouteIsGuestClosed({ legacyId: "chat-general" })).toBe(true);
+    expect(meetRouteIsGuestClosed({ legacyId: "h8y8-ewp6-al8n" })).toBe(false);
+    expect(meetRouteIsGuestClosed({})).toBe(false);
+  });
+
   it("keeps signed-out channel and DM routes on the workspace gate", () => {
     expect(
       meetLiveRouteShowsInviteGate({
@@ -138,6 +149,21 @@ describe("meetNavigateTargetFromSelection", () => {
       to: MEET_MEETINGS_ROUTE,
       params: { meetingId: "test-meet" },
     });
+  });
+
+  it("writes an ad-hoc meeting as its room code, not the collection slug", () => {
+    expect(
+      meetNavigateTargetFromSelection("chat-jo", {
+        kind: "meeting",
+        guestRoomCode: "g744-8kfg-adjz",
+      }),
+    ).toEqual({
+      to: MEET_MEETINGS_ROUTE,
+      params: { meetingId: "g744-8kfg-adjz" },
+    });
+    expect(meetMeetingPathId("chat-jo", { kind: "meeting", guestRoomCode: "G744-8KFG-ADJZ" })).toBe(
+      "g744-8kfg-adjz",
+    );
   });
 
   it("writes DMs as /meet/dms/{peer} without dm: or dm- in the path", () => {

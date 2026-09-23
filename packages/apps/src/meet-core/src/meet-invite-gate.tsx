@@ -14,7 +14,10 @@ import {
 import { MeetApp } from "@/meet-core/src/meet-app";
 import { MeetChatApp } from "@/meet-core/src/meet-chat-app";
 import { createWgwMeetGuestOrHostApiSource } from "@/meet-core/src/meet-api-source";
-import { meetNavigateTargetFromSelection } from "@/meet-core/src/meet-chat-route";
+import {
+  meetIsAdHocMeetingId,
+  meetNavigateTargetFromSelection,
+} from "@/meet-core/src/meet-chat-route";
 import {
   meetChannelIdsEqual,
   meetCollectionIdCandidates,
@@ -96,6 +99,11 @@ export type MeetChannelDeepLinkGateProps = {
   channelId: string | null;
   workspace: ReactNode;
   accessIo?: MeetInviteAccessIo;
+  /**
+   * Signed-out visitors on a channel, DM, or saved meeting never see the
+   * guest lobby. Ad-hoc room codes leave this false.
+   */
+  guestClosed?: boolean;
 };
 
 function InviteCheckingScreen() {
@@ -109,10 +117,23 @@ function InviteCheckingScreen() {
   );
 }
 
+/** Signed-out landing for a channel, DM, or saved meeting — no lobby and no knock. */
+export function MeetGuestConversationRefused() {
+  return (
+    <MeetGuestChannelFrame>
+      <MeetGuestLobbyStatus
+        title={meetLabels.guestConversationRefusedTitle}
+        body={meetLabels.guestConversationRefusedBody}
+      />
+    </MeetGuestChannelFrame>
+  );
+}
+
 /**
  * One invite URL, two outcomes:
  * a) signed-in → MeetWorkspace (channel and meeting URLs, no guest chrome)
- * b) anonymous → guest lobby
+ * b) anonymous ad-hoc room code → guest lobby
+ * c) anonymous channel, DM, or saved meeting → refusal, no knock
  *
  * Signed-in users keep MeetChatApp mounted while switching conversations so
  * the workspace does not remount — and never swap to MeetApp after an ACL miss.
@@ -172,26 +193,31 @@ export function MeetInviteGate({
     return <MeetChatApp />;
   }
 
+  if (!meetIsAdHocMeetingId(room)) {
+    return <MeetGuestConversationRefused />;
+  }
+
   return <MeetApp source={guestSource} />;
 }
 
 /**
  * Live `/meet` parent: keep MeetChatApp mounted for anyone with a session
- * (channel and meeting deep links are the same workspace). Only signed-out
- * channel invite landings swap in the guest lobby.
+ * (channel and meeting deep links are the same workspace). Signed-out
+ * visitors on a channel, DM, or saved meeting see a refusal — no lobby.
  */
 export function MeetChannelDeepLinkGate({
   channelId,
   workspace,
   accessIo = liveMeetInviteAccessIo,
+  guestClosed = Boolean(channelId),
 }: MeetChannelDeepLinkGateProps) {
   const sessionHint = wgwLiveApiEnabled() && wgwHasAuthenticatedSession();
   const [access, setAccess] = useState<MeetInviteAccess | "checking">(() =>
-    !channelId || sessionHint ? "member" : "checking",
+    !guestClosed || sessionHint ? "member" : "checking",
   );
 
   useEffect(() => {
-    if (!channelId || sessionHint) {
+    if (!guestClosed || sessionHint) {
       setAccess("member");
       return;
     }
@@ -202,13 +228,11 @@ export function MeetChannelDeepLinkGate({
     return () => {
       cancelled = true;
     };
-  }, [accessIo, channelId, sessionHint]);
+  }, [accessIo, channelId, guestClosed, sessionHint]);
 
-  if (sessionHint || !channelId || access === "member") {
+  if (sessionHint || !guestClosed || access === "member") {
     return workspace;
   }
   if (access === "checking") return <InviteCheckingScreen />;
-  return (
-    <MeetApp source={createWgwMeetGuestOrHostApiSource(meetCollectionIdFromPublic(channelId))} />
-  );
+  return <MeetGuestConversationRefused />;
 }

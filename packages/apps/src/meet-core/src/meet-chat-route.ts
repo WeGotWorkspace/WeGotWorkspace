@@ -62,6 +62,26 @@ export function meetLiveRouteShowsInviteGate(input: MeetLiveInviteGateInput): bo
   return Boolean(input.meetingId || (!input.onConversationRoute && input.inviteRoom));
 }
 
+/**
+ * Direct messages, team/named channels, and reusable meetings are not guest
+ * doors. Ad-hoc `{xxxx-xxxx-xxxx}` meeting ids stay on the invite lobby.
+ */
+export function meetRouteIsGuestClosed(input: {
+  channelId?: string | null;
+  peerId?: string | null;
+  persistedMeetingId?: string | null;
+  legacyId?: string | null;
+}): boolean {
+  const legacyId = input.legacyId?.trim() ?? "";
+  const legacyClosed = legacyId !== "" && !meetIsAdHocMeetingId(legacyId);
+  return Boolean(
+    input.channelId?.trim() ||
+    input.peerId?.trim() ||
+    input.persistedMeetingId?.trim() ||
+    legacyClosed,
+  );
+}
+
 /** URL params → workspace selection key. */
 export function meetSelectionFromRouteParams(params: MeetChatRouteParams): string | null {
   if (params.peerId) return meetDirectMessageChannelId(params.peerId);
@@ -80,26 +100,41 @@ function meetSelectionFromLegacyRedirect(target: MeetChatLegacyRedirect): string
   return null;
 }
 
+/**
+ * Path segment for a meeting channel. An ad-hoc meeting always uses its
+ * reserved room code. A meeting without one keeps the collection slug.
+ */
+export function meetMeetingPathId(
+  channelId: string,
+  channel?: { kind?: string | null; guestRoomCode?: string | null } | null,
+): string {
+  const room = channel?.kind === "meeting" ? channel.guestRoomCode?.trim().toLowerCase() : "";
+  if (room && isMeetRoomCode(room)) return room;
+  return meetPublicChannelId(channelId);
+}
+
 /** Workspace selection key → nested Meet path. Type lives in the path. */
 export function meetNavigateTargetFromSelection(
   channelId: string,
-  channel?: { kind?: string | null } | null,
+  channel?: { kind?: string | null; guestRoomCode?: string | null } | null,
 ): MeetChatNavigateTarget {
   const peerId = meetDirectMessagePrincipalId(channelId);
   if (peerId) {
     return { to: MEET_DMS_ROUTE, params: { peerId } };
   }
-  const publicId = meetPublicChannelId(channelId);
   if (channel?.kind === "meeting") {
-    return { to: MEET_MEETINGS_ROUTE, params: { meetingId: publicId } };
+    return {
+      to: MEET_MEETINGS_ROUTE,
+      params: { meetingId: meetMeetingPathId(channelId, channel) },
+    };
   }
-  return { to: MEET_CHANNELS_ROUTE, params: { channelId: publicId } };
+  return { to: MEET_CHANNELS_ROUTE, params: { channelId: meetPublicChannelId(channelId) } };
 }
 
 /** Absolute path string for suite-notify consume matching (same shape as inbox `navigate`). */
 export function meetNavigatePathFromSelection(
   channelId: string,
-  channel?: { kind?: string | null } | null,
+  channel?: { kind?: string | null; guestRoomCode?: string | null } | null,
 ): string {
   const target = meetNavigateTargetFromSelection(channelId, channel);
   if (target.to === MEET_DMS_ROUTE) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Installer;
 
+use App\Models\User;
 use App\Services\Settings\SettingKeys;
 use App\Support\AppPaths;
 use App\Support\WgwInstallConfig;
@@ -16,6 +17,9 @@ use App\Support\WgwRuntimeEnvBridge;
  */
 final class DevInstallBootstrap
 {
+    /** Second local login so two-user flows work without creating an account by hand. */
+    public const DEV_MEMBER_USERNAME = 'member';
+
     public function __construct(
         private AppPaths $paths,
         private InstallerEnvWriter $envWriter,
@@ -25,6 +29,7 @@ final class DevInstallBootstrap
         private WgwInstallConfig $installConfig,
         private DevCalendarEventSeeder $calendarEvents,
         private WgwSchemaMigrator $schemaMigrator,
+        private InstallerSeeder $seeder,
     ) {}
 
     /**
@@ -42,6 +47,7 @@ final class DevInstallBootstrap
             WgwRuntimeEnvBridge::apply($this->installConfig);
             $this->schemaMigrator->migrate();
             $this->seedDevCalendarEvents($username);
+            $this->seedDevMember($password);
 
             return false;
         }
@@ -106,8 +112,32 @@ final class DevInstallBootstrap
 
         $this->apiEnv->ensure($this->paths->installRoot(), 'http://127.0.0.1:9080');
         $this->seedDevCalendarEvents($username);
+        $this->seedDevMember($password);
 
         return true;
+    }
+
+    /**
+     * Teammate next to the admin user. Skips when the account already exists so a
+     * changed password is left alone. Does not seed the admin calendar catalog.
+     */
+    private function seedDevMember(string $password): void
+    {
+        if (User::query()->where('username', self::DEV_MEMBER_USERNAME)->exists()) {
+            return;
+        }
+        if (strlen($password) < 10) {
+            return;
+        }
+
+        $this->seeder->seed(
+            self::DEV_MEMBER_USERNAME,
+            $password,
+            'Member',
+            self::DEV_MEMBER_USERNAME.'@localhost',
+            true,
+            true,
+        );
     }
 
     private function seedDevCalendarEvents(string $username): void

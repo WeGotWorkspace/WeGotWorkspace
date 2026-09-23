@@ -55,7 +55,7 @@ Artisan::command('wgw:dev-install', function (DevInstallBootstrap $bootstrap): i
     $fresh = $bootstrap->ensure();
     if ($fresh) {
         $user = strtolower(trim((string) (getenv('WGW_DEV_USERNAME') ?: 'admin')));
-        $this->info("Local dev install ready (admin user: {$user}, default password: storybook-dev).");
+        $this->info("Local dev install ready (admin user: {$user}, teammate: member, default password: storybook-dev).");
     } else {
         $this->info('Local dev install already present — skipped.');
     }

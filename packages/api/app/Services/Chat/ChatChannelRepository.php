@@ -123,10 +123,16 @@ final class ChatChannelRepository
             $principalUri = $this->principalUri($username);
         }
 
-        $uri = $this->allocateChannelUri(
-            isset($payload['id']) && is_string($payload['id']) ? $payload['id'] : null,
-            $name,
-        );
+        // Meetings are identified by the ad-hoc room code, never a name slug.
+        // Channels keep the slug of the initial name.
+        $roomCode = $kind === ChatChannelMeta::KIND_MEETING
+            ? ($this->guestRoomCodeFromPayload($payload, $kind) ?? $this->mintMeetRoomCode())
+            : $this->guestRoomCodeFromPayload($payload, $kind);
+        $requestedId = $kind === ChatChannelMeta::KIND_MEETING
+            ? ChatCollectionUris::PREFIX_CHANNEL.$roomCode
+            : (isset($payload['id']) && is_string($payload['id']) ? $payload['id'] : null);
+
+        $uri = $this->allocateChannelUri($requestedId, $name);
 
         $properties = [
             '{DAV:}displayname' => $name,
@@ -154,7 +160,7 @@ final class ChatChannelRepository
             'calendarid' => (int) $instance->calendarid,
             'kind' => $kind,
             'topic' => $topic,
-            'room_code' => $this->guestRoomCodeFromPayload($payload, $kind),
+            'room_code' => $roomCode,
         ]);
 
         return $this->mapChannel($username, $instance, $meta);
@@ -590,8 +596,9 @@ final class ChatChannelRepository
             return $requestedId;
         }
 
-        // Channel id = slug of the *initial* name (readable urls/room ids);
-        // renames only change the displayname, the id never moves. Collisions
+        // Channel id = slug of the *initial* name (readable channel urls).
+        // Meetings pass `chat-{room code}` and never use this slug.
+        // Renames only change the displayname, the id never moves. Collisions
         // dedupe with -2, -3, …; names that slug to nothing fall back to a ULID.
         $slug = Str::slug(Str::substr($name, 0, 48));
         if ($slug === '') {
@@ -604,6 +611,31 @@ final class ChatChannelRepository
         }
 
         return $candidate;
+    }
+
+    /**
+     * Ad-hoc meeting id (`xxxx-xxxx-xxxx`). Same alphabet as the client
+     * `createMeetRoomCode`, without ambiguous characters.
+     */
+    private function mintMeetRoomCode(): string
+    {
+        $alphabet = 'abcdefghjklmnpqrstuvwxyz23456789';
+        $last = strlen($alphabet) - 1;
+        for ($attempt = 0; $attempt < 8; $attempt++) {
+            $raw = '';
+            for ($i = 0; $i < 12; $i++) {
+                $raw .= $alphabet[random_int(0, $last)];
+            }
+            $code = substr($raw, 0, 4).'-'.substr($raw, 4, 4).'-'.substr($raw, 8, 4);
+            $uri = ChatCollectionUris::PREFIX_CHANNEL.$code;
+            $codeTaken = ChatChannelMeta::query()->where('room_code', $code)->exists();
+            $uriTaken = CalendarInstance::query()->where('uri', $uri)->exists();
+            if (! $codeTaken && ! $uriTaken) {
+                return $code;
+            }
+        }
+
+        throw new ApiHttpException(500, 'Could not allocate a meeting id.', 'server_error');
     }
 
     /**

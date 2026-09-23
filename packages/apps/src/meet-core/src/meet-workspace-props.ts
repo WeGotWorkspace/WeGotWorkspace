@@ -53,6 +53,11 @@ export type MeetWorkspaceProps = {
    */
   routeChannelId?: string | null;
   /**
+   * Signed-in visit to an ad-hoc room this user has no meeting channel for.
+   * Keeps the sidebar off an unrelated channel (the room code stays the URL).
+   */
+  unmatchedAdHocRoom?: string | null;
+  /**
    * Channel id -> user ids currently typing there (ephemeral presence signal,
    * self already excluded). Live app feeds `useMeetChannelTyping`; stories may
    * pass fixtures. Absent = no transport, indicator simply not rendered.
