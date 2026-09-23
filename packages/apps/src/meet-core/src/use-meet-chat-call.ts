@@ -36,8 +36,6 @@ export type UseMeetChatCallArgs = {
   meetOperations: MeetAPIOperations;
   /** Chunk-E chat operations (hybrid Dexie + REST); wrapped with call verbs. */
   chatOperations?: MeetChatOperations;
-  /** Current workspace selection — ad-hoc calendar rooms attach call chrome here. */
-  selectedChannelId?: string | null;
 };
 
 /**

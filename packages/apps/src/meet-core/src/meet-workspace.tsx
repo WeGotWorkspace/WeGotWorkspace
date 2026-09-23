@@ -69,7 +69,7 @@ import {
 } from "@/meet-core/src/meet-call-resume";
 import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
-import { MeetCallStage } from "@/meet-core/src/meet-call-stage";
+import { MeetCallStage, type MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import {
   meetCallBarVisible,
   meetCallChromeVisible,
@@ -107,6 +107,20 @@ import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
 import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";
 import type { MeetWorkspaceProps } from "@/meet-core/src/meet-workspace-props";
 import "@/meet-core/src/meet-workspace.css";
+
+/** Unmatched ad-hoc visit with an active knock, join, or prepare on the stage. */
+function meetVisitCallEngaged(
+  unmatchedAdHocRoom: string | null | undefined,
+  callStageRoom: MeetCallStageRoomProps | null | undefined,
+): boolean {
+  return Boolean(
+    unmatchedAdHocRoom &&
+    callStageRoom &&
+    (callStageRoom.controller.waitingForAdmission ||
+      callStageRoom.controller.inCall ||
+      callStageRoom.controller.status === "preparing"),
+  );
+}
 
 const MeetWorkspaceThread = memo(function MeetWorkspaceThread({
   parent,
@@ -696,13 +710,7 @@ export function MeetWorkspace({
     liveCallChannelId,
     resumeLayout: liveCallChannelId ? resumeCallLayout : undefined,
   });
-  const visitEngaged = Boolean(
-    unmatchedAdHocRoom &&
-    callStageRoom &&
-    (callStageRoom.controller.waitingForAdmission ||
-      callStageRoom.controller.inCall ||
-      callStageRoom.controller.status === "preparing"),
-  );
+  const visitEngaged = meetVisitCallEngaged(unmatchedAdHocRoom, callStageRoom);
   /** Visit chrome without a selected channel — layout is local, not channel-keyed. */
   const visitOwnsLayout = Boolean(unmatchedAdHocRoom && !selectedId && visitEngaged);
   useEffect(() => {
@@ -1016,6 +1024,7 @@ export function MeetWorkspace({
   const showCallBar =
     (conversationOpen && meetCallBarVisible(resolvedStageLayout, meetingLive)) || visitEngaged;
   const keepCallChrome = Boolean(resolvedStage && showCallChrome);
+  const showKnockOrCallBar = showCallBar || keepCallChrome;
   const callRoom = callStageRoom;
   // Mini-player handshake: while the live call's channel is not on screen the
   // call is "parked" here, so the suite mini-player may show inside `/meet`.
@@ -1284,12 +1293,9 @@ export function MeetWorkspace({
                 {/* Chunk-I knock chrome (chunk-H join policy): the compact bar
                     swaps to a knock-wait banner while this user waits to be let
                     in; joined members admit waiting guests from the action row. */}
-                {(showCallBar || keepCallChrome) && callRoom?.controller.waitingForAdmission ? (
-                  <MeetCallKnockWaiting
-                    channelTitle={headerTitle}
-                    onCancel={visitOwnsLayout ? leaveVisitCall : callToggle}
-                  />
-                ) : showCallBar || keepCallChrome ? (
+                {showKnockOrCallBar && callRoom?.controller.waitingForAdmission ? (
+                  <MeetCallKnockWaiting channelTitle={headerTitle} onCancel={visitCallToggle} />
+                ) : showKnockOrCallBar ? (
                   <MeetCallBar
                     elapsedLabel={showCallChrome ? (callRoom?.controller.elapsedLabel ?? "") : ""}
                     selfId={

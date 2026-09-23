@@ -173,7 +173,6 @@ function MeetChatLiveWorkspace({
       channels,
       meetOperations,
       chatOperations,
-      selectedChannelId,
     });
   const joinedUnmappedAdHoc = Boolean(
     joinedRoomCode &&

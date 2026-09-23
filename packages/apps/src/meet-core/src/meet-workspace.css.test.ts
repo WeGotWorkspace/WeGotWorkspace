@@ -194,6 +194,9 @@ describe("meet workspace sidebar chrome", () => {
     expect(tsx).toMatch(/meetCallStageShowsStage\(resolvedStageLayout\)/);
     expect(tsx).toMatch(/onExpand=\{\(\) => handleCallLayoutChange\("fullscreen"\)\}/);
     expect(tsx).toMatch(/onLeave=\{visitCallToggle\}/);
+    expect(tsx).toMatch(/onCancel=\{visitCallToggle\}/);
+    expect(tsx).toMatch(/meetVisitCallEngaged\(/);
+    expect(tsx).toMatch(/showKnockOrCallBar/);
     expect(tsx).toMatch(/visitOwnsLayout/);
     expect(tsx).toMatch(/visitCallLayout/);
     expect(tsx).toMatch(/leaveVisitCall/);
