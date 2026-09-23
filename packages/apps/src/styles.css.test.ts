@@ -115,6 +115,7 @@ describe("product UI font tokens", () => {
   it("opts shared Input/Textarea classes out of the iOS 1rem floor", () => {
     expect(css).toMatch(/:not\(\.input\):not\(\.input__field\)/);
     expect(css).toMatch(/textarea:not\(\.note-detail-view__title\):not\(\.textarea\)/);
+    expect(css).toMatch(/:not\(\.text-editor-source__input\)/);
     expect(css).toMatch(/font-size:\s*max\(1rem,\s*100%\)\s*!important/);
   });
 

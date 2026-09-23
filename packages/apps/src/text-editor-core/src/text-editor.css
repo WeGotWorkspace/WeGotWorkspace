@@ -1124,6 +1124,12 @@
   background: var(--paper-sheet-bg, oklch(1 0 0));
 }
 
+@media (max-width: 767px) {
+  .text-editor-source {
+    --text-editor-source-font-size: 1rem;
+  }
+}
+
 .text-editor-source__layout {
   display: flex;
   flex-direction: row;
@@ -1152,6 +1158,7 @@
 .text-editor-source__gutter-line {
   display: block;
   box-sizing: border-box;
+  overflow: hidden;
   line-height: var(--text-editor-source-line-height, 1.55);
 }
 
@@ -1203,9 +1210,11 @@
 
 .text-editor-source__mirror-line {
   display: block;
+  margin: 0;
   white-space: pre-wrap;
   overflow-wrap: break-word;
   word-break: break-word;
+  tab-size: 2;
 }
 
 .text-editor-source__input:focus {
