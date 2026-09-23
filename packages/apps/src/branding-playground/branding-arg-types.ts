@@ -34,5 +34,5 @@ export const brandingIconArgs = {
 };
 
 export const brandingDocsSidebarArgs = {
-  fullAccentSidebar: true,
+  fullAccentSidebar: false,
 };

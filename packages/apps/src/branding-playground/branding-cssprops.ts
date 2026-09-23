@@ -60,26 +60,26 @@ export type AppBrandingCsspropsOptions = {
 };
 
 /**
- * Production UI accents from `*-workspace.css` `--workspace-accent` (brand hex).
- * May differ from `WORKSPACE_APP_ACCENT` (PWA / home-tile theme color) for
- * calendar, meet, and contacts.
+ * Production UI accents from `*-workspace.css` `--workspace-accent`.
+ * Every app currently uses Sand (`#ba9689`). Home-tile `WORKSPACE_APP_ACCENT`
+ * stays per app.
  */
 export const BRANDING_APP_ACCENT_DEFAULTS: Record<WorkspaceAppId, string> = {
-  notes: "#ffc800",
-  mail: "#de4b0e",
-  calendar: "#962fa8",
-  contacts: "#a3c4e8",
-  tasks: "#ffbdc2",
-  drive: "#8ace00",
-  docs: "#0045ff",
-  settings: "#003311",
+  notes: "#ba9689",
+  mail: "#ba9689",
+  calendar: "#ba9689",
+  contacts: "#ba9689",
+  tasks: "#ba9689",
+  drive: "#ba9689",
+  docs: "#ba9689",
+  settings: "#ba9689",
   meet: "#ba9689",
-  admin: "#003311",
+  admin: "#ba9689",
 };
 
 /**
  * Production `--app-sidebar-bg` formulas from `workspace-color.css` + mix overrides.
- * Docs uses full accent; Meet uses the split-chrome 20% wash.
+ * Meet uses the split-chrome 20% wash. Docs uses the 12% default.
  */
 export const BRANDING_APP_SIDEBAR_DEFAULTS: Record<WorkspaceAppId, string> = {
   mail: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft))",
@@ -88,15 +88,15 @@ export const BRANDING_APP_SIDEBAR_DEFAULTS: Record<WorkspaceAppId, string> = {
   calendar: "color-mix(in oklch, var(--workspace-accent) 10%, var(--color-we-got-soft))",
   contacts: "color-mix(in oklch, var(--workspace-accent) 10%, var(--color-we-got-soft))",
   drive: "color-mix(in oklch, var(--workspace-accent) 32%, var(--color-we-got-soft))",
-  docs: "var(--workspace-accent)",
+  docs: "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft))",
   admin: "color-mix(in oklch, var(--workspace-accent) 16%, var(--color-we-got-soft))",
   settings: "color-mix(in oklch, var(--workspace-accent) 16%, var(--color-we-got-soft))",
   meet: "color-mix(in oklch, var(--workspace-accent) 20%, var(--color-we-got-soft))",
 };
 
-/** Production `--app-sidebar-color` (ink on cream rails; white on Docs full-accent rail). */
-export function brandingAppSidebarColorDefault(appId: WorkspaceAppId): string {
-  return appId === "docs" ? "#ffffff" : "#003311";
+/** Production `--app-sidebar-color` (ink on every cream rail). */
+export function brandingAppSidebarColorDefault(_appId: WorkspaceAppId): string {
+  return "#003311";
 }
 
 /**

@@ -10,8 +10,7 @@
  * - `--wai-*` layers the switch mark actually uses
  * - Docs: full-accent sidebar + white on-color
  *
- * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark. Default item washes match AppSidebar (32 / 55 / 65). Admin and
- * Settings share a lighter Dark-accent ladder below; other products keep local overrides when AA needs them.
+ * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark. Every app shares one item ladder (18 / 24 / 32). Product files do not redeclare it.
  *
  * Defaults use `:where` (zero specificity). Every product file imports this
  * sheet, and the app loads every product, so a later copy of these rules used
@@ -68,37 +67,6 @@
 
   --app-sidebar-item-hover-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 32%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 55%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 65%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-color: var(--color-we-got-dark);
-
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
-}
-
-/*
- * Admin and Settings share Dark (`#003311`) on a 16% rail. The 32/55/65 ladder
- * above crosses a contrast dead zone on Soft cream: past ~45% neither ink nor
- * cream clears 4.5:1. This lighter ladder stays ink-safe and sits just above
- * the rail (hover 18 / selected 24 / selected-hover 32). It lives here because
- * the product files do not redeclare it. Calendar keeps its own copy of the
- * same numbers in `calendar-workspace.css`.
- */
-.admin-workspace,
-.settings-workspace {
-  --app-sidebar-item-hover-bg: color-mix(
-    in oklch,
     var(--workspace-accent) 18%,
     var(--workspace-surface)
   );
@@ -113,20 +81,7 @@
     var(--workspace-surface)
   );
   --app-sidebar-item-selected-color: var(--color-we-got-dark);
-}
 
-/**
- * Docs dialogs do not repeat the full-accent rail. `.docs-workspace` owns
- * those tokens in `docs-workspace.css` — do not add that class here. A class
- * rule in this sheet is copied again after every product file, so it would
- * beat the product file in the app while Storybook kept the product file.
- */
-.docs-dialog-surface {
-  --app-sidebar-bg: #0045ff;
-  --app-sidebar-color: #ffffff;
-  --app-sidebar-border-color: color-mix(in oklch, #ffffff 18%, transparent);
-  --app-sidebar-item-hover-bg: color-mix(in oklch, #000000 10%, var(--app-sidebar-bg));
-  --app-sidebar-item-selected-bg: color-mix(in oklch, #000000 14%, var(--app-sidebar-bg));
-  --app-sidebar-item-selected-hover-bg: color-mix(in oklch, #000000 20%, var(--app-sidebar-bg));
-  --app-sidebar-item-selected-color: #ffffff;
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: #ffffff;
 }

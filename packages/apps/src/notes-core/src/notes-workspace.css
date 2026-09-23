@@ -21,7 +21,7 @@
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
-  --workspace-accent: var(--color-we-got-yellow);
+  --workspace-accent: var(--color-we-got-sand);
   /*
    * Hover / detail strong fg: yellow is too light for Calendar-style
    * accent-on-wash selected text. 32% accent → ink (~6.5:1 on cream washes)
@@ -317,7 +317,7 @@
 }
 
 .notes-dialog-surface {
-  --workspace-accent: var(--color-we-got-yellow);
+  --workspace-accent: var(--color-we-got-sand);
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: var(--color-we-got-dark);

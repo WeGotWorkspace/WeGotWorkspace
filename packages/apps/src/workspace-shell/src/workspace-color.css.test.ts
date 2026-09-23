@@ -28,27 +28,17 @@ describe("workspace-color.css shared tint recipes", () => {
     expect(colorCss).toMatch(/--button-primary-bg:\s*var\(--workspace-accent\)/);
     expect(colorCss).toMatch(/--button-primary-fg:\s*#ffffff/);
     expect(colorCss).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--workspace-surface\)/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 18%,\s*var\(--workspace-surface\)/,
     );
     expect(colorCss).toMatch(
-      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 55%,\s*var\(--workspace-surface\)/,
+      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 24%,\s*var\(--workspace-surface\)/,
     );
     expect(colorCss).toMatch(
-      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 65%,\s*var\(--workspace-surface\)/,
+      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--workspace-surface\)/,
     );
     expect(colorCss).not.toMatch(/in oklab/);
-    expect(colorCss).toMatch(
-      /\.admin-workspace,\s*\.settings-workspace \{[\s\S]*--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 18%,\s*var\(--workspace-surface\)/,
-    );
-    expect(colorCss).toMatch(
-      /\.admin-workspace,\s*\.settings-workspace \{[\s\S]*--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 24%,\s*var\(--workspace-surface\)/,
-    );
-    expect(colorCss).toMatch(
-      /\.admin-workspace,\s*\.settings-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--workspace-surface\)/,
-    );
-    expect(colorCss).toMatch(/\.docs-dialog-surface \{[\s\S]*--app-sidebar-bg:\s*#0045ff/);
-    expect(colorCss).toMatch(/\.docs-dialog-surface \{[\s\S]*--app-sidebar-color:\s*#ffffff/);
-    expect(colorCss).not.toMatch(/\.docs-workspace,\s*\.docs-dialog-surface \{/);
+    expect(colorCss).not.toMatch(/\.admin-workspace,\s*\.settings-workspace \{/);
+    expect(colorCss).not.toMatch(/--app-sidebar-bg:\s*#0045ff/);
   });
 });
 

@@ -81,17 +81,15 @@ describe("docs workspace sheet elevation", () => {
 });
 
 describe("docs workspace outline chrome", () => {
-  it("uses Docs tile blue #0045ff as full-accent sidebar with cream main", () => {
+  it("uses Sand accent and leaves the sidebar wash to the shared recipe", () => {
     expect(css).toMatch(
-      /\.docs-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-blue\)/,
+      /\.docs-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(colorCss).toMatch(
       /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
-    expect(css).toMatch(/--app-sidebar-bg:\s*#0045ff/);
-    expect(css).not.toMatch(
-      /--app-sidebar-bg:\s*color-mix\(in oklch,\s*var\(--workspace-accent\)\s+\d+%,\s*var\(--color-we-got-soft/,
-    );
+    expect(css).not.toMatch(/--app-sidebar-bg:\s*#0045ff/);
+    expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
     expect(css).toMatch(
       /\.docs-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
@@ -99,7 +97,7 @@ describe("docs workspace outline chrome", () => {
     expect(css).not.toMatch(/--workspace-accent:\s*#3b82f6/);
     expect(css).not.toMatch(/--app-sidebar-bg:\s*#2563eb/);
     expect(css).toMatch(
-      /\.docs-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-blue\)/,
+      /\.docs-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(colorCss).toMatch(/\.docs-dialog-surface/);
   });
@@ -119,15 +117,15 @@ describe("docs workspace outline chrome", () => {
     );
   });
 
-  it("inverts the sidebar lockup to a white tile + blue marks (not transparent)", () => {
+  it("paints the sidebar lockup as a blue tile with white marks", () => {
     expect(css).toMatch(
-      /\.docs-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*#ffffff/,
+      /\.docs-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-blue\)/,
     );
     expect(css).toMatch(
-      /\.docs-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*#ffffff/,
+      /\.docs-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-blue\)/,
     );
     expect(css).toMatch(
-      /\.docs-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--workspace-accent\)/,
+      /\.docs-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#ffffff/,
     );
     expect(css).not.toMatch(
       /\.docs-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*transparent/,
@@ -139,7 +137,7 @@ describe("docs workspace outline chrome", () => {
       /:is\(\.docs-workspace,\s*\.docs-dialog-surface\) \.drive-workspace \{[\s\S]*--workspace-accent:\s*inherit;[\s\S]*--color-emerald:\s*var\(--workspace-accent\)/,
     );
     expect(css).toMatch(
-      /\.docs-dialog-surface \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-blue\)/,
+      /\.docs-dialog-surface \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(css).not.toMatch(/\.docs-dialog-surface \{[\s\S]*--workspace-accent:\s*#10b981/);
   });
@@ -157,69 +155,6 @@ describe("docs workspace outline chrome", () => {
     // Brace must keep surface tokens inside `.docs-workspace` (prior pass regression).
     expect(css).toMatch(
       /\.docs-workspace \{[\s\S]*--foreground:\s*var\(--docs-text\)[\s\S]*background-color:\s*var\(--docs-surface\)/,
-    );
-  });
-
-  it("uses white-on-accent sidebar chrome with Mail-style darkened washes", () => {
-    expect(css).toMatch(/--app-sidebar-bg:\s*#0045ff/);
-    expect(css).toMatch(/--app-sidebar-color:\s*#ffffff/);
-    expect(css).toMatch(/\.docs-workspace \.app-sidebar \{[\s\S]*--color-we-got-dark:\s*#ffffff/);
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*#000000 10%,\s*var\(--app-sidebar-bg\)/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*#000000 14%,\s*var\(--app-sidebar-bg\)/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*#000000 20%,\s*var\(--app-sidebar-bg\)/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--app-sidebar-item-selected-color:\s*#ffffff/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*#ffffff/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar \.sidebar-section \.menu-item--surface-idle \{[\s\S]*color:\s*#ffffff/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar \.sidebar-section \.menu-item--surface-selected \{[\s\S]*color:\s*#ffffff/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar \.sidebar-section \.menu-item \.menu-item__icon-slot \{[\s\S]*color:\s*#ffffff/,
-    );
-  });
-
-  it("mirrors sidebar New primary onto the header notification unread badge", () => {
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-bg:\s*#ffffff/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*var\(--app-sidebar-bg\)/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-bg:\s*#ffffff/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-fg:\s*var\(--app-sidebar-bg\)/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-bg:\s*#ffffff/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-fg:\s*var\(--app-sidebar-bg\)/,
-    );
-  });
-
-  it("remaps footer logout outline washes to the same ink-into-blue tokens as sidebar scroll", () => {
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__footer \{[\s\S]*--button-outline-hover-color:\s*#ffffff/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__footer \{[\s\S]*--button-outline-hover-background:\s*color-mix\(in oklch,\s*#000000 10%,\s*var\(--app-sidebar-bg\)\)/,
-    );
-    expect(css).toMatch(
-      /\.docs-workspace \.app-sidebar__footer \{[\s\S]*--workspace-user-footer-text-color:\s*#ffffff/,
     );
   });
 

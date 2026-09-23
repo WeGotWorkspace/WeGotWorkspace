@@ -17,7 +17,7 @@ describe("calendar workspace brand accent", () => {
 
   it("uses icon-mark purple for UI accent with cream-mix strong and accent primary fills", () => {
     expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-prince\)/,
+      /\.calendar-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(colorCss).toMatch(
       /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
@@ -105,19 +105,9 @@ describe("calendar workspace header CSS", () => {
     );
   });
 
-  it("keeps AppSidebar item washes on the Admin/Settings ladder", () => {
-    expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 18%,\s*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 24%[\s\S]*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 32%[\s\S]*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /\.calendar-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,
-    );
+  it("leaves AppSidebar item washes to the shared ladder", () => {
+    expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
+    expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(css).toMatch(
       /\.calendar-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
     );

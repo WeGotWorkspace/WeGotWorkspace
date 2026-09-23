@@ -11,7 +11,7 @@
  * Import only from {@link AdminWorkspace}.
  */
 .admin-workspace {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--color-we-got-sand);
   --workspace-sidebar-mix: 16%;
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
@@ -49,9 +49,9 @@
     var(--color-we-got-soft)
   );
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--color-we-got-dark);
   --segmented-control-track-active-bg: var(--button-primary-bg);
 
   /* Outline header chrome (cream main); sidebar inherits ink-on-tint SST. */
@@ -99,7 +99,7 @@
 
 .admin-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-we-got-dark);
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
 }
@@ -128,11 +128,11 @@
  * {@link Button} and {@link buttonVariants} match the admin shell.
  */
 .admin-dialog-surface {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--color-we-got-sand);
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--color-we-got-dark);
   --button-active-color: var(--workspace-accent-strong);
   --segmented-control-track-active-bg: var(--button-primary-bg);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */

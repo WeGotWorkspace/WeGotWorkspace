@@ -81,7 +81,9 @@ describe("Drive detail DocsCollabSidebarPanel shell", () => {
 
   it("republishes Drive accent on the portaled SideDrawer; sheet wash is shared", () => {
     expect(css).toMatch(/\.drive-detail-panel-drawer \{/);
-    expect(css).toMatch(/\.drive-detail-panel-drawer \{[\s\S]*--workspace-accent:\s*#8ace00/i);
+    expect(css).toMatch(
+      /\.drive-detail-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-sand\)/i,
+    );
     expect(css).toMatch(
       /\.drive-detail-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--workspace-accent\)/,
     );

@@ -7,7 +7,7 @@
  */
 .drive-detail-panel-drawer {
   --side-drawer-width: 22rem;
-  --workspace-accent: #8ace00;
+  --workspace-accent: var(--color-we-got-sand);
   --workspace-accent: var(--workspace-accent);
 }
 

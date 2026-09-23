@@ -96,7 +96,7 @@ describe("tasks workspace header and sidebar", () => {
 
   it("uses Pink for the UI accent; primary fills use accent with Dark fg", () => {
     expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-pink\)/,
+      /\.tasks-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(colorCss).toMatch(
       /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
@@ -140,18 +140,8 @@ describe("tasks workspace header and sidebar", () => {
     expect(css).toMatch(
       /\.tasks-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--workspace-accent\) 24%/,
     );
-    expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /\.tasks-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,
-    );
+    expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
+    expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(css).toMatch(
       /\.tasks-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
     );
@@ -162,7 +152,7 @@ describe("tasks workspace header and sidebar", () => {
       /\.tasks-workspace \.view-header \{[\s\S]*--button-outline-hover-color:\s*var\(--workspace-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.tasks-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-pink\)/,
+      /\.tasks-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(css).toMatch(
       /\.tasks-dialog-surface \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,

@@ -12,7 +12,7 @@
  * Import only from {@link SettingsWorkspace}.
  */
 .settings-workspace {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--color-we-got-sand);
   --workspace-sidebar-mix: 16%;
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
@@ -46,9 +46,9 @@
   --field-label-color: var(--color-we-got-dark);
 
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--color-we-got-dark);
 
   /* Outline header chrome (cream main); sidebar inherits ink-on-tint SST. */
   --button-active-color: var(--workspace-accent-strong);
@@ -97,7 +97,7 @@
 
 .settings-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-we-got-dark);
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
 }

@@ -6,7 +6,7 @@
 .drive-workspace {
   @apply min-w-0 overflow-x-hidden;
   /* Brand lime from drive.svg tile — same hex as WORKSPACE_APP_ACCENT.drive. */
-  --workspace-accent: var(--color-we-got-brat);
+  --workspace-accent: var(--color-we-got-sand);
   --workspace-sidebar-mix: 32%;
   --color-emerald: var(--workspace-accent);
   /* Cream-tint sidebar; 32% — clearer than 12% mute, softer than solid lime */
@@ -73,23 +73,7 @@
     var(--workspace-accent) 65%,
     var(--workspace-surface)
   );
-  --app-sidebar-item-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 42%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 55%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 65%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-color: var(--color-we-got-dark);
-  /* Section titles on 32% lime→cream rail — slate muted fails AA; ink mix clears. */
+  /* Section titles on the accent rail — slate muted fails AA; ink mix clears. */
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
 }
 
@@ -227,7 +211,7 @@
  * Repeat accent tokens here so {@link Button} and destination picker match the drive shell.
  */
 .drive-dialog-surface {
-  --workspace-accent: var(--color-we-got-brat);
+  --workspace-accent: var(--color-we-got-sand);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: var(--workspace-accent);

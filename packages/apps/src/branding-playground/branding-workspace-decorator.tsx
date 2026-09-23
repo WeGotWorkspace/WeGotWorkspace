@@ -72,21 +72,17 @@ export function resolveBrandingIconMarkup(
   return undefined;
 }
 
-/**
- * Docs sidebar inverts the sheet pair (white tile + blue marks on the blue rail).
- * Workspace-level `--wai-*` stays the source pair for every other surface.
- */
+/** Switch-trigger SVG keeps the sheet pair. Docs is a blue tile with white marks. */
 function sidebarSwitchTriggerWaiDecls(
-  workspaceClass: string,
+  _workspaceClass: string,
   values: Record<string, string>,
 ): string {
   const bg = values["--wai-bg"];
   const fg = values["--wai-fg"];
   if (bg === undefined && fg === undefined) return "";
-  const invert = workspaceClass === "docs-workspace" && bg !== undefined && fg !== undefined;
   const lines: string[] = [];
-  if (bg !== undefined) lines.push(`  --wai-bg: ${brandColorForCascade(invert ? fg : bg)};`);
-  if (fg !== undefined) lines.push(`  --wai-fg: ${brandColorForCascade(invert ? bg : fg)};`);
+  if (bg !== undefined) lines.push(`  --wai-bg: ${brandColorForCascade(bg)};`);
+  if (fg !== undefined) lines.push(`  --wai-fg: ${brandColorForCascade(fg)};`);
   return lines.join("\n");
 }
 

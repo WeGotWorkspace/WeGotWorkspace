@@ -450,16 +450,16 @@ describe("notes workspace selected list row", () => {
 describe("notes workspace accent tokens", () => {
   it("uses brand yellow #ffc800 for chrome accents, mixed 12% onto cream", () => {
     expect(css).toMatch(
-      /\.notes-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-yellow\)/,
+      /\.notes-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(css).toMatch(
-      /\.notes-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-yellow\)/i,
+      /\.notes-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/i,
     );
     expect(css).not.toMatch(/--workspace-accent:\s*#f6d176/i);
     expect(css).not.toMatch(/--workspace-accent:\s*#f0bc3a/i);
     expect(css).not.toMatch(/--workspace-accent:\s*#d4bc72/i);
     expect(css).toMatch(
-      /\.notes-workspace \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-yellow\)/,
+      /\.notes-workspace \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     // Primary fills use accent (not accent-strong); yellow needs ink fg.
     expect(css).toMatch(

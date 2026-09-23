@@ -113,17 +113,17 @@ describe("buildBrandingWorkspaceOverrideCss", () => {
     );
   });
 
-  it("inverts wai-bg and wai-fg on the Docs sidebar icon only", () => {
+  it("keeps the Docs sidebar icon a blue tile with white marks", () => {
     const css = buildBrandingWorkspaceOverrideCss("docs-workspace", {
-      "--workspace-accent": "#0045ff",
+      "--workspace-accent": "#ba9689",
       "--wai-bg": "#0045ff",
       "--wai-fg": "#ffffff",
     });
     expect(css).toMatch(
-      /\.branding-playground-root \.docs-workspace \{\s*--workspace-accent: oklch\(from #0045ff l c h\);\s*--wai-bg: oklch\(from #0045ff l c h\);\s*--wai-fg: oklch\(from #ffffff l c h\);/,
+      /\.branding-playground-root \.docs-workspace \{\s*--workspace-accent: oklch\(from #ba9689 l c h\);\s*--wai-bg: oklch\(from #0045ff l c h\);\s*--wai-fg: oklch\(from #ffffff l c h\);/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger svg \{\s*--wai-bg: oklch\(from #ffffff l c h\);\s*--wai-fg: oklch\(from #0045ff l c h\);/,
+      /\.workspace-app-icon--switch-trigger svg \{\s*--wai-bg: oklch\(from #0045ff l c h\);\s*--wai-fg: oklch\(from #ffffff l c h\);/,
     );
   });
 });

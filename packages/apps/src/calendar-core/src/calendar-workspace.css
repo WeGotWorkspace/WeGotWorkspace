@@ -13,7 +13,7 @@
  * (shadow DOM, own styles); this file styles the React chrome around it.
  */
 .calendar-workspace {
-  --workspace-accent: var(--color-we-got-prince);
+  --workspace-accent: var(--color-we-got-sand);
   --workspace-sidebar-mix: 10%;
   --calendar-muted: color-mix(in oklch, var(--color-we-got-dark) 80%, var(--color-we-got-soft));
 
@@ -57,9 +57,9 @@
 
   --field-label-color: var(--color-we-got-dark);
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--color-we-got-dark);
 
   /* Outline action language for header + collection sidebar rows. */
   --button-active-color: var(--workspace-accent-strong);
@@ -75,28 +75,6 @@
     var(--workspace-accent) 24%,
     var(--workspace-surface)
   );
-
-  /*
-   * Same item ladder as Admin / Settings (18 / 24 / 32). Prince at 28/38/48
-   * read too saturated on the 10% rail. Hover fg is ink on `.app-sidebar__scroll`
-   * so workspace accent-strong does not leak onto nav rows.
-   */
-  --app-sidebar-item-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 18%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 24%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 32%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-color: var(--color-we-got-dark);
 
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
      fills the viewport instead of the default centered 42rem measure. */
@@ -117,7 +95,7 @@
 
 .calendar-workspace .app-sidebar__scroll {
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-we-got-dark);
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
 }

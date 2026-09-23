@@ -805,28 +805,6 @@
     var(--workspace-accent) 24%,
     var(--workspace-surface)
   );
-  /*
-   * AppSidebar washes: brand purple → cream. Hover is the stronger wash;
-   * selected is lighter. Ink clears AA on these mixes (selected ~10.3:1,
-   * hover ~8.8:1, selected-hover ~7.7:1); prefer ink over accent-strong.
-   * Hover wash uses cream (not transparent) so tint stays on the cream plane.
-   */
-  --app-sidebar-item-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 32%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 22%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 40%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-color: var(--color-we-got-dark);
   --foreground: var(--color-we-got-dark);
   --color-foreground: var(--color-we-got-dark);
   --workspace-main-bg: var(--meet-surface);

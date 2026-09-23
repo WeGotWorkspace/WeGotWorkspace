@@ -53,10 +53,10 @@ describe("contacts workspace sidebar chrome", () => {
 
   it("uses Sky #a3c4e8 for chrome accents, mixed 10% onto cream like Calendar", () => {
     expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sky\)/,
+      /\.contacts-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(css).toMatch(
-      /\.contacts-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sky\)/i,
+      /\.contacts-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/i,
     );
     expect(colorCss).toMatch(
       /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
@@ -80,19 +80,9 @@ describe("contacts workspace sidebar chrome", () => {
     );
   });
 
-  it("brightens AppSidebar selected wash for purple via --app-sidebar-item-*", () => {
-    expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 28%,\s*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 38%[\s\S]*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 48%[\s\S]*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /\.contacts-workspace \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,
-    );
+  it("leaves AppSidebar item washes to the shared ladder", () => {
+    expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
+    expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(css).toMatch(
       /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
     );

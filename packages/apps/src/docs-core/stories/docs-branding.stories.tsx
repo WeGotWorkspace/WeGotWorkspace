@@ -23,7 +23,6 @@ const brandingMeta = createBrandingStoryMeta({
   appId: "docs",
   workspaceClass: "docs-workspace",
   accentToken: "workspace-accent",
-  fullAccentSidebar: true,
   component: DocsHomeWorkspace,
 });
 

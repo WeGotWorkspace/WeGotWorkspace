@@ -95,22 +95,9 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).not.toMatch(/--collection-sidebar-row-radius:\s*999px/);
   });
 
-  it("brightens AppSidebar selected wash for dark plum and forces AA on-color", () => {
-    expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--workspace-surface/,
-    );
-    expect(css).not.toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\([^)]*var\(--workspace-accent\) 32%,\s*transparent/,
-    );
-    expect(css).toMatch(
-      /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-bg:[\s\S]*var\(--workspace-accent\) 22%[\s\S]*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-hover-bg:[\s\S]*var\(--workspace-accent\) 40%[\s\S]*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /\.meet-workspace--split \{[\s\S]*--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/,
-    );
+  it("leaves sidebar item washes to the shared 18/24/32 ladder", () => {
+    expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
+    expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(css).toMatch(
       /\.meet-workspace--split \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
     );

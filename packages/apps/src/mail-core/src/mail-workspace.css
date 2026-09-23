@@ -11,7 +11,7 @@
  * Import only from {@link MailWorkspace}.
  */
 .mail-workspace {
-  --workspace-accent: var(--color-we-got-red);
+  --workspace-accent: var(--color-we-got-sand);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
@@ -54,9 +54,9 @@
 
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
   --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-we-got-dark));
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--color-we-got-dark);
   /* Selected nav count pills match primary CTA (accent fill + white). */
   --sidebar-badge-bg: var(--button-primary-bg);
   --sidebar-badge-fg: var(--button-primary-fg);
@@ -75,30 +75,6 @@
     var(--workspace-accent) 24%,
     var(--workspace-surface)
   );
-
-  /*
-   * AppSidebar selected wash: brand orange still reads heavy at the shared
-   * 55%/65% accent→cream mixes. Brighten via `--app-sidebar-item-*` only.
-   * Ink on-color clears AA (hover 28% ~10.3:1, selected 38% ~9.1:1,
-   * selected-hover 48% ~8.0:1). Hover fg is ink on `.app-sidebar__scroll`
-   * so workspace accent-strong does not leak onto nav rows.
-   */
-  --app-sidebar-item-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 28%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 38%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 48%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-color: var(--color-we-got-dark);
 }
 
 /** App switcher lockup: mail.svg literals (`#de4b0e` tile / white flap). */
@@ -122,7 +98,7 @@
 
 .mail-workspace .app-sidebar__scroll {
   --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-we-got-dark));
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-we-got-dark);
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
 }
@@ -201,13 +177,13 @@
  * {@link Button} and field labels read tokens from `.mail-compose-dialog-surface`.
  */
 :is(.mail-compose-dialog-surface, .mail-dialog-surface) {
-  --workspace-accent: var(--color-we-got-red);
+  --workspace-accent: var(--color-we-got-sand);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 90%, var(--color-we-got-dark));
-  --button-primary-fg: #ffffff;
+  --button-primary-fg: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--color-we-got-dark);
   --button-active-color: var(--workspace-accent-strong);
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
   --segmented-control-track-active-bg: var(--color-we-got-dark);

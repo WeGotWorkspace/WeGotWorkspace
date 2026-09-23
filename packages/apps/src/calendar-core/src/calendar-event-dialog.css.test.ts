@@ -17,7 +17,7 @@ describe("calendar event dialog CSS ownership", () => {
 
   it("defines dialog-surface accent tokens outside the workspace shell", () => {
     expect(css).toMatch(/\.calendar-dialog-surface\s*\{/);
-    expect(css).toContain("--workspace-accent: var(--color-we-got-prince)");
+    expect(css).toContain("--workspace-accent: var(--color-we-got-sand)");
     expect(css).toContain("--button-primary-bg: var(--workspace-accent)");
     expect(css).not.toContain("--button-primary-bg: var(--workspace-accent-strong)");
     expect(css).toMatch(
@@ -187,7 +187,7 @@ describe("calendar event dialog Meet field", () => {
     expect(css).not.toContain("background-color: transparent");
     expect(css).not.toContain("stroke-width: 1.75");
     expect(css).not.toMatch(/color-swatch-trigger/);
-    expect(css).toContain("--workspace-accent: #962fa8");
+    expect(css).toContain("--workspace-accent: var(--color-we-got-sand)");
     expect(css).toContain("--card-title-icon-color: var(--workspace-accent)");
     expect(css).not.toMatch(/calendar-event-dialog__meet-generate/);
     expect(css).not.toContain("calendar-event-dialog__meet-switch");

@@ -19,10 +19,10 @@ describe("docs collab review panel wash", () => {
 
   it("republishes Docs accent on the portaled SideDrawer; sheet wash is shared", () => {
     expect(css).toMatch(
-      /\.docs-collab-review-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-blue\)/,
+      /\.docs-collab-review-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(css).toMatch(
-      /\.docs-collab-review-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-blue\)/,
+      /\.docs-collab-review-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(css).not.toMatch(
       /\.docs-collab-review-panel-drawer \{[\s\S]*--docs-collab-sidebar-panel-wash:/,

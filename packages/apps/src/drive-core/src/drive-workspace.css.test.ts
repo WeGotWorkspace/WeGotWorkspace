@@ -10,7 +10,7 @@ const colorCss = readFileSync(join(here, "../../workspace-shell/src/workspace-co
 describe("drive workspace brand accent", () => {
   it("uses tile lime for UI accent with cream-mix strong and accent primary fills", () => {
     expect(css).toMatch(
-      /\.drive-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-brat\)/i,
+      /\.drive-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/i,
     );
     expect(colorCss).toMatch(
       /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
@@ -26,7 +26,7 @@ describe("drive workspace brand accent", () => {
 
   it("uses ink on lime for dialog primary fills", () => {
     expect(css).toMatch(
-      /\.drive-dialog-surface \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-brat\)/i,
+      /\.drive-dialog-surface \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-sand\)/i,
     );
     expect(css).toMatch(
       /\.drive-dialog-surface \{[\s\S]*--button-primary-bg:\s*var\(--workspace-accent\)/,
@@ -39,7 +39,7 @@ describe("drive workspace brand accent", () => {
 
 describe("drive workspace outline-active tokens", () => {
   it("publishes outline-active wash tokens so selected chrome inherits Drive green", () => {
-    expect(css).toMatch(/--workspace-accent:\s*var\(--color-we-got-brat\)/);
+    expect(css).toMatch(/--workspace-accent:\s*var\(--color-we-got-sand\)/);
     expect(css).toMatch(/--button-active-color:\s*var\(--workspace-accent-strong\)/);
     expect(css).toMatch(
       /--button-outline-active-background:\s*color-mix\([\s\S]*var\(--workspace-accent\)\s*55%/,
@@ -56,17 +56,9 @@ describe("drive workspace outline-active tokens", () => {
     );
   });
 
-  it("publishes AppSidebar item washes stepped above the 32% rail with ink on-color", () => {
-    expect(css).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 42%,\s*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /--app-sidebar-item-selected-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 55%,\s*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(
-      /--app-sidebar-item-selected-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 65%,\s*var\(--workspace-surface/,
-    );
-    expect(css).toMatch(/--app-sidebar-item-selected-color:\s*var\(--color-we-got-dark\)/);
+  it("leaves AppSidebar item washes to the shared ladder", () => {
+    expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
+    expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(css).toMatch(
       /\.drive-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
     );

@@ -23,7 +23,7 @@
   --tasks-content-inset: calc(2.25rem + 0.75rem);
   --tasks-content-inset-end: 0;
 
-  --workspace-accent: var(--color-we-got-pink);
+  --workspace-accent: var(--color-we-got-sand);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
@@ -72,28 +72,6 @@
     var(--workspace-accent) 24%,
     var(--workspace-surface)
   );
-
-  /*
-   * AppSidebar washes stay under the shared 55%/65% ladder. Pink is light, so
-   * ink on-color stays readable. Hover fg is ink on `.app-sidebar__scroll`
-   * so workspace accent-strong does not leak onto nav rows.
-   */
-  --app-sidebar-item-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 28%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 38%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 48%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-color: var(--color-we-got-dark);
 }
 
 /* Header outline chips stay on accent-strong; sidebar nav hover stays ink. */
@@ -164,7 +142,7 @@
  * {@link Button} and {@link buttonVariants} match the tasks shell.
  */
 .tasks-dialog-surface {
-  --workspace-accent: var(--color-we-got-pink);
+  --workspace-accent: var(--color-we-got-sand);
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: var(--color-we-got-dark);

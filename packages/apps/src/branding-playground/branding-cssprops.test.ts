@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WORKSPACE_APP_ACCENT, WORKSPACE_APP_IDS } from "@/lib/workspace-app-icons";
+import { WORKSPACE_APP_IDS } from "@/lib/workspace-app-icons";
 import {
   BRANDING_APP_ACCENT_DEFAULTS,
   BRANDING_APP_SIDEBAR_DEFAULTS,
@@ -21,20 +21,9 @@ import {
 } from "@/branding-playground/create-branding-story-meta";
 
 describe("BRANDING_APP_ACCENT_DEFAULTS", () => {
-  it("matches production UI accents (not PWA tile) for calendar, meet, contacts", () => {
-    expect(BRANDING_APP_ACCENT_DEFAULTS.calendar).toBe("#962fa8");
-    expect(BRANDING_APP_ACCENT_DEFAULTS.meet).toBe("#ba9689");
-    expect(BRANDING_APP_ACCENT_DEFAULTS.contacts).toBe("#a3c4e8");
-    expect(BRANDING_APP_ACCENT_DEFAULTS.calendar).not.toBe(WORKSPACE_APP_ACCENT.calendar);
-    expect(BRANDING_APP_ACCENT_DEFAULTS.meet).not.toBe(WORKSPACE_APP_ACCENT.meet);
-    expect(BRANDING_APP_ACCENT_DEFAULTS.contacts).not.toBe(WORKSPACE_APP_ACCENT.contacts);
-  });
-
-  it("matches WORKSPACE_APP_ACCENT when tile and UI accent are the same", () => {
-    for (const appId of ["mail", "notes", "docs", "drive", "tasks", "admin", "settings"] as const) {
-      expect(BRANDING_APP_ACCENT_DEFAULTS[appId].toLowerCase()).toBe(
-        WORKSPACE_APP_ACCENT[appId].toLowerCase(),
-      );
+  it("uses Sand for every app accent", () => {
+    for (const appId of WORKSPACE_APP_IDS) {
+      expect(BRANDING_APP_ACCENT_DEFAULTS[appId]).toBe("#ba9689");
     }
   });
 });
@@ -90,9 +79,9 @@ describe("defaultAppBrandingCssprops", () => {
   );
 
   it("documents production sidebar mix percentages (reference; not default cssprops)", () => {
-    expect(brandingAppSidebarColorDefault("docs")).toBe("#ffffff");
+    expect(brandingAppSidebarColorDefault("docs")).toBe("#003311");
     expect(brandingAppSidebarColorDefault("mail")).toBe("#003311");
-    expect(BRANDING_APP_SIDEBAR_DEFAULTS.docs).toBe("var(--workspace-accent)");
+    expect(BRANDING_APP_SIDEBAR_DEFAULTS.docs).toContain("12%");
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.calendar).toContain("10%");
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.contacts).toContain("10%");
     expect(BRANDING_APP_SIDEBAR_DEFAULTS.admin).toContain("16%");
@@ -173,17 +162,17 @@ describe("createBrandingStoryMeta defaults", () => {
     expect(meta.parameters?.routerPath).toBe("/mail/inbox");
   });
 
-  it("defaults Docs fullAccentSidebar true and omits fighting chrome cssprops", () => {
-    expect(brandingDocsSidebarArgs.fullAccentSidebar).toBe(true);
+  it("defaults Docs fullAccentSidebar off and omits fighting chrome cssprops", () => {
+    expect(brandingDocsSidebarArgs.fullAccentSidebar).toBe(false);
     const meta = createBrandingStoryMeta({
       appId: "docs",
       workspaceClass: "docs-workspace",
       fullAccentSidebar: true,
     });
-    expect(meta.args.fullAccentSidebar).toBe(true);
+    expect(meta.args.fullAccentSidebar).toBe(false);
     const cssprops = meta.parameters?.cssprops as Record<string, { value: string }>;
     expect(cssprops).not.toHaveProperty("app-sidebar-bg");
-    expect(cssprops["workspace-accent"].value).toBe("#0045ff");
+    expect(cssprops["workspace-accent"].value).toBe("#ba9689");
     expect(cssprops["app-sidebar-color"]).toBeUndefined();
     expect(cssprops["wai-bg"].value).toBe("#0045ff");
     expect(cssprops["wai-fg"].value).toBe("#ffffff");
@@ -197,7 +186,7 @@ describe("createBrandingStoryMeta defaults", () => {
       workspaceClass: "calendar-workspace",
     });
     const cssprops = meta.parameters?.cssprops as Record<string, { value: string }>;
-    expect(cssprops["workspace-accent"].value).toBe("#962fa8");
+    expect(cssprops["workspace-accent"].value).toBe("#ba9689");
     expect(cssprops["app-sidebar-bg"]).toBeUndefined();
     expect(cssprops["app-sidebar-color"]).toBeUndefined();
     expect(cssprops["wai-bg"].value).toBe("#962fa8");

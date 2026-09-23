@@ -9,7 +9,7 @@
  * Import only from {@link ContactsWorkspace}.
  */
 .contacts-workspace {
-  --workspace-accent: var(--color-we-got-sky);
+  --workspace-accent: var(--color-we-got-sand);
   --workspace-sidebar-mix: 10%;
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
@@ -70,30 +70,6 @@
     var(--workspace-accent) 24%,
     var(--workspace-surface)
   );
-
-  /*
-   * AppSidebar selected wash: brand purple still reads heavy at the shared
-   * 55%/65% accent→cream mixes. Brighten via `--app-sidebar-item-*` only —
-   * same recipe as Calendar. Ink on-color clears AA (hover 28% ~9.4:1,
-   * selected 38% ~8.0:1, selected-hover 48% ~6.7:1). Hover fg is ink on
-   * `.app-sidebar__scroll` so workspace accent-strong does not leak onto nav.
-   */
-  --app-sidebar-item-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 28%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 38%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) 48%,
-    var(--workspace-surface)
-  );
-  --app-sidebar-item-selected-color: var(--color-we-got-dark);
 }
 
 /*
@@ -477,7 +453,7 @@
 }
 
 .contacts-dialog-surface {
-  --workspace-accent: var(--color-we-got-sky);
+  --workspace-accent: var(--color-we-got-sand);
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: var(--color-we-got-dark);

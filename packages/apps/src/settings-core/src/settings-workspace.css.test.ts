@@ -10,7 +10,7 @@ const colorCss = readFileSync(join(here, "../../workspace-shell/src/workspace-co
 describe("settings workspace outline chrome", () => {
   it("uses icon tile #003311 as accent; primary fills use accent, not lime", () => {
     expect(css).toMatch(
-      /\.settings-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-dark\)/,
+      /\.settings-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(colorCss).toMatch(
       /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
@@ -18,7 +18,9 @@ describe("settings workspace outline chrome", () => {
     expect(css).toMatch(
       /\.settings-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
-    expect(css).toMatch(/\.settings-workspace \{[\s\S]*?--button-primary-fg:\s*#ffffff/);
+    expect(css).toMatch(
+      /\.settings-workspace \{[\s\S]*?--button-primary-fg:\s*var\(--color-we-got-dark\)/,
+    );
     expect(css).not.toMatch(/--button-primary-bg:\s*var\(--workspace-accent-strong\)/);
     expect(css).not.toMatch(/--workspace-accent:\s*#8[Aa][Cc][Ee]00/);
     expect(css).not.toMatch(/--workspace-accent:\s*#64748b/);
@@ -94,7 +96,7 @@ describe("settings workspace outline chrome", () => {
     expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
     expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(colorCss).toMatch(
-      /\.admin-workspace,\s*\.settings-workspace \{[\s\S]*--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 18%/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 18%/,
     );
     expect(css).toMatch(
       /\.settings-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
