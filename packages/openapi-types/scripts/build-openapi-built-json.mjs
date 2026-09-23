@@ -11,9 +11,10 @@ import path from "node:path";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(scriptDir, "..");
-const sourcePath = path.resolve(packageRoot, "openapi/openapi.json");
-const schemasDir = path.resolve(packageRoot, "openapi/schemas");
-const outputPath = path.resolve(packageRoot, "openapi/generated/openapi.built.json");
+const repoRoot = path.resolve(packageRoot, "../..");
+const sourcePath = path.resolve(repoRoot, "packages/api/openapi/openapi.json");
+const schemasDir = path.resolve(repoRoot, "packages/api/openapi/schemas");
+const outputPath = path.resolve(packageRoot, "generated/openapi.built.json");
 
 function collectSchemaJsonFiles(dir) {
   if (!existsSync(dir)) {

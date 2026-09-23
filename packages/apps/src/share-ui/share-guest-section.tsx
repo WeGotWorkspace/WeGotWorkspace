@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Mail, Send } from "lucide-react";
-import type { DriveShareAtPath } from "@wgw-api-generated/drive-types";
+import type { DriveShareAtPath } from "@wgw/openapi-types/drive-types";
 import { Card } from "@/card/src/card";
 import { CardPanel } from "@/card/src/card-panel";
 import { IconButton } from "@/button/src/icon-button";

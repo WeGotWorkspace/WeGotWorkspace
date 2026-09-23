@@ -20,7 +20,7 @@ pnpm --filter @wgw/apps run build:dev
 pnpm --filter @wgw/apps run sync:runtime
 
 echo "==> Syncing API package to install tree"
-pnpm --filter @wgw/api run sync:runtime
+node packages/api/scripts/sync-runtime-api-package.mjs
 
 echo "==> Recreating Docker HTTPS stack (clean session)"
 "${COMPOSE[@]}" down

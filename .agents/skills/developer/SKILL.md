@@ -35,7 +35,7 @@ Context-loading skill for AI agents and developers working in the WeGotWorkspace
 
 ## Dev layout
 
-See [dev-environment](../dev-environment/SKILL.md) for commands, URLs, and troubleshooting. Summary: `pnpm dev` → API http://127.0.0.1:9080, full app http://127.0.0.1:5173, Storybook http://127.0.0.1:6006 — [`docs/dev-layout.md`](../../../docs/dev-layout.md).
+See [dev-environment](../dev-environment/SKILL.md) for commands, URLs, and troubleshooting. Summary: `pnpm dev` → API http://127.0.0.1:9080 and the full app http://127.0.0.1:5173. Storybook is opt-in (`pnpm dev:storybook`, http://127.0.0.1:6006). Turborepo owns JavaScript; Composer owns Laravel — [`docs/dev-layout.md`](../../../docs/dev-layout.md).
 
 ## Critical warnings
 

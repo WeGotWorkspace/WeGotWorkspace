@@ -4,7 +4,7 @@ Try app accents, cream/ink, and icon artwork without editing CSS. Winning values
 
 ## Open the catalog
 
-1. From the monorepo root: `pnpm dev:storybook` (or full `pnpm dev`).
+1. From the monorepo root: `pnpm dev:storybook`.
 2. Open [http://127.0.0.1:6006](http://127.0.0.1:6006).
 3. In the sidebar, open **Themes** — this is the designer catalog (one story per app plus Home, Login, and Installer):
 

@@ -5,12 +5,11 @@ import { generateOpenApiDomainTypes } from "./typegen-openapi-types.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(scriptDir, "..");
+const repoRoot = path.resolve(packageRoot, "../..");
 
 const watchPaths = [
-  path.resolve(packageRoot, "openapi/openapi.json"),
-  path.resolve(packageRoot, "src/Api/OpenApiDocument.php"),
-  path.resolve(packageRoot, "src/Mail/**/*.php"),
-  path.resolve(packageRoot, "src/Notes/**/*.php"),
+  path.resolve(repoRoot, "packages/api/openapi/openapi.json"),
+  path.resolve(repoRoot, "packages/api/openapi/schemas"),
 ];
 
 let running = false;

@@ -6,7 +6,7 @@ import type {
   MeetChannelWriteInput,
   MeetChatOperations,
 } from "@/meet-core/src/meet-types";
-import type { ChatChannelPatch } from "@wgw-api-generated/chat-types";
+import type { ChatChannelPatch } from "@wgw/openapi-types/chat-types";
 import type { CollectionShareWith } from "@/share-ui/collection-share";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import {

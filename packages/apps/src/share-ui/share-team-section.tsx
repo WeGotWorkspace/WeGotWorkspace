@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Users } from "lucide-react";
-import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw-api-generated/drive-types";
+import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw/openapi-types/drive-types";
 import { CardRowDivider } from "@/card/src/card-panel";
 import { buttonVariants } from "@/button/src/button";
 import {

@@ -33,7 +33,7 @@ pnpm test:api-done-gate                                 # from repo root, before
 - [ ] OpenAPI updated if HTTP contract changed (`packages/api/openapi/openapi.json`)
 - [ ] Feature tests assert status + JSON shape ([testing/test-first.md](../testing/test-first.md))
 - [ ] `composer greenfield:guard` passes
-- [ ] Typegen if contract changed: `pnpm --filter @wgw/api run openapi:build-json` + apps typegen
+- [ ] Typegen if contract changed: `pnpm --filter @wgw/openapi-types typegen`
 - [ ] New top-level SPA client routes: prefix on `UiStaticServer` + `FrontRoutingTest` ([api/SKILL.md](../api/SKILL.md))
 
 Optional local: `pnpm test:api-e2e:docker`, `pnpm test:meet-api` (meet signaling).
@@ -45,12 +45,12 @@ MCP: `run_apps_done_gate` · Bash fallback:
 ```bash
 pnpm test:apps-done-gate                 # local: typecheck + contract + Storybook smoke + coverage
 pnpm --dir packages/apps test              # Vitest only
-pnpm dev:ui                              # Storybook — mock-tier stories for changed exports
+pnpm dev:storybook                       # Storybook — mock-tier stories for changed exports
 ```
 
 - [ ] New/changed **exports** have **mock-tier** stories ([storybook/offline-first.md](../storybook/offline-first.md))
 - [ ] `pnpm check:storybook-coverage` passes (no new baseline gaps)
-- [ ] Stories run without Docker/API (`pnpm dev:ui` only)
+- [ ] Stories run without Docker/API (`pnpm dev:storybook` only)
 - [ ] Slice handlers / mock `operations` — no `@/lib/api/wgw/http` in panes ([apps-ui/components.md](../apps-ui/components.md))
 - [ ] Storybook a11y panel on new/changed stories ([storybook/a11y-testing.md](../storybook/a11y-testing.md))
 - [ ] Vitest for new/changed hooks, parsers, RTC/session logic ([testing/ui-architecture.md](../testing/ui-architecture.md))

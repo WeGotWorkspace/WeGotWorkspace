@@ -1,4 +1,4 @@
-import type { DriveShareAccess } from "@wgw-api-generated/drive-types";
+import type { DriveShareAccess } from "@wgw/openapi-types/drive-types";
 
 /** Share dialog permission levels for team and guest grants. */
 export type ShareUIPermission = "view" | "comment" | "edit" | "full";

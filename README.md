@@ -32,7 +32,7 @@ pnpm dev
 ```
 
 - **http://127.0.0.1:5173** — app (Vite HMR)
-- **http://127.0.0.1:6006** — Storybook
+- **http://127.0.0.1:6006** — Storybook (`pnpm dev:storybook`; not started by `pnpm dev`)
 - **http://127.0.0.1:9080** — API
 
 Edit **`packages/api`** and **`packages/apps`** — not `apps/wegotworkspace` during normal dev. First run bootstraps **`packages/api/.env`**, SQLite, admin user, and JWT keys.

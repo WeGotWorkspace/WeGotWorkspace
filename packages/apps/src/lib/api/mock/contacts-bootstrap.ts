@@ -1,4 +1,4 @@
-import type { AddressBook, ContactCard } from "@wgw-api-generated/contacts-types";
+import type { AddressBook, ContactCard } from "@wgw/openapi-types/contacts-types";
 import type { ContactsUIData } from "@/contacts-core/src/contacts-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 

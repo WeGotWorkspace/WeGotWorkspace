@@ -1,4 +1,4 @@
-import type { DriveShareAccess } from "@wgw-api-generated/drive-types";
+import type { DriveShareAccess } from "@wgw/openapi-types/drive-types";
 import {
   SHARE_UI_PERMISSIONS,
   accessToSelectableUIPermission,

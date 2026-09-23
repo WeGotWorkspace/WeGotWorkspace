@@ -1,0 +1,22 @@
+{
+  "name": "@wgw/openapi-types",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./generated/*.ts",
+    "./openapi.built.json": "./generated/openapi.built.json"
+  },
+  "scripts": {
+    "typegen": "node scripts/typegen-openapi-types.mjs",
+    "build": "pnpm run typegen",
+    "typegen:check": "git diff --exit-code -- generated",
+    "typegen:watch": "node scripts/typegen-openapi-types-watch.mjs"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "chokidar": "^5.0.0",
+    "openapi-typescript": "^7.13.0"
+  }
+}

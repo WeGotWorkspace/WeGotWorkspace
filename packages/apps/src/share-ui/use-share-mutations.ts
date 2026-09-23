@@ -3,7 +3,7 @@ import type {
   DriveShareAccess,
   DriveShareAtPath,
   DriveSharePrincipalEntry,
-} from "@wgw-api-generated/drive-types";
+} from "@wgw/openapi-types/drive-types";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import { uiPermissionToAccess, type ShareUIPermission } from "@/share-ui/share-access-map";
