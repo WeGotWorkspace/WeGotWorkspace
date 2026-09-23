@@ -102,9 +102,10 @@ final class JmapMailClientContractTest extends WgwDatabaseTestCase
         $emailId = $ids[0];
         $this->assertSame($emailId, $batch->json('methodResponses.1.1.list.0.id'));
         $this->assertStringContainsString(':', (string) $emailId);
+        $alreadyFlagged = (bool) ($batch->json('methodResponses.1.1.list.0.keywords.$flagged') ?? false);
 
         $flag = $this->jmap([
-            ['Email/set', ['accountId' => $accountId, 'update' => [$emailId => ['keywords/$seen' => true]]], 'c3'],
+            ['Email/set', ['accountId' => $accountId, 'update' => [$emailId => ['keywords/$flagged' => ! $alreadyFlagged]]], 'c3'],
         ])->assertOk();
         $flag->assertJsonPath('methodResponses.0.0', 'Email/set');
         $this->assertArrayHasKey($emailId, $flag->json('methodResponses.0.1.updated') ?? []);

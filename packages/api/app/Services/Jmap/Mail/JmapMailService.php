@@ -359,30 +359,39 @@ final class JmapMailService
     {
         $account = MailIdCodec::ACCOUNT_PRIMARY;
         $since = (string) ($args['sinceState'] ?? '');
-        $this->ensureAllMailboxesCached($username, $account);
-        $snapshot = $this->sync->snapshot($username, $account);
-        $current = MailStateCodec::compose($snapshot);
-        if ($since !== '' && $since !== $current) {
-            if (! MailStateCodec::isValid($since)) {
+        $sinceSnapshot = null;
+        if ($since !== '') {
+            $sinceSnapshot = MailStateCodec::parse($since);
+            if ($sinceSnapshot === null) {
                 throw new JmapMethodException('cannotCalculateChanges', 'sinceState is not a mail state string.');
             }
-            foreach ($snapshot as $mailbox => $row) {
-                $conn = $this->session->select($username, $mailbox, $account);
-                $ref = $this->session->mailboxRef($username, $account);
-                $status = MailImapClient::mailboxStatus($conn, $ref, $mailbox);
-                if ($status !== null && (int) $status['uidvalidity'] !== (int) $row['uidvalidity']) {
-                    throw new JmapMethodException('cannotCalculateChanges', 'UIDVALIDITY changed.');
-                }
+        }
+
+        $cached = $this->sync->snapshot($username, $account);
+        $conn = $this->session->connection($username, $account);
+        $ref = $this->session->mailboxRef($username, $account);
+        $names = $this->listMailboxNames($username, $account);
+        foreach ($names as $mailbox) {
+            $status = MailImapClient::mailboxStatus($conn, $ref, $mailbox);
+            $liveUv = (int) ($status['uidvalidity'] ?? 0);
+            $cachedUv = (int) ($cached[$mailbox]['uidvalidity'] ?? 0);
+            if ($cachedUv !== 0 && $liveUv !== 0 && $cachedUv !== $liveUv) {
+                throw new JmapMethodException('cannotCalculateChanges', 'UIDVALIDITY changed.');
+            }
+            $sinceUv = 0;
+            if ($sinceSnapshot !== null) {
+                $sinceUv = (int) ($sinceSnapshot[$mailbox]['uidvalidity'] ?? 0);
+            }
+            if ($sinceUv !== 0 && $liveUv !== 0 && $sinceUv !== $liveUv) {
+                throw new JmapMethodException('cannotCalculateChanges', 'UIDVALIDITY changed.');
             }
         }
 
         $created = [];
         $updated = [];
         $destroyed = [];
-        $conn = $this->session->connection($username, $account);
-        $ref = $this->session->mailboxRef($username, $account);
-        foreach ($this->listMailboxNames($username, $account) as $mailbox) {
-            $delta = $this->sync->syncMailbox($username, $account, $mailbox, $conn, $ref);
+        foreach ($names as $mailbox) {
+            $delta = $this->sync->syncMailbox($username, $account, $mailbox, $conn, $ref, $sinceSnapshot);
             $uv = $delta['uidvalidity'];
             foreach ($delta['created'] as $uid) {
                 $created[] = MailIdCodec::emailId($account, $mailbox, $uv, $uid);
@@ -398,7 +407,7 @@ final class JmapMailService
         return [
             'accountId' => $username,
             'oldState' => $since,
-            'newState' => $this->state($username, $account),
+            'newState' => MailStateCodec::compose($this->sync->snapshot($username, $account)),
             'hasMoreChanges' => false,
             'created' => $created,
             'updated' => $updated,
@@ -746,7 +755,10 @@ final class JmapMailService
         $conn = $this->session->connection($username, $account);
         $ref = $this->session->mailboxRef($username, $account);
         if (! MailImapClient::appendRfc822($conn, $ref, $mailbox, $rfc822, '\\Draft')) {
-            throw new JmapMethodException('serverFail', 'Could not append draft.');
+            MailImapClient::createMailbox($conn, $ref, $mailbox);
+            if (! MailImapClient::appendRfc822($conn, $ref, $mailbox, $rfc822, '\\Draft')) {
+                throw new JmapMethodException('serverFail', 'Could not append draft.');
+            }
         }
         $this->session->select($username, $mailbox, $account);
         $status = MailImapClient::mailboxStatus($conn, $ref, $mailbox);
@@ -1003,11 +1015,13 @@ final class JmapMailService
      */
     private function listMailboxNames(string $username, string $account): array
     {
+        $conn = $this->session->connection($username, $account);
+        $ref = $this->session->mailboxRef($username, $account);
         $names = [];
-        foreach ($this->listMailboxes($username, $account) as $row) {
-            $parsed = MailIdCodec::parseMailboxId((string) $row['id']);
-            if ($parsed !== null) {
-                $names[] = $parsed['mailbox'];
+        foreach (MailImapClient::listMailboxes($conn, $ref) as $row) {
+            $mb = (string) ($row['mailbox'] ?? '');
+            if ($mb !== '') {
+                $names[] = $mb;
             }
         }
 

@@ -41,6 +41,11 @@ final class MailSyncStore
     /**
      * Refresh one mailbox from live IMAP into the cache.
      *
+     * When `$sinceSnapshot` is set (Email/changes), created/updated are
+     * computed against that sinceState — not against the cache, which other
+     * methods in the same session may already have healed.
+     *
+     * @param  array<string, array{uidvalidity: int, uidnext: int, window: string}>|null  $sinceSnapshot
      * @return array{uidvalidity: int, uidnext: int, window: string, created: list<int>, destroyed: list<int>, updated: list<int>}
      */
     public function syncMailbox(
@@ -49,6 +54,7 @@ final class MailSyncStore
         string $mailbox,
         Connection $conn,
         string $ref,
+        ?array $sinceSnapshot = null,
     ): array {
         $status = MailImapClient::mailboxStatus($conn, $ref, $mailbox);
         if ($status === null) {
@@ -165,6 +171,9 @@ final class MailSyncStore
         }
 
         $windowHash = hash('sha256', implode('|', $windowParts));
+        if ($sinceSnapshot !== null) {
+            [$created, $updated] = $this->deltaVersusSince($mailbox, $sinceSnapshot, $liveWindow, $windowHash);
+        }
         JmapMailSync::query()->updateOrInsert(
             [
                 'username' => $username,
@@ -222,6 +231,38 @@ final class MailSyncStore
             ->first();
 
         return $row !== null ? (string) $row->thread_key : null;
+    }
+
+    /**
+     * @param  array<string, array{uidvalidity: int, uidnext: int, window: string}>  $sinceSnapshot
+     * @param  list<int>  $liveWindow
+     * @return array{0: list<int>, 1: list<int>}
+     */
+    private function deltaVersusSince(
+        string $mailbox,
+        array $sinceSnapshot,
+        array $liveWindow,
+        string $windowHash,
+    ): array {
+        if (! array_key_exists($mailbox, $sinceSnapshot)) {
+            return [array_values(array_unique($liveWindow)), []];
+        }
+        $prevNext = (int) $sinceSnapshot[$mailbox]['uidnext'];
+        $sinceWindow = (string) $sinceSnapshot[$mailbox]['window'];
+        $created = [];
+        $updated = [];
+        foreach ($liveWindow as $uid) {
+            if ($uid >= $prevNext) {
+                $created[] = $uid;
+
+                continue;
+            }
+            if ($sinceWindow !== $windowHash) {
+                $updated[] = $uid;
+            }
+        }
+
+        return [array_values(array_unique($created)), array_values(array_unique($updated))];
     }
 
     private function flagsHash(object $ov): string
