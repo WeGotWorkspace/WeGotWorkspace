@@ -188,7 +188,7 @@ export const AppIcons: Story = {
           <WorkspaceAppIcon
             key={`tile-${appId}`}
             appId={appId as WorkspaceAppId}
-            className="size-32 rounded-[16px] shadow-lg"
+            className="size-32 rounded-[calc(100%/6)] shadow-lg"
           />
         ))}
       </div>

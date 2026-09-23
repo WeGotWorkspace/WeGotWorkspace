@@ -37,6 +37,19 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
     }
   });
 
+  it("keeps tile backgrounds square (no baked-in corner radius)", () => {
+    for (const appId of WORKSPACE_APP_IDS) {
+      const markup = WORKSPACE_APP_ICON_INLINE[appId];
+      // Background layer is the first rect/path with --wai-bg; it must not use tile rx.
+      const bgLayer = markup.match(
+        /<(?:rect|path)[^>]*fill="var\(--wai-bg[^"]*"[^>]*\/?>|<(?:rect|path)[^>]*rx="45"[^>]*fill="var\(--wai-bg/,
+      )?.[0];
+      expect(bgLayer, `${appId} should have a --wai-bg layer`).toBeTruthy();
+      expect(bgLayer).not.toMatch(/\brx="/);
+      expect(markup).not.toMatch(/<(?:rect|path)[^>]*\brx="45"/);
+    }
+  });
+
   it("keeps notes as the orange notepad, not the contacts person", () => {
     const notes = WORKSPACE_APP_ICON_INLINE.notes;
     const contacts = WORKSPACE_APP_ICON_INLINE.contacts;

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 270" fill="none">
-<rect width="270" height="270" fill="var(--wai-bg, #ffc800)" rx="45"/>
+<rect width="270" height="270" fill="var(--wai-bg, #ffc800)"/>
 <path fill="var(--wai-fg, #ffffff)" d="M0 45C0 20.147 20.147 0 45 0h180c24.853 0 45 20.147 45 45v13H0z"/>
 <rect width="179" height="21" x="46" y="93.208" fill="var(--wai-fg, #ffffff)" rx="10.5"/>
 <rect width="90" height="21" x="46" y="197.625" fill="var(--wai-fg, #ffffff)" rx="10.5"/>

@@ -9,10 +9,13 @@ const homeCss = readFileSync(join(here, "../apps-home-screen/src/apps-home-scree
 const homeTsx = readFileSync(join(here, "../apps-home-screen/src/apps-home-screen.tsx"), "utf8");
 
 describe("workspace app icon radius", () => {
-  it("clips full-color tiles at 16px in CSS, not in SVG source", () => {
-    expect(iconCss).toMatch(/--workspace-app-icon-radius:\s*16px/);
+  it("clips full-color tiles at 1/6 in CSS, not in SVG source", () => {
+    expect(iconCss).toMatch(/--workspace-app-icon-radius:\s*calc\(100% \/ 6\)/);
     expect(iconCss).toMatch(
       /\.workspace-app-icon--tile \{[\s\S]*border-radius:\s*var\(--workspace-app-icon-radius/,
+    );
+    expect(iconCss).toMatch(
+      /\.workspace-app-icon--switch-trigger \{[\s\S]*border-radius:\s*calc\(100% \/ 6\)/,
     );
     expect(homeCss).toMatch(
       /\.apps-home-screen__tile-icon \{[\s\S]*border-radius:\s*var\(--workspace-app-icon-radius/,
