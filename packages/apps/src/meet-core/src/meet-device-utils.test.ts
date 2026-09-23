@@ -74,6 +74,11 @@ describe("meet call device menus", () => {
     expect(selectedMeetDeviceOptionId(menus.microphones, microphone.deviceId)).toBe(microphone.id);
   });
 
+  it("shows the enumerated speaker when the initial default id is not a menu item", () => {
+    const menus = meetCallDeviceMenus(partitionMeetMediaDevices(mixedDevices));
+    expect(selectedMeetDeviceOptionId(menus.speakers, "default")).toBe(menus.speakers[0]!.id);
+  });
+
   it("does not treat microphones as speakers", () => {
     expect(meetSpeakerOptions(mixedDevices.filter((entry) => entry.kind === "audioinput"))).toEqual(
       [{ id: "default", label: "System default" }],
