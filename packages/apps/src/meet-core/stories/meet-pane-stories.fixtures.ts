@@ -99,6 +99,7 @@ export function createMeetStoryController(
     localVideoRef,
     getLocalStream: () => null,
     audioInputs: [],
+    audioOutputs: [],
     videoInputs: [],
     selectedMicId: "mic-1",
     selectedCamId: "cam-1",
