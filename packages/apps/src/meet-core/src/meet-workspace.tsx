@@ -98,7 +98,10 @@ import {
 import type { ChatSendPayload } from "@/chat-ui/src/chat-types";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { ChatMessage, MeetChannel, MeetChannelKind } from "@/meet-core/src/meet-types";
-import { useMeetCallLayout } from "@/meet-core/src/use-meet-call-layout";
+import {
+  meetInitialCallLayoutForChannel,
+  useMeetCallLayout,
+} from "@/meet-core/src/use-meet-call-layout";
 import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
 import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";
 import type { MeetWorkspaceProps } from "@/meet-core/src/meet-workspace-props";
@@ -365,10 +368,12 @@ export function MeetWorkspace({
     },
     [toast],
   );
-  const [sidebarOpen, setSidebarOpen] = useState(
-    () =>
-      !meetCallStageShowsStage(initialCallLayout ?? (callActive ? "side-by-side" : "collapsed")),
+  const mountedCallLayout = meetInitialCallLayoutForChannel(
+    initialChannelId ?? data.channels?.[0]?.id ?? null,
+    initialCallLayout ?? (callActive ? "side-by-side" : "collapsed"),
+    liveCallChannelId,
   );
+  const [sidebarOpen, setSidebarOpen] = useState(() => !meetCallStageShowsStage(mountedCallLayout));
   const [channels, setChannels] = useState<MeetChannel[]>(() => data.channels ?? []);
   const [selectedId, setSelectedId] = useState<string | null>(
     () => initialChannelId ?? data.channels?.[0]?.id ?? null,
@@ -389,9 +394,7 @@ export function MeetWorkspace({
   const [channelCaughtUp, setChannelCaughtUp] = useState(true);
   const [threadCaughtUp, setThreadCaughtUp] = useState(true);
   const [callChatOpen, setCallChatOpen] = useState(() => {
-    const startsExpanded = meetCallStageShowsStage(
-      initialCallLayout ?? (callActive ? "side-by-side" : "collapsed"),
-    );
+    const startsExpanded = meetCallStageShowsStage(mountedCallLayout);
     return startsExpanded || Boolean(initialThreadId) || defaultMeetWorkspacePanelOpen();
   });
 
