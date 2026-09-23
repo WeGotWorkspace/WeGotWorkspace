@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Husky pre-push: run apps done gate when packages/apps/** changed in the push range.
+# Husky pre-push: run the local apps done gate when packages/apps/** changed
+# in the push range (typecheck, OpenAPI contract, Storybook smoke, coverage).
+# Unit and jsdom Vitest run in CI (APPS_DONE_GATE_FULL=1), not here.
 # Otherwise keep the lightweight typecheck that pre-push ran before #250.
 set -euo pipefail
 # Leftover Vitest/Storybook workers can SIGPIPE the hook after a green gate.
@@ -48,7 +50,7 @@ fi
 
 if [ "$apps_changed" -eq 1 ]; then
   gate_log="$(mktemp -t wgw-apps-done-gate.XXXXXX)"
-  echo "pre-push: packages/apps changed — running pnpm test:apps-done-gate"
+  echo "pre-push: packages/apps changed — running local apps done gate (unit + jsdom run in CI)"
   echo "pre-push: log ${gate_log}"
   # Vitest must not inherit git's pre-push stdin (the ref list). Gate logs must
   # not stream on the hook pipe — ~128KB fills it and git dies with SIGPIPE.
@@ -61,7 +63,7 @@ if [ "$apps_changed" -eq 1 ]; then
     tail -n 40 "${gate_log}" >&2 || true
     exit "$gate_status"
   fi
-  echo "pre-push: apps done-gate passed"
+  echo "pre-push: local apps done gate passed (unit + jsdom run in CI)"
   exit 0
 else
   echo "pre-push: no packages/apps changes — running typecheck"

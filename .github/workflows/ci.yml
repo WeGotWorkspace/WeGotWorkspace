@@ -140,6 +140,10 @@ jobs:
           fi
 
       - name: Apps quality gate
+        env:
+          # Local pre-push skips unit + jsdom. CI runs both; jsdom shards
+          # pool themselves from CPU and memory (see jsdom-concurrency.mjs).
+          APPS_DONE_GATE_FULL: "1"
         run: pnpm run ci:quality:apps
 
   build:
