@@ -1,9 +1,9 @@
 @import "../../styles.css" reference;
 
 /**
- * Product Create/Edit channel dialog — cream/paper surface like Notes/Tasks.
+ * Product Create/Edit channel dialog — login Soft paper and field wash.
  * Lobby popovers keep `.meet-dialog-surface` (dark). In-call leave/end uses
- * cream `.meet-call-dialog`.
+ * the same Soft paper on `.meet-call-dialog`.
  */
 .meet-channel-dialog {
   --workspace-accent: var(--color-we-got-sand);
@@ -25,21 +25,26 @@
   --foreground: var(--color-we-got-dark);
   --color-foreground: var(--color-we-got-dark);
   --muted-foreground: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
-  --background: var(--workspace-surface);
-  --input-background: var(--workspace-surface);
-  --input-background-focus: var(--workspace-surface);
-  --accent: color-mix(in oklab, var(--workspace-accent) 12%, var(--workspace-surface));
+  --background: var(--color-we-got-soft);
+  --input-background: color-mix(in oklab, var(--color-we-got-dark) 6%, var(--color-we-got-soft));
+  --input-background-focus: color-mix(
+    in oklab,
+    var(--color-we-got-dark) 8%,
+    var(--color-we-got-soft)
+  );
+  --accent: color-mix(in oklab, var(--workspace-accent) 12%, var(--color-we-got-soft));
   --accent-foreground: var(--color-we-got-dark);
-  --popover: var(--workspace-surface);
+  --popover: var(--color-we-got-soft);
   --popover-foreground: var(--color-we-got-dark);
   --modal-title-foreground: var(--color-we-got-dark);
   --card-title-icon-color: var(--workspace-accent);
   --card-title-color: var(--color-we-got-dark);
   --card-description-color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
   --card-panel-border-color: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
-  --card-panel-bg: color-mix(in oklab, var(--color-we-got-dark) 3%, transparent);
+  --card-surface-bg: transparent;
+  --card-panel-bg: transparent;
   --card-row-hover-bg: color-mix(in oklab, var(--color-we-got-dark) 5%, transparent);
-  background-color: var(--workspace-surface);
+  background-color: var(--color-we-got-soft);
   color: var(--color-we-got-dark);
   border-color: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
 }

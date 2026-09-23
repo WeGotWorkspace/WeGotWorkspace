@@ -1,0 +1,38 @@
+@import "../styles.css" reference;
+
+/**
+ * Light dialogs and popovers use the login pair:
+ * panel `--color-we-got-soft`, fields 6% / 8% Dark into Soft (oklab).
+ *
+ * Set on the portaled surface (`DialogContent`, `AlertDialogContent`,
+ * `PopoverContent`). Do not change root `--background` / `--popover` — those
+ * also paint the app shell, menus, and select dropdowns. Workspace panes keep
+ * the softer `--workspace-surface` from `workspace-color.css`.
+ *
+ * Dark Meet lobby (`.meet-dialog-surface`, `.meet-popover-surface`) opts out.
+ * Inset cards use the panel paper (`--card-surface-bg: transparent`) so they
+ * do not add a third gray wash.
+ */
+.overlay-paper:not(.meet-dialog-surface):not(.meet-popover-surface) {
+  --workspace-surface: var(--color-we-got-soft);
+  --background: var(--color-we-got-soft);
+  --popover: var(--color-we-got-soft);
+  --card: var(--color-we-got-soft);
+  --color-background: var(--color-we-got-soft);
+  --color-popover: var(--color-we-got-soft);
+  --color-card: var(--color-we-got-soft);
+  --input-background: color-mix(in oklab, var(--color-we-got-dark) 6%, var(--color-we-got-soft));
+  --input-background-focus: color-mix(
+    in oklab,
+    var(--color-we-got-dark) 8%,
+    var(--color-we-got-soft)
+  );
+  --input-background-disabled: color-mix(
+    in oklab,
+    var(--color-we-got-dark) 4%,
+    var(--color-we-got-soft)
+  );
+  --card-surface-bg: transparent;
+  --card-panel-bg: transparent;
+  background-color: var(--color-we-got-soft);
+}
