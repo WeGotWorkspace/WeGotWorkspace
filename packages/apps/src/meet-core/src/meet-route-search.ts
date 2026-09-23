@@ -118,17 +118,18 @@ export function buildMeetMeetingInviteLink(
   return url.toString();
 }
 
-/** Channel vs meeting path from collection kind. */
+/**
+ * Member link for a collection. Channels and DMs use their slug. An ad-hoc
+ * meeting always uses its room code — never a name slug.
+ */
 export function buildMeetCollectionInviteLink(
   channel: { id: string; kind?: string | null; guestRoomCode?: string | null },
   origin = "https://workspace.example.com",
 ): string {
   if (channel.kind === "meeting") {
-    const room = channel.guestRoomCode?.trim();
-    if (room && isMeetRoomCode(room)) {
-      return buildMeetGuestCallLink(room, origin);
-    }
-    return buildMeetMeetingInviteLink(channel.id, origin);
+    const room = channel.guestRoomCode?.trim().toLowerCase() ?? "";
+    const id = room && isMeetRoomCode(room) ? room : meetPublicChannelId(channel.id).toLowerCase();
+    return buildMeetMeetingInviteLink(id, origin);
   }
   return buildMeetChannelInviteLink(channel.id, origin);
 }

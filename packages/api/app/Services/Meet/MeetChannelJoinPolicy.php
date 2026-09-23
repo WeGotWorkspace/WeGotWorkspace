@@ -16,17 +16,20 @@ use Illuminate\Database\Eloquent\Builder;
  * Room↔channel convention (agreed with the frontend): a call in a chat
  * channel uses the deterministic room id = the channel collection id
  * (`chat-{ulid}` / `dm-…`); meeting-kind channels may additionally carry a
- * guest-link `room_code` in chat_channel_meta. Both resolve to the channel.
+ * stored `room_code` in chat_channel_meta. Both resolve to the channel.
+ * That code is the ad-hoc meeting id. Name slugs are for channels and DMs.
  *
- * Policy (enforced in MeetSignalingService::join / ::chat — server-side, not
- * a client naming convention):
+ * Policy (enforced in MeetSignalingService join, poll, send, and chat —
+ * server-side, not a client naming convention):
  * - authenticated users WITH channel ACL read access (owner / sharee / group
  *   member, via CalendarCollectionAccess through ChatChannelRepository) join
  *   directly and are hosts — every member may admit;
- * - authenticated users WITHOUT access and guests are forced onto the knock
- *   path: a non-knock join is rejected until a member's admit control
- *   message marked the knocking peer as admitted;
- * - guests never join dm- rooms;
+ * - authenticated users WITHOUT access are forced onto the knock path: a
+ *   non-knock join is rejected until a member's admit control message marked
+ *   the knocking peer as admitted;
+ * - guests (no account) never join a named channel, team channel, or direct
+ *   message. An ad-hoc meeting is open on its room code (`xxxx-xxxx-xxxx`)
+ *   only — not on a name slug;
  * - rooms that resolve to no channel keep the legacy behavior untouched.
  */
 final class MeetChannelJoinPolicy
@@ -96,6 +99,42 @@ final class MeetChannelJoinPolicy
         }
 
         return null;
+    }
+
+    /**
+     * True when a guest must not enter this room. Named channels, team
+     * channels, and direct messages are closed. An ad-hoc meeting is open
+     * only when the room is its `xxxx-xxxx-xxxx` id. A name slug that still
+     * points at a meeting stays closed.
+     */
+    public function isGuestClosedRoom(string $room): bool
+    {
+        $channel = $this->resolveChannelForRoom($room);
+        if ($channel !== null) {
+            if ($channel->isDm) {
+                return true;
+            }
+            $meta = ChatChannelMeta::query()->where('calendarid', $channel->calendarId)->first(['kind', 'room_code']);
+            if ($meta === null || $meta->kind !== ChatChannelMeta::KIND_MEETING) {
+                return true;
+            }
+            $code = is_string($meta->room_code) ? strtolower(trim($meta->room_code)) : '';
+            $asked = strtolower(trim($room));
+
+            return ! ($code !== '' && $asked === $code && self::isAdHocMeetingCode($code));
+        }
+
+        if (self::isAdHocMeetingCode($room)) {
+            return false;
+        }
+
+        return $this->resolveMeetingInviteRoom($room) !== null;
+    }
+
+    /** Ad-hoc meeting id. Name slugs never match. */
+    public static function isAdHocMeetingCode(string $room): bool
+    {
+        return preg_match('/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/', strtolower(trim($room))) === 1;
     }
 
     /**

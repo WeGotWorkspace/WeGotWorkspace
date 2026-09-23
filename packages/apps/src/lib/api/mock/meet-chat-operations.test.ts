@@ -21,7 +21,7 @@ describe("createMeetChatOperations", () => {
     expect(message.previews).toEqual([preview]);
   });
 
-  it("creates a meeting channel with guest access and a room code", async () => {
+  it("creates a meeting channel with a room code and no guest door", async () => {
     const ops = createMeetChatOperations({
       channels: [],
       messages: [],
@@ -30,8 +30,9 @@ describe("createMeetChatOperations", () => {
 
     const meeting = await ops.createChannel!({ name: "Studio", kind: "meeting" });
     expect(meeting?.kind).toBe("meeting");
-    expect(meeting?.guestAccess).toBe(true);
+    expect(meeting?.guestAccess).toBeUndefined();
     expect(meeting?.guestRoomCode).toMatch(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
+    expect(meeting?.id).toBe(`chat-${meeting?.guestRoomCode}`);
   });
 
   it("keeps a supplied ad-hoc meeting room code instead of minting a new one", async () => {
@@ -47,6 +48,7 @@ describe("createMeetChatOperations", () => {
       guestRoomCode: "g744-8kfg-adjz",
     });
     expect(meeting?.guestRoomCode).toBe("g744-8kfg-adjz");
+    expect(meeting?.id).toBe("chat-g744-8kfg-adjz");
   });
 
   it("deleteChannel drops the row and its messages", async () => {
