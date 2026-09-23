@@ -45,6 +45,9 @@ describe("app sidebar header notifications", () => {
     expect(css).toMatch(
       /\.app-sidebar__notifications \{[\s\S]*--button-outline-border-color:\s*var\(\s*--app-sidebar-border-color/,
     );
+    expect(css).toMatch(
+      /\.app-sidebar__notifications \{[\s\S]*--button-outline-hover-background:\s*var\(\s*--app-sidebar-item-hover-bg\s*\)/,
+    );
   });
 });
 

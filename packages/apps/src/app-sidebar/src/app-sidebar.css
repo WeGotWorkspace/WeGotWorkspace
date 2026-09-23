@@ -151,7 +151,8 @@
   );
   --button-outline-color: var(--color-we-got-dark);
   --button-outline-hover-color: var(--color-we-got-dark);
-  --button-outline-hover-background: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
+  /* Idle stays transparent (outline). Hover uses the same accent wash as nav items. */
+  --button-outline-hover-background: var(--app-sidebar-item-hover-bg);
 }
 
 .app-sidebar__scroll {

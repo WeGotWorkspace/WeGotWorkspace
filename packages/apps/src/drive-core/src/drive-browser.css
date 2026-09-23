@@ -106,7 +106,11 @@
 }
 
 .drive-workspace .drive-folder-tile--idle {
-  background-color: color-mix(in oklab, var(--color-we-got-dark) 5%, transparent);
+  background-color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-emerald)) 5%,
+    transparent
+  );
 }
 
 .drive-workspace .drive-folder-tile--idle:hover {

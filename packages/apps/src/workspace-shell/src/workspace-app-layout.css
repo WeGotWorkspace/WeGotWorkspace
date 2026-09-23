@@ -142,21 +142,19 @@
     color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
   );
   /*
-   * Opaque mark wash: darken the sidebar (not a transparent ink glaze).
-   * White-on-12%-white over Docs blue (#2563eb) flattened to ~4.17:1.
-   * 16% black into `--app-sidebar-bg` keeps white glyphs AA on navy/blue
-   * and ink glyphs AA on cream/mint. Do not inherit selected-chip SST.
+   * Accent wash on the sidebar surface, same family as nav item tints.
+   * Ink glyphs stay readable on the light mix. Do not inherit selected-chip SST.
    */
   --user-avatar-bg: color-mix(
-    in oklab,
-    #000000 16%,
-    var(--app-sidebar-bg, var(--color-we-got-soft))
+    in oklch,
+    var(--workspace-accent) 16%,
+    var(--app-sidebar-bg, var(--workspace-surface, var(--color-we-got-soft)))
   );
   --user-avatar-fg: var(--color-we-got-dark);
-  --user-avatar-border: color-mix(in oklab, var(--color-we-got-dark) 28%, transparent);
+  --user-avatar-border: color-mix(in oklch, var(--workspace-accent) 28%, transparent);
   --user-avatar-hover-bg: color-mix(
-    in oklab,
-    #000000 22%,
-    var(--app-sidebar-bg, var(--color-we-got-soft))
+    in oklch,
+    var(--workspace-accent) 22%,
+    var(--app-sidebar-bg, var(--workspace-surface, var(--color-we-got-soft)))
   );
 }

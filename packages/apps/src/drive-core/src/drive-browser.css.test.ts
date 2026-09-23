@@ -32,6 +32,7 @@ describe("drive browser grid + tile chrome (canonical for Docs + Drive)", () => 
   });
 
   it("adds idle hover washes lighter than selected accent mixes", () => {
+    expect(css).toMatch(/\.drive-folder-tile--idle\s*\{[\s\S]*workspace-accent[\s\S]*5%/);
     expect(css).toMatch(/\.drive-folder-tile--idle:hover\s*\{[\s\S]*workspace-accent[\s\S]*8%/);
     expect(css).toMatch(
       /\.drive-file-tile:not\(\.drive-file-tile--selected\):hover\s+\.drive-file-tile__preview\s*\{[\s\S]*workspace-accent[\s\S]*6%/,
