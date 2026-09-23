@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 270" fill="none">
-<rect width="269.853" height="269.947" fill="var(--wai-bg, #0045ff)" rx="45"/>
+<rect width="270" height="270" fill="var(--wai-bg, #0045ff)"/>
 <rect width="179" height="21.163" x="45" y="97.612" fill="var(--wai-fg, #ffffff)" rx="10.581"/>
 <rect width="90" height="21.163" x="45" y="202.837" fill="var(--wai-fg, #ffffff)" rx="10.581"/>
 <rect width="179" height="21" x="45" y="45" fill="var(--wai-fg, #ffffff)" rx="10.5"/>

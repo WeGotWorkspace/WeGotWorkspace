@@ -46,7 +46,7 @@ export const Default: Story = {
 };
 
 export const ConnectAssistant: Story = {
-  name: "Connect assistant",
+  name: "Connect Assistant",
   parameters: {
     routerPath: "/login?return=%2Foauth%2Fauthorize",
     docs: {
@@ -59,8 +59,8 @@ export const ConnectAssistant: Story = {
   render: () => <LoginScreen returnPath="/oauth/authorize" passwordRecoveryEnabled />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText("Connect assistant")).toBeTruthy();
-    await expect(canvas.getByText("Welcome back.")).toBeTruthy();
+    await expect(canvas.getByRole("heading", { name: "Connect Assistant" })).toBeTruthy();
+    await expect(canvas.queryByText("Welcome back.")).toBeNull();
     await expect(canvas.getByRole("button", { name: "Sign in" })).toBeTruthy();
   },
 };

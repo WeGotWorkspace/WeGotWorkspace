@@ -43,7 +43,7 @@ Designer URL examples (Storybook id encoding may vary slightly):
 | Story                      | State                                               |
 | -------------------------- | --------------------------------------------------- |
 | `Login`                    | Sign-in form, password recovery link on             |
-| `Connect assistant`        | Same form with MCP `return=/oauth/authorize` copy   |
+| `Connect Assistant`        | Same form with MCP `return=/oauth/authorize` copy   |
 | `Recovery off`             | Sign-in without forgot-password link                |
 | `Forgot / request success` | Forgot-password form → success message after submit |
 | `Reset / form`             | Reset-password form with valid token                |

@@ -90,10 +90,10 @@ describe("LoginScreen return path", () => {
     });
   });
 
-  it("shows Connect assistant eyebrow for oauth authorize return", () => {
+  it("shows Connect Assistant title for oauth authorize return", () => {
     render(<LoginScreen returnPath="/oauth/authorize" passwordRecoveryEnabled={false} />);
-    expect(screen.getByText("Connect assistant")).toBeTruthy();
-    expect(screen.getByText("Welcome back.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Connect Assistant" })).toBeTruthy();
+    expect(screen.queryByText("Welcome back.")).toBeNull();
   });
 
   it("establishes a web session and assigns the authorize URL", async () => {
