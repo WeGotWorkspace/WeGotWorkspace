@@ -8,7 +8,10 @@
  * Do NOT apply universally — that kills interactive Storybook transitions
  * (e.g. installer engine-panel). Scope to:
  * - `body.isChromatic` — added by Chromatic during capture (Capture 8+)
- * - `html[data-chromatic-reduced-motion]` — set by preview.ts under Storybook Vitest
+ * - `html[data-chromatic-reduced-motion]` — set by preview.ts for Storybook
+ *   Vitest and Chromatic UA (play runs before body.isChromatic may exist)
+ * - `@media (prefers-reduced-motion: reduce)` — Chromatic sets this via
+ *   parameters.chromatic.prefersReducedMotion; also honors OS preference
  */
 body.isChromatic *,
 body.isChromatic *::before,
@@ -19,4 +22,14 @@ html[data-chromatic-reduced-motion] *::after {
   animation: none !important;
   transition: none !important;
   scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, screen, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarNewMenu } from "@/calendar-core/src/calendar-new-menu";
 import "@/calendar-core/src/calendar-workspace.css";
@@ -29,22 +29,30 @@ export const Default: Story = {
   tags: ["vitest-ci"],
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
+    const menuTrigger = () =>
+      canvas.getByRole("button", { name: defaultCalendarLabels.newEventMenu });
     await userEvent.click(canvas.getByRole("button", { name: defaultCalendarLabels.newEvent }));
     await expect(args.onCreateEvent).toHaveBeenCalledOnce();
 
-    await userEvent.click(canvas.getByRole("button", { name: defaultCalendarLabels.newEventMenu }));
+    await userEvent.click(menuTrigger());
     await userEvent.click(
       screen.getByRole("button", { name: defaultCalendarLabels.createCalendar }),
     );
     await expect(args.onCreateCalendar).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(menuTrigger()).toBeEnabled();
+    });
 
-    await userEvent.click(canvas.getByRole("button", { name: defaultCalendarLabels.newEventMenu }));
+    await userEvent.click(menuTrigger());
     await userEvent.click(
       screen.getByRole("button", { name: defaultCalendarLabels.subscribeCalendar }),
     );
     await expect(args.onSubscribeCalendar).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(menuTrigger()).toBeEnabled();
+    });
 
-    await userEvent.click(canvas.getByRole("button", { name: defaultCalendarLabels.newEventMenu }));
+    await userEvent.click(menuTrigger());
     await userEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.importIcs }));
     await expect(args.onImportEvents).toHaveBeenCalledOnce();
   },

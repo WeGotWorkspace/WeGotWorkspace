@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, screen, userEvent } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor } from "storybook/test";
 import { CalendarImportDialog } from "@/calendar-core/src/calendar-import-dialog";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
@@ -53,9 +53,11 @@ export const ExistingDestination: Story = {
     );
 
     await userEvent.click(newCalendar);
-    await expect(screen.getByLabelText(defaultCalendarLabels.calendarNameLabel)).toHaveValue(
-      "team-offsite",
-    );
+    await waitFor(() => {
+      expect(screen.getByLabelText(defaultCalendarLabels.calendarNameLabel)).toHaveValue(
+        "team-offsite",
+      );
+    });
     await expect(
       destinationTrigger(defaultCalendarLabels.newCalendar).querySelector(
         ".color-swatch-trigger__dot",

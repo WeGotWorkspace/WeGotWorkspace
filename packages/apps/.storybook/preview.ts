@@ -17,8 +17,14 @@ import { AppToaster } from "../src/ui/sonner";
 import { TooltipProvider } from "../src/ui/tooltip";
 
 // Vitest storybook project defines STORYBOOK_REDUCED_MOTION=1 (vitest.config.ts).
-// Interactive `storybook dev` leaves this unset so height/opacity transitions run.
-if (import.meta.env.STORYBOOK_REDUCED_MOTION === "1") {
+// Chromatic capture sets a Chromatic UA (and often prefers-reduced-motion) but may
+// add `body.isChromatic` only around snapshot time — set the attribute at load so
+// play functions get `animation: none` before menus/dialogs try to unmount.
+// Interactive `storybook dev` leaves both unset so height/opacity transitions run.
+const chromaticUa =
+  typeof navigator !== "undefined" &&
+  (/Chromatic/.test(navigator.userAgent) || /chromatic=true/.test(location.href));
+if (import.meta.env.STORYBOOK_REDUCED_MOTION === "1" || chromaticUa) {
   document.documentElement.setAttribute("data-chromatic-reduced-motion", "");
 }
 

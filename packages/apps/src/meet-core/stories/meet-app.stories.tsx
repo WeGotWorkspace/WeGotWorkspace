@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { meetLabels } from "@/meet-core/src/meet-labels";
@@ -225,7 +225,9 @@ export const CallBar: Story = {
     await expect(body.getByText(meetLabels.cameraLabel)).toBeInTheDocument();
     await expect(body.getByText(meetLabels.speakerLabel)).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
-    await expect(body.queryByText(meetLabels.microphoneLabel)).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(body.queryByText(meetLabels.microphoneLabel)).not.toBeInTheDocument();
+    });
   },
 };
 
