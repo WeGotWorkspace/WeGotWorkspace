@@ -24,7 +24,7 @@ Meet **UI** is in `packages/apps` (`meet-core`); client RTC channel is `meet`.
 | Chat | `POST /rooms/{roomId}/messages` |
 | RTC config | `GET /rooms/{roomId}/configuration` |
 | Reserve room | `POST /meetings/rooms` (`room` + `ownerPrincipal`, optional `expiresAt`) |
-| Room status | `GET /meetings/rooms/{roomId}` — guests `{ reserved, active }` for an ad-hoc room code; owner-principal member or `createdBy` get the full body; **404** = unknown. Named channels, DMs, and meeting name slugs are **404** for guests. Authenticated callers still see `active` on those rooms. |
+| Room status | `GET /meetings/rooms/{roomId}` — guests `{ reserved, active }` for an ad-hoc room code; owner-principal member or `createdBy` get the full body; **404** = unknown. Named channels, DMs, meeting name slugs, and any room that is not an ad-hoc code are **404** for guests. Authenticated callers still see `active` on those rooms. |
 | Patch expiry | `PATCH /meetings/rooms/{roomId}` (`expiresAt`; `createdBy` or owner-principal member) |
 
 For meet rooms, `roomId` equals the room code (e.g. `abcd-efgh-ijkl`).
@@ -35,9 +35,9 @@ A call in a chat channel uses the deterministic room id = the channel collection
 
 - **Channel member** (owner / sharee / group member — any ACL read access via `ChatChannelRepository`): joins directly, never knocks, and is a host (any member may admit).
 - **Internal non-member**: forced onto the knock path. A non-knock join is rejected with `knock_required` (403) unless the peer was previously admitted. Knock on a **meeting invite** (`chat-{slug}` / reserved leftover) may wait in an empty room; other channel rooms and unknown leftovers still return `room_not_active` 404 when nobody is joinable.
-- **Guest (no account)**: refused on named channels, team channels, and direct messages. Join, knock, poll, and chat return `forbidden` (403), so that chat is not readable. An ad-hoc meeting is open on its room code (`xxxx-xxxx-xxxx`) only. A name slug that still points at a meeting is **404** on `GET /meetings/rooms/{id}` for guests.
-- **Admission** is recorded server-side when a channel *member* sends an `admit` control message through the chat endpoint: the target peer row in `meet_peers` gets `admitted = 1`, so the knocker's non-knock re-join (same peer id + owner marker) passes. The flag dies with the peer row, and every re-knock clears it. Admits from non-members still deliver but record nothing. Guests are not admittable on channel-bound rooms.
-- Rooms that resolve to no channel keep the legacy behavior exactly (guest lobby gating stays a client convention there).
+- **Guest (no account)**: refused on named channels, team channels, direct messages, and any room that is not an ad-hoc code (including a plain room name with no channel). Join, knock, poll, and chat return `forbidden` (403), so that chat is not readable. An ad-hoc meeting is open on its room code (`xxxx-xxxx-xxxx`) only. A name slug that still points at a meeting is **404** on `GET /meetings/rooms/{id}` for guests.
+- **Admission** is recorded server-side when a channel *member* sends an `admit` control message through the chat endpoint: the target peer row in `meet_peers` gets `admitted = 1`, so the knocker's non-knock re-join (same peer id + owner marker) passes. The flag dies with the peer row, and every re-knock clears it. Admits from non-members still deliver but record nothing. A guest can be admitted on an ad-hoc meeting room code (that code is channel-bound once the meeting is saved). Guests are not admittable on named channels, team channels, direct messages, or meeting name slugs.
+- Authenticated callers still join a room with no channel directly. Guests do not.
 
 `MAX_PEERS_PER_ROOM` (4) is unchanged and counts knocking peers too — a channel call fills up host slots and pending knockers alike.
 
@@ -65,7 +65,7 @@ Principal rooms (presence/chat/typing over data channels, `principal_peers` / `p
 Calendar and ad-hoc `/meet` Start persist a row via `MeetReservationService` (`meet_reservations`). Architecture lock: [`docs/architecture/meet-reserved-rooms.md`](../../docs/architecture/meet-reserved-rooms.md).
 
 - **POST** is authenticated. `createdBy` is the acting user (`u:{username}`). `ownerPrincipal` must be `u:{username}` or a `groups/{slug}` whose calendar the caller can write (same CalDAV/JMAP ACL as event create — group membership **or** a write share / delegated ACL). Membership-only is not required. Otherwise **403**. Idempotent: an existing row keeps `ownerPrincipal` / `createdBy`. Omit or `null` `expiresAt` means no inactivity GC. GET/PATCH manage rights still use `createdBy` or `GroupMembershipResolver` membership.
-- **GET** is guest-reachable for ad-hoc reservations that do not resolve to a channel. Public body is only `{ reserved, active }`. Full body (`ownerPrincipal`, `createdBy`, `expiresAt`) only for an `ownerPrincipal` member or `createdBy`. **404** means not reserved (including sweeper-pruned never-activated rooms, and any channel-bound room when the caller is unauthenticated).
+- **GET** is guest-reachable for an ad-hoc room code, including a saved meeting's code. Public body is only `{ reserved, active }`. Full body (`ownerPrincipal`, `createdBy`, `expiresAt`) only for an `ownerPrincipal` member or `createdBy`. **404** means not reserved (including sweeper-pruned never-activated rooms), or the caller is a guest and the id is not an ad-hoc code.
 - **PATCH** sets `expiresAt` (Remove / detach / discarded scope / reschedule). `createdBy` or owner-principal member only.
 - Ad-hoc Start writes `ownerPrincipal = createdBy = acting user` with `expiresAt = start + 30 days`.
 - Sweeper deletes **never-activated** rows only when `expiresAt` is non-null and past. `expiresAt = null` is skipped. First joinable peer sets `activated_at`.

@@ -235,9 +235,10 @@ final class MeetSignalingService
     }
 
     /**
-     * Guests have no account. Named channels, team channels, and direct
-     * messages are not guest doors — join, knock, poll, and chat stop here
-     * so that chat cannot leak. An ad-hoc meeting stays open on its room code.
+     * Guests have no account. Named channels, team channels, direct messages,
+     * and any room that is not an ad-hoc code are not guest doors — join,
+     * knock, poll, and chat stop here so that chat cannot leak. An ad-hoc
+     * meeting stays open on its room code.
      */
     private function assertGuestMayEnter(?string $username, string $room): void
     {
@@ -252,10 +253,11 @@ final class MeetSignalingService
     }
 
     /**
-     * Authenticated non-member join on a channel room: knock joins on a known
-     * meeting invite may wait in an empty room; other channel rooms still
-     * require someone joinable (`room_not_active`). Non-knock joins pass only
-     * for a previously admitted peer. Guests never reach this method.
+     * Non-member join on a channel room: knock joins on a known meeting
+     * invite may wait in an empty room; other channel rooms still require
+     * someone joinable (`room_not_active`). Non-knock joins pass only for a
+     * previously admitted peer. Guests reach this method only on an ad-hoc
+     * meeting room code; named channels and direct messages are refused first.
      */
     private function assertNonMemberChannelJoin(
         string $room,

@@ -232,6 +232,16 @@ describe("meetChannelCallHref", () => {
     );
   });
 
+  it("reads an embedded room code from chat-{code} when guestRoomCode is missing", () => {
+    const meeting = {
+      id: `chat-${ROOM}`,
+      kind: "meeting" as const,
+      guestRoomCode: null,
+    };
+    expect(meetChannelCallRoom(meeting)).toBe(ROOM);
+    expect(meetChannelCallRoom(meeting)).not.toBe(`chat-${ROOM}`);
+  });
+
   it("produces hrefs Join opens as the same stored invite URL", () => {
     const channel = { id: CHAT_ROOM, kind: "channel" as const };
     expect(calendarMeetJoinHref(meetChannelCallHref(channel, ORIGIN), ORIGIN)).toBe(

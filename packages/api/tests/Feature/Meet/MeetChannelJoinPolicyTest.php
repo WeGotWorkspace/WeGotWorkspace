@@ -16,9 +16,9 @@ use Tests\Support\WgwDatabaseTestCase;
  * Room = channel collection id (`chat-…` / `dm-…`) or a meeting channel's
  * stored `room_code`. Members (any ACL read access) join directly; authenticated
  * non-members are forced onto the knock path server-side. Guests (no account)
- * are refused on every channel-bound room — they cannot join, knock, or read
- * call chat. Ad-hoc rooms that do not resolve to a channel keep the legacy
- * guest lobby.
+ * join only an ad-hoc room code. On that code they can knock, be admitted, and
+ * re-join. Named channels, direct messages, name slugs, and plain room names
+ * refuse them. Authenticated callers still join a plain room directly.
  */
 final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
 {
@@ -230,22 +230,51 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
             ->assertStatus(403)->assertJsonPath('error', 'knock_required');
     }
 
-    public function test_non_channel_rooms_keep_legacy_behavior(): void
+    public function test_plain_room_names_are_closed_to_guests(): void
     {
-        // Guests join plain rooms directly (lobby gating is client-side there).
-        $direct = $this->guestJoin('daily-room', 'peer-guest', 'Visitor')->assertOk();
-        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', (string) $direct->json('sessionKey'));
-
-        // Guest knock on an empty plain room stays room_not_active.
+        // The invite UI refuses these ids. The API does too.
+        $this->guestJoin('daily-room', 'peer-guest', 'Visitor')
+            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
         $this->guestJoin('empty-room', 'peer-guest2', self::KNOCK_PREFIX.'Visitor')
-            ->assertNotFound()->assertJsonPath('error', 'room_not_active');
+            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+        $this->guestJoin('chat-nosuchchannel', 'peer-guest3', 'Visitor')
+            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+
+        // An ad-hoc code with no channel is still a guest door.
+        $direct = $this->guestJoin('abcd-efgh-ijkl', 'peer-code', 'Visitor')->assertOk();
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', (string) $direct->json('sessionKey'));
 
         // Authenticated users join plain rooms unconditionally, knock or not.
         $this->join('carol', 'empty-room', 'peer-carol', 'Carol')->assertOk();
         $this->join('carol', 'other-room', 'peer-carol', self::KNOCK_PREFIX.'Carol')->assertOk();
+    }
 
-        // A chat-prefixed room with no matching collection is a plain room.
-        $this->guestJoin('chat-nosuchchannel', 'peer-guest3', 'Visitor')->assertOk();
+    public function test_admitted_guest_rejoins_an_ad_hoc_room_code_without_knocking(): void
+    {
+        $room = 'g744-8kfg-adjz';
+        $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Standup',
+            'kind' => 'meeting',
+            'guestRoomCode' => $room,
+        ])->assertCreated();
+
+        $this->join('alice', $room, 'peer-alice', 'Alice')->assertOk();
+        $sessionKey = (string) $this->guestJoin($room, 'peer-guest', self::KNOCK_PREFIX.'Visitor')
+            ->assertOk()
+            ->json('sessionKey');
+
+        $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)
+            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+
+        $this->sendControl('alice', $room, 'peer-alice', ['kind' => 'admit', 'peerId' => 'peer-guest'])
+            ->assertOk();
+
+        $rejoin = $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)->assertOk();
+        $this->assertContains('peer-alice', array_column($rejoin->json('peers'), 'id'));
+
+        // Admission is bound to the guest session that knocked.
+        $this->guestJoin($room, 'peer-guest', 'Impostor')
+            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
     }
 
     public function test_admit_from_a_non_member_does_not_count(): void
@@ -297,13 +326,15 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         ]);
     }
 
-    private function guestJoin(string $room, string $peerId, string $name): TestResponse
+    private function guestJoin(string $room, string $peerId, string $name, ?string $sessionKey = null): TestResponse
     {
+        $body = ['peerId' => $peerId, 'name' => $name];
+        if ($sessionKey !== null) {
+            $body['sessionKey'] = $sessionKey;
+        }
+
         // Guests carry no bearer — drop default headers left by asUser().
-        return $this->flushHeaders()->postJson('/api/v1/rooms/'.$room.'/participants', [
-            'peerId' => $peerId,
-            'name' => $name,
-        ]);
+        return $this->flushHeaders()->postJson('/api/v1/rooms/'.$room.'/participants', $body);
     }
 
     private function sendChat(string $username, string $room, string $fromPeer, string $text): TestResponse

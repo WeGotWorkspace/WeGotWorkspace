@@ -355,7 +355,14 @@ export function meetChannelCallRoom(
 ): string {
   const guestRoom = channel.guestRoomCode?.trim();
   if (channel.kind === "meeting" && guestRoom) return guestRoom.toLowerCase();
-  return channel.id.trim().toLowerCase();
+  const id = channel.id.trim().toLowerCase();
+  // New meetings are stored as `chat-{code}`. Members and guests must share
+  // that code even when the client has not copied `guestRoomCode` yet.
+  if (channel.kind === "meeting" && id.startsWith("chat-")) {
+    const embedded = id.slice("chat-".length);
+    if (isMeetRoomCode(embedded)) return embedded;
+  }
+  return id;
 }
 
 /**

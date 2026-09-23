@@ -29,8 +29,10 @@ use Illuminate\Database\Eloquent\Builder;
  *   the knocking peer as admitted;
  * - guests (no account) never join a named channel, team channel, or direct
  *   message. An ad-hoc meeting is open on its room code (`xxxx-xxxx-xxxx`)
- *   only — not on a name slug;
- * - rooms that resolve to no channel keep the legacy behavior untouched.
+ *   only — not on a name slug. A guest who knocks on that code can be
+ *   admitted and then re-join;
+ * - any other room, including a plain name with no channel, is closed to
+ *   guests. Authenticated callers still join those rooms directly.
  */
 final class MeetChannelJoinPolicy
 {
@@ -103,9 +105,8 @@ final class MeetChannelJoinPolicy
 
     /**
      * True when a guest must not enter this room. Named channels, team
-     * channels, and direct messages are closed. An ad-hoc meeting is open
-     * only when the room is its `xxxx-xxxx-xxxx` id. A name slug that still
-     * points at a meeting stays closed.
+     * channels, direct messages, meeting name slugs, and plain room names
+     * are closed. An ad-hoc meeting is open only on its `xxxx-xxxx-xxxx` id.
      */
     public function isGuestClosedRoom(string $room): bool
     {
@@ -124,11 +125,7 @@ final class MeetChannelJoinPolicy
             return ! ($code !== '' && $asked === $code && self::isAdHocMeetingCode($code));
         }
 
-        if (self::isAdHocMeetingCode($room)) {
-            return false;
-        }
-
-        return $this->resolveMeetingInviteRoom($room) !== null;
+        return ! self::isAdHocMeetingCode($room);
     }
 
     /** Ad-hoc meeting id. Name slugs never match. */

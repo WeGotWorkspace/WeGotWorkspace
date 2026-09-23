@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { meetChannelCallRoom } from "@/calendar-core/src/calendar-meet-link";
 import {
   meetChannelIdForRoom,
   meetChannelRoomId,
@@ -30,6 +31,17 @@ describe("meetChannelRoomId", () => {
 
   it("falls back to the channel id when a meeting has no guest room", () => {
     expect(meetChannelRoomId(meetingWithoutRoom)).toBe(meetingWithoutRoom.id.toLowerCase());
+  });
+
+  it("shares the guest room code with guests when the collection id is chat-{code}", () => {
+    const meeting = {
+      id: "chat-g744-8kfg-adjz",
+      kind: "meeting" as const,
+      guestRoomCode: null,
+    };
+    expect(meetChannelRoomId(meeting)).toBe("g744-8kfg-adjz");
+    expect(meetChannelRoomId(meeting)).toBe(meetChannelCallRoom(meeting));
+    expect(meetChannelRoomId(meetingWithRoom)).toBe(meetChannelCallRoom(meetingWithRoom));
   });
 });
 
