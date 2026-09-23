@@ -239,9 +239,15 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
             ->assertStatus(403)->assertJsonPath('error', 'forbidden');
         $this->guestJoin('chat-nosuchchannel', 'peer-guest3', 'Visitor')
             ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+        // Outside the mint alphabet (0 / i), so not a guest door.
+        $this->guestJoin('team-sync-2026', 'peer-guest4', 'Visitor')
+            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
+        $this->guestJoin('abcd-efgh-ijkl', 'peer-guest5', 'Visitor')
+            ->assertStatus(403)->assertJsonPath('error', 'forbidden');
 
-        // An ad-hoc code with no channel is still a guest door.
-        $direct = $this->guestJoin('abcd-efgh-ijkl', 'peer-code', 'Visitor')->assertOk();
+        // An unreserved ad-hoc code has no host who can admit, so a direct
+        // guest join still passes. A reserved code does not — see below.
+        $direct = $this->guestJoin('abcd-efgh-jklm', 'peer-code', 'Visitor')->assertOk();
         $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', (string) $direct->json('sessionKey'));
 
         // Authenticated users join plain rooms unconditionally, knock or not.
@@ -274,6 +280,44 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
 
         // Admission is bound to the guest session that knocked.
         $this->guestJoin($room, 'peer-guest', 'Impostor')
+            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+    }
+
+    public function test_guest_must_knock_on_a_reserved_ad_hoc_code(): void
+    {
+        $room = 'h8y8-ewp6-al8n';
+        $this->asUser('alice')->postJson('/api/v1/meetings/rooms', [
+            'room' => $room,
+            'ownerPrincipal' => 'u:alice',
+        ])->assertCreated();
+
+        $this->guestJoin($room, 'peer-walkin', 'Visitor')
+            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+
+        $sessionKey = (string) $this->guestJoin($room, 'peer-guest', self::KNOCK_PREFIX.'Visitor')
+            ->assertOk()
+            ->json('sessionKey');
+        $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)
+            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+
+        // Someone who did not reserve the room cannot admit, even after joining.
+        $this->join('carol', $room, 'peer-carol', 'Carol')->assertOk();
+        $this->sendControl('carol', $room, 'peer-carol', ['kind' => 'admit', 'peerId' => 'peer-guest'])
+            ->assertOk();
+        $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)
+            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+
+        $this->join('alice', $room, 'peer-alice', 'Alice')->assertOk();
+        $this->sendControl('alice', $room, 'peer-alice', ['kind' => 'admit', 'peerId' => 'peer-guest'])
+            ->assertOk();
+        $rejoin = $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)->assertOk();
+        $this->assertContains('peer-alice', array_column($rejoin->json('peers'), 'id'));
+        $this->guestJoin($room, 'peer-guest', 'Impostor')
+            ->assertStatus(403)->assertJsonPath('error', 'knock_required');
+
+        // Knocking again clears the admission.
+        $this->guestJoin($room, 'peer-guest', self::KNOCK_PREFIX.'Visitor', $sessionKey)->assertOk();
+        $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)
             ->assertStatus(403)->assertJsonPath('error', 'knock_required');
     }
 

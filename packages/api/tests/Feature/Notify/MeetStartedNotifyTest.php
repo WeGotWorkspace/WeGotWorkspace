@@ -20,7 +20,7 @@ final class MeetStartedNotifyTest extends WgwDatabaseTestCase
 
     private const ORIGIN = 'https://workspace.test';
 
-    private const ROOM = 'abcd-efgh-ijkl';
+    private const ROOM = 'abcd-efgh-jklm';
 
     protected function setUp(): void
     {

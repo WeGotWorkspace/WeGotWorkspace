@@ -87,7 +87,9 @@ describe("MeetCreateMeetingDialog", () => {
     expect(createChannel).toHaveBeenCalledWith({
       name: "Standup",
       kind: "meeting",
-      guestRoomCode: expect.stringMatching(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/),
+      guestRoomCode: expect.stringMatching(
+        /^[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}$/,
+      ),
     });
     const href = draft.links?.[CALENDAR_MEET_LINK_KEY]?.href ?? "";
     expect(href).toMatch(/\/meet\/meetings\//);
@@ -248,7 +250,9 @@ describe("MeetCreateMeetingDialog", () => {
     expect(createChannel).toHaveBeenCalledWith({
       name: "Standup",
       kind: "meeting",
-      guestRoomCode: expect.stringMatching(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/),
+      guestRoomCode: expect.stringMatching(
+        /^[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}$/,
+      ),
     });
     const draft = createEvent.mock.calls[0]?.[0] as {
       links?: Record<string, { href?: string }>;

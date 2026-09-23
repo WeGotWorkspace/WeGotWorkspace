@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MEET_ROOM_CODE_PATTERN } from "@/calendar-core/src/calendar-meet-link";
 import { createMeetPeerId, createMeetRoomCode } from "@/meet-core/src/meet-room-id";
 
 describe("meet room id", () => {
@@ -10,6 +11,6 @@ describe("meet room id", () => {
 
   it("creates room codes in xxxx-xxxx-xxxx format", () => {
     const room = createMeetRoomCode();
-    expect(room).toMatch(/^[a-z2-9]{4}-[a-z2-9]{4}-[a-z2-9]{4}$/);
+    expect(room).toMatch(MEET_ROOM_CODE_PATTERN);
   });
 });

@@ -11,6 +11,7 @@ use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\CalendarCollectionAccess;
+use App\Services\Calendars\CalendarMeetLinkHref;
 use App\Services\Calendars\CalendarShareInvites;
 use App\Services\Calendars\CalendarShareVisibility;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
@@ -619,7 +620,7 @@ final class ChatChannelRepository
      */
     private function mintMeetRoomCode(): string
     {
-        $alphabet = 'abcdefghjklmnpqrstuvwxyz23456789';
+        $alphabet = CalendarMeetLinkHref::ROOM_CODE_ALPHABET;
         $last = strlen($alphabet) - 1;
         for ($attempt = 0; $attempt < 8; $attempt++) {
             $raw = '';
@@ -661,7 +662,7 @@ final class ChatChannelRepository
                 ['guestRoomCode'],
             );
         }
-        if (preg_match('/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/', $code) !== 1) {
+        if (preg_match(CalendarMeetLinkHref::ROOM_CODE_PATTERN, $code) !== 1) {
             throw new ApiHttpException(
                 400,
                 'guestRoomCode must be an ad-hoc room code.',

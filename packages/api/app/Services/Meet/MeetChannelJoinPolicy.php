@@ -6,6 +6,7 @@ namespace App\Services\Meet;
 
 use App\Models\CalendarInstance;
 use App\Models\ChatChannelMeta;
+use App\Services\Calendars\CalendarMeetLinkHref;
 use App\Services\Chat\ChatChannelRepository;
 use App\Services\Chat\ChatCollectionUris;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,9 +29,10 @@ use Illuminate\Database\Eloquent\Builder;
  *   non-knock join is rejected until a member's admit control message marked
  *   the knocking peer as admitted;
  * - guests (no account) never join a named channel, team channel, or direct
- *   message. An ad-hoc meeting is open on its room code (`xxxx-xxxx-xxxx`)
- *   only — not on a name slug. A guest who knocks on that code can be
- *   admitted and then re-join;
+ *   message. An ad-hoc meeting is open on its room code (`xxxx-xxxx-xxxx`,
+ *   mint alphabet only) — not on a name slug. A guest who knocks on that
+ *   code, or on a reserved code that is not saved yet, can be admitted and
+ *   then re-join. A reserved code rejects a direct guest join;
  * - any other room, including a plain name with no channel, is closed to
  *   guests. Authenticated callers still join those rooms directly.
  */
@@ -131,7 +133,7 @@ final class MeetChannelJoinPolicy
     /** Ad-hoc meeting id. Name slugs never match. */
     public static function isAdHocMeetingCode(string $room): bool
     {
-        return preg_match('/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/', strtolower(trim($room))) === 1;
+        return preg_match(CalendarMeetLinkHref::ROOM_CODE_PATTERN, strtolower(trim($room))) === 1;
     }
 
     /**

@@ -15,23 +15,25 @@ final class CalendarMeetLinkHrefTest extends TestCase
         config(['app.url' => 'https://workspace.test']);
 
         $this->assertSame(
-            'abcd-efgh-ijkl',
-            $hrefs->parseWgwRoom('https://workspace.test/meet?room=abcd-efgh-ijkl'),
+            'abcd-efgh-jklm',
+            $hrefs->parseWgwRoom('https://workspace.test/meet?room=abcd-efgh-jklm'),
         );
         $this->assertSame(
-            'abcd-efgh-ijkl',
-            $hrefs->parseWgwRoom('https://workspace.test/meet/guest?room=abcd-efgh-ijkl'),
+            'abcd-efgh-jklm',
+            $hrefs->parseWgwRoom('https://workspace.test/meet/guest?room=abcd-efgh-jklm'),
         );
         $this->assertSame(
-            'abcd-efgh-ijkl',
-            $hrefs->parseWgwRoom('https://workspace.test/meet/join?room=ABCD-EFGH-IJKL'),
+            'abcd-efgh-jklm',
+            $hrefs->parseWgwRoom('https://workspace.test/meet/join?room=ABCD-EFGH-JKLM'),
         );
         $this->assertSame(
-            'abcd-efgh-ijkl',
-            $hrefs->parseWgwRoom('https://workspace.test/meet/meetings/abcd-efgh-ijkl'),
+            'abcd-efgh-jklm',
+            $hrefs->parseWgwRoom('https://workspace.test/meet/meetings/abcd-efgh-jklm'),
         );
-        $this->assertNull($hrefs->parseWgwRoom('https://evil.workspace.test/meet/guest?room=abcd-efgh-ijkl'));
-        $this->assertNull($hrefs->parseWgwRoom('https://workspace.test.evil/meet/guest?room=abcd-efgh-ijkl'));
+        $this->assertNull($hrefs->parseWgwRoom('https://workspace.test/meet/guest?room=abcd-efgh-ijkl'));
+        $this->assertNull($hrefs->parseWgwRoom('https://workspace.test/meet/meetings/team-sync-2026'));
+        $this->assertNull($hrefs->parseWgwRoom('https://evil.workspace.test/meet/guest?room=abcd-efgh-jklm'));
+        $this->assertNull($hrefs->parseWgwRoom('https://workspace.test.evil/meet/guest?room=abcd-efgh-jklm'));
         $this->assertNull($hrefs->parseWgwRoom('https://workspace.test/meet/guest?room=partial'));
         $this->assertNull($hrefs->parseWgwRoom('https://zoom.example/j/123'));
         $this->assertNull($hrefs->parseWgwRoom('not a url'));

@@ -31,7 +31,9 @@ describe("createMeetChatOperations", () => {
     const meeting = await ops.createChannel!({ name: "Studio", kind: "meeting" });
     expect(meeting?.kind).toBe("meeting");
     expect(meeting?.guestAccess).toBeUndefined();
-    expect(meeting?.guestRoomCode).toMatch(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
+    expect(meeting?.guestRoomCode).toMatch(
+      /^[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}$/,
+    );
     expect(meeting?.id).toBe(`chat-${meeting?.guestRoomCode}`);
   });
 

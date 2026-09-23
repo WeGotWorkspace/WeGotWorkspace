@@ -15,7 +15,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
 {
     use MeetTestFixtures;
 
-    private const ROOM = 'abcd-efgh-ijkl';
+    private const ROOM = 'abcd-efgh-jklm';
 
     protected function setUp(): void
     {
@@ -218,7 +218,7 @@ final class MeetReservationTest extends WgwDatabaseTestCase
             ])
             ->assertCreated()
             ->json();
-        $this->assertMatchesRegularExpression('/^chat-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/', (string) $created['id']);
+        $this->assertMatchesRegularExpression('/^chat-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}$/', (string) $created['id']);
         $this->assertNotSame('chat-test', $created['id']);
         $roomCode = (string) $created['guestRoomCode'];
 

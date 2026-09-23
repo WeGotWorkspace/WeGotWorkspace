@@ -9,7 +9,7 @@ use Tests\Support\WgwDatabaseTestCase;
 
 final class MeetEndpointsTest extends WgwDatabaseTestCase
 {
-    private const ROOM_ID = 'abcd-efgh-ijkl';
+    private const ROOM_ID = 'abcd-efgh-jklm';
 
     protected function setUp(): void
     {

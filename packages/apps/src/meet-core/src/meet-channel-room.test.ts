@@ -11,7 +11,7 @@ const dmChannel = { id: "dm-alice-bob", kind: "channel" as const };
 const meetingWithRoom = {
   id: "chat-01BX5ZZKBKACTAV9WEVGEMMVRZ",
   kind: "meeting" as const,
-  guestRoomCode: "q1w2-e3r4-t5y6",
+  guestRoomCode: "q2w3-e4r5-t6y7",
 };
 const meetingWithoutRoom = {
   id: "chat-01BX5ZZKBKACTAV9WEVGEMMVS0",
@@ -26,7 +26,7 @@ describe("meetChannelRoomId", () => {
   });
 
   it("prefers the reserved guestRoomCode for meeting channels", () => {
-    expect(meetChannelRoomId(meetingWithRoom)).toBe("q1w2-e3r4-t5y6");
+    expect(meetChannelRoomId(meetingWithRoom)).toBe("q2w3-e4r5-t6y7");
   });
 
   it("falls back to the channel id when a meeting has no guest room", () => {
@@ -51,7 +51,7 @@ describe("meetChannelIdForRoom", () => {
   it("maps a room code back to its channel case-insensitively", () => {
     expect(meetChannelIdForRoom(channels, "chat-01arz3ndektsv4rrffq69g5fav")).toBe(chatChannel.id);
     expect(meetChannelIdForRoom(channels, "CHAT-01ARZ3NDEKTSV4RRFFQ69G5FAV")).toBe(chatChannel.id);
-    expect(meetChannelIdForRoom(channels, "q1w2-e3r4-t5y6")).toBe(meetingWithRoom.id);
+    expect(meetChannelIdForRoom(channels, "q2w3-e4r5-t6y7")).toBe(meetingWithRoom.id);
   });
 
   it("returns null for unknown or empty rooms", () => {
@@ -66,7 +66,7 @@ describe("meetGuestChatChannelId", () => {
     expect(
       meetGuestChatChannelId({
         channels: [meetingWithRoom],
-        invitedRoom: "q1w2-e3r4-t5y6",
+        invitedRoom: "q2w3-e4r5-t6y7",
         meetingId: "standup",
       }),
     ).toBe(meetingWithRoom.id);

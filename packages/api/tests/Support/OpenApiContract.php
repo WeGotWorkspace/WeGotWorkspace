@@ -176,7 +176,7 @@ final class OpenApiContract
     public static function sampleRequestPath(string $openApiPath): string
     {
         $replacements = [
-            '{roomId}' => 'abcd-efgh-ijkl',
+            '{roomId}' => 'abcd-efgh-jklm',
             '{messageId}' => 'INBOX:1',
             '{username}' => 'bob',
             '{group}' => 'testgroup',

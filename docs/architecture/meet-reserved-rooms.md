@@ -108,7 +108,7 @@ Accepts `room` + `ownerPrincipal` (+ optional `expiresAt`; omit/null = no expiry
 
 A named channel, team channel, or direct message is not a guest door. Unauthenticated GET of those rooms is **404** even when a reservation row exists. Authenticated callers still receive `active` so in-channel call presence keeps working. An ad-hoc meeting room code stays guest-readable. A meeting name slug does not.
 
-Guest lobby: `{ reserved: true, active: false }` → **waiting for the host**. Knock still requires a joinable host. Signed-in owner-principal members can start; non-members stay guest/knock.
+Guest lobby: `{ reserved: true, active: false }` → **waiting for the host**. A guest cannot skip that lobby: a non-knock join on a reserved ad-hoc code is `knock_required` until `createdBy` or an owner-principal member admits them. Knock on a reserved code may wait in an empty room. Signed-in owner-principal members can start; non-members stay guest/knock.
 
 ### `PATCH /meetings/rooms/{id}`
 

@@ -21,7 +21,7 @@ trait MeetTestFixtures
 {
     use WgwRoleFixtures;
 
-    protected const MEET_ROOM_ID = 'abcd-efgh-ijkl';
+    protected const MEET_ROOM_ID = 'abcd-efgh-jklm';
 
     protected function setUpMeetFixtures(): void
     {

@@ -1,4 +1,4 @@
-import { meetChannelCallRoom } from "@/calendar-core/src/calendar-meet-link";
+import { isMeetRoomCode, meetChannelCallRoom } from "@/calendar-core/src/calendar-meet-link";
 import { meetCollectionIdFromPublic } from "@/meet-core/src/meet-public-id";
 import type { MeetChannel } from "@/meet-core/src/meet-types";
 
@@ -43,8 +43,8 @@ export function meetGuestChatChannelId(input: {
   if (fromRoom) return fromRoom;
   const routeId = input.channelId?.trim() || input.meetingId?.trim() || room;
   if (!routeId) return "guest";
-  if (/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/i.test(routeId)) {
-    return routeId.toLowerCase();
+  if (isMeetRoomCode(routeId)) {
+    return routeId.trim().toLowerCase();
   }
   return meetCollectionIdFromPublic(routeId);
 }

@@ -227,7 +227,7 @@ describe("useMeetMutations", () => {
       expiresAt: string;
     };
     expect(reserved.ownerPrincipal).toBe("u:bob");
-    expect(reserved.room).toMatch(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
+    expect(reserved.room).toMatch(/^[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}$/);
     expect(session.meetRtc.join).toHaveBeenCalled();
   });
 });

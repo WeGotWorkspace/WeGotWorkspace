@@ -16,7 +16,8 @@ import {
 import { meetPublicChannelId } from "@/meet-core/src/meet-public-id";
 
 /** Same pattern as PHP `CalendarMeetLinkHref::ROOM_CODE_PATTERN`. */
-export const MEET_ROOM_CODE_PATTERN = /^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/;
+/** Ad-hoc meeting id. Same alphabet as `createMeetRoomCode` (no i, o, 0, 1). */
+export const MEET_ROOM_CODE_PATTERN = /^[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}$/;
 
 /**
  * Chat-channel call room: the channel collection id lowercased (`chat-` +

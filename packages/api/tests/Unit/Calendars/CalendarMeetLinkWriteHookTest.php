@@ -18,7 +18,7 @@ final class CalendarMeetLinkWriteHookTest extends WgwDatabaseTestCase
 {
     use MeetTestFixtures;
 
-    private const ROOM = 'abcd-efgh-ijkl';
+    private const ROOM = 'abcd-efgh-jklm';
 
     private const HREF = 'https://workspace.test/meet/guest?room='.self::ROOM;
 
