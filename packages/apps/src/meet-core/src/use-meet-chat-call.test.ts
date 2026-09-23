@@ -13,7 +13,7 @@ describe("useMeetChatCall startCall", () => {
 
   it("joins unmatched ad-hoc rooms without routing through the guest gate", () => {
     expect(ts).toContain("joinAdHocRoom");
-    expect(ts).toContain("adHocRoomChannelIdsRef");
+    expect(ts).not.toContain("adHocRoomChannelIdsRef");
     expect(ts).toMatch(/await controllerRef\.current\.joinRoom\(room\)/);
   });
 });
