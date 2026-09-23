@@ -8,10 +8,11 @@ const meetChatAppSource = readFileSync(join(here, "meet-chat-app.tsx"), "utf8");
 
 describe("MeetChatApp upcoming join", () => {
   it("stays in MeetChatApp instead of location.assign or a new window", () => {
-    expect(meetChatAppSource).toContain("meetUpcomingJoinTarget");
+    expect(meetChatAppSource).toContain("meetSignedInUpcomingJoin");
+    expect(meetChatAppSource).toContain("meetSignedInMeetingRouteJoin");
     expect(meetChatAppSource).toContain("handleSelectedChannelChange");
-    expect(meetChatAppSource).not.toContain("joinAdHocRoom");
-    expect(meetChatAppSource).not.toMatch(/startCall\?\.\(target/);
+    expect(meetChatAppSource).toContain("joinAdHocRoom");
+    expect(meetChatAppSource).not.toContain("createChannel");
     expect(meetChatAppSource).not.toMatch(/location\.assign\(href\)/);
     expect(meetChatAppSource).not.toMatch(/location\.assign\(target/);
     expect(meetChatAppSource).not.toMatch(/window\.open\(/);

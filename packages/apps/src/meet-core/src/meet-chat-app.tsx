@@ -14,11 +14,12 @@ import {
   meetResumeCallLayout,
   meetResumeLiveCallChannelId,
 } from "@/meet-core/src/meet-call-resume";
-import {
-  meetUpcomingJoinTarget,
-  upcomingMeetingsForSidebar,
-} from "@/meet-core/src/meet-calendar-meeting";
+import { upcomingMeetingsForSidebar } from "@/meet-core/src/meet-calendar-meeting";
 import { meetChannelIdForRoom, meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
+import {
+  meetSignedInMeetingRouteJoin,
+  meetSignedInUpcomingJoin,
+} from "@/meet-core/src/meet-signed-in-join";
 import { meetChannelTitle } from "@/meet-core/src/meet-channel-label";
 import type { MeetChatApiSource } from "@/meet-core/src/meet-chat-api-source";
 import { mergeAuthorPresence } from "@/meet-core/src/meet-author-presence";
@@ -141,7 +142,8 @@ function MeetChatLiveWorkspace({
   }, [channels, listLoading, navigate, params.channelId]);
 
   const suiteCallStore = useMeetCallStoreContext();
-  const { operations, callStageRoom, liveCallChannelId, joinedRoomCode } = useMeetChatCall({
+  const { operations, callStageRoom, liveCallChannelId, joinedRoomCode, joinAdHocRoom } =
+    useMeetChatCall({
     session,
     data,
     identityReady: !listLoading,
@@ -225,42 +227,52 @@ function MeetChatLiveWorkspace({
 
   const handleJoinUpcomingMeeting = useCallback(
     (href: string) => {
-      const target = meetUpcomingJoinTarget(href, workspaceOrigin, channels);
-      if (target?.kind === "channel") {
-        handleSelectedChannelChange(target.channelId);
+      const action = meetSignedInUpcomingJoin(href, workspaceOrigin, channels);
+      if (action.action === "select-channel") {
+        handleSelectedChannelChange(action.channelId);
         return;
       }
-      if (target?.kind !== "room") return;
-      const title = upcomingMeetings.find((row) => row.href === href)?.title.trim() || "Meeting";
-      const existing = channels.find((row) => row.kind === "meeting" && row.name === title);
-      if (existing) {
-        handleSelectedChannelChange(existing.id);
+      if (action.action === "start-call") {
+        handleSelectedChannelChange(action.channelId);
+        void operations?.startCall?.(action.channelId);
         return;
       }
-      void chatOperations
-        ?.createChannel?.({ name: title, kind: "meeting" })
-        .then((created) => {
-          handleSelectedChannelChange(created.id);
-          void patchFromCache();
-        })
-        .catch(() => undefined);
+      if (action.action === "join-room") {
+        void joinAdHocRoom(action.room);
+      }
     },
-    [
-      channels,
-      chatOperations,
-      handleSelectedChannelChange,
-      patchFromCache,
-      upcomingMeetings,
-      workspaceOrigin,
-    ],
+    [channels, handleSelectedChannelChange, joinAdHocRoom, operations, workspaceOrigin],
   );
 
+  const joinedInviteRef = useRef<string | null>(null);
   useEffect(() => {
     const meetingId = params.meetingId?.trim().toLowerCase() || null;
     if (!meetingId || listLoading) return;
+    const action = meetSignedInMeetingRouteJoin(meetingId, channels);
+    if (action.action === "start-call") {
+      if (!operations?.startCall) return;
+      if (joinedInviteRef.current === meetingId) return;
+      joinedInviteRef.current = meetingId;
+      handleSelectedChannelChange(action.channelId);
+      void operations.startCall(action.channelId);
+      return;
+    }
+    if (action.action === "join-room") {
+      if (joinedInviteRef.current === meetingId) return;
+      joinedInviteRef.current = meetingId;
+      void joinAdHocRoom(action.room);
+      return;
+    }
     const mapped = meetChannelIdForRoom(channels, meetingId);
     if (mapped) handleSelectedChannelChange(mapped);
-  }, [channels, handleSelectedChannelChange, listLoading, params.meetingId]);
+  }, [
+    channels,
+    handleSelectedChannelChange,
+    joinAdHocRoom,
+    listLoading,
+    operations,
+    params.meetingId,
+  ]);
 
   const liveAuthorPresence = useMeetAuthorPresence();
   const { typingByChannel, onComposerTyping } = useMeetChannelTyping();
