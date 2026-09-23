@@ -39,7 +39,9 @@
   .contacts-dialog-surface,
   .drive-dialog-surface,
   .meet-channel-dialog,
-  .meet-call-dialog
+  .meet-call-dialog,
+  /* Portaled under document.body — not a descendant of `.meet-workspace`. */
+  .meet-device-popover
 ) {
   /*
    * App paper is a softer OKLCH tint of Soft. Login, home, forgot-password,
