@@ -30,9 +30,15 @@
 }
 
 /**
- * Workspace home lockup: cream tile behind the solid `#003311` suite mark
- * (`home.svg` — no `--wai-*` layers; mark fill is fixed as supplied).
+ * Workspace home lockup: cream tile behind the solid `#003311` suite mark.
+ * `home.svg` is a full-bleed launcher tile (navy + cream fallbacks) for the PWA.
+ * This override clears that tile through the shared `--wai-bg: transparent` rule
+ * and pins the mark so it does not pick up `--app-switch-icon-fg`.
  */
 .workspace-app-icon--switch-trigger-home {
   --app-switch-icon-bg: var(--color-we-got-soft);
+}
+
+.workspace-app-icon--switch-trigger.workspace-app-icon--switch-trigger-home svg {
+  --wai-fg: #003311;
 }

@@ -45,7 +45,7 @@ const WORKSPACE_APPS = [
   "tasks",
 ];
 const FUTURE_APPS = ["reminders"];
-/** Shell / suite PWA manifest (home.webmanifest) — vector only, no workspace grid tile. */
+/** Shell / suite PWA manifest (home.webmanifest) — full-bleed launcher tile, not a home-grid app. */
 const SHELL_APPS = ["home"];
 const ALL_APPS = [...WORKSPACE_APPS, ...FUTURE_APPS, ...SHELL_APPS];
 const APPLE_TOUCH_APPS = [...WORKSPACE_APPS, ...SHELL_APPS];
