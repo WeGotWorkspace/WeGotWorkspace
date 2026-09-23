@@ -1,19 +1,21 @@
 @import "../../styles.css" reference;
 @import "../../workspace-shell/src/workspace-split-app.css";
+@import "../../workspace-shell/src/workspace-color.css";
 @import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 .docs-workspace {
   @apply min-w-0 overflow-x-hidden;
 
-  /* Docs app chrome — blue sampled from app icon background */
-  --docs-accent: #3b82f6;
-  /* Sidebar darker than accent — #3b82f6 fails WCAG 4.5:1 with white ink */
-  --docs-sidebar: #2563eb;
-  --workspace-accent: var(--docs-accent);
-  --color-emerald: var(--docs-accent);
-  --docs-surface: var(--color-cream, #ffffff);
-  --background: oklch(98.5% 0.005 100);
-  --docs-canvas: oklch(95% 0.006 100);
+  /* Cream paper. Sidebar wash and item tints come from workspace-color.css. */
+  --workspace-accent: var(--color-we-got-sand);
+  --color-emerald: var(--workspace-accent);
+  --docs-surface: var(--workspace-surface);
+  --background: var(--workspace-surface);
+  /* Editor desk around the white letter — sand cream, never gray/white. */
+  --docs-canvas: var(--workspace-surface);
+  --workspace-root-bg: var(--docs-surface);
+  --workspace-main-bg: var(--docs-surface);
+  --workspace-chrome-footer-bg: var(--docs-surface);
   --docs-sheet-width: 210mm;
   /* Outer canvas inset around the sheet — equal block pads (same Notes desk symmetry). */
   --docs-sheet-canvas-padding-inline: 1.25rem;
@@ -30,11 +32,13 @@
   --docs-comments-column-width: 20rem;
   --docs-comments-column-gap: 1rem;
   --workspace-panel-width: var(--docs-comments-column-width);
-  --docs-stat-tag-bg: color-mix(in oklab, var(--docs-accent) 10%, transparent);
-  --docs-stat-tag-color: color-mix(in oklab, var(--docs-accent) 88%, var(--color-ink));
-  --docs-text: var(--color-ink);
-  --docs-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
-  --docs-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --docs-stat-tag-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
+  /* Stronger than 88% Sand→Dark so word/char chips clear AA on cream footer. */
+  --docs-stat-tag-color: color-mix(in oklch, var(--workspace-accent) 40%, var(--color-we-got-dark));
+  --docs-text: var(--color-we-got-dark);
+  /* 72% clears WCAG AA on cream sidebar / footer wash; 65% failed outline nums. */
+  --docs-muted: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
+  --docs-border: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   /*
    * Shared horizontal inset for ViewHeader (`main-header`), format bar, and
    * detail footer — matches shell `p-4` / `md:p-6` (1rem → 1.5rem).
@@ -45,43 +49,37 @@
   --workspace-chrome-footer-padding-y: var(--docs-format-chrome-padding-y);
   --workspace-chrome-footer-border: var(--docs-border);
 
-  --app-sidebar-bg: var(--docs-sidebar);
-  /* Light accent wash for review dock / DocsCollabSidebarPanel (nav stays solid navy). */
+  /* Review dock stays a light accent wash — not the saturated nav rail. */
   --docs-collab-sidebar-panel-wash: color-mix(
-    in oklab,
-    var(--docs-accent) 10%,
-    var(--color-cream, #ffffff)
+    in oklch,
+    var(--workspace-accent) 10%,
+    var(--workspace-surface)
   );
-  --app-sidebar-border-color: color-mix(in oklab, #ffffff 18%, transparent);
-  --app-sidebar-color: #ffffff;
-  --sidebar-logo-close-button-color: var(--app-sidebar-color);
-  --sidebar-badge-fg: var(--docs-accent);
+  --sidebar-badge-fg: var(--workspace-accent);
   --workspace-main-content-max-width: none;
-  --workspace-user-footer-link-hover-bg: color-mix(in oklab, #ffffff 18%, transparent);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  --checkbox-border-color: var(--workspace-accent);
+  --checkbox-checked-bg: var(--workspace-accent);
+  --checkbox-checked-border: var(--workspace-accent);
+  --checkbox-checked-fg: var(--color-we-got-dark);
 
-  --button-primary-bg: var(--docs-accent);
-  --button-primary-fg: #ffffff;
-  --checkbox-border-color: var(--docs-accent);
-  --checkbox-checked-bg: var(--docs-accent);
-  --checkbox-checked-border: var(--docs-accent);
-  --checkbox-checked-fg: #ffffff;
-
-  /* Outline header chrome (cream main); sidebar keeps dark remaps below. */
-  --docs-accent-strong: color-mix(in oklab, var(--docs-accent) 70%, #0f172a);
-  --button-active-color: var(--docs-accent-strong);
-  --button-outline-hover-color: var(--docs-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
+  /* Outline / header chrome: accent-strong for text-on-wash (not primary fills). */
+  --button-active-color: var(--workspace-accent-strong);
+  --button-outline-hover-color: var(--workspace-accent-strong);
+  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
   --button-outline-active-background: color-mix(
-    in oklab,
-    var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
+    in oklch,
+    var(--workspace-accent) 18%,
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
+    in oklch,
+    var(--workspace-accent) 24%,
+    var(--workspace-surface)
   );
-  /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24). */
+  /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24).
+   * Nav item SST lives on `.app-sidebar__scroll` (black→sidebar, white on-color). */
 
   --foreground: var(--docs-text);
   --color-foreground: var(--docs-text);
@@ -96,9 +94,9 @@
  * `--button-active-color`; soft washes come from shared `.view-header` SST.
  */
 .docs-workspace .view-header {
-  --button-active-color: var(--docs-accent-strong);
-  --button-outline-color: var(--color-ink);
-  --button-outline-hover-color: var(--docs-accent-strong);
+  --button-active-color: var(--workspace-accent-strong);
+  --button-outline-color: var(--color-we-got-dark);
+  --button-outline-hover-color: var(--workspace-accent-strong);
 }
 
 /*
@@ -122,25 +120,25 @@
 }
 
 /* Docs home and portaled Docs dialogs reuse Drive grid/list under `.drive-workspace`
-   for layout selectors. Remap drive accent tokens so tiles, list rows, view toggle,
-   and portaled menus use docs blue — not Drive green. Drive itself stays green. */
+   for layout selectors. Drive's own accent would win on that element. Inherit the
+   Docs accent first, then point emerald and primary fills at it. */
 :is(.docs-workspace, .docs-dialog-surface) .drive-workspace {
-  --drive-accent: var(--docs-accent);
-  --workspace-accent: var(--docs-accent);
-  --color-emerald: var(--docs-accent);
-  --drive-accent-strong: var(--docs-accent-strong);
-  --button-active-color: var(--docs-accent-strong);
-  --button-outline-hover-color: var(--docs-accent-strong);
-  --button-outline-hover-background: color-mix(in oklab, var(--docs-accent) 14%, transparent);
+  --workspace-accent: inherit;
+  --color-emerald: var(--workspace-accent);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  --button-active-color: var(--workspace-accent-strong);
+  --button-outline-hover-color: var(--workspace-accent-strong);
+  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
   --button-outline-active-background: color-mix(
-    in oklab,
-    var(--docs-accent) 18%,
-    var(--color-cream, #ffffff)
+    in oklch,
+    var(--workspace-accent) 18%,
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--docs-accent) 24%,
-    var(--color-cream, #ffffff)
+    in oklch,
+    var(--workspace-accent) 24%,
+    var(--workspace-surface)
   );
   /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
 }
@@ -167,91 +165,24 @@
   @apply mx-0 flex min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
 }
 
-.docs-workspace .app-sidebar {
-  --field-label-color: color-mix(in oklab, #ffffff 72%, transparent);
+/** Sidebar lockup: blue tile + white marks. Accent stays Sand. */
+.docs-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
+  --app-switch-icon-bg: var(--color-we-got-blue);
+  --app-switch-icon-fg: #ffffff;
+  background-color: var(--color-we-got-blue);
 }
 
-.docs-workspace .app-sidebar,
-.docs-workspace .app-sidebar__header,
-.docs-workspace .app-sidebar__scroll-surface {
-  background-color: var(--docs-sidebar);
-  color: #ffffff;
-}
-
-.docs-workspace .app-sidebar .app-switch-button__trigger {
-  background-color: var(--docs-sidebar);
-}
-
-.docs-workspace .app-sidebar .app-switch-button__trigger:hover {
-  background-color: color-mix(in oklab, #ffffff 10%, var(--docs-sidebar));
-}
-
-.docs-workspace .sidebar-section .menu-item--surface-idle {
-  color: #ffffff;
-  background-color: var(--docs-sidebar);
-}
-
-/* Selected label must match icon on-color (white). Token remap alone is not enough:
- * workspace root publishes --button-active-color as --docs-accent-strong for cream
- * chrome; without an explicit selected fg, the label inherits that dark accent. */
-.docs-workspace .sidebar-section .menu-item--surface-selected {
-  color: #ffffff;
-}
-
-.docs-workspace .sidebar-section .menu-item--interactive:hover {
-  color: #ffffff;
-}
-
-.docs-workspace .sidebar-section .menu-item:not(.menu-item--selected) .menu-item__icon-slot,
-.docs-workspace .sidebar-section .menu-item.menu-item--selected .menu-item__icon-slot {
-  color: #ffffff;
-  opacity: 1;
-}
-
-.docs-workspace .sidebar-section__title {
-  color: #ffffff;
-}
-
-.docs-workspace .app-sidebar__scroll {
-  --color-ink: #ffffff;
-  --button-primary-bg: #ffffff;
-  --button-primary-fg: var(--docs-sidebar);
-  /* Dark blue sidebar: selected wash is ink-into-blue (not cream outline accent). */
-  --button-active-color: #ffffff;
-  --button-outline-hover-color: #ffffff;
-  --button-outline-hover-background: color-mix(in oklab, #000000 10%, var(--docs-sidebar));
-  --button-outline-active-background: color-mix(in oklab, #000000 16%, var(--docs-sidebar));
-  --button-outline-active-hover-background: color-mix(in oklab, #000000 22%, var(--docs-sidebar));
-}
-
-/*
- * Bell lives in the header (sibling of scroll). Mirror sidebar New primary
- * (white on docs-sidebar), not workspace-root accent-on-white.
- */
-.docs-workspace .app-sidebar__notifications {
-  --button-primary-bg: #ffffff;
-  --button-primary-fg: var(--docs-sidebar);
-  --notification-inbox-badge-bg: #ffffff;
-  --notification-inbox-badge-fg: var(--docs-sidebar);
-}
-
-.docs-workspace .app-sidebar__footer {
-  --color-ink: var(--app-sidebar-color);
-  /* Match scroll MenuItem outline remaps so logout IconButton hover/active washes align. */
-  --button-active-color: #ffffff;
-  --button-outline-hover-color: #ffffff;
-  --button-outline-hover-background: color-mix(in oklab, #000000 10%, var(--docs-sidebar));
-  --button-outline-active-background: color-mix(in oklab, #000000 16%, var(--docs-sidebar));
-  --button-outline-active-hover-background: color-mix(in oklab, #000000 22%, var(--docs-sidebar));
-  --workspace-user-footer-text-color: #ffffff;
-  --workspace-user-footer-subtitle-color: #ffffff;
-  --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 18%, transparent);
-  --workspace-user-footer-link-color: #ffffff;
+.docs-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: var(--color-we-got-blue);
+  --wai-fg: #ffffff;
 }
 
 .docs-workspace__header-actions {
   @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
-  --button-outline-color: var(--color-ink);
+  --button-outline-color: var(--color-we-got-dark);
 }
 
 .docs-workspace__header-actions-leading {
@@ -305,8 +236,9 @@
 /* Mute last-edited chip so it stays distinct from accent word/char stats. */
 .docs-workspace .workspace-detail-footer__meta-tag--edited {
   @apply shrink-0;
-  --tag-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --tag-fg: color-mix(in oklab, var(--color-ink) 58%, transparent);
+  --tag-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
+  /* Match Notes: 72% clears AA on cream footer (~4.5:1); 65% was ~2.8:1. */
+  --tag-fg: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
 }
 
 .docs-workspace .workspace-detail-footer__meta-tag--edited .tag {
@@ -324,22 +256,22 @@
 
 /* Soft wash on shared `.docs-collab-presence-chrome`; Docs only sets accent. */
 .docs-workspace .docs-collab-presence-chrome {
-  --docs-collab-presence-accent: var(--docs-accent);
+  --docs-collab-presence-accent: var(--workspace-accent);
 }
 
 .docs-workspace .docs-collab-presence__avatar--connecting {
-  --docs-collab-presence-accent: var(--docs-accent);
+  --docs-collab-presence-accent: var(--workspace-accent);
 }
 
 .docs-workspace__header-actions .button.docs-workspace__source-toggle--active {
-  color: var(--docs-accent);
-  background-color: color-mix(in oklab, var(--docs-accent) 16%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--docs-accent) 28%, transparent);
+  color: var(--workspace-accent);
+  background-color: color-mix(in oklch, var(--workspace-accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--workspace-accent) 28%, transparent);
 }
 
 .docs-workspace__header-actions .button.docs-workspace__source-toggle--active:hover:not(:disabled) {
-  color: var(--docs-accent);
-  background-color: color-mix(in oklab, var(--docs-accent) 24%, transparent);
+  color: var(--workspace-accent);
+  background-color: color-mix(in oklch, var(--workspace-accent) 24%, transparent);
 }
 
 .docs-workspace .docs-workspace__review-toggle {
@@ -349,7 +281,7 @@
 .docs-workspace .docs-workspace__review-toggle::after {
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
-  background-color: var(--docs-accent);
+  background-color: var(--workspace-accent);
   color: #ffffff;
 }
 
@@ -364,17 +296,14 @@
 }
 
 .docs-dialog-surface {
-  --docs-accent: #3b82f6;
-  --docs-accent-strong: color-mix(in oklab, var(--docs-accent) 70%, #0f172a);
-  --workspace-accent: var(--docs-accent);
-  --destination-picker-accent: var(--docs-accent);
-  --drive-accent: var(--docs-accent);
-  --color-emerald: var(--docs-accent);
-  --button-primary-bg: var(--docs-accent);
-  --button-primary-fg: #ffffff;
-  --primary: var(--docs-accent);
-  --primary-foreground: #ffffff;
-  --button-active-color: var(--docs-accent-strong);
+  --workspace-accent: var(--color-we-got-sand);
+  --destination-picker-accent: var(--workspace-accent);
+  --color-emerald: var(--workspace-accent);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  --primary: var(--workspace-accent);
+  --primary-foreground: var(--color-we-got-dark);
+  --button-active-color: var(--workspace-accent-strong);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
@@ -383,12 +312,12 @@
 }
 
 .docs-workspace .docs-comments-floating-layer {
-  --docs-accent: #3b82f6;
+  --workspace-accent: var(--color-we-got-sand);
 }
 
 .docs-workspace .text-editor {
   @apply min-h-0 flex-1;
-  --text-editor-comment: var(--docs-accent);
+  --text-editor-comment: var(--workspace-accent);
   --text-editor-shadow-sheet: var(--sheet-shadow);
 }
 
@@ -484,7 +413,7 @@
   @apply flex min-h-0 flex-col border-l;
   width: var(--docs-comments-column-width);
   border-color: var(--docs-border);
-  /* Match DocsCollabSidebarPanel wash (not solid --app-sidebar-bg navy nav). */
+  /* Match DocsCollabSidebarPanel wash (not solid --app-sidebar-bg tint). */
   background-color: var(--docs-collab-sidebar-panel-wash);
 }
 

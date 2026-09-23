@@ -14,7 +14,7 @@ import { meetStoryParameters } from "@/meet-core/stories/meet-story-shared";
  * Checking / waiting-for-host / missing / error use the same card without media.
  */
 const meta = {
-  title: "Apps/Meet/Panes/MeetGuestChannel",
+  title: "Features/Meet/Panes/MeetGuestChannel",
   component: MeetGuestChannel,
   render: (args) => <MeetGuestChannelStoryHarness {...args} />,
   parameters: {

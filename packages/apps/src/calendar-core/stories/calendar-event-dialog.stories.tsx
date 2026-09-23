@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
 import {
   emptyCalendarEventForm,
@@ -37,12 +37,19 @@ async function chooseNewMeetLink(canvas: ReturnType<typeof within>) {
   await userEvent.click(
     canvas.getByRole("menuitem", { name: defaultCalendarLabels.eventMeetNewLink }),
   );
+  // Wait for the menu to unmount (Chromatic may pause exit animations).
+  // Do not require the trigger — replace-confirm keeps the page aria-hidden.
+  await waitFor(() => {
+    expect(
+      canvas.queryByRole("menuitem", { name: defaultCalendarLabels.eventMeetNewLink }),
+    ).toBeNull();
+  });
 }
 
 const bootstrap = createCalendarAppBootstrap();
 
 const meta: Meta<typeof CalendarEventDialog> = {
-  title: "Apps/Calendar/EventDialog",
+  title: "Features/Calendar/EventDialog",
   component: CalendarEventDialog,
   args: {
     open: true,
@@ -137,7 +144,9 @@ export const WithMeetLink: Story = {
     await userEvent.click(
       within(confirm).getByRole("button", { name: defaultCalendarLabels.cancel }),
     );
-    await expect(canvas.queryByRole("alertdialog")).toBeNull();
+    await waitFor(() => {
+      expect(canvas.queryByRole("alertdialog")).toBeNull();
+    });
     await expect(canvas.getByDisplayValue("Room A")).toBeTruthy();
     const url = canvas.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel) as HTMLInputElement;
     await expect(url.value).toBe("https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n");

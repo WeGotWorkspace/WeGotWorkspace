@@ -22,16 +22,16 @@ export const WORKSPACE_FUTURE_APP_ICON_IDS = ["reminders"] as const;
 
 /** Sampled from icon artwork — keep in sync with webmanifest theme colors. */
 export const WORKSPACE_APP_ACCENT: Record<WorkspaceAppId, string> = {
-  notes: "#f6d176",
-  mail: "#ef4444",
-  calendar: "#6366F1",
-  contacts: "#39d49b",
-  tasks: "#ea8c72",
-  drive: "#10b981",
-  docs: "#3b82f6",
-  settings: "#64748b",
-  meet: "#2a1644",
-  admin: "#475569",
+  notes: "#ffc800",
+  mail: "#de4b0e",
+  calendar: "#ffbdc2",
+  contacts: "#962fa8",
+  tasks: "#ffbdc2",
+  drive: "#8ACE00",
+  docs: "#0045ff",
+  settings: "#003311",
+  meet: "#ffc800",
+  admin: "#003311",
 };
 
 const APPLE_TOUCH_SIZE = 180;
@@ -56,7 +56,7 @@ export function workspaceHomeIconUiSrc(): string {
   return "/app-icons/home.svg";
 }
 
-/** Sampled from home icon background — keep in sync with `home.webmanifest` and `--workspace-home-bg`. */
+/** Suite / Meet dark-surface accent — keep in sync with `home.webmanifest` and `--workspace-home-bg`. */
 export const WORKSPACE_HOME_ACCENT = "#1B1D3A";
 
 /**

@@ -7,9 +7,13 @@
 
   :host {
     display: block;
+    /* Brand paper — app `--workspace-surface` when set, else Soft. Never pure white. */
     --_lc-surface-bg: var(
       --_lc-app-header-bg-color,
-      var(--lg-background-color, light-dark(#fff, #222))
+      var(
+        --lg-background-color,
+        var(--workspace-surface, light-dark(var(--color-we-got-soft), #222))
+      )
     );
   }
 }

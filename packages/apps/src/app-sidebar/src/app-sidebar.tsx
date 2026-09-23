@@ -14,13 +14,37 @@ export type AppSidebarProps = {
   footer?: ReactNode;
   /** Primary CTA under the header (e.g. Compose, New). */
   primaryButton?: ReactNode;
-  /** Applied to the scroll stack (primary button + sections), e.g. drive `--color-ink` override. */
+  /** Applied to the scroll stack (primary button + sections), e.g. drive `--color-we-got-dark` override. */
   scrollSurfaceStyle?: CSSProperties;
   /** Passed to `AppSwitchButton` (e.g. install shell). */
   appSwitchDisabled?: boolean;
   appSwitchSubtitle?: string;
   className?: string;
 };
+
+/**
+ * Inbox tray alone — kept below the lockup so unread / presence-driven inbox
+ * refreshes do not re-render {@link AppSwitchButton} or rewrite the inlined SVG.
+ */
+function AppSidebarNotifications() {
+  const inbox = useNotificationsInbox();
+  if (!inbox) return null;
+  return (
+    <div className="app-sidebar__notifications">
+      <NotificationInboxTray
+        items={inbox.items}
+        unreadCount={inbox.unreadCount}
+        onOpenItem={inbox.onOpenItem}
+        onMarkAllRead={inbox.onMarkAllRead}
+        onEnablePush={inbox.onEnablePush}
+        pushEnabled={inbox.pushEnabled}
+        soundMuted={inbox.soundMuted}
+        onToggleSoundMute={inbox.onToggleSoundMute}
+        unreadArrivalNonce={inbox.unreadArrivalNonce}
+      />
+    </div>
+  );
+}
 
 export function AppSidebar({
   open,
@@ -33,7 +57,6 @@ export function AppSidebar({
   appSwitchSubtitle,
   className,
 }: AppSidebarProps) {
-  const inbox = useNotificationsInbox();
   return (
     <>
       {open ? <div className="app-sidebar__scrim" onClick={onCloseMobile} aria-hidden /> : null}
@@ -42,21 +65,7 @@ export function AppSidebar({
           <div className="app-sidebar__header-main">
             <AppSwitchButton disabled={appSwitchDisabled} subtitle={appSwitchSubtitle} />
           </div>
-          {inbox ? (
-            <div className="app-sidebar__notifications">
-              <NotificationInboxTray
-                items={inbox.items}
-                unreadCount={inbox.unreadCount}
-                onOpenItem={inbox.onOpenItem}
-                onMarkAllRead={inbox.onMarkAllRead}
-                onEnablePush={inbox.onEnablePush}
-                pushEnabled={inbox.pushEnabled}
-                soundMuted={inbox.soundMuted}
-                onToggleSoundMute={inbox.onToggleSoundMute}
-                unreadArrivalNonce={inbox.unreadArrivalNonce}
-              />
-            </div>
-          ) : null}
+          <AppSidebarNotifications />
         </header>
 
         <div className="app-sidebar__scroll">

@@ -50,7 +50,7 @@ async function mockFetcher(
 }
 
 const meta = {
-  title: "Shared/UnifiedSearchApiDropdown",
+  title: "UI/Patterns/Unified Search Api Dropdown",
   component: UnifiedSearchApiDropdown,
   tags: ["autodocs"],
   args: {

@@ -1,7 +1,7 @@
 @import "../../styles.css" reference;
 
 .tasks-main-view {
-  @apply bg-[var(--workspace-root-bg,var(--color-cream,#ffffff))];
+  background-color: var(--workspace-root-bg, var(--color-we-got-soft));
 }
 
 .tasks-main-view__loading {
@@ -14,7 +14,7 @@
   --tasks-body-intrinsic-block-size: calc(var(--tasks-title-line-height) + 1.625rem);
 
   @apply divide-y border-b;
-  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
 }
 
 .tasks-main-view__row {
@@ -76,11 +76,11 @@
 
 .tasks-main-view__complete {
   @apply rounded-full transition-colors;
-  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 45%, transparent);
 }
 
 .tasks-main-view__complete:hover:not(:disabled) {
-  color: var(--tasks-accent);
+  color: var(--workspace-accent);
 }
 
 .tasks-main-view__complete:disabled {
@@ -88,7 +88,7 @@
 }
 
 .tasks-main-view__complete--done {
-  color: var(--tasks-accent);
+  color: var(--workspace-accent);
 }
 
 .tasks-main-view__body {
@@ -99,17 +99,17 @@
 
 .tasks-main-view__title {
   @apply m-0 text-base font-medium leading-6;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .tasks-main-view__description {
   @apply mt-0.5 text-sm;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .tasks-main-view__meta {
   @apply mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 overflow-visible text-sm;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .tasks-main-view__meta-item {
@@ -150,7 +150,7 @@
 }
 
 .tasks-main-view__composer-marker {
-  color: color-mix(in oklab, var(--color-ink) 35%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 35%, transparent);
 }
 
 .tasks-main-view__composer-body {
@@ -159,11 +159,11 @@
 
 .tasks-main-view__composer-title {
   @apply m-0 h-6 w-full border-0 bg-transparent p-0 text-base font-medium leading-6 outline-none;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .tasks-main-view__composer-title::placeholder {
-  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 45%, transparent);
 }
 
 .tasks-main-view__composer-title:disabled {
@@ -172,11 +172,11 @@
 
 .tasks-main-view__composer-description {
   @apply mt-1 w-full resize-none overflow-y-hidden border-0 bg-transparent text-sm leading-5 outline-none;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .tasks-main-view__composer-description::placeholder {
-  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 45%, transparent);
 }
 
 .tasks-main-view__composer-description:disabled {
@@ -194,7 +194,7 @@
 
 .tasks-main-view__composer-select {
   @apply flex h-8 w-auto items-center gap-1.5 border px-2 text-xs shadow-none;
-  border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
   background-color: transparent;
   --input-height: 2rem;
   --control-height-sm: 2rem;
@@ -286,7 +286,7 @@
 
 .tasks-main-view__composer-due-extras {
   @apply flex flex-col gap-2 border-t p-2;
-  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
 }
 
 .tasks-main-view__composer-due-time-row {
@@ -303,7 +303,7 @@
 
 .tasks-main-view__composer-due-clear {
   @apply border-t p-2;
-  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
 }
 
 .tasks-main-view__composer-due-clear-button {
@@ -348,12 +348,12 @@
 }
 
 .tasks-main-view__remind-button--active {
-  border-color: color-mix(in oklab, var(--color-ink) 28%, transparent);
-  background-color: color-mix(in oklab, var(--tasks-accent, #ea8c72) 14%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 28%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-accent, #ffbdc2) 14%, transparent);
 }
 
 .tasks-main-view__remind-button--active svg {
-  color: var(--button-active-color, var(--tasks-accent, var(--color-emerald)));
+  color: var(--button-active-color, var(--workspace-accent, var(--color-emerald)));
   fill: currentColor;
 }
 
@@ -365,8 +365,8 @@
   inline-size: var(--tasks-remind-badge-size);
   block-size: var(--tasks-remind-badge-size);
   font-size: var(--tasks-remind-badge-font-size);
-  background-color: var(--color-ink);
-  color: var(--color-cream, #ffffff);
+  background-color: var(--color-we-got-dark);
+  color: var(--color-we-got-soft);
 }
 
 .tasks-main-view__remind--row {
@@ -378,7 +378,7 @@
 
 .tasks-main-view__remind--row svg {
   @apply size-3.5 shrink-0;
-  color: var(--button-active-color, var(--tasks-accent, var(--color-emerald)));
+  color: var(--button-active-color, var(--workspace-accent, var(--color-emerald)));
   fill: currentColor;
 }
 
@@ -421,8 +421,8 @@
 }
 
 .tasks-main-view__add-submit.button--variant-primary {
-  background-color: var(--tasks-accent);
-  color: var(--color-ink);
+  background-color: var(--workspace-accent);
+  color: var(--button-primary-fg, var(--color-we-got-dark));
 }
 
 .tasks-main-view__add-submit.button--variant-primary:hover {

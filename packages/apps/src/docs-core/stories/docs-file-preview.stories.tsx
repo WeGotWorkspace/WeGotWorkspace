@@ -29,7 +29,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor i
 `;
 
 const meta = {
-  title: "Docs/DocsFilePreview",
+  title: "Features/Docs/DocsFilePreview",
   component: DocsFilePreview,
   parameters: {
     layout: "padded",

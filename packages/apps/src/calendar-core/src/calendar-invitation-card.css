@@ -4,12 +4,12 @@
 
 .calendar-invitation-card {
   @apply min-w-0 max-w-full;
-  --docs-collab-card-accent: var(--calendar-accent, #6366f1);
+  --docs-collab-card-accent: var(--workspace-accent, #962fa8);
   /* Isolate the Lit card from timeline stack vars so flow width stays 100%. */
   --_lc-days: 1;
   --_lc-width: 1;
   /* Solid cream/white so the card does not blend into the tinted invitations rail. */
-  --docs-surface: var(--color-cream, #ffffff);
+  --docs-surface: var(--workspace-surface);
   background-color: var(--docs-surface);
 }
 

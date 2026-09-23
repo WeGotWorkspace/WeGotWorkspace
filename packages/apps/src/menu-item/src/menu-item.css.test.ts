@@ -7,6 +7,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "menu-item.css"), "utf8");
 
 describe("menu-item sidebar surfaces", () => {
+  it("sets sidebar nav rows to semibold (600)", () => {
+    expect(css).toMatch(/\.sidebar-section \.menu-item--surface-idle \{[\s\S]*font-semibold/);
+    expect(css).toMatch(/\.sidebar-section \.menu-item--surface-selected \{[\s\S]*font-semibold/);
+    expect(css).toMatch(/\.sidebar-section \.menu-item--surface-drop \{[\s\S]*font-semibold/);
+    expect(css).not.toMatch(
+      /\.sidebar-section \.menu-item--surface-(?:idle|selected|drop) \{[\s\S]*font-medium/,
+    );
+  });
+
   it("washes selected sidebar rows from outline-active tokens", () => {
     expect(css).toMatch(
       /\.sidebar-section \.menu-item--surface-selected \{[\s\S]*--button-outline-active-background/,
@@ -15,7 +24,7 @@ describe("menu-item sidebar surfaces", () => {
       /\.sidebar-section \.menu-item--surface-selected \{[\s\S]*--button-active-color/,
     );
     expect(css).not.toMatch(
-      /\.sidebar-section \.menu-item--surface-selected \{[\s\S]*bg-\[color-mix\(in_oklab,var\(--color-ink\)_12%/,
+      /\.sidebar-section \.menu-item--surface-selected \{[\s\S]*bg-\[color-mix\(in_oklab,var\(--color-we-got-dark\)_12%/,
     );
   });
 
@@ -34,6 +43,15 @@ describe("menu-item sidebar surfaces", () => {
   it("keeps selected sidebar icons at full opacity for AA-readable glyphs", () => {
     expect(css).toMatch(
       /\.sidebar-section \.menu-item\.menu-item--selected \.menu-item__icon-slot \{[\s\S]*opacity:\s*1/,
+    );
+  });
+
+  it("lets workspaces theme selected count badges via --sidebar-badge-bg/fg", () => {
+    expect(css).toMatch(
+      /\.sidebar-section \.menu-item\.menu-item--selected \.menu-item__badge \{[\s\S]*background-color:\s*var\(--sidebar-badge-bg,\s*var\(--color-we-got-dark\)\)/,
+    );
+    expect(css).toMatch(
+      /\.sidebar-section \.menu-item\.menu-item--selected \.menu-item__badge \{[\s\S]*color:\s*var\(--sidebar-badge-fg/,
     );
   });
 

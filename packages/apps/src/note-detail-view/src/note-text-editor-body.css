@@ -23,7 +23,7 @@
 }
 
 .note-text-editor-body .text-editor-prose {
-  color: var(--notes-detail-contrast-fg, var(--color-ink));
+  color: var(--notes-detail-contrast-fg, var(--color-we-got-dark));
   text-box-trim: trim-both;
   text-box-edge: cap alphabetic;
 }
@@ -45,5 +45,5 @@
 
 /* Soft wash lives on shared `.docs-collab-presence-chrome`; Notes only sets accent. */
 .notes-workspace .docs-collab-presence-chrome {
-  --docs-collab-presence-accent: var(--notes-accent, #f6d176);
+  --docs-collab-presence-accent: var(--workspace-accent, #ffc800);
 }

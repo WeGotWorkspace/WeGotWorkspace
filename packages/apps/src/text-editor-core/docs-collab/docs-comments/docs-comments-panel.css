@@ -4,11 +4,11 @@
 .docs-comments-panel {
   --docs-collab-sidebar-panel-color: var(
     --docs-comments-panel-color,
-    var(--docs-text, var(--color-ink))
+    var(--docs-text, var(--color-we-got-dark))
   );
   --docs-collab-sidebar-panel-border-color: var(
     --docs-comments-panel-border-color,
-    color-mix(in oklab, var(--color-ink) 8%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
   );
 }
 

@@ -4,7 +4,7 @@ import { FloatingActionBar } from "@/floating-action-bar/src/floating-action-bar
 import "@/floating-action-bar/stories/floating-action-bar.stories.css";
 
 const meta: Meta<typeof FloatingActionBar> = {
-  title: "Shared/Floating Action Bar",
+  title: "UI/Patterns/Floating Action Bar",
   component: FloatingActionBar,
 };
 export default meta;

@@ -6,7 +6,7 @@ import "@/styles.css";
 import "@/notes-core/src/notes-workspace.css";
 
 const meta: Meta<typeof NotesNewMenu> = {
-  title: "Apps/Notes/Components/NotesNewMenu",
+  title: "Features/Notes/Components/NotesNewMenu",
   component: NotesNewMenu,
   tags: ["autodocs"],
   args: {
@@ -36,7 +36,7 @@ export const Default: Story = {
     const scroll = workspace!.querySelector(".app-sidebar__scroll") as HTMLElement | null;
     await expect(scroll).toBeTruthy();
     const accent = document.createElement("span");
-    accent.style.backgroundColor = "var(--notes-accent)";
+    accent.style.backgroundColor = "var(--workspace-accent)";
     const fg = document.createElement("span");
     fg.style.color = "var(--button-primary-fg)";
     scroll!.append(fg);

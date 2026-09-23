@@ -54,7 +54,7 @@ function MeetThreadPlacementHarness({ callLayout }: { callLayout: MeetThreadCall
 }
 
 const meta = {
-  title: "Apps/Meet/Panes/MeetThread",
+  title: "Features/Meet/Panes/MeetThread",
   component: MeetWorkspace,
   parameters: {
     layout: "fullscreen",
@@ -86,8 +86,10 @@ export const IdlePanel: Story = {
       canvas.queryByRole("button", { name: (n) => n === chatUiLabels.edit }),
     ).not.toBeInTheDocument();
     await expect(canvas.queryByLabelText(meetLabels.threadPeopleCount(2))).not.toBeInTheDocument();
-    const close = canvas.getByLabelText(meetLabels.threadClose);
-    await expect(close.closest(".view-header__title-trailing")).toBeTruthy();
+    const close = canvas
+      .getAllByLabelText(meetLabels.threadClose)
+      .find((element) => element.closest(".view-header__title-trailing"));
+    await expect(close).toBeTruthy();
   },
 };
 

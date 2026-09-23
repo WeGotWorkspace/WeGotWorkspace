@@ -38,16 +38,10 @@ describe("calendar invitations dock width", () => {
   it("republishes Calendar accent on the portaled SideDrawer; sheet wash is shared", () => {
     const panel = readCss("calendar-invitations-panel.css");
     expect(panel).toMatch(
-      /\.calendar-invitations-panel-drawer \{[\s\S]*--calendar-accent:\s*#6366f1/,
+      /\.calendar-invitations-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(panel).toMatch(
-      /\.calendar-invitations-panel-drawer \{[\s\S]*--calendar-accent-strong:\s*#5558e8/,
-    );
-    expect(panel).toMatch(
-      /\.calendar-invitations-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--calendar-accent\)/,
-    );
-    expect(panel).toMatch(
-      /\.calendar-invitations-panel-drawer \{[\s\S]*--workspace-accent-strong:\s*var\(--calendar-accent-strong\)/,
+      /\.calendar-invitations-panel-drawer \{[\s\S]*--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
     );
     expect(panel).not.toMatch(
       /\.calendar-invitations-panel-drawer \{[\s\S]*--docs-collab-sidebar-panel-wash:/,

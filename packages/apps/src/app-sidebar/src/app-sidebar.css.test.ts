@@ -20,10 +20,10 @@ describe("app sidebar header notifications", () => {
 
   it("remaps ink to sidebar icon chrome so the bell glyph matches lockup color", () => {
     expect(css).toMatch(
-      /\.app-sidebar__notifications \{[\s\S]*--color-ink:\s*var\(\s*--sidebar-logo-close-button-color/,
+      /\.app-sidebar__notifications \{[\s\S]*--color-we-got-dark:\s*var\(\s*--sidebar-logo-close-button-color/,
     );
     expect(css).toMatch(
-      /\.app-sidebar__notifications \{[\s\S]*--button-outline-color:\s*var\(\s*--color-ink/,
+      /\.app-sidebar__notifications \{[\s\S]*--button-outline-color:\s*var\(\s*--color-we-got-dark/,
     );
     // Badge fill lives on the tray trigger, not accent/sidebar-bg.
     expect(css).not.toMatch(
@@ -45,13 +45,19 @@ describe("app sidebar header notifications", () => {
     expect(css).toMatch(
       /\.app-sidebar__notifications \{[\s\S]*--button-outline-border-color:\s*var\(\s*--app-sidebar-border-color/,
     );
+    expect(css).toMatch(
+      /\.app-sidebar__notifications \{[\s\S]*--button-outline-hover-background:\s*var\(\s*--app-sidebar-item-hover-bg\s*\)/,
+    );
   });
 });
 
 describe("app sidebar padding tokens", () => {
   it("derives item padding from the app-switch icon glyph inset", () => {
     expect(css).toMatch(/--app-sidebar-padding-x:\s*1rem/);
-    expect(css).toMatch(/--app-switch-lockup-line:\s*calc\(1\.875rem \* 0\.85\)/);
+    expect(css).toMatch(/--app-switch-lockup-leading:\s*0\.85/);
+    expect(css).toMatch(
+      /--app-switch-lockup-line:\s*calc\(1\.875rem \* var\(--app-switch-lockup-leading\)\)/,
+    );
     expect(css).toMatch(/--app-switch-icon-size:\s*calc\(2 \* var\(--app-switch-lockup-line\)\)/);
     expect(css).toMatch(
       /--app-switch-glyph-inset:\s*calc\(var\(--app-switch-icon-size\) \* 112 \/ 512\)/,
@@ -84,26 +90,26 @@ describe("app sidebar nav selection SST", () => {
     );
     // Brighter cream washes (no ink step): hover 32%→cream < selected 55%→cream < selected-hover 65%→cream.
     expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-hover-bg[\s\S]*32%[\s\S]*var\(--color-cream/,
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-hover-bg[\s\S]*32%[\s\S]*var\(--color-we-got-soft/,
     );
     expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-bg[\s\S]*55%[\s\S]*var\(--color-cream/,
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-bg[\s\S]*55%[\s\S]*var\(--color-we-got-soft/,
     );
     expect(css).not.toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-bg[\s\S]*var\(--color-ink\)\s*10%/,
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-bg[\s\S]*var\(--color-we-got-dark\)\s*10%/,
     );
     expect(css).toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-hover-bg[\s\S]*65%[\s\S]*var\(--color-cream/,
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-hover-bg[\s\S]*65%[\s\S]*var\(--color-we-got-soft/,
     );
     expect(css).not.toMatch(
-      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-hover-bg[\s\S]*var\(--color-ink\)\s*14%/,
+      /\.app-sidebar \{[\s\S]*--app-sidebar-item-selected-hover-bg[\s\S]*var\(--color-we-got-dark\)\s*14%/,
     );
     // Contrast-aware on-color (cream-nudged); override token still wins.
     expect(css).toMatch(
       /@supports\s*\(color:\s*contrast-color\(red\)\)\s*\{[\s\S]*--app-sidebar-item-selected-color[\s\S]*contrast-color\(\s*var\(--button-outline-active-background\)/,
     );
     expect(css).toMatch(
-      /@supports\s*\(color:\s*contrast-color\(red\)\)\s*\{[\s\S]*contrast-color\([\s\S]*92%[\s\S]*var\(--color-cream/,
+      /@supports\s*\(color:\s*contrast-color\(red\)\)\s*\{[\s\S]*contrast-color\([\s\S]*92%[\s\S]*var\(--color-we-got-soft/,
     );
   });
 });

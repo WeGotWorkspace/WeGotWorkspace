@@ -35,7 +35,7 @@ function PasswordProtectedHarness({ initialError = "" }: { initialError?: string
 }
 
 const meta = {
-  title: "Shared/AuthenticationPage",
+  title: "Layout/Authentication Page",
   component: AuthenticationPage,
   tags: ["autodocs"],
   parameters: {

@@ -1,0 +1,14 @@
+@import "../../styles.css" reference;
+
+/**
+ * Static suite lockup — same icon + label metrics as `.app-switch-button__trigger`
+ * (workspace), without hit-area hover / focus chrome. Callsites import
+ * `app-switch-button.css` alongside this file (see `brand-lockup.tsx`).
+ */
+.brand-lockup.app-switch-button__trigger {
+  @apply cursor-default pointer-events-none;
+}
+
+.brand-lockup.app-switch-button__trigger:hover {
+  background-color: transparent;
+}

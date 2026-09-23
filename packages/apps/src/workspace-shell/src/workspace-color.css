@@ -1,0 +1,105 @@
+@import "../../styles.css" reference;
+
+/**
+ * Shared workspace tint recipes (Layer 3).
+ *
+ * Each product `*-workspace.css` imports this once (same pattern as
+ * `workspace-split-app.css`), then only sets what differs:
+ * - `--workspace-accent` → brand primitive
+ * - `--workspace-sidebar-mix` when not the 12% default
+ * - `--wai-*` layers the switch mark actually uses
+ * - Docs: full-accent sidebar + white on-color
+ *
+ * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark. Every app shares one item ladder (22 / 28 / 36), a small step above Calendar's previous 18 / 24 / 32. Product files do not redeclare it.
+ *
+ * Defaults use `:where` (zero specificity). Every product file imports this
+ * sheet, and the app loads every product, so a later copy of these rules used
+ * to reset earlier product overrides (sidebar mix, item washes, primary fg).
+ * Storybook loads one product, so the product file won there and the two
+ * surfaces diverged. Product class rules now win in both.
+ */
+:where(
+  .admin-workspace,
+  .settings-workspace,
+  .notes-workspace,
+  .mail-workspace,
+  .tasks-workspace,
+  .calendar-workspace,
+  .contacts-workspace,
+  .drive-workspace,
+  .docs-workspace,
+  .meet-workspace,
+  .admin-dialog-surface,
+  .mail-dialog-surface,
+  .mail-compose-dialog-surface,
+  .docs-dialog-surface,
+  .notes-dialog-surface,
+  .tasks-dialog-surface,
+  .calendar-dialog-surface,
+  .contacts-dialog-surface,
+  .drive-dialog-surface,
+  .meet-channel-dialog,
+  .meet-call-dialog
+) {
+  /*
+   * App paper is a softer OKLCH tint of Soft. Login, home, forgot-password,
+   * and the installer keep the primitive `--color-we-got-soft`.
+   */
+  --workspace-surface: color-mix(in oklch, var(--color-we-got-soft) 70%, #fff);
+  --workspace-root-bg: var(--workspace-surface);
+  --workspace-main-bg: var(--workspace-surface);
+  --workspace-detail-bg: var(--workspace-surface);
+  --workspace-sidebar-mix: 12%;
+
+  /*
+   * Shared field wash — same dark-into-paper recipe as login/installer
+   * (`6%` / `8%` Dark), mixed into `--workspace-surface` so fields sit on
+   * app paper the way auth fields sit on Soft. Login/installer keep Soft.
+   * `oklch` matches this sheet; auth still uses `oklab` on Soft.
+   */
+  --input-background: color-mix(in oklch, var(--color-we-got-dark) 6%, var(--workspace-surface));
+  --input-background-focus: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 8%,
+    var(--workspace-surface)
+  );
+  --input-background-disabled: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 4%,
+    var(--workspace-surface)
+  );
+
+  --workspace-accent-strong: color-mix(
+    in oklch,
+    var(--workspace-accent) 32%,
+    var(--color-we-got-dark)
+  );
+
+  --app-sidebar-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) var(--workspace-sidebar-mix),
+    var(--workspace-surface)
+  );
+  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
+  --app-sidebar-color: var(--color-we-got-dark);
+
+  --app-sidebar-item-hover-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 22%,
+    var(--workspace-surface)
+  );
+  --app-sidebar-item-selected-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 28%,
+    var(--workspace-surface)
+  );
+  --app-sidebar-item-selected-hover-bg: color-mix(
+    in oklch,
+    var(--workspace-accent) 36%,
+    var(--workspace-surface)
+  );
+  --app-sidebar-item-selected-color: var(--color-we-got-dark);
+
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: #ffffff;
+}

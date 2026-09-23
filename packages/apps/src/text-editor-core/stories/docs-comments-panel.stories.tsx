@@ -28,7 +28,7 @@ const panelHandlers = {
 };
 
 const meta = {
-  title: "Shared/TextEditor/Docs comments/Panel",
+  title: "Features/Docs/TextEditor/Docs comments/Panel",
   component: DocsCommentsPanel,
   parameters: {
     layout: "fullscreen",

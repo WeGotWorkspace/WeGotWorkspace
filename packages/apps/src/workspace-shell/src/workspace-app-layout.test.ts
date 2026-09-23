@@ -51,18 +51,18 @@ describe("WorkspaceUserFooter logout chrome", () => {
     expect(tsx).not.toMatch(/WORKSPACE_USER_LOGOUT_STYLE/);
   });
 
-  it("pins footer avatar mark to an opaque darkened sidebar wash — not selected-chip SST", () => {
+  it("pins footer avatar mark to an accent wash on the sidebar — not selected-chip SST", () => {
     expect(css).toMatch(
-      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(\s*in oklab,\s*#000000 16%,\s*var\(--app-sidebar-bg/,
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 16%,\s*var\(--app-sidebar-bg/,
     );
     expect(css).toMatch(
-      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--color-ink\)/,
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--color-we-got-dark\)/,
     );
     expect(css).not.toMatch(
       /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--button-active-color/,
     );
     expect(css).not.toMatch(
-      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(in oklab,\s*var\(--color-ink\) 12%,\s*transparent/,
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(in oklab,\s*var\(--color-we-got-dark\) 12%,\s*transparent/,
     );
   });
 });

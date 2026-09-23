@@ -67,7 +67,7 @@ function AppSidebarHarness() {
 }
 
 const meta: Meta<typeof AppSidebarHarness> = {
-  title: "Shared/App Sidebar",
+  title: "Layout/App Sidebar",
   component: AppSidebarHarness,
   parameters: {
     layout: "fullscreen",

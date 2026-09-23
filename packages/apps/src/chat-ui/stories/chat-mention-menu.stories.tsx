@@ -5,7 +5,7 @@ import { ChatStoryScope } from "@/chat-ui/stories/chat-story-scope";
 import { CHAT_STORY_PRINCIPALS } from "@/chat-ui/stories/chat-stories.fixtures";
 
 const meta = {
-  title: "Shared/Chat/ChatMentionMenu",
+  title: "UI/Patterns/Chat/Chat Mention Menu",
   component: ChatMentionMenu,
   parameters: {
     layout: "padded",

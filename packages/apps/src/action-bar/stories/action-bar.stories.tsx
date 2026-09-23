@@ -3,7 +3,7 @@ import { Archive, Forward, Reply, Star, Trash2 } from "lucide-react";
 import { ActionBar } from "../src/action-bar";
 
 const meta: Meta<typeof ActionBar> = {
-  title: "Shared/Action Bar",
+  title: "UI/Patterns/Action Bar",
   component: ActionBar,
   parameters: {
     docs: {

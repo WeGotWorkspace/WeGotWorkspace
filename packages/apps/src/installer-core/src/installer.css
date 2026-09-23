@@ -1,21 +1,29 @@
 @import "../../styles.css" reference;
 
+/**
+ * Installer step chrome on the cream auth shell (`.login-screen`).
+ * Ink foregrounds; primary / active fills use brand dark green `#003311`.
+ */
 .installer {
-  --installer-status-ok: #4ade80;
-  --installer-status-error: #f87171;
-  --installer-status-pending: color-mix(in oklab, #ffffff 55%, transparent);
-  --installer-status-warn: #fbbf24;
-  --button-outline-color: #ffffff;
-  --button-outline-hover-color: #ffffff;
-  --button-outline-hover-background: color-mix(in oklab, #ffffff 12%, transparent);
-  --button-outline-active-background: #ffffff;
-  --button-active-color: var(--workspace-home-bg, #1b1d3a);
-  --segmented-control-color: #ffffff;
-  --segmented-control-hover-color: #ffffff;
-  --segmented-control-hover-bg: color-mix(in oklab, #ffffff 12%, transparent);
-  --segmented-control-active-fg: var(--workspace-home-bg, #1b1d3a);
-  --segmented-control-active-bg: #ffffff;
-  --segmented-control-track-border-color: color-mix(in oklab, #ffffff 28%, transparent);
+  --installer-status-ok: #15803d;
+  --installer-status-error: #b14242;
+  --installer-status-pending: color-mix(in oklab, var(--color-we-got-dark) 45%, transparent);
+  --installer-status-warn: #b45309;
+  --button-outline-color: var(--color-we-got-dark);
+  --button-outline-hover-color: var(--color-we-got-dark);
+  --button-outline-hover-background: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
+  --button-outline-active-background: color-mix(in oklab, #003311 14%, var(--color-we-got-soft));
+  --button-active-color: #003311;
+  --segmented-control-color: var(--color-we-got-dark);
+  --segmented-control-hover-color: var(--color-we-got-dark);
+  --segmented-control-hover-bg: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
+  --segmented-control-active-fg: #ffffff;
+  --segmented-control-active-bg: #003311;
+  --segmented-control-track-border-color: color-mix(
+    in oklab,
+    var(--color-we-got-dark) 20%,
+    transparent
+  );
 }
 
 .installer__hero-your {
@@ -32,16 +40,16 @@
 
 .installer__dot {
   @apply size-1.5 rounded-full;
-  background-color: color-mix(in oklab, #ffffff 28%, transparent);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 28%, transparent);
 }
 
 .installer__dot--current,
 .installer__dot--done {
-  background-color: #ffffff;
+  background-color: var(--color-we-got-dark);
 }
 
 .installer__lead {
-  color: color-mix(in oklab, #ffffff 78%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 72%, transparent);
   @apply mb-8 text-lg font-medium;
 }
 
@@ -54,7 +62,7 @@
 }
 
 .installer__hint {
-  color: color-mix(in oklab, #ffffff 62%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
   @apply mb-4 text-sm;
 }
 
@@ -156,11 +164,11 @@
 
 .installer__progress-step {
   @apply flex items-center gap-2;
-  color: color-mix(in oklab, #ffffff 48%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 48%, transparent);
 }
 
 .installer__progress-step--current {
-  color: #ffffff;
+  color: var(--color-we-got-dark);
 }
 
 .installer__progress-marker {
@@ -184,11 +192,12 @@
 }
 
 .installer__check-label {
-  @apply font-medium text-white;
+  @apply font-medium;
+  color: var(--color-we-got-dark);
 }
 
 .installer__check-detail {
-  color: color-mix(in oklab, #ffffff 68%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

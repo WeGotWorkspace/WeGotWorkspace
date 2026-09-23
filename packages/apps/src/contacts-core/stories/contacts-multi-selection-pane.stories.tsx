@@ -27,7 +27,7 @@ function ContactsMultiSelectionPaneHarness({ count = 2 }: { count?: number }) {
 }
 
 const meta = {
-  title: "Apps/Contacts/Panes/Multi selection",
+  title: "Features/Contacts/Panes/Multi selection",
   component: ContactsMultiSelectionPaneHarness,
   parameters: {
     layout: "fullscreen",

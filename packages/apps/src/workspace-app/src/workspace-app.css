@@ -5,7 +5,7 @@
   container: workspace-detail / inline-size;
   background-color: var(
     --workspace-detail-bg,
-    color-mix(in oklab, var(--workspace-accent, transparent) 6%, var(--color-cream, #ffffff))
+    color-mix(in oklab, var(--workspace-accent, transparent) 6%, var(--color-we-got-soft))
   );
 }
 

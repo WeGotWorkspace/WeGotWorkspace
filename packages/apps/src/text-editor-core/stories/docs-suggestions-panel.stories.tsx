@@ -26,7 +26,7 @@ const panelHandlers = {
 };
 
 const meta = {
-  title: "Shared/TextEditor/Docs suggestions/Panel",
+  title: "Features/Docs/TextEditor/Docs suggestions/Panel",
   component: DocsSuggestionsPanel,
   parameters: {
     layout: "fullscreen",

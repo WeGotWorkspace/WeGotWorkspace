@@ -10,7 +10,7 @@ const authFile = path.join(packageRoot, "e2e", ".auth", "admin.json");
 export default defineConfig({
   testDir: "./e2e",
   testMatch:
-    /(?:notes-offline-sync|docs-offline-sync|docs-home-browse|calendar-offline-week-event)\.spec\.ts/,
+    /(?:notes-offline-sync|docs-offline-sync|docs-home-browse|calendar-offline-week-event|drive-offline-sync)\.spec\.ts/,
   globalSetup: "./e2e/global-setup-live.mjs",
   fullyParallel: false,
   workers: 1,
@@ -22,6 +22,7 @@ export default defineConfig({
   use: {
     baseURL,
     storageState: authFile,
+    ignoreHTTPSErrors: process.env.WGW_APPS_E2E_IGNORE_HTTPS === "1",
     trace: "on-first-retry",
   },
   webServer: process.env.WGW_APPS_E2E_NO_SERVER

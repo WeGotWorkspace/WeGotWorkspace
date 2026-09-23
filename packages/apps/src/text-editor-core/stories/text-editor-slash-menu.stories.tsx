@@ -31,7 +31,7 @@ function SlashMenuHarness({ query = "" }: { query?: string }) {
 }
 
 const meta = {
-  title: "Shared/TextEditor/SlashMenu",
+  title: "UI/Patterns/TextEditor/SlashMenu",
   component: TextEditorSlashMenu,
   parameters: {
     layout: "fullscreen",

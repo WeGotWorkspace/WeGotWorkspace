@@ -30,7 +30,7 @@ Mount live `/install` on the signed-off first-run chrome (Custom / header-first,
 - Install payload: `mail_enabled: false`; `meet_enabled: true` with `DEFAULT_PUBLIC_STUN_URLS_CSV`; empty TURN.
 - Site payload: `enable_files`, `enable_calendars`, `enable_contacts` all true.
 - Server interrupt renders only `status === "error"` rows. API `optional: true` checks (IMAP) map to `warn` and are not shown.
-- First-run chrome: `AuthenticationPage` with `hideHeader` / `hideFooter`, dots above the headline. No logo, no copyright.
+- First-run chrome: `AuthenticationPage` with step dots above the headline. No logo, no copyright footer.
 - Navigation stays in `InstallerApp` (`onOpenWorkspace`). Workspace must not `window.location.assign`.
 
 ## Edge cases

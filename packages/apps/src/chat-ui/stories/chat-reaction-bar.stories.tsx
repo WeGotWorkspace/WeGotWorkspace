@@ -6,7 +6,7 @@ import { ChatStoryScope } from "@/chat-ui/stories/chat-story-scope";
 import { CHAT_STORY_CURRENT_USER_ID } from "@/chat-ui/stories/chat-stories.fixtures";
 
 const meta = {
-  title: "Shared/Chat/ChatReactionBar",
+  title: "UI/Patterns/Chat/Chat Reaction Bar",
   component: ChatReactionBar,
   parameters: {
     layout: "padded",

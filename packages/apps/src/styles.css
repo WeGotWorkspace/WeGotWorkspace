@@ -2,8 +2,8 @@
 @source "../src";
 @import "tw-animate-css";
 
-/* Self-hosted fonts: Libre Caslon Condensed (serif), JetBrains Mono (mono), Bebas Neue (app mark).
- * Product UI sans uses the system UI stack (`ui-sans-serif`) — see --font-sans. */
+/* Self-hosted fonts: Libre Caslon Condensed (serif), JetBrains Mono (mono), Bebas Neue (mark).
+ * Product UI sans uses the system UI stack (`ui-sans-serif`) — see --font-system-sans / --font-sans. */
 @font-face {
   font-family: "Libre Caslon Condensed";
   src: url("/fonts/LibreCaslonCondensed.woff2") format("woff2-variations");
@@ -27,23 +27,57 @@
 }
 
 @theme inline {
-  --font-display: ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Libre Caslon Condensed", serif;
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --font-app: "Bebas Neue", ui-sans-serif, system-ui, sans-serif;
-  /* Dense uppercase captions (field labels, sidebar section titles) — minimum label size (12px). */
-  --text-2xs: 0.75rem;
-  --text-2xs--line-height: 1rem;
+  /* Brand / system face primitives (no role). */
+  --font-we-got-serif: "Libre Caslon Condensed", serif;
+  --font-we-got-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-we-got-mark: "Bebas Neue", ui-sans-serif, system-ui, sans-serif;
+  --font-system-sans: ui-sans-serif, system-ui, sans-serif;
+  /* Semantic roles — utilities: font-sans / font-serif / font-mono / font-mark. */
+  --font-sans: var(--font-system-sans);
+  --font-serif: var(--font-we-got-serif);
+  --font-mono: var(--font-we-got-mono);
+  --font-mark: var(--font-we-got-mark);
+  /* Body weight: use Tailwind font-normal (400). Chrome stays font-semibold (600). */
   --color-forest: #042318;
   --color-emerald: #34d399;
-  --color-ink: #042a22;
   --color-paper: #34d399;
   --color-slate-muted: #0a3a2a;
   --color-ghost: #22c55e;
-  /* Workspace pane / shell background (white for now; tweak here to re-tint). */
-  --color-cream: #ffffff;
-  /** Suite home + sign-in shell — sampled from `home.svg` `--wai-bg`; keep in sync with `WORKSPACE_HOME_ACCENT`. */
+  /*
+   * We Got brand primitives — hex first (source + fallback), then oklch(from)
+   * so supporting browsers mix in OKLCH. Floor: relative color + color-mix
+   * (Chrome 119 / Safari 16.4 / Firefox 128); shipped CSS already needs color-mix.
+   */
+  --color-we-got-soft: #fff5e9;
+  --color-we-got-soft: oklch(from #fff5e9 l c h);
+  --color-we-got-dark: #003311;
+  --color-we-got-dark: oklch(from #003311 l c h);
+  --color-we-got-blue: #0045ff;
+  --color-we-got-blue: oklch(from #0045ff l c h);
+  --color-we-got-red: #de4b0e;
+  --color-we-got-red: oklch(from #de4b0e l c h);
+  --color-we-got-prince: #962fa8;
+  --color-we-got-prince: oklch(from #962fa8 l c h);
+  --color-we-got-brat: #8ace00;
+  --color-we-got-brat: oklch(from #8ace00 l c h);
+  --color-we-got-sky: #a3c4e8;
+  --color-we-got-sky: oklch(from #a3c4e8 l c h);
+  --color-we-got-pink: #ffbdc2;
+  --color-we-got-pink: oklch(from #ffbdc2 l c h);
+  --color-we-got-yellow: #ffc800;
+  --color-we-got-yellow: oklch(from #ffc800 l c h);
+  --color-we-got-sand: #ba9689;
+  --color-we-got-sand: oklch(from #ba9689 l c h);
+  /* Status semantics (not brand primitives). Hex then oklch(from); error ≠ We Got Red. */
+  --color-error: #b14242;
+  --color-error: oklch(from #b14242 l c h);
+  --color-warning: #c98a1f;
+  --color-warning: oklch(from #c98a1f l c h);
+  --color-success: #3a8f5a;
+  --color-success: oklch(from #3a8f5a l c h);
+  --color-info: #a3c4e8;
+  --color-info: oklch(from #a3c4e8 l c h);
+  /** Meet / suite dark surfaces — keep in sync with `WORKSPACE_HOME_ACCENT`. Auth/installer use `--color-we-got-soft`. */
   --workspace-home-bg: #1b1d3a;
 }
 
@@ -112,11 +146,12 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  /* Cream surfaces use `--color-we-got-soft` (Soft). This oklch is the shadcn --background token. */
+  --background: oklch(0.968 0.007 80.7);
   --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
+  --card: oklch(0.968 0.007 80.7);
   --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
+  --popover: oklch(0.968 0.007 80.7);
   --popover-foreground: oklch(0.129 0.042 264.695);
   --primary: oklch(0.208 0.042 265.755);
   --primary-foreground: oklch(0.984 0.003 247.858);
@@ -126,7 +161,7 @@
   --muted-foreground: oklch(0.554 0.046 257.417);
   --accent: oklch(0.968 0.007 247.896);
   --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: var(--color-error);
   --destructive-foreground: oklch(0.984 0.003 247.858);
   --border: oklch(0.929 0.013 255.508);
   --input: oklch(0.929 0.013 255.508);
@@ -153,7 +188,7 @@
    * True capsules use `--control-radius-pill` (Switch, badges) explicitly.
    */
   --control-radius: 0.375rem;
-  --control-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --control-border-color: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
   --input-shadow: none;
   /* Capsule chips: metadata labels, count badges, switches — not ordinary controls. */
   --control-radius-pill: 9999px;
@@ -199,7 +234,7 @@
   --input-font-size-lg: 1rem;
   --input-font-size-xl: 1rem;
   /* Switch off track + pending UserChip wash — one shared gray. */
-  --switch-off-bg: color-mix(in oklab, var(--color-ink) 18%, var(--color-cream, #ffffff));
+  --switch-off-bg: color-mix(in oklab, var(--color-we-got-dark) 18%, var(--color-we-got-soft));
 }
 
 .dark {
@@ -243,7 +278,7 @@
   }
 
   html {
-    background-color: var(--color-ink);
+    background-color: var(--color-we-got-dark);
   }
 
   body {
@@ -286,15 +321,15 @@
 /* Editable contenteditable placeholder */
 [contenteditable="true"]:empty::before {
   content: attr(data-placeholder);
-  color: color-mix(in oklab, var(--color-ink) 35%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 35%, transparent);
   pointer-events: none;
 }
 
 /* Neutral text selection inside notes (not the bright green default) */
 .notes-root [contenteditable="true"]::selection,
 .notes-root [contenteditable="true"] *::selection {
-  background-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
-  color: var(--color-ink);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 18%, transparent);
+  color: var(--color-we-got-dark);
 }
 
 /*

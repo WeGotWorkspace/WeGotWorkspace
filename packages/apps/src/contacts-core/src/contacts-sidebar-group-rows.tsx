@@ -11,7 +11,6 @@ export type ContactsSidebarGroupRowsProps = {
   groups: ContactCard[];
   view: string;
   editLabel: string;
-  nested?: boolean;
   canEditGroup: (group: ContactCard) => boolean;
   onSelect: (groupId: string) => void;
   onEdit: (group: ContactCard) => void;
@@ -24,7 +23,6 @@ export function ContactsSidebarGroupRows({
   groups,
   view,
   editLabel,
-  nested = false,
   canEditGroup,
   onSelect,
   onEdit,
@@ -40,7 +38,6 @@ export function ContactsSidebarGroupRows({
             key={group.id}
             name={contactDisplayName(group)}
             color={groupAddressBookColor(group, colorOverrides) ?? ""}
-            nested={nested}
             selected={view === contactsGroupViewKey(group.id)}
             onSelect={() => onSelect(group.id)}
             onEdit={canEditGroup(group) ? () => onEdit(group) : undefined}

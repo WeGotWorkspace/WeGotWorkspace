@@ -127,7 +127,7 @@ describe("segmented-control chrome tokens", () => {
       /\.segmented-control__thumb \{[\s\S]*background-color:\s*var\(\s*--segmented-control-active-bg,\s*var\(\s*--button-outline-active-background/,
     );
     expect(css).toMatch(
-      /\.segmented-control__button--active \{[\s\S]*color:\s*var\(\s*--segmented-control-active-fg,\s*var\(--button-active-color,\s*var\(--color-ink\)\)/,
+      /\.segmented-control__button--active \{[\s\S]*color:\s*var\(\s*--segmented-control-active-fg,\s*var\(--button-active-color,\s*var\(--color-we-got-dark\)\)/,
     );
     expect(css).toMatch(
       /\.segmented-control__thumb \{[\s\S]*box-shadow:\s*var\(--segmented-control-active-shadow,\s*none\)/,
@@ -136,10 +136,10 @@ describe("segmented-control chrome tokens", () => {
 
   it("matches idle segment foreground to outline button color (no muted fade)", () => {
     expect(css).toMatch(
-      /\.segmented-control__button \{[\s\S]*color:\s*var\(\s*--segmented-control-color,\s*var\(--button-outline-color,\s*var\(--color-ink\)\)/,
+      /\.segmented-control__button \{[\s\S]*color:\s*var\(\s*--segmented-control-color,\s*var\(--button-outline-color,\s*var\(--color-we-got-dark\)\)/,
     );
     expect(css).not.toMatch(
-      /color-mix\(in oklab,\s*var\(--segmented-control-color,\s*var\(--color-ink\)\)\s*55%/,
+      /color-mix\(in oklab,\s*var\(--segmented-control-color,\s*var\(--color-we-got-dark\)\)\s*55%/,
     );
   });
 
@@ -154,10 +154,10 @@ describe("segmented-control chrome tokens", () => {
 
   it("hovers non-disabled segments via outline hover tokens", () => {
     expect(css).toMatch(
-      /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*color:\s*var\(\s*--segmented-control-hover-color,\s*var\(--button-outline-hover-color/,
+      /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*color:\s*var\(\s*--segmented-control-hover-color,\s*var\(\s*--button-outline-hover-color/,
     );
     expect(css).toMatch(
-      /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*background-color:\s*var\(\s*--segmented-control-hover-bg,\s*var\(--button-outline-hover-background/,
+      /\.segmented-control__button:hover:not\(:disabled\) \{[\s\S]*background-color:\s*var\(\s*--segmented-control-hover-bg,\s*var\(\s*--button-outline-hover-background/,
     );
     expect(css).toMatch(
       /\.segmented-control__button--active:hover:not\(:disabled\) \{[\s\S]*background-color:\s*transparent/,

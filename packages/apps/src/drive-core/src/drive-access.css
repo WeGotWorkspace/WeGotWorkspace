@@ -2,12 +2,12 @@
 
 .drive-workspace .drive-access-layout {
   @apply flex min-h-0 flex-1 min-w-0 flex-col;
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--color-we-got-soft);
 }
 
 .drive-workspace .drive-access-layout__header {
   @apply border-b px-5 py-4 md:px-6;
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
 }
 
 .drive-workspace .drive-access-pane {
@@ -16,13 +16,13 @@
 
 .drive-workspace .drive-access-tree {
   @apply flex w-56 shrink-0 flex-col border-r min-h-0;
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  background-color: color-mix(in oklab, var(--color-ink) 3%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 3%, transparent);
 }
 
 .drive-workspace .drive-access-tree__title {
   @apply px-4 pt-5 pb-2 text-xs font-semibold uppercase tracking-wide;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .drive-workspace .drive-access-tree__list {
@@ -35,7 +35,7 @@
 
 .drive-workspace .drive-access-tree__expand {
   @apply flex size-6 shrink-0 items-center justify-center rounded;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .drive-workspace .drive-access-tree__expand--placeholder {
@@ -44,22 +44,22 @@
 
 .drive-workspace .drive-access-tree__item {
   @apply flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .drive-workspace .drive-access-tree__item:hover {
-  background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 6%, transparent);
 }
 
 .drive-workspace .drive-access-tree__item--selected {
-  background-color: color-mix(in oklab, var(--drive-accent) 14%, transparent);
-  color: var(--color-ink);
+  background-color: color-mix(in oklab, var(--workspace-accent) 14%, transparent);
+  color: var(--color-we-got-dark);
   font-weight: 600;
 }
 
 .drive-workspace .drive-access-tree__icon {
   @apply flex shrink-0 items-center justify-center;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .drive-workspace .drive-access-tree__label {
@@ -72,7 +72,7 @@
 
 .drive-workspace .drive-access-tree__empty {
   @apply py-1 text-xs;
-  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 45%, transparent);
 }
 
 .drive-workspace .drive-access-detail {
@@ -81,24 +81,24 @@
 
 .drive-workspace .drive-access-detail__header {
   @apply border-b px-5 py-4 md:px-6;
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
 }
 
 .drive-workspace .drive-access-detail__title {
   @apply mt-2 font-serif text-2xl;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .drive-workspace .drive-access-detail__actions {
   @apply flex flex-wrap items-center gap-2 border-b px-5 py-3 md:px-6;
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --button-primary-bg: var(--color-ink);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
+  --button-primary-bg: var(--color-we-got-dark);
   --button-primary-fg: #ffffff;
 }
 
 .drive-workspace .drive-access-detail__toolbar {
   @apply flex flex-col gap-3 border-b px-5 py-4 md:px-6;
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
 }
 
 .drive-workspace .drive-access-detail__search {
@@ -111,19 +111,19 @@
 
 .drive-workspace .drive-access-filters__chip {
   @apply rounded-full border px-3 py-1 text-xs font-medium transition-colors;
-  border-color: color-mix(in oklab, var(--color-ink) 14%, transparent);
-  color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 14%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 70%, transparent);
   background-color: transparent;
 }
 
 .drive-workspace .drive-access-filters__chip:hover {
-  background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 6%, transparent);
 }
 
 .drive-workspace .drive-access-filters__chip--active {
-  border-color: color-mix(in oklab, var(--drive-accent) 35%, transparent);
-  background-color: color-mix(in oklab, var(--drive-accent) 12%, transparent);
-  color: var(--color-ink);
+  border-color: color-mix(in oklab, var(--workspace-accent) 35%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-accent) 12%, transparent);
+  color: var(--color-we-got-dark);
 }
 
 .drive-workspace .drive-access-detail__rows {
@@ -132,18 +132,18 @@
 
 .drive-workspace .drive-access-detail__status {
   @apply py-8 text-center text-sm;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .drive-workspace .drive-access-grant-row {
   @apply flex items-start gap-3 border-b py-4;
-  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
 }
 
 .drive-workspace .drive-access-grant-row__avatar {
   @apply shrink-0;
-  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
-  --user-avatar-fg: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  --user-avatar-bg: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
+  --user-avatar-fg: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .drive-workspace .drive-access-grant-row__main {
@@ -156,7 +156,7 @@
 
 .drive-workspace .drive-access-grant-row__name {
   @apply text-sm font-medium;
-  color: var(--color-ink);
+  color: var(--color-we-got-dark);
 }
 
 .drive-workspace .drive-access-grant-row__name--button {
@@ -169,7 +169,7 @@
 
 .drive-workspace .drive-access-grant-row__meta {
   @apply mt-1.5 flex flex-wrap items-center gap-2 text-xs;
-  color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
 }
 
 .drive-workspace .drive-access-perm-pill {
@@ -179,17 +179,17 @@
 .drive-workspace .drive-access-grant-row__via-link,
 .drive-workspace .drive-access-person-drawer__via-link {
   @apply rounded underline-offset-2 hover:underline;
-  /* Darker than --drive-accent for WCAG AA on light row backgrounds. */
+  /* Darker than --workspace-accent for WCAG AA on light row backgrounds. */
   color: #047857;
 }
 
 .drive-workspace .drive-access-grant-row__inherited {
-  color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 45%, transparent);
 }
 
 .drive-workspace .drive-access-person-drawer__header {
   @apply flex items-center gap-4 border-b pb-5;
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
 }
 
 .drive-workspace .drive-access-person-drawer__title {
@@ -198,13 +198,13 @@
 
 .drive-workspace .drive-access-person-drawer__subtitle {
   @apply text-sm capitalize;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .drive-workspace .drive-access-person-drawer__loading,
 .drive-workspace .drive-access-person-drawer__empty {
   @apply py-6 text-sm;
-  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .drive-workspace .drive-access-person-drawer__list {
@@ -213,7 +213,7 @@
 
 .drive-workspace .drive-access-person-drawer__entry {
   @apply rounded-lg border p-4;
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
 }
 
 .drive-workspace .drive-access-person-drawer__entry-top {
@@ -223,7 +223,7 @@
 .drive-workspace .drive-access-person-drawer__via,
 .drive-workspace .drive-access-person-drawer__group {
   @apply mt-2 text-sm;
-  color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
 }
 
 @media (max-width: 767px) {

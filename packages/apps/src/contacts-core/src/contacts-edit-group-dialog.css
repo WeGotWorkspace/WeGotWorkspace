@@ -10,7 +10,7 @@
 
 .contacts-edit-group-dialog__hint {
   @apply text-xs;
-  color: color-mix(in oklab, var(--color-ink) 58%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 .contacts-edit-group-dialog__footer {

@@ -50,7 +50,7 @@ describe("CollectionSidebarRow", () => {
     );
   });
 
-  it("renders a leading mark inside the select control", () => {
+  it("renders a leading mark in the shared leading column", () => {
     render(
       <ul>
         <CollectionSidebarRow
@@ -61,8 +61,8 @@ describe("CollectionSidebarRow", () => {
         />
       </ul>,
     );
-    const select = screen.getByRole("button", { name: "Friends" });
-    expect(select.querySelector(".collection-sidebar-row__leading")).toBeTruthy();
+    const row = screen.getByText("Friends").closest(".collection-sidebar-row") as HTMLElement;
+    expect(row.querySelector(".collection-sidebar-row__leading")).toBeTruthy();
     expect(screen.getByTestId("leading-mark")).toBeTruthy();
   });
 
@@ -86,7 +86,7 @@ describe("CollectionSidebarRow", () => {
     expect(screen.getByRole("button", { name: "Edit" }).className).toMatch(/icon-button--size-xs/);
   });
 
-  it("renders a leading mark inside the select control", () => {
+  it("renders a leading avatar mark in the shared leading column", () => {
     render(
       <ul>
         <CollectionSidebarRow
@@ -97,9 +97,9 @@ describe("CollectionSidebarRow", () => {
         />
       </ul>,
     );
-    const select = screen.getByRole("button", { name: "Ada Lovelace" });
-    expect(select.querySelector(".collection-sidebar-row__leading")).toBeTruthy();
-    expect(select.querySelector("[data-testid='dm-avatar']")?.textContent).toBe("AL");
+    const row = screen.getByText("Ada Lovelace").closest(".collection-sidebar-row") as HTMLElement;
+    expect(row.querySelector(".collection-sidebar-row__leading")).toBeTruthy();
+    expect(row.querySelector("[data-testid='dm-avatar']")?.textContent).toBe("AL");
   });
 
   it("omits the checkbox when onToggleVisibility is not provided", () => {
@@ -170,7 +170,7 @@ describe("CollectionSidebarRow", () => {
     expect(child?.className).toMatch(/collection-sidebar-row--selected/);
   });
 
-  it("selects from leading, trailing, and color-dot chrome", () => {
+  it("selects from the row chrome including leading column marks", () => {
     const onSelect = vi.fn();
     render(
       <ul>
@@ -184,12 +184,50 @@ describe("CollectionSidebarRow", () => {
         />
       </ul>,
     );
+    const row = screen.getByText("Ada Lovelace").closest(".collection-sidebar-row") as HTMLElement;
     const select = screen.getByRole("button", { name: /Ada Lovelace/ });
-    expect(select.querySelector(".collection-sidebar-row__dot")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("presence"));
+    expect(
+      row.querySelector(".collection-sidebar-row__leading .collection-sidebar-row__dot"),
+    ).toBeTruthy();
+    expect(
+      row.querySelector(".collection-sidebar-row__leading [data-testid='presence']"),
+    ).toBeTruthy();
+    expect(select.querySelector(".collection-sidebar-row__dot")).toBeNull();
+    fireEvent.click(select);
     fireEvent.click(screen.getByTestId("unread"));
-    fireEvent.click(select.querySelector(".collection-sidebar-row__dot") as HTMLElement);
+    fireEvent.click(screen.getByText("Ada Lovelace"));
     expect(onSelect).toHaveBeenCalledTimes(3);
+  });
+
+  it("puts visibility and icon leading in the same fixed-width column", () => {
+    render(
+      <ul>
+        <CollectionSidebarRow
+          name="Personal"
+          color="#22c55e"
+          onSelect={vi.fn()}
+          onToggleVisibility={vi.fn()}
+        />
+        <CollectionSidebarRow
+          name="Family"
+          color="#22c55e"
+          onSelect={vi.fn()}
+          leading={<span data-testid="group-icon" aria-hidden />}
+        />
+      </ul>,
+    );
+    const personal = screen.getByText("Personal").closest(".collection-sidebar-row") as HTMLElement;
+    const family = screen.getByText("Family").closest(".collection-sidebar-row") as HTMLElement;
+    const personalLeading = personal.querySelector(".collection-sidebar-row__leading");
+    const familyLeading = family.querySelector(".collection-sidebar-row__leading");
+    expect(personalLeading?.querySelector(".collection-sidebar-row__visibility")).toBeTruthy();
+    expect(familyLeading?.querySelector("[data-testid='group-icon']")).toBeTruthy();
+    expect(
+      personal.querySelector(".collection-sidebar-row__select .collection-sidebar-row__leading"),
+    ).toBeNull();
+    expect(
+      family.querySelector(".collection-sidebar-row__select .collection-sidebar-row__leading"),
+    ).toBeNull();
   });
 
   it("keeps a trailing menu clickable without selecting the row", () => {

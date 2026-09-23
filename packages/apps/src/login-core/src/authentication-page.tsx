@@ -8,7 +8,6 @@ export type AuthenticationPageProps = {
   /** Rendered above the hero title. */
   beforeTitle?: ReactNode;
   hideHeader?: boolean;
-  hideFooter?: boolean;
   children?: ReactNode;
 };
 
@@ -21,15 +20,12 @@ export function AuthenticationPage({
   eyebrow,
   beforeTitle,
   hideHeader = false,
-  hideFooter = false,
   children,
 }: AuthenticationPageProps) {
   return (
     <main className="login-screen min-h-screen">
       <section className="flex flex-col min-h-screen">
-        {hideHeader ? null : (
-          <WorkspaceShellHeader appSwitchDisabled appSwitchSubtitle="Workspace" />
-        )}
+        {hideHeader ? null : <WorkspaceShellHeader brandLockup />}
 
         <div className="flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-md">
@@ -41,12 +37,6 @@ export function AuthenticationPage({
             {children}
           </div>
         </div>
-
-        {hideFooter ? null : (
-          <footer className="login-screen__footer px-8 pb-6 flex items-center justify-between text-xs">
-            <span>© {new Date().getFullYear()} WeGotWorkspace</span>
-          </footer>
-        )}
       </section>
     </main>
   );

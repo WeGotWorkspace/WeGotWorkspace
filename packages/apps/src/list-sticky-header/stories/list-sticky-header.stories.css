@@ -2,15 +2,15 @@
 
 .list-sticky-header-story-scroll {
   @apply h-80 max-w-md overflow-y-auto border;
-  border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  background-color: var(--color-cream, #ffffff);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
+  background-color: var(--color-we-got-soft);
 }
 
 .list-sticky-header-story-row {
   @apply border-b px-4 py-3 text-sm md:px-6;
-  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
 }
 
 .list-sticky-header-story-scroll--chat {
-  --list-sticky-header-bg: #ffffff;
+  --list-sticky-header-bg: var(--color-we-got-soft);
 }

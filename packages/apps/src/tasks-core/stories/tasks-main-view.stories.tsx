@@ -7,7 +7,7 @@ import { TasksStoryScope } from "@/tasks-core/stories/tasks-story-scope";
 const bootstrap = createTasksAppBootstrap();
 
 const meta: Meta<typeof TasksMainView> = {
-  title: "Apps/Tasks/Main view",
+  title: "Features/Tasks/Main view",
   component: TasksMainView,
   decorators: [
     (Story) => (

@@ -56,7 +56,7 @@ const sampleResults: WgwUnifiedSearchResult[] = [
 ];
 
 const meta = {
-  title: "Shared/UnifiedSearchResultsDropdown",
+  title: "UI/Patterns/Unified Search Results Dropdown",
   component: UnifiedSearchResultsDropdown,
   tags: ["autodocs"],
   args: {

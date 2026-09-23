@@ -5,17 +5,17 @@
   "scope": "/admin",
   "id": "/admin",
   "display": "standalone",
-  "background_color": "#475569",
-  "theme_color": "#475569",
+  "background_color": "#003311",
+  "theme_color": "#003311",
   "icons": [
     {
-      "src": "/app-icons/admin.svg?v=2",
+      "src": "/app-icons/admin.svg?v=18",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/admin-180.png?v=2",
+      "src": "/pwa-icons/admin-180.png?v=18",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

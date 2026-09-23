@@ -13,14 +13,16 @@ describe("docs collab review panel wash", () => {
       /\.docs-collab-review-panel \{[\s\S]*--docs-collab-sidebar-panel-bg:\s*var\(\s*--docs-collab-sidebar-panel-wash/,
     );
     expect(css).toMatch(
-      /\.docs-collab-review-panel \{[\s\S]*--docs-collab-sidebar-panel-wash-recipe:\s*color-mix\(\s*in oklab,\s*var\(--docs-accent/,
+      /\.docs-collab-review-panel \{[\s\S]*--docs-collab-sidebar-panel-wash-recipe:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent/,
     );
   });
 
   it("republishes Docs accent on the portaled SideDrawer; sheet wash is shared", () => {
-    expect(css).toMatch(/\.docs-collab-review-panel-drawer \{[\s\S]*--docs-accent:\s*#3b82f6/);
     expect(css).toMatch(
-      /\.docs-collab-review-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--docs-accent\)/,
+      /\.docs-collab-review-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-sand\)/,
+    );
+    expect(css).toMatch(
+      /\.docs-collab-review-panel-drawer \{[\s\S]*--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(css).not.toMatch(
       /\.docs-collab-review-panel-drawer \{[\s\S]*--docs-collab-sidebar-panel-wash:/,

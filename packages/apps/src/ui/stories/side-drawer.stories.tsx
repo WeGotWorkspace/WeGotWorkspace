@@ -26,7 +26,7 @@ function SideDrawerDemo({ side = "right" as const }: { side?: "left" | "right" }
 }
 
 const meta: Meta<typeof SideDrawerDemo> = {
-  title: "Shared/SideDrawer",
+  title: "UI/Primitives/Side Drawer",
   component: SideDrawerDemo,
 };
 

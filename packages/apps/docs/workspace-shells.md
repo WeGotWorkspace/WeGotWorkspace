@@ -33,7 +33,7 @@ Agent-readable routing — read this before scaffolding a new `*-core` package:
 ```
 IF product = installer (`/install`)
   THEN shell = custom
-  THEN entry = InstallerWorkspace + AuthenticationPage (hideHeader / hideFooter)
+  THEN entry = InstallerWorkspace + AuthenticationPage
   THEN do NOT use WorkspaceAppLayout or a labeled Setup-steps sidebar
 
 IF product = multi-section config OR admin OR drive browser OR docs library OR Meet channel workspace
@@ -157,7 +157,7 @@ import "@/<product>-core/src/<product>-workspace.css";
 }
 ```
 
-**Storybook** — scope component with layout variants (see `meet-story-scope.tsx`: `root`, `in-call`, `chat-column`, …). Live `/meet` stories mount `MeetWorkspaceStoryHarness`. Guest invite stories: `Apps/Meet/Panes/MeetGuestChannel`.
+**Storybook** — scope component with layout variants (see `meet-story-scope.tsx`: `root`, `in-call`, `chat-column`, …). Live `/meet` stories mount `MeetWorkspaceStoryHarness`. Guest invite stories: `Features/Meet/Panes/MeetGuestChannel`.
 
 **Reference:** `packages/apps/src/meet-core/src/meet-guest-channel.tsx`
 

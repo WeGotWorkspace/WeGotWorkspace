@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
 
 const meta = {
-  title: "Shared/PathBreadcrumb",
+  title: "UI/Patterns/Path Breadcrumb",
   component: PathBreadcrumb,
   tags: ["autodocs"],
 } satisfies Meta<typeof PathBreadcrumb>;

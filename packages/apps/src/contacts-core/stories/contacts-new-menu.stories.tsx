@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, screen, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { ContactsNewMenu } from "@/contacts-core/src/contacts-new-menu";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import { ContactsStoryScope } from "./contacts-story-scope";
 
 const meta = {
-  title: "Apps/Contacts/Components/ContactsNewMenu",
+  title: "Features/Contacts/Components/ContactsNewMenu",
   component: ContactsNewMenu,
   tags: ["autodocs"],
   args: {
@@ -30,19 +30,20 @@ export const Default: Story = {
   tags: ["vitest-ci"],
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
+    const menuTrigger = () =>
+      canvas.getByRole("button", { name: defaultContactsLabels.newContactMenu });
     const main = canvas.getByRole("button", { name: defaultContactsLabels.newContact });
     await userEvent.click(main);
     await expect(args.onCreateContact).toHaveBeenCalledOnce();
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: defaultContactsLabels.newContactMenu }),
-    );
+    await userEvent.click(menuTrigger());
     await userEvent.click(screen.getByRole("button", { name: defaultContactsLabels.newGroup }));
     await expect(args.onCreateGroup).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(menuTrigger()).toBeEnabled();
+    });
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: defaultContactsLabels.newContactMenu }),
-    );
+    await userEvent.click(menuTrigger());
     await userEvent.click(screen.getByRole("button", { name: defaultContactsLabels.importVcf }));
     await expect(args.onImportVcf).toHaveBeenCalledOnce();
   },

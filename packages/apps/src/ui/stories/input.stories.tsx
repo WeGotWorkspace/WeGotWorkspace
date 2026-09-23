@@ -15,7 +15,7 @@ const SIZE_PX: Record<(typeof CONTROL_SIZE_OPTIONS)[number], number> = {
 };
 
 const meta = {
-  title: "Shared/Input",
+  title: "UI/Primitives/Input",
   component: Input,
   tags: ["autodocs", "vitest-ci"],
   argTypes: {

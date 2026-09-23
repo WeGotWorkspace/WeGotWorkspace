@@ -41,7 +41,7 @@ function TableControlsHarness() {
 }
 
 const meta = {
-  title: "Shared/TextEditor/TableControls",
+  title: "UI/Patterns/TextEditor/TableControls",
   component: TextEditorTableControls,
   parameters: {
     layout: "fullscreen",
