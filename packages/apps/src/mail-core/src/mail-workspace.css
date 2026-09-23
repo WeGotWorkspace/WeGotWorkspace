@@ -53,12 +53,12 @@
   --mail-swipe-archive-color: var(--color-we-got-dark);
 
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
-  /* 70% (was 90%) clears WCAG AA for Dark fg on Sand primary (~4.5:1). */
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 70%, var(--color-we-got-dark));
-  --button-primary-fg: var(--color-we-got-dark);
+  /* White on darkened Sand — Dark-on-Sand never clears AA on this tile. */
+  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 45%, var(--color-we-got-dark));
+  --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
-  /* Selected nav count pills match primary CTA (accent fill + white). */
+  --primary-foreground: #ffffff;
+  /* Selected nav count pills match primary CTA (darkened Sand + white). */
   --sidebar-badge-bg: var(--button-primary-bg);
   --sidebar-badge-fg: var(--button-primary-fg);
 
@@ -98,9 +98,9 @@
 }
 
 .mail-workspace .app-sidebar__scroll {
-  /* 70% (was 90%) clears WCAG AA for Dark fg on Sand primary (~4.5:1). */
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 70%, var(--color-we-got-dark));
-  --button-primary-fg: var(--color-we-got-dark);
+  /* Match root primary: white on darkened Sand. */
+  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 45%, var(--color-we-got-dark));
+  --button-primary-fg: #ffffff;
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
 }
@@ -182,11 +182,11 @@
   --workspace-accent: var(--color-we-got-sand);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  /* 70% (was 90%) clears WCAG AA for Dark fg on Sand primary (~4.5:1). */
-  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 70%, var(--color-we-got-dark));
-  --button-primary-fg: var(--color-we-got-dark);
+  /* White on darkened Sand — Dark-on-Sand never clears AA on this tile. */
+  --button-primary-bg: color-mix(in oklch, var(--workspace-accent) 45%, var(--color-we-got-dark));
+  --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
   --segmented-control-track-active-bg: var(--color-we-got-dark);
