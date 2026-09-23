@@ -89,8 +89,10 @@ jobs:
           cp packages/api/.env.example packages/api/.env
             php packages/api/artisan key:generate --force --no-interaction
 
+      # Only Dovecot + Mailhog. `up` without service names also starts `web` /
+      # `scheduler`, which bind-mount packages/api and write storage as root.
       - name: Start IMAP fixture
-        run: docker compose -f compose.dev.yml --profile mail up -d --build --wait
+        run: docker compose -f compose.dev.yml --profile mail up -d --build --wait mailhog dovecot
 
       # Shard 1 also runs greenfield-guard + the Architecture suite; later
       # shards run only their round-robin slice of unit/feature/storage tests.
@@ -288,8 +290,10 @@ jobs:
           cp packages/api/.env.example packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
 
+      # Only Dovecot + Mailhog. `up` without service names also starts `web` /
+      # `scheduler`, which bind-mount packages/api and write storage as root.
       - name: Start IMAP fixture
-        run: docker compose -f compose.dev.yml --profile mail up -d --build --wait
+        run: docker compose -f compose.dev.yml --profile mail up -d --build --wait mailhog dovecot
 
       # PR/push runs only the MySQL parity subset (DB-dialect-relevant tests),
       # split into round-robin shards. The full MySQL suite runs on main +

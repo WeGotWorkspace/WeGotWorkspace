@@ -68,8 +68,9 @@ jobs:
           cp packages/api/.env.example packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
 
+      # Only Dovecot + Mailhog — not `web`/`scheduler` (they bind-mount packages/api).
       - name: Start IMAP fixture
-        run: docker compose -f compose.dev.yml --profile mail up -d --build --wait
+        run: docker compose -f compose.dev.yml --profile mail up -d --build --wait mailhog dovecot
 
       - name: API tests (full MySQL suite)
         env:

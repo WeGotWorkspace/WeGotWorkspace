@@ -23,6 +23,6 @@ Seeded accounts (PLAIN, no TLS):
 
 `Tests\Support\ImapFixture` probes `WGW_IMAP_FIXTURE_HOST`:`WGW_IMAP_FIXTURE_PORT` (defaults `127.0.0.1:1143`). Feature tests that require IMAP call `ImapFixture::available()` and `markTestSkipped` when nothing listens.
 
-CI `api-quality` / `api-mysql` start this compose profile before the done gate.
+CI `api-quality` / `api-mysql` start **only** `mailhog` and `dovecot` from this profile (not `web` / `scheduler`). Those Apache services bind-mount `packages/api` and would make `storage/` unwritable for host PHPUnit.
 
 Without the fixture, the suite stays green: JMAP mail contract tests that need a live mailbox skip; session/capability, status, Settings, and REST-sunset tests still run. The live list case is `Mailbox/get` + `Email/query` (not `/mail/folders`).
