@@ -22,7 +22,6 @@ export function buildMeetChannel(input: MeetChannelWriteInput): MeetChannel {
     groupSlug: input.groupSlug ?? null,
     isSharee: false,
     shareWith: null,
-    guestAccess: meeting,
     guestRoomCode: meeting ? input.guestRoomCode?.trim() || createMeetRoomCode() : null,
     myRights: { mayReadItems: true, mayWriteAll: true, mayShare: true, mayDelete: true },
   };

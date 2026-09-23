@@ -16,17 +16,20 @@ use Illuminate\Database\Eloquent\Builder;
  * Room↔channel convention (agreed with the frontend): a call in a chat
  * channel uses the deterministic room id = the channel collection id
  * (`chat-{ulid}` / `dm-…`); meeting-kind channels may additionally carry a
- * guest-link `room_code` in chat_channel_meta. Both resolve to the channel.
+ * stored `room_code` in chat_channel_meta. Both resolve to the channel.
+ * That code is the call room, not a guest door.
  *
- * Policy (enforced in MeetSignalingService::join / ::chat — server-side, not
- * a client naming convention):
+ * Policy (enforced in MeetSignalingService join, poll, send, and chat —
+ * server-side, not a client naming convention):
  * - authenticated users WITH channel ACL read access (owner / sharee / group
  *   member, via CalendarCollectionAccess through ChatChannelRepository) join
  *   directly and are hosts — every member may admit;
- * - authenticated users WITHOUT access and guests are forced onto the knock
- *   path: a non-knock join is rejected until a member's admit control
- *   message marked the knocking peer as admitted;
- * - guests never join dm- rooms;
+ * - authenticated users WITHOUT access are forced onto the knock path: a
+ *   non-knock join is rejected until a member's admit control message marked
+ *   the knocking peer as admitted;
+ * - guests (no account) never join a channel-bound room — named channels,
+ *   team channels, direct messages, and reusable meeting rooms. Ad-hoc
+ *   reservations that do not resolve to a channel stay open;
  * - rooms that resolve to no channel keep the legacy behavior untouched.
  */
 final class MeetChannelJoinPolicy
@@ -96,6 +99,21 @@ final class MeetChannelJoinPolicy
         }
 
         return null;
+    }
+
+    /**
+     * True when this room is a chat conversation (named channel, team channel,
+     * DM, reusable meeting, or that meeting's stored room code). Guests must
+     * not join, knock, or read call chat there. A plain ad-hoc reservation
+     * that does not resolve to a channel returns false.
+     */
+    public function isGuestClosedRoom(string $room): bool
+    {
+        if ($this->resolveChannelForRoom($room) !== null) {
+            return true;
+        }
+
+        return $this->resolveMeetingInviteRoom($room) !== null;
     }
 
     /**

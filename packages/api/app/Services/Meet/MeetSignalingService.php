@@ -60,6 +60,7 @@ final class MeetSignalingService
 
             $username = $this->actors->tryAuthenticatedUsername($request);
             $room = $this->cleanRoom($body['room'] ?? null);
+            $this->assertGuestMayEnter($username, $room);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             $name = mb_substr((string) ($body['name'] ?? ''), 0, 64);
             $isKnockRequest = str_starts_with($name, self::KNOCK_NAME_PREFIX);
@@ -69,14 +70,14 @@ final class MeetSignalingService
             $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
             if ($channel !== null) {
                 // Channel-linked room: ACL members join directly (and are
-                // hosts); everyone else is forced onto the knock path —
-                // server-enforced, not a client naming convention (chunk H).
+                // hosts); authenticated non-members knock. Guests are refused
+                // above, before a peer row exists.
                 if ($ownerMarker === null) {
                     $guestSessionKey = $this->actors->readGuestSessionKey($body) ?? $this->actors->newGuestSessionKey();
                     $ownerMarker = $this->actors->ownerMarkerForGuestSession($guestSessionKey);
                 }
                 if ($username === null || ! $this->channelJoinPolicy->isChannelMember($username, $channel)) {
-                    $this->assertNonMemberChannelJoin($channel, $username, $room, $peerId, $ownerMarker, $isKnockRequest);
+                    $this->assertNonMemberChannelJoin($room, $peerId, $ownerMarker, $isKnockRequest);
                 }
             } elseif ($ownerMarker === null) {
                 // Non-channel rooms: unknown leftovers stay room_not_active
@@ -123,8 +124,9 @@ final class MeetSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRows();
 
-            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $room = $this->cleanRoom($body['room'] ?? null);
+            $this->assertGuestMayEnter($this->actors->tryAuthenticatedUsername($request), $room);
+            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             $this->store->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
 
@@ -143,8 +145,9 @@ final class MeetSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRows();
 
-            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $room = $this->cleanRoom($body['room'] ?? null);
+            $this->assertGuestMayEnter($this->actors->tryAuthenticatedUsername($request), $room);
+            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $from = $this->store->readSendFrom($body);
             $to = $this->store->cleanPeer($body['to'] ?? null);
             $this->store->assertPeerOwnedByActor($room, $from, $ownerMarker);
@@ -184,8 +187,9 @@ final class MeetSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRows();
 
-            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $room = $this->cleanRoom($body['room'] ?? null);
+            $this->assertGuestMayEnter($this->actors->tryAuthenticatedUsername($request), $room);
+            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $from = $this->store->cleanPeer($body['from'] ?? null);
             $this->store->assertPeerOwnedByActor($room, $from, $ownerMarker);
 
@@ -231,23 +235,35 @@ final class MeetSignalingService
     }
 
     /**
-     * Non-member (guest or authenticated non-member) join on a channel room:
-     * knock joins on a known meeting invite may wait in an empty room; other
-     * channel rooms still require someone joinable (`room_not_active`).
-     * Non-knock joins pass only for a previously admitted peer; guests never
-     * enter dm- rooms.
+     * Guests have no account. Channel-bound rooms (channels, team channels,
+     * DMs, reusable meetings, and their stored room codes) are not guest
+     * doors — join, knock, poll, and chat all stop here so call chat cannot
+     * leak. Ad-hoc rooms that do not resolve to a channel stay open.
+     */
+    private function assertGuestMayEnter(?string $username, string $room): void
+    {
+        if ($username !== null && $username !== '') {
+            return;
+        }
+        if (! $this->channelJoinPolicy->isGuestClosedRoom($room)) {
+            return;
+        }
+
+        $this->fail('forbidden', 403, 'Guests cannot join this conversation.');
+    }
+
+    /**
+     * Authenticated non-member join on a channel room: knock joins on a known
+     * meeting invite may wait in an empty room; other channel rooms still
+     * require someone joinable (`room_not_active`). Non-knock joins pass only
+     * for a previously admitted peer. Guests never reach this method.
      */
     private function assertNonMemberChannelJoin(
-        MeetChannelRoom $channel,
-        ?string $username,
         string $room,
         string $peerId,
         string $ownerMarker,
         bool $isKnockRequest,
     ): void {
-        if ($username === null && $channel->isDm) {
-            $this->fail('forbidden', 403, 'Guests cannot join direct-message calls.');
-        }
         if ($isKnockRequest) {
             if (! $this->roomHasJoinablePeer($room) && ! $this->allowsEmptyGuestKnock($room)) {
                 $this->fail('room_not_active', 404);

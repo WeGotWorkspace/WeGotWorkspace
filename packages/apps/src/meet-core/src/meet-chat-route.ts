@@ -62,6 +62,26 @@ export function meetLiveRouteShowsInviteGate(input: MeetLiveInviteGateInput): bo
   return Boolean(input.meetingId || (!input.onConversationRoute && input.inviteRoom));
 }
 
+/**
+ * Direct messages, team/named channels, and reusable meetings are not guest
+ * doors. Ad-hoc `{xxxx-xxxx-xxxx}` meeting ids stay on the invite lobby.
+ */
+export function meetRouteIsGuestClosed(input: {
+  channelId?: string | null;
+  peerId?: string | null;
+  persistedMeetingId?: string | null;
+  legacyId?: string | null;
+}): boolean {
+  const legacyId = input.legacyId?.trim() ?? "";
+  const legacyClosed = legacyId !== "" && !meetIsAdHocMeetingId(legacyId);
+  return Boolean(
+    input.channelId?.trim() ||
+    input.peerId?.trim() ||
+    input.persistedMeetingId?.trim() ||
+    legacyClosed,
+  );
+}
+
 /** URL params → workspace selection key. */
 export function meetSelectionFromRouteParams(params: MeetChatRouteParams): string | null {
   if (params.peerId) return meetDirectMessageChannelId(params.peerId);

@@ -58,13 +58,13 @@ describe("meet route search", () => {
     );
   });
 
-  it("keeps meeting invite links on the guest room code instead of the collection slug", () => {
+  it("keeps named meeting links on the collection slug, not the stored room code", () => {
     expect(
       buildMeetCollectionInviteLink(
         { id: "chat-standup", kind: "meeting", guestRoomCode: "h8y8-ewp6-al8n" },
         "https://workspace.example.com",
       ),
-    ).toBe("https://workspace.example.com/meet/meetings/h8y8-ewp6-al8n");
+    ).toBe("https://workspace.example.com/meet/meetings/standup");
     expect(
       buildMeetCollectionInviteLink(
         { id: "chat-standup", kind: "meeting", guestRoomCode: null },
