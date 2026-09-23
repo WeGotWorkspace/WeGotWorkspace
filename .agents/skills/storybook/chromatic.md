@@ -32,7 +32,7 @@ File: `.github/workflows/ci.yml`
 When `vars.CHROMATIC_ENABLED == 'true'` (and not a release-commit push):
 
 - **`chromatic` job** (single publish path):
-  - Storybook is built with `pnpm exec storybook build` before upload, so the action does not spawn its own Storybook build.
+  - Storybook is built with `pnpm exec storybook build --stats-json` before upload, so the action does not spawn its own Storybook build. `--stats-json` writes `preview-stats.json`, which TurboSnap needs to trace changed files.
   - `chromaui/action@v18` with `workingDir: packages/apps` and `storybookBuildDir: storybook-static`
   - Checkout `fetch-depth: 0` for TurboSnap history
   - `onlyChanged: true`, `exitZeroOnChanges: true`, `autoAcceptChanges: "main"`

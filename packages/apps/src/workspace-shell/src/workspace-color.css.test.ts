@@ -18,6 +18,7 @@ describe("workspace-color.css shared tint recipes", () => {
     );
     expect(colorCss).toMatch(/--workspace-sidebar-mix:\s*12%/);
     expect(colorCss).toMatch(/^:where\(/m);
+    expect(colorCss).toMatch(/\.meet-device-popover/);
     expect(colorCss).toMatch(
       /--workspace-surface:\s*color-mix\(\s*in oklch,\s*var\(--color-we-got-soft\) 70%,\s*#fff\)/,
     );
