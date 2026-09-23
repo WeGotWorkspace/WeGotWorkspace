@@ -345,13 +345,15 @@
  * - `.input` / `.input__field` / `.textarea` — size-class tokens (mobile floor below)
  * - `.note-detail-view__title` — title-scale (`--text-4xl`)
  * - `.tag-group__input` — chip scale on desktop; included in the mobile floor
+ * - `.text-editor-source__input` — shares `--text-editor-source-font-size` with the
+ *   line-number gutter (mobile floor is on `.text-editor-source` in text-editor.css)
  */
 input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not(
     [type="radio"]
   ):not([type="file"]):not([type="hidden"]):not([type="range"]):not([type="color"]):not(
     [type="image"]
   ):not(.note-detail-view__title):not(.tag-group__input):not(.input):not(.input__field),
-textarea:not(.note-detail-view__title):not(.textarea),
+textarea:not(.note-detail-view__title):not(.textarea):not(.text-editor-source__input),
 select {
   font-size: max(1rem, 100%) !important;
 }
@@ -376,6 +378,5 @@ select {
   .text-editor,
   .text-editor-prose {
     --text-editor-prose-font-size: 1rem;
-    --text-editor-source-font-size: 1rem;
   }
 }

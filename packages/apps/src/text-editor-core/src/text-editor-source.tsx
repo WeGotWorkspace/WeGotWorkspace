@@ -37,9 +37,14 @@ export function TextEditorSource({
 
   const measureLineHeights = useCallback(() => {
     const mirror = mirrorRef.current;
-    if (!mirror) return;
+    const textarea = textareaRef.current;
+    if (!mirror || !textarea || textarea.clientWidth === 0) return;
+    // Match the textarea's content box, excluding the scrollbar, so wrap points agree.
+    mirror.style.width = `${textarea.clientWidth}px`;
+    mirror.style.right = "auto";
     const rowElements = mirror.querySelectorAll<HTMLElement>(".text-editor-source__mirror-line");
-    const heights = Array.from(rowElements).map((row) => row.getBoundingClientRect().height);
+    const heights = Array.from(rowElements, (row) => row.getBoundingClientRect().height);
+    if (heights.length === 0 || heights.some((height) => height <= 0)) return;
     setLineHeights((previous) => {
       if (
         previous.length === heights.length &&
@@ -63,12 +68,28 @@ export function TextEditorSource({
     return () => observer.disconnect();
   }, [measureLineHeights]);
 
+  useLayoutEffect(() => {
+    const fonts = document.fonts;
+    if (!fonts?.ready) return;
+    let cancelled = false;
+    void fonts.ready.then(() => {
+      if (!cancelled) measureLineHeights();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [measureLineHeights, lines]);
+
   const syncGutterScroll = useCallback(() => {
     const textarea = textareaRef.current;
     const gutter = gutterRef.current;
     if (!textarea || !gutter) return;
     gutter.scrollTop = textarea.scrollTop;
   }, []);
+
+  useLayoutEffect(() => {
+    syncGutterScroll();
+  }, [lineHeights, syncGutterScroll]);
 
   return (
     <div className={cn("text-editor-source", className)}>
@@ -78,9 +99,7 @@ export function TextEditorSource({
             <div
               key={index}
               className="text-editor-source__gutter-line"
-              style={
-                lineHeights[index] != null ? { minHeight: `${lineHeights[index]}px` } : undefined
-              }
+              style={lineHeights[index] != null ? { height: `${lineHeights[index]}px` } : undefined}
             >
               {index + 1}
             </div>
