@@ -9,6 +9,7 @@ on:
   pull_request:
   schedule:
     - cron: "0 3 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -176,6 +177,11 @@ jobs:
 
       - name: Scan pnpm lockfile
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          # Trivy skips npm/pnpm devDependencies unless this is set. Without it
+          # the gate only sees production advisories (mcp-server), not Vitest,
+          # Storybook, or ESLint.
+          TRIVY_INCLUDE_DEV_DEPS: true
         with:
           scan-type: fs
           # Lockfile only. A repo-root scan would re-read composer.lock and

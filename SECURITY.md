@@ -26,6 +26,6 @@ Dependabot opens weekly version-update pull requests for `packages/api/composer.
 
 Those version updates are not advisory-driven. GitHub opens a pull request for a specific advisory only after a maintainer enables **Dependabot security updates** in the repository settings. This repository change cannot turn that setting on. Until it is on, the weekly version-update pull requests are the only automated dependency bumps.
 
-Trivy still fails pull requests on CRITICAL/HIGH in `packages/api/composer.lock`. The `pnpm-lock.yaml` scan uploads results on pull requests and fails the workflow on pushes to `main` and on the existing nightly schedule. Composer stays a pull-request gate because those advisories show up much less often than npm advisories; a new npm advisory should not turn an unrelated pull request red.
+Trivy still fails pull requests on CRITICAL/HIGH in `packages/api/composer.lock`. The `pnpm-lock.yaml` scan includes dev dependencies (`TRIVY_INCLUDE_DEV_DEPS`) so a Vitest, Storybook, or ESLint advisory is in the same gate as production packages. It uploads results on pull requests and fails the workflow on pushes to `main`, on the existing nightly schedule, and on a manual `workflow_dispatch`. Composer stays a pull-request gate because those advisories show up much less often than npm advisories; a new npm advisory should not turn an unrelated pull request red.
 
 Accepted CRITICAL/HIGH exceptions, when any exist, go in [`.trivyignore`](.trivyignore) with the date, why, and when to revisit. A note in this file does not waive a finding.
