@@ -14,6 +14,8 @@ use App\Services\Mcp\McpScopes;
 use App\Services\Mcp\PassportKeyStore;
 use App\Services\Notify\MinishlinkWebPushSender;
 use App\Services\Notify\WebPushSender;
+use App\Support\SqliteTextLobStatement;
+use Illuminate\Database\Events\ConnectionEstablished;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
@@ -37,6 +39,14 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Event::listen(ConnectionEstablished::class, function (ConnectionEstablished $event): void {
+            if ($event->connectionName !== 'wgw') {
+                return;
+            }
+
+            SqliteTextLobStatement::deferOn($event->connection);
+        });
+
         JsonResource::withoutWrapping();
 
         Passport::useClientModel(OauthClient::class);
