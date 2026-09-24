@@ -131,12 +131,31 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Actions secrets are hidden from dependabot[bot]. The action refuses to
+      # scan organization repos without GITLEAKS_LICENSE, so that path runs
+      # the same gitleaks detect command directly.
+      - name: Detect Gitleaks license
+        id: gitleaks-license
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        run: |
+          if [ -n "$GITLEAKS_LICENSE" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Scan for secrets
+        if: steps.gitleaks-license.outputs.present == 'true'
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
+
+      - name: Scan for secrets without a license
+        if: steps.gitleaks-license.outputs.present != 'true'
+        run: bash .github/scripts/gitleaks-detect.sh
 
       - name: Upload Gitleaks SARIF artifact
         if: always()
