@@ -181,26 +181,21 @@ final class DevInstallBootstrap
             return;
         }
 
-        $override = strtolower(trim((string) (getenv('WGW_DEV_SEED_CONTACTS_PROFILE') ?: '')));
-        if (in_array($override, [
+        $this->contacts->seed($username, $this->seedProfile(
+            'WGW_DEV_SEED_CONTACTS_PROFILE',
             DevContactCatalog::PROFILE_FULL,
             DevContactCatalog::PROFILE_COMPACT,
-            DevContactCatalog::PROFILE_LARGE,
-        ], true)) {
-            $profile = $override;
-        } else {
-            $profile = app()->environment('testing')
-                ? DevContactCatalog::PROFILE_COMPACT
-                : DevContactCatalog::PROFILE_FULL;
-        }
-
-        $this->contacts->seed($username, $profile);
+            [DevContactCatalog::PROFILE_LARGE],
+        ));
     }
 
-    private function seedProfile(string $envKey, string $full, string $compact): string
+    /**
+     * @param  list<string>  $alsoAllowed
+     */
+    private function seedProfile(string $envKey, string $full, string $compact, array $alsoAllowed = []): string
     {
         $override = strtolower(trim((string) (getenv($envKey) ?: '')));
-        if (in_array($override, [$full, $compact], true)) {
+        if (in_array($override, [$full, $compact, ...$alsoAllowed], true)) {
             return $override;
         }
 

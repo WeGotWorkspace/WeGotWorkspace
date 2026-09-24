@@ -108,13 +108,11 @@ class DevContactSeeder
             ->get();
 
         $deleted = 0;
+        $cardIds = [];
         foreach ($cards as $card) {
             $uri = (string) $card->uri;
             $this->carddav()->deleteCard((int) $book->id, $uri);
-            JmapContactState::query()
-                ->where('username', $username)
-                ->where('card_id', ContactCardMapper::cardIdFromUri($uri))
-                ->delete();
+            $cardIds[] = ContactCardMapper::cardIdFromUri($uri);
             $davPath = 'addressbooks/'.$username.'/'.$book->uri.'/'.$uri;
             $this->searchIndexSync->sync(
                 'contacts',
@@ -123,6 +121,13 @@ class DevContactSeeder
                 $username,
             );
             $deleted++;
+        }
+
+        if ($cardIds !== []) {
+            JmapContactState::query()
+                ->where('username', $username)
+                ->whereIn('card_id', $cardIds)
+                ->delete();
         }
 
         return $deleted;

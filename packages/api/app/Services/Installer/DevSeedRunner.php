@@ -41,6 +41,7 @@ final class DevSeedRunner
         $this->guard->assertAllowed('dev data');
 
         $selected = $this->normalizeApps($apps);
+        $this->assertLargeProfileSupported($selected, $profile);
         $results = [];
 
         foreach ($selected as $app) {
@@ -86,6 +87,27 @@ final class DevSeedRunner
         }
 
         return array_values(array_unique($out));
+    }
+
+    /**
+     * Calendars and notes only accept full and compact. Reject large here so
+     * those seeders do not throw their own unknown-profile errors.
+     *
+     * @param  list<string>  $selected
+     */
+    private function assertLargeProfileSupported(array $selected, string $profile): void
+    {
+        if ($profile !== DevContactCatalog::PROFILE_LARGE) {
+            return;
+        }
+
+        foreach ($selected as $app) {
+            if ($app !== 'contacts') {
+                throw new RuntimeException(
+                    'Profile large is only supported by wgw:contacts:seed-dev (or contacts).',
+                );
+            }
+        }
     }
 
     /**

@@ -278,7 +278,15 @@ Artisan::command('wgw:contacts:seed-dev {--force} {--username=} {--profile=} {--
         $profile = DevContactCatalog::PROFILE_FULL;
     }
     $countOption = $this->option('count');
-    $count = $countOption === null || $countOption === '' ? null : (int) $countOption;
+    $count = null;
+    if ($countOption !== null && $countOption !== '') {
+        if (! is_string($countOption) || ! ctype_digit($countOption)) {
+            $this->error('Contacts seed count must be a positive integer.');
+
+            return self::FAILURE;
+        }
+        $count = (int) $countOption;
+    }
 
     try {
         $result = $seeder->seed($username, $profile, (bool) $this->option('force'), $count);

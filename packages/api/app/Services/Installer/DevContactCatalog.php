@@ -31,8 +31,6 @@ final class DevContactCatalog
     /** 126 ContactCard/get pages of 40. */
     public const LARGE_TARGET = 5040;
 
-    public const FIXED_CARD_COUNT = 6;
-
     /** RFC 4122 NAMESPACE_URL. Do not replace this at implementation time. */
     public const UID_NAMESPACE = '6ba7b811-9dad-11d1-80b4-00c04fd430c8';
 
@@ -65,7 +63,8 @@ final class DevContactCatalog
         for ($i = 0; $i < $need; $i++) {
             $n = count($out) + 1;
             $given = self::GIVEN_NAMES[$i % count(self::GIVEN_NAMES)];
-            $family = self::FAMILY_NAMES[$i % count(self::FAMILY_NAMES)];
+            // Family name advances once per full pass of given names (676 unique pairs).
+            $family = self::FAMILY_NAMES[intdiv($i, count(self::GIVEN_NAMES)) % count(self::FAMILY_NAMES)];
             $out[] = $this->person($n, $given, $family);
         }
 
@@ -75,9 +74,10 @@ final class DevContactCatalog
     public function target(string $profile, ?int $count = null): int
     {
         if ($count !== null) {
-            if ($count < self::FIXED_CARD_COUNT) {
+            $minimum = count($this->fixedCards());
+            if ($count < $minimum) {
                 throw new RuntimeException(
-                    'Contacts seed count must be at least '.self::FIXED_CARD_COUNT.' so the fixed edge cards are kept.',
+                    'Contacts seed count must be at least '.$minimum.' so the fixed edge cards are kept.',
                 );
             }
 

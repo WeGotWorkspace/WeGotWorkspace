@@ -15,6 +15,7 @@ use App\Services\Installer\DevContactSeeder;
 use App\Services\Installer\DevSeedGuard;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Sabre\CardDAV\Backend\PDO as CardPDO;
@@ -61,6 +62,23 @@ final class DevContactSeederTest extends WgwDatabaseTestCase
 
         $emailOnly = $this->cardContaining($cards, 'FN:dev-seed-contact-0006@example.test');
         $this->assertDoesNotMatchRegularExpression('/^N:/m', str_replace("\r\n", "\n", $emailOnly['vcard']));
+    }
+
+    public function test_full_catalog_rotates_family_names_across_given_names(): void
+    {
+        $cards = app(DevContactCatalog::class)->cards(DevContactCatalog::PROFILE_FULL);
+        $fns = array_map(fn (array $card): string => $this->formattedName($card['vcard']), $cards);
+
+        // 676 bulk given+family pairs, plus 4 fixed persons and 2 non-person cards.
+        $this->assertCount(682, array_unique($fns));
+
+        $families = [];
+        for ($i = 0; $i < 26; $i++) {
+            $families[] = $this->familyName($cards[6 + $i]['vcard']);
+        }
+        $this->assertSame(array_fill(0, 26, 'Adams'), $families);
+        $this->assertSame('Bram Adams', $fns[7]);
+        $this->assertSame('Anna Berg', $fns[32]);
     }
 
     public function test_count_below_fixed_cards_throws(): void
@@ -152,6 +170,33 @@ final class DevContactSeederTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_non_numeric_count_option_is_rejected(): void
+    {
+        $code = Artisan::call('wgw:contacts:seed-dev', [
+            '--username' => 'admin',
+            '--count' => 'abc',
+        ]);
+
+        $this->assertSame(1, $code);
+        $this->assertStringContainsString(
+            'Contacts seed count must be a positive integer.',
+            Artisan::output(),
+        );
+        $this->assertStringNotContainsString('at least', Artisan::output());
+        $this->assertSame(0, $this->seededCardCount());
+    }
+
+    public function test_numeric_count_option_seeds_that_many_cards(): void
+    {
+        $code = Artisan::call('wgw:contacts:seed-dev', [
+            '--username' => 'admin',
+            '--count' => '6',
+        ]);
+
+        $this->assertSame(0, $code);
+        $this->assertSame(6, $this->seededCardCount());
+    }
+
     public function test_seed_refuses_outside_local_or_testing(): void
     {
         $this->app['env'] = 'production';
@@ -226,6 +271,22 @@ final class DevContactSeederTest extends WgwDatabaseTestCase
     private function seededCardCount(): int
     {
         return Card::query()->where('uri', 'like', DevContactCatalog::URI_PREFIX.'%')->count();
+    }
+
+    private function formattedName(string $vcard): string
+    {
+        $normalized = str_replace("\r\n", "\n", $vcard);
+        $this->assertSame(1, preg_match('/^FN:(.*)$/m', $normalized, $matches));
+
+        return $matches[1];
+    }
+
+    private function familyName(string $vcard): string
+    {
+        $normalized = str_replace("\r\n", "\n", $vcard);
+        $this->assertSame(1, preg_match('/^N:([^;]*);/m', $normalized, $matches));
+
+        return $matches[1];
     }
 
     /**
