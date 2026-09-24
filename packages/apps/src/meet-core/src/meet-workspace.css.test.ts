@@ -489,7 +489,7 @@ describe("meet guest invite lobby chrome", () => {
     expect(inviteGate).toMatch(/MeetGuestChannelFrame/);
     expect(inviteGate).toMatch(/MeetGuestLobbyStatus/);
     expect(inviteGate).not.toMatch(/MeetLobbyStatusCard/);
-    expect(inviteGate).toMatch(/sessionHint \|\| !channelId \|\| access === "member"/);
+    expect(inviteGate).toMatch(/sessionHint \|\| !guestClosed \|\| access === "member"/);
     expect(inviteGate).toContain("meetNavigateTargetFromSelection");
     expect(inviteGate).not.toMatch(/to: MEET_CHANNELS_ROUTE/);
     expect(inviteGate).not.toMatch(/className="meet-workspace meet-guest-channel"/);
