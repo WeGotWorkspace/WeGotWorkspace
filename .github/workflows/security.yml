@@ -9,6 +9,7 @@ on:
   pull_request:
   schedule:
     - cron: "0 3 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -176,17 +177,26 @@ jobs:
 
       - name: Scan pnpm lockfile
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          # Trivy skips npm/pnpm devDependencies unless this is set. Without it
+          # the gate only sees production advisories (mcp-server), not Vitest,
+          # Storybook, or ESLint.
+          TRIVY_INCLUDE_DEV_DEPS: true
         with:
           scan-type: fs
-          # First-party UI only.
-          scan-ref: packages/apps
+          # Lockfile only. A repo-root scan would re-read composer.lock and
+          # walk apps/wegotworkspace copies. Composer stays a PR blocker
+          # (exit-code 1 above); npm advisories are common enough that this
+          # scan fails only on main pushes and the nightly schedule.
+          scan-ref: pnpm-lock.yaml
           scanners: vuln
           format: sarif
           output: trivy-pnpm.sarif
           severity: CRITICAL,HIGH
-          exit-code: 1
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          exit-code: ${{ github.event_name == 'pull_request' && '0' || '1' }}
           limit-severities-for-sarif: true
-          skip-dirs: node_modules,packages/api/vendor
 
       - name: Upload Composer SARIF to Security tab
         if: always() && hashFiles('trivy-composer.sarif') != ''
