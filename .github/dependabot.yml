@@ -1,7 +1,60 @@
+# Weekly version updates. Patch and minor updates are grouped so one failure
+# does not block the rest. Major updates stay ungrouped and open on their own.
+#
+# Follow-up (turbo-hybrid): root `npm` only sees pnpm-lock.yaml. If packages/api
+# or tools/api-e2e later gets its own package.json and lockfile, add another npm
+# directory entry. packages/api is Composer-only today; tools/api-e2e is still
+# in the root workspace (pnpm-workspace.yaml).
 version: 2
 updates:
-  # Docker base-image index digests under docker/install. Composer, pnpm, and
-  # Actions stay on #586.
+  - package-ecosystem: composer
+    directory: /packages/api
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      composer-patch-minor:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      npm-production-patch-minor:
+        dependency-type: production
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+      npm-development-patch-minor:
+        dependency-type: development
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      github-actions-patch-minor:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  # Docker base-image index digests under docker/install.
   - package-ecosystem: docker
     directory: /docker/install
     schedule:
