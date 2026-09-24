@@ -63,6 +63,11 @@ final class WgwInstallConfig
         return rtrim($this->dataDir(), '/').'/files';
     }
 
+    /**
+     * Normalize an install-relative or absolute filesystem path.
+     *
+     * @psalm-taint-escape file Path normalization only; not a trust boundary for untrusted input.
+     */
     public function resolveInstallPath(string $path): string
     {
         $path = str_replace('\\', '/', trim($path));

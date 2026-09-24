@@ -118,6 +118,8 @@ final class CimdResolver
         $pinned = $public[0];
         $timeout = (int) config('mcp.cimd.timeout_seconds', 5);
         $maxBytes = (int) config('mcp.cimd.max_bytes', 65536);
+        // https-only, private IPs rejected, DNS pinned via CURLOPT_RESOLVE below
+        $url = $this->ssrfSafeCimdUrl($url);
 
         try {
             $response = Http::withOptions([
@@ -159,6 +161,16 @@ final class CimdResolver
         }
 
         return $decoded;
+    }
+
+    /**
+     * Mark a CIMD metadata URL safe for fetch after https/public-IP checks above.
+     *
+     * @psalm-taint-escape ssrf
+     */
+    private function ssrfSafeCimdUrl(string $url): string
+    {
+        return $url;
     }
 
     /**

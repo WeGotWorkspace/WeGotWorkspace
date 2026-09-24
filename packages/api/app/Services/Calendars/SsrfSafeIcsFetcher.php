@@ -124,6 +124,8 @@ final class SsrfSafeIcsFetcher
      */
     private function request(string $url, array $validatedIps)
     {
+        // Caller already ran assertSafeUrl (http(s) + public IPs); DNS is pinned below.
+        $url = $this->ssrfSafeUrl($url);
         $parts = parse_url($url);
         $host = $this->resolver->normalizeHost((string) ($parts['host'] ?? ''));
         $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
@@ -148,6 +150,14 @@ final class SsrfSafeIcsFetcher
         } catch (\Throwable) {
             throw new ApiHttpException(400, 'Could not fetch the calendar feed.', 'bad_request');
         }
+    }
+
+    /**
+     * @psalm-taint-escape ssrf
+     */
+    private function ssrfSafeUrl(string $url): string
+    {
+        return $url;
     }
 
     private function absoluteUrl(string $current, string $location): string

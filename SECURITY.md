@@ -24,7 +24,7 @@ A finding that is already public may use the [DAST finding](https://github.com/W
 
 ## What we run in CI
 
-CodeQL, Semgrep, Gitleaks, and Trivy run from [`.github/workflows/security.yml`](.github/workflows/security.yml):
+CodeQL (JS/TS), Psalm taint (PHP, `packages/api/app`), Semgrep, Gitleaks, and Trivy run from [`.github/workflows/security.yml`](.github/workflows/security.yml):
 
 - on pull requests opened from this repository
 - on pushes to `main`, except a commit whose message starts with `chore(release):`

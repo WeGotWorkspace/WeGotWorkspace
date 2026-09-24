@@ -7,6 +7,8 @@
 /coverage/
 /test-results/
 /playwright-report/
+psalm-taint.sarif
+
 storage/*.key
 storage/logs/*
 storage/framework/cache/*
