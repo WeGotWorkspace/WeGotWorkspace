@@ -36,7 +36,7 @@ After v1.0, consider setting `fail_action: true` for HIGH/CRITICAL DAST alerts.
 
 | Secret / variable | When | Purpose |
 |-------------------|------|---------|
-| `GITLEAKS_LICENSE` | Now (org repos) | Free license from [gitleaks.io](https://gitleaks.io) |
+| `GITLEAKS_LICENSE` | Actions runs on org repos | Free license from [gitleaks.io](https://gitleaks.io). Dependabot cannot read Actions secrets, so those runs call `gitleaks detect` directly. |
 | `STAGING_URL` | When DAST is enabled | Scan target |
 | `ENABLE_DAST` | When DAST is enabled | Flip job on (`true`) |
 | `ZAP_STAGING_USERNAME` / `ZAP_STAGING_PASSWORD` | When DAST is enabled | Staging login |
