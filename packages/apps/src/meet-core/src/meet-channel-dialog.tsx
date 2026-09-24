@@ -26,6 +26,7 @@ import { CollectionShareSection } from "@/share-ui/collection-share-section";
 import type { CollectionSharePrincipal, CollectionShareWith } from "@/share-ui/collection-share";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { copyShareText } from "@/share-ui/share-path-utils";
+import { isMeetRoomCode } from "@/calendar-core/src/calendar-meet-link";
 import { buildMeetCollectionInviteLink } from "@/meet-core/src/meet-route-search";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import type { MeetChannelKind } from "@/meet-core/src/meet-types";
@@ -159,6 +160,8 @@ export function MeetChannelDialog({
           workspaceOrigin,
         )
       : "";
+  const guestRoomIsAdHoc =
+    dialog?.mode === "edit" && isMeetRoomCode(dialog.guestRoomCode?.trim().toLowerCase() ?? "");
 
   useEffect(() => {
     if (!dialog) {
@@ -252,29 +255,35 @@ export function MeetChannelDialog({
 
             {meetingKind ? (
               guestLink ? (
-                <FieldLabelRow label={meetLabels.meetingLinkLabel} htmlFor="meet-channel-link">
-                  <div className="meet-channel-dialog__link-row share-dialog__link-row">
-                    <ShareDialogInput
-                      id="meet-channel-link"
-                      type="url"
-                      value={guestLink}
-                      readOnly
-                      aria-label={meetLabels.meetingLinkLabel}
-                    />
-                    <IconButton
-                      type="button"
-                      label={meetLabels.copyLink}
-                      icon={<Copy className="size-3.5" aria-hidden />}
-                      size="sm"
-                      variant="outline"
-                      disabled={!guestLink}
-                      onClick={() => {
-                        void copyShareText(guestLink);
-                        onCopyGuestLink?.(guestLink);
-                      }}
-                    />
-                  </div>
-                </FieldLabelRow>
+                <>
+                  <FieldLabelRow label={meetLabels.meetingLinkLabel} htmlFor="meet-channel-link">
+                    <div className="meet-channel-dialog__link-row share-dialog__link-row">
+                      <ShareDialogInput
+                        id="meet-channel-link"
+                        type="url"
+                        value={guestLink}
+                        readOnly
+                        aria-label={meetLabels.meetingLinkLabel}
+                        aria-describedby="meet-channel-link-hint"
+                      />
+                      <IconButton
+                        type="button"
+                        label={meetLabels.copyLink}
+                        icon={<Copy className="size-3.5" aria-hidden />}
+                        size="sm"
+                        variant="outline"
+                        disabled={!guestLink}
+                        onClick={() => {
+                          void copyShareText(guestLink);
+                          onCopyGuestLink?.(guestLink);
+                        }}
+                      />
+                    </div>
+                  </FieldLabelRow>
+                  <p id="meet-channel-link-hint" className="meet-channel-dialog__guest-hint">
+                    {guestRoomIsAdHoc ? meetLabels.guestLinkHint : meetLabels.guestLinkClosedHint}
+                  </p>
+                </>
               ) : (
                 <p className="meet-channel-dialog__guest-hint">{meetLabels.guestLinkAfterCreate}</p>
               )

@@ -31,9 +31,9 @@ final class CalendarsMeetLinkTest extends WgwDatabaseTestCase
 
     private const ORIGIN = 'https://workspace.test';
 
-    private const ROOM = 'abcd-efgh-ijkl';
+    private const ROOM = 'abcd-efgh-jklm';
 
-    private const OTHER_ROOM = 'mnop-qrst-uvwx';
+    private const OTHER_ROOM = 'mnpq-rstu-vwxy';
 
     protected function setUp(): void
     {

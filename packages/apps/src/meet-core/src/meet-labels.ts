@@ -156,8 +156,9 @@ export const meetLabels = {
   guestConversationRefusedTitle: "Members only",
   guestConversationRefusedBody:
     "Guests can join an ad-hoc meeting, not a channel, a direct message, or a saved meeting room.",
-  guestLinkHint: "Workspace members can open this conversation. Guests cannot.",
-  guestLinkAfterCreate: "A member link will be ready after you create this meeting.",
+  guestLinkHint: "Anyone with this link can join as a guest.",
+  guestLinkClosedHint: "Workspace members can open this link. Guests cannot.",
+  guestLinkAfterCreate: "A guest link will be ready after you create this meeting.",
   emptyChannelMain: "Select a channel to start chatting.",
   chatColumnPlaceholder: "Chat will appear here.",
   threadPeopleCount: (count: number) =>

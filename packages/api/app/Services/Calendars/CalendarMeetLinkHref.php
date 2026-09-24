@@ -9,10 +9,17 @@ namespace App\Services\Calendars;
  */
 final class CalendarMeetLinkHref
 {
-    public const ROOM_CODE_PATTERN = '/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/';
+    /**
+     * Ad-hoc id body. Same alphabet as `createMeetRoomCode` / `mintMeetRoomCode`
+     * (no i, o, 0, or 1). A wider `[a-z0-9]` class would treat names such as
+     * `team-sync-2026` as guest doors.
+     */
+    public const ROOM_CODE_BODY = '[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}';
 
-    /** Same alphabet as the Meet UI `createMeetRoomCode` (no I/L/O/0/1). */
-    public const ROOM_CODE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
+    public const ROOM_CODE_PATTERN = '/^'.self::ROOM_CODE_BODY.'$/';
+
+    /** Same alphabet as the Meet UI `createMeetRoomCode` (no i, o, 0, 1). */
+    public const ROOM_CODE_ALPHABET = 'abcdefghjklmnpqrstuvwxyz23456789';
 
     /** @var list<string> */
     private const JOIN_PATHS = ['/meet', '/meet/guest', '/meet/join'];
@@ -52,7 +59,7 @@ final class CalendarMeetLinkHref
         }
 
         $path = '/'.trim((string) ($parts['path'] ?? ''), '/');
-        if (preg_match('#^/meet/meetings/([a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4})$#', strtolower($path), $matches) === 1) {
+        if (preg_match('#^/meet/meetings/('.self::ROOM_CODE_BODY.')$#', strtolower($path), $matches) === 1) {
             return $matches[1];
         }
         if (! in_array($path, self::JOIN_PATHS, true)) {

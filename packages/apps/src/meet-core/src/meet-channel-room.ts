@@ -1,3 +1,4 @@
+import { isMeetRoomCode, meetChannelCallRoom } from "@/calendar-core/src/calendar-meet-link";
 import { meetCollectionIdFromPublic } from "@/meet-core/src/meet-public-id";
 import type { MeetChannel } from "@/meet-core/src/meet-types";
 
@@ -5,15 +6,13 @@ import type { MeetChannel } from "@/meet-core/src/meet-types";
  * Deterministic RTC room id for a chat channel — agreed convention with the API
  * layer: the room id IS the channel id (`chat-{ulid}` / `dm-…`), lowercased to
  * match the signaling layer's lowercase room codes (`joinRoom` normalizes the
- * same way). Meeting-kind channels keep their reserved `guestRoomCode` so
- * calendar invites and guest links stay valid.
+ * same way). Meeting-kind channels use `meetChannelCallRoom` so a member and
+ * a guest land in the same room (`xxxx-xxxx-xxxx`, not `chat-{code}`).
  */
 export function meetChannelRoomId(
   channel: Pick<MeetChannel, "id" | "kind" | "guestRoomCode">,
 ): string {
-  const guestRoom = channel.kind === "meeting" ? channel.guestRoomCode?.trim() : null;
-  if (guestRoom) return guestRoom.toLowerCase();
-  return channel.id.trim().toLowerCase();
+  return meetChannelCallRoom(channel);
 }
 
 /** Reverse lookup: the channel that owns an RTC room code (case-insensitive). */
@@ -44,8 +43,8 @@ export function meetGuestChatChannelId(input: {
   if (fromRoom) return fromRoom;
   const routeId = input.channelId?.trim() || input.meetingId?.trim() || room;
   if (!routeId) return "guest";
-  if (/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/i.test(routeId)) {
-    return routeId.toLowerCase();
+  if (isMeetRoomCode(routeId)) {
+    return routeId.trim().toLowerCase();
   }
   return meetCollectionIdFromPublic(routeId);
 }

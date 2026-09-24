@@ -116,6 +116,7 @@ describe("meetLiveRouteShowsInviteGate", () => {
     expect(meetRouteIsGuestClosed({ peerId: "alice" })).toBe(true);
     expect(meetRouteIsGuestClosed({ persistedMeetingId: "chat-standup" })).toBe(true);
     expect(meetRouteIsGuestClosed({ legacyId: "chat-general" })).toBe(true);
+    expect(meetRouteIsGuestClosed({ legacyId: "daily-room" })).toBe(true);
     expect(meetRouteIsGuestClosed({ legacyId: "h8y8-ewp6-al8n" })).toBe(false);
     expect(meetRouteIsGuestClosed({})).toBe(false);
   });

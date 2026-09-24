@@ -16,7 +16,8 @@ import {
 import { meetPublicChannelId } from "@/meet-core/src/meet-public-id";
 
 /** Same pattern as PHP `CalendarMeetLinkHref::ROOM_CODE_PATTERN`. */
-export const MEET_ROOM_CODE_PATTERN = /^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/;
+/** Ad-hoc meeting id. Same alphabet as `createMeetRoomCode` (no i, o, 0, 1). */
+export const MEET_ROOM_CODE_PATTERN = /^[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}$/;
 
 /**
  * Chat-channel call room: the channel collection id lowercased (`chat-` +
@@ -355,7 +356,14 @@ export function meetChannelCallRoom(
 ): string {
   const guestRoom = channel.guestRoomCode?.trim();
   if (channel.kind === "meeting" && guestRoom) return guestRoom.toLowerCase();
-  return channel.id.trim().toLowerCase();
+  const id = channel.id.trim().toLowerCase();
+  // New meetings are stored as `chat-{code}`. Members and guests must share
+  // that code even when the client has not copied `guestRoomCode` yet.
+  if (channel.kind === "meeting" && id.startsWith("chat-")) {
+    const embedded = id.slice("chat-".length);
+    if (isMeetRoomCode(embedded)) return embedded;
+  }
+  return id;
 }
 
 /**

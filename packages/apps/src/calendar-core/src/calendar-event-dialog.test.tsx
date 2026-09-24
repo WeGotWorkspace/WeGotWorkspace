@@ -1610,7 +1610,9 @@ describe("CalendarEventDialog", () => {
         attendees: { email: string }[];
         meetGuestRoomOverride?: boolean;
       };
-      expect(last.meetingUrl).toMatch(/\/meet\/meetings\/[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
+      expect(last.meetingUrl).toMatch(
+        /\/meet\/meetings\/[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}$/,
+      );
       expect(last.meetingUrl).not.toMatch(/\/guest/);
       expect(last.attendees.map((row) => row.email)).toEqual(["guest@elsewhere.test"]);
       expect(last.meetGuestRoomOverride).toBe(true);

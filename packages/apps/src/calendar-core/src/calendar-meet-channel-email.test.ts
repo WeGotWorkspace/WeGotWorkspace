@@ -226,7 +226,7 @@ describe("guest room replacement", () => {
 
   it("generates a new room code for a channel URL", () => {
     const generated = createAdHocMeetRoomLink(ORIGIN);
-    expect(generated.roomCode).toMatch(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
+    expect(generated.roomCode).toMatch(/^[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}$/);
     expect(generated.href).toBe(`${ORIGIN}/meet/meetings/${generated.roomCode}`);
     expect(generated.href).not.toMatch(/\/guest/);
     const fromChannel = guestRoomReplacementForChannelUrl(CHANNEL, ORIGIN);
