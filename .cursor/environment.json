@@ -1,0 +1,16 @@
+{
+  "name": "WeGotWorkspace",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "pnpm dev",
+      "description": "Runs the Laravel API (http://127.0.0.1:9080), the Vite app with HMR (http://127.0.0.1:5173), Storybook (http://127.0.0.1:6006), and OpenAPI typegen watch."
+    }
+  ],
+  "ports": [
+    { "name": "app", "port": 5173 },
+    { "name": "storybook", "port": 6006 },
+    { "name": "api", "port": 9080 }
+  ]
+}
