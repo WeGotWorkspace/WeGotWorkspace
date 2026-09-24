@@ -21,7 +21,9 @@ CHANNEL=docker DB=mariadb pnpm test:install-e2e
 
 - Push to `main` on installer paths runs all four cells and does not block merge.
 - A tag runs `install-gate` (`zip-sqlite`) before publish, and `install-observe` (the other three) without blocking publish.
-- Promote a cell by editing the `RELEASE_GATE_CELLS` env in `.github/workflows/release.yml` after **2 consecutive** green runs on `main`, `workflow_dispatch`, or a tag. Observe cells are the other three, derived from that list. A red run, including a red observe cell, resets that cell.
+- Promote a cell by editing the `RELEASE_GATE_CELLS` env in `.github/workflows/release.yml` after **2 consecutive** green runs on `main`, `workflow_dispatch`, or a tag. Observe cells are the other three, derived from that list. The list must not be empty (`zip-sqlite` stays in it); an empty list fails the workflow instead of skipping publish. A red run, including a red observe cell, resets that cell.
+- The first-run installer does not verify `manifest.sig`. An unsigned ZIP on `main` can still complete the wizard. The updater does require a signature, and tag builds fail if the signing key or `manifest.sig` is missing.
+- Run one prerelease tag (`vX.Y.Z-rc.N`) before the first stable tag. That checks `fail_on_unmatched_files` against the eight release files and confirms `:latest` does not move. Do that before a stable `vX.Y.Z`.
 
 ## Images
 

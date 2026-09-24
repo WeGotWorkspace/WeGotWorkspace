@@ -31,6 +31,8 @@ jobs:
           import json, os
           all_cells = ["zip-sqlite", "zip-mariadb", "docker-sqlite", "docker-mariadb"]
           gate = json.loads(os.environ["RELEASE_GATE_CELLS"])
+          if not gate:
+              raise SystemExit("RELEASE_GATE_CELLS is empty; zip-sqlite must stay in the gate or publish is skipped")
           unknown = [cell for cell in gate if cell not in all_cells]
           if unknown:
               raise SystemExit(f"unknown gate cells: {unknown}")

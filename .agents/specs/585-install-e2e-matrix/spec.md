@@ -35,7 +35,7 @@ Prove a fresh release ZIP (not the monorepo tree) can be installed through the l
 - Missing `packages/api/vendor/` → harness exit non-zero. `composer install` only when `WGW_INSTALL_E2E_DEV_COMPOSER=1`. CI never sets that flag.
 - One ZIP artifact. `Dockerfile.runtime` unpacks `dist/releases/wegotworkspace-deploy.zip`, staged from that single artifact. The GitHub release upload attaches the same artifact and fails if a listed file is missing.
 - The production signing key is used only when `sign_release` is true (tag builds). Path-filtered `main` uploads an unsigned ZIP. Cell jobs do not receive `secrets: inherit`.
-- `RELEASE_GATE_CELLS` in `release.yml` is the only gate list. Observe cells are the complement of the four cell ids.
+- `RELEASE_GATE_CELLS` in `release.yml` is the only gate list. Observe cells are the complement of the four cell ids. An empty list fails the workflow. `zip-sqlite` stays in the gate.
 - Candidate package `ghcr.io/wegotworkspace/wegotworkspace-candidate`, tag `sha-<commit>`, private. Cells `docker pull` the digest from that push. A re-run always pushes a new candidate.
 - `imagetools create` writes `:<version>` on `wegotworkspace` from the tested amd64 digest plus arm64. `:latest` moves only for a stable `vX.Y.Z`.
 - `install-gate` starts as `zip-sqlite` and blocks publish. `install-observe` runs the other three and does not block publish.
