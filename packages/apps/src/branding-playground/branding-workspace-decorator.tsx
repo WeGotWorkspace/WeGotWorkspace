@@ -90,13 +90,10 @@ function docsSidebarOverrideCss(
   workspaceClass: string,
   fullAccentSidebar: boolean | undefined,
 ): string {
-  if (fullAccentSidebar === undefined) return "";
-  const sidebarValue = fullAccentSidebar
-    ? "#0045ff"
-    : "color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft))";
+  if (!fullAccentSidebar) return "";
   return `
-.branding-playground-root .${workspaceClass} {
-  --app-sidebar-bg: ${sidebarValue};
+.branding-playground-root .${workspaceClass} .app-sidebar {
+  --app-sidebar-bg: #0045ff;
 }
 `;
 }

@@ -87,10 +87,9 @@
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: var(--color-we-got-dark);
   /*
-   * AppSidebar defaults (32/55/65% accent→cream) stay ink-safe on yellow
-   * (hover ~12.9:1, selected ~11.8:1, selected-hover ~11.4:1). Pin selected
-   * on-color so browsers without contrast-color() do not fall back to the
-   * dark-glyph mix that fails AA on light yellow washes.
+   * Row fills step accent into the rail (`workspace-color.css`). Yellow stays
+   * a light wash, so pin selected on-color to ink. Browsers without
+   * contrast-color() otherwise fall back to a dark-glyph mix that fails AA.
    */
   --app-sidebar-item-selected-color: var(--color-we-got-dark);
   /*

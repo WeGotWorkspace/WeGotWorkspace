@@ -32,7 +32,6 @@ export const COLOR_SEMANTIC = [
 export const COLOR_COMPONENT_CONTRACT = [
   "--workspace-accent",
   "--workspace-accent-strong",
-  "--workspace-sidebar-mix",
   "--app-sidebar-bg",
   "--app-sidebar-color",
   "--app-sidebar-border-color",
