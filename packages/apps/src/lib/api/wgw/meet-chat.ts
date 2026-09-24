@@ -9,7 +9,7 @@ import type {
   ChatMessageCreate,
   ChatMessageListResponse,
   ChatMessagePatch,
-} from "@wgw-api-generated/chat-types";
+} from "@wgw/openapi-types/chat-types";
 import type {
   ChatMessage,
   MeetChannel,

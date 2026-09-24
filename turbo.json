@@ -1,30 +1,17 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": [
-    "SABRE_BUILD_DIR",
-    "SABRE_PUBLIC_DIR_NAME",
-    "SABRE_PRIVATE_DIR_NAME",
-    "SABRE_DATA_DIR_NAME",
-    "SABRE_DATA_DIR"
-  ],
-  "globalDependencies": ["packages/api/composer.json", "packages/api/composer.lock"],
   "tasks": {
     "build": {
-      "dependsOn": ["^build", "typegen"],
-      "cache": false,
-      "outputs": [
-        "../../packages/api/vendor/**",
-        "../../apps/wegotworkspace/packages/api/**",
-        "../../apps/wegotworkspace/packages/apps/*/dist/**"
-      ]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "generated/**"]
     },
     "typegen": {
       "dependsOn": ["^typegen"],
-      "cache": false,
-      "outputs": ["openapi/generated/**"]
+      "outputs": ["generated/**"]
     },
     "typegen:check": {
-      "dependsOn": ["typegen"]
+      "dependsOn": ["typegen"],
+      "cache": false
     },
     "typegen:watch": {
       "cache": false,
@@ -33,47 +20,27 @@
     "lint": {},
     "format:check": {},
     "typecheck": {
-      "dependsOn": ["typegen"],
-      "cache": false
-    },
-    "test": {
-      "dependsOn": ["lint", "format:check", "typecheck"],
-      "cache": false,
-      "passThroughEnv": ["DONE_GATE_SHARD"]
+      "dependsOn": ["^build"]
     },
     "dev": {
-      "dependsOn": ["^build"],
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "passThroughEnv": ["VITE_*", "WGW_*"]
     },
     "dev:app": {
-      "dependsOn": ["^build"],
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "passThroughEnv": ["VITE_*", "WGW_*"]
     },
     "dev:storybook": {
-      "dependsOn": ["^build"],
       "cache": false,
-      "persistent": true
-    },
-    "dev:php": {
-      "cache": false,
-      "persistent": true
+      "persistent": true,
+      "passThroughEnv": ["VITE_*", "WGW_*"]
     },
     "preview": {
-      "dependsOn": ["^build"],
       "cache": false,
-      "persistent": true
-    },
-    "watch": {
-      "dependsOn": ["^build"],
-      "cache": false,
-      "persistent": true
-    },
-    "watch:runtime": {
-      "dependsOn": ["^build"],
-      "cache": false,
-      "persistent": true
+      "persistent": true,
+      "passThroughEnv": ["VITE_*", "WGW_*"]
     }
   }
 }

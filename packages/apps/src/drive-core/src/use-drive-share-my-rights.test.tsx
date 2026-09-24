@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import type { DriveShareAtPath } from "@wgw-api-generated/drive-types";
+import type { DriveShareAtPath } from "@wgw/openapi-types/drive-types";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import { mockDriveShareAtPath } from "@/lib/api/mock/drive-share-fixtures";
 import { useDriveShareMyRights } from "./use-drive-share-my-rights";

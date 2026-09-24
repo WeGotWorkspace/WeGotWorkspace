@@ -1,7 +1,7 @@
 import type {
   SettingsMailRequest,
   SettingsProfileRequest,
-} from "@wgw-api-generated/settings-types";
+} from "@wgw/openapi-types/settings-types";
 import type { SettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";

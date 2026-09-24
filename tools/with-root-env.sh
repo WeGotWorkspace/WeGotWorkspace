@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Load repo-root .env (with shell expansion) then run a command.
 #
-#   tools/with-root-env.sh -- turbo run test
-#   tools/with-root-env.sh run 'pnpm run dev:bootstrap && turbo run dev'
+#   tools/with-root-env.sh -- pnpm typecheck
+#   tools/with-root-env.sh run 'pnpm run dev:bootstrap && pnpm dev'
 #
 set -euo pipefail
 

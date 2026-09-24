@@ -4,11 +4,12 @@
 
 | Path | What it is | Built? |
 |------|------------|--------|
-| `packages/api` | Laravel **API app** (REST, WebDAV, UI kernels) | `composer install` only |
+| `packages/api` | Laravel **API app** (REST, WebDAV). Composer only — not a pnpm workspace package | `composer install` only |
+| `packages/openapi-types` | Generated TypeScript from the OpenAPI spec (`@wgw/openapi-types`) | `turbo run typegen` |
 | `packages/apps` | UI **source** (Vite dev / build → `packages/apps/dist/`) | `vite dev` or `vite build` |
 | `apps/wegotworkspace` | **Install shell** — `index.php`, `wgw-content/` (runtime data; `WGW_*` in `packages/api/.env`) | No code copies in day-to-day dev |
 
-Production releases still assemble a self-contained tree under `apps/wegotworkspace/packages/*` via `pnpm build` / `pnpm release`. That sync is for shipping, not for editing.
+Turborepo owns JavaScript (`packages/apps`, `packages/openapi-types`, `tools/mcp-server`). Composer owns Laravel. `pnpm build` runs the JS graph, then `composer prune` and the sync scripts that copy into the install tree. That sync is for shipping, not for editing.
 
 ## Default dev (Docker-free)
 
@@ -19,18 +20,19 @@ pnpm dev
 | Service | URL | Notes |
 |---------|-----|-------|
 | Full app (HMR) | http://127.0.0.1:5173 | Vite dev server; proxies `/api/v1` → `:9080`. Registers the injectManifest service worker on localhost so Web Push can arrive. |
-| Storybook | http://127.0.0.1:6006 | Component catalog; same API proxy |
-| API (host PHP) | http://127.0.0.1:9080 | Health: `/api/v1/health` |
+| API (host PHP) | http://127.0.0.1:9080 | Health: `/api/v1/health`. `packages/api/scripts/dev-php-server.sh` (not a Turbo task) |
+| Storybook (opt-in) | http://127.0.0.1:6006 | `pnpm dev:storybook`. Not started by `pnpm dev` |
 
 The API task runs `packages/api/scripts/dev-php-server.sh`, which traps `SIGINT`/`SIGTERM` and stops the `php -S` process when you exit `pnpm dev` or `pnpm preview` (Ctrl+C). If `:9080` stays bound after a crash, find the listener with `lsof -nP -iTCP:9080 -sTCP:LISTEN` and stop it manually.
 
-`pnpm dev` runs `wgw:dev-install` first (idempotent), then starts all three in parallel via turbo. On a fresh clone that bootstraps `packages/api/.env` (from `.env.example`), `wgw-content/db.sqlite`, the `admin` user (password `storybook-dev`, overridable via `WGW_DEV_USERNAME` / `WGW_DEV_PASSWORD`), a second user `member` (same password, display name Member, in the Administrators group), JWT keys under `apps/wegotworkspace/wgw-content/keys/` (gitignored), and hundreds of sample calendar events on admin's `default` / `home` / `work` calendars. OpenAPI typegen watch runs alongside. Existing local installs get the same events, and `member` if that account is missing, on the next `pnpm dev`. A `member` password you already changed is left alone. `member` does not get the sample calendar catalog. Re-seed admin's events with `php packages/api/artisan wgw:calendars:seed-dev` (`--force` recreates). The seeder refuses `APP_ENV` other than `local`/`testing`, `WGW_INSTALL_CHANNEL` of `docker` or `zip`, and any tree without a parent `pnpm-workspace.yaml`, so production, Docker-channel, and ZIP-extract installs stay empty.
+`pnpm dev` runs `wgw:dev-install` first (idempotent), then starts the PHP trap script and Turbo (`typegen:watch` + Vite) together. Storybook stays opt-in. On a fresh clone that bootstraps `packages/api/.env` (from `.env.example`), `wgw-content/db.sqlite`, the `admin` user (password `storybook-dev`, overridable via `WGW_DEV_USERNAME` / `WGW_DEV_PASSWORD`), a second user `member` (same password, display name Member, in the Administrators group), JWT keys under `apps/wegotworkspace/wgw-content/keys/` (gitignored), and hundreds of sample calendar events on admin's `default` / `home` / `work` calendars. OpenAPI typegen watch runs alongside. Existing local installs get the same events, and `member` if that account is missing, on the next `pnpm dev`. A `member` password you already changed is left alone. `member` does not get the sample calendar catalog. Re-seed admin's events with `php packages/api/artisan wgw:calendars:seed-dev` (`--force` recreates). The seeder refuses `APP_ENV` other than `local`/`testing`, `WGW_INSTALL_CHANNEL` of `docker` or `zip`, and any tree without a parent `pnpm-workspace.yaml`, so production, Docker-channel, and ZIP-extract installs stay empty.
 
 ## Docker API (optional)
 
 ```bash
 pnpm docker:up
-pnpm dev          # UI only needs API on :9080; host PHP is not started if you skip `pnpm dev:api`
+# Docker already binds :9080. `pnpm dev` would start a second PHP server.
+pnpm exec turbo run typegen:watch dev:app --filter=@wgw/openapi-types --filter=@wgw/apps
 ```
 
 Or run Storybook alone: `pnpm dev:storybook`.
@@ -40,13 +42,13 @@ HTTPS / WebDAV hostname: [`docker/README.md`](../docker/README.md).
 ## Host PHP instead of Docker
 
 ```bash
-pnpm dev          # API :9080 + Vite app :5173 + Storybook :6006 + typegen watch
-pnpm dev:api      # API only
+pnpm dev          # API :9080 + Vite app :5173 + typegen watch
+pnpm dev:api      # API only (dev-php-server.sh)
 pnpm dev:storybook # Storybook only
 pnpm dev:ui       # alias for `pnpm dev`
 ```
 
-Host API uses PHP’s built-in server on **http://127.0.0.1:9080** (`packages/api` → `dev:php` via install shell `apps/wegotworkspace/index.php`).
+Host API uses PHP’s built-in server on **http://127.0.0.1:9080** (`packages/api/scripts/dev-php-server.sh` via install shell `apps/wegotworkspace/index.php`). It also runs `wgw:schema-migrate` before listening.
 
 **First-time host API setup** (once per clone):
 
@@ -69,7 +71,7 @@ pnpm preview
 
 Builds apps (`vite build`), starts host PHP API on `:9080`, and serves the bundle via `vite preview` on **http://127.0.0.1:4173** with the same `/api/v1` proxy. Use this to exercise the **production** PWA precache and offline contacts against a host API. Web Push on `pnpm dev` (http://127.0.0.1:5173) uses the same custom SW without the production navigation fallback, so Vite HMR is not served from Workbox.
 
-Manual split (same result as `pnpm preview` without turbo):
+Manual split (same result as `pnpm preview`):
 
 ```bash
 pnpm dev:api   # terminal 1 → http://127.0.0.1:9080 (health: curl -s http://127.0.0.1:9080/api/v1/health)
@@ -132,7 +134,7 @@ Phase 1 loads mock-tier Storybook stories — no live API required:
 pnpm test:apps-e2e
 ```
 
-Starts Storybook on **:6006** (or reuses `pnpm dev`). Specs live in `packages/apps/e2e/`. With Storybook already running:
+Starts Storybook on **:6006** (`pnpm dev:storybook`, or a Storybook you already started). Specs live in `packages/apps/e2e/`. With Storybook already running:
 
 ```bash
 WGW_APPS_E2E_NO_SERVER=1 pnpm test:apps-e2e

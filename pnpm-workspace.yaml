@@ -1,3 +1,8 @@
 packages:
-  - "packages/*"
+  - "packages/apps"
+  - "packages/openapi-types"
   - "tools/mcp-server"
+  - "tools/api-e2e"
+
+catalog:
+  zod: ^3.24.2

@@ -3,7 +3,7 @@
 
 entry = [
   "commitlint.config.mjs",
-  "packages/api/package.json",
+  "packages/openapi-types/package.json",
   "packages/apps/package.json",
   "tools/git/*.mjs",
   "packages/api/scripts/*.mjs",
@@ -16,12 +16,12 @@ ignorePatterns = [
 ]
 
 [[ignoreExports]]
-file = "packages/api/openapi/generated/installer-types.ts"
+file = "packages/openapi-types/generated/installer-types.ts"
 exports = ["InstallerSchemas", "InstallerPaths", "InstallerChecks", "OkResponse"]
 
 [duplicates]
 minOccurrences = 4
-ignore = ["**/openapi/generated/**"]
+ignore = ["**/openapi-types/generated/**"]
 
 [health]
 maxCyclomatic = 50

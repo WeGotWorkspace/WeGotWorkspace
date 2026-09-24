@@ -2,7 +2,7 @@ import type {
   DriveShare,
   DriveShareAtPath,
   DriveSharePublicSummary,
-} from "@wgw-api-generated/drive-types";
+} from "@wgw/openapi-types/drive-types";
 
 export function findShareRecord(atPath: DriveShareAtPath, shareId: string): DriveShare | undefined {
   for (const list of [atPath.directShares, atPath.coveringShares, atPath.nestedShares]) {

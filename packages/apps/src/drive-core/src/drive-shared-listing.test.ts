@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
-import type { DriveSharedWithMeEntry } from "@wgw-api-generated/drive-types";
+import type { DriveSharedWithMeEntry } from "@wgw/openapi-types/drive-types";
 import { mapDriveSharedWithMeEntries } from "@/drive-core/src/drive-shared-listing";
 import { isDocsHomeCompatibleSharedFile } from "@/docs-core/src/docs-home-shared";
 
