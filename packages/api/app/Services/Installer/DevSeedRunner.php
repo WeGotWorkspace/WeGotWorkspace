@@ -7,18 +7,19 @@ namespace App\Services\Installer;
 use RuntimeException;
 
 /**
- * Orchestrates modular local-dev seeders (calendars, notes; Tasks/Docs/Meet later).
+ * Orchestrates modular local-dev seeders (calendars, notes, contacts; Tasks/Docs/Meet later).
  *
  * @phpstan-type SeedAppResult array{app: string, created: int, skipped: int, deleted: int, extra?: array<string, int>}
  */
 final class DevSeedRunner
 {
     /** @var list<string> */
-    public const APPS = ['calendars', 'notes'];
+    public const APPS = ['calendars', 'notes', 'contacts'];
 
     public function __construct(
         private readonly DevCalendarEventSeeder $calendars,
         private readonly DevNoteSeeder $notes,
+        private readonly DevContactSeeder $contacts,
         private readonly DevSeedGuard $guard,
     ) {}
 
@@ -40,12 +41,14 @@ final class DevSeedRunner
         $this->guard->assertAllowed('dev data');
 
         $selected = $this->normalizeApps($apps);
+        $this->assertLargeProfileSupported($selected, $profile);
         $results = [];
 
         foreach ($selected as $app) {
             $results[] = match ($app) {
                 'calendars' => $this->seedCalendars($username, $profile, $force),
                 'notes' => $this->seedNotes($username, $profile, $force),
+                'contacts' => $this->seedContacts($username, $profile, $force),
                 default => throw new RuntimeException('Unknown seed app: '.$app),
             };
         }
@@ -72,6 +75,9 @@ final class DevSeedRunner
             if ($normalized === 'note') {
                 $normalized = 'notes';
             }
+            if ($normalized === 'contact') {
+                $normalized = 'contacts';
+            }
             if (! in_array($normalized, self::APPS, true)) {
                 throw new RuntimeException(
                     'Unknown seed app "'.$app.'". Known: '.implode(', ', self::APPS).'.',
@@ -81,6 +87,27 @@ final class DevSeedRunner
         }
 
         return array_values(array_unique($out));
+    }
+
+    /**
+     * Calendars and notes only accept full and compact. Reject large here so
+     * those seeders do not throw their own unknown-profile errors.
+     *
+     * @param  list<string>  $selected
+     */
+    private function assertLargeProfileSupported(array $selected, string $profile): void
+    {
+        if ($profile !== DevContactCatalog::PROFILE_LARGE) {
+            return;
+        }
+
+        foreach ($selected as $app) {
+            if ($app !== 'contacts') {
+                throw new RuntimeException(
+                    'Profile large is only supported by wgw:contacts:seed-dev (or contacts).',
+                );
+            }
+        }
     }
 
     /**
@@ -114,6 +141,21 @@ final class DevSeedRunner
                 'starred' => $result['starred'],
                 'notebooks' => $result['notebooks'],
             ],
+        ];
+    }
+
+    /**
+     * @return SeedAppResult
+     */
+    private function seedContacts(string $username, string $profile, bool $force): array
+    {
+        $result = $this->contacts->seed($username, $profile, $force);
+
+        return [
+            'app' => 'contacts',
+            'created' => $result['created'],
+            'skipped' => $result['skipped'],
+            'deleted' => $result['deleted'],
         ];
     }
 }
