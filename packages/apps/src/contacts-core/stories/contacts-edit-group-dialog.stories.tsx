@@ -53,7 +53,7 @@ function ContactsEditGroupDialogHarness({
 }
 
 const meta: Meta<typeof ContactsEditGroupDialogHarness> = {
-  title: "Apps/Contacts/Edit group dialog",
+  title: "Features/Contacts/Edit group dialog",
   component: ContactsEditGroupDialogHarness,
   args: {
     canDelete: true,

@@ -23,7 +23,6 @@
   --_lc-event-focus-ring-color: transparent;
   --_lc-event-focus-ring-gap: 1px;
   --_lc-event-focus-ring-inset-width: 0px;
-  --_lc-event-recurring-icon-size: 13px;
   --_lc-event-card-segment-radius: var(--lc-event-card-radius, var(--radius-sm));
   --_lc-resize-handle-color: var(--_lc-event-card-text-color);
   /* Four-side fill inset; TimeLine `--time-line-event-inset` aliases this. */
@@ -39,7 +38,6 @@
   container-type: inline-size;
   container-name: event-card;
   min-height: 0;
-  --_lc-event-recurring-icon-size: 14px;
 }
 
 :host > div {
@@ -220,22 +218,6 @@
   opacity: 0.84;
 }
 
-:host .event-card-recurring-icon-wrap {
-  @apply pointer-events-none shrink-0 items-center justify-center self-start;
-  display: var(--_lc-event-card-recurring-icon-display, inline-flex);
-  margin-inline-start: auto;
-  margin-top: 1px;
-  width: var(--_lc-event-recurring-icon-size);
-  height: var(--_lc-event-recurring-icon-size);
-  opacity: 0.92;
-}
-
-:host .event-card-recurring-icon {
-  @apply block h-full w-full;
-  width: var(--_lc-event-recurring-icon-size);
-  height: var(--_lc-event-recurring-icon-size);
-}
-
 /* Short cards: single-line heading + compact label; hide expanded title/time stack. */
 @container (max-height: 47px) {
   :host .event-card-shell {
@@ -285,12 +267,6 @@
   :host .event-card-time {
     @apply hidden;
   }
-
-  /* Size the wrap (a descendant) so this query sees the card host, not an ancestor. */
-  :host .event-card-recurring-icon-wrap {
-    @apply mt-0 self-center;
-    --_lc-event-recurring-icon-size: 12px;
-  }
 }
 
 /* Cards too short for the location line: keep summary + time, drop location. The location
@@ -303,10 +279,6 @@
 
 /* Smaller compact cards: tighten spacing to avoid vertical clipping. */
 @container (max-height: 31px) {
-  :host .event-card-recurring-icon-wrap {
-    --_lc-event-recurring-icon-size: 11px;
-  }
-
   :host .event-card-heading,
   :host([layout="flow"]) .event-card-heading {
     @apply px-2;
@@ -325,10 +297,6 @@
 
 /* Very small cards: hide compact time, keep summary visible. */
 @container event-card-content (max-width: 120px) {
-  :host .event-card-recurring-icon-wrap {
-    --_lc-event-recurring-icon-size: 10px;
-  }
-
   :host .event-card-compact-time,
   :host .event-card-compact-time + [aria-hidden="true"] {
     @apply hidden;
@@ -363,8 +331,7 @@
   }
 
   :host .event-card-heading,
-  :host .event-card-time,
-  :host .event-card-recurring-icon-wrap {
+  :host .event-card-time {
     @apply hidden;
   }
 

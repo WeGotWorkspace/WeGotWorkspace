@@ -23,7 +23,7 @@ export function DocsCollabCardHeader({
         <UserAvatar
           displayName={authorName}
           compact
-          size="sm"
+          size="md"
           className="docs-collab-card__avatar"
         />
         <div className="docs-collab-card__meta">

@@ -2,7 +2,7 @@
 
 .docs-collab-message-reply,
 .docs-comments-reply {
-  @apply flex gap-2;
+  @apply flex items-start gap-2.5;
 }
 
 .docs-collab-message-reply__avatar .user-avatar__mark,
@@ -12,8 +12,8 @@
 
 .docs-collab-message-reply__avatar,
 .docs-comments-reply__avatar {
-  --user-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --user-avatar-fg: var(--color-ink);
+  --user-avatar-bg: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
+  --user-avatar-fg: var(--color-we-got-dark);
 }
 
 .docs-collab-message-reply__content,
@@ -23,18 +23,18 @@
 
 .docs-collab-message-reply__header,
 .docs-comments-reply__header {
-  @apply flex items-baseline gap-1.5;
+  @apply flex flex-col gap-0.5;
 }
 
 .docs-collab-message-reply__author,
 .docs-comments-reply__author {
-  @apply text-xs font-semibold;
+  @apply m-0 truncate text-sm font-semibold leading-tight;
 }
 
 .docs-collab-message-reply__time,
 .docs-comments-reply__time {
-  @apply text-[11px];
-  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  @apply text-[11px] leading-tight;
+  color: var(--docs-muted, color-mix(in oklab, var(--color-we-got-dark) 65%, transparent));
 }
 
 .docs-collab-message-reply__body,

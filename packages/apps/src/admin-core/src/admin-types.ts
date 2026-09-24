@@ -7,7 +7,8 @@ export type AdminSection =
   | "plugins"
   | "backups"
   | "updates"
-  | "search";
+  | "search"
+  | "mcp";
 
 export type AdminMailDeliveryTransport = "auto" | "smtp" | "php" | "sendmail";
 
@@ -64,6 +65,7 @@ export type AdminUser = {
   displayName: string;
   groups: string[];
   createdAt: string;
+  enabled: boolean;
 };
 
 export type AdminGroup = {
@@ -98,6 +100,12 @@ export type AdminWebdavSettings = {
   timezone: string;
   baseUri: string;
   authRealm: string;
+};
+
+export type AdminMcpSettings = {
+  enabled: boolean;
+  /** Public `/mcp` URL from `WGW_MCP_PUBLIC_ORIGIN` (local only). Null in production. */
+  endpointUrl?: string | null;
 };
 
 export type AdminUpdateRelease = {
@@ -203,6 +211,7 @@ export type AdminUIData = {
   rtc: AdminRtcSettings;
   apps: AdminAppsSettings;
   webdav: AdminWebdavSettings;
+  mcp: AdminMcpSettings;
   plugins: {
     id: string;
     name: string;
@@ -247,7 +256,13 @@ export type AdminAPIOperations = {
   ) => Promise<AdminUIData>;
   updateUser: (
     username: string,
-    input: { displayName?: string; email?: string; password?: string; groups?: string[] },
+    input: {
+      displayName?: string;
+      email?: string;
+      password?: string;
+      groups?: string[];
+      enabled?: boolean;
+    },
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUIData>;
   deleteUser: (username: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;

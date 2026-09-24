@@ -3,12 +3,12 @@
 .file-preview-text-pane {
   @apply relative flex h-full w-full min-h-0 flex-col overflow-hidden;
   background-color: color-mix(in oklab, var(--color-background, #fff) 92%, transparent);
-  color: color-mix(in oklab, var(--color-ink, var(--color-foreground, #1a1a1a)) 72%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 72%, transparent);
 }
 
 .file-preview-text-pane__sheet {
   @apply absolute inset-x-3 top-2 bottom-0 rounded-t-sm border border-b-0;
-  border-color: color-mix(in oklab, var(--drive-accent, var(--color-border)) 18%, transparent);
+  border-color: color-mix(in oklab, var(--workspace-accent, var(--color-border)) 18%, transparent);
   background-color: color-mix(in oklab, var(--color-background, #fff) 98%, transparent);
   box-shadow: 0 1px 2px color-mix(in oklab, var(--color-foreground, #000) 6%, transparent);
 }

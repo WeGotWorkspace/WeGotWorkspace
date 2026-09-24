@@ -18,6 +18,20 @@ export { TextEditorSlashMenu } from "@/text-editor-core/src/text-editor-slash-me
 export { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 export { TextEditorTableControls } from "@/text-editor-core/src/text-editor-table-controls";
 export {
+  toDriveFnSrc,
+  parseDriveFnSrc,
+  serializeDocsImageSrc,
+  docsImageMarkdown,
+} from "@/text-editor-core/src/text-editor-image-src";
+export {
+  insertDocsImage,
+  insertDocsImageFromNodeId,
+  deleteDocsImageAt,
+  deleteSelectedDocsImage,
+  deselectDocsImage,
+  isDocsImageNodeSelection,
+} from "@/text-editor-core/src/text-editor-image-commands";
+export {
   createTextEditorExtensions,
   createCollaborativeTextEditorExtensions,
   CommentMark,

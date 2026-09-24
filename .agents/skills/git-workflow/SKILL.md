@@ -29,8 +29,8 @@ description: Git workflow for this repository — branching, commits, pull reque
 
 When commits touch **`packages/apps/**`** (exports, panes, hooks, stories, CSS):
 
-1. **Before push** (Husky enforces): `pnpm test:apps-done-gate` — typecheck, Vitest, Storybook smoke, coverage baseline.
-2. **Before merge-ready PR** (when user asks): `pnpm run ci:quality` — full lint/format/typegen + API and apps done gates.
+1. **Before push** (Husky enforces): `pnpm test:apps-done-gate` — local profile: typecheck, OpenAPI contract, Storybook smoke, coverage baseline. Vitest unit and jsdom run in CI, not in the hook.
+2. **Before merge-ready PR** (when user asks): `pnpm run ci:quality` — lint/format/typegen, the API done gate, and the local apps gate. GitHub `apps-quality` adds Vitest unit and jsdom (`APPS_DONE_GATE_FULL=1`).
 
 Targeted Vitest or Storybook runs during development are fine; they do not replace the done gate. CI (`apps-quality`) validates **branch HEAD** on the PR only — intermediate commits may fail until fix-forward ([#250](https://github.com/WeGotWorkspace/wegotworkspace/issues/250)). Per-SHA gate runs are for bisect/debug only.
 
@@ -41,7 +41,7 @@ Use **[Conventional Commits](https://www.conventionalcommits.org/)** for every c
 - **Format:** `<type>(<optional scope>): <description>`
   Example: `feat(settings): add mail transport label helper`
 - **Common types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `revert`
-- **Description:** imperative mood, lowercase start (unless a proper noun), no trailing period; **subject line ~72 chars or less** when practical.
+- **Description:** **English**; imperative mood, lowercase start (unless a proper noun), no trailing period; **subject line ~72 chars or less** when practical.
 - **Body:** optional; use for **why** or non-obvious **what** (wrap at ~72 chars). Separate from subject with a blank line.
 - **Breaking changes:** `!` after type/scope (e.g. `feat(api)!:`) and/or a `BREAKING CHANGE:` footer when appropriate.
 

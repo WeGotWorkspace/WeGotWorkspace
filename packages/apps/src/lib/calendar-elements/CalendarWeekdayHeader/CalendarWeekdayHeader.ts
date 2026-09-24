@@ -21,10 +21,10 @@ export class CalendarWeekdayHeader extends BaseElement {
   lang = "";
   weekStart?: number;
   /**
-   * Forces the one-letter (narrow) weekday variant regardless of measured cell width.
-   * Compact compositions whose cells can outgrow the 64px narrow breakpoint (e.g. the
-   * timeline year grid's forced-compact month cards) opt in via this instead of relying on
-   * the width-based container query alone.
+   * Forces the one-letter (narrow) weekday variant, centered in the cell.
+   * Year month cards opt in so initials stay centered in tiny columns. Compact
+   * month instead uses the width container query (narrow glyphs, start-aligned
+   * with day numbers).
    */
   narrow = false;
   /**

@@ -45,6 +45,7 @@ export function useDocsCollab({
 
   const refs = useDocsCollabSessionRefs(wire, seedContent);
   const [docStatus, setDocStatus] = useState("");
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [pendingSync, setPendingSync] = useState(false);
   const [failedSync, setFailedSync] = useState(false);
 
@@ -62,6 +63,7 @@ export function useDocsCollab({
     room,
     urls,
     setDocStatus,
+    setLastSavedAt,
     setPendingSync,
     setFailedSync,
   });
@@ -82,6 +84,7 @@ export function useDocsCollab({
     mesh,
     save,
     setDocStatus,
+    setLastSavedAt,
     setPendingSync,
     setFailedSync,
   });
@@ -150,6 +153,7 @@ export function useDocsCollab({
     joined,
     status: mesh.status,
     docStatus,
+    lastSavedAt,
     peers: mesh.peers,
     connectingPeers: mesh.connectingPeers,
     warningPeers: mesh.warningPeers,

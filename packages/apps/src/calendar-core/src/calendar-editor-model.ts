@@ -98,6 +98,11 @@ export type CalendarEventFormValue = {
    * to the wire — persist goes through `meetingUrl` → `links`.
    */
   meetRoomCode?: string;
+  /**
+   * Session-only: keep the ad-hoc guest room URL instead of attaching a
+   * meeting channel on Meet create/edit save. Not written to the wire.
+   */
+  meetGuestRoomOverride?: boolean;
 };
 
 const DEFAULT_START_TIME = "10:00";
@@ -480,8 +485,18 @@ export function patchCalendarEventForm(
   return next;
 }
 
-export function calendarEventFormIsValid(form: CalendarEventFormValue): boolean {
-  if (!form.title.trim() || !form.calendarId || !form.startDate || !form.endDate) return false;
+export function calendarEventFormIsValid(
+  form: CalendarEventFormValue,
+  options?: { requireTitle?: boolean },
+): boolean {
+  if (
+    (options?.requireTitle !== false && !form.title.trim()) ||
+    !form.calendarId ||
+    !form.startDate ||
+    !form.endDate
+  ) {
+    return false;
+  }
   if (!form.allDay && (!form.startTime || !form.endTime)) return false;
   if (form.meetingUrl?.trim() && !isHttpUrl(form.meetingUrl.trim())) return false;
   const repeating = form.recurrencePreset !== "none" && form.recurrencePreset !== "custom";

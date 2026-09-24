@@ -5,17 +5,17 @@
   "scope": "/calendar",
   "id": "/calendar",
   "display": "standalone",
-  "background_color": "#6366F1",
-  "theme_color": "#6366F1",
+  "background_color": "#ffbdc2",
+  "theme_color": "#ffbdc2",
   "icons": [
     {
-      "src": "/app-icons/calendar.svg?v=3",
+      "src": "/app-icons/calendar.svg?v=19",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/calendar-180.png?v=3",
+      "src": "/pwa-icons/calendar-180.png?v=19",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

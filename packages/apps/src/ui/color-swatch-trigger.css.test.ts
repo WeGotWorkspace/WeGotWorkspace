@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "color-swatch-trigger.css"), "utf8");
+const tsx = readFileSync(join(here, "color-swatch-trigger.tsx"), "utf8");
 
 describe("color swatch trigger CSS", () => {
   it("pins unlabeled swatches with higher specificity than control-surface w-full", () => {
@@ -12,6 +13,29 @@ describe("color swatch trigger CSS", () => {
       /\.control-surface\.color-swatch-trigger:not\(\.color-swatch-trigger--labeled\) \{[\s\S]*width:\s*auto/,
     );
     expect(css).toMatch(/\.control-surface\.color-swatch-trigger--labeled \{[\s\S]*width:\s*100%/);
+    expect(css).not.toMatch(
+      /\.control-surface\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+    );
+    expect(css).not.toMatch(
+      /\.control-surface\.color-swatch-trigger \{[\s\S]*height:\s*var\(--control-height-md/,
+    );
+    expect(css).toMatch(/\.control-surface\.color-swatch-trigger \{[\s\S]*@apply px-2/);
     expect(css).toMatch(/\.color-swatch-trigger \{[\s\S]*min-width:\s*3\.25rem/);
+    expect(css).toMatch(/\.color-swatch-trigger__chevron \{[\s\S]*@apply size-3\.5/);
+    expect(css).toMatch(/\.color-swatch-trigger__icon \{[\s\S]*@apply/);
+  });
+
+  it("does not ship a divergent focus ring — inherits Button outline from control-surface", () => {
+    expect(css).not.toMatch(/focus-visible:ring-2/);
+    expect(css).not.toMatch(/focus-visible:ring-offset/);
+    expect(css).not.toMatch(/focus-visible:ring-1/);
+  });
+});
+
+describe("color swatch trigger markup", () => {
+  it("wires ControlSize onto control-surface like LocaleDatePicker / SelectTrigger", () => {
+    expect(tsx).toMatch(/controlSizeClassName\("control-surface"/);
+    expect(tsx).toMatch(/size\s*=\s*"md"/);
+    expect(tsx).toMatch(/import "\.\/input\.css"/);
   });
 });

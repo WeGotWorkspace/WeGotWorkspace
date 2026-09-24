@@ -68,4 +68,4 @@ Unchanged at `/files/` on `routes/web.php` (Sabre). REST JSON lives under `/api/
 1. Add path + `x-wgw-access` to `openapi/openapi.json`.
 2. Register route in `routes/api.php` with correct `wgw.auth` / `wgw.role` middleware.
 3. Feature test under `tests/Feature/{Domain}/`.
-4. Run `composer done-gate` and `pnpm --filter @wgw/api run typegen`.
+4. Run `composer done-gate` and `pnpm --filter @wgw/openapi-types typegen`.

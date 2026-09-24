@@ -13,7 +13,7 @@ import {
   saveSuccessState,
   shouldMarkPendingWhenUnsaved,
 } from "./docs-collab-save-queue";
-import { formatSavedDocStatus } from "./docs-collab-status";
+import { DOC_STATUS_NOTE_TOO_LARGE } from "./docs-collab-status";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
 import { docSignature, isCollabPayloadTooLarge, SERVER_ORIGIN } from "./docs-collab-utils";
 
@@ -29,6 +29,7 @@ type UseDocsCollabSaveOptions = {
   room: string;
   urls: DocsCollabUrls;
   setDocStatus: (status: string | ((prev: string) => string)) => void;
+  setLastSavedAt: (iso: string | null) => void;
   setPendingSync: (pending: boolean) => void;
   setFailedSync: (failed: boolean) => void;
 };
@@ -38,6 +39,7 @@ export function useDocsCollabSave({
   room,
   urls,
   setDocStatus,
+  setLastSavedAt,
   setPendingSync,
   setFailedSync,
 }: UseDocsCollabSaveOptions) {
@@ -166,7 +168,8 @@ export function useDocsCollabSave({
       refs.saveRetryMsRef.current = success.saveRetryMs ?? 0;
       refs.nextSaveAttemptAtRef.current = success.nextSaveAttemptAt ?? 0;
       await updatePendingState(false, false);
-      setDocStatus(formatSavedDocStatus());
+      setLastSavedAt(new Date().toISOString());
+      setDocStatus("");
     } catch (err) {
       refs.saveFailedRef.current = true;
       if (
@@ -182,7 +185,7 @@ export function useDocsCollabSave({
         refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
         refs.nextSaveAttemptAtRef.current = Number.POSITIVE_INFINITY;
         await updatePendingState(true, true);
-        setDocStatus("This note is too large to save.");
+        setDocStatus(DOC_STATUS_NOTE_TOO_LARGE);
         throw err;
       }
       const failure = saveFailureState(refs.saveRetryMsRef.current);
@@ -198,7 +201,7 @@ export function useDocsCollabSave({
     } finally {
       refs.saveInFlightRef.current = false;
     }
-  }, [markPendingWhenUnsaved, refs, room, setDocStatus, updatePendingState, urls]);
+  }, [markPendingWhenUnsaved, refs, room, setDocStatus, setLastSavedAt, updatePendingState, urls]);
 
   const scheduleSave = useCallback(() => {
     if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) return;

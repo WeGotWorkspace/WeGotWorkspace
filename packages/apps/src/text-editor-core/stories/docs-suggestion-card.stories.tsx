@@ -25,7 +25,7 @@ const cardHandlers = {
 };
 
 const meta = {
-  title: "Shared/TextEditor/Docs suggestions/Suggestion card",
+  title: "Features/Docs/TextEditor/Docs suggestions/Suggestion card",
   component: DocsSuggestionCard,
   parameters: {
     layout: "padded",

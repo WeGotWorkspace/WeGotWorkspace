@@ -1,19 +1,15 @@
 import { useCallback } from "react";
 import type { Editor } from "@tiptap/react";
 import type { MutableRefObject, Dispatch, SetStateAction } from "react";
-import type * as Y from "yjs";
-import {
-  appendCommentReply,
-  createCommentMessage,
-  deletePersistedCommentThread,
-  persistDraftThreadFirstReply,
-  resolveCommentThread,
-  toggleCommentThreadReaction,
-} from "./docs-comments/docs-comments-map-writes";
+import { createCommentMessage } from "./docs-comments/docs-comments-map-writes";
 import type { DocsCommentAuthor, DocsCommentThread } from "./docs-comments-types";
+import type { DocsThreadsSource } from "./use-docs-threads-source";
+import type { DocsThreadsClient } from "./docs-threads-types";
 
 type UseDocsCommentsMutationsOptions = {
-  ydoc: Y.Doc | null;
+  client: DocsThreadsClient | null;
+  path: string | null;
+  source: DocsThreadsSource;
   editor: Editor | null;
   currentUser: DocsCommentAuthor;
   activeThreadId: string | null;
@@ -25,7 +21,9 @@ type UseDocsCommentsMutationsOptions = {
 };
 
 export function useDocsCommentsMutations({
-  ydoc,
+  client,
+  path,
+  source,
   editor,
   currentUser,
   activeThreadId,
@@ -37,41 +35,58 @@ export function useDocsCommentsMutations({
 }: UseDocsCommentsMutationsOptions) {
   const addReply = useCallback(
     (threadId: string, body: string) => {
-      if (!canMutateComments || !ydoc) return;
+      if (!canMutateComments || !client || !path) return Promise.resolve();
 
-      const message = createCommentMessage(body, currentUser);
-      if (!message) return;
+      const trimmed = body.trim();
+      if (!trimmed) return Promise.resolve();
 
       const draft = draftThreadRef.current;
-      if (draft?.id === threadId) {
-        persistDraftThreadFirstReply(ydoc, draft, message);
-        draftThreadRef.current = null;
-        setDraftThread(null);
-        return;
-      }
+      return (async () => {
+        if (draft?.id === threadId) {
+          const created = await client.create(path, {
+            id: draft.id,
+            kind: "comment",
+            body: trimmed,
+            anchorText: draft.anchorText,
+            anchorFrom: draft.anchorFrom,
+            anchorTo: draft.anchorTo,
+            anchorOccurrence: draft.anchorOccurrence,
+          });
+          draftThreadRef.current = null;
+          setDraftThread(null);
+          source.upsert(created);
+          return;
+        }
 
-      appendCommentReply(ydoc, threadId, message);
+        const message = createCommentMessage(trimmed, currentUser);
+        if (!message) return;
+        const updated = await client.reply(path, threadId, { id: message.id, body: trimmed });
+        source.upsert(updated);
+      })();
     },
-    [canMutateComments, currentUser, draftThreadRef, setDraftThread, ydoc],
+    [canMutateComments, client, currentUser, draftThreadRef, path, setDraftThread, source],
   );
 
   const toggleReaction = useCallback(
     (threadId: string, emoji: string) => {
-      if (!canMutateComments || !ydoc) return;
-      toggleCommentThreadReaction(ydoc, threadId, currentUser.id, emoji);
+      if (!canMutateComments || !client || !path) return Promise.resolve();
+      return client.react(path, threadId, emoji).then((thread) => {
+        source.upsert(thread);
+      });
     },
-    [canMutateComments, currentUser.id, ydoc],
+    [canMutateComments, client, path, source],
   );
 
   const resolveThread = useCallback(
     (threadId: string) => {
-      if (!canMutateComments || !ydoc) return;
-      if (!resolveCommentThread(ydoc, threadId)) return;
-
-      editor?.commands.unsetComment(threadId);
-      if (activeThreadId === threadId) setActiveThreadId(null);
+      if (!canMutateComments || !client || !path) return Promise.resolve();
+      return client.patch(path, threadId, { resolved: true }).then((thread) => {
+        source.upsert(thread);
+        editor?.commands.unsetComment(threadId);
+        if (activeThreadId === threadId) setActiveThreadId(null);
+      });
     },
-    [activeThreadId, canMutateComments, editor, setActiveThreadId, ydoc],
+    [activeThreadId, canMutateComments, client, editor, path, setActiveThreadId, source],
   );
 
   const deleteThread = useCallback(
@@ -81,9 +96,10 @@ export function useDocsCommentsMutations({
         cancelDraft();
         return;
       }
-      if (!ydoc) return;
-
-      deletePersistedCommentThread(ydoc, threadId);
+      source.remove(threadId);
+      if (client && "forget" in client && typeof client.forget === "function") {
+        client.forget(threadId);
+      }
       editor?.commands.unsetComment(threadId);
       if (activeThreadId === threadId) setActiveThreadId(null);
     },
@@ -91,18 +107,19 @@ export function useDocsCommentsMutations({
       activeThreadId,
       canMutateComments,
       cancelDraft,
+      client,
       draftThreadRef,
       editor,
       setActiveThreadId,
-      ydoc,
+      source,
     ],
   );
 
   const submitDraftComment = useCallback(
     (body: string) => {
       const draft = draftThreadRef.current;
-      if (!draft) return;
-      addReply(draft.id, body);
+      if (!draft) return Promise.resolve();
+      return addReply(draft.id, body) ?? Promise.resolve();
     },
     [addReply, draftThreadRef],
   );

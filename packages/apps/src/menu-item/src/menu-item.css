@@ -1,13 +1,56 @@
 @import "../../styles.css" reference;
+@import "../../ui/workspace-menu-item-sst.css";
 
 /* ----- Root (all contexts) ----- */
 
 .menu-item {
   @apply flex w-full gap-2 rounded px-4 py-2 text-left text-sm outline-none transition-[color,background-color,box-shadow];
+  /* Beat UA `buttonface` (#efefef) so white-on-accent rails stay AA. */
+  background-color: transparent;
 }
 
 .menu-item--interactive:hover {
-  background-color: color-mix(in oklab, currentColor 12%, transparent);
+  background-color: var(
+    --menu-item-hover-background,
+    color-mix(in oklab, currentColor 12%, transparent)
+  );
+}
+
+/* Sidebar nav hover: same wash + fg family as outline IconButton. */
+.sidebar-section
+  .menu-item--interactive:hover:not(.menu-item--surface-selected):not(.menu-item--severity-danger) {
+  color: var(--button-outline-hover-color, var(--button-outline-color, var(--color-we-got-dark)));
+  background-color: var(
+    --button-outline-hover-background,
+    color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+  );
+}
+
+/*
+ * Severity rows (Delete, etc.): fg from destructive token; hover/focus wash from
+ * the same hue — not workspace accent / --menu-item-hover-background.
+ */
+.menu-item--severity-danger {
+  --menu-item-severity-color: var(
+    --menu-item-danger-color,
+    var(--color-destructive, var(--destructive, #b14242))
+  );
+  --menu-item-severity-hover-background: var(
+    --menu-item-danger-hover-background,
+    color-mix(in oklab, var(--menu-item-severity-color) 14%, transparent)
+  );
+  color: var(--menu-item-severity-color);
+}
+
+.menu-item--severity-danger .menu-item__icon-slot {
+  opacity: 0.9;
+}
+
+.menu-item--severity-danger.menu-item--interactive:hover,
+.menu-item--severity-danger.menu-item--interactive:focus,
+.menu-item--severity-danger.menu-item--interactive:focus-visible {
+  color: var(--menu-item-severity-color);
+  background-color: var(--menu-item-severity-hover-background);
 }
 
 .menu-item--disabled {
@@ -34,16 +77,22 @@
 }
 
 .sidebar-section .menu-item--surface-idle {
-  @apply font-medium;
-  color: color-mix(in oklab, var(--color-ink) 75%, transparent);
+  @apply font-semibold;
+  color: color-mix(in oklab, var(--color-we-got-dark) 75%, transparent);
 }
 
 .menu-item--surface-selected {
   @apply bg-transparent;
 }
 
+/* Selected = outline icon-button--active wash/fg (parents publish --button-outline-*). */
 .sidebar-section .menu-item--surface-selected {
-  @apply bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)] font-medium text-[var(--color-ink)];
+  @apply font-semibold;
+  background-color: var(
+    --button-outline-active-background,
+    color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
+  );
+  color: var(--button-active-color, var(--color-we-got-dark));
 }
 
 .menu-item--surface-drop {
@@ -51,7 +100,7 @@
 }
 
 .sidebar-section .menu-item--surface-drop {
-  @apply bg-[color-mix(in_oklab,var(--color-ink)_22%,transparent)] font-medium text-[var(--color-ink)] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_35%,transparent)];
+  @apply bg-[color-mix(in_oklab,var(--color-we-got-dark)_22%,transparent)] font-semibold text-[var(--color-we-got-dark)] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-we-got-dark)_35%,transparent)];
 }
 
 /* ----- Icon slot ----- */
@@ -65,8 +114,14 @@
   opacity: 0.65;
 }
 
-.sidebar-section .menu-item.menu-item--selected .menu-item__icon-slot {
+.sidebar-section
+  .menu-item--interactive:hover:not(.menu-item--surface-selected)
+  .menu-item__icon-slot {
   opacity: 0.9;
+}
+
+.sidebar-section .menu-item.menu-item--selected .menu-item__icon-slot {
+  opacity: 1;
 }
 
 /* ----- Main row ----- */
@@ -117,13 +172,13 @@
 }
 
 .sidebar-section .menu-item__badge {
-  background-color: color-mix(in oklab, var(--color-ink) 14%, transparent);
-  color: color-mix(in oklab, var(--color-ink) 80%, transparent);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 14%, transparent);
+  color: color-mix(in oklab, var(--color-we-got-dark) 80%, transparent);
 }
 
 .sidebar-section .menu-item.menu-item--selected .menu-item__badge {
-  background-color: var(--color-ink);
-  color: var(--sidebar-badge-fg, var(--color-cream, #ffffff));
+  background-color: var(--sidebar-badge-bg, var(--color-we-got-dark));
+  color: var(--sidebar-badge-fg, var(--color-we-got-soft));
 }
 
 /* ----- Checked ----- */

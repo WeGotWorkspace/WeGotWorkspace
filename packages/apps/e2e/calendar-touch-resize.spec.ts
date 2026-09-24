@@ -14,9 +14,9 @@ test.describe("Calendar touch resize (Storybook)", () => {
     test.setTimeout(60_000);
     await page.goto(`/iframe.html?id=${CALENDAR_DAY_STORY}&viewMode=story`);
 
-    const closeMenu = page.getByRole("button", { name: "Close menu" });
-    if (await closeMenu.isVisible()) {
-      await closeMenu.click();
+    const scrim = page.locator(".app-sidebar__scrim");
+    if (await scrim.isVisible()) {
+      await scrim.click();
     }
 
     const card = page.getByRole("button", { name: /Lunch\?/i }).first();

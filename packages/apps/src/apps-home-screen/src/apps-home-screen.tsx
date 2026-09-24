@@ -1,11 +1,9 @@
 import type { ReactNode } from "react";
-import { AppSwitchButton } from "@/app-switch-button/src/app-switch-button";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
 import { cn } from "@/lib/utils";
-import { WorkspaceShellHeaderUserMenu } from "@/workspace-shell/src/workspace-shell-header-user-menu";
+import { WorkspaceShellHeader } from "@/workspace-shell/src/workspace-shell-header";
 import "@/apps-home-screen/src/apps-home-screen.css";
-import "@/workspace-shell/src/workspace-shell-header.css";
 
 export type AppsHomeScreenItem = {
   id: string;
@@ -38,30 +36,26 @@ export function AppsHomeScreen({
   onLogout,
 }: AppsHomeScreenProps) {
   return (
-    <section className={cn("apps-home-screen w-full min-h-dvh", className)}>
-      <header className="workspace-shell-header shrink-0">
-        <div className="workspace-shell-header__start">
-          <AppSwitchButton subtitle="Workspace" />
-        </div>
-        <div className="workspace-shell-header__end">
-          {showUserMenu ? (
-            <div className="workspace-shell-header__account">
-              <WorkspaceShellHeaderUserMenu displayName={userDisplayName} onLogout={onLogout} />
-            </div>
-          ) : (
-            <div className="workspace-shell-header__spacer" aria-hidden />
-          )}
-        </div>
-      </header>
+    <section className={cn("apps-home-screen flex w-full min-h-dvh flex-col", className)}>
+      <WorkspaceShellHeader
+        appSwitchSubtitle="Workspace"
+        session={
+          showUserMenu && onLogout
+            ? { user: { displayName: userDisplayName }, viewerInboxLabel: "me" }
+            : undefined
+        }
+        onLogout={showUserMenu ? onLogout : undefined}
+        displayName={userDisplayName}
+      />
 
-      <div className="mx-auto w-full max-w-5xl px-6 pb-10 md:px-10 md:pb-14">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3">
+      <div className="flex flex-1 items-center justify-center px-6 py-10 md:px-10 md:py-14">
+        <div className="grid w-full max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4">
           {apps.map((app) => (
             <button
               key={app.id}
               type="button"
               onClick={app.onSelect}
-              className="group flex w-full min-h-48 flex-col items-center justify-center gap-4 rounded-3xl p-3 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-ink) focus-visible:ring-offset-2"
+              className="group flex w-full min-h-48 flex-col items-center justify-center gap-4 rounded-3xl p-3 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-we-got-dark) focus-visible:ring-offset-2"
               aria-label={app.label}
             >
               {app.appId ? (
@@ -80,12 +74,15 @@ export function AppsHomeScreen({
               ) : (
                 <span
                   className="apps-home-screen__tile-icon--accent"
-                  style={{ backgroundColor: app.accent, color: app.fg ?? "var(--color-ink)" }}
+                  style={{
+                    backgroundColor: app.accent,
+                    color: app.fg ?? "var(--color-we-got-dark)",
+                  }}
                 >
                   <span className="text-current [&_svg]:size-12">{app.icon}</span>
                 </span>
               )}
-              <span className="text-sm font-medium text-white">{app.label}</span>
+              <span className="text-sm font-medium">{app.label}</span>
             </button>
           ))}
         </div>

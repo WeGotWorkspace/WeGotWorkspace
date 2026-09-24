@@ -32,12 +32,16 @@ describe("CalendarEventCalendarPicker", () => {
 
     const trigger = screen.getByRole("button", { name: /Calendar: Personal/i });
     expect(trigger.className).toContain("calendar-event-dialog__calendar-trigger");
+    expect(trigger.className).toContain("control-surface--size-md");
     expect(trigger.querySelector(".color-swatch-trigger__dot")).toBeTruthy();
     expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
+    expect(trigger.querySelector(".color-swatch-trigger__caption")).toBeNull();
+    expect(trigger.textContent?.trim()).toBe("");
 
     fireEvent.pointerDown(trigger);
     fireEvent.click(trigger);
     const personal = screen.getByRole("menuitem", { name: "Personal" });
     expect(personal.querySelector(".calendar-sidebar-dot")).toBeTruthy();
+    expect(personal.textContent).toContain("Personal");
   });
 });

@@ -12,7 +12,7 @@ export type DialogCloseButtonProps = Omit<IconButtonProps, "label" | "icon" | "s
 
 export const DialogCloseButton = forwardRef<HTMLButtonElement, DialogCloseButtonProps>(
   function DialogCloseButton(
-    { label = "Close", className, size = "sm", variant = "subtle", ...props },
+    { label = "Close", className, size = "sm", variant = "outline", ...props },
     ref,
   ) {
     return (

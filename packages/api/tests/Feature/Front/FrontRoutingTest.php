@@ -106,6 +106,7 @@ final class FrontRoutingTest extends TestCase
             'meet' => ['/meet'],
             'notes' => ['/notes'],
             'settings' => ['/settings'],
+            'settings nested' => ['/settings/assistants'],
             'share' => ['/share/a4ce06285e2e44adb3c55ef3beddf65e'],
             'share trailing slash' => ['/share/'],
             'tasks' => ['/tasks'],
@@ -187,6 +188,19 @@ final class FrontRoutingTest extends TestCase
         $this->get('/pwa-icons/settings-180.png')
             ->assertOk()
             ->assertHeader('Content-Type', 'image/png');
+    }
+
+    public function test_inbox_chime_path_serves_shell_asset(): void
+    {
+        $this->repoRoot = UiDistFixture::bootstrapMonorepoLayout();
+        $installRoot = $this->repoRoot.'/apps/wegotworkspace';
+        $data = $installRoot.'/wgw-content';
+        WgwInstallFixture::markInstalled($installRoot, $data);
+        WgwInstallFixture::syncDatabaseConnection();
+
+        $this->get('/sounds/notification-chime.mp3')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'audio/mpeg');
     }
 
     public function test_index_html_path_serves_shell_asset(): void

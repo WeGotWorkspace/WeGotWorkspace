@@ -1,12 +1,12 @@
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import Highlight from "@tiptap/extension-highlight";
-import Image from "@tiptap/extension-image";
+import { DocsImage } from "@/text-editor-core/src/text-editor-image-extension";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
-import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
+import { TextEditorTaskItem } from "@/text-editor-core/src/text-editor-task-item";
 import TextAlign from "@tiptap/extension-text-align";
 import Typography from "@tiptap/extension-typography";
 import Underline from "@tiptap/extension-underline";
@@ -22,6 +22,7 @@ import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { PlainTextPaste } from "@/text-editor-core/src/text-editor-plain-paste";
+import type { DocsImageContentFetcher } from "@/text-editor-core/src/text-editor-image-content";
 
 export { CommentMark };
 export {
@@ -57,6 +58,8 @@ export const LegacySuggestionMark = Mark.create({
 export type CreateTextEditorExtensionsOptions = {
   placeholder?: string;
   format?: TextEditorContentFormat;
+  /** Override authenticated image fetch (Storybook / tests). */
+  fetchImageContent?: DocsImageContentFetcher;
 };
 
 export function createTextEditorExtensions(
@@ -74,10 +77,9 @@ export function createTextEditorExtensions(
     Placeholder.configure({ placeholder }),
     Highlight.configure({ multicolor: false }),
     TaskList,
-    TaskItem.configure({ nested: true }),
+    TextEditorTaskItem.configure({ nested: true }),
     TextAlign.configure({ types: ["heading", "paragraph"] }),
     Typography,
-    Image,
     Table.configure({ resizable: false }),
     TableRow,
     TableHeader,
@@ -86,6 +88,14 @@ export function createTextEditorExtensions(
     CommentDraftAnchor,
     LegacySuggestionMark,
   ];
+
+  if (format !== "text") {
+    extensions.push(
+      options.fetchImageContent
+        ? DocsImage.configure({ fetchContent: options.fetchImageContent })
+        : DocsImage,
+    );
+  }
 
   if (format === "markdown") {
     extensions.push(

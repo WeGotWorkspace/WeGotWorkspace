@@ -1,0 +1,261 @@
+{
+  "DocsFileThreadAuthor": {
+    "type": "object",
+    "required": ["id", "name"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Author principal username."
+      },
+      "name": {
+        "type": "string"
+      }
+    }
+  },
+  "DocsFileThreadMessage": {
+    "type": "object",
+    "required": ["id", "body", "createdAt", "author"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Client-generated ULID (VJOURNAL UID)."
+      },
+      "body": {
+        "type": "string"
+      },
+      "createdAt": {
+        "$ref": "#/components/schemas/JmapUTCDateTime"
+      },
+      "author": {
+        "$ref": "#/components/schemas/DocsFileThreadAuthor"
+      }
+    }
+  },
+  "DocsFileThreadReaction": {
+    "type": "object",
+    "required": ["emoji", "userIds"],
+    "additionalProperties": false,
+    "properties": {
+      "emoji": {
+        "type": "string"
+      },
+      "userIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Principal usernames that toggled this emoji on the thread root."
+      }
+    }
+  },
+  "DocsFileThread": {
+    "type": "object",
+    "required": [
+      "id",
+      "kind",
+      "path",
+      "anchorText",
+      "createdAt",
+      "createdBy",
+      "resolved",
+      "archived",
+      "messages",
+      "reactions"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Thread root ULID (VJOURNAL UID of the first message)."
+      },
+      "kind": {
+        "type": "string",
+        "enum": ["comment", "suggestion"]
+      },
+      "path": {
+        "type": "string",
+        "description": "Doc virtual path (X-WGW-DOC-PATH)."
+      },
+      "changeId": {
+        "type": ["string", "null"],
+        "description": "Suggestion mark join key (X-WGW-CHANGE-ID). Null for comment threads."
+      },
+      "anchorText": {
+        "type": "string"
+      },
+      "anchorFrom": {
+        "type": ["integer", "null"]
+      },
+      "anchorTo": {
+        "type": ["integer", "null"]
+      },
+      "anchorOccurrence": {
+        "type": ["integer", "null"]
+      },
+      "createdAt": {
+        "$ref": "#/components/schemas/JmapUTCDateTime"
+      },
+      "createdBy": {
+        "$ref": "#/components/schemas/DocsFileThreadAuthor"
+      },
+      "resolved": {
+        "type": "boolean",
+        "description": "X-WGW-RESOLVED on comment roots."
+      },
+      "archived": {
+        "type": "boolean",
+        "description": "X-WGW-ARCHIVED on suggestion roots — not STATUS:CANCELLED."
+      },
+      "messages": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/DocsFileThreadMessage"
+        }
+      },
+      "reactions": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/DocsFileThreadReaction"
+        }
+      }
+    }
+  },
+  "DocsFileThreadListResponse": {
+    "type": "object",
+    "required": ["list"],
+    "additionalProperties": false,
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/DocsFileThread"
+        }
+      }
+    }
+  },
+  "DocsFileThreadCreate": {
+    "type": "object",
+    "required": ["id", "kind", "body"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Client-generated ULID — thread root id and idempotency key."
+      },
+      "kind": {
+        "type": "string",
+        "enum": ["comment", "suggestion"]
+      },
+      "body": {
+        "type": "string",
+        "description": "First message body. Empty string is allowed for suggestion roots created to hold reactions only."
+      },
+      "changeId": {
+        "type": ["string", "null"],
+        "description": "Required for suggestion threads — editor track-change id."
+      },
+      "anchorText": {
+        "type": "string"
+      },
+      "anchorFrom": {
+        "type": "integer"
+      },
+      "anchorTo": {
+        "type": "integer"
+      },
+      "anchorOccurrence": {
+        "type": "integer"
+      }
+    }
+  },
+  "DocsFileThreadReplyCreate": {
+    "type": "object",
+    "required": ["id", "body"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Client-generated ULID for the reply message."
+      },
+      "body": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "DocsFileThreadPatch": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "resolved": {
+        "type": "boolean",
+        "description": "Set X-WGW-RESOLVED on a comment root."
+      },
+      "archived": {
+        "type": "boolean",
+        "description": "Set X-WGW-ARCHIVED on a suggestion root."
+      },
+      "changeId": {
+        "type": "string",
+        "description": "Alternate lookup for suggestion archive when the client keys by mark id."
+      },
+      "anchorText": {
+        "type": "string",
+        "description": "Suggestion snapshot summary or quoted text persisted when archiving."
+      },
+      "anchorFrom": {
+        "type": "integer"
+      },
+      "anchorTo": {
+        "type": "integer"
+      }
+    }
+  },
+  "DocsFileThreadReactionToggle": {
+    "type": "object",
+    "required": ["emoji"],
+    "additionalProperties": false,
+    "properties": {
+      "emoji": {
+        "type": "string"
+      }
+    }
+  },
+  "DocsFileThreadChangesResponse": {
+    "type": "object",
+    "required": ["oldState", "newState", "created", "updated", "destroyed", "hasMoreChanges"],
+    "additionalProperties": false,
+    "properties": {
+      "oldState": {
+        "type": "string"
+      },
+      "newState": {
+        "type": "string"
+      },
+      "created": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "updated": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "destroyed": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "hasMoreChanges": {
+        "type": "boolean"
+      }
+    },
+    "description": "Path-scoped calendarchanges feed for the owner's docs-threads pool."
+  }
+}

@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\FileNodes;
 
+use App\Events\EventDispatch;
 use App\Models\JmapFileNode;
+use App\Services\Drive\DocAttachmentPaths;
+use App\Services\Drive\DocAttachmentsService;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Notes\NoteMarkdownCodec;
+use App\Services\Search\BestEffortSearchIndexSync;
+use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 
@@ -24,6 +29,9 @@ use App\Storage\WgwStorage;
  *
  * Note files (`.md` under `.notes`) accept a `note` {title, tags} patch.
  * Frontmatter does not parse or emit YAML `starred` — starring is Drive stars.
+ *
+ * Unified search (Docs home browse) is kept in sync best-effort — same
+ * contract as DriveService REST writes and Sabre SearchIndexPlugin.
  */
 final class FileNodeSetService
 {
@@ -60,6 +68,10 @@ final class FileNodeSetService
         private readonly WgwStorage $storage,
         private readonly NoteMarkdownCodec $codec,
         private readonly StoragePaths $paths,
+        private readonly SearchIndexerService $search,
+        private readonly BestEffortSearchIndexSync $searchSync,
+        private readonly DocAttachmentsService $docAttachments,
+        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     /**
@@ -179,12 +191,15 @@ final class FileNodeSetService
         }
 
         $disk = $this->storage->files();
+        $docIds = $this->docAttachments->docNodeIdsForDestroyKey($key);
         if ($node->is_dir) {
             $disk->deleteDirectory($key);
         } elseif ($disk->fileExists($key)) {
             $disk->delete($key);
         }
         $this->index->recordDelete($key);
+        $this->syncSearchDelete($key);
+        $this->docAttachments->destroyDocsBestEffort($docIds);
     }
 
     /**
@@ -273,6 +288,10 @@ final class FileNodeSetService
             throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Could not index the created node.']);
         }
 
+        $node = $this->finalizeAttachmentFileName($node, $parent);
+
+        $this->syncSearchIndex((string) $node->storage_key);
+
         return $this->mapper->toFileNode($node, $principal);
     }
 
@@ -352,6 +371,8 @@ final class FileNodeSetService
                     throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Move failed.']);
                 }
                 $node = $this->index->recordMove($fromKey, $toKey) ?? $node;
+                $this->syncSearchMove($fromKey, $toKey);
+                $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
             }
         }
 
@@ -389,6 +410,7 @@ final class FileNodeSetService
             );
             $this->storage->files()->put((string) $node->storage_key, $contents);
             $node = $this->index->recordContentWrite((string) $node->storage_key, hash('sha256', $contents)) ?? $node;
+            $this->syncSearchIndex((string) $node->storage_key);
             $shape = $this->mapper->toFileNode($node, $principal);
             $serverSet['size'] = $shape['size'];
             $serverSet['blobId'] = $shape['blobId'];
@@ -398,6 +420,70 @@ final class FileNodeSetService
         }
 
         return $serverSet === [] ? null : $serverSet;
+    }
+
+    private function finalizeAttachmentFileName(JmapFileNode $node, JmapFileNode $parent): JmapFileNode
+    {
+        if ($node->is_dir) {
+            return $node;
+        }
+        $parsed = DocAttachmentPaths::parseStorageKey((string) $parent->storage_key);
+        if ($parsed === null || ! DocAttachmentPaths::isDocFolderKey((string) $parent->storage_key, $parsed['docNodeId'])) {
+            return $node;
+        }
+        $ext = pathinfo((string) $node->name, PATHINFO_EXTENSION);
+        $finalName = $node->node_id.($ext !== '' ? '.'.$ext : '');
+        if ((string) $node->name === $finalName) {
+            return $node;
+        }
+        $fromKey = (string) $node->storage_key;
+        $toKey = $parent->storage_key.'/'.$finalName;
+        if (! $this->storage->files()->move($fromKey, $toKey)) {
+            throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Could not store the attachment.']);
+        }
+
+        return $this->index->recordMove($fromKey, $toKey) ?? $node;
+    }
+
+    private function syncSearchIndex(string $storageKey): void
+    {
+        $this->searchSync->sync(
+            'filenode',
+            fn () => $this->search->indexFileStorageKey($storageKey),
+            'files/'.$storageKey,
+        );
+        $this->eventDispatch->fireMutation('system', 'drive', 'written', 'files/'.$storageKey);
+    }
+
+    private function syncSearchDelete(string $storageKey): void
+    {
+        $this->searchSync->sync(
+            'filenode',
+            fn () => $this->search->deleteDavPath('files/'.$storageKey),
+            'files/'.$storageKey,
+        );
+    }
+
+    private function syncSearchMove(string $fromKey, string $toKey): void
+    {
+        $this->searchSync->sync(
+            'filenode',
+            function () use ($fromKey, $toKey): void {
+                $this->search->deleteDavPath('files/'.$fromKey);
+                $this->search->indexFileStorageKey($toKey);
+                $disk = $this->storage->files();
+                if (! $disk->directoryExists($toKey)) {
+                    return;
+                }
+                foreach ($disk->allDirectories($toKey) as $dirKey) {
+                    $this->search->indexFileStorageKey($dirKey);
+                }
+                foreach ($disk->allFiles($toKey) as $fileKey) {
+                    $this->search->indexFileStorageKey($fileKey);
+                }
+            },
+            'files/'.$toKey,
+        );
     }
 
     /**

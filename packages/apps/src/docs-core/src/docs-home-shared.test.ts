@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
 import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveSharedWithMeEntry } from "@wgw-api-generated/drive-types";
+import type { DriveSharedWithMeEntry } from "@wgw/openapi-types/drive-types";
 import {
   docsHomeBrowsePathPrefix,
   filterDocsHomeSharedByQuery,
@@ -119,6 +119,9 @@ describe("docsHomeBrowsePathPrefix", () => {
   it("returns the drive prefix only for drive views", () => {
     expect(docsHomeBrowsePathPrefix({ type: "all" })).toBeUndefined();
     expect(docsHomeBrowsePathPrefix({ type: "shared" })).toBeUndefined();
+    expect(docsHomeBrowsePathPrefix({ type: "recent" })).toBeUndefined();
+    expect(docsHomeBrowsePathPrefix({ type: "starred" })).toBeUndefined();
+    expect(docsHomeBrowsePathPrefix({ type: "trash" })).toBeUndefined();
     expect(docsHomeBrowsePathPrefix({ type: "drive", pathPrefix: "users/alice" })).toBe(
       "users/alice",
     );

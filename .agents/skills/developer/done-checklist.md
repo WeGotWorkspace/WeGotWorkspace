@@ -18,6 +18,7 @@ Issue AC verification and done-checklist are both required; neither replaces the
 - [ ] Changes match the relevant domain skill (`api`, `apps-ui`, `workspace`, `meet`, …)
 - [ ] No unrelated refactors or markdown the user did not ask for
 - [ ] [clean-code/smells.md](../clean-code/smells.md) scan on touched files
+- [ ] **English-only** — specs, plans, docs, and any GitHub issue/PR text you wrote are English even if the user prompt was Dutch ([english-only.md](english-only.md)). `pnpm run check:agent-docs` (also part of `ci:quality:apps`)
 - [ ] `git status` clean for intended scope (no accidental `.env`, secrets, debug logs)
 
 ## API (`packages/api`)
@@ -32,7 +33,7 @@ pnpm test:api-done-gate                                 # from repo root, before
 - [ ] OpenAPI updated if HTTP contract changed (`packages/api/openapi/openapi.json`)
 - [ ] Feature tests assert status + JSON shape ([testing/test-first.md](../testing/test-first.md))
 - [ ] `composer greenfield:guard` passes
-- [ ] Typegen if contract changed: `pnpm --filter @wgw/api run openapi:build-json` + apps typegen
+- [ ] Typegen if contract changed: `pnpm --filter @wgw/openapi-types typegen`
 - [ ] New top-level SPA client routes: prefix on `UiStaticServer` + `FrontRoutingTest` ([api/SKILL.md](../api/SKILL.md))
 
 Optional local: `pnpm test:api-e2e:docker`, `pnpm test:meet-api` (meet signaling).
@@ -42,14 +43,14 @@ Optional local: `pnpm test:api-e2e:docker`, `pnpm test:meet-api` (meet signaling
 MCP: `run_apps_done_gate` · Bash fallback:
 
 ```bash
-pnpm test:apps-done-gate                 # typecheck + Vitest + Storybook smoke + coverage
+pnpm test:apps-done-gate                 # local: typecheck + contract + Storybook smoke + coverage
 pnpm --dir packages/apps test              # Vitest only
-pnpm dev:ui                              # Storybook — mock-tier stories for changed exports
+pnpm dev:storybook                       # Storybook — mock-tier stories for changed exports
 ```
 
 - [ ] New/changed **exports** have **mock-tier** stories ([storybook/offline-first.md](../storybook/offline-first.md))
 - [ ] `pnpm check:storybook-coverage` passes (no new baseline gaps)
-- [ ] Stories run without Docker/API (`pnpm dev:ui` only)
+- [ ] Stories run without Docker/API (`pnpm dev:storybook` only)
 - [ ] Slice handlers / mock `operations` — no `@/lib/api/wgw/http` in panes ([apps-ui/components.md](../apps-ui/components.md))
 - [ ] Storybook a11y panel on new/changed stories ([storybook/a11y-testing.md](../storybook/a11y-testing.md))
 - [ ] Vitest for new/changed hooks, parsers, RTC/session logic ([testing/ui-architecture.md](../testing/ui-architecture.md))
@@ -66,14 +67,14 @@ Meet/RTC: `pnpm --dir packages/apps exec vitest run src/lib/rtc/session src/meet
 
 ## Before push (`packages/apps` UI work)
 
-Husky **pre-push** runs `pnpm test:apps-done-gate` when any file under `packages/apps/` changed in commits being pushed (vs the remote tip). Run it yourself before push if hooks are skipped — incremental commits on a branch are expected to fail an intermediate SHA; the gate must pass at **push time** so CI does not catch merge blockers first.
+Husky **pre-push** runs the local apps done gate when any file under `packages/apps/` changed in commits being pushed (vs the remote tip): typecheck, OpenAPI contract, Storybook smoke, coverage. Vitest unit and jsdom run in CI (`APPS_DONE_GATE_FULL=1` on `apps-quality`), not in the hook. Run the local gate yourself before push if hooks are skipped.
 
 ```bash
-pnpm test:apps-done-gate                 # apps UI exports, panes, hooks, stories
+pnpm test:apps-done-gate                 # local profile
 ```
 
-- [ ] Done gate green before `git push` when `packages/apps/**` changed
-- [ ] Targeted Vitest alone is not enough for merge-ready apps UI work ([testing/apps-done-gate.md](../testing/apps-done-gate.md))
+- [ ] Local done gate green before `git push` when `packages/apps/**` changed
+- [ ] New unit and RTL tests are in the tree for CI; the hook does not run them ([testing/apps-done-gate.md](../testing/apps-done-gate.md))
 
 ## Before PR (when user requests push/PR)
 
@@ -86,6 +87,7 @@ pnpm run ci:quality
 - [ ] Signed commits ([git-workflow/pull-requests.md](../git-workflow/pull-requests.md))
 - [ ] PR test plan lists concrete commands run ([testing/SKILL.md](../testing/SKILL.md))
 - [ ] CI validates **PR tip (branch HEAD)** only — intermediate commits may be red until fix-forward; do not require per-commit gates in CI ([#250](https://github.com/WeGotWorkspace/wegotworkspace/issues/250))
+- [ ] Apps unit and jsdom Vitest are left to GitHub `apps-quality` (`APPS_DONE_GATE_FULL=1`). A local `pnpm run ci:quality` does not run them unless that variable is set
 
 ## Dev environment issues
 

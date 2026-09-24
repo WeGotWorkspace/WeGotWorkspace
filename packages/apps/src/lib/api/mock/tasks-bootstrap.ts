@@ -1,4 +1,4 @@
-import type { Task, TaskList } from "@wgw-api-generated/tasks-types";
+import type { Task, TaskList } from "@wgw/openapi-types/tasks-types";
 import type { TasksUIData } from "@/tasks-core/src/tasks-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";

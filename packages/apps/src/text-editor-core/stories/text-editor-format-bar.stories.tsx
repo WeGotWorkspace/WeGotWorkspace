@@ -43,7 +43,7 @@ function TextEditorFormatBarDemo({ format, groups, showPrint, editable }: Format
 }
 
 const meta = {
-  title: "Shared/TextEditor/TextEditorFormatBar",
+  title: "UI/Patterns/TextEditor/TextEditorFormatBar",
   component: TextEditorFormatBar,
   tags: ["autodocs"],
   parameters: {
@@ -83,7 +83,7 @@ export const Html: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const bold = canvas.getByTitle("Bold");
+    const bold = canvas.getByRole("button", { name: "Bold" });
     await userEvent.click(bold);
     await expect(bold).toHaveAttribute("aria-pressed", "true");
   },

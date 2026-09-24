@@ -12,6 +12,7 @@ body:
 
         Use for eng debt, trackers, and maintainer chores that are **not** a product Goal.
         Prefer **Task** when work needs implementable AC under an Epic/Goal and a `feat/` spec.
+        **Write the entire issue in English**, even if the conversation that produced it was in another language.
 
   - type: textarea
     id: what

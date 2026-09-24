@@ -11,6 +11,8 @@ export type DocsSuggestionThread = {
 export type DocsSuggestionWithThread = DocsTrackChangeGroup & {
   messages: DocsCommentMessage[];
   reactions?: DocsCommentReaction[];
+  /** True when the suggestion journal is archived (accept/reject / orphan prune). */
+  archived?: boolean;
 };
 
 export const DOCS_SUGGESTION_THREADS_MAP_KEY = "suggestionThreads";

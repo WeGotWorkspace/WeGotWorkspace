@@ -1,10 +1,16 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useNotesNotebookMutations } from "@/notes-core/src/use-notes-notebook-mutations";
 import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
 import { defaultNotesLabels, notesNotebookDialogLabelsFrom } from "@/notes-core/src/notes-labels";
 import { TaskProjectDialog } from "@/tasks-core/src/task-project-dialog";
+import { TooltipProvider } from "@/ui/tooltip";
+
+function render(ui: ReactNode) {
+  return rtlRender(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
+}
 
 function shellStub(overrides: Partial<NotesShellState> = {}): NotesShellState {
   return {

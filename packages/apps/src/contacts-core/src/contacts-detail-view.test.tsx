@@ -183,16 +183,20 @@ describe("ContactsDetailView empty trailing rows", () => {
     ).toBe(defaultContactsLabels.channelTypeHome);
   });
 
-  it("commits a phone on type and keeps another empty trailing row", () => {
+  it("commits a phone on type and keeps focus so typing can continue", () => {
     render(<EditableDetailHarness />);
     const phone = screen.getByLabelText(defaultContactsLabels.phoneNumber);
     fireEvent.change(phone, { target: { value: "555" } });
-    expect((phone as HTMLInputElement).value).toBe("555");
-    expect(screen.getAllByLabelText(defaultContactsLabels.phoneNumber)).toHaveLength(2);
+    const phones = screen.getAllByLabelText(defaultContactsLabels.phoneNumber);
+    expect(phones).toHaveLength(2);
+    expect((phones[0] as HTMLInputElement).value).toBe("555");
+    expect(document.activeElement).toBe(phones[0]);
     expect(screen.getByTestId("draft-phones").textContent).toBe("1");
+    expect((phones[1] as HTMLInputElement).value).toBe("");
+    fireEvent.change(phones[0]!, { target: { value: "5550123" } });
     expect(
-      (screen.getAllByLabelText(defaultContactsLabels.phoneNumber)[1] as HTMLInputElement).value,
-    ).toBe("");
+      (screen.getAllByLabelText(defaultContactsLabels.phoneNumber)[0] as HTMLInputElement).value,
+    ).toBe("5550123");
     expect(screen.getByRole("button", { name: defaultContactsLabels.removeRow })).toBeTruthy();
     expect(document.querySelectorAll(".contacts-detail-view__channel-action-spacer").length).toBe(
       4,
@@ -207,17 +211,26 @@ describe("ContactsDetailView empty trailing rows", () => {
     ]);
   });
 
-  it("commits email, url, and address the same way", () => {
+  it("commits email, url, and address the same way and keeps focus", () => {
     render(<EditableDetailHarness />);
     fireEvent.change(screen.getByLabelText(defaultContactsLabels.emailAddress), {
       target: { value: "a@b.com" },
     });
+    expect(document.activeElement).toBe(
+      screen.getAllByLabelText(defaultContactsLabels.emailAddress)[0],
+    );
     fireEvent.change(screen.getByLabelText(defaultContactsLabels.urlAddress), {
       target: { value: "https://ex.test" },
     });
+    expect(document.activeElement).toBe(
+      screen.getAllByLabelText(defaultContactsLabels.urlAddress)[0],
+    );
     fireEvent.change(screen.getByLabelText(defaultContactsLabels.addressStreet), {
       target: { value: "1 Main" },
     });
+    expect(document.activeElement).toBe(
+      screen.getAllByLabelText(defaultContactsLabels.addressStreet)[0],
+    );
     expect(screen.getByTestId("draft-emails").textContent).toBe("1");
     expect(screen.getByTestId("draft-urls").textContent).toBe("1");
     expect(screen.getByTestId("draft-addresses").textContent).toBe("1");
@@ -249,7 +262,7 @@ describe("ContactsDetailView empty trailing rows", () => {
       ?.querySelector(".field-label-row__label--reserved");
     expect(reserved).toBeTruthy();
     expect(reserved?.getAttribute("aria-hidden")).toBe("true");
-    expect(addressType.classList.contains("select-trigger--size-sm")).toBe(false);
+    expect(addressType.classList.contains("select-trigger--size-md")).toBe(true);
 
     const streetRow = screen
       .getByLabelText(defaultContactsLabels.addressStreet)
@@ -261,10 +274,10 @@ describe("ContactsDetailView empty trailing rows", () => {
       name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
     });
     expect(phoneType.closest(".field-label-row")).toBeNull();
-    expect(phoneType.classList.contains("select-trigger--size-sm")).toBe(false);
+    expect(phoneType.classList.contains("select-trigger--size-md")).toBe(true);
     expect(
-      screen.getByLabelText(defaultContactsLabels.phoneNumber).classList.contains("input--size-sm"),
-    ).toBe(false);
+      screen.getByLabelText(defaultContactsLabels.phoneNumber).classList.contains("input--size-md"),
+    ).toBe(true);
   });
 });
 
@@ -547,7 +560,7 @@ const janeWithBirthday = {
 } as unknown as ContactCard;
 
 describe("ContactsDetailView birthday field", () => {
-  it("renders a date picker in edit mode and writes the draft", () => {
+  it("renders LocaleDatePicker in edit mode and writes the draft", () => {
     function BirthdayEditHarness() {
       const [editDraft, setEditDraft] = useState(() => contactCardToEditDraft(janeWithBirthday));
       return (
@@ -558,6 +571,7 @@ describe("ContactsDetailView birthday field", () => {
             createMode={false}
             editMode
             editDraft={editDraft}
+            locale="en-US"
             displayName="Jane Doe"
             {...viewModeHandlers}
             onDraftChange={(patch) => setEditDraft((prev) => ({ ...prev, ...patch }))}
@@ -568,15 +582,22 @@ describe("ContactsDetailView birthday field", () => {
     }
 
     render(<BirthdayEditHarness />);
-    const field = screen.getByLabelText(defaultContactsLabels.sectionBirthday);
-    expect((field as HTMLInputElement).type).toBe("date");
-    expect((field as HTMLInputElement).value).toBe("1985-04-23");
-    fireEvent.change(field, { target: { value: "1991-07-04" } });
-    expect((field as HTMLInputElement).value).toBe("1991-07-04");
-    expect(screen.getByTestId("draft-birthday").textContent).toBe("1991-07-04");
+    const field = screen.getByRole("button", { name: /Birthday:/ });
+    expect(field.classList.contains("locale-date-picker")).toBe(true);
+    expect(field.classList.contains("control-surface")).toBe(true);
+    expect(field.getAttribute("aria-label")).toMatch(/1985/);
+    expect(screen.getByTestId("draft-birthday").textContent).toBe("1985-04-23");
+    fireEvent.click(field);
+    const day = document.querySelector<HTMLButtonElement>(
+      'button[data-day]:not([data-selected-single="true"])',
+    );
+    expect(day).toBeTruthy();
+    fireEvent.click(day!);
+    expect(screen.getByTestId("draft-birthday").textContent).not.toBe("1985-04-23");
+    expect(screen.getByTestId("draft-birthday").textContent).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it("shows a formatted birthday in read mode without a date input", () => {
+  it("shows a formatted birthday in read mode without a date picker", () => {
     render(
       <ContactsDetailView
         labels={defaultContactsLabels}
@@ -591,7 +612,7 @@ describe("ContactsDetailView birthday field", () => {
     expect(
       screen.getByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
     ).toBeTruthy();
-    expect(screen.queryByLabelText(defaultContactsLabels.sectionBirthday)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Birthday:/ })).toBeNull();
     expect(screen.getByText(/1985/)).toBeTruthy();
   });
 
@@ -611,10 +632,19 @@ describe("ContactsDetailView birthday field", () => {
             createMode={false}
             editMode={editMode}
             editDraft={editDraft}
+            locale="en-US"
             displayName="Jane Doe"
             {...viewModeHandlers}
             onDraftChange={(patch) => setEditDraft((prev) => (prev ? { ...prev, ...patch } : prev))}
           />
+          <button
+            type="button"
+            onClick={() => {
+              setEditDraft((prev) => (prev ? { ...prev, birthday: "" } : prev));
+            }}
+          >
+            Clear birthday
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -636,20 +666,25 @@ describe("ContactsDetailView birthday field", () => {
     }
 
     render(<BirthdayToggleHarness />);
-    const field = screen.getByLabelText(defaultContactsLabels.sectionBirthday);
-    expect((field as HTMLInputElement).value).toBe("1985-04-23");
-    fireEvent.change(field, { target: { value: "" } });
+    const field = screen.getByRole("button", { name: /Birthday:/ });
+    expect(field.getAttribute("aria-label")).toMatch(/1985/);
+    fireEvent.click(screen.getByRole("button", { name: "Clear birthday" }));
+    expect(screen.getByRole("button", { name: /^Birthday:\s*$/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Toggle edit" }));
-    expect(screen.queryByLabelText(defaultContactsLabels.sectionBirthday)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Birthday:/ })).toBeNull();
     expect(
       screen.queryByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
     ).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Toggle edit" }));
-    const again = screen.getByLabelText(defaultContactsLabels.sectionBirthday);
-    expect((again as HTMLInputElement).type).toBe("date");
-    expect((again as HTMLInputElement).value).toBe("");
-    fireEvent.change(again, { target: { value: "2000-01-02" } });
-    expect((again as HTMLInputElement).value).toBe("2000-01-02");
+    const again = screen.getByRole("button", { name: /^Birthday:\s*$/ });
+    expect(again.classList.contains("locale-date-picker")).toBe(true);
+    fireEvent.click(again);
+    const day = document.querySelector<HTMLButtonElement>("button[data-day]");
+    expect(day).toBeTruthy();
+    fireEvent.click(day!);
+    expect(
+      screen.getByRole("button", { name: /Birthday:/ }).getAttribute("aria-label"),
+    ).not.toMatch(/^Birthday:\s*$/);
   });
 
   it("hides the birthday editor for group cards", () => {
@@ -666,7 +701,7 @@ describe("ContactsDetailView birthday field", () => {
         />
       </TooltipProvider>,
     );
-    expect(screen.queryByLabelText(defaultContactsLabels.sectionBirthday)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Birthday:/ })).toBeNull();
     expect(
       screen.queryByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
     ).toBeNull();

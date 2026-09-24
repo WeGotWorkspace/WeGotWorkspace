@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { HttpSignalingClient, type HttpSignalingFetch } from "@/lib/rtc/signaling/http-client";
+import {
+  HttpSignalingClient,
+  isUnchangedPollResponse,
+  type HttpSignalingFetch,
+} from "@/lib/rtc/signaling/http-client";
 
 describe("HttpSignalingClient", () => {
   it("posts join and polls events on room session paths", async () => {
@@ -31,8 +35,93 @@ describe("HttpSignalingClient", () => {
     expect(joined.peerId).toBe("p1");
 
     const poll = await client.poll({ room: "room-a", peerId: "p1", since: 3 });
-    expect(poll.peers).toHaveLength(1);
+    expect(isUnchangedPollResponse(poll)).toBe(false);
+    if (!isUnchangedPollResponse(poll)) {
+      expect(poll.peers).toHaveLength(1);
+    }
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends the roster signature and maps 204 to an unchanged poll response", async () => {
+    const fetchImpl = vi.fn(async (url: string) => {
+      expect(url).toContain("sig=sig-abc");
+      return new Response(null, { status: 204 });
+    });
+
+    const client = new HttpSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+      getAuth: () => ({}),
+    });
+
+    const poll = await client.poll({
+      room: "abcd-efgh-ijkl",
+      peerId: "p1",
+      since: 0,
+      sig: "sig-abc",
+    });
+
+    expect(isUnchangedPollResponse(poll)).toBe(true);
+  });
+
+  it("passes rosterSig through on full poll responses", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ peers: [], messages: [], rosterSig: "sig-next" }), {
+          status: 200,
+        }),
+    );
+
+    const client = new HttpSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+      getAuth: () => ({}),
+    });
+
+    const poll = await client.poll({ room: "abcd-efgh-ijkl", peerId: "p1" });
+
+    expect(isUnchangedPollResponse(poll)).toBe(false);
+    if (!isUnchangedPollResponse(poll)) {
+      expect(poll.rosterSig).toBe("sig-next");
+    }
+  });
+
+  it("includes the browser id on meet join", async () => {
+    const fetchImpl = vi.fn<HttpSignalingFetch>(
+      async () => new Response(JSON.stringify({ peers: [] }), { status: 200 }),
+    );
+    const client = new HttpSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+      getBrowserId: () => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    });
+    await client.join({ room: "abcd-efgh-ijkl", name: "Alice", peerId: "peer-1" });
+    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    expect(body.browserId).toBe("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    expect(body.peerId).toBe("peer-1");
+  });
+
+  it("includes the guest session key on join so admit rename keeps the owner marker", async () => {
+    const fetchImpl = vi.fn<HttpSignalingFetch>(
+      async () => new Response(JSON.stringify({ peers: [] }), { status: 200 }),
+    );
+    const client = new HttpSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+      getAuth: () => ({}),
+    });
+    await client.join({
+      room: "chat-test",
+      name: "Ada",
+      peerId: "peer-guest",
+      sessionKey: "guest-session-key",
+    });
+    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    expect(body.sessionKey).toBe("guest-session-key");
   });
 
   it("includes session key on meet guest sends", async () => {
@@ -57,5 +146,18 @@ describe("HttpSignalingClient", () => {
     expect(String(call![0])).toContain("/rooms/abcd-efgh-ijkl/events");
     const body = JSON.parse(String(call![1]?.body)) as Record<string, unknown>;
     expect(body.sessionKey).toBe("guest-key");
+  });
+
+  it("sends leave with keepalive so a pagehide leave can finish", async () => {
+    const fetchImpl = vi.fn<HttpSignalingFetch>(
+      async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    );
+    const client = new HttpSignalingClient({
+      channel: "collab",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+    });
+    await client.leave({ room: "docs/x.md", peerId: "aaaaaaaaaaaaaaaa" });
+    expect(fetchImpl.mock.calls[0]?.[1]?.keepalive).toBe(true);
   });
 });

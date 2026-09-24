@@ -3,7 +3,7 @@ import { fn } from "storybook/test";
 import { CalendarRsvpView } from "@/calendar-core/src/calendar-rsvp-page";
 
 const meta: Meta<typeof CalendarRsvpView> = {
-  title: "Apps/Calendar/RsvpPage",
+  title: "Features/Calendar/RsvpPage",
   component: CalendarRsvpView,
   args: {
     title: "External Sync",

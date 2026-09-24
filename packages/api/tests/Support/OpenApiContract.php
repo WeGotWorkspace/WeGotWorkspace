@@ -176,7 +176,7 @@ final class OpenApiContract
     public static function sampleRequestPath(string $openApiPath): string
     {
         $replacements = [
-            '{roomId}' => 'daily-room',
+            '{roomId}' => 'abcd-efgh-jklm',
             '{messageId}' => 'INBOX:1',
             '{username}' => 'bob',
             '{group}' => 'testgroup',
@@ -195,8 +195,10 @@ final class OpenApiContract
             '{taskId}' => 'demo-task',
             '{notebookId}' => 'notes-general',
             '{noteId}' => 'demo-note',
+            '{channelId}' => 'chat-general',
             '{shareId}' => '550e8400-e29b-41d4-a716-446655440001',
             '{inviteId}' => '550e8400-e29b-41d4-a716-446655440002',
+            '{clientId}' => '550e8400-e29b-41d4-a716-446655440099',
             '{notificationId}' => 'missing-notification.ics',
             '{token}' => 'missingrsvptoken',
         ];

@@ -3,7 +3,7 @@ import { Archive, Circle, Star } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
 
 const meta: Meta<typeof ListItem> = {
-  title: "Shared/List Item",
+  title: "UI/Primitives/List Item",
   component: ListItem,
 };
 
@@ -65,7 +65,7 @@ export const MailStyleTouch: Story = {
     },
     swipeRightAction: {
       icon: <Archive className="size-5" />,
-      color: "var(--color-ink)",
+      color: "var(--color-we-got-dark)",
       label: "Archive",
       onActivate: () => {},
     },

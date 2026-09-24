@@ -5,12 +5,14 @@ import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import {
   docsApiPathFromSearch,
   docsSearchFromApiPath,
-  openDocsFileInNewWindow,
   parseDocsRouteSearch,
 } from "@/docs-core/src/docs-route-search";
+import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
 import {
+  isAccessTokenExpired,
   wgwApiBaseUrl,
   wgwCompleteLogoutNavigation,
+  wgwCurrentAccessToken,
   wgwEnsureFreshAccessToken,
   wgwIsGuestSession,
   wgwLiveApiEnabled,
@@ -36,6 +38,7 @@ import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { resolveDocsCollabPermissionsWhileLoading } from "@/docs-core/src/docs-collab-permissions";
 import { ShareDialog } from "@/share-ui/share-dialog";
+import { useNotificationsMarkReadOnConsume } from "@/notifications-core/src/use-notifications-mark-read-on-consume";
 
 function DocsCollabDocumentTitle({ fileName }: { fileName: string }) {
   useDocumentTitle(fileNameToBrowserTitle(fileName));
@@ -55,6 +58,10 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     [search],
   );
 
+  useNotificationsMarkReadOnConsume({
+    docsApiPath: filePath,
+  });
+
   const handleLogout = useCallback(() => {
     if (wgwIsGuestSession()) {
       void wgwCompleteLogoutNavigation();
@@ -73,9 +80,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     [navigate],
   );
 
-  const handleOpenHomeFile = useCallback((apiPath: string) => {
-    openDocsFileInNewWindow(apiPath);
-  }, []);
+  const handleOpenHomeFile = useOpenDocsFile();
 
   const driveOperations = useMemo(() => createWgwDriveOperations("/"), []);
 
@@ -134,12 +139,19 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     [navigate, networkOperations, session.user.username, showError],
   );
 
-  const [collabAuthToken, setCollabAuthToken] = useState<string | undefined>(undefined);
+  const [collabAuthToken, setCollabAuthToken] = useState<string | undefined>(() => {
+    const cached = wgwCurrentAccessToken();
+    return cached && !isAccessTokenExpired() ? cached : undefined;
+  });
 
   useEffect(() => {
     if (!showCollab || !filePath) {
       setCollabAuthToken(undefined);
       return;
+    }
+    const cached = wgwCurrentAccessToken();
+    if (cached && !isAccessTokenExpired()) {
+      setCollabAuthToken(cached);
     }
     let cancelled = false;
     void (async () => {
@@ -157,13 +169,13 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     return () => {
       cancelled = true;
     };
-  }, [filePath, showCollab]);
+  }, [filePath, phase, showCollab]);
 
   const collabUrls = useMemo(() => {
     if (!showCollab || !filePath) return undefined;
     const baseUrl = wgwApiBaseUrl();
     const room = filePath.replace(/^\/+/, "");
-    const roomId = encodeFileRoomId(`/${room}`);
+    const roomId = encodeFileRoomId(room);
     const pathQuery = encodeURIComponent(room);
     return {
       signalUrl: `${baseUrl}/rooms/${encodeURIComponent(roomId)}/events`,
@@ -222,6 +234,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
                 showShare={collabMayShare === true}
                 shareLabel={docsLabels.share}
                 permissions={collabPermissions}
+                driveOperations={driveOperations}
+                driveUsername={session.user.username}
+                docApiPath={filePath}
                 onShare={
                   filePath
                     ? () =>

@@ -23,7 +23,13 @@ function MeetCircleToggleStory({ variant, large }: MeetCircleToggleStoryArgs) {
   const on = variant.endsWith("on");
   const OnIcon = mic ? MicIcon : VideoIcon;
   const OffIcon = mic ? MicOffIcon : VideoOffIcon;
-  const label = mic ? (on ? "Mute" : "Unmute") : on ? "Stop video" : "Start video";
+  const label = mic
+    ? on
+      ? "Disable audio"
+      : "Enable audio"
+    : on
+      ? "Disable video"
+      : "Enable video";
   return (
     <MeetCircleToggle
       on={on}
@@ -37,7 +43,7 @@ function MeetCircleToggleStory({ variant, large }: MeetCircleToggleStoryArgs) {
 }
 
 const meta = {
-  title: "Apps/Meet/Components/MeetCircleToggle",
+  title: "Features/Meet/Components/MeetCircleToggle",
   component: MeetCircleToggle,
   render: (args) => (
     <MeetStoryScope>
@@ -52,7 +58,7 @@ const meta = {
   onClick={() => {}}
   OnIcon={MicIcon}
   OffIcon={MicOffIcon}
-  label="Mute"
+  label="Disable audio"
   large={false}
 />`,
   }),

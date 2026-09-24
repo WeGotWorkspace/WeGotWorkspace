@@ -79,7 +79,7 @@ export WGW_API_BASE_URL="${BASE}"
 export WGW_INSTALL_BASE_URL="${BASE}"
 
 echo "==> Installing Playwright browser (Chromium)"
-pnpm --filter @wgw/api exec playwright install --with-deps chromium
+pnpm --filter @wgw/api-e2e exec playwright install --with-deps chromium
 
 echo "==> Playwright API e2e against ${BASE}"
-pnpm --filter @wgw/api test:e2e
+pnpm --filter @wgw/api-e2e test

@@ -4,7 +4,9 @@ import {
   isTasksPathname,
   normalizeTasksView,
   tasksNavigateTarget,
+  tasksTaskIdFromSearch,
   tasksViewFromLocation,
+  validateTasksRouteSearch,
 } from "@/tasks-core/src/tasks-route-search";
 import { INBOX_TASK_LIST_ID } from "@/tasks-core/src/tasks-task-utils";
 
@@ -73,6 +75,13 @@ describe("tasks-route-search", () => {
       to: "/tasks/priority/$prioritySlug",
       params: { prioritySlug: "none" },
     });
+  });
+
+  it("parses the task deep-link search param", () => {
+    expect(tasksTaskIdFromSearch({ task: "milk" })).toBe("milk");
+    expect(tasksTaskIdFromSearch({ task: "  " })).toBe("");
+    expect(validateTasksRouteSearch({ task: "milk", extra: 1 })).toEqual({ task: "milk" });
+    expect(validateTasksRouteSearch({})).toEqual({});
   });
 
   it("normalizes inbox aliases to the canonical list id from bootstrap", () => {

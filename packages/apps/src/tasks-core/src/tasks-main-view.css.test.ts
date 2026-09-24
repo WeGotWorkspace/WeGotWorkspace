@@ -33,6 +33,20 @@ describe("tasks remind button label", () => {
   });
 });
 
+describe("tasks composer add actions", () => {
+  it("does not render a Cancel control in the add-task composer", () => {
+    const mainView = readFileSync(join(here, "tasks-main-view.tsx"), "utf8");
+    const actions = mainView.match(
+      /className="tasks-main-view__composer-actions"[\s\S]*?<\/div>/,
+    )?.[0];
+    expect(actions).toBeTruthy();
+    expect(actions).toMatch(/L\.addTaskButton/);
+    expect(actions).not.toMatch(/L\.cancel/);
+    expect(actions).not.toMatch(/resetDraft/);
+    expect(mainView).not.toMatch(/hasDraftContent/);
+  });
+});
+
 describe("tasks composer select chips", () => {
   it("pins compact metrics with higher specificity than select-trigger defaults", () => {
     const block = css.match(/\.select-trigger\.tasks-main-view__composer-select \{[^}]+\}/)?.[0];
@@ -55,7 +69,7 @@ describe("tasks composer select chips", () => {
     );
   });
 
-  it("pins the remind trigger so production .button--size-sm cannot win", () => {
+  it("pins the remind trigger so production .button--size-md cannot win", () => {
     const block = css.match(
       /\.tasks-main-view__composer-select\.tasks-main-view__remind-button \{[^}]+\}/,
     )?.[0];
@@ -65,12 +79,28 @@ describe("tasks composer select chips", () => {
     expect(block).toMatch(/font-size:\s*0\.75rem/);
   });
 
-  it("lets Add task and Cancel use production Button size-sm metrics", () => {
-    expect(css).not.toMatch(/\.tasks-main-view__composer-actions \.button\.button--size-sm \{/);
+  it("lets Add task use production Button size-md metrics", () => {
+    expect(css).not.toMatch(/\.tasks-main-view__composer-actions \.button\.button--size-md \{/);
     const actions = css.match(/\.tasks-main-view__composer-actions \{[^}]+\}/)?.[0];
     expect(actions).toBeTruthy();
     expect(actions).not.toMatch(/--control-height-sm:\s*2rem/);
     expect(actions).not.toMatch(/--control-radius-button-pill:\s*var\(--control-radius\)/);
+    expect(css).not.toMatch(
+      /\.tasks-main-view__composer-meta \{[\s\S]*--control-radius-button-pill:\s*var\(--control-radius\)/,
+    );
+  });
+
+  it("colors Add task primary with brand accent and light glyphs", () => {
+    expect(css).toMatch(
+      /\.tasks-main-view__add-submit\.button--variant-primary \{[\s\S]*background-color:\s*var\(--workspace-accent\)/,
+    );
+    expect(css).toMatch(
+      /\.tasks-main-view__add-submit\.button--variant-primary \{[\s\S]*color:\s*var\(--button-primary-fg,\s*var\(--color-we-got-dark\)\)/,
+    );
+    expect(css).toMatch(
+      /\.tasks-main-view__remind-button--active \{[\s\S]*var\(--workspace-accent,\s*#ffbdc2\)/,
+    );
+    expect(css).not.toMatch(/#ea8c72/);
   });
 
   it("colors the assigned composer remind bell like the list-row mark", () => {
@@ -99,7 +129,7 @@ describe("tasks composer select chips", () => {
     expect(css).not.toMatch(/\.tasks-main-view__remind-row-chip/);
     expect(css).not.toMatch(/\.tasks-main-view__remind--row[\s\S]*?\{[\s\S]*?truncate/);
     expect(css).not.toMatch(/\.tasks-main-view__remind--row[\s\S]*?\{[\s\S]*?\bborder\b/);
-    expect(css).toMatch(/\.tasks-main-view__remind--row svg \{[\s\S]*var\(--tasks-accent/);
+    expect(css).toMatch(/\.tasks-main-view__remind--row svg \{[\s\S]*var\(--workspace-accent/);
     expect(css).toMatch(/\.tasks-main-view__remind--row svg \{[\s\S]*fill:\s*currentColor/);
   });
 });

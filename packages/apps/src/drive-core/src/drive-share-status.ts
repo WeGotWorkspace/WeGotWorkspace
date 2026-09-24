@@ -1,4 +1,4 @@
-import type { DriveShareAtPath } from "@wgw-api-generated/drive-types";
+import type { DriveShareAtPath } from "@wgw/openapi-types/drive-types";
 
 /** True when the path has direct outgoing grants (member, guest, or public), not inherited-only access. */
 export function driveItemHasShareGrants(atPath: DriveShareAtPath | null | undefined): boolean {

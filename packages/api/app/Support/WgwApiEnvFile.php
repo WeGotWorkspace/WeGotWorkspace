@@ -54,6 +54,63 @@ final class WgwApiEnvFile
     }
 
     /**
+     * True when {@code $envPath} has non-empty WGW_DB_CONNECTION and WGW_DB_DATABASE.
+     * Unlike {@see hasRealDatabaseConfig()}, example-identical SQLite counts.
+     */
+    public static function hasDatabaseConfigKeys(string $envPath): bool
+    {
+        $connection = self::readPath($envPath, 'WGW_DB_CONNECTION') ?? '';
+        $database = self::readPath($envPath, 'WGW_DB_DATABASE') ?? '';
+
+        return $connection !== '' && $database !== '';
+    }
+
+    /**
+     * @param  array<string, string>  $pairs
+     */
+    public static function containsPairs(string $content, array $pairs): bool
+    {
+        foreach ($pairs as $key => $value) {
+            if ((self::readValue($content, $key) ?? '') !== $value) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Drop lines that are not comments and not KEY=value (e.g. a torn "reply@example.com").
+     */
+    public static function stripInvalidLines(string $content): string
+    {
+        $endedWithNewline = str_ends_with($content, "\n") || str_ends_with($content, "\r");
+        $lines = preg_split("/\r\n|\n|\r/", $content);
+        if (! is_array($lines)) {
+            return $content;
+        }
+        $kept = [];
+        foreach ($lines as $line) {
+            $trim = ltrim($line);
+            if ($trim === '' || str_starts_with($trim, '#') || str_starts_with($trim, 'export ')) {
+                $kept[] = $line;
+
+                continue;
+            }
+            if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*\s*=/', $trim) !== 1) {
+                continue;
+            }
+            $kept[] = $line;
+        }
+        $out = implode("\n", $kept);
+        if ($endedWithNewline && ($out === '' || ! str_ends_with($out, "\n"))) {
+            $out .= "\n";
+        }
+
+        return $out;
+    }
+
+    /**
      * True when {@code $envPath} has WGW_DB_* values that differ from sibling .env.example.
      */
     public static function hasRealDatabaseConfig(string $envPath): bool

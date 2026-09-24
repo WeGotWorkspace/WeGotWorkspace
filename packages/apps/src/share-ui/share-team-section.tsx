@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Users } from "lucide-react";
-import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw-api-generated/drive-types";
+import type { DriveShareAtPath, DriveSharePrincipalEntry } from "@wgw/openapi-types/drive-types";
 import { CardRowDivider } from "@/card/src/card-panel";
 import { buttonVariants } from "@/button/src/button";
 import {
@@ -19,13 +19,8 @@ import {
   SharePrincipalSearchDropdown,
   type ShareSearchOption,
 } from "@/share-ui/share-principal-search-dropdown";
-import {
-  SHARE_UI_PERMISSIONS,
-  accessToUIPermission,
-  type ShareUIPermission,
-} from "@/share-ui/share-access-map";
+import { SHARE_UI_PERMISSIONS, type ShareUIPermission } from "@/share-ui/share-access-map";
 import { formatSharePathLabel, shareLabels } from "@/share-ui/share-labels";
-import { SharePrincipalMark } from "@/share-ui/share-principal-mark";
 import { SharePrincipalRow } from "@/share-ui/share-principal-row";
 import type { ShareMutations } from "@/share-ui/use-share-mutations";
 
@@ -124,19 +119,11 @@ export function ShareTeamSection({
       >
         {groupGrants.map((grant) => {
           const inherited = grant.source.inherited;
-          const uiPermission = accessToUIPermission(grant.access);
-          const active = Boolean(uiPermission);
           return (
             <SharePrincipalRow
               key={grant.principal}
-              mark={
-                <SharePrincipalMark
-                  principalType="group"
-                  displayName={grant.displayName ?? formatSharePathLabel(grant.principal)}
-                  active={active}
-                />
-              }
-              title={grant.displayName ?? formatSharePathLabel(grant.principal)}
+              principalType="group"
+              displayName={grant.displayName ?? formatSharePathLabel(grant.principal)}
               subtitle={shareLabels.membersSuffix(grant.memberCount ?? 0)}
               inheritedFromPath={inherited ? grant.source.sharePath : undefined}
               access={grant.access}
@@ -169,8 +156,6 @@ export function ShareTeamSection({
 
         {directMemberAccess.map((member) => {
           const inherited = member.source.inherited;
-          const uiPermission = accessToUIPermission(member.access);
-          const active = Boolean(uiPermission);
           const subtitle = inherited
             ? member.username
             : member.viaGroup
@@ -180,14 +165,9 @@ export function ShareTeamSection({
           return (
             <SharePrincipalRow
               key={member.username}
-              mark={
-                <SharePrincipalMark
-                  principalType="user"
-                  displayName={member.displayName}
-                  active={active}
-                />
-              }
-              title={member.displayName}
+              principalType="user"
+              displayName={member.displayName}
+              principalId={member.username}
               subtitle={subtitle}
               inheritedFromPath={inherited ? member.source.sharePath : undefined}
               access={member.access}

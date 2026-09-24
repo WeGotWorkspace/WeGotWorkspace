@@ -1,17 +1,15 @@
 import type { Note } from "@/lib/models/note";
+import { formatListDateTime, parseTimestamp } from "@/lib/datetime/format-list-date";
 
-export function parseNoteTimestamp(value: string): number | null {
-  const ts = Date.parse(value);
-  return Number.isNaN(ts) ? null : ts;
-}
+export { parseTimestamp as parseNoteTimestamp };
 
 /** Newest-edited first; invalid dates sort last; ties break on id descending. */
 export function compareNotesDesc(
   a: Pick<Note, "id" | "date">,
   b: Pick<Note, "id" | "date">,
 ): number {
-  const da = parseNoteTimestamp(a.date);
-  const db = parseNoteTimestamp(b.date);
+  const da = parseTimestamp(a.date);
+  const db = parseTimestamp(b.date);
   const aValid = da !== null;
   const bValid = db !== null;
   if (aValid && bValid && da !== db) return db - da;
@@ -21,30 +19,11 @@ export function compareNotesDesc(
 }
 
 export function formatNoteDateForList(raw: string): string {
-  const ts = parseNoteTimestamp(raw);
-  if (ts === null) return raw;
-  const d = new Date(ts);
-  const now = new Date();
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-  if (sameDay) {
-    return new Intl.DateTimeFormat(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(d);
-  }
-  const sameYear = d.getFullYear() === now.getFullYear();
-  return new Intl.DateTimeFormat(undefined, {
-    day: "2-digit",
-    month: "short",
-    ...(sameYear ? {} : { year: "numeric" }),
-  }).format(d);
+  return formatListDateTime(raw);
 }
 
 export function formatNoteDateForDetail(raw: string): string {
-  const ts = parseNoteTimestamp(raw);
+  const ts = parseTimestamp(raw);
   if (ts === null) return raw;
   return new Intl.DateTimeFormat(undefined, {
     weekday: "short",
@@ -60,5 +39,5 @@ export function formatNoteDateForDetail(raw: string): string {
 export function formatNoteLastEdited(note: Pick<Note, "date" | "updatedAt">): string {
   const raw = note.date !== "—" && note.date !== "" ? note.date : (note.updatedAt ?? "");
   if (!raw || raw === "—") return "";
-  return formatNoteDateForList(raw);
+  return formatListDateTime(raw);
 }

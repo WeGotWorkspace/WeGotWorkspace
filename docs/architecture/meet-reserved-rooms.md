@@ -89,7 +89,7 @@ Incomplete or non-WGW hrefs never reserve. Read-only GET / conversion without pe
 
 **Forbidden:** `includes`, `startsWith`, or any raw-string matching.
 
-Path must be `/meet/guest` or `/meet/join`. Query `room` must match the full `xxxx-xxxx-xxxx` pattern. Partial strings do not POST.
+Path must be `/meet`, `/meet/guest`, or `/meet/join` (`/meet?room=` is canonical; guest/join remain aliases). Query `room` must match the full `xxxx-xxxx-xxxx` pattern. Partial strings do not POST.
 
 ## HTTP contract (Chunk M)
 
@@ -106,7 +106,9 @@ Accepts `room` + `ownerPrincipal` (+ optional `expiresAt`; omit/null = no expiry
 
 **GET 404** (no row — including a sweeper-pruned never-activated room whose calendar `links` href still points at it) is **not** an unhandled error. Lobby and calendar Join treat 404 like “not reserved” (existing dead-link / missing-invite copy). Do not treat network failure the same as 404.
 
-Guest lobby: `{ reserved: true, active: false }` → **waiting for the host**. Knock still requires a joinable host. Signed-in owner-principal members can start; non-members stay guest/knock.
+A named channel, team channel, or direct message is not a guest door. Unauthenticated GET of those rooms is **404** even when a reservation row exists. Authenticated callers still receive `active` so in-channel call presence keeps working. An ad-hoc meeting room code stays guest-readable. A meeting name slug does not.
+
+Guest lobby: `{ reserved: true, active: false }` → **waiting for the host**. A guest cannot skip that lobby: a non-knock join on a reserved ad-hoc code is `knock_required` until `createdBy` or an owner-principal member admits them. Knock on a reserved code may wait in an empty room. Signed-in owner-principal members can start; non-members stay guest/knock.
 
 ### `PATCH /meetings/rooms/{id}`
 

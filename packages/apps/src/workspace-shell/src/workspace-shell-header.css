@@ -1,11 +1,27 @@
 @import "../../styles.css" reference;
 
 .workspace-shell-header {
-  @apply flex shrink-0 items-center justify-between p-6;
+  /*
+   * Same chrome rhythm as `.app-sidebar__header` (`py-4 md:py-6` +
+   * `--app-sidebar-padding-x`) so brand / app-switch lockups share corner inset
+   * across cream shells and product sidebars.
+   */
+  @apply flex shrink-0 items-start justify-between gap-3 py-4 md:py-6;
+  padding-inline: var(--app-sidebar-padding-x, 1rem);
+  --app-sidebar-padding-x: 1rem;
+}
+
+/*
+ * Trigger / brand lockup carry `py-1` for hit area; zero the top so the tile
+ * shares the same top edge as sidebar + main-header IconButtons.
+ */
+.workspace-shell-header .app-switch-button__trigger,
+.workspace-shell-header .brand-lockup {
+  @apply pt-0;
 }
 
 .workspace-shell-header__start {
-  @apply flex min-w-0 items-center gap-3;
+  @apply flex min-w-0 items-start gap-3;
 }
 
 .workspace-shell-header__accessory {
@@ -25,10 +41,21 @@
 }
 
 .workspace-shell-header__user-menu-trigger {
-  @apply flex size-9 items-center justify-center rounded-full border text-xs font-semibold transition-colors;
-  background-color: var(--workspace-shell-header-user-menu-bg, rgba(255, 255, 255, 0.16));
-  color: var(--workspace-shell-header-user-menu-fg, #ffffff);
-  border-color: var(--workspace-shell-header-user-menu-border, rgba(255, 255, 255, 0.22));
+  @apply flex shrink-0 rounded-full border-0 bg-transparent p-0;
+  --user-avatar-bg: var(
+    --workspace-shell-header-user-menu-bg,
+    color-mix(in oklab, #ffffff 16%, var(--workspace-home-bg, #1b1d3a))
+  );
+  --user-avatar-fg: var(--workspace-shell-header-user-menu-fg, #ffffff);
+  --user-avatar-border: var(
+    --workspace-shell-header-user-menu-border,
+    color-mix(in oklab, #ffffff 22%, var(--workspace-home-bg, #1b1d3a))
+  );
+  --user-avatar-border-width: 1px;
+}
+
+.workspace-shell-header__user-avatar {
+  @apply pointer-events-none;
 }
 
 .workspace-shell-header__user-menu-content {

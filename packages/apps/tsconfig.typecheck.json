@@ -8,5 +8,5 @@
     "experimentalDecorators": true,
     "useDefineForClassFields": false
   },
-  "exclude": ["**/*.stories.tsx", "**/*.stories.ts", "**/stories/**"]
+  "exclude": ["**/*.stories.tsx", "**/*.stories.ts", "**/stories/**", "src/sw.ts"]
 }

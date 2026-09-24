@@ -1,16 +1,23 @@
 import { Temporal } from "@js-temporal/polyfill";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
-import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import { localToPlainDateTime, type JmapCalendarEvent } from "@/lib/jmap-client";
+import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
 import {
   listedInviteeAttendees,
   type CalendarAttendee,
 } from "@/calendar-core/src/calendar-attendees";
 import {
   calendarEventToForm,
+  emptyCalendarEventForm,
   engineEventToForm,
+  type CalendarEventAlertFormValue,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
+import {
+  formatUnmatchedAlertOffset,
+  matchAlertOffsetPreset,
+} from "@/calendar-core/src/calendar-alerts";
 import {
   formAnchoredToOccurrence,
   splitOccurrenceKey,
@@ -23,6 +30,17 @@ export type CalendarEventPreviewModel = {
   eventId: string;
   recurrenceId?: string;
   form: CalendarEventFormValue;
+};
+
+/**
+ * Live move/resize times from the Lit timeline draft (same source as the grid card preview).
+ * `end` matches the engine: exclusive midnight for all-day, wall-clock for timed.
+ */
+export type CalendarEventTimesDraft = {
+  key: string;
+  start: Temporal.PlainDateTime;
+  end: Temporal.PlainDateTime;
+  allDay: boolean;
 };
 
 export type CalendarEventSelectionOrigin = {
@@ -95,8 +113,142 @@ export function resolveCalendarEventPreview(
   };
 }
 
+const INVITATION_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+function invitationInstant(value: string): Temporal.PlainDateTime {
+  if (INVITATION_DATE_ONLY.test(value)) {
+    return Temporal.PlainDate.from(value).toPlainDateTime(Temporal.PlainTime.from("00:00"));
+  }
+  return localToPlainDateTime(value);
+}
+
+function invitationOrganizerAttendees(
+  notification: CalendarSchedulingNotification,
+): CalendarAttendee[] {
+  const email = notification.organizerEmail?.trim();
+  if (!email) return [];
+  return [
+    {
+      email,
+      name: notification.organizerName?.trim() || email,
+      participationStatus: "accepted",
+      isOrganizer: true,
+    },
+  ];
+}
+
+/** Compact popover model when the invite is not yet on a loaded calendar. */
+export function invitationToEventPreview(
+  notification: CalendarSchedulingNotification,
+  options: { untitledLabel: string; defaultCalendarId?: string },
+): CalendarEventPreviewModel {
+  const calendarId = options.defaultCalendarId ?? "";
+  const startRaw = notification.start?.trim() ?? "";
+  const allDay = INVITATION_DATE_ONLY.test(startRaw);
+  let form = emptyCalendarEventForm(calendarId, Temporal.Now.plainDateISO().toString());
+
+  if (startRaw) {
+    try {
+      const start = invitationInstant(startRaw);
+      const startDate = start.toPlainDate().toString();
+      const startTime = start.toPlainTime().toString({ smallestUnit: "minute" });
+      form = {
+        ...emptyCalendarEventForm(calendarId, startDate, allDay ? "10:00" : startTime),
+        allDay,
+        startDate,
+        startTime: allDay ? "00:00" : startTime,
+      };
+      const endRaw = notification.end?.trim() ?? "";
+      if (endRaw) {
+        const end = invitationInstant(endRaw);
+        form = {
+          ...form,
+          endDate: end.toPlainDate().toString(),
+          endTime: allDay ? "00:00" : end.toPlainTime().toString({ smallestUnit: "minute" }),
+        };
+      }
+    } catch {
+      // Keep empty-form defaults when the inbox timestamps are not parseable.
+    }
+  }
+
+  return {
+    eventId: notification.eventId?.trim() || notification.uid || notification.id,
+    form: {
+      ...form,
+      title: notification.title.trim() || options.untitledLabel,
+      location: notification.location?.trim() ?? "",
+      meetingUrl: notification.url?.trim() ?? "",
+      attendees: invitationOrganizerAttendees(notification),
+    },
+  };
+}
+
+/** Prefer the loaded calendar event; fall back to inbox fields. */
+export function resolveInvitationEventPreview(
+  notification: CalendarSchedulingNotification,
+  options: {
+    events: readonly JmapCalendarEvent[];
+    surfaceEvents?: CalendarEventsMap;
+    pendingDeletedEventIds?: ReadonlySet<string>;
+    untitledLabel: string;
+    defaultCalendarId?: string;
+  },
+): CalendarEventPreviewModel {
+  const eventId = notification.eventId?.trim();
+  if (eventId) {
+    const fromCalendar = resolveCalendarEventPreview(eventId, options);
+    if (fromCalendar) return fromCalendar;
+  }
+  return invitationToEventPreview(notification, options);
+}
+
 export function eventPreviewOccurrenceKey(preview: CalendarEventPreviewModel): string {
   return preview.recurrenceId ? `${preview.eventId}::${preview.recurrenceId}` : preview.eventId;
+}
+
+/** Patch form wall times from a Lit move/resize draft (engine exclusive all-day end). */
+export function formWithEventTimesDraft(
+  form: CalendarEventFormValue,
+  draft: Pick<CalendarEventTimesDraft, "start" | "end" | "allDay">,
+): CalendarEventFormValue {
+  const allDay = draft.allDay;
+  const formEnd = allDay ? draft.end.subtract({ days: 1 }) : draft.end;
+  return {
+    ...form,
+    allDay,
+    startDate: draft.start.toPlainDate().toString(),
+    startTime: allDay ? "00:00" : draft.start.toPlainTime().toString({ smallestUnit: "minute" }),
+    endDate: formEnd.toPlainDate().toString(),
+    endTime: allDay ? "00:00" : formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
+  };
+}
+
+/**
+ * Popover model while open: prefer the live Lit draft, else re-resolve from the surface
+ * so post-drop optimistic times stay in sync without a parallel clock.
+ */
+export function resolveLiveEventPreview(
+  snapshot: CalendarEventPreviewModel,
+  options: {
+    events: readonly JmapCalendarEvent[];
+    surfaceEvents?: CalendarEventsMap;
+    pendingDeletedEventIds?: ReadonlySet<string>;
+    timesDraft?: CalendarEventTimesDraft | null;
+  },
+): CalendarEventPreviewModel {
+  const key = eventPreviewOccurrenceKey(snapshot);
+  const draft = options.timesDraft;
+  if (draft && draft.key === key) {
+    return { ...snapshot, form: formWithEventTimesDraft(snapshot.form, draft) };
+  }
+  return (
+    resolveCalendarEventPreview(key, {
+      events: options.events,
+      surfaceEvents: options.surfaceEvents,
+      pendingDeletedEventIds: options.pendingDeletedEventIds,
+    }) ?? snapshot
+  );
 }
 
 function formatPlainDate(iso: string, locale: string): string {
@@ -156,6 +308,57 @@ export function eventPreviewRepeatLabel(
 ): string | null {
   if (form.recurrencePreset === "none") return null;
   return recurrencePresetOptionLabel(form.recurrencePreset, form.startDate, locale);
+}
+
+type EventPreviewAlarmLabels = Pick<
+  CalendarUILabels,
+  | "eventAlarmAtStart"
+  | "eventAlarm5Min"
+  | "eventAlarm10Min"
+  | "eventAlarm15Min"
+  | "eventAlarm30Min"
+  | "eventAlarm1Hour"
+  | "eventAlarm1Day"
+>;
+
+function alarmPreviewLabel(
+  alert: CalendarEventAlertFormValue,
+  labels: EventPreviewAlarmLabels,
+): string | null {
+  if (alert.offset != null) {
+    const preset = matchAlertOffsetPreset(alert.offset);
+    switch (preset) {
+      case "at-start":
+        return labels.eventAlarmAtStart;
+      case "5m":
+        return labels.eventAlarm5Min;
+      case "10m":
+        return labels.eventAlarm10Min;
+      case "15m":
+        return labels.eventAlarm15Min;
+      case "30m":
+        return labels.eventAlarm30Min;
+      case "1h":
+        return labels.eventAlarm1Hour;
+      case "1d":
+        return labels.eventAlarm1Day;
+      default:
+        return formatUnmatchedAlertOffset(alert.offset);
+    }
+  }
+  const when = alert.when?.trim();
+  return when || null;
+}
+
+/** Comma-joined alarm labels for the details popover; null when none. */
+export function eventPreviewAlarmSummary(
+  alerts: CalendarEventAlertFormValue[],
+  labels: EventPreviewAlarmLabels,
+): string | null {
+  const parts = alerts
+    .map((alert) => alarmPreviewLabel(alert, labels))
+    .filter((value): value is string => Boolean(value));
+  return parts.length > 0 ? parts.join(", ") : null;
 }
 
 function originFromRect(
@@ -218,17 +421,13 @@ export function detailsPopoverAnchorOrigin(
   return { ...origin, height: DETAILS_POPOVER_ANCHOR_MAX_HEIGHT };
 }
 
-function viewportPrefersDockedPopover(): boolean {
-  if (typeof globalThis.matchMedia !== "function") return false;
-  return (
-    globalThis.matchMedia("(max-width: 40rem)").matches ||
-    globalThis.matchMedia("(orientation: portrait) and (max-width: 48rem)").matches
-  );
-}
-
-/** Narrow/portrait viewport or a compact-month day cell: dock instead of anchoring to the card. */
+/**
+ * Compact-month day cell: dock instead of anchoring to the cell.
+ * Narrow viewports use a Dialog shell (see CalendarEventDetailsPopover + useIsMobile),
+ * not CSS docking — so portrait iPad (768px) keeps an anchored popover.
+ */
 export function detailsPopoverShouldDock(origin?: CalendarEventSelectionOrigin): boolean {
-  return viewportPrefersDockedPopover() || (origin != null && originLooksLikeMonthCell(origin));
+  return origin != null && originLooksLikeMonthCell(origin);
 }
 
 /** Shared `event-selected` decode for CalendarSurface and search list hosts. */
@@ -254,6 +453,49 @@ export function bindCalendarEventSelected(
   return () => target.removeEventListener("event-selected", handle);
 }
 
+export function selectionOriginFromElement(
+  element: Element | null | undefined,
+): CalendarEventSelectionOrigin | undefined {
+  if (!element) return undefined;
+  return originFromRect(element.getBoundingClientRect());
+}
+
+/**
+ * Walk open shadow roots for the Lit create-preview card so pointer-create
+ * popovers can anchor beside the ghost when the CustomEvent path has no card.
+ */
+export function measureCalendarCreatePreviewOrigin(
+  root: ParentNode | null | undefined,
+): CalendarEventSelectionOrigin | undefined {
+  if (!root || typeof Element === "undefined") return undefined;
+  const stack: Array<ParentNode> = [root];
+  const seen = new Set<ParentNode>();
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node || seen.has(node)) continue;
+    seen.add(node);
+    if (node instanceof Element) {
+      if (node.classList.contains("create-preview")) {
+        const origin = selectionOriginFromElement(node);
+        if (origin) return origin;
+      }
+      if (node.shadowRoot) {
+        stack.push(node.shadowRoot);
+      }
+      for (const child of Array.from(node.children)) {
+        stack.push(child);
+      }
+      continue;
+    }
+    if ("children" in node) {
+      for (const child of Array.from(node.children)) {
+        stack.push(child);
+      }
+    }
+  }
+  return undefined;
+}
+
 export function selectionOriginFromEvent(event: Event): CalendarEventSelectionOrigin | undefined {
   const detail = event instanceof CustomEvent ? event.detail : undefined;
   const fromDetail = originFromUnknown(
@@ -263,6 +505,6 @@ export function selectionOriginFromEvent(event: Event): CalendarEventSelectionOr
 
   const path = typeof event.composedPath === "function" ? event.composedPath() : [];
   const card = eventCardFromPath(path);
-  if (card) return originFromRect(card.getBoundingClientRect());
+  if (card) return selectionOriginFromElement(card);
   return undefined;
 }

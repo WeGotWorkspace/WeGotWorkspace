@@ -4,7 +4,7 @@ import {
   FolderInput,
   FolderOpen,
   Pencil,
-  Share2,
+  Share,
   Star,
   Trash2,
 } from "lucide-react";
@@ -79,7 +79,7 @@ export function buildDriveFileActions(
       id: "share",
       label: labels.detailShare,
       onClick: callbacks.onShare,
-      icon: <Share2 />,
+      icon: <Share />,
     });
   }
 
@@ -98,6 +98,7 @@ export function buildDriveFileActions(
       label: options.inTrash ? labels.selectionDeletePermanently : labels.detailDelete,
       onClick: callbacks.onDelete,
       icon: <Trash2 />,
+      severity: "danger",
     });
   }
 

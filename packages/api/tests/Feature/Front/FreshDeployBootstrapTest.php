@@ -74,6 +74,8 @@ final class FreshDeployBootstrapTest extends TestCase
         $_SERVER['SCRIPT_NAME'] = '/index.php';
         putenv('WGW_APP_ROOT='.$this->deployRoot);
         $_ENV['WGW_APP_ROOT'] = $this->deployRoot;
+        putenv('WGW_API_ROOT');
+        unset($_ENV['WGW_API_ROOT'], $_SERVER['WGW_API_ROOT']);
 
         ob_start();
         try {

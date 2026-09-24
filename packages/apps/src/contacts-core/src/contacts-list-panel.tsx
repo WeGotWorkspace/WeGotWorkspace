@@ -1,13 +1,21 @@
-import { useMemo, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from "react";
-import { Circle, RefreshCw, Trash2, UserMinus } from "lucide-react";
+import {
+  useMemo,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { Circle, Trash2, UserMinus } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
+import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ContactUserAvatar } from "./contact-user-avatar";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
+import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";
+import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
-import { cn } from "@/lib/utils";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
   contactDisplayName,
@@ -73,16 +81,29 @@ export function ContactsListPanel({
   onRefreshList,
   pendingCardIds,
 }: ContactsListPanelProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+  useListReorderAnimation(
+    listRef,
+    visibleCards.map((card) => card.id),
+  );
+
+  const headerCount =
+    selectionMode || selectedIds.length > 1 ? selectedIds.length : visibleCards.length;
+  const headerCountLabel =
+    selectionMode || selectedIds.length > 1
+      ? L.listSelected(headerCount)
+      : L.listContacts(headerCount);
+
   return {
     header: (
       <ViewHeader
         sidebarOpen={sidebarOpen}
         onToggleSidebar={onToggleSidebar}
         title={viewLabel}
-        subtitle={
-          selectionMode || selectedIds.length > 1
-            ? L.listSelected(selectedIds.length)
-            : L.listContacts(visibleCards.length)
+        titleSuffix={
+          <span className="view-header__title-count" aria-label={headerCountLabel}>
+            ({headerCount})
+          </span>
         }
         actions={
           onRefreshList ? (
@@ -90,11 +111,9 @@ export function ContactsListPanel({
               label={L.refreshList}
               onClick={onRefreshList}
               disabled={listLoading || listRefreshing}
-              icon={
-                <RefreshCw className={cn("size-4", listRefreshing && "animate-spin")} aria-hidden />
-              }
-              size="sm"
-              variant="subtle"
+              icon={<RefreshSpinIcon spinning={listRefreshing} className="size-4" />}
+              size="md"
+              variant="outline"
             />
           ) : null
         }
@@ -104,31 +123,29 @@ export function ContactsListPanel({
         searchInputRef={searchInputRef}
       />
     ),
-    listContent: (
-      <>
-        {listLoading ? (
-          <div className="contacts-list-panel__loading" aria-busy>
-            <LoadingSpinner size="lg" label={L.listLoading} />
-          </div>
-        ) : (
-          <ContactsListRows
-            L={L}
-            visibleCards={visibleCards}
-            isTouch={isTouch}
-            activeId={activeId}
-            selectedIds={selectedIds}
-            selectionMode={selectionMode}
-            selectedGroupId={selectedGroupId}
-            isItemDragging={isItemDragging}
-            handleSelect={handleSelect}
-            enterSelectionFor={enterSelectionFor}
-            itemDragHandlers={itemDragHandlers}
-            onSwipeDelete={onSwipeDelete}
-            onSwipeRemoveFromGroup={onSwipeRemoveFromGroup}
-            pendingCardIds={pendingCardIds}
-          />
-        )}
-      </>
+    listContent: listLoading ? (
+      <div className="contacts-list-panel__loading" aria-busy>
+        <LoadingSpinner size="lg" label={L.listLoading} />
+      </div>
+    ) : (
+      <div ref={listRef} className="contacts-list-panel__list">
+        <ContactsListRows
+          L={L}
+          visibleCards={visibleCards}
+          isTouch={isTouch}
+          activeId={activeId}
+          selectedIds={selectedIds}
+          selectionMode={selectionMode}
+          selectedGroupId={selectedGroupId}
+          isItemDragging={isItemDragging}
+          handleSelect={handleSelect}
+          enterSelectionFor={enterSelectionFor}
+          itemDragHandlers={itemDragHandlers}
+          onSwipeDelete={onSwipeDelete}
+          onSwipeRemoveFromGroup={onSwipeRemoveFromGroup}
+          pendingCardIds={pendingCardIds}
+        />
+      </div>
     ),
     hasItems: listLoading || visibleCards.length > 0,
     emptyLabel: view.startsWith("group:") ? L.emptyGroupMembers : L.emptyList,
@@ -172,12 +189,7 @@ function ContactsListRows({
     () =>
       groupContactCardsBySection(visibleCards).map((section) => (
         <section key={section.letter} aria-labelledby={`contacts-section-${section.letter}`}>
-          <div
-            id={`contacts-section-${section.letter}`}
-            className="contacts-list-panel__section-header"
-          >
-            {section.letter}
-          </div>
+          <ListStickyHeader id={`contacts-section-${section.letter}`} emphasis={section.letter} />
           {section.cards.map((card) => {
             const name = contactDisplayName(card);
             const isPendingSync = pendingCardIds?.has(card.id) ?? false;
@@ -205,7 +217,7 @@ function ContactsListRows({
                   <ContactUserAvatar
                     card={card}
                     compact
-                    size="sm"
+                    size="md"
                     className="contacts-list-panel__avatar"
                     loading="lazy"
                     decoding="async"

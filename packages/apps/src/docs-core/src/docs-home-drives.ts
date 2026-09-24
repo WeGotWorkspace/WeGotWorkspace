@@ -1,112 +1,152 @@
 /**
- * Pure helpers backing the Docs home sidebar "Drives" section and the
+ * Pure helpers backing the Docs home sidebar "My Drives" section and the
  * "Create new document" action.
  *
- * The browse API has no path filter of its own beyond an optional `path_prefix`
- * scope (see `useDocsHomeList`), so the *list* of shared drives shown in the
- * sidebar is derived from whatever results have loaded — mirroring how Drive
- * discovers `knownGroupRoots` from loaded files. Selecting a drive then scopes
- * the browse server-side via its `pathPrefix`, which keeps pagination correct.
+ * Shared group-root discovery / display labels live in
+ * {@link drive-group-roots}; Docs re-exports them under Docs names.
  */
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import { suggestNewMarkdownFileName } from "@/drive-core/src/drive-file-utils";
-import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import {
+  applyDriveGroupDisplayNames,
+  buildDriveFolderPickerRootLabels,
+  collectDriveGroupRoots,
+  collectDriveGroupRootsFromDirectory,
+  DRIVE_UI_PERSONAL_PATH,
+  driveGroupRootsEqual,
+  driveGroupSlugFromPrincipalId,
+  fetchDriveGroupRoots,
+  mergeDriveGroupRoots,
+  resolveDriveRootDisplayLabel,
+  type DriveGroupRoot,
+} from "@/drive-core/src/drive-group-roots";
 
 const NEW_DOCUMENT_BASE = "Untitled";
+
+/**
+ * Drive UI path key for the viewer's personal drive.
+ * Used by Drive path utils (`apiPathFromUiPath`) — **not** a Docs display label.
+ * Display label is {@link docsLabels.homeMyDrive} ("Personal") via
+ * {@link resolveDocsDriveLabel} / {@link buildDocsFolderPickerRootLabels}.
+ */
+export const DOCS_DRIVE_UI_PERSONAL_PATH = DRIVE_UI_PERSONAL_PATH;
 
 /** A selectable drive in the Docs home sidebar. `pathPrefix` scopes the browse. */
 export type DocsHomeDrive = {
   /** Stable selection key; equal to `pathPrefix`. */
   key: string;
-  /** Sidebar display label (e.g. "My Drive" or the group name). */
+  /** Sidebar / header display label (e.g. "Personal" or the group display name). */
   label: string;
   /** Storage-key prefix passed to the browse API (e.g. `users/alice`, `groups/team`). */
   pathPrefix: string;
 };
 
+/** Discovered group drive root: storage slug + UI label. */
+export type DocsHomeGroupRoot = DriveGroupRoot;
+
+/** Slug from a settings/group principal id (`principals/groups/…` or `groups/…`). */
+export const docsHomeGroupSlugFromPrincipalId = driveGroupSlugFromPrincipalId;
+
+/** True when both lists have the same slug/label pairs in order. */
+export const docsHomeGroupRootsEqual = driveGroupRootsEqual;
+
+/**
+ * Overlay principal display names onto discovered group roots (slug stays the
+ * storage id; label becomes e.g. "Administrators" instead of "administrators").
+ * Returns `roots` unchanged when no label updates apply (stable reference).
+ */
+export const applyDocsHomeGroupDisplayNames = applyDriveGroupDisplayNames;
+
 /** Extract sorted, unique group roots from a `/groups` directory listing. */
-export function collectGroupRootsFromDirectory(
-  entries: readonly { path: string; type?: string; name?: string }[],
-): string[] {
-  const roots = new Set<string>();
-  for (const entry of entries) {
-    if (entry.type && entry.type !== "dir") continue;
-    const apiPath = normalizeApiVirtualPath(entry.path);
-    if (apiPath === "/groups") {
-      const name = entry.name?.trim();
-      if (name) roots.add(name);
-      continue;
-    }
-    if (!apiPath.startsWith("/groups/")) continue;
-    const [root] = apiPath.slice("/groups/".length).split("/");
-    if (root) roots.add(root);
-  }
-  return Array.from(roots).sort((a, b) => a.localeCompare(b));
-}
+export const collectGroupRootsFromDirectory = collectDriveGroupRootsFromDirectory;
 
 /**
  * Load shared-drive roots from the live `/groups` listing (mirrors Drive bootstrap).
  * Falls back to an empty list when operations are unavailable or the request fails.
  */
-export async function fetchGroupRootsFromDrive(
-  operations: Pick<DriveAPIOperations, "listDirectory"> | undefined,
-  opts?: { signal?: AbortSignal },
-): Promise<string[]> {
-  if (!operations) return [];
-  try {
-    const state = await operations.listDirectory("/groups", opts);
-    return collectGroupRootsFromDirectory(state.directory.files);
-  } catch {
-    return [];
-  }
-}
+export const fetchGroupRootsFromDrive = fetchDriveGroupRoots;
 
 /** Extract sorted, unique group roots from loaded files' `/groups/{root}/…` api paths. */
-export function collectGroupRoots(files: readonly DriveFile[]): string[] {
-  const roots = new Set<string>();
-  for (const file of files) {
-    const apiPath = file.apiPath;
-    if (!apiPath || !apiPath.startsWith("/groups/")) continue;
-    const [root] = apiPath.slice("/groups/".length).split("/");
-    if (root) roots.add(root);
-  }
-  return Array.from(roots).sort((a, b) => a.localeCompare(b));
-}
+export const collectGroupRoots = collectDriveGroupRoots;
 
-/** Union two group-root lists (keeps the set growing as more pages load). */
-export function mergeGroupRoots(previous: readonly string[], next: readonly string[]): string[] {
-  const merged = new Set(previous);
-  for (const root of next) merged.add(root);
-  return Array.from(merged).sort((a, b) => a.localeCompare(b));
+/**
+ * Union two group-root lists (keeps the set growing as more pages load).
+ * Returns `previous` when the merge is a no-op so React setState can bail out
+ * and avoid files → merge → labeledRoots → remap-files loops.
+ */
+export const mergeGroupRoots = mergeDriveGroupRoots;
+
+/**
+ * Resolve a Docs-owned **display** label for a browse path prefix or Drive UI path.
+ * Path keys stay Drive-canonical (`My Drive`, `Groups/{slug}`); only the label changes.
+ */
+export function resolveDocsDriveLabel(
+  pathOrPrefix: string,
+  options: {
+    personalDriveLabel: string;
+    groupRoots?: readonly DocsHomeGroupRoot[];
+  },
+): string {
+  return resolveDriveRootDisplayLabel(pathOrPrefix, options);
 }
 
 /**
- * Build the Drives list: "My Drive" (when the user is known) followed by each
- * discovered shared (group) drive.
+ * Drive UI path → Docs display label map for folder pickers (Move / New document).
+ * Keys are Drive path keys (`My Drive`, `Groups/{slug}`); values are SST labels.
+ */
+export function buildDocsFolderPickerRootLabels(
+  groupRoots: readonly DocsHomeGroupRoot[],
+  personalDriveLabel: string,
+): Record<string, string> {
+  return buildDriveFolderPickerRootLabels(groupRoots, personalDriveLabel);
+}
+
+/**
+ * Build the My Drives list: personal drive (when the user is known) followed by
+ * each discovered shared (group) drive. Labels come from {@link resolveDocsDriveLabel}.
  */
 export function buildDocsHomeDrives(
   username: string,
-  groupRoots: readonly string[],
+  groupRoots: readonly DocsHomeGroupRoot[],
   myDriveLabel: string,
 ): DocsHomeDrive[] {
   const drives: DocsHomeDrive[] = [];
   const handle = username.trim();
   if (handle) {
-    drives.push({ key: `users/${handle}`, label: myDriveLabel, pathPrefix: `users/${handle}` });
+    const pathPrefix = `users/${handle}`;
+    drives.push({
+      key: pathPrefix,
+      label: resolveDocsDriveLabel(pathPrefix, {
+        personalDriveLabel: myDriveLabel,
+        groupRoots,
+      }),
+      pathPrefix,
+    });
   }
   for (const root of groupRoots) {
-    drives.push({ key: `groups/${root}`, label: root, pathPrefix: `groups/${root}` });
+    const pathPrefix = `groups/${root.slug}`;
+    drives.push({
+      key: pathPrefix,
+      label: resolveDocsDriveLabel(pathPrefix, {
+        personalDriveLabel: myDriveLabel,
+        groupRoots,
+      }),
+      pathPrefix,
+    });
   }
   return drives;
 }
 
 export function resolveDocsHomeCreateDialogBrowsePath(selectedDrivePrefix: string | null): string {
   if (selectedDrivePrefix?.startsWith("groups/")) {
-    const root = selectedDrivePrefix.slice("groups/".length);
-    return root ? `Groups/${root}` : "My Drive";
+    // Only the group root — Docs sidebar scopes by drive, not nested folders.
+    const slug = selectedDrivePrefix.slice("groups/".length).split("/").filter(Boolean)[0];
+    // Drive UI path root remains "My Drive" / "Groups/…" for apiPathFromUiPath.
+    return slug ? `Groups/${slug}` : DOCS_DRIVE_UI_PERSONAL_PATH;
   }
-  return "My Drive";
+  // users/…, empty, or unknown → personal Drive UI path key (display: Personal).
+  return DOCS_DRIVE_UI_PERSONAL_PATH;
 }
 
 /**

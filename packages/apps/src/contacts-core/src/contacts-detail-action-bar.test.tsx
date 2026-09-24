@@ -57,6 +57,7 @@ describe("ContactsDetailActionBar", () => {
     const back = screen.getByRole("button", { name: "All Contacts" });
     expect(back.textContent).toContain("All Contacts");
     expect(back.className).toContain("action-bar__back");
+    expect(back.className).toContain("button--variant-outline");
   });
 
   it("shows a labeled edit action first in read mode", () => {
@@ -77,6 +78,36 @@ describe("ContactsDetailActionBar", () => {
     expect(edit.className).toContain("action-bar__action--labeled");
     expect(buttons[1].textContent).not.toContain(defaultContactsLabels.downloadVCard);
     expect(buttons[2].textContent).not.toContain(defaultContactsLabels.delete);
+  });
+
+  it("pins edit before the address-book switcher and washes delete with severity-danger", () => {
+    stubSelectEnv();
+    const { container } = renderActionBar({
+      moveAddressBook: {
+        books: twoBooks,
+        value: "default",
+        onMove: vi.fn(),
+      },
+    });
+
+    const right = container.querySelector(".action-bar__right");
+    expect(right).toBeTruthy();
+    const rightChildren = Array.from(right!.children).map((child) => child.className);
+    expect(rightChildren[0]).toContain("action-bar__row");
+    expect(rightChildren[1]).toContain("action-bar__right-leading");
+    expect(rightChildren[2]).toContain("action-bar__row");
+
+    const buttons = within(right as HTMLElement).getAllByRole("button");
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
+      defaultContactsLabels.edit,
+      defaultContactsLabels.downloadVCard,
+      defaultContactsLabels.delete,
+    ]);
+    expect(buttons[0].className).toContain("action-bar__action--labeled");
+    expect(buttons[2].className).toContain("button--severity-danger");
+    expect(
+      screen.getByRole("combobox", { name: defaultContactsLabels.personalAddressBook }),
+    ).toBeTruthy();
   });
 
   it("keeps read actions visible while editing with correct disabled states", () => {
@@ -129,6 +160,9 @@ describe("ContactsDetailActionBar", () => {
       },
     });
     expect(
+      screen.queryByRole("combobox", { name: defaultContactsLabels.personalAddressBook }),
+    ).toBeNull();
+    expect(
       screen.queryByRole("combobox", { name: defaultContactsLabels.toolbarMoveToAddressBook }),
     ).toBeNull();
   });
@@ -151,9 +185,15 @@ describe("ContactsDetailActionBar address-book move", () => {
     });
 
     const trigger = screen.getByRole("combobox", {
-      name: defaultContactsLabels.toolbarMoveToAddressBook,
+      name: defaultContactsLabels.personalAddressBook,
     });
-    expect(trigger.textContent).toContain(defaultContactsLabels.personalAddressBook);
+    expect(trigger.getAttribute("aria-label")).toBe(defaultContactsLabels.personalAddressBook);
+    expect(trigger.className).toContain("contacts-address-book-select");
+    expect(trigger.className).toContain("color-swatch-trigger");
+    expect(trigger.className).toContain("contacts-address-book-select--swatch");
+    expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
+    expect(trigger.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(trigger.querySelector(".contacts-address-book-select__name")).toBeNull();
     fireEvent.click(trigger);
 
     const options = screen.getAllByRole("option");

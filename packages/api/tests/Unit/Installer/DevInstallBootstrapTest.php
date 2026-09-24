@@ -7,6 +7,7 @@ namespace Tests\Unit\Installer;
 use App\Services\Installer\DevInstallBootstrap;
 use App\Support\AppPaths;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\Support\WgwInstallFixture;
 use Tests\TestCase;
 
@@ -55,16 +56,49 @@ final class DevInstallBootstrapTest extends TestCase
         $this->assertFileExists($this->installRoot.'/wgw-content/keys/api-jwt-private.pem');
 
         WgwInstallFixture::syncDatabaseConnection();
+        $this->assertTrue(Schema::connection('wgw')->hasTable('oauth_clients'));
         $this->assertSame(1, DB::connection('wgw')->table('users')->where('username', 'admin')->count());
+        $this->assertSame(1, DB::connection('wgw')->table('users')->where('username', 'member')->count());
+        $member = DB::connection('wgw')->table('principals')->where('uri', 'principals/member')->first();
+        $this->assertNotNull($member);
+        $this->assertSame('Member', $member->displayname);
+        $this->assertSame('member@localhost', $member->email);
         $this->assertSame('SabreDAV', DB::connection('wgw')->table('app_settings')->where('name', 'auth_realm')->value('value'));
         $seeded = DB::connection('wgw')->table('calendarobjects')->where('uri', 'like', 'dev-seed-%')->count();
         $this->assertGreaterThan(0, $seeded);
 
         $this->assertTrue(app(AppPaths::class)->isInstalled());
         $this->assertFalse($bootstrap->ensure('admin', 'storybook-dev'));
+        $this->assertSame(1, DB::connection('wgw')->table('users')->where('username', 'member')->count());
         $this->assertSame(
             $seeded,
             DB::connection('wgw')->table('calendarobjects')->where('uri', 'like', 'dev-seed-%')->count(),
+        );
+    }
+
+    public function test_ensure_adds_member_on_an_existing_install_and_keeps_a_changed_password(): void
+    {
+        $bootstrap = app(DevInstallBootstrap::class);
+        $this->assertTrue($bootstrap->ensure('admin', 'storybook-dev'));
+
+        WgwInstallFixture::syncDatabaseConnection();
+        DB::connection('wgw')->table('users')->where('username', 'member')->update(['digest' => 'kept-digest']);
+
+        $this->assertFalse($bootstrap->ensure('admin', 'storybook-dev'));
+        $this->assertSame(
+            'kept-digest',
+            DB::connection('wgw')->table('users')->where('username', 'member')->value('digest'),
+        );
+
+        $memberId = DB::connection('wgw')->table('principals')->where('uri', 'principals/member')->value('id');
+        DB::connection('wgw')->table('groupmembers')->where('member_id', $memberId)->delete();
+        DB::connection('wgw')->table('principals')->where('id', $memberId)->delete();
+        DB::connection('wgw')->table('users')->where('username', 'member')->delete();
+        $this->assertFalse($bootstrap->ensure('admin', 'different-pass'));
+        $this->assertSame(1, DB::connection('wgw')->table('users')->where('username', 'member')->count());
+        $this->assertNotSame(
+            'kept-digest',
+            DB::connection('wgw')->table('users')->where('username', 'member')->value('digest'),
         );
     }
 

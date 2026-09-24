@@ -2,32 +2,34 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { MeetControllerState } from "@/meet-core/src/meet-controller-state";
 import {
-  meetSpeakerOptionsFromAudioInputs,
-  normalizeMeetDeviceOptions,
+  meetCallDeviceMenus,
+  meetSpeakerSelectionId,
   selectedMeetDeviceOptionId,
 } from "@/meet-core/src/meet-device-utils";
 import { useMeetInviteProbe } from "@/meet-core/src/use-meet-invite-probe";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { meetCallExitMode } from "@/meet-core/src/meet-route-search";
 import { playMeetKnockSound } from "@/meet-core/src/meet-chat-utils";
-import type { MeetWorkspaceProps } from "@/meet-core/src/meet-workspace-props";
+import type { MeetAPIOperations, MeetUIData } from "@/meet-core/src/meet-types";
+import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useMeetController } from "@/meet-core/src/use-meet-controller";
 
-type MeetWorkspaceShellInput = Pick<
-  MeetWorkspaceProps,
-  | "data"
-  | "session"
-  | "operations"
-  | "invitedRoom"
-  | "isJoinRoute"
-  | "buildCallLink"
-  | "onRoomChange"
->;
+export type MeetWorkspaceShellInput = {
+  data: MeetUIData;
+  session: WorkspaceSession;
+  operations?: MeetAPIOperations;
+  listLoading?: boolean;
+  invitedRoom?: string | null;
+  isJoinRoute?: boolean;
+  buildCallLink?: (roomCode: string) => string;
+  onRoomChange?: (roomCode: string | null) => void;
+};
 
 export function useMeetWorkspaceShell({
   data,
   session,
   operations,
+  listLoading = false,
   invitedRoom = null,
   isJoinRoute = false,
   buildCallLink,
@@ -37,6 +39,7 @@ export function useMeetWorkspaceShell({
   const controller = useMeetController({
     session,
     defaultDisplayName: data.defaultDisplayName,
+    identityReady: !listLoading,
     rtc: data.rtc,
     operations,
     buildCallLink,
@@ -112,23 +115,25 @@ export function useMeetWorkspaceShell({
     showWaitingForHostScreen,
   ]);
 
-  const cameras = useMemo(
-    () => normalizeMeetDeviceOptions("videoinput", controller.videoInputs),
-    [controller.videoInputs],
-  );
-  const microphones = useMemo(
-    () => normalizeMeetDeviceOptions("audioinput", controller.audioInputs),
-    [controller.audioInputs],
-  );
-  const speakers = useMemo(
-    () => meetSpeakerOptionsFromAudioInputs(controller.audioInputs),
-    [controller.audioInputs],
+  const { cameras, microphones, speakers } = useMemo(
+    () =>
+      meetCallDeviceMenus({
+        audioInputs: controller.audioInputs,
+        audioOutputs: controller.audioOutputs,
+        videoInputs: controller.videoInputs,
+      }),
+    [controller.audioInputs, controller.audioOutputs, controller.videoInputs],
   );
 
   const participantCount = controller.peers.length + (controller.inCall ? 1 : 0);
   const activeCamera = selectedMeetDeviceOptionId(cameras, controller.selectedCamId);
   const activeMic = selectedMeetDeviceOptionId(microphones, controller.selectedMicId);
-  const activeSpeaker = speakerId || speakers[0]?.id || "default";
+  const activeSpeaker = selectedMeetDeviceOptionId(speakers, speakerId);
+
+  function selectSpeaker(optionId: string) {
+    const next = meetSpeakerSelectionId(speakers, optionId);
+    if (next) setSpeakerId(next);
+  }
 
   function sendMessage() {
     const value = draft.trim();
@@ -164,13 +169,14 @@ export function useMeetWorkspaceShell({
       activeCamera,
       activeMic,
       activeSpeaker,
-      onSpeakerChange: setSpeakerId,
+      onSpeakerChange: selectSpeaker,
       endedMessage: controller.endedMessage,
       showMissingInviteScreen,
       showInviteCheckingScreen,
       showWaitingForHostScreen,
       showInviteErrorScreen,
       canStartReservedRoom,
+      displayNameLocked: hasSignedInIdentity && inJoinFlow,
     },
     room: {
       hasSignedInIdentity,
@@ -186,9 +192,8 @@ export function useMeetWorkspaceShell({
       activeCamera,
       activeMic,
       activeSpeaker,
-      onSpeakerChange: setSpeakerId,
+      onSpeakerChange: selectSpeaker,
       onCopyLink: copyCallLink,
-      onMuteSoon: (name: string) => toast.show(meetLabels.muteSoon(name), { severity: "info" }),
       onToastInfo: (message: string) => toast.show(message, { severity: "info" }),
       onToastError: (message: string) => toast.showError(message),
     },

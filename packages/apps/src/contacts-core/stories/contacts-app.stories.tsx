@@ -8,7 +8,7 @@ const bootstrap = createContactsAppBootstrap();
 const operations = createContactsStoryOperations(bootstrap.data.cards);
 
 const meta: Meta<typeof ContactsWorkspace> = {
-  title: "Apps/Contacts",
+  title: "Features/Contacts",
   component: ContactsWorkspace,
   parameters: {
     layout: "fullscreen",
@@ -18,7 +18,9 @@ const meta: Meta<typeof ContactsWorkspace> = {
 export default meta;
 type Story = StoryObj<typeof ContactsWorkspace>;
 
-export const Default: Story = {
+/** Chrome Default lives under Themes/Contacts — list/detail edit + create SST. */
+export const WorkspaceInteractions: Story = {
+  name: "Workspace interactions",
   tags: ["vitest-ci"],
   args: {
     ...bootstrap,
@@ -37,7 +39,7 @@ export const Default: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Friends" }));
     await waitFor(() => {
-      expect(canvas.getByText("2 Contacts")).toBeInTheDocument();
+      expect(canvas.getByLabelText("2 Contacts")).toBeInTheDocument();
       expect(canvasElement.querySelector('[data-list-item-id="card-group-friends"]')).toBeNull();
       expect(canvasElement.querySelector('[data-list-item-id="card-jane"]')).toBeTruthy();
       expect(canvasElement.querySelector('[data-list-item-id="card-joe"]')).toBeTruthy();

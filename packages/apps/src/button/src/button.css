@@ -11,37 +11,52 @@
   @apply opacity-50 cursor-not-allowed pointer-events-none;
 }
 
+.button--size-xs {
+  @apply px-2 text-xs;
+  min-height: var(--control-height-xs, 1.75rem);
+  height: var(--control-height-xs, 1.75rem);
+  font-size: var(--input-font-size-xs, 0.75rem);
+  --button-icon-size: 0.75rem;
+}
+
 .button--size-sm {
-  @apply px-3 text-xs;
-  min-height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  height: var(--control-height-sm, calc(var(--input-height, 2.25rem) - 0.25rem));
-  font-size: calc(var(--input-font-size, 0.875rem) - 0.0625rem);
-  border-radius: var(--control-radius-button-pill);
+  @apply px-2.5 text-xs;
+  min-height: var(--control-height-sm, 2rem);
+  height: var(--control-height-sm, 2rem);
+  font-size: var(--input-font-size-sm, 0.875rem);
   --button-icon-size: 0.875rem;
 }
 
 .button--size-md {
-  @apply px-3;
-  min-height: var(--control-height-md, var(--input-height, 2.25rem));
-  height: var(--control-height-md, var(--input-height, 2.25rem));
-  font-size: var(--input-font-size, 0.875rem);
-  --button-icon-size: 1rem;
+  @apply px-3 text-xs;
+  min-height: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
+  font-size: var(--input-font-size-md, 0.875rem);
+  --button-icon-size: 0.875rem;
 }
 
 .button--size-lg {
+  @apply px-3;
+  min-height: var(--control-height-lg, 2.5rem);
+  height: var(--control-height-lg, 2.5rem);
+  font-size: var(--input-font-size-lg, 1rem);
+  --button-icon-size: 1rem;
+}
+
+.button--size-xl {
   @apply px-8;
-  min-height: var(--control-height-lg, calc(var(--input-height, 2.25rem) + 0.25rem));
-  height: var(--control-height-lg, calc(var(--input-height, 2.25rem) + 0.25rem));
-  font-size: var(--input-font-size, 0.875rem);
+  min-height: var(--control-height-xl, 2.75rem);
+  height: var(--control-height-xl, 2.75rem);
+  font-size: var(--input-font-size-xl, 1rem);
   --button-icon-size: 1rem;
 }
 
 .button--size-icon {
   @apply p-0;
-  width: var(--control-height-md, var(--input-height, 2.25rem));
-  height: var(--control-height-md, var(--input-height, 2.25rem));
-  min-width: var(--control-height-md, var(--input-height, 2.25rem));
-  min-height: var(--control-height-md, var(--input-height, 2.25rem));
+  width: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
+  min-width: var(--control-height-md, 2.25rem);
+  min-height: var(--control-height-md, 2.25rem);
   --button-icon-size: 1rem;
 }
 
@@ -55,7 +70,7 @@
 }
 
 .button--variant-primary {
-  background-color: var(--button-primary-bg, var(--color-ink));
+  background-color: var(--button-primary-bg, var(--color-we-got-dark));
   color: var(--button-primary-fg, var(--color-emerald));
 }
 
@@ -76,44 +91,154 @@
   );
 }
 
-.button--variant-outline {
-  color: var(--button-outline-color, var(--color-ink));
+.button--variant-destructive-outline {
+  color: var(
+    --button-destructive-outline-color,
+    var(--button-destructive-bg, var(--color-red-500, #dc2626))
+  );
   background-color: transparent;
   border: 1px solid
-    var(--button-outline-border-color, color-mix(in oklab, var(--color-ink) 20%, transparent));
+    var(
+      --button-destructive-outline-border-color,
+      var(
+        --button-destructive-outline-color,
+        var(--button-destructive-bg, var(--color-red-500, #dc2626))
+      )
+    );
 }
 
-.button--variant-outline:hover {
+.button--variant-destructive-outline:hover {
   background-color: var(
-    --button-outline-hover-background,
-    color-mix(in oklab, var(--color-ink) 8%, transparent)
+    --button-destructive-outline-hover-background,
+    color-mix(
+      in oklab,
+      var(--button-destructive-bg, var(--color-red-500, #dc2626)) 12%,
+      transparent
+    )
   );
 }
 
+.button--variant-outline {
+  color: var(--button-outline-color, var(--color-we-got-dark));
+  background-color: transparent;
+  /* Match Select/Input `--control-border-color` so outline chrome aligns with dropdowns. */
+  border: 1px solid var(--button-outline-border-color, var(--control-border-color));
+}
+
+.button--variant-outline:hover {
+  color: var(--button-outline-hover-color, var(--button-outline-color, var(--color-we-got-dark)));
+  background-color: var(
+    --button-outline-hover-background,
+    color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+  );
+}
+
+/*
+ * Severity outline/ghost (Delete, Archive, Trash): fg from destructive token;
+ * hover wash from the same hue — not workspace accent / --button-outline-hover-*.
+ * Token names align with MenuItem `--menu-item-severity-*`.
+ */
+.button--severity-danger {
+  --button-severity-color: var(
+    --menu-item-severity-color,
+    var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
+  );
+  --button-severity-hover-background: var(
+    --menu-item-severity-hover-background,
+    var(
+      --menu-item-danger-hover-background,
+      color-mix(in oklab, var(--button-severity-color) 14%, transparent)
+    )
+  );
+  color: var(--button-severity-color);
+}
+
+.button--severity-danger:hover,
+.button--severity-danger:focus-visible {
+  color: var(--button-severity-color);
+  background-color: var(--button-severity-hover-background);
+}
+
+.button.button--variant-outline.button--severity-danger:hover,
+.button.button--variant-outline.button--severity-danger:focus-visible {
+  color: var(--button-severity-color);
+  background-color: var(--button-severity-hover-background);
+}
+
+/*
+ * Success outline/ghost (Resolve, Accept): fg from a true green — not
+ * `--color-emerald`, which product workspaces remap to accent. Wash on hover
+ * only, matching severity-danger.
+ */
+.button--severity-success {
+  --button-severity-color: var(
+    --button-severity-success-color,
+    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--color-we-got-dark))
+  );
+  --button-severity-hover-background: var(
+    --button-severity-success-hover-background,
+    color-mix(in oklab, var(--button-severity-color) 14%, transparent)
+  );
+  color: var(--button-severity-color);
+}
+
+.button--severity-success:hover,
+.button--severity-success:focus-visible {
+  color: var(--button-severity-color);
+  background-color: var(--button-severity-hover-background);
+}
+
+.button.button--variant-outline.button--severity-success:hover,
+.button.button--variant-outline.button--severity-success:focus-visible {
+  color: var(--button-severity-color);
+  background-color: var(--button-severity-hover-background);
+}
+
+/* Pressed/selected outline (Today, open sidebar/inbox): accent fg + wash;
+   keep the quiet control stroke (not a full accent ring). */
+.button.button--variant-outline.icon-button--active {
+  color: var(--button-active-color, var(--color-emerald));
+  border-color: var(
+    --button-outline-active-border-color,
+    var(--button-outline-border-color, var(--control-border-color))
+  );
+  background-color: var(
+    --button-outline-active-background,
+    var(
+      --button-outline-hover-background,
+      color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+    )
+  );
+}
+
+.button.button--variant-outline.icon-button--active:hover {
+  color: var(--button-active-color, var(--color-emerald));
+  background-color: var(
+    --button-outline-active-hover-background,
+    var(
+      --button-outline-active-background,
+      var(
+        --button-outline-hover-background,
+        color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+      )
+    )
+  );
+}
+
+/* Lucide marks are stroke-based; generic `.icon-button--active` fill would solid-blob them. */
+.button.button--variant-outline.icon-button--active .button__icon > svg {
+  fill: none;
+}
+
 .button--variant-ghost {
-  color: var(--button-ghost-color, var(--color-ink));
+  color: var(--button-ghost-color, var(--color-we-got-dark));
   background-color: transparent;
 }
 
 .button--variant-ghost:hover {
   background-color: var(
     --button-ghost-hover-background,
-    color-mix(in oklab, var(--color-ink) 12%, transparent)
-  );
-}
-
-.button--variant-subtle {
-  color: var(--button-subtle-color, color-mix(in oklab, var(--color-ink) 65%, transparent));
-  background-color: var(
-    --button-subtle-background,
-    color-mix(in oklab, var(--color-ink) 6%, transparent)
-  );
-}
-
-.button--variant-subtle:hover {
-  background-color: var(
-    --button-subtle-hover-background,
-    color-mix(in oklab, var(--color-ink) 18%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
   );
 }
 

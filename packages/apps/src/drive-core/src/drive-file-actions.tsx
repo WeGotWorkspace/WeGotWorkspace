@@ -22,10 +22,9 @@ export function DriveFileItemActionsMenu({
         onClick: action.onClick,
         checked: action.active,
         disabled: disabled || action.disabled,
-        className:
-          action.id === "delete"
-            ? "cursor-pointer gap-2.5 text-red-600 focus:text-red-600"
-            : "cursor-pointer gap-2.5",
+        severity:
+          action.severity === "danger" || action.id === "delete" ? ("danger" as const) : undefined,
+        className: "cursor-pointer gap-2.5",
       }))}
       trigger={
         <DriveItemIconButton

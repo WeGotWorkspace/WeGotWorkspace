@@ -3,7 +3,7 @@ import { FilePreviewTextPane } from "@/file-preview/src/file-preview-text-pane";
 import "@/file-preview/src/file-preview-text-pane.css";
 
 const meta = {
-  title: "Shared/FilePreviewTextPane",
+  title: "UI/Patterns/File Preview Text Pane",
   component: FilePreviewTextPane,
   parameters: {
     layout: "centered",

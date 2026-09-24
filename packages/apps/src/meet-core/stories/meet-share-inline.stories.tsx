@@ -8,7 +8,7 @@ import {
 } from "@/meet-core/stories/meet-story-shared";
 
 const meta = {
-  title: "Apps/Meet/Components/MeetShareInline",
+  title: "Features/Meet/Components/MeetShareInline",
   component: MeetShareInline,
   parameters: meetStoryParameters(),
   render: (args) => (

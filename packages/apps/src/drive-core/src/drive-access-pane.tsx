@@ -48,7 +48,6 @@ export function DriveAccessPane({
       <header className="drive-access-layout__header">
         <ViewHeader
           title={controller.labels.accessTitle}
-          subtitle={controller.subtitle}
           sidebarOpen={sidebarOpen}
           onToggleSidebar={onToggleSidebar}
         />

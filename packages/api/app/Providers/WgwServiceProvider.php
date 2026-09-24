@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Auth\SabreUserProvider;
+use App\Services\Auth\SabreCredentialValidator;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Jmap\Blobs\JmapBlobService;
@@ -15,6 +17,7 @@ use App\Storage\WgwStorage;
 use App\Support\WgwDatabaseProbe;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwRuntimeEnvBridge;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 
 final class WgwServiceProvider extends ServiceProvider
@@ -54,6 +57,10 @@ final class WgwServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Auth::provider('sabre', function ($app): SabreUserProvider {
+            return new SabreUserProvider($app->make(SabreCredentialValidator::class));
+        });
+
         $this->app->make(WgwConfigMigrator::class)->migrateIfNeeded(clearConfig: false);
         WgwRuntimeEnvBridge::apply($this->app->make(WgwInstallConfig::class));
 

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
+import { IconButton } from "@/button/src/button";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
-import type { DocsCommentThread } from "../docs-comments-types";
+import type { DocsCommentAuthor, DocsCommentThread } from "../docs-comments-types";
 import {
   DocsCollabCardHeader,
   DocsCollabCardShell,
@@ -17,7 +18,7 @@ export type DocsCommentsThreadCardProps = {
   labels: DocsUILabels;
   currentUserId: string;
   active: boolean;
-  /** When false, hide composer / resolve / reactions (view-only). */
+  /** When false, hide composer / resolve / reaction picker (chips stay visible). */
   canMutate?: boolean;
   onSelect: () => void;
   onAddReply: (body: string) => void;
@@ -70,6 +71,10 @@ export function DocsCommentsThreadCard({
 
   const authorName = firstMessage?.author.name ?? thread.createdBy.name;
   const authorCreatedAt = firstMessage?.createdAt ?? thread.createdAt;
+  const reactionAuthors: DocsCommentAuthor[] = [
+    thread.createdBy,
+    ...thread.messages.map((message) => message.author),
+  ];
 
   return (
     <DocsCollabCardShell
@@ -87,18 +92,17 @@ export function DocsCommentsThreadCard({
         createdAt={authorCreatedAt}
         actions={
           isDraft || !canMutate ? null : (
-            <button
-              type="button"
-              className="docs-comments-thread-card__resolve"
-              aria-label={labels.commentsResolve}
+            <IconButton
+              label={labels.commentsResolve}
+              icon={<Check />}
+              size="md"
+              variant="outline"
+              severity="success"
               onClick={(event) => {
                 event.stopPropagation();
                 runExitAnimation(onResolve);
               }}
-            >
-              <Check className="docs-comments-thread-card__resolve-icon" aria-hidden />
-              Resolve
-            </button>
+            />
           )
         }
       />
@@ -116,11 +120,13 @@ export function DocsCommentsThreadCard({
 
       {firstMessage ? <p className="docs-comments-thread-card__body">{firstMessage.body}</p> : null}
 
-      {!isDraft && canMutate ? (
+      {!isDraft && (canMutate || (thread.reactions?.length ?? 0) > 0) ? (
         <DocsCollabReactions
           className="docs-comments-thread-card__reactions"
           reactions={thread.reactions}
+          authors={reactionAuthors}
           currentUserId={currentUserId}
+          canMutate={canMutate}
           onToggleReaction={onToggleReaction}
         />
       ) : null}

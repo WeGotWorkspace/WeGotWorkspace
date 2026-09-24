@@ -74,4 +74,18 @@ describe("FilePreview tile variant", () => {
     expect(screen.getByTestId("text-editor")).toBeTruthy();
     expect(lazy.getAttribute("data-mounted")).toBe("true");
   });
+
+  it("shows kind-icon fallback for empty docs content instead of a blank editor sheet", () => {
+    const { container } = render(
+      <FilePreview
+        variant="detail"
+        fileKind="doc"
+        fileName="Empty.md"
+        preview={{ kind: "docs", content: "" }}
+      />,
+    );
+
+    expect(screen.queryByTestId("text-editor")).toBeNull();
+    expect(container.querySelector(".file-preview__fallback")).toBeTruthy();
+  });
 });

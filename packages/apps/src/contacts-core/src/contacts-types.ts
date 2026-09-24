@@ -3,7 +3,7 @@ import type {
   ContactCard,
   ContactCardCreate,
   ContactCardPatch,
-} from "@wgw-api-generated/contacts-types";
+} from "@wgw/openapi-types/contacts-types";
 
 export type { AddressBook, ContactCard, ContactCardCreate, ContactCardPatch };
 

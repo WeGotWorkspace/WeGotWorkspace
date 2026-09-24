@@ -45,7 +45,7 @@ Collaborative markdown editing over artifact-based REST endpoints.
 `;
 
 const meta = {
-  title: "Shared/TextEditor/Docs collab",
+  title: "Features/Docs/TextEditor/Docs collab",
   component: DocsCollabWorkspace,
   tags: ["autodocs"],
   parameters: {

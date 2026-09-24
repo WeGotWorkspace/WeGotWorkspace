@@ -11,6 +11,8 @@ Issue-linked work needs **three** gates:
 2. **Issue AC** — this skill: each acceptance criterion verified with evidence.
 3. **Repo quality** — [developer/done-checklist.md](../developer/done-checklist.md) + [code-review](../code-review/SKILL.md): tests, done gates, policy, smells.
 
+Write the AC report in **English**. The Source issue and spec must also be English ([english-only.md](../developer/english-only.md)).
+
 Do not skip (2) or (3) after (1). Do not declare an issue done based on green CI alone if AC were never mapped.
 
 ## Goal vs Task / Epic modes
@@ -129,7 +131,7 @@ For every criterion, pick one primary method and record the planned check:
 | **Done gate** | Merge-ready / policy-level bar | `pnpm test:apps-done-gate`, `pnpm test:api-done-gate` |
 | **Code inspection** | Structural rule, no test yet | `rg pattern packages/apps/src/…`, read named files |
 | **OpenAPI / contract** | REST shape or endpoint | Diff `openapi.json`; feature test filter |
-| **Storybook / manual** | UI state, a11y, visual | Mock-tier story exists; `pnpm dev:ui` + steps from issue |
+| **Storybook / manual** | UI state, a11y, visual | Mock-tier story exists; `pnpm dev:storybook` + steps from issue |
 | **Docs** | README / skill update requested | File exists; section matches AC |
 
 Load domain depth when mapping: [testing](../testing/SKILL.md), [api](../api/SKILL.md), [apps-ui](../apps-ui/SKILL.md), [storybook](../storybook/SKILL.md).

@@ -99,6 +99,8 @@ final class WgwSchemaMigratorTest extends TestCase
             'drive_share_sessions',
             'collab_peers',
             'collab_messages',
+            'principal_peers',
+            'principal_messages',
             'search_documents',
             'search_terms',
             'jmap_contact_states',
@@ -110,6 +112,17 @@ final class WgwSchemaMigratorTest extends TestCase
             'addressbook_share_dismissals',
             'note_stars',
             'jmap_note_states',
+            'oauth_clients',
+            'oauth_auth_codes',
+            'oauth_access_tokens',
+            'oauth_refresh_tokens',
+            'oauth_device_codes',
+            'mcp_audit_events',
+            'mcp_sessions',
+            'docs_thread_index',
+            'notifications',
+            'notification_deliveries',
+            'push_subscriptions',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
@@ -118,7 +131,14 @@ final class WgwSchemaMigratorTest extends TestCase
         }
 
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'owner_user'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'admitted'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'browser_id'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('drive_share_grants', 'grantee_group'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('chat_channel_meta', 'default_for_group'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
+        // Format-at-edge notify facts; without this column NotifyListener inserts are
+        // swallowed by EventDispatch and chat/docs/calendar inbox rows never appear.
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('notifications', 'data'));
     }
 
     private static function legacyAppMigrationVersion(\PDO $pdo): int

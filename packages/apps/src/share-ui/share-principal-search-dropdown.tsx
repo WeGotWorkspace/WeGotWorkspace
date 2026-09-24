@@ -94,6 +94,7 @@ export function SharePrincipalSearchDropdown({
                   <SharePrincipalMark
                     principalType={entry.principalType}
                     displayName={entry.displayName}
+                    principalId={entry.principalType === "user" ? entry.id : undefined}
                   />
                   <span className="share-principal-search-dropdown__name">{entry.displayName}</span>
                   {entry.meta ? (

@@ -32,6 +32,7 @@ const DEFAULT_DATA: SettingsUIData = {
     smtpSecurity: "ssl",
   },
   logoutUrl: "/logout",
+  mcpEnabled: true,
 };
 
 /** Aligns chrome session with settings `data.user` so sidebar footers (session-driven) match profile mocks. */

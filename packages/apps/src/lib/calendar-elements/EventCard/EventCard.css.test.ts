@@ -88,15 +88,8 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(css).toMatch(
       /@container\s*\(max-height:\s*31px\)[\s\S]*padding-block:\s*var\(\s*--_lc-event-card-heading-padding-block,\s*0\.375rem\s*\)/,
     );
-    expect(css).toMatch(
-      /@container\s*\(max-height:\s*47px\)[\s\S]*\.event-card-recurring-icon-wrap[\s\S]*--_lc-event-recurring-icon-size:\s*12px/,
-    );
-    expect(css).toMatch(
-      /@container\s*\(max-height:\s*31px\)[\s\S]*\.event-card-recurring-icon-wrap[\s\S]*--_lc-event-recurring-icon-size:\s*11px/,
-    );
-    expect(css).toMatch(
-      /\.event-card-recurring-icon-wrap\s*\{[\s\S]*display:\s*var\(\s*--_lc-event-card-recurring-icon-display,\s*inline-flex\s*\)/,
-    );
+    expect(css).not.toMatch(/event-card-recurring-icon/);
+    expect(css).not.toMatch(/--_lc-event-card-recurring-icon-display/);
     expect(css).toMatch(
       /\.event-card-shell::after[\s\S]*display:\s*var\(\s*--_lc-event-card-accent-bar-display,\s*block\s*\)/,
     );
@@ -158,6 +151,12 @@ describe("EventCard / EventBase interaction CSS", () => {
     expect(css).toMatch(/\.event\.event--dragging[\s\S]*cursor:\s*grabbing/);
   });
 
+  it("does not dash the accent bar on task due overlay cards", () => {
+    const css = readCss("EventCard.css");
+    expect(css).not.toMatch(/:host\(\[data-overlay="task"\]\)/);
+    expect(css).not.toMatch(/repeating-linear-gradient/);
+  });
+
   it("uses a dashed accent edge and lighter fill for awaiting-reply RSVP", () => {
     const css = readCss("EventCard.css");
     expect(css).toMatch(
@@ -199,5 +198,12 @@ describe("EventCard event identity", () => {
   it("reflects the working-set map key as data-event-id", () => {
     const source = readFileSync(join(here, "EventCard.ts"), "utf8");
     expect(source).toMatch(/attribute:\s*"data-event-id",\s*reflect:\s*true/);
+  });
+
+  it("keeps recurring for SR announcement but does not render a corner icon", () => {
+    const source = readFileSync(join(here, "EventCard.ts"), "utf8");
+    expect(source).toMatch(/recurring\s*=\s*false/);
+    expect(source).toMatch(/Recurring event\./);
+    expect(source).not.toMatch(/renderRecurringIcon|event-card-recurring-icon/);
   });
 });

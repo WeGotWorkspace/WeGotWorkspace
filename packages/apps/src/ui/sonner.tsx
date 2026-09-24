@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { ComponentProps, CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Toaster as Sonner } from "sonner";
@@ -24,7 +24,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
   );
 };
 
-function AppToasterSurface() {
+function AppToasterSurface({ containerAriaLabel }: { containerAriaLabel: string }) {
   const safeOffset = {
     bottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
     right: "max(0.75rem, env(safe-area-inset-right, 0px))",
@@ -33,6 +33,7 @@ function AppToasterSurface() {
 
   return (
     <Toaster
+      containerAriaLabel={containerAriaLabel}
       position="bottom-right"
       offset={safeOffset}
       mobileOffset={safeOffset}
@@ -60,6 +61,7 @@ function AppToasterSurface() {
  * viewport (Storybook/canvas transforms otherwise pin toasts to the story frame).
  */
 export function AppToaster() {
+  const instanceId = useId();
   const [container, setContainer] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -70,7 +72,10 @@ export function AppToaster() {
     return null;
   }
 
-  return createPortal(<AppToasterSurface />, container);
+  return createPortal(
+    <AppToasterSurface containerAriaLabel={`App notifications ${instanceId}`} />,
+    container,
+  );
 }
 
 export { Toaster };

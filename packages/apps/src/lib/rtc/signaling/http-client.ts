@@ -11,18 +11,22 @@ export type HttpSignalingJoinInput = {
   room: string;
   name: string;
   peerId?: string;
+  /** Guest re-join (admit rename) must keep the same owner marker. */
+  sessionKey?: string;
 };
 
 export type HttpSignalingJoinResult = {
   peerId?: string;
   sessionKey?: string | null;
-  peers: Array<{ id: string; name: string }>;
+  peers: Array<{ id: string; name: string; user?: string }>;
 };
 
 export type HttpSignalingPollInput = {
   room: string;
   peerId: string;
   since?: number;
+  /** Roster signature from a previous poll; lets the server answer 204 when nothing changed. */
+  sig?: string;
   sessionKey?: string;
 };
 
@@ -34,9 +38,24 @@ export type HttpSignalingPollMessage = {
 };
 
 export type HttpSignalingPollResult = {
-  peers: Array<{ id: string; name: string }>;
+  peers: Array<{ id: string; name: string; user?: string }>;
   messages: HttpSignalingPollMessage[];
+  /** Echo via `sig` on the next poll to opt into 204 "nothing new" responses. */
+  rosterSig?: string;
 };
+
+/** 204 "nothing new" poll response: roster unchanged and no pending messages. */
+export type HttpSignalingPollUnchanged = {
+  unchanged: true;
+};
+
+export type HttpSignalingPollResponse = HttpSignalingPollResult | HttpSignalingPollUnchanged;
+
+export function isUnchangedPollResponse(
+  response: HttpSignalingPollResponse,
+): response is HttpSignalingPollUnchanged {
+  return "unchanged" in response && response.unchanged === true;
+}
 
 export type HttpSignalingSendInput = {
   room: string;
@@ -62,6 +81,8 @@ export type HttpSignalingClientOptions = {
   getAuth?: () => HttpSignalingAuth;
   /** Collab API uses `peerId` instead of `from` on send. */
   sendFromField?: "from" | "peerId";
+  /** Meet: stable per-browser token so a reload evicts the leftover peer. */
+  getBrowserId?: () => string | undefined;
 };
 
 export class HttpSignalingClient {
@@ -75,12 +96,15 @@ export class HttpSignalingClient {
 
   private readonly sendFromField: "from" | "peerId";
 
+  private readonly getBrowserId: (() => string | undefined) | undefined;
+
   constructor(options: HttpSignalingClientOptions) {
     this.channel = options.channel;
     this.apiBase = options.apiBase.replace(/\/$/, "");
     this.fetchImpl = options.fetchImpl ?? ((url, init) => fetch(url, init));
     this.getAuth = options.getAuth ?? (() => ({}));
     this.sendFromField = options.sendFromField ?? "from";
+    this.getBrowserId = options.getBrowserId;
   }
 
   private roomUrl(room: string, suffix: string): string {
@@ -137,19 +161,13 @@ export class HttpSignalingClient {
     return this.parseJsonResponse<T>(res, action, text);
   }
 
-  private async get<T>(action: string, url: string): Promise<T> {
-    rtcLog({ channel: this.channel }, "signal-request", { action, requestUrl: url });
-    const res = await this.fetchImpl(url, { method: "GET", headers: this.headers() });
-    const text = await res.text();
-    return this.parseJsonResponse<T>(res, action, text);
-  }
-
   private async del<T>(action: string, url: string, body?: Record<string, unknown>): Promise<T> {
     rtcLog({ channel: this.channel }, "signal-request", { action, requestUrl: url });
     const res = await this.fetchImpl(url, {
       method: "DELETE",
       headers: this.headers(),
       body: body ? JSON.stringify(body) : undefined,
+      keepalive: true,
     });
     const text = await res.text();
     return this.parseJsonResponse<T>(res, action, text);
@@ -161,24 +179,39 @@ export class HttpSignalingClient {
       name: input.name,
     };
     if (input.peerId) body.peerId = input.peerId;
+    const browserId = this.getBrowserId?.();
+    if (browserId) body.browserId = browserId;
+    const sessionKey = input.sessionKey ?? this.getAuth().sessionKey;
+    if (sessionKey) body.sessionKey = sessionKey;
     return this.post<HttpSignalingJoinResult>(
       "join",
       this.roomUrl(input.room, "/participants"),
-      this.withSessionKey(body),
+      body,
     );
   }
 
-  poll(input: HttpSignalingPollInput): Promise<HttpSignalingPollResult> {
+  async poll(input: HttpSignalingPollInput): Promise<HttpSignalingPollResponse> {
     const params = new URLSearchParams();
     params.set("peerId", input.peerId);
     if (input.since !== undefined) params.set("since", String(input.since));
+    if (input.sig) params.set("sig", input.sig);
     const sessionKey = input.sessionKey ?? this.getAuth().sessionKey;
     if (sessionKey) params.set("sessionKey", sessionKey);
 
-    return this.get<HttpSignalingPollResult>(
-      "poll",
-      `${this.roomUrl(input.room, "/events")}?${params.toString()}`,
-    );
+    const url = `${this.roomUrl(input.room, "/events")}?${params.toString()}`;
+    rtcLog({ channel: this.channel }, "signal-request", { action: "poll", requestUrl: url });
+    const res = await this.fetchImpl(url, { method: "GET", headers: this.headers() });
+    if (res.status === 204) {
+      rtcLog({ channel: this.channel }, "signal-response", {
+        action: "poll",
+        status: res.status,
+        ok: true,
+        bytes: 0,
+      });
+      return { unchanged: true };
+    }
+    const text = await res.text();
+    return this.parseJsonResponse<HttpSignalingPollResult>(res, "poll", text);
   }
 
   send(input: HttpSignalingSendInput): Promise<unknown> {

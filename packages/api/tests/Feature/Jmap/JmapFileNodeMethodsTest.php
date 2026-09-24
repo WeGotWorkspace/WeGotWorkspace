@@ -6,6 +6,7 @@ namespace Tests\Feature\Jmap;
 
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Models\JmapFileNode;
+use App\Services\Drive\DocAttachmentsService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\JmapCapabilities;
 use App\Storage\WgwStorage;
@@ -181,6 +182,44 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $disk = app(WgwStorage::class)->files();
         $this->assertTrue($disk->directoryExists('users/bob/Projects'));
         $this->assertSame('file body', $disk->get('users/bob/notes.txt'));
+
+        // Docs home browse is unified-search-backed; FileNode writes must index.
+        $this->withBearer($this->userBearerToken())
+            ->get('/api/v1/search/results?'.http_build_query([
+                'sources' => ['file'],
+                'extensions' => ['txt'],
+                'limit' => 50,
+            ]))
+            ->assertOk()
+            ->assertJsonFragment(['sourceKey' => 'users/bob/notes.txt', 'title' => 'notes.txt']);
+    }
+
+    public function test_set_create_indexes_markdown_for_docs_home_browse(): void
+    {
+        $nodes = $this->getAll();
+        $homeId = $this->nodeIdByName($nodes, 'bob');
+        $blobId = $this->uploadBlob("# Hello\n", 'text/markdown');
+
+        $this->jmap([
+            ['FileNode/set', ['accountId' => 'bob', 'create' => [
+                'f0' => ['parentId' => $homeId, 'name' => 'Untitled.md', 'blobId' => $blobId],
+            ]], 'c0'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.created.f0.name', 'Untitled.md');
+
+        $this->withBearer($this->userBearerToken())
+            ->get('/api/v1/search/results?'.http_build_query([
+                'sources' => ['file'],
+                'extensions' => ['md', 'markdown', 'txt'],
+                'categories' => ['document'],
+                'limit' => 50,
+            ]))
+            ->assertOk()
+            ->assertJsonFragment([
+                'sourceKey' => 'users/bob/Untitled.md',
+                'title' => 'Untitled.md',
+                'extension' => 'md',
+                'category' => 'document',
+            ]);
     }
 
     public function test_rename_keeps_the_node_id_and_reports_exactly_one_update(): void
@@ -571,7 +610,10 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $disk = app(WgwStorage::class)->files();
         $disk->put('users/bob/dav-upload.bin', 'dav bytes');
 
-        $plugin = new FileNodeIndexPlugin(app(FileNodeIndexService::class));
+        $plugin = new FileNodeIndexPlugin(
+            app(FileNodeIndexService::class),
+            app(DocAttachmentsService::class),
+        );
         $plugin->afterWriteMethod(
             new SabreRequest('PUT', '/files/users/bob/dav-upload.bin'),
             new SabreResponse(201),

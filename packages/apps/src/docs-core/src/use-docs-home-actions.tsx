@@ -34,7 +34,7 @@ type DocsTrashMoveSnapshot = {
 
 export type DocsHomeRenameState = { id: string; extension: string };
 export type DocsHomeMoveState = { ids: string[] };
-export type DocsHomeDeleteState = { ids: string[] };
+export type DocsHomeDeleteState = { ids: string[]; permanent?: boolean };
 
 type UseDocsHomeActionsArgs = {
   /** Live drive operations (star/download/rename/move/trash). Undefined in mock-only shells. */
@@ -51,6 +51,8 @@ type UseDocsHomeActionsArgs = {
   onAvailabilityChanged?: () => void;
   /** Refresh the home list after a mutation that changes the listing. */
   reload: () => void;
+  /** When true, delete confirms permanently remove files instead of moving to Trash. */
+  inTrashView?: boolean;
 };
 
 export function useDocsHomeActions({
@@ -61,6 +63,7 @@ export function useDocsHomeActions({
   offlineUsername = null,
   onAvailabilityChanged,
   reload,
+  inTrashView = false,
 }: UseDocsHomeActionsArgs) {
   const { show, showError } = useAppToast();
   const showMutationError = useCallback(
@@ -83,21 +86,30 @@ export function useDocsHomeActions({
   const groupRootNames = useMemo(() => new Set(groupRoots), [groupRoots]);
 
   const [starredPaths, setStarredPaths] = useState<Set<string>>(new Set());
+  const [starsReady, setStarsReady] = useState(!operations);
   const [renameState, setRenameState] = useState<DocsHomeRenameState | null>(null);
   const [renameName, setRenameName] = useState("");
   const [moveState, setMoveState] = useState<DocsHomeMoveState | null>(null);
   const [deleteState, setDeleteState] = useState<DocsHomeDeleteState | null>(null);
 
   useEffect(() => {
-    if (!operations) return;
+    if (!operations) {
+      setStarsReady(true);
+      return;
+    }
+    setStarsReady(false);
     const controller = new AbortController();
     void operations
       .listStars({ signal: controller.signal })
       .then((paths) => {
         if (controller.signal.aborted) return;
         setStarredPaths(new Set(paths.map((path) => normalizeApiVirtualPath(path))));
+        setStarsReady(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setStarsReady(true);
+      });
     return () => controller.abort();
   }, [operations]);
 
@@ -117,32 +129,48 @@ export function useDocsHomeActions({
       const file = fileById(id);
       const apiPath = file?.apiPath ? normalizeApiVirtualPath(file.apiPath) : null;
       if (!apiPath) return;
-      const next = !starredPaths.has(apiPath);
+      const beforeStarred = starredPaths.has(apiPath);
+      const next = !beforeStarred;
+      const toastIcon = next ? (
+        <Star className="size-4" fill="currentColor" />
+      ) : (
+        <StarOff className="size-4" />
+      );
       setStarredPaths((prev) => {
         const updated = new Set(prev);
         if (next) updated.add(apiPath);
         else updated.delete(apiPath);
         return updated;
       });
-      show(next ? "Starred" : "Unstarred", {
-        icon: next ? (
-          <Star className="size-4" fill="currentColor" />
-        ) : (
-          <StarOff className="size-4" />
-        ),
-      });
-      if (!operations) return;
-      void operations.setStar({ path: apiPath, starred: next }).catch(() => {
+      // Match Drive: offline/mock → regular toast; live → undoable toast only.
+      if (!operations) {
+        show(next ? "Starred" : "Unstarred", { icon: toastIcon });
+        return;
+      }
+      const rollback = () => {
         setStarredPaths((prev) => {
           const updated = new Set(prev);
-          if (next) updated.delete(apiPath);
-          else updated.add(apiPath);
+          if (beforeStarred) updated.add(apiPath);
+          else updated.delete(apiPath);
           return updated;
         });
-        showError("Could not update star.");
+      };
+      queueMutation({
+        key: `docs:star:${id}`,
+        toastMessage: next ? "Starred" : "Unstarred",
+        icon: toastIcon,
+        execute: async (signal) => {
+          await operations.setStar({ path: apiPath, starred: next }, { signal });
+        },
+        undo: rollback,
+        onError: () => {
+          rollback();
+          showError("Could not update star.");
+        },
+        undoToastMessage: "Star change undone.",
       });
     },
-    [fileById, operations, show, showError, starredPaths],
+    [fileById, operations, queueMutation, show, showError, starredPaths],
   );
 
   const onDownload = useCallback(
@@ -228,13 +256,19 @@ export function useDocsHomeActions({
     [closeMove, fileById, groupRootNames, moveState, operations, reload, show, showError, username],
   );
 
-  const onTrash = useCallback((file: DriveFile) => setDeleteState({ ids: [file.id] }), []);
+  const onTrash = useCallback(
+    (file: DriveFile) => setDeleteState({ ids: [file.id], permanent: inTrashView }),
+    [inTrashView],
+  );
   const closeDelete = useCallback(() => setDeleteState(null), []);
 
-  const requestDeleteSelected = useCallback((ids: string[]) => {
-    if (ids.length === 0) return;
-    setDeleteState({ ids });
-  }, []);
+  const requestDeleteSelected = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
+      setDeleteState({ ids, permanent: inTrashView });
+    },
+    [inTrashView],
+  );
 
   const confirmTrash = useCallback(() => {
     const state = deleteState;
@@ -252,10 +286,6 @@ export function useDocsHomeActions({
       return next;
     });
 
-    let completed = false;
-    let offlineSnapshots: DocsTrashUndoSnapshot[] = [];
-    let trashSnapshots: DocsTrashMoveSnapshot[] = [];
-
     const rollbackUi = () => {
       setHiddenFileIds((prev) => {
         const next = new Set(prev);
@@ -264,6 +294,32 @@ export function useDocsHomeActions({
       });
       reload();
     };
+
+    if (state.permanent) {
+      runQueuedBatchAction({
+        queueMutation,
+        key: `docs:delete:${ids.slice().sort().join(",")}`,
+        toastMessage:
+          rows.length === 1 ? `Deleted “${rows[0]!.title}”` : `Deleted ${rows.length} files`,
+        icon: <Trash2 className="size-4" />,
+        undoToastMessage: "Delete undone.",
+        rollback: rollbackUi,
+        executeImmediately: true,
+        execute: async (signal) => {
+          await operations.deleteItems(
+            rows.map((file) => normalizeApiVirtualPath(file.apiPath!)),
+            { signal },
+          );
+          reload();
+          onAvailabilityChanged?.();
+        },
+      });
+      return;
+    }
+
+    let completed = false;
+    let offlineSnapshots: DocsTrashUndoSnapshot[] = [];
+    let trashSnapshots: DocsTrashMoveSnapshot[] = [];
 
     const revertTrash = async () => {
       if (offlineUsername && offlineSnapshots.length > 0) {
@@ -355,6 +411,13 @@ export function useDocsHomeActions({
         return apiPath ? starredPaths.has(apiPath) : false;
       });
 
+      const previousPaths = new Set(starredPaths);
+      const toastIcon = nextValue ? (
+        <Star className="size-4" fill="currentColor" />
+      ) : (
+        <StarOff className="size-4" />
+      );
+
       setStarredPaths((prev) => {
         const updated = new Set(prev);
         for (const file of rows) {
@@ -364,43 +427,41 @@ export function useDocsHomeActions({
         }
         return updated;
       });
-      show(nextValue ? "Starred" : "Unstarred", {
-        icon: nextValue ? (
-          <Star className="size-4" fill="currentColor" />
-        ) : (
-          <StarOff className="size-4" />
-        ),
-      });
-      if (!operations) return;
-      void (async () => {
-        try {
+
+      if (!operations) {
+        show(nextValue ? "Starred" : "Unstarred", { icon: toastIcon });
+        return;
+      }
+
+      runQueuedBatchAction({
+        queueMutation,
+        key: `docs:batch-star:${ids.slice().sort().join(",")}`,
+        toastMessage: nextValue ? "Starred" : "Unstarred",
+        icon: toastIcon,
+        execute: async (signal) => {
           await Promise.all(
             rows.map((file) =>
-              operations.setStar({
-                path: normalizeApiVirtualPath(file.apiPath!),
-                starred: nextValue,
-              }),
+              operations.setStar(
+                {
+                  path: normalizeApiVirtualPath(file.apiPath!),
+                  starred: nextValue,
+                },
+                { signal },
+              ),
             ),
           );
-        } catch {
-          setStarredPaths((prev) => {
-            const updated = new Set(prev);
-            for (const file of rows) {
-              const apiPath = normalizeApiVirtualPath(file.apiPath!);
-              if (nextValue) updated.delete(apiPath);
-              else updated.add(apiPath);
-            }
-            return updated;
-          });
-          showError("Could not update star.");
-        }
-      })();
+        },
+        rollback: () => setStarredPaths(previousPaths),
+        undoToastMessage: "Star changes undone.",
+      });
     },
-    [fileById, operations, show, showError, starredPaths],
+    [fileById, operations, queueMutation, show, starredPaths],
   );
 
   return {
     starred,
+    starredPaths,
+    starsReady,
     fileById,
     hiddenFileIds,
     undoLatest,

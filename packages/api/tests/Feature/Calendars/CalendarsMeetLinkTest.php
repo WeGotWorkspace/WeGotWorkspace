@@ -31,9 +31,9 @@ final class CalendarsMeetLinkTest extends WgwDatabaseTestCase
 
     private const ORIGIN = 'https://workspace.test';
 
-    private const ROOM = 'abcd-efgh-ijkl';
+    private const ROOM = 'abcd-efgh-jklm';
 
-    private const OTHER_ROOM = 'mnop-qrst-uvwx';
+    private const OTHER_ROOM = 'mnpq-rstu-vwxy';
 
     protected function setUp(): void
     {
@@ -375,7 +375,7 @@ final class CalendarsMeetLinkTest extends WgwDatabaseTestCase
 
     private function guestHref(string $room): string
     {
-        return self::ORIGIN.'/meet/guest?room='.$room;
+        return self::ORIGIN.'/meet?room='.$room;
     }
 
     private function assertConferenceWriteSet(string $ics, string $href): void

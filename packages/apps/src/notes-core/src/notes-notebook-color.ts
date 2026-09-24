@@ -1,16 +1,28 @@
 /** Matches provisioned General (`CalendarColorPalette::NOTE_GENERAL`). */
 export const DEFAULT_NOTEBOOK_COLOR = "#14b8a6";
 
-/** Same hexes as `--color-ink` / `--color-cream` in `styles.css`. */
-export const NOTES_INK_HEX = "#042a22";
-export const NOTES_CREAM_HEX = "#ffffff";
+/** Same hexes as `--color-we-got-dark` / `--color-we-got-soft` (We Got Dark / Soft). */
+export const NOTES_INK_HEX = "#003311";
+export const NOTES_CREAM_HEX = "#fff5e9";
 
 /**
  * Calendar event-card light wash (`surfaceTint(color, 11)` in srgb).
- * Paper card (`--note-detail-sheet-bg`) uses the same percentage in oklab
- * on cream — a very light notebook tint, not the full collection color.
+ * Paper card (`--paper-sheet-bg`) uses the same percentage in **oklab**
+ * on the workspace surface — a very light notebook tint that keeps
+ * chroma/hue (oklch cylindrical mix into warm Soft reads peach). The
+ * tint is published as `oklch(from #hex l c h)` so other oklch mixes
+ * (tags, accent-strong) keep the notebook hue (a raw hex drops it).
  */
 export const NOTES_DETAIL_TINT_PERCENT = 11;
+
+const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+
+/** Raw notebook hex → relative OKLCH so `color-mix(in oklch, …)` keeps the hue. */
+export function notebookTintForCascade(tint: string): string {
+  const trimmed = tint.trim();
+  if (HEX_COLOR.test(trimmed)) return `oklch(from ${trimmed} l c h)`;
+  return trimmed;
+}
 
 export function notebookDotColor(notebook?: { color?: string | null } | null): string {
   const color = notebook?.color?.trim();
@@ -63,10 +75,10 @@ function contrastRatio(background: string, foreground: string): number {
  * from workspace CSS (ink mixed onto the light sheet).
  */
 export function notebookContrastFg(background: string): string {
-  if (!/^#[0-9A-F]{6}$/i.test(background.trim())) return "var(--color-ink)";
+  if (!/^#[0-9A-F]{6}$/i.test(background.trim())) return "var(--color-we-got-dark)";
   const ink = contrastRatio(background, NOTES_INK_HEX);
   const cream = contrastRatio(background, NOTES_CREAM_HEX);
-  return cream > ink ? "var(--color-cream)" : "var(--color-ink)";
+  return cream > ink ? "var(--color-we-got-soft)" : "var(--color-we-got-dark)";
 }
 
 export type NotesDetailTintStyle = {
@@ -78,7 +90,7 @@ export type NotesDetailTintStyle = {
 export function notesDetailTintStyle(tint: string | undefined): NotesDetailTintStyle | undefined {
   if (!tint) return undefined;
   return {
-    ["--notes-detail-tint"]: tint,
+    ["--notes-detail-tint"]: notebookTintForCascade(tint),
     // Checkmark sits on a full-accent checkbox, so pick ink vs cream from the hex.
     ["--notes-detail-check-fg"]: notebookContrastFg(tint),
   };

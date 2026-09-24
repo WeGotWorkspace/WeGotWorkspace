@@ -16,22 +16,28 @@ export {
   type DocsHomeFetcher,
 } from "@/docs-core/src/use-docs-home-list";
 export {
+  applyDocsHomeGroupDisplayNames,
+  buildDocsFolderPickerRootLabels,
   buildDocsHomeDrives,
   collectGroupRoots,
+  DOCS_DRIVE_UI_PERSONAL_PATH,
+  docsHomeGroupSlugFromPrincipalId,
   mergeGroupRoots,
   newDocumentApiPath,
   nextUntitledMarkdownName,
   fallbackUntitledMarkdownName,
+  resolveDocsDriveLabel,
   resolveNewDocumentName,
   type DocsHomeDrive,
+  type DocsHomeGroupRoot,
 } from "@/docs-core/src/docs-home-drives";
 export { DOCS_EDITOR_EXTENSIONS } from "@/drive-core/src/drive-models";
 export {
   docsApiPathFromSearch,
   docsHrefFromApiPath,
   docsSearchFromApiPath,
-  openDocsFileInNewWindow,
   parseDocsRouteSearch,
   validateDocsRouteSearch,
   type DocsRouteSearch,
 } from "@/docs-core/src/docs-route-search";
+export { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";

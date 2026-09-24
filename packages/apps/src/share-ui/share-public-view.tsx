@@ -73,7 +73,7 @@ export function SharePublicView({
           <Input
             id="share-password"
             name="password"
-            type="password"
+            variant="password"
             value={password}
             autoComplete="current-password"
             placeholder="••••••••"
@@ -88,7 +88,7 @@ export function SharePublicView({
             type="submit"
             label={submitting ? shareLabels.publicLinkOpeningTitle : shareLabels.publicLinkContinue}
             variant="primary"
-            size="lg"
+            size="xl"
             pill
             disabled={submitting || !password.trim()}
             className="login-screen__submit"

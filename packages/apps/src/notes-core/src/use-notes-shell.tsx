@@ -181,11 +181,19 @@ export function useNotesShell({
   }, [notes, setStarred]);
 
   useEffect(() => {
-    const next: Record<string, boolean> = {};
-    for (const note of notes) {
-      if (note.archived) next[note.id] = true;
-    }
-    setArchived(next);
+    setArchived((prev) => {
+      const next: Record<string, boolean> = {};
+      for (const note of notes) {
+        if (note.archived) next[note.id] = true;
+      }
+      // Keep optimistic archive flags when a stale bootstrap refresh has not
+      // caught up on the row yet (same pattern as mergeBootstrapNotesPreservingOptimistic).
+      for (const [id, value] of Object.entries(prev)) {
+        if (!value || next[id]) continue;
+        if (notes.some((note) => note.id === id)) next[id] = true;
+      }
+      return next;
+    });
   }, [notes, setArchived]);
 
   const viewLabel = useMemo(() => {

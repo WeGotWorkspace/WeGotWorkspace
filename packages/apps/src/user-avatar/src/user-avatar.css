@@ -1,10 +1,143 @@
 @import "../../styles.css" reference;
 
 .user-avatar {
+  /*
+   * Identity text SST — shared by sidebar footer, share rows, and any labeled
+   * avatar. Keep name→subtitle gap on these tokens; do not restyle via CardRow.
+   */
+  --user-avatar-text-gap: 0;
+  --user-avatar-name-leading: 1.1;
+  --user-avatar-subtitle-leading: 1.25;
+  /*
+   * Per-user palette: same intensity as default outline-active marks and
+   * docs-collab connecting chips (soft wash + muted stroke, not full-sat rings).
+   * Wash ~14% hue→cream; border ~38% hue→transparent; fg hue→ink for glyphs.
+   */
+  --user-avatar-amber: #f59e0b;
+  --user-avatar-amber-bg: color-mix(
+    in oklab,
+    var(--user-avatar-amber) 14%,
+    var(--color-we-got-soft)
+  );
+  --user-avatar-amber-border: color-mix(in oklab, var(--user-avatar-amber) 38%, transparent);
+  --user-avatar-amber-fg: color-mix(
+    in oklab,
+    var(--user-avatar-amber) 32%,
+    var(--color-we-got-dark)
+  );
+  --user-avatar-cyan: #06b6d4;
+  --user-avatar-cyan-bg: color-mix(in oklab, var(--user-avatar-cyan) 14%, var(--color-we-got-soft));
+  --user-avatar-cyan-border: color-mix(in oklab, var(--user-avatar-cyan) 38%, transparent);
+  --user-avatar-cyan-fg: color-mix(in oklab, var(--user-avatar-cyan) 32%, var(--color-we-got-dark));
+  --user-avatar-orange: #f97316;
+  --user-avatar-orange-bg: color-mix(
+    in oklab,
+    var(--user-avatar-orange) 14%,
+    var(--color-we-got-soft)
+  );
+  --user-avatar-orange-border: color-mix(in oklab, var(--user-avatar-orange) 38%, transparent);
+  --user-avatar-orange-fg: color-mix(
+    in oklab,
+    var(--user-avatar-orange) 32%,
+    var(--color-we-got-dark)
+  );
+  --user-avatar-violet: #8b5cf6;
+  --user-avatar-violet-bg: color-mix(
+    in oklab,
+    var(--user-avatar-violet) 14%,
+    var(--color-we-got-soft)
+  );
+  --user-avatar-violet-border: color-mix(in oklab, var(--user-avatar-violet) 38%, transparent);
+  --user-avatar-violet-fg: color-mix(
+    in oklab,
+    var(--user-avatar-violet) 32%,
+    var(--color-we-got-dark)
+  );
+  --user-avatar-rose: #f43f5e;
+  --user-avatar-rose-bg: color-mix(in oklab, var(--user-avatar-rose) 14%, var(--color-we-got-soft));
+  --user-avatar-rose-border: color-mix(in oklab, var(--user-avatar-rose) 38%, transparent);
+  --user-avatar-rose-fg: color-mix(in oklab, var(--user-avatar-rose) 32%, var(--color-we-got-dark));
+  --user-avatar-lime: #84cc16;
+  --user-avatar-lime-bg: color-mix(in oklab, var(--user-avatar-lime) 14%, var(--color-we-got-soft));
+  --user-avatar-lime-border: color-mix(in oklab, var(--user-avatar-lime) 38%, transparent);
+  --user-avatar-lime-fg: color-mix(in oklab, var(--user-avatar-lime) 32%, var(--color-we-got-dark));
+  --user-avatar-teal: #14b8a6;
+  --user-avatar-teal-bg: color-mix(in oklab, var(--user-avatar-teal) 14%, var(--color-we-got-soft));
+  --user-avatar-teal-border: color-mix(in oklab, var(--user-avatar-teal) 38%, transparent);
+  --user-avatar-teal-fg: color-mix(in oklab, var(--user-avatar-teal) 32%, var(--color-we-got-dark));
+  --user-avatar-sky: #0ea5e9;
+  --user-avatar-sky-bg: color-mix(in oklab, var(--user-avatar-sky) 14%, var(--color-we-got-soft));
+  --user-avatar-sky-border: color-mix(in oklab, var(--user-avatar-sky) 38%, transparent);
+  --user-avatar-sky-fg: color-mix(in oklab, var(--user-avatar-sky) 32%, var(--color-we-got-dark));
   display: flex;
   align-items: center;
-  gap: var(--user-avatar-gap, 0.5rem);
+  gap: var(--user-avatar-gap, 0.625rem);
   min-width: 0;
+}
+
+.user-avatar--color-amber {
+  --user-avatar-tile-bg: var(--user-avatar-amber-bg);
+  --user-avatar-tile-border: var(--user-avatar-amber-border);
+  --user-avatar-tile-fg: var(--user-avatar-amber-fg);
+}
+
+.user-avatar--color-cyan {
+  --user-avatar-tile-bg: var(--user-avatar-cyan-bg);
+  --user-avatar-tile-border: var(--user-avatar-cyan-border);
+  --user-avatar-tile-fg: var(--user-avatar-cyan-fg);
+}
+
+.user-avatar--color-orange {
+  --user-avatar-tile-bg: var(--user-avatar-orange-bg);
+  --user-avatar-tile-border: var(--user-avatar-orange-border);
+  --user-avatar-tile-fg: var(--user-avatar-orange-fg);
+}
+
+.user-avatar--color-violet {
+  --user-avatar-tile-bg: var(--user-avatar-violet-bg);
+  --user-avatar-tile-border: var(--user-avatar-violet-border);
+  --user-avatar-tile-fg: var(--user-avatar-violet-fg);
+}
+
+.user-avatar--color-rose {
+  --user-avatar-tile-bg: var(--user-avatar-rose-bg);
+  --user-avatar-tile-border: var(--user-avatar-rose-border);
+  --user-avatar-tile-fg: var(--user-avatar-rose-fg);
+}
+
+.user-avatar--color-lime {
+  --user-avatar-tile-bg: var(--user-avatar-lime-bg);
+  --user-avatar-tile-border: var(--user-avatar-lime-border);
+  --user-avatar-tile-fg: var(--user-avatar-lime-fg);
+}
+
+.user-avatar--color-teal {
+  --user-avatar-tile-bg: var(--user-avatar-teal-bg);
+  --user-avatar-tile-border: var(--user-avatar-teal-border);
+  --user-avatar-tile-fg: var(--user-avatar-teal-fg);
+}
+
+.user-avatar--color-sky {
+  --user-avatar-tile-bg: var(--user-avatar-sky-bg);
+  --user-avatar-tile-border: var(--user-avatar-sky-border);
+  --user-avatar-tile-fg: var(--user-avatar-sky-fg);
+}
+
+/* Colored marks keep outline radius/1px stroke; palette retints wash/fg/border. */
+.user-avatar--colored {
+  --user-avatar-bg: var(--user-avatar-tile-bg);
+  --user-avatar-fg: var(--user-avatar-tile-fg);
+  --user-avatar-border: var(--user-avatar-tile-border);
+  --user-avatar-hover-bg: color-mix(
+    in oklab,
+    var(--user-avatar-tile-border) 18%,
+    var(--user-avatar-tile-bg)
+  );
+}
+
+.user-avatar__mark-wrap {
+  position: relative;
+  flex-shrink: 0;
 }
 
 .user-avatar__mark {
@@ -14,13 +147,73 @@
   flex-shrink: 0;
   overflow: hidden;
   box-sizing: border-box;
-  border-radius: 9999px;
+  /* Match outline IconButton radius (global `--control-radius`). */
+  border-radius: var(--user-avatar-radius, var(--control-radius));
   font-weight: 500;
-  background-color: var(--user-avatar-bg, color-mix(in oklab, var(--color-ink) 12%, transparent));
-  color: var(--user-avatar-fg, var(--color-ink));
-  border-width: var(--user-avatar-border-width, 0);
+  /* Selected outline chrome: accent wash + accent glyph; quiet control stroke. */
+  background-color: var(
+    --user-avatar-bg,
+    var(
+      --button-outline-active-background,
+      var(
+        --button-outline-hover-background,
+        color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+      )
+    )
+  );
+  color: var(--user-avatar-fg, var(--button-active-color, var(--color-emerald)));
+  border-width: var(--user-avatar-border-width, 1px);
   border-style: solid;
-  border-color: var(--user-avatar-border, transparent);
+  border-color: var(
+    --user-avatar-border,
+    var(
+      --button-outline-active-border-color,
+      var(--button-outline-border-color, var(--control-border-color))
+    )
+  );
+}
+
+.user-avatar__presence {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 2px var(--user-avatar-presence-ring, var(--color-we-got-soft));
+}
+
+.user-avatar__presence--online {
+  background-color: var(--user-avatar-presence-online, #22c55e);
+}
+
+.user-avatar__presence--away {
+  background-color: var(--user-avatar-presence-away, #eab308);
+}
+
+.user-avatar__presence--offline {
+  background-color: transparent;
+  box-shadow:
+    0 0 0 1.5px
+      var(
+        --user-avatar-presence-offline-border,
+        color-mix(in oklab, var(--color-we-got-dark) 40%, transparent)
+      ),
+    0 0 0 2px var(--user-avatar-presence-ring, var(--color-we-got-soft));
+}
+
+.user-avatar__presence--standalone {
+  @apply static right-auto bottom-auto size-2.5 shrink-0;
+  box-shadow: none;
+}
+
+.user-avatar__presence--standalone.user-avatar__presence--offline {
+  box-shadow: none;
+  border: 1.5px solid
+    var(
+      --user-avatar-presence-offline-border,
+      color-mix(in oklab, var(--color-we-got-dark) 40%, transparent)
+    );
 }
 
 .user-avatar__image {
@@ -35,46 +228,83 @@ button.user-avatar__mark {
   cursor: pointer;
   font: inherit;
   text-align: center;
+  @apply transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+}
+
+button.user-avatar__mark:hover {
+  background-color: var(
+    --user-avatar-hover-bg,
+    var(
+      --button-outline-active-hover-background,
+      var(
+        --button-outline-active-background,
+        var(
+          --button-outline-hover-background,
+          color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+        )
+      )
+    )
+  );
+}
+
+.user-avatar--xs .user-avatar__mark {
+  width: var(--control-height-xs, 1.75rem);
+  height: var(--control-height-xs, 1.75rem);
+  --user-avatar-font-size: 10px;
+  font-size: var(--user-avatar-font-size);
 }
 
 .user-avatar--sm .user-avatar__mark {
-  width: 2.25rem;
-  height: 2.25rem;
-  font-size: 11px;
+  width: var(--control-height-sm, 2rem);
+  height: var(--control-height-sm, 2rem);
+  --user-avatar-font-size: 11px;
+  font-size: var(--user-avatar-font-size);
 }
 
 .user-avatar--md .user-avatar__mark {
-  width: 2.5rem;
-  height: 2.5rem;
-  font-size: 0.75rem;
+  width: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
+  --user-avatar-font-size: 11px;
+  font-size: var(--user-avatar-font-size);
 }
 
 .user-avatar--lg .user-avatar__mark {
-  width: 3rem;
-  height: 3rem;
-  font-size: 1.0625rem;
+  width: var(--control-height-lg, 2.5rem);
+  height: var(--control-height-lg, 2.5rem);
+  @apply text-xs;
 }
 
 .user-avatar--xl .user-avatar__mark {
+  width: var(--control-height-xl, 2.75rem);
+  height: var(--control-height-xl, 2.75rem);
+  @apply text-sm;
+}
+
+/* Display-only — outside the control scale (Meet lobby / large idle tiles). */
+.user-avatar--2xl .user-avatar__mark {
   width: 5rem;
   height: 5rem;
-  font-size: 1.8125rem;
+  --user-avatar-font-size: 1.8125rem;
+  font-size: var(--user-avatar-font-size);
 }
 
 .user-avatar__text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-  gap: 0.125rem;
+  @apply flex min-w-0 flex-1 flex-col;
+  gap: var(--user-avatar-text-gap);
+}
+
+.user-avatar__name-line {
+  @apply flex min-w-0 items-center gap-1.5;
+}
+
+.user-avatar__name-group {
+  @apply flex min-w-0 flex-1 items-center gap-1;
 }
 
 .user-avatar__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.875rem;
-  color: var(--user-avatar-label-color, var(--user-avatar-fg, var(--color-ink)));
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm;
+  line-height: var(--user-avatar-name-leading);
+  color: var(--user-avatar-label-color, var(--user-avatar-fg, var(--color-we-got-dark)));
 }
 
 .user-avatar__name--emphasized {
@@ -82,9 +312,10 @@ button.user-avatar__mark {
 }
 
 .user-avatar__subtitle {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.75rem;
-  color: var(--user-avatar-subtitle-color, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  @apply overflow-hidden text-ellipsis whitespace-nowrap text-xs;
+  line-height: var(--user-avatar-subtitle-leading);
+  color: var(
+    --user-avatar-subtitle-color,
+    color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
+  );
 }

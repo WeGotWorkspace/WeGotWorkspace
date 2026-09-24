@@ -1,6 +1,9 @@
 @import "../../styles.css" reference;
 
 .tag-group {
+  /* Soft chip radius — same global `--control-radius` (button-pill is an alias). */
+  --tag-radius: var(--control-radius);
+  /* Compact 24px default — below control-height-xs; lg aliases xs (28px). */
   --tag-height: 1.5rem;
   --tag-font-size: 0.75rem;
   --tag-icon-size: 0.75rem;
@@ -9,9 +12,9 @@
   @apply relative flex flex-wrap items-center gap-1.5;
 }
 
-/* Interactive editors (notes detail): fixed 28px (h-7) — not --input-height (grows at md+). */
+/* Interactive editors (notes detail): --control-height-xs (28px), not form md+. */
 .tag-group--size-lg {
-  --tag-height: 1.75rem;
+  --tag-height: var(--control-height-xs, 1.75rem);
   --tag-font-size: 0.8125rem;
   --tag-icon-size: 0.875rem;
   --tag-padding-inline: 0.625rem;
@@ -28,13 +31,13 @@
   line-height: 1;
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
-  border-radius: var(--control-radius-button-pill);
-  background-color: var(--tag-bg, color-mix(in oklab, var(--color-ink) 8%, transparent));
-  color: var(--tag-fg, var(--color-ink));
+  border-radius: var(--tag-radius, var(--control-radius));
+  background-color: var(--tag-bg, color-mix(in oklab, var(--color-we-got-dark) 8%, transparent));
+  color: var(--tag-fg, var(--color-we-got-dark));
 }
 
 .tag--size-lg {
-  --tag-height: 1.75rem;
+  --tag-height: var(--control-height-xs, 1.75rem);
   --tag-font-size: 0.8125rem;
   --tag-icon-size: 0.875rem;
   --tag-padding-inline: 0.625rem;
@@ -42,8 +45,12 @@
 }
 
 .tag--collection-tint {
-  --tag-bg: color-mix(in oklab, var(--collection-row-color, var(--color-ink)) 18%, transparent);
-  --tag-fg: color-mix(in oklab, var(--collection-row-color, var(--color-ink)) 62%, #042a22);
+  --tag-bg: color-mix(
+    in oklab,
+    var(--collection-row-color, var(--color-we-got-dark)) 18%,
+    transparent
+  );
+  --tag-fg: color-mix(in oklab, var(--collection-row-color, var(--color-we-got-dark)) 62%, #003311);
 }
 
 .tag__icon {
@@ -104,15 +111,18 @@
   padding-inline: var(--tag-padding-inline, 0.5rem);
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
-  border-radius: var(--control-radius-button-pill);
-  background-color: var(--tag-group-add-bg, color-mix(in oklab, var(--color-ink) 6%, transparent));
-  color: var(--tag-group-add-fg, var(--color-ink));
+  border-radius: var(--tag-radius, var(--control-radius));
+  background-color: var(
+    --tag-group-add-bg,
+    color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)
+  );
+  color: var(--tag-group-add-fg, var(--color-we-got-dark));
 }
 
 .tag-group__add-button:hover {
   background-color: var(
     --tag-group-add-bg-hover,
-    color-mix(in oklab, var(--color-ink) 10%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
   );
 }
 
@@ -135,13 +145,13 @@
   min-width: 7rem;
   max-width: 12rem;
   width: 8rem;
-  border-radius: var(--control-radius-button-pill);
+  border-radius: var(--tag-radius, var(--control-radius));
   border-color: var(--tag-group-input-border, var(--control-border-color));
   background-color: var(
     --tag-group-input-bg,
     color-mix(in oklab, var(--color-background) 90%, var(--color-muted) 10%)
   );
-  color: var(--tag-group-input-fg, var(--color-ink));
+  color: var(--tag-group-input-fg, var(--color-we-got-dark));
 }
 
 .tag-group--size-lg .tag-group__input {
@@ -171,7 +181,7 @@
   background-color: var(--tag-group-suggestions-bg, var(--color-popover, #ffffff));
   box-shadow: var(
     --tag-group-suggestions-shadow,
-    0 4px 16px color-mix(in oklab, var(--color-ink) 12%, transparent)
+    0 4px 16px color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
   );
   min-width: 10rem;
 }
@@ -181,7 +191,7 @@
   font-family: var(--font-mono);
   font-size: var(--tag-font-size, 0.75rem);
   line-height: 1.25;
-  color: var(--tag-group-suggestion-fg, var(--color-ink));
+  color: var(--tag-group-suggestion-fg, var(--color-we-got-dark));
   background-color: transparent;
 }
 
@@ -194,6 +204,6 @@
 .tag-group__suggestion--active {
   background-color: var(
     --tag-group-suggestion-bg-active,
-    color-mix(in oklab, var(--color-ink) 6%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)
   );
 }

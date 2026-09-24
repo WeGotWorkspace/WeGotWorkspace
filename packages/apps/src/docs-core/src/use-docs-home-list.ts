@@ -10,6 +10,7 @@ import type { DriveFile } from "@/drive-core/src/drive-models";
 import {
   apiPathFromSearchSourceKey,
   driveFileFromSearchResult,
+  driveLocationLabel,
 } from "@/drive-core/src/drive-search-utils";
 import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 import {
@@ -18,6 +19,9 @@ import {
   DOCS_HOME_PAGE_SIZE,
   DOCS_HOME_SOURCES,
 } from "@/docs-core/src/docs-home-constants";
+import { docsLabels } from "@/docs-core/src/docs-labels";
+import { resolveDocsDriveLabel, type DocsHomeGroupRoot } from "@/docs-core/src/docs-home-drives";
+import { driveLabels } from "@/drive-core/src/drive-labels";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { syncDocsBodiesFromListingResults } from "@/lib/offline/docs/docs-body-sync";
 import type { DocsListingBrowseFilters } from "@/lib/offline/docs/docs-listing-cache-key";
@@ -49,6 +53,11 @@ export type UseDocsHomeListOptions = {
   offlineUsername?: string | null;
   /** When false, skips browse fetches (e.g. Docs home Shared with me view). */
   enabled?: boolean;
+  /**
+   * Discovered group drive roots (slug + display label). Used to map location
+   * chips to Docs SST labels (e.g. "Administrators" instead of "administrators").
+   */
+  groupRoots?: readonly DocsHomeGroupRoot[];
 };
 
 export type UseDocsHomeListResult = {
@@ -77,11 +86,23 @@ export function sortDocsHomeResults(
   });
 }
 
+/** Inbound Shared-with-me location strings from Drive (keep as-is; not Docs drive SST). */
+function isInboundSharedDriveLocation(location: string): boolean {
+  if (location === driveLabels.sidebarSharedWithMe) return true;
+  return location.startsWith(driveLabels.sharedBy(""));
+}
+
 /** Map browse results to `DriveFile`s (deduped by source key, modified-desc). */
 export function mapDocsHomeResults(
   results: readonly WgwUnifiedSearchResult[],
   username: string,
+  options?: {
+    personalDriveLabel?: string;
+    groupRoots?: readonly DocsHomeGroupRoot[];
+  },
 ): DriveFile[] {
+  const personalDriveLabel = options?.personalDriveLabel ?? docsLabels.homeMyDrive;
+  const groupRoots = options?.groupRoots;
   const seen = new Set<string>();
   const files: DriveFile[] = [];
   for (const result of sortDocsHomeResults(results)) {
@@ -89,7 +110,26 @@ export function mapDocsHomeResults(
     if (!apiPath || seen.has(result.sourceKey)) continue;
     seen.add(result.sourceKey);
     const uiPath = uiPathFromApiPath(apiPath, username);
-    files.push(driveFileFromSearchResult(result, uiPath, apiPath, username));
+    const file = driveFileFromSearchResult(result, uiPath, apiPath, username);
+    const driveLoc = driveLocationLabel(result.sourceKey, username);
+    if (!driveLoc) {
+      files.push(file);
+      continue;
+    }
+    // Shared-by / Shared with me keep Drive inbound wording + Share icon path.
+    if (isInboundSharedDriveLocation(driveLoc)) {
+      files.push({ ...file, location: driveLoc });
+      continue;
+    }
+    // Personal + group drives: Docs SST labels via resolveDocsDriveLabel
+    // (Personal / Administrators), not Drive "My Drive" / raw slug.
+    files.push({
+      ...file,
+      location: resolveDocsDriveLabel(result.sourceKey, {
+        personalDriveLabel,
+        groupRoots,
+      }),
+    });
   }
   return files;
 }
@@ -147,6 +187,7 @@ export function useDocsHomeList({
   debounceMs = 300,
   offlineUsername = null,
   enabled = true,
+  groupRoots,
 }: UseDocsHomeListOptions): UseDocsHomeListResult {
   const [results, setResults] = useState<WgwUnifiedSearchResult[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -346,7 +387,19 @@ export function useDocsHomeList({
     }, [enabled, fetchLiveListing, offlineUsername]),
   );
 
-  const files = useMemo(() => mapDocsHomeResults(results, username), [results, username]);
+  // Content key so an unstable `groupRoots` array identity does not remap files
+  // every render (which would feed Docs home's mergeGroupRoots effect loop).
+  const groupRootsKey = groupRoots?.map((root) => `${root.slug}\0${root.label}`).join("\n") ?? "";
+
+  const files = useMemo(
+    () =>
+      mapDocsHomeResults(results, username, {
+        personalDriveLabel: docsLabels.homeMyDrive,
+        groupRoots,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- groupRootsKey tracks slug/label content
+    [results, username, groupRootsKey],
+  );
 
   return {
     files,

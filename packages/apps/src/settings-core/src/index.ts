@@ -15,6 +15,7 @@ export type {
   SettingsGroup,
   SettingsMailCredentials,
   SettingsMailServer,
+  SettingsMcpGrant,
   SettingsSection,
   SettingsUIData,
   SettingsUser,

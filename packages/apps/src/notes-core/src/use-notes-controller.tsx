@@ -118,6 +118,7 @@ export function useNotesController({
     setEditDialog: mutations.setEditDialog,
     setDeleteDialog: mutations.setDeleteDialog,
     moveToNotebook: mutations.moveToNotebook,
+    moveActiveNoteToNotebook: mutations.moveActiveNoteToNotebook,
     assignTagToNotes: mutations.assignTagToNotes,
     createNote: mutations.createNote,
     toggleStar: mutations.toggleStar,

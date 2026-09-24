@@ -172,6 +172,9 @@
       "updates": {
         "$ref": "#/components/schemas/UpdateStateResponse"
       },
+      "mcp": {
+        "$ref": "#/components/schemas/AdminMcpSettings"
+      },
       "currentUser": {
         "type": "string"
       },
@@ -188,6 +191,7 @@
       "apps",
       "webdav",
       "updates",
+      "mcp",
       "currentUser",
       "logoutUrl"
     ]

@@ -8,7 +8,6 @@ import {
 } from "@/notes-core/src/notes-notebook-select";
 import { notebookDisplayName, noteShowsStarControls } from "@/notes-core/src/notes-note-utils";
 import { notebookDisplayColor } from "@/notes-core/src/notes-notebook-color";
-import { NoteCollabChrome } from "@/note-detail-view/src/note-text-editor-body";
 
 type NotesDetailActionBarProps = {
   active: Note | undefined;
@@ -23,8 +22,6 @@ type NotesDetailActionBarProps = {
   onCreateNotebook?: () => void;
   toggleStar: (id: string) => void;
   toggleArchive: (id: string) => void;
-  /** When true, renders collab presence ahead of note actions (requires NoteCollabSession). */
-  showCollabChrome?: boolean;
   /** Notebook `calendarcolor` for the switcher (same colored notebook icon as list/sidebar). */
   notebookColor?: string | null;
   /**
@@ -51,7 +48,6 @@ export function NotesDetailActionBar({
   onCreateNotebook,
   toggleStar,
   toggleArchive,
-  showCollabChrome = false,
   notebookColor,
   readOnly = false,
   canArchive = true,
@@ -104,22 +100,19 @@ export function NotesDetailActionBar({
       onBack={closeMobileDetail}
       backLabel={backLabel}
       rightLeading={
-        <>
-          {showCollabChrome ? <NoteCollabChrome /> : null}
-          <NotesNotebookSelect
-            notebooks={notebooks}
-            value={{
-              id: active.notebookId,
-              name: locationLabel,
-              color: selectColor,
-            }}
-            labels={labels}
-            ariaLabel={notebookLocked ? locationLabel : labels.toolbarMoveToNotebook}
-            disabled={notebookLocked}
-            onNotebookChange={onMoveToNotebook}
-            onCreateNotebook={notebookLocked ? undefined : onCreateNotebook}
-          />
-        </>
+        <NotesNotebookSelect
+          notebooks={notebooks}
+          value={{
+            id: active.notebookId,
+            name: locationLabel,
+            color: selectColor,
+          }}
+          labels={labels}
+          triggerVariant="swatch"
+          disabled={notebookLocked}
+          onNotebookChange={onMoveToNotebook}
+          onCreateNotebook={notebookLocked ? undefined : onCreateNotebook}
+        />
       }
       rightActions={rightActions}
       rightMenuLabel="More actions"

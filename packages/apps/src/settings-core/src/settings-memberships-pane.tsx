@@ -15,7 +15,7 @@ export function SettingsMembershipsPane({ groups }: SettingsMembershipsPaneProps
             <UserAvatar
               displayName={group.displayName}
               subtitle={group.id}
-              size="sm"
+              size="md"
               className="settings-group-avatar"
             />
           </li>

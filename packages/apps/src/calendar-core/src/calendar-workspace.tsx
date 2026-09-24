@@ -1,9 +1,11 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Circle, Eye, Rss } from "lucide-react";
+import { Temporal } from "@js-temporal/polyfill";
 import {
   type ChangeEvent,
   type MouseEvent,
   type PointerEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -51,18 +53,33 @@ import { CalendarRecurrenceScopeDialog } from "@/calendar-core/src/calendar-recu
 import { CalendarEventDetailsPopover } from "@/calendar-core/src/calendar-event-details-popover";
 import {
   eventPreviewOccurrenceKey,
+  formWithEventTimesDraft,
   resolveCalendarEventPreview,
+  resolveInvitationEventPreview,
+  resolveLiveEventPreview,
   type CalendarEventPreviewModel,
   type CalendarEventSelectionOrigin,
+  type CalendarEventTimesDraft,
 } from "@/calendar-core/src/calendar-event-preview";
 import { CalendarSurface } from "@/calendar-core/src/calendar-surface";
 import type { CalendarWorkspaceProps } from "@/calendar-core/src/calendar-workspace-props";
+import { CalendarTaskDuePopover } from "@/calendar-core/src/calendar-task-due-popover";
+import {
+  CalendarTaskDueSidebarRows,
+  partitionCalendarTaskDueSidebarLists,
+} from "@/calendar-core/src/calendar-task-due-sidebar";
+import { parseTaskDueOverlayKey } from "@/calendar-core/src/calendar-task-due-overlay";
+import { useCalendarOverlayHiddenIds } from "@/calendar-core/src/use-calendar-overlay-hidden-ids";
+import { useCalendarTaskDueOverlay } from "@/calendar-core/src/use-calendar-task-due-overlay";
+import type { TaskDueOverlayMarker } from "@/calendar-core/src/calendar-task-due-overlay";
 import {
   calendarDirectoryGroupsFromBootstrap,
   personalOwnerLabel,
 } from "@/calendar-core/src/calendar-workspace-props";
 import {
+  isSessionEventInvitee,
   isSessionEventOrganizer,
+  normalizeParticipationStatus,
   organizerAddress,
   sessionEventInviteeStatus,
   type CalendarAttendee,
@@ -71,9 +88,7 @@ import { occurrenceHasThisInstanceOverride } from "@/calendar-core/src/calendar-
 import {
   eventIsRecurringForRsvp,
   persistInviteeRsvp,
-  queueUndoableRespond,
   rsvpRecurrenceIdForEvent,
-  rsvpUndoStatus,
   type CalendarRsvpPersistSource,
 } from "@/calendar-core/src/calendar-rsvp-scope";
 import type { CalendarInfo, CalendarViewId } from "@/calendar-core/src/calendar-types";
@@ -96,8 +111,10 @@ import {
   sharedWithMeCalendarsForSidebar,
 } from "@/calendar-core/src/calendar-sidebar-order";
 import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
+import { calendarPeriodNavLabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { SideDrawer } from "@/ui/side-drawer";
+import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
@@ -220,6 +237,8 @@ export function CalendarWorkspace({
   meetOperations,
   workspaceOrigin,
   onJoinMeeting,
+  taskDueBootstrap,
+  onOpenTaskInTasks,
 }: CalendarWorkspaceProps) {
   const controller = useCalendarController({
     data,
@@ -239,6 +258,16 @@ export function CalendarWorkspace({
     sessionEmail: organizerAddress(session.user)?.email,
     sessionName: session.user.displayName,
   });
+  const { hiddenOverlayTaskListIds, toggleOverlayTaskListVisibility } =
+    useCalendarOverlayHiddenIds();
+  const taskDueOverlay = useCalendarTaskDueOverlay({
+    preset: taskDueBootstrap ?? null,
+    hiddenListIds: hiddenOverlayTaskListIds,
+  });
+  const { ownedLists: overlayOwnedLists, sharedLists: overlaySharedLists } = useMemo(
+    () => partitionCalendarTaskDueSidebarLists(taskDueOverlay.taskLists),
+    [taskDueOverlay.taskLists],
+  );
   const {
     L,
     locale,
@@ -273,6 +302,7 @@ export function CalendarWorkspace({
     setEditorForm,
     saveEditor,
     deleteEditorEvent,
+    deleteCalendarEvent,
     setAnchor,
     canCreateCalendar,
     canSubscribeCalendar,
@@ -302,7 +332,6 @@ export function CalendarWorkspace({
     recurrenceScopeDialog,
     truncateSeriesFromOccurrence,
     splitSeriesFromDrag,
-    queueMutation,
     searchQuery,
     setSearchQuery,
     searchActive,
@@ -310,7 +339,7 @@ export function CalendarWorkspace({
     searchRange,
     undoLatest,
   } = controller;
-  const { showError } = useAppToast();
+  const { showError, showSuccess } = useAppToast();
   const handleInvitationResponded = useCallback(() => {
     surface?.syncNow();
   }, [surface]);
@@ -417,7 +446,25 @@ export function CalendarWorkspace({
   const [eventPreview, setEventPreview] = useState<{
     model: CalendarEventPreviewModel;
     origin?: CalendarEventSelectionOrigin;
+    /** When true, the popover hosts the invitee form (RSVP + calendar picker). */
+    invitation?: boolean;
+    /** When true, the popover hosts the editor form for this selection. */
+    interactiveEdit?: boolean;
   } | null>(null);
+  const [taskDuePreview, setTaskDuePreview] = useState<{
+    marker: TaskDueOverlayMarker;
+    origin?: CalendarEventSelectionOrigin;
+  } | null>(null);
+  const [eventTimesDraft, setEventTimesDraft] = useState<CalendarEventTimesDraft | null>(null);
+  const liveEventPreview = useMemo(() => {
+    if (!eventPreview) return null;
+    return resolveLiveEventPreview(eventPreview.model, {
+      events: data.events,
+      surfaceEvents: surface?.events,
+      pendingDeletedEventIds,
+      timesDraft: eventTimesDraft,
+    });
+  }, [data.events, eventPreview, eventTimesDraft, pendingDeletedEventIds, surface?.events]);
   const toggleInvitationsOpen = () => {
     if (!invitationsOpen) {
       void invitations.refreshIfIdle().catch(() => undefined);
@@ -427,8 +474,8 @@ export function CalendarWorkspace({
 
   const canWrite = Boolean(operations) && calendars.some((c) => canWriteCalendarCollection(c));
   const sessionEmail = organizerAddress(session.user)?.email;
-  const previewCalendar = eventPreview
-    ? calendars.find((entry) => entry.id === eventPreview.model.form.calendarId)
+  const previewCalendar = liveEventPreview
+    ? calendars.find((entry) => entry.id === liveEventPreview.form.calendarId)
     : undefined;
   const previewCanEdit =
     Boolean(operations) &&
@@ -436,7 +483,7 @@ export function CalendarWorkspace({
       mode: "edit",
       calendar: previewCalendar,
       isOrganizer: isSessionEventOrganizer(
-        eventPreview?.model.form.attendees ?? [],
+        liveEventPreview?.form.attendees ?? [],
         sessionEmail,
         invitations.invitees,
       ),
@@ -462,8 +509,32 @@ export function CalendarWorkspace({
     day: L.viewDay,
     year: L.viewYear,
   };
+  const periodNav = calendarPeriodNavLabels(view, L);
 
   useDocumentTitle(title);
+
+  useEffect(() => {
+    if (!eventPreview?.interactiveEdit || !editor || editor.mode !== "edit" || !eventTimesDraft) {
+      return;
+    }
+    const key = eventPreviewOccurrenceKey({
+      eventId: editor.eventId,
+      form: editor.form,
+      ...(editor.recurrenceId ? { recurrenceId: editor.recurrenceId } : {}),
+    });
+    if (eventTimesDraft.key !== key) return;
+    const next = formWithEventTimesDraft(editor.form, eventTimesDraft);
+    if (
+      next.startDate === editor.form.startDate &&
+      next.startTime === editor.form.startTime &&
+      next.endDate === editor.form.endDate &&
+      next.endTime === editor.form.endTime &&
+      next.allDay === editor.form.allDay
+    ) {
+      return;
+    }
+    setEditorForm(next);
+  }, [editor, eventPreview?.interactiveEdit, eventTimesDraft, setEditorForm]);
 
   const persistRsvp = useCallback(
     (
@@ -507,62 +578,204 @@ export function CalendarWorkspace({
         masterId: eventId,
         recurrenceId,
         askScope: askRecurrenceScope,
-        respond: (scopeOptions) =>
-          queueUndoableRespond({
-            queueMutation,
-            key: `calendar:rsvp:${notificationId}:${status}`,
-            toastMessage: L.toastRsvpUpdated,
-            undoToastMessage: L.toastRsvpUndone,
-            execute: () =>
-              invitations.respond(notificationId, status, {
-                ...respondOptions,
-                ...scopeOptions,
-              }),
-            undo: () => {
-              const revert = rsvpUndoStatus(previousStatus);
-              if (!revert) return;
-              void invitations.respond(notificationId, revert, respondOptions);
-            },
-          }),
+        respond: async (scopeOptions) => {
+          await invitations.respond(notificationId, status, {
+            ...respondOptions,
+            ...scopeOptions,
+          });
+          showSuccess(L.toastRsvpUpdated);
+        },
       });
     },
     [
-      L.toastRsvpUndone,
       L.toastRsvpUpdated,
       askRecurrenceScope,
       data.events,
       editor,
       invitations,
       inviteeNotifications,
-      queueMutation,
       session.user,
+      showSuccess,
     ],
   );
 
   const closeEventPreview = useCallback(() => {
     setEventPreview(null);
+    setTaskDuePreview(null);
+    setEventTimesDraft(null);
+  }, []);
+
+  const onEventTimesDraft = useCallback((draft: CalendarEventTimesDraft | null) => {
+    setEventTimesDraft((current) => {
+      if (current == null && draft == null) return current;
+      if (
+        current &&
+        draft &&
+        current.key === draft.key &&
+        current.allDay === draft.allDay &&
+        Temporal.PlainDateTime.compare(current.start, draft.start) === 0 &&
+        Temporal.PlainDateTime.compare(current.end, draft.end) === 0
+      ) {
+        return current;
+      }
+      return draft;
+    });
   }, []);
 
   const openEventPreview = useCallback(
     (key: string, origin?: CalendarEventSelectionOrigin) => {
-      closeEditor();
+      const overlayTaskId = parseTaskDueOverlayKey(key);
+      if (overlayTaskId) {
+        const marker =
+          taskDueOverlay.markers.find((entry) => entry.key === key) ??
+          taskDueOverlay.markers.find((entry) => entry.taskId === overlayTaskId);
+        if (!marker) return;
+        setEventTimesDraft(null);
+        closeEditor();
+        setEventPreview(null);
+        setTaskDuePreview({ marker, origin });
+        return;
+      }
       const model = resolveCalendarEventPreview(key, {
         events: data.events,
         surfaceEvents: surface?.events,
         pendingDeletedEventIds,
       });
       if (!model) return;
+      const calendar = calendars.find((entry) => entry.id === model.form.calendarId);
+      const sessionIsOrganizer = isSessionEventOrganizer(
+        model.form.attendees,
+        organizerAddress(session.user)?.email,
+        invitations.invitees,
+      );
+      const canInteractiveEdit =
+        Boolean(operations) &&
+        !isCalendarEventFormReadOnly({
+          mode: "edit",
+          calendar,
+          isOrganizer: sessionIsOrganizer,
+        });
+      setEventTimesDraft(null);
+      setTaskDuePreview(null);
+      if (canInteractiveEdit) {
+        void openEditEventKey(key);
+        setEventPreview({ model, origin, interactiveEdit: true });
+        return;
+      }
+      closeEditor();
+      const sessionIsInvitee = isSessionEventInvitee(
+        model.form.attendees,
+        organizerAddress(session.user)?.email,
+        invitations.invitees,
+      );
+      if (sessionIsInvitee) {
+        setEventPreview({ model, origin, invitation: true });
+        return;
+      }
       setEventPreview({ model, origin });
     },
-    [closeEditor, data.events, pendingDeletedEventIds, surface?.events],
+    [
+      calendars,
+      closeEditor,
+      data.events,
+      invitations.invitees,
+      openEditEventKey,
+      operations,
+      pendingDeletedEventIds,
+      session.user,
+      surface?.events,
+      taskDueOverlay.markers,
+    ],
   );
 
-  const openEditFromPreview = useCallback(() => {
-    if (!eventPreview) return;
-    const key = eventPreviewOccurrenceKey(eventPreview.model);
+  const openInvitationPreview = useCallback(
+    (key: string, origin?: CalendarEventSelectionOrigin) => {
+      closeEditor();
+      const notification = inviteeNotifications.find(
+        (row) => row.eventId === key || row.id === key,
+      );
+      let model = notification
+        ? resolveInvitationEventPreview(notification, {
+            events: data.events,
+            surfaceEvents: surface?.events,
+            pendingDeletedEventIds,
+            untitledLabel: L.untitledEvent,
+            defaultCalendarId,
+          })
+        : resolveCalendarEventPreview(key, {
+            events: data.events,
+            surfaceEvents: surface?.events,
+            pendingDeletedEventIds,
+          });
+      if (!model) return;
+      // Inbox fallback models only carry the organizer — seed the session invitee for RSVP chrome.
+      if (notification && sessionEmail) {
+        const alreadyInvitee = isSessionEventInvitee(
+          model.form.attendees,
+          sessionEmail,
+          invitations.invitees,
+        );
+        if (!alreadyInvitee) {
+          model = {
+            ...model,
+            form: {
+              ...model.form,
+              attendees: [
+                ...model.form.attendees,
+                {
+                  email: sessionEmail,
+                  name: session.user.displayName || sessionEmail,
+                  participationStatus: normalizeParticipationStatus(
+                    notification.participationStatus,
+                  ),
+                },
+              ],
+            },
+          };
+        }
+      }
+      setEventTimesDraft(null);
+      setEventPreview({ model, origin, invitation: true });
+    },
+    [
+      L.untitledEvent,
+      closeEditor,
+      data.events,
+      defaultCalendarId,
+      invitations.invitees,
+      inviteeNotifications,
+      pendingDeletedEventIds,
+      session.user.displayName,
+      sessionEmail,
+      surface?.events,
+    ],
+  );
+
+  const closeInteractiveEditor = useCallback(() => {
+    closeEditor();
     setEventPreview(null);
-    void openEditEventKey(key);
-  }, [eventPreview, openEditEventKey]);
+    setEventTimesDraft(null);
+  }, [closeEditor]);
+
+  const pointerCreateOpen = editor?.mode === "create" && editor.source === "pointer";
+  const menuCreateOpen = editor?.mode === "create" && editor.source === "menu";
+  const pointerCreatePreview: CalendarEventPreviewModel | null = pointerCreateOpen
+    ? { eventId: "", form: editor.form }
+    : null;
+  const detailsPopoverOpen = Boolean((eventPreview && liveEventPreview) || pointerCreatePreview);
+
+  const deleteFromPreview = useCallback(() => {
+    if (!liveEventPreview || !previewCanEdit) return;
+    const { eventId, recurrenceId, form } = liveEventPreview;
+    setEventPreview(null);
+    setEventTimesDraft(null);
+    closeEditor();
+    deleteCalendarEvent({
+      eventId,
+      form,
+      ...(recurrenceId ? { recurrenceId } : {}),
+    });
+  }, [closeEditor, deleteCalendarEvent, liveEventPreview, previewCanEdit]);
 
   const invitationsPanel = useMemo(
     () => (
@@ -572,40 +785,22 @@ export function CalendarWorkspace({
         locale={locale}
         calendars={calendars}
         defaultCalendarId={defaultCalendarId}
-        busy={invitations.busy}
-        showCloseButton={useInvitationsDrawer}
+        showCloseButton
         onClose={() => setInvitationsOpen(false)}
         onRespond={async (id, status, calendarId) => {
           await persistRsvp(id, status, calendarId, { source: "sidebar" });
         }}
-        onOpenEvent={
-          canWrite
-            ? (key) => {
-                closeEventPreview();
-                return openEditEventKey(key);
-              }
-            : undefined
-        }
-        meetOperations={meetOperations}
-        workspaceOrigin={workspaceOrigin}
-        onJoinMeeting={onJoinMeeting}
+        onOpenEvent={openInvitationPreview}
       />
     ),
     [
       L,
       calendars,
-      canWrite,
       defaultCalendarId,
-      invitations.busy,
       inviteeNotifications,
       locale,
-      closeEventPreview,
-      openEditEventKey,
+      openInvitationPreview,
       persistRsvp,
-      useInvitationsDrawer,
-      meetOperations,
-      workspaceOrigin,
-      onJoinMeeting,
     ],
   );
 
@@ -664,7 +859,7 @@ export function CalendarWorkspace({
                     goToday();
                     closeSidebarOnMobile(() => setSidebarOpen(false));
                   }}
-                  size="lg"
+                  size="xl"
                   pill
                   variant="primary"
                   className="w-full"
@@ -716,6 +911,26 @@ export function CalendarWorkspace({
                 />
               </SidebarSection>
             ) : null}
+            {overlayOwnedLists.length > 0 ? (
+              <SidebarSection title={L.tasksSection}>
+                <CalendarTaskDueSidebarRows
+                  lists={overlayOwnedLists}
+                  hiddenListIds={hiddenOverlayTaskListIds}
+                  viewOnlyLabel={L.viewOnlyCalendarBadge}
+                  onToggleVisibility={toggleOverlayTaskListVisibility}
+                />
+              </SidebarSection>
+            ) : null}
+            {overlaySharedLists.length > 0 ? (
+              <SidebarSection title={L.sharedTaskListsSection}>
+                <CalendarTaskDueSidebarRows
+                  lists={overlaySharedLists}
+                  hiddenListIds={hiddenOverlayTaskListIds}
+                  viewOnlyLabel={L.viewOnlyCalendarBadge}
+                  onToggleVisibility={toggleOverlayTaskListVisibility}
+                />
+              </SidebarSection>
+            ) : null}
           </AppSidebar>
         }
         mainHeader={
@@ -725,33 +940,34 @@ export function CalendarWorkspace({
             layout="responsive"
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-            titlePrefix={
-              <IconButton
-                className="calendar-header-today-icon"
-                label={L.today}
-                icon={<CalendarDays className="size-4" />}
-                size="sm"
-                active={showingToday}
-                aria-pressed={showingToday}
-                disabled={searchActive}
-                onClick={goToday}
-              />
-            }
             titleLeading={
               <div className="calendar-header-nav">
                 <IconButton
-                  label={L.previousPeriod}
+                  label={periodNav.previous}
                   icon={<ChevronLeft className="size-4" />}
-                  size="sm"
+                  size="md"
+                  variant="outline"
                   disabled={searchActive}
                   onClick={goPrevious}
                 />
                 <IconButton
-                  label={L.nextPeriod}
+                  label={periodNav.next}
                   icon={<ChevronRight className="size-4" />}
-                  size="sm"
+                  size="md"
+                  variant="outline"
                   disabled={searchActive}
                   onClick={goNext}
+                />
+                <IconButton
+                  className="calendar-header-today"
+                  label={L.today}
+                  icon={<CalendarDays className="size-4" />}
+                  size="md"
+                  variant="outline"
+                  active={showingToday}
+                  aria-pressed={showingToday}
+                  disabled={searchActive}
+                  onClick={goToday}
                 />
               </div>
             }
@@ -799,7 +1015,7 @@ export function CalendarWorkspace({
                   onValueChange={(next) => selectView(next as CalendarViewId)}
                 >
                   <SelectTrigger
-                    size="sm"
+                    size="md"
                     className="calendar-view-select"
                     aria-label={L.viewSelectLabel}
                     disabled={searchActive}
@@ -820,16 +1036,6 @@ export function CalendarWorkspace({
                   gridLabel={L.showAsCalendar}
                   listLabel={L.showAsList}
                   disabled={searchActive}
-                />
-                <Button
-                  className={cn("calendar-header-today", showingToday && "icon-button--active")}
-                  label={L.today}
-                  icon={<CalendarDays />}
-                  onClick={goToday}
-                  variant="subtle"
-                  size="sm"
-                  disabled={searchActive}
-                  aria-pressed={showingToday}
                 />
               </div>
             }
@@ -859,6 +1065,7 @@ export function CalendarWorkspace({
                   presentation={litSurface.presentation}
                   startDate={anchor}
                   events={surfaceEventsForView ?? surface?.events ?? new Map()}
+                  taskDueMarkers={taskDueOverlay.overlayEvents}
                   visibleCalendarIds={[...visibleCalendarIds]}
                   selectedCalendarId={defaultCalendarId}
                   contextValue={surface?.contextValue}
@@ -866,13 +1073,15 @@ export function CalendarWorkspace({
                   onRecurrenceFutureDelete={truncateSeriesFromOccurrence}
                   onRecurrenceFutureUpdate={splitSeriesFromDrag}
                   onEventSelected={openEventPreview}
+                  onEventTimesDraft={onEventTimesDraft}
                   onViewChange={selectView}
                   onStartDateChange={setAnchor}
                   onCreateRequested={
                     operations
                       ? (intent) => {
-                          const calendarId = intent.calendarId || defaultCalendarId;
-                          const calendar = calendars.find((entry) => entry.id === calendarId);
+                          const calendar = calendars.find(
+                            (entry) => entry.id === defaultCalendarId,
+                          );
                           if (!canWriteCalendarCollection(calendar)) return;
                           closeEventPreview();
                           openCreateFromSurface(intent);
@@ -881,9 +1090,11 @@ export function CalendarWorkspace({
                   }
                   pendingCreateIntent={pendingCreateIntent}
                   selectedEventKey={
-                    eventPreview && previewCanResize
-                      ? eventPreviewOccurrenceKey(eventPreview.model)
-                      : ""
+                    taskDuePreview
+                      ? taskDuePreview.marker.key
+                      : liveEventPreview && previewCanResize
+                        ? eventPreviewOccurrenceKey(liveEventPreview)
+                        : ""
                   }
                 />
               </div>
@@ -908,44 +1119,177 @@ export function CalendarWorkspace({
           open={invitationsOpen}
           onClose={() => setInvitationsOpen(false)}
           title={L.invitationsSection}
-          className="calendar-invitations-panel-drawer"
+          className={`${DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS} calendar-invitations-panel-drawer`}
         >
           {invitationsPanel}
         </SideDrawer>
       ) : null}
-      {eventPreview ? (
+      {detailsPopoverOpen && (pointerCreatePreview || liveEventPreview) ? (
         <CalendarEventDetailsPopover
           open
-          preview={eventPreview.model}
-          origin={eventPreview.origin}
+          preview={
+            pointerCreatePreview
+              ? pointerCreatePreview
+              : eventPreview?.interactiveEdit && editor?.mode === "edit"
+                ? { ...liveEventPreview!, form: editor.form }
+                : liveEventPreview!
+          }
+          origin={
+            pointerCreateOpen && editor?.mode === "create" ? editor.origin : eventPreview?.origin
+          }
           calendars={calendars}
           labels={L}
           locale={locale}
           untitledLabel={L.untitledEvent}
-          pendingSync={pendingEventIds?.has(eventPreview.model.eventId) ?? false}
-          canEdit={previewCanEdit}
-          busy={invitations.busy}
+          pendingSync={
+            liveEventPreview ? (pendingEventIds?.has(liveEventPreview.eventId) ?? false) : false
+          }
+          canEdit={pointerCreateOpen || previewCanEdit}
+          busy={editorBusy || invitations.busy}
           sessionEmail={sessionEmail}
           meetOperations={meetOperations}
           workspaceOrigin={workspaceOrigin}
           onJoinMeeting={onJoinMeeting}
-          onClose={closeEventPreview}
-          onEdit={previewCanEdit ? openEditFromPreview : undefined}
-          onRsvp={(status) => {
-            const eventId = eventPreview.model.eventId;
-            const notification = inviteeNotifications.find((row) => row.eventId === eventId);
-            return persistRsvp(notification?.id ?? eventId, status, undefined, {
-              source: "preview",
-              editorRecurrenceId: eventPreview.model.recurrenceId,
-              attendees: eventPreview.model.form.attendees,
-            }).then(() => undefined);
-          }}
+          onClose={
+            pointerCreateOpen || eventPreview?.interactiveEdit
+              ? closeInteractiveEditor
+              : closeEventPreview
+          }
+          edit={
+            pointerCreateOpen && editor?.mode === "create"
+              ? {
+                  mode: "create",
+                  form: editor.form,
+                  onChange: setEditorForm,
+                  onClose: closeInteractiveEditor,
+                  onSave: () => {
+                    saveEditor();
+                    setEventPreview(null);
+                    setEventTimesDraft(null);
+                  },
+                  invitees: invitations.invitees,
+                  contactCards,
+                  onRefreshContactCards: refreshCards,
+                  canSubmitEmail: invitations.canSubmitEmail,
+                  sessionEmail,
+                  sessionUsername: session.user.username,
+                  meetOperations,
+                  workspaceOrigin,
+                  onJoinMeeting,
+                }
+              : eventPreview?.interactiveEdit && editor?.mode === "edit"
+                ? {
+                    form: editor.form,
+                    onChange: setEditorForm,
+                    onClose: closeInteractiveEditor,
+                    onSave: (scope) => {
+                      saveEditor(scope);
+                      setEventPreview(null);
+                      setEventTimesDraft(null);
+                    },
+                    onDelete: () => {
+                      deleteEditorEvent();
+                      setEventPreview(null);
+                      setEventTimesDraft(null);
+                    },
+                    invitees: invitations.invitees,
+                    contactCards,
+                    onRefreshContactCards: refreshCards,
+                    canSubmitEmail: invitations.canSubmitEmail,
+                    sessionEmail,
+                    sessionUsername: session.user.username,
+                    recurrenceId: editor.recurrenceId,
+                    thisInstanceLocked:
+                      Boolean(editor.recurrenceId) &&
+                      occurrenceHasThisInstanceOverride(
+                        data.events.find((entry) => entry.id === editor.eventId),
+                        editor.recurrenceId ?? "",
+                      ),
+                    meetOperations,
+                    workspaceOrigin,
+                    onJoinMeeting,
+                    onRsvp: (status, calendarId) => {
+                      const notification = inviteeNotifications.find(
+                        (row) => row.eventId === editor.eventId,
+                      );
+                      const id = notification?.id ?? editor.eventId;
+                      return persistRsvp(id, status, calendarId, {
+                        source: "dialog",
+                        editorRecurrenceId: editor.recurrenceId,
+                      }).then((persisted) => {
+                        if (persisted) closeInteractiveEditor();
+                        return persisted;
+                      });
+                    },
+                  }
+                : eventPreview?.invitation && liveEventPreview
+                  ? {
+                      mode: "invitation",
+                      form: liveEventPreview.form,
+                      onChange: () => undefined,
+                      onClose: closeEventPreview,
+                      onSave: () => undefined,
+                      invitees: invitations.invitees,
+                      sessionEmail,
+                      sessionUsername: session.user.username,
+                      meetOperations,
+                      workspaceOrigin,
+                      onJoinMeeting,
+                      onRsvp: (status, calendarId) => {
+                        const eventId = liveEventPreview.eventId;
+                        const notification = inviteeNotifications.find(
+                          (row) => row.eventId === eventId || row.id === eventId,
+                        );
+                        return persistRsvp(notification?.id ?? eventId, status, calendarId, {
+                          source: "preview",
+                          editorRecurrenceId: liveEventPreview.recurrenceId,
+                          attendees: liveEventPreview.form.attendees,
+                        });
+                      },
+                    }
+                  : undefined
+          }
+          onDelete={
+            pointerCreateOpen || eventPreview?.interactiveEdit || eventPreview?.invitation
+              ? undefined
+              : previewCanEdit
+                ? deleteFromPreview
+                : undefined
+          }
+          onRsvp={
+            pointerCreateOpen || eventPreview?.invitation || eventPreview?.interactiveEdit
+              ? undefined
+              : liveEventPreview
+                ? (status) => {
+                    const eventId = liveEventPreview.eventId;
+                    const notification = inviteeNotifications.find(
+                      (row) => row.eventId === eventId,
+                    );
+                    return persistRsvp(notification?.id ?? eventId, status, undefined, {
+                      source: "preview",
+                      editorRecurrenceId: liveEventPreview.recurrenceId,
+                      attendees: liveEventPreview.form.attendees,
+                    });
+                  }
+                : undefined
+          }
         />
       ) : null}
-      {editor ? (
+      {taskDuePreview ? (
+        <CalendarTaskDuePopover
+          open
+          marker={taskDuePreview.marker}
+          labels={L}
+          locale={locale}
+          origin={taskDuePreview.origin}
+          onClose={closeEventPreview}
+          onOpenInTasks={onOpenTaskInTasks}
+        />
+      ) : null}
+      {menuCreateOpen && editor?.mode === "create" ? (
         <CalendarEventDialog
           open
-          mode={editor.mode}
+          mode="create"
           form={editor.form}
           calendars={calendars}
           labels={L}
@@ -954,41 +1298,15 @@ export function CalendarWorkspace({
           onChange={setEditorForm}
           onClose={closeEditor}
           onSave={saveEditor}
-          onDelete={editor.mode === "edit" ? deleteEditorEvent : undefined}
           invitees={invitations.invitees}
           contactCards={contactCards}
           onRefreshContactCards={refreshCards}
           canSubmitEmail={invitations.canSubmitEmail}
           sessionEmail={sessionEmail}
           sessionUsername={session.user.username}
-          recurrenceId={editor.mode === "edit" ? editor.recurrenceId : undefined}
-          thisInstanceLocked={
-            editor.mode === "edit" &&
-            Boolean(editor.recurrenceId) &&
-            occurrenceHasThisInstanceOverride(
-              data.events.find((entry) => entry.id === editor.eventId),
-              editor.recurrenceId ?? "",
-            )
-          }
           meetOperations={meetOperations}
           workspaceOrigin={workspaceOrigin}
           onJoinMeeting={onJoinMeeting}
-          onRsvp={
-            editor.mode === "edit"
-              ? (status, calendarId) => {
-                  const notification = inviteeNotifications.find(
-                    (row) => row.eventId === editor.eventId,
-                  );
-                  const id = notification?.id ?? editor.eventId;
-                  return persistRsvp(id, status, calendarId, {
-                    source: "dialog",
-                    editorRecurrenceId: editor.recurrenceId,
-                  }).then((persisted) => {
-                    if (persisted) closeEditor();
-                  });
-                }
-              : undefined
-          }
         />
       ) : null}
       <CalendarCalendarDialog

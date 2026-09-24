@@ -133,6 +133,7 @@ export function mapWgwAdminStateToUI(
       displayName: user.displayName,
       groups: user.groups,
       createdAt: user.createdAt,
+      enabled: user.enabled !== false,
     })),
     groups: state.groups.map((group) => ({
       id: group.id,
@@ -163,6 +164,10 @@ export function mapWgwAdminStateToUI(
       timezone: state.webdav.timezone,
       baseUri: state.webdav.baseUri,
       authRealm: state.webdav.authRealm,
+    },
+    mcp: {
+      enabled: state.mcp?.enabled ?? false,
+      endpointUrl: state.mcp?.endpointUrl ?? null,
     },
     plugins: plugins.map((plugin) => ({
       id: plugin.id,

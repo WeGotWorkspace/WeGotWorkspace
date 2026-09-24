@@ -62,7 +62,7 @@ function composeHeaderTitle(mode: MailComposeMode): string {
 
 export function MailComposeView({
   composeMode = "new",
-  mailbox,
+  mailbox: _mailbox,
   to,
   cc,
   bcc,
@@ -105,7 +105,7 @@ export function MailComposeView({
   return (
     <div className={cn("mail-compose-view", className)}>
       <header className="mail-compose-view__header">
-        <ViewHeader hideSidebarToggle title={composeHeaderTitle(composeMode)} subtitle={mailbox} />
+        <ViewHeader hideSidebarToggle title={composeHeaderTitle(composeMode)} />
       </header>
 
       <div className="mail-compose-view__body">
@@ -114,6 +114,7 @@ export function MailComposeView({
             <div className="mail-compose-view__to-row">
               <Input
                 className="mail-compose-view__to-input"
+                size="sm"
                 value={to}
                 onChange={(event) => onToChange(event.target.value)}
                 placeholder="alice@example.com, bob@example.com"
@@ -135,6 +136,7 @@ export function MailComposeView({
             <>
               <FieldLabelRow label="Cc" className="mail-compose-view__field">
                 <Input
+                  size="sm"
                   value={cc}
                   onChange={(event) => onCcChange(event.target.value)}
                   placeholder="Optional"
@@ -143,6 +145,7 @@ export function MailComposeView({
               </FieldLabelRow>
               <FieldLabelRow label="Bcc" className="mail-compose-view__field">
                 <Input
+                  size="sm"
                   value={bcc}
                   onChange={(event) => onBccChange(event.target.value)}
                   placeholder="Optional"
@@ -154,6 +157,7 @@ export function MailComposeView({
 
           <FieldLabelRow label="Subject" className="mail-compose-view__field">
             <Input
+              size="sm"
               value={subject}
               onChange={(event) => onSubjectChange(event.target.value)}
               placeholder="Subject"
@@ -213,7 +217,7 @@ export function MailComposeView({
           <IconButton
             type="button"
             variant="ghost"
-            size="sm"
+            size="md"
             label={attachFilesLabel}
             icon={<Paperclip className="size-4" aria-hidden />}
             onClick={() => fileInputRef.current?.click()}
@@ -221,10 +225,11 @@ export function MailComposeView({
           />
           <IconButton
             type="button"
-            variant="ghost"
-            size="sm"
+            variant="outline"
+            severity="danger"
+            size="md"
             label={deleteDraftLabel}
-            icon={<Trash2 className="size-4" aria-hidden />}
+            icon={<Trash2 className="size-3.5" aria-hidden />}
             onClick={onDiscard}
             disabled={disableActions}
           />

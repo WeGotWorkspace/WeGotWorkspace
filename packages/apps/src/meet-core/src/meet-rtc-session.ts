@@ -109,6 +109,10 @@ export class MeetRtcSession {
     await this.mesh?.updateJoinName(name);
   }
 
+  retryRoomPeerConnections(): void {
+    this.mesh?.retryRoomPeerConnections();
+  }
+
   async replaceAudioTrack(track: MediaStreamTrack): Promise<void> {
     await this.mesh?.replaceAudioTrack(track);
   }

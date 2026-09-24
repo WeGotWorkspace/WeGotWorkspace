@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
+import { createDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import "@/drive-core/src/drive-browser.css";
@@ -121,12 +122,62 @@ describe("DriveGridView tile interaction", () => {
     fireEvent.contextMenu(screen.getByRole("button", { name: FILE.title }));
     expect(onLongPress).toHaveBeenCalledWith(FILE.id);
   });
+
+  it("does not render a Files section heading above tiles", () => {
+    render(
+      <div className="drive-workspace">
+        <DriveGridView {...baseBrowserProps()} />
+      </div>,
+    );
+    expect(screen.queryByRole("heading", { name: "Files" })).toBeNull();
+  });
+
+  it("shows drive location under the tile title when enabled", () => {
+    render(
+      <div className="drive-workspace">
+        <DriveGridView
+          {...baseBrowserProps({
+            showLocationColumn: true,
+            items: [{ ...FILE, location: "Personal" }],
+          })}
+        />
+      </div>,
+    );
+    expect(screen.getByText("Personal")).toBeTruthy();
+    expect(document.querySelector(".drive-location-label")).toBeTruthy();
+  });
+
+  it("hides overflow actions and drag in picker chrome", () => {
+    const { container } = render(
+      <div className="drive-workspace">
+        <DriveGridView {...baseBrowserProps({ itemChrome: "picker" })} />
+      </div>,
+    );
+
+    expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
+    const tile = container.querySelector(".drive-file-tile");
+    expect(tile?.getAttribute("draggable")).toBe("false");
+  });
 });
 
 describe("DriveListView", () => {
   it("renders the Kind column by default", () => {
     render(<DriveListView {...baseBrowserProps()} />);
     expect(screen.getByRole("columnheader", { name: "Kind" })).toBeTruthy();
+  });
+
+  it("renders the Location column when enabled", () => {
+    render(
+      <DriveListView
+        {...baseBrowserProps({
+          showLocationColumn: true,
+          locationColumnLabel: driveLabels.listColumnLocation,
+          items: [{ ...FILE, location: "Personal" }],
+        })}
+      />,
+    );
+    expect(screen.getByRole("columnheader", { name: "Location" })).toBeTruthy();
+    expect(screen.getByText("Personal")).toBeTruthy();
   });
 
   it("shows a checkbox in selection mode", () => {
@@ -163,5 +214,34 @@ describe("DriveListView", () => {
 
     fireEvent.contextMenu(screen.getByText(FILE.title).closest("tr")!);
     expect(onLongPress).toHaveBeenCalledWith(FILE.id);
+  });
+
+  it("hides the actions column in picker chrome", () => {
+    render(
+      <div className="drive-workspace">
+        <DriveListView {...baseBrowserProps({ itemChrome: "picker" })} />
+      </div>,
+    );
+
+    expect(screen.queryByRole("columnheader", { name: "Actions" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
+  });
+
+  it("uses a drive icon for picker drive roots and a folder icon for nested folders", () => {
+    const root = createDrivePickerRootFile("My Drive", "Personal");
+    const nested: DriveFile = { ...FILE, id: "folder-1", title: "Assets", kind: "folder" };
+    const { container } = render(
+      <div className="drive-workspace">
+        <DriveListView {...baseBrowserProps({ items: [root, nested], itemChrome: "picker" })} />
+      </div>,
+    );
+
+    const personalRow = screen.getByText("Personal").closest("tr");
+    expect(personalRow?.querySelector(".lucide-hard-drive")).toBeTruthy();
+    expect(personalRow?.querySelector(".lucide-folder")).toBeNull();
+    const nestedRow = screen.getByText("Assets").closest("tr");
+    expect(nestedRow?.querySelector(".lucide-folder")).toBeTruthy();
+    expect(nestedRow?.querySelector(".lucide-hard-drive")).toBeNull();
+    expect(container.querySelector(".drive-list-view")).toBeTruthy();
   });
 });

@@ -1,4 +1,4 @@
-import { Children, isValidElement, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { SwipeableList, Type as SwipeListType } from "react-swipeable-list";
 import { ListItemEventDelegationContext } from "@/list-item/src/list-item-delegation";
 import { ListSelectionProvider } from "@/list-item/src/list-item-selection";
@@ -7,6 +7,16 @@ import {
   useDelegatedListItemEvents,
   type DelegatedListItemEvents,
 } from "@/list-item/src/use-delegated-list-item-events";
+
+type SwipeItemIdProps = { id?: string; itemId?: string };
+
+/** Copy `id` onto `itemId` before SwipeableList overwrites `id` with `listItem-${index}`. */
+function preserveSwipeItemId(child: ReactNode): ReactNode {
+  if (!isValidElement<SwipeItemIdProps>(child)) return child;
+  const entityId = child.props.itemId ?? child.props.id;
+  if (!entityId) return child;
+  return cloneElement(child as ReactElement<SwipeItemIdProps>, { itemId: entityId });
+}
 
 export type WorkspaceSwipeListProps = DelegatedListItemEvents & {
   isTouch: boolean;
@@ -38,7 +48,7 @@ export function WorkspaceSwipeList({
   };
   const delegate = hasDelegatedListItemEvents(events);
   const listProps = useDelegatedListItemEvents({ isTouch, ...events });
-  const swipeChildren = Children.toArray(children).filter((child) => isValidElement(child));
+  const swipeChildren = Children.toArray(children).map(preserveSwipeItemId);
   const body = isTouch ? (
     <SwipeableList type={SwipeListType.IOS} fullSwipe>
       {swipeChildren}

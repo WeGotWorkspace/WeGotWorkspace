@@ -138,7 +138,7 @@ final class WgwConfigMigrator
             return $legacyPath;
         }
 
-        if (WgwApiEnvFile::hasRealDatabaseConfig($envPath)) {
+        if (WgwApiEnvFile::hasDatabaseConfigKeys($envPath)) {
             return null;
         }
 
@@ -178,15 +178,20 @@ final class WgwConfigMigrator
             return false;
         }
 
-        $timestamp = date('Ymd-His');
-        if (is_file($installRoot.'/wgw-config.php')) {
-            @copy($installRoot.'/wgw-config.php', $installRoot.'/wgw-config.php.bak.'.$timestamp);
-        }
-        if (is_file($envPath)) {
-            @copy($envPath, $envPath.'.bak.'.$timestamp);
-        }
+        $envContent = is_readable($envPath) ? (string) file_get_contents($envPath) : '';
+        $alreadyApplied = $envContent !== '' && WgwApiEnvFile::containsPairs($envContent, $pairs);
 
-        $patchEnv($envPath, $pairs);
+        if (! $alreadyApplied) {
+            $timestamp = date('Ymd-His');
+            if (is_file($installRoot.'/wgw-config.php')) {
+                @copy($installRoot.'/wgw-config.php', $installRoot.'/wgw-config.php.bak.'.$timestamp);
+            }
+            if (is_file($envPath)) {
+                @copy($envPath, $envPath.'.bak.'.$timestamp);
+            }
+
+            $patchEnv($envPath, $pairs);
+        }
         self::applyPairsToRuntime($pairs);
 
         $activeLegacy = $installRoot.'/wgw-config.php';

@@ -14,7 +14,7 @@ import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
 import {
   DocsCollabEditor,
-  DocsCollabPresence,
+  DocsCollabPresenceChrome,
   mergeCollabPresencePeers,
   useDocsCollab,
   useDocsCollabAwarenessPresence,
@@ -177,7 +177,10 @@ export function NoteCollabSession({
   return <NoteCollabContext.Provider value={value}>{children}</NoteCollabContext.Provider>;
 }
 
-/** Docs-style peer avatars for the notes detail action bar. */
+/**
+ * Notes footer collab chrome — thin wrapper around shared
+ * {@link DocsCollabPresenceChrome} that reads peers from {@link NoteCollabSession}.
+ */
 export function NoteCollabChrome({ className }: { className?: string }) {
   const { session, peers, connectingPeers, warningPeers } = useNoteCollabContext();
   const awarenessPresencePeers = useDocsCollabAwarenessPresence(session?.awareness);
@@ -192,14 +195,13 @@ export function NoteCollabChrome({ className }: { className?: string }) {
   }
 
   return (
-    <div className={cn("note-detail-view__collab-chrome", className)}>
-      <DocsCollabPresence
-        localUser={{ displayName: session.user.name }}
-        peers={presencePeers}
-        connectingPeers={connectingPeers}
-        warningPeers={warningPeers}
-      />
-    </div>
+    <DocsCollabPresenceChrome
+      className={className}
+      localUser={{ displayName: session.user.name }}
+      peers={presencePeers}
+      connectingPeers={connectingPeers}
+      warningPeers={warningPeers}
+    />
   );
 }
 
@@ -211,7 +213,7 @@ export function NoteCollabEditorSurface({
   className?: string;
   /** When false, TipTap rejects typing (view-only share). */
   editable?: boolean;
-  /** Override TipTap mount focus. Omit to keep the collab default (end). */
+  /** Override TipTap mount focus. Omit to focus end without scrolling the caret into view. */
   autofocus?: UseEditorOptions["autofocus"];
 }) {
   const { session, onMarkdownChange, registerMarkdownGetter } = useNoteCollabContext();

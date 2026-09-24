@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Mail, Send, Trash2 } from "lucide-react";
-import type { DriveShareAtPath } from "@wgw-api-generated/drive-types";
+import { Mail, Send } from "lucide-react";
+import type { DriveShareAtPath } from "@wgw/openapi-types/drive-types";
 import { Card } from "@/card/src/card";
 import { CardPanel } from "@/card/src/card-panel";
-import { CardRow } from "@/card/src/card-row";
 import { IconButton } from "@/button/src/icon-button";
+import { ShareAccessRow } from "@/share-ui/share-access-row";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
-import { initialsFromDisplayName } from "@/user-avatar/src/user-avatar";
+import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { accessToUIPermission, type ShareUIPermission } from "@/share-ui/share-access-map";
 import { SharePendingTag } from "@/share-ui/share-pending-tag";
 import { shareLabels } from "@/share-ui/share-labels";
@@ -52,51 +52,54 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
           const permission = accessToUIPermission(grant.access) ?? "view";
           const pending = grant.status === "pending";
           return (
-            <CardRow
+            <ShareAccessRow
               key={grant.principal}
-              leading={
-                <div className="share-dialog__guest-mark share-dialog__group-mark--idle">
-                  {initialsFromDisplayName(grant.principal)}
-                </div>
+              mark={
+                <UserAvatar
+                  displayName={grant.principal}
+                  compact
+                  size="sm"
+                  color={avatarColorForUserId(grant.principal)}
+                  className="share-dialog__guest-mark"
+                />
               }
               title={grant.principal}
               titleEnd={pending ? <SharePendingTag /> : null}
-            >
-              <SharePermissionSelect
-                value={permission}
-                disabled={disabled || pending || !grant.removal}
-                onChange={(next) => {
-                  if (next === "none" || !grant.removal?.principal) return;
-                  void mutations.updateGrantAccess(
-                    grant.removal.shareId,
-                    grant.removal.principal,
-                    next,
-                  );
-                }}
-              />
-              {grant.removal ? (
-                <IconButton
-                  label={shareLabels.removeGuest}
-                  icon={<Trash2 className="size-3.5" aria-hidden />}
-                  size="sm"
-                  variant="outline"
-                  disabled={disabled}
-                  onClick={() => {
-                    if (grant.inviteId) {
-                      void mutations.removeGuestInvite(grant.removal!.shareId, grant.inviteId);
-                      return;
-                    }
-                    if (grant.removal?.principal) {
-                      void mutations.updateGrantAccess(
-                        grant.removal.shareId,
-                        grant.removal.principal,
-                        null,
-                      );
-                    }
+              trailing={
+                <SharePermissionSelect
+                  value={permission}
+                  disabled={disabled || pending || !grant.removal}
+                  onChange={(next) => {
+                    if (next === "none" || !grant.removal?.principal) return;
+                    void mutations.updateGrantAccess(
+                      grant.removal.shareId,
+                      grant.removal.principal,
+                      next,
+                    );
                   }}
                 />
-              ) : null}
-            </CardRow>
+              }
+              showRemove={Boolean(grant.removal)}
+              removeLabel={shareLabels.removeGuest}
+              removeDisabled={disabled || !grant.removal}
+              onRemove={
+                grant.removal
+                  ? () => {
+                      if (grant.inviteId) {
+                        void mutations.removeGuestInvite(grant.removal!.shareId, grant.inviteId);
+                        return;
+                      }
+                      if (grant.removal?.principal) {
+                        void mutations.updateGrantAccess(
+                          grant.removal.shareId,
+                          grant.removal.principal,
+                          null,
+                        );
+                      }
+                    }
+                  : undefined
+              }
+            />
           );
         })}
 

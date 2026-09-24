@@ -21,14 +21,14 @@ Manual alternative: copy `packages/apps/.env.example` → `.env.local` and set `
 ## Default workflow (Docker-free)
 
 ```bash
-pnpm dev                # API :9080 + Vite app :5173 + Storybook :6006
+pnpm dev                # API :9080 + Vite app :5173 + typegen watch
 ```
 
 | Service | URL | Notes |
 |---------|-----|-------|
 | Full app (HMR) | http://127.0.0.1:5173 | Vite dev; proxies `/api/v1` → `:9080` |
-| Storybook | http://127.0.0.1:6006 | Same API proxy |
-| API (host PHP) | http://127.0.0.1:9080 | Health: `/api/v1/health` |
+| Storybook (opt-in) | http://127.0.0.1:6006 | `pnpm dev:storybook`. Not started by `pnpm dev` |
+| API (host PHP) | http://127.0.0.1:9080 | Health: `/api/v1/health`. Not a Turbo task |
 | Built preview | http://127.0.0.1:4173 | `pnpm preview` (no HMR) |
 | HTTPS + WebDAV | https://wegotworkspace.localhost/ | Optional — `compose.local.yml` + mkcert |
 
@@ -38,7 +38,8 @@ pnpm dev                # API :9080 + Vite app :5173 + Storybook :6006
 
 ```bash
 pnpm docker:up          # API → http://127.0.0.1:9080
-pnpm dev                # UI servers; proxy targets :9080 by default
+# Docker already binds :9080. Start Vite without a second PHP server:
+pnpm exec turbo run typegen:watch dev:app --filter=@wgw/openapi-types --filter=@wgw/apps
 ```
 
 For HTTPS / Sabre endpoints: `pnpm docker:up:https` and set `WGW_PROXY_TARGET=https://wegotworkspace.localhost` in `.env.local` if not using plain HTTP on `:9080`.
@@ -46,8 +47,8 @@ For HTTPS / Sabre endpoints: `pnpm docker:up:https` and set `WGW_PROXY_TARGET=ht
 ## Host PHP (no Docker)
 
 ```bash
-pnpm dev          # API :9080 + Vite app + Storybook + typegen watch
-pnpm dev:api      # API only — Laravel env: packages/api/.env (not repo root)
+pnpm dev          # API :9080 + Vite app + typegen watch
+pnpm dev:api      # API only — trap script; Laravel reads packages/api/.env
 pnpm dev:storybook # Storybook only
 pnpm dev:ui       # alias for `pnpm dev`
 pnpm preview      # built UI + API (no HMR)
@@ -57,7 +58,7 @@ First-time host API JWT (without full install tree): copy `packages/api/.env.exa
 
 ## Offline / PWA (contacts pilot)
 
-`pnpm preview` serves the production build with the same `/api/v1` proxy — use for service worker and offline contacts. Copy `packages/apps/.env.example` → `.env.local` when needed. Details: [`docs/dev-layout.md`](../../../docs/dev-layout.md#preview-built-ui-no-hmr).
+`pnpm dev` on http://127.0.0.1:5173 registers the injectManifest service worker so Web Push can arrive (localhost is a secure origin). `pnpm preview` serves the production build with the same `/api/v1` proxy — use that for production precache and offline contacts. Copy `packages/apps/.env.example` → `.env.local` when needed. Details: [`docs/dev-layout.md`](../../../docs/dev-layout.md#preview-built-ui-no-hmr).
 
 ## HTTPS + WebDAV (optional)
 
@@ -98,7 +99,7 @@ docker compose -f compose.dev.yml exec web php /var/www/packages/api/artisan wgw
 | Missing tables after pull | Pending WGW migration | `wgw:schema-migrate` (see above) |
 | UI edits never appear (HMR or reload) | Editing a **different git worktree** than the one running `pnpm dev` | Open the file under the same clone that started Vite (check `lsof -p $(lsof -t -iTCP:5173) \| grep cwd`). Each worktree has its own `packages/apps/src/` — not symlinked. |
 | UI edits on `/` not visible | Component only mounted on app routes (e.g. Contacts at `/contacts/all`) | Navigate to the route that renders the component; `/` is the home launcher only. |
-| Type errors after OpenAPI change | Types not regenerated | `pnpm --filter @wgw/api run openapi:build-json` + apps typegen |
+| Type errors after OpenAPI change | Types not regenerated | `pnpm --filter @wgw/openapi-types typegen`, then apps `typecheck` |
 | Service worker version jumps every reload (`sw.js` #25104 → #25105) | DevTools **Update on reload** enabled, or `pnpm build` while preview is running | Application → Service Workers → **uncheck “Update on reload”** unless debugging SW updates; avoid rebuilding mid-session — restart `pnpm preview` after a build; optional: Unregister + clear site data to reset stale workers |
 
 ## API e2e (local, not default CI for apps)

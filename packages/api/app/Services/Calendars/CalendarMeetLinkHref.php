@@ -9,10 +9,20 @@ namespace App\Services\Calendars;
  */
 final class CalendarMeetLinkHref
 {
-    public const ROOM_CODE_PATTERN = '/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/';
+    /**
+     * Ad-hoc id body. Same alphabet as `createMeetRoomCode` / `mintMeetRoomCode`
+     * (no i, o, 0, or 1). A wider `[a-z0-9]` class would treat names such as
+     * `team-sync-2026` as guest doors.
+     */
+    public const ROOM_CODE_BODY = '[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}';
+
+    public const ROOM_CODE_PATTERN = '/^'.self::ROOM_CODE_BODY.'$/';
+
+    /** Same alphabet as the Meet UI `createMeetRoomCode` (no i, o, 0, 1). */
+    public const ROOM_CODE_ALPHABET = 'abcdefghjklmnpqrstuvwxyz23456789';
 
     /** @var list<string> */
-    private const JOIN_PATHS = ['/meet/guest', '/meet/join'];
+    private const JOIN_PATHS = ['/meet', '/meet/guest', '/meet/join'];
 
     public function workspaceOrigin(): ?string
     {
@@ -49,6 +59,9 @@ final class CalendarMeetLinkHref
         }
 
         $path = '/'.trim((string) ($parts['path'] ?? ''), '/');
+        if (preg_match('#^/meet/meetings/('.self::ROOM_CODE_BODY.')$#', strtolower($path), $matches) === 1) {
+            return $matches[1];
+        }
         if (! in_array($path, self::JOIN_PATHS, true)) {
             return null;
         }
@@ -61,5 +74,39 @@ final class CalendarMeetLinkHref
         }
 
         return $room;
+    }
+
+    /** Ad-hoc leftover room `xxxx-xxxx-xxxx` for `/meet/meetings/{code}`. */
+    public function allocateAdHocRoomCode(): string
+    {
+        $alphabet = self::ROOM_CODE_ALPHABET;
+        $max = strlen($alphabet) - 1;
+        $raw = '';
+        for ($i = 0; $i < 12; $i++) {
+            $raw .= $alphabet[random_int(0, $max)];
+        }
+
+        return substr($raw, 0, 4).'-'.substr($raw, 4, 4).'-'.substr($raw, 8, 4);
+    }
+
+    public function meetingsPath(string $code): string
+    {
+        return '/meet/meetings/'.strtolower($code);
+    }
+
+    public function channelPath(string $channelId): string
+    {
+        return '/meet/channels/'.$channelId;
+    }
+
+    public function absoluteHref(string $path): string
+    {
+        $origin = $this->workspaceOrigin();
+        $normalized = '/'.ltrim($path, '/');
+        if ($origin === null || $origin === '') {
+            return $normalized;
+        }
+
+        return rtrim($origin, '/').$normalized;
     }
 }

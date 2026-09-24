@@ -4,7 +4,7 @@ Only open a PR when the user explicitly asks (e.g. "open a PR", "create a pull r
 
 ## Before push
 
-**Apps (`packages/apps/**`):** Husky pre-push runs `pnpm test:apps-done-gate` when apps files changed in the push range. Run it manually if hooks were skipped — targeted Vitest alone is insufficient for merge-ready UI work.
+**Apps (`packages/apps/**`):** Husky pre-push runs the local apps done gate when apps files changed in the push range (typecheck, OpenAPI contract, Storybook smoke, coverage). Vitest unit and jsdom run in CI. Run the local gate manually if hooks were skipped.
 
 **Full stack before merge-ready PR** (when touching API or apps):
 
@@ -37,6 +37,8 @@ gh pr create --title "type(scope): short description" --body "$(cat <<'EOF'
 EOF
 )"
 ```
+
+**English only** for the PR title, body, and every review comment — even if the user prompt is Dutch ([english-only.md](../developer/english-only.md)).
 
 Use the repo template sections where applicable — see [`.github/pull_request_template.md`](../../../.github/pull_request_template.md):
 
@@ -98,6 +100,7 @@ Use **`--squash`** or **`--rebase`** only when the user explicitly requests it, 
 - **Do not** skip hooks (`--no-verify`) unless the user explicitly requests it.
 - **Do not** amend commits unless user requests it and amend rules are satisfied (unpushed, your commit, etc.).
 - Use `gh` for all GitHub tasks (PR, checks, issues).
+- **English only** for issue/PR text and comments — [english-only.md](../developer/english-only.md).
 - **Merge with `--merge` by default** — see [Merging PRs](#merging-prs). Never use `--squash` unless the user asks.
 - **Issue linking:** `feat/` PRs close a **Task or Epic** (`fixes #N` / `closes #N`) — never a Goal alone as the sole closing issue. Spec `Source:` follows the same rule — [issue-filing.md](../developer/issue-filing.md), [verify-issue](../verify-issue/SKILL.md).
 

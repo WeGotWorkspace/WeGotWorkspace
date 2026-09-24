@@ -28,7 +28,7 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `api_revoked_tokens` | `App\Models\ApiRevokedToken` | Revoked JWT JTIs |
 | `app_update_history` | `App\Models\AppUpdateHistory` | In-place update audit log |
 | `app_migrations` | `App\Models\AppMigration` | Legacy schema version audit (upgraded installs) |
-| `meet_peers` | `App\Models\MeetPeer` | Meet signaling peers (composite key) |
+| `meet_peers` | `App\Models\MeetPeer` | Meet signaling peers (composite key; optional `browser_id` for same-device leftover eviction) |
 | `meet_messages` | `App\Models\MeetMessage` | Meet signaling messages |
 | `meet_reservations` | `App\Models\MeetReservation` | Reserved Meet rooms (`id` = room code; `owner_principal`; `created_by`; nullable `expires_at`; `activated_at` when first joinable) |
 | `collab_peers` | `App\Models\CollabPeer` | Collab signaling peers |
@@ -48,6 +48,10 @@ All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) 
 | `addressbook_shares` | `App\Models\AddressBookShare` | RFC 9670 AddressBook shareWith grants (`addressbookid` + `principaluri` + Sabre access 2/3). No calendarinstances analog. |
 | `addressbook_share_dismissals` | `App\Models\AddressBookShareDismissal` | Per-user hide of an inbound address-book share (`username` + `addressbookid`). Owner shareWith is unchanged; restore deletes the row. |
 | `mail_user_credentials` | `App\Models\MailUserCredential` | Per-user IMAP/SMTP credentials |
+| `docs_thread_index` | `App\Models\DocsThreadIndex` | Path index for Docs comment/suggestion VJOURNAL threads (`uid` + `doc_path` + kind). Indexes: unique `uid`; `(calendarid, doc_path)` hot path; standalone `doc_path` for rename/delete; `(calendarid, change_id)`. `doc_path` is varchar(512) for MySQL utf8mb4 index limits. |
+| `notifications` | `App\Models\Notification` | Suite notify inbox (one row per principal + event) |
+| `notification_deliveries` | `App\Models\NotificationDelivery` | Short-lived local/VAPID delivery attempts |
+| `push_subscriptions` | `App\Models\PushSubscription` | Web Push subscriptions (principal + endpoint) |
 
 Sabre-owned tables (`locks`, `propertystorage`, `calendarchanges`, …) have no app models yet; access them through Sabre backends or add models when a domain needs direct queries.
 

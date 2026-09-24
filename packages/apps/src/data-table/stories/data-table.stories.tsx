@@ -104,7 +104,7 @@ const columns: DataTableColumn<BackupRow>[] = [
 ];
 
 const meta: Meta<typeof DataTable<BackupRow>> = {
-  title: "Shared/Data Table",
+  title: "UI/Patterns/Data Table",
   component: DataTable<BackupRow>,
 };
 

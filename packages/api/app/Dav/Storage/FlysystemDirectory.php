@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dav\Storage;
 
+use App\Services\Drive\DocAttachmentPaths;
 use Sabre\DAV;
 
 class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\IMoveTarget, DAV\IQuota
@@ -65,12 +66,18 @@ class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\I
         $prefix = $this->key === '' ? '' : $this->key.'/';
         foreach ($this->filesystem->directories($this->key) as $dirKey) {
             $name = substr($dirKey, strlen($prefix));
+            if ($name === DocAttachmentPaths::DIR) {
+                continue;
+            }
             if ($name !== '' && $name !== '.' && $name !== '..') {
                 $nodes[] = new self($this->filesystem, $dirKey);
             }
         }
         foreach ($this->filesystem->files($this->key) as $fileKey) {
             $name = substr($fileKey, strlen($prefix));
+            if ($name === DocAttachmentPaths::DIR) {
+                continue;
+            }
             if ($name !== '' && $name !== '.' && $name !== '..') {
                 $nodes[] = new FlysystemFile($this->filesystem, $fileKey);
             }

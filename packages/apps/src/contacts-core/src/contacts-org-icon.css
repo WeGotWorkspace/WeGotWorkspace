@@ -2,7 +2,7 @@
 
 .contacts-org-icon {
   @apply size-3.5 shrink-0;
-  color: var(--user-avatar-fg, var(--color-ink));
+  color: var(--user-avatar-fg, var(--color-we-got-dark));
 }
 
 .user-avatar--md .contacts-org-icon {

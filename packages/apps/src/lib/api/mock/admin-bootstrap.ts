@@ -2,6 +2,7 @@ import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { defaultMailDeliveryState } from "@/admin-core/src/admin-mail-delivery";
 import type { AdminUIData, AdminUpdateCheck } from "@/admin-core/src/admin-types";
+import { STORY_MCP_ENDPOINT_URL } from "@/settings-core/src/mcp-endpoint";
 
 const DEFAULT_SERVER_CHECKS: AdminUpdateCheck[] = [
   { ok: true, label: "PHP runtime", detail: "Meets minimum version for this release." },
@@ -23,6 +24,16 @@ const DEFAULT_DATA: AdminUIData = {
       displayName: "Alice Example",
       groups: ["principals/groups/administrators"],
       createdAt: "",
+      enabled: true,
+    },
+    {
+      id: "carol",
+      username: "carol",
+      email: "carol@example.test",
+      displayName: "Carol Example",
+      groups: [],
+      createdAt: "",
+      enabled: false,
     },
   ],
   groups: [
@@ -78,6 +89,10 @@ const DEFAULT_DATA: AdminUIData = {
     baseUri: "/",
     authRealm: "SabreDAV",
   },
+  mcp: {
+    enabled: false,
+    endpointUrl: STORY_MCP_ENDPOINT_URL,
+  },
   plugins: [],
   updates: {
     installChannel: null,
@@ -107,7 +122,7 @@ const DEFAULT_DATA: AdminUIData = {
     lastResult: null,
     logLines: [],
   },
-  currentUser: "",
+  currentUser: "alice",
   logoutUrl: "/logout",
   updateLogLines: [],
 };

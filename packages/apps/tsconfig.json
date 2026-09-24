@@ -1,5 +1,6 @@
 {
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite-env.d.ts", "vite.config.ts", "eslint.config.js"],
+  "exclude": ["src/sw.ts"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",
@@ -21,8 +22,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "@/*": ["./src/*"],
-      "@wgw-api-generated/*": ["../api/openapi/generated/*"]
+      "@/*": ["./src/*"]
     }
   }
 }

@@ -73,16 +73,40 @@ final class WgwAppBootstrap
             $appRoot.'/packages/api',
             $runtimeRoot.'/packages/api',
         ];
+        $preferred = [];
 
-        // Monorepo dev only: live packages/api beside apps/wegotworkspace.
-        if (str_ends_with($normalized, '/apps/wegotworkspace')) {
-            return array_values(array_unique([
-                dirname($normalized, 2).'/packages/api',
-                ...$installCandidates,
-            ]));
+        $configured = self::configuredApiPackageRoot();
+        if ($configured !== null) {
+            $preferred[] = $configured;
         }
 
-        return array_values(array_unique($installCandidates));
+        // Host checkout: .../apps/wegotworkspace → sibling packages/api.
+        if (str_ends_with($normalized, '/apps/wegotworkspace')) {
+            $preferred[] = dirname($normalized, 2).'/packages/api';
+        }
+
+        // Docker compose.dev.yml: DocumentRoot is remapped to /var/www/install, so
+        // the /apps/wegotworkspace suffix check above does not fire. Prefer the
+        // bind-mounted live API over the nested install copy (often a stale build).
+        if ($normalized === '/var/www/install') {
+            $preferred[] = '/var/www/packages/api';
+        }
+
+        return array_values(array_unique([...$preferred, ...$installCandidates]));
+    }
+
+    private static function configuredApiPackageRoot(): ?string
+    {
+        $raw = $_SERVER['WGW_API_ROOT'] ?? $_ENV['WGW_API_ROOT'] ?? getenv('WGW_API_ROOT');
+        if (! is_string($raw)) {
+            return null;
+        }
+        $root = rtrim(str_replace('\\', '/', trim($raw)), '/');
+        if ($root === '' || str_contains($root, '..')) {
+            return null;
+        }
+
+        return $root;
     }
 
     private static function resolveApiPackageRoot(string $appRoot, string $runtimeRoot): ?string
@@ -125,6 +149,10 @@ final class WgwAppBootstrap
 
     private static function migrateLegacyConfigIfNeeded(string $appRoot, string $apiPackageRoot): void
     {
+        if (! is_file(rtrim(str_replace('\\', '/', $appRoot), '/').'/wgw-config.php')) {
+            return;
+        }
+
         \App\Services\Installer\WgwConfigMigrator::migrateAtPaths($appRoot, $apiPackageRoot, false);
     }
 
@@ -146,7 +174,7 @@ final class WgwAppBootstrap
         if ($apiPackageWithoutVendor !== null) {
             echo json_encode([
                 'error' => 'api_unavailable',
-                'message' => 'Composer vendor/ is missing for the API app. Run `composer --working-dir packages/api install` from the repo root (monorepo dev), or `pnpm --filter @wgw/api build` for a self-contained install tree.',
+                'message' => 'Composer vendor/ is missing for the API app. Run `composer --working-dir packages/api install` from the repo root (monorepo dev), or `pnpm build` for a self-contained install tree.',
                 'path' => $apiPackageWithoutVendor,
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         } else {

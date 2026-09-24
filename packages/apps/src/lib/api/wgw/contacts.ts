@@ -2,7 +2,7 @@ import type {
   AddressBook,
   ContactCard,
   ContactCardImportResponse,
-} from "@wgw-api-generated/contacts-types";
+} from "@wgw/openapi-types/contacts-types";
 import type { AddressBookMutationPatch } from "@/contacts-core/src/contacts-types";
 import { contactCardToVCard } from "@/contacts-core/src/contacts-vcard-export";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";

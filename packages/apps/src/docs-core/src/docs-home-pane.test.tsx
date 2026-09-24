@@ -289,22 +289,26 @@ describe("DocsHomePane file interaction", () => {
 
 describe("DocsHomePane multi-select batch bar", () => {
   it("shows the batch selection bar in list view when two items are selected", () => {
-    renderPane("list", [FILE, FILE2]);
+    const { container } = renderPane("list", [FILE, FILE2]);
     selectTwoItems("list");
-    expect(screen.getByText("2 selected")).toBeTruthy();
+    expect(screen.getByText("2 Items")).toBeTruthy();
+    expect(container.querySelector(".docs-home-pane__scroll .drive-selection-bar")).toBeNull();
+    expect(container.querySelector(".docs-home-pane__body > .drive-selection-bar")).toBeTruthy();
   });
 
   it("shows the batch selection bar in grid view when two items are selected", () => {
-    renderPane("grid", [FILE, FILE2]);
+    const { container } = renderPane("grid", [FILE, FILE2]);
     selectTwoItems("grid");
-    expect(screen.getByText("2 selected")).toBeTruthy();
+    expect(screen.getByText("2 Items")).toBeTruthy();
+    expect(container.querySelector(".docs-home-pane__scroll .drive-selection-bar")).toBeNull();
+    expect(container.querySelector(".docs-home-pane__body > .drive-selection-bar")).toBeTruthy();
   });
 
   it("hides the batch selection bar after Done is clicked", () => {
     renderPane("list", [FILE, FILE2]);
     selectTwoItems("list");
     fireEvent.click(screen.getByRole("button", { name: driveLabels.selectionDone }));
-    expect(screen.queryByText("2 selected")).toBeNull();
+    expect(screen.queryByText("2 Items")).toBeNull();
   });
 
   it("shows checkboxes in list view after context menu enters selection mode", () => {

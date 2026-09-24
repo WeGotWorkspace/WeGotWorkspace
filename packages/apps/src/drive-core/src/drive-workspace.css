@@ -1,34 +1,75 @@
 @import "../../styles.css" reference;
 @import "../../ui/anchored-dropdown.css";
 @import "../../workspace-shell/src/workspace-split-app.css";
+@import "../../workspace-shell/src/workspace-color.css";
 
 .drive-workspace {
   @apply min-w-0 overflow-x-hidden;
-  --drive-accent: #10b981;
-  --color-emerald: var(--drive-accent);
-  /* Cream-tint sidebar; 32% — clearer than 12% mute, softer than solid emerald */
-  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #ffffff));
-  --workspace-accent: var(--drive-accent);
-  --app-sidebar-bg: var(--drive-sidebar);
-  --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --app-sidebar-color: var(--color-ink);
-  --sidebar-logo-close-button-color: var(--color-ink);
-  --sidebar-badge-fg: var(--drive-accent);
+  /* Brand lime from drive.svg tile — same hex as WORKSPACE_APP_ACCENT.drive. */
+  --workspace-accent: var(--color-we-got-sand);
+  --color-emerald: var(--workspace-accent);
+  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
+  --app-sidebar-color: var(--color-we-got-dark);
+  --sidebar-logo-close-button-color: var(--color-we-got-dark);
+  --sidebar-badge-fg: var(--workspace-accent);
   --workspace-main-content-max-width: none;
-  --workspace-sidebar-toggle-color: var(--color-ink);
-  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --workspace-user-footer-avatar-color: var(--color-ink);
-  --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --upload-progress-active-fill: var(--drive-accent);
+  --workspace-user-footer-link-hover-bg: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --workspace-user-footer-text-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 70%,
+    transparent
+  );
+  --workspace-user-footer-border-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --workspace-user-footer-link-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 65%,
+    transparent
+  );
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
+  --upload-progress-active-fill: var(--workspace-accent);
   --upload-progress-done-fill: var(--color-emerald);
-  --file-drop-overlay-card-color: var(--drive-accent);
-  --drive-detail-tag-bg: color-mix(in oklab, var(--drive-accent) 12%, transparent);
-  --drive-detail-tag-fg: var(--drive-accent);
+  --file-drop-overlay-card-color: var(--workspace-accent);
+  --drive-detail-tag-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);
+  --drive-detail-tag-fg: var(--workspace-accent);
+  /* Alias for DocsCollabSidebarPanel wash (detail panel = 10% accent, not the nav rail). */
+  --docs-collab-sidebar-panel-wash: color-mix(
+    in oklch,
+    var(--workspace-accent) 10%,
+    var(--workspace-surface)
+  );
+  /* Same flex-dock pattern as Calendar invitations / Docs review. */
+  --drive-detail-column-width: 22rem;
+  --workspace-panel-width: var(--drive-detail-column-width);
+
+  /*
+   * Outline language for segmented / tile chrome outside the sidebar.
+   * Sidebar row states are the shared rail ladder in `workspace-color.css`.
+   */
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  --button-active-color: var(--workspace-accent-strong);
+  --button-outline-hover-color: var(--workspace-accent-strong);
+  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 40%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklch,
+    var(--workspace-accent) 55%,
+    var(--workspace-surface)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklch,
+    var(--workspace-accent) 65%,
+    var(--workspace-surface)
+  );
+  /* Section titles on the accent rail — slate muted fails AA; ink mix clears. */
+  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
 }
 
 .drive-workspace .workspace-app-layout__main-scroll {
@@ -40,24 +81,46 @@
 }
 
 .drive-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--color-ink);
-  --button-primary-fg: var(--drive-accent);
-  --button-subtle-color: var(--color-ink);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
+  /* New CTA: black/ink on Drive green (same recipe as Tasks/Notes sidebar primaries). */
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
+  --button-outline-hover-color: var(--color-we-got-dark);
 }
 
-.drive-workspace .drive-detail-actions {
-  @apply px-5 md:px-6;
-  --button-subtle-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 18%, transparent);
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+/*
+ * Bell lives in the header (sibling of scroll). Mirror New CTA: Drive green +
+ * ink. Literal ink avoids the notifications `--color-we-got-dark` glyph remap.
+ */
+.drive-workspace .app-sidebar__notifications {
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: #003311;
+  --notification-inbox-badge-bg: var(--workspace-accent);
+  --notification-inbox-badge-fg: #003311;
+}
+
+/**
+ * App switcher lockup: drive.svg literals (white tile / `#8ACE00` folder).
+ * Pin both the lockup variables and `--wai-*` so artwork stays distinct from
+ * any shared switch-trigger remaps (do not recolor the folder mark).
+ */
+.drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
+  --app-switch-icon-bg: #ffffff;
+  --app-switch-icon-fg: var(--color-we-got-brat);
+  background-color: #ffffff;
+}
+
+.drive-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: #ffffff;
+  --wai-fg: var(--color-we-got-brat);
 }
 
 .drive-workspace .drive-main-pane {
   @apply flex min-h-0 flex-1 flex-col min-w-0 relative w-full;
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--workspace-surface);
 }
 
 .drive-workspace .drive-floating-upload {
@@ -79,10 +142,10 @@
   border-bottom: none;
   border-radius: var(--control-radius);
   padding: 0.875rem 1rem;
-  background-color: var(--color-cream, #ffffff);
+  background-color: var(--workspace-surface);
   box-shadow:
-    0 4px 24px color-mix(in oklab, var(--color-ink) 16%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--color-ink) 8%, transparent);
+    0 4px 24px color-mix(in oklch, var(--color-we-got-dark) 16%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--color-we-got-dark) 8%, transparent);
 }
 
 @media (max-width: 767px) {
@@ -110,13 +173,13 @@
 .drive-workspace .drive-main-pane__breadcrumbs {
   @apply px-4 md:px-6 shrink-0;
   padding-block: 1rem;
-  background-color: color-mix(in oklab, var(--drive-accent) 7%, var(--color-cream, #ffffff));
-  border-bottom: 1px solid color-mix(in oklab, var(--drive-accent) 12%, transparent);
-  --path-breadcrumb-lead-color: var(--drive-accent);
-  --path-breadcrumb-lead-bg: color-mix(in oklab, var(--drive-accent) 12%, transparent);
-  --path-breadcrumb-link-color: color-mix(in oklab, var(--color-ink) 58%, transparent);
-  --path-breadcrumb-current-color: var(--color-ink);
-  --path-breadcrumb-link-hover-bg: color-mix(in oklab, var(--drive-accent) 10%, transparent);
+  background-color: color-mix(in oklch, var(--workspace-accent) 7%, var(--workspace-surface));
+  border-bottom: 1px solid color-mix(in oklch, var(--workspace-accent) 12%, transparent);
+  --path-breadcrumb-lead-color: var(--workspace-accent);
+  --path-breadcrumb-lead-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);
+  --path-breadcrumb-link-color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  --path-breadcrumb-current-color: var(--color-we-got-dark);
+  --path-breadcrumb-link-hover-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
 }
 
 .drive-workspace .drive-main-header__search-dropdown {
@@ -126,28 +189,16 @@
 
 .drive-workspace .drive-main-header__actions {
   @apply flex items-center gap-2;
-  --button-active-color: var(--segmented-control-active-fg, var(--color-ink));
-  --button-subtle-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
-  --segmented-control-active-bg: var(--color-cream, #ffffff);
-  --segmented-control-active-fg: var(--color-ink);
-  --segmented-control-active-shadow: 0 1px 2px
-    color-mix(in oklab, var(--color-ink) 20%, transparent);
-}
-
-/* Match ViewModeToggle selected segment; override generic emerald icon-button--active tint. */
-.drive-workspace .drive-main-header__actions .button--variant-subtle.icon-button--active {
-  background-color: var(--segmented-control-active-bg);
-  color: var(--segmented-control-active-fg);
-  box-shadow: var(--segmented-control-active-shadow);
-}
-
-/* Lucide icons are stroke-based; icon-button--active fill would solidify them. */
-.drive-workspace
-  .drive-main-header__actions
-  .button--variant-subtle.icon-button--active
-  .button__icon
-  > svg {
-  fill: none;
+  --button-outline-color: var(--color-we-got-dark);
+  --segmented-control-color: var(--button-outline-color);
+  --segmented-control-track-bg: transparent;
+  --segmented-control-track-border-color: var(
+    --button-outline-border-color,
+    var(--control-border-color)
+  );
+  --segmented-control-active-bg: var(--button-outline-active-background);
+  --segmented-control-active-fg: var(--button-active-color);
+  --segmented-control-active-shadow: none;
 }
 
 /**
@@ -155,85 +206,42 @@
  * Repeat accent tokens here so {@link Button} and destination picker match the drive shell.
  */
 .drive-dialog-surface {
-  --drive-accent: #10b981;
-  --drive-sidebar: color-mix(in oklab, var(--drive-accent) 32%, var(--color-cream, #ffffff));
-  --destination-picker-accent: var(--drive-accent);
-  --color-emerald: var(--drive-accent);
-  --button-primary-bg: var(--drive-accent);
-  --button-primary-fg: #ffffff;
-  --primary: var(--drive-accent);
-  --primary-foreground: #ffffff;
-  --field-label-color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --workspace-accent: var(--color-we-got-sand);
+  --destination-picker-accent: var(--workspace-accent);
+  --color-emerald: var(--workspace-accent);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  --primary: var(--workspace-accent);
+  --primary-foreground: var(--color-we-got-dark);
+  --button-active-color: var(--workspace-accent-strong);
+  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 .drive-workspace .drive-main-pane__body {
   @apply flex flex-1 min-h-0;
 }
 
-@media (min-width: 768px) {
-  .drive-workspace .drive-main-pane__body:has(.drive-detail-aside) {
-    display: grid;
-    grid-template-columns: 1fr 0fr;
-    transition: grid-template-columns 300ms cubic-bezier(0.32, 0.72, 0, 1);
-  }
-
-  .drive-workspace .drive-main-pane__body:has(.drive-detail-aside[data-open="true"]) {
-    grid-template-columns: 2fr 1fr;
-  }
-}
-
-@media (max-width: 767px) {
-  .drive-workspace .drive-main-pane__body {
-    transition: transform 300ms ease-out;
-  }
-
-  .drive-workspace .drive-main-pane--mobile-detail-open .drive-main-pane__body {
-    transform: translateX(-25%);
-  }
-}
-
 .drive-workspace .drive-main-pane__scroll {
   @apply flex-1 min-h-0 min-w-0 w-full overflow-x-hidden overflow-y-auto;
 }
 
-.drive-workspace .drive-detail-aside {
-  @apply hidden md:flex min-w-0 overflow-hidden border-l flex-col min-h-0 will-change-transform transition-[translate,border-width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)];
-  background-color: var(--color-cream, #ffffff);
-  border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+.drive-workspace .workspace-app-layout__main {
+  @apply isolate min-w-0;
 }
 
-.drive-workspace .drive-detail-aside[data-open="true"] {
-  @apply translate-x-0;
+.drive-workspace .workspace-app-layout__panel,
+.drive-workspace .drive-workspace__detail-panel {
+  @apply flex min-h-0 flex-col overflow-hidden border-l;
+  flex: 0 0 var(--drive-detail-column-width);
+  width: var(--drive-detail-column-width);
+  max-width: var(--drive-detail-column-width);
+  border-color: color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
+  background-color: var(--docs-collab-sidebar-panel-wash);
 }
 
-.drive-workspace .drive-detail-aside[data-open="false"] {
-  @apply translate-x-full border-l-0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .drive-workspace .drive-main-pane__body:has(.drive-detail-aside) {
-    transition: none;
-  }
-
-  .drive-workspace .drive-detail-aside {
-    transition: none;
-  }
-}
-
-.drive-workspace .drive-detail-overlay {
-  @apply md:hidden fixed inset-0 z-50 flex flex-col transition-transform duration-300 ease-out;
-  background-color: var(--color-cream, #ffffff);
-}
-
-.drive-workspace .drive-selection-bar {
-  --button-ghost-color: inherit;
-  --button-ghost-hover-background: color-mix(in oklab, white 10%, transparent);
-  background-color: var(--color-ink) !important;
-  color: var(--color-cream, #ffffff) !important;
-}
-
-.drive-workspace .drive-detail-panel__scroll {
-  @apply flex-1 overflow-y-auto px-5 md:px-6 py-6;
+.drive-workspace .drive-workspace__detail-panel[data-open="false"] {
+  @apply pointer-events-none;
 }
 
 .drive-workspace .drive-detail-panel__path {

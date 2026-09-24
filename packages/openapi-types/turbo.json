@@ -1,0 +1,19 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "typegen": {
+      "inputs": [
+        "$TURBO_ROOT$/packages/api/openapi/openapi.json",
+        "$TURBO_ROOT$/packages/api/openapi/schemas/**",
+        "generated/**",
+        "scripts/**",
+        "package.json"
+      ],
+      "outputs": ["generated/**"]
+    },
+    "build": {
+      "dependsOn": ["typegen"],
+      "outputs": []
+    }
+  }
+}

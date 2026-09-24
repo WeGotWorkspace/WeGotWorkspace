@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-import type { DriveShareAccess } from "@wgw-api-generated/drive-types";
+import type { DriveShareAccess } from "@wgw/openapi-types/drive-types";
 import {
   SHARE_UI_PERMISSIONS,
   accessToSelectableUIPermission,
@@ -9,12 +8,15 @@ import { ShareAccessRow } from "@/share-ui/share-access-row";
 import { ShareInheritedLabel } from "@/share-ui/share-inherited-link";
 import { SharePermissionSelect } from "@/share-ui/share-permission-select";
 import { SharePendingTag } from "@/share-ui/share-pending-tag";
+import { SharePrincipalMark, type SharePrincipalKind } from "@/share-ui/share-principal-mark";
 import { shareLabels, formatSharePathLabel } from "@/share-ui/share-labels";
 import { accessLabelForReadOnly } from "@/share-ui/use-share-mutations";
 
 type SharePrincipalRowProps = {
-  mark: ReactNode;
-  title: string;
+  principalType: SharePrincipalKind;
+  displayName: string;
+  /** Stable identity key for per-user palette (user principals only). */
+  principalId?: string;
   subtitle?: string;
   inheritedFromPath?: string;
   pending?: boolean;
@@ -28,8 +30,9 @@ type SharePrincipalRowProps = {
 };
 
 export function SharePrincipalRow({
-  mark,
-  title,
+  principalType,
+  displayName,
+  principalId,
   subtitle,
   inheritedFromPath,
   pending = false,
@@ -51,7 +54,7 @@ export function SharePrincipalRow({
     : undefined;
 
   const trailing =
-    canEdit && uiPermission ? (
+    permissions.length === 0 ? undefined : canEdit && uiPermission ? (
       <SharePermissionSelect
         value={uiPermission}
         title={editHint}
@@ -76,11 +79,20 @@ export function SharePrincipalRow({
 
   return (
     <ShareAccessRow
-      mark={mark}
-      title={title}
-      subtitle={subtitle}
-      titleExtra={inheritedFromPath ? <ShareInheritedLabel sharePath={inheritedFromPath} /> : null}
-      titleEnd={pending ? <SharePendingTag /> : null}
+      mark={
+        <SharePrincipalMark
+          principalType={principalType}
+          displayName={displayName}
+          principalId={principalId}
+          subtitle={subtitle}
+          size="sm"
+          labeled
+          nameAccessory={
+            inheritedFromPath ? <ShareInheritedLabel sharePath={inheritedFromPath} /> : null
+          }
+          nameEnd={pending ? <SharePendingTag /> : null}
+        />
+      }
       trailing={trailing}
       showRemove={showRemove}
       removeDisabled={!canRemove}

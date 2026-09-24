@@ -18,7 +18,7 @@ export function AdminPluginsPane({ controller }: AdminPluginsPaneProps) {
       <div className="mb-3 flex justify-end">
         <Button
           label="Install plugin ZIP"
-          variant="subtle"
+          variant="outline"
           onClick={() => fileInputRef.current?.click()}
         />
         <input

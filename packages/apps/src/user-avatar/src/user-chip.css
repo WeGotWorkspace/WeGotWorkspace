@@ -1,0 +1,165 @@
+@import "../../styles.css" reference;
+
+/**
+ * Button-rounded person chip on the shared ControlSize height scale.
+ * Leading avatar tile is flush to the chip start/top/bottom edges and uses
+ * `--control-radius` (not a full pill). Tone classes wash the full chip.
+ */
+.user-chip {
+  /*
+   * Tone classes set `--user-chip-fg/bg/border` (and `--tag-fg`).
+   * Fallbacks keep a readable cream wash when no tone is applied.
+   */
+  --user-chip-fg: var(--tag-fg, var(--color-we-got-dark));
+  --user-chip-mark-icon: 0.75rem;
+  --user-chip-font-size: var(--input-font-size-md, 0.875rem);
+  --user-chip-padding-end: 0.625rem;
+  --user-chip-gap: 0;
+  --user-chip-mark-width: 1.75rem;
+
+  @apply inline-flex max-w-full min-w-0 items-center;
+  gap: var(--user-chip-gap);
+  min-height: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
+  padding-inline: 0 var(--user-chip-padding-end);
+  border-radius: var(--control-radius);
+  border: 1px solid
+    var(--user-chip-border, color-mix(in oklab, var(--user-chip-fg) 38%, transparent));
+  background-color: var(
+    --user-chip-bg,
+    color-mix(in oklab, var(--user-chip-fg) 16%, var(--color-we-got-soft))
+  );
+  color: var(--user-chip-fg);
+  font-size: var(--user-chip-font-size);
+  line-height: 1;
+  overflow: hidden;
+  outline: none;
+}
+
+.user-chip:focus-visible {
+  /* Match Input / Select keyboard focus — border only (overflow clips rings). */
+  border-color: var(--input-border-focus, var(--ring));
+}
+
+.user-chip--size-xs {
+  --user-chip-mark-icon: 0.625rem;
+  --user-chip-font-size: var(--input-font-size-xs, 0.75rem);
+  --user-chip-padding-end: 0.5rem;
+  --user-chip-mark-width: 1.375rem;
+  min-height: var(--control-height-xs, 1.75rem);
+  height: var(--control-height-xs, 1.75rem);
+}
+
+.user-chip--size-sm {
+  --user-chip-mark-icon: 0.6875rem;
+  --user-chip-font-size: var(--input-font-size-sm, 0.875rem);
+  --user-chip-padding-end: 0.5rem;
+  --user-chip-mark-width: 1.5rem;
+  min-height: var(--control-height-sm, 2rem);
+  height: var(--control-height-sm, 2rem);
+}
+
+.user-chip--size-md {
+  --user-chip-mark-icon: 0.75rem;
+  --user-chip-font-size: var(--input-font-size-md, 0.875rem);
+  --user-chip-padding-end: 0.625rem;
+  --user-chip-mark-width: 1.75rem;
+  min-height: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
+}
+
+.user-chip--size-lg {
+  --user-chip-mark-icon: 0.8125rem;
+  --user-chip-font-size: var(--input-font-size-lg, 1rem);
+  --user-chip-padding-end: 0.75rem;
+  --user-chip-mark-width: 1.875rem;
+  min-height: var(--control-height-lg, 2.5rem);
+  height: var(--control-height-lg, 2.5rem);
+}
+
+.user-chip--size-xl {
+  --user-chip-mark-icon: 0.875rem;
+  --user-chip-font-size: var(--input-font-size-xl, 1rem);
+  --user-chip-padding-end: 0.75rem;
+  --user-chip-mark-width: 2rem;
+  min-height: var(--control-height-xl, 2.75rem);
+  height: var(--control-height-xl, 2.75rem);
+}
+
+.user-chip__main {
+  @apply inline-flex h-full min-w-0 flex-1 items-center;
+  gap: var(--user-chip-gap);
+}
+
+.user-chip__mark-wrap {
+  @apply inline-flex h-full shrink-0 self-stretch;
+  /* Pull into the chip border so the tile is flush with the outer edge. */
+  margin-block: -1px;
+  margin-inline-start: -1px;
+  height: calc(100% + 2px);
+}
+
+.user-chip__mark {
+  @apply flex h-full;
+  --user-avatar-radius: var(--control-radius);
+  /* Transparent — chip body paints the single wash (matches Switch off track). */
+  --user-avatar-bg: transparent;
+  --user-avatar-fg: var(--user-chip-fg);
+  --user-avatar-border: transparent;
+  --user-avatar-border-width: 0;
+  --user-avatar-gap: 0;
+  height: 100%;
+}
+
+.user-chip__mark .user-avatar__mark-wrap {
+  @apply h-full;
+}
+
+.user-chip__mark .user-avatar__mark {
+  box-sizing: border-box;
+  width: var(--user-chip-mark-width);
+  height: 100%;
+  /* Start corners match the chip; end edge stays square toward the label. */
+  border-radius: var(--control-radius) 0 0 var(--control-radius);
+  border: none;
+  background-color: transparent;
+  font-size: calc(var(--user-chip-mark-icon) + 0.125rem);
+}
+
+.user-chip--size-xs .user-chip__mark .user-avatar__mark,
+.user-chip--size-sm .user-chip__mark .user-avatar__mark,
+.user-chip--size-md .user-chip__mark .user-avatar__mark,
+.user-chip--size-lg .user-chip__mark .user-avatar__mark,
+.user-chip--size-xl .user-chip__mark .user-avatar__mark {
+  width: var(--user-chip-mark-width);
+}
+
+.user-chip__mark svg {
+  width: var(--user-chip-mark-icon);
+  height: var(--user-chip-mark-icon);
+}
+
+.user-chip__label {
+  @apply min-w-0 truncate font-medium;
+}
+
+.user-chip__remove {
+  @apply relative z-10 inline-flex shrink-0 cursor-pointer items-center justify-center;
+  @apply appearance-none border-0 bg-transparent p-0 opacity-70 transition-opacity hover:opacity-100;
+  color: inherit;
+  margin-inline-end: -0.125rem;
+  min-width: 1.25rem;
+  min-height: 1.25rem;
+}
+
+.user-chip__remove svg {
+  width: var(--user-chip-mark-icon);
+  height: var(--user-chip-mark-icon);
+  min-width: 0.875rem;
+  min-height: 0.875rem;
+}
+
+.user-chip__remove:focus-visible {
+  @apply opacity-100 outline-none;
+  box-shadow: 0 0 0 1px var(--input-border-focus, var(--ring));
+}

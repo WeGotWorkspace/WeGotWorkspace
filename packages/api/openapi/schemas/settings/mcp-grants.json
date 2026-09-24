@@ -1,0 +1,27 @@
+{
+  "SettingsMcpGrant": {
+    "type": "object",
+    "required": ["clientId", "clientName", "clientOrigin", "connectedAt", "scopes"],
+    "properties": {
+      "clientId": { "type": "string" },
+      "clientName": { "type": "string" },
+      "clientOrigin": { "type": "string" },
+      "connectedAt": { "type": "string" },
+      "scopes": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "lastUsedAt": { "type": ["string", "null"] }
+    }
+  },
+  "SettingsMcpGrantList": {
+    "type": "object",
+    "required": ["grants"],
+    "properties": {
+      "grants": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/SettingsMcpGrant" }
+      }
+    }
+  }
+}

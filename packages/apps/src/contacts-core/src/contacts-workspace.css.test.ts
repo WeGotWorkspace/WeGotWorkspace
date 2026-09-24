@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const tsx = readFileSync(join(here, "contacts-workspace.tsx"), "utf8");
 const css = readFileSync(join(here, "contacts-workspace.css"), "utf8");
+const colorCss = readFileSync(join(here, "../../workspace-shell/src/workspace-color.css"), "utf8");
 const avatarCss = readFileSync(join(here, "contact-user-avatar.css"), "utf8");
 const groupIconCss = readFileSync(join(here, "contacts-group-icon.css"), "utf8");
 const orgIconCss = readFileSync(join(here, "contacts-org-icon.css"), "utf8");
@@ -50,51 +51,74 @@ describe("contacts workspace sidebar chrome", () => {
     expect(tsx).not.toMatch(/showColorDot/);
   });
 
-  it("uses mint #39d49b for chrome accents, mixed 12% onto cream", () => {
-    const accent = css.match(
-      /\.contacts-workspace \{[\s\S]*?--contacts-accent:\s*(#[0-9a-fA-F]{6})/,
-    )?.[1];
-    expect(accent?.toLowerCase()).toBe("#39d49b");
-    expect(css).toMatch(/\.contacts-dialog-surface \{[\s\S]*?--contacts-accent:\s*#39d49b/i);
-    expect(css).not.toMatch(/--contacts-accent:\s*#8b6f45/i);
+  it("uses Sky #a3c4e8 for chrome accents and leaves the rail to the shared recipe", () => {
     expect(css).toMatch(
-      /--contacts-sidebar:\s*color-mix\(in oklab,\s*var\(--contacts-accent\) 12%,\s*var\(--color-cream/,
+      /\.contacts-workspace \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*var\(--color-ink/,
+      /\.contacts-dialog-surface \{[\s\S]*?--workspace-accent:\s*var\(--color-we-got-sand\)/i,
+    );
+    expect(colorCss).toMatch(
+      /--workspace-accent-strong:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 32%,\s*var\(--color-we-got-dark\)\s*\)/,
+    );
+    expect(css).toMatch(
+      /\.contacts-workspace \{[\s\S]*?--button-primary-bg:\s*var\(--workspace-accent\)/,
+    );
+    expect(css).toMatch(
+      /\.contacts-workspace \{[\s\S]*?--button-primary-fg:\s*var\(--color-we-got-dark\)/,
+    );
+    expect(css).toMatch(/\.contacts-workspace \{[\s\S]*?--primary:\s*var\(--workspace-accent\)/);
+    expect(css).toMatch(
+      /\.contacts-workspace \{[\s\S]*?--primary-foreground:\s*var\(--color-we-got-dark\)/,
+    );
+    expect(css).not.toMatch(/--workspace-accent:\s*#8b6f45/i);
+    expect(css).not.toMatch(/--workspace-accent:\s*#39d49b/i);
+    expect(css).not.toMatch(/--button-primary-bg:\s*var\(--workspace-accent-strong\)/);
+    expect(css).not.toMatch(/--workspace-sidebar-mix:/);
+    expect(colorCss).toMatch(
+      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 12%,\s*var\(--workspace-surface\)/,
+    );
+    expect(css).toMatch(
+      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-fg:\s*var\(--color-we-got-dark\)/,
     );
   });
 
-  it("keeps idle action icons muted ink, not mint accent", () => {
+  it("leaves AppSidebar item washes to the shared ladder", () => {
+    expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
+    expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
+    expect(css).toMatch(
+      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
+    );
+  });
+
+  it("keeps idle action icons muted ink, not purple accent", () => {
     const detailPane = css.match(
       /\.contacts-workspace \.workspace-detail-pane \.action-bar,[\s\S]*?\.contacts-workspace \.workspace-detail-pane \{[\s\S]*?\}/,
     )?.[0];
     expect(detailPane).toBeDefined();
-    expect(css).toMatch(/\.contacts-workspace \{[\s\S]*--switch-on-bg:\s*var\(--contacts-accent\)/);
-    expect(detailPane).toMatch(/--button-primary-bg:\s*var\(--contacts-accent\)/);
-    expect(detailPane).not.toMatch(/--button-subtle-color:\s*var\(--contacts-accent/);
-    expect(detailPane).not.toMatch(/--button-ghost-color:\s*var\(--contacts-accent/);
     expect(css).toMatch(
-      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-subtle-color:\s*var\(--color-ink\)/,
+      /\.contacts-workspace \{[\s\S]*--switch-on-bg:\s*var\(--workspace-accent\)/,
+    );
+    expect(detailPane).toMatch(/--button-primary-bg:\s*var\(--workspace-accent\)/);
+    expect(detailPane).not.toMatch(/--button-subtle-color:\s*var\(--workspace-accent/);
+    expect(detailPane).not.toMatch(/--button-ghost-color:\s*var\(--workspace-accent/);
+    expect(css).not.toMatch(/--button-subtle-/);
+    expect(css).toMatch(
+      /\.contacts-workspace \.app-sidebar__scroll \{[\s\S]*--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
   });
 
-  it("washes selected action-bar icons like Calendar Today / Notes Star", () => {
+  it("washes selected action-bar icons like Calendar Today via outline tokens", () => {
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-active-color:\s*var\(--contacts-accent-strong\)/,
+      /\.contacts-workspace \{[\s\S]*--button-active-color:\s*var\(--workspace-accent-strong\)/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-subtle-background:[\s\S]*var\(--contacts-accent\) 18%/,
+      /\.contacts-workspace \{[\s\S]*--button-outline-active-background:[\s\S]*var\(--workspace-accent\) 18%/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active \{[\s\S]*--button-subtle-hover-background:[\s\S]*var\(--contacts-accent\) 24%/,
+      /\.contacts-workspace \{[\s\S]*--button-outline-active-hover-background:[\s\S]*var\(--workspace-accent\) 24%/,
     );
-    expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active[\s\S]*fill:\s*none/,
-    );
-    expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*:is\(\.action-bar,\s*\.multi-selection-view__actions\)[\s\S]*\.icon-button--active[\s\S]*color:\s*var\(--contacts-accent-strong\)/,
-    );
+    expect(css).not.toMatch(/\.button--variant-subtle\.icon-button--active/);
   });
 
   it("opens the share-only address book dialog from mutations", () => {
@@ -123,13 +147,16 @@ describe("contacts workspace sidebar chrome", () => {
     );
   });
 
-  it("does not override context-select radius or force a compact type face", () => {
+  it("inherits context-select item type from the trigger size (not base 1rem)", () => {
     expect(css).not.toMatch(
       /\.select-trigger\.contacts-detail-view__context-select \{[\s\S]*border-radius:/,
     );
     expect(css).not.toMatch(/\.contacts-detail-view__context-select \{[\s\S]*?text-xs/);
     expect(css).toMatch(
-      /\.contacts-detail-view__context-select-item \{[\s\S]*font-size:\s*var\(--input-font-size, 1rem\)/,
+      /\.contacts-detail-view__context-select-item \{[\s\S]*font-size:\s*inherit/,
+    );
+    expect(css).not.toMatch(
+      /\.contacts-detail-view__context-select-item \{[\s\S]*font-size:\s*var\(--input-font-size,\s*1rem\)/,
     );
   });
 
@@ -161,7 +188,7 @@ describe("contacts workspace sidebar chrome", () => {
   });
 
   it("reserves the same action-column width on editable rows and address fields", () => {
-    expect(css).toMatch(/--contacts-channel-action-size:\s*var\(\s*--control-height-sm,/);
+    expect(css).toMatch(/--contacts-channel-action-size:\s*var\(\s*--control-height-md,/);
     expect(css).toMatch(
       /\.contacts-detail-view__channel-row--editable \{[\s\S]*?grid-template-columns:\s*7rem minmax\(0, 1fr\) var\(--contacts-channel-action-size\)/,
     );
@@ -196,57 +223,56 @@ describe("contacts workspace sidebar chrome", () => {
     expect(css).toMatch(/\.contacts-detail-view__tag-group/);
   });
 
-  it("washes person avatars from the card's address-book color, not mint-only", () => {
+  it("washes person avatars from the card's address-book color, not accent-only", () => {
     expect(avatarCss).toMatch(
-      /--user-avatar-bg:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--contacts-accent\)\) 24%,\s*var\(--color-cream/,
+      /--user-avatar-bg:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--workspace-accent\)\) 24%,\s*var\(--color-we-got-soft/,
     );
-    expect(avatarCss).toMatch(/--user-avatar-fg:\s*var\(--color-ink\)/);
+    expect(avatarCss).toMatch(/--user-avatar-fg:\s*var\(--color-we-got-dark\)/);
     expect(css).not.toMatch(/--contacts-person-avatar-bg/);
-    expect(css).not.toMatch(/--contacts-list-avatar-bg:\s*var\(--contacts-accent\)/);
+    expect(css).not.toMatch(/--contacts-list-avatar-bg:\s*var\(--workspace-accent\)/);
     expect(css).not.toMatch(
       /\.contacts-list-panel__avatar \.user-avatar__mark \{[\s\S]*background-color:\s*var\(--contacts-list-avatar-bg\)/,
     );
   });
 
-  it("rings person and org avatars with a 2px book-color tint", () => {
+  it("rings person and org avatars with the shared 1px soft book-color tint", () => {
     expect(avatarCss).toMatch(
-      /--user-avatar-border:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--contacts-accent\)\) 55%,\s*var\(--color-cream/,
+      /--user-avatar-border:\s*color-mix\(\s*in oklab,\s*var\(--contacts-book-color,\s*var\(--workspace-accent\)\) 38%,\s*transparent/,
     );
-    expect(avatarCss).toMatch(/--user-avatar-border-width:\s*2px;/);
+    expect(avatarCss).not.toMatch(/--user-avatar-border-width/);
     expect(avatarCss).not.toMatch(/--contacts-person-avatar-border/);
     expect(css).not.toMatch(/--contacts-person-avatar-border/);
     expect(groupIconCss).not.toMatch(/--user-avatar-border/);
     expect(groupIconCss).not.toMatch(/border-width:\s*2px/);
   });
 
-  it("paints the sidebar mark in mint tints, not ink or leftover gold", () => {
+  it("paints the sidebar mark in the contacts.svg hexes", () => {
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-bg:\s*var\(--contacts-accent\)/,
+      /\.contacts-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*background-color:\s*var\(--color-we-got-sky\)/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*\.app-switch-button__icon\.workspace-app-icon--switch-trigger \{[\s\S]*--app-switch-icon-fg:\s*color-mix\(\s*in oklab,\s*var\(--contacts-accent\) 14%,\s*var\(--color-cream/,
+      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-bg:\s*var\(--color-we-got-sky\)/,
     );
     expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*var\(--app-switch-icon-fg\)/,
-    );
-    expect(css).toMatch(
-      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-cutout:\s*#26a577/,
+      /\.contacts-workspace[\s\S]*\.workspace-app-icon--switch-trigger[\s\S]*svg \{[\s\S]*--wai-fg:\s*#ffffff/,
     );
     const lockup = css.slice(css.indexOf("App switcher lockup"));
     const lockupEnd = lockup.indexOf(".contacts-list-panel__loading");
     const lockupBlock = lockupEnd === -1 ? lockup : lockup.slice(0, lockupEnd);
-    expect(lockupBlock).not.toMatch(/--color-ink/);
-    expect(lockupBlock).not.toMatch(/--contacts-accent-strong/);
+    expect(lockupBlock).not.toMatch(/--color-we-got-dark/);
+    expect(lockupBlock).not.toMatch(/--workspace-accent-strong/);
     expect(lockupBlock).not.toMatch(/#8[Bb]6[Ff]45|#b5c96a|#000\b|#111|#333/);
   });
 
-  it("tints group icons from --collection-row-color, not the mint app accent", () => {
-    expect(groupIconCss).toMatch(/color:\s*var\(--collection-row-color,\s*var\(--color-ink\)\)/);
-    expect(groupIconCss).not.toMatch(/--contacts-accent|#39d49b/);
-    expect(orgIconCss).toMatch(/color:\s*var\(--user-avatar-fg,\s*var\(--color-ink\)\)/);
+  it("tints group icons from --collection-row-color, not the purple app accent", () => {
+    expect(groupIconCss).toMatch(
+      /color:\s*var\(--collection-row-color,\s*var\(--color-we-got-dark\)\)/,
+    );
+    expect(groupIconCss).not.toMatch(/--workspace-accent|#39d49b|#962fa8/);
+    expect(orgIconCss).toMatch(/color:\s*var\(--user-avatar-fg,\s*var\(--color-we-got-dark\)\)/);
     expect(orgIconCss).not.toMatch(/--collection-row-color/);
     expect(groupRows).toMatch(/<ContactsGroupIcon book=\{group\}/);
-    expect(groupRows).toMatch(/nested=\{nested\}/);
+    expect(groupRows).not.toMatch(/nested=\{/);
     expect(tsx).toMatch(/addressBookIds=\{editingGroup\?\.addressBookIds\}/);
     expect(tsx).toMatch(/books=\{addressBooks\}/);
   });
@@ -283,9 +309,14 @@ describe("contacts workspace sidebar chrome", () => {
     expect(tsx).toMatch(/onMove: moveActiveContactToAddressBook/);
     expect(actionBar).toMatch(/<ContactsAddressBookSelect/);
     expect(actionBar).toMatch(/variant="toolbar"/);
+    expect(actionBar).toMatch(/triggerVariant="swatch"/);
+    expect(addressBookSelect).toMatch(/ColorSwatchTrigger/);
     expect(addressBookSelect).not.toMatch(/onCreateAddressBook|__create_address_book__/);
     expect(css).toMatch(
-      /\.contacts-workspace \.action-bar \.contacts-address-book-select \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
+      /\.contacts-workspace \.action-bar \.contacts-address-book-select\.color-swatch-trigger \{[\s\S]*background-color:\s*var\(--workspace-surface/,
+    );
+    expect(css).not.toMatch(
+      /\.contacts-workspace \.action-bar \.contacts-address-book-select\.color-swatch-trigger \{[\s\S]*--control-radius:\s*var\(--control-radius-button-pill\)/,
     );
   });
 

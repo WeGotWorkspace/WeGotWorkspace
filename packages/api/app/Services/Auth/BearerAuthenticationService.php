@@ -10,6 +10,7 @@ final class BearerAuthenticationService
         private JwtConfigService $jwtConfig,
         private JwtTokenService $jwtTokens,
         private RevokedTokenRepository $revokedTokens,
+        private UserEnabledGuard $enabled,
     ) {}
 
     /**
@@ -33,6 +34,9 @@ final class BearerAuthenticationService
             return null;
         }
         if ($this->revokedTokens->isRevoked($claims['jti'])) {
+            return null;
+        }
+        if (! $this->enabled->isEnabled($claims['sub'])) {
             return null;
         }
 

@@ -37,7 +37,7 @@ function CreateMarkdownDialogHarness({
 }
 
 const meta = {
-  title: "Apps/Drive/Components/DriveCreateMarkdownDialog",
+  title: "Features/Drive/Components/DriveCreateMarkdownDialog",
   component: DriveCreateMarkdownDialog,
   tags: ["autodocs"],
 } satisfies Meta<typeof DriveCreateMarkdownDialog>;

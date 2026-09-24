@@ -637,6 +637,14 @@ describe("yearGridWindow / occurrenceDayKeys", () => {
       "#00f",
     ]);
   });
+
+  it("counts task-list colors toward the same three-unique year-dot cap as events", () => {
+    expect(uniqueDayDotColors(["#0ea5e9", "#6366f1", "#f59e0b", "#3b82f6"])).toEqual([
+      "#0ea5e9",
+      "#6366f1",
+      "#f59e0b",
+    ]);
+  });
 });
 
 describe("timelineRangeOverlapsCell (per-day-cell event lookup)", () => {
@@ -710,7 +718,6 @@ describe("now-badge x-alignment with hour labels", () => {
     expect(nowBadge).toContain("inset-inline-end: 0");
     expect(nowBadge).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 0)");
     expect(css).toContain("font-size: var(--_lc-time-label-font-size, 0.75rem)");
-    expect(css).toContain("font-size: var(--_lc-time-label-font-size, 11px)");
   });
 });
 

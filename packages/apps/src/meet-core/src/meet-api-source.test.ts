@@ -156,14 +156,15 @@ describe("createWgwMeetGuestOrHostApiSource", () => {
     expect(operations?.guestSignalingFetch).toEqual(expect.any(Function));
   });
 
-  it("keeps a signed-in non-manager on guest bootstrap", async () => {
+  it("keeps a signed-in non-manager on authenticated bootstrap so the lobby can lock their name", async () => {
     fetchPrincipal.mockResolvedValue(HOST_SESSION);
     fetchJson.mockResolvedValue(jsonResponse({ reserved: true, active: false }));
     const source = createWgwMeetGuestOrHostApiSource(ROOM);
     const bootstrap = await source.loadBootstrap();
     const operations = source.createOperations(bootstrap);
 
-    expect(bootstrap.session.user.displayName).toBe("Guest");
-    expect(operations?.guestSignalingFetch).toEqual(expect.any(Function));
+    expect(bootstrap.session.user.username).toBe("bob");
+    expect(bootstrap.session.user.displayName).toBe("Bob");
+    expect(operations?.guestSignalingFetch).toBeUndefined();
   });
 });

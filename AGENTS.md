@@ -4,9 +4,11 @@
 
 **API greenfield:** Work under `packages/api/` is a new Laravel app matching OpenAPI — no legacy PHP in tree. Do not restore `packages/api/src/`, `*Kernel`, `MailApi`, or dual autoload. Full guidance: [`.agents/skills/api/`](.agents/skills/api/).
 
-**Git:** Do not `git commit` or open PRs unless the user explicitly asks. Commits touching `packages/apps/**` require `pnpm test:apps-done-gate` before push (Husky pre-push enforces). [`.agents/skills/git-workflow/`](.agents/skills/git-workflow/).
+**Git:** Do not `git commit` or open PRs unless the user explicitly asks. Commits touching `packages/apps/**` run the local apps done gate before push (Husky pre-push: typecheck, contract, Storybook smoke, coverage). Vitest unit and jsdom run in CI. [`.agents/skills/git-workflow/`](.agents/skills/git-workflow/).
 
 **Verification:** Before handoff, call `run_apps_done_gate` / `run_api_done_gate` via the **wgw-verify** MCP server when available ([developer/mcp-verification.md](.agents/skills/developer/mcp-verification.md)). Use bash (`pnpm test:*-done-gate`) only as fallback.
+
+**English-only:** Specs, plans, docs, GitHub issues (including Goals), and issue/PR comments are **English** even when the user writes Dutch. [english-only.md](.agents/skills/developer/english-only.md).
 
 ## Start here
 
@@ -30,7 +32,7 @@ Agent skills live in [`.agents/skills/`](.agents/skills/) (tool-agnostic [Agent 
 
 | Skill | When to use |
 |-------|-------------|
-| [developer](.agents/skills/developer/) | Starting work, onboarding, skill routing, multitask — [issue-filing.md](.agents/skills/developer/issue-filing.md) for Goals/Epics/Tasks/Chores |
+| [developer](.agents/skills/developer/) | Starting work, onboarding, skill routing, multitask — [issue-filing.md](.agents/skills/developer/issue-filing.md) for Goals/Epics/Tasks/Chores; [english-only.md](.agents/skills/developer/english-only.md) for specs, docs, and GitHub language |
 | [dev-environment](.agents/skills/dev-environment/) | Docker, ports, Storybook proxy, troubleshooting |
 | [api](.agents/skills/api/) | `packages/api` — REST, auth, storage, WebDAV, tests |
 | [plugins](.agents/skills/plugins/) | Plugin registry, activation, install, Flysystem boundaries |

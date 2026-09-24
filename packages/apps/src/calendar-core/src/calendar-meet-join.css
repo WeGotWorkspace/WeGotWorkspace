@@ -6,5 +6,5 @@
 
 .calendar-meet-join__dead {
   @apply m-0 text-xs;
-  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 62%, transparent));
+  color: var(--docs-muted, color-mix(in oklab, var(--color-we-got-dark) 68%, transparent));
 }

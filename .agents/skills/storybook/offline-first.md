@@ -9,11 +9,11 @@ Storybook is the **primary UI lab** for `packages/apps`. Every exported componen
 | **Mock / offline** | **Yes** — default for every export | None — mock bootstrap + stub `operations` | `Default`, variant names, product names |
 | **Live** | Optional — integration smoke only | Storybook proxy `/api/v1` → dev API | Prefix **`Live …`** (e.g. `Live API`, `Live Docs`) |
 
-**Rule:** If Storybook runs with only `pnpm dev:ui` (no Docker, no API), all **mock-tier** stories must render and remain interactive for UI flows that do not inherently need real persistence (forms, toggles, navigation chrome, dialogs).
+**Rule:** If Storybook runs with only `pnpm dev:storybook` (no Docker, no API), all **mock-tier** stories must render and remain interactive for UI flows that do not inherently need real persistence (forms, toggles, navigation chrome, dialogs).
 
 Live-tier stories may fail without `pnpm docker:up` / `pnpm setup:storybook-live-api` — that is acceptable. They must **not** be the only story for a component.
 
-Reference live pattern: `packages/apps/src/wegotworkspace/stories/wegotworkspace.stories.tsx` (`Default` offline vs `Live API`).
+Reference live pattern: `packages/apps/src/wegotworkspace/stories/wegotworkspace-live.stories.tsx` (`Features/Workspace/Live`) vs mock `wegotworkspace.stories.tsx` (`Features/Workspace`).
 
 ## 100% coverage target
 
@@ -21,8 +21,11 @@ Every **exported** UI surface under `packages/apps/src/**` that ships to users n
 
 | Surface | Story location |
 |---------|----------------|
-| Shared primitive / composite | `*/stories/*.stories.tsx`, title `Shared/…` |
-| Product pane / workspace / app | `*-core/stories/…`, title `Apps/{Product}/…` |
+| UI primitive / pattern / layout | `*/stories/*.stories.tsx`, title `UI/…` or `Layout/…` |
+| Product pane / workspace / app | `*-core/stories/…`, title `Features/{Product}/…` |
+| Live API shells | `wegotworkspace/stories/…`, title `Features/Workspace/Live/…` |
+| Token docs | `foundations/stories/…`, title `Foundations/…` |
+| Designer chrome catalog | `*-branding.stories.tsx`, title `Themes/{App}` |
 
 Minimum per export:
 

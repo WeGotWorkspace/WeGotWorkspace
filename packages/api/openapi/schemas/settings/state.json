@@ -1,0 +1,34 @@
+{
+  "SettingsStateResponse": {
+    "type": "object",
+    "properties": {
+      "user": {
+        "$ref": "#/components/schemas/SettingsUserProfile"
+      },
+      "groups": {
+        "$ref": "#/components/schemas/SettingsUserGroupList"
+      },
+      "mail": {
+        "$ref": "#/components/schemas/SettingsUserMail"
+      },
+      "mailServer": {
+        "$ref": "#/components/schemas/SettingsUserMailServer"
+      },
+      "logoutUrl": {
+        "type": "string"
+      },
+      "mcpEnabled": {
+        "type": "boolean",
+        "description": "Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs."
+      }
+    },
+    "required": [
+      "user",
+      "groups",
+      "mail",
+      "mailServer",
+      "logoutUrl",
+      "mcpEnabled"
+    ]
+  }
+}

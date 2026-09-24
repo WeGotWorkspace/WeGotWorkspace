@@ -57,6 +57,7 @@ final class AdminUsersTest extends WgwDatabaseTestCase
         $this->assertSame('Dave Updated', $dave['displayName']);
         $this->assertSame('dave.updated@example.test', $dave['email']);
         $this->assertSame('dave', $dave['username']);
+        $this->assertTrue($dave['enabled']);
 
         $this->withBearer($token)
             ->patchJson('/api/v1/admin/users/dave', [
@@ -151,5 +152,79 @@ final class AdminUsersTest extends WgwDatabaseTestCase
             ])
             ->assertBadRequest()
             ->assertJsonPath('code', 'bad_request');
+    }
+
+    public function test_admin_can_disable_and_reenable_user(): void
+    {
+        $token = $this->adminBearerToken();
+        $bobTokenResponse = $this->postJson('/api/v1/auth/token', [
+            'username' => 'bob',
+            'password' => 'secret',
+        ]);
+        $bobTokenResponse->assertOk();
+        $bobAccess = (string) $bobTokenResponse->json('access_token');
+        $bobRefresh = (string) $bobTokenResponse->json('refresh_token');
+
+        $this->withBearer($token)
+            ->patchJson('/api/v1/admin/users/bob', [
+                'enabled' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $bob = collect(
+            $this->withBearer($token)->getJson('/api/v1/admin/state')->json('users'),
+        )->firstWhere('username', 'bob');
+        $this->assertIsArray($bob);
+        $this->assertFalse($bob['enabled']);
+
+        $this->postJson('/api/v1/auth/token', [
+            'username' => 'bob',
+            'password' => 'secret',
+        ])
+            ->assertUnauthorized()
+            ->assertJson([
+                'error' => 'Invalid credentials.',
+                'code' => 'unauthorized',
+            ]);
+
+        $this->withBearer($bobAccess)->getJson('/api/v1/me')->assertUnauthorized();
+
+        $this->postJson('/api/v1/auth/refresh', [
+            'refresh_token' => $bobRefresh,
+        ])->assertUnauthorized();
+
+        $this->withBearer($token)
+            ->patchJson('/api/v1/admin/users/bob', [
+                'enabled' => true,
+            ])
+            ->assertOk();
+
+        $this->postJson('/api/v1/auth/token', [
+            'username' => 'bob',
+            'password' => 'secret',
+        ])->assertOk();
+
+        $restored = collect(
+            $this->withBearer($token)->getJson('/api/v1/admin/state')->json('users'),
+        )->firstWhere('username', 'bob');
+        $this->assertIsArray($restored);
+        $this->assertTrue($restored['enabled']);
+    }
+
+    public function test_admin_cannot_disable_self(): void
+    {
+        $this->withBearer($this->adminBearerToken())
+            ->patchJson('/api/v1/admin/users/alice', [
+                'enabled' => false,
+            ])
+            ->assertBadRequest()
+            ->assertJsonPath('error', 'You cannot disable your own account.');
+
+        $alice = collect(
+            $this->withBearer($this->adminBearerToken())->getJson('/api/v1/admin/state')->json('users'),
+        )->firstWhere('username', 'alice');
+        $this->assertIsArray($alice);
+        $this->assertTrue($alice['enabled']);
     }
 }

@@ -27,7 +27,7 @@ export function CollectionSearchInput({
     <Input
       ref={inputRef}
       variant="search"
-      size="sm"
+      size="md"
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}

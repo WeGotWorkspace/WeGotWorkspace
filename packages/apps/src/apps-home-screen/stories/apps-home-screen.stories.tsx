@@ -3,7 +3,7 @@ import { AppsHomeScreen } from "../src/apps-home-screen";
 import { WORKSPACE_APP_ACCENT } from "@/lib/workspace-app-icons";
 
 const meta: Meta<typeof AppsHomeScreen> = {
-  title: "Shared/Apps Home Screen",
+  title: "Features/Workspace/Apps Home Screen",
   component: AppsHomeScreen,
   parameters: {
     layout: "fullscreen",
@@ -21,18 +21,6 @@ export const Default: Story = {
     onLogout: () => {},
     apps: [
       {
-        id: "notes",
-        label: "Notes",
-        appId: "notes",
-        accent: WORKSPACE_APP_ACCENT.notes,
-      },
-      {
-        id: "mail",
-        label: "Mail",
-        appId: "mail",
-        accent: WORKSPACE_APP_ACCENT.mail,
-      },
-      {
         id: "drive",
         label: "Drive",
         appId: "drive",
@@ -40,10 +28,10 @@ export const Default: Story = {
         fg: "#ffffff",
       },
       {
-        id: "settings",
-        label: "Settings",
-        appId: "settings",
-        accent: WORKSPACE_APP_ACCENT.settings,
+        id: "mail",
+        label: "Mail",
+        appId: "mail",
+        accent: WORKSPACE_APP_ACCENT.mail,
       },
       {
         id: "meet",
@@ -53,11 +41,23 @@ export const Default: Story = {
         fg: "#ffffff",
       },
       {
+        id: "notes",
+        label: "Notes",
+        appId: "notes",
+        accent: WORKSPACE_APP_ACCENT.notes,
+      },
+      {
         id: "admin",
         label: "Admin",
         appId: "admin",
         accent: WORKSPACE_APP_ACCENT.admin,
         fg: "#ffffff",
+      },
+      {
+        id: "settings",
+        label: "Settings",
+        appId: "settings",
+        accent: WORKSPACE_APP_ACCENT.settings,
       },
     ],
   },

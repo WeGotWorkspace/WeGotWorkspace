@@ -1,7 +1,10 @@
 import type { Editor } from "@tiptap/react";
 import { TextEditor, TEXT_EDITOR_FORMAT_BAR_FULL } from "@/text-editor-core/src";
-import { DocsStatsFooter } from "@/docs-core/src/docs-stats-footer";
+import { formatDocLastEdited } from "@/docs-core/src/docs-last-edited";
+import { DocsStatsTags } from "@/docs-core/src/docs-stats-tags";
 import type { useDocsController } from "@/docs-core/src/use-docs-controller";
+import { detailFooterLastEditedTag } from "@/workspace-shell/src/detail-footer-last-edited-tag";
+import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 
 type DocsController = ReturnType<typeof useDocsController>;
 
@@ -58,7 +61,23 @@ export function DocsMainPane({
         onUpdate={({ content }) => controller.onContentChange(content)}
         onEditorReady={onEditorReady}
       />
-      <DocsStatsFooter controller={controller} />
+      <WorkspaceDetailFooter
+        className="docs-workspace__stats-footer"
+        tags={
+          <>
+            <DocsStatsTags
+              wordCount={controller.wordCount}
+              characterCount={controller.characterCount}
+              statsWordsLabel={controller.labels.statsWords}
+              statsCharactersLabel={controller.labels.statsCharacters}
+            />
+            {detailFooterLastEditedTag({
+              lastEdited: formatDocLastEdited(controller.lastSavedAt),
+              editedLabel: controller.labels.editedLabel,
+            })}
+          </>
+        }
+      />
     </div>
   );
 }

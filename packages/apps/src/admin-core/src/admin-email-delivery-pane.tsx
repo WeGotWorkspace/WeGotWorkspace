@@ -176,7 +176,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         <FormField htmlFor="admin-mail-delivery-smtp-password" label="SMTP password">
           <Input
             id="admin-mail-delivery-smtp-password"
-            type="password"
+            variant="password"
             autoComplete="new-password"
             value={controller.settingsForm.mailDeliverySmtpPassword}
             placeholder={
@@ -195,7 +195,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           <div className="admin-email-delivery-pane__actions">
             <Button
               label="Clear stored SMTP password"
-              variant="subtle"
+              variant="outline"
               onClick={() => void controller.actions.clearMailDeliverySmtpPassword()}
             />
           </div>
@@ -203,10 +203,14 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
       </Card>
 
       <div className="admin-email-delivery-pane__actions">
-        <Button label="Save changes" variant="primary" onClick={controller.actions.saveSettings} />
+        <Button
+          label="Save changes"
+          variant="primary"
+          onClick={() => void controller.actions.saveSettings()}
+        />
         <Button
           label="Send test email"
-          variant="subtle"
+          variant="outline"
           disabled={!capability.canSubmit}
           onClick={() => setTestSendOpen(true)}
         />

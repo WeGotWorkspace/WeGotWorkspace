@@ -6,40 +6,46 @@ import { playwright } from "@vitest/browser-playwright";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const apiGeneratedRoot = path.resolve(__dirname, "../api/openapi/generated");
 const storybookVitestTags =
   process.env.STORYBOOK_VITEST_SMOKE === "1"
     ? { include: ["vitest-ci"] }
     : { include: ["test"], exclude: ["live"] };
+
+/**
+ * Node 25+ enables Web Storage by default; without a backing file the global is a
+ * broken proxy that shadows jsdom's Storage (`clear`/`getItem` undefined).
+ * Disable it so jsdom (and `@vitest-environment jsdom` unit files) own Storage.
+ * @see https://github.com/vitest-dev/vitest/issues/8757
+ */
+const nodeWebStorageExecArgv = ["--no-experimental-webstorage"];
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
-      "@wgw-api-generated": apiGeneratedRoot,
     },
   },
   test: {
+    execArgv: nodeWebStorageExecArgv,
     projects: [
       {
         resolve: {
           alias: {
             "@": path.resolve(__dirname, "src"),
-            "@wgw-api-generated": apiGeneratedRoot,
           },
         },
         test: {
           name: "unit",
           environment: "node",
-          include: ["src/**/*.test.ts"],
+          include: ["src/**/*.test.ts", "scripts/**/*.test.mjs"],
+          execArgv: nodeWebStorageExecArgv,
         },
       },
       {
         resolve: {
           alias: {
             "@": path.resolve(__dirname, "src"),
-            "@wgw-api-generated": apiGeneratedRoot,
           },
         },
         test: {
@@ -48,6 +54,7 @@ export default defineConfig({
           include: ["src/**/*.test.tsx"],
           pool: "forks",
           maxWorkers: 1,
+          execArgv: nodeWebStorageExecArgv,
           setupFiles: [path.resolve(__dirname, "src/jsdom-setup.ts")],
         },
       },
@@ -56,11 +63,13 @@ export default defineConfig({
           "import.meta.env.STORYBOOK_A11Y_GATE": JSON.stringify(
             process.env.STORYBOOK_A11Y_GATE ?? "",
           ),
+          // preview.ts sets html[data-chromatic-reduced-motion] so Radix Presence
+          // does not hang on paused animationend during story play functions.
+          "import.meta.env.STORYBOOK_REDUCED_MOTION": JSON.stringify("1"),
         },
         resolve: {
           alias: {
             "@": path.resolve(__dirname, "src"),
-            "@wgw-api-generated": apiGeneratedRoot,
           },
         },
         plugins: [

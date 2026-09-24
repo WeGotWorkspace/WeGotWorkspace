@@ -1,25 +1,25 @@
-# @wgw/api — OpenAPI contract + Laravel REST API
+# Laravel API — OpenAPI contract + REST
 
-Greenfield Laravel app for `/api/v1/*`, plus the **OpenAPI contract** and generated TypeScript types for the UI. Legacy `packages/api/src/` is gone — implement against `openapi/openapi.json` only.
+Greenfield Laravel app for `/api/v1/*`, plus the hand-edited **OpenAPI contract**. Generated TypeScript lives in `packages/openapi-types` (`@wgw/openapi-types`). This directory is Composer-only: it is not a pnpm workspace package. Legacy `packages/api/src/` is gone — implement against `openapi/openapi.json` only.
 
 ## Layout
 
 | Path | Purpose |
 |------|---------|
 | `openapi/openapi.json` | Source of truth for paths, methods, request/response shapes |
-| `openapi/generated/*` | Generated TS types + `openapi.built.json` (committed) |
-| `scripts/*` | OpenAPI build + typegen only |
+| `openapi/schemas/` | Modular schema fragments merged into the typegen document |
 | `docs/api-done-gate.md` | Definition of done (guard, OpenAPI parity, PHPUnit) |
+| `packages/openapi-types/generated/` | Generated TS types + committed `openapi.built.json` |
 
 ## Commands
 
 ```bash
-composer --working-dir packages/api test      # PHPUnit (phases 0–4)
+composer --working-dir packages/api test      # PHPUnit
 pnpm test:api-done-gate                       # greenfield guard + OpenAPI contract + PHPUnit
-pnpm --filter @wgw/api test:e2e               # Playwright smoke (health + meet always; install wizard skips if already installed)
+pnpm test:api-e2e                             # Playwright smoke (health + meet always; install wizard skips if already installed)
 pnpm test:api-e2e:docker                      # full e2e against Docker with fresh install tree
-pnpm --filter @wgw/api typegen                # sync openapi.built.json from openapi.json, then regenerate TS types
-pnpm --filter @wgw/api typegen:check          # fail if generated files are stale
+pnpm --filter @wgw/openapi-types typegen      # merge openapi.built.json, then regenerate TS types
+pnpm --filter @wgw/openapi-types typegen:check
 pnpm seed                                     # local-dev calendars + notes (wgw:seed-dev; also from wgw:dev-install)
 pnpm seed:notes                               # ~1000 VJOURNAL notes only (wgw:notes:seed-dev --force to recreate)
 ```
@@ -28,7 +28,7 @@ Dev seeders write into the CalDAV store for the admin user and refuse production
 
 **PHP:** `^8.3` (CI uses 8.3). PHP 8.5 is fine locally; API responses suppress deprecation display so `/api/v1/*` stays clean JSON.
 
-`openapi/openapi.json` is the hand-edited spec (Swagger UI and route parity). `openapi/generated/openapi.built.json` syncs paths from source and keeps enriched schemas for typegen (committed). After editing `openapi.json`, run `pnpm --filter @wgw/api run typegen` in the same change; `openapi:check-drift` and `typegen:check` fail CI when built output is stale.
+`openapi/openapi.json` is the hand-edited spec (Swagger UI and route parity). Typegen loads the committed `packages/openapi-types/generated/openapi.built.json` and overlays source paths plus `openapi/schemas/`. It does **not** delete keys you removed from the source: a dropped path or schema stays in the built file and in the generated types until that follow-up lands (one committed spec, built file generated from it alone). After editing `openapi.json` or `schemas/`, run `pnpm --filter @wgw/openapi-types typegen` in the same change. `typegen:check` fails CI when generated output is stale.
 
 ## Implementing the API
 
