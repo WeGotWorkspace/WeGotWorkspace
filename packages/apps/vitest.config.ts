@@ -31,9 +31,18 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**"],
-      // Stories and fixture mocks are not product dark spots. Vitest appends
-      // its own excludes (tests, setup, config, node_modules) after this list.
-      exclude: ["**/*.stories.*", "**/stories/**", "**/mock/**"],
+      // Stories, mocks, tests, and the jsdom setup file are not product dark
+      // spots. Vitest 4 appends the root test include after this list, which
+      // already dropped *.test.* in a unit run. Project setupFiles are not on
+      // that root list, so src/jsdom-setup.ts was still reported.
+      exclude: [
+        "**/*.stories.*",
+        "**/stories/**",
+        "**/mock/**",
+        "**/*.test.*",
+        "**/*.spec.*",
+        "src/jsdom-setup.ts",
+      ],
     },
     projects: [
       {
