@@ -13,7 +13,8 @@ use Tests\Support\WgwDatabaseTestCase;
  */
 final class MeetConditionalPollTest extends WgwDatabaseTestCase
 {
-    private const ROOM_ID = 'cond-poll-room';
+    /** Unreserved ad-hoc code (mint alphabet). Plain names are closed to guests. */
+    private const ROOM_ID = 'cdef-ghjk-mnpq';
 
     protected function setUp(): void
     {
