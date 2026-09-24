@@ -1,12 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { WORKSPACE_APP_IDS } from "@/lib/workspace-app-icons";
 import {
-  WORKSPACE_APP_ACCENT,
-  WORKSPACE_APP_IDS,
-  WORKSPACE_HOME_ACCENT,
-} from "@/lib/workspace-app-icons";
-import { WORKSPACE_PWA_ICON_CACHE_VERSION } from "@/lib/workspace-pwa-head";
+  WORKSPACE_PWA_ICON_CACHE_VERSION,
+  WORKSPACE_PWA_THEME_COLOR,
+} from "@/lib/workspace-pwa-head";
 
 const manifestsDir = join(import.meta.dirname, "../../public/manifests");
 
@@ -45,25 +44,18 @@ describe("workspace PWA manifests", () => {
 
     expect(raw).toContain(`"/app-icons/notes.svg?v=${version}"`);
     expect(raw).toContain(`"/pwa-icons/notes-180.png?v=${version}"`);
-    expect(raw).not.toMatch(/#f6d176|#f0bc3a|#fef8ea|#ba9689/i);
+    expect(raw).not.toMatch(/#f6d176|#f0bc3a|#fef8ea/i);
   });
 
-  it("keeps theme_color and background_color in sync with WORKSPACE_APP_ACCENT", () => {
-    for (const appId of WORKSPACE_APP_IDS) {
-      const manifest = readManifest(appId);
-      const accent = WORKSPACE_APP_ACCENT[appId].toLowerCase();
+  it("paints every installed window with the sand UI accent", () => {
+    const styles = readFileSync(join(import.meta.dirname, "../styles.css"), "utf8");
+    expect(styles).toContain(`--color-we-got-sand: ${WORKSPACE_PWA_THEME_COLOR};`);
 
-      expect(manifest.theme_color?.toLowerCase()).toBe(accent);
-      expect(manifest.background_color?.toLowerCase()).toBe(accent);
+    for (const name of [...WORKSPACE_APP_IDS, "home"]) {
+      const manifest = readManifest(name);
+      expect(manifest.theme_color).toBe(WORKSPACE_PWA_THEME_COLOR);
+      expect(manifest.background_color).toBe(WORKSPACE_PWA_THEME_COLOR);
     }
-  });
-
-  it("uses the home shell accent for home.webmanifest", () => {
-    const manifest = readManifest("home");
-    const accent = WORKSPACE_HOME_ACCENT.toLowerCase();
-
-    expect(manifest.theme_color?.toLowerCase()).toBe(accent);
-    expect(manifest.background_color?.toLowerCase()).toBe(accent);
   });
 
   it("publishes a full-bleed home svg instead of a 60px mark", () => {

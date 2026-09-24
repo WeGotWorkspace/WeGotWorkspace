@@ -59,10 +59,15 @@ final class MeetRoomLimitsTest extends WgwDatabaseTestCase
     public function test_knock_alone_does_not_make_room_active(): void
     {
         $this->reserveMeetRoom()->assertCreated();
-        $this->withoutBearer();
-        $host = $this->guestJoin('host-peer', 'Host');
 
+        // A reserved code rejects a direct guest join. The host is the
+        // member who reserved the room; only their presence counts as active.
         $this->postJson($this->meetRoomPath('/participants'), [
+            'peerId' => 'host-peer',
+            'name' => 'Host',
+        ])->assertOk();
+
+        $this->withoutBearer()->postJson($this->meetRoomPath('/participants'), [
             'peerId' => 'knock-peer',
             'name' => self::KNOCK_PREFIX.'Waiting Guest',
         ])->assertOk();
@@ -71,11 +76,12 @@ final class MeetRoomLimitsTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJson(['active' => true]);
 
-        $this->deleteJson($this->meetRoomPath('/participants/host-peer'), [
-            'sessionKey' => $host['sessionKey'],
-        ])->assertOk();
+        $this->withBearer($this->userBearerToken())
+            ->deleteJson($this->meetRoomPath('/participants/host-peer'))
+            ->assertOk();
 
-        $this->getJson($this->meetStatusPath())
+        $this->withoutBearer()
+            ->getJson($this->meetStatusPath())
             ->assertOk()
             ->assertJson(['active' => false]);
     }

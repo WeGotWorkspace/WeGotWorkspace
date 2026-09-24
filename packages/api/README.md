@@ -20,7 +20,11 @@ pnpm test:api-e2e                             # Playwright smoke (health + meet 
 pnpm test:api-e2e:docker                      # full e2e against Docker with fresh install tree
 pnpm --filter @wgw/openapi-types typegen      # merge openapi.built.json, then regenerate TS types
 pnpm --filter @wgw/openapi-types typegen:check
+pnpm seed                                     # local-dev calendars + notes (wgw:seed-dev; also from wgw:dev-install)
+pnpm seed:notes                               # ~1000 VJOURNAL notes only (wgw:notes:seed-dev --force to recreate)
 ```
+
+Dev seeders write into the CalDAV store for the admin user and refuse production / Docker-channel / ZIP extracts. See [`docs/dev-layout.md`](../../docs/dev-layout.md).
 
 **PHP:** `^8.3` (CI uses 8.3). PHP 8.5 is fine locally; API responses suppress deprecation display so `/api/v1/*` stays clean JSON.
 

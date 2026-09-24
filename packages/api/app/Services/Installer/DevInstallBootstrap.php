@@ -28,6 +28,7 @@ final class DevInstallBootstrap
         private ApiRuntimeEnvService $apiEnv,
         private WgwInstallConfig $installConfig,
         private DevCalendarEventSeeder $calendarEvents,
+        private DevNoteSeeder $notes,
         private WgwSchemaMigrator $schemaMigrator,
         private InstallerSeeder $seeder,
     ) {}
@@ -46,7 +47,7 @@ final class DevInstallBootstrap
             $this->jwtKeys->ensureKeys();
             WgwRuntimeEnvBridge::apply($this->installConfig);
             $this->schemaMigrator->migrate();
-            $this->seedDevCalendarEvents($username);
+            $this->seedDevData($username);
             $this->seedDevMember($password);
 
             return false;
@@ -111,15 +112,21 @@ final class DevInstallBootstrap
         @chmod($this->paths->lockFile(), 0600);
 
         $this->apiEnv->ensure($this->paths->installRoot(), 'http://127.0.0.1:9080');
-        $this->seedDevCalendarEvents($username);
+        $this->seedDevData($username);
         $this->seedDevMember($password);
 
         return true;
     }
 
+    private function seedDevData(string $username): void
+    {
+        $this->seedDevCalendarEvents($username);
+        $this->seedDevNotes($username);
+    }
+
     /**
      * Teammate next to the admin user. Skips when the account already exists so a
-     * changed password is left alone. Does not seed the admin calendar catalog.
+     * changed password is left alone. Does not seed the admin calendar or notes catalog.
      */
     private function seedDevMember(string $password): void
     {
@@ -146,18 +153,33 @@ final class DevInstallBootstrap
             return;
         }
 
-        $this->calendarEvents->seed($username, $this->calendarSeedProfile());
+        $this->calendarEvents->seed($username, $this->seedProfile(
+            'WGW_DEV_SEED_CALENDAR_PROFILE',
+            DevCalendarEventCatalog::PROFILE_FULL,
+            DevCalendarEventCatalog::PROFILE_COMPACT,
+        ));
     }
 
-    private function calendarSeedProfile(): string
+    private function seedDevNotes(string $username): void
     {
-        $override = strtolower(trim((string) (getenv('WGW_DEV_SEED_CALENDAR_PROFILE') ?: '')));
-        if (in_array($override, [DevCalendarEventCatalog::PROFILE_FULL, DevCalendarEventCatalog::PROFILE_COMPACT], true)) {
+        if (! $this->notes->isAllowed()) {
+            return;
+        }
+
+        $this->notes->seed($username, $this->seedProfile(
+            'WGW_DEV_SEED_NOTES_PROFILE',
+            DevNoteCatalog::PROFILE_FULL,
+            DevNoteCatalog::PROFILE_COMPACT,
+        ));
+    }
+
+    private function seedProfile(string $envKey, string $full, string $compact): string
+    {
+        $override = strtolower(trim((string) (getenv($envKey) ?: '')));
+        if (in_array($override, [$full, $compact], true)) {
             return $override;
         }
 
-        return app()->environment('testing')
-            ? DevCalendarEventCatalog::PROFILE_COMPACT
-            : DevCalendarEventCatalog::PROFILE_FULL;
+        return app()->environment('testing') ? $compact : $full;
     }
 }

@@ -26,23 +26,12 @@ final class DevCalendarEventSeeder
         private readonly DevCalendarEventCatalog $catalog,
         private readonly CalendarEventMapper $mapper,
         private readonly UserCalendarCollectionsProvisioner $collections,
+        private readonly DevSeedGuard $guard,
     ) {}
 
     public function isAllowed(): bool
     {
-        if (app()->environment('testing')) {
-            return true;
-        }
-
-        if (! app()->environment('local')) {
-            return false;
-        }
-
-        if (in_array($this->installChannel(), ['docker', 'zip'], true)) {
-            return false;
-        }
-
-        return $this->isMonorepoCheckout();
+        return $this->guard->isAllowed();
     }
 
     /**
@@ -54,7 +43,7 @@ final class DevCalendarEventSeeder
         bool $force = false,
         ?DateTimeImmutable $now = null,
     ): array {
-        $this->assertAllowed();
+        $this->guard->assertAllowed('calendar events');
 
         $username = strtolower(trim($username));
         if ($username === '' || User::query()->where('username', $username)->doesntExist()) {
@@ -94,51 +83,6 @@ final class DevCalendarEventSeeder
             'skipped' => $skipped,
             'deleted' => $deleted,
         ];
-    }
-
-    private function assertAllowed(): void
-    {
-        if ($this->isAllowed()) {
-            return;
-        }
-
-        if (! app()->environment(['local', 'testing'])) {
-            throw new RuntimeException('Refusing to seed calendar events outside local/testing.');
-        }
-
-        if (in_array($this->installChannel(), ['docker', 'zip'], true)) {
-            throw new RuntimeException('Refusing to seed calendar events on a '.$this->installChannel().' install channel.');
-        }
-
-        throw new RuntimeException('Refusing to seed calendar events outside a monorepo checkout (ZIP extracts stay empty).');
-    }
-
-    private function isMonorepoCheckout(): bool
-    {
-        $dir = rtrim(str_replace('\\', '/', (string) base_path()), '/');
-        for ($i = 0; $i < 5; $i++) {
-            if (is_file($dir.'/pnpm-workspace.yaml')) {
-                return true;
-            }
-
-            $parent = dirname($dir);
-            if ($parent === $dir) {
-                break;
-            }
-            $dir = $parent;
-        }
-
-        return false;
-    }
-
-    private function installChannel(): string
-    {
-        $configured = config('wgw.install_channel');
-        if (is_string($configured) && trim($configured) !== '') {
-            return strtolower(trim($configured));
-        }
-
-        return strtolower(trim((string) (getenv('WGW_INSTALL_CHANNEL') ?: '')));
     }
 
     private function deleteSeededObjects(string $username): int

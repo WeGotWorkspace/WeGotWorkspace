@@ -5,8 +5,8 @@
   "scope": "/docs",
   "id": "/docs",
   "display": "standalone",
-  "background_color": "#0045ff",
-  "theme_color": "#0045ff",
+  "background_color": "#ba9689",
+  "theme_color": "#ba9689",
   "icons": [
     {
       "src": "/app-icons/docs.svg?v=19",

@@ -1,7 +1,5 @@
 import { createPwaHead } from "@/lib/pwa-head";
 import {
-  WORKSPACE_APP_ACCENT,
-  WORKSPACE_HOME_ACCENT,
   workspaceAppIconAppleTouchSrc,
   workspaceAppIconUiSrc,
   type WorkspaceAppId,
@@ -9,6 +7,13 @@ import {
 
 /** Bump when launcher / apple-touch artwork changes to bust Safari icon cache. */
 export const WORKSPACE_PWA_ICON_CACHE_VERSION = "19";
+
+/**
+ * Installed window chrome for every suite PWA (`theme_color`, `background_color`,
+ * and the `theme-color` meta). Same hex as `--color-we-got-sand` / `--workspace-accent`.
+ * Launcher tiles stay on `WORKSPACE_APP_ACCENT`.
+ */
+export const WORKSPACE_PWA_THEME_COLOR = "#ba9689";
 
 export type WorkspacePwaAppKey = WorkspaceAppId | "home";
 
@@ -93,10 +98,6 @@ function cacheBust(url: string): string {
   return `${url}${separator}v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`;
 }
 
-function workspacePwaThemeColor(app: WorkspacePwaAppKey): string {
-  return app === "home" ? WORKSPACE_HOME_ACCENT : WORKSPACE_APP_ACCENT[app];
-}
-
 function workspacePwaAppleTouchSrc(app: WorkspacePwaAppKey): string {
   return app === "home"
     ? cacheBust("/pwa-icons/home-180.png")
@@ -116,7 +117,7 @@ export function createWorkspacePwaHead(
   return createPwaHead({
     title: overrides?.title ?? meta.title,
     description: overrides?.description ?? meta.description,
-    themeColor: workspacePwaThemeColor(app),
+    themeColor: WORKSPACE_PWA_THEME_COLOR,
     appTitle: meta.appTitle,
     manifest: meta.manifest,
     appleTouchIcon: workspacePwaAppleTouchSrc(app),
