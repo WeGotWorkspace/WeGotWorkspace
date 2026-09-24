@@ -7,7 +7,6 @@
   @apply flex h-dvh w-full flex-col;
 
   --workspace-accent: var(--color-we-got-sand);
-  --workspace-sidebar-mix: 20%;
   --meet-surface: var(--workspace-home-bg, #1b1d3a);
   --meet-panel: #171826;
   --meet-panel-soft: #20223a;
@@ -28,8 +27,6 @@
   --meet-screen-bg: #000000;
   --meet-pip-border: rgba(255, 255, 255, 0.22);
 
-  /* Dark lobby: shared sheet sets a cream sidebar wash; pin back to navy. */
-  --app-sidebar-bg: var(--meet-surface);
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: var(--color-we-got-dark);
   --button-active-color: var(--meet-text);
@@ -812,9 +809,10 @@
     var(--color-we-got-dark) 70%,
     transparent
   );
+  /* 72% clears AA on the shared sand rail; 65% was ~4.3:1 for 12px text. */
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 65%,
+    var(--color-we-got-dark) 72%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
@@ -916,9 +914,10 @@
     var(--color-we-got-dark) 70%,
     transparent
   );
+  /* 72% clears AA on the shared sand rail; 65% was ~4.3:1 for 12px text. */
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 65%,
+    var(--color-we-got-dark) 72%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
@@ -961,7 +960,8 @@
 
 .meet-workspace__upcoming-time {
   @apply max-w-[9.5rem] shrink-0 text-right text-xs font-normal leading-tight;
-  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  /* Same 72% ink as the footer subtitle so 12px times clear AA on the sand rail. */
+  color: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
 }
 
 .meet-workspace__header-kind-icon {

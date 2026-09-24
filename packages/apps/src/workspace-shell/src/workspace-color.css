@@ -6,17 +6,24 @@
  * Each product `*-workspace.css` imports this once (same pattern as
  * `workspace-split-app.css`), then only sets what differs:
  * - `--workspace-accent` → brand primitive
- * - `--workspace-sidebar-mix` when not the 12% default
  * - `--wai-*` layers the switch mark actually uses
- * - Docs: full-accent sidebar + white on-color
  *
- * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark. Every app shares one item ladder (22 / 28 / 36), a small step above Calendar's previous 18 / 24 / 32. Product files do not redeclare it.
+ * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark.
+ *
+ * Sidebar rail and row states are one recipe. There is no mix knob. The rail
+ * is 12% accent into `--workspace-surface`. Hover / selected / selected-hover
+ * mix 12 / 18 / 28 accent into that same rail (about 22 / 28 / 36 on paper).
+ * Those declarations also match `.app-sidebar`, so an ancestor override cannot
+ * retune the painted rail. Product files do not redeclare the ladder.
+ * Primary and input tokens stay off `.app-sidebar` — Mail darkens
+ * `--button-primary-bg` on the workspace, and New sits inside the sidebar.
  *
  * Defaults use `:where` (zero specificity). Every product file imports this
  * sheet, and the app loads every product, so a later copy of these rules used
- * to reset earlier product overrides (sidebar mix, item washes, primary fg).
- * Storybook loads one product, so the product file won there and the two
- * surfaces diverged. Product class rules now win in both.
+ * to reset earlier product overrides (primary fg). Storybook loads one
+ * product, so the product file won there and the two surfaces diverged.
+ * Product class rules now win in both — except the sidebar rail, which is
+ * owned on `.app-sidebar` itself.
  */
 :where(
   .admin-workspace,
@@ -51,7 +58,6 @@
   --workspace-root-bg: var(--workspace-surface);
   --workspace-main-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
-  --workspace-sidebar-mix: 12%;
 
   /*
    * Shared field wash — same dark-into-paper recipe as login/installer
@@ -77,31 +83,61 @@
     var(--color-we-got-dark)
   );
 
-  --app-sidebar-bg: color-mix(
-    in oklch,
-    var(--workspace-accent) var(--workspace-sidebar-mix),
-    var(--workspace-surface)
-  );
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: #ffffff;
+}
+
+/*
+ * Rail SST. Same workspace and dialog hosts as the sheet above, plus
+ * `.app-sidebar`, so the painted sidebar does not inherit a product override.
+ */
+:where(
+  .admin-workspace,
+  .settings-workspace,
+  .notes-workspace,
+  .mail-workspace,
+  .tasks-workspace,
+  .calendar-workspace,
+  .contacts-workspace,
+  .drive-workspace,
+  .docs-workspace,
+  .meet-workspace,
+  .admin-dialog-surface,
+  .mail-dialog-surface,
+  .mail-compose-dialog-surface,
+  .docs-dialog-surface,
+  .notes-dialog-surface,
+  .tasks-dialog-surface,
+  .calendar-dialog-surface,
+  .contacts-dialog-surface,
+  .drive-dialog-surface,
+  .meet-channel-dialog,
+  .meet-call-dialog,
+  .meet-device-popover,
+  .app-sidebar
+) {
+  --app-sidebar-bg: color-mix(in oklch, var(--workspace-accent) 12%, var(--workspace-surface));
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
 
+  /*
+   * Same accent, same oklch space, base = the rail. Do not mix these into
+   * `--workspace-surface` or `--color-we-got-soft`.
+   */
   --app-sidebar-item-hover-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 22%,
-    var(--workspace-surface)
+    var(--workspace-accent) 12%,
+    var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 28%,
-    var(--workspace-surface)
+    var(--workspace-accent) 18%,
+    var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 36%,
-    var(--workspace-surface)
+    var(--workspace-accent) 28%,
+    var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-color: var(--color-we-got-dark);
-
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
 }

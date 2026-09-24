@@ -49,8 +49,8 @@ describe("drive workspace outline-active tokens", () => {
     );
   });
 
-  it("keeps selected washes heavier than the 32% sidebar tint", () => {
-    expect(css).toMatch(/--workspace-sidebar-mix:\s*32%/);
+  it("keeps segmented outline washes heavier than a light accent wash", () => {
+    expect(css).not.toMatch(/--workspace-sidebar-mix:/);
     expect(css).not.toMatch(
       /--button-outline-active-background:\s*color-mix\([\s\S]*var\(--workspace-accent\)\s*18%/,
     );

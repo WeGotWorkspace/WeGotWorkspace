@@ -85,8 +85,13 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).not.toMatch(/meet-workspace__sidebar-search/);
   });
 
-  it("washes Meet accent onto cream like Notes/Tasks/Calendar, not a solid teal slab", () => {
-    expect(css).toMatch(/--workspace-sidebar-mix:\s*20%/);
+  it("leaves the rail to the shared recipe and pins only the shell header to navy", () => {
+    expect(css).not.toMatch(/--workspace-sidebar-mix:/);
+    expect(css).not.toMatch(/--app-sidebar-bg:\s*color-mix/);
+    expect(css.match(/--app-sidebar-bg:/g)).toEqual(["--app-sidebar-bg:"]);
+    expect(css).toMatch(
+      /\.meet-workspace \.workspace-shell-header \{[\s\S]*?--app-sidebar-bg:\s*var\(--meet-surface\)/,
+    );
     expect(css).not.toMatch(
       /\.meet-workspace--split \{[\s\S]*--app-sidebar-bg:\s*var\(--workspace-accent\)\s*;/,
     );
@@ -95,7 +100,7 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).not.toMatch(/--collection-sidebar-row-radius:\s*999px/);
   });
 
-  it("leaves sidebar item washes to the shared 22/28/36 ladder", () => {
+  it("leaves sidebar item washes to the shared rail ladder", () => {
     expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
     expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(css).toMatch(

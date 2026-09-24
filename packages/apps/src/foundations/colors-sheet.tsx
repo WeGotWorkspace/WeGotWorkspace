@@ -78,21 +78,7 @@ function ColorGroup({
           label={formatCssVarRef(row.token)}
           copyValue={formatCssVarRef(row.token)}
           meta={row.resolved || row.cascaded || "(unresolved)"}
-          swatch={
-            row.token === "--workspace-sidebar-mix" ? (
-              <span
-                aria-hidden
-                className="flex size-9 shrink-0 items-center justify-center rounded-[var(--control-radius)] border font-mono text-[0.65rem]"
-                style={{
-                  borderColor: "color-mix(in oklch, var(--color-we-got-dark) 16%, transparent)",
-                }}
-              >
-                %
-              </span>
-            ) : (
-              <ColorSwatch color={row.resolved || `var(${row.token})`} />
-            )
-          }
+          swatch={<ColorSwatch color={row.resolved || `var(${row.token})`} />}
         />
       ))}
     </TokenSection>
@@ -127,10 +113,7 @@ export function ColorsSheet() {
       contractTokens.map((token) => ({
         token,
         cascaded: readCssVar(contractHost, token),
-        resolved:
-          token === "--workspace-sidebar-mix"
-            ? readCssVar(contractHost, token)
-            : resolveCssColor(contractHost, token),
+        resolved: resolveCssColor(contractHost, token),
       })),
     );
 
@@ -193,7 +176,7 @@ export function ColorsSheet() {
       />
       <ColorGroup
         title="Component contract"
-        note="Shared workspace-color.css recipe with a demo --workspace-accent. Per-app values (sidebar mix, primary, icon layers) are remapped in Themes stories."
+        note="Shared workspace-color.css recipe with a demo --workspace-accent. Per-app values (accent, primary, icon layers) are remapped in Themes stories."
         rows={[...contractRows, ...waiRows]}
         filter={filter}
       />
