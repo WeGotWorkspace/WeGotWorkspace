@@ -15,7 +15,7 @@ final class MeetReservationServiceTest extends WgwDatabaseTestCase
 {
     use MeetTestFixtures;
 
-    private const ROOM = 'mnop-qrst-uvwx';
+    private const ROOM = 'mnpq-rstu-vwxy';
 
     private MeetReservationService $reservations;
 

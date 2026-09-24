@@ -61,9 +61,10 @@ final class MeetingsController
     {
         $this->reservations->sweepExpiredNeverActivated();
         $username = $this->actors->tryAuthenticatedUsername($request);
-        // Named channels, DMs, and meeting name slugs are not guest doors.
-        // An ad-hoc room code stays readable so a started meeting is not
-        // reported missing. Members still see `active` on closed rooms.
+        // Named channels, DMs, meeting name slugs, and plain room names are
+        // not guest doors. An ad-hoc room code stays readable so a started
+        // meeting is not reported missing. Members still see `active` on
+        // closed rooms.
         if (($username === null || $username === '') && $this->channels->isGuestClosedRoom($roomId)) {
             throw new MeetResponseException(404, [
                 'error' => 'not_found',

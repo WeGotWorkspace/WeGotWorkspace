@@ -16,7 +16,7 @@ const weekly: MeetChannel = {
   name: "weekly",
   kind: "meeting",
   scope: "personal",
-  guestRoomCode: "q1w2-e3r4-t5y6",
+  guestRoomCode: "q2w3-e4r5-t6y7",
 };
 
 describe("meetCallActivityTargets", () => {
@@ -27,9 +27,9 @@ describe("meetCallActivityTargets", () => {
   });
 
   it("adds the joined session's channel when it differs from the selection", () => {
-    expect(meetCallActivityTargets([general, weekly], general.id, "q1w2-e3r4-t5y6")).toEqual([
+    expect(meetCallActivityTargets([general, weekly], general.id, "q2w3-e4r5-t6y7")).toEqual([
       { channelId: general.id, room: general.id.toLowerCase() },
-      { channelId: weekly.id, room: "q1w2-e3r4-t5y6" },
+      { channelId: weekly.id, room: "q2w3-e4r5-t6y7" },
     ]);
   });
 

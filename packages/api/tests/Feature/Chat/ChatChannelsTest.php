@@ -67,7 +67,7 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
 
         $this->assertSame('meeting', $created['kind']);
         $this->assertMatchesRegularExpression(
-            '/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/',
+            '/^[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}$/',
             (string) $created['guestRoomCode'],
         );
         $this->assertSame('chat-'.$created['guestRoomCode'], $created['id']);
@@ -105,6 +105,18 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
             'name' => 'Standup',
             'kind' => 'meeting',
             'guestRoomCode' => 'not-a-room',
+        ])->assertStatus(400);
+
+        $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Standup',
+            'kind' => 'meeting',
+            'guestRoomCode' => 'team-sync-2026',
+        ])->assertStatus(400);
+
+        $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Standup',
+            'kind' => 'meeting',
+            'guestRoomCode' => 'abcd-efgh-ijkl',
         ])->assertStatus(400);
 
         $this->asUser('alice')->postJson('/api/v1/chat/channels', [

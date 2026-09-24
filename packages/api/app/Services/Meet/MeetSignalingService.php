@@ -68,6 +68,10 @@ final class MeetSignalingService
             $ownerMarker = $this->actors->ownerMarkerForAuthenticatedUser($username);
 
             $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
+            // Ad-hoc Start writes a reservation and no channel. That code is
+            // the guest door, so the lobby is enforced here too — not only
+            // in the client.
+            $reservedRoom = $channel === null ? $this->reservations->find($room) : null;
             if ($channel !== null) {
                 // Channel-linked room: ACL members join directly (and are
                 // hosts); authenticated non-members knock. Guests are refused
@@ -81,12 +85,16 @@ final class MeetSignalingService
                 }
             } elseif ($ownerMarker === null) {
                 // Non-channel rooms: unknown leftovers stay room_not_active
-                // when empty; a reserved leftover invite may knock and wait.
-                if ($isKnockRequest && ! $this->roomHasJoinablePeer($room) && ! $this->allowsEmptyGuestKnock($room)) {
-                    $this->fail('room_not_active', 404);
-                }
+                // when empty. A reserved ad-hoc code requires a knock the
+                // same way a saved meeting does. An unreserved code has no
+                // host who can admit, so a direct guest join still passes.
                 $guestSessionKey = $this->actors->readGuestSessionKey($body) ?? $this->actors->newGuestSessionKey();
                 $ownerMarker = $this->actors->ownerMarkerForGuestSession($guestSessionKey);
+                if ($reservedRoom !== null) {
+                    $this->assertNonMemberChannelJoin($room, $peerId, $ownerMarker, $isKnockRequest);
+                } elseif ($isKnockRequest && ! $this->roomHasJoinablePeer($room) && ! $this->allowsEmptyGuestKnock($room)) {
+                    $this->fail('room_not_active', 404);
+                }
             }
 
             $browserId = $this->readBrowserId($body);
@@ -94,7 +102,7 @@ final class MeetSignalingService
             if ($browserId !== null) {
                 $this->store->deletePeersForBrowser($room, $browserId, $peerId);
             }
-            if ($channel !== null && $isKnockRequest) {
+            if ($isKnockRequest && ($channel !== null || $reservedRoom !== null)) {
                 // A (re-)knock always starts unadmitted — otherwise a reused
                 // peer id could inherit a stale admission.
                 $this->store->clearPeerAdmission($room, $peerId);
@@ -235,9 +243,10 @@ final class MeetSignalingService
     }
 
     /**
-     * Guests have no account. Named channels, team channels, and direct
-     * messages are not guest doors — join, knock, poll, and chat stop here
-     * so that chat cannot leak. An ad-hoc meeting stays open on its room code.
+     * Guests have no account. Named channels, team channels, direct messages,
+     * and any room that is not an ad-hoc code are not guest doors — join,
+     * knock, poll, and chat stop here so that chat cannot leak. An ad-hoc
+     * meeting stays open on its room code.
      */
     private function assertGuestMayEnter(?string $username, string $room): void
     {
@@ -252,10 +261,12 @@ final class MeetSignalingService
     }
 
     /**
-     * Authenticated non-member join on a channel room: knock joins on a known
-     * meeting invite may wait in an empty room; other channel rooms still
-     * require someone joinable (`room_not_active`). Non-knock joins pass only
-     * for a previously admitted peer. Guests never reach this method.
+     * Non-member join on a channel room, and guest join on a reserved
+     * ad-hoc code: knock joins on a known meeting invite may wait in an
+     * empty room; other channel rooms still require someone joinable
+     * (`room_not_active`). Non-knock joins pass only for a previously
+     * admitted peer. Guests reach this method only on an ad-hoc meeting
+     * room code; named channels and direct messages are refused first.
      */
     private function assertNonMemberChannelJoin(
         string $room,
@@ -276,12 +287,11 @@ final class MeetSignalingService
     }
 
     /**
-     * Server-side half of knock admission on channel rooms: when a channel
-     * member broadcasts an `admit` control message, the target peer row is
-     * marked admitted so its non-knock re-join passes the policy. Non-member
-     * and guest senders are ignored (the message still delivers — control
-     * messages stay a client convention on non-channel rooms and for
-     * everything except this hook).
+     * Server-side half of knock admission: when a channel member, or the
+     * manager of a reserved ad-hoc code (`createdBy` / owner-principal
+     * member), broadcasts an `admit` control message, the target peer row
+     * is marked admitted so its non-knock re-join passes the policy.
+     * Non-member and guest senders are ignored (the message still delivers).
      */
     private function recordChannelAdmission(Request $request, string $room, string $text): void
     {
@@ -289,12 +299,21 @@ final class MeetSignalingService
         if ($peerId === null) {
             return;
         }
-        $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
-        if ($channel === null) {
+        $username = $this->actors->tryAuthenticatedUsername($request);
+        if ($username === null || $username === '') {
             return;
         }
-        $username = $this->actors->tryAuthenticatedUsername($request);
-        if ($username === null || ! $this->channelJoinPolicy->isChannelMember($username, $channel)) {
+        $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
+        if ($channel !== null) {
+            if (! $this->channelJoinPolicy->isChannelMember($username, $channel)) {
+                return;
+            }
+            $this->store->markPeerAdmitted($room, $peerId);
+
+            return;
+        }
+        $reservation = $this->reservations->find($room);
+        if ($reservation === null || ! $this->reservations->canManage($username, $reservation)) {
             return;
         }
 

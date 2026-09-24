@@ -131,7 +131,9 @@ describe("parseCalendarMeetHref", () => {
 describe("meet room code and links map", () => {
   it("matches the full xxxx-xxxx-xxxx pattern", () => {
     expect(isMeetRoomCode(ROOM)).toBe(true);
-    expect(isMeetRoomCode("ABCD-EFGH-IJKL".toLowerCase())).toBe(true);
+    expect(isMeetRoomCode("abcd-efgh-jklm")).toBe(true);
+    expect(isMeetRoomCode("ABCD-EFGH-IJKL".toLowerCase())).toBe(false);
+    expect(isMeetRoomCode("team-sync-2026")).toBe(false);
     expect(isMeetRoomCode("abc")).toBe(false);
   });
 
@@ -230,6 +232,16 @@ describe("meetChannelCallHref", () => {
     expect(meetChannelCallHref(meeting, ORIGIN)).toBe(
       `${ORIGIN}/meet/meetings/01h455vb4pa9nnrjpznsav8hva`,
     );
+  });
+
+  it("reads an embedded room code from chat-{code} when guestRoomCode is missing", () => {
+    const meeting = {
+      id: `chat-${ROOM}`,
+      kind: "meeting" as const,
+      guestRoomCode: null,
+    };
+    expect(meetChannelCallRoom(meeting)).toBe(ROOM);
+    expect(meetChannelCallRoom(meeting)).not.toBe(`chat-${ROOM}`);
   });
 
   it("produces hrefs Join opens as the same stored invite URL", () => {

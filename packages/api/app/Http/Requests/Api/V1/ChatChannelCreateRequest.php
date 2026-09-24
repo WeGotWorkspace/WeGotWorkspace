@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Services\Calendars\CalendarMeetLinkHref;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class ChatChannelCreateRequest extends FormRequest
@@ -26,7 +27,7 @@ final class ChatChannelCreateRequest extends FormRequest
                 'sometimes',
                 'nullable',
                 'string',
-                'regex:/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/',
+                'regex:'.CalendarMeetLinkHref::ROOM_CODE_PATTERN,
                 'prohibited_unless:kind,meeting',
             ],
         ];

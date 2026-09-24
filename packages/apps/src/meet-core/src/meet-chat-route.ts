@@ -63,8 +63,9 @@ export function meetLiveRouteShowsInviteGate(input: MeetLiveInviteGateInput): bo
 }
 
 /**
- * Direct messages, team/named channels, and reusable meetings are not guest
- * doors. Ad-hoc `{xxxx-xxxx-xxxx}` meeting ids stay on the invite lobby.
+ * Direct messages, team/named channels, saved meeting slugs, and any legacy
+ * id that is not an ad-hoc room code are not guest doors. The API uses the
+ * same rule: only `{xxxx-xxxx-xxxx}` stays open to a guest.
  */
 export function meetRouteIsGuestClosed(input: {
   channelId?: string | null;

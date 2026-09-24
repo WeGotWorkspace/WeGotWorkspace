@@ -136,6 +136,7 @@ describe("MeetChannelDialog delete", () => {
     const link = screen.getByLabelText(meetLabels.meetingLinkLabel) as HTMLInputElement;
     expect(link).toHaveProperty("readOnly", true);
     expect(link.value).toBe(`${origin}/meet/meetings/standup`);
+    expect(screen.getByText(meetLabels.guestLinkClosedHint)).toBeTruthy();
     const shareTitle = screen.getByText(meetLabels.shareChannelSectionTitle);
     expect(
       link.compareDocumentPosition(shareTitle) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -181,6 +182,8 @@ describe("MeetChannelDialog delete", () => {
     const link = screen.getByLabelText(meetLabels.meetingLinkLabel) as HTMLInputElement;
     expect(link.value).toBe(`${origin}/meet/meetings/g744-8kfg-adjz`);
     expect(link.value).not.toContain("/standup");
+    expect(screen.getByText(meetLabels.guestLinkHint)).toBeTruthy();
+    expect(screen.queryByText(meetLabels.guestLinkClosedHint)).toBeNull();
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText: vi.fn().mockResolvedValue(undefined) },
