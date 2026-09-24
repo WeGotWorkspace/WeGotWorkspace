@@ -2,6 +2,8 @@ name: Release WeGotWorkspace
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Single source for which cells block publish. Observe is the complement.
+  RELEASE_GATE_CELLS: '["zip-sqlite"]'
 
 on:
   push:
@@ -9,138 +11,131 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  release:
+  cell-lists:
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      gate: ${{ steps.split.outputs.gate }}
+      observe: ${{ steps.split.outputs.observe }}
+    steps:
+      - id: split
+        run: |
+          set -euo pipefail
+          python3 - << 'PY'
+          import json, os
+          all_cells = ["zip-sqlite", "zip-mariadb", "docker-sqlite", "docker-mariadb"]
+          gate = json.loads(os.environ["RELEASE_GATE_CELLS"])
+          if not gate:
+              raise SystemExit("RELEASE_GATE_CELLS is empty; zip-sqlite must stay in the gate or publish is skipped")
+          unknown = [cell for cell in gate if cell not in all_cells]
+          if unknown:
+              raise SystemExit(f"unknown gate cells: {unknown}")
+          if len(gate) != len(set(gate)):
+              raise SystemExit("duplicate cells in RELEASE_GATE_CELLS")
+          observe = [cell for cell in all_cells if cell not in gate]
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"gate={json.dumps(gate)}\n")
+              handle.write(f"observe={json.dumps(observe)}\n")
+          PY
+
+  prepare:
+    uses: ./.github/workflows/install-e2e-build.yml
+    secrets:
+      WGW_RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.WGW_RELEASE_SIGNING_PRIVATE_KEY }}
+    permissions:
+      contents: read
+      packages: write
+    with:
+      build_arm64: ${{ startsWith(github.ref, 'refs/tags/') }}
+      sign_release: ${{ startsWith(github.ref, 'refs/tags/') }}
+
+  install-gate:
+    if: startsWith(github.ref, 'refs/tags/') && needs.cell-lists.outputs.gate != '[]'
+    needs: [prepare, cell-lists]
+    uses: ./.github/workflows/install-e2e-reusable.yml
+    permissions:
+      contents: read
+      packages: read
+    with:
+      cells: ${{ needs.cell-lists.outputs.gate }}
+      image: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.amd64_digest }}
+
+  install-observe:
+    if: startsWith(github.ref, 'refs/tags/') && needs.cell-lists.outputs.observe != '[]'
+    needs: [prepare, cell-lists]
+    uses: ./.github/workflows/install-e2e-reusable.yml
+    permissions:
+      contents: read
+      packages: read
+    with:
+      cells: ${{ needs.cell-lists.outputs.observe }}
+      image: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.amd64_digest }}
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [prepare, install-gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
       packages: write
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          fetch-tags: true
 
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: "8.3"
-          extensions: ctype, dom, iconv, imap, json, mbstring, pdo, pdo_sqlite, simplexml, zip
-          coverage: none
+      - uses: pnpm/action-setup@v6.1.0
 
-      - uses: pnpm/action-setup@v4.4.0
-
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
-          cache: "pnpm"
-
-      - name: Cache Composer vendor
-        uses: actions/cache@v4
-        with:
-          path: packages/api/vendor
-          key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-composer-
-
-      - name: Cache Turbo
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.job }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-${{ github.job }}-${{ hashFiles('pnpm-lock.yaml') }}-
-            ${{ runner.os }}-turbo-${{ github.job }}-
-
-      - name: Require signed annotated tag
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          # Ensure we validate the actual remote tag object (annotated tags are tag objects),
-          # not a peeled commit ref that checkout may create in shallow/tag-less fetches.
-          git fetch --force --tags origin "refs/tags/${TAG}:refs/tags/${TAG}"
-
-          TYPE="$(git cat-file -t "$TAG")"
-          if [[ "$TYPE" != "tag" ]]; then
-            echo "::error::${TAG} is not an annotated tag."
-            echo "::error::Create and push a signed annotated tag from local git (GitHub web-created tags are lightweight/unsigned)."
-            exit 1
-          fi
-          git cat-file -p "$TAG" > /tmp/tag-object.txt
-          if ! grep -Eq 'BEGIN (PGP|SSH) SIGNATURE' /tmp/tag-object.txt; then
-            echo "::error::${TAG} is not signed."
-            echo "::error::Push a signed annotated tag from local git using GPG or SSH signing."
-            exit 1
-          fi
+          cache: pnpm
 
       - name: Install workspace
         run: pnpm install --frozen-lockfile
 
-      - name: Install backend Composer dependencies
-        run: composer --working-dir packages/api install --no-interaction --prefer-dist
+      - uses: docker/setup-buildx-action@v3
 
-      # Tags are pushed from main after PR CI; re-running ci:quality here duplicates ~20 min.
-      - name: License policy (production dependencies)
-        run: pnpm run check:licenses
-
-      - name: Build monorepo
-        run: pnpm run build
-
-      - name: Resolve release version
-        id: release_version
-        run: |
-          if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
-            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=$(tr -d '\n' < apps/wegotworkspace/VERSION)" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Build release assets
-        env:
-          WGW_RELEASE_VERSION: ${{ steps.release_version.outputs.value }}
-          WGW_RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.WGW_RELEASE_SIGNING_PRIVATE_KEY }}
-        run: node tools/build-wegotworkspace-release.mjs
-
-      - name: Set up QEMU
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push install image
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: docker/build-push-action@v6
+      - name: Download the release ZIP
+        uses: actions/download-artifact@v4
         with:
-          context: .
-          file: docker/install/Dockerfile.runtime
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ghcr.io/wegotworkspace/wegotworkspace:${{ steps.release_version.outputs.value }}
-            ghcr.io/wegotworkspace/wegotworkspace:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          name: wegotworkspace-deploy-zip
+          path: dist/releases
+
+      - name: Promote tested image to release tags
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          AMD64: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.amd64_digest }}
+          ARM64: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.arm64_digest }}
+        run: |
+          set -euo pipefail
+          TAGS=(-t "ghcr.io/wegotworkspace/wegotworkspace:${VERSION}")
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            TAGS+=(-t ghcr.io/wegotworkspace/wegotworkspace:latest)
+          else
+            echo "Prerelease ${GITHUB_REF_NAME}: not moving :latest"
+          fi
+          docker buildx imagetools create "${TAGS[@]}" "$AMD64" "$ARM64"
 
       - name: Build Docker install bundle
-        if: startsWith(github.ref, 'refs/tags/')
         env:
-          WGW_RELEASE_VERSION: ${{ steps.release_version.outputs.value }}
+          WGW_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
         run: node tools/build-docker-install-bundle.mjs
 
       - name: Upload release artifacts
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true
           generate_release_notes: true
           files: |
             dist/releases/*.zip
@@ -152,18 +147,44 @@ jobs:
             dist/releases/env.example
             dist/releases/wgw-docker-install-*.tar.gz
 
+      - name: Upload bundle for smoke
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle
+          path: dist/releases
+          retention-days: 1
+
+  smoke:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download release bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: release-bundle
+          path: dist/releases
+
       - name: Smoke test install stack (compose + migrator + volumes)
-        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail
-          VERSION="${{ steps.release_version.outputs.value }}"
           IMAGE="ghcr.io/wegotworkspace/wegotworkspace:${VERSION}"
           SMOKE_DIR="${RUNNER_TEMP}/wgw-install-smoke"
           rm -rf "$SMOKE_DIR"
           mkdir -p "$SMOKE_DIR"
-
           docker pull "$IMAGE"
-
           cp dist/releases/docker-compose.yml "$SMOKE_DIR/docker-compose.yml"
           cp dist/releases/env.example "$SMOKE_DIR/.env"
           sed -i "s|^WGW_IMAGE=.*|WGW_IMAGE=${IMAGE}|" "$SMOKE_DIR/.env"
@@ -171,18 +192,13 @@ jobs:
           sed -i 's/^WGW_WAIT_FOR_DB=.*/WGW_WAIT_FOR_DB=0/' "$SMOKE_DIR/.env"
           sed -i 's/^WGW_DB_HOST=.*/WGW_DB_HOST=/' "$SMOKE_DIR/.env"
           sed -i 's/^WGW_HTTP_PORT=.*/WGW_HTTP_PORT=18080/' "$SMOKE_DIR/.env"
-
           cd "$SMOKE_DIR"
-          compose() {
-            docker compose -f docker-compose.yml --env-file .env "$@"
-          }
-
+          compose() { docker compose -f docker-compose.yml --env-file .env "$@"; }
           echo "=== Fresh install: migrator should skip, web should become healthy ==="
           compose up -d
           compose ps -a
           compose logs migrator | tee /tmp/wgw-migrator-fresh.log
           grep -q "skipping schema migration" /tmp/wgw-migrator-fresh.log
-
           for i in $(seq 1 45); do
             if curl -fsS http://127.0.0.1:18080/api/v1/health | grep -q '"status":"ok"'; then
               echo "Health check passed."
@@ -195,19 +211,15 @@ jobs:
             fi
             sleep 2
           done
-
           curl -fsS -o /dev/null -w "%{http_code}" http://127.0.0.1:18080/install/ | grep -qE '200|302'
-
           echo "=== Installed instance: migrator should run wgw:schema-migrate ==="
           CONTENT_VOL="$(docker volume ls -q | grep '_wgw-content$' | head -1)"
           [ -n "$CONTENT_VOL" ] || { echo "::error::wgw-content volume not found"; compose ps -a; docker volume ls; exit 1; }
           docker run --rm -v "${CONTENT_VOL}:/data" alpine:3.20 \
             sh -c 'mkdir -p /data && date -Iseconds > /data/.installed'
-
           compose up -d --force-recreate
           compose logs migrator | tee /tmp/wgw-migrator-installed.log
           grep -q "Running wgw:schema-migrate" /tmp/wgw-migrator-installed.log
-
           echo "=== Config persistence: force-recreate web, health should remain ok ==="
           compose up -d --force-recreate web
           for i in $(seq 1 30); do
@@ -222,12 +234,9 @@ jobs:
             fi
             sleep 2
           done
-
           echo "=== Bare container smoke (image entrypoint only) ==="
           docker run -d --name wgw-install-smoke-bare -p 127.0.0.1:18081:80 \
-            -e WGW_WAIT_FOR_DB=0 \
-            -e WGW_DB_HOST= \
-            "$IMAGE"
+            -e WGW_WAIT_FOR_DB=0 -e WGW_DB_HOST= "$IMAGE"
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:18081/api/v1/health | grep -q '"status":"ok"'; then
               echo "Bare container health check passed."
@@ -242,6 +251,64 @@ jobs:
             fi
             sleep 2
           done
-
           compose down -v
           echo "Install stack smoke tests passed."
+
+  annotate-release:
+    needs: [publish, install-observe]
+    if: always() && needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download cell statuses
+        uses: actions/download-artifact@v4
+        with:
+          pattern: install-e2e-cell-*
+          merge-multiple: true
+          path: cell-results
+
+      - name: Replace the install-cells section in the release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          python3 - << 'PY'
+          import os, pathlib, subprocess
+          tag = os.environ["GITHUB_REF_NAME"]
+          body = subprocess.check_output(
+              ["gh", "release", "view", tag, "--json", "body", "--jq", ".body"],
+              text=True,
+          )
+          marker = "## Install cells"
+          if marker in body:
+              body = body.split(marker, 1)[0].rstrip()
+          cells = "\n".join(
+              path.read_text(encoding="utf-8").strip()
+              for path in sorted(pathlib.Path("cell-results").glob("*"))
+              if path.is_file()
+          )
+          section = (
+              f"{marker}\n\n"
+              "Observe cells do not block this release. A red observe cell resets its promotion count.\n\n"
+              f"{cells}\n"
+          )
+          pathlib.Path("/tmp/release-notes.md").write_text(f"{body}\n\n{section}", encoding="utf-8")
+          PY
+          gh release edit "$TAG" --notes-file /tmp/release-notes.md
+
+  cleanup:
+    needs: prepare
+    if: always() && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Delete candidate tags older than 7 days
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash tools/ghcr-delete-old-candidates.sh

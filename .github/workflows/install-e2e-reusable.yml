@@ -1,0 +1,92 @@
+name: Install e2e cells
+
+on:
+  workflow_call:
+    inputs:
+      cells:
+        description: JSON array of cell ids. Must be non-empty; an empty fromJSON matrix fails the workflow.
+        required: true
+        type: string
+      image:
+        description: Candidate image reference, including @sha256 digest
+        required: true
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  cells:
+    if: inputs.cells != '' && inputs.cells != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        cell: ${{ fromJSON(inputs.cells) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ctype, dom, iconv, imap, json, mbstring, pdo, pdo_mysql, pdo_sqlite, simplexml, zip
+          coverage: none
+
+      - uses: pnpm/action-setup@v4.4.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install JS workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright
+        run: pnpm --filter @wgw/api-e2e exec playwright install chromium --with-deps
+
+      - name: Download the release ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: wegotworkspace-deploy-zip
+          path: dist/releases
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run install cell
+        env:
+          CHANNEL: ${{ startsWith(matrix.cell, 'docker') && 'docker' || 'zip' }}
+          DB: ${{ endsWith(matrix.cell, 'mariadb') && 'mariadb' || 'sqlite' }}
+          WGW_INSTALL_E2E_IMAGE: ${{ inputs.image }}
+        run: bash tools/e2e-install-matrix.sh
+
+      - name: Job summary
+        if: always()
+        run: echo "### ${{ matrix.cell }}: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record cell status
+        if: always()
+        run: echo "${{ matrix.cell }} ${{ job.status }}" > "${{ matrix.cell }}.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: install-e2e-cell-${{ matrix.cell }}
+          path: ${{ matrix.cell }}.txt
+          retention-days: 3
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-${{ matrix.cell }}
+          path: tools/api-e2e/test-results
+          retention-days: 3
+          if-no-files-found: ignore

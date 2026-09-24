@@ -29,9 +29,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4.4.0
+      - uses: pnpm/action-setup@v6.1.0
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: pnpm
@@ -66,7 +66,7 @@ jobs:
 
       - name: Upload CodeQL SARIF artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: codeql-javascript-typescript-results
           path: codeql-sarif-results/
@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload Semgrep SARIF artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: semgrep-php-results
           path: semgrep-php.sarif
@@ -131,16 +131,35 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Actions secrets are hidden from dependabot[bot]. The action refuses to
+      # scan organization repos without GITLEAKS_LICENSE, so that path runs
+      # the same gitleaks detect command directly.
+      - name: Detect Gitleaks license
+        id: gitleaks-license
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        run: |
+          if [ -n "$GITLEAKS_LICENSE" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Scan for secrets
+        if: steps.gitleaks-license.outputs.present == 'true'
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
 
+      - name: Scan for secrets without a license
+        if: steps.gitleaks-license.outputs.present != 'true'
+        run: bash .github/scripts/gitleaks-detect.sh
+
       - name: Upload Gitleaks SARIF artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gitleaks-report
           path: |
@@ -214,7 +233,7 @@ jobs:
 
       - name: Upload Trivy SARIF artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-sca-reports
           path: |
@@ -251,7 +270,7 @@ jobs:
 
       - name: Label ZAP issues
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const title = 'DAST: ZAP full scan findings';
