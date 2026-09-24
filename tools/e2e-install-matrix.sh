@@ -119,7 +119,10 @@ if [[ "$DB" == "mariadb" ]]; then
       -e MARIADB_PASSWORD="$DB_PASSWORD" \
       mariadb:11)"
   fi
-  wait_until "MariaDB" docker exec "$DB_CID" mariadb-admin ping -h 127.0.0.1 -uroot -proot --silent
+  if ! wait_until "MariaDB" docker exec "$DB_CID" mariadb-admin ping -h 127.0.0.1 -uroot -proot --silent; then
+    docker logs "$DB_CID" >&2 || true
+    exit 1
+  fi
 fi
 
 if [[ "$CHANNEL" == "zip" ]]; then
@@ -132,13 +135,25 @@ if [[ "$CHANNEL" == "zip" ]]; then
   php -S "127.0.0.1:${PORT}" -t "$WORK/tree" "$WORK/tree/index.php" >"$WORK/php.log" 2>&1 &
   PHP_PID=$!
   BASE="http://127.0.0.1:${PORT}"
-  wait_until "PHP health" curl -fsS "${BASE}/api/v1/health"
+  if ! wait_until "PHP health" curl -fsS "${BASE}/api/v1/health"; then
+    echo "---- php.log ----" >&2
+    cat "$WORK/php.log" >&2 || true
+    exit 1
+  fi
 else
   if [[ -z "$IMAGE" ]]; then
     resolve_zip
     mkdir -p "$ROOT/dist/releases"
-    cp "$ZIP" "$ROOT/dist/releases/"
+    STAGED_ZIP="$ROOT/dist/releases/wegotworkspace-deploy.zip"
+    cp "$ZIP" "$STAGED_ZIP"
+    set +e
     docker build -f "$ROOT/docker/install/Dockerfile.runtime" -t "wgw-install-e2e:local" "$ROOT"
+    build_status=$?
+    set -e
+    rm -f "$STAGED_ZIP"
+    if [[ "$build_status" -ne 0 ]]; then
+      exit "$build_status"
+    fi
     IMAGE="wgw-install-e2e:local"
   fi
   RUN_ARGS=(docker run -d --name "wgw-app-$$" -p "127.0.0.1:${PORT}:80" -e WGW_INSTALL_HEADLESS=0 -e WGW_DISABLE_LOGIN_THROTTLE=1 -e WGW_WAIT_FOR_DB=0)

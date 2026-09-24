@@ -21,13 +21,13 @@ CHANNEL=docker DB=mariadb pnpm test:install-e2e
 
 - Push to `main` on installer paths runs all four cells and does not block merge.
 - A tag runs `install-gate` (`zip-sqlite`) before publish, and `install-observe` (the other three) without blocking publish.
-- Promote a cell into `RELEASE_GATE_CELLS` in `.github/workflows/release.yml` after **2 consecutive** green runs on `main`, `workflow_dispatch`, or a tag. A red run, including a red observe cell, resets that cell.
+- Promote a cell by editing the `RELEASE_GATE_CELLS` env in `.github/workflows/release.yml` after **2 consecutive** green runs on `main`, `workflow_dispatch`, or a tag. Observe cells are the other three, derived from that list. A red run, including a red observe cell, resets that cell.
 
 ## Images
 
 The build job always pushes a new amd64 image to the private package `ghcr.io/wegotworkspace/wegotworkspace-candidate` (tag `sha-<commit>`), including when a tag workflow is re-run. Cells pull that digest. After the gate, `imagetools` copies the tested amd64 digest and the arm64 digest onto `ghcr.io/wegotworkspace/wegotworkspace:<version>`. `:latest` moves only for a stable `vX.Y.Z` tag.
 
-Cell jobs need `packages: read` and `docker login ghcr.io` with `GITHUB_TOKEN`. The promote job reads `wegotworkspace-candidate` and writes `wegotworkspace`. Grant Actions access on **both** packages (package settings → Manage Actions access). A package first pushed with `GITHUB_TOKEN` links to this repo. The existing release package may not be linked. That setting is once, outside the workflow file.
+Cell jobs need `packages: read` and `docker login ghcr.io` with `GITHUB_TOKEN`. They do not receive repository secrets. The promote job reads `wegotworkspace-candidate` and writes `wegotworkspace`. Grant Actions access on **both** packages (package settings → Manage Actions access). Deleting old candidate versions needs the **Admin** role on `wegotworkspace-candidate`, not only write. A package first pushed with `GITHUB_TOKEN` links to this repo. The existing release package may not be linked. That setting is once, outside the workflow file. The production signing key is passed only when `sign_release` is true, which is tag builds. Path-filtered `main` builds are unsigned.
 
 Candidate tags older than 7 days are deleted. Published releases keep their own blobs.
 

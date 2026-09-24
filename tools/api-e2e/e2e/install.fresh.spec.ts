@@ -8,13 +8,11 @@ const database = process.env.WGW_E2E_DB ?? "sqlite";
 
 expect.configure({ timeout: 15_000 });
 
-async function readInstallerInstalled(page: Page): Promise<boolean> {
+async function assertInstallerNotInstalled(page: Page): Promise<void> {
   const response = await page.request.get("/api/v1/installer/state");
-  if (!response.ok()) {
-    return false;
-  }
+  expect(response.ok(), "installer state must respond before the wizard starts").toBe(true);
   const body = (await response.json()) as { installed?: boolean };
-  return body.installed === true;
+  expect(body.installed, "fresh install requires an uninstalled tree").toBe(false);
 }
 
 test.describe("Fresh install", () => {
@@ -26,29 +24,29 @@ test.describe("Fresh install", () => {
   test("installs a fresh release and signs in", async ({ page }) => {
     test.setTimeout(300_000);
 
-    expect(await readInstallerInstalled(page), "fresh install requires an uninstalled tree").toBe(false);
+    await assertInstallerNotInstalled(page);
 
     await page.goto("/install/", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("button", { name: "Get started" })).toBeVisible();
     await page.getByRole("button", { name: "Get started" }).click();
 
-    await expect(page.getByText("Needs attention.")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Continue" })).toBeVisible();
+    await expect(page.getByText("Needs attention.")).toHaveCount(0);
 
     if (database === "sqlite") {
       await page.getByRole("group", { name: "Type" }).getByRole("button", { name: "SQLite" }).click();
     } else {
-      await page.getByLabel("Host").fill(process.env.WGW_E2E_DB_HOST ?? "127.0.0.1");
-      await page.getByLabel("Port").fill(process.env.WGW_E2E_DB_PORT ?? "3306");
-      await page.getByLabel("Database").fill(process.env.WGW_E2E_DB_NAME ?? "wgw");
-      await page.getByLabel("User").fill(process.env.WGW_E2E_DB_USER ?? "wgw");
-      await page.getByLabel("Password").fill(process.env.WGW_E2E_DB_PASSWORD ?? "wgw");
+      await page.getByLabel("Host", { exact: true }).fill(process.env.WGW_E2E_DB_HOST ?? "127.0.0.1");
+      await page.getByLabel("Port", { exact: true }).fill(process.env.WGW_E2E_DB_PORT ?? "3306");
+      await page.getByLabel("Database", { exact: true }).fill(process.env.WGW_E2E_DB_NAME ?? "wgw");
+      await page.getByLabel("User", { exact: true }).fill(process.env.WGW_E2E_DB_USER ?? "wgw");
+      await page.getByLabel("Password", { exact: true }).fill(process.env.WGW_E2E_DB_PASSWORD ?? "wgw");
     }
     await page.getByRole("button", { name: "Continue" }).click();
 
-    await page.getByLabel("Username").fill(adminUser);
-    await page.getByLabel("Email").fill(adminEmail);
-    await page.getByLabel("Password").fill(adminPass);
+    await page.getByLabel("Username", { exact: true }).fill(adminUser);
+    await page.getByLabel("Email", { exact: true }).fill(adminEmail);
+    await page.getByLabel("Password", { exact: true }).fill(adminPass);
     await page.getByRole("button", { name: "Create workspace" }).click();
 
     await expect(page.getByText("Your workspace is ready.")).toBeVisible({ timeout: 120_000 });

@@ -15,6 +15,7 @@ gh api --paginate "/orgs/${ORG}/packages/container/${PACKAGE}/versions" --jq '.[
   while IFS=$'\t' read -r id created tags; do
     if [[ "$created" < "$CUTOFF" ]]; then
       echo "delete ${id} created ${created} tags ${tags}"
-      gh api --method DELETE "/orgs/${ORG}/packages/container/${PACKAGE}/versions/${id}"
+      gh api --method DELETE "/orgs/${ORG}/packages/container/${PACKAGE}/versions/${id}" \
+        || echo "warning: could not delete ${id} (Actions access on this package needs the Admin role)"
     fi
   done

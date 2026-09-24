@@ -7,6 +7,7 @@ on:
     paths:
       - "docker/install/**"
       - "packages/api/app/Services/Installer/**"
+      # StateController, BootstrapController, and ActionController live in this directory.
       - "packages/api/app/Http/Controllers/Api/V1/Installer/**"
       - "packages/api/app/Http/Requests/Api/V1/Installer*"
       - "packages/api/app/Ui/UiStaticServer.php"
@@ -31,7 +32,6 @@ permissions:
 jobs:
   prepare:
     uses: ./.github/workflows/install-e2e-build.yml
-    secrets: inherit
     permissions:
       contents: read
       packages: write
@@ -39,7 +39,6 @@ jobs:
   cells:
     needs: prepare
     uses: ./.github/workflows/install-e2e-reusable.yml
-    secrets: inherit
     permissions:
       contents: read
       packages: read

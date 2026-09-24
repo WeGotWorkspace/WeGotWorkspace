@@ -2,6 +2,8 @@ name: Release WeGotWorkspace
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Single source for which cells block publish. Observe is the complement.
+  RELEASE_GATE_CELLS: '["zip-sqlite"]'
 
 on:
   push:
@@ -14,37 +16,63 @@ permissions:
   packages: write
 
 jobs:
+  cell-lists:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      gate: ${{ steps.split.outputs.gate }}
+      observe: ${{ steps.split.outputs.observe }}
+    steps:
+      - id: split
+        run: |
+          set -euo pipefail
+          python3 - << 'PY'
+          import json, os
+          all_cells = ["zip-sqlite", "zip-mariadb", "docker-sqlite", "docker-mariadb"]
+          gate = json.loads(os.environ["RELEASE_GATE_CELLS"])
+          unknown = [cell for cell in gate if cell not in all_cells]
+          if unknown:
+              raise SystemExit(f"unknown gate cells: {unknown}")
+          if len(gate) != len(set(gate)):
+              raise SystemExit("duplicate cells in RELEASE_GATE_CELLS")
+          observe = [cell for cell in all_cells if cell not in gate]
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"gate={json.dumps(gate)}\n")
+              handle.write(f"observe={json.dumps(observe)}\n")
+          PY
+
   prepare:
     uses: ./.github/workflows/install-e2e-build.yml
-    secrets: inherit
+    secrets:
+      WGW_RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.WGW_RELEASE_SIGNING_PRIVATE_KEY }}
     permissions:
       contents: read
       packages: write
     with:
       build_arm64: ${{ startsWith(github.ref, 'refs/tags/') }}
+      sign_release: ${{ startsWith(github.ref, 'refs/tags/') }}
 
   install-gate:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: prepare
+    if: startsWith(github.ref, 'refs/tags/') && needs.cell-lists.outputs.gate != '[]'
+    needs: [prepare, cell-lists]
     uses: ./.github/workflows/install-e2e-reusable.yml
-    secrets: inherit
     permissions:
       contents: read
       packages: read
     with:
-      cells: '["zip-sqlite"]'
+      cells: ${{ needs.cell-lists.outputs.gate }}
       image: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.amd64_digest }}
 
   install-observe:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: prepare
+    if: startsWith(github.ref, 'refs/tags/') && needs.cell-lists.outputs.observe != '[]'
+    needs: [prepare, cell-lists]
     uses: ./.github/workflows/install-e2e-reusable.yml
-    secrets: inherit
     permissions:
       contents: read
       packages: read
     with:
-      cells: '["zip-mariadb","docker-sqlite","docker-mariadb"]'
+      cells: ${{ needs.cell-lists.outputs.observe }}
       image: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.amd64_digest }}
 
   publish:
@@ -105,7 +133,7 @@ jobs:
       - name: Upload release artifacts
         uses: softprops/action-gh-release@v2
         with:
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true
           generate_release_notes: true
           files: |
             dist/releases/*.zip
@@ -239,21 +267,34 @@ jobs:
           merge-multiple: true
           path: cell-results
 
-      - name: Append observe results to the release notes
+      - name: Replace the install-cells section in the release notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
-          {
-            gh release view "$TAG" --json body --jq .body
-            echo
-            echo "## Install cells"
-            echo
-            echo 'Observe cells do not block this release. A red observe cell resets its promotion count.'
-            echo
-            cat cell-results/*
-          } > /tmp/release-notes.md
+          python3 - << 'PY'
+          import os, pathlib, subprocess
+          tag = os.environ["GITHUB_REF_NAME"]
+          body = subprocess.check_output(
+              ["gh", "release", "view", tag, "--json", "body", "--jq", ".body"],
+              text=True,
+          )
+          marker = "## Install cells"
+          if marker in body:
+              body = body.split(marker, 1)[0].rstrip()
+          cells = "\n".join(
+              path.read_text(encoding="utf-8").strip()
+              for path in sorted(pathlib.Path("cell-results").glob("*"))
+              if path.is_file()
+          )
+          section = (
+              f"{marker}\n\n"
+              "Observe cells do not block this release. A red observe cell resets its promotion count.\n\n"
+              f"{cells}\n"
+          )
+          pathlib.Path("/tmp/release-notes.md").write_text(f"{body}\n\n{section}", encoding="utf-8")
+          PY
           gh release edit "$TAG" --notes-file /tmp/release-notes.md
 
   cleanup:

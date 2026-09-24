@@ -7,6 +7,13 @@ on:
         description: Also push a linux/arm64 candidate for imagetools
         type: boolean
         default: false
+      sign_release:
+        description: Sign the ZIP with the production key. Tags only.
+        type: boolean
+        default: false
+    secrets:
+      WGW_RELEASE_SIGNING_PRIVATE_KEY:
+        required: false
     outputs:
       version:
         description: Release version without the leading v
@@ -94,7 +101,14 @@ jobs:
             echo "value=$(tr -d '\n' < apps/wegotworkspace/VERSION)" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build release assets
+      - name: Build unsigned release assets
+        if: inputs.sign_release != true
+        env:
+          WGW_RELEASE_VERSION: ${{ steps.release_version.outputs.value }}
+        run: node tools/build-wegotworkspace-release.mjs
+
+      - name: Build signed release assets
+        if: inputs.sign_release
         env:
           WGW_RELEASE_VERSION: ${{ steps.release_version.outputs.value }}
           WGW_RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.WGW_RELEASE_SIGNING_PRIVATE_KEY }}
@@ -133,6 +147,17 @@ jobs:
         with:
           name: wegotworkspace-deploy-zip
           path: dist/releases
+
+      - name: Stage exactly one deploy ZIP
+        run: |
+          set -euo pipefail
+          mapfile -t zips < <(find dist/releases -maxdepth 1 -name 'wegotworkspace-deploy-*.zip' | sort)
+          if [[ "${#zips[@]}" -ne 1 ]]; then
+            echo "expected exactly one wegotworkspace-deploy-*.zip, found ${#zips[@]}" >&2
+            printf '%s\n' "${zips[@]}" >&2
+            exit 1
+          fi
+          cp "${zips[0]}" dist/releases/wegotworkspace-deploy.zip
 
       - name: Push amd64 candidate
         id: push
@@ -174,6 +199,17 @@ jobs:
         with:
           name: wegotworkspace-deploy-zip
           path: dist/releases
+
+      - name: Stage exactly one deploy ZIP
+        run: |
+          set -euo pipefail
+          mapfile -t zips < <(find dist/releases -maxdepth 1 -name 'wegotworkspace-deploy-*.zip' | sort)
+          if [[ "${#zips[@]}" -ne 1 ]]; then
+            echo "expected exactly one wegotworkspace-deploy-*.zip, found ${#zips[@]}" >&2
+            printf '%s\n' "${zips[@]}" >&2
+            exit 1
+          fi
+          cp "${zips[0]}" dist/releases/wegotworkspace-deploy.zip
 
       - name: Push arm64 candidate
         id: push

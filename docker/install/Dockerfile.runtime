@@ -9,7 +9,7 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY dist/releases/wegotworkspace-deploy-*.zip /tmp/deploy.zip
+COPY dist/releases/wegotworkspace-deploy.zip /tmp/deploy.zip
 RUN mkdir -p /release \
     && unzip -q /tmp/deploy.zip -d /release \
     && rm /tmp/deploy.zip
