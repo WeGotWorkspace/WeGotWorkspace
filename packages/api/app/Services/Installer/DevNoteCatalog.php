@@ -234,7 +234,7 @@ final class DevNoteCatalog
             'WeGotWorkspace Notes store documents as CalDAV VJOURNAL. SUMMARY is the title; DESCRIPTION is markdown; CATEGORIES are tags.',
             'This seeder mirrors `wgw:calendars:seed-dev`: deterministic URIs, idempotent writes, and `--force` recreate.',
             "Checklist:\n\n1. Open `/notes` at the Vite app\n2. Scroll All / Starred / Archive\n3. Filter by tag\n4. Open a few long notes",
-            str_repeat("Lorem padding sentence for volume. ", 24),
+            str_repeat('Lorem padding sentence for volume. ', 24),
         ];
 
         return "## {$heading}\n\n".implode("\n\n", $paragraphs)."\n";
