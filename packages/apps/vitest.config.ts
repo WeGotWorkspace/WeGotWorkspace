@@ -31,6 +31,9 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**"],
+      // Stories and fixture mocks are not product dark spots. Vitest appends
+      // its own excludes (tests, setup, config, node_modules) after this list.
+      exclude: ["**/*.stories.*", "**/stories/**", "**/mock/**"],
     },
     projects: [
       {
