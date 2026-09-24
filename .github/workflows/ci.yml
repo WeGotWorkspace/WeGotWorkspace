@@ -298,3 +298,102 @@ jobs:
           WGW_TEST_MYSQL_PASSWORD: root
           WGW_PHPUNIT_SHARD: ${{ matrix.shard }}/2
         run: composer --working-dir packages/api run test:mysql:parity:shard
+
+  api-coverage:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: api-coverage-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ctype, dom, iconv, imap, json, mbstring, pdo, pdo_sqlite, simplexml, zip
+          coverage: pcov
+
+      - name: Cache Composer vendor
+        uses: actions/cache@v4
+        with:
+          path: packages/api/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install backend Composer dependencies
+        run: composer --working-dir packages/api install --no-interaction --prefer-dist
+
+      - name: Prepare Laravel env for tests
+        run: |
+          cp packages/api/.env.example packages/api/.env
+          php packages/api/artisan key:generate --force --no-interaction
+
+      - name: PHPUnit clover
+        working-directory: packages/api
+        run: |
+          set -euo pipefail
+          mkdir -p build/logs
+          php vendor/bin/phpunit -c phpunit.xml --coverage-clover=build/logs/clover.xml
+          php -r 'if (!preg_match("/<file\\b/", file_get_contents("build/logs/clover.xml"))) { fwrite(STDERR, "clover lists no files\n"); exit(1); }'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phpunit-clover
+          path: packages/api/build/logs/clover.xml
+          if-no-files-found: error
+
+  apps-coverage:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: apps-coverage-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4.4.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install JS workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Vitest unit blob
+        working-directory: packages/apps
+        run: pnpm exec vitest run --project unit --coverage --reporter=blob --outputFile=.vitest-reports/blob-unit.json --coverage.reportsDirectory=coverage/shard-unit
+
+      - name: Vitest jsdom blobs
+        working-directory: packages/apps
+        run: node scripts/run-jsdom.mjs --coverage
+
+      - name: Merge coverage reports
+        working-directory: packages/apps
+        run: |
+          set -euo pipefail
+          test -s .vitest-reports/blob-unit.json
+          mapfile -t blobs < <(find .vitest-reports -name 'blob-jsdom-*.json' | sort)
+          if [[ "${#blobs[@]}" -eq 0 ]]; then
+            echo "no jsdom coverage blobs" >&2
+            exit 1
+          fi
+          if ! pnpm exec vitest --merge-reports=.vitest-reports --coverage.enabled --coverage.reporter=lcov,json-summary; then
+            echo "Combined merge failed; writing separate unit and jsdom reports."
+            mkdir -p .vitest-reports-unit .vitest-reports-jsdom
+            cp .vitest-reports/blob-unit.json .vitest-reports-unit/
+            find .vitest-reports -name 'blob-jsdom-*.json' -exec cp {} .vitest-reports-jsdom/ \;
+            pnpm exec vitest --merge-reports=.vitest-reports-unit --coverage.enabled --coverage.reporter=lcov,json-summary --coverage.reportsDirectory=coverage/unit
+            pnpm exec vitest --merge-reports=.vitest-reports-jsdom --coverage.enabled --coverage.reporter=lcov,json-summary --coverage.reportsDirectory=coverage/jsdom
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vitest-coverage
+          path: packages/apps/coverage
+          if-no-files-found: error

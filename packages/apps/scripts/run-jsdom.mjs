@@ -34,7 +34,7 @@
  *   JSDOM_LIST=1 node scripts/run-jsdom.mjs
  */
 import { spawn } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -253,13 +253,41 @@ async function runPool(entries, concurrency) {
  * @param {number} totalShards
  * @returns {Array<{ label: string, args: string[] }>}
  */
-function shardEntries(shards, offset, totalShards) {
+/**
+ * Per-shard coverage argv. `blob` is a Vitest test reporter. Each child gets
+ * its own reports directory because v8 coverage clears `reportsDirectory/.tmp`
+ * on start (`clean: true`).
+ *
+ * @param {string} shardId
+ * @returns {string[]}
+ */
+export function coverageVitestArgs(shardId) {
+  return [
+    "--coverage",
+    "--reporter=blob",
+    `--outputFile=.vitest-reports/blob-${shardId}.json`,
+    `--coverage.reportsDirectory=coverage/shard-${shardId}`,
+  ];
+}
+
+/**
+ * @param {string[][]} shards
+ * @param {number} offset
+ * @param {number} totalShards
+ * @param {boolean} coverage
+ * @returns {Array<{ label: string, args: string[], shardId: string }>}
+ */
+function shardEntries(shards, offset, totalShards, coverage) {
   return shards.map((shardFiles, index) => {
-    const label = `jsdom shard ${offset + index + 1}/${totalShards} (${shardFiles.length} files) ${domainMix(shardFiles)}`;
-    return {
-      label,
-      args: ["run", "--project", "jsdom", "--maxWorkers=1", ...shardFiles],
-    };
+    const shardNumber = offset + index + 1;
+    const shardId = `jsdom-${shardNumber}`;
+    const label = `jsdom shard ${shardNumber}/${totalShards} (${shardFiles.length} files) ${domainMix(shardFiles)}`;
+    const args = ["run", "--project", "jsdom", "--maxWorkers=1"];
+    if (coverage) {
+      args.push(...coverageVitestArgs(shardId));
+    }
+    args.push(...shardFiles);
+    return { label, args, shardId };
   });
 }
 
@@ -270,6 +298,7 @@ async function main() {
     process.env.JSDOM_LIST === "1";
   const verboseList = process.argv.includes("--print");
   const withUnit = process.argv.includes("--with-unit");
+  const coverage = process.argv.includes("--coverage");
   const shardCount = parseShardCount(process.env.JSDOM_SHARDS);
   const files = walkTestFiles(srcRoot);
   const { packed, solo } = assignShards(files, shardCount);
@@ -309,10 +338,24 @@ async function main() {
     results.push(await runVitest("Vitest (unit)", ["run", "--project", "unit"]));
   }
 
-  results.push(...(await runPool(shardEntries(packed, 0, totalShards), limits.packed)));
-  results.push(...(await runPool(shardEntries(solo, packed.length, totalShards), limits.solo)));
+  const packedEntries = shardEntries(packed, 0, totalShards, coverage);
+  const soloEntries = shardEntries(solo, packed.length, totalShards, coverage);
+  results.push(...(await runPool(packedEntries, limits.packed)));
+  results.push(...(await runPool(soloEntries, limits.solo)));
 
-  const passed = results.every((row) => row.ok);
+  let passed = results.every((row) => row.ok);
+  if (coverage && passed) {
+    const missing = [...packedEntries, ...soloEntries].filter((entry) => {
+      const blob = path.join(appsRoot, `.vitest-reports/blob-${entry.shardId}.json`);
+      return !existsSync(blob);
+    });
+    if (missing.length > 0) {
+      process.stderr.write(
+        `coverage blobs missing:\n${missing.map((entry) => `  blob-${entry.shardId}.json`).join("\n")}\n`,
+      );
+      passed = false;
+    }
+  }
   const lines = [
     `\n${"═".repeat(72)}\n`,
     passed ? "JSDOM SHARDS: PASSED\n" : "JSDOM SHARDS: FAILED\n",
@@ -328,7 +371,12 @@ async function main() {
   process.exit(passed ? 0 : 1);
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-  process.exit(1);
-});
+const invokedDirectly =
+  process.argv[1] !== undefined && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+
+if (invokedDirectly) {
+  main().catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exit(1);
+  });
+}
