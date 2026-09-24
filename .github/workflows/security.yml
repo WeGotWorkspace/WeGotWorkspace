@@ -29,9 +29,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4.4.0
+      - uses: pnpm/action-setup@v6.1.0
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: pnpm
@@ -66,7 +66,7 @@ jobs:
 
       - name: Upload CodeQL SARIF artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: codeql-javascript-typescript-results
           path: codeql-sarif-results/
@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload Semgrep SARIF artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: semgrep-php-results
           path: semgrep-php.sarif
@@ -159,7 +159,7 @@ jobs:
 
       - name: Upload Gitleaks SARIF artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gitleaks-report
           path: |
@@ -233,7 +233,7 @@ jobs:
 
       - name: Upload Trivy SARIF artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-sca-reports
           path: |
