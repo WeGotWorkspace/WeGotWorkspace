@@ -8,7 +8,7 @@ Thank you for your interest in WeGotWorkspace.
 |------|--------|
 | **Discussions (ideas / exploration)** | Open — use [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) |
 | **Bug reports** | Open — use the [Bug report](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=bug-report.yml) template |
-| **Security / DAST findings** | Open — use the DAST finding template where applicable |
+| **Already-public security findings** | Open — use the [DAST finding](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=dast-finding.yml) template. A report that is not yet public follows [SECURITY.md](SECURITY.md), not that template. |
 | **Goals / Epics / Tasks / Chores** | **Maintainers only** — non-maintainer filings are closed automatically |
 | **Blank issues** | Disabled |
 | **Code contributions (PRs from outside maintainers)** | **Closed** — we are landing the beta first |
