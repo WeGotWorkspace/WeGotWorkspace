@@ -66,7 +66,7 @@ final class WgwInstallConfig
     /**
      * Normalize an install-relative or absolute filesystem path.
      *
-     * @psalm-taint-escape file Path normalization only; not a trust boundary for untrusted input.
+     * @psalm-taint-specialize
      */
     public function resolveInstallPath(string $path): string
     {
