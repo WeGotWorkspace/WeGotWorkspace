@@ -1,0 +1,3 @@
+# Accepted CRITICAL/HIGH exceptions for the Trivy lockfile scans.
+# One advisory id per line. Above each id, comment the date, why, and when to revisit.
+# A note in SECURITY.md does not waive a finding. No exceptions are accepted today.
