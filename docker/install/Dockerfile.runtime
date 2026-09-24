@@ -1,7 +1,8 @@
 # Production install image for CI/release — unpacks the deploy ZIP built on the GHA runner.
 # Same runtime layout as Dockerfile; local `docker compose up --build` uses Dockerfile instead.
 
-FROM debian:bookworm-slim AS unpack
+# Index digests (manifest list), not a single-platform digest. Dependabot bumps these.
+FROM debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251 AS unpack
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends unzip \
@@ -13,7 +14,7 @@ RUN mkdir -p /release \
     && unzip -q /tmp/deploy.zip -d /release \
     && rm /tmp/deploy.zip
 
-FROM php:8.3-apache-bookworm
+FROM php:8.3-apache-bookworm@sha256:d9be5f5c49e07c71b1e906cf01a0bb7216dce466d1880d170467b9ca107071dd
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

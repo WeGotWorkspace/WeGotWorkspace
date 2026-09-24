@@ -1,0 +1,8 @@
+version: 2
+updates:
+  # Docker base-image index digests under docker/install. Composer, pnpm, and
+  # Actions stay on #586.
+  - package-ecosystem: docker
+    directory: /docker/install
+    schedule:
+      interval: weekly

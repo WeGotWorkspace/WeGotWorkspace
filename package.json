@@ -33,6 +33,7 @@
     "test": "tools/with-root-env.sh -- composer --working-dir packages/api done-gate",
     "test:api-done-gate": "tools/with-root-env.sh -- composer --working-dir packages/api done-gate",
     "test:apps-done-gate": "pnpm --filter @wgw/apps run test:done-gate",
+    "test:install-e2e": "bash tools/e2e-install-matrix.sh",
     "test:api-e2e": "tools/with-root-env.sh -- pnpm --filter @wgw/api-e2e test",
     "test:api-e2e:docker": "tools/with-root-env.sh -- bash tools/test-api-e2e-docker.sh",
     "test:apps-e2e": "tools/with-root-env.sh -- pnpm --filter @wgw/apps test:e2e",

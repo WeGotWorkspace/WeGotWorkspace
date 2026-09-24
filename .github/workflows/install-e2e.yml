@@ -1,0 +1,62 @@
+name: Install e2e
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "docker/install/**"
+      - "packages/api/app/Services/Installer/**"
+      - "packages/api/app/Http/Controllers/Api/V1/Installer/**"
+      - "packages/api/app/Http/Requests/Api/V1/Installer*"
+      - "packages/api/app/Ui/UiStaticServer.php"
+      - "apps/wegotworkspace/index.php"
+      - "tools/api-e2e/e2e/install*.spec.ts"
+      - "tools/api-e2e/playwright.config.mjs"
+      - "packages/apps/src/installer-core/**"
+      - "packages/apps/src/login-core/**"
+      - "tools/build-wegotworkspace-release.mjs"
+      - "tools/e2e-install-matrix.sh"
+      - "tools/ghcr-delete-old-candidates.sh"
+      - "package.json"
+      - ".github/workflows/install-e2e.yml"
+      - ".github/workflows/install-e2e-reusable.yml"
+      - ".github/workflows/install-e2e-build.yml"
+      - ".github/workflows/release.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  prepare:
+    uses: ./.github/workflows/install-e2e-build.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: write
+
+  cells:
+    needs: prepare
+    uses: ./.github/workflows/install-e2e-reusable.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: read
+    with:
+      cells: '["zip-sqlite","zip-mariadb","docker-sqlite","docker-mariadb"]'
+      image: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.amd64_digest }}
+
+  cleanup:
+    needs: [prepare, cells]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Delete candidate tags older than 7 days
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash tools/ghcr-delete-old-candidates.sh
