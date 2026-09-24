@@ -25,7 +25,7 @@ pnpm dev
 
 The API task runs `packages/api/scripts/dev-php-server.sh`, which traps `SIGINT`/`SIGTERM` and stops the `php -S` process when you exit `pnpm dev` or `pnpm preview` (Ctrl+C). If `:9080` stays bound after a crash, find the listener with `lsof -nP -iTCP:9080 -sTCP:LISTEN` and stop it manually.
 
-`pnpm dev` runs `wgw:dev-install` first (idempotent), then starts the PHP trap script and Turbo (`typegen:watch` + Vite) together. Storybook stays opt-in. On a fresh clone that bootstraps `packages/api/.env` (from `.env.example`), `wgw-content/db.sqlite`, the `admin` user (password `storybook-dev`, overridable via `WGW_DEV_USERNAME` / `WGW_DEV_PASSWORD`), a second user `member` (same password, display name Member, in the Administrators group), JWT keys under `apps/wegotworkspace/wgw-content/keys/` (gitignored), and hundreds of sample calendar events on admin's `default` / `home` / `work` calendars. OpenAPI typegen watch runs alongside. Existing local installs get the same events, and `member` if that account is missing, on the next `pnpm dev`. A `member` password you already changed is left alone. `member` does not get the sample calendar catalog. Re-seed admin's events with `php packages/api/artisan wgw:calendars:seed-dev` (`--force` recreates). The seeder refuses `APP_ENV` other than `local`/`testing`, `WGW_INSTALL_CHANNEL` of `docker` or `zip`, and any tree without a parent `pnpm-workspace.yaml`, so production, Docker-channel, and ZIP-extract installs stay empty.
+`pnpm dev` runs `wgw:dev-install` first (idempotent), then starts the PHP trap script and Turbo (`typegen:watch` + Vite) together. Storybook stays opt-in. On a fresh clone that bootstraps `packages/api/.env` (from `.env.example`), `wgw-content/db.sqlite`, the `admin` user (password `storybook-dev`, overridable via `WGW_DEV_USERNAME` / `WGW_DEV_PASSWORD`), a second user `member` (same password, display name Member, in the Administrators group), JWT keys under `apps/wegotworkspace/wgw-content/keys/` (gitignored), hundreds of sample calendar events on admin's `default` / `home` / `work` calendars, and ~1000 VJOURNAL notes across `notes-general` / `notes-dev-work` / `notes-dev-ideas`. OpenAPI typegen watch runs alongside. Existing local installs get the same seed rows, and `member` if that account is missing, on the next `pnpm dev` (seed rows skip if already present). A `member` password you already changed is left alone. `member` does not get the sample calendar or notes catalog. Re-seed admin's calendars and notes with `pnpm seed` (`php packages/api/artisan wgw:seed-dev`), or per app: `pnpm seed:calendars` / `pnpm seed:notes` (`--force` recreates). Profiles: `--profile=full` (default) or `compact`; env overrides `WGW_DEV_SEED_CALENDAR_PROFILE` / `WGW_DEV_SEED_NOTES_PROFILE`. Seeders refuse `APP_ENV` other than `local`/`testing`, `WGW_INSTALL_CHANNEL` of `docker` or `zip`, and any tree without a parent `pnpm-workspace.yaml`, so production, Docker-channel, and ZIP-extract installs stay empty.
 
 ## Docker API (optional)
 
@@ -92,7 +92,9 @@ To re-run the full dev bootstrap manually:
 
 ```bash
 php packages/api/artisan wgw:dev-install
-php packages/api/artisan wgw:calendars:seed-dev   # optional; also runs from wgw:dev-install
+pnpm seed                                 # calendars + notes (also runs from wgw:dev-install)
+# or: pnpm seed:notes / pnpm seed:calendars
+# or: php packages/api/artisan wgw:seed-dev notes --force
 ```
 
 See [`packages/api/docs/api-auth.md`](../packages/api/docs/api-auth.md) for env overrides (`WGW_API_JWT_*`).
