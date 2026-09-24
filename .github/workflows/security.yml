@@ -270,7 +270,7 @@ jobs:
 
       - name: Label ZAP issues
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const title = 'DAST: ZAP full scan findings';
