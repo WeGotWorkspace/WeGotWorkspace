@@ -124,7 +124,8 @@ if (!/\bgh\s+pr\s+(create|edit)\b/.test(ghPrPrefix)) {
   process.exit(0);
 }
 
-if (/\bgh\s+pr\s+create\b/.test(ghPrPrefix) && !/(?:^|\s)--draft(?:\s|=|$)/.test(stripQuotedAndHeredocs(command))) {
+const draftFlag = /(?:^|\s)(?:--draft|-d)(?=\s|$)/;
+if (/\bgh\s+pr\s+create\b/.test(ghPrPrefix) && !draftFlag.test(stripQuotedAndHeredocs(command))) {
   console.log(
     JSON.stringify({
       permission: "deny",

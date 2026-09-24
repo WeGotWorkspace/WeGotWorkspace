@@ -195,6 +195,9 @@ jobs:
       # Actions secrets are hidden from dependabot[bot]. The action refuses to
       # scan organization repos without GITLEAKS_LICENSE, so that path runs
       # the same gitleaks detect command directly.
+      # gitleaks-action exits 1 on merge_group. Run the direct detect script
+      # there even when a license is present, so the required Secrets check
+      # still scans instead of reporting an empty green job.
       - name: Detect Gitleaks license
         id: gitleaks-license
         env:
@@ -207,7 +210,7 @@ jobs:
           fi
 
       - name: Scan for secrets
-        if: steps.gitleaks-license.outputs.present == 'true'
+        if: steps.gitleaks-license.outputs.present == 'true' && github.event_name != 'merge_group'
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -215,7 +218,7 @@ jobs:
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
 
       - name: Scan for secrets without a license
-        if: steps.gitleaks-license.outputs.present != 'true'
+        if: steps.gitleaks-license.outputs.present != 'true' || github.event_name == 'merge_group'
         run: bash .github/scripts/gitleaks-detect.sh
 
       - name: Upload Gitleaks SARIF artifact
