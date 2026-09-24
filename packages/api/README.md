@@ -1,4 +1,4 @@
-# @wgw/api — OpenAPI contract + Laravel REST API
+# Laravel API — OpenAPI contract + REST
 
 Greenfield Laravel app for `/api/v1/*`, plus the hand-edited **OpenAPI contract**. Generated TypeScript lives in `packages/openapi-types` (`@wgw/openapi-types`). This directory is Composer-only: it is not a pnpm workspace package. Legacy `packages/api/src/` is gone — implement against `openapi/openapi.json` only.
 

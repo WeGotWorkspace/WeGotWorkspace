@@ -108,7 +108,8 @@ function mergeComponentsFromSource(baseDoc, sourceDoc) {
  * editing the monolithic built file by hand.
  *
  * New path entries from `openapi/openapi.json` are merged into `paths` when
- * missing from the built spec so `/api/docs` stays aligned with the contract.
+ * missing from the built spec. Laravel reads `openapi.json` only; this file
+ * is the typegen input.
  */
 export function buildOpenApiBuiltJson() {
   mkdirSync(path.dirname(outputPath), { recursive: true });
