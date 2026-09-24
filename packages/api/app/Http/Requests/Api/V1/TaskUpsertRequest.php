@@ -66,7 +66,7 @@ final class TaskUpsertRequest extends FormRequest
     {
         return [
             'uid' => ['sometimes', 'string', 'max:255'],
-            'description' => ['sometimes', 'nullable', 'string', 'max:8192'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:524288'],
             'start' => ['sometimes', 'nullable', 'string'],
             'due' => ['sometimes', 'nullable', 'string'],
             'completed' => ['sometimes', 'nullable', 'string'],

@@ -6,11 +6,13 @@ namespace Tests\Feature\JmapRest;
 
 use App\Services\Tasks\InboxTaskListProvisioner;
 use App\Services\VObject\VObjectPayloadGuard;
+use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\TasksTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class JmapRestPayloadBoundsTest extends WgwDatabaseTestCase
 {
+    use OptimisticConcurrencyTestHelpers;
     use TasksTestFixtures;
 
     protected function setUp(): void
@@ -47,13 +49,14 @@ final class JmapRestPayloadBoundsTest extends WgwDatabaseTestCase
     public function test_oversized_task_put_returns_payload_too_large(): void
     {
         $taskId = $this->seedTaskViaPdo('bob', 'put-me.ics', $this->sampleTodoIcs('Before'));
+        $url = '/api/v1/tasks/items/'.$taskId;
 
         $this->withBearer($this->userBearerToken())
-            ->putJson('/api/v1/tasks/items/'.$taskId, [
+            ->putJson($url, [
                 'taskListIds' => [InboxTaskListProvisioner::URI => true],
                 'title' => 'After',
                 'description' => str_repeat('x', VObjectPayloadGuard::MAX_ICS_BYTES),
-            ])
+            ], $this->withIfMatch($this->fetchEtagFromGet($url)))
             ->assertStatus(413)
             ->assertJsonPath('code', 'payload_too_large');
     }
@@ -61,11 +64,12 @@ final class JmapRestPayloadBoundsTest extends WgwDatabaseTestCase
     public function test_oversized_task_patch_returns_payload_too_large(): void
     {
         $taskId = $this->seedTaskViaPdo('bob', 'patch-me.ics', $this->sampleTodoIcs('Before'));
+        $url = '/api/v1/tasks/items/'.$taskId;
 
         $this->withBearer($this->userBearerToken())
-            ->patchJson('/api/v1/tasks/items/'.$taskId, [
+            ->patchJson($url, [
                 'description' => str_repeat('x', VObjectPayloadGuard::MAX_ICS_BYTES),
-            ])
+            ], $this->withIfMatch($this->fetchEtagFromGet($url)))
             ->assertStatus(413)
             ->assertJsonPath('code', 'payload_too_large');
     }

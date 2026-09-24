@@ -29,9 +29,9 @@ final class VCardToJsContactConverter
     /**
      * @return array<string, mixed>
      */
-    public function convert(string $vcard): array
+    public function convert(string $vcard, string $logLevel = 'warning'): array
     {
-        $document = $this->guard->readVCard($vcard);
+        $document = $this->guard->readVCard($vcard, 'contacts', $logLevel);
 
         $this->groupLabels = [];
         $this->organizationIdsByGroup = [];

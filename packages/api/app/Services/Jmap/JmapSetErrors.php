@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Jmap;
 
 use App\Exceptions\ApiHttpException;
+use App\Services\VObject\VObjectPayloadGuard;
 
 /**
  * Maps service-layer exceptions onto the RFC 8620 §5.3 SetError vocabulary
@@ -19,6 +20,13 @@ final class JmapSetErrors
      */
     public static function fromApiException(ApiHttpException $e): array
     {
+        if (VObjectPayloadGuard::isPayloadBoundError($e)) {
+            return [
+                'type' => 'tooLarge',
+                'description' => $e->getMessage(),
+            ];
+        }
+
         $type = match ($e->errorCode()) {
             'not_found' => 'notFound',
             'bad_request', 'invalidProperties' => 'invalidProperties',
@@ -61,6 +69,21 @@ final class JmapSetErrors
     public static function fromLegacyShape(array $shape): array
     {
         $legacyType = is_string($shape['type'] ?? null) ? $shape['type'] : 'serverFail';
+        $description = is_string($shape['description'] ?? null) ? $shape['description'] : '';
+
+        if ($legacyType === 'payload_too_large'
+            || $legacyType === 'tooLarge'
+            || ($legacyType === 'bad_request' && (
+                str_contains($description, 'maximum allowed component count')
+                || str_contains($description, 'maximum allowed property count')
+                || str_contains($description, 'maximum allowed size')
+            ))) {
+            return [
+                'type' => 'tooLarge',
+                'description' => $description,
+            ];
+        }
+
         $type = match ($legacyType) {
             'not_found', 'notFound' => 'notFound',
             // invalid_blob: unknown/foreign media blobId — client input, not
@@ -72,7 +95,6 @@ final class JmapSetErrors
             default => 'serverFail',
         };
 
-        $description = is_string($shape['description'] ?? null) ? $shape['description'] : '';
         if ($type === 'serverFail' && ! config('app.debug')) {
             // Same sanitization as serverFail(): legacy shapes carry raw
             // Throwable messages that must not leak internals on the wire.

@@ -114,4 +114,13 @@ return [
     'mcp' => [
         'public_origin' => env('WGW_MCP_PUBLIC_ORIGIN'),
     ],
+
+    /**
+     * Contacts domain limits. Per-card caps stay on VObjectPayloadGuard
+     * (512 KiB / 512 properties). The import body may be larger than one card
+     * (photo address books); effective limit is min(this, post_max_size).
+     */
+    'contacts' => [
+        'import_max_bytes' => (int) env('WGW_CONTACTS_IMPORT_MAX_BYTES', 8_388_608),
+    ],
 ];

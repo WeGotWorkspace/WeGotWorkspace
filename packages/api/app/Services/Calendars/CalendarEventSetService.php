@@ -6,6 +6,7 @@ namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
+use App\Services\Jmap\JmapSetErrors;
 
 /**
  * JMAP CalendarEvent/set mapping (RFC 8620 §5.3 response semantics).
@@ -258,24 +259,7 @@ final class CalendarEventSetService
      */
     private function errorShape(ApiHttpException $e): array
     {
-        $type = match ($e->errorCode()) {
-            'not_found' => 'notFound',
-            'bad_request' => 'invalidProperties',
-            'forbidden' => 'forbidden',
-            'stateMismatch', 'precondition_failed' => 'stateMismatch',
-            'server_error', 'serverError', null => 'serverFail',
-            default => $e->errorCode(),
-        };
-
-        $shape = [
-            'type' => $type,
-            'description' => $e->getMessage(),
-        ];
-        if ($type === 'invalidProperties') {
-            $shape['properties'] = $e->invalidProperties();
-        }
-
-        return $shape;
+        return JmapSetErrors::fromApiException($e);
     }
 
     /**

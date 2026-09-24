@@ -7,9 +7,9 @@ Source plan: [plan.md](./plan.md)
 
 | id | owner / agent | skill | key paths | verify command | status |
 |----|---------------|-------|-----------|----------------|--------|
-| `chunk-a-contract-tests` | builder | api | `.agents/specs/162-ics-vcard-payload-bounds/`, `packages/api/openapi/`, `packages/api/tests/Unit/VObject/`, `packages/api/tests/Feature/Jmap*PayloadBounds*`, `packages/openapi-types/generated/` | `php artisan test --filter='VObjectPayloadGuardTest\|JmapRestPayloadBoundsTest\|JmapCalendarPayloadBoundsTest\|JmapContactsPayloadBoundsTest'` | pending |
-| `chunk-b-enforce` | builder | api | `VObjectPayloadGuard.php`, import repos/controllers, `JmapSetErrors.php`, get/list methods, `config/wgw.php` | same filter (green) | pending |
-| `chunk-c-verify` | builder | testing | `jmap-rest-parity-gaps.md`, follow-up issue | `pnpm test:api-done-gate` | pending |
+| `chunk-a-contract-tests` | builder | api | `.agents/specs/162-ics-vcard-payload-bounds/`, `packages/api/openapi/`, `packages/api/tests/Unit/VObject/`, `packages/api/tests/Feature/Jmap*PayloadBounds*`, `packages/openapi-types/generated/` | `php artisan test --filter='VObjectPayloadGuardTest\|JmapRestPayloadBoundsTest\|JmapCalendarPayloadBoundsTest\|JmapContactsPayloadBoundsTest'` | done |
+| `chunk-b-enforce` | builder | api | `VObjectPayloadGuard.php`, import repos/controllers, `JmapSetErrors.php`, get/list methods, `config/wgw.php` | same filter (green) | done |
+| `chunk-c-verify` | builder | testing | `jmap-rest-parity-gaps.md`, follow-up issue #931 | `pnpm test:api-done-gate` | done |
 
 ## Notes
 

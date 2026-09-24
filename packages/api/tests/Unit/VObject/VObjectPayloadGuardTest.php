@@ -43,9 +43,11 @@ final class VObjectPayloadGuardTest extends TestCase
 
     public function test_accepts_ics_at_size_boundary(): void
     {
-        $padding = str_repeat('x', VObjectPayloadGuard::MAX_ICS_BYTES - 160);
-        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:boundary\r\nSUMMARY:Boundary\r\nDESCRIPTION:{$padding}\r\nDTSTART:20260701T090000Z\r\nDTEND:20260701T100000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
-        $this->assertLessThanOrEqual(VObjectPayloadGuard::MAX_ICS_BYTES, strlen($ics));
+        $header = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:boundary\r\nSUMMARY:Boundary\r\nDESCRIPTION:";
+        $footer = "\r\nDTSTART:20260701T090000Z\r\nDTEND:20260701T100000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        $padding = str_repeat('x', VObjectPayloadGuard::MAX_ICS_BYTES - strlen($header) - strlen($footer));
+        $ics = $header.$padding.$footer;
+        $this->assertSame(VObjectPayloadGuard::MAX_ICS_BYTES, strlen($ics));
 
         $this->guard->assertIcsSize($ics);
         $document = $this->guard->readICalendar($ics);
@@ -67,8 +69,9 @@ final class VObjectPayloadGuardTest extends TestCase
 
     public function test_accepts_combined_component_count_at_boundary_including_nested_valarm(): void
     {
+        // 62 plain VEVENTs + 1 VEVENT + 1 nested VALARM = 64.
         $events = [];
-        for ($i = 0; $i < VObjectPayloadGuard::MAX_ICALENDAR_COMPONENTS - 1; $i++) {
+        for ($i = 0; $i < VObjectPayloadGuard::MAX_ICALENDAR_COMPONENTS - 2; $i++) {
             $events[] = "BEGIN:VEVENT\r\nUID:evt-{$i}\r\nSUMMARY:E{$i}\r\nDTSTART:20260701T090000Z\r\nDTEND:20260701T100000Z\r\nEND:VEVENT";
         }
         $withAlarm = "BEGIN:VEVENT\r\nUID:evt-alarm\r\nSUMMARY:Alarm\r\nDTSTART:20260701T090000Z\r\nDTEND:20260701T100000Z\r\n"

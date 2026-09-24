@@ -9,6 +9,8 @@ use App\Services\Calendars\CalendarEventRepository;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\Methods\Concerns\HandlesGetArguments;
+use App\Services\VObject\VObjectPayloadGuard;
+use Illuminate\Support\Facades\Log;
 
 /**
  * CalendarEvent/get: no multi-id repository method exists, so the loop
@@ -41,6 +43,8 @@ final class CalendarEventGetMethod implements JmapMethodInterface
 
     public function handle(string $username, array $args): array
     {
+        Log::withContext(['principal' => $username]);
+
         $tokens = $this->events->calendarSyncTokens($username);
         $state = JmapAccountStateCodec::compose($tokens);
 
@@ -59,7 +63,7 @@ final class CalendarEventGetMethod implements JmapMethodInterface
                 try {
                     $list[] = $this->events->show($username, $id);
                 } catch (ApiHttpException $e) {
-                    if ($e->getStatusCode() === 404) {
+                    if ($e->getStatusCode() === 404 || VObjectPayloadGuard::isPayloadBoundError($e)) {
                         $notFound[] = $id;
 
                         continue;

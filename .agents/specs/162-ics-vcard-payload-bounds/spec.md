@@ -65,9 +65,7 @@ Write paths (import and set): `vobject_payload_rejected` at **warning**. Read pa
 
 ## Follow-up (not this issue)
 
-One follow-up GitHub issue covers:
+[#931](https://github.com/WeGotWorkspace/wegotworkspace/issues/931) covers:
 
 1. `MAX_ICS_IMPORT_BYTES` so a large calendar export is not rejected at 512 KiB
 2. A visible signal for over-cap objects (one warning per object id, an admin count, or a UI notice)
-
-Link that issue here once filed. Do not invent the number before it exists.

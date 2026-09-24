@@ -24,7 +24,7 @@ final class IcsToJmapTaskConverter
     public function tasksFromIcs(string $ics): array
     {
         try {
-            $vobject = $this->guard->readICalendar($ics, 'tasks');
+            $vobject = $this->guard->readICalendar($ics, 'tasks', 'debug');
         } catch (ApiHttpException $e) {
             throw $e;
         } catch (\Throwable) {

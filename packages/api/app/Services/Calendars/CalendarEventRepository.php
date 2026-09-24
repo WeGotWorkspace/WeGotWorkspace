@@ -20,6 +20,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 
 final class CalendarEventRepository
@@ -60,14 +61,21 @@ final class CalendarEventRepository
         $events = [];
         foreach ($objects as $object) {
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-            foreach ($this->mapper->toCalendarEvents($object, $calendarId, $username) as $event) {
-                if ($expandRecurrences && $after !== null && $before !== null && $this->expansion->isRecurring($event)) {
-                    foreach ($this->expansion->expandInWindow($event, $raw, $calendarId, $after, $before) as $instance) {
-                        $events[] = $instance;
+            try {
+                foreach ($this->mapper->toCalendarEvents($object, $calendarId, $username) as $event) {
+                    if ($expandRecurrences && $after !== null && $before !== null && $this->expansion->isRecurring($event)) {
+                        foreach ($this->expansion->expandInWindow($event, $raw, $calendarId, $after, $before) as $instance) {
+                            $events[] = $instance;
+                        }
+                    } else {
+                        $events[] = $event;
                     }
-                } else {
-                    $events[] = $event;
                 }
+            } catch (ApiHttpException $e) {
+                if (VObjectPayloadGuard::isPayloadBoundError($e)) {
+                    continue;
+                }
+                throw $e;
             }
         }
 
@@ -104,14 +112,26 @@ final class CalendarEventRepository
             foreach ($this->candidateObjects($instance, $window) as $object) {
                 $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
                 $calendarApiId = $this->calendars->apiIdForInstance($instance);
-                foreach ($this->mapper->toCalendarEvents($object, $calendarApiId, $username) as $event) {
-                    if ($title !== null && stripos((string) ($event['title'] ?? ''), $title) === false) {
-                        continue;
+                try {
+                    foreach ($this->mapper->toCalendarEvents($object, $calendarApiId, $username) as $event) {
+                        if ($title !== null && stripos((string) ($event['title'] ?? ''), $title) === false) {
+                            continue;
+                        }
+                        if ($window !== null && ! $this->eventIntersectsWindow($event, $raw, $calendarApiId, $window)) {
+                            continue;
+                        }
+                        $matches[] = $event;
                     }
-                    if ($window !== null && ! $this->eventIntersectsWindow($event, $raw, $calendarApiId, $window)) {
-                        continue;
+                } catch (ApiHttpException $e) {
+                    if (! VObjectPayloadGuard::isPayloadBoundError($e)) {
+                        throw $e;
                     }
-                    $matches[] = $event;
+                    // Query keeps the over-cap id so total/position stay in sync with get→notFound.
+                    $matches[] = [
+                        'id' => CalendarEventMapper::eventIdFromUri((string) $object->uri),
+                        'title' => '',
+                        'start' => null,
+                    ];
                 }
             }
         }
@@ -621,10 +641,12 @@ final class CalendarEventRepository
     /**
      * Import VEVENT UID groups from an ICS file. Does not run iTIP/iMIP.
      *
-     * @return array{list: list<array<string, mixed>>, errors: list<array{index: int, message: string}>}
+     * @return array{list: list<array<string, mixed>>, errors: list<array{index: int, message: string, code?: string}>}
      */
     public function importFromIcs(string $username, string $icsText, string $calendarId): array
     {
+        Log::withContext(['principal' => $username]);
+
         $instance = $this->calendars->findAccessibleCalendar($username, $calendarId);
         if ($instance === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
@@ -647,13 +669,19 @@ final class CalendarEventRepository
 
         $list = [];
         $errors = [];
+        $guard = new VObjectPayloadGuard;
         foreach ($groups as $index => $group) {
             try {
+                $guard->readICalendar($group['ics']);
                 foreach ($this->persistImportedUidGroup($username, $instance, $group['ics']) as $event) {
                     $list[] = $event;
                 }
             } catch (ApiHttpException $exception) {
-                $errors[] = ['index' => $index, 'message' => $exception->getMessage()];
+                $entry = ['index' => $index, 'message' => $exception->getMessage()];
+                if (is_string($exception->errorCode()) && $exception->errorCode() !== '') {
+                    $entry['code'] = $exception->errorCode();
+                }
+                $errors[] = $entry;
             } catch (\Throwable) {
                 $errors[] = ['index' => $index, 'message' => 'Could not import event.'];
             }
