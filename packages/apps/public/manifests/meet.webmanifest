@@ -5,8 +5,8 @@
   "scope": "/meet",
   "id": "/meet",
   "display": "standalone",
-  "background_color": "#ffc800",
-  "theme_color": "#ffc800",
+  "background_color": "#ba9689",
+  "theme_color": "#ba9689",
   "icons": [
     {
       "src": "/app-icons/meet.svg?v=19",

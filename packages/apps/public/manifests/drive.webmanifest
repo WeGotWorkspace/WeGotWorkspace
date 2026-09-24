@@ -5,8 +5,8 @@
   "scope": "/drive",
   "id": "/drive",
   "display": "standalone",
-  "background_color": "#8ACE00",
-  "theme_color": "#8ACE00",
+  "background_color": "#ba9689",
+  "theme_color": "#ba9689",
   "icons": [
     {
       "src": "/app-icons/drive.svg?v=19",

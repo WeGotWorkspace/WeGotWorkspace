@@ -5,8 +5,8 @@
   "scope": "/calendar",
   "id": "/calendar",
   "display": "standalone",
-  "background_color": "#ffbdc2",
-  "theme_color": "#ffbdc2",
+  "background_color": "#ba9689",
+  "theme_color": "#ba9689",
   "icons": [
     {
       "src": "/app-icons/calendar.svg?v=19",
