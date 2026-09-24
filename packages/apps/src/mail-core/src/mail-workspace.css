@@ -194,7 +194,7 @@
 }
 
 .mail-compose-dialog-surface {
-  background: var(--workspace-surface);
+  background: var(--color-we-got-soft);
 }
 
 .mail-compose-dialog.mail-compose-dialog-surface {
@@ -317,7 +317,7 @@
   z-index: 10;
   flex-shrink: 0;
   border-bottom: 1px solid color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
-  background: var(--workspace-surface);
+  background: var(--color-we-got-soft);
   backdrop-filter: none;
 }
 
@@ -369,7 +369,7 @@
   margin: 0;
   padding: 1rem 1.5rem 1.25rem;
   border-top: 1px solid color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
-  background: var(--workspace-surface);
+  background: var(--color-we-got-soft);
 }
 
 .mail-compose-dialog__footer-start,

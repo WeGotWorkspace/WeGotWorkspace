@@ -275,7 +275,7 @@
 }
 
 /*
- * Leave / end-call confirm — cream/dusk like `.meet-call-bar` + admit popover.
+ * Leave / end-call confirm — login Soft paper, not lobby dark.
  * Overlay dim stays; the card must not reuse lobby `--meet-panel` (`#171826`).
  */
 .meet-call-dialog {
@@ -293,7 +293,7 @@
   --color-foreground: var(--color-we-got-dark);
   --muted-foreground: var(--meet-muted);
   --color-muted-foreground: var(--meet-muted);
-  --background: var(--meet-call-surface);
+  --background: var(--color-we-got-soft);
   --modal-title-foreground: var(--color-we-got-dark);
   --button-outline-color: var(--color-we-got-dark);
   --button-outline-border-color: color-mix(in oklch, var(--color-we-got-dark) 20%, transparent);
@@ -302,7 +302,7 @@
   --button-destructive-bg: var(--color-red-500, #dc2626);
   --button-destructive-fg: #ffffff;
   @apply max-w-sm;
-  background-color: var(--meet-call-surface) !important;
+  background-color: var(--color-we-got-soft) !important;
   color: var(--color-we-got-dark) !important;
   border-color: var(--meet-call-border) !important;
 }
@@ -324,11 +324,9 @@
 }
 
 /*
- * In-call device sheet — cream/paper like channel dialog + Calendar menus.
+ * In-call device sheet — login Soft paper and field wash.
  * Portaled to document.body, so it does not inherit `.meet-workspace`.
- * `workspace-color.css` publishes `--workspace-surface` on this class.
- * Fallback + !important stay opaque when that token is missing and beat
- * PopoverContent `bg-popover` (an unresolved background var() is transparent).
+ * `!important` stays opaque and beats PopoverContent `bg-popover`.
  * Do not reuse `.meet-popover-surface` (lobby dark) or `--meet-call-surface`.
  */
 .meet-device-popover {
@@ -340,21 +338,21 @@
   --color-foreground: var(--color-we-got-dark);
   --muted-foreground: var(--meet-muted);
   --color-muted-foreground: var(--meet-muted);
-  --background: var(--workspace-surface, var(--color-we-got-soft));
-  --popover: var(--workspace-surface, var(--color-we-got-soft));
+  --background: var(--color-we-got-soft);
+  --popover: var(--color-we-got-soft);
   --popover-foreground: var(--color-we-got-dark);
-  --color-popover: var(--workspace-surface, var(--color-we-got-soft));
+  --color-popover: var(--color-we-got-soft);
   --color-popover-foreground: var(--color-we-got-dark);
-  --input-background: var(--workspace-surface, var(--color-we-got-soft));
-  --input-background-focus: var(--workspace-surface, var(--color-we-got-soft));
-  --accent: color-mix(
-    in oklch,
-    var(--workspace-accent) 12%,
-    var(--workspace-surface, var(--color-we-got-soft))
+  --input-background: color-mix(in oklab, var(--color-we-got-dark) 6%, var(--color-we-got-soft));
+  --input-background-focus: color-mix(
+    in oklab,
+    var(--color-we-got-dark) 8%,
+    var(--color-we-got-soft)
   );
+  --accent: color-mix(in oklch, var(--workspace-accent) 12%, var(--color-we-got-soft));
   --accent-foreground: var(--color-we-got-dark);
   @apply w-80;
-  background-color: var(--workspace-surface, var(--color-we-got-soft)) !important;
+  background-color: var(--color-we-got-soft) !important;
   color: var(--color-we-got-dark) !important;
   border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
 }
@@ -369,17 +367,41 @@
 
 .meet-device-popover .meet-workspace__form .meet-device-row__trigger,
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger {
-  --input-background: var(--workspace-surface, var(--color-we-got-soft));
-  --input-background-focus: var(--workspace-surface, var(--color-we-got-soft));
   @apply h-9 min-h-9 border px-3;
-  background-color: var(--workspace-surface, var(--color-we-got-soft));
   color: var(--color-we-got-dark);
   border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   box-shadow: none;
 }
 
+.meet-device-popover .meet-workspace__form .meet-device-row__trigger {
+  /* The shared form trigger clears these to transparent. Restore the login wash. */
+  --input-background: color-mix(in oklab, var(--color-we-got-dark) 6%, var(--color-we-got-soft));
+  --input-background-focus: color-mix(
+    in oklab,
+    var(--color-we-got-dark) 8%,
+    var(--color-we-got-soft)
+  );
+  background-color: var(--input-background);
+}
+
+.meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger {
+  --input-background: var(--workspace-surface, var(--color-we-got-soft));
+  --input-background-focus: var(--workspace-surface, var(--color-we-got-soft));
+  background-color: var(--workspace-surface, var(--color-we-got-soft));
+}
+
 .meet-device-popover .meet-workspace__form .meet-device-row__trigger:focus,
-.meet-device-popover .meet-workspace__form .meet-device-row__trigger[data-state="open"],
+.meet-device-popover .meet-workspace__form .meet-device-row__trigger[data-state="open"] {
+  background-color: var(--input-background-focus);
+  color: var(--color-we-got-dark);
+  border-color: color-mix(
+    in oklch,
+    var(--workspace-accent) 45%,
+    var(--color-we-got-dark) 12%,
+    transparent
+  );
+}
+
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger:focus,
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger[data-state="open"] {
   background-color: var(--workspace-surface, var(--color-we-got-soft));
@@ -620,7 +642,7 @@
 }
 
 /*
- * Host admit queue — cream/dusk like `.meet-call-bar`, not lobby dark.
+ * Host admit queue — login Soft paper, not lobby dark.
  * Portaled to document.body: do not reuse `.meet-popover-surface` (`#171826`).
  * Pin `#fff5e9` (same as call bar/stage) so color-mix stays opaque without
  * inheriting `--workspace-surface` from `.meet-workspace`. `!important` beats
@@ -638,9 +660,9 @@
   --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, #fff5e9);
   --meet-panel: var(--meet-call-surface);
   --meet-panel-soft: var(--meet-call-empty);
-  --popover: var(--meet-call-surface);
+  --popover: var(--color-we-got-soft);
   --popover-foreground: var(--color-we-got-dark);
-  --color-popover: var(--meet-call-surface);
+  --color-popover: var(--color-we-got-soft);
   --color-popover-foreground: var(--color-we-got-dark);
   --foreground: var(--color-we-got-dark);
   --color-foreground: var(--color-we-got-dark);
@@ -657,7 +679,7 @@
   --button-primary-bg: var(--workspace-accent);
   --button-primary-fg: var(--color-we-got-dark);
   @apply w-80 rounded-xl p-2;
-  background-color: var(--meet-call-surface) !important;
+  background-color: var(--color-we-got-soft) !important;
   color: var(--color-we-got-dark) !important;
   border-color: var(--meet-call-border);
 }

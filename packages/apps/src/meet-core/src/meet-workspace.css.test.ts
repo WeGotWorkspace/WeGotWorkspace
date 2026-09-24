@@ -289,14 +289,12 @@ describe("meet workspace sidebar chrome", () => {
     expect(css).toMatch(/workspace-app-layout__panel-scrim/);
     expect(css).toMatch(/sidebar:static sidebar:shadow-none/);
     expect(css).toMatch(/\.meet-workspace__surface--parked[\s\S]*content-visibility:\s*hidden/);
+    expect(css).toMatch(/\.meet-device-popover \{[\s\S]*?--popover:\s*var\(--color-we-got-soft\)/);
     expect(css).toMatch(
-      /\.meet-device-popover \{[\s\S]*?--popover:\s*var\(--workspace-surface,\s*var\(--color-we-got-soft\)\)/,
+      /\.meet-device-popover \{[\s\S]*?background-color:\s*var\(--color-we-got-soft\)\s*!important/,
     );
     expect(css).toMatch(
-      /\.meet-device-popover \{[\s\S]*?background-color:\s*var\(--workspace-surface,\s*var\(--color-we-got-soft\)\)\s*!important/,
-    );
-    expect(css).toMatch(
-      /\.meet-device-popover \.meet-workspace__form \.meet-device-row__trigger[\s\S]*?background-color:\s*var\(--workspace-surface,\s*var\(--color-we-got-soft\)\)/,
+      /\.meet-device-popover \.meet-workspace__form \.meet-device-row__trigger \{[\s\S]*?--input-background:\s*color-mix\(\s*in oklab,\s*var\(--color-we-got-dark\) 6%,\s*var\(--color-we-got-soft\)\)[\s\S]*?background-color:\s*var\(--input-background\)/,
     );
     expect(colorCss).toMatch(/\.meet-device-popover/);
     expect(css).toMatch(
@@ -598,7 +596,7 @@ describe("meet guest invite lobby chrome", () => {
 });
 
 describe("meet host admit knock popover", () => {
-  it("paints cream/dusk call chrome, not the lobby dark island", () => {
+  it("paints login Soft paper, not the lobby dark island", () => {
     const popover = css.match(/\.meet-knock-badge__popover \{[\s\S]*?\n\}/)?.[0] ?? "";
     expect(knockBadge).toMatch(/className="meet-knock-badge__popover"/);
     expect(knockBadge).not.toMatch(/meet-popover-surface/);
@@ -609,11 +607,11 @@ describe("meet host admit knock popover", () => {
     expect(popover).toMatch(
       /--meet-call-empty:\s*color-mix\(in oklch,\s*var\(--workspace-accent\) 6%,\s*#fff5e9\)/,
     );
-    expect(popover).toMatch(/--popover:\s*var\(--meet-call-surface\)/);
+    expect(popover).toMatch(/--popover:\s*var\(--color-we-got-soft\)/);
     expect(popover).toMatch(/--button-outline-color:\s*var\(--color-we-got-dark\)/);
     expect(popover).not.toMatch(/--button-subtle-/);
     expect(popover).toMatch(/--button-primary-bg:\s*var\(--workspace-accent\)/);
-    expect(popover).toMatch(/background-color:\s*var\(--meet-call-surface\)\s*!important/);
+    expect(popover).toMatch(/background-color:\s*var\(--color-we-got-soft\)\s*!important/);
     expect(popover).toMatch(/color:\s*var\(--color-we-got-dark\)\s*!important/);
     expect(popover).not.toMatch(/var\(--workspace-surface\)/);
     expect(popover).not.toMatch(/#171826/);
@@ -644,7 +642,7 @@ describe("meet in-call overlay resume", () => {
 });
 
 describe("meet leave/end call dialog", () => {
-  it("paints cream/dusk call chrome, not the lobby dark island", () => {
+  it("paints login Soft paper, not the lobby dark island", () => {
     const dialog = css.match(/\.meet-call-dialog \{[\s\S]*?\n\}/)?.[0] ?? "";
     expect(dialog).toMatch(/--workspace-accent:\s*var\(--color-we-got-sand\)/);
     expect(dialog).toMatch(
@@ -654,7 +652,7 @@ describe("meet leave/end call dialog", () => {
     expect(dialog).toMatch(/--muted-foreground:\s*var\(--meet-muted\)/);
     expect(dialog).toMatch(/--button-outline-color:\s*var\(--color-we-got-dark\)/);
     expect(dialog).toMatch(/--button-destructive-bg:\s*var\(--color-red-500/);
-    expect(dialog).toMatch(/background-color:\s*var\(--meet-call-surface\)/);
+    expect(dialog).toMatch(/background-color:\s*var\(--color-we-got-soft\)/);
     expect(dialog).toMatch(/color:\s*var\(--color-we-got-dark\)/);
     expect(dialog).not.toMatch(/#171826/);
     expect(dialog).not.toMatch(/background-color:\s*var\(--meet-panel\)\s*!important/);
