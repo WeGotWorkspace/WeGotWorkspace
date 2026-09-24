@@ -4,6 +4,8 @@ import {
   formatGrantDate,
   groupMcpScopeIds,
   MCP_CONSENT_GROUP_APP_ID,
+  MCP_MAIL_GRANT_GROUP_LABEL,
+  mcpConsentCatalogScopeIds,
   mcpConsentGroupsFor,
   mcpScopeActionLabel,
 } from "@/settings-core/src/mcp-scope-labels";
@@ -21,6 +23,17 @@ describe("groupMcpScopeIds", () => {
     expect(groups).toEqual([
       { label: "Calendar", scopes: [{ id: "calendar", actionLabel: "Read and write" }] },
     ]);
+  });
+
+  it("keeps mail scopes on grant cards and out of the consent catalog", () => {
+    const groups = groupMcpScopeIds(["mail.read", "mail.send", "drive.read"]);
+    expect(groups.map((group) => group.label)).toEqual(["Drive", MCP_MAIL_GRANT_GROUP_LABEL]);
+    expect(groups[1]?.scopes.map((scope) => scope.id)).toEqual(["mail.read", "mail.send"]);
+    expect(mcpConsentCatalogScopeIds()).not.toContain("mail.read");
+    expect(mcpConsentCatalogScopeIds()).not.toContain("mail.send");
+    expect(
+      mcpConsentGroupsFor(mcpConsentCatalogScopeIds()).map((group) => group.label),
+    ).not.toContain(MCP_MAIL_GRANT_GROUP_LABEL);
   });
 
   it("hides offline_access from grant and consent groups", () => {
