@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Illuminate\Database\Connection;
 use PDO;
 use PDOStatement;
 
@@ -14,9 +15,41 @@ use PDOStatement;
  * lookup, and group-member repair miss rows that are present.
  *
  * String payloads stay TEXT on SQLite. Stream LOBs are left unchanged.
+ *
+ * The wgw listener must not open the PDO while the connection object is
+ * created. Migrate creates a missing SQLite file only after that first
+ * connect fails inside a query. Opening it from ConnectionEstablished
+ * skips that step.
  */
 final class SqliteTextLobStatement extends PDOStatement
 {
+    public static function deferOn(Connection $connection): void
+    {
+        if ($connection->getDriverName() !== 'sqlite') {
+            return;
+        }
+
+        $resolver = $connection->getRawPdo();
+        if ($resolver instanceof PDO) {
+            self::enableOn($resolver);
+
+            return;
+        }
+
+        if (! $resolver instanceof \Closure) {
+            return;
+        }
+
+        $connection->setPdo(function () use ($resolver) {
+            $pdo = $resolver();
+            if ($pdo instanceof PDO) {
+                self::enableOn($pdo);
+            }
+
+            return $pdo;
+        });
+    }
+
     public static function enableOn(PDO $pdo): void
     {
         if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite') {

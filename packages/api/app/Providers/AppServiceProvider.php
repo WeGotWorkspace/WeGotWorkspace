@@ -44,10 +44,7 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            $pdo = $event->connection->getPdo();
-            if ($pdo instanceof \PDO) {
-                SqliteTextLobStatement::enableOn($pdo);
-            }
+            SqliteTextLobStatement::deferOn($event->connection);
         });
 
         JsonResource::withoutWrapping();
