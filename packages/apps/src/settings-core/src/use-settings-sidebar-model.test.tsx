@@ -8,7 +8,6 @@ describe("useSettingsSidebarModel", () => {
     expect(result.current.map((section) => section.id)).toEqual([
       "profile",
       "memberships",
-      "mail",
       "offline",
       "assistants",
     ]);
@@ -20,7 +19,6 @@ describe("useSettingsSidebarModel", () => {
     expect(result.current.map((section) => section.id)).toEqual([
       "profile",
       "memberships",
-      "mail",
       "offline",
     ]);
     expect(result.current.some((section) => section.label === "Connected assistants")).toBe(false);

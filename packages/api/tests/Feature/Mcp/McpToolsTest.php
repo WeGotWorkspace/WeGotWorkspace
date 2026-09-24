@@ -14,6 +14,8 @@ use App\Mcp\Tools\DriveReadTool;
 use App\Mcp\Tools\DriveSearchTool;
 use App\Mcp\Tools\DriveShareTool;
 use App\Mcp\Tools\DriveWriteTool;
+use App\Mcp\Tools\MailSendTool;
+use App\Mcp\Tools\MailStatusTool;
 use App\Mcp\Tools\NotesSearchTool;
 use App\Mcp\Tools\WgwMcpTool;
 use App\Mcp\Tools\WhoamiTool;
@@ -72,7 +74,8 @@ final class McpToolsTest extends WgwDatabaseTestCase
         WorkspaceServer::actingAs($user, 'api')
             ->tool(WhoamiTool::class)
             ->assertOk()
-            ->assertSee('bob');
+            ->assertSee('bob')
+            ->assertSee('mailClient');
 
         $this->assertSame(1, McpAuditEvent::query()->where('tool', 'whoami')->where('outcome', 'ok')->count());
         $event = McpAuditEvent::query()->where('tool', 'whoami')->first();
@@ -117,6 +120,13 @@ final class McpToolsTest extends WgwDatabaseTestCase
         $this->assertNotContains(DriveShareTool::class, $tools);
         $this->assertNotContains(DocsSearchTool::class, $tools);
         $this->assertNotContains(DocsWriteTool::class, $tools);
+    }
+
+    public function test_catalog_hides_mail_tools_unless_client_flag_is_on(): void
+    {
+        $tools = app(McpToolCatalog::class)->enabledTools();
+        $this->assertNotContains(MailStatusTool::class, $tools);
+        $this->assertNotContains(MailSendTool::class, $tools);
     }
 
     public function test_hard_refusal_blocks_admin_named_tools(): void
@@ -265,6 +275,9 @@ final class McpToolsTest extends WgwDatabaseTestCase
             ->assertSee('docs_write')
             ->assertSee('meet_channel_list')
             ->assertSee('meet_create_scheduled')
+            ->assertSee('mailClient')
+            ->assertDontSee('mail_status')
+            ->assertDontSee('mail_send')
             ->assertDontSee('CalendarListTool');
     }
 

@@ -15,6 +15,14 @@ use PHPUnit\Framework\TestCase;
  */
 final class SpaShellRouteAllowlistTest extends TestCase
 {
+    /**
+     * Client redirects that must stay off the shell allowlist. Production answers
+     * these with 302 before SabreDAV (see UiStaticFront).
+     *
+     * @var list<string>
+     */
+    private const UNSHIPPED_CLIENT_PREFIXES = ['/mail'];
+
     public function test_apps_router_top_level_paths_are_allowlisted_on_ui_static_server(): void
     {
         $routesFile = dirname(__DIR__, 4).'/packages/apps/src/wegotworkspace/src/wegotworkspace-routes.tsx';
@@ -31,11 +39,28 @@ final class SpaShellRouteAllowlistTest extends TestCase
         ksort($topLevel);
 
         $allowlist = array_fill_keys(UiStaticServer::spaRoutePrefixes(), true);
+        $unshipped = array_fill_keys(self::UNSHIPPED_CLIENT_PREFIXES, true);
         $missing = [];
         foreach (array_keys($topLevel) as $prefix) {
+            if (isset($unshipped[$prefix])) {
+                continue;
+            }
             if (! isset($allowlist[$prefix])) {
                 $missing[] = $prefix;
             }
+        }
+
+        foreach (self::UNSHIPPED_CLIENT_PREFIXES as $prefix) {
+            $this->assertArrayHasKey(
+                $prefix,
+                $topLevel,
+                $prefix.' should stay a client redirect route until the app ships again.',
+            );
+            $this->assertArrayNotHasKey(
+                $prefix,
+                $allowlist,
+                $prefix.' is not an app shell prefix. A shell allowlist entry would serve the SPA instead of the 302 home redirect.',
+            );
         }
 
         $this->assertSame(
