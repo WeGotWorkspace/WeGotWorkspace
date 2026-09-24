@@ -6,6 +6,8 @@ use App\Services\Contacts\AddressBookProvisioner;
 use App\Services\Contacts\GroupMemberUriBackfill;
 use App\Services\Installer\DevCalendarEventCatalog;
 use App\Services\Installer\DevCalendarEventSeeder;
+use App\Services\Installer\DevContactCatalog;
+use App\Services\Installer\DevContactSeeder;
 use App\Services\Installer\DevInstallBootstrap;
 use App\Services\Installer\DevNoteCatalog;
 use App\Services\Installer\DevNoteSeeder;
@@ -269,6 +271,44 @@ Artisan::command('wgw:notes:seed-dev {--force} {--username=} {--profile=}', func
     return self::SUCCESS;
 })->purpose('Seed ~1000 local-dev VJOURNAL notes for the admin user (idempotent; --force recreates)');
 
+Artisan::command('wgw:contacts:seed-dev {--force} {--username=} {--profile=} {--count=}', function (DevContactSeeder $seeder): int {
+    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
+    $profile = strtolower(trim((string) ($this->option('profile') ?: DevContactCatalog::PROFILE_FULL)));
+    if ($profile === '') {
+        $profile = DevContactCatalog::PROFILE_FULL;
+    }
+    $countOption = $this->option('count');
+    $count = null;
+    if ($countOption !== null && $countOption !== '') {
+        if (! is_string($countOption) || ! ctype_digit($countOption)) {
+            $this->error('Contacts seed count must be a positive integer.');
+
+            return self::FAILURE;
+        }
+        $count = (int) $countOption;
+    }
+
+    try {
+        $result = $seeder->seed($username, $profile, (bool) $this->option('force'), $count);
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return self::FAILURE;
+    }
+
+    $this->info(sprintf(
+        'Seeded contacts for %s (%s): created %d, skipped %d, deleted %d [%s].',
+        $username,
+        $count === null ? $profile : 'count='.$count,
+        $result['created'],
+        $result['skipped'],
+        $result['deleted'],
+        (string) config('database.connections.wgw.database'),
+    ));
+
+    return self::SUCCESS;
+})->purpose('Seed local-dev vCard contacts for the admin user (idempotent; --force recreates; --profile=large or --count=)');
+
 Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', function (DevSeedRunner $runner): int {
     $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
     $profile = strtolower(trim((string) ($this->option('profile') ?: 'full')));
@@ -311,7 +351,7 @@ Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', f
     $this->info(sprintf('Dev seed complete [%s].', (string) config('database.connections.wgw.database')));
 
     return self::SUCCESS;
-})->purpose('Shared local-dev seeder: calendars + notes (pass app names to limit; --force recreates)');
+})->purpose('Shared local-dev seeder: calendars, notes, and contacts (pass app names to limit; --force recreates)');
 
 Artisan::command('wgw:jmap:filenodes-reindex', function (JmapFileNodeIndexService $index): int {
     $result = $index->reindexAll();
