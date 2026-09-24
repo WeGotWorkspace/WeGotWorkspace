@@ -16,8 +16,12 @@ Email **[legal@wegotworkspace.org](mailto:legal@wegotworkspace.org)**. Include:
 
 We aim to acknowledge within **7 days** and to say whether we accept the report within **14 days**.
 
-For automated findings that are already public (for example a DAST ticket), use the [DAST finding](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=dast-finding.yml) template.
+A finding that is already public may use the [DAST finding](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=dast-finding.yml) template. A finding that is not yet public uses the email path above. Do not open a public issue for it.
 
 ## What we run in CI
 
-Pull requests to `main` run CodeQL, Semgrep, Gitleaks, and Trivy — see [`.github/workflows/security.yml`](.github/workflows/security.yml).
+CodeQL, Semgrep, Gitleaks, and Trivy run from [`.github/workflows/security.yml`](.github/workflows/security.yml):
+
+- on pull requests opened from this repository
+- on pushes to `main`, except a commit whose message starts with `chore(release):`
+- nightly at 03:00 UTC (`0 3 * * *`)
