@@ -2,7 +2,7 @@ import type {
   DriveShareAtPath,
   DriveShareByPrincipal,
   DriveSharePrincipalEntry,
-} from "@wgw-api-generated/drive-types";
+} from "@wgw/openapi-types/drive-types";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
 
 const MEMBER_SHARE_ID = "a1111111-1111-4111-8111-111111111111";

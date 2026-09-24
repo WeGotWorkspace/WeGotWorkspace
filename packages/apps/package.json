@@ -9,8 +9,7 @@
   "scripts": {
     "dev:app": "vite dev",
     "dev:storybook": "storybook dev -p 6006",
-    "typegen": "echo \"@wgw/apps uses shared @wgw/api generated OpenAPI types\"",
-    "build": "vite build && node scripts/sync-runtime-app-builds.mjs",
+    "build": "vite build",
     "sync:runtime": "node scripts/sync-runtime-app-builds.mjs",
     "watch": "node scripts/watch-dev-app-builds.mjs",
     "watch:runtime": "node scripts/watch-runtime-app-builds.mjs",
@@ -113,7 +112,8 @@
     "y-indexeddb": "^9.0.12",
     "y-protocols": "^1.0.6",
     "yjs": "^13.6.30",
-    "zod": "^3.24.2"
+    "zod": "catalog:",
+    "@wgw/openapi-types": "workspace:*"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^5.3.1",

@@ -1,5 +1,5 @@
-import type { SettingsMailRequest } from "@wgw-api-generated/settings-types";
-import { settingsMailRequestOpenapiSchema } from "@wgw-api-generated/settings-request-zod";
+import type { SettingsMailRequest } from "@wgw/openapi-types/settings-types";
+import { settingsMailRequestOpenapiSchema } from "@wgw/openapi-types/settings-request-zod";
 import { z } from "zod";
 
 /**

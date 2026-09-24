@@ -6,7 +6,7 @@ import type {
   TaskListCreate,
   TaskListPatch,
   TaskPatch,
-} from "@wgw-api-generated/tasks-types";
+} from "@wgw/openapi-types/tasks-types";
 import type { CollectionSharePrincipal } from "@/share-ui/collection-share";
 
 export type { Task, TaskAlert, TaskCreate, TaskList, TaskListCreate, TaskListPatch, TaskPatch };

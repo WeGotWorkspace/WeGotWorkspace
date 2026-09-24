@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(packageRoot, "../..");
+const installRoot = path.join(repoRoot, "apps/wegotworkspace");
 const baseURL = process.env.WGW_API_BASE_URL ?? "http://127.0.0.1:9080";
 
 export default defineConfig({
@@ -17,11 +19,10 @@ export default defineConfig({
   webServer: process.env.WGW_API_E2E_NO_SERVER
     ? undefined
     : {
-        command:
-          'php -S 127.0.0.1:9080 -t "../../apps/wegotworkspace" "../../apps/wegotworkspace/index.php"',
+        command: `php -S 127.0.0.1:9080 -t ${JSON.stringify(installRoot)} ${JSON.stringify(path.join(installRoot, "index.php"))}`,
         url: `${baseURL}/api/v1/health`,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
-        cwd: packageRoot,
+        cwd: installRoot,
       },
 });

@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { DriveShareAtPath } from "@wgw-api-generated/drive-types";
+import type { DriveShareAtPath } from "@wgw/openapi-types/drive-types";
 import { mockDriveShareAtPath } from "@/lib/api/mock/drive-share-fixtures";
 import { SHARE_PASSWORD_MASK, ShareLinkSection } from "@/share-ui/share-link-section";
 import { shareLabels } from "@/share-ui/share-labels";

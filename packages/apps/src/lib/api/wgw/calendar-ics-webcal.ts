@@ -4,7 +4,7 @@ import type {
   CalendarSubscription,
   CalendarSubscriptionCreateRequest,
   CalendarSubscriptionListResponse,
-} from "@wgw-api-generated/calendars-types";
+} from "@wgw/openapi-types/calendars-types";
 
 /** Refresh remote ICS when last fetch is older than one hour (owner Calendar load). */
 export const CALENDAR_SUBSCRIPTION_STALE_MS = 60 * 60 * 1000;

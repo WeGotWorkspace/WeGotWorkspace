@@ -1,7 +1,7 @@
 import type {
   SettingsMailRequest,
   SettingsProfileRequest,
-} from "@wgw-api-generated/settings-types";
+} from "@wgw/openapi-types/settings-types";
 
 export type SettingsSection = "profile" | "memberships" | "mail" | "offline" | "assistants";
 

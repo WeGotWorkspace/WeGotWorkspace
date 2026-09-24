@@ -11,7 +11,7 @@ Spec: `.agents/specs/701-meet-chat-backend/spec.md` (Epic #701, Task #704).
 
 | Module                                                               | Role                                                                                                            |
 | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `src/lib/api/wgw/meet-chat.ts`                                       | Typed REST client for the 13 `/chat/*` operations (generated `@wgw-api-generated/chat-types`), wire→app mapping |
+| `src/lib/api/wgw/meet-chat.ts`                                       | Typed REST client for the 13 `/chat/*` operations (generated `@wgw/openapi-types/chat-types`), wire→app mapping |
 | `src/lib/api/wgw/meet-chat-jmap.ts`                                  | JMAP client factory (`POST /jmap` through `wgwFetch`)                                                           |
 | `src/lib/jmap-client/chat/` + `adapter/JmapChatAdapter.ts`           | `ChatChannel`/`ChatMessage` `/changes` → `/get` inbound poll                                                    |
 | `src/lib/offline/meet-chat/meet-chat-schema.ts`                      | Dexie tables (domain `meet-chat`, version block 60–69)                                                          |

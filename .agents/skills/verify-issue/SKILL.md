@@ -131,7 +131,7 @@ For every criterion, pick one primary method and record the planned check:
 | **Done gate** | Merge-ready / policy-level bar | `pnpm test:apps-done-gate`, `pnpm test:api-done-gate` |
 | **Code inspection** | Structural rule, no test yet | `rg pattern packages/apps/src/…`, read named files |
 | **OpenAPI / contract** | REST shape or endpoint | Diff `openapi.json`; feature test filter |
-| **Storybook / manual** | UI state, a11y, visual | Mock-tier story exists; `pnpm dev:ui` + steps from issue |
+| **Storybook / manual** | UI state, a11y, visual | Mock-tier story exists; `pnpm dev:storybook` + steps from issue |
 | **Docs** | README / skill update requested | File exists; section matches AC |
 
 Load domain depth when mapping: [testing](../testing/SKILL.md), [api](../api/SKILL.md), [apps-ui](../apps-ui/SKILL.md), [storybook](../storybook/SKILL.md).

@@ -4,8 +4,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(scriptDir, "..");
-const builtDocPath = path.resolve(packageRoot, "openapi/generated/openapi.built.json");
-const outputPath = path.resolve(packageRoot, "openapi/generated/settings-request-zod.ts");
+const builtDocPath = path.resolve(packageRoot, "generated/openapi.built.json");
+const outputPath = path.resolve(packageRoot, "generated/settings-request-zod.ts");
 
 /**
  * Minimal OpenAPI component schema → Zod emitter for flat string-only objects

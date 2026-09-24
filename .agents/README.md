@@ -4,7 +4,7 @@ Tool-agnostic agent skills following the [Agent Skills](https://agentskills.io/s
 
 ## Naming
 
-Skill directories use **unprefixed names** (e.g. `api`, `developer`, `storybook`) — never `wgw-` prefixes. Product terms like `wgw` DB connection or `@wgw-api-generated` in code are unrelated.
+Skill directories use **unprefixed names** (e.g. `api`, `developer`, `storybook`) — never `wgw-` prefixes. Product terms like `wgw` DB connection or `@wgw/openapi-types` in code are unrelated.
 
 ## Skills index
 

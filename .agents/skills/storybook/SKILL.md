@@ -46,7 +46,7 @@ Reference: `packages/apps/src/button/stories/button.stories.tsx`.
 
 ## Run
 
-- Dev: `pnpm dev` or `pnpm dev:storybook` in monorepo root / `packages/apps`
+- Dev: `pnpm dev:storybook` from the monorepo root
 - URL: http://127.0.0.1:6006
 
 ## Title namespaces

@@ -23,7 +23,7 @@ php artisan key:generate --working-dir packages/api   # or set APP_KEY manually
 bash packages/api/scripts/generate-jwt-keys.sh          # RS256 keys for auth/token
 ```
 
-`pnpm dev:api` loads **repo-root** `.env` only for pnpm/turbo tooling (`tools/with-root-env.sh`). **Laravel reads `packages/api/.env` only** — put JWT paths and `APP_KEY` there, not in the repo root.
+`pnpm dev:api` loads **repo-root** `.env` via `tools/with-root-env.sh` before the PHP trap script. **Laravel reads `packages/api/.env` only** — put JWT paths and `APP_KEY` there, not in the repo root. Turbo does not run the API.
 
 WeGotWorkspace **runtime** data uses `WGW_*` keys in `packages/api/.env` (loaded into `config/wgw.php` and `database.connections.wgw` via `WgwServiceProvider`).  
 `DB_*` in the same file is for **Laravel framework** storage (sessions/cache when using database drivers).  

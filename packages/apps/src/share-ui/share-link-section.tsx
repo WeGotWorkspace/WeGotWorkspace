@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import type { DriveShareAtPath } from "@wgw-api-generated/drive-types";
+import type { DriveShareAtPath } from "@wgw/openapi-types/drive-types";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { shareLabels } from "@/share-ui/share-labels";
 import {

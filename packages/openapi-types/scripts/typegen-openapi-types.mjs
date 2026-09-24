@@ -7,7 +7,7 @@ import { generateSettingsRequestZod } from "./typegen-openapi-settings-zod.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(scriptDir, "..");
-const generatedDir = path.resolve(packageRoot, "openapi/generated");
+const generatedDir = path.resolve(packageRoot, "generated");
 const builtDocPath = path.resolve(generatedDir, "openapi.built.json");
 const openApiTypesPath = path.resolve(generatedDir, "openapi-types.ts");
 const mailTypesPath = path.resolve(generatedDir, "mail-types.ts");
@@ -163,6 +163,6 @@ if (import.meta.url === new URL(process.argv[1], "file://").href) {
   process.stdout.write(`Wrote ${chatTypesPath}\n`);
   process.stdout.write(`Wrote ${notificationsTypesPath}\n`);
   process.stdout.write(
-    `Wrote ${path.resolve(packageRoot, "openapi/generated/settings-request-zod.ts")}\n`,
+    `Wrote ${path.resolve(packageRoot, "generated/settings-request-zod.ts")}\n`,
   );
 }
