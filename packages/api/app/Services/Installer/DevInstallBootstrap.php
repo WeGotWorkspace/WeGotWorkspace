@@ -29,6 +29,7 @@ final class DevInstallBootstrap
         private WgwInstallConfig $installConfig,
         private DevCalendarEventSeeder $calendarEvents,
         private DevNoteSeeder $notes,
+        private DevContactSeeder $contacts,
         private WgwSchemaMigrator $schemaMigrator,
         private InstallerSeeder $seeder,
     ) {}
@@ -122,6 +123,7 @@ final class DevInstallBootstrap
     {
         $this->seedDevCalendarEvents($username);
         $this->seedDevNotes($username);
+        $this->seedDevContacts($username);
     }
 
     /**
@@ -171,6 +173,28 @@ final class DevInstallBootstrap
             DevNoteCatalog::PROFILE_FULL,
             DevNoteCatalog::PROFILE_COMPACT,
         ));
+    }
+
+    private function seedDevContacts(string $username): void
+    {
+        if (! $this->contacts->isAllowed()) {
+            return;
+        }
+
+        $override = strtolower(trim((string) (getenv('WGW_DEV_SEED_CONTACTS_PROFILE') ?: '')));
+        if (in_array($override, [
+            DevContactCatalog::PROFILE_FULL,
+            DevContactCatalog::PROFILE_COMPACT,
+            DevContactCatalog::PROFILE_LARGE,
+        ], true)) {
+            $profile = $override;
+        } else {
+            $profile = app()->environment('testing')
+                ? DevContactCatalog::PROFILE_COMPACT
+                : DevContactCatalog::PROFILE_FULL;
+        }
+
+        $this->contacts->seed($username, $profile);
     }
 
     private function seedProfile(string $envKey, string $full, string $compact): string

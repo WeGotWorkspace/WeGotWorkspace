@@ -9,6 +9,7 @@
     "seed": "php packages/api/artisan wgw:seed-dev",
     "seed:notes": "php packages/api/artisan wgw:notes:seed-dev",
     "seed:calendars": "php packages/api/artisan wgw:calendars:seed-dev",
+    "seed:contacts": "php packages/api/artisan wgw:contacts:seed-dev",
     "dev:api": "tools/with-root-env.sh -- bash packages/api/scripts/dev-php-server.sh",
     "dev:ui": "pnpm run dev",
     "dev:storybook": "tools/with-root-env.sh -- turbo run dev:storybook --filter=@wgw/apps",
