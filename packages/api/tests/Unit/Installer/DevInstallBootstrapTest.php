@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Installer;
 
+use App\Services\Contacts\AddressBookProvisioner;
+use App\Services\Installer\DevContactCatalog;
+use App\Services\Installer\DevContactSeeder;
 use App\Services\Installer\DevInstallBootstrap;
+use App\Services\Installer\DevSeedGuard;
+use App\Services\Search\BestEffortSearchIndexSync;
+use App\Services\Search\SearchIndexerService;
 use App\Support\AppPaths;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -34,7 +40,9 @@ final class DevInstallBootstrapTest extends TestCase
     protected function tearDown(): void
     {
         putenv('WGW_APP_ROOT');
-        unset($_ENV['WGW_APP_ROOT']);
+        putenv('WGW_DEV_SEED_CONTACTS_PROFILE');
+        putenv('WGW_DEV_SEED_CALENDAR_PROFILE');
+        unset($_ENV['WGW_APP_ROOT'], $_ENV['WGW_DEV_SEED_CONTACTS_PROFILE'], $_ENV['WGW_DEV_SEED_CALENDAR_PROFILE']);
         WgwInstallFixture::forgetInstallBindings();
 
         if (is_dir($this->installRoot)) {
@@ -66,6 +74,10 @@ final class DevInstallBootstrapTest extends TestCase
         $this->assertSame('SabreDAV', DB::connection('wgw')->table('app_settings')->where('name', 'auth_realm')->value('value'));
         $seeded = DB::connection('wgw')->table('calendarobjects')->where('uri', 'like', 'dev-seed-%')->count();
         $this->assertGreaterThan(0, $seeded);
+        $this->assertSame(
+            DevContactCatalog::COMPACT_TARGET,
+            DB::connection('wgw')->table('cards')->where('uri', 'like', DevContactCatalog::URI_PREFIX.'%')->count(),
+        );
 
         $this->assertTrue(app(AppPaths::class)->isInstalled());
         $this->assertFalse($bootstrap->ensure('admin', 'storybook-dev'));
@@ -102,6 +114,24 @@ final class DevInstallBootstrapTest extends TestCase
         );
     }
 
+    public function test_contacts_profile_accepts_large_and_calendars_stay_on_full_or_compact(): void
+    {
+        putenv('WGW_DEV_SEED_CONTACTS_PROFILE=large');
+        putenv('WGW_DEV_SEED_CALENDAR_PROFILE=large');
+
+        $seeder = $this->recordingContactSeeder();
+        $this->app->instance(DevContactSeeder::class, $seeder);
+
+        $this->assertTrue(app(DevInstallBootstrap::class)->ensure('admin', 'storybook-dev'));
+        $this->assertSame(DevContactCatalog::PROFILE_LARGE, $seeder->profile);
+
+        WgwInstallFixture::syncDatabaseConnection();
+        $this->assertGreaterThan(
+            0,
+            DB::connection('wgw')->table('calendarobjects')->where('uri', 'like', 'dev-seed-%')->count(),
+        );
+    }
+
     public function test_ensure_writes_sqlite_path_into_env(): void
     {
         app(DevInstallBootstrap::class)->ensure('admin', 'storybook-dev');
@@ -112,6 +142,17 @@ final class DevInstallBootstrapTest extends TestCase
         WgwInstallFixture::syncDatabaseConnection();
         $dsn = (string) DB::connection('wgw')->getConfig('database');
         $this->assertStringEndsWith('/wgw-content/db.sqlite', $dsn);
+    }
+
+    private function recordingContactSeeder(): RecordingDevContactSeeder
+    {
+        return new RecordingDevContactSeeder(
+            app(DevContactCatalog::class),
+            app(AddressBookProvisioner::class),
+            app(BestEffortSearchIndexSync::class),
+            app(SearchIndexerService::class),
+            app(DevSeedGuard::class),
+        );
     }
 
     private function removeTree(string $dir): void
@@ -132,5 +173,21 @@ final class DevInstallBootstrapTest extends TestCase
             }
         }
         @rmdir($dir);
+    }
+}
+
+final class RecordingDevContactSeeder extends DevContactSeeder
+{
+    public ?string $profile = null;
+
+    public function seed(
+        string $username,
+        string $profile = DevContactCatalog::PROFILE_FULL,
+        bool $force = false,
+        ?int $count = null,
+    ): array {
+        $this->profile = $profile;
+
+        return ['created' => 0, 'skipped' => 0, 'deleted' => 0];
     }
 }

@@ -15,7 +15,8 @@ export const WORKSPACE_PWA_ICON_CACHE_VERSION = "19";
  */
 export const WORKSPACE_PWA_THEME_COLOR = "#ba9689";
 
-export type WorkspacePwaAppKey = WorkspaceAppId | "home";
+/** Mail stays an app id for icons and mail-core. The live shell does not install its PWA. */
+export type WorkspacePwaAppKey = Exclude<WorkspaceAppId, "mail"> | "home";
 
 type WorkspacePwaMeta = {
   title: string;
@@ -30,12 +31,6 @@ const WORKSPACE_PWA_META: Record<WorkspacePwaAppKey, WorkspacePwaMeta> = {
     description: "Sign in to WeGotWorkspace.",
     appTitle: "WeGotWorkspace",
     manifest: "/manifests/home.webmanifest",
-  },
-  mail: {
-    title: "Mail",
-    description: "A calm inbox for focused correspondence.",
-    appTitle: "Mail",
-    manifest: "/manifests/mail.webmanifest",
   },
   notes: {
     title: "Notes",

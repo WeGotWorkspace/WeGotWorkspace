@@ -59,6 +59,7 @@ final class CapabilitiesTool extends WgwMcpTool
         }
 
         return $this->json([
+            'mailClient' => false,
             'tools' => array_map(
                 static fn (string $class): string => app($class)->name(),
                 $this->catalog->enabledTools(),

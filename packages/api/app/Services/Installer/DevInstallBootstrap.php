@@ -29,6 +29,7 @@ final class DevInstallBootstrap
         private WgwInstallConfig $installConfig,
         private DevCalendarEventSeeder $calendarEvents,
         private DevNoteSeeder $notes,
+        private DevContactSeeder $contacts,
         private WgwSchemaMigrator $schemaMigrator,
         private InstallerSeeder $seeder,
     ) {}
@@ -122,6 +123,7 @@ final class DevInstallBootstrap
     {
         $this->seedDevCalendarEvents($username);
         $this->seedDevNotes($username);
+        $this->seedDevContacts($username);
     }
 
     /**
@@ -173,10 +175,27 @@ final class DevInstallBootstrap
         ));
     }
 
-    private function seedProfile(string $envKey, string $full, string $compact): string
+    private function seedDevContacts(string $username): void
+    {
+        if (! $this->contacts->isAllowed()) {
+            return;
+        }
+
+        $this->contacts->seed($username, $this->seedProfile(
+            'WGW_DEV_SEED_CONTACTS_PROFILE',
+            DevContactCatalog::PROFILE_FULL,
+            DevContactCatalog::PROFILE_COMPACT,
+            [DevContactCatalog::PROFILE_LARGE],
+        ));
+    }
+
+    /**
+     * @param  list<string>  $alsoAllowed
+     */
+    private function seedProfile(string $envKey, string $full, string $compact, array $alsoAllowed = []): string
     {
         $override = strtolower(trim((string) (getenv($envKey) ?: '')));
-        if (in_array($override, [$full, $compact], true)) {
+        if (in_array($override, [$full, $compact, ...$alsoAllowed], true)) {
             return $override;
         }
 
