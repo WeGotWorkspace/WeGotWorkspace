@@ -121,6 +121,15 @@ final class McpScopesTest extends TestCase
         $this->assertSame('Read and write', McpScopes::consentActionLabel(McpScopes::CALENDAR));
         $this->assertSame('Read', McpScopes::consentActionLabel(McpScopes::NOTES_READ));
         $this->assertSame('Write', McpScopes::consentActionLabel(McpScopes::DRIVE_WRITE));
+        $this->assertNotContains(McpScopes::MAIL_READ, McpScopes::userFacingIds(McpScopes::ids()));
+        $this->assertNotContains(McpScopes::MAIL_SEND, McpScopes::userFacingIds(McpScopes::ids()));
+        $this->assertContains(McpScopes::MAIL_READ, McpScopes::ids());
+        $this->assertArrayHasKey(McpScopes::MAIL_SEND, McpScopes::descriptions());
+        $groups = McpScopes::groupConsentScopes(array_map(
+            static fn (string $id): object => (object) ['id' => $id, 'description' => $id],
+            [McpScopes::MAIL_READ, McpScopes::MAIL_SEND, McpScopes::DRIVE_READ],
+        ));
+        $this->assertSame(['Drive'], array_column($groups, 'label'));
         $this->assertSame('calendar', McpScopes::consentAppIcon('Calendar'));
         $this->assertSame('settings', McpScopes::consentAppIcon('Profile'));
         $this->assertNull(McpScopes::consentAppIcon('Connection'));

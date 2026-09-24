@@ -167,7 +167,6 @@ final class McpScopes
             ['label' => 'Docs', 'scopes' => [self::DOCS_READ, self::DOCS_WRITE]],
             ['label' => 'Drive', 'scopes' => [self::DRIVE_READ, self::DRIVE_WRITE]],
             ['label' => 'Meet', 'scopes' => [self::MEET_READ, self::MEET_WRITE]],
-            ['label' => 'Mail', 'scopes' => [self::MAIL_READ, self::MAIL_SEND]],
             ['label' => 'Profile', 'scopes' => [self::SETTINGS]],
         ];
     }
@@ -215,6 +214,9 @@ final class McpScopes
             }
         }
         unset($byId[self::OFFLINE_ACCESS]);
+        foreach (self::consentHiddenIds() as $hiddenId) {
+            unset($byId[$hiddenId]);
+        }
         if ($byId !== []) {
             $groups[] = ['label' => 'Other', 'scopes' => array_values($byId)];
         }
@@ -229,11 +231,23 @@ final class McpScopes
      * @param  list<string>  $ids
      * @return list<string>
      */
+    /**
+     * Still valid on existing tokens. Hidden from consent and grant cards until the client ships.
+     *
+     * @return list<string>
+     */
+    public static function consentHiddenIds(): array
+    {
+        return [self::MAIL_READ, self::MAIL_SEND];
+    }
+
     public static function userFacingIds(array $ids): array
     {
+        $hidden = array_fill_keys([self::OFFLINE_ACCESS, ...self::consentHiddenIds()], true);
+
         return array_values(array_filter(
             $ids,
-            static fn (string $id): bool => $id !== self::OFFLINE_ACCESS,
+            static fn (string $id): bool => ! isset($hidden[$id]),
         ));
     }
 

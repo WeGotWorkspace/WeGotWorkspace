@@ -67,9 +67,11 @@ const GROUP_IDS: { label: string; ids: string[]; legacyId?: string }[] = [
   { label: "Docs", ids: ["docs.read", "docs.write"], legacyId: "docs" },
   { label: "Drive", ids: ["drive.read", "drive.write"], legacyId: "drive" },
   { label: "Meet", ids: ["meet.read", "meet.write"] },
-  { label: "Mail", ids: ["mail.read", "mail.send"] },
   { label: "Profile", ids: ["settings"] },
 ];
+
+/** Still valid on existing tokens. Hidden until the Mail client ships. */
+const CONSENT_HIDDEN_SCOPE_IDS = new Set(["mail.read", "mail.send"]);
 
 export function mcpScopeActionLabel(id: string): string {
   if (id.endsWith(".read")) return "Read";
@@ -112,6 +114,7 @@ export function groupMcpScopeIds(ids: string[]): McpScopeGroup[] {
     }
   }
   remaining.delete("offline_access"); // protocol id, not a user-facing grant
+  for (const id of CONSENT_HIDDEN_SCOPE_IDS) remaining.delete(id);
   if (remaining.size > 0) {
     groups.push({
       label: "Other",

@@ -23,6 +23,14 @@ describe("groupMcpScopeIds", () => {
     ]);
   });
 
+  it("hides mail scopes from consent without dropping them from the catalog", () => {
+    const groups = groupMcpScopeIds(["mail.read", "mail.send", "drive.read"]);
+    expect(groups.map((group) => group.label)).toEqual(["Drive"]);
+    expect(groups.flatMap((group) => group.scopes.map((scope) => scope.id))).not.toContain(
+      "mail.read",
+    );
+  });
+
   it("hides offline_access from grant and consent groups", () => {
     const groups = groupMcpScopeIds(["drive.read", "offline_access", "settings"]);
     expect(groups.map((group) => group.label)).toEqual(["Drive", "Profile"]);
