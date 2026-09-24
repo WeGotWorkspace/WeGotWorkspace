@@ -1,5 +1,6 @@
-import type { DriveShareAtPath } from "@wgw/openapi-types/drive-types";
+import type { DriveShare, DriveShareAtPath } from "@wgw/openapi-types/drive-types";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
+import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
 import { mockDriveShareAtPath } from "@/lib/api/mock/drive-share-fixtures";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 
@@ -63,6 +64,43 @@ export function createShareStoryOperations(
       ...currentAtPath,
       path,
     }),
+    createShare: async (body) => {
+      const hasPassword =
+        body.password !== null && body.password !== undefined && body.password.trim() !== "";
+      const created: DriveShare = {
+        id: `story-share-${currentAtPath.directShares.length + 1}`,
+        path: body.path,
+        kind: body.kind,
+        defaultAccess: body.defaultAccess,
+        publicToken: body.kind === "public" ? "story-public-token" : null,
+        hasPassword,
+        expiresAt: body.expiresAt ?? null,
+        updatedAt: "2026-07-02T10:00:00.000Z",
+        shareWith: body.shareWith ?? null,
+        myRights: fullDriveMyRights,
+      };
+      if (body.kind === "public") {
+        currentAtPath = {
+          ...currentAtPath,
+          directShares: [
+            ...currentAtPath.directShares,
+            { share: created, relationship: "direct", status: "active" },
+          ],
+          publicShares: [
+            ...currentAtPath.publicShares,
+            {
+              shareId: created.id,
+              sharePath: body.path,
+              defaultAccess: created.defaultAccess,
+              hasPassword,
+              inherited: false,
+              status: "active",
+            },
+          ],
+        };
+      }
+      return created;
+    },
     patchShare: async (shareId, body) => {
       const updated = await base.patchShare(shareId, body);
       currentAtPath = {
