@@ -12,7 +12,7 @@ description: Git workflow for this repository — branching, commits, pull reque
 | Creating or naming a branch | [branches.md](branches.md) |
 | Staging / committing | This file (below) |
 | Opening or updating a PR | [pull-requests.md](pull-requests.md) |
-| Merging a PR | [pull-requests.md](pull-requests.md) — **`gh pr merge --merge` by default** |
+| Merging a PR | [pull-requests.md](pull-requests.md) — stay draft until the user asks to enqueue; then **`gh pr merge --auto --merge`** |
 | Issue linking on `feat/` | [pull-requests.md](pull-requests.md) (Task/Epic only — not Goal alone); [issue-filing.md](../developer/issue-filing.md) |
 | PR summary wording | [document](../document/SKILL.md) |
 | Test plan for PR | [testing](../testing/SKILL.md) |
@@ -50,6 +50,6 @@ Do not use vague one-word subjects (`fix`, `update`, `wip`) without a clear desc
 ## Repo constraints (summary)
 
 - **Signed commits** required on `main` (GPG or SSH).
-- **Branch protection:** PR required; CI checks must pass — see [pull-requests.md](pull-requests.md).
-- **PR merge:** merge commit (`gh pr merge --merge`) unless the user explicitly asks for squash/rebase — preserves auditable commit history on `main`.
-- Husky runs Prettier/ESLint/Pint on commit; Commitlint enforces Conventional Commits. CI rejects Cursor attribution in commit messages and PR descriptions; `.cursor/hooks` blocks `gh pr create` / `gh pr edit` with attribution in `--body`.
+- **Branch protection:** PR required; CI checks must pass; `main` uses a merge queue — see [pull-requests.md](pull-requests.md).
+- **PR merge:** open as a draft. When the user asks to land it, enqueue with a merge commit (`gh pr merge --auto --merge`) unless they explicitly ask for squash/rebase.
+- Husky runs Prettier/ESLint/Pint on commit; Commitlint enforces Conventional Commits. CI rejects Cursor attribution in commit messages and PR descriptions. `.cursor/hooks` blocks `gh pr create` without `--draft`, and blocks `gh pr create` / `gh pr edit` with attribution in `--body`.

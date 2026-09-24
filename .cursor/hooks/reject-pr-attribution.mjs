@@ -108,9 +108,31 @@ function extractGhPrBody(command) {
   return trimmed.split(/\s+--/)[0] ?? trimmed;
 }
 
+function stripQuotedAndHeredocs(source) {
+  const withoutHeredocs = source.replace(
+    /<<-?\s*['"]?\w+['"]?\r?\n[\s\S]*?\r?\n\w+\b/g,
+    " ",
+  );
+  return withoutHeredocs
+    .replace(/"(?:\\.|[^"\\])*"/g, " ")
+    .replace(/'(?:\\.|[^'\\])*'/g, " ");
+}
+
 const ghPrPrefix = ghPrCommandPrefix(command);
 if (!/\bgh\s+pr\s+(create|edit)\b/.test(ghPrPrefix)) {
   console.log(JSON.stringify({ permission: "allow" }));
+  process.exit(0);
+}
+
+if (/\bgh\s+pr\s+create\b/.test(ghPrPrefix) && !/(?:^|\s)--draft(?:\s|=|$)/.test(stripQuotedAndHeredocs(command))) {
+  console.log(
+    JSON.stringify({
+      permission: "deny",
+      user_message: "Pull requests must be opened as drafts. Re-run gh pr create with --draft.",
+      agent_message:
+        "Always open pull requests as drafts. Re-run with `gh pr create --draft`. Do not mark the PR ready unless the user asks to enqueue it.",
+    }),
+  );
   process.exit(0);
 }
 
