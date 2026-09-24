@@ -13,7 +13,6 @@ import {
   todayISODate,
 } from "@/calendar-core/src/calendar-event-model";
 import { calendarRespondStatus } from "@/calendar-core/src/calendar-rsvp-actions";
-import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type {
   CalendarSchedulingNotification,
@@ -109,7 +108,7 @@ export async function persistInviteeRsvp(args: {
     return true;
   }
   const asked = await args.askScope({
-    action: "edit",
+    action: "rsvp",
     masterId: args.masterId,
     ...(args.recurrenceId ? { recurrenceId: args.recurrenceId } : {}),
   });
@@ -120,38 +119,6 @@ export async function persistInviteeRsvp(args: {
     ...(args.recurrenceId ? { recurrenceId: args.recurrenceId } : {}),
   });
   return true;
-}
-
-/**
- * Run an RSVP write through the suite undo queue. Resolves when `execute` finishes
- * so `persistInviteeRsvp` can await the same promise it already uses for `respond`.
- */
-export function queueUndoableRespond(args: {
-  queueMutation: (write: DeferredApiWriteArgs) => void;
-  key: string;
-  toastMessage: string;
-  undoToastMessage: string;
-  execute: () => Promise<void>;
-  undo: () => void;
-}): Promise<void> {
-  return new Promise((resolve, reject) => {
-    args.queueMutation({
-      key: args.key,
-      toastMessage: args.toastMessage,
-      executeImmediately: true,
-      execute: async () => {
-        try {
-          await args.execute();
-          resolve();
-        } catch (error) {
-          reject(error);
-          throw error;
-        }
-      },
-      undo: args.undo,
-      undoToastMessage: args.undoToastMessage,
-    });
-  });
 }
 
 export function rsvpUndoStatus(

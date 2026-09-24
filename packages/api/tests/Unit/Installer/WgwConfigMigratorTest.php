@@ -211,9 +211,43 @@ PHP);
         $this->assertFalse(app(WgwConfigMigrator::class)->migrateIfNeeded());
     }
 
-    public function test_recovers_from_backup_when_env_has_example_placeholder_db_keys(): void
+    public function test_does_not_remigrate_from_backup_when_env_already_has_db_keys(): void
     {
         file_put_contents($this->installRoot.'/wgw-config.php.bak.20260709-130000', <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+return [
+    'data_dir' => './other-content',
+    'pdo' => ['sqlite_file' => './other-content/db.sqlite'],
+];
+PHP);
+
+        $envPath = $this->installRoot.'/packages/api/.env';
+        if (! is_file($envPath) && is_file($this->installRoot.'/packages/api/.env.example')) {
+            copy($this->installRoot.'/packages/api/.env.example', $envPath);
+        }
+        $before = (string) file_get_contents($envPath);
+        $bakBefore = glob($envPath.'.bak.*');
+
+        $this->assertFalse(app(WgwConfigMigrator::class)->migrateIfNeeded());
+        $this->assertSame($before, file_get_contents($envPath));
+        $this->assertSame($bakBefore, glob($envPath.'.bak.*'));
+    }
+
+    public function test_matching_legacy_file_is_removed_without_rewriting_env(): void
+    {
+        $envPath = $this->installRoot.'/packages/api/.env';
+        file_put_contents($envPath, <<<'ENV'
+APP_KEY=base64:keep
+WGW_DATA_DIR=./wgw-content
+WGW_DB_CONNECTION=sqlite
+WGW_DB_DATABASE=./wgw-content/db.sqlite
+WGW_UPDATE_FEED_URL=https://github.com/WeGotWorkspace/wegotworkspace/releases/latest/download/manifest.json
+ENV
+        );
+        file_put_contents($this->installRoot.'/wgw-config.php', <<<'PHP'
 <?php
 
 declare(strict_types=1);
@@ -224,16 +258,11 @@ return [
 ];
 PHP);
 
-        $envPath = $this->installRoot.'/packages/api/.env';
-        if (! is_file($envPath) && is_file($this->installRoot.'/packages/api/.env.example')) {
-            copy($this->installRoot.'/packages/api/.env.example', $envPath);
-        }
-
+        $before = (string) file_get_contents($envPath);
         $this->assertTrue(app(WgwConfigMigrator::class)->migrateIfNeeded());
-
-        $env = (string) file_get_contents($envPath);
-        $this->assertStringContainsString('WGW_DB_CONNECTION=sqlite', $env);
-        $this->assertStringContainsString('WGW_DB_DATABASE=./wgw-content/db.sqlite', $env);
+        $this->assertFileDoesNotExist($this->installRoot.'/wgw-config.php');
+        $this->assertSame($before, file_get_contents($envPath));
+        $this->assertSame([], glob($envPath.'.bak.*'));
     }
 
     public function test_active_legacy_config_is_migrated_even_when_env_has_example_defaults(): void

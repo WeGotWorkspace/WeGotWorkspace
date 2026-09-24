@@ -21,7 +21,8 @@ Internal composition (import from `@/drive-core/src/…` in stories or sibling p
 - `useDriveShell`, `useDriveList`, `useDriveMutations` — shell navigation, list/selection, and mutation slices
 - `useDriveAPI` (`src/drive-core/src/use-drive-api.ts`)
 - `DriveMainPane`, `DriveDetailActionBar`, `DriveNewMenu`
-- `DriveGridView`, `DriveListView`, `DriveDetailPanel` (`src/drive-core/src/drive-browser.tsx`)
+- `DriveGridView`, `DriveListView` (`src/drive-core/src/drive-browser.tsx`)
+- `DriveDetailPanel` (`src/drive-core/src/drive-detail-panel.tsx`) — DocsCollabSidebarPanel shell; docked via WorkspaceAppLayout `panel` / SideDrawer
 - `DriveMoveToDialog`, `DriveFolderPicker`, `DriveMediaPreview`
 
 ## Provider wiring
@@ -36,13 +37,14 @@ Pane and browser styling lives under `.drive-workspace` in `drive-workspace.css`
 
 ## Storybook
 
-| Story                                        | Purpose                                        |
-| -------------------------------------------- | ---------------------------------------------- |
-| `Apps/Drive`                                 | Full workspace with mock bootstrap             |
-| `Apps/Drive/Panes/DriveMainPane`             | Main column (grid/list, selection, detail)     |
-| `Apps/Drive/Components/DriveDetailActionBar` | Detail toolbar variants                        |
-| `Apps/Drive/Components/DriveNewMenu`         | New file/folder menu                           |
-| `Apps/WeGotWorkspace`                        | Full shell (login → home → all apps, mock API) |
+| Story                                            | Purpose                                        |
+| ------------------------------------------------ | ---------------------------------------------- |
+| `Themes/Drive`                                   | Full workspace chrome + branding knobs         |
+| `Features/Drive`                                 | Shared with me view (non-branding)             |
+| `Features/Drive/Panes/DriveMainPane`             | Main column (grid/list, selection, detail)     |
+| `Features/Drive/Components/DriveDetailActionBar` | Detail toolbar variants                        |
+| `Features/Drive/Components/DriveNewMenu`         | New file/folder menu                           |
+| `Features/Workspace`                             | Full shell (login → home → all apps, mock API) |
 
 ## Further reading
 

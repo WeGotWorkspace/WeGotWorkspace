@@ -1,6 +1,7 @@
 @import "../../styles.css" reference;
 
 .workspace-chrome-footer {
+  /* Above floating margin cards (z-20); shell `isolate` on main keeps this under the sidebar scrim. */
   @apply relative z-30 flex shrink-0 flex-nowrap items-center gap-x-3;
   box-sizing: border-box;
   padding-block: var(--workspace-chrome-footer-padding-y, 0.5rem);
@@ -12,7 +13,10 @@
   );
   backdrop-filter: blur(8px);
   border-top: 1px solid
-    var(--workspace-chrome-footer-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
+    var(
+      --workspace-chrome-footer-border,
+      color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
+    );
 }
 
 .workspace-chrome-footer__group {

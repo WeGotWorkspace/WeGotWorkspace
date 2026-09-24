@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Card } from "@/card/src/card";
-import { CardPanel } from "@/card/src/card-panel";
 import { cn } from "@/lib/utils";
+
+import "@/share-ui/share-ui.css";
 
 export type ShareAccessCardProps = {
   title: string;
@@ -30,10 +31,10 @@ export function ShareAccessCard({
       title={title}
       description={description}
     >
-      <CardPanel>
+      <div className="share-access-card__body">
         {children}
         {addControl != null ? <div className="share-dialog__add-grant">{addControl}</div> : null}
-      </CardPanel>
+      </div>
       {footer}
     </Card>
   );

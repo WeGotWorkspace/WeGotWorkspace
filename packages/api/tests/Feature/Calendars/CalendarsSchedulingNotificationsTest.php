@@ -7,6 +7,7 @@ namespace Tests\Feature\Calendars;
 use App\Models\CalendarObject;
 use App\Models\Principal;
 use App\Models\SchedulingObject;
+use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -63,6 +64,28 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
         }
         $this->assertSame('admin@localhost', $byUsername['admin'] ?? null);
         $this->assertSame('bare', $byUsername['bare'] ?? null);
+    }
+
+    public function test_invitees_exclude_group_container_and_group_principals(): void
+    {
+        // The `principals/groups` container node (and group principals under
+        // it) must never surface as invitable pseudo-users.
+        Principal::query()->firstOrCreate(
+            ['uri' => 'principals/groups'],
+            ['displayname' => 'Groups', 'email' => null],
+        );
+        Principal::query()->firstOrCreate(
+            ['uri' => 'principals/groups/staff'],
+            ['displayname' => 'Staff', 'email' => null],
+        );
+
+        $list = $this->asUser('bob')->getJson('/api/v1/calendars/scheduling/invitees')
+            ->assertOk()
+            ->json('list');
+        $this->assertIsArray($list);
+        $usernames = array_map(static fn (array $row): string => (string) $row['username'], $list);
+        $this->assertNotContains('groups', $usernames);
+        $this->assertNotContains('staff', $usernames);
     }
 
     public function test_duplicate_request_copies_for_same_uid_list_as_one_notification(): void
@@ -217,6 +240,51 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
 
         $this->assertTrue($carolEvent['calendarIds']['home'] ?? false);
         $this->assertFalse($carolEvent['calendarIds']['work'] ?? false);
+    }
+
+    public function test_respond_move_to_group_calendar_keeps_invite_in_inbox(): void
+    {
+        $team = $this->seedWgwGroup('principals/groups/team', 'Team');
+        $carol = Principal::forUsername('carol');
+        $this->assertNotNull($carol);
+        $this->addPrincipalToGroup($team, $carol);
+
+        $groupCalendarId = CalendarCollectionUris::groupCalendarApiId('team');
+        $this->jmapAs('carol', [
+            ['Calendar/get', ['accountId' => 'carol', 'ids' => [$groupCalendarId]], 'c0'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.list.0.id', $groupCalendarId);
+
+        $this->bobInvitesCarol();
+        $notificationId = $this->carolNotificationId();
+        $eventId = (string) $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list.0.eventId');
+        $this->assertNotSame('', $eventId);
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'accepted', 'calendarId' => 'default'],
+        )->assertOk()->assertJsonPath('participationStatus', 'accepted');
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'accepted', 'calendarId' => $groupCalendarId],
+        )->assertOk()->assertJsonPath('participationStatus', 'accepted');
+
+        $list = $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list');
+        $this->assertIsArray($list);
+        $this->assertCount(1, $list);
+        $this->assertSame($notificationId, $list[0]['id']);
+        $this->assertSame('accepted', $list[0]['participationStatus']);
+        $this->assertSame($eventId, $list[0]['eventId']);
+
+        $carolEvent = $this->jmapAs('carol', [
+            ['CalendarEvent/get', ['accountId' => 'carol', 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertTrue($carolEvent['calendarIds'][$groupCalendarId] ?? false);
+        $this->assertFalse($carolEvent['calendarIds']['default'] ?? false);
     }
 
     public function test_respond_declined_ignores_calendar_id(): void
@@ -578,6 +646,34 @@ final class CalendarsSchedulingNotificationsTest extends WgwDatabaseTestCase
         $this->assertIsArray($list);
         $this->assertCount(1, $list);
         $this->assertSame('future-oneoff', $list[0]['uid']);
+        $this->assertNotNull($list[0]['eventId']);
+        $this->assertNotSame('', $list[0]['eventId']);
+    }
+
+    public function test_inbox_only_request_can_be_accepted_after_copy_is_materialized(): void
+    {
+        $this->insertSchedulingObject(
+            'principals/carol',
+            'inbox-only.ics',
+            $this->inviteIcs('inbox-only', '20300215T100000Z', '20300215T103000Z'),
+        );
+
+        $notificationId = (string) $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->json('list.0.id');
+        $eventId = (string) $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->json('list.0.eventId');
+        $this->assertNotSame('', $eventId);
+
+        $this->asUser('carol')->postJson(
+            '/api/v1/calendars/scheduling/notifications/'.$notificationId.'/respond',
+            ['participationStatus' => 'accepted'],
+        )->assertOk()->assertJsonPath('participationStatus', 'accepted');
+
+        $this->asUser('carol')->getJson('/api/v1/calendars/scheduling/notifications')
+            ->assertOk()
+            ->assertJsonPath('list.0.participationStatus', 'accepted')
+            ->assertJsonPath('list.0.eventId', $eventId);
     }
 
     public function test_recurring_invite_with_future_instances_is_listed(): void

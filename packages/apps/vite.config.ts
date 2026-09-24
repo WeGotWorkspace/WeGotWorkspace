@@ -53,19 +53,19 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       tsconfigPaths(),
       VitePWA({
+        // Custom SW so push/notificationclick can run; generateSW cannot host those handlers.
+        strategies: "injectManifest",
+        srcDir: "src",
+        filename: "sw.ts",
         // Keep updates passive to avoid cross-tab reload/remount loops when two docs tabs are open.
         registerType: "prompt",
         injectRegister: false,
-        devOptions: { enabled: false },
-        workbox: {
-          // Wait for tabs to close before activating a new worker (safer for local preview).
-          skipWaiting: false,
-          // Control the page on first SW activation so Chrome can offer install without a manual reload.
-          clientsClaim: true,
-          navigateFallback: "index.html",
-          navigateFallbackDenylist: [/^\/api\//, /^\/apps\//],
-          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
-          // Lit calendar CE graph is large; keep precache when the main chunk grows past 2 MiB.
+        // Localhost is a secure origin: enable the injectManifest SW so VAPID
+        // push works on `pnpm dev`. type: "module" is required for the TS SW.
+        // navigateFallback stays unset so the dev precache is empty.
+        devOptions: { enabled: true, type: "module" },
+        injectManifest: {
+          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest,mp3}"],
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         },
         manifest: false,

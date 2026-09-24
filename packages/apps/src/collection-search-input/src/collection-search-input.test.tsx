@@ -11,7 +11,7 @@ describe("CollectionSearchInput", () => {
     const root = container.querySelector(".collection-search-input");
     expect(root).not.toBeNull();
     expect(root!.classList.contains("input--search")).toBe(true);
-    expect(root!.classList.contains("input--size-sm")).toBe(true);
+    expect(root!.classList.contains("input--size-md")).toBe(true);
     expect(container.querySelector(".input__search-icon")).not.toBeNull();
   });
 

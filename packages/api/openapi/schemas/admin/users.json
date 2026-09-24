@@ -1,0 +1,65 @@
+{
+  "AdminUserUpdateRequest": {
+    "type": "object",
+    "properties": {
+      "displayName": {
+        "type": "string"
+      },
+      "email": {
+        "type": "string"
+      },
+      "password": {
+        "type": "string"
+      },
+      "groups": {
+        "$ref": "#/components/schemas/AdminUserGroupList"
+      },
+      "enabled": {
+        "type": "boolean"
+      }
+    },
+    "example": {
+      "displayName": "Alice Cooper",
+      "email": "alice@example.test",
+      "groups": [
+        "principals/groups/support"
+      ],
+      "enabled": true
+    }
+  },
+  "AdminUserSummary": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "username": {
+        "type": "string"
+      },
+      "email": {
+        "type": "string"
+      },
+      "displayName": {
+        "type": "string"
+      },
+      "groups": {
+        "$ref": "#/components/schemas/AdminUserGroupList"
+      },
+      "createdAt": {
+        "type": "string"
+      },
+      "enabled": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "id",
+      "username",
+      "email",
+      "displayName",
+      "groups",
+      "createdAt",
+      "enabled"
+    ]
+  }
+}

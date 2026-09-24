@@ -5,17 +5,17 @@
   "scope": "/mail",
   "id": "/mail",
   "display": "standalone",
-  "background_color": "#ef4444",
-  "theme_color": "#ef4444",
+  "background_color": "#de4b0e",
+  "theme_color": "#de4b0e",
   "icons": [
     {
-      "src": "/app-icons/mail.svg?v=2",
+      "src": "/app-icons/mail.svg?v=19",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/mail-180.png?v=2",
+      "src": "/pwa-icons/mail-180.png?v=19",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

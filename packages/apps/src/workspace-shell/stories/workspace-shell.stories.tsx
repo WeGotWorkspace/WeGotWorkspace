@@ -11,7 +11,7 @@ import {
 } from "@/workspace-shell/src/workspace-app-layout";
 
 const meta: Meta = {
-  title: "Shared/Workspace Shell",
+  title: "Layout/Workspace Shell",
 };
 
 export default meta;
@@ -25,18 +25,11 @@ export const Default: Story = {
     <WorkspaceAppLayout
       style={{
         ["--workspace-root-bg" as string]: "var(--color-paper)",
-        ["--sidebar-logo-close-button-color" as string]: "var(--color-ink)",
+        ["--sidebar-logo-close-button-color" as string]: "var(--color-we-got-dark)",
         ["--workspace-user-footer-text-color" as string]:
-          "color-mix(in oklab, var(--color-ink) 70%, transparent)",
+          "color-mix(in oklab, var(--color-we-got-dark) 70%, transparent)",
         ["--workspace-user-footer-border-color" as string]:
-          "color-mix(in oklab, var(--color-ink) 10%, transparent)",
-        ["--workspace-user-footer-avatar-bg" as string]:
-          "color-mix(in oklab, var(--color-ink) 12%, transparent)",
-        ["--workspace-user-footer-avatar-color" as string]: "var(--color-ink)",
-        ["--workspace-user-footer-link-color" as string]:
-          "color-mix(in oklab, var(--color-ink) 65%, transparent)",
-        ["--workspace-user-footer-link-bg" as string]:
-          "color-mix(in oklab, var(--color-ink) 6%, transparent)",
+          "color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)",
       }}
     >
       <WorkspaceSidebar open>

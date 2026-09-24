@@ -57,6 +57,21 @@ services:
       retries: 12
       start_period: 40s
 
+  scheduler:
+    image: ghcr.io/wegotworkspace/wegotworkspace:__WGW_VERSION__
+    restart: unless-stopped
+    environment: *wgw-web-environment
+    volumes: *wgw-web-volumes
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+        required: false
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "while true; do php /var/www/html/packages/api/artisan schedule:run --no-interaction; sleep 60; done"
+
   db:
     profiles: ["mysql"]
     image: mariadb:11

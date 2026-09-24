@@ -69,7 +69,7 @@ export function ResetPasswordScreen({ token }: ResetPasswordScreenProps = {}) {
             <Input
               id="password"
               name="password"
-              type="password"
+              variant="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
@@ -84,7 +84,7 @@ export function ResetPasswordScreen({ token }: ResetPasswordScreenProps = {}) {
               type="submit"
               label={submitting ? "Updating..." : "Update password"}
               variant="primary"
-              size="lg"
+              size="xl"
               pill
               disabled={submitting || !resolvedToken}
               className="login-screen__submit"

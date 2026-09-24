@@ -55,20 +55,40 @@ Visit:
 
 - `https://your-domain/install/`
 
-Then follow the wizard:
-- Check requirements
-- Choose SQLite (quickest) or MySQL
-- Create the first account
+Then follow first-run setup:
+- Welcome
+- Database (MySQL / MariaDB by default, or SQLite). Skipped when `WGW_INSTALL_*` already has a database
+- First account (username and password)
+
+Required server failures interrupt setup. Optional Mail IMAP is not a first-run row — enable `php-imap` later if you want the Mail app.
 
 ### Optional: PHP `imap` extension (Mail app)
 
-The requirements check lists **Extension: imap (optional)**. It is not required to install or run WeGotWorkspace — only the Mail app (IMAP mailbox access) needs it, and it is missing on many shared hosts. Without it, mail endpoints answer `503` with `imap_extension_required` and `/api/v1/mail/status` reports `extImap: false` so the web app can explain the limitation; everything else (files, calendars, contacts, tasks, meet, …) works normally. Enable `php-imap` in your hosting control panel (or `apt install php8.3-imap`) to activate Mail.
+The Mail app (IMAP mailbox access) needs `php-imap`. It is not required to install or run WeGotWorkspace and does not block first-run. Without it, mail endpoints answer `503` with `imap_extension_required` and `/api/v1/mail/status` reports `extImap: false` so the web app can explain the limitation; everything else (files, calendars, contacts, tasks, meet, …) works normally. Enable `php-imap` in your hosting control panel (or `apt install php8.3-imap`) to activate Mail.
 
 ## 4) Done
 
 After setup, sign in with your new account and connect clients using the same site URL.
 
 If your install is in a subfolder, set `RewriteBase` in `.htaccess` to that subfolder path.
+
+### Cron (reminders and Web Push)
+
+Due Calendar/Task reminders and Web Push fallback need Laravel’s scheduler **every minute**. Add a host crontab entry (adjust the path to this install):
+
+```cron
+* * * * * php /path/to/packages/api/artisan schedule:run >> /dev/null 2>&1
+```
+
+Do **not** run `queue:work` as a long-lived daemon. `QUEUE_CONNECTION=sync` is the supported LAMP layout.
+
+VAPID keys are created on first use into `wgw-content/keys/` (`php artisan wgw:vapid-keys --working-dir packages/api`), or set `WGW_VAPID_PUBLIC_KEY` / `WGW_VAPID_PRIVATE_KEY` / `WGW_VAPID_SUBJECT` in `packages/api/.env`.
+
+The Docker install stack includes a `scheduler` sidecar that loops `schedule:run` every 60 seconds (same contract as cron, not a queue worker). See [docs/architecture/suite-notify.md](docs/architecture/suite-notify.md).
+
+### MCP / OAuth discovery (origin root)
+
+Assistants discover this instance at `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource` on the **same origin** users open in the browser. The ZIP layout already rewrites those paths to Laravel via `index.php`. If you only expose Laravel under `Alias /api` (or another prefix) and the document root is not this install shell, add rewrite or alias rules so those two `.well-known` paths (and `/.well-known/oauth-protected-resource/<path>`) still reach Laravel. Do not tell clients to use `/api/.well-known/…`. Details: [docs/mcp-connect.md](docs/mcp-connect.md).
 
 ### Apache PWA icons (Debian/Ubuntu)
 

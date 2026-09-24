@@ -25,13 +25,30 @@ describe("tag add control type scale", () => {
   });
 });
 
+describe("tag token aliases", () => {
+  it("aliases soft radius to --control-radius and keeps mono on chips", () => {
+    expect(css).toMatch(/\.tag-group \{[\s\S]*--tag-radius:\s*var\(--control-radius\)/);
+    expect(css).toMatch(
+      /\.tag \{[\s\S]*border-radius:\s*var\(--tag-radius,\s*var\(--control-radius\)\)/,
+    );
+    expect(css).toMatch(/\.tag \{[\s\S]*font-family:\s*var\(--font-mono\)/);
+    expect(css).not.toMatch(/\.tag \{[\s\S]*\.control-surface/);
+  });
+
+  it("aliases lg chip height to --control-height-xs without form md+ chrome", () => {
+    expect(css).toMatch(/\.tag-group--size-lg \{[\s\S]*--tag-height:\s*var\(--control-height-xs/);
+    expect(css).toMatch(/\.tag--size-lg \{[\s\S]*--tag-height:\s*var\(--control-height-xs/);
+    expect(css).not.toMatch(/\.tag--size-(?:sm|md|xl)\b/);
+  });
+});
+
 describe("tag collection tint", () => {
   it("washes the chip from --collection-row-color", () => {
     expect(css).toMatch(
-      /\.tag--collection-tint \{[\s\S]*--tag-bg:\s*color-mix\(in oklab,\s*var\(--collection-row-color/,
+      /\.tag--collection-tint \{[\s\S]*--tag-bg:\s*color-mix\(\s*in oklab,\s*var\(--collection-row-color/,
     );
     expect(css).toMatch(
-      /\.tag--collection-tint \{[\s\S]*--tag-fg:\s*color-mix\(in oklab,\s*var\(--collection-row-color/,
+      /\.tag--collection-tint \{[\s\S]*--tag-fg:\s*color-mix\(\s*in oklab,\s*var\(--collection-row-color/,
     );
   });
 });

@@ -4,28 +4,44 @@
   @apply flex flex-wrap items-center gap-1.5;
 }
 
+.docs-collab-reactions__reaction-wrap {
+  @apply inline-flex;
+}
+
 .docs-collab-reactions__reaction {
   @apply inline-flex h-7 items-center gap-1 rounded-full border px-2 text-xs transition-colors;
-  border-color: var(--docs-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
+  border-color: var(--docs-border, color-mix(in oklab, var(--color-we-got-dark) 12%, transparent));
   background-color: transparent;
-  color: var(--docs-text, var(--color-ink));
+  color: var(--docs-text, var(--color-we-got-dark));
 }
 
 .docs-collab-reactions__reaction:hover {
-  background-color: color-mix(in oklab, var(--color-ink) 4%, transparent);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 4%, transparent);
 }
 
 .docs-collab-reactions__reaction[data-reacted="true"] {
-  border-color: color-mix(in oklab, var(--docs-accent, #3b82f6) 35%, transparent);
-  background-color: color-mix(in oklab, var(--docs-accent, #3b82f6) 10%, transparent);
-  color: color-mix(in oklab, var(--docs-accent, #3b82f6) 88%, var(--color-ink));
+  border-color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-we-got-blue)) 35%,
+    transparent
+  );
+  background-color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-we-got-blue)) 10%,
+    transparent
+  );
+  color: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-we-got-blue)) 88%,
+    var(--color-we-got-dark)
+  );
 }
 
 .docs-collab-reactions__reaction--add {
   @apply justify-center px-2;
   border-style: dashed;
-  border-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
-  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 18%, transparent);
+  color: var(--docs-muted, color-mix(in oklab, var(--color-we-got-dark) 65%, transparent));
 }
 
 .docs-collab-reactions__reaction-add-icon {
@@ -53,5 +69,5 @@
 }
 
 .docs-collab-reactions__picker-item:hover {
-  background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 6%, transparent);
 }

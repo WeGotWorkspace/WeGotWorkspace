@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Models\Principal;
+use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\WgwDatabaseTestCase;
@@ -120,6 +121,37 @@ final class AuthEndpointsTest extends WgwDatabaseTestCase
         ]);
         $response->assertOk();
         $this->assertSame('admin', $response->json('role'));
+    }
+
+    public function test_disabled_user_cannot_issue_or_refresh_tokens(): void
+    {
+        $tokenResponse = $this->postJson('/api/v1/auth/token', [
+            'username' => 'alice',
+            'password' => 'secret',
+        ]);
+        $tokenResponse->assertOk();
+        $refresh = (string) $tokenResponse->json('refresh_token');
+
+        User::query()->where('username', 'alice')->update(['enabled' => false]);
+
+        $this->postJson('/api/v1/auth/token', [
+            'username' => 'alice',
+            'password' => 'secret',
+        ])
+            ->assertUnauthorized()
+            ->assertJson([
+                'error' => 'Invalid credentials.',
+                'code' => 'unauthorized',
+            ]);
+
+        $this->postJson('/api/v1/auth/refresh', [
+            'refresh_token' => $refresh,
+        ])
+            ->assertUnauthorized()
+            ->assertJson([
+                'error' => 'Invalid credentials.',
+                'code' => 'unauthorized',
+            ]);
     }
 
     private function seedAliceUser(): void

@@ -22,6 +22,7 @@ final class MeetSignalingService
         private MeetActorResolver $actors,
         private RtcSettingsService $rtcSettingsService,
         private MeetReservationService $reservations,
+        private MeetChannelJoinPolicy $channelJoinPolicy,
     ) {
         $this->store = new HttpSignalingStore(RtcSignalingPolicy::meet());
     }
@@ -59,22 +60,55 @@ final class MeetSignalingService
 
             $username = $this->actors->tryAuthenticatedUsername($request);
             $room = $this->cleanRoom($body['room'] ?? null);
+            $this->assertGuestMayEnter($username, $room);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             $name = mb_substr((string) ($body['name'] ?? ''), 0, 64);
             $isKnockRequest = str_starts_with($name, self::KNOCK_NAME_PREFIX);
             $guestSessionKey = null;
             $ownerMarker = $this->actors->ownerMarkerForAuthenticatedUser($username);
-            if ($ownerMarker === null) {
-                if ($isKnockRequest && ! $this->roomHasJoinablePeer($room)) {
-                    $this->fail('room_not_active', 404);
+
+            $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
+            // Ad-hoc Start writes a reservation and no channel. That code is
+            // the guest door, so the lobby is enforced here too — not only
+            // in the client.
+            $reservedRoom = $channel === null ? $this->reservations->find($room) : null;
+            if ($channel !== null) {
+                // Channel-linked room: ACL members join directly (and are
+                // hosts); authenticated non-members knock. Guests are refused
+                // above, before a peer row exists.
+                if ($ownerMarker === null) {
+                    $guestSessionKey = $this->actors->readGuestSessionKey($body) ?? $this->actors->newGuestSessionKey();
+                    $ownerMarker = $this->actors->ownerMarkerForGuestSession($guestSessionKey);
                 }
+                if ($username === null || ! $this->channelJoinPolicy->isChannelMember($username, $channel)) {
+                    $this->assertNonMemberChannelJoin($room, $peerId, $ownerMarker, $isKnockRequest);
+                }
+            } elseif ($ownerMarker === null) {
+                // Non-channel rooms: unknown leftovers stay room_not_active
+                // when empty. A reserved ad-hoc code requires a knock the
+                // same way a saved meeting does. An unreserved code has no
+                // host who can admit, so a direct guest join still passes.
                 $guestSessionKey = $this->actors->readGuestSessionKey($body) ?? $this->actors->newGuestSessionKey();
                 $ownerMarker = $this->actors->ownerMarkerForGuestSession($guestSessionKey);
+                if ($reservedRoom !== null) {
+                    $this->assertNonMemberChannelJoin($room, $peerId, $ownerMarker, $isKnockRequest);
+                } elseif ($isKnockRequest && ! $this->roomHasJoinablePeer($room) && ! $this->allowsEmptyGuestKnock($room)) {
+                    $this->fail('room_not_active', 404);
+                }
             }
 
-            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time());
+            $browserId = $this->readBrowserId($body);
+            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time(), $browserId);
+            if ($browserId !== null) {
+                $this->store->deletePeersForBrowser($room, $browserId, $peerId);
+            }
+            if ($isKnockRequest && ($channel !== null || $reservedRoom !== null)) {
+                // A (re-)knock always starts unadmitted — otherwise a reused
+                // peer id could inherit a stale admission.
+                $this->store->clearPeerAdmission($room, $peerId);
+            }
             if ($this->roomHasJoinablePeer($room)) {
-                $this->reservations->markActivated($room);
+                $this->reservations->markActivated($room, $username);
             }
 
             if ($this->store->countPeers($room) > self::MAX_PEERS_PER_ROOM) {
@@ -91,19 +125,22 @@ final class MeetSignalingService
 
     /**
      * @param  array<string, mixed>  $body
-     * @return array{peers: list<array{id: string, name: string}>, messages: list<array<string, mixed>>}
+     * @return array{peers: list<array{id: string, name: string}>, messages: list<array<string, mixed>>, rosterSig: string}|array{unchanged: true, rosterSig: string}
      */
     public function poll(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRows();
 
-            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $room = $this->cleanRoom($body['room'] ?? null);
+            $this->assertGuestMayEnter($this->actors->tryAuthenticatedUsername($request), $room);
+            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             $this->store->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
 
-            return $this->store->poll($room, $peerId, max(0, (int) ($body['since'] ?? 0)));
+            $knownRosterSig = is_string($body['sig'] ?? null) ? (string) $body['sig'] : null;
+
+            return $this->store->poll($room, $peerId, max(0, (int) ($body['since'] ?? 0)), $knownRosterSig);
         });
     }
 
@@ -116,8 +153,9 @@ final class MeetSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRows();
 
-            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $room = $this->cleanRoom($body['room'] ?? null);
+            $this->assertGuestMayEnter($this->actors->tryAuthenticatedUsername($request), $room);
+            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $from = $this->store->readSendFrom($body);
             $to = $this->store->cleanPeer($body['to'] ?? null);
             $this->store->assertPeerOwnedByActor($room, $from, $ownerMarker);
@@ -157,8 +195,9 @@ final class MeetSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRows();
 
-            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $room = $this->cleanRoom($body['room'] ?? null);
+            $this->assertGuestMayEnter($this->actors->tryAuthenticatedUsername($request), $room);
+            $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $from = $this->store->cleanPeer($body['from'] ?? null);
             $this->store->assertPeerOwnedByActor($room, $from, $ownerMarker);
 
@@ -171,6 +210,8 @@ final class MeetSignalingService
             if (! $this->store->peerExists($room, $from)) {
                 $this->fail('not_in_room');
             }
+
+            $this->recordChannelAdmission($request, $room, $text);
 
             $payload = json_encode(['text' => $text], JSON_THROW_ON_ERROR);
             if (strlen($payload) > 12_000) {
@@ -201,6 +242,94 @@ final class MeetSignalingService
         });
     }
 
+    /**
+     * Guests have no account. Named channels, team channels, direct messages,
+     * and any room that is not an ad-hoc code are not guest doors — join,
+     * knock, poll, and chat stop here so that chat cannot leak. An ad-hoc
+     * meeting stays open on its room code.
+     */
+    private function assertGuestMayEnter(?string $username, string $room): void
+    {
+        if ($username !== null && $username !== '') {
+            return;
+        }
+        if (! $this->channelJoinPolicy->isGuestClosedRoom($room)) {
+            return;
+        }
+
+        $this->fail('forbidden', 403, 'Guests cannot join this conversation.');
+    }
+
+    /**
+     * Non-member join on a channel room, and guest join on a reserved
+     * ad-hoc code: knock joins on a known meeting invite may wait in an
+     * empty room; other channel rooms still require someone joinable
+     * (`room_not_active`). Non-knock joins pass only for a previously
+     * admitted peer. Guests reach this method only on an ad-hoc meeting
+     * room code; named channels and direct messages are refused first.
+     */
+    private function assertNonMemberChannelJoin(
+        string $room,
+        string $peerId,
+        string $ownerMarker,
+        bool $isKnockRequest,
+    ): void {
+        if ($isKnockRequest) {
+            if (! $this->roomHasJoinablePeer($room) && ! $this->allowsEmptyGuestKnock($room)) {
+                $this->fail('room_not_active', 404);
+            }
+
+            return;
+        }
+        if (! $this->store->isPeerAdmitted($room, $peerId, $ownerMarker)) {
+            $this->fail('knock_required', 403, 'Only channel members join directly — request to join instead.');
+        }
+    }
+
+    /**
+     * Server-side half of knock admission: when a channel member, or the
+     * manager of a reserved ad-hoc code (`createdBy` / owner-principal
+     * member), broadcasts an `admit` control message, the target peer row
+     * is marked admitted so its non-knock re-join passes the policy.
+     * Non-member and guest senders are ignored (the message still delivers).
+     */
+    private function recordChannelAdmission(Request $request, string $room, string $text): void
+    {
+        $peerId = $this->channelJoinPolicy->admittedPeerIdFromControlText($text);
+        if ($peerId === null) {
+            return;
+        }
+        $username = $this->actors->tryAuthenticatedUsername($request);
+        if ($username === null || $username === '') {
+            return;
+        }
+        $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
+        if ($channel !== null) {
+            if (! $this->channelJoinPolicy->isChannelMember($username, $channel)) {
+                return;
+            }
+            $this->store->markPeerAdmitted($room, $peerId);
+
+            return;
+        }
+        $reservation = $this->reservations->find($room);
+        if ($reservation === null || ! $this->reservations->canManage($username, $reservation)) {
+            return;
+        }
+
+        $this->store->markPeerAdmitted($room, $peerId);
+    }
+
+    /** Known `/meet/meetings/{id}` invite (meeting collection or reserved leftover). */
+    private function allowsEmptyGuestKnock(string $room): bool
+    {
+        if ($this->channelJoinPolicy->resolveMeetingInviteRoom($room) !== null) {
+            return true;
+        }
+
+        return $this->reservations->find($room) !== null;
+    }
+
     private function roomHasJoinablePeer(string $room): bool
     {
         foreach ($this->store->peersInRoom($room) as $row) {
@@ -224,6 +353,24 @@ final class MeetSignalingService
         }
 
         return $room;
+    }
+
+    /**
+     * Optional client token that identifies the browser profile (localStorage).
+     * Invalid or missing values are ignored — join still succeeds, leftover
+     * peers are just not evicted.
+     *
+     * @param  array<string, mixed>  $body
+     * @return non-empty-string|null
+     */
+    private function readBrowserId(array $body): ?string
+    {
+        $raw = $body['browserId'] ?? null;
+        if (! is_string($raw) || preg_match('/^[a-f0-9]{32}$/', $raw) !== 1) {
+            return null;
+        }
+
+        return $raw;
     }
 
     /**

@@ -32,7 +32,7 @@ function TextEditorSheetDemo({ format, editable, placeholder, content }: SheetSt
 }
 
 const meta = {
-  title: "Shared/TextEditor/TextEditorSheet",
+  title: "UI/Patterns/TextEditor/TextEditorSheet",
   component: TextEditorSheet,
   tags: ["autodocs"],
   parameters: {

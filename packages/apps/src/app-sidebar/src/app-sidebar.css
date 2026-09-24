@@ -1,4 +1,6 @@
 @import "../../styles.css" reference;
+/* Keep tray badge ::after in the main CSS graph (runtime HTML only links index-*.css). */
+@import "../../notifications-core/src/notification-inbox-tray.css";
 
 /**
  * Sidebar chrome SST — workspace roots publish `--app-sidebar-bg`, `--app-sidebar-color`,
@@ -22,37 +24,116 @@
 }
 
 .app-sidebar {
-  @apply fixed sidebar:static z-40 inset-y-0 left-0 shrink-0 flex h-dvh min-h-0 w-64 flex-col self-stretch border-r shadow-2xl sidebar:h-full sidebar:min-h-0 sidebar:shadow-none transition-[translate,margin,border-width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-hidden will-change-transform;
-  background-color: var(--app-sidebar-bg, var(--mail-sidebar, var(--color-cream, #ffffff)));
+  @apply fixed sidebar:static z-40 inset-y-0 left-0 shrink-0 flex h-dvh min-h-0 w-64 flex-col self-stretch border-r shadow-2xl sidebar:h-full sidebar:min-h-0 sidebar:shadow-none transition-[translate,margin,border-width] overflow-hidden will-change-transform;
+  transition-duration: var(--panel-overlay-duration);
+  transition-timing-function: var(--panel-overlay-ease);
+  background-color: var(--app-sidebar-bg, var(--color-we-got-soft));
   border-color: var(
     --app-sidebar-border-color,
-    color-mix(in oklab, var(--color-ink) 15%, transparent)
+    color-mix(in oklab, var(--color-we-got-dark) 15%, transparent)
   );
-  color: var(--app-sidebar-color, var(--color-ink));
-  --app-sidebar-close-hover-bg: color-mix(
-    in oklab,
-    var(--sidebar-logo-close-button-color, var(--color-ink)) 8%,
-    transparent
-  );
+  color: var(--app-sidebar-color, var(--color-we-got-dark));
+  /*
+   * Safe area is padding, so the sidebar fill runs under the status bar and
+   * home indicator while the header and footer keep today's inset.
+   */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* Outer chrome gutter — aligns with the app-switch icon tile. */
   --app-sidebar-padding-x: 1rem;
+  /* Same lockup math as `.app-switch-button__icon` (two caption lines). */
+  --app-switch-lockup-leading: 0.85;
+  --app-switch-lockup-line: calc(1.875rem * var(--app-switch-lockup-leading));
+  --app-switch-icon-size: calc(2 * var(--app-switch-lockup-line));
+  /* White mark inset in 512² `/app-icons/*.svg` artwork (calendar body at x=112). */
+  --app-switch-glyph-inset: calc(var(--app-switch-icon-size) * 112 / 512);
+  /* Section titles + collection/menu rows: align to the glyph, not the tile edge. */
+  --app-sidebar-item-padding-x: var(--app-switch-glyph-inset);
+  /* Collection + MenuItem row height — md chrome, not the in-row xs edit/fold hit. */
+  --app-sidebar-item-height: var(--control-height-md, 2.25rem);
+  /*
+   * Nav item chrome reads the rail ladder from `workspace-color.css`.
+   * This file does not restate the 12 / 18 / 28 mix. Selected on-color
+   * uses contrast-color against the selected wash when the token is absent
+   * (cream-nudged white, or dark when the wash stays light).
+   */
+  --button-outline-hover-background: var(--app-sidebar-item-hover-bg);
+  --button-outline-active-background: var(--app-sidebar-item-selected-bg);
+  --button-outline-active-hover-background: var(--app-sidebar-item-selected-hover-bg);
+  /* Fallback when contrast-color() is unavailable: keep a readable dark glyph. */
+  --button-active-color: var(
+    --app-sidebar-item-selected-color,
+    color-mix(
+      in oklab,
+      var(--button-active-color, var(--workspace-accent, var(--color-we-got-dark))) 70%,
+      var(--color-we-got-dark)
+    )
+  );
+}
+
+@supports (color: contrast-color(red)) {
+  .app-sidebar {
+    /*
+     * Light on-color (cream-nudged white) when the selected wash is strong/dark
+     * enough; dark when the wash stays light (e.g. yellow Notes). Override via
+     * `--app-sidebar-item-selected-color` still wins.
+     */
+    --button-active-color: var(
+      --app-sidebar-item-selected-color,
+      color-mix(
+        in oklab,
+        contrast-color(var(--button-outline-active-background)) 92%,
+        var(--color-we-got-soft)
+      )
+    );
+  }
 }
 
 .app-sidebar__header {
-  @apply flex shrink-0 items-center justify-between gap-3 py-6;
+  /*
+   * Block padding matches `.workspace-app-layout__main-header` (`p-4 md:p-6`) so
+   * the app-switch icon tile tops align with ViewHeader IconButtons across the
+   * mobile overlay split. Keep `items-start` so the mark does not float above the bell.
+   */
+  @apply flex shrink-0 items-start justify-between gap-3 py-4 md:py-6;
   padding-inline: var(--app-sidebar-padding-x);
 }
 
 .app-sidebar__header-main {
-  @apply flex min-w-0 items-center gap-2;
+  @apply flex min-w-0 items-start gap-2;
 }
 
-.app-sidebar__close {
-  @apply flex size-8 shrink-0 items-center justify-center rounded-full transition-colors sidebar:hidden;
-  color: var(--sidebar-logo-close-button-color, var(--color-ink));
+/*
+ * Trigger carries `py-1` for hit area; zero the top so the tile (not the padding)
+ * shares the same top edge as main-header IconButtons.
+ */
+.app-sidebar__header .app-switch-button__trigger {
+  @apply pt-0;
 }
 
-.app-sidebar__close:hover {
-  background-color: var(--app-sidebar-close-hover-bg);
+.app-sidebar__notifications {
+  /* Tile tops at header edge — no mt offset. */
+  @apply shrink-0;
+  /*
+   * Bell stroke = sidebar right hairline (same token as `.app-sidebar` `border-r`).
+   */
+  --button-outline-border-color: var(
+    --app-sidebar-border-color,
+    color-mix(in oklab, var(--color-we-got-dark) 15%, transparent)
+  );
+  /*
+   * Remap ink to sidebar icon chrome so the bell glyph matches the app-switch
+   * close/lockup color (white on Docs/Mail, ink on Calendar/Drive, …).
+   * Unread badge fill/on-color stay on the tray trigger (primary CTA tokens).
+   */
+  --color-we-got-dark: var(
+    --sidebar-logo-close-button-color,
+    var(--app-sidebar-color, var(--color-we-got-dark))
+  );
+  --button-outline-color: var(--color-we-got-dark);
+  --button-outline-hover-color: var(--color-we-got-dark);
+  /* Idle stays transparent (outline). Hover uses the same accent wash as nav items. */
+  --button-outline-hover-background: var(--app-sidebar-item-hover-bg);
 }
 
 .app-sidebar__scroll {
@@ -86,5 +167,18 @@
 }
 
 .app-sidebar__scrim {
-  @apply fixed inset-0 z-30 cursor-pointer bg-black/30 sidebar:hidden animate-in fade-in duration-300;
+  /*
+   * Dim lives on ::before. A background on this fixed layer is what iOS samples
+   * for the status bar, which paints the gap gray instead of the shell.
+   */
+  @apply fixed inset-0 z-30 cursor-pointer bg-transparent sidebar:hidden animate-in fade-in;
+  --tw-duration: var(--panel-overlay-duration);
+  animation-duration: var(--panel-overlay-duration);
+}
+
+.app-sidebar__scrim::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: rgb(0 0 0 / 30%);
 }

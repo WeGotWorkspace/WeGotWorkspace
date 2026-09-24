@@ -20,7 +20,7 @@ const cardHandlers = {
 };
 
 const meta = {
-  title: "Shared/TextEditor/Docs comments/Thread card",
+  title: "Features/Docs/TextEditor/Docs comments/Thread card",
   component: DocsCommentsThreadCard,
   parameters: {
     layout: "padded",

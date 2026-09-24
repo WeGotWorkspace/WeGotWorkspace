@@ -10,6 +10,7 @@ import type {
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarRouteState } from "@/calendar-core/src/calendar-route-search";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
+import type { TasksUIData } from "@/tasks-core/src/tasks-types";
 
 export type CalendarWorkspaceProps = {
   data: CalendarUIData;
@@ -34,6 +35,10 @@ export type CalendarWorkspaceProps = {
   workspaceOrigin?: string;
   /** App-owned Join navigation (new-window Meet or new-tab https). */
   onJoinMeeting?: (href: string) => void;
+  /** Story/test Tasks overlay fixture. Omitted in live Calendar — hydrate from Dexie/hybrid. */
+  taskDueBootstrap?: TasksUIData;
+  /** App-owned navigation to `/tasks/lists/{listId}?task=`. */
+  onOpenTaskInTasks?: (href: string) => void;
 };
 
 export function calendarDirectoryGroupsFromBootstrap(

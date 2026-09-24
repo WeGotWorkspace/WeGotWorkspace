@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Collab;
 
+use App\Events\EventDispatch;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
@@ -34,6 +35,7 @@ final class DocCollabDocumentService
         private DriveShareAuthorizer $authorizer,
         private SearchIndexerService $search,
         private BestEffortSearchIndexSync $searchSync,
+        private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     public function getMarkdown(Request $request, mixed $room): string
@@ -109,6 +111,12 @@ final class DocCollabDocumentService
                 fn () => $this->search->indexFileStorageKey($documentKey),
                 'files/'.$documentKey,
             );
+            $this->eventDispatch->fireMutation(
+                (string) ($this->actors->requirePrincipal($request)['username'] ?? ''),
+                'collab',
+                'written',
+                'files/'.$documentKey,
+            );
         }
 
         if ($hasYjs) {
@@ -149,8 +157,8 @@ final class DocCollabDocumentService
             $this->fail('forbidden', 403);
         }
         // View-only member grants may load the document/Yjs snapshot read-only; writes stay gated
-        // by resolveWritablePath (mayEditContent). Comment mutations are UI-enforced and still
-        // cannot persist via PUT without edit rights (or a future comment-save path).
+        // by resolveWritablePath (mayEditContent). Comment/suggestion discussion persists via
+        // REST `/files/threads` (mayComment), not this PUT.
         if (! $rights['mayView']) {
             $this->fail('forbidden', 403);
         }

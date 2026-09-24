@@ -590,6 +590,98 @@ describe("useNotesController URL routing", () => {
     expect(result.current.view).toBe("nb:Drafts");
   });
 
+  it("keeps a deep-linked note id while local bootstrap list is still loading", () => {
+    const onNoteChange = vi.fn();
+    const deepLinkId = "b66cbb63-266d-4797-b3b9-c21b813f691b";
+    const empty: NotesUIData = { notes: [], notebooks: [], tags: [] };
+    const loaded: NotesUIData = {
+      notes: [{ ...localNote, id: deepLinkId }],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+
+    const { result, rerender } = renderHook(
+      ({ data, listLoading }: { data: NotesUIData; listLoading: boolean }) =>
+        useNotesController({
+          data,
+          listLoading,
+          initialNoteId: deepLinkId,
+          onNoteChange,
+        }),
+      { initialProps: { data: empty, listLoading: true } },
+    );
+
+    expect(result.current.activeId).toBe(deepLinkId);
+    expect(onNoteChange).not.toHaveBeenCalledWith("");
+
+    rerender({ data: loaded, listLoading: false });
+
+    expect(result.current.activeId).toBe(deepLinkId);
+    expect(onNoteChange).not.toHaveBeenCalledWith("");
+  });
+
+  it("keeps a deep-linked note id when bootstrap data leads shell notes by one tick", () => {
+    // listLoading flips false in the same render that delivers data.notes, but shell
+    // only merges into `notes` in an effect — selection must trust data.notes and
+    // must not ReferenceError on an undefined alias (e.g. sourceNotes).
+    const onNoteChange = vi.fn();
+    const deepLinkId = "493f42cd-d139-400d-b1a6-0aadf5416d6a";
+    const empty: NotesUIData = { notes: [], notebooks: [], tags: [] };
+    const loaded: NotesUIData = {
+      notes: [{ ...localNote, id: deepLinkId }],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+
+    const { result, rerender } = renderHook(
+      ({ data, listLoading }: { data: NotesUIData; listLoading: boolean }) =>
+        useNotesController({
+          data,
+          listLoading,
+          initialNoteId: deepLinkId,
+          onNoteChange,
+        }),
+      { initialProps: { data: empty, listLoading: true } },
+    );
+
+    expect(result.current.activeId).toBe(deepLinkId);
+    expect(result.current.notes).toEqual([]);
+
+    rerender({ data: loaded, listLoading: false });
+
+    expect(result.current.activeId).toBe(deepLinkId);
+    expect(onNoteChange).not.toHaveBeenCalledWith("");
+    expect(result.current.notes.some((note) => note.id === deepLinkId)).toBe(true);
+  });
+
+  it("clears a deep-linked note id after hydrate when the note is absent", () => {
+    const onNoteChange = vi.fn();
+    const empty: NotesUIData = { notes: [], notebooks: [], tags: [] };
+    const loaded: NotesUIData = {
+      notes: [{ ...localNote, id: "other-note" }],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+
+    const { result, rerender } = renderHook(
+      ({ data, listLoading }: { data: NotesUIData; listLoading: boolean }) =>
+        useNotesController({
+          data,
+          listLoading,
+          initialNoteId: "missing-note",
+          onNoteChange,
+        }),
+      { initialProps: { data: empty, listLoading: true } },
+    );
+
+    expect(result.current.activeId).toBe("missing-note");
+
+    rerender({ data: loaded, listLoading: false });
+
+    expect(result.current.activeId).toBe("");
+    expect(onNoteChange).toHaveBeenCalledWith("");
+  });
+
   it("initialNoteId selects the note on mount", () => {
     const { result } = renderHook(() =>
       useNotesController({ data, listLoading: false, initialNoteId: "note-1" }),
@@ -680,6 +772,31 @@ describe("useNotesController URL routing", () => {
     clickSelect(result, "note-1");
 
     expect(onNoteChange).toHaveBeenCalledTimes(1);
+    expect(onNoteChange).toHaveBeenCalledWith("note-1");
+  });
+
+  it("selects the note and writes the path on a mobile overlay viewport", () => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes("max-width"),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    const onNoteChange = vi.fn();
+    const { result } = renderHook(() =>
+      useNotesController({ data, listLoading: false, onNoteChange }),
+    );
+
+    clickSelect(result, "note-1");
+
+    expect(result.current.activeId).toBe("note-1");
     expect(onNoteChange).toHaveBeenCalledWith("note-1");
   });
 
@@ -1066,7 +1183,7 @@ describe("useNotesController archive persist flags", () => {
     window.localStorage.removeItem(NOTES_VIEW_PREFS_STORAGE_KEY);
   });
 
-  it("sets archived and keeps the open note selected", () => {
+  it("sets archived and closes detail when the open note leaves the current view", () => {
     const data: NotesUIData = {
       notes: [{ ...localNote, id: "note-1" }],
       notebooks: ["Drafts"],
@@ -1081,11 +1198,72 @@ describe("useNotesController archive persist flags", () => {
 
     expect(result.current.archived["note-1"]).toBe(true);
     expect(result.current.notes.find((note) => note.id === "note-1")?.archived).toBe(true);
-    expect(result.current.activeId).toBe("note-1");
-    expect(result.current.selectedIds).toEqual(["note-1"]);
+    expect(result.current.activeId).toBe("");
+    expect(result.current.selectedIds).toEqual([]);
   });
 
-  it("clears archived on unarchive and keeps the note selected", () => {
+  it("does not select or open a note when archiving from the list without a prior selection", () => {
+    const archiveNote = vi.fn().mockImplementation(async (id: string) => ({
+      ...localNote,
+      id,
+      archived: true,
+    }));
+    const data: NotesUIData = {
+      notes: [
+        { ...localNote, id: "note-1" },
+        { ...localNote, id: "note-2" },
+      ],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+    const { result } = renderHook(() =>
+      useNotesController({
+        data,
+        listLoading: false,
+        operations: {
+          upsertNote: vi.fn(),
+          deleteNote: vi.fn(),
+          archiveNote,
+          restoreNote: vi.fn(),
+          createNotebook: vi.fn(),
+          renameNotebook: vi.fn(),
+          deleteNotebook: vi.fn(),
+        },
+      }),
+    );
+
+    expect(result.current.visibleNotes.map((note) => note.id).sort()).toEqual(["note-1", "note-2"]);
+
+    act(() => {
+      result.current.toggleArchive("note-1");
+    });
+
+    expect(result.current.archived["note-1"]).toBe(true);
+    expect(result.current.notes.find((note) => note.id === "note-1")?.archived).toBe(true);
+    expect(result.current.visibleNotes.map((note) => note.id)).toEqual(["note-2"]);
+    expect(result.current.activeId).toBe("");
+    expect(result.current.selectedIds).toEqual([]);
+  });
+
+  it("shows the empty list state after archiving the last visible note", () => {
+    const data: NotesUIData = {
+      notes: [{ ...localNote, id: "note-1" }],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+    const { result } = renderHook(() => useNotesController({ data, listLoading: false }));
+
+    expect(result.current.visibleNotes).toHaveLength(1);
+
+    act(() => {
+      result.current.toggleArchive("note-1");
+    });
+
+    expect(result.current.visibleNotes).toEqual([]);
+    expect(result.current.archived["note-1"]).toBe(true);
+  });
+
+  it("clears archived on unarchive and closes detail when the note leaves archive view", () => {
     const data: NotesUIData = {
       notes: [{ ...localNote, id: "note-1", archived: true }],
       notebooks: ["Drafts"],
@@ -1105,7 +1283,37 @@ describe("useNotesController archive persist flags", () => {
     });
 
     expect(result.current.archived["note-1"]).toBeFalsy();
-    expect(result.current.activeId).toBe("note-1");
+    expect(result.current.activeId).toBe("");
+    expect(result.current.selectedIds).toEqual([]);
+  });
+
+  it("keeps archived notes out of All after a stale bootstrap refresh", () => {
+    const data: NotesUIData = {
+      notes: [{ ...localNote, id: "note-1" }],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+    const { result, rerender } = renderHook(
+      ({ data, bootstrapRevision }: { data: NotesUIData; bootstrapRevision?: number }) =>
+        useNotesController({ data, listLoading: false, bootstrapRevision }),
+      { initialProps: { data, bootstrapRevision: 0 } },
+    );
+
+    act(() => {
+      result.current.toggleArchive("note-1");
+    });
+
+    rerender({
+      data: {
+        notes: [{ ...localNote, id: "note-1", archived: false }],
+        notebooks: ["Drafts"],
+        tags: [],
+      },
+      bootstrapRevision: 1,
+    });
+
+    expect(result.current.archived["note-1"]).toBe(true);
+    expect(result.current.visibleNotes).toEqual([]);
   });
 
   it("keeps optimistic archived when a stale bootstrap refresh arrives", () => {

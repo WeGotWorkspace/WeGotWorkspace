@@ -1,5 +1,5 @@
 import { useCallback, useEffect, type MutableRefObject } from "react";
-import { toast } from "sonner";
+import { useAppToast } from "@/hooks/use-app-toast";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import {
   buildMeetControlMessage,
@@ -10,6 +10,9 @@ import {
   MEET_AD_HOC_RESERVATION_TTL_MS,
   meetActorPrincipal,
 } from "@/meet-core/src/meet-invite-status";
+import { meetLabels } from "@/meet-core/src/meet-labels";
+import { sendMeetLeaveBeacon } from "@/meet-core/src/meet-leave-beacon";
+import { meetJoinAlreadyEngaged } from "@/meet-core/src/meet-join-reuse";
 import { createMeetPeerId, createMeetRoomCode } from "@/meet-core/src/meet-room-id";
 import type { MeetCallSessionState } from "@/meet-core/src/use-meet-call-session";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
@@ -20,6 +23,11 @@ export type UseMeetMutationsArgs = {
   canModerateKnocks: boolean;
   actingUsername?: string | null;
   leaveRef: MutableRefObject<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)>;
+  /**
+   * True when a suite-level call store keeps the call alive across route unmounts.
+   * Skips the unmount leave and the page-level handlers (owned by `MeetCallProvider`).
+   */
+  persistentCall?: boolean;
 };
 
 export function useMeetMutations({
@@ -28,7 +36,9 @@ export function useMeetMutations({
   canModerateKnocks,
   actingUsername,
   leaveRef,
+  persistentCall = false,
 }: UseMeetMutationsArgs) {
+  const toast = useAppToast();
   const { meetRtc, operationsRef, debugRtc, ensureLocalMedia, stopLocalMedia } = session;
 
   const leave = useCallback(
@@ -52,6 +62,7 @@ export function useMeetMutations({
       room.resetPeerMaps();
       room.roomCodeRef.current = null;
       room.selfIdRef.current = null;
+      if (room.joinInFlightRef) room.joinInFlightRef.current = null;
     },
     // Room setters/refs are stable; omit the room object to avoid recreating leave every render.
     [meetRtc, stopLocalMedia],
@@ -62,107 +73,149 @@ export function useMeetMutations({
     const roomCode = room.roomCodeRef.current;
     const peerId = room.selfIdRef.current;
     if (!roomCode || !peerId) return;
-    const payload = JSON.stringify({
-      room: roomCode,
-      peerId,
-      sessionKey: meetRtc.getSessionKey() ?? undefined,
-    });
-    const endpoint = `/api/v1/rooms/${encodeURIComponent(roomCode)}/participants/${encodeURIComponent(peerId)}`;
-    void fetch(endpoint, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: payload,
-      keepalive: true,
-      credentials: "same-origin",
-    }).catch(() => {
-      // Ignore best-effort unload failures.
-    });
+    sendMeetLeaveBeacon({ roomCode, peerId, sessionKey: meetRtc.getSessionKey() });
   }, [meetRtc, room.roomCodeRef, room.selfIdRef]);
 
-  const joinRoom = useCallback(
-    async (roomCode?: string) => {
-      const target = (roomCode ?? createMeetRoomCode()).trim().toLowerCase();
-      const peerId = createMeetPeerId(10);
-      room.setError(null);
-      room.setStatus("preparing");
-      room.setRoomCode(target);
-      room.setSelfId(peerId);
-      room.selfIdRef.current = peerId;
-      room.roomCodeRef.current = target;
-      room.setChatMessages([]);
-      room.setWaitingForAdmission(false);
-      room.setKnockers([]);
-      room.setEndedMessage(null);
-      room.resetPeerMaps();
+  const warnIfCallActiveElsewhere = useCallback(() => {
+    if (room.remoteCallActiveRef?.current) {
+      toast.show(meetLabels.callActiveInAnotherTab, { severity: "info" });
+    }
+  }, [room.remoteCallActiveRef, toast]);
 
+  const runSerializedJoin = useCallback(
+    async (work: () => Promise<void>) => {
+      const slot = room.joinInFlightRef ?? { current: null };
+      const previous = slot.current;
+      let release = (): void => {};
+      const current = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      slot.current = current;
       try {
-        debugRtc("join-room-start", { room: target, peerId });
-        await ensureLocalMedia();
-        await meetRtc.join({
-          room: target,
-          peerId,
-          name: room.displayNameRef.current.trim() || "Guest",
-        });
-        room.setStatus("in-call");
-        room.setStartedAt(Date.now());
-        debugRtc("join-room-success", { room: target, peerId });
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Could not join meeting.";
-        debugRtc("join-room-failed", { room: target, peerId, message });
-        room.setStatus("failed");
-        room.setError(message);
-        throw e;
+        if (previous) await previous.catch(() => undefined);
+        await work();
+      } finally {
+        release();
+        if (slot.current === current) slot.current = null;
       }
     },
-    [debugRtc, ensureLocalMedia, meetRtc, room],
+    [room.joinInFlightRef],
+  );
+
+  const joinRoom = useCallback(
+    async (roomCode?: string, options?: { video?: boolean }) => {
+      warnIfCallActiveElsewhere();
+      if (options?.video === false) room.setVideoOn(false);
+      const target = (roomCode ?? createMeetRoomCode()).trim().toLowerCase();
+
+      await runSerializedJoin(async () => {
+        if (
+          meetJoinAlreadyEngaged(
+            room.statusRef.current,
+            room.roomCodeRef.current,
+            target,
+            room.waitingForAdmissionRef.current,
+          )
+        ) {
+          debugRtc("join-room-reuse", { room: target, peerId: room.selfIdRef.current });
+          return;
+        }
+        const peerId = createMeetPeerId(10);
+        room.setError(null);
+        room.setStatus("preparing");
+        room.setRoomCode(target);
+        room.setSelfId(peerId);
+        room.selfIdRef.current = peerId;
+        room.roomCodeRef.current = target;
+        room.setChatMessages([]);
+        room.setWaitingForAdmission(false);
+        room.setKnockers([]);
+        room.setEndedMessage(null);
+        room.resetPeerMaps();
+
+        try {
+          debugRtc("join-room-start", { room: target, peerId });
+          await ensureLocalMedia();
+          await meetRtc.join({
+            room: target,
+            peerId,
+            name: room.displayNameRef.current.trim() || "Guest",
+          });
+          room.setStatus("in-call");
+          room.setStartedAt(Date.now());
+          debugRtc("join-room-success", { room: target, peerId });
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Could not join meeting.";
+          debugRtc("join-room-failed", { room: target, peerId, message });
+          room.setStatus("failed");
+          room.setError(message);
+          throw e;
+        }
+      });
+    },
+    [debugRtc, ensureLocalMedia, meetRtc, room, runSerializedJoin, warnIfCallActiveElsewhere],
   );
 
   const requestJoin = useCallback(
     async (roomCode: string) => {
       const target = roomCode.trim().toLowerCase();
       if (!target) return;
-      const peerId = createMeetPeerId(10);
-      room.setError(null);
-      room.setStatus("preparing");
-      room.setRoomCode(target);
-      room.setSelfId(peerId);
-      room.selfIdRef.current = peerId;
-      room.roomCodeRef.current = target;
-      room.setChatMessages([]);
-      room.setWaitingForAdmission(true);
-      room.setKnockers([]);
-      room.setEndedMessage(null);
-      room.resetPeerMaps();
+      warnIfCallActiveElsewhere();
 
-      try {
-        await ensureLocalMedia();
-        await meetRtc.join({
-          room: target,
-          peerId,
-          name: encodeMeetKnockerName(room.displayNameRef.current),
-        });
-        if (operationsRef.current) {
-          await operationsRef.current.chat({
-            room: target,
-            from: peerId,
-            text: buildMeetControlMessage({
-              kind: "knock",
-              peerId,
-              name: room.displayNameRef.current.trim() || "Guest",
-            }),
-            sessionKey: meetRtc.getSessionKey() ?? undefined,
-          });
+      await runSerializedJoin(async () => {
+        if (
+          meetJoinAlreadyEngaged(
+            room.statusRef.current,
+            room.roomCodeRef.current,
+            target,
+            room.waitingForAdmissionRef.current,
+          )
+        ) {
+          return;
         }
-        room.setStatus("waiting");
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Could not request to join.";
-        room.setStatus("failed");
-        room.setError(message);
-        room.setWaitingForAdmission(false);
-        throw e;
-      }
+        const peerId = createMeetPeerId(10);
+        room.setError(null);
+        room.setWaitingForAdmission(true);
+        room.setStatus("preparing");
+        room.setRoomCode(target);
+        room.setSelfId(peerId);
+        room.selfIdRef.current = peerId;
+        room.roomCodeRef.current = target;
+        room.setChatMessages([]);
+        room.setKnockers([]);
+        room.setEndedMessage(null);
+        room.resetPeerMaps();
+
+        try {
+          await ensureLocalMedia();
+          await meetRtc.join({
+            room: target,
+            peerId,
+            name: encodeMeetKnockerName(room.displayNameRef.current),
+          });
+          if (operationsRef.current) {
+            await operationsRef.current.chat({
+              room: target,
+              from: peerId,
+              text: buildMeetControlMessage({
+                kind: "knock",
+                peerId,
+                name: room.displayNameRef.current.trim() || "Guest",
+              }),
+              sessionKey: meetRtc.getSessionKey() ?? undefined,
+            });
+          }
+          room.setStatus("waiting");
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Could not request to join.";
+          room.setStatus("failed");
+          room.setError(message);
+          room.setWaitingForAdmission(false);
+          throw e;
+        }
+      });
     },
-    [ensureLocalMedia, meetRtc, operationsRef, room],
+    [ensureLocalMedia, meetRtc, operationsRef, room, runSerializedJoin, warnIfCallActiveElsewhere],
   );
 
   const admitKnocker = useCallback(
@@ -193,6 +246,37 @@ export function useMeetMutations({
       room.setKnockers((prev) => prev.filter((entry) => entry.id !== peerId));
     },
     [canModerateKnocks, meetRtc, operationsRef, room],
+  );
+
+  const mutePeer = useCallback(
+    async (peerId: string, muted = true) => {
+      if (!canModerateKnocks) return;
+      if (!operationsRef.current || !room.roomCodeRef.current || !room.selfIdRef.current) return;
+      if (peerId === room.selfIdRef.current) return;
+      const kind = muted ? "mute" : "unmute";
+      try {
+        await operationsRef.current.chat({
+          room: room.roomCodeRef.current,
+          from: room.selfIdRef.current,
+          text: buildMeetControlMessage({ kind, peerId }),
+          sessionKey: meetRtc.getSessionKey() ?? undefined,
+        });
+        const name = room.peerNamesRef.current.get(peerId)?.trim() || "participant";
+        toast.show(
+          muted ? meetLabels.mutedParticipant(name) : meetLabels.unmutedParticipant(name),
+          { severity: "info" },
+        );
+      } catch (e) {
+        toast.showError(
+          e instanceof Error
+            ? e.message
+            : muted
+              ? meetLabels.couldNotMuteParticipant
+              : meetLabels.couldNotUnmuteParticipant,
+        );
+      }
+    },
+    [canModerateKnocks, meetRtc, operationsRef, room, toast],
   );
 
   const endCallForAll = useCallback(async () => {
@@ -240,10 +324,10 @@ export function useMeetMutations({
         });
       } catch (e) {
         room.setChatMessages((prev) => prev.filter((line) => line.id !== localLine.id));
-        toast.error(e instanceof Error ? e.message : "Could not send message.");
+        toast.showError(e instanceof Error ? e.message : meetLabels.couldNotSendMessage);
       }
     },
-    [meetRtc, operationsRef, room],
+    [meetRtc, operationsRef, room, toast],
   );
 
   const startMeeting = useCallback(async () => {
@@ -260,13 +344,17 @@ export function useMeetMutations({
     await joinRoom(target);
   }, [actingUsername, joinRoom, operationsRef]);
 
+  // With a suite-level call store the call survives route unmounts; page-level
+  // leave behavior (beforeunload/pagehide) is owned by MeetCallProvider instead.
   useEffect(() => {
+    if (persistentCall) return;
     return () => {
       void leaveRef.current?.();
     };
-  }, [leaveRef]);
+  }, [leaveRef, persistentCall]);
 
   useEffect(() => {
+    if (persistentCall) return;
     const isMeetingActive =
       room.status === "in-call" || room.status === "preparing" || room.status === "waiting";
     if (!isMeetingActive) return;
@@ -277,9 +365,10 @@ export function useMeetMutations({
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [room.status]);
+  }, [persistentCall, room.status]);
 
   useEffect(() => {
+    if (persistentCall) return;
     const onPageHide = () => {
       const active = room.statusRef.current === "in-call" || room.statusRef.current === "waiting";
       if (!active) return;
@@ -287,7 +376,7 @@ export function useMeetMutations({
     };
     window.addEventListener("pagehide", onPageHide);
     return () => window.removeEventListener("pagehide", onPageHide);
-  }, [room.statusRef, sendLeaveBeacon]);
+  }, [persistentCall, room.statusRef, sendLeaveBeacon]);
 
   return {
     joinRoom,
@@ -295,6 +384,7 @@ export function useMeetMutations({
     requestJoin,
     admitKnocker,
     denyKnocker,
+    mutePeer,
     endCallForAll,
     sendChat,
     startMeeting,

@@ -20,7 +20,6 @@ import {
   noteHasListableBody,
   shouldDiscardEmptyCreatedNote,
   noteListExcerpt,
-  noteListTagOverflow,
   noteListTitle,
   usableNoteListPreview,
   noteListLocationLabel,
@@ -122,15 +121,6 @@ describe("notes-note-utils", () => {
         body: [""],
       }),
     ).toBe("Boodschappen Aug Bananen Fruit Past");
-  });
-
-  it("caps visible list tags and reports overflow", () => {
-    expect(noteListTagOverflow(["a", "b"])).toEqual({ visible: ["a", "b"], overflow: 0 });
-    expect(noteListTagOverflow(["a", "b", "c", "d"])).toEqual({
-      visible: ["a", "b"],
-      overflow: 2,
-    });
-    expect(noteListTagOverflow(["  focus  ", ""])).toEqual({ visible: ["focus"], overflow: 0 });
   });
 
   it("hides tags and stars for Shared-with-me recipients; shows for owned and group", () => {
@@ -309,6 +299,22 @@ describe("notes-note-utils", () => {
       ...sampleNote,
       archived: false,
       date: "2026-08-10T12:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.archived).toBe(true);
+  });
+
+  it("keeps optimistic archived when the server row is newer but still unarchived", () => {
+    const local: Note = {
+      ...sampleNote,
+      archived: true,
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const server: Note = {
+      ...sampleNote,
+      archived: false,
+      date: "2026-08-10T13:00:00.000Z",
+      updatedAt: "2026-08-10T13:00:00.000Z",
     };
     const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
     expect(merged[0]?.archived).toBe(true);
@@ -705,6 +711,16 @@ describe("notes-note-utils", () => {
       searchQuery: "",
     });
     expect(sharedNb.map((note) => note.id)).toEqual(["group-1"]);
+  });
+
+  it("excludes notes from All when only note.archived is set", () => {
+    const visible = filterVisibleNotes([{ ...sampleNote, id: "n-arch", archived: true }], {
+      view: "all",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(visible).toEqual([]);
   });
 
   it("orders visible notes newest-edited first", () => {

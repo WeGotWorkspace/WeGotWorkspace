@@ -37,6 +37,6 @@ export default {
   [`${apiDir}/**/*.php`]: (files) => {
     const rel = toApiRelative(files);
     if (rel.length === 0) return [];
-    return `composer --working-dir ${apiDir} exec -- pint ${quotePaths(rel)}`;
+    return `packages/api/vendor/bin/pint ${quotePaths(rel.map((relPath) => path.join(apiDir, relPath)))}`;
   },
 };

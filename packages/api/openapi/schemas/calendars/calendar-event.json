@@ -191,7 +191,7 @@
       "id": { "$ref": "#/components/schemas/JmapId", "readOnly": true },
       "uid": { "type": "string" },
       "calendarIds": { "$ref": "#/components/schemas/JmapIdBooleanMap" },
-      "title": { "type": "string" },
+      "title": { "type": "string", "minLength": 1 },
       "description": { "type": ["string", "null"] },
       "start": { "$ref": "#/components/schemas/JmapLocalDateTime" },
       "end": { "$ref": "#/components/schemas/JmapLocalDateTime" },
@@ -304,14 +304,21 @@
       },
       {
         "$ref": "#/components/schemas/CalendarEvent"
+      },
+      {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1 }
+        }
       }
     ],
-    "description": "POST body; server assigns id and @type."
+    "description": "POST body; server assigns id and @type. title is required and must be non-empty after trim."
   },
   "CalendarEventPatch": {
     "type": "object",
     "properties": {
-      "title": { "type": "string" },
+      "title": { "type": "string", "minLength": 1 },
       "description": { "type": ["string", "null"] },
       "start": { "$ref": "#/components/schemas/JmapLocalDateTime" },
       "end": { "$ref": "#/components/schemas/JmapLocalDateTime" },

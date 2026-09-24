@@ -54,6 +54,22 @@ describe("WorkspaceSwipeList event delegation", () => {
     expect(screen.getByRole("button", { name: /Bea/i }).getAttribute("data-active")).toBe("true");
   });
 
+  it("keeps the original row id when swipe list overwrites React id", () => {
+    const onItemClick = vi.fn();
+    render(
+      <WorkspaceSwipeList isTouch onItemClick={onItemClick}>
+        {row("note-1", "Ada")}
+        {row("note-2", "Bea")}
+      </WorkspaceSwipeList>,
+    );
+
+    const bea = screen.getByRole("button", { name: /Bea/i });
+    expect(bea.getAttribute("data-list-item-id")).toBe("note-2");
+    fireEvent.click(bea);
+    expect(onItemClick).toHaveBeenCalledTimes(1);
+    expect(onItemClick.mock.calls[0]?.[0]).toBe("note-2");
+  });
+
   it("ignores clicks that are not on a list row", () => {
     const onItemClick = vi.fn();
     render(

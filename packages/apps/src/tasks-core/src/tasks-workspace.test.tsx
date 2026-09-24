@@ -58,19 +58,22 @@ describe("TasksWorkspace show completed toggle", () => {
     });
   });
 
-  it("reveals completed rows when the icon-only show-completed toggle is pressed", () => {
+  it("reveals completed rows when the show-completed toggle is pressed", () => {
     renderWorkspace();
 
     const toggle = screen.getByRole("button", { name: defaultTasksLabels.showCompletedTasks });
-    expect(toggle.textContent).not.toContain(defaultTasksLabels.showCompletedTasks);
+    expect(toggle.className).toContain("tasks-workspace__show-completed");
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle.textContent).toContain(defaultTasksLabels.showCompletedTasks);
     expect(screen.queryByText("Ship v0.9")).toBeNull();
 
     fireEvent.click(toggle);
 
-    const hide = screen.getByRole("button", { name: defaultTasksLabels.hideCompletedTasks });
-    expect(hide).toBeTruthy();
-    expect(hide.textContent).not.toContain(defaultTasksLabels.hideCompletedTasks);
+    const pressed = screen.getByRole("button", { name: defaultTasksLabels.hideCompletedTasks });
+    expect(pressed).toBeTruthy();
+    expect(pressed.className).toContain("icon-button--active");
+    expect(pressed.textContent).toContain(defaultTasksLabels.showCompletedTasks);
+    expect(pressed.textContent).not.toContain(defaultTasksLabels.hideCompletedTasks);
     expect(screen.getByText("Ship v0.9")).toBeTruthy();
   });
 });

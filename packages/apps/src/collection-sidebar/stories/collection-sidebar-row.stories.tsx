@@ -9,7 +9,7 @@ import {
 } from "@/collection-sidebar/src/collection-sidebar-row";
 
 const meta: Meta<typeof CollectionSidebarRow> = {
-  title: "Shared/CollectionSidebarRow",
+  title: "UI/Patterns/Collection Sidebar Row",
   component: CollectionSidebarRow,
   tags: ["autodocs"],
   args: {
@@ -78,6 +78,28 @@ export const NoCheckbox: Story = {
   },
 };
 
+/** Meet-style chrome: presence / unread sit inside the select hit target. */
+export const LeadingAndTrailingChrome: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    onToggleVisibility: undefined,
+    showColorDot: false,
+    selected: false,
+    name: "Ada Lovelace",
+    leading: <span data-testid="presence-dot" aria-hidden />,
+    trailing: <span data-testid="unread-count">2</span>,
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Leading chrome is decorative (`pointer-events: none`); clicks hit the
+    // stretched select control. Trailing chrome sits inside the select (its
+    // text is part of the accessible name — match by substring).
+    await userEvent.click(canvas.getByRole("button", { name: /Ada Lovelace/ }));
+    await userEvent.click(canvas.getByTestId("unread-count"));
+    await expect(args.onSelect).toHaveBeenCalledTimes(2);
+  },
+};
+
 export const WithViewOnlyMark: Story = {
   args: {
     badges: (
@@ -97,10 +119,11 @@ export const VisibilityTintUnderWorkspaceTokens: Story = {
         className="max-w-xs p-4"
         style={
           {
-            "--checkbox-border-color": "color-mix(in oklab, var(--color-ink) 30%, transparent)",
-            "--checkbox-checked-bg": "#f6d176",
-            "--checkbox-checked-border": "#f6d176",
-            "--checkbox-checked-fg": "var(--color-ink)",
+            "--checkbox-border-color":
+              "color-mix(in oklab, var(--color-we-got-dark) 30%, transparent)",
+            "--checkbox-checked-bg": "#ffc800",
+            "--checkbox-checked-border": "#ffc800",
+            "--checkbox-checked-fg": "var(--color-we-got-dark)",
           } as CSSProperties
         }
       >

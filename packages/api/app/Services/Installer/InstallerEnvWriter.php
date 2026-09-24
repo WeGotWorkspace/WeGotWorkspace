@@ -37,23 +37,40 @@ final class InstallerEnvWriter
      */
     public function patchEnvFile(string $envPath, array $pairs): void
     {
-        $content = is_readable($envPath) ? (string) file_get_contents($envPath) : '';
-        if ($content === '' && is_file(dirname($envPath).'/.env.example')) {
+        if (! is_file($envPath) && is_file(dirname($envPath).'/.env.example')) {
             copy(dirname($envPath).'/.env.example', $envPath);
-            $content = (string) file_get_contents($envPath);
         }
 
-        foreach ($pairs as $key => $value) {
-            if ($value === null) {
-                continue;
-            }
-            $content = WgwApiEnvFile::setLine($content, $key, $value);
-        }
-
-        if (file_put_contents($envPath, $content, LOCK_EX) === false) {
+        $fh = fopen($envPath, 'c+');
+        if ($fh === false) {
             throw new \RuntimeException('Could not write packages/api/.env');
         }
-        @chmod($envPath, 0600);
+
+        try {
+            if (! flock($fh, LOCK_EX)) {
+                throw new \RuntimeException('Could not lock packages/api/.env');
+            }
+            rewind($fh);
+            $content = (string) stream_get_contents($fh);
+            $original = $content;
+            foreach ($pairs as $key => $value) {
+                if ($value === null) {
+                    continue;
+                }
+                $content = WgwApiEnvFile::setLine($content, $key, $value);
+            }
+            if ($content !== $original) {
+                rewind($fh);
+                if (ftruncate($fh, 0) === false || fwrite($fh, $content) === false) {
+                    throw new \RuntimeException('Could not write packages/api/.env');
+                }
+                fflush($fh);
+            }
+            @chmod($envPath, 0600);
+        } finally {
+            flock($fh, LOCK_UN);
+            fclose($fh);
+        }
     }
 
     public function envPath(): string

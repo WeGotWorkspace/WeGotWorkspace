@@ -38,7 +38,7 @@ export function DriveAccessDetail({ controller }: DriveAccessDetailProps) {
           currentPath={scopePath}
           onNavigate={navigateScopeFromBreadcrumb}
           leadingIcon={<DriveViewIcon view={{ type: "folder", path: scopePath }} />}
-          size="sm"
+          size="default"
         />
         <h2 id="drive-access-detail-title" className="drive-access-detail__title">
           {scopeTitle}
@@ -49,8 +49,8 @@ export function DriveAccessDetail({ controller }: DriveAccessDetailProps) {
         {hasPublicShares ? (
           <Button
             label={labels.accessRevokeAllPublic}
-            variant="subtle"
-            size="sm"
+            variant="outline"
+            size="md"
             onClick={() => void revokeAllPublic()}
             disabled={revokeLoading}
           />
@@ -59,7 +59,7 @@ export function DriveAccessDetail({ controller }: DriveAccessDetailProps) {
           label={labels.accessManageShare}
           icon={<Share2 className="size-4" aria-hidden />}
           variant="primary"
-          size="sm"
+          size="md"
           onClick={manageShare}
           disabled={atPath?.myRights.mayShare !== true}
         />

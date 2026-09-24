@@ -33,8 +33,7 @@ final class FileNodeBlobResolver
             return null;
         }
 
-        $roots = $this->accounts->rootsFor($username);
-        $node = $this->accounts->visibleLiveNode($matches[1], $roots);
+        $node = $this->index->liveByNodeId($matches[1]);
         if ($node === null || $node->is_dir) {
             return null;
         }

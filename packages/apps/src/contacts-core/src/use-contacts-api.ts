@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createElement } from "react";
+import { Check } from "lucide-react";
+import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { createContactsJmapClient } from "@/lib/api/wgw/contacts";
@@ -24,6 +27,7 @@ import {
 import { setContactsSyncConflictListener } from "@/lib/offline/contacts-sync-conflicts";
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
+import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import type { AddressBook, ContactCard, ContactsUIData } from "@/contacts-core/src/contacts-types";
 import { createDefaultContactsApiSource, type ContactsApiSource } from "./contacts-api-source";
 
@@ -86,6 +90,7 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
   });
 
   const [listRefreshing, setListRefreshing] = useState(false);
+  const { show, showError } = useAppToast();
 
   const patchFromCache = useCallback(async () => {
     if (!offlineUsername) return;
@@ -156,11 +161,17 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
       .loadBootstrap()
       .then((next) => {
         patchBootstrap(() => next);
+        show(defaultContactsLabels.toastListUpdated, {
+          icon: createElement(Check, { className: "size-4" }),
+        });
+      })
+      .catch(() => {
+        showError(defaultContactsLabels.toastListRefreshFailed);
       })
       .finally(() => {
         setListRefreshing(false);
       });
-  }, [listRefreshing, patchBootstrap, resolvedSource]);
+  }, [listRefreshing, patchBootstrap, resolvedSource, show, showError]);
 
   return {
     phase,

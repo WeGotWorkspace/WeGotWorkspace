@@ -70,6 +70,7 @@ function NotesChangeNotebookDialogForm({
           notebooks={notebooks}
           value={draft}
           labels={labels}
+          size="sm"
           onNotebookChange={setDraft}
           onCreateNotebook={onCreateNotebook}
         />

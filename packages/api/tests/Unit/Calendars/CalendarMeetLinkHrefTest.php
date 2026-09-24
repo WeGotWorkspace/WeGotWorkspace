@@ -15,18 +15,42 @@ final class CalendarMeetLinkHrefTest extends TestCase
         config(['app.url' => 'https://workspace.test']);
 
         $this->assertSame(
-            'abcd-efgh-ijkl',
-            $hrefs->parseWgwRoom('https://workspace.test/meet/guest?room=abcd-efgh-ijkl'),
+            'abcd-efgh-jklm',
+            $hrefs->parseWgwRoom('https://workspace.test/meet?room=abcd-efgh-jklm'),
         );
         $this->assertSame(
-            'abcd-efgh-ijkl',
-            $hrefs->parseWgwRoom('https://workspace.test/meet/join?room=ABCD-EFGH-IJKL'),
+            'abcd-efgh-jklm',
+            $hrefs->parseWgwRoom('https://workspace.test/meet/guest?room=abcd-efgh-jklm'),
         );
-        $this->assertNull($hrefs->parseWgwRoom('https://evil.workspace.test/meet/guest?room=abcd-efgh-ijkl'));
-        $this->assertNull($hrefs->parseWgwRoom('https://workspace.test.evil/meet/guest?room=abcd-efgh-ijkl'));
+        $this->assertSame(
+            'abcd-efgh-jklm',
+            $hrefs->parseWgwRoom('https://workspace.test/meet/join?room=ABCD-EFGH-JKLM'),
+        );
+        $this->assertSame(
+            'abcd-efgh-jklm',
+            $hrefs->parseWgwRoom('https://workspace.test/meet/meetings/abcd-efgh-jklm'),
+        );
+        $this->assertNull($hrefs->parseWgwRoom('https://workspace.test/meet/guest?room=abcd-efgh-ijkl'));
+        $this->assertNull($hrefs->parseWgwRoom('https://workspace.test/meet/meetings/team-sync-2026'));
+        $this->assertNull($hrefs->parseWgwRoom('https://evil.workspace.test/meet/guest?room=abcd-efgh-jklm'));
+        $this->assertNull($hrefs->parseWgwRoom('https://workspace.test.evil/meet/guest?room=abcd-efgh-jklm'));
         $this->assertNull($hrefs->parseWgwRoom('https://workspace.test/meet/guest?room=partial'));
         $this->assertNull($hrefs->parseWgwRoom('https://zoom.example/j/123'));
         $this->assertNull($hrefs->parseWgwRoom('not a url'));
         $this->assertNull($hrefs->origin('://missing-scheme'));
+    }
+
+    public function test_allocate_ad_hoc_room_code_matches_xxxx_xxxx_xxxx(): void
+    {
+        $hrefs = new CalendarMeetLinkHref;
+        $code = $hrefs->allocateAdHocRoomCode();
+        $this->assertMatchesRegularExpression(CalendarMeetLinkHref::ROOM_CODE_PATTERN, $code);
+        $this->assertSame('/meet/meetings/'.$code, $hrefs->meetingsPath($code));
+        config(['app.url' => 'https://workspace.test']);
+        $this->assertSame(
+            'https://workspace.test/meet/meetings/'.$code,
+            $hrefs->absoluteHref($hrefs->meetingsPath($code)),
+        );
+        $this->assertSame($code, $hrefs->parseWgwRoom($hrefs->absoluteHref($hrefs->meetingsPath($code))));
     }
 }

@@ -9,13 +9,13 @@
   "theme_color": "#1B1D3A",
   "icons": [
     {
-      "src": "/app-icons/home.svg?v=2",
+      "src": "/app-icons/home.svg?v=19",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/home-180.png?v=2",
+      "src": "/pwa-icons/home-180.png?v=19",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

@@ -88,7 +88,7 @@ export function MailDetailView({
       />
 
       <div className="mail-detail-view__sender-row">
-        <UserAvatar displayName={from} subtitle={senderMetaLine} size="md" />
+        <UserAvatar displayName={from} subtitle={senderMetaLine} size="lg" />
       </div>
 
       {showIframe ? (

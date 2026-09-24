@@ -17,8 +17,9 @@ import {
   trackChangesAuthorIdFromName,
 } from "@/text-editor-core/src/text-editor-track-changes";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
-import { getDocsCommentsMap, useDocsComments } from "./use-docs-comments";
-import { useDocsSuggestions } from "./use-docs-suggestions";
+import { getDocsCommentsMap } from "./use-docs-comments";
+import { useTestDocsComments as useDocsComments } from "./docs-threads-test-client";
+import { useTestDocsSuggestions as useDocsSuggestions } from "./docs-threads-test-client";
 
 function createEditor(content = "<p>Hello world</p>") {
   return new Editor({
@@ -395,7 +396,7 @@ describe("useDocsComments", () => {
     editor.destroy();
   });
 
-  it("persists a thread and applies the comment mark when the first reply is submitted", () => {
+  it("persists a thread and applies the comment mark when the first reply is submitted", async () => {
     const ydoc = new Y.Doc();
     const editor = createEditor();
     editor.commands.setTextSelection({ from: 7, to: 12 });
@@ -415,14 +416,13 @@ describe("useDocsComments", () => {
 
     expect(editor.getHTML()).not.toContain("data-comment-id");
 
-    act(() => {
-      result.current.addReply(threadId!, "Looks good");
+    await act(async () => {
+      await result.current.addReply(threadId!, "Looks good");
     });
 
-    expect(getDocsCommentsMap(ydoc).size).toBe(1);
-    const thread = getDocsCommentsMap(ydoc).get(threadId!) as { messages: { body: string }[] };
-    expect(thread.messages).toHaveLength(1);
-    expect(thread.messages[0]?.body).toBe("Looks good");
+    const thread = result.current.openThreads[0];
+    expect(thread?.messages).toHaveLength(1);
+    expect(thread?.messages[0]?.body).toBe("Looks good");
     expect(result.current.openThreads).toHaveLength(1);
     expect(editor.getHTML()).toContain(`data-comment-id="${threadId}"`);
     expect(editor.view.dom.querySelector(`.${COMMENT_DRAFT_ANCHOR_CLASS}`)).toBeNull();
@@ -525,7 +525,7 @@ describe("useDocsComments", () => {
     editor.destroy();
   });
 
-  it("adds replies and resolves threads while hiding resolved marks", () => {
+  it("adds replies and resolves threads while hiding resolved marks", async () => {
     const ydoc = new Y.Doc();
     const editor = createEditor(
       '<p>Hello <span data-comment-id="t-1" class="comment-mark">world</span></p>',
@@ -554,20 +554,18 @@ describe("useDocsComments", () => {
       }),
     );
 
-    act(() => {
-      result.current.addReply("t-1", "Looks good");
+    await act(async () => {
+      await result.current.addReply("t-1", "Looks good");
     });
 
-    const thread = getDocsCommentsMap(ydoc).get("t-1") as { messages: { body: string }[] };
-    expect(thread.messages).toHaveLength(2);
-    expect(thread.messages[1]?.body).toBe("Looks good");
+    expect(result.current.threads[0]?.messages).toHaveLength(2);
+    expect(result.current.threads[0]?.messages[1]?.body).toBe("Looks good");
 
-    act(() => {
-      result.current.resolveThread("t-1");
+    await act(async () => {
+      await result.current.resolveThread("t-1");
     });
 
-    const resolved = getDocsCommentsMap(ydoc).get("t-1") as { resolved: boolean };
-    expect(resolved.resolved).toBe(true);
+    expect(result.current.threads[0]?.resolved).toBe(true);
     expect(result.current.openThreads).toHaveLength(0);
     expect(editor.getHTML()).not.toContain("data-comment-id");
     editor.destroy();
@@ -840,12 +838,12 @@ describe("useDocsComments", () => {
       result.current.deleteThread("t-1");
     });
 
-    expect(getDocsCommentsMap(ydoc).size).toBe(0);
+    expect(result.current.threads).toHaveLength(0);
     expect(editor.getHTML()).not.toContain("data-comment-id");
     editor.destroy();
   });
 
-  it("toggles thread-level emoji reactions for the current user", () => {
+  it("toggles thread-level emoji reactions for the current user", async () => {
     const ydoc = new Y.Doc();
     getDocsCommentsMap(ydoc).set("t-1", {
       id: "t-1",
@@ -871,34 +869,26 @@ describe("useDocsComments", () => {
       }),
     );
 
-    act(() => {
-      result.current.toggleReaction("t-1", "👍");
+    await act(async () => {
+      await result.current.toggleReaction("t-1", "👍");
     });
 
-    let thread = getDocsCommentsMap(ydoc).get("t-1") as {
-      reactions?: { emoji: string; userIds: string[] }[];
-    };
-    expect(thread.reactions).toEqual([{ emoji: "👍", userIds: ["u-2"] }]);
     expect(result.current.openThreads[0]?.reactions).toEqual([{ emoji: "👍", userIds: ["u-2"] }]);
 
-    act(() => {
-      result.current.toggleReaction("t-1", "👍");
+    await act(async () => {
+      await result.current.toggleReaction("t-1", "👍");
     });
 
-    thread = getDocsCommentsMap(ydoc).get("t-1") as {
-      reactions?: { emoji: string; userIds: string[] }[];
-    };
-    expect(thread.reactions).toBeUndefined();
+    expect(result.current.openThreads[0]?.reactions).toBeUndefined();
 
-    act(() => {
-      result.current.toggleReaction("t-1", "👍");
-      result.current.toggleReaction("t-1", "💡");
+    await act(async () => {
+      await result.current.toggleReaction("t-1", "👍");
+    });
+    await act(async () => {
+      await result.current.toggleReaction("t-1", "💡");
     });
 
-    thread = getDocsCommentsMap(ydoc).get("t-1") as {
-      reactions?: { emoji: string; userIds: string[] }[];
-    };
-    expect(thread.reactions).toEqual([
+    expect(result.current.openThreads[0]?.reactions).toEqual([
       { emoji: "👍", userIds: ["u-2"] },
       { emoji: "💡", userIds: ["u-2"] },
     ]);
@@ -1416,7 +1406,7 @@ describe("useDocsComments", () => {
     editor.destroy();
   });
 
-  it("allows multiple users on the same reaction", () => {
+  it("allows multiple users on the same reaction", async () => {
     const ydoc = new Y.Doc();
     getDocsCommentsMap(ydoc).set("t-1", {
       id: "t-1",
@@ -1443,17 +1433,16 @@ describe("useDocsComments", () => {
       }),
     );
 
-    act(() => {
-      result.current.toggleReaction("t-1", "👍");
+    await act(async () => {
+      await result.current.toggleReaction("t-1", "👍");
     });
 
-    const thread = getDocsCommentsMap(ydoc).get("t-1") as {
-      reactions: { emoji: string; userIds: string[] }[];
-    };
-    expect(thread.reactions).toEqual([{ emoji: "👍", userIds: ["u-1", "u-2"] }]);
+    expect(result.current.openThreads[0]?.reactions).toEqual([
+      { emoji: "👍", userIds: ["u-1", "u-2"] },
+    ]);
   });
 
-  it("does not create a suggestion when adding a comment in suggest mode", () => {
+  it("does not create a suggestion when adding a comment in suggest mode", async () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const editor = createCollabEditor(ydoc, awareness);
@@ -1483,8 +1472,8 @@ describe("useDocsComments", () => {
       commentsResult.current.createThreadFromSelection();
     });
 
-    act(() => {
-      commentsResult.current.submitDraftComment("Looks good");
+    await act(async () => {
+      await commentsResult.current.submitDraftComment("Looks good");
     });
 
     expect(commentsResult.current.openThreads).toHaveLength(1);

@@ -5,17 +5,17 @@
   "scope": "/meet",
   "id": "/meet",
   "display": "standalone",
-  "background_color": "#06b6d4",
-  "theme_color": "#06b6d4",
+  "background_color": "#ffc800",
+  "theme_color": "#ffc800",
   "icons": [
     {
-      "src": "/app-icons/meet.svg?v=2",
+      "src": "/app-icons/meet.svg?v=19",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/meet-180.png?v=2",
+      "src": "/pwa-icons/meet-180.png?v=19",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

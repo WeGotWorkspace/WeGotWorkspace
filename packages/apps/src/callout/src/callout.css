@@ -4,7 +4,7 @@
   @apply max-w-full min-w-0 rounded-lg border p-4;
   background-color: var(--callout-bg);
   border-color: var(--callout-border);
-  color: var(--callout-text, var(--color-ink));
+  color: var(--callout-text, var(--color-we-got-dark));
 }
 
 .callout .menu-item {
@@ -30,21 +30,21 @@
 }
 
 .callout--success {
-  --callout-bg: color-mix(in oklab, #3a8f5a 12%, transparent);
-  --callout-border: color-mix(in oklab, #3a8f5a 35%, transparent);
-  --callout-icon-color: #3a8f5a;
+  --callout-bg: color-mix(in oklab, var(--color-success) 12%, transparent);
+  --callout-border: color-mix(in oklab, var(--color-success) 35%, transparent);
+  --callout-icon-color: var(--color-success);
 }
 
 .callout--warning {
-  --callout-bg: color-mix(in oklab, #c98a1f 14%, transparent);
-  --callout-border: color-mix(in oklab, #c98a1f 35%, transparent);
-  --callout-icon-color: #c98a1f;
+  --callout-bg: color-mix(in oklab, var(--color-warning) 14%, transparent);
+  --callout-border: color-mix(in oklab, var(--color-warning) 35%, transparent);
+  --callout-icon-color: var(--color-warning);
 }
 
 .callout--error {
-  --callout-bg: color-mix(in oklab, #b14242 14%, transparent);
-  --callout-border: color-mix(in oklab, #b14242 35%, transparent);
-  --callout-icon-color: #b14242;
+  --callout-bg: color-mix(in oklab, var(--color-error) 14%, transparent);
+  --callout-border: color-mix(in oklab, var(--color-error) 35%, transparent);
+  --callout-icon-color: var(--color-error);
 }
 
 .callout__icon {
@@ -58,6 +58,13 @@
 }
 
 .callout .menu-item__label {
-  @apply whitespace-normal break-words;
+  @apply overflow-visible whitespace-normal break-words;
   overflow-wrap: anywhere;
+  text-overflow: unset;
+}
+
+.callout .menu-item__description {
+  @apply overflow-visible whitespace-normal break-words;
+  overflow-wrap: anywhere;
+  text-overflow: unset;
 }

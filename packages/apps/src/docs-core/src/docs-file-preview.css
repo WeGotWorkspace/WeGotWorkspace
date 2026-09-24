@@ -2,7 +2,11 @@
 
 .docs-file-preview {
   @apply flex h-full w-full min-h-0 flex-col overflow-auto;
-  background-color: color-mix(in oklab, var(--color-background, #fff) 96%, transparent);
+  background-color: color-mix(
+    in oklab,
+    var(--color-background, var(--color-we-got-soft)) 96%,
+    transparent
+  );
 }
 
 .docs-file-preview__editor {
@@ -21,7 +25,7 @@
   --docs-file-preview-tile-page-width: 8.5in;
   --docs-file-preview-tile-scale: 1;
   @apply overflow-hidden pointer-events-none;
-  background-color: var(--color-cream, #fff);
+  background-color: var(--color-we-got-soft);
 }
 
 .docs-file-preview__tile-scale {
@@ -60,19 +64,21 @@
 }
 
 .drive-workspace .drive-detail-panel__preview .docs-file-preview,
-.drive-workspace .drive-detail-panel__preview .docs-file-preview__editor {
+.drive-workspace .drive-detail-panel__preview .docs-file-preview__editor,
+.drive-detail-panel__preview .docs-file-preview,
+.drive-detail-panel__preview .docs-file-preview__editor {
   @apply absolute inset-0 h-full w-full;
 }
 
-/* Mobile detail overlay: centered letter-sized sheet with side margins. */
-.drive-workspace .drive-detail-overlay .drive-detail-panel__preview .docs-file-preview {
+/* Mobile detail SideDrawer: centered letter-sized sheet with side margins. */
+.drive-detail-panel-drawer .drive-detail-panel__preview .docs-file-preview {
   --docs-file-preview-mobile-sheet-width: min(100% - 2rem, 28rem);
   background-color: transparent;
   align-items: center;
   padding: 1rem;
 }
 
-.drive-workspace .drive-detail-overlay .drive-detail-panel__preview .docs-file-preview__editor {
+.drive-detail-panel-drawer .drive-detail-panel__preview .docs-file-preview__editor {
   position: relative;
   inset: auto;
   height: auto;
@@ -81,8 +87,7 @@
   margin-inline: auto;
 }
 
-.drive-workspace
-  .drive-detail-overlay
+.drive-detail-panel-drawer
   .drive-detail-panel__preview
   .docs-file-preview
   .text-editor-sheet--fill {
@@ -91,8 +96,7 @@
   width: 100%;
 }
 
-.drive-workspace
-  .drive-detail-overlay
+.drive-detail-panel-drawer
   .drive-detail-panel__preview
   .docs-file-preview
   .text-editor-sheet--fill

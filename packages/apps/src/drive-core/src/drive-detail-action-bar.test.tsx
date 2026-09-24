@@ -19,14 +19,14 @@ function buildActions() {
   );
 }
 
-function renderActionBar(options?: { mobile?: boolean; containerWidth?: string }) {
+function renderActionBar() {
   const actions = buildActions();
 
   return render(
     <TooltipProvider>
       <div className="drive-workspace">
-        <div style={options?.containerWidth ? { width: options.containerWidth } : undefined}>
-          <DriveDetailActionBar actions={actions} onClose={vi.fn()} mobile={options?.mobile} />
+        <div className="drive-detail-panel">
+          <DriveDetailActionBar actions={actions} />
         </div>
       </div>
     </TooltipProvider>,
@@ -34,32 +34,25 @@ function renderActionBar(options?: { mobile?: boolean; containerWidth?: string }
 }
 
 describe("DriveDetailActionBar", () => {
-  it("relies on ActionBar container queries instead of forcing expanded desktop layout", () => {
+  it("puts every file action behind a single More menu", () => {
+    const actions = buildActions();
+    expect(actions.length).toBeGreaterThan(1);
+
     const { container } = renderActionBar();
-    const bar = container.querySelector(".action-bar");
-    expect(bar?.classList.contains("action-bar--expanded")).toBe(false);
-    expect(container.querySelector(".action-bar__menu")).toBeTruthy();
-  });
-
-  it("keeps the close control outside the overflow menu on desktop aside", () => {
-    const { container } = renderActionBar();
-    expect(within(container as HTMLElement).getByRole("button", { name: "Close" })).toBeTruthy();
-    expect(within(container as HTMLElement).queryByRole("button", { name: "Back" })).toBeNull();
-  });
-
-  it("uses stacked mobile chrome while still allowing container-query collapse", () => {
-    const { container } = renderActionBar({ mobile: true });
-    const bar = container.querySelector(".action-bar");
-    expect(bar?.classList.contains("action-bar--expanded")).toBe(false);
-    expect(container.querySelector(".action-bar__menu")).toBeTruthy();
-    expect(within(container as HTMLElement).getByRole("button", { name: "Back" })).toBeTruthy();
-  });
-
-  it("renders overflow menu markup for narrow detail containers", () => {
-    const { container } = renderActionBar({ containerWidth: "20rem" });
-    expect(container.querySelector(".action-bar__menu")).toBeTruthy();
+    expect(container.querySelector(".action-bar")).toBeNull();
+    const group = container.querySelector(".drive-detail-panel__actions")!;
+    expect(group).toBeTruthy();
+    // Only the ⋯ trigger — Download/Star/Edit/… live in the menu.
+    expect(within(group as HTMLElement).getAllByRole("button")).toHaveLength(1);
     expect(
       within(container as HTMLElement).getByRole("button", { name: "More actions" }),
     ).toBeTruthy();
+    expect(within(container as HTMLElement).queryByRole("button", { name: "Download" })).toBeNull();
+    expect(within(container as HTMLElement).queryByRole("button", { name: "Star" })).toBeNull();
+  });
+
+  it("does not own close — DocsCollabSidebarPanel titleTrailing does", () => {
+    const { container } = renderActionBar();
+    expect(within(container as HTMLElement).queryByRole("button", { name: "Close" })).toBeNull();
   });
 });

@@ -18,13 +18,13 @@ pnpm dev
 
 | Service | URL | Notes |
 |---------|-----|-------|
-| Full app (HMR) | http://127.0.0.1:5173 | Vite dev server; proxies `/api/v1` → `:9080` |
+| Full app (HMR) | http://127.0.0.1:5173 | Vite dev server; proxies `/api/v1` → `:9080`. Registers the injectManifest service worker on localhost so Web Push can arrive. |
 | Storybook | http://127.0.0.1:6006 | Component catalog; same API proxy |
 | API (host PHP) | http://127.0.0.1:9080 | Health: `/api/v1/health` |
 
 The API task runs `packages/api/scripts/dev-php-server.sh`, which traps `SIGINT`/`SIGTERM` and stops the `php -S` process when you exit `pnpm dev` or `pnpm preview` (Ctrl+C). If `:9080` stays bound after a crash, find the listener with `lsof -nP -iTCP:9080 -sTCP:LISTEN` and stop it manually.
 
-`pnpm dev` runs `wgw:dev-install` first (idempotent), then starts all three in parallel via turbo. On a fresh clone that bootstraps `packages/api/.env` (from `.env.example`), `wgw-content/db.sqlite`, the `admin` user (password `storybook-dev`, overridable via `WGW_DEV_USERNAME` / `WGW_DEV_PASSWORD`), JWT keys under `apps/wegotworkspace/wgw-content/keys/` (gitignored), and hundreds of sample calendar events on admin's `default` / `home` / `work` calendars. OpenAPI typegen watch runs alongside. Existing local installs get the same events on the next `pnpm dev` (skip if already present). Re-seed with `php packages/api/artisan wgw:calendars:seed-dev` (`--force` recreates). The seeder refuses `APP_ENV` other than `local`/`testing`, `WGW_INSTALL_CHANNEL` of `docker` or `zip`, and any tree without a parent `pnpm-workspace.yaml`, so production, Docker-channel, and ZIP-extract installs stay empty.
+`pnpm dev` runs `wgw:dev-install` first (idempotent), then starts all three in parallel via turbo. On a fresh clone that bootstraps `packages/api/.env` (from `.env.example`), `wgw-content/db.sqlite`, the `admin` user (password `storybook-dev`, overridable via `WGW_DEV_USERNAME` / `WGW_DEV_PASSWORD`), a second user `member` (same password, display name Member, in the Administrators group), JWT keys under `apps/wegotworkspace/wgw-content/keys/` (gitignored), and hundreds of sample calendar events on admin's `default` / `home` / `work` calendars. OpenAPI typegen watch runs alongside. Existing local installs get the same events, and `member` if that account is missing, on the next `pnpm dev`. A `member` password you already changed is left alone. `member` does not get the sample calendar catalog. Re-seed admin's events with `php packages/api/artisan wgw:calendars:seed-dev` (`--force` recreates). The seeder refuses `APP_ENV` other than `local`/`testing`, `WGW_INSTALL_CHANNEL` of `docker` or `zip`, and any tree without a parent `pnpm-workspace.yaml`, so production, Docker-channel, and ZIP-extract installs stay empty.
 
 ## Docker API (optional)
 
@@ -67,7 +67,7 @@ JWT keys live in `packages/api/storage/app/jwt/` (gitignored) when using `genera
 pnpm preview
 ```
 
-Builds apps (`vite build`), starts host PHP API on `:9080`, and serves the bundle via `vite preview` on **http://127.0.0.1:4173** with the same `/api/v1` proxy. Use this to exercise the PWA/service worker and offline contacts against a host API.
+Builds apps (`vite build`), starts host PHP API on `:9080`, and serves the bundle via `vite preview` on **http://127.0.0.1:4173** with the same `/api/v1` proxy. Use this to exercise the **production** PWA precache and offline contacts against a host API. Web Push on `pnpm dev` (http://127.0.0.1:5173) uses the same custom SW without the production navigation fallback, so Vite HMR is not served from Workbox.
 
 Manual split (same result as `pnpm preview` without turbo):
 
@@ -147,4 +147,4 @@ Not part of `pnpm test:apps-done-gate` or CI yet (see [apps-done-gate.md](../.ag
 
 ## Architecture docs
 
-Cross-cutting product/protocol decisions live under [`docs/architecture/`](architecture/). Start with [Tasks module](architecture/tasks.md) ([#330](https://github.com/WeGotWorkspace/wegotworkspace/issues/330)) for v0.9 Calendar/Tasks work. API conversion detail stays under `packages/api/docs/<domain>/`.
+Cross-cutting product/protocol decisions live under [`docs/architecture/`](architecture/). Start with [Tasks module](architecture/tasks.md) ([#330](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/330)) for v0.9 Calendar/Tasks work, and [suite notify](architecture/suite-notify.md) ([#741](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/741)) for the inbox / VAPID pipeline. API conversion detail stays under `packages/api/docs/<domain>/`.

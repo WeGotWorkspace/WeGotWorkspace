@@ -12,6 +12,7 @@ body:
 
         For **ideas and exploration**, use [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) instead —
         do not use this form to propose Goals or features. See CONTRIBUTING.md.
+        Please write this report in **English**.
 
   - type: textarea
     id: problem

@@ -7,7 +7,7 @@ namespace App\Dav\Storage;
 use Sabre\DAV;
 use Sabre\DAV\PartialUpdate\IPatchSupport;
 
-final class FlysystemFile extends FlysystemNode implements DAV\IFile, IPatchSupport
+class FlysystemFile extends FlysystemNode implements DAV\IFile, IPatchSupport
 {
     /**
      * @param  resource|string  $data

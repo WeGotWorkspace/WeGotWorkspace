@@ -16,7 +16,7 @@ import { sampleThread } from "./docs-comments-thread-card.stories.fixtures";
 const noop = () => {};
 
 const meta = {
-  title: "Shared/TextEditor/Docs collab/Card primitives",
+  title: "Features/Docs/TextEditor/Docs collab/Card primitives",
   component: DocsCollabCardShell,
   parameters: {
     layout: "padded",
@@ -134,6 +134,7 @@ export const SidebarPanel: Story = {
       <DocsCollabSidebarPanel
         ariaLabel={docsLabels.commentsSidebarTitle}
         title={docsLabels.commentsSidebarTitle}
+        itemCount={1}
         countLabel={docsLabels.commentsCountOne}
         closeLabel={docsLabels.commentsCloseSidebar}
         onClose={noop}

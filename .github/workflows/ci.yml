@@ -140,6 +140,10 @@ jobs:
           fi
 
       - name: Apps quality gate
+        env:
+          # Local pre-push skips unit + jsdom. CI runs both; jsdom shards
+          # pool themselves from CPU and memory (see jsdom-concurrency.mjs).
+          APPS_DONE_GATE_FULL: "1"
         run: pnpm run ci:quality:apps
 
   build:
@@ -191,12 +195,6 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: node tools/git/check-pr-body-attribution.mjs
 
-      - name: Chromatic (optional)
-        if: vars.CHROMATIC_ENABLED == 'true'
-        env:
-          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-        run: pnpm --filter @wgw/apps exec chromatic --build-script-name build-storybook --exit-zero-on-changes
-
       - name: Build (Composer + UI via Turborepo)
         run: pnpm run build
 
@@ -221,13 +219,25 @@ jobs:
       - name: Install JS workspace
         run: pnpm install --frozen-lockfile
 
+      # Build with pnpm and upload that directory so the action does not spawn
+      # its own Storybook build through a different package manager.
+      # --stats-json writes preview-stats.json. TurboSnap (onlyChanged) traces
+      # changed files from that manifest; without it the publish step fails.
+      - name: Build Storybook
+        working-directory: packages/apps
+        run: pnpm exec storybook build --output-dir storybook-static --stats-json
+
       - name: Publish to Chromatic
-        uses: chromaui/action@v13
+        uses: chromaui/action@v18
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           workingDir: packages/apps
+          storybookBuildDir: storybook-static
           onlyChanged: true
+          # Publish succeeded. Unaccepted visual diffs stay in the Chromatic UI
+          # and must not fail this job. main still accepts new baselines.
           exitZeroOnChanges: true
+          autoAcceptChanges: "main"
 
   api-mysql:
     if: >-

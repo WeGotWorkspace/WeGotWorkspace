@@ -4,12 +4,21 @@ declare(strict_types=1);
 
 namespace App\Services\Meet;
 
+use App\Events\EventDispatch;
+use App\Models\CalendarObject;
 use App\Models\MeetReservation;
 use App\Services\Admin\AdminConstants;
+use App\Services\Calendars\CalendarMeetLinkHref;
+use App\Services\Calendars\CalendarPrincipalAddresses;
 use App\Services\Calendars\CalendarRepository;
+use App\Services\Calendars\Conversion\LocationConversionSupport;
+use App\Services\Chat\ChatChannelRepository;
+use App\Services\Notify\MeetStartedNotify;
 use App\Services\Settings\GroupMembershipResolver;
 use DateTimeInterface;
 use Illuminate\Support\Carbon;
+use Sabre\VObject\Component\VEvent;
+use Sabre\VObject\Reader;
 
 /**
  * Reservation persistence for Meet HTTP and the calendar ICS-write hook.
@@ -26,6 +35,11 @@ final class MeetReservationService
     public function __construct(
         private readonly GroupMembershipResolver $groups,
         private readonly CalendarRepository $calendars,
+        private readonly MeetChannelJoinPolicy $channelJoinPolicy,
+        private readonly ChatChannelRepository $channels,
+        private readonly CalendarPrincipalAddresses $addresses,
+        private readonly CalendarMeetLinkHref $meetHrefs,
+        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
     public function actorPrincipal(string $username): string
@@ -137,7 +151,7 @@ final class MeetReservationService
         return Carbon::instance($start)->copy()->addDays(30);
     }
 
-    public function markActivated(string $room): void
+    public function markActivated(string $room, ?string $actorUsername = null): void
     {
         $row = $this->find($room);
         if (! $row instanceof MeetReservation || $row->activated_at !== null) {
@@ -145,6 +159,162 @@ final class MeetReservationService
         }
         $row->activated_at = Carbon::now();
         $row->save();
+
+        $actor = $actorUsername ?? $this->usernameFromActorPrincipal((string) $row->created_by);
+        if ($actor === '') {
+            $actor = 'system';
+        }
+        $recipients = $this->startedRecipients($room, $row);
+        if ($recipients === []) {
+            return;
+        }
+        $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
+        $this->eventDispatch->fireMutation(
+            $actor,
+            'meet',
+            MeetStartedNotify::ACTION,
+            'meet/'.$room,
+            MeetStartedNotify::eventData(
+                MeetStartedNotify::actorLabel($actor),
+                $room,
+                $recipients,
+                $channel?->channelUri,
+                $channel !== null ? ($channel->isDm ? 'dm' : 'channel') : null,
+            ),
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function startedRecipients(string $room, MeetReservation $row): array
+    {
+        $out = [];
+        $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
+        if ($channel !== null) {
+            $instance = $this->channels->findAccessibleChannel(
+                $this->usernameFromActorPrincipal((string) $row->created_by) ?: 'system',
+                $channel->channelUri,
+            );
+            // Prefer owner-side instance lookup for roster.
+            if ($instance === null) {
+                $owner = $this->usernameFromOwnerPrincipal((string) $row->owner_principal);
+                if ($owner !== '') {
+                    $instance = $this->channels->findAccessibleChannel($owner, $channel->channelUri);
+                }
+            }
+            if ($instance !== null) {
+                foreach ($this->channels->rosterUsernames($instance, null) as $username) {
+                    $out[strtolower($username)] = strtolower($username);
+                }
+            }
+        }
+
+        $owner = $this->usernameFromOwnerPrincipal((string) $row->owner_principal);
+        if ($owner !== '') {
+            $out[$owner] = $owner;
+        }
+        $createdBy = $this->usernameFromActorPrincipal((string) $row->created_by);
+        if ($createdBy !== '') {
+            $out[$createdBy] = $createdBy;
+        }
+
+        foreach ($this->calendarAttendeeUsernames($room) as $username) {
+            $out[$username] = $username;
+        }
+
+        return array_values($out);
+    }
+
+    /**
+     * Internal WGW principals on VEVENTs whose conference href matches this room.
+     * External mailto attendees (no principal) are skipped.
+     *
+     * @return list<string>
+     */
+    private function calendarAttendeeUsernames(string $room): array
+    {
+        $needle = strtolower(trim($room));
+        if ($needle === '') {
+            return [];
+        }
+
+        $rows = CalendarObject::query()
+            ->where('componenttype', 'VEVENT')
+            ->where('calendardata', 'like', '%'.$needle.'%')
+            ->limit(50)
+            ->get(['calendardata']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            $raw = is_string($row->calendardata) ? $row->calendardata : (string) $row->calendardata;
+            if ($raw === '') {
+                continue;
+            }
+            try {
+                $parsed = Reader::read($raw);
+            } catch (\Throwable) {
+                continue;
+            }
+            foreach ($parsed->select('VEVENT') as $vevent) {
+                if (! $vevent instanceof VEvent) {
+                    continue;
+                }
+                $href = LocationConversionSupport::conferenceHrefFromVEvent($vevent);
+                if ($href === null || $this->meetHrefs->parseWgwRoom($href) !== $needle) {
+                    continue;
+                }
+                if (! isset($vevent->ATTENDEE)) {
+                    continue;
+                }
+                foreach ($vevent->ATTENDEE as $attendee) {
+                    $mailto = trim((string) $attendee);
+                    if ($mailto === '') {
+                        continue;
+                    }
+                    $principal = $this->addresses->principalForMailto($mailto);
+                    if ($principal === null) {
+                        continue;
+                    }
+                    $uri = (string) $principal->uri;
+                    if (! str_starts_with($uri, 'principals/') || str_starts_with($uri, AdminConstants::GROUP_PREFIX)) {
+                        continue;
+                    }
+                    $username = strtolower(substr($uri, strlen('principals/')));
+                    if ($username !== '' && ! str_contains($username, '/')) {
+                        $out[$username] = $username;
+                    }
+                }
+            }
+        }
+
+        return array_values($out);
+    }
+
+    private function usernameFromActorPrincipal(string $createdBy): string
+    {
+        $trimmed = trim($createdBy);
+        if (str_starts_with($trimmed, 'u:')) {
+            return strtolower(substr($trimmed, 2));
+        }
+        if (str_starts_with($trimmed, 'principals/')) {
+            $rest = substr($trimmed, strlen('principals/'));
+            if ($rest !== '' && ! str_contains($rest, '/')) {
+                return strtolower($rest);
+            }
+        }
+
+        return strtolower($trimmed);
+    }
+
+    private function usernameFromOwnerPrincipal(string $ownerPrincipal): string
+    {
+        $trimmed = trim($ownerPrincipal);
+        if (str_starts_with($trimmed, 'u:')) {
+            return strtolower(substr($trimmed, 2));
+        }
+
+        return '';
     }
 
     public function sweepExpiredNeverActivated(): int

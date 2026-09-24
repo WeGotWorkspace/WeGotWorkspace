@@ -60,6 +60,7 @@ export const DRIVE_MOCK_FILES: DriveFile[] = [
     parent: "My Drive",
     kind: "image",
     size: "4.2 MB",
+    apiPath: "/users/alice/Cover-Photo-Granite.jpg",
   },
   {
     id: "f6",
@@ -88,6 +89,7 @@ export const DRIVE_MOCK_FILES: DriveFile[] = [
     parent: "My Drive/Studio Assets",
     kind: "image",
     size: "1.1 MB",
+    apiPath: "/users/alice/Studio Assets/studio-mark-final.svg",
   },
   {
     id: "f-guide",

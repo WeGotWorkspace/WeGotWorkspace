@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fireEvent } from "storybook/test";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {
   addressesAfterFieldChange,
@@ -164,7 +164,7 @@ function ContactsDetailPaneHarness({
 }
 
 const meta = {
-  title: "Apps/Contacts/Panes/Detail",
+  title: "Features/Contacts/Panes/Detail",
   component: ContactsDetailPaneHarness,
   parameters: {
     layout: "fullscreen",
@@ -183,11 +183,21 @@ export const Editable: Story = {
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "Jane Updated");
     await expect(nameInput).toHaveValue("Jane Updated");
-    const birthday = canvas.getByLabelText(defaultContactsLabels.sectionBirthday);
-    await expect(birthday).toHaveAttribute("type", "date");
-    await expect(birthday).toHaveValue("1985-04-23");
-    fireEvent.change(birthday, { target: { value: "1991-07-04" } });
-    await expect(birthday).toHaveValue("1991-07-04");
+    const birthday = canvas.getByRole("button", { name: /Birthday:/ });
+    await expect(birthday).toHaveClass("locale-date-picker");
+    await expect(birthday).toHaveAccessibleName(/1985/);
+    await userEvent.click(birthday);
+    const day = await waitFor(() => {
+      const found = canvasElement.ownerDocument.querySelector<HTMLButtonElement>(
+        'button[data-day]:not([data-selected-single="true"])',
+      );
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    await userEvent.click(day);
+    await expect(canvas.getByRole("button", { name: /Birthday:/ })).not.toHaveAccessibleName(
+      /Apr 23, 1985|April 23, 1985/,
+    );
     await expect(
       canvas.getAllByRole("combobox", {
         name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
@@ -213,16 +223,18 @@ export const Create: Story = {
     await expect(canvas.queryByRole("button", { name: defaultContactsLabels.addUrl })).toBeNull();
     const phone = canvas.getByLabelText(defaultContactsLabels.phoneNumber);
     fireEvent.change(phone, { target: { value: "555" } });
-    await expect(phone).toHaveValue("555");
-    await expect(canvas.getAllByLabelText(defaultContactsLabels.phoneNumber)).toHaveLength(2);
+    const phones = canvas.getAllByLabelText(defaultContactsLabels.phoneNumber);
+    await expect(phones).toHaveLength(2);
+    await expect(phones[0]).toHaveValue("555");
+    await expect(phones[0]).toHaveFocus();
     await expect(
       canvas.getAllByRole("combobox", {
         name: `${defaultContactsLabels.channelType} ${defaultContactsLabels.phoneNumber}`,
       }),
     ).toHaveLength(2);
-    const birthday = canvas.getByLabelText(defaultContactsLabels.sectionBirthday);
-    await expect(birthday).toHaveAttribute("type", "date");
-    await expect(birthday).toHaveValue("");
+    const birthday = canvas.getByRole("button", { name: /^Birthday:\s*$/ });
+    await expect(birthday).toHaveClass("locale-date-picker");
+    await expect(birthday).toHaveAccessibleName(/^Birthday:\s*$/);
   },
 };
 
@@ -244,7 +256,7 @@ export const ReadOnly: Story = {
     await expect(
       canvas.getByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
     ).toBeInTheDocument();
-    expect(canvas.queryByLabelText(defaultContactsLabels.sectionBirthday)).toBeNull();
+    expect(canvas.queryByRole("button", { name: /Birthday:/ })).toBeNull();
     await expect(canvas.getByText(/1985/)).toBeInTheDocument();
   },
 };

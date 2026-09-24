@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { buildDriveFolderBreadcrumbs } from "@/drive-core/src/drive-breadcrumbs";
+import {
+  applyDriveGroupDisplayNames,
+  buildDriveFolderPickerRootLabels,
+  collectDriveGroupRoots,
+  fetchDriveGroupRoots,
+  mergeDriveGroupRoots,
+  type DriveGroupRoot,
+} from "@/drive-core/src/drive-group-roots";
 import { driveLabels, driveOfficeNewFileLabel } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
@@ -13,10 +21,12 @@ import {
   uiPathFromApiPath,
 } from "@/drive-core/src/drive-path-utils";
 import { isDriveUnderTrash } from "@/drive-core/src/drive-visible-items";
+import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import {
-  driveFileFromSharedWithMeEntry,
-  driveFileFromEntry,
-} from "@/drive-core/src/drive-file-utils";
+  driveStarredPathMap,
+  fetchDriveStarredListing,
+} from "@/drive-core/src/drive-starred-listing";
+import { mapDriveSharedWithMeEntries } from "@/drive-core/src/drive-shared-listing";
 import type {
   DriveAPIOperations,
   DriveShareOperations,
@@ -25,6 +35,7 @@ import type {
   WgwPluginDescriptor,
 } from "@/drive-core/src/drive-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
+import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import {
   apiPathFromSearchSourceKey,
@@ -128,7 +139,10 @@ export function useDriveShell({
   const [starred, setStarred] = useState<Record<string, boolean>>({});
   const [starredItems, setStarredItems] = useState<DriveFile[] | null>(null);
   const [sharedItems, setSharedItems] = useState<DriveFile[] | null>(null);
-  const [knownGroupRoots, setKnownGroupRoots] = useState<string[]>([]);
+  const [knownGroupRoots, setKnownGroupRoots] = useState<DriveGroupRoot[]>([]);
+  const [groupDirectory, setGroupDirectory] = useState<
+    readonly { id: string; displayName: string }[]
+  >([]);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const syncedFolderPathRef = useRef<string | null>(null);
   const pendingFolderRefetchRef = useRef(false);
@@ -154,27 +168,64 @@ export function useDriveShell({
   }, [currentUsername, data.cwd, folderViewPath, listLoading, operations]);
 
   useEffect(() => {
-    const discovered = new Set<string>();
-    for (const file of files) {
-      if (!file.apiPath || !file.apiPath.startsWith("/groups/")) continue;
-      const relative = file.apiPath.slice("/groups/".length);
-      const [root] = relative.split("/");
-      if (root) discovered.add(root);
-    }
-    if (discovered.size === 0) return;
-    setKnownGroupRoots((prev) => {
-      const next = new Set(prev);
-      discovered.forEach((root) => next.add(root));
-      return Array.from(next).sort((a, b) => a.localeCompare(b));
+    if (!operations) return;
+    const controller = new AbortController();
+    void fetchDriveGroupRoots(operations, { signal: controller.signal }).then((discovered) => {
+      if (discovered.length === 0) return;
+      setKnownGroupRoots((prev) => mergeDriveGroupRoots(prev, discovered));
     });
+    return () => controller.abort();
+  }, [operations]);
+
+  useEffect(() => {
+    if (!wgwLiveApiEnabled()) return;
+    const controller = new AbortController();
+    void wgwFetch("/settings/state", { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const json = (await wgwReadJson(res)) as {
+          groups?: { id: string; displayName: string }[];
+        };
+        if (Array.isArray(json.groups)) setGroupDirectory(json.groups);
+      })
+      .catch(() => {
+        /* best-effort labels only */
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const discovered = collectDriveGroupRoots(files);
+    if (discovered.length === 0) return;
+    setKnownGroupRoots((prev) => mergeDriveGroupRoots(prev, discovered));
   }, [files]);
 
-  const groupRootNames = useMemo(() => new Set(knownGroupRoots), [knownGroupRoots]);
+  const labeledGroupRoots = useMemo(
+    () => applyDriveGroupDisplayNames(knownGroupRoots, groupDirectory),
+    [groupDirectory, knownGroupRoots],
+  );
+
+  const groupRootNames = useMemo(
+    () => new Set(labeledGroupRoots.map((root) => root.slug)),
+    [labeledGroupRoots],
+  );
   const groupRootNamesRef = useRef(groupRootNames);
   groupRootNamesRef.current = groupRootNames;
   const sidebarGroupPaths = useMemo(
-    () => knownGroupRoots.map((root) => `Groups/${root}`),
-    [knownGroupRoots],
+    () => labeledGroupRoots.map((root) => `Groups/${root.slug}`),
+    [labeledGroupRoots],
+  );
+  const sidebarGroupRoots = useMemo(
+    () =>
+      labeledGroupRoots.map((root) => ({
+        path: `Groups/${root.slug}`,
+        label: root.label,
+      })),
+    [labeledGroupRoots],
+  );
+  const folderPickerRootLabels = useMemo(
+    () => buildDriveFolderPickerRootLabels(labeledGroupRoots, driveLabels.sidebarMyDrive),
+    [labeledGroupRoots],
   );
 
   useEffect(() => {
@@ -251,50 +302,22 @@ export function useDriveShell({
     [commitView],
   );
 
-  const loadStarredItemsFromPaths = useCallback(
-    (paths: string[]) => {
-      if (!operations) {
-        setStarredItems(null);
-        return;
-      }
-      const requestVersion = starredLoadVersionRef.current + 1;
-      starredLoadVersionRef.current = requestVersion;
-      if (paths.length === 0) {
-        setStarredItems([]);
-        return;
-      }
-      void operations
-        .listEntriesByPaths(paths)
-        .then((entries) => {
-          if (requestVersion !== starredLoadVersionRef.current) return;
-          setStarredItems(entries.map((entry) => driveFileFromEntry(entry, currentUsername)));
-        })
-        .catch((error: unknown) => {
-          if (requestVersion !== starredLoadVersionRef.current) return;
-          const message = error instanceof Error ? error.message : String(error);
-          showError(message);
-        });
-    },
-    [operations, currentUsername, showError],
-  );
-
   const reloadStarredFromServer = useCallback(() => {
     if (!operations) return;
-    void operations
-      .listStars()
-      .then((paths) => {
-        const next: Record<string, boolean> = {};
-        for (const path of paths) {
-          next[path] = true;
-        }
-        setStarred(next);
-        loadStarredItemsFromPaths(paths);
+    const requestVersion = starredLoadVersionRef.current + 1;
+    starredLoadVersionRef.current = requestVersion;
+    void fetchDriveStarredListing(operations, currentUsername)
+      .then(({ paths, files }) => {
+        if (requestVersion !== starredLoadVersionRef.current) return;
+        setStarred(driveStarredPathMap(paths));
+        setStarredItems(files);
       })
       .catch((error: unknown) => {
+        if (requestVersion !== starredLoadVersionRef.current) return;
         const message = error instanceof Error ? error.message : String(error);
         showError(message);
       });
-  }, [operations, loadStarredItemsFromPaths, showError]);
+  }, [operations, currentUsername, showError]);
 
   useEffect(() => {
     if (!operations) return;
@@ -355,11 +378,7 @@ export function useDriveShell({
       .listSharedWithMe({ signal: controller.signal })
       .then((entries) => {
         if (requestVersion !== sharedLoadVersionRef.current) return;
-        setSharedItems(
-          entries
-            .map((entry) => driveFileFromSharedWithMeEntry(entry, currentUsername))
-            .filter((file): file is DriveFile => file !== null),
-        );
+        setSharedItems(mapDriveSharedWithMeEntries(entries, currentUsername));
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted || requestVersion !== sharedLoadVersionRef.current) return;
@@ -399,8 +418,8 @@ export function useDriveShell({
         },
       ];
     }
-    return buildDriveFolderBreadcrumbs(view.path, driveLabels);
-  }, [view]);
+    return buildDriveFolderBreadcrumbs(view.path, driveLabels, folderPickerRootLabels);
+  }, [folderPickerRootLabels, view]);
 
   const viewLabel = breadcrumbs[breadcrumbs.length - 1].label;
   const viewResetKey =
@@ -477,6 +496,8 @@ export function useDriveShell({
     knownGroupRoots,
     groupRootNames,
     sidebarGroupPaths,
+    sidebarGroupRoots,
+    folderPickerRootLabels,
     breadcrumbs,
     viewLabel,
     viewResetKey,

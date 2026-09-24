@@ -175,7 +175,7 @@ export function MailWorkspace({
                   compose();
                   closeSidebarOnMobile(c.closeSidebar);
                 }}
-                size="lg"
+                size="xl"
                 pill
                 variant="primary"
                 className="w-full"

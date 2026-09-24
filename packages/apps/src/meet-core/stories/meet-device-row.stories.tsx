@@ -34,7 +34,7 @@ function MeetDeviceRowStory({ kind, value }: MeetDeviceRowStoryArgs) {
 }
 
 const meta = {
-  title: "Apps/Meet/Components/MeetDeviceRow",
+  title: "Features/Meet/Components/MeetDeviceRow",
   component: MeetDeviceRow,
   render: (args) => <MeetDeviceRowStory {...args} />,
   parameters: meetStoryParameters({

@@ -1,0 +1,14 @@
+@import "../styles.css" reference;
+
+/**
+ * Cream sticky / calendar surface SST — brand paper, never pure white.
+ *
+ * Shared sticky list headings (`list-sticky-header`) already default to cream.
+ * Calendar lit sticky shells (timeline all-day, time sidebar, event-calendar
+ * header) read `--_lc-surface-bg`. Products that host those views publish both
+ * tokens here so sticky chrome cannot regress to `#fff` / `#ffffff`.
+ */
+:is(.calendar-workspace) {
+  --list-sticky-header-bg: var(--workspace-surface);
+  --_lc-surface-bg: var(--workspace-surface);
+}

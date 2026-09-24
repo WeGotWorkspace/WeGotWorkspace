@@ -109,7 +109,7 @@ export function NoteDetailView({
   }
 
   return (
-    <article className={cn("note-detail-view note-detail-sheet", className)}>
+    <article className={cn("note-detail-view paper-sheet", className)}>
       <label className="note-detail-view__title-label" htmlFor={titleFieldId}>
         {titlePlaceholder}
       </label>

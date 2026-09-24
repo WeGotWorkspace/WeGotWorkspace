@@ -1,7 +1,9 @@
-import type { CSSProperties, ReactNode } from "react";
-import { X } from "lucide-react";
+import { type CSSProperties, type ReactNode, useEffect, useRef } from "react";
 import { AppSwitchButton } from "@/app-switch-button/src/app-switch-button";
+import { bindOpenSidebarStatusBar } from "@/app-sidebar/src/sidebar-status-bar";
 import { cn } from "@/lib/utils";
+import { NotificationInboxTray } from "@/notifications-core/src/notification-inbox-tray";
+import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
 import "@/app-sidebar/src/app-sidebar.css";
 
 export type AppSidebarProps = {
@@ -13,13 +15,37 @@ export type AppSidebarProps = {
   footer?: ReactNode;
   /** Primary CTA under the header (e.g. Compose, New). */
   primaryButton?: ReactNode;
-  /** Applied to the scroll stack (primary button + sections), e.g. drive `--color-ink` override. */
+  /** Applied to the scroll stack (primary button + sections), e.g. drive `--color-we-got-dark` override. */
   scrollSurfaceStyle?: CSSProperties;
   /** Passed to `AppSwitchButton` (e.g. install shell). */
   appSwitchDisabled?: boolean;
   appSwitchSubtitle?: string;
   className?: string;
 };
+
+/**
+ * Inbox tray alone — kept below the lockup so unread / presence-driven inbox
+ * refreshes do not re-render {@link AppSwitchButton} or rewrite the inlined SVG.
+ */
+function AppSidebarNotifications() {
+  const inbox = useNotificationsInbox();
+  if (!inbox) return null;
+  return (
+    <div className="app-sidebar__notifications">
+      <NotificationInboxTray
+        items={inbox.items}
+        unreadCount={inbox.unreadCount}
+        onOpenItem={inbox.onOpenItem}
+        onMarkAllRead={inbox.onMarkAllRead}
+        onEnablePush={inbox.onEnablePush}
+        pushEnabled={inbox.pushEnabled}
+        soundMuted={inbox.soundMuted}
+        onToggleSoundMute={inbox.onToggleSoundMute}
+        unreadArrivalNonce={inbox.unreadArrivalNonce}
+      />
+    </div>
+  );
+}
 
 export function AppSidebar({
   open,
@@ -32,22 +58,22 @@ export function AppSidebar({
   appSwitchSubtitle,
   className,
 }: AppSidebarProps) {
+  const sidebarRef = useRef<HTMLElement>(null);
+  useEffect(() => bindOpenSidebarStatusBar(sidebarRef.current, open), [open]);
+
   return (
     <>
       {open ? <div className="app-sidebar__scrim" onClick={onCloseMobile} aria-hidden /> : null}
-      <aside data-open={open ? "true" : "false"} className={cn("app-sidebar", className)}>
+      <aside
+        ref={sidebarRef}
+        data-open={open ? "true" : "false"}
+        className={cn("app-sidebar", className)}
+      >
         <header className="app-sidebar__header">
           <div className="app-sidebar__header-main">
             <AppSwitchButton disabled={appSwitchDisabled} subtitle={appSwitchSubtitle} />
           </div>
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={onCloseMobile}
-            className="app-sidebar__close"
-          >
-            <X className="size-4" aria-hidden />
-          </button>
+          <AppSidebarNotifications />
         </header>
 
         <div className="app-sidebar__scroll">

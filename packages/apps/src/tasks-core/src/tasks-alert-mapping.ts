@@ -148,7 +148,6 @@ export function tasksAlarmRowLabels(
 ): CalendarAlarmsCardLabels {
   return {
     eventAlarmsLabel: labels.remindMe,
-    eventAlarmRow: defaultCalendarLabels.eventAlarmRow,
     eventAlarmRemove: defaultCalendarLabels.eventAlarmRemove,
     eventAlarmOffset: defaultCalendarLabels.eventAlarmOffset,
     eventAlarmNone: defaultCalendarLabels.eventAlarmNone,

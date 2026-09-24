@@ -10,7 +10,13 @@ type RouteLocationLike = {
 
 const AUTH_ROUTE_PREFIXES = ["/login", "/logout"] as const;
 
-const PUBLIC_ROUTE_PREFIXES = ["/share", "/meet/guest", "/meet/join"] as const;
+const PUBLIC_ROUTE_PREFIXES = [
+  "/share",
+  "/meet/guest",
+  "/meet/join",
+  "/meet/channels",
+  "/meet/meetings",
+] as const;
 
 const ALLOWED_RETURN_PREFIXES = [
   "/",
@@ -49,6 +55,9 @@ export function isWgwAuthRoutePathname(pathname: string): boolean {
 /** Routes that must stay reachable without a member login session. */
 export function isWgwPublicRoutePathname(pathname: string): boolean {
   const normalized = normalizePathname(pathname);
+  // Exact `/meet` is the workspace (and leftover `?room=` redirect). Nested
+  // `/meet/dms` stays private; `/meet/channels` and `/meet/meetings` are public.
+  if (normalized === "/meet") return true;
   return PUBLIC_ROUTE_PREFIXES.some(
     (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
   );
@@ -83,7 +92,15 @@ function unwrapAuthReturnChain(raw: string, depth = 0): string {
   return "/";
 }
 
+/** Passport consent only — not `/oauth/session` (would loop the login redirect). */
+export function isWgwOAuthAuthorizeReturnPath(returnPath: string): boolean {
+  const url = parseRelativePath(returnPath);
+  if (!url) return false;
+  return normalizePathname(url.pathname || "/") === "/oauth/authorize";
+}
+
 function isAllowedReturnPath(pathname: string): boolean {
+  if (pathname === "/oauth/authorize") return true;
   return ALLOWED_RETURN_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

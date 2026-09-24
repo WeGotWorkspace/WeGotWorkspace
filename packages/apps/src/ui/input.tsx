@@ -1,17 +1,23 @@
 import * as React from "react";
-import { Search, X } from "lucide-react";
+import { Eye, EyeOff, Search, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { controlSizeClassName, type ControlSize } from "@/ui/control-size";
 
 import "./input.css";
 
-export type InputSize = "sm" | "md";
-export type InputVariant = "default" | "search";
+export type InputSize = ControlSize;
+export type InputVariant = "default" | "search" | "password";
 
 export type InputProps = Omit<React.ComponentProps<"input">, "size"> & {
-  /** Height, padding, and font-size. Radius stays `--control-radius` (parent token). */
+  /** Height, padding, and font-size. Radius is global `--control-radius`. Default `md` = 36px. */
   size?: InputSize;
   variant?: InputVariant;
+};
+
+type WrappedInputProps = Omit<InputProps, "variant" | "size" | "ref"> & {
+  size: InputSize;
+  forwardedRef: React.ForwardedRef<HTMLInputElement>;
 };
 
 function assignRef<T>(ref: React.ForwardedRef<T>, node: T | null): void {
@@ -41,10 +47,7 @@ function SearchInput({
   onChange,
   forwardedRef,
   ...props
-}: Omit<InputProps, "variant" | "size" | "ref"> & {
-  size: InputSize;
-  forwardedRef: React.ForwardedRef<HTMLInputElement>;
-}): React.JSX.Element {
+}: WrappedInputProps): React.JSX.Element {
   const fieldRef = React.useRef<HTMLInputElement | null>(null);
   const isControlled = value !== undefined;
   const [uncontrolledValue, setUncontrolledValue] = React.useState(() =>
@@ -70,7 +73,7 @@ function SearchInput({
   };
 
   return (
-    <div className={cn("input input--search", size === "sm" && "input--size-sm", className)}>
+    <div className={cn("input input--search", controlSizeClassName("input", size), className)}>
       <Search className="input__search-icon" aria-hidden />
       <input
         {...props}
@@ -95,6 +98,52 @@ function SearchInput({
   );
 }
 
+function PasswordInput({
+  className,
+  size,
+  value,
+  defaultValue,
+  onChange,
+  forwardedRef,
+  disabled,
+  ...props
+}: WrappedInputProps): React.JSX.Element {
+  const [visible, setVisible] = React.useState(false);
+
+  const setFieldRef = (node: HTMLInputElement | null): void => {
+    assignRef(forwardedRef, node);
+  };
+
+  return (
+    <div className={cn("input input--password", controlSizeClassName("input", size), className)}>
+      <input
+        {...props}
+        ref={setFieldRef}
+        type={visible ? "text" : "password"}
+        className="input__field"
+        value={value}
+        defaultValue={defaultValue}
+        onChange={onChange}
+        disabled={disabled}
+      />
+      <button
+        type="button"
+        className="input__visibility"
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+        disabled={disabled}
+        onClick={() => setVisible((current) => !current)}
+      >
+        {visible ? (
+          <EyeOff className="input__visibility-icon" aria-hidden />
+        ) : (
+          <Eye className="input__visibility-icon" aria-hidden />
+        )}
+      </button>
+    </div>
+  );
+}
+
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, size = "md", variant = "default", value, onChange, ...props }, ref) => {
     if (variant === "search") {
@@ -111,10 +160,24 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       );
     }
 
+    if (variant === "password" || type === "password") {
+      return (
+        <PasswordInput
+          className={className}
+          type={type}
+          size={size}
+          value={value}
+          onChange={onChange}
+          forwardedRef={ref}
+          {...props}
+        />
+      );
+    }
+
     return (
       <input
         type={type}
-        className={cn("input", size === "sm" && "input--size-sm", className)}
+        className={cn("input", controlSizeClassName("input", size), className)}
         ref={ref}
         value={value}
         onChange={onChange}

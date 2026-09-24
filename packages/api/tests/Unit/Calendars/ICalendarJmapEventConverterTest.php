@@ -224,22 +224,22 @@ final class ICalendarJmapEventConverterTest extends TestCase
             'links' => [
                 'link1' => [
                     '@type' => 'Link',
-                    'href' => 'https://workspace.test/meet/guest?room=abcd-efgh-ijkl',
+                    'href' => 'https://workspace.test/meet/guest?room=abcd-efgh-jklm',
                 ],
             ],
         ]);
         $defolded = str_replace("\r\n ", '', $ics);
 
         $this->assertMatchesRegularExpression(
-            '/URL(?:;[^:\\r\\n]*)?:https:\\/\\/workspace\\.test\\/meet\\/guest\\?room=abcd-efgh-ijkl/',
+            '/URL(?:;[^:\\r\\n]*)?:https:\\/\\/workspace\\.test\\/meet\\/guest\\?room=abcd-efgh-jklm/',
             $defolded,
         );
         $this->assertStringContainsString('CONFERENCE;', $defolded);
         $this->assertStringContainsString('VALUE=URI', $defolded);
         $this->assertStringContainsString('FEATURE=VIDEO', $defolded);
         $this->assertStringContainsString('WeGotWorkspace Meet', $defolded);
-        $this->assertStringContainsString('https://workspace.test/meet/guest?room=abcd-efgh-ijkl', $defolded);
-        $this->assertStringContainsString('X-GOOGLE-CONFERENCE:https://workspace.test/meet/guest?room=abcd-efgh-ijkl', $defolded);
+        $this->assertStringContainsString('https://workspace.test/meet/guest?room=abcd-efgh-jklm', $defolded);
+        $this->assertStringContainsString('X-GOOGLE-CONFERENCE:https://workspace.test/meet/guest?room=abcd-efgh-jklm', $defolded);
         $this->assertStringNotContainsString('X-MICROSOFT-SKYPETEAMSMEETINGURL', $defolded);
     }
 
@@ -247,10 +247,10 @@ final class ICalendarJmapEventConverterTest extends TestCase
     {
         $conference = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:conf-1\r\nSUMMARY:Call\r\n"
             ."DTSTART:20260615T100000Z\r\nDTEND:20260615T110000Z\r\n"
-            ."CONFERENCE;VALUE=URI;FEATURE=VIDEO;LABEL=\"Meet\":https://workspace.test/meet/guest?room=abcd-efgh-ijkl\r\n"
+            ."CONFERENCE;VALUE=URI;FEATURE=VIDEO;LABEL=\"Meet\":https://workspace.test/meet/guest?room=abcd-efgh-jklm\r\n"
             ."END:VEVENT\r\nEND:VCALENDAR\r\n";
         $this->assertSame(
-            'https://workspace.test/meet/guest?room=abcd-efgh-ijkl',
+            'https://workspace.test/meet/guest?room=abcd-efgh-jklm',
             $this->converter->eventFromIcs($conference)['links']['link1']['href'],
         );
         $this->assertArrayNotHasKey('CONFERENCE', $this->converter->eventFromIcs($conference)['icsProps'] ?? []);

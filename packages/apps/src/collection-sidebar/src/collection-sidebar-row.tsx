@@ -1,10 +1,22 @@
-import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import type { CSSProperties, HTMLAttributes, MouseEvent, ReactNode } from "react";
 import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { Checkbox } from "@/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "./collection-sidebar-row.css";
+
+const NESTED_ROW_CONTROL = "button, a, input, [role='button']";
+
+/** Keep trailing/leading menus clickable without also selecting the row. */
+function stopIfNestedControl(event: MouseEvent<HTMLElement>) {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const control = target.closest(NESTED_ROW_CONTROL);
+  if (control && event.currentTarget.contains(control) && control !== event.currentTarget) {
+    event.stopPropagation();
+  }
+}
 
 export const COLLECTION_SIDEBAR_ROW_BLOCK = "collection-sidebar-row";
 
@@ -19,13 +31,13 @@ export type CollectionSidebarRowProps = {
   onSelect?: () => void;
   onEdit?: () => void;
   editLabel?: string;
-  /** Leading mark inside the select control (e.g. a group icon). */
+  /** Leading mark in the shared leading column (e.g. a group icon). */
   leading?: ReactNode;
   badges?: ReactNode;
   trailing?: ReactNode;
-  /** Indent under a parent collection (contacts groups under a book). */
+  /** Child under a parent collection (e.g. contacts group under a book). No extra indent. */
   nested?: boolean;
-  /** Parent of the active nested row — related wash, not selected. */
+  /** Parent of the active nested row — lighter accent wash, not selected. */
   related?: boolean;
   /** Fold state when {@link onToggleExpand} is set. Default expanded. */
   expanded?: boolean;
@@ -101,6 +113,8 @@ export function CollectionSidebarRow({
   rootProps,
 }: CollectionSidebarRowProps) {
   const blocks = rowBlocks(blockName);
+  const showColorDotLeading = showColorDot && !onToggleVisibility;
+  const hasLeading = Boolean(onToggleVisibility || leading || showColorDotLeading);
   return (
     <li
       {...rootProps}
@@ -114,40 +128,52 @@ export function CollectionSidebarRow({
       )}
       style={
         {
-          "--collection-row-color": color || "var(--color-ink)",
-          "--calendar-row-color": color || "var(--color-ink)",
+          "--collection-row-color": color || "var(--color-we-got-dark)",
+          "--calendar-row-color": color || "var(--color-we-got-dark)",
           ...rootProps?.style,
         } as CSSProperties
       }
     >
-      {onToggleVisibility ? (
-        <Checkbox
-          checked={visible}
-          aria-label={`${visible ? "Hide" : "Show"} ${name}`}
-          className={bem(blocks, "__visibility")}
-          onCheckedChange={() => onToggleVisibility()}
-          onClick={(event) => event.stopPropagation()}
-        />
-      ) : showColorDot ? (
-        <span className={bem(blocks, "__dot")} aria-hidden />
+      {/* Fixed-width leading column (checkbox / icon / color-dot) so labels share one x. */}
+      {hasLeading ? (
+        <span className={bem(blocks, "__leading")}>
+          {onToggleVisibility ? (
+            <Checkbox
+              checked={visible}
+              aria-label={`${visible ? "Hide" : "Show"} ${name}`}
+              className={bem(blocks, "__visibility")}
+              onCheckedChange={() => onToggleVisibility()}
+              onClick={(event) => event.stopPropagation()}
+            />
+          ) : null}
+          {showColorDotLeading ? <span className={bem(blocks, "__dot")} aria-hidden /> : null}
+          {leading ? (
+            <span
+              className={bem(blocks, "__leading-mark")}
+              aria-hidden
+              onClick={stopIfNestedControl}
+            >
+              {leading}
+            </span>
+          ) : null}
+        </span>
       ) : null}
       <button type="button" className={bem(blocks, "__select")} onClick={() => onSelect?.()}>
-        {leading ? (
-          <span className={bem(blocks, "__leading")} aria-hidden>
-            {leading}
-          </span>
-        ) : null}
         <span className={bem(blocks, "__title")}>
           <span className={bem(blocks, "__name")}>{name}</span>
           {badges}
         </span>
-        {trailing}
+        {trailing ? (
+          <span className={bem(blocks, "__trailing")} onClick={stopIfNestedControl}>
+            {trailing}
+          </span>
+        ) : null}
       </button>
       {onEdit ? (
         <IconButton
           label={editLabel}
           icon={<Pencil className="size-3.5" aria-hidden />}
-          size="sm"
+          size="xs"
           variant="ghost"
           className={`${bem(blocks, "__action")} ${bem(blocks, "__edit")}`}
           onClick={() => onEdit()}
@@ -163,7 +189,7 @@ export function CollectionSidebarRow({
               <ChevronRight className="size-3.5" aria-hidden />
             )
           }
-          size="sm"
+          size="xs"
           variant="ghost"
           className={bem(blocks, "__expand")}
           aria-expanded={expanded}

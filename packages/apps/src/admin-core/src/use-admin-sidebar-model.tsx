@@ -7,6 +7,7 @@ import {
   MessagesSquare,
   Puzzle,
   ShieldCheck,
+  Sparkles,
   Users,
 } from "lucide-react";
 import type { AdminSection } from "@/admin-core/src/admin-types";
@@ -73,6 +74,12 @@ export function useAdminSidebarModel(): AdminSectionDescriptor[] {
       label: "Search",
       description: "Unified index health and reindexing",
       icon: <Search className="size-3.5" />,
+    },
+    {
+      id: "mcp",
+      label: "Connected assistants",
+      description: "Claude, ChatGPT, and Mistral",
+      icon: <Sparkles className="size-3.5" />,
     },
   ];
 }

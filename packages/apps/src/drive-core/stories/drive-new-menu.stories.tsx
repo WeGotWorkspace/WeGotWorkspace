@@ -5,7 +5,7 @@ import { STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
 
 const meta = {
-  title: "Apps/Drive/Components/DriveNewMenu",
+  title: "Features/Drive/Components/DriveNewMenu",
   component: DriveNewMenu,
   tags: ["autodocs"],
   render: (args) => (
@@ -24,6 +24,11 @@ export const Default: Story = {
     onCreateFolder: STORY_NOOP,
     onUploadFiles: STORY_NOOP,
     onCreateMarkdown: STORY_NOOP,
-    onCreateBlank: STORY_NOOP,
+    newFileTemplates: [
+      { id: "blank-doc", label: driveStoryLabels.newDocument, kind: "doc" },
+      { id: "blank-sheet", label: driveStoryLabels.newSpreadsheet, kind: "sheet" },
+      { id: "blank-slides", label: driveStoryLabels.newPresentation, kind: "slides" },
+    ],
+    onCreateTemplate: STORY_NOOP,
   },
 };

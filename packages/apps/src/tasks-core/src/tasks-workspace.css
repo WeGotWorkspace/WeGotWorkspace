@@ -1,9 +1,10 @@
 @import "../../styles.css" reference;
 @import "../../workspace-shell/src/workspace-split-app.css";
+@import "../../workspace-shell/src/workspace-color.css";
 
 /**
- * Tasks product shell: cream main pane + light warm sidebar tint.
- * Nav text stays ink-on-tint; primary CTA and app switcher logo use accent fill + ink glyph.
+ * Tasks product shell: cream main pane + Pink sidebar tint (`#ffbdc2`).
+ * Primary fills use accent with Dark fg (white on Pink is ~1.6:1).
  * Import only from {@link TasksWorkspace}.
  */
 .tasks-workspace {
@@ -17,95 +18,96 @@
    * Horizontal inset for title text — matches view-header title, not the sidebar toggle.
    * Mobile: toggle (size-9) + flex gap-3 within header p-4, while main-content adds px-4.
    * Right inset is 0 on mobile: header actions sit at the main-content edge (header p-4 only).
-   * md+: centered column + view-header__main px-4; main-content is md:px-0.
+   * md+: content column stays centered; ViewHeader is full-bleed (toggle left, actions right).
    */
   --tasks-content-inset: calc(2.25rem + 0.75rem);
   --tasks-content-inset-end: 0;
 
-  --tasks-accent: #ea8c72;
-  --tasks-sidebar: color-mix(in oklab, var(--tasks-accent) 12%, var(--color-cream, #ffffff));
-  --workspace-accent: var(--tasks-accent);
-  --color-emerald: var(--tasks-accent);
-  --workspace-root-bg: var(--color-cream, #ffffff);
-  --workspace-detail-bg: var(--color-cream, #ffffff);
-  --app-sidebar-bg: var(--tasks-sidebar);
-  --app-sidebar-border-color: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --app-sidebar-color: var(--color-ink);
-  --sidebar-logo-close-button-color: var(--color-ink);
-  --sidebar-badge-fg: var(--tasks-accent);
-  --workspace-sidebar-toggle-color: var(--color-ink);
-  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 8%, transparent);
-  --workspace-user-footer-link-hover-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-text-color: color-mix(in oklab, var(--color-ink) 70%, transparent);
-  --workspace-user-footer-border-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --workspace-user-footer-avatar-bg: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --workspace-user-footer-avatar-color: var(--color-ink);
-  --workspace-user-footer-link-color: color-mix(in oklab, var(--color-ink) 65%, transparent);
-  --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
-  --button-primary-bg: var(--tasks-accent);
-  --button-primary-fg: var(--color-ink);
+  --workspace-accent: var(--color-we-got-sand);
+  --color-emerald: var(--workspace-accent);
+  --workspace-root-bg: var(--workspace-surface);
+  --workspace-detail-bg: var(--workspace-surface);
+  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
+  --app-sidebar-color: var(--color-we-got-dark);
+  --sidebar-logo-close-button-color: var(--color-we-got-dark);
+  --sidebar-badge-fg: var(--workspace-accent);
+  --workspace-user-footer-link-hover-bg: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --workspace-user-footer-text-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 70%,
+    transparent
+  );
+  --workspace-user-footer-border-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 10%,
+    transparent
+  );
+  --workspace-user-footer-link-color: color-mix(
+    in oklch,
+    var(--color-we-got-dark) 65%,
+    transparent
+  );
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
+  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  --primary: var(--workspace-accent);
+  --primary-foreground: var(--color-we-got-dark);
+
+  /* Outline action language for header + collection sidebar rows. */
+  --button-active-color: var(--workspace-accent-strong);
+  --button-outline-hover-color: var(--workspace-accent-strong);
+  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
+  --button-outline-active-background: color-mix(
+    in oklch,
+    var(--workspace-accent) 18%,
+    var(--workspace-surface)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklch,
+    var(--workspace-accent) 24%,
+    var(--workspace-surface)
+  );
+}
+
+/* Header outline chips stay on accent-strong; sidebar nav hover stays ink. */
+.tasks-workspace .view-header {
+  --button-active-color: var(--workspace-accent-strong);
+  --button-outline-hover-color: var(--workspace-accent-strong);
 }
 
 .tasks-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--tasks-accent);
-  --button-primary-fg: var(--color-ink);
-  --button-subtle-color: var(--color-ink);
-  --button-subtle-background: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --button-subtle-hover-background: color-mix(in oklab, var(--color-ink) 16%, transparent);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
+  --button-outline-hover-color: var(--color-we-got-dark);
 }
 
-/** App switcher lockup: accent tile + ink checkmark (not default ink tile + accent glyph). */
+/** App switcher lockup: tasks.svg literals (`#ffbdc2` tile, white marks). */
 .tasks-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--tasks-accent);
-  --app-switch-icon-fg: var(--color-ink);
-  background-color: var(--app-switch-icon-bg);
+  background-color: var(--color-we-got-pink);
+}
+
+.tasks-workspace
+  .app-sidebar__header
+  .app-switch-button__icon.workspace-app-icon--switch-trigger
+  svg {
+  --wai-bg: var(--color-we-got-pink);
+  --wai-fg: #ffffff;
 }
 
 /**
- * Desktop: view title and task/composer text share the centered column's content inset
- * (md:px-4); row markers sit in a left gutter so they do not push title text right.
+ * Desktop: task/composer text keeps a modest content inset inside the centered
+ * column; row markers sit in a left gutter. ViewHeader stays full-bleed.
  */
 @media (min-width: 768px) {
   .tasks-workspace {
     --tasks-content-inset: 1rem;
     --tasks-content-inset-end: var(--tasks-content-inset);
-  }
-
-  .tasks-workspace .workspace-app-layout__main-header > div:first-child {
-    display: grid;
-    grid-template-columns: 1fr minmax(0, var(--workspace-main-content-max-width)) 1fr;
-    align-items: start;
-    width: 100%;
-  }
-
-  .tasks-workspace .workspace-app-layout__main-header > div:first-child > :first-child {
-    grid-column: 1;
-    grid-row: 1;
-    justify-self: start;
-    /*
-     * Match `.tasks-main-view__row` content inset inside `.workspace-app-layout__main-content`:
-     * centering offset + 1rem, minus header md:p-6 (1.5rem) when the column is full width.
-     */
-    margin-inline-start: max(
-      -0.5rem,
-      calc((100% - var(--workspace-main-content-max-width)) / 2 + 1rem)
-    );
-  }
-
-  .tasks-workspace .workspace-app-layout__main-header .view-header__main {
-    grid-column: 2;
-    grid-row: 1;
-    width: 100%;
-    min-width: 0;
-    /* Match task/composer title text inset inside the centered column. */
-    @apply px-4;
-  }
-
-  .tasks-workspace .workspace-app-layout__main-header .view-header__search-stack {
-    max-width: var(--workspace-main-content-max-width);
-    margin-inline: auto;
-    width: 100%;
   }
 }
 
@@ -115,30 +117,18 @@
 }
 
 /*
- * Show completed: Calendar Today / Notes Star wash — accent 18%/24% on cream,
- * not a solid primary fill. Lucide stays stroke-only.
+ * Show completed: icon-only below md (Meet-style sr-only label + square chrome);
+ * icon + visible label from md up (ActionBar showLabel pattern).
  */
-.tasks-workspace .tasks-workspace__show-completed.button--variant-subtle.icon-button--active {
-  --button-active-color: var(--color-ink);
-  --button-subtle-color: var(--color-ink);
-  --button-subtle-background: color-mix(
-    in oklab,
-    var(--tasks-accent) 18%,
-    var(--color-cream, #ffffff)
-  );
-  --button-subtle-hover-background: color-mix(
-    in oklab,
-    var(--tasks-accent) 24%,
-    var(--color-cream, #ffffff)
-  );
-}
+@media (max-width: 767px) {
+  .tasks-workspace__show-completed > .button__label {
+    @apply sr-only;
+  }
 
-.tasks-workspace
-  .tasks-workspace__show-completed.button--variant-subtle.icon-button--active
-  .button__icon
-  > svg {
-  fill: none;
-  color: var(--color-ink);
+  .tasks-workspace__show-completed.button {
+    width: var(--control-height-md, 2.25rem);
+    @apply shrink-0 flex-none px-0;
+  }
 }
 
 .tasks-workspace .workspace-app-layout__main-content {
@@ -152,18 +142,20 @@
  * {@link Button} and {@link buttonVariants} match the tasks shell.
  */
 .tasks-dialog-surface {
-  --tasks-accent: #ea8c72;
-  --color-emerald: var(--tasks-accent);
-  --button-primary-bg: var(--tasks-accent);
-  --button-primary-fg: var(--color-ink);
-  --primary: var(--tasks-accent);
-  --primary-foreground: var(--color-ink);
-  --field-label-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --workspace-accent: var(--color-we-got-sand);
+  --color-emerald: var(--workspace-accent);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  --primary: var(--workspace-accent);
+  --primary-foreground: var(--color-we-got-dark);
+  --button-active-color: var(--workspace-accent-strong);
+  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
+  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 .tasks-story-scope {
   min-height: 100dvh;
-  background-color: var(--workspace-root-bg, var(--color-cream, #ffffff));
+  background-color: var(--workspace-root-bg, var(--color-we-got-soft));
 }
 
 .tasks-story-scope--main {
@@ -171,5 +163,5 @@
 }
 
 .tasks-workspace .collection-sidebar-row--drop-target {
-  background-color: color-mix(in oklab, var(--tasks-accent) 18%, transparent);
+  background-color: color-mix(in oklch, var(--workspace-accent) 28%, transparent);
 }

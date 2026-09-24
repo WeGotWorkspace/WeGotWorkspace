@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ADDRESS_BOOK_DOT_COLORS,
@@ -13,8 +14,13 @@ import {
   CONTACTS_VIEW_PREFS_STORAGE_KEY,
   readContactsViewPrefs,
 } from "@/contacts-core/src/contacts-view-prefs";
+import { TooltipProvider } from "@/ui/tooltip";
 
 const labels = contactsAddressBookDialogLabelsFrom(defaultContactsLabels);
+
+function renderDialog(ui: ReactElement) {
+  return render(<TooltipProvider>{ui}</TooltipProvider>);
+}
 
 function stubMatchMedia() {
   Object.defineProperty(window, "matchMedia", {
@@ -40,7 +46,7 @@ describe("ContactsAddressBookDialog", () => {
   });
 
   it("keeps the name read-only and has no delete control", () => {
-    render(
+    renderDialog(
       <ContactsAddressBookDialog
         dialog={{
           bookId: "default",
@@ -77,7 +83,7 @@ describe("ContactsAddressBookDialog", () => {
     const hashed = addressBookDotColor({ id: "default" });
     const override = ADDRESS_BOOK_DOT_COLORS.find((color) => color !== hashed) ?? "#ec4899";
 
-    render(
+    renderDialog(
       <ContactsAddressBookDialog
         dialog={{
           bookId: "default",
@@ -103,7 +109,7 @@ describe("ContactsAddressBookDialog", () => {
   });
 
   it("hides share UI for a sharee and offers remove", () => {
-    render(
+    renderDialog(
       <ContactsAddressBookDialog
         dialog={{
           bookId: "shared-42",

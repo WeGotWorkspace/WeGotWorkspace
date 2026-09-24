@@ -4,7 +4,7 @@ import { Button } from "@/button/src/button";
 import { Callout } from "../src/callout";
 
 const meta = {
-  title: "Shared/Callout",
+  title: "UI/Primitives/Callout",
   component: Callout,
   tags: ["vitest-ci"],
   args: {
@@ -50,7 +50,7 @@ export const WithAction: Story = {
       <Button
         label="Undo"
         variant="primary"
-        size="sm"
+        size="md"
         icon={<Undo2 className="size-4" aria-hidden />}
         variant="outline"
         onClick={() => {}}

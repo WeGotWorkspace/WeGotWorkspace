@@ -1,15 +1,21 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CommentMark } from "@/text-editor-core/src/text-editor-comment-commands";
 import { docsLabels } from "@/docs-core/src/docs-labels";
+import { TooltipProvider } from "@/ui/tooltip";
 import type { DocsCommentThread } from "../docs-comments-types";
 import { DOCS_COMMENT_VIEW_TIMELINE_STYLE_ID } from "./docs-comments-mark-visibility";
 import * as viewTimelinePolyfill from "./docs-comments-view-timeline-polyfill";
 import { DocsCommentsFloatingLayer } from "./docs-comments-floating-layer";
 
 import "./docs-comments-floating-layer.css";
+
+function renderLayer(ui: ReactElement) {
+  return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
+}
 
 function mountEditor(content: string, options?: { withFormatBar?: boolean }) {
   const editor = new Editor({
@@ -128,7 +134,7 @@ describe("DocsCommentsFloatingLayer", () => {
       '<p><span data-comment-id="t-a" class="comment-mark">Alpha</span> <span data-comment-id="t-b" class="comment-mark">Beta</span></p>',
     );
 
-    const { container } = render(
+    const { container } = renderLayer(
       <DocsCommentsFloatingLayer
         editor={editor}
         visible
@@ -190,7 +196,7 @@ describe("DocsCommentsFloatingLayer", () => {
       { withFormatBar: true },
     );
 
-    const { container } = render(
+    const { container } = renderLayer(
       <DocsCommentsFloatingLayer
         editor={editor}
         visible
@@ -233,7 +239,7 @@ describe("DocsCommentsFloatingLayer", () => {
 
     vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
 
-    const { container } = render(
+    const { container } = renderLayer(
       <DocsCommentsFloatingLayer
         editor={editor}
         visible
@@ -265,7 +271,7 @@ describe("DocsCommentsFloatingLayer", () => {
       '<p><span data-comment-id="t-1" class="comment-mark">Hello</span></p>',
     );
 
-    const { container } = render(
+    const { container } = renderLayer(
       <DocsCommentsFloatingLayer
         editor={editor}
         visible
@@ -375,7 +381,7 @@ describe("DocsCommentsFloatingLayer", () => {
 
     vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
 
-    const { container } = render(
+    const { container } = renderLayer(
       <DocsCommentsFloatingLayer
         editor={editor}
         visible
@@ -424,7 +430,7 @@ describe("DocsCommentsFloatingLayer", () => {
       messages: [],
     };
 
-    const { container } = render(
+    const { container } = renderLayer(
       <DocsCommentsFloatingLayer
         editor={editor}
         visible
@@ -469,7 +475,7 @@ describe("DocsCommentsFloatingLayer", () => {
       messages: [],
     };
 
-    const { container } = render(
+    const { container } = renderLayer(
       <DocsCommentsFloatingLayer
         editor={editor}
         visible={false}
@@ -524,7 +530,7 @@ describe("DocsCommentsFloatingLayer", () => {
       messages: [],
     };
 
-    const { container } = render(
+    const { container } = renderLayer(
       <DocsCommentsFloatingLayer
         editor={editor}
         visible

@@ -45,10 +45,10 @@ export function CalendarRsvpView({
         <Button disabled={busy} onClick={() => onRespond("accepted")}>
           {labels.rsvpAccept}
         </Button>
-        <Button variant="subtle" disabled={busy} onClick={() => onRespond("tentative")}>
+        <Button variant="outline" disabled={busy} onClick={() => onRespond("tentative")}>
           {labels.rsvpMaybe}
         </Button>
-        <Button variant="subtle" disabled={busy} onClick={() => onRespond("declined")}>
+        <Button variant="outline" disabled={busy} onClick={() => onRespond("declined")}>
           {labels.rsvpDecline}
         </Button>
       </div>

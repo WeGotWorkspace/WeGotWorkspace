@@ -19,6 +19,8 @@ export type DocsCollabMeshPeerStatus = DocsCollabMeshPeer & { link: DocsCollabPe
 export type DocsCollabMeshMessage =
   | { type: "sync"; u: number[]; from?: string }
   | { type: "awareness"; u: number[]; from?: string }
+  /** Gossip discovery: a connected peer forwards newly joined room peers. */
+  | { type: "peer-hint"; peers: DocsCollabMeshPeer[]; from?: string }
   | { type: "dc-open"; from: string }
   | { type: "link" };
 

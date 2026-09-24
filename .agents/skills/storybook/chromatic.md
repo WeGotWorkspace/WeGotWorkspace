@@ -1,58 +1,58 @@
 # Chromatic visual regression
 
-Chromatic captures Storybook snapshots for visual diff review. In this repo it is **fully wired but dormant** ([#80](https://github.com/WeGotWorkspace/wegotworkspace/issues/80)) — CI runs only when a maintainer opts in with repo settings. Baselines are not accepted yet ([#85](https://github.com/WeGotWorkspace/wegotworkspace/issues/85)).
+Chromatic captures Storybook snapshots for visual regression. Enablement is tracked in [#85](https://github.com/WeGotWorkspace/wegotworkspace/issues/85). CI runs only when the repo variable `CHROMATIC_ENABLED` is `true` and secret `CHROMATIC_PROJECT_TOKEN` is set.
 
 **Policy:** optional for new work; not part of `pnpm test:apps-done-gate`. See [.agents/POLICY.md](../../POLICY.md) and [apps-done-gate.md](../testing/apps-done-gate.md).
 
 ### Issue #85 scope
 
-| Slice | Status | Blocker |
-|-------|--------|---------|
-| Document gating policy + CI wiring | **Done** (this doc, `POLICY.md`, `apps-done-gate.md`) | — |
-| Create project, token, enable variable, accept baselines, hard-fail decision | **Open** | Requires `CHROMATIC_PROJECT_TOKEN` and maintainer Chromatic UI access — cannot be completed in-repo without secrets |
+| Slice | Status | Notes |
+|-------|--------|-------|
+| Document gating policy + CI wiring | **Done** (this doc, `POLICY.md`, `apps-done-gate.md`) | Single dedicated job; unaccepted diffs do not fail CI |
+| Create project, token, enable variable | Maintainer | `CHROMATIC_PROJECT_TOKEN` secret + `CHROMATIC_ENABLED=true` |
+| Accept baselines on `main` | Automatic after enable | `autoAcceptChanges: "main"`; PR diffs still require review |
 
 ## Current gating policy
 
 | Setting | Value | Effect |
 |---------|-------|--------|
-| `exitZeroOnChanges` | `true` (CI + local script default) | CI **does not fail** on unreviewed visual changes; Chromatic publishes builds for human review in the Chromatic UI |
-| `onlyChanged` (TurboSnap) | `true` (dedicated CI job) | Limits snapshot count to stories affected by the diff |
-| Repo variable `CHROMATIC_ENABLED` | unset / not `true` | All Chromatic CI steps are skipped |
+| `exitZeroOnChanges` | `true` | A successful Storybook publish stays green. Unaccepted visual diffs are listed in the Chromatic UI and do **not** fail the CI job |
+| `autoAcceptChanges` | `"main"` only | Pushes to `main` update baselines; never all branches |
+| `onlyChanged` (TurboSnap) | `true` | Limits snapshot count to stories affected by the diff |
+| Live stories | `parameters.chromatic.disableSnapshot: true` | `Features/Workspace/Live` and `Features/Workspace/Live/Shell` are not snapshotted |
+| Storybook animations | disabled in `.storybook/chromatic-reduced-motion.css` under `body.isChromatic` / Vitest `data-chromatic-reduced-motion` | Chromatic pauses CSS animations. Radix waits for `animationend`, so exit animations must be `none` or menus and dialogs stay mounted during `play`. Interactive `storybook dev` is not scoped and keeps transitions. |
+| Repo variable `CHROMATIC_ENABLED` | must be `true` | Chromatic job is skipped when unset / not `true` |
 
-**Decision (Jun 2026):** keep publish-only (`exitZeroOnChanges`) until baselines exist and snapshot volume is understood. Switching to hard-fail on unreviewed changes is a separate maintainer decision — update `.github/workflows/ci.yml` and this doc when that changes.
+Free tier is ~5k snapshots/month; TurboSnap and smoke-only Storybook Vitest help stay within budget. Full mock-tier catalog is **111 exported surfaces** (~101 story files); Live titles are excluded from Chromatic.
 
-Free tier is ~5k snapshots/month; TurboSnap and smoke-only Storybook Vitest help stay within budget. Full catalog is **111 exported surfaces** (~101 story files).
-
-## CI wiring (verified)
+## CI wiring
 
 File: `.github/workflows/ci.yml`
 
-When `vars.CHROMATIC_ENABLED == 'true'`:
+When `vars.CHROMATIC_ENABLED == 'true'` (and not a release-commit push):
 
-1. **`build` job — inline step** (after Storybook Vitest smoke):
-   - `pnpm --filter @wgw/apps exec chromatic --build-script-name build-storybook --exit-zero-on-changes`
-   - Uses `secrets.CHROMATIC_PROJECT_TOKEN` via `CHROMATIC_PROJECT_TOKEN` env.
+- **`chromatic` job** (single publish path):
+  - Storybook is built with `pnpm exec storybook build --stats-json` before upload, so the action does not spawn its own Storybook build. `--stats-json` writes `preview-stats.json`, which TurboSnap needs to trace changed files.
+  - `chromaui/action@v18` with `workingDir: packages/apps` and `storybookBuildDir: storybook-static`
+  - Checkout `fetch-depth: 0` for TurboSnap history
+  - `onlyChanged: true`, `exitZeroOnChanges: true`, `autoAcceptChanges: "main"`
+  - `projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}`
 
-2. **`chromatic` job** (parallel dedicated job, skips release commits on push):
-   - `chromaui/action@v13` with `workingDir: packages/apps`
-   - `onlyChanged: true`, `exitZeroOnChanges: true`
-   - Same `secrets.CHROMATIC_PROJECT_TOKEN`.
-
-Both paths publish when enabled. Consider consolidating to the dedicated job only if double publishes become costly ([#85](https://github.com/WeGotWorkspace/wegotworkspace/issues/85) follow-up).
+There is **no** second Chromatic publish in the `build` job. Do **not** use `pull_request_target` for this workflow.
 
 Chromatic is **not** part of branch-protection required checks until maintainers explicitly add it.
 
 ## Enablement checklist (maintainers — requires secrets)
 
-Complete in order; steps 1–3 need org/repo admin access:
+Complete in order; steps 1–2 need org/repo admin access:
 
 - [ ] Create a Chromatic project linked to this repo (GitHub integration recommended).
 - [ ] Add repository secret `CHROMATIC_PROJECT_TOKEN` (project token from Chromatic → Manage → Configure).
 - [ ] Set repository variable `CHROMATIC_ENABLED` to `true` (Settings → Secrets and variables → Actions → Variables).
 - [ ] Trigger CI on a PR; open the Chromatic build link from the job log.
-- [ ] Accept initial baselines for the full mock-tier catalog (111 surfaces / ~101 story files; expect a large first build).
+- [ ] Confirm `main` auto-accepts baselines and a PR with unaccepted diffs still exits 0, with the review link in the job log.
 - [ ] Confirm TurboSnap (`onlyChanged`) behaves as expected on a small UI PR.
-- [ ] Decide whether to keep `exitZeroOnChanges` (review-only) or gate merges on Chromatic approval — document the choice here and in `POLICY.md`.
+- [ ] Confirm Live stories (`Features/Workspace/Live*`) are not snapshotted.
 
 ## Local development (no token required)
 
@@ -76,6 +76,6 @@ Storybook addon: `@chromatic-com/storybook` in `packages/apps/.storybook/main.ts
 
 ## Agent guidance
 
-- Do **not** block UI work on Chromatic while dormant.
 - Do **not** ask for or commit `CHROMATIC_PROJECT_TOKEN`.
+- Do **not** snapshot Live-tier stories; keep `chromatic.disableSnapshot: true` on Live metas.
 - When touching stories, rely on mock-tier coverage, `vitest-ci` smoke, and a11y gate per [offline-first.md](offline-first.md).

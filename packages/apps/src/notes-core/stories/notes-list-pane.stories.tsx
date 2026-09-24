@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { CollectionListWorkspace } from "@/collection-layout/src/collection-layout";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
@@ -87,7 +87,7 @@ export function NotesListPaneHarness({
 }
 
 const meta = {
-  title: "Apps/Notes/Panes/List",
+  title: "Features/Notes/Panes/List",
   component: NotesListPaneHarness,
   parameters: {
     layout: "fullscreen",
@@ -109,10 +109,11 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: /Endless scroll/i })).toBeInTheDocument();
-    await expect(canvas.getByText("3 Items")).toBeInTheDocument();
+    await expect(canvas.getByLabelText("3 Items")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Refresh notes" })).toBeInTheDocument();
-    await expect(canvas.getByText("architecture")).toBeInTheDocument();
-    await expect(canvas.getByText("essay")).toBeInTheDocument();
+    await expect(canvasElement.querySelector(".list-item__tags")).toBeNull();
+    await expect(canvas.queryByText("architecture")).toBeNull();
+    await expect(canvas.queryByText("essay")).toBeNull();
     await expect(canvasElement.querySelector(".notes-notebook-color-icon")).toBeTruthy();
     await expect(canvasElement.querySelector(".collection-sidebar-row__dot")).toBeNull();
     const input = canvas.getByPlaceholderText("Search notes...");
@@ -134,8 +135,10 @@ export const RetrySync: Story = {
   tags: ["vitest-ci"],
   args: { preset: "default", failedSyncCount: 2 },
   play: async () => {
+    await waitFor(() => {
+      expect(document.body.textContent).toContain("Some changes could not sync");
+    });
     const body = within(document.body);
-    await expect(body.getByText("Some changes could not sync")).toBeInTheDocument();
     await expect(body.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   },
 };

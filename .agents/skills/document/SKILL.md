@@ -30,6 +30,8 @@ Update docs when the user asks, or when shipping:
 
 **Do not** create markdown files the user did not ask for. Propose doc updates in chat; write only when requested or clearly part of the task.
 
+**English only** — docs, plan archives, and GitHub-facing summaries are English even if the user prompt is Dutch ([english-only.md](../developer/english-only.md)). Chat replies may stay Dutch.
+
 ## Templates
 
 ### Feature summary (PR / plan archive)

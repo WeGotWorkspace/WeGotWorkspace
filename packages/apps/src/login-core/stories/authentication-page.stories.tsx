@@ -35,7 +35,7 @@ function PasswordProtectedHarness({ initialError = "" }: { initialError?: string
 }
 
 const meta = {
-  title: "Shared/AuthenticationPage",
+  title: "Layout/Authentication Page",
   component: AuthenticationPage,
   tags: ["autodocs"],
   parameters: {
@@ -57,14 +57,14 @@ export const Default: Story = {
           <Input id="story-username" name="username" placeholder="yourname" />
         </FieldLabelRow>
         <FieldLabelRow label="Password">
-          <Input id="story-password" name="password" type="password" placeholder="••••••••" />
+          <Input id="story-password" name="password" variant="password" placeholder="••••••••" />
         </FieldLabelRow>
         <div className="pt-4">
           <Button
             type="submit"
             label="Sign in"
             variant="primary"
-            size="lg"
+            size="xl"
             pill
             className="login-screen__submit"
           />

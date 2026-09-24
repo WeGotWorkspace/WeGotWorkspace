@@ -92,6 +92,9 @@ export function useDocsCollabTabSync({
     const coordinator = new DocsCollabTabCoordinator(room, handlers);
     coordinatorRef.current = coordinator;
     coordinator.start();
+    if (coordinator.meshLeader) {
+      void tryConnectMeshAsLeader();
+    }
 
     tabSyncRef.current = {
       onLocalSync: (encoded) => {

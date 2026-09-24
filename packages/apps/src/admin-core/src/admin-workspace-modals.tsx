@@ -23,7 +23,6 @@ export type AdminWorkspaceModalsProps = {
   setNewUserOpen: (open: boolean) => void;
   setEditUserId: (id: string | null) => void;
   setPasswordUserId: (id: string | null) => void;
-  setDeleteUserId: (id: string | null) => void;
   newGroupOpen: boolean;
   setNewGroupOpen: (open: boolean) => void;
   setEditGroupId: (id: string | null) => void;
@@ -36,7 +35,6 @@ export type AdminWorkspaceModalsProps = {
   setUpdatingNow: (value: boolean) => void;
   editingUser: AdminControllerState["users"][number] | null;
   passwordUser: AdminControllerState["users"][number] | null;
-  deletingUser: AdminControllerState["users"][number] | null;
   editingGroup: AdminControllerState["groups"][number] | null;
   deletingGroup: AdminControllerState["groups"][number] | null;
 };
@@ -50,7 +48,6 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
     setNewUserOpen,
     setEditUserId,
     setPasswordUserId,
-    setDeleteUserId,
     newGroupOpen,
     setNewGroupOpen,
     setEditGroupId,
@@ -63,7 +60,6 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
     setUpdatingNow,
     editingUser,
     passwordUser,
-    deletingUser,
     editingGroup,
     deletingGroup,
   } = props;
@@ -93,6 +89,15 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
             setEditUserId(null);
           }
         }}
+        onDelete={
+          editingUser
+            ? async () => {
+                if (await controller.actions.deleteUser(editingUser.id)) {
+                  setEditUserId(null);
+                }
+              }
+            : undefined
+        }
       />
       <PasswordDialog
         open={Boolean(passwordUser)}
@@ -137,36 +142,6 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
           if (ok) setEditGroupId(null);
         }}
       />
-
-      <AlertDialog
-        open={Boolean(deletingUser)}
-        onOpenChange={(next) => !next && setDeleteUserId(null)}
-      >
-        <AlertDialogContent className="admin-dialog-surface">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete user?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deletingUser
-                ? `${deletingUser.displayName} (@${deletingUser.username}) will be permanently removed and unassigned from all groups.`
-                : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className={buttonVariants({ variant: "destructive" })}
-              onClick={async () => {
-                if (!deletingUser) return;
-                if (await controller.actions.deleteUser(deletingUser.id)) {
-                  setDeleteUserId(null);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AlertDialog
         open={Boolean(deletingGroup)}

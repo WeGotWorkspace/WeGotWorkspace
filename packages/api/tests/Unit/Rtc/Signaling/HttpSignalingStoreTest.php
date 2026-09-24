@@ -26,6 +26,7 @@ final class HttpSignalingStoreTest extends TestCase
             $table->string('peer_id');
             $table->string('name');
             $table->string('owner_user')->default('');
+            $table->string('browser_id')->default('');
             $table->integer('seen_at');
             $table->unique(['room', 'peer_id']);
         });
@@ -71,6 +72,58 @@ final class HttpSignalingStoreTest extends TestCase
 
         $second = $store->poll('room-a', 'bbbbbbbbbbbbbbbb', $first['messages'][0]['id']);
         $this->assertSame([], $second['messages']);
+    }
+
+    public function test_delete_owned_peers_except_leaves_the_replacement(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::collab());
+        $now = time();
+        $store->upsertPeer('room-a', 'aaaaaaaaaaaaaaaa', 'Alice', 'u:alice', $now);
+        $store->upsertPeer('room-a', 'bbbbbbbbbbbbbbbb', 'Bob', 'u:bob', $now);
+
+        $deleted = $store->deleteOwnedPeersExcept('room-a', 'u:alice');
+        $this->assertSame([], $deleted);
+        $this->assertSame(
+            [
+                ['id' => 'aaaaaaaaaaaaaaaa', 'name' => 'Alice', 'user' => 'alice'],
+                ['id' => 'bbbbbbbbbbbbbbbb', 'name' => 'Bob', 'user' => 'bob'],
+            ],
+            $store->peerList('room-a', 'cccccccccccccccc'),
+        );
+    }
+
+    public function test_delete_owned_peers_except_evicts_after_join_grace(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::collab());
+        $old = time() - 20;
+        $store->upsertPeer('room-a', 'aaaaaaaaaaaaaaaa', 'Alice', 'u:alice', $old);
+        $store->upsertPeer('room-a', 'bbbbbbbbbbbbbbbb', 'Bob', 'u:bob', time());
+
+        $deleted = $store->deleteOwnedPeersExcept('room-a', 'u:alice');
+        $this->assertSame(['aaaaaaaaaaaaaaaa'], $deleted);
+        $this->assertSame(
+            [['id' => 'bbbbbbbbbbbbbbbb', 'name' => 'Bob', 'user' => 'bob']],
+            $store->peerList('room-a', 'cccccccccccccccc'),
+        );
+    }
+
+    public function test_delete_peers_for_browser_evicts_same_browser_only(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = time();
+        $store->upsertPeer('room-a', 'alice-old', 'Alice', 'u:alice', $now, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+        $store->upsertPeer('room-a', 'alice-phone', 'Alice', 'u:alice', $now, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+        $store->upsertPeer('room-a', 'bob-peer', 'Bob', 'u:bob', $now, 'cccccccccccccccccccccccccccccccc');
+
+        $deleted = $store->deletePeersForBrowser('room-a', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'alice-new');
+        $this->assertSame(['alice-old'], $deleted);
+        $this->assertSame(
+            [
+                ['id' => 'alice-phone', 'name' => 'Alice'],
+                ['id' => 'bob-peer', 'name' => 'Bob'],
+            ],
+            $store->peerList('room-a', 'alice-new'),
+        );
     }
 
     public function test_missing_peer_returns_unknown_peer_for_recovery(): void

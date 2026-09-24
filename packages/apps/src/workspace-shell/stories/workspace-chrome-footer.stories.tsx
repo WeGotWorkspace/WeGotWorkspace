@@ -4,7 +4,7 @@ import { Tag } from "@/tag/src/tag";
 import { WorkspaceChromeFooter } from "@/workspace-shell/src/workspace-chrome-footer";
 
 const meta = {
-  title: "Shared/Workspace Chrome Footer",
+  title: "Layout/Workspace Chrome Footer",
   component: WorkspaceChromeFooter,
   parameters: {
     layout: "padded",

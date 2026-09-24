@@ -1,4 +1,5 @@
 @import "../../styles.css" reference;
+@import "./calendar-event-dialog.css";
 @import "./calendar-rsvp-actions.css";
 
 .calendar-event-details-popover__anchor {
@@ -11,58 +12,78 @@
 }
 
 .calendar-dialog-surface.calendar-event-details-popover {
-  /* Matches lucide `size-4` on when/location/etc. */
-  --calendar-event-details-icon-column: 1rem;
-  @apply box-border flex w-[min(20rem,calc(100vw-1.5rem))] max-w-[min(20rem,calc(100vw-1.5rem))] flex-col gap-2 overflow-x-hidden overflow-y-auto p-3;
+  @apply relative box-border flex w-[min(20rem,calc(100vw-1.5rem))] max-w-[min(20rem,calc(100vw-1.5rem))] flex-col gap-2 overflow-hidden p-2;
   min-width: min(16rem, calc(100vw - 1.5rem));
   height: max-content;
   max-height: min(32rem, calc(100dvh - 2rem));
-  justify-self: center;
-  align-self: start;
+  /* CSS anchor: beside the event, vertically centered — mirrors Radix side=right align=center. */
+  justify-self: start;
+  align-self: center;
   margin: 0.75rem;
   position-anchor: --calendar-event-details-anchor;
-  position-area: bottom;
+  position-area: right;
   position-try-fallbacks:
-    flip-block,
-    flip-inline,
-    flip-block flip-inline,
-    --calendar-event-details-try-start,
-    --calendar-event-details-try-end,
-    --calendar-event-details-try-above-start,
-    --calendar-event-details-try-above-end;
+    flip-inline, --calendar-event-details-try-start, --calendar-event-details-try-end, flip-block,
+    --calendar-event-details-try-above, --calendar-event-details-try-below;
+}
+
+.calendar-dialog-surface.calendar-event-details-popover--editable {
+  /* Keep narrower than New event Dialog (32rem) — do not share that token. */
+  --calendar-event-details-popover-editable-max-inline-size: 24rem;
+  @apply gap-0 p-3;
+  width: min(var(--calendar-event-details-popover-editable-max-inline-size), calc(100vw - 1.5rem));
+  max-width: min(
+    var(--calendar-event-details-popover-editable-max-inline-size),
+    calc(100vw - 1.5rem)
+  );
+  max-inline-size: min(
+    var(--calendar-event-details-popover-editable-max-inline-size),
+    calc(100vw - 1.5rem)
+  );
+  min-width: min(18rem, calc(100vw - 1.5rem));
+  max-height: 50vh;
 }
 
 @position-try --calendar-event-details-try-start {
   position-area: left;
+  align-self: center;
 }
 
 @position-try --calendar-event-details-try-end {
   position-area: right;
+  align-self: center;
 }
 
-@position-try --calendar-event-details-try-above-start {
-  position-area: top left;
+@position-try --calendar-event-details-try-above {
+  position-area: top;
+  justify-self: center;
 }
 
-@position-try --calendar-event-details-try-above-end {
-  position-area: top right;
-}
-
-.calendar-event-details-popover__title {
-  @apply m-0 flex min-w-0 items-center gap-2 text-base font-semibold leading-snug text-[color:var(--color-ink)];
-}
-
-.calendar-event-details-popover__swatch {
-  @apply size-3.5 shrink-0 rounded-full;
+@position-try --calendar-event-details-try-below {
+  position-area: bottom;
+  justify-self: center;
 }
 
 .calendar-event-details-popover__pending-sync {
-  @apply inline-flex size-2.5 shrink-0 items-center justify-center;
-  color: var(--calendar-accent, #6366f1);
+  @apply absolute end-2 top-2 inline-flex size-2.5 shrink-0 items-center justify-center;
+  color: var(--workspace-accent, #962fa8);
 }
 
+.calendar-event-details-popover__event {
+  @apply relative block w-full min-w-0 max-w-full overflow-hidden;
+  cursor: default;
+  touch-action: auto;
+  /* Isolate Lit event-card from timeline stack vars so flow width stays 100%. */
+  --_lc-days: 1;
+  --_lc-width: 1;
+}
+
+/* Match event-card heading start inset (accent bar clearance: 13px) so title
+   and detail rows share one text column. */
 .calendar-event-details-popover__details {
-  @apply m-0 flex flex-col gap-2;
+  @apply relative z-10 flex flex-col gap-1.5 pb-2.5 pe-2.5;
+  padding-inline-start: var(--_lc-event-card-heading-padding-inline-start, 13px);
+  color: var(--_lc-event-card-text-color, var(--color-we-got-dark));
 }
 
 .calendar-event-details-popover__row {
@@ -70,58 +91,59 @@
 }
 
 .calendar-event-details-popover__icon {
-  @apply inline-flex shrink-0 items-center justify-center text-[color:var(--card-title-icon-color,currentColor)];
-  width: var(--calendar-event-details-icon-column, 1rem);
-  height: var(--calendar-event-details-icon-column, 1rem);
-}
-
-.calendar-event-details-popover__row-text {
-  @apply min-w-0 flex-1;
-}
-
-.calendar-event-details-popover__dt {
-  @apply sr-only;
+  @apply inline-flex size-3.5 shrink-0 items-center justify-center;
+  color: color-mix(in oklab, currentColor 72%, transparent);
 }
 
 .calendar-event-details-popover__dd {
-  @apply m-0 wrap-break-word text-sm;
+  @apply m-0 min-w-0 flex-1 wrap-break-word font-light leading-snug;
+  font-size: var(--_lc-time-label-font-size, 0.75rem);
 }
 
-.calendar-event-details-popover__rsvp {
-  @apply flex flex-col gap-2;
+.calendar-event-details-popover__body {
+  @apply flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto;
+  overscroll-behavior: contain;
 }
 
 .calendar-event-details-popover__rsvp-hint {
   @apply m-0 text-xs text-[color:var(--field-label-color,inherit)];
 }
 
-.calendar-event-details-popover__meet {
-  @apply flex min-w-0;
-}
-
-.calendar-event-details-popover__meet .calendar-meet-join {
-  @apply w-full;
-}
-
 .calendar-event-details-popover__footer {
-  @apply flex justify-end;
+  @apply flex shrink-0 flex-wrap items-center justify-between gap-2;
 }
 
-/* Narrow viewport and --docked: pin Radix's transformed wrapper to the
-   viewport bottom. The card stays in-flow inside that wrapper. */
-@media (max-width: 40rem) {
+.calendar-event-details-popover__footer-primary {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.calendar-event-details-popover__footer-actions {
+  @apply ms-auto flex items-center gap-2;
+}
+
+/*
+ * iOS Safari: if JS still mounts the desktop Popover below 768px (useIsMobile
+ * first paint / innerWidth vs CSS), Radix's wrapper is `left:0; top:0` plus a
+ * `transform` iOS often drops — compact card at the origin. Pin that wrapper
+ * only. Mobile Dialog uses the shared `ui-modal-surface--center` card — do not
+ * put `.calendar-event-details-popover` on DialogContent.
+ */
+@media (max-width: 767px) {
   [data-radix-popper-content-wrapper]:has(.calendar-event-details-popover) {
     position: fixed !important;
-    inset: auto 0.75rem max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) 0.75rem !important;
+    inset: 0 !important;
     transform: none !important;
+    translate: none !important;
     min-width: 0 !important;
     width: auto !important;
     max-width: none !important;
     height: auto !important;
   }
 
-  .calendar-dialog-surface.calendar-event-details-popover {
-    @apply box-border overflow-x-hidden;
+  [data-radix-popper-content-wrapper] .calendar-dialog-surface.calendar-event-details-popover,
+  [data-radix-popper-content-wrapper]
+    .calendar-dialog-surface.calendar-event-details-popover--editable {
+    @apply box-border flex h-full w-full max-h-none max-w-none flex-col overflow-hidden rounded-none;
     position-anchor: none;
     position-area: none;
     position-try: none;
@@ -129,13 +151,12 @@
     justify-self: unset;
     align-self: unset;
     margin: 0;
-    position: relative !important;
-    inset: unset !important;
-    width: 100% !important;
-    max-width: none !important;
-    height: max-content !important;
-    max-height: min(32rem, calc(100dvh - 6rem));
-    transform: none !important;
+    min-width: 0;
+    max-inline-size: none;
+    padding-block-start: max(var(--modal-inset, 1rem), env(safe-area-inset-top, 0px));
+    padding-block-end: max(var(--modal-inset, 1rem), env(safe-area-inset-bottom, 0px));
+    padding-inline-start: max(var(--modal-inset, 1rem), env(safe-area-inset-left, 0px));
+    padding-inline-end: max(var(--modal-inset, 1rem), env(safe-area-inset-right, 0px));
   }
 }
 

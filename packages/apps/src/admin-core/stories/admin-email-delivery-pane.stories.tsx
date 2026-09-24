@@ -18,7 +18,7 @@ function EmailDeliveryHarness({
 }
 
 const meta = {
-  title: "Apps/Admin/Panes/Email delivery",
+  title: "Features/Admin/Panes/Email delivery",
   component: AdminEmailDeliveryPane,
   parameters: {
     layout: "fullscreen",

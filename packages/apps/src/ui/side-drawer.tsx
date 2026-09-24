@@ -33,7 +33,11 @@ export function SideDrawer({
         if (!nextOpen) onClose();
       }}
     >
-      <SheetContent side={side} className={cn("side-drawer", className)}>
+      <SheetContent
+        side={side}
+        className={cn("side-drawer", className)}
+        overlayClassName="side-drawer__overlay"
+      >
         {title ? (
           <SheetHeader className="sr-only">
             <SheetTitle>{title}</SheetTitle>

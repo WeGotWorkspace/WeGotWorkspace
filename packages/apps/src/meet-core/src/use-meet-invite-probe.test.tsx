@@ -37,7 +37,7 @@ describe("useMeetInviteProbe", () => {
     expect(roomStatus).toHaveBeenCalledWith({ room: ROOM });
   });
 
-  it("keeps an anonymous guest waiting for the host", async () => {
+  it("opens the join lobby for a reserved invite when the room is empty", async () => {
     const roomStatus = vi.fn().mockResolvedValue({ reserved: true, active: false });
 
     const { result } = renderHook(() =>
@@ -51,7 +51,42 @@ describe("useMeetInviteProbe", () => {
 
     await waitFor(() => {
       expect(result.current.canStartReservedRoom).toBe(false);
-      expect(result.current.inviteState).toBe("waiting-for-host");
+      expect(result.current.inviteState).toBe("active");
+    });
+  });
+
+  it("opens the join lobby for a persistent meeting collection", async () => {
+    const roomStatus = vi.fn().mockResolvedValue({ reserved: true, active: false });
+
+    const { result } = renderHook(() =>
+      useMeetInviteProbe({
+        invitedRoom: "chat-test",
+        inJoinFlow: true,
+        hasSignedInIdentity: false,
+        operations: operationsWithStatus(roomStatus),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.inviteState).toBe("active");
+    });
+    expect(roomStatus).toHaveBeenCalledWith({ room: "chat-test" });
+  });
+
+  it("keeps leftover unknown room codes as a missing invite", async () => {
+    const roomStatus = vi.fn().mockResolvedValue({ reserved: false, active: false });
+
+    const { result } = renderHook(() =>
+      useMeetInviteProbe({
+        invitedRoom: ROOM,
+        inJoinFlow: true,
+        hasSignedInIdentity: false,
+        operations: operationsWithStatus(roomStatus),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.inviteState).toBe("missing");
     });
   });
 });

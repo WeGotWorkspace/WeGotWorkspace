@@ -4,10 +4,12 @@ import {
   defaultPickerCalendarId,
   writableCalendarsForPicker,
 } from "@/calendar-core/src/calendar-event-calendar-picker";
+import {
+  selectionOriginFromElement,
+  type CalendarEventSelectionOrigin,
+} from "@/calendar-core/src/calendar-event-preview";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { normalizeParticipationStatus } from "@/calendar-core/src/calendar-attendees";
-import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
-import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
 import {
   canRespondInvitation,
@@ -36,11 +38,8 @@ export type CalendarInvitationCardProps = {
   defaultCalendarId?: string;
   active: boolean;
   busy?: boolean;
-  onSelect: () => void;
+  onSelect: (origin?: CalendarEventSelectionOrigin) => void;
   onRespond: (status: CalendarSchedulingRespondStatus, calendarId?: string) => void | Promise<void>;
-  meetOperations?: CalendarMeetOperations;
-  workspaceOrigin?: string;
-  onJoinMeeting?: (href: string) => void;
 };
 
 export function CalendarInvitationCard({
@@ -53,9 +52,6 @@ export function CalendarInvitationCard({
   busy = false,
   onSelect,
   onRespond,
-  meetOperations,
-  workspaceOrigin = typeof window !== "undefined" ? window.location.origin : "",
-  onJoinMeeting,
 }: CalendarInvitationCardProps) {
   const { cardRef, isExiting, handleExitAnimationEnd } = useDocsCollabCardExit({
     exitAnimationName: INVITATION_EXIT_ANIMATION,
@@ -63,9 +59,11 @@ export function CalendarInvitationCard({
   const organizer =
     notification.organizerName || notification.organizerEmail || labels.invitationsOrganizerUnknown;
   const canRespond = canRespondInvitation(notification);
-  const showCalendarPicker =
-    canRespond && normalizeParticipationStatus(notification.participationStatus) === "needs-action";
+  const showCalendarPicker = canRespond;
   const currentStatus = normalizeParticipationStatus(notification.participationStatus);
+  /** Re-respond with calendarId moves an already-accepted/tentative copy (API). */
+  const persistedCalendarStatus =
+    currentStatus === "accepted" || currentStatus === "tentative" ? currentStatus : undefined;
   const eventCard = invitationToEventCardFields(notification, labels, locale);
   const [calendarId, setCalendarId] = useState(() =>
     defaultPickerCalendarId(calendars, defaultCalendarId),
@@ -81,8 +79,24 @@ export function CalendarInvitationCard({
     });
   }, [calendars, defaultCalendarId]);
 
+  const writableCalendars = writableCalendarsForPicker(calendars);
+  const selectedCalendar =
+    writableCalendars.find((calendar) => calendar.id === calendarId) ?? writableCalendars[0];
+  const eventColor = selectedCalendar?.color?.trim() || eventCard.color;
+
   const respond = (status: CalendarSchedulingRespondStatus) =>
     onRespond(status, status === "declined" ? undefined : calendarId || undefined);
+
+  const handleCalendarIdChange = (nextId: string) => {
+    if (busy || nextId === calendarId) return;
+    const previous = calendarId;
+    setCalendarId(nextId);
+    // needs-action / declined: keep local until Accept/Maybe (Decline ignores calendarId).
+    if (!persistedCalendarStatus) return;
+    void Promise.resolve(onRespond(persistedCalendarStatus, nextId || undefined)).catch(() => {
+      setCalendarId(previous);
+    });
+  };
 
   return (
     <DocsCollabCardShell
@@ -91,7 +105,11 @@ export function CalendarInvitationCard({
       exitVariant="comment"
       active={active}
       isExiting={isExiting}
-      onSelect={onSelect}
+      onSelect={() => {
+        const host = cardRef.current;
+        const eventCard = host?.querySelector("event-card");
+        onSelect(selectionOriginFromElement(eventCard ?? host));
+      }}
       onAnimationEnd={handleExitAnimationEnd}
       dataAttributes={{ "data-invitation-id": notification.id }}
     >
@@ -109,7 +127,7 @@ export function CalendarInvitationCard({
                 labels={labels}
                 disabled={busy}
                 triggerClassName="calendar-event-dialog__calendar-trigger calendar-invitation-card__calendar-trigger"
-                onCalendarIdChange={setCalendarId}
+                onCalendarIdChange={handleCalendarIdChange}
               />
             </div>
           ) : null
@@ -123,40 +141,21 @@ export function CalendarInvitationCard({
         summary: eventCard.summary,
         time: eventCard.time,
         location: eventCard.location,
-        color: eventCard.color,
+        color: eventColor,
         past: eventCard.cancelled,
         recurring: eventCard.recurring,
       })}
 
-      {notification.url?.trim() ? (
-        <div
-          className="calendar-invitation-card__meet"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <CalendarMeetJoin
-            href={notification.url}
-            labels={labels}
-            workspaceOrigin={workspaceOrigin}
-            meetOperations={meetOperations}
-            onJoin={onJoinMeeting}
-          />
-        </div>
-      ) : null}
-
       {canRespond ? (
-        <div className="calendar-invitation-card__rsvp">
-          {eventCard.recurring ? (
-            <p className="calendar-invitation-card__rsvp-hint">{labels.rsvpSeriesHint}</p>
-          ) : null}
-          <CalendarRsvpActions
-            className="calendar-invitation-card__actions"
-            currentStatus={currentStatus}
-            labels={labels}
-            busy={busy}
-            size="sm"
-            onRespond={respond}
-          />
-        </div>
+        <CalendarRsvpActions
+          className="calendar-invitation-card__actions"
+          currentStatus={currentStatus}
+          labels={labels}
+          busy={busy}
+          size="sm"
+          showLabels
+          onRespond={respond}
+        />
       ) : null}
     </DocsCollabCardShell>
   );

@@ -106,19 +106,21 @@ export function useWorkspaceSelectionPresentation({
         label: doneLabel,
         icon: <CheckCircle2 className="size-4" />,
         onClick: () => exitSelection(activeId),
+        separatorBefore: true,
       },
     ],
     [actionButtons, doneLabel, exitSelection, activeId],
   );
 
-  const selectionBar =
-    selectionMode || selectedIds.length > 1 ? (
-      <FloatingActionBar
-        items={selectedIds.length}
-        buttons={selectionBarButtons}
-        className={floatingClassName}
-      />
-    ) : null;
+  const selectionOpen = selectionMode || selectedIds.length > 1;
+  const selectionBar = (
+    <FloatingActionBar
+      open={selectionOpen}
+      items={selectedIds.length}
+      buttons={selectionBarButtons}
+      className={floatingClassName}
+    />
+  );
 
   return {
     selectionBarButtons,

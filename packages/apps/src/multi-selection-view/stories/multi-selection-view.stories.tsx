@@ -3,7 +3,7 @@ import { CheckSquare2, FolderInput, Star, Trash2 } from "lucide-react";
 import { MultiSelectionView } from "../src/multi-selection-view";
 
 const meta: Meta<typeof MultiSelectionView> = {
-  title: "Shared/Multi Selection View",
+  title: "UI/Patterns/Multi Selection View",
   component: MultiSelectionView,
 };
 

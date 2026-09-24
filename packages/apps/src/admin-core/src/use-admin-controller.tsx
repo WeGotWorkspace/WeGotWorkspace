@@ -9,8 +9,14 @@ import { useAdminShell } from "@/admin-core/src/use-admin-shell";
 export function useAdminController({
   data,
   operations,
-}: Pick<AdminWorkspaceProps, "data" | "operations">) {
-  const shell = useAdminShell({ data, operations });
+  section,
+  initialSection,
+  onSectionChange,
+}: Pick<
+  AdminWorkspaceProps,
+  "data" | "operations" | "section" | "initialSection" | "onSectionChange"
+>) {
+  const shell = useAdminShell({ data, operations, section, initialSection, onSectionChange });
   const mutations = useAdminMutations({ operations, shell });
 
   return {
@@ -21,6 +27,7 @@ export function useAdminController({
     setSidebarOpen: shell.setSidebarOpen,
     selectSection: shell.selectSection,
     users: shell.users,
+    currentUser: shell.currentUser,
     groups: shell.groups,
     plugins: shell.plugins,
     updates: shell.updates,

@@ -38,7 +38,7 @@ final class ApiRuntimeEnvService
     }
 
     /**
-     * @return array{createdEnv: bool, generatedKey: bool, patchedUrl: bool}
+     * @return array{createdEnv: bool, generatedKey: bool, patchedUrl: bool, sanitizedEnv: bool}
      */
     public function ensure(string $installRoot, ?string $appUrl = null): array
     {
@@ -46,18 +46,19 @@ final class ApiRuntimeEnvService
     }
 
     /**
-     * @return array{createdEnv: bool, generatedKey: bool, patchedUrl: bool}
+     * @return array{createdEnv: bool, generatedKey: bool, patchedUrl: bool, sanitizedEnv: bool}
      */
     public function ensureAtApiRoot(?string $apiRoot, ?string $appUrl = null): array
     {
         if ($apiRoot === null || ! is_file($apiRoot.'/vendor/autoload.php')) {
-            return ['createdEnv' => false, 'generatedKey' => false, 'patchedUrl' => false];
+            return ['createdEnv' => false, 'generatedKey' => false, 'patchedUrl' => false, 'sanitizedEnv' => false];
         }
 
         $this->ensureStorageDirectories($apiRoot);
 
         $createdEnv = $this->seedEnvFromExampleIfMissing($apiRoot);
         $envPath = $apiRoot.'/.env';
+        $sanitizedEnv = is_file($envPath) && $this->sanitizeInvalidEnvLines($envPath);
         $generatedKey = is_file($envPath) && $this->ensureAppKey($envPath);
         $patchedUrl = is_file($envPath) && $this->patchAppUrlIfUnset($envPath, $appUrl);
 
@@ -65,7 +66,41 @@ final class ApiRuntimeEnvService
             'createdEnv' => $createdEnv,
             'generatedKey' => $generatedKey,
             'patchedUrl' => $patchedUrl,
+            'sanitizedEnv' => $sanitizedEnv,
         ];
+    }
+
+    public function sanitizeInvalidEnvLines(string $envPath): bool
+    {
+        $fh = fopen($envPath, 'c+');
+        if ($fh === false) {
+            return false;
+        }
+
+        try {
+            if (! flock($fh, LOCK_EX)) {
+                return false;
+            }
+            rewind($fh);
+            $content = stream_get_contents($fh);
+            if (! is_string($content) || $content === '') {
+                return false;
+            }
+            $sanitized = WgwApiEnvFile::stripInvalidLines($content);
+            if ($sanitized === $content) {
+                return false;
+            }
+            rewind($fh);
+            if (ftruncate($fh, 0) === false || fwrite($fh, $sanitized) === false) {
+                return false;
+            }
+            fflush($fh);
+
+            return true;
+        } finally {
+            flock($fh, LOCK_UN);
+            fclose($fh);
+        }
     }
 
     public function seedEnvFromExampleIfMissing(string $apiRoot): bool

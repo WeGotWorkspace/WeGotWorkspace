@@ -52,4 +52,4 @@ Repurpose compact month (mobile / ≤504px / `forceCompact`) to show slim, view-
 ## Test plan
 
 - [x] UI: write failing CSS contract tests, then implement until green
-- [x] Browser-check Storybook `Apps/Calendar/Default` at desktop (>504px) and ~390px; year remains dots-only
+- [x] Browser-check Storybook `Features/Calendar/Default` at desktop (>504px) and ~390px; year remains dots-only

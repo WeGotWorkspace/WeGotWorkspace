@@ -1,0 +1,132 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const tsx = readFileSync(join(here, "workspace-app-layout.tsx"), "utf8");
+const css = readFileSync(join(here, "workspace-app-layout.css"), "utf8");
+
+describe("workspace-app-layout safe area", () => {
+  it("extends the main fill under the status bar only when a header is present", () => {
+    expect(css).toMatch(
+      /\.workspace-app-layout__main:has\(> \.workspace-app-layout__main-header\) \{[\s\S]*padding-top:\s*env\(safe-area-inset-top,\s*0px\)/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-layout__main:has\(> \.workspace-app-layout__main-header\) \{[\s\S]*padding-bottom:\s*env\(safe-area-inset-bottom,\s*0px\)/,
+    );
+  });
+});
+
+describe("workspace-app-layout main stacking", () => {
+  it("isolates the main column so chrome z-30 stays under the AppSidebar overlay scrim", () => {
+    expect(css).toMatch(/\.workspace-app-layout__main \{[\s\S]*\bisolate\b/);
+  });
+});
+
+describe("workspace-app-layout panel overlay motion", () => {
+  it("uses shared panel-overlay duration + ease like AppSidebar", () => {
+    expect(css).toMatch(
+      /\.workspace-app-layout__panel \{[\s\S]*transition-duration:\s*var\(--panel-overlay-duration\)/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-layout__panel \{[\s\S]*transition-timing-function:\s*var\(--panel-overlay-ease\)/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-layout__panel-scrim \{[\s\S]*--tw-duration:\s*var\(--panel-overlay-duration\)/,
+    );
+  });
+});
+
+describe("WorkspaceUserFooter logout chrome", () => {
+  it("uses sm outline IconButton matching header/sidebar chrome, not filled subtle", () => {
+    const footerBlock = tsx.slice(
+      tsx.indexOf("export function WorkspaceUserFooter"),
+      tsx.indexOf("export function WorkspaceSidebarScrim"),
+    );
+    expect(tsx).toMatch(/import \{ IconButton \} from "@\/button\/src\/button"/);
+    expect(footerBlock).toMatch(/label="Log out"/);
+    expect(footerBlock).toMatch(/variant="outline"/);
+    expect(footerBlock).toMatch(/size="md"/);
+    expect(footerBlock).not.toMatch(/variant="subtle"/);
+    expect(tsx).not.toMatch(/size-9/);
+    expect(tsx).not.toMatch(/linkHoverClassName/);
+    expect(tsx).not.toMatch(/WORKSPACE_USER_LOGOUT_STYLE/);
+  });
+
+  it("does not force gray subtle fills on the footer logout", () => {
+    expect(css).not.toMatch(/\.workspace-app-layout__user-footer \{[\s\S]*--button-subtle-/);
+    expect(css).not.toMatch(
+      /\.workspace-app-layout__user-footer \{[\s\S]*--workspace-user-footer-link-bg/,
+    );
+    expect(tsx).not.toMatch(/WORKSPACE_USER_LOGOUT_STYLE/);
+  });
+
+  it("pins footer avatar mark to an accent wash on the sidebar — not selected-chip SST", () => {
+    expect(css).toMatch(
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 16%,\s*var\(--app-sidebar-bg/,
+    );
+    expect(css).toMatch(
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--color-we-got-dark\)/,
+    );
+    expect(css).not.toMatch(
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-fg:\s*var\(--button-active-color/,
+    );
+    expect(css).not.toMatch(
+      /\.workspace-app-layout__user-footer \.user-avatar \{[\s\S]*--user-avatar-bg:\s*color-mix\(in oklab,\s*var\(--color-we-got-dark\) 12%,\s*transparent/,
+    );
+  });
+});
+
+describe("WorkspaceSidebarToggle chrome", () => {
+  it("uses outline IconButton matching Select/dropdown borders, not filled subtle", () => {
+    const toggleBlock = tsx.match(/export function WorkspaceSidebarToggle\([\s\S]*?\n\}/)?.[0];
+    expect(toggleBlock).toBeDefined();
+    expect(toggleBlock!).toMatch(/variant="outline"/);
+    expect(toggleBlock!).toMatch(/size="md"/);
+    expect(toggleBlock!).not.toMatch(/variant="subtle"/);
+    expect(toggleBlock!).not.toMatch(/WORKSPACE_SIDEBAR_TOGGLE_STYLE/);
+    expect(toggleBlock!).not.toMatch(/hoverClassName/);
+    expect(tsx).not.toMatch(/workspace-app-layout\.styles/);
+    expect(tsx).not.toMatch(/--workspace-sidebar-toggle-/);
+  });
+
+  it("marks open sidebar as pressed/active like Calendar invitations", () => {
+    const toggleBlock = tsx.match(/export function WorkspaceSidebarToggle\([\s\S]*?\n\}/)?.[0];
+    expect(toggleBlock).toBeDefined();
+    expect(toggleBlock!).toMatch(/active=\{open\}/);
+    expect(toggleBlock!).toMatch(/aria-pressed=\{open\}/);
+    expect(toggleBlock!).toMatch(/className="workspace-sidebar-toggle shrink-0"/);
+  });
+
+  it("keeps active Lucide panel/menu marks as stroke (no solid fill blob)", () => {
+    expect(css).toMatch(
+      /\.workspace-sidebar-toggle\.button\.icon-button--active \.button__icon > svg \{[\s\S]*fill:\s*none/,
+    );
+  });
+
+  it("shows a presence unread dot on the closed rail/hamburger (count stays on the bell)", () => {
+    const toggleBlock = tsx.match(/export function WorkspaceSidebarToggle\([\s\S]*?\n\}/)?.[0];
+    expect(toggleBlock).toBeDefined();
+    expect(tsx).toMatch(/useNotificationsInbox/);
+    expect(tsx).not.toMatch(/notification-inbox-tray\.css/);
+    expect(toggleBlock!).not.toMatch(/notification-inbox-tray__trigger/);
+    expect(toggleBlock!).not.toMatch(/data-count=/);
+    expect(toggleBlock!).toMatch(/data-unread=\{showUnreadDot \? "" : undefined\}/);
+    expect(toggleBlock!).toMatch(/data-pulse=\{pulseAttr\}/);
+    expect(toggleBlock!).toMatch(/useInboxBadgePulseAttr/);
+    expect(toggleBlock!).toMatch(/showUnreadDot = !open && unreadCount > 0/);
+    expect(css).toMatch(/\.workspace-sidebar-toggle \{[\s\S]*relative[\s\S]*overflow-visible/);
+    expect(css).toMatch(/\.workspace-sidebar-toggle\[data-unread\]::after \{[\s\S]*content:\s*""/);
+    expect(css).toMatch(
+      /\.workspace-sidebar-toggle\[data-unread\]::after \{[\s\S]*--notification-inbox-badge-bg/,
+    );
+    expect(css).toMatch(/@keyframes notification-inbox-badge-pulse/);
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion:\s*no-preference\) \{[\s\S]*\.workspace-sidebar-toggle\[data-pulse\]::after \{[\s\S]*animation:\s*notification-inbox-badge-pulse/,
+    );
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion:\s*reduce\) \{[\s\S]*\.workspace-sidebar-toggle\[data-pulse\]::after \{[\s\S]*animation:\s*none/,
+    );
+  });
+});

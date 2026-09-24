@@ -537,7 +537,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SettingsStateResponse"];
+                    };
                 };
             };
         };
@@ -572,7 +574,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SettingsStateResponse"];
+                    };
                 };
             };
         };
@@ -606,7 +610,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SettingsStateResponse"];
+                    };
                 };
             };
         };
@@ -3094,8 +3100,11 @@ export interface paths {
         /** Download file content */
         get: {
             parameters: {
-                query: {
-                    path: string;
+                query?: {
+                    /** @description Virtual drive path. Required when `id` is omitted. */
+                    path?: string;
+                    /** @description FileNode id (`fn-…`). Streams bytes when the caller mayView the path, including inherited Doc ACL on `.attachments/{docId}/`. */
+                    id?: string;
                 };
                 header?: never;
                 path?: never;
@@ -3523,7 +3532,7 @@ export interface paths {
         };
         /**
          * Meeting room reservation status
-         * @description Guests receive { reserved, active } only. Owner-principal members and createdBy receive the full body. Missing reservation is 404.
+         * @description Guests receive { reserved, active } only. Owner-principal members and createdBy receive the full body. Missing reservation is 404. Meeting-kind collection slugs (`test`, `chat-test`) resolve as reserved.
          */
         get: {
             parameters: {
@@ -3696,7 +3705,13 @@ export interface paths {
         /** Poll events */
         get: {
             parameters: {
-                query?: never;
+                query: {
+                    peerId: string;
+                    since?: number;
+                    /** @description Roster signature (`rosterSig`) from a previous poll response. When it still matches and no messages are pending for the peer, the server answers 204 No Content. */
+                    sig?: string;
+                    sessionKey?: string;
+                };
                 header?: never;
                 path: {
                     roomId: string;
@@ -3707,6 +3722,13 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nothing new — roster unchanged for the provided `sig` and no pending messages. */
+                204: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5050,7 +5072,7 @@ export interface paths {
         };
         /**
          * JMAP Session resource
-         * @description RFC 8620 §2 Session resource for the JMAP envelope (calendars + contacts). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.
+         * @description RFC 8620 §2 Session resource for the JMAP envelope (calendars, contacts, filenode, and the vendor `urn:wgw:jmap:notes` / `urn:wgw:jmap:chat` envelopes). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.
          */
         get: {
             parameters: {
@@ -6406,6 +6428,1097 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chat/channels/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chat channel collection changes */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Previous sync state token. */
+                    since?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Channel changes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannelChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List chat channels */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Chat channels */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannelListResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        /** Create a chat channel */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatChannelCreate"];
+                };
+            };
+            responses: {
+                /** @description Created chat channel */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannel"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/channels/{channelId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a chat channel */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Chat channel */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannel"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete a chat channel */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update a chat channel */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatChannelPatch"];
+                };
+            };
+            responses: {
+                /** @description Updated chat channel */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannel"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        trace?: never;
+    };
+    "/chat/channels/{channelId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List channel messages (cursor paging) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Return messages after this ULID cursor (exclusive), ascending. */
+                    since?: string;
+                    /** @description Return messages before this ULID cursor (exclusive), for history backfill. */
+                    before?: string;
+                    /** @description Page size cap. */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Channel messages */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatMessageListResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        /** Send a message */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatMessageCreate"];
+                };
+            };
+            responses: {
+                /** @description Created message */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatMessage"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/channels/{channelId}/read-marker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the caller's read marker */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatReadMarkerPut"];
+                };
+            };
+            responses: {
+                /** @description Read marker stored */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/messages/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Message changes for one channel */
+        get: {
+            parameters: {
+                query: {
+                    channelId: string;
+                    /** @description Previous sync state token. */
+                    since?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Message changes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatMessageChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/messages/{messageId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a message (author only, tombstone) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Message ULID. */
+                    messageId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Edit a message body (author only) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Message ULID. */
+                    messageId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatMessagePatch"];
+                };
+            };
+            responses: {
+                /** @description Updated message */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatMessage"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+            };
+        };
+        trace?: never;
+    };
+    "/chat/messages/{messageId}/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Toggle a reaction for the caller */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Message ULID. */
+                    messageId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatReactionToggleRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated message */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatMessage"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/dms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open (find-or-create) a direct message channel
+         * @description Idempotent: the DM collection uri is a deterministic, order-independent hash of both usernames, so either side opening the DM returns the same channel.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChatDmOpen"];
+                };
+            };
+            responses: {
+                /** @description The DM channel (existing or newly provisioned) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatChannel"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/mcp-grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List connected assistant OAuth grants */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Connected assistant grants */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SettingsMcpGrantList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/mcp-grants/{clientId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a connected assistant grant */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Grant revoked */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                /** @description Grant not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/threads/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Docs thread changes for a file path */
+        get: {
+            parameters: {
+                query: {
+                    path: string;
+                    since?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Path-scoped calendarchanges */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThreadChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Docs comment and suggestion threads */
+        get: {
+            parameters: {
+                query: {
+                    path: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Assembled threads for the Doc */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThreadListResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        /** Create a Docs comment or suggestion thread */
+        post: {
+            parameters: {
+                query: {
+                    path: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocsFileThreadCreate"];
+                };
+            };
+            responses: {
+                /** @description Created thread */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThread"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/threads/{threadId}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reply to a Docs thread */
+        post: {
+            parameters: {
+                query: {
+                    path: string;
+                };
+                header?: never;
+                path: {
+                    threadId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocsFileThreadReplyCreate"];
+                };
+            };
+            responses: {
+                /** @description Updated thread */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThread"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/threads/{threadId}/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Toggle a reaction on a Docs thread root */
+        post: {
+            parameters: {
+                query: {
+                    path: string;
+                };
+                header?: never;
+                path: {
+                    threadId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocsFileThreadReactionToggle"];
+                };
+            };
+            responses: {
+                /** @description Updated thread */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThread"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/threads/{threadId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Resolve or archive a Docs thread */
+        patch: {
+            parameters: {
+                query: {
+                    path: string;
+                };
+                header?: never;
+                path: {
+                    threadId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocsFileThreadPatch"];
+                };
+            };
+            responses: {
+                /** @description Updated thread */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocsFileThread"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        trace?: never;
+    };
+    "/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List inbox notifications */
+        get: {
+            parameters: {
+                query?: {
+                    unread?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Inbox rows for the signed-in principal */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationListResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/{id}/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a notification as read */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Updated notification */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notification"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/{id}/local-ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ack local Notification API delivery (skip VAPID fallback) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Local delivery acknowledged */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationOkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/push/vapid-public-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Install-scoped VAPID public key */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description VAPID public key */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VapidPublicKeyResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/push/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Subscribe this device to Web Push */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PushSubscriptionCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description Subscription stored */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PushSubscriptionResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        /** Unsubscribe this device from Web Push */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PushUnsubscribeRequest"];
+                };
+            };
+            responses: {
+                /** @description Subscription removed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6592,7 +7705,8 @@ export interface components {
          *       "email": "alice@example.test",
          *       "groups": [
          *         "principals/groups/support"
-         *       ]
+         *       ],
+         *       "enabled": true
          *     }
          */
         AdminUserUpdateRequest: {
@@ -6600,6 +7714,7 @@ export interface components {
             email?: string;
             password?: string;
             groups?: components["schemas"]["AdminUserGroupList"];
+            enabled?: boolean;
         };
         /**
          * @example {
@@ -6647,6 +7762,7 @@ export interface components {
             displayName: string;
             groups: components["schemas"]["AdminUserGroupList"];
             createdAt: string;
+            enabled: boolean;
         };
         AdminGroupSummary: {
             id: string;
@@ -6753,6 +7869,7 @@ export interface components {
             apps: components["schemas"]["AdminAppsSettings"];
             webdav: components["schemas"]["AdminWebdavSettings"];
             updates: components["schemas"]["UpdateStateResponse"];
+            mcp: components["schemas"]["AdminMcpSettings"];
             currentUser: string;
             logoutUrl: string;
         };
@@ -6806,6 +7923,8 @@ export interface components {
             mail: components["schemas"]["SettingsUserMail"];
             mailServer: components["schemas"]["SettingsUserMailServer"];
             logoutUrl: string;
+            /** @description Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs. */
+            mcpEnabled: boolean;
         };
         /**
          * @example {
@@ -7365,6 +8484,8 @@ export interface components {
             peerId: string;
             name?: string;
             sessionKey?: components["schemas"]["MeetSessionKey"];
+            /** @description Stable per browser profile. Same-browser rejoins evict leftover peers; a second device keeps both. */
+            browserId?: string;
         };
         /**
          * @example {
@@ -8728,11 +9849,13 @@ export interface components {
                 [key: string]: string;
             };
         };
-        /** @description POST body; server assigns id and @type. */
+        /** @description POST body; server assigns id and @type. title is required and must be non-empty after trim. */
         CalendarEventCreate: {
             "@type"?: unknown;
             id?: unknown;
-        } & components["schemas"]["CalendarEvent"];
+        } & components["schemas"]["CalendarEvent"] & {
+            title: string;
+        };
         /** @description PATCH request body for partial calendar event updates. Omits server-owned id and @type. */
         CalendarEventPatch: {
             title?: string;
@@ -9684,7 +10807,7 @@ export interface components {
         };
         /** @description JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute. */
         JmapSession: {
-            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. Feature-gated-off domains are absent. */
+            /** @description Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel/ChatMessage get+changes, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent. */
             capabilities: {
                 [key: string]: Record<string, never>;
             };
@@ -10000,6 +11123,298 @@ export interface components {
         };
         NotebookDeleteOptions: {
             onDestroyRemoveContents?: boolean;
+        };
+        ChatChannel: {
+            /** @description Channel collection id (CalDAV collection uri, chat-/dm- prefixed). */
+            id: string;
+            name: string;
+            color?: string | null;
+            /** @enum {string} */
+            kind: "channel" | "meeting" | "dm";
+            /** @enum {string} */
+            scope: "personal" | "group";
+            groupSlug: string | null;
+            /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"];
+            } | null;
+            isSharee: boolean;
+            myRights: components["schemas"]["TaskListRights"];
+            /** @description True for a group's auto-provisioned default channel: owned by the group principal, immutable through the generic channel endpoints (like DMs), name tracks the group display name. */
+            isDefault?: boolean;
+            /** @description Channel topic shown in the main header subtitle (chat_channel_meta). */
+            topic?: string | null;
+            /** @description Meeting kind: linked meet_reservations room code for guest links. */
+            guestRoomCode?: string | null;
+            /** @description dm kind: the other member's username (DM rail key); null for channel/meeting kinds. */
+            dmPeer?: string | null;
+            /** @description Roster size (owner plus sharees, groups expanded). */
+            memberCount?: number;
+            /** @description Unread messages after the caller's read marker, own messages excluded. */
+            unreadCount?: number;
+        };
+        ChatChannelListResponse: {
+            list: components["schemas"]["ChatChannel"][];
+        };
+        ChatChannelCreate: {
+            name: string;
+            /**
+             * @description dm channels are never created here — POST /chat/dms provisions them find-or-create.
+             * @enum {string}
+             */
+            kind: "channel" | "meeting";
+            color?: string | null;
+            topic?: string | null;
+            groupSlug?: string | null;
+            /** @description Optional client-suggested channel id (uri slug). */
+            id?: components["schemas"]["JmapId"];
+            /** @description Meeting kind only: persist the reserved ad-hoc room code shown at create time. Never rewritten to the collection slug. */
+            guestRoomCode?: string | null;
+        };
+        ChatChannelPatch: {
+            name?: string;
+            color?: string | null;
+            topic?: string | null;
+            /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). */
+            groupSlug?: string | null;
+            /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
+            shareWith?: {
+                [key: string]: components["schemas"]["CalendarRights"] | null;
+            } | null;
+        };
+        /** @description JMAP-shaped incremental sync response for channel collections. */
+        ChatChannelChangesResponse: {
+            /** @description Previous sync state token supplied by the client. */
+            oldState: string;
+            /** @description Current sync state token to store for the next request. */
+            newState: string;
+            created: components["schemas"]["JmapId"][];
+            updated: components["schemas"]["JmapId"][];
+            destroyed: components["schemas"]["JmapId"][];
+        };
+        ChatReaction: {
+            emoji: string;
+            /** @description Principal usernames that toggled this emoji on. */
+            authors: string[];
+        };
+        ChatMention: {
+            /** @description Mentioned principal username. */
+            id: string;
+            displayName: string;
+        };
+        ChatMessage: {
+            /** @description Message id — client-generated ULID (VJOURNAL UID), lexicographically time-sortable. */
+            id: string;
+            channelId: string;
+            /** @description Author principal username (X-WGW-AUTHOR). */
+            authorId: string;
+            authorName: string;
+            /** @description Empty string on delete tombstones (STATUS:CANCELLED). */
+            body: string;
+            /** @description Server-assigned creation timestamp — ordering source of truth with ULID tiebreak. */
+            createdAt: components["schemas"]["JmapUTCDateTime"];
+            editedAt?: components["schemas"]["JmapUTCDateTime"] | null;
+            /** @description Set on tombstoned messages (STATUS:CANCELLED). */
+            deletedAt?: components["schemas"]["JmapUTCDateTime"] | null;
+            /** @description Thread parent message id (RELATED-TO). */
+            parentId?: string | null;
+            replyCount?: number;
+            reactions: components["schemas"]["ChatReaction"][];
+            mentions: components["schemas"]["ChatMention"][];
+        };
+        ChatMessageListResponse: {
+            list: components["schemas"]["ChatMessage"][];
+            /** @description True when more messages exist beyond the requested cursor window. */
+            hasMore: boolean;
+        };
+        ChatMessageCreate: {
+            /** @description Client-generated ULID — message id and idempotency key; retries with the same id return the existing message. */
+            id: string;
+            body: string;
+            /** @description Thread parent message id. */
+            parentId?: string | null;
+            /** @description Validated @principals to persist and notify ( ∩ channel roster; unknown tokens ignored). */
+            mentions?: components["schemas"]["ChatMention"][];
+        };
+        ChatMessagePatch: {
+            /** @description Author-only body edit — bumps SEQUENCE server-side. */
+            body: string;
+        };
+        ChatReactionToggleRequest: {
+            /** @description Emoji to toggle for the caller — (emoji, author) set semantics, serialized server-side. */
+            emoji: string;
+        };
+        ChatReadMarkerPut: {
+            /** @description createdAt of the last read message. */
+            lastReadTs: components["schemas"]["JmapUTCDateTime"];
+            /** @description ULID of the last read message — tiebreak for equal timestamps; unread = (createdAt, uid) > (lastReadTs, lastReadUid). */
+            lastReadUid: string;
+        };
+        /** @description JMAP-shaped incremental sync response for messages in one channel. */
+        ChatMessageChangesResponse: {
+            /** @description Previous sync state token supplied by the client. */
+            oldState: string;
+            /** @description Current sync state token to store for the next request. */
+            newState: string;
+            created: components["schemas"]["JmapId"][];
+            updated: components["schemas"]["JmapId"][];
+            destroyed: components["schemas"]["JmapId"][];
+            /** @description True when more changes exist after newState — repeat the request. Real at chat volume, never hardcoded false. */
+            hasMoreChanges: boolean;
+        };
+        ChatDmOpen: {
+            /** @description Target username — an internal workspace user other than the caller (no groups, guests, or external addresses). */
+            principal: string;
+        };
+        AdminMcpSettings: {
+            enabled: boolean;
+            /** @description Public MCP URL to paste into assistants (`origin/mcp`). Set from WGW_MCP_PUBLIC_ORIGIN when APP_ENV is not production; null in production so the Admin UI uses the current site origin. */
+            endpointUrl?: string | null;
+        };
+        SettingsMcpGrant: {
+            clientId: string;
+            clientName: string;
+            clientOrigin: string;
+            connectedAt: string;
+            scopes: string[];
+            lastUsedAt?: string | null;
+        };
+        SettingsMcpGrantList: {
+            grants: components["schemas"]["SettingsMcpGrant"][];
+        };
+        DocsFileThreadAuthor: {
+            /** @description Author principal username. */
+            id: string;
+            name: string;
+        };
+        DocsFileThreadMessage: {
+            /** @description Client-generated ULID (VJOURNAL UID). */
+            id: string;
+            body: string;
+            createdAt: components["schemas"]["JmapUTCDateTime"];
+            author: components["schemas"]["DocsFileThreadAuthor"];
+        };
+        DocsFileThreadReaction: {
+            emoji: string;
+            /** @description Principal usernames that toggled this emoji on the thread root. */
+            userIds: string[];
+        };
+        DocsFileThread: {
+            /** @description Thread root ULID (VJOURNAL UID of the first message). */
+            id: string;
+            /** @enum {string} */
+            kind: "comment" | "suggestion";
+            /** @description Doc virtual path (X-WGW-DOC-PATH). */
+            path: string;
+            /** @description Suggestion mark join key (X-WGW-CHANGE-ID). Null for comment threads. */
+            changeId?: string | null;
+            anchorText: string;
+            anchorFrom?: number | null;
+            anchorTo?: number | null;
+            anchorOccurrence?: number | null;
+            createdAt: components["schemas"]["JmapUTCDateTime"];
+            createdBy: components["schemas"]["DocsFileThreadAuthor"];
+            /** @description X-WGW-RESOLVED on comment roots. */
+            resolved: boolean;
+            /** @description X-WGW-ARCHIVED on suggestion roots — not STATUS:CANCELLED. */
+            archived: boolean;
+            messages: components["schemas"]["DocsFileThreadMessage"][];
+            reactions: components["schemas"]["DocsFileThreadReaction"][];
+        };
+        DocsFileThreadListResponse: {
+            list: components["schemas"]["DocsFileThread"][];
+        };
+        DocsFileThreadCreate: {
+            /** @description Client-generated ULID — thread root id and idempotency key. */
+            id: string;
+            /** @enum {string} */
+            kind: "comment" | "suggestion";
+            /** @description First message body. Empty string is allowed for suggestion roots created to hold reactions only. */
+            body: string;
+            /** @description Required for suggestion threads — editor track-change id. */
+            changeId?: string | null;
+            anchorText?: string;
+            anchorFrom?: number;
+            anchorTo?: number;
+            anchorOccurrence?: number;
+        };
+        DocsFileThreadReplyCreate: {
+            /** @description Client-generated ULID for the reply message. */
+            id: string;
+            body: string;
+        };
+        DocsFileThreadPatch: {
+            /** @description Set X-WGW-RESOLVED on a comment root. */
+            resolved?: boolean;
+            /** @description Set X-WGW-ARCHIVED on a suggestion root. */
+            archived?: boolean;
+            /** @description Alternate lookup for suggestion archive when the client keys by mark id. */
+            changeId?: string;
+            /** @description Suggestion snapshot summary or quoted text persisted when archiving. */
+            anchorText?: string;
+            anchorFrom?: number;
+            anchorTo?: number;
+        };
+        DocsFileThreadReactionToggle: {
+            emoji: string;
+        };
+        /** @description Path-scoped calendarchanges feed for the owner's docs-threads pool. */
+        DocsFileThreadChangesResponse: {
+            oldState: string;
+            newState: string;
+            created: string[];
+            updated: string[];
+            destroyed: string[];
+            hasMoreChanges: boolean;
+        };
+        Notification: {
+            id: string;
+            eventId: string;
+            domain: string;
+            action: string;
+            /** @description Structured notification facts (actor, path, snippet, start/end, …). When present, clients format title/body; API title/body are also formatted at read time. */
+            data?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Display title (formatted from data when present). */
+            title: string;
+            /** @description Display body (formatted from data when present). */
+            body?: string | null;
+            /** @description In-app path (allowlisted SPA prefix). */
+            navigate: string;
+            tag?: string | null;
+            /** Format: date-time */
+            readAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NotificationListResponse: {
+            list: components["schemas"]["Notification"][];
+            unreadCount: number;
+        };
+        NotificationOkResponse: {
+            /** @constant */
+            ok: true;
+        };
+        VapidPublicKeyResponse: {
+            /** @description URL-safe base64 VAPID public key for pushManager.subscribe. */
+            publicKey: string;
+        };
+        PushSubscriptionCreateRequest: {
+            /** Format: uri */
+            endpoint: string;
+            keys: {
+                p256dh: string;
+                auth: string;
+            };
+        };
+        PushSubscriptionResponse: {
+            id: string;
+            endpoint: string;
+        };
+        PushUnsubscribeRequest: {
+            /** Format: uri */
+            endpoint: string;
         };
     };
     responses: {

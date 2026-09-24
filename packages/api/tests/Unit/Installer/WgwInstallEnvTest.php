@@ -70,6 +70,16 @@ final class WgwInstallEnvTest extends TestCase
         $this->assertSame('admin', $defaults['admin_username'] ?? null);
         $this->assertSame('admin@example.test', $defaults['admin_email'] ?? null);
         $this->assertArrayNotHasKey('admin_password', $defaults);
+        $this->assertTrue(app(WgwInstallEnv::class)->hasDatabaseFromEnv());
+    }
+
+    public function test_has_database_from_env_is_false_without_driver(): void
+    {
+        $this->setInstallConfig([
+            'db_driver' => '',
+        ]);
+
+        $this->assertFalse(app(WgwInstallEnv::class)->hasDatabaseFromEnv());
     }
 
     public function test_headless_plan_requires_complete_env(): void

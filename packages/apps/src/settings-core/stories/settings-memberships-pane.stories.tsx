@@ -4,7 +4,7 @@ import { createMockGroups } from "./settings-panes.stories.fixtures";
 import { SettingsStoryScope } from "./settings-story-scope";
 
 const meta = {
-  title: "Apps/Settings/Panes/Memberships",
+  title: "Features/Settings/Panes/Memberships",
   component: SettingsMembershipsPane,
   render: (args) => (
     <SettingsStoryScope>

@@ -37,6 +37,8 @@ const EXCLUDE_EXPORT_NAMES = new Set([
   "WegotworkspaceLive",
   "WegotworkspaceLiveHome",
   "WegotworkspaceHome",
+  // Storybook branding harness — used via createBrandingStoryMeta, not a product surface.
+  "BrandingWorkspaceDecorator",
 ]);
 
 /** @param {string} name */

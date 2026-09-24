@@ -32,7 +32,8 @@ WeGotWorkspace **runtime** data uses `WGW_*` keys in `packages/api/.env` (loaded
 | Prefix | Purpose |
 |--------|---------|
 | `WGW_DATA_DIR`, `WGW_DB_*`, `WGW_UPDATE_FEED_URL` | Post-install runtime (written by installer or legacy migrator) |
-| `WGW_INSTALL_*` | Pre-install wizard / headless install autofill (Docker `api.env` seed) |
+| `WGW_INSTALL_*` | Pre-install first-run / headless install autofill (Docker `api.env` seed) |
+| `WGW_MCP_PUBLIC_ORIGIN` | **Local only.** Public tunnel origin for MCP OAuth discovery and Admin Connection URL (no trailing slash). Ignored when `APP_ENV=production`. Each developer uses their own ngrok (or similar) host — do not commit a live URL. |
 | `DB_*` | Laravel default connection (sessions, cache, queue — not WGW app data) |
 
 ### Apache / shared hosting
@@ -51,6 +52,25 @@ php artisan migrate --working-dir packages/api
 ```
 
 That database is separate from `wgw-content/db.sqlite`.
+
+### Scheduler (reminders and Web Push)
+
+Shared hosting and production Docker must run `php artisan schedule:run` every minute. Registered commands: `wgw:notify:due-alarms`, `wgw:notify:vapid-sweep`. There is no `queue:work` daemon.
+
+```cron
+* * * * * php packages/api/artisan schedule:run >> /dev/null 2>&1
+```
+
+Local Docker (`compose.dev.yml`) and the install compose files ship a `scheduler` sidecar with the same loop. Optional VAPID override in `packages/api/.env`:
+
+```bash
+# Uncomment a KEY= line only — never paste a bare email.
+# WGW_VAPID_SUBJECT=mailto:noreply@example.com
+# WGW_VAPID_PUBLIC_KEY=
+# WGW_VAPID_PRIVATE_KEY=
+```
+
+If unset, keys are generated into `wgw-content/keys/vapid-public.txt` and `vapid-private.txt` (`php artisan wgw:vapid-keys`).
 
 ## Storybook Live API
 

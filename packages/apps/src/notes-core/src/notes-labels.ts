@@ -48,6 +48,8 @@ export type NotesUILabels = {
   toastNotebookDeleted: (name: string) => string;
   toastNotebookShareRemoved: string;
   toastSynced: string;
+  toastListUpdated: string;
+  toastListRefreshFailed: string;
   selectionStar: string;
   selectionArchive: string;
   selectionMoveToNotebook: string;
@@ -60,6 +62,10 @@ export type NotesUILabels = {
   toolbarMoveToNotebook: string;
   /** Confirm notebook assignment in the change-notebook dialog (draft until clicked). */
   changeNotebookConfirm: string;
+  /** Detail action-bar confirm before moving the open note (Contacts address-book pattern). */
+  moveNoteTitle: string;
+  moveNoteDescription: (notebookName: string) => string;
+  moveNoteConfirm: string;
   toolbarStar: string;
   toolbarArchive: string;
   toolbarUnarchive: string;
@@ -82,7 +88,7 @@ export type NotesUILabels = {
   syncFailedTitle: string;
   syncFailedMessage: string;
   retrySync: string;
-  /** Prefix for the detail-footer last-edited chip (`Last edited {time}`). */
+  /** Clarification for the detail-footer last-edited chip (tooltip + aria-label; chip shows time only). */
   editedLabel: string;
   accessLostTitle: string;
   accessLostMessage: string;
@@ -150,6 +156,8 @@ export const defaultNotesLabels: NotesUILabels = {
   toastNotebookDeleted: (name) => `Notebook “${name}” deleted`,
   toastNotebookShareRemoved: "Notebook removed",
   toastSynced: "Changes synced",
+  toastListUpdated: "List updated",
+  toastListRefreshFailed: "Could not refresh notes. Please try again.",
   selectionStar: "Star",
   selectionArchive: "Archive",
   selectionMoveToNotebook: "Change notebook",
@@ -161,6 +169,9 @@ export const defaultNotesLabels: NotesUILabels = {
   swipeUnarchive: "Unarchive",
   toolbarMoveToNotebook: "Change notebook",
   changeNotebookConfirm: "Change",
+  moveNoteTitle: "Move note?",
+  moveNoteDescription: (notebookName) => `Move this note to “${notebookName}”?`,
+  moveNoteConfirm: "Move",
   toolbarStar: "Star",
   toolbarArchive: "Archive",
   toolbarUnarchive: "Unarchive",
@@ -185,7 +196,7 @@ export const defaultNotesLabels: NotesUILabels = {
   syncFailedTitle: "Some changes could not sync",
   syncFailedMessage: "Your edits are saved locally. Retry when you are back online.",
   retrySync: "Retry",
-  editedLabel: "Last edited ",
+  editedLabel: "Last edited",
   accessLostTitle: "Access lost",
   accessLostMessage: "You no longer have access to this note. Unsaved edits were not stored.",
   shareNotebookTitle: "Share notebook",

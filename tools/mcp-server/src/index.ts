@@ -69,7 +69,7 @@ function registerRunTool(
 registerRunTool(
   "run_apps_done_gate",
   "Run apps done gate",
-  "Run pnpm test:apps-done-gate (typecheck + Vitest + Storybook smoke + coverage). Timeout: 15 minutes.",
+  "Run the local apps done gate (typecheck, OpenAPI contract, Storybook smoke, coverage). Unit and jsdom Vitest run in CI. Timeout: 15 minutes.",
   ["test:apps-done-gate"],
   "APPS DONE GATE",
   15 * MINUTE_MS,

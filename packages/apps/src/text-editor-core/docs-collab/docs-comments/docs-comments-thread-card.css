@@ -2,23 +2,8 @@
 @import "../docs-collab-card/docs-collab-card.css";
 
 .docs-comments-thread-card {
-  --docs-collab-card-accent: var(--docs-accent, #3b82f6);
+  --docs-collab-card-accent: var(--workspace-accent, var(--color-we-got-blue));
   --highlight-amber: oklch(0.94 0.13 86);
-}
-
-.docs-comments-thread-card__resolve {
-  @apply inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors;
-  border-color: var(--docs-border, color-mix(in oklab, var(--color-ink) 12%, transparent));
-  color: var(--docs-text, var(--color-ink));
-  background-color: transparent;
-}
-
-.docs-comments-thread-card__resolve:hover {
-  background-color: color-mix(in oklab, var(--color-ink) 5%, transparent);
-}
-
-.docs-comments-thread-card__resolve-icon {
-  @apply size-3.5;
 }
 
 .docs-comments-thread-card__quote {
@@ -35,31 +20,31 @@
 
 .docs-comments-thread-card__replies {
   @apply mt-3 space-y-2.5 border-t pt-3;
-  border-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  border-color: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
 }
 
 .docs-comments-thread-card__composer {
   @apply mt-3 flex items-center gap-2 rounded-lg border px-3 py-1;
-  border-color: var(--docs-border, color-mix(in oklab, var(--color-ink) 10%, transparent));
+  border-color: var(--docs-border, color-mix(in oklab, var(--color-we-got-dark) 10%, transparent));
   background-color: color-mix(
     in oklab,
-    var(--docs-surface, var(--color-cream, #ffffff)) 40%,
+    var(--docs-surface, var(--color-we-got-soft)) 40%,
     transparent
   );
 }
 
 .docs-comments-thread-card__composer-input {
   @apply min-w-0 flex-1 border-0 bg-transparent text-sm outline-none;
-  color: var(--docs-text, var(--color-ink));
+  color: var(--docs-text, var(--color-we-got-dark));
 }
 
 .docs-comments-thread-card__composer-input::placeholder {
-  color: var(--docs-muted, color-mix(in oklab, var(--color-ink) 55%, transparent));
+  color: var(--docs-muted, color-mix(in oklab, var(--color-we-got-dark) 65%, transparent));
 }
 
 .docs-comments-thread-card__composer-post {
   @apply shrink-0 text-sm font-medium transition-opacity;
-  color: var(--docs-accent, #3b82f6);
+  color: var(--workspace-accent, var(--color-we-got-blue));
 }
 
 .docs-comments-thread-card__composer-post:disabled {

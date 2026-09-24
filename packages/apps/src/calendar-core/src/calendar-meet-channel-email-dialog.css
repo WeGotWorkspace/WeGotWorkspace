@@ -1,0 +1,19 @@
+@import "../../styles.css" reference;
+
+.calendar-meet-channel-email-dialog {
+  max-width: min(32rem, calc(100vw - 2rem));
+}
+
+.calendar-meet-channel-email-dialog__footer {
+  /* Three choice actions; wrap when the row is tight. */
+  @apply flex-wrap;
+}
+
+.calendar-meet-channel-email-dialog__action {
+  @apply justify-center;
+}
+
+.calendar-event-dialog__meet-email-hint,
+.calendar-invitees-card__meet-email-hint {
+  @apply mt-3;
+}

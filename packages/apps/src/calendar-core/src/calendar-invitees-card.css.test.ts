@@ -5,25 +5,23 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "calendar-invitees-card.css"), "utf8");
+const tsx = readFileSync(join(here, "calendar-invitees-card.tsx"), "utf8");
 
 describe("calendar invitees card CSS", () => {
-  it("wraps invitee identity so the delete control cannot hide the name", () => {
+  it("lays out participants as inline UserChip rows with RSVP wash classes", () => {
     expect(css).toMatch(/\.calendar-invitees-card \{[\s\S]*container:\s*calendar-invitees/);
-    expect(css).toMatch(/\.calendar-invitees-card \.card__row \{[\s\S]*flex-wrap/);
-    expect(css).toMatch(/\.calendar-invitees-card \.card__row \{[\s\S]*items-center/);
-    expect(css).toMatch(
-      /\.calendar-invitees-card \.card__row-main \{[\s\S]*min-width:\s*min\(10rem,\s*100%\)/,
-    );
-    expect(css).not.toMatch(/items-start/);
+    expect(css).toMatch(/\.calendar-invitees-card__chips/);
+    expect(css).toMatch(/flex-wrap/);
+    expect(css).not.toMatch(/\.card__row/);
     expect(css).not.toMatch(/calendar-invitees-status-tag/);
     expect(css).not.toMatch(/tag--icon-only/);
-    expect(css).not.toMatch(/calendar-invitees-rsvp-chip/);
   });
 
-  it("keeps a container-query fallback that recenters the name with the avatar", () => {
-    expect(css).toMatch(/@container calendar-invitees \(max-width: 22rem\)/);
-    expect(css).toMatch(/@supports not \(container-type: inline-size\)/);
-    expect(css).toMatch(/\.calendar-invitees-card \.card__row \{[\s\S]*items-center/);
-    expect(css).toMatch(/\.calendar-invitees-card \.card__row-title \{[\s\S]*whitespace-normal/);
+  it("renders UserChip instead of Tag or ShareAccessRow", () => {
+    expect(tsx).toMatch(/from "@\/user-avatar\/src\/user-chip"/);
+    expect(tsx).toMatch(/UserChip/);
+    expect(tsx).toMatch(/calendar-invitees-card__chips/);
+    expect(tsx).not.toMatch(/ShareAccessRow/);
+    expect(tsx).not.toMatch(/from "@\/tag\/src\/tag"/);
   });
 });

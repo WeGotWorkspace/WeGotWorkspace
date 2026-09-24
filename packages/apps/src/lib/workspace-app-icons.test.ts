@@ -5,8 +5,13 @@ import {
   workspaceAppIconAppleTouchSrc,
   workspaceAppIconManifestSrc,
   workspaceAppIconUiSrc,
+  workspaceAppLabel,
+  workspaceAppLabelFromPath,
 } from "@/lib/workspace-app-icons";
-import { WORKSPACE_APP_ICON_INLINE } from "@/lib/workspace-app-icon-svgs";
+import {
+  WORKSPACE_APP_ICON_INLINE,
+  WORKSPACE_HOME_ICON_INLINE,
+} from "@/lib/workspace-app-icon-svgs";
 
 describe("workspaceAppIconUiSrc", () => {
   it("points at canonical vector artwork under /app-icons/", () => {
@@ -23,58 +28,58 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
   });
 
   it("maps each app to distinct artwork (no cross-app SVG reuse)", () => {
-    const pathSets = WORKSPACE_APP_IDS.map(
-      (appId) =>
-        [
-          appId,
-          [...WORKSPACE_APP_ICON_INLINE[appId].matchAll(/d="([^"]+)"/g)].map((m) => m[1]),
-        ] as const,
-    );
+    const markups = WORKSPACE_APP_IDS.map((appId) => WORKSPACE_APP_ICON_INLINE[appId]);
 
-    for (let i = 0; i < pathSets.length; i++) {
-      for (let j = i + 1; j < pathSets.length; j++) {
-        const [appA, pathsA] = pathSets[i];
-        const [appB, pathsB] = pathSets[j];
-        expect(JSON.stringify(pathsA)).not.toBe(JSON.stringify(pathsB));
-        expect(`${appA} vs ${appB}`).toBeTruthy();
+    for (let i = 0; i < markups.length; i++) {
+      for (let j = i + 1; j < markups.length; j++) {
+        expect(markups[i]).not.toBe(markups[j]);
       }
     }
   });
 
-  it("keeps notes as notepad lines, not the contacts person silhouette", () => {
+  it("keeps tile backgrounds square (no baked-in corner radius)", () => {
+    for (const appId of WORKSPACE_APP_IDS) {
+      const markup = WORKSPACE_APP_ICON_INLINE[appId];
+      // Background layer is the first rect/path with --wai-bg; it must not use tile rx.
+      const bgLayer = markup.match(
+        /<(?:rect|path)[^>]*fill="var\(--wai-bg[^"]*"[^>]*\/?>|<(?:rect|path)[^>]*rx="45"[^>]*fill="var\(--wai-bg/,
+      )?.[0];
+      expect(bgLayer, `${appId} should have a --wai-bg layer`).toBeTruthy();
+      expect(bgLayer).not.toMatch(/\brx="/);
+      expect(markup).not.toMatch(/<(?:rect|path)[^>]*\brx="45"/);
+    }
+  });
+
+  it("keeps notes as the orange notepad, not the contacts person", () => {
     const notes = WORKSPACE_APP_ICON_INLINE.notes;
     const contacts = WORKSPACE_APP_ICON_INLINE.contacts;
 
-    expect(notes).toContain('d="M337 208H175');
-    expect(notes).not.toContain('d="M256 280C284.719');
-    expect(contacts).toContain('d="M256 280C284.719');
-    expect(contacts).not.toContain('d="M337 208H175');
+    expect(notes).toContain('d="M0 45C0 20.147');
+    expect(notes).toContain("#ffc800");
+    expect(notes).toContain("#ffffff");
+    expect(notes).not.toContain('d="M45 201c0-24.853');
+    expect(contacts).toContain('d="M45 201c0-24.853');
+    expect(contacts).toContain('cx="135"');
+    expect(contacts).toContain("#a3c4e8");
+    expect(contacts).toContain("#ffffff");
+    expect(contacts).not.toContain('d="M0 45C0 20.147');
+    expect(contacts).not.toContain('d="M256 280C284.719');
   });
+});
 
-  it("keeps notes artwork in yellow tints, not white paper or ink", () => {
-    const notes = WORKSPACE_APP_ICON_INLINE.notes;
-
-    expect(notes).toContain("#f6d176");
-    expect(notes).toContain("#fef8ea");
-    expect(notes).toContain("#f0bc3a");
-    expect(notes).not.toContain("#fae6b4");
-    expect(notes).not.toContain("#f0c55e");
-    expect(notes).not.toContain("#f9dea0");
-    expect(notes).not.toMatch(/--wai-fg,\s*white/);
-    expect(notes).not.toMatch(/#000|#111|#333|#666|#999|#ccc/i);
-  });
-
-  it("keeps contacts artwork in mint tints, not brown gold or white paper", () => {
-    const contacts = WORKSPACE_APP_ICON_INLINE.contacts;
-
-    expect(contacts).toContain("#39d49b");
-    expect(contacts).toContain("#fef8ea");
-    expect(contacts).toContain("#26a577");
-    expect(contacts).not.toContain("#8B6F45");
-    expect(contacts).not.toContain("#8b6f45");
-    expect(contacts).not.toContain("#b5c96a");
-    expect(contacts).not.toMatch(/--wai-fg,\s*white/);
-    expect(contacts).not.toMatch(/#000|#111|#333|#666|#999|#ccc/i);
+describe("WORKSPACE_HOME_ICON_INLINE", () => {
+  it("is a 270 suite tile: navy background, cream mark, same clover path", () => {
+    expect(WORKSPACE_HOME_ICON_INLINE).toMatch(/^<svg[\s>]/);
+    expect(WORKSPACE_HOME_ICON_INLINE).toContain('viewBox="0 0 270 270"');
+    expect(WORKSPACE_HOME_ICON_INLINE).toContain('fill="var(--wai-bg, #1b1d3a)"');
+    expect(WORKSPACE_HOME_ICON_INLINE).toContain('fill="var(--wai-fg, #fff5e9)"');
+    expect(WORKSPACE_HOME_ICON_INLINE).toContain(
+      'd="M45 0c8.286 0 15 6.717 15 15.001s-6.715 15-15 15H45c8.284 0 15 6.715 15 15 0 8.283-6.716 14.999-15 14.999s-15-6.716-15-15c0 8.284-6.715 15-15 15C6.717 60 0 53.284 0 45s6.716-15 15-15C6.715 30 0 23.283 0 15S6.714 0 15 0s15 6.716 15 15c0-8.284 6.715-15 15-15"',
+    );
+    expect(WORKSPACE_HOME_ICON_INLINE).not.toContain('width="60"');
+    expect(WORKSPACE_HOME_ICON_INLINE).not.toContain('viewBox="0 0 60 60"');
+    expect(WORKSPACE_HOME_ICON_INLINE).not.toContain("250.643");
+    expect(WORKSPACE_HOME_ICON_INLINE).not.toMatch(/#F59F00|#0CA678|#4C6EF5/i);
   });
 });
 
@@ -105,8 +110,30 @@ describe("WORKSPACE_APP_ACCENT", () => {
     }
   });
 
-  it("samples contacts from the mint launcher tile, not leftover gold", () => {
-    expect(WORKSPACE_APP_ACCENT.contacts.toLowerCase()).toBe("#39d49b");
+  it("samples contacts from the purple launcher tile", () => {
+    expect(WORKSPACE_APP_ACCENT.contacts.toLowerCase()).toBe("#962fa8");
     expect(WORKSPACE_APP_ACCENT.contacts).not.toMatch(/#8b6f45/i);
+  });
+
+  it("samples notes from brand yellow #ffc800", () => {
+    expect(WORKSPACE_APP_ACCENT.notes.toLowerCase()).toBe("#ffc800");
+    expect(WORKSPACE_APP_ACCENT.notes).not.toMatch(/#f6d176/i);
+  });
+});
+
+describe("workspaceAppLabelFromPath", () => {
+  it("capitalizes the suite app id matching the app-switch route", () => {
+    expect(workspaceAppLabel("docs")).toBe("Docs");
+    expect(workspaceAppLabelFromPath("/docs")).toBe("Docs");
+    expect(workspaceAppLabelFromPath("/docs/abc")).toBe("Docs");
+    expect(workspaceAppLabelFromPath("/tasks")).toBe("Tasks");
+    expect(workspaceAppLabelFromPath("/drive/folder")).toBe("Drive");
+    expect(workspaceAppLabelFromPath("/meet/room-1")).toBe("Meet");
+  });
+
+  it("falls back to Workspace outside product routes", () => {
+    expect(workspaceAppLabelFromPath("/")).toBe("Workspace");
+    expect(workspaceAppLabelFromPath("/login")).toBe("Workspace");
+    expect(workspaceAppLabelFromPath("/install")).toBe("Workspace");
   });
 });

@@ -1,13 +1,25 @@
 @import "../styles.css" reference;
 
 /**
+ * Full-color launcher tiles clip in CSS. Keep SVG artwork square so Apple can
+ * apply its own mask to apple-touch PNGs.
+ * Radius matches former tile `rx="45"` on a 270 viewBox (45/270 = 1/6).
+ */
+.workspace-app-icon--tile {
+  --workspace-app-icon-radius: calc(100% / 6);
+  @apply size-full overflow-hidden object-cover;
+  border-radius: var(--workspace-app-icon-radius);
+}
+
+/**
  * Switch trigger lockup: `--app-sidebar-color` background + `--workspace-accent` artwork.
  * The same vector SVG as the default icon is inlined; `--wai-*` vars remap layers for inversion.
  */
 .workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--app-sidebar-color, var(--app-switch-label-color, currentColor));
   --app-switch-icon-fg: var(--workspace-accent, currentColor);
-  @apply block overflow-hidden rounded-[6px];
+  @apply block overflow-hidden;
+  border-radius: calc(100% / 6);
   background-color: var(--app-switch-icon-bg);
 }
 
@@ -15,28 +27,18 @@
   @apply block size-full;
   --wai-bg: transparent;
   --wai-fg: var(--app-switch-icon-fg);
-  --wai-detail: var(--app-switch-icon-fg);
-  --wai-detail-muted: var(--app-switch-icon-fg);
-  /* Card cutouts (e.g. contacts person silhouette) reveal sidebar text color. */
-  --wai-cutout: var(--app-switch-icon-bg);
-}
-
-/** Home grid tile artwork — fills the `.apps-home-screen__tile-icon` cell. */
-.workspace-app-icon--tile {
-  @apply size-full object-cover;
 }
 
 /**
- * Workspace home lockup on dark suite shells: white tile + original accent squares
- * (orange / green / blue from `home.svg`), not mono sidebar-accent inversion.
+ * Workspace home lockup: cream tile behind the solid `#003311` suite mark.
+ * `home.svg` is a full-bleed launcher tile (navy + cream fallbacks) for the PWA.
+ * This override clears that tile through the shared `--wai-bg: transparent` rule
+ * and pins the mark so it does not pick up `--app-switch-icon-fg`.
  */
 .workspace-app-icon--switch-trigger-home {
-  --app-switch-icon-bg: #ffffff;
+  --app-switch-icon-bg: var(--color-we-got-soft);
 }
 
-.workspace-app-icon--switch-trigger-home svg {
-  --wai-bg: transparent;
-  --wai-fg: #f59f00;
-  --wai-detail: #0ca678;
-  --wai-cutout: #4c6ef5;
+.workspace-app-icon--switch-trigger.workspace-app-icon--switch-trigger-home svg {
+  --wai-fg: #003311;
 }

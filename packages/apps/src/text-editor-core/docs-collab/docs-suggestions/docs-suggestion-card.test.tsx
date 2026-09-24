@@ -1,7 +1,9 @@
 /** @vitest-environment jsdom */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { docsLabels } from "@/docs-core/src/docs-labels";
+import { TooltipProvider } from "@/ui/tooltip";
 import {
   formatChangeSuggestion,
   insertSuggestion,
@@ -17,9 +19,13 @@ afterEach(() => {
 
 const noop = () => {};
 
+function renderCard(ui: ReactElement) {
+  return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
+}
+
 describe("DocsSuggestionCard", () => {
   it("shows the reply composer when the card is active", () => {
-    render(
+    renderCard(
       <DocsSuggestionCard
         suggestion={insertSuggestion}
         labels={docsLabels}
@@ -38,7 +44,7 @@ describe("DocsSuggestionCard", () => {
   });
 
   it("hides the reply composer when the card is inactive", () => {
-    render(
+    renderCard(
       <DocsSuggestionCard
         suggestion={insertSuggestion}
         labels={docsLabels}
@@ -56,7 +62,7 @@ describe("DocsSuggestionCard", () => {
   });
 
   it("marks inactive cards and wraps diff content for two-line clamping", () => {
-    const { container } = render(
+    const { container } = renderCard(
       <DocsSuggestionCard
         suggestion={longReplaceSuggestion}
         labels={docsLabels}
@@ -81,7 +87,7 @@ describe("DocsSuggestionCard", () => {
   });
 
   it("does not mark active cards as inactive", () => {
-    const { container } = render(
+    const { container } = renderCard(
       <DocsSuggestionCard
         suggestion={longReplaceSuggestion}
         labels={docsLabels}
@@ -99,7 +105,7 @@ describe("DocsSuggestionCard", () => {
   });
 
   it("shows affected text for format-change suggestions, not format mark names", () => {
-    render(
+    renderCard(
       <DocsSuggestionCard
         suggestion={formatChangeSuggestion}
         labels={docsLabels}
@@ -120,7 +126,7 @@ describe("DocsSuggestionCard", () => {
   });
 
   it("renders format-change diff with removed and added mark styling", () => {
-    render(
+    renderCard(
       <DocsSuggestionCard
         suggestion={formatChangeSuggestion}
         labels={docsLabels}
@@ -160,7 +166,7 @@ describe("DocsSuggestionCard", () => {
       ],
     };
 
-    render(
+    renderCard(
       <DocsSuggestionCard
         suggestion={addBoldOnly}
         labels={docsLabels}
@@ -190,7 +196,7 @@ describe("DocsSuggestionCard", () => {
 
   it("calls onAddReply when posting a reply", () => {
     const onAddReply = vi.fn();
-    render(
+    renderCard(
       <DocsSuggestionCard
         suggestion={insertSuggestion}
         labels={docsLabels}
@@ -209,5 +215,115 @@ describe("DocsSuggestionCard", () => {
     fireEvent.click(screen.getByRole("button", { name: docsLabels.commentsReplyAction }));
 
     expect(onAddReply).toHaveBeenCalledWith("Follow-up note");
+  });
+
+  it("reviews with separate accept and reject IconButtons", () => {
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={insertSuggestion}
+        labels={docsLabels}
+        currentUserId="u-1"
+        active={false}
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    const accept = screen.getByRole("button", { name: docsLabels.suggestionsAccept });
+    const reject = screen.getByRole("button", { name: docsLabels.suggestionsReject });
+    expect(accept.closest(".segmented-control")).toBeNull();
+    expect(reject.closest(".segmented-control")).toBeNull();
+    expect(accept.className).toContain("icon-button--size-md");
+    expect(accept.className).toContain("button--severity-success");
+    expect(reject.className).toContain("icon-button--size-md");
+    expect(reject.className).toContain("button--severity-danger");
+    expect(screen.queryByText("Accept")).toBeNull();
+    expect(screen.queryByText("Reject")).toBeNull();
+  });
+
+  it("hides accept, reject, and composer when the suggestion is archived", () => {
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={{ ...insertSuggestion, archived: true }}
+        labels={docsLabels}
+        currentUserId="u-1"
+        active
+        canMutate={false}
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: docsLabels.suggestionsAccept })).toBeNull();
+    expect(screen.queryByRole("button", { name: docsLabels.suggestionsReject })).toBeNull();
+    expect(screen.queryByLabelText(docsLabels.commentsReplyPlaceholder)).toBeNull();
+    expect(screen.getByLabelText(insertSuggestion.summary)).toBeTruthy();
+  });
+
+  it("shows a fallback body when an archived suggestion has no snapshot text", () => {
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={{
+          ...insertSuggestion,
+          archived: true,
+          parts: [],
+          summary: "",
+          anchorText: "",
+          reactions: [{ emoji: "👍", userIds: ["u-2"] }],
+          messages: [
+            {
+              id: "s-empty-m",
+              body: "hmm",
+              createdAt: "2026-06-01T09:10:00.000Z",
+              author: { id: "u-2", name: "Sam Lee" },
+            },
+          ],
+        }}
+        labels={docsLabels}
+        currentUserId="u-1"
+        active
+        canMutate={false}
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.getByLabelText(docsLabels.suggestionsArchivedEmpty)).toBeTruthy();
+    expect(screen.getByText("hmm")).toBeTruthy();
+  });
+
+  it("keeps existing reaction chips visible on archived cards without an add control", () => {
+    renderCard(
+      <DocsSuggestionCard
+        suggestion={{
+          ...insertSuggestion,
+          archived: true,
+          reactions: [{ emoji: "👍", userIds: ["u-2"] }],
+        }}
+        labels={docsLabels}
+        currentUserId="u-1"
+        active
+        canMutate={false}
+        onSelect={noop}
+        onAccept={noop}
+        onReject={noop}
+        onAddReply={noop}
+        onToggleReaction={noop}
+      />,
+    );
+
+    expect(screen.getByText("👍")).toBeTruthy();
+    expect(screen.getByText("1")).toBeTruthy();
+    expect(screen.getByLabelText("👍 u-2")).toBeTruthy();
+    expect(screen.queryByLabelText("Add reaction")).toBeNull();
   });
 });

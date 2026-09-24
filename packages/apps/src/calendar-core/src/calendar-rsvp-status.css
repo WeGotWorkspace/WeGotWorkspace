@@ -1,42 +1,68 @@
 /*
- * RSVP chips reuse Callout severity hues (success / error) and the shared
- * docs/info blue already used for accent chips — applied via Tag --tag-* vars.
- * Invitees-card status marks and invitation-card RSVP buttons share these tokens.
+ * RSVP / participant chip tones. Sets `--tag-*` (legacy marks) and
+ * `--user-chip-*` (UserChip fill + border) so the whole chip washes, not only
+ * the avatar circle.
  */
 .calendar-rsvp-status--accepted,
 .calendar-invitees-rsvp-tag--accepted,
-.calendar-rsvp-action--accept.calendar-rsvp-action--selected,
-.calendar-invitation-card__action--accept.calendar-invitation-card__action--selected,
-.calendar-rsvp-select--accept.calendar-rsvp-select--selected {
-  --tag-bg: color-mix(in oklab, #3a8f5a 18%, transparent);
+.calendar-rsvp-select--accept.calendar-rsvp-select--selected,
+.calendar-invitees-status-mark--organizer {
+  /* Host/organizer shares the accepted green wash (not calendar-accent purple). */
   --tag-fg: #3a8f5a;
+  --tag-bg: color-mix(in oklab, #3a8f5a 18%, var(--color-we-got-soft));
+  --user-chip-fg: #3a8f5a;
+  --user-chip-bg: color-mix(in oklab, #3a8f5a 18%, var(--color-we-got-soft));
+  --user-chip-border: color-mix(in oklab, #3a8f5a 42%, transparent);
 }
 
 .calendar-rsvp-status--tentative,
 .calendar-invitees-rsvp-tag--tentative,
-.calendar-rsvp-action--maybe.calendar-rsvp-action--selected,
-.calendar-invitation-card__action--maybe.calendar-invitation-card__action--selected,
 .calendar-rsvp-select--maybe.calendar-rsvp-select--selected {
-  --tag-bg: color-mix(in oklab, #2563eb 16%, transparent);
-  --tag-fg: #2563eb;
+  /* Maybe / tentative = app accent wash (same purple as selected Maybe RSVP thumb). */
+  --tag-fg: var(
+    --workspace-accent-strong,
+    var(--workspace-accent, var(--workspace-accent, #962fa8))
+  );
+  --tag-bg: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--workspace-accent, #962fa8)) 18%,
+    var(--color-we-got-soft)
+  );
+  --user-chip-fg: var(
+    --workspace-accent-strong,
+    var(--workspace-accent, var(--workspace-accent, #962fa8))
+  );
+  --user-chip-bg: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--workspace-accent, #962fa8)) 18%,
+    var(--color-we-got-soft)
+  );
+  --user-chip-border: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--workspace-accent, #962fa8)) 42%,
+    transparent
+  );
 }
 
 .calendar-rsvp-status--declined,
 .calendar-invitees-rsvp-tag--declined,
-.calendar-rsvp-action--decline.calendar-rsvp-action--selected,
-.calendar-invitation-card__action--decline.calendar-invitation-card__action--selected,
 .calendar-rsvp-select--decline.calendar-rsvp-select--selected {
-  --tag-bg: color-mix(in oklab, #b14242 18%, transparent);
   --tag-fg: #b14242;
-}
-
-.calendar-invitees-status-mark--organizer {
-  --tag-bg: color-mix(in oklab, var(--share-dialog-accent, var(--color-ink)) 16%, transparent);
-  --tag-fg: var(--share-dialog-accent, var(--color-ink));
+  --tag-bg: color-mix(in oklab, #b14242 18%, var(--color-we-got-soft));
+  --user-chip-fg: #b14242;
+  --user-chip-bg: color-mix(in oklab, #b14242 18%, var(--color-we-got-soft));
+  --user-chip-border: color-mix(in oklab, #b14242 42%, transparent);
 }
 
 .calendar-invitees-status-mark--pending,
 .calendar-invitees-status-mark--delegated {
-  --tag-bg: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --tag-fg: color-mix(in oklab, var(--color-ink) 72%, transparent);
+  /* Dark on white/transparent — no gray wash. */
+  --tag-fg: var(--color-we-got-dark);
+  --tag-bg: transparent;
+  --user-chip-fg: var(--color-we-got-dark);
+  --user-chip-bg: transparent;
+  --user-chip-border: var(
+    --control-border-color,
+    color-mix(in oklab, var(--color-we-got-dark) 22%, transparent)
+  );
 }

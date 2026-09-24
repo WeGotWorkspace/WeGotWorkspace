@@ -184,7 +184,6 @@ function ContactsSidebarBookBlock({
       />
       {expanded && groups.length > 0 ? (
         <ContactsSidebarGroupRows
-          nested
           groups={groups}
           view={view}
           editLabel={groupEditLabel}

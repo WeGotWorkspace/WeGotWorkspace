@@ -1,20 +1,6 @@
-import {
-  Upload,
-  FolderPlus,
-  Plus,
-  FileText,
-  FileSpreadsheet,
-  Presentation,
-  ScrollText,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/ui/dropdown-menu";
-import { Button } from "@/button/src/button";
+import { Upload, FileText, FileSpreadsheet, Presentation, ScrollText } from "lucide-react";
+import type { DropdownMenuItemProps } from "@/menu-dropdown/src/dropdown-menu";
+import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 
 export type DriveBlankKind = "doc" | "sheet" | "slides";
@@ -26,67 +12,59 @@ export type DriveNewFileTemplate = {
 };
 
 export type DriveNewMenuProps = {
-  labels: DriveUILabels;
+  labels: Pick<DriveUILabels, "newFolder" | "newButtonMenu" | "uploadFiles" | "newMarkdown">;
   onCreateFolder: () => void;
   onUploadFiles: () => void;
   onCreateMarkdown?: () => void;
-  newFileTemplates: DriveNewFileTemplate[];
-  onCreateTemplate: (templateId: string) => void;
+  newFileTemplates?: readonly DriveNewFileTemplate[];
+  onCreateTemplate?: (templateId: string) => void;
 };
+
+function templateIcon(kind: DriveBlankKind) {
+  if (kind === "doc") return <FileText aria-hidden />;
+  if (kind === "sheet") return <FileSpreadsheet aria-hidden />;
+  return <Presentation aria-hidden />;
+}
 
 export function DriveNewMenu({
   labels,
   onCreateFolder,
   onUploadFiles,
   onCreateMarkdown,
-  newFileTemplates,
+  newFileTemplates = [],
   onCreateTemplate,
 }: DriveNewMenuProps) {
+  const items: DropdownMenuItemProps[] = [
+    {
+      id: "upload-files",
+      label: labels.uploadFiles,
+      icon: <Upload aria-hidden />,
+      onClick: onUploadFiles,
+    },
+  ];
+  if (onCreateMarkdown) {
+    items.push({
+      id: "create-markdown",
+      label: labels.newMarkdown,
+      icon: <ScrollText aria-hidden />,
+      onClick: onCreateMarkdown,
+    });
+  }
+  for (const template of newFileTemplates) {
+    items.push({
+      id: `template-${template.id}`,
+      label: template.label,
+      icon: templateIcon(template.kind),
+      onClick: () => onCreateTemplate?.(template.id),
+    });
+  }
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          label={labels.newButton}
-          icon={<Plus />}
-          size="lg"
-          pill
-          variant="primary"
-          className="w-full"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" sideOffset={8} className="min-w-[14rem]">
-        <DropdownMenuItem onClick={onCreateFolder} className="cursor-pointer gap-2.5 py-2">
-          <FolderPlus className="size-4 opacity-70" />
-          <span>{labels.newFolder}</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onUploadFiles} className="cursor-pointer gap-2.5 py-2">
-          <Upload className="size-4 opacity-70" />
-          <span>{labels.uploadFiles}</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        {onCreateMarkdown ? (
-          <DropdownMenuItem onClick={onCreateMarkdown} className="cursor-pointer gap-2.5 py-2">
-            <ScrollText className="size-4 opacity-70" />
-            <span>{labels.newMarkdown}</span>
-          </DropdownMenuItem>
-        ) : null}
-        {newFileTemplates.map((template) => (
-          <DropdownMenuItem
-            key={template.id}
-            onClick={() => onCreateTemplate(template.id)}
-            className="cursor-pointer gap-2.5 py-2"
-          >
-            {template.kind === "doc" ? (
-              <FileText className="size-4 opacity-70" />
-            ) : template.kind === "sheet" ? (
-              <FileSpreadsheet className="size-4 opacity-70" />
-            ) : (
-              <Presentation className="size-4 opacity-70" />
-            )}
-            <span>{template.label}</span>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <SidebarSegmentedNewMenu
+      mainLabel={labels.newFolder}
+      menuLabel={labels.newButtonMenu}
+      onMainAction={onCreateFolder}
+      items={items}
+    />
   );
 }

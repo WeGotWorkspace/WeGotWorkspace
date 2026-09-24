@@ -65,13 +65,29 @@ describe("NotesNewMenu", () => {
 describe("NotesNewMenu primary tokens", () => {
   it("paints sidebar New note gold fill + ink label (invert of selected chips)", () => {
     expect(workspaceCss).toMatch(
-      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--notes-accent\)/,
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--workspace-accent\)/,
     );
     expect(workspaceCss).toMatch(
-      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-fg:\s*var\(--color-ink(?:,\s*#042a22)?\)/,
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-fg:\s*var\(--color-we-got-dark(?:,\s*#003311)?\)/,
     );
     expect(workspaceCss).not.toMatch(
-      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--color-ink/,
+      /\.notes-workspace \.app-sidebar__scroll \{[^}]*--button-primary-bg:\s*var\(--color-we-got-dark/,
+    );
+  });
+
+  it("mirrors New note primary onto the header notification unread badge", () => {
+    // Exact New-note pair: --workspace-accent + ink #003311 (not ink-bg/emerald-fg fallback).
+    expect(workspaceCss).toMatch(
+      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-bg:\s*var\(--workspace-accent\)/,
+    );
+    expect(workspaceCss).toMatch(
+      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--button-primary-fg:\s*#003311/,
+    );
+    expect(workspaceCss).toMatch(
+      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-bg:\s*var\(--workspace-accent\)/,
+    );
+    expect(workspaceCss).toMatch(
+      /\.notes-workspace \.app-sidebar__notifications \{[\s\S]*--notification-inbox-badge-fg:\s*#003311/,
     );
   });
 });

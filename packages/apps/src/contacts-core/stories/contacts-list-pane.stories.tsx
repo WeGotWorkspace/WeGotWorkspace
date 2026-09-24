@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect } from "react";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { CollectionListWorkspace } from "@/collection-layout/src/collection-layout";
 import { ContactsListPanel } from "@/contacts-core/src/contacts-list-panel";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
@@ -149,7 +149,7 @@ function ContactsListPaneHarness({
 }
 
 const meta = {
-  title: "Apps/Contacts/Panes/List",
+  title: "Features/Contacts/Panes/List",
   component: ContactsListPaneHarness,
   parameters: {
     layout: "fullscreen",
@@ -212,8 +212,10 @@ export const RetrySync: Story = {
   tags: ["vitest-ci"],
   args: { preset: "default", failedSyncCount: 2 },
   play: async () => {
+    await waitFor(() => {
+      expect(document.body.textContent).toContain("Some changes couldn’t sync");
+    });
     const body = within(document.body);
-    await expect(body.getByText("Some changes couldn’t sync")).toBeInTheDocument();
     await expect(body.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   },
 };
@@ -278,7 +280,7 @@ export const ActiveGroup: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Friends")).toBeInTheDocument();
-    await expect(canvas.getByText("2 Contacts")).toBeInTheDocument();
+    await expect(canvas.getByLabelText("2 Contacts")).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: "Rename group" })).toBeNull();
     await expect(canvas.queryByRole("button", { name: "Delete group" })).toBeNull();
     await expect(canvas.getByRole("heading", { level: 3, name: "Jane Doe" })).toBeInTheDocument();

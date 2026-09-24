@@ -1,0 +1,681 @@
+import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
+import { FollowerPresenceSession } from "@/presence-core/src/follower-presence-session";
+import type { PresenceJoinMode } from "@/presence-core/src/presence-join-timing";
+import type {
+  PresenceChatMessage,
+  PresenceCoworker,
+  PresenceEnvelope,
+  PresenceMeetFanoutEvent,
+  PresenceMeshSession,
+  PresenceNotifyHintEvent,
+  PresenceSnapshot,
+  PresenceUserStatus,
+} from "@/presence-core/src/presence-types";
+import {
+  PrincipalTabCoordinator,
+  type PrincipalTabSyncHandlers,
+} from "@/presence-core/src/principal-tab-sync";
+
+export type PresenceVisibilityPort = {
+  getState: () => DocumentVisibilityState;
+  subscribe: (listener: () => void) => () => void;
+};
+
+function defaultVisibilityPort(): PresenceVisibilityPort | null {
+  if (typeof document === "undefined") return null;
+  return {
+    getState: () => document.visibilityState,
+    subscribe: (listener) => {
+      document.addEventListener("visibilitychange", listener);
+      return () => document.removeEventListener("visibilitychange", listener);
+    },
+  };
+}
+
+export type PresenceStoreOptions = {
+  createSession: () => PresenceMeshSession;
+  /** `eager` joins on start; `lazy` defers the join until the tab is visible. */
+  joinMode: PresenceJoinMode;
+  /**
+   * When true, only the sticky BroadcastChannel leader dials the principal mesh;
+   * follower windows proxy envelopes (Phase 4 / #695). Default false for unit tests.
+   */
+  crossWindowLeader?: boolean;
+  createTabCoordinator?: (handlers: PrincipalTabSyncHandlers) => PrincipalTabCoordinator;
+  visibility?: PresenceVisibilityPort | null;
+  now?: () => number;
+  setTimeoutFn?: typeof setTimeout;
+  clearTimeoutFn?: typeof clearTimeout;
+  typingTtlMs?: number;
+  channelTypingTtlMs?: number;
+};
+
+const DEFAULT_TYPING_TTL_MS = 5000;
+
+/** Channel typing outlives the ~4s sender heartbeat so continuous typing never flickers. */
+const DEFAULT_CHANNEL_TYPING_TTL_MS = 6000;
+
+const MAX_CHAT_HISTORY = 200;
+
+function createInitialSnapshot(): PresenceSnapshot {
+  return {
+    status: "idle",
+    selfUsername: null,
+    roster: [],
+    chat: [],
+    typingUsernames: [],
+    channelTyping: {},
+  };
+}
+
+/**
+ * Suite-level principal presence store (framework-free; `subscribe`/`getSnapshot`
+ * are `useSyncExternalStore`-compatible). One mesh session on the workspace-wide
+ * principal room carries presence, chat, and typing envelopes over data channels.
+ *
+ * Join timing: `eager` joins on `start()`; `lazy` (mobile) waits until the tab is
+ * visible and retries on every resume until joined — the mesh itself already
+ * fast-polls when the tab becomes visible, so resume reconnects need no extra kick.
+ *
+ * Cross-window leadership (`crossWindowLeader`): sticky BC election so only one
+ * window dials; followers use {@link FollowerPresenceSession}. Leader close →
+ * handoff with an expected ~0.5–2 s reconnect blip (PeerConnection cannot move).
+ */
+export class PresenceStore {
+  private snapshot: PresenceSnapshot = createInitialSnapshot();
+
+  private readonly listeners = new Set<() => void>();
+
+  private readonly meetListeners = new Set<(event: PresenceMeetFanoutEvent) => void>();
+
+  private readonly notifyHintListeners = new Set<(event: PresenceNotifyHintEvent) => void>();
+
+  private session: PresenceMeshSession | null = null;
+
+  private followerSession: FollowerPresenceSession | null = null;
+
+  private coordinator: PrincipalTabCoordinator | null = null;
+
+  private unsubscribeSession: (() => void) | null = null;
+
+  private unsubscribeVisibility: (() => void) | null = null;
+
+  private readonly visibility: PresenceVisibilityPort | null;
+
+  private readonly now: () => number;
+
+  private readonly scheduleTimeout: typeof setTimeout;
+
+  private readonly cancelTimeout: typeof clearTimeout;
+
+  private readonly typingTtlMs: number;
+
+  private readonly channelTypingTtlMs: number;
+
+  private readonly crossWindowLeader: boolean;
+
+  private readonly createTabCoordinator: (
+    handlers: PrincipalTabSyncHandlers,
+  ) => PrincipalTabCoordinator;
+
+  private selfUsername = "";
+
+  private selfDisplayName = "";
+
+  private selfStatus: PresenceUserStatus = "online";
+
+  private joinInFlight = false;
+
+  private joined = false;
+
+  private stopped = false;
+
+  private isMeshLeader = false;
+
+  private chatCounter = 0;
+
+  /** Latest reported status per remote peer id (multi-tab peers merge by username). */
+  private readonly peerStatuses = new Map<string, PresenceUserStatus>();
+
+  /** username -> typing indicator expiry timestamp. */
+  private readonly typingUntil = new Map<string, number>();
+
+  private typingTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** channel id -> username -> typing expiry timestamp. */
+  private readonly channelTypingUntil = new Map<string, Map<string, number>>();
+
+  private channelTypingTimer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor(private readonly options: PresenceStoreOptions) {
+    this.visibility =
+      options.visibility === undefined ? defaultVisibilityPort() : options.visibility;
+    this.now = options.now ?? (() => Date.now());
+    this.scheduleTimeout = options.setTimeoutFn ?? setTimeout.bind(globalThis);
+    this.cancelTimeout = options.clearTimeoutFn ?? clearTimeout.bind(globalThis);
+    this.typingTtlMs = options.typingTtlMs ?? DEFAULT_TYPING_TTL_MS;
+    this.channelTypingTtlMs = options.channelTypingTtlMs ?? DEFAULT_CHANNEL_TYPING_TTL_MS;
+    this.crossWindowLeader = options.crossWindowLeader ?? false;
+    this.createTabCoordinator =
+      options.createTabCoordinator ?? ((handlers) => new PrincipalTabCoordinator(handlers));
+  }
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+
+  /** Meet acceleration envelopes, after sender-username checks. Apply is `meet-mesh-sot`. */
+  subscribeMeetFanout = (listener: (event: PresenceMeetFanoutEvent) => void): (() => void) => {
+    this.meetListeners.add(listener);
+    return () => {
+      this.meetListeners.delete(listener);
+    };
+  };
+
+  /** Suite-notify wake hints — refresh inbox via HTTP; do not trust `tag` as content. */
+  subscribeNotifyHint = (listener: (event: PresenceNotifyHintEvent) => void): (() => void) => {
+    this.notifyHintListeners.add(listener);
+    return () => {
+      this.notifyHintListeners.delete(listener);
+    };
+  };
+
+  getSnapshot = (): PresenceSnapshot => this.snapshot;
+
+  /** Whether this window currently owns the principal mesh dial (cross-window mode). */
+  get meshLeader(): boolean {
+    return this.crossWindowLeader ? this.isMeshLeader : true;
+  }
+
+  /** Begin presence for the authenticated user. Join now (eager) or on visibility (lazy). */
+  start(self: { username: string; displayName: string }): void {
+    if (this.session || this.coordinator) return;
+    this.stopped = false;
+    this.selfUsername = self.username;
+    this.selfDisplayName = self.displayName.trim() || self.username;
+    this.update({ selfUsername: this.selfUsername });
+
+    if (this.crossWindowLeader) {
+      this.coordinator = this.createTabCoordinator({
+        onBecomeLeader: () => {
+          void this.onBecomeLeader();
+        },
+        onResignLeader: () => {
+          void this.onResignLeader();
+        },
+        onEnvelopeFromFollower: ({ envelope, peerId }) => {
+          if (!this.isMeshLeader || !this.session) return;
+          if (peerId) this.session.sendTo(peerId, envelope);
+          else this.session.broadcast(envelope);
+        },
+        onEnvelopeFromLeader: ({ peerId, envelope }) => {
+          this.followerSession?.applyEnvelope(peerId, envelope);
+        },
+        onRosterFromLeader: (snapshot) => {
+          this.followerSession?.applyRoster(snapshot);
+          if (!this.joined) {
+            this.joined = true;
+            getPrincipalLinkRegistry().markPrincipalJoinAttempted();
+            this.update({ status: "online" });
+          }
+        },
+      });
+      this.coordinator.start();
+      // Cold followers never see onResignLeader — attach the proxy while waiting / after loss.
+      // During election grace the tab is not yet leader; stay on the follower proxy until
+      // onBecomeLeader swaps in the real mesh session.
+      if (!this.isMeshLeader) {
+        this.attachFollowerSession();
+        this.update({ status: "waiting" });
+      }
+      return;
+    }
+
+    this.attachRealSession();
+    if (this.options.joinMode === "eager" || this.isVisible()) {
+      void this.joinNow();
+    } else {
+      this.update({ status: "waiting" });
+    }
+    this.installLazyVisibility();
+  }
+
+  async stop(): Promise<void> {
+    this.stopped = true;
+    this.unsubscribeVisibility?.();
+    this.unsubscribeVisibility = null;
+    this.coordinator?.stop();
+    this.coordinator = null;
+    this.isMeshLeader = false;
+    this.unsubscribeSession?.();
+    this.unsubscribeSession = null;
+    if (this.typingTimer !== null) {
+      this.cancelTimeout(this.typingTimer);
+      this.typingTimer = null;
+    }
+    if (this.channelTypingTimer !== null) {
+      this.cancelTimeout(this.channelTypingTimer);
+      this.channelTypingTimer = null;
+    }
+    this.channelTypingUntil.clear();
+    this.meetListeners.clear();
+    this.notifyHintListeners.clear();
+    const session = this.session;
+    this.session = null;
+    this.followerSession = null;
+    this.joined = false;
+    this.snapshot = createInitialSnapshot();
+    this.notify();
+    if (session) await session.leave();
+  }
+
+  sendChat(body: string): void {
+    const trimmed = body.trim();
+    if (!trimmed || !this.session || !this.joined) return;
+    this.chatCounter += 1;
+    const message: PresenceChatMessage = {
+      id: `${this.selfUsername}:${this.now()}:${this.chatCounter}`,
+      fromUsername: this.selfUsername,
+      fromName: this.selfDisplayName,
+      body: trimmed,
+      ts: this.now(),
+      isSelf: true,
+    };
+    this.session.broadcast({ v: 1, kind: "chat", id: message.id, body: trimmed, ts: message.ts });
+    this.appendChat(message);
+  }
+
+  sendTyping(): void {
+    if (!this.session || !this.joined) return;
+    this.session.broadcast({ v: 1, kind: "typing" });
+  }
+
+  /** Heartbeat "typing in channel" signal; a no-op while the mesh is not joined. */
+  sendChannelTyping(channelId: string): void {
+    if (!channelId || !this.session || !this.joined) return;
+    this.session.broadcast({ v: 1, kind: "typing", channel: channelId });
+  }
+
+  /** Early retraction (send/blur/cleared composer); receivers otherwise expire by TTL. */
+  stopChannelTyping(channelId: string): void {
+    if (!channelId || !this.session || !this.joined) return;
+    this.session.broadcast({ v: 1, kind: "typing", channel: channelId, stop: true });
+  }
+
+  /**
+   * Targeted send for Meet / notify-hint payloads. Looks up every live peer id for each
+   * username (multi-tab) and never broadcasts — missing peers just miss the
+   * hint and wait for the poll / VAPID path.
+   */
+  sendToUsernames(usernames: readonly string[], envelope: PresenceEnvelope): void {
+    if (!this.session || !this.joined || usernames.length === 0) return;
+    const selfKey = this.selfUsername.trim().toLowerCase();
+    const targets = new Set(
+      usernames.map((name) => name.trim().toLowerCase()).filter((name) => name && name !== selfKey),
+    );
+    if (targets.size === 0) return;
+    for (const peer of this.session.getRoomPeers()) {
+      const username = (peer.user ?? "").trim().toLowerCase();
+      if (!targets.has(username)) continue;
+      this.session.sendTo(peer.id, envelope);
+    }
+  }
+
+  setAway(away: boolean): void {
+    const status: PresenceUserStatus = away ? "away" : "online";
+    if (status === this.selfStatus) return;
+    this.selfStatus = status;
+    this.session?.broadcast({ v: 1, kind: "presence", status });
+  }
+
+  private async onBecomeLeader(): Promise<void> {
+    if (this.stopped) return;
+    this.isMeshLeader = true;
+    await this.detachSession();
+    if (this.stopped) return;
+    this.attachRealSession();
+    this.joined = false;
+    this.installLazyVisibility();
+    if (this.options.joinMode === "eager" || this.isVisible()) {
+      void this.joinNow();
+    } else {
+      this.update({ status: "waiting" });
+    }
+  }
+
+  private async onResignLeader(): Promise<void> {
+    if (this.stopped) return;
+    this.isMeshLeader = false;
+    this.unsubscribeVisibility?.();
+    this.unsubscribeVisibility = null;
+    await this.detachSession();
+    if (this.stopped) return;
+    this.attachFollowerSession();
+    this.joined = false;
+    this.update({ status: "waiting" });
+  }
+
+  private attachRealSession(): void {
+    this.followerSession = null;
+    this.session = this.options.createSession();
+    this.unsubscribeSession = this.session.onEvent((event) => {
+      if (event.type === "roster") {
+        this.publishRoster();
+        this.relayRosterToFollowers();
+      } else if (event.type === "dc-open") {
+        this.session?.sendTo(event.peerId, { v: 1, kind: "presence", status: this.selfStatus });
+        this.publishRoster();
+        this.relayRosterToFollowers();
+      } else if (event.type === "envelope") {
+        this.handleEnvelope(event.peerId, event.envelope);
+        this.coordinator?.publishEnvelopeIn(event.peerId, event.envelope);
+      }
+    });
+  }
+
+  private attachFollowerSession(): void {
+    const proxy = new FollowerPresenceSession((envelope, peerId) => {
+      this.coordinator?.publishEnvelopeOut(envelope, peerId);
+    });
+    this.followerSession = proxy;
+    this.session = proxy;
+    this.unsubscribeSession = this.session.onEvent((event) => {
+      if (event.type === "roster") {
+        this.publishRoster();
+      } else if (event.type === "envelope") {
+        this.handleEnvelope(event.peerId, event.envelope);
+      }
+    });
+  }
+
+  private async detachSession(): Promise<void> {
+    this.unsubscribeSession?.();
+    this.unsubscribeSession = null;
+    const session = this.session;
+    this.session = null;
+    this.followerSession = null;
+    this.joined = false;
+    this.joinInFlight = false;
+    if (session) await session.leave();
+  }
+
+  private relayRosterToFollowers(): void {
+    if (!this.isMeshLeader || !this.session) return;
+    this.coordinator?.publishRosterState({
+      peers: this.session.getRoomPeers(),
+      selfPeerId: null,
+    });
+  }
+
+  private installLazyVisibility(): void {
+    this.unsubscribeVisibility?.();
+    this.unsubscribeVisibility = null;
+    if (this.options.joinMode !== "lazy") return;
+    this.unsubscribeVisibility =
+      this.visibility?.subscribe(() => {
+        if (this.isVisible() && !this.joined && (!this.crossWindowLeader || this.isMeshLeader)) {
+          void this.joinNow();
+        }
+      }) ?? null;
+  }
+
+  private isVisible(): boolean {
+    return (this.visibility?.getState() ?? "visible") === "visible";
+  }
+
+  private async joinNow(): Promise<void> {
+    if (!this.session || this.joined || this.joinInFlight) return;
+    if (this.crossWindowLeader && !this.isMeshLeader) return;
+    this.joinInFlight = true;
+    this.update({ status: "joining" });
+    try {
+      await this.session.join(this.selfDisplayName);
+      if (this.stopped) return;
+      this.joined = true;
+      getPrincipalLinkRegistry().markPrincipalJoinAttempted();
+      this.update({ status: "online" });
+      this.publishRoster();
+      this.relayRosterToFollowers();
+    } catch {
+      if (this.stopped) return;
+      // Lazy mode retries on the next visibility resume; eager sessions surface the error.
+      this.update({ status: this.options.joinMode === "lazy" ? "waiting" : "error" });
+    } finally {
+      this.joinInFlight = false;
+    }
+  }
+
+  private handleEnvelope(peerId: string, envelope: PresenceEnvelope): void {
+    if (envelope.kind === "presence") {
+      this.peerStatuses.set(peerId, envelope.status);
+      this.publishRoster();
+      return;
+    }
+
+    const sender = this.session?.getRoomPeers().find((peer) => peer.id === peerId);
+    const senderUsername = sender?.user ?? "";
+
+    if (envelope.kind === "chat") {
+      if (senderUsername) this.typingUntil.delete(senderUsername);
+      this.appendChat({
+        id: envelope.id,
+        fromUsername: senderUsername,
+        fromName: sender?.name ?? "Coworker",
+        body: envelope.body,
+        ts: envelope.ts,
+        isSelf: false,
+      });
+      return;
+    }
+
+    if (envelope.kind === "typing" && senderUsername && senderUsername !== this.selfUsername) {
+      if (envelope.channel) {
+        this.handleChannelTyping(envelope.channel, senderUsername, envelope.stop === true);
+        return;
+      }
+      this.typingUntil.set(senderUsername, this.now() + this.typingTtlMs);
+      this.scheduleTypingExpiry();
+      this.publishTyping();
+      return;
+    }
+
+    if (!senderUsername || senderUsername === this.selfUsername) return;
+
+    if (envelope.kind === "channel-message") {
+      if (envelope.message.authorId !== senderUsername) return;
+      this.emitMeetFanout({
+        kind: "channel-message",
+        senderUsername,
+        message: envelope.message,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-message-patch") {
+      this.emitMeetFanout({
+        kind: "channel-message-patch",
+        senderUsername,
+        id: envelope.id,
+        channel: envelope.channel,
+        body: envelope.body,
+        editedAt: envelope.editedAt,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-message-destroy") {
+      this.emitMeetFanout({
+        kind: "channel-message-destroy",
+        senderUsername,
+        id: envelope.id,
+        channel: envelope.channel,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-reaction") {
+      this.emitMeetFanout({
+        kind: "channel-reaction",
+        senderUsername,
+        messageId: envelope.messageId,
+        channel: envelope.channel,
+        emoji: envelope.emoji,
+        on: envelope.on,
+      });
+      return;
+    }
+
+    if (envelope.kind === "channel-changed") {
+      this.emitMeetFanout({
+        kind: "channel-changed",
+        senderUsername,
+        channel: envelope.channel,
+      });
+      return;
+    }
+
+    if (envelope.kind === "call-active") {
+      this.emitMeetFanout({
+        kind: "call-active",
+        senderUsername,
+        channel: envelope.channel,
+        active: envelope.active,
+        ...(envelope.audioOnly === true ? { audioOnly: true as const } : {}),
+      });
+      return;
+    }
+
+    if (envelope.kind === "notify-hint") {
+      this.emitNotifyHint({
+        kind: "notify-hint",
+        senderUsername,
+        ...(envelope.tag ? { tag: envelope.tag } : {}),
+      });
+    }
+  }
+
+  private emitMeetFanout(event: PresenceMeetFanoutEvent): void {
+    for (const listener of this.meetListeners) listener(event);
+  }
+
+  private emitNotifyHint(event: PresenceNotifyHintEvent): void {
+    for (const listener of this.notifyHintListeners) listener(event);
+  }
+
+  private handleChannelTyping(channelId: string, username: string, stop: boolean): void {
+    const channelMap = this.channelTypingUntil.get(channelId);
+    if (stop) {
+      if (!channelMap?.delete(username)) return;
+      if (channelMap.size === 0) this.channelTypingUntil.delete(channelId);
+      this.publishChannelTyping();
+      return;
+    }
+    const map = channelMap ?? new Map<string, number>();
+    if (!channelMap) this.channelTypingUntil.set(channelId, map);
+    map.set(username, this.now() + this.channelTypingTtlMs);
+    this.scheduleChannelTypingExpiry();
+    this.publishChannelTyping();
+  }
+
+  private appendChat(message: PresenceChatMessage): void {
+    if (this.snapshot.chat.some((line) => line.id === message.id)) return;
+    const chat = [...this.snapshot.chat, message].slice(-MAX_CHAT_HISTORY);
+    this.update({ chat, typingUsernames: this.currentTypingUsernames() });
+  }
+
+  /**
+   * Roster of online coworkers: server roster (usernames via the `user` field)
+   * deduplicated across tabs, self excluded, `away` only when every session of a
+   * user reports away.
+   */
+  private publishRoster(): void {
+    const byUsername = new Map<string, PresenceCoworker & { allAway: boolean }>();
+    for (const peer of this.session?.getRoomPeers() ?? []) {
+      const username = peer.user ?? "";
+      if (!username || username === this.selfUsername) continue;
+      const status = this.peerStatuses.get(peer.id) ?? "online";
+      const existing = byUsername.get(username);
+      if (existing) {
+        existing.allAway = existing.allAway && status === "away";
+        existing.status = existing.allAway ? "away" : "online";
+      } else {
+        byUsername.set(username, {
+          username,
+          name: peer.name,
+          status,
+          allAway: status === "away",
+        });
+      }
+    }
+    const roster = [...byUsername.values()]
+      .map(({ allAway: _allAway, ...coworker }) => coworker)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    this.update({ roster });
+  }
+
+  private currentTypingUsernames(): string[] {
+    const now = this.now();
+    for (const [username, until] of this.typingUntil) {
+      if (until <= now) this.typingUntil.delete(username);
+    }
+    return [...this.typingUntil.keys()].sort();
+  }
+
+  private publishTyping(): void {
+    this.update({ typingUsernames: this.currentTypingUsernames() });
+  }
+
+  private scheduleTypingExpiry(): void {
+    if (this.typingTimer !== null) return;
+    this.typingTimer = this.scheduleTimeout(() => {
+      this.typingTimer = null;
+      this.publishTyping();
+      if (this.typingUntil.size > 0) this.scheduleTypingExpiry();
+    }, this.typingTtlMs);
+  }
+
+  private currentChannelTyping(): Record<string, string[]> {
+    const now = this.now();
+    const result: Record<string, string[]> = {};
+    for (const [channelId, byUsername] of this.channelTypingUntil) {
+      for (const [username, until] of byUsername) {
+        if (until <= now) byUsername.delete(username);
+      }
+      if (byUsername.size === 0) {
+        this.channelTypingUntil.delete(channelId);
+        continue;
+      }
+      result[channelId] = [...byUsername.keys()].sort();
+    }
+    return result;
+  }
+
+  private publishChannelTyping(): void {
+    this.update({ channelTyping: this.currentChannelTyping() });
+  }
+
+  private scheduleChannelTypingExpiry(): void {
+    if (this.channelTypingTimer !== null) return;
+    this.channelTypingTimer = this.scheduleTimeout(() => {
+      this.channelTypingTimer = null;
+      this.publishChannelTyping();
+      if (this.channelTypingUntil.size > 0) this.scheduleChannelTypingExpiry();
+    }, this.channelTypingTtlMs);
+  }
+
+  private update(partial: Partial<PresenceSnapshot>): void {
+    this.snapshot = { ...this.snapshot, ...partial };
+    this.notify();
+  }
+
+  private notify(): void {
+    for (const listener of this.listeners) listener();
+  }
+}
+
+export function createPresenceStore(options: PresenceStoreOptions): PresenceStore {
+  return new PresenceStore(options);
+}

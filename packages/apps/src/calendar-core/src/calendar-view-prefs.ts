@@ -12,6 +12,11 @@ export type CalendarViewPrefs = {
   hiddenCalendarIds?: string[];
   /** Calendar ids present the last time hidden prefs were written on this device. */
   knownCalendarIds?: string[];
+  /**
+   * Task-list ids hidden on the Calendar overlay only. Independent of Tasks
+   * `hiddenTaskListIds`. Default (omitted / empty) = every list shown.
+   */
+  hiddenOverlayTaskListIds?: string[];
 };
 
 function hasWindowStorage(): boolean {
@@ -45,6 +50,10 @@ export function parseCalendarViewPrefs(raw: string | null): CalendarViewPrefs | 
     if (hiddenCalendarIds !== undefined) prefs.hiddenCalendarIds = hiddenCalendarIds;
     const knownCalendarIds = parseStoredIdList(record.knownCalendarIds);
     if (knownCalendarIds !== undefined) prefs.knownCalendarIds = knownCalendarIds;
+    const hiddenOverlayTaskListIds = parseStoredIdList(record.hiddenOverlayTaskListIds);
+    if (hiddenOverlayTaskListIds !== undefined) {
+      prefs.hiddenOverlayTaskListIds = hiddenOverlayTaskListIds;
+    }
     return Object.keys(prefs).length > 0 ? prefs : null;
   } catch {
     return null;
@@ -80,6 +89,9 @@ export function patchCalendarViewPrefs(partial: CalendarViewPrefs): CalendarView
   if (partial.knownCalendarIds !== undefined) {
     next.knownCalendarIds = partial.knownCalendarIds;
   }
+  if (partial.hiddenOverlayTaskListIds !== undefined) {
+    next.hiddenOverlayTaskListIds = partial.hiddenOverlayTaskListIds;
+  }
   writeCalendarViewPrefs(next);
   return Object.keys(next).length > 0 ? next : null;
 }
@@ -99,6 +111,15 @@ export function persistHiddenCalendarIds(
     hiddenCalendarIds: [...ids],
     knownCalendarIds: [...new Set(calendarIds.filter((id) => id.length > 0))],
   });
+}
+
+/** Calendar-local overlay hide. Does not write Tasks `hiddenTaskListIds`. */
+export function persistHiddenOverlayTaskListIds(ids: ReadonlySet<string>): void {
+  patchCalendarViewPrefs({ hiddenOverlayTaskListIds: [...ids] });
+}
+
+export function readHiddenOverlayTaskListIds(): string[] {
+  return readCalendarViewPrefs()?.hiddenOverlayTaskListIds ?? [];
 }
 
 /**

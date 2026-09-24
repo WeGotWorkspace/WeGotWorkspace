@@ -3,7 +3,7 @@
 .docs-comments-floating-layer {
   @apply fixed z-20 pointer-events-none overflow-x-visible overflow-y-auto bg-transparent;
   width: min(20rem, calc(100vw - 2rem));
-  --docs-accent: #3b82f6;
+  --workspace-accent: var(--color-we-got-sand);
 }
 
 .docs-comments-floating-layer__stack {
@@ -12,13 +12,6 @@
 
 .docs-comments-floating-layer__card {
   @apply pointer-events-auto;
-}
-
-.docs-comments-floating-layer__card .docs-comments-thread-card[data-active="true"] {
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--color-ink) 5%, transparent),
-    0 8px 24px -8px color-mix(in oklab, var(--docs-accent) 28%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--docs-accent) 12%, transparent);
 }
 
 .docs-comments-floating-layer__card .docs-comments-thread-card {

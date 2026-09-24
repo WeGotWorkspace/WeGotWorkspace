@@ -15,7 +15,7 @@
   --offline-status-indicator-fg: color-mix(
     in oklab,
     var(--offline-status-indicator-accent) 72%,
-    var(--color-ink)
+    var(--color-we-got-dark)
   );
   --offline-status-indicator-dot: var(--offline-status-indicator-accent);
 

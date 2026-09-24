@@ -1,55 +1,232 @@
 @import "../../styles.css" reference;
 
 .segmented-control {
-  --segmented-control-padding: 0.125rem;
-  --segmented-control-height: var(
-    --control-height-sm,
-    calc(var(--input-height, 2.25rem) - 0.25rem)
+  /* Segment borders form the chrome; track stroke is 0 so end cells do not double. */
+  --segmented-control-track-border-width: 1px;
+  --segmented-control-height: var(--control-height-md, 2.25rem);
+  /* Track radius from global `--control-radius` (soft by default).
+   * Thumb / end segments share the same outer curve (no track stroke to subtract). */
+  --segmented-control-track-radius: var(--control-radius);
+  --segmented-control-thumb-radius: var(--segmented-control-track-radius);
+  --segmented-control-segment-border-color: var(
+    --segmented-control-track-border-color,
+    var(--button-outline-border-color, var(--control-border-color))
   );
-  --segmented-control-track-radius: var(--control-radius-button-pill);
-  --segmented-control-thumb-radius: calc(
-    var(--segmented-control-track-radius) - var(--segmented-control-padding)
+  --segmented-control-severity-danger-color: var(
+    --menu-item-severity-color,
+    var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
   );
-  @apply box-border inline-flex items-center;
+  --segmented-control-severity-danger-hover-bg: var(
+    --menu-item-severity-hover-background,
+    var(
+      --menu-item-danger-hover-background,
+      color-mix(in oklab, var(--segmented-control-severity-danger-color) 14%, transparent)
+    )
+  );
+  --segmented-control-severity-success-color: var(
+    --button-severity-success-color,
+    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--color-we-got-dark))
+  );
+  --segmented-control-severity-success-hover-bg: var(
+    --button-severity-success-hover-background,
+    color-mix(in oklab, var(--segmented-control-severity-success-color) 14%, transparent)
+  );
+  /* Clip the sliding thumb to the track; focus ring lives on the control via :has().
+   * `clip` avoids first-paint bleed past the rounded edge that `hidden` can miss. */
+  @apply relative box-border inline-flex items-stretch overflow-hidden;
+  overflow: clip;
   height: var(--segmented-control-height);
-  padding: var(--segmented-control-padding);
+  padding: 0;
+  border: 0;
   border-radius: var(--segmented-control-track-radius);
-  background-color: var(
-    --segmented-control-track-bg,
-    color-mix(in oklab, var(--color-ink) 6%, transparent)
-  );
+  background-color: var(--segmented-control-track-bg, transparent);
+}
+
+.segmented-control:has(.segmented-control__button:focus-visible) {
+  @apply ring-1 ring-ring;
+}
+
+.segmented-control--size-xs {
+  --segmented-control-height: var(--control-height-xs, 1.75rem);
+}
+
+.segmented-control--size-sm {
+  --segmented-control-height: var(--control-height-sm, 2rem);
 }
 
 .segmented-control--size-md {
-  --segmented-control-height: var(--control-height-md, var(--input-height, 2.25rem));
+  --segmented-control-height: var(--control-height-md, 2.25rem);
+}
+
+.segmented-control--size-lg {
+  --segmented-control-height: var(--control-height-lg, 2.5rem);
+}
+
+.segmented-control--size-xl {
+  --segmented-control-height: var(--control-height-xl, 2.75rem);
+}
+
+.segmented-control__thumb {
+  @apply pointer-events-none absolute box-border;
+  z-index: 1;
+  /* Explicit content-box height (set in TS from clientHeight) — never stretch via
+   * top+bottom to a border-box that can paint past the track on first layout. */
+  top: 0;
+  bottom: auto;
+  left: 0;
+  height: var(--segmented-control-thumb-height, 100%);
+  max-height: 100%;
+  width: var(--segmented-control-thumb-width, 0px);
+  transform: translateX(var(--segmented-control-thumb-x, 0px));
+  /* Default = middle segment: square against both dividers. Outer edges only
+   * round via [data-thumb-edge] so the wash sits flush on internal separators. */
+  border-radius: 0;
+  border: 0;
+  background-color: var(
+    --segmented-control-active-bg,
+    var(
+      --button-outline-active-background,
+      var(
+        --button-outline-hover-background,
+        color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+      )
+    )
+  );
+  box-shadow: var(--segmented-control-active-shadow, none);
+  opacity: 0;
+  /* Transform-only slide (ViewModeToggle feel); width and severity wash snap. */
+  transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.segmented-control[data-thumb-edge="solo"] .segmented-control__thumb {
+  border-radius: var(--segmented-control-thumb-radius);
+}
+
+.segmented-control[data-thumb-edge="first"] .segmented-control__thumb {
+  border-start-start-radius: var(--segmented-control-thumb-radius);
+  border-end-start-radius: var(--segmented-control-thumb-radius);
+}
+
+.segmented-control[data-thumb-edge="last"] .segmented-control__thumb {
+  border-start-end-radius: var(--segmented-control-thumb-radius);
+  border-end-end-radius: var(--segmented-control-thumb-radius);
+}
+
+.segmented-control[data-thumb-ready] .segmented-control__thumb {
+  opacity: 1;
+}
+
+/* Mount / first layout snaps; motion only after `data-thumb-animate` (see TSX contract). */
+.segmented-control:not([data-thumb-animate]) .segmented-control__thumb {
+  transition: none;
+}
+
+.segmented-control--unselected .segmented-control__thumb {
+  /* Park without fighting translateX(var(--thumb-x)); remounts must not slide in from off-screen. */
+  @apply invisible opacity-0;
+  width: 0;
+}
+
+.segmented-control__thumb--severity-success {
+  background-color: var(--segmented-control-severity-success-hover-bg);
+}
+
+.segmented-control__thumb--severity-danger {
+  background-color: var(--segmented-control-severity-danger-hover-bg);
 }
 
 .segmented-control__button {
-  @apply inline-flex items-center justify-center border-0;
-  width: calc(var(--segmented-control-height) - (2 * var(--segmented-control-padding)));
-  height: calc(var(--segmented-control-height) - (2 * var(--segmented-control-padding)));
-  border-radius: var(--segmented-control-thumb-radius);
-  color: color-mix(in oklab, var(--segmented-control-color, var(--color-ink)) 55%, transparent);
+  @apply relative z-[2] box-border inline-flex items-center justify-center p-0;
+  @apply focus-visible:outline-none;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 1 / 1;
+  /* Full cell border; collapse with the next segment so meetings stay 1px. */
+  border: var(--segmented-control-track-border-width) solid
+    var(--segmented-control-segment-border-color);
+  margin-inline-end: calc(-1 * var(--segmented-control-track-border-width));
+  border-radius: 0;
+  /* Kill UA line-box strut so icon+label stay optically centered in the thumb. */
+  line-height: 0;
+  /* Match outline Button / IconButton idle foreground (no muted fade). */
+  color: var(--segmented-control-color, var(--button-outline-color, var(--color-we-got-dark)));
   background: transparent;
   transition:
     color 150ms,
     background-color 150ms,
+    border-color 150ms,
     box-shadow 150ms;
 }
 
+.segmented-control__button--first {
+  border-start-start-radius: var(--segmented-control-track-radius);
+  border-end-start-radius: var(--segmented-control-track-radius);
+}
+
+.segmented-control__button--last {
+  margin-inline-end: 0;
+  border-start-end-radius: var(--segmented-control-track-radius);
+  border-end-end-radius: var(--segmented-control-track-radius);
+}
+
+.segmented-control__button svg {
+  @apply block shrink-0;
+}
+
 .segmented-control__button--text {
-  width: auto;
+  @apply gap-1;
+  aspect-ratio: auto;
   min-width: 2.75rem;
   padding-inline: 0.625rem;
 }
 
 .segmented-control__button--active {
-  background-color: var(--segmented-control-active-bg, var(--color-cream, #ffffff));
-  color: var(--segmented-control-active-fg, var(--color-ink));
-  box-shadow: var(
-    --segmented-control-active-shadow,
-    0 1px 2px color-mix(in oklab, var(--color-ink) 20%, transparent)
+  color: var(--segmented-control-active-fg, var(--button-active-color, var(--color-we-got-dark)));
+  /* Fallback when the sliding thumb has not measured yet (Storybook a11y). */
+  background-color: var(--segmented-control-active-bg, transparent);
+}
+
+/* Match outline IconButton hover; Calendar `.view-header` already sets accent tokens. */
+.segmented-control__button:hover:not(:disabled) {
+  color: var(
+    --segmented-control-hover-color,
+    var(--button-outline-hover-color, var(--button-outline-color, var(--color-we-got-dark)))
   );
+  background-color: var(
+    --segmented-control-hover-bg,
+    var(
+      --button-outline-hover-background,
+      color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+    )
+  );
+}
+
+/* Severity wash is selected-only (thumb + active fg); idle hover stays neutral outline. */
+
+/* Keep the sliding thumb wash — avoid painting a second hover layer on the active segment. */
+.segmented-control__button--active:hover:not(:disabled) {
+  background-color: transparent;
+  color: var(--segmented-control-active-fg, var(--button-active-color, var(--color-we-got-dark)));
+}
+
+.segmented-control__button--active.segmented-control__button--severity-success {
+  color: var(--segmented-control-severity-success-color);
+}
+
+.segmented-control__button--active.segmented-control__button--severity-danger {
+  color: var(--segmented-control-severity-danger-color);
+}
+
+.segmented-control__button--active.segmented-control__button--severity-success:hover:not(
+    :disabled
+  ) {
+  color: var(--segmented-control-severity-success-color);
+  background-color: transparent;
+}
+
+.segmented-control__button--active.segmented-control__button--severity-danger:hover:not(:disabled) {
+  color: var(--segmented-control-severity-danger-color);
+  background-color: transparent;
 }
 
 .segmented-control[data-disabled] {
@@ -62,14 +239,22 @@
 }
 
 .segmented-control__label {
-  @apply text-xs font-medium leading-none;
+  @apply text-xs font-medium;
+  line-height: 1;
 }
 
-.segmented-control--size-md .segmented-control__button--text {
+.segmented-control--size-lg .segmented-control__button--text {
   min-width: 3.25rem;
   padding-inline: 0.75rem;
 }
 
-.segmented-control--size-md .segmented-control__label {
+.segmented-control--size-lg .segmented-control__label {
   font-size: var(--input-font-size, 0.875rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmented-control__thumb,
+  .segmented-control__button {
+    transition: none;
+  }
 }

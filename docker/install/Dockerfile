@@ -53,6 +53,7 @@ RUN apt-get update \
         default-libmysqlclient-dev \
         libc-client-dev \
         libkrb5-dev \
+        libgmp-dev \
     && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
     && docker-php-ext-install \
         pdo \
@@ -62,6 +63,8 @@ RUN apt-get update \
         zip \
         intl \
         imap \
+        gmp \
+        bcmath \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

@@ -1,5 +1,6 @@
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import type { ButtonSeverity } from "@/button/src/button.shared";
 import type { IdentifiableItem } from "@/hooks/collection-controller-utils";
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
@@ -14,6 +15,10 @@ export type WorkspaceActionButton = {
   icon: ReactNode;
   onClick: () => void;
   active?: boolean;
+  /** Destructive actions (trash / archive): danger fg + severity hover wash. */
+  severity?: ButtonSeverity;
+  /** Visual hairline before this control on the floating bar (typically Done). */
+  separatorBefore?: boolean;
 };
 
 export type UseWorkspaceListControllerArgs<TItem extends IdentifiableItem> = {

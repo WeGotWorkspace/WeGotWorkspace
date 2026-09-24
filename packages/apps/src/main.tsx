@@ -1,11 +1,18 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { shouldRegisterServiceWorker } from "@/lib/offline/should-register-service-worker";
 import { WeGotWorkspaceApp } from "@/wegotworkspace/src/wegotworkspace-app";
 import "@/styles.css";
 
 const SW_REFRESHING_KEY = "wgw-sw-refreshing";
 
-if (import.meta.env.PROD && "serviceWorker" in navigator) {
+if (
+  "serviceWorker" in navigator &&
+  shouldRegisterServiceWorker({
+    prod: import.meta.env.PROD,
+    hostname: location.hostname,
+  })
+) {
   void import("virtual:pwa-register").then(({ registerSW }) => {
     const isLocalPreview = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 

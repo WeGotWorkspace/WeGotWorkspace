@@ -4,11 +4,12 @@ import * as React from "react";
 import * as TogglePrimitive from "@radix-ui/react-toggle";
 
 import { cn } from "@/lib/utils";
+import { CONTROL_SIZE_OPTIONS, type ControlSize } from "@/ui/control-size";
 
 import "./toggle.css";
 
 export type ToggleVariant = "default" | "outline";
-export type ToggleSize = "sm" | "md" | "lg" | "default";
+export type ToggleSize = ControlSize | "default";
 
 export type ToggleVariantsOptions = {
   variant?: ToggleVariant | null;
@@ -16,8 +17,10 @@ export type ToggleVariantsOptions = {
   className?: string;
 };
 
-function normalizeToggleSize(size: ToggleSize | null | undefined): "sm" | "md" | "lg" {
-  if (size === "sm" || size === "lg") return size;
+function normalizeToggleSize(size: ToggleSize | null | undefined): ControlSize {
+  if (size && size !== "default" && (CONTROL_SIZE_OPTIONS as readonly string[]).includes(size)) {
+    return size;
+  }
   return "md";
 }
 

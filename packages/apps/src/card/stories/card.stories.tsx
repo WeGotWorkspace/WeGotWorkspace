@@ -8,7 +8,7 @@ import { CardRow } from "../src/card-row";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 
 const meta: Meta<typeof Card> = {
-  title: "Shared/Card",
+  title: "UI/Primitives/Card",
   component: Card,
 };
 
@@ -40,8 +40,8 @@ export const EditableFormLike: Story = {
       <div className="flex justify-end pt-2">
         <Button
           label="Save"
-          variant="subtle"
-          style={{ backgroundColor: "#949dad", color: "var(--color-ink)" }}
+          variant="outline"
+          style={{ backgroundColor: "#949dad", color: "var(--color-we-got-dark)" }}
         />
       </div>
     </Card>
@@ -91,7 +91,7 @@ export const WithPanelRows: Story = {
     <Card titleIcon={<Globe2 className="size-4" />} title="When">
       <CardPanel>
         <CardRow title="All day">
-          <Button label="On" variant="subtle" />
+          <Button label="On" variant="outline" />
         </CardRow>
         <CardRow title="Starts">
           <Button label="17 Aug" variant="outline" />
