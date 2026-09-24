@@ -63,22 +63,25 @@ final class MeetBrowserPeerReuseTest extends WgwDatabaseTestCase
 
     public function test_guest_reload_with_new_session_still_evicts_same_browser(): void
     {
+        // setUp reserves the shared room, which rejects a direct guest join.
+        // Eviction is about browserId, so this case uses an unreserved code.
+        $room = '/api/v1/rooms/wxyz-2345-6789/participants';
         $browser = str_repeat('ef', 16);
         $this->withoutBearer();
-        $this->postJson($this->meetRoomPath('/participants'), [
+        $this->postJson($room, [
             'peerId' => 'guest-old',
             'name' => 'Guest',
             'browserId' => $browser,
         ])->assertOk();
 
-        $this->asUser('alice')->postJson($this->meetRoomPath('/participants'), [
+        $this->asUser('alice')->postJson($room, [
             'peerId' => 'alice-peer',
             'name' => 'Alice',
             'browserId' => str_repeat('99', 16),
         ])->assertOk();
 
         $this->withoutBearer();
-        $rejoin = $this->postJson($this->meetRoomPath('/participants'), [
+        $rejoin = $this->postJson($room, [
             'peerId' => 'guest-new',
             'name' => 'Guest',
             'browserId' => $browser,
