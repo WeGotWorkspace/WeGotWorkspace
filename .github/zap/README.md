@@ -26,9 +26,9 @@ The `dast-zap` job in [`.github/workflows/security.yml`](../workflows/security.y
 
 ## Severity policy (until v1.0)
 
-- `fail_action: false` — findings are **non-blocking**
-- ZAP creates GitHub Issues (`issue_title: "DAST: ZAP full scan findings"`)
-- Reports are uploaded as the `zap-dast-report` workflow artifact
+- `fail_action: false` — findings are **non-blocking** once the job runs
+- When the job is enabled, ZAP creates GitHub Issues (`issue_title: "DAST: ZAP full scan findings"`)
+- When the job is enabled, reports are uploaded as the `zap-dast-report` workflow artifact
 
 After v1.0, consider setting `fail_action: true` for HIGH/CRITICAL DAST alerts.
 
@@ -37,6 +37,6 @@ After v1.0, consider setting `fail_action: true` for HIGH/CRITICAL DAST alerts.
 | Secret / variable | When | Purpose |
 |-------------------|------|---------|
 | `GITLEAKS_LICENSE` | Now (org repos) | Free license from [gitleaks.io](https://gitleaks.io) |
-| `STAGING_URL` | DAST | Scan target |
-| `ENABLE_DAST` | DAST | Flip job on (`true`) |
-| `ZAP_STAGING_USERNAME` / `ZAP_STAGING_PASSWORD` | DAST + auth | Staging login |
+| `STAGING_URL` | When DAST is enabled | Scan target |
+| `ENABLE_DAST` | When DAST is enabled | Flip job on (`true`) |
+| `ZAP_STAGING_USERNAME` / `ZAP_STAGING_PASSWORD` | When DAST is enabled | Staging login |

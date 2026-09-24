@@ -1,27 +1,27 @@
 # Do not claim DAST until it runs
 
-Derived from [spec.md](./spec.md). One docs chunk. No API or UI work, so no parallel split.
+Derived from [spec.md](./spec.md). One docs chunk. No API or UI work.
 
 ## Goal
 
-Make README, SECURITY, and contributing text name only scanners that run, keep `.github/zap/README.md` explicit that ZAP is scaffolded and disabled, and record that `#582` already put `SECURITY.md` on `main`.
+Make README, SECURITY, and contributing text name only scanners that run. Put the cadence in `SECURITY.md` only. Keep `.github/zap/README.md` explicit that ZAP is scaffolded and disabled. Record that `#582` already put `SECURITY.md` on `main`.
 
 ## Non-goals
 
 - Enabling `dast-zap` (`#593`, no milestone until a logged-in target exists)
 - Changing `if: false` in `.github/workflows/security.yml`
-- Product-roadmap or Goal edits (`#584` is an engineering tracker)
+- Replacing `legal@wegotworkspace.org` with `security@` (`#592`)
 
 ## Affected packages
 
 - Root docs and `.github` issue/zap docs
-- `.agents/specs/587-do-not-claim-dast/` (this plan)
+- `.agents/specs/587-do-not-claim-dast/`
 
 ## Dependencies
 
-1. `#582` is already merged. Confirm `SECURITY.md` on `origin/main` before editing copy. Do not reopen `#582`.
-2. Copy edits do not wait on `#593`. Do not start `#593` from this task.
-3. Wording changes land together; there is nothing to parallelize.
+1. `#582` is already merged. Do not reopen it.
+2. Copy edits do not wait on `#593`. Do not start `#593`.
+3. Do not merge while `DAST (OWASP ZAP)` is a required check. A skipped job counts as success for branch protection.
 
 ## Chunks
 
@@ -29,32 +29,32 @@ Make README, SECURITY, and contributing text name only scanners that run, keep `
 
 - **id:** `docs-honest-scanners`
 - **Skill:** document
-- **Inputs:** Audit table in [spec.md](./spec.md). Running jobs are CodeQL, Semgrep, Gitleaks, and Trivy. `dast-zap` stays `if: false`.
+- **Inputs:** [spec.md](./spec.md). Running jobs are CodeQL, Semgrep, Gitleaks, and Trivy. `dast-zap` stays `if: false`.
 - **Done when:**
-  - `README.md`, `SECURITY.md`, and `CONTRIBUTING.md` do not say OWASP ZAP or DAST runs in CI. They may name CodeQL, Semgrep, Gitleaks, and Trivy.
-  - `SECURITY.md` no longer uses a DAST ticket as an example of an automated finding produced today.
-  - `.github/ISSUE_TEMPLATE/dast-finding.yml` no longer says the security workflow creates the finding.
-  - `.github/zap/README.md` still says the job is scaffolded and disabled. Enablement steps remain future instructions.
+  - `SECURITY.md` states the cadence once: pull requests from this repository, pushes to `main` except `chore(release):`, and nightly `0 3 * * *`.
+  - `README.md` names those four tools and points at `SECURITY.md` for when they run.
+  - `SECURITY.md` does not use a DAST ticket as an example of an automated finding produced today.
+  - `.github/ISSUE_TEMPLATE/dast-finding.yml` says: not yet public → `SECURITY.md`; already public → this template. It does not say the security workflow creates the finding.
+  - `CONTRIBUTING.md` describes that public-report channel and does not say DAST runs.
+  - `.github/zap/README.md` still says the job is scaffolded and disabled. Enablement steps remain. Present tense applies only after the job is enabled.
   - `security.yml` `dast-zap` is still `if: false`.
-  - `#582` is merged and `SECURITY.md` is on `main` (already true; re-check, do not reimplement).
-  - Issue `#587` acceptance criteria are mapped with [verify-issue](../../skills/verify-issue/SKILL.md) before handoff.
+  - `#593` has no milestone.
+  - Required checks on `main` do not include `DAST (OWASP ZAP)`, or the PR says the token could not read protection and a maintainer must confirm before merge.
 - **Verify with:**
-  - `git grep -n -E 'ZAP|DAST|dast-zap' -- README.md SECURITY.md CONTRIBUTING.md .github/zap/README.md .github/ISSUE_TEMPLATE/dast-finding.yml`
+  - `rg -i 'zap|dast'` excluding `.github/workflows/security.yml`
   - `git diff origin/main -- .github/workflows/security.yml` is empty
   - `gh issue view 582 --json state --jq .state` is `MERGED`
+  - `gh issue view 593 --json milestone` has no milestone
   - `pnpm run check:agent-docs`
 - **Parallel with:** none
 
 ## Test plan
 
-- [ ] Re-read the four surfaces in the audit table against the grep above. Every ZAP/DAST hit is either “disabled / not running”, “manual template”, or “after the job is enabled”.
+- [ ] Every remaining ZAP/DAST hit is “disabled,” “manual template for an already-public finding,” “private report via SECURITY.md,” or “after the job is enabled.”
 - [ ] `security.yml` `dast-zap` condition is still the literal `if: false`.
-- [ ] `pnpm run check:agent-docs` (English prose plus doc links). No apps or API done gate: this chunk does not touch `packages/apps` or `packages/api`.
-- [ ] Map each `#587` checkbox in the PR body. Check the GitHub boxes only when the copy is on the delivery branch:
-  - README / SECURITY / contributing text only name scanners that actually run
-  - `.github/zap/README.md` still says the job is scaffolded/disabled
-  - `#582` is merged so `SECURITY.md` is on `main`
+- [ ] `pnpm run check:agent-docs`. No apps or API done gate.
+- [ ] PR body uses `Closes #587` and records the branch-protection 403, the missing fork-PR run, and that `legal@` versus `security@` stays on `#592`.
 
 ## Doc updates (only if user wants)
 
-The issue **is** the doc update. Do not add a new security guide. Do not expand `.github/zap/README.md` into an auth design; that belongs to `#593`.
+The issue is the doc update. Do not add a new security guide. Do not expand `.github/zap/README.md` into an auth design.

@@ -9,12 +9,13 @@ Source plan: [plan.md](./plan.md)
 
 | id | owner / agent | skill | key paths | verify command | status |
 |----|---------------|-------|-----------|----------------|--------|
-| `docs-honest-scanners` | builder | document | `SECURITY.md`, `CONTRIBUTING.md`, `README.md`, `.github/ISSUE_TEMPLATE/dast-finding.yml`, `.github/zap/README.md` | `pnpm run check:agent-docs` plus the grep in `plan.md` | pending |
+| `docs-honest-scanners` | builder | document | `SECURITY.md`, `README.md`, `CONTRIBUTING.md`, `.github/ISSUE_TEMPLATE/dast-finding.yml`, `.github/zap/README.md` | `pnpm run check:agent-docs` plus the grep in `plan.md` | done |
 
 ## Notes
 
 - Chunk `id` matches `plan.md`.
-- `README.md` is in the path list so the Security CI bullet is re-read. Expect no edit if it still names only CodeQL, Semgrep, Gitleaks, and Trivy.
+- The cadence sentence is only in `SECURITY.md`. `README.md` points at it.
 - Do not edit `.github/workflows/security.yml`.
+- Do not change `legal@wegotworkspace.org`.
 - Update **status** to `done` when the chunk lands.
 - On scope change: update issue `#587` first, then re-sync spec/plan/tasks and the `Source:` body-hash in `spec.md`.
