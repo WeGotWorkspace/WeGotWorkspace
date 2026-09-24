@@ -8,7 +8,11 @@ Please report vulnerabilities against the latest [release](https://github.com/We
 
 **Do not** open a public issue for a security report.
 
-Email **[legal@wegotworkspace.org](mailto:legal@wegotworkspace.org)**. Include:
+Email **[legal@wegotworkspace.org](mailto:legal@wegotworkspace.org)**.
+
+Or use **Report a vulnerability** on the repository's [Security tab](https://github.com/WeGotWorkspace/wegotworkspace/security/advisories/new) (GitHub private vulnerability reporting). Same response windows.
+
+Include:
 
 - A description of the issue and its impact
 - Steps to reproduce, or a proof of concept
@@ -16,7 +20,7 @@ Email **[legal@wegotworkspace.org](mailto:legal@wegotworkspace.org)**. Include:
 
 We aim to acknowledge within **7 days** and to say whether we accept the report within **14 days**.
 
-A finding that is already public may use the [DAST finding](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=dast-finding.yml) template. A finding that is not yet public uses the email path above. Do not open a public issue for it.
+A finding that is already public may use the [DAST finding](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=dast-finding.yml) template. A finding that is not yet public uses one of the private paths above. Do not open a public issue for it.
 
 ## What we run in CI
 
