@@ -20,7 +20,7 @@ export type WorkspaceAppId = (typeof WORKSPACE_APP_IDS)[number];
  */
 export const WORKSPACE_FUTURE_APP_ICON_IDS = ["reminders"] as const;
 
-/** Sampled from icon artwork — keep in sync with webmanifest theme colors. */
+/** Sampled from launcher tile artwork. PWA window chrome uses `WORKSPACE_PWA_THEME_COLOR`. */
 export const WORKSPACE_APP_ACCENT: Record<WorkspaceAppId, string> = {
   notes: "#ffc800",
   mail: "#de4b0e",
@@ -60,7 +60,7 @@ export function workspaceHomeIconUiSrc(): string {
   return "/app-icons/home.svg";
 }
 
-/** Suite / Meet dark-surface accent — keep in sync with `home.webmanifest` and `--workspace-home-bg`. */
+/** Suite / Meet dark-surface accent — keep in sync with `--workspace-home-bg`. */
 export const WORKSPACE_HOME_ACCENT = "#1B1D3A";
 
 /**
