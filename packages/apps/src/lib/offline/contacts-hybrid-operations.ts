@@ -15,12 +15,14 @@ import {
 } from "@/lib/api/wgw/contacts-mutations";
 import { contactCardToVCard } from "@/contacts-core/src/contacts-vcard-export";
 import {
+  connectedContacts,
   getCard,
   importVcards,
   listAddressBooks,
   listCards,
   patchAddressBook,
 } from "@/lib/api/wgw/contacts";
+import { syncContactBooksAfterAddressBookChanges } from "@/lib/api/wgw/contacts-sync";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/browser-online";
 import { applyContactPatch } from "@/lib/offline/contacts/contacts-patch-merge";
 import {
@@ -32,7 +34,9 @@ import {
   removeContactCardFromCache,
   upsertAddressBookInCache,
   upsertContactCardInCache,
+  writeAddressBooksSyncToken,
   writeContactsBootstrapToCache,
+  writeSyncToken,
 } from "@/lib/offline/contacts-offline-store";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import { flushContactsOutbox, type OutboxFlushResult } from "@/lib/offline/contacts-outbox-flush";
@@ -283,10 +287,24 @@ export function createHybridContactsOperations(username: string): ContactsAPIOpe
   };
 }
 
-export async function fetchContactsHybridBootstrap(): Promise<
-  Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>
-> {
-  const bootstrap = await fetchContactsLiveBootstrap();
+async function rememberContactsSyncState(
+  username: string,
+  books: { id?: string }[],
+): Promise<void> {
+  const { client, accountId } = await connectedContacts();
+  const bookState = client.getState(accountId, "AddressBook");
+  const cardState = client.getState(accountId, "ContactCard");
+  if (bookState) await writeAddressBooksSyncToken(username, bookState);
+  if (!cardState) return;
+  for (const book of books) {
+    if (book.id) await writeSyncToken(username, book.id, cardState);
+  }
+}
+
+export async function fetchContactsHybridBootstrap(
+  onProgress?: (bootstrap: Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>) => void,
+): Promise<Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>> {
+  const bootstrap = await fetchContactsLiveBootstrap({ onProgress });
   const username = bootstrap.session.user.username;
   if (!username) {
     throw new Error("Contacts bootstrap missing username");
@@ -295,12 +313,13 @@ export async function fetchContactsHybridBootstrap(): Promise<
     await flushContactsOutboxAndReport(username);
   }
   await writeContactsBootstrapToCache(username, bootstrap);
+  await rememberContactsSyncState(username, bootstrap.data.addressBooks);
   return bootstrap;
 }
 
-export async function loadContactsBootstrapHybrid(): Promise<
-  Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>
-> {
+export async function loadContactsBootstrapHybrid(
+  reportProgress?: (bootstrap: Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>) => void,
+): Promise<Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>> {
   if (!readBrowserOnline()) {
     const username = readOfflineContactsUsername();
     if (username) {
@@ -310,7 +329,28 @@ export async function loadContactsBootstrapHybrid(): Promise<
     throw new Error("No cached contacts available offline");
   }
 
-  return fetchContactsHybridBootstrap();
+  return fetchContactsHybridBootstrap(reportProgress);
+}
+
+/**
+ * Boot path: a stored address book paints immediately. A cold device still
+ * downloads the book, reporting each page through `reportProgress`.
+ * Explicit refresh stays on {@link loadContactsBootstrapHybrid}.
+ */
+export async function loadContactsBootstrapForBoot(
+  reportProgress?: (bootstrap: Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>) => void,
+): Promise<Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>> {
+  const username = readOfflineContactsUsername();
+  if (username) {
+    const cached = await readContactsBootstrapFromCache(username);
+    if (cached) return cached;
+  }
+  return loadContactsBootstrapHybrid(reportProgress);
+}
+
+/** Incremental refresh after a cached list is already on screen. */
+export async function refreshCachedContacts(username: string): Promise<void> {
+  await syncContactBooksAfterAddressBookChanges(username);
 }
 
 export function getContactsSyncRunner(username: string): ConnectivitySyncRunner<OutboxFlushResult> {

@@ -1,6 +1,9 @@
 import {
+  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type RefObject,
@@ -21,8 +24,13 @@ import {
   contactDisplayName,
   contactListDetail,
   contactListSubtitle,
-  groupContactCardsBySection,
 } from "@/contacts-core/src/contacts-display-utils";
+import {
+  contactListRowOffset,
+  contactsListWindowRange,
+  flattenContactListRows,
+  type ContactsListWindowRow,
+} from "@/contacts-core/src/contacts-list-window";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 
 type ContactsListPanelProps = {
@@ -82,9 +90,13 @@ export function ContactsListPanel({
   pendingCardIds,
 }: ContactsListPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
+  const rows = useMemo(() => flattenContactListRows(visibleCards), [visibleCards]);
+  const windowRange = useContactsListWindow(listRef, rows, activeId);
   useListReorderAnimation(
     listRef,
-    visibleCards.map((card) => card.id),
+    rows
+      .slice(windowRange.start, windowRange.end)
+      .flatMap((row) => (row.kind === "card" ? [row.card.id] : [])),
   );
 
   const headerCount =
@@ -131,7 +143,9 @@ export function ContactsListPanel({
       <div ref={listRef} className="contacts-list-panel__list">
         <ContactsListRows
           L={L}
-          visibleCards={visibleCards}
+          rows={rows.slice(windowRange.start, windowRange.end)}
+          paddingTop={windowRange.paddingTop}
+          paddingBottom={windowRange.paddingBottom}
           isTouch={isTouch}
           activeId={activeId}
           selectedIds={selectedIds}
@@ -153,9 +167,48 @@ export function ContactsListPanel({
   };
 }
 
+function useContactsListWindow(
+  listRef: RefObject<HTMLDivElement | null>,
+  rows: ContactsListWindowRow[],
+  activeId: string,
+) {
+  const [metrics, setMetrics] = useState({ scrollTop: 0, viewportHeight: 0 });
+
+  useLayoutEffect(() => {
+    const scroller = listRef.current?.parentElement;
+    if (!scroller) return;
+    const update = () => {
+      setMetrics({ scrollTop: scroller.scrollTop, viewportHeight: scroller.clientHeight });
+    };
+    update();
+    scroller.addEventListener("scroll", update, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(scroller);
+    return () => {
+      scroller.removeEventListener("scroll", update);
+      observer?.disconnect();
+    };
+  }, [listRef, rows.length]);
+
+  const range = contactsListWindowRange(rows, metrics.scrollTop, metrics.viewportHeight);
+
+  useEffect(() => {
+    if (!activeId) return;
+    const index = rows.findIndex((row) => row.kind === "card" && row.card.id === activeId);
+    if (index < 0 || (index >= range.start && index < range.end)) return;
+    const scroller = listRef.current?.parentElement;
+    if (!scroller || scroller.clientHeight <= 0) return;
+    scroller.scrollTop = contactListRowOffset(rows, index);
+  }, [activeId, listRef, range.end, range.start, rows]);
+
+  return range;
+}
+
 function ContactsListRows({
   L,
-  visibleCards,
+  rows,
+  paddingTop,
+  paddingBottom,
   isTouch,
   activeId,
   selectedIds,
@@ -168,10 +221,13 @@ function ContactsListRows({
   onSwipeDelete,
   onSwipeRemoveFromGroup,
   pendingCardIds,
-}: Pick<
+}: {
+  rows: ContactsListWindowRow[];
+  paddingTop: number;
+  paddingBottom: number;
+} & Pick<
   ContactsListPanelProps,
   | "L"
-  | "visibleCards"
   | "isTouch"
   | "activeId"
   | "selectedIds"
@@ -185,12 +241,23 @@ function ContactsListRows({
   | "onSwipeRemoveFromGroup"
   | "pendingCardIds"
 >) {
-  const rows = useMemo(
-    () =>
-      groupContactCardsBySection(visibleCards).map((section) => (
-        <section key={section.letter} aria-labelledby={`contacts-section-${section.letter}`}>
-          <ListStickyHeader id={`contacts-section-${section.letter}`} emphasis={section.letter} />
-          {section.cards.map((card) => {
+  const rendered = useMemo(() => {
+    const blocks: ReactNode[] = [];
+    let sectionLetter = "";
+    let sectionCards: ContactCard[] = [];
+
+    const flush = () => {
+      if (!sectionLetter && sectionCards.length === 0) return;
+      const letter = sectionLetter || "#";
+      blocks.push(
+        <section
+          key={`${letter}-${sectionCards[0]?.id ?? "empty"}`}
+          aria-labelledby={`contacts-section-${letter}`}
+        >
+          {sectionLetter ? (
+            <ListStickyHeader id={`contacts-section-${letter}`} emphasis={letter} />
+          ) : null}
+          {sectionCards.map((card) => {
             const name = contactDisplayName(card);
             const isPendingSync = pendingCardIds?.has(card.id) ?? false;
             return (
@@ -251,22 +318,34 @@ function ContactsListRows({
               />
             );
           })}
-        </section>
-      )),
-    [
-      L.pendingSync,
-      L.swipeDelete,
-      L.swipeRemoveFromGroup,
-      L.unknownContact,
-      isItemDragging,
-      isTouch,
-      onSwipeDelete,
-      onSwipeRemoveFromGroup,
-      pendingCardIds,
-      selectedGroupId,
-      visibleCards,
-    ],
-  );
+        </section>,
+      );
+      sectionCards = [];
+    };
+
+    for (const row of rows) {
+      if (row.kind === "header") {
+        flush();
+        sectionLetter = row.letter;
+        continue;
+      }
+      sectionCards.push(row.card);
+    }
+    flush();
+    return blocks;
+  }, [
+    L.pendingSync,
+    L.swipeDelete,
+    L.swipeRemoveFromGroup,
+    L.unknownContact,
+    isItemDragging,
+    isTouch,
+    onSwipeDelete,
+    onSwipeRemoveFromGroup,
+    pendingCardIds,
+    rows,
+    selectedGroupId,
+  ]);
 
   return (
     <WorkspaceSwipeList
@@ -278,7 +357,13 @@ function ContactsListRows({
       onItemLongPress={enterSelectionFor}
       {...bindItemDragHandlers(itemDragHandlers)}
     >
-      {rows}
+      {paddingTop > 0 ? (
+        <div className="contacts-list-panel__spacer" style={{ height: paddingTop }} />
+      ) : null}
+      {rendered}
+      {paddingBottom > 0 ? (
+        <div className="contacts-list-panel__spacer" style={{ height: paddingBottom }} />
+      ) : null}
     </WorkspaceSwipeList>
   );
 }

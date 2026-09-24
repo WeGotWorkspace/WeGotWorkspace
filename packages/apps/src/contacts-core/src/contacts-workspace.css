@@ -119,6 +119,10 @@
   @apply flex min-h-48 items-center justify-center;
 }
 
+.contacts-list-panel__spacer {
+  @apply block w-full shrink-0;
+}
+
 .contacts-workspace .collection-list-drop-zone .file-drop-overlay {
   z-index: 20;
 }

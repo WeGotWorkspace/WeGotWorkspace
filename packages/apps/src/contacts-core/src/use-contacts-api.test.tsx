@@ -37,6 +37,8 @@ vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
 vi.mock("@/lib/offline/contacts-hybrid-operations", () => ({
   createHybridContactsOperations: vi.fn(),
   getContactsSyncRunner: () => ({ flush: mockFlush }),
+  loadContactsBootstrapForBoot: vi.fn(),
+  refreshCachedContacts: vi.fn().mockResolvedValue(undefined),
 }));
 
 let mockReconnectSyncing = false;

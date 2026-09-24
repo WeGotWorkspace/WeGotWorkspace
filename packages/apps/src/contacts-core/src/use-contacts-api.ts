@@ -11,6 +11,8 @@ import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
   createHybridContactsOperations,
   getContactsSyncRunner,
+  loadContactsBootstrapForBoot,
+  refreshCachedContacts,
 } from "@/lib/offline/contacts-hybrid-operations";
 import {
   ingestRemoteAddressBook,
@@ -28,6 +30,7 @@ import { setContactsSyncConflictListener } from "@/lib/offline/contacts-sync-con
 import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
+import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import type { AddressBook, ContactCard, ContactsUIData } from "@/contacts-core/src/contacts-types";
 import { createDefaultContactsApiSource, type ContactsApiSource } from "./contacts-api-source";
 
@@ -49,7 +52,13 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
     [],
   );
 
-  const runBootstrap = useCallback(() => resolvedSource.loadBootstrap(), [resolvedSource]);
+  const runBootstrap = useCallback(
+    (reportProgress?: (partial: ContactsAppBootstrap) => void) => {
+      if (!wgwLiveApiEnabled()) return resolvedSource.loadBootstrap();
+      return loadContactsBootstrapForBoot(reportProgress);
+    },
+    [resolvedSource],
+  );
   const readCache = useCallback(async () => {
     const username = readOfflineContactsUsername();
     if (!username) return null;
@@ -97,6 +106,20 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
     const next = await readContactsBootstrapFromCache(offlineUsername);
     if (next) patchBootstrap(() => next);
   }, [offlineUsername, patchBootstrap]);
+
+  useEffect(() => {
+    if (!offlineUsername || !online || phase !== "ready") return;
+    if (!wgwLiveApiEnabled()) return;
+    let cancelled = false;
+    void refreshCachedContacts(offlineUsername)
+      .then(() => {
+        if (!cancelled) return patchFromCache();
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [offlineUsername, online, patchFromCache, phase]);
 
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;

@@ -7,7 +7,8 @@ export function useHybridBootstrap<T>({
   load,
   readCache,
 }: {
-  load: () => Promise<T>;
+  /** Optional progress paints the first chunk without waiting for the full result. */
+  load: (reportProgress?: (partial: T) => void) => Promise<T>;
   readCache: () => Promise<T | null>;
 }) {
   const [phase, setPhase] = useState<HybridPhase>("loading");
@@ -22,17 +23,35 @@ export function useHybridBootstrap<T>({
     setSuccessVersion((v) => v + 1);
   }, []);
 
+  const publishInPlace = useCallback((next: T) => {
+    setData(next);
+    setPhase("ready");
+    setError(null);
+  }, []);
+
   const run = useCallback(() => {
     setPhase("loading");
     setError(null);
-    void load()
-      .then(applySuccess)
+    let painted = false;
+    const reportProgress = (partial: T) => {
+      if (painted) {
+        publishInPlace(partial);
+        return;
+      }
+      painted = true;
+      applySuccess(partial);
+    };
+    void load(reportProgress)
+      .then((next) => {
+        if (painted) publishInPlace(next);
+        else applySuccess(next);
+      })
       .catch((e: unknown) => {
         setData(null);
         setError(e instanceof Error ? e.message : String(e));
         setPhase("error");
       });
-  }, [applySuccess, load]);
+  }, [applySuccess, load, publishInPlace]);
 
   useEffect(() => {
     let cancelled = false;

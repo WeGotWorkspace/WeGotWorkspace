@@ -321,7 +321,10 @@ export async function readContactCardImportResponse(
 }
 
 /** Load address books and cards from the configured WeGotWorkspace API. */
-export async function fetchContactsLiveBootstrap(): Promise<ContactsAppBootstrap> {
+export async function fetchContactsLiveBootstrap(options?: {
+  /** First card page (and each later page) so the list can open before the last request. */
+  onProgress?: (bootstrap: ContactsAppBootstrap) => void;
+}): Promise<ContactsAppBootstrap> {
   const session = await wgwFetchPrincipal();
 
   const settingsRes = await wgwFetch("/settings/state");
@@ -335,7 +338,17 @@ export async function fetchContactsLiveBootstrap(): Promise<ContactsAppBootstrap
   }
 
   const { contacts, accountId } = await connectedContacts();
-  const { books, cards } = await contacts.getAddressBooksAndCards(accountId);
+  const { books, cards } = await contacts.getAddressBooksAndCards(accountId, {
+    onPage: (snapshot) => {
+      options?.onProgress?.({
+        session,
+        data: {
+          addressBooks: snapshot.books.list.map(toAddressBook),
+          cards: snapshot.cards.list.map(toContactCard),
+        },
+      });
+    },
+  });
 
   return {
     data: {
