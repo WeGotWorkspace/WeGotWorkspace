@@ -409,6 +409,10 @@
       },
       "message": {
         "type": "string"
+      },
+      "code": {
+        "type": "string",
+        "description": "Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, bad_request)."
       }
     },
     "additionalProperties": false
@@ -427,6 +431,6 @@
       }
     },
     "additionalProperties": false,
-    "description": "REST response for POST /calendars/events/import."
+    "description": "REST response for POST /calendars/events/import. Per-UID-group payload or component-cap failures appear in errors[] with code; siblings may still be in list."
   }
 }

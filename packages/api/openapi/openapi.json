@@ -1292,7 +1292,8 @@
             }
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "REST list for GET /tasks/items. This response has no total. Tasks whose stored iCalendar exceeds the per-object payload or component cap (512 KiB / 64 combined VEVENT+VTODO+VALARM) are omitted from list; the response stays 200."
       },
       "TaskCreate": {
         "type": "object",
@@ -1791,7 +1792,7 @@
       },
       "JmapAccount": {
         "type": "object",
-        "description": "JMAP Account object (RFC 8620 \u00a72).",
+        "description": "JMAP Account object (RFC 8620 §2).",
         "required": [
           "name",
           "isPersonal",
@@ -1818,7 +1819,7 @@
       },
       "JmapSession": {
         "type": "object",
-        "description": "JMAP Session resource (RFC 8620 \u00a72). One account per authenticated principal; accountId is the raw username. All URLs are absolute.",
+        "description": "JMAP Session resource (RFC 8620 §2). One account per authenticated principal; accountId is the raw username. All URLs are absolute.",
         "required": [
           "capabilities",
           "accounts",
@@ -1833,7 +1834,7 @@
         "properties": {
           "capabilities": {
             "type": "object",
-            "description": "Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 \u00a71.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 \u00a71.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 \u00a72.1) are empty objects \u2014 their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel/ChatMessage get+changes, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent.",
+            "description": "Session-level capabilities. `urn:ietf:params:jmap:core` carries the limits object; `urn:ietf:params:jmap:calendars` (draft-ietf-jmap-calendars-27 §1.5.1), `urn:ietf:params:jmap:contacts` (RFC 9610 §1.3), and `urn:ietf:params:jmap:filenode` (draft-ietf-jmap-filenode-14 §2.1) are empty objects — their capability objects live per account in accountCapabilities. The vendor envelopes `urn:wgw:jmap:notes` (Notes over CalDAV VJOURNAL) and `urn:wgw:jmap:chat` (Meet chat channels/messages over CalDAV VJOURNAL; ChatChannel/ChatMessage get+changes, mutations stay on REST /chat/*) follow the same shape. Feature-gated-off domains are absent.",
             "additionalProperties": {
               "type": "object"
             }
@@ -1872,7 +1873,7 @@
       },
       "JmapBlobUploadResponse": {
         "type": "object",
-        "description": "JMAP blob upload response (RFC 8620 \u00a76.1). blobId is content-addressed (jb- prefix + sha-256 hex): identical bytes dedupe to one blob per account. Unreferenced blobs expire after a TTL; re-upload refreshes it.",
+        "description": "JMAP blob upload response (RFC 8620 §6.1). blobId is content-addressed (jb- prefix + sha-256 hex): identical bytes dedupe to one blob per account. Unreferenced blobs expire after a TTL; re-upload refreshes it.",
         "required": [
           "accountId",
           "blobId",
@@ -1896,7 +1897,7 @@
       },
       "JmapMethodInvocation": {
         "type": "array",
-        "description": "JMAP Invocation tuple [name, arguments, methodCallId] (RFC 8620 \u00a73.2).",
+        "description": "JMAP Invocation tuple [name, arguments, methodCallId] (RFC 8620 §3.2).",
         "prefixItems": [
           {
             "type": "string"
@@ -1913,7 +1914,7 @@
       },
       "JmapApiRequest": {
         "type": "object",
-        "description": "JMAP Request object (RFC 8620 \u00a73.3).",
+        "description": "JMAP Request object (RFC 8620 §3.3).",
         "required": [
           "using",
           "methodCalls"
@@ -1942,7 +1943,7 @@
       },
       "JmapApiResponse": {
         "type": "object",
-        "description": "JMAP Response object (RFC 8620 \u00a73.4). Method-level failures travel as [\"error\", {type, description?}, callId] invocations inside methodResponses.",
+        "description": "JMAP Response object (RFC 8620 §3.4). Method-level failures travel as [\"error\", {type, description?}, callId] invocations inside methodResponses.",
         "required": [
           "methodResponses",
           "sessionState"
@@ -1961,7 +1962,7 @@
       },
       "JmapProblemDetails": {
         "type": "object",
-        "description": "Request-level error as RFC 7807 problem details (RFC 8620 \u00a73.6.1).",
+        "description": "Request-level error as RFC 7807 problem details (RFC 8620 §3.6.1).",
         "required": [
           "type",
           "status",
@@ -4103,7 +4104,7 @@
           "Files"
         ],
         "summary": "Search share principals",
-        "description": "Principal picker for the share panel \u2014 searchable users and grantable groups with display names.",
+        "description": "Principal picker for the share panel — searchable users and grantable groups with display names.",
         "security": [
           {
             "bearerAuth": []
@@ -4609,7 +4610,7 @@
           "Meetings"
         ],
         "summary": "Reserve a meeting room",
-        "description": "Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create \u2014 membership or a write share).",
+        "description": "Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).",
         "security": [
           {
             "bearerAuth": []
@@ -5065,15 +5066,23 @@
     },
     "/settings/mcp-grants": {
       "get": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "List connected assistant OAuth grants",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Connected assistant grants",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SettingsMcpGrantList" }
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsMcpGrantList"
+                }
               }
             }
           }
@@ -5083,15 +5092,23 @@
     },
     "/settings/mcp-grants/{clientId}": {
       "delete": {
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "summary": "Revoke a connected assistant grant",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "clientId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -5099,7 +5116,9 @@
             "description": "Grant revoked",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/OkResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
               }
             }
           },
@@ -5107,7 +5126,9 @@
             "description": "Grant not found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -5537,7 +5558,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Task list items",
+            "description": "Task list items. Over-cap stored tasks are omitted; this response has no total.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5556,7 +5577,8 @@
             "$ref": "#/components/responses/JmapNotFound"
           }
         },
-        "x-wgw-access": "user"
+        "x-wgw-access": "user",
+        "description": "Returns { list } only (no total). A stored task over the per-object iCalendar caps (512 KiB serialized, or 64 combined nested VEVENT+VTODO+VALARM excluding VTIMEZONE) is omitted from list; the response stays HTTP 200. Query endpoints that report total still include the id."
       },
       "post": {
         "tags": [
@@ -5599,7 +5621,8 @@
             "$ref": "#/components/responses/JmapPayloadTooLarge"
           }
         },
-        "x-wgw-access": "user"
+        "x-wgw-access": "user",
+        "description": "Per-object iCalendar caps: 512 KiB serialized size; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 bad_request."
       }
     },
     "/tasks/items/query": {
@@ -5653,6 +5676,7 @@
           "Tasks"
         ],
         "summary": "Fetch a task",
+        "description": "HTTP 413 payload_too_large means the stored iCalendar object exceeds the per-object cap (512 KiB or 64 components), not that the HTTP request body was too large.",
         "security": [
           {
             "bearerAuth": []
@@ -5684,6 +5708,9 @@
           },
           "404": {
             "$ref": "#/components/responses/JmapNotFound"
+          },
+          "413": {
+            "$ref": "#/components/responses/JmapPayloadTooLarge"
           }
         },
         "x-wgw-access": "user"
@@ -5693,6 +5720,7 @@
           "Tasks"
         ],
         "summary": "Replace a task",
+        "description": "Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 bad_request.",
         "security": [
           {
             "bearerAuth": []
@@ -5752,6 +5780,7 @@
           "Tasks"
         ],
         "summary": "Partially update a task",
+        "description": "Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 bad_request.",
         "security": [
           {
             "bearerAuth": []
@@ -7213,6 +7242,7 @@
           "Contacts"
         ],
         "summary": "Import contact cards from a vCard file",
+        "description": "Import vCard text. Whole-request body limit defaults to 8 MiB (8388608), configurable; effective limit is min(8 MiB, PHP post_max_size). Over the effective limit → 413 with code payload_too_large (application guard) or post_too_large (PHP/Laravel ValidatePostSize); clients treat both as the same limit. Cards are parsed one at a time. Per-card caps: 512 KiB serialized and 512 properties; over-cap cards appear in errors[] with code, siblings still import. Per-object contact writes via JMAP ContactCard/set use SetError type tooLarge (HTTP 200).",
         "security": [
           {
             "bearerAuth": []
@@ -7254,6 +7284,9 @@
           },
           "403": {
             "$ref": "#/components/responses/JmapForbidden"
+          },
+          "413": {
+            "$ref": "#/components/responses/JmapPayloadTooLarge"
           }
         },
         "x-wgw-access": "user"
@@ -7265,7 +7298,7 @@
           "JMAP"
         ],
         "summary": "JMAP Session resource",
-        "description": "RFC 8620 \u00a72 Session resource for the JMAP envelope (calendars, contacts, filenode, and the vendor `urn:wgw:jmap:notes` / `urn:wgw:jmap:chat` envelopes). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 \u00a71.5.1, RFC 9610 \u00a71.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.",
+        "description": "RFC 8620 §2 Session resource for the JMAP envelope (calendars, contacts, filenode, and the vendor `urn:wgw:jmap:notes` / `urn:wgw:jmap:chat` envelopes). One account per authenticated principal (accountId = username); all URLs absolute; session-level domain capabilities are empty objects (draft-ietf-jmap-calendars-27 §1.5.1, RFC 9610 §1.3) with per-account objects in accountCapabilities; feature-gated-off domains are absent.",
         "security": [
           {
             "bearerAuth": []
@@ -7295,7 +7328,7 @@
           "JMAP"
         ],
         "summary": "JMAP blob download",
-        "description": "Streams a blob (RFC 8620 \u00a76.2). Serves ids from the envelope blob store (jb-\u2026, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) \u2014 every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.",
+        "description": "Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) — every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.",
         "security": [
           {
             "bearerAuth": []
@@ -7371,7 +7404,7 @@
           "JMAP"
         ],
         "summary": "JMAP blob upload",
-        "description": "Stores the raw request body as a blob (RFC 8620 \u00a76.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload.",
+        "description": "Stores the raw request body as a blob (RFC 8620 §6.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload.",
         "security": [
           {
             "bearerAuth": []
@@ -7390,7 +7423,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Upload response (RFC 8620 \u00a76.1)",
+            "description": "Upload response (RFC 8620 §6.1)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7442,7 +7475,7 @@
           "JMAP"
         ],
         "summary": "JMAP event source / push (not implemented)",
-        "description": "Structurally required by the Session resource (RFC 8620 \u00a77.3) but push is a non-goal; the shipped client polls. Returns 501.",
+        "description": "Structurally required by the Session resource (RFC 8620 §7.3) but push is a non-goal; the shipped client polls. Returns 501.",
         "security": [
           {
             "bearerAuth": []
@@ -7621,9 +7654,13 @@
           },
           "404": {
             "$ref": "#/components/responses/JmapNotFound"
+          },
+          "413": {
+            "$ref": "#/components/responses/JmapPayloadTooLarge"
           }
         },
-        "x-wgw-access": "user"
+        "x-wgw-access": "user",
+        "description": "Import ICS text. Whole-request body is capped at 512 KiB (MAX_ICS_BYTES); over that → 413 payload_too_large. Raising the calendar import body is a follow-up (MAX_ICS_IMPORT_BYTES). After the body passes, each UID group is checked for 512 KiB serialized size and 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Over-cap groups appear in errors[] with code; siblings still import. JMAP CalendarEvent/get places an over-cap stored id in notFound while CalendarEvent/query still returns that id. SetError for oversize/complexity is tooLarge."
       }
     },
     "/calendars/scheduling/invitees": {
@@ -8154,15 +8191,23 @@
     },
     "/notifications": {
       "get": {
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "List inbox notifications",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "unread",
             "in": "query",
             "required": false,
-            "schema": { "type": "boolean" }
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -8170,26 +8215,38 @@
             "description": "Inbox rows for the signed-in principal",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/NotificationListResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponse"
+                }
               }
             }
           },
-          "403": { "$ref": "#/components/responses/JmapForbidden" }
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
         },
         "x-wgw-access": "user"
       }
     },
     "/notifications/{id}/ack": {
       "post": {
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "Mark a notification as read",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -8197,28 +8254,44 @@
             "description": "Updated notification",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Notification" }
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/JmapBadRequest" },
-          "403": { "$ref": "#/components/responses/JmapForbidden" },
-          "404": { "$ref": "#/components/responses/JmapNotFound" }
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
         },
         "x-wgw-access": "user"
       }
     },
     "/notifications/{id}/local-ack": {
       "post": {
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "Ack local Notification API delivery (skip VAPID fallback)",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -8226,46 +8299,72 @@
             "description": "Local delivery acknowledged",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/NotificationOkResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationOkResponse"
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/JmapBadRequest" },
-          "403": { "$ref": "#/components/responses/JmapForbidden" },
-          "404": { "$ref": "#/components/responses/JmapNotFound" }
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
         },
         "x-wgw-access": "user"
       }
     },
     "/notifications/push/vapid-public-key": {
       "get": {
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "Install-scoped VAPID public key",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "VAPID public key",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/VapidPublicKeyResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/VapidPublicKeyResponse"
+                }
               }
             }
           },
-          "403": { "$ref": "#/components/responses/JmapForbidden" }
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
         },
         "x-wgw-access": "user"
       }
     },
     "/notifications/push/subscriptions": {
       "post": {
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "Subscribe this device to Web Push",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/PushSubscriptionCreateRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscriptionCreateRequest"
+              }
             }
           }
         },
@@ -8274,31 +8373,51 @@
             "description": "Subscription stored",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/PushSubscriptionResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/PushSubscriptionResponse"
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/JmapBadRequest" },
-          "403": { "$ref": "#/components/responses/JmapForbidden" }
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
         },
         "x-wgw-access": "user"
       },
       "delete": {
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "Unsubscribe this device from Web Push",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/PushUnsubscribeRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/PushUnsubscribeRequest"
+              }
             }
           }
         },
         "responses": {
-          "204": { "description": "Subscription removed" },
-          "400": { "$ref": "#/components/responses/JmapBadRequest" },
-          "403": { "$ref": "#/components/responses/JmapForbidden" }
+          "204": {
+            "description": "Subscription removed"
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
         },
         "x-wgw-access": "user"
       }
@@ -8309,7 +8428,7 @@
           "JMAP"
         ],
         "summary": "JMAP batch API endpoint",
-        "description": "RFC 8620 \u00a73 batched method calls with ResultReference resolution (\u00a73.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as [\"error\", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, \u00a73.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits.",
+        "description": "RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as [\"error\", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits. ICS/vCard payload bounds: per-object 512 KiB; 64 combined nested VEVENT+VTODO+VALARM (excluding VTIMEZONE); 512 vCard properties. CalendarEvent/set and ContactCard/set map payload_too_large and guard component/property bad_request to SetError type tooLarge (description keeps the guard message). CalendarEvent/get and ContactCard/get place an over-cap id in notFound and still return other ids; query methods still return the over-cap id.",
         "security": [
           {
             "bearerAuth": []

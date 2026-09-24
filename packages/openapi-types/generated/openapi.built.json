@@ -7598,6 +7598,10 @@
                     },
                     "message": {
                         "type": "string"
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, bad_request)."
                     }
                 },
                 "additionalProperties": false
@@ -7623,7 +7627,7 @@
                     }
                 },
                 "additionalProperties": false,
-                "description": "REST response for POST /contacts/cards/import."
+                "description": "REST response for POST /contacts/cards/import. Per-card payload or property-cap failures appear in errors[] with code; siblings may still be in list."
             },
             "ContactCardSetRequest": {
                 "type": "object",
@@ -10205,6 +10209,10 @@
                     },
                     "message": {
                         "type": "string"
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, bad_request)."
                     }
                 },
                 "additionalProperties": false
@@ -10230,7 +10238,7 @@
                     }
                 },
                 "additionalProperties": false,
-                "description": "REST response for POST /calendars/events/import."
+                "description": "REST response for POST /calendars/events/import. Per-UID-group payload or component-cap failures appear in errors[] with code; siblings may still be in list."
             },
             "MeetRoomCode": {
                 "type": "string",
@@ -15334,7 +15342,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Task list items",
+                        "description": "Task list items. Over-cap stored tasks are omitted; this response has no total.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -15353,7 +15361,8 @@
                         "$ref": "#/components/responses/JmapNotFound"
                     }
                 },
-                "x-wgw-access": "user"
+                "x-wgw-access": "user",
+                "description": "Returns { list } only (no total). A stored task over the per-object iCalendar caps (512 KiB serialized, or 64 combined nested VEVENT+VTODO+VALARM excluding VTIMEZONE) is omitted from list; the response stays HTTP 200. Query endpoints that report total still include the id."
             },
             "post": {
                 "tags": [
@@ -15396,7 +15405,8 @@
                         "$ref": "#/components/responses/JmapPayloadTooLarge"
                     }
                 },
-                "x-wgw-access": "user"
+                "x-wgw-access": "user",
+                "description": "Per-object iCalendar caps: 512 KiB serialized size; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 bad_request."
             }
         },
         "/tasks/items/{taskId}": {
@@ -15405,6 +15415,7 @@
                     "Tasks"
                 ],
                 "summary": "Fetch a task",
+                "description": "HTTP 413 payload_too_large means the stored iCalendar object exceeds the per-object cap (512 KiB or 64 components), not that the HTTP request body was too large.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -15436,6 +15447,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
                     }
                 },
                 "x-wgw-access": "user"
@@ -15445,6 +15459,7 @@
                     "Tasks"
                 ],
                 "summary": "Replace a task",
+                "description": "Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 bad_request.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -15504,6 +15519,7 @@
                     "Tasks"
                 ],
                 "summary": "Partially update a task",
+                "description": "Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 bad_request.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -15611,6 +15627,7 @@
                     "Contacts"
                 ],
                 "summary": "Import contact cards from a vCard file",
+                "description": "Import vCard text. Whole-request body limit defaults to 8 MiB (8388608), configurable; effective limit is min(8 MiB, PHP post_max_size). Over the effective limit → 413 with code payload_too_large (application guard) or post_too_large (PHP/Laravel ValidatePostSize); clients treat both as the same limit. Cards are parsed one at a time. Per-card caps: 512 KiB serialized and 512 properties; over-cap cards appear in errors[] with code, siblings still import. Per-object contact writes via JMAP ContactCard/set use SetError type tooLarge (HTTP 200).",
                 "security": [
                     {
                         "bearerAuth": []
@@ -15652,6 +15669,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
                     }
                 },
                 "x-wgw-access": "user"
@@ -16488,7 +16508,7 @@
                     "JMAP"
                 ],
                 "summary": "JMAP batch API endpoint",
-                "description": "RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as [\"error\", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits.",
+                "description": "RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as [\"error\", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits. ICS/vCard payload bounds: per-object 512 KiB; 64 combined nested VEVENT+VTODO+VALARM (excluding VTIMEZONE); 512 vCard properties. CalendarEvent/set and ContactCard/set map payload_too_large and guard component/property bad_request to SetError type tooLarge (description keeps the guard message). CalendarEvent/get and ContactCard/get place an over-cap id in notFound and still return other ids; query methods still return the over-cap id.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -17336,9 +17356,13 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
                     }
                 },
-                "x-wgw-access": "user"
+                "x-wgw-access": "user",
+                "description": "Import ICS text. Whole-request body is capped at 512 KiB (MAX_ICS_BYTES); over that → 413 payload_too_large. Raising the calendar import body is a follow-up (MAX_ICS_IMPORT_BYTES). After the body passes, each UID group is checked for 512 KiB serialized size and 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Over-cap groups appear in errors[] with code; siblings still import. JMAP CalendarEvent/get places an over-cap stored id in notFound while CalendarEvent/query still returns that id. SetError for oversize/complexity is tooLarge."
             }
         },
         "/notes/notebooks/changes": {
