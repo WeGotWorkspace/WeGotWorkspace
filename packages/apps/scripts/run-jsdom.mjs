@@ -34,7 +34,7 @@
  *   JSDOM_LIST=1 node scripts/run-jsdom.mjs
  */
 import { spawn } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, realpathSync, rmSync, unlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -266,7 +266,7 @@ export function coverageVitestArgs(shardId) {
     "--coverage",
     "--reporter=blob",
     `--outputFile=.vitest-reports/blob-${shardId}.json`,
-    `--coverage.reportsDirectory=coverage/shard-${shardId}`,
+    `--coverage.reportsDirectory=.coverage-shards/${shardId}`,
   ];
 }
 
@@ -334,8 +334,16 @@ async function main() {
   /** @type {Array<{ label: string, ok: boolean, detail?: string }>} */
   const results = [];
 
+  if (coverage) {
+    clearCoverageReports(withUnit);
+  }
+
   if (withUnit) {
-    results.push(await runVitest("Vitest (unit)", ["run", "--project", "unit"]));
+    const unitArgs = ["run", "--project", "unit"];
+    if (coverage) {
+      unitArgs.push(...coverageVitestArgs("unit"));
+    }
+    results.push(await runVitest("Vitest (unit)", unitArgs));
   }
 
   const packedEntries = shardEntries(packed, 0, totalShards, coverage);
@@ -371,8 +379,44 @@ async function main() {
   process.exit(passed ? 0 : 1);
 }
 
-const invokedDirectly =
-  process.argv[1] !== undefined && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+/**
+ * True when this file is the process entrypoint. realpath on both sides so a
+ * symlinked argv still runs main(); a mismatch must not exit 0 without tests.
+ *
+ * @param {string} scriptUrl
+ * @param {string | undefined} argvPath
+ */
+export function isDirectInvocation(scriptUrl, argvPath) {
+  if (!argvPath) {
+    return false;
+  }
+  try {
+    return realpathSync(fileURLToPath(scriptUrl)) === realpathSync(argvPath);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @param {boolean} includeUnitBlob
+ */
+function clearCoverageReports(includeUnitBlob) {
+  const reportsDir = path.join(appsRoot, ".vitest-reports");
+  if (includeUnitBlob) {
+    rmSync(reportsDir, { recursive: true, force: true });
+    return;
+  }
+  if (!existsSync(reportsDir)) {
+    return;
+  }
+  for (const name of readdirSync(reportsDir)) {
+    if (name.startsWith("blob-jsdom-")) {
+      unlinkSync(path.join(reportsDir, name));
+    }
+  }
+}
+
+const invokedDirectly = isDirectInvocation(import.meta.url, process.argv[1]);
 
 if (invokedDirectly) {
   main().catch((error) => {

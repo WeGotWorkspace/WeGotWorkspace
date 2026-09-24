@@ -28,6 +28,10 @@ export default defineConfig({
   },
   test: {
     execArgv: nodeWebStorageExecArgv,
+    coverage: {
+      provider: "v8",
+      include: ["src/**"],
+    },
     projects: [
       {
         resolve: {

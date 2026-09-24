@@ -27,7 +27,9 @@ Upload a PHPUnit clover report and a Vitest v8 report for pushes to `main`, so d
 - `setup-php` uses `coverage: pcov` on that job only.
 - After the run, the job fails if the clover XML contains no `<file` element. That is a measurement check, not a percent threshold.
 - `timeout-minutes: 45` and `concurrency` `cancel-in-progress: true` on each coverage job.
-- Vitest unit and jsdom only. Each jsdom child gets `--coverage --reporter=blob --outputFile=.vitest-reports/blob-<shard>.json` and its own `--coverage.reportsDirectory`.
+- Vitest `coverage.include` is `src/**`, so files that no test loaded still appear in the report.
+- Vitest unit and jsdom only. Each jsdom child gets `--coverage --reporter=blob --outputFile=.vitest-reports/blob-<shard>.json` and its own `--coverage.reportsDirectory` under `.coverage-shards/`. The uploaded artifact is the merged `coverage/` directory, not the shard temp dirs.
+- `isDirectInvocation` compares `realpath` of the script and `argv[1]`. The unit project include already lists `scripts/**/*.test.mjs`, so the argv test runs in the normal unit suite.
 - Merge with `vitest --merge-reports=.vitest-reports --coverage.enabled --coverage.reporter=lcov,json-summary` against `packages/apps/vitest.config.ts`. If unit and jsdom blobs do not merge, upload two reports.
 
 ## Edge cases

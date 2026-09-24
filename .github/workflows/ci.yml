@@ -367,7 +367,9 @@ jobs:
 
       - name: Vitest unit blob
         working-directory: packages/apps
-        run: pnpm exec vitest run --project unit --coverage --reporter=blob --outputFile=.vitest-reports/blob-unit.json --coverage.reportsDirectory=coverage/shard-unit
+        run: |
+          rm -rf .vitest-reports .coverage-shards coverage
+          pnpm exec vitest run --project unit --coverage --reporter=blob --outputFile=.vitest-reports/blob-unit.json --coverage.reportsDirectory=.coverage-shards/unit
 
       - name: Vitest jsdom blobs
         working-directory: packages/apps
@@ -383,7 +385,7 @@ jobs:
             echo "no jsdom coverage blobs" >&2
             exit 1
           fi
-          if ! pnpm exec vitest --merge-reports=.vitest-reports --coverage.enabled --coverage.reporter=lcov,json-summary; then
+          if ! pnpm exec vitest --merge-reports=.vitest-reports --coverage.enabled --coverage.reporter=lcov,json-summary --coverage.reportsDirectory=coverage; then
             echo "Combined merge failed; writing separate unit and jsdom reports."
             mkdir -p .vitest-reports-unit .vitest-reports-jsdom
             cp .vitest-reports/blob-unit.json .vitest-reports-unit/
