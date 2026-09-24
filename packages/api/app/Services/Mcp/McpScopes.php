@@ -225,14 +225,8 @@ final class McpScopes
     }
 
     /**
-     * Scopes shown on consent and Settings grant cards.
-     * `offline_access` stays in {@see advertisedDescriptions()} / `scopes_supported`.
-     *
-     * @param  list<string>  $ids
-     * @return list<string>
-     */
-    /**
-     * Still valid on existing tokens. Hidden from consent and grant cards until the client ships.
+     * Still valid on existing tokens. Hidden from consent until the client ships.
+     * Grant cards keep them so an old token can be revoked.
      *
      * @return list<string>
      */
@@ -241,9 +235,17 @@ final class McpScopes
         return [self::MAIL_READ, self::MAIL_SEND];
     }
 
+    /**
+     * Scopes shown on Settings grant cards.
+     * `offline_access` stays in {@see advertisedDescriptions()} / `scopes_supported`.
+     * Mail scopes stay here; consent hides them in {@see groupConsentScopes()}.
+     *
+     * @param  list<string>  $ids
+     * @return list<string>
+     */
     public static function userFacingIds(array $ids): array
     {
-        $hidden = array_fill_keys([self::OFFLINE_ACCESS, ...self::consentHiddenIds()], true);
+        $hidden = array_fill_keys([self::OFFLINE_ACCESS], true);
 
         return array_values(array_filter(
             $ids,

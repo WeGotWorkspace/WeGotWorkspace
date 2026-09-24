@@ -121,8 +121,10 @@ final class McpScopesTest extends TestCase
         $this->assertSame('Read and write', McpScopes::consentActionLabel(McpScopes::CALENDAR));
         $this->assertSame('Read', McpScopes::consentActionLabel(McpScopes::NOTES_READ));
         $this->assertSame('Write', McpScopes::consentActionLabel(McpScopes::DRIVE_WRITE));
-        $this->assertNotContains(McpScopes::MAIL_READ, McpScopes::userFacingIds(McpScopes::ids()));
-        $this->assertNotContains(McpScopes::MAIL_SEND, McpScopes::userFacingIds(McpScopes::ids()));
+        $facing = McpScopes::userFacingIds(McpScopes::ids());
+        $this->assertContains(McpScopes::MAIL_READ, $facing);
+        $this->assertContains(McpScopes::MAIL_SEND, $facing);
+        $this->assertNotContains(McpScopes::OFFLINE_ACCESS, $facing);
         $this->assertContains(McpScopes::MAIL_READ, McpScopes::ids());
         $this->assertArrayHasKey(McpScopes::MAIL_SEND, McpScopes::descriptions());
         $groups = McpScopes::groupConsentScopes(array_map(

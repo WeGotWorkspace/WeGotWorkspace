@@ -17,7 +17,7 @@ Mailbox REST (`/api/v1/mail/*`) and MCP `mail_status` / `mail_send` are not regi
 
 `WGW_MAIL_CLIENT_ENABLED` is unsupported in v0.9 and test-only. Setting it serves routes without a contract and without a UI.
 
-MCP `mail.read` and `mail.send` stay defined in the scope catalog and are hidden on the consent screen. Tokens that already have those scopes stay valid. Refresh does not strip them.
+MCP `mail.read` and `mail.send` stay defined in the scope catalog and are hidden on the consent screen. New grants do not receive them: consent keeps only the checked boxes. Tokens that already have those scopes stay valid. Refresh does not strip them. Settings → Connected assistants still lists them, labeled Mail (not active in this release), so an old grant can be revoked.
 
 `GET /api/v1/capabilities` and MCP `whoami` report `mailClient: false`. `mail_enabled` in the installer payload does not mean the client is shipped.
 
