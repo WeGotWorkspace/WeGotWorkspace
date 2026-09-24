@@ -7,6 +7,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
   schedule:
     - cron: "0 3 * * *"
 
@@ -130,7 +131,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      # gitleaks-action@v2 exits 1 on merge_group ("event is not yet supported").
+      # Skip the scan only. The job must still report Secrets (Gitleaks), a required check.
+      # pull_request already scanned these commits; push scans main. Queue groups are size 1.
       - name: Scan for secrets
+        if: github.event_name != 'merge_group'
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

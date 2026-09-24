@@ -85,6 +85,7 @@ pnpm run ci:quality
 ```
 
 - [ ] Signed commits ([git-workflow/pull-requests.md](../git-workflow/pull-requests.md))
+- [ ] PR opened as a draft (`gh pr create --draft`); leave it draft until the user asks to enqueue
 - [ ] PR test plan lists concrete commands run ([testing/SKILL.md](../testing/SKILL.md))
 - [ ] CI validates **PR tip (branch HEAD)** only — intermediate commits may be red until fix-forward; do not require per-commit gates in CI ([#250](https://github.com/WeGotWorkspace/wegotworkspace/issues/250))
 - [ ] Apps unit and jsdom Vitest are left to GitHub `apps-quality` (`APPS_DONE_GATE_FULL=1`). A local `pnpm run ci:quality` does not run them unless that variable is set
