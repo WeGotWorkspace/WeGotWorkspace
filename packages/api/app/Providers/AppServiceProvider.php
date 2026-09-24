@@ -20,7 +20,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
-use Laravel\Mcp\Events\SessionInitialized;
 use Laravel\Passport\Events\AccessTokenCreated;
 use Laravel\Passport\Events\RefreshTokenCreated;
 use Laravel\Passport\Passport;
@@ -61,7 +60,6 @@ class AppServiceProvider extends ServiceProvider
         $subscriber = $this->app->make(McpOAuthSubscriber::class);
         Event::listen(RefreshTokenCreated::class, $subscriber->handleRefreshTokenCreated(...));
         Event::listen(AccessTokenCreated::class, $subscriber->handleAccessTokenCreated(...));
-        Event::listen(SessionInitialized::class, $subscriber->handleSessionInitialized(...));
 
         View::composer('mcp.authorize', function ($view): void {
             $data = $view->getData();
