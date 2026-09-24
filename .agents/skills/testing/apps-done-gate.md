@@ -58,7 +58,7 @@ pnpm run ci:quality
 
 | Layer | Enforces |
 |-------|----------|
-| **Typecheck** | TS contracts compile; OpenAPI-generated types (`@wgw-api-generated`) match consumers. |
+| **Typecheck** | TS contracts compile; OpenAPI-generated types (`@wgw/openapi-types`) match consumers. |
 | **Contract (`test:contract`)** | Settings + list-app mappers preserve required OpenAPI fields; `expectTypeOf` documents UI-only vs API-derived shapes. |
 | **Vitest unit** | Pure parsers, mappers, RTC/session helpers — co-located `*.test.ts`. Non-meet domains with unit coverage: `lib/api/wgw/*-utils`, `route-guard`, `mail-core/*-utils`, `drive-core/*-utils`, `notes-core/*-utils`, `admin-core/*-utils`, `hooks/collection-controller-utils`. Offline multi-domain registry/migration tests use the neutral app-#2 template at [`lib/offline/__tests__/fixtures/notes-offline-fixture.ts`](../../../packages/apps/src/lib/offline/__tests__/fixtures/notes-offline-fixture.ts) (see [`offline-db-multi-domain.test.ts`](../../../packages/apps/src/lib/offline/core/__tests__/offline-db-multi-domain.test.ts)). |
 | **Vitest jsdom** | Hook and pane RTL with **mock `operations`** — co-located `*.test.tsx`. CI only. Rotate-per-package shards recycle the Node process (`JSDOM_SHARDS` is the lever). Package `p` starts at shard `p % N` so one-file packages do not pile onto shard 1; heap-heavy RTL files (`use-calendar-controller*`, `use-contacts-*`, `contacts-detail-view`, `workspace-live-app-shell`) each get a solo process. CI runs packed shards in a small pool, then solo files in a smaller one — see `scripts/jsdom-concurrency.mjs`. The runner finishes every shard and prints a ✓/✗ summary. `isolate: true` does not reclaim jsdom/Lit/TipTap/Yjs heap — do not “fix” the next OOM with a bigger heap or a wider pool. A single huge RTL file can still OOM a shard — split that file or keep the heavy path in Storybook `vitest-ci`. |
@@ -80,16 +80,16 @@ Tag product-pane smoke stories at **meta** or **story** level with `vitest-ci`. 
 
 ## Type contracts (UI ↔ API)
 
-1. **HTTP shapes** come from `packages/api/openapi/openapi.json` → `@wgw-api-generated/*`.
+1. **HTTP shapes** come from `packages/api/openapi/openapi.json` → `@wgw/openapi-types/*`.
 2. **Form → request** mappers must use OpenAPI Zod helpers (e.g. `settingsProfileRequestOpenapiSchema.parse`) — see `settings-profile-form-schema.ts`.
-3. After OpenAPI changes: `pnpm --filter @wgw/api run openapi:build-json` + apps `typecheck`.
+3. After OpenAPI changes: `pnpm --filter @wgw/openapi-types typegen`, then apps `typecheck`.
 4. Do **not** hand-roll request types that duplicate generated schemas.
 
 ### UI vs API shape policy
 
 | Layer | Role | Example |
 |-------|------|---------|
-| **`@wgw-api-generated/*`** | Canonical HTTP request/response types from OpenAPI | `SettingsStateResponse`, `MailMessageListItem` |
+| **`@wgw/openapi-types/*`** | Canonical HTTP request/response types from OpenAPI | `SettingsStateResponse`, `MailMessageListItem` |
 | **`lib/api/wgw/types.ts`** | App narrowing on generated types (optional fields, wire aliases) | `WgwMailMessageListItem` adds required `folder` + `uid` |
 | **`*UIData` / `*Operations`** | Hand-maintained UI contract consumed by panes/hooks | `SettingsUIData`, `MailUIData` |
 | **Mappers** (`lib/api/wgw/*.ts`) | OpenAPI JSON → `*UIData`; must preserve every **required** API field | `mapWgwSettingsStateToUI`, `mailFromWgwListItem` |
@@ -132,7 +132,7 @@ Setup, CI wiring, and maintainer checklist: [storybook/chromatic.md](../storyboo
 ## Out of scope for this gate
 
 - **Live-tier stories** (`Live …`) — manual smoke only; also excluded from Chromatic snapshots.
-- **Apps Playwright e2e** — optional local smoke (`pnpm test:apps-e2e`); not in CI. Phase 1 loads mock-tier Storybook stories (e.g. `Features/Workspace` login shell). Reuse a running Storybook with `WGW_APPS_E2E_NO_SERVER=1` when `pnpm dev:ui` is already up.
+- **Apps Playwright e2e** — optional local smoke (`pnpm test:apps-e2e`); not in CI. Phase 1 loads mock-tier Storybook stories (e.g. `Features/Workspace` login shell). Reuse a running Storybook with `WGW_APPS_E2E_NO_SERVER=1` when `pnpm dev:storybook` is already up.
 - **Chromatic** — optional CI job; enable with repo variable `CHROMATIC_ENABLED=true` and `CHROMATIC_PROJECT_TOKEN` secret (see `.github/workflows/ci.yml`).
 - **Full Storybook Vitest catalog** — run locally: `pnpm --filter @wgw/apps run test:storybook`.
 

@@ -6,7 +6,7 @@ import type {
   TaskListPatch,
   TaskPatch,
   TaskTaskListListResponse,
-} from "@wgw-api-generated/tasks-types";
+} from "@wgw/openapi-types/tasks-types";
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type { TaskProjectGroupOption } from "@/tasks-core/src/tasks-types";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";

@@ -10,7 +10,7 @@
 
 - `import type { … }` for type-only imports.
 - Path alias: `@/` → `packages/apps/src/` (see `tsconfig.json`).
-- OpenAPI-generated types: `@wgw-api-generated/*` — **do not hand-edit** generated files.
+- OpenAPI-generated types: `@wgw/openapi-types/*` — **do not hand-edit** generated files.
 
 ## API types
 

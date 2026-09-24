@@ -19,7 +19,7 @@ OpenAPI change → failing feature test → implement → green → done gate
 | 3 | Run tests — expect **failure** (route/service missing) |
 | 4 | Implement route → Form Request → Resource → Service ([api/layers.md](../api/layers.md)) |
 | 5 | Run **`composer done-gate`** or domain tests until green |
-| 6 | Regenerate types: `pnpm --filter @wgw/api run openapi:build-json` + `typegen` when contract changed |
+| 6 | Regenerate types: `pnpm --filter @wgw/openapi-types typegen` when the contract changed |
 
 **Red-green at the HTTP boundary:** the feature test is the executable spec; OpenAPI is the shared contract with the UI.
 

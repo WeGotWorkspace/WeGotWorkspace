@@ -14,7 +14,7 @@ import {
   type DriveAccessFilter,
 } from "@/drive-core/src/drive-access-utils";
 import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
-import type { DriveShareAtPath, DriveShareByPrincipal } from "@wgw-api-generated/drive-types";
+import type { DriveShareAtPath, DriveShareByPrincipal } from "@wgw/openapi-types/drive-types";
 
 export type AccessTreeChild = {
   name: string;

@@ -12,7 +12,7 @@ import type {
   MailMessagePatchRequest,
   MailMoveRequest,
   MailStatusResponse,
-} from "@wgw-api-generated/mail-types";
+} from "@wgw/openapi-types/mail-types";
 import type {
   SettingsMailRequest,
   SettingsStateResponse,
@@ -20,7 +20,7 @@ import type {
   SettingsUserMail,
   SettingsUserMailServer,
   SettingsUserProfile,
-} from "@wgw-api-generated/settings-types";
+} from "@wgw/openapi-types/settings-types";
 import type {
   AdminAppsSettings,
   AdminGroupCreateRequest,
@@ -39,7 +39,7 @@ import type {
   UpdateBackupItem,
   UpdateLogResponse,
   UpdateStateResponse,
-} from "@wgw-api-generated/admin-types";
+} from "@wgw/openapi-types/admin-types";
 import type {
   DriveChangeDirRequest,
   DriveCreateRequest,
@@ -58,7 +58,7 @@ import type {
   DriveSearchRequest,
   DriveUserData,
   DriveUserResponse,
-} from "@wgw-api-generated/drive-types";
+} from "@wgw/openapi-types/drive-types";
 import type {
   MeetChatRequest,
   MeetChatResponse,
@@ -72,7 +72,7 @@ import type {
   MeetSendRequest,
   MeetSendResponse,
   MeetSignalEnvelope,
-} from "@wgw-api-generated/meet-types";
+} from "@wgw/openapi-types/meet-types";
 import type {
   InstallerAction,
   InstallerActionPayload,
@@ -85,7 +85,7 @@ import type {
   InstallerRuntimeState,
   InstallerStateResponse,
   InstallerStep,
-} from "@wgw-api-generated/installer-types";
+} from "@wgw/openapi-types/installer-types";
 
 export type WgwMailStatusResponse = MailStatusResponse & {
   extImap?: boolean;

@@ -1,5 +1,5 @@
 import { describe, expect, it, expectTypeOf } from "vitest";
-import type { MailMessageListItem } from "@wgw-api-generated/mail-types";
+import type { MailMessageListItem } from "@wgw/openapi-types/mail-types";
 import {
   coerceMailListRow,
   mailFromWgwListItem,

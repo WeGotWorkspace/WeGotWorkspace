@@ -41,7 +41,7 @@ DB tests run on SQLite by default and on MySQL via `WGW_TEST_DRIVER=mysql`. CI s
 
 The PR tiers run as 2-leg GitHub Actions matrices (`api-quality` and `api-mysql`, `shard: [1, 2]`) to halve PHPUnit wall-clock. `scripts/phpunit-shard.php` resolves a phpunit config's testsuite files, sorts them, and assigns them round-robin to N shards (so adding tests rebalances automatically; full union with no overlap).
 
-- **`api-quality`** sets `DONE_GATE_SHARD=I/N`. `done-gate.php` reads it: shard 1 still runs greenfield-guard + the Architecture suite, every shard runs its slice of unit/feature/storage. `DONE_GATE_SHARD` is declared in `turbo.json` `passThroughEnv` (Turbo runs in strict env mode and would otherwise strip it). Unset locally → full gate, unchanged.
+- **`api-quality`** sets `DONE_GATE_SHARD=I/N` on the Composer process. `done-gate.php` reads it: shard 1 still runs greenfield-guard + the Architecture suite, every shard runs its slice of unit/feature/storage. Unset locally → full gate, unchanged. Turbo does not run this gate.
 - **`api-mysql`** sets `WGW_PHPUNIT_SHARD=I/N` and runs `composer test:mysql:parity:shard`, which shards the `MySQLParity` testsuite.
 - Branch protection still requires only `build`; it `needs` both quality jobs, and a `needs` on a matrix job waits for all legs. No required-check rename.
 

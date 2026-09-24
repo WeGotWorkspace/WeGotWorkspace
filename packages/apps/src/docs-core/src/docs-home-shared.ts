@@ -6,7 +6,7 @@
 import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
 import { mapDriveSharedWithMeEntries } from "@/drive-core/src/drive-shared-listing";
 import type { DriveFile } from "@/drive-core/src/drive-models";
-import type { DriveSharedWithMeEntry } from "@wgw-api-generated/drive-types";
+import type { DriveSharedWithMeEntry } from "@wgw/openapi-types/drive-types";
 import { DOCS_HOME_EXTENSIONS } from "@/docs-core/src/docs-home-constants";
 
 const DOCS_HOME_EXTENSION_SET = new Set<string>(DOCS_HOME_EXTENSIONS);

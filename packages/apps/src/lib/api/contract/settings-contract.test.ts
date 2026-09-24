@@ -1,5 +1,5 @@
 import { describe, expect, it, expectTypeOf } from "vitest";
-import type { SettingsStateResponse } from "@wgw-api-generated/settings-types";
+import type { SettingsStateResponse } from "@wgw/openapi-types/settings-types";
 import { mapWgwSettingsStateToUI } from "@/lib/api/wgw/settings";
 import type { SettingsUIData } from "@/settings-core/src/settings-types";
 import { assertFieldMappings } from "@/lib/api/contract/contract-assert";

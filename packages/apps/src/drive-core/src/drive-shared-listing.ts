@@ -1,7 +1,7 @@
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import { driveFileFromSharedWithMeEntry } from "@/drive-core/src/drive-file-utils";
-import type { DriveSharedWithMeEntry } from "@wgw-api-generated/drive-types";
+import type { DriveSharedWithMeEntry } from "@wgw/openapi-types/drive-types";
 
 export type DriveSharedListingOperations = Pick<DriveShareOperations, "listSharedWithMe">;
 

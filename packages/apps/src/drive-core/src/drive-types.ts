@@ -17,7 +17,7 @@ import type {
   DriveShareRevokeAllPublicResult,
   DriveShareUpdateRequest,
   DriveSharedWithMeEntry,
-} from "@wgw-api-generated/drive-types";
+} from "@wgw/openapi-types/drive-types";
 
 export type DriveUIData = {
   user: WgwDriveUserData;

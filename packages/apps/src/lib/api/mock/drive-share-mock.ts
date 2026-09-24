@@ -8,7 +8,7 @@ import type {
   DriveShareRevokeAllPublicResult,
   DriveShareUpdateRequest,
   DriveSharedWithMeEntry,
-} from "@wgw-api-generated/drive-types";
+} from "@wgw/openapi-types/drive-types";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
 import {

@@ -1,4 +1,4 @@
-import type { DriveShareSessionResponse } from "@wgw-api-generated/drive-types";
+import type { DriveShareSessionResponse } from "@wgw/openapi-types/drive-types";
 import { wgwApiBaseUrl, wgwErrorMessageFromBody } from "@/lib/api/wgw/http";
 
 export class ShareSessionError extends Error {
