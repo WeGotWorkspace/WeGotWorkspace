@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { WORKSPACE_PWA_ICON_CACHE_VERSION, createWorkspacePwaHead } from "@/lib/workspace-pwa-head";
-import { WORKSPACE_APP_ACCENT, WORKSPACE_APP_IDS } from "@/lib/workspace-app-icons";
+import {
+  WORKSPACE_PWA_ICON_CACHE_VERSION,
+  WORKSPACE_PWA_THEME_COLOR,
+  createWorkspacePwaHead,
+} from "@/lib/workspace-pwa-head";
+import { WORKSPACE_APP_IDS } from "@/lib/workspace-app-icons";
 
 describe("createWorkspacePwaHead", () => {
   it("links manifest and cache-busted apple-touch PNG for each workspace app", () => {
@@ -23,11 +27,11 @@ describe("createWorkspacePwaHead", () => {
     }
   });
 
-  it("sets theme-color meta from WORKSPACE_APP_ACCENT for each workspace app", () => {
-    for (const appId of WORKSPACE_APP_IDS) {
+  it("sets the sand theme-color meta for each workspace app and the home shell", () => {
+    for (const appId of [...WORKSPACE_APP_IDS, "home" as const]) {
       const head = createWorkspacePwaHead(appId);
       expect(head.meta).toEqual(
-        expect.arrayContaining([{ name: "theme-color", content: WORKSPACE_APP_ACCENT[appId] }]),
+        expect.arrayContaining([{ name: "theme-color", content: WORKSPACE_PWA_THEME_COLOR }]),
       );
     }
   });

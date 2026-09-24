@@ -5,8 +5,8 @@
   "scope": "/contacts",
   "id": "/contacts",
   "display": "standalone",
-  "background_color": "#962fa8",
-  "theme_color": "#962fa8",
+  "background_color": "#ba9689",
+  "theme_color": "#ba9689",
   "icons": [
     {
       "src": "/app-icons/contacts.svg?v=19",

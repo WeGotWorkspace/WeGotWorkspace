@@ -6,7 +6,7 @@
 
 /**
  * Calendar product shell: cream main pane + purple sidebar tint from icon marks
- * (`#962fa8`). PWA/tile accent stays pink `#ffbdc2` (WORKSPACE_APP_ACCENT);
+ * (`#962fa8`). Tile accent stays pink `#ffbdc2` (WORKSPACE_APP_ACCENT);
  * UI accent and tile may diverge — same as Meet. Primary CTAs use brand purple
  * with white glyphs. Import only from {@link CalendarWorkspace}.
  * The calendar surface itself is the vendored lit-calendar view stack
