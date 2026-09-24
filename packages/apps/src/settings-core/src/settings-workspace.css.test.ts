@@ -76,7 +76,10 @@ describe("settings workspace outline chrome", () => {
   });
 
   it("uses a light accent→cream sidebar with ink chrome (not full-bleed dark tile)", () => {
-    expect(css).toMatch(/--workspace-sidebar-mix:\s*10%/);
+    expect(css).not.toMatch(/--workspace-sidebar-mix:/);
+    expect(colorCss).toMatch(
+      /--app-sidebar-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 12%,\s*var\(--workspace-surface\)/,
+    );
     expect(css).not.toMatch(/--app-sidebar-bg:\s*var\(--workspace-accent\)\s*;/);
     expect(css).toMatch(/--app-sidebar-color:\s*var\(--color-we-got-dark\)/);
     expect(css).toMatch(/--sidebar-logo-close-button-color:\s*var\(--color-we-got-dark\)/);
@@ -95,7 +98,7 @@ describe("settings workspace outline chrome", () => {
     expect(css).not.toMatch(/--app-sidebar-item-hover-bg:/);
     expect(css).not.toMatch(/--app-sidebar-item-selected-bg:/);
     expect(colorCss).toMatch(
-      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 22%/,
+      /--app-sidebar-item-hover-bg:\s*color-mix\(\s*in oklch,\s*var\(--workspace-accent\) 12%,\s*var\(--app-sidebar-bg\)/,
     );
     expect(css).toMatch(
       /\.settings-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,

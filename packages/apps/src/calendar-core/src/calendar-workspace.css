@@ -14,7 +14,6 @@
  */
 .calendar-workspace {
   --workspace-accent: var(--color-we-got-sand);
-  --workspace-sidebar-mix: 10%;
   --calendar-muted: color-mix(in oklch, var(--color-we-got-dark) 80%, var(--color-we-got-soft));
 
   --color-emerald: var(--workspace-accent);

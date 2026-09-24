@@ -7,13 +7,12 @@
  * Settings product shell: cream main pane + light accent→cream sidebar tint
  * (Notes / Contacts / Meet-split chrome). `--workspace-accent` is the brand tile
  * (`#003311` — same hex as WORKSPACE_APP_ACCENT.settings). The lockup is a
- * white tile with Dark marks. Primary fills use accent with white fg. Sidebar mix
- * matches Calendar (10%) so the shared item wash reads the same.
+ * white tile with Dark marks. Primary fills use accent with white fg. The rail
+ * is the shared recipe in `workspace-color.css`.
  * Import only from {@link SettingsWorkspace}.
  */
 .settings-workspace {
   --workspace-accent: var(--color-we-got-sand);
-  --workspace-sidebar-mix: 10%;
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-main-bg: var(--workspace-surface);
@@ -66,8 +65,8 @@
   );
 
   /*
-   * Item washes live with Admin in `workspace-color.css` (22/28/36). A local
-   * copy here used to lose to a later import of that sheet.
+   * Item washes live in `workspace-color.css` (accent stepped into the rail).
+   * A local copy here used to lose to a later import of that sheet.
    */
 }
 
