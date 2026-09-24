@@ -9,7 +9,7 @@
   "scripts": {
     "typegen": "node scripts/typegen-openapi-types.mjs",
     "build": "node -e \"process.exit(0)\"",
-    "typegen:check": "test -z \"$(git status --porcelain -- generated)\"",
+    "typegen:check": "git status --porcelain -- generated | tee /dev/stderr | (! grep -q .)",
     "typegen:watch": "node scripts/typegen-openapi-types-watch.mjs"
   },
   "dependencies": {
