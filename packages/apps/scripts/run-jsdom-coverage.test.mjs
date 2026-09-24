@@ -1,4 +1,5 @@
-import { symlinkSync, unlinkSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -22,15 +23,16 @@ describe("coverageVitestArgs", () => {
 
   it("treats a symlinked argv path as a direct invocation", () => {
     const script = fileURLToPath(new URL("./run-jsdom.mjs", import.meta.url));
-    const link = path.join(path.dirname(script), ".run-jsdom-link.mjs");
-    symlinkSync(script, link);
+    const dir = mkdtempSync(path.join(tmpdir(), "run-jsdom-link-"));
+    const link = path.join(dir, "run-jsdom.mjs");
     try {
+      symlinkSync(script, link);
       expect(isDirectInvocation(new URL("./run-jsdom.mjs", import.meta.url).href, link)).toBe(true);
       expect(isDirectInvocation(new URL("./run-jsdom.mjs", import.meta.url).href, undefined)).toBe(
         false,
       );
     } finally {
-      unlinkSync(link);
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });
