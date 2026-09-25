@@ -1,6 +1,6 @@
 # Platform email delivery
 
-Instance outbound mail for recovery, invites, and other product sends. This is **not** the Mail app (user IMAP/SMTP). Product consumers call `App\Services\MailDelivery\MailDeliveryService::send()` — the Admin test-send button uses that same method.
+Instance outbound mail for recovery, invites, and other product sends. This is **not** the Mail app (user IMAP/SMTP). The Mail client is unshipped in v0.9; delivery is unchanged. Product consumers call `App\Services\MailDelivery\MailDeliveryService::send()` — the Admin test-send button uses that same method. See [mail/README.md](mail/README.md).
 
 Authoritative HTTP contract: `openapi/openapi.json` (`GET /admin/state` `mailDelivery`, `PUT /admin/settings`, `POST /admin/mail-delivery/test`).
 

@@ -1,0 +1,17 @@
+# Full-history Gitleaks scans (schedule and workflow_dispatch) use this file.
+# Push and pull_request scans only cover new commits and still load it.
+# Extends the default ruleset and ignores two removed minified trees whose
+# identifiers match generic-api-key (get_VKey, metaKey, React key props,
+# Monaco token names). Those paths are not in the current tree.
+
+title = "WeGotWorkspace"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Removed minified vendor and Storybook build output."
+paths = [
+  '''packages/openoffice-web/''',
+  '''packages/ui/storybook-static/''',
+]
