@@ -15,6 +15,8 @@ export function useHybridBootstrap<T>({
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<T | null>(null);
   const [successVersion, setSuccessVersion] = useState(0);
+  /** Finished snapshot. Progressive pages paint while this stays false. */
+  const [complete, setComplete] = useState(false);
 
   const applySuccess = useCallback((next: T) => {
     setData(next);
@@ -32,6 +34,7 @@ export function useHybridBootstrap<T>({
   const run = useCallback(() => {
     setPhase("loading");
     setError(null);
+    setComplete(false);
     let painted = false;
     const reportProgress = (partial: T) => {
       if (painted) {
@@ -45,11 +48,13 @@ export function useHybridBootstrap<T>({
       .then((next) => {
         if (painted) publishInPlace(next);
         else applySuccess(next);
+        setComplete(true);
       })
       .catch((e: unknown) => {
         setData(null);
         setError(e instanceof Error ? e.message : String(e));
         setPhase("error");
+        setComplete(false);
       });
   }, [applySuccess, load, publishInPlace]);
 
@@ -59,6 +64,7 @@ export function useHybridBootstrap<T>({
       if (cancelled) return;
       if (cached) {
         applySuccess(cached);
+        setComplete(true);
         if (readBrowserOnline()) {
           void load()
             .then((next) => {
@@ -84,5 +90,5 @@ export function useHybridBootstrap<T>({
     setData(updater);
   }, []);
 
-  return { phase, error, data, load: run, successVersion, patchBootstrap };
+  return { phase, error, data, load: run, successVersion, patchBootstrap, complete };
 }

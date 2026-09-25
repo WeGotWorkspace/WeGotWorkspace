@@ -31,6 +31,7 @@ vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
     load: vi.fn(),
     successVersion: 1,
     patchBootstrap: mockPatchBootstrap,
+    complete: true,
   }),
 }));
 
