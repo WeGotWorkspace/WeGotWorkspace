@@ -7,6 +7,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "calendar-event-dialog.css"), "utf8");
 const formTsx = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
 const whenTsx = readFileSync(join(here, "calendar-event-form-when.tsx"), "utf8");
+const repeatTsx = readFileSync(join(here, "calendar-event-form-recurrence.tsx"), "utf8");
 const dialogTsx = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
 const recurrenceTsx = readFileSync(join(here, "calendar-recurrence-scope-dialog.tsx"), "utf8");
 
@@ -91,12 +92,15 @@ describe("calendar event dialog shared form controls", () => {
     expect(formTsx).toMatch(/from "@\/ui\/input"/);
     expect(formTsx).toMatch(/from "@\/ui\/textarea"/);
     expect(formTsx).toMatch(/from "@\/ui\/select"/);
-    expect(formTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
+    expect(whenTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
+    expect(repeatTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
     expect(formTsx).toMatch(/from "@\/button\/src\/button"/);
     expect(formTsx).toMatch(/IconButton/);
     expect(formTsx).toMatch(/severity="danger"/);
     expect(formTsx).not.toMatch(/variant="destructive-outline"/);
     expect(formTsx).not.toMatch(/calendar-event-dialog__date-trigger/);
+    expect(whenTsx).not.toMatch(/calendar-event-dialog__date-trigger/);
+    expect(repeatTsx).not.toMatch(/calendar-event-dialog__date-trigger/);
     expect(css).not.toMatch(/calendar-event-dialog__date-trigger/);
     expect(css).not.toContain("color: #b91c1c");
   });
