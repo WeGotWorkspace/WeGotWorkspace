@@ -1,7 +1,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { FolderInput, Star, StarOff, Trash2 } from "lucide-react";
-import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
+import { runImmediateDriveBatch as queueImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import type { BeginOptimisticUpdateFn } from "@/hooks/use-entity-batch-actions";
 import {
   ensureTrashFolder,
@@ -92,15 +92,7 @@ export function useDriveBatchActions({
   );
 
   const runImmediateDriveBatch = useCallback(
-    ({
-      key,
-      toastMessage,
-      icon,
-      undoToastMessage,
-      rollback,
-      execute,
-      revert,
-    }: {
+    (args: {
       key: string;
       toastMessage: string;
       icon: React.ReactNode;
@@ -109,27 +101,7 @@ export function useDriveBatchActions({
       execute: (signal: AbortSignal) => Promise<void>;
       revert?: () => Promise<void>;
     }) => {
-      let completed = false;
-      const undo = () => {
-        rollback();
-        if (completed && operations && revert) {
-          void revert().catch(() => undefined);
-        }
-      };
-
-      runQueuedBatchAction({
-        queueMutation,
-        key,
-        toastMessage,
-        icon,
-        undoToastMessage,
-        execute: async (signal) => {
-          await execute(signal);
-          completed = true;
-        },
-        rollback: undo,
-        executeImmediately: true,
-      });
+      queueImmediateDriveBatch({ ...args, operations, queueMutation });
     },
     [operations, queueMutation],
   );
