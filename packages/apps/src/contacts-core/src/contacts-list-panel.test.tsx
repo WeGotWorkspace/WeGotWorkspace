@@ -285,20 +285,21 @@ describe("ContactsListPanel window", () => {
   const cards = Array.from({ length: 120 }, (_, index) => personAt(index));
 
   function mount(activeId: string) {
-    let scroller: HTMLDivElement | null = null;
+    const holder: { current: HTMLDivElement | null } = { current: null };
     const view = render(
       <TooltipProvider>
         <WindowHarness
           cards={cards}
           activeId={activeId}
           scrollerRef={(node) => {
-            scroller = node;
+            holder.current = node;
             if (!node) return;
             Object.defineProperty(node, "clientHeight", { configurable: true, value: 400 });
           }}
         />
       </TooltipProvider>,
     );
+    const scroller = holder.current;
     if (!scroller) throw new Error("scroller missing");
     return { scroller, ...view };
   }
