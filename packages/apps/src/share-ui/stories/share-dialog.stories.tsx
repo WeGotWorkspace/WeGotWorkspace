@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within } from "storybook/test";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
 import { ShareDialog } from "@/share-ui/share-dialog";
+import { shareLabels } from "@/share-ui/share-labels";
 import {
   createShareStoryOperations,
   SHARE_STORY_PATH,
@@ -45,7 +47,25 @@ export default meta;
 type Story = StoryObj<typeof ShareDialog>;
 
 export const PublicOn: Story = {
+  tags: ["vitest-ci"],
   render: () => <ShareDialogHarness fixture={shareStoryAtPathPublicOn} />,
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = await body.findByRole("dialog", { name: `Share ${SHARE_STORY_TITLE}` });
+    const toggle = await within(dialog).findByRole("switch", {
+      name: shareLabels.enablePublicAccess,
+    });
+    await expect(toggle).toBeEnabled();
+    await userEvent.click(toggle);
+    const confirm = await body.findByRole("alertdialog", {
+      name: shareLabels.disablePublicLinkTitle,
+    });
+    await expect(
+      within(confirm).getByRole("button", { name: shareLabels.confirmCancel }),
+    ).toBeEnabled();
+    await userEvent.click(within(confirm).getByRole("button", { name: shareLabels.confirmCancel }));
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+  },
 };
 
 export const PublicPasswordOn: Story = {
