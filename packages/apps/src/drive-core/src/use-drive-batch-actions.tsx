@@ -1,5 +1,6 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { FolderInput, Star, StarOff, Trash2 } from "lucide-react";
+import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
 import { runImmediateDriveBatch as queueImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import type { BeginOptimisticUpdateFn } from "@/hooks/use-entity-batch-actions";
