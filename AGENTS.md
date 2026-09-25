@@ -10,6 +10,8 @@
 
 **English-only:** Specs, plans, docs, GitHub issues (including Goals), and issue/PR comments are **English** even when the user writes Dutch. [english-only.md](.agents/skills/developer/english-only.md).
 
+**File size:** A new counted source file over 400 lines is a merge block unless its baseline entry carries an approved reason. A baselined file is a merge block when its line count grows, or when it shrinks and the stored integer was not lowered.
+
 ## Start here
 
 Load **[developer](.agents/skills/developer/)** for dev layout, skill routing, multitask handoffs, and links to package-specific depth. **Policy vs CI:** [.agents/POLICY.md](.agents/POLICY.md). **Done verification:** [developer/done-checklist.md](.agents/skills/developer/done-checklist.md); MCP tools: [developer/mcp-verification.md](.agents/skills/developer/mcp-verification.md); issue AC: [verify-issue](.agents/skills/verify-issue/).

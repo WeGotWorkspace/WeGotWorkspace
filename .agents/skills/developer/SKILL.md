@@ -46,6 +46,7 @@ See [dev-environment](../dev-environment/SKILL.md) for commands, URLs, and troub
 5. **Hook structure is a handoff gate** — when a feature adds multiple concerns to one hook, run a structure pass before handoff (split per [clean-code/smells.md](../clean-code/smells.md) React hooks section; collab layout in [collab-hooks.md](../workspace/collab-hooks.md)). Not optional nit — [code-review](../code-review/SKILL.md) blocks merge-ready work that violates thresholds without a documented exception.
 6. **New top-level SPA routes need API allowlist** — adding `/share`, `/tasks`, or any new first path segment in `wegotworkspace-routes.tsx` requires the same prefix on `UiStaticServer` + `FrontRoutingTest` (otherwise production falls through to SabreDAV). Architecture test `SpaShellRouteAllowlistTest` enforces the contract; Playwright e2e stays out of done gates.
 7. **English-only artifacts** — specs, plans, docs, GitHub issues/Goals/comments are English even when the user writes Dutch → [english-only.md](english-only.md)
+8. **Counted source files stay at or under 400 lines** — A new counted source file over 400 lines is a merge block unless its baseline entry carries an approved reason. A baselined file is a merge block when its line count grows, or when it shrinks and the stored integer was not lowered. Hook files still follow the stricter ~200-line review block.
 
 ## Multitask
 
