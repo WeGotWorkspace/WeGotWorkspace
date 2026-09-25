@@ -9,6 +9,7 @@ const formTsx = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
 const whenTsx = readFileSync(join(here, "calendar-event-form-when.tsx"), "utf8");
 const repeatTsx = readFileSync(join(here, "calendar-event-form-recurrence.tsx"), "utf8");
 const footerTsx = readFileSync(join(here, "calendar-event-form-footer.tsx"), "utf8");
+const secondaryTsx = readFileSync(join(here, "calendar-event-form-secondary.tsx"), "utf8");
 const dialogTsx = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
 const recurrenceTsx = readFileSync(join(here, "calendar-recurrence-scope-dialog.tsx"), "utf8");
 
@@ -91,7 +92,7 @@ describe("calendar event dialog title row", () => {
 describe("calendar event dialog shared form controls", () => {
   it("uses shared Input, Textarea, Select, LocaleDatePicker, and Button masters", () => {
     expect(formTsx).toMatch(/from "@\/ui\/input"/);
-    expect(formTsx).toMatch(/from "@\/ui\/textarea"/);
+    expect(secondaryTsx).toMatch(/from "@\/ui\/textarea"/);
     expect(formTsx).toMatch(/from "@\/ui\/select"/);
     expect(whenTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
     expect(repeatTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
@@ -114,14 +115,15 @@ describe("calendar event dialog shared form controls", () => {
   });
 
   it("stacks Invitees→Alarms→Description via display:contents secondary so fields share parent gap", () => {
-    expect(formTsx).toMatch(/calendar-event-dialog__secondary/);
-    expect(formTsx).toMatch(/calendar-event-dialog__secondary-start/);
-    expect(formTsx).toMatch(/calendar-event-dialog__secondary-end/);
+    expect(secondaryTsx).toMatch(/calendar-event-dialog__secondary/);
+    expect(secondaryTsx).toMatch(/calendar-event-dialog__secondary-start/);
+    expect(secondaryTsx).toMatch(/calendar-event-dialog__secondary-end/);
     expect(css).toMatch(/\.calendar-event-dialog__secondary[\s\S]*display:\s*contents/);
     expect(css).toMatch(/\.calendar-event-dialog__secondary-start[\s\S]*display:\s*contents/);
     expect(css).toMatch(/\.calendar-event-dialog__secondary-end[\s\S]*display:\s*contents/);
     expect(css).not.toMatch(/\.calendar-event-dialog__secondary \{[\s\S]*grid-cols-2/);
     expect(formTsx).not.toMatch(/calendar-event-dialog__divider/);
+    expect(secondaryTsx).not.toMatch(/calendar-event-dialog__divider/);
     expect(css).not.toMatch(/calendar-event-dialog__divider/);
     expect(formTsx).toMatch(/labelMode="icon"/);
     expect(formTsx).toMatch(/calendar-event-dialog__field-group--place/);

@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Bell, CircleDot, Link2, MapPin, StickyNote, Type, Users } from "lucide-react";
+import { CircleDot, Link2, MapPin, Type } from "lucide-react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import { Input } from "@/ui/input";
-import { Textarea } from "@/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import {
@@ -16,8 +15,7 @@ import {
   type CalendarInvitee,
 } from "@/calendar-core/src/calendar-attendees";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
-import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
-import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
+import { CalendarEventFormSecondary } from "@/calendar-core/src/calendar-event-form-secondary";
 import { CalendarMeetChannelEmailDialog } from "@/calendar-core/src/calendar-meet-channel-email-dialog";
 import { useCalendarMeetChannelEmailCollision } from "@/calendar-core/src/use-calendar-meet-channel-email";
 import { calendarRespondStatus } from "@/calendar-core/src/calendar-rsvp-actions";
@@ -385,72 +383,26 @@ export function CalendarEventForm({
             </FieldLabelRow>
           )}
 
-          <div className="calendar-event-dialog__secondary">
-            <div className="calendar-event-dialog__secondary-start">
-              {layout?.hideInvitees ? null : (
-                <CalendarInviteesCard
-                  className="calendar-event-dialog__field calendar-event-dialog__field--invitees"
-                  presentation="field"
-                  fieldIcon={fieldIcon(<Users className="size-3.5" aria-hidden />)}
-                  attendees={form.attendees}
-                  invitees={invitees}
-                  contactCards={contactCards}
-                  onRefreshContactCards={onRefreshContactCards}
-                  labels={labels}
-                  busy={busy}
-                  readOnly={readOnly}
-                  canSubmitEmail={canSubmitEmail}
-                  sessionEmail={sessionEmail}
-                  controlSize={controlSize}
-                  meetEmailGuestHint={
-                    showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
-                  }
-                  onChange={(attendees) => set("attendees", attendees)}
-                />
-              )}
-            </div>
-
-            <div className="calendar-event-dialog__secondary-end">
-              {layout?.hideAlarms ? null : (
-                <FieldLabelRow
-                  className="calendar-event-dialog__field calendar-event-dialog__field--alarms"
-                  label={labels.eventAlarmsLabel}
-                  labelMode="icon"
-                  icon={fieldIcon(<Bell className="size-3.5" aria-hidden />)}
-                >
-                  <div className="calendar-event-dialog__alarms-field">
-                    <CalendarAlarmsRows
-                      alerts={form.alerts}
-                      labels={labels}
-                      disabled={fieldsDisabled}
-                      readOnly={readOnly}
-                      controlSize={controlSize}
-                      onChange={(alerts) => set("alerts", alerts)}
-                    />
-                  </div>
-                </FieldLabelRow>
-              )}
-
-              {layout?.hideNotes ? null : (
-                <FieldLabelRow
-                  className="calendar-event-dialog__field calendar-event-dialog__field--notes"
-                  label={labels.eventNotesLabel}
-                  labelMode="icon"
-                  icon={fieldIcon(<StickyNote className="size-3.5" aria-hidden />)}
-                >
-                  <Textarea
-                    size={controlSize}
-                    value={form.description}
-                    onChange={(event) => set("description", event.target.value)}
-                    placeholder={labels.eventNotesLabel}
-                    aria-label={labels.eventNotesLabel}
-                    disabled={fieldsDisabled}
-                    rows={3}
-                  />
-                </FieldLabelRow>
-              )}
-            </div>
-          </div>
+          <CalendarEventFormSecondary
+            form={form}
+            labels={labels}
+            invitees={invitees}
+            contactCards={contactCards}
+            onRefreshContactCards={onRefreshContactCards}
+            busy={busy}
+            readOnly={readOnly}
+            fieldsDisabled={fieldsDisabled}
+            canSubmitEmail={canSubmitEmail}
+            sessionEmail={sessionEmail}
+            controlSize={controlSize}
+            meetEmailGuestHint={
+              showEmailGuestHint ? labels.eventMeetEmailGuestsNoAccessHint : undefined
+            }
+            hideInvitees={layout?.hideInvitees}
+            hideAlarms={layout?.hideAlarms}
+            hideNotes={layout?.hideNotes}
+            onFieldChange={set}
+          />
         </div>
 
         <CalendarEventFormFooter
