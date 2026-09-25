@@ -123,15 +123,10 @@ final class CalendarEventRepository
                         $matches[] = $event;
                     }
                 } catch (ApiHttpException $e) {
-                    if (! VObjectPayloadGuard::isPayloadBoundError($e)) {
-                        throw $e;
+                    if (VObjectPayloadGuard::isPayloadBoundError($e)) {
+                        continue;
                     }
-                    // Query keeps the over-cap id so total/position stay in sync with get→notFound.
-                    $matches[] = [
-                        'id' => CalendarEventMapper::eventIdFromUri((string) $object->uri),
-                        'title' => '',
-                        'start' => null,
-                    ];
+                    throw $e;
                 }
             }
         }

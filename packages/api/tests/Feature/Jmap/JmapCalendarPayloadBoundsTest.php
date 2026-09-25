@@ -55,7 +55,7 @@ final class JmapCalendarPayloadBoundsTest extends WgwDatabaseTestCase
         );
     }
 
-    public function test_mixed_calendar_query_returns_over_cap_id_get_puts_it_in_not_found(): void
+    public function test_mixed_calendar_query_returns_only_normal_id_get_puts_over_cap_in_not_found(): void
     {
         $normalId = $this->seedEventViaPdo('bob', 'normal.ics', $this->sampleIcs('Normal'));
 
@@ -71,8 +71,8 @@ final class JmapCalendarPayloadBoundsTest extends WgwDatabaseTestCase
         ])->assertOk();
         $ids = $query->json('methodResponses.0.1.ids');
         $this->assertIsArray($ids);
-        $this->assertContains($normalId, $ids);
-        $this->assertContains($overCapId, $ids);
+        $this->assertSame([$normalId], $ids);
+        $this->assertNotContains($overCapId, $ids);
 
         $get = $this->jmap([
             ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => [$normalId, $overCapId]], 'g0'],
@@ -86,5 +86,29 @@ final class JmapCalendarPayloadBoundsTest extends WgwDatabaseTestCase
         $this->assertCount(1, $list);
         $this->assertSame($normalId, $list[0]['id'] ?? null);
         $this->assertSame([$overCapId], $notFound);
+    }
+
+    public function test_calendar_query_title_filter_does_not_surface_over_cap_object(): void
+    {
+        $normalId = $this->seedEventViaPdo('bob', 'normal-title.ics', $this->sampleIcs('FindMe'));
+
+        $chunks = [];
+        for ($i = 0; $i < VObjectPayloadGuard::MAX_ICALENDAR_COMPONENTS + 1; $i++) {
+            $chunks[] = "BEGIN:VEVENT\r\nUID:over-title-{$i}\r\nSUMMARY:FindMe\r\nDTSTART:20260701T090000Z\r\nDTEND:20260701T100000Z\r\nEND:VEVENT";
+        }
+        $overCapIcs = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n".implode("\r\n", $chunks)."\r\nEND:VCALENDAR\r\n";
+        $overCapId = $this->seedEventViaPdo('bob', 'over-cap-title.ics', $overCapIcs);
+
+        $query = $this->jmap([
+            ['CalendarEvent/query', [
+                'accountId' => 'bob',
+                'filter' => ['inCalendars' => ['default'], 'title' => 'FindMe'],
+            ], 'q0'],
+        ])->assertOk();
+
+        $ids = $query->json('methodResponses.0.1.ids');
+        $this->assertIsArray($ids);
+        $this->assertSame([$normalId], $ids);
+        $this->assertNotContains($overCapId, $ids);
     }
 }

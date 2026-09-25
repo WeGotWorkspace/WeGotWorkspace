@@ -71,13 +71,9 @@ final class JmapSetErrors
         $legacyType = is_string($shape['type'] ?? null) ? $shape['type'] : 'serverFail';
         $description = is_string($shape['description'] ?? null) ? $shape['description'] : '';
 
-        if ($legacyType === 'payload_too_large'
-            || $legacyType === 'tooLarge'
-            || ($legacyType === 'bad_request' && (
-                str_contains($description, 'maximum allowed component count')
-                || str_contains($description, 'maximum allowed property count')
-                || str_contains($description, 'maximum allowed size')
-            ))) {
+        if ($legacyType === VObjectPayloadGuard::ERROR_PAYLOAD_TOO_LARGE
+            || $legacyType === VObjectPayloadGuard::ERROR_PAYLOAD_TOO_COMPLEX
+            || $legacyType === 'tooLarge') {
             return [
                 'type' => 'tooLarge',
                 'description' => $description,

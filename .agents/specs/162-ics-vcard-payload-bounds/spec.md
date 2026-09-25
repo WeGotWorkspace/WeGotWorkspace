@@ -8,7 +8,7 @@ Technical translation of GitHub issue #162. Parent context: JMAP REST (#132 / ep
 
 Reject oversized or overly complex ICS/vCard **objects** before they can tie up a worker. Whole-calendar and whole-address-book imports stay partial: one bad object is reported in `errors[]`; siblings can still be stored.
 
-`VObjectPayloadGuard` keeps the per-object defaults: **512 KiB** (`524288`) for one vCard or one ICS object, **64** combined nested `VEVENT`+`VTODO`+`VALARM` components (excluding `VTIMEZONE` / `STANDARD` / `DAYLIGHT`), **512** vCard properties. Single-object REST writes stay HTTP **413** `payload_too_large` / **400** `bad_request`. Warning log `vobject_payload_rejected` on write paths omits the raw blob.
+`VObjectPayloadGuard` keeps the per-object defaults: **512 KiB** (`524288`) for one vCard or one ICS object, **64** combined nested `VEVENT`+`VTODO`+`VALARM` components (excluding `VTIMEZONE` / `STANDARD` / `DAYLIGHT`), **512** vCard properties. Single-object REST writes stay HTTP **413** `payload_too_large` / **400** `payload_too_complex`. Warning log `vobject_payload_rejected` on write paths omits the raw blob.
 
 ## Non-goals
 
@@ -19,7 +19,7 @@ Reject oversized or overly complex ICS/vCard **objects** before they can tie up 
 - HTTP 413 from `POST /jmap`
 - Notes, chat, docs, or blob upload limits
 - Renaming `post_too_large` or changing Drive-upload error handling
-- Filtering JMAP `query` or any query response that reports `total`
+- Changing the Tasks REST `description` FormRequest max (`8192`)
 
 ## Affected packages
 
@@ -43,12 +43,12 @@ A Google or Apple calendar export often has hundreds of `VEVENT`s. Applying the 
 
 ### JMAP SetError is `tooLarge`
 
-Map `payload_too_large` and the guard’s component/property `bad_request` to RFC 8620 `tooLarge`, keeping the guard message in `description`. `POST /jmap` stays HTTP 200. Not `invalidProperties` / `invalidArguments`.
+Map `payload_too_large` and `payload_too_complex` to RFC 8620 `tooLarge`, keeping the guard message in `description`. Match on those stable error codes (not English message substrings). `POST /jmap` stays HTTP 200. Not `invalidProperties` / `invalidArguments`.
 
 ### Reading an over-cap stored object must not blank the collection
 
 - **JMAP `get`:** over-cap id → `notFound`; other ids returned; log at **debug**
-- **JMAP `query`:** unchanged (still returns the over-cap id). Same for REST queries with `total` (e.g. `POST /tasks/items/query`)
+- **JMAP `query` / REST query:** omit the over-cap object (same as list) — do not insert a stub id
 - **REST list without `total`:** `GET /tasks/items` omits the over-cap task, stays 200, log at **debug**
 - **REST single GET:** **413** `payload_too_large` (stored object, not request body)
 
@@ -60,7 +60,7 @@ Write paths (import and set): `vobject_payload_rejected` at **warning**. Read pa
 
 - Nested `VALARM` under `VEVENT`/`VTODO` counts toward the 64 cap; `VTIMEZONE` with `STANDARD`/`DAYLIGHT` does not
 - `getComponents($name)` currently ignores the name and triple-counts direct children while missing nested alarms — replace with a nested walk
-- Mixed calendar: seed the over-cap object via `seedEventViaPdo` (not REST/JMAP); query returns both ids; get returns the normal object and `notFound` for the over-cap id
+- Mixed calendar: seed the over-cap object via `seedEventViaPdo` (not REST/JMAP); query returns only the normal id; get returns the normal object and `notFound` for the over-cap id
 - Read-path debug hides an over-cap object from admins while CalDAV clients still sync it
 
 ## Follow-up (not this issue)

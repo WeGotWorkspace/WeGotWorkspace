@@ -40,7 +40,7 @@ final class TaskPatchRequest extends FormRequest
     {
         return [
             'title' => ['sometimes', 'string', 'min:1', 'max:4096'],
-            'description' => ['sometimes', 'nullable', 'string', 'max:524288'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:8192'],
             'start' => ['sometimes', 'nullable', 'string'],
             'due' => ['sometimes', 'nullable', 'string'],
             'completed' => ['sometimes', 'nullable', 'string'],

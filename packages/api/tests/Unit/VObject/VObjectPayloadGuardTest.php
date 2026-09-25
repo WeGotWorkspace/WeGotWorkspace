@@ -37,7 +37,7 @@ final class VObjectPayloadGuardTest extends TestCase
             $this->fail('Expected ApiHttpException');
         } catch (ApiHttpException $e) {
             $this->assertSame(413, $e->getStatusCode());
-            $this->assertSame('payload_too_large', $e->errorCode());
+            $this->assertSame(VObjectPayloadGuard::ERROR_PAYLOAD_TOO_LARGE, $e->errorCode());
         }
     }
 
@@ -63,7 +63,7 @@ final class VObjectPayloadGuardTest extends TestCase
             $this->fail('Expected ApiHttpException');
         } catch (ApiHttpException $e) {
             $this->assertSame(413, $e->getStatusCode());
-            $this->assertSame('payload_too_large', $e->errorCode());
+            $this->assertSame(VObjectPayloadGuard::ERROR_PAYLOAD_TOO_LARGE, $e->errorCode());
         }
     }
 
@@ -96,7 +96,8 @@ final class VObjectPayloadGuardTest extends TestCase
             $this->fail('Expected ApiHttpException');
         } catch (ApiHttpException $e) {
             $this->assertSame(400, $e->getStatusCode());
-            $this->assertSame('bad_request', $e->errorCode());
+            $this->assertSame(VObjectPayloadGuard::ERROR_PAYLOAD_TOO_COMPLEX, $e->errorCode());
+            $this->assertTrue(VObjectPayloadGuard::isPayloadBoundError($e));
         }
     }
 
@@ -146,7 +147,8 @@ final class VObjectPayloadGuardTest extends TestCase
             $this->fail('Expected ApiHttpException');
         } catch (ApiHttpException $e) {
             $this->assertSame(400, $e->getStatusCode());
-            $this->assertSame('bad_request', $e->errorCode());
+            $this->assertSame(VObjectPayloadGuard::ERROR_PAYLOAD_TOO_COMPLEX, $e->errorCode());
+            $this->assertTrue(VObjectPayloadGuard::isPayloadBoundError($e));
         }
     }
 }

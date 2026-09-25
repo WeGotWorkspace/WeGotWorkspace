@@ -26,6 +26,12 @@ final class VObjectPayloadGuard
 
     public const MAX_VCARD_PROPERTIES = 512;
 
+    /** Stable error code for component/property complexity caps (HTTP 400). */
+    public const ERROR_PAYLOAD_TOO_COMPLEX = 'payload_too_complex';
+
+    /** Stable error code for serialized size caps (HTTP 413). */
+    public const ERROR_PAYLOAD_TOO_LARGE = 'payload_too_large';
+
     public function readVCard(string $vcard, string $domain = 'contacts', string $logLevel = 'warning'): VCard
     {
         $this->assertVCardSize($vcard, $domain, $logLevel);
@@ -97,7 +103,7 @@ final class VObjectPayloadGuard
         throw new ApiHttpException(
             413,
             'vCard payload exceeds the maximum allowed size of '.self::MAX_VCARD_BYTES.' bytes.',
-            'payload_too_large',
+            self::ERROR_PAYLOAD_TOO_LARGE,
         );
     }
 
@@ -113,24 +119,16 @@ final class VObjectPayloadGuard
         throw new ApiHttpException(
             413,
             'iCalendar payload exceeds the maximum allowed size of '.self::MAX_ICS_BYTES.' bytes.',
-            'payload_too_large',
+            self::ERROR_PAYLOAD_TOO_LARGE,
         );
     }
 
     public static function isPayloadBoundError(ApiHttpException $e): bool
     {
-        if ($e->errorCode() === 'payload_too_large') {
-            return true;
-        }
+        $code = $e->errorCode();
 
-        if ($e->errorCode() !== 'bad_request') {
-            return false;
-        }
-
-        $message = $e->getMessage();
-
-        return str_contains($message, 'maximum allowed component count')
-            || str_contains($message, 'maximum allowed property count');
+        return $code === self::ERROR_PAYLOAD_TOO_LARGE
+            || $code === self::ERROR_PAYLOAD_TOO_COMPLEX;
     }
 
     private function assertVCardPropertyCount(VCard $document, string $domain, string $logLevel): void
@@ -145,7 +143,7 @@ final class VObjectPayloadGuard
         throw new ApiHttpException(
             400,
             'vCard exceeds the maximum allowed property count of '.self::MAX_VCARD_PROPERTIES.'.',
-            'bad_request',
+            self::ERROR_PAYLOAD_TOO_COMPLEX,
         );
     }
 
@@ -161,7 +159,7 @@ final class VObjectPayloadGuard
         throw new ApiHttpException(
             400,
             'iCalendar exceeds the maximum allowed component count of '.self::MAX_ICALENDAR_COMPONENTS.'.',
-            'bad_request',
+            self::ERROR_PAYLOAD_TOO_COMPLEX,
         );
     }
 

@@ -488,7 +488,7 @@
       },
       "code": {
         "type": "string",
-        "description": "Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, bad_request)."
+        "description": "Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex)."
       }
     },
     "additionalProperties": false

@@ -54,5 +54,5 @@ Same as [spec.md](./spec.md).
 
 - Unit: byte boundaries; combined 64 including nested alarm; VTIMEZONE not counted; 512 properties
 - REST: single-object writes/GET 413; list 200 omitting over-cap; calendar/contact import body and per-item errors
-- JMAP: set HTTP 200 `tooLarge`; query returns over-cap id; get `notFound` for that id
+- JMAP: set HTTP 200 `tooLarge`; query omits over-cap id; get `notFound` for that id
 - `post_too_large` tests unchanged

@@ -34,19 +34,20 @@ final class JmapRestPayloadBoundsTest extends WgwDatabaseTestCase
             ->assertJsonPath('code', 'payload_too_large');
     }
 
-    public function test_oversized_task_create_returns_payload_too_large(): void
+    public function test_oversized_task_description_create_returns_validation_error(): void
     {
+        // FormRequest max:8192; ValidationException is rendered as HTTP 400 bad_request.
         $this->withBearer($this->userBearerToken())
             ->postJson('/api/v1/tasks/items', [
                 'taskListIds' => [InboxTaskListProvisioner::URI => true],
                 'title' => 'Huge',
-                'description' => str_repeat('x', VObjectPayloadGuard::MAX_ICS_BYTES),
+                'description' => str_repeat('x', 8193),
             ])
-            ->assertStatus(413)
-            ->assertJsonPath('code', 'payload_too_large');
+            ->assertStatus(400)
+            ->assertJsonPath('code', 'bad_request');
     }
 
-    public function test_oversized_task_put_returns_payload_too_large(): void
+    public function test_oversized_task_description_put_returns_validation_error(): void
     {
         $taskId = $this->seedTaskViaPdo('bob', 'put-me.ics', $this->sampleTodoIcs('Before'));
         $url = '/api/v1/tasks/items/'.$taskId;
@@ -55,23 +56,23 @@ final class JmapRestPayloadBoundsTest extends WgwDatabaseTestCase
             ->putJson($url, [
                 'taskListIds' => [InboxTaskListProvisioner::URI => true],
                 'title' => 'After',
-                'description' => str_repeat('x', VObjectPayloadGuard::MAX_ICS_BYTES),
+                'description' => str_repeat('x', 8193),
             ], $this->withIfMatch($this->fetchEtagFromGet($url)))
-            ->assertStatus(413)
-            ->assertJsonPath('code', 'payload_too_large');
+            ->assertStatus(400)
+            ->assertJsonPath('code', 'bad_request');
     }
 
-    public function test_oversized_task_patch_returns_payload_too_large(): void
+    public function test_oversized_task_description_patch_returns_validation_error(): void
     {
         $taskId = $this->seedTaskViaPdo('bob', 'patch-me.ics', $this->sampleTodoIcs('Before'));
         $url = '/api/v1/tasks/items/'.$taskId;
 
         $this->withBearer($this->userBearerToken())
             ->patchJson($url, [
-                'description' => str_repeat('x', VObjectPayloadGuard::MAX_ICS_BYTES),
+                'description' => str_repeat('x', 8193),
             ], $this->withIfMatch($this->fetchEtagFromGet($url)))
-            ->assertStatus(413)
-            ->assertJsonPath('code', 'payload_too_large');
+            ->assertStatus(400)
+            ->assertJsonPath('code', 'bad_request');
     }
 
     public function test_task_list_omits_over_cap_task_and_stays_200(): void
@@ -87,6 +88,26 @@ final class JmapRestPayloadBoundsTest extends WgwDatabaseTestCase
             ->assertOk();
 
         $ids = array_column($response->json('list'), 'id');
+        $this->assertContains($normalId, $ids);
+        $this->assertNotContains($overCapId, $ids);
+    }
+
+    public function test_task_query_omits_over_cap_task(): void
+    {
+        $normalId = $this->seedTaskViaPdo('bob', 'normal-query.ics', $this->sampleTodoIcs('Normal'));
+
+        $padding = str_repeat('x', VObjectPayloadGuard::MAX_ICS_BYTES);
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VTODO\r\nUID:huge-query\r\nSUMMARY:Huge\r\nDESCRIPTION:{$padding}\r\nEND:VTODO\r\nEND:VCALENDAR\r\n";
+        $overCapId = $this->seedTaskViaPdo('bob', 'huge-query.ics', $ics);
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/tasks/items/query', [
+                'filter' => ['inTaskList' => InboxTaskListProvisioner::URI],
+            ])
+            ->assertOk();
+
+        $ids = $response->json('ids');
+        $this->assertIsArray($ids);
         $this->assertContains($normalId, $ids);
         $this->assertNotContains($overCapId, $ids);
     }

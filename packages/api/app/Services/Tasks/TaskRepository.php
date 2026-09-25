@@ -109,18 +109,10 @@ final class TaskRepository
                     }
                 }
             } catch (ApiHttpException $e) {
-                if (! VObjectPayloadGuard::isPayloadBoundError($e)) {
-                    throw $e;
-                }
-                // Query keeps the over-cap id so total stays aligned with get/list isolation.
-                $id = IcsJmapTaskConverter::taskIdFromUri((string) $object->uri);
-                if ($uidFilter !== null) {
+                if (VObjectPayloadGuard::isPayloadBoundError($e)) {
                     continue;
                 }
-                $total++;
-                if ($limit === null || count($ids) < $limit) {
-                    $ids[] = $id;
-                }
+                throw $e;
             }
         }
 

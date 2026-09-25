@@ -4301,7 +4301,7 @@ export interface paths {
         put?: never;
         /**
          * Create a task
-         * @description Per-object iCalendar caps: 512 KiB serialized size; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 bad_request.
+         * @description Per-object iCalendar caps: 512 KiB serialized size; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 payload_too_complex.
          */
         post: {
             parameters: {
@@ -4345,7 +4345,7 @@ export interface paths {
         };
         /**
          * Fetch a task
-         * @description HTTP 413 payload_too_large means the stored iCalendar object exceeds the per-object cap (512 KiB or 64 components), not that the HTTP request body was too large.
+         * @description HTTP 413 payload_too_large means the stored iCalendar object exceeds the per-object size cap (512 KiB), not that the HTTP request body was too large. Component/property complexity uses 400 payload_too_complex.
          */
         get: {
             parameters: {
@@ -4374,7 +4374,7 @@ export interface paths {
         };
         /**
          * Replace a task
-         * @description Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 bad_request.
+         * @description Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 payload_too_complex.
          */
         put: {
             parameters: {
@@ -4439,7 +4439,7 @@ export interface paths {
         head?: never;
         /**
          * Partially update a task
-         * @description Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 bad_request.
+         * @description Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 payload_too_complex.
          */
         patch: {
             parameters: {
@@ -5298,7 +5298,7 @@ export interface paths {
         put?: never;
         /**
          * JMAP batch API endpoint
-         * @description RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as ["error", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits. ICS/vCard payload bounds: per-object 512 KiB; 64 combined nested VEVENT+VTODO+VALARM (excluding VTIMEZONE); 512 vCard properties. CalendarEvent/set and ContactCard/set map payload_too_large and guard component/property bad_request to SetError type tooLarge (description keeps the guard message). CalendarEvent/get and ContactCard/get place an over-cap id in notFound and still return other ids; query methods still return the over-cap id.
+         * @description RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as ["error", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits. ICS/vCard payload bounds: per-object 512 KiB; 64 combined nested VEVENT+VTODO+VALARM (excluding VTIMEZONE); 512 vCard properties. CalendarEvent/set and ContactCard/set map payload_too_large and payload_too_complex to SetError type tooLarge (description keeps the guard message). CalendarEvent/get and ContactCard/get place an over-cap id in notFound and still return other ids; query methods omit the over-cap id.
          */
         post: {
             parameters: {
@@ -6069,7 +6069,7 @@ export interface paths {
         put?: never;
         /**
          * Import calendar events from an ICS file
-         * @description Import ICS text. Whole-request body is capped at 512 KiB (MAX_ICS_BYTES); over that → 413 payload_too_large. Raising the calendar import body is a follow-up (MAX_ICS_IMPORT_BYTES). After the body passes, each UID group is checked for 512 KiB serialized size and 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Over-cap groups appear in errors[] with code; siblings still import. JMAP CalendarEvent/get places an over-cap stored id in notFound while CalendarEvent/query still returns that id. SetError for oversize/complexity is tooLarge.
+         * @description Import ICS text. Whole-request body is capped at 512 KiB (MAX_ICS_BYTES); over that → 413 payload_too_large. Raising the calendar import body is a follow-up (MAX_ICS_IMPORT_BYTES). After the body passes, each UID group is checked for 512 KiB serialized size and 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Over-cap groups appear in errors[] with code; siblings still import. JMAP CalendarEvent/get places an over-cap stored id in notFound; CalendarEvent/query omits that id. SetError for oversize/complexity is tooLarge (codes payload_too_large / payload_too_complex).
          */
         post: {
             parameters: {
@@ -10284,7 +10284,7 @@ export interface components {
         ContactCardImportError: {
             index: number;
             message: string;
-            /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, bad_request). */
+            /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex). */
             code?: string;
         };
         /** @description REST response for POST /contacts/cards/import. Per-card payload or property-cap failures appear in errors[] with code; siblings may still be in list. */
@@ -11038,7 +11038,7 @@ export interface components {
         CalendarEventImportError: {
             index: number;
             message: string;
-            /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, bad_request). */
+            /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex). */
             code?: string;
         };
         /** @description REST response for POST /calendars/events/import. Per-UID-group payload or component-cap failures appear in errors[] with code; siblings may still be in list. */

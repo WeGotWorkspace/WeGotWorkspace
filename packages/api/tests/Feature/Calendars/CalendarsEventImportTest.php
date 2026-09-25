@@ -70,7 +70,7 @@ final class CalendarsEventImportTest extends WgwDatabaseTestCase
         $this->assertCount(1, $response->json('list'));
         $this->assertSame('Good sibling', $response->json('list.0.title'));
         $this->assertCount(1, $response->json('errors'));
-        $this->assertSame('bad_request', $response->json('errors.0.code'));
+        $this->assertSame('payload_too_complex', $response->json('errors.0.code'));
         $this->assertStringContainsString(
             (string) VObjectPayloadGuard::MAX_ICALENDAR_COMPONENTS,
             (string) $response->json('errors.0.message'),
