@@ -30,6 +30,8 @@ Or inside `packages/apps`:
 pnpm run test:done-gate
 ```
 
+`test:contract`, `test:unit`, `test:jsdom`, and `test:storybook:ci` run as Turbo tasks (`turbo run <task> --filter=@wgw/apps`). Typecheck and story coverage stay package scripts.
+
 Local profile runs, in order:
 
 1. **`typecheck`** — `tsc -p tsconfig.typecheck.json`
