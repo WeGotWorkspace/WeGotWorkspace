@@ -108,16 +108,27 @@ function done_gate_summary(array $results, bool $passed): void
 
 $step = 1;
 if ($contractOnly) {
-    $totalSteps = 2;
+    $totalSteps = 3;
 } elseif ($full) {
-    $totalSteps = 4;
+    $totalSteps = 5;
 } elseif (! $runContractSteps) {
     $totalSteps = 1;
 } else {
-    $totalSteps = 3;
+    $totalSteps = 4;
 }
 
 if ($runContractSteps) {
+    done_gate_step("Step {$step}/{$totalSteps}: file-size ratchet");
+    $ratchetScript = dirname($apiRoot).'/tools/file-size-ratchet.mjs';
+    $ratchetCode = done_gate_run(['node', $ratchetScript, 'check', 'packages/api/app']);
+    $results[] = ['label' => 'file-size ratchet', 'ok' => $ratchetCode === 0];
+    $step++;
+
+    if ($ratchetCode !== 0) {
+        done_gate_summary($results, false);
+        exit($ratchetCode);
+    }
+
     done_gate_step("Step {$step}/{$totalSteps}: greenfield-guard");
     $guardCode = done_gate_run(['php', $apiRoot.'/scripts/greenfield-guard.php']);
     $results[] = ['label' => 'greenfield-guard', 'ok' => $guardCode === 0];

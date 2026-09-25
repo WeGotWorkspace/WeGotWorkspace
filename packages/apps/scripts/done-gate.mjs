@@ -10,6 +10,10 @@ const fullVitest = process.env.APPS_DONE_GATE_FULL === "1";
 
 /** @type {list<{ label: string, cmd: string[], env?: Record<string, string>, ciOnly?: boolean }>} */
 const steps = [
+  {
+    label: "File-size ratchet",
+    cmd: ["node", "../../tools/file-size-ratchet.mjs", "check", "packages/apps/src"],
+  },
   { label: "Typecheck", cmd: ["pnpm", "typecheck"] },
   { label: "UI ↔ OpenAPI contract (Vitest)", cmd: ["pnpm", "test:contract"] },
   { label: "Vitest (unit)", cmd: ["pnpm", "test:unit"], ciOnly: true },

@@ -28,6 +28,7 @@ Lightweight gate before handoff or PR — not a second copy of domain skills.
 ## Blockers vs nits
 
 - **Block:** spec drift unresolved (`DRIFT:` from [verify-issue](../verify-issue/SKILL.md)), unmet issue acceptance criteria, implementation outside spec non-goals, policy violation in new code, missing tests for new behavior, secrets, legacy API PHP, live HTTP in panes, Dutch prose in specs/plans/docs or in GitHub text the agent wrote ([english-only.md](../developer/english-only.md)).
+- **Block (file size):** A new counted source file over 400 lines is a merge block unless its baseline entry carries an approved reason. A baselined file is a merge block when its line count grows, or when it shrinks and the stored integer was not lowered. See [clean-code/smells.md](../clean-code/smells.md).
 - **Block (apps hooks):** structural smells in **new or changed** hook files per [clean-code/smells.md](../clean-code/smells.md) React hooks section:
   - Hook body > ~200 lines, or > 4 `useEffect`s, or > 2 unrelated concerns (Yjs, TipTap, DOM, draft UI, etc.) → must split or document an exception in the PR/handoff (link a follow-up issue only with explicit user approval).
   - State + ref mirror for the same value without an explanatory comment → refactor before handoff.

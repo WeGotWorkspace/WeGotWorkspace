@@ -34,6 +34,9 @@ jobs:
       - name: Build and typecheck MCP server
         run: pnpm exec turbo run build typecheck --filter=@wgw/mcp-server
 
+      - name: File-size ratchet
+        run: node tools/file-size-ratchet.mjs check tools/mcp-server/src
+
   api-quality:
     if: >-
       github.event_name != 'push' ||
