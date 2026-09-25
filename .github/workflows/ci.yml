@@ -87,8 +87,9 @@ jobs:
           cp packages/api/.env.example packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
 
-      # Shard 1 also runs greenfield-guard + the Architecture suite; later
-      # shards run only their round-robin slice of unit/feature/storage tests.
+      # Shard 1 also runs greenfield-guard, PHPStan level 1, and the
+      # Architecture suite; later shards run only their round-robin slice
+      # of unit/feature/storage tests.
       - name: API quality gate (shard ${{ matrix.shard }}/2)
         env:
           DONE_GATE_SHARD: ${{ matrix.shard }}/2

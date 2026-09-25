@@ -7,7 +7,7 @@ declare(strict_types=1);
  * API done gate with labeled steps and a final summary.
  *
  * Usage:
- *   php scripts/done-gate.php           # guard + architecture + full PHPUnit
+ *   php scripts/done-gate.php           # guard + phpstan + architecture + full PHPUnit
  *   php scripts/done-gate.php --contract
  *   php scripts/done-gate.php --full      # + MySQL test driver
  *   php scripts/done-gate.php --verbose     # testdox on full suite
@@ -23,7 +23,8 @@ $verbose = in_array('--verbose', $argv, true) || getenv('DONE_GATE_VERBOSE') ===
 /*
  * Optional CI sharding: DONE_GATE_SHARD=I/N runs only shard I's slice of the
  * unit/feature/storage test files (round-robin by sorted path). Shard 1 also
- * runs greenfield-guard + the Architecture suite; later shards run tests only.
+ * runs greenfield-guard, PHPStan (level 1, committed baseline), and the
+ * Architecture suite; later shards run tests only.
  * Unset (local default) keeps the full gate behaviour below.
  */
 $shardSpec = getenv('DONE_GATE_SHARD');
@@ -108,13 +109,13 @@ function done_gate_summary(array $results, bool $passed): void
 
 $step = 1;
 if ($contractOnly) {
-    $totalSteps = 2;
+    $totalSteps = 3;
 } elseif ($full) {
-    $totalSteps = 4;
+    $totalSteps = 4 + ($runContractSteps ? 1 : 0);
 } elseif (! $runContractSteps) {
     $totalSteps = 1;
 } else {
-    $totalSteps = 3;
+    $totalSteps = 4;
 }
 
 if ($runContractSteps) {
@@ -126,6 +127,27 @@ if ($runContractSteps) {
     if ($guardCode !== 0) {
         done_gate_summary($results, false);
         exit($guardCode);
+    }
+
+    done_gate_step("Step {$step}/{$totalSteps}: PHPStan (level 1, committed baseline)");
+    $phpstan = $apiRoot.'/vendor/bin/phpstan';
+    if (! is_file($phpstan)) {
+        fwrite(STDERR, "done-gate: vendor/bin/phpstan missing — run: composer install\n");
+        $results[] = ['label' => 'phpstan', 'ok' => false, 'detail' => 'level 1 + baseline'];
+        done_gate_summary($results, false);
+        exit(127);
+    }
+    $phpstanCode = done_gate_run(['composer', '--working-dir', $apiRoot, 'phpstan']);
+    $results[] = [
+        'label' => 'phpstan',
+        'ok' => $phpstanCode === 0,
+        'detail' => 'level 1 + baseline',
+    ];
+    $step++;
+
+    if ($phpstanCode !== 0) {
+        done_gate_summary($results, false);
+        exit($phpstanCode);
     }
 
     done_gate_step("Step {$step}/{$totalSteps}: architecture (OpenAPI ↔ routes, role matrix, guards)");

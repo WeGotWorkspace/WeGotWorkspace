@@ -23,6 +23,7 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",
+        "larastan/larastan": "^3.0",
         "laravel/pint": "^1.18",
         "phpunit/phpunit": "^11.0",
         "psalm/plugin-laravel": "^3.16",
@@ -55,6 +56,7 @@
         "test:mysql:parity:shard": "WGW_TEST_DRIVER=mysql php scripts/phpunit-shard.php --config=phpunit-mysql-parity.xml",
         "test:architecture": "phpunit -c phpunit.xml --testsuite Architecture",
         "greenfield:guard": "@lint",
+        "phpstan": "vendor/bin/phpstan analyse -c phpstan.neon.dist --memory-limit=1G --no-progress",
         "done-gate:contract": "php scripts/done-gate.php --contract",
         "done-gate": "php scripts/done-gate.php",
         "done-gate:full": "php scripts/done-gate.php --full",

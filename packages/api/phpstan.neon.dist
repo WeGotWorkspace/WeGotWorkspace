@@ -1,0 +1,23 @@
+# PHPStan level 1 (Larastan) for packages/api.
+#
+# The committed baseline (phpstan-baseline.neon) may only shrink.
+# Do not regenerate it to clear new findings. CI fails on any finding
+# that is not already in the baseline. When a finding is fixed, delete
+# its baseline entry in that pull request (remove the entry, or lower
+# its count). Do not add a script that rewrites the baseline.
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 1
+    paths:
+        - app
+        - bootstrap
+        - config
+        - database
+        - routes
+        - scripts
+    excludePaths:
+        - bootstrap/cache/*
+    reportUnmatchedIgnoredErrors: true
