@@ -9,6 +9,7 @@ use App\Models\CalendarObject;
 use App\Services\Calendars\CalendarEventMapper;
 use App\Services\Calendars\CalendarEventRepository;
 use App\Services\Jmap\JmapCapabilities;
+use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\CalendarsTestFixtures;
@@ -42,6 +43,38 @@ final class CalendarsEventImportTest extends WgwDatabaseTestCase
         $this->importIcs('')->assertStatus(400);
         $this->importIcs('not an ics file')->assertStatus(400);
         $this->importIcs($this->vtodoOnlyIcs())->assertStatus(400)->assertJsonPath('code', 'bad_request');
+    }
+
+    public function test_import_body_over_max_ics_bytes_returns_payload_too_large(): void
+    {
+        $body = str_repeat('A', VObjectPayloadGuard::MAX_ICS_BYTES + 1);
+
+        $this->importIcs($body)
+            ->assertStatus(413)
+            ->assertJsonPath('code', 'payload_too_large');
+    }
+
+    public function test_import_uid_group_over_component_cap_is_per_item_error_siblings_import(): void
+    {
+        $good = "BEGIN:VEVENT\r\nUID:good-import\r\nSUMMARY:Good sibling\r\nDTSTART:20260701T090000Z\r\nDTEND:20260701T100000Z\r\nEND:VEVENT";
+        $chunks = [];
+        for ($i = 0; $i < VObjectPayloadGuard::MAX_ICALENDAR_COMPONENTS + 1; $i++) {
+            $rid = sprintf('202607%02dT090000Z', ($i % 28) + 1);
+            $chunks[] = "BEGIN:VEVENT\r\nUID:over-cap-uid\r\nRECURRENCE-ID:{$rid}\r\nSUMMARY:O{$i}\r\nDTSTART:{$rid}\r\nDTEND:20260701T100000Z\r\nEND:VEVENT";
+        }
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n{$good}\r\n".implode("\r\n", $chunks)."\r\nEND:VCALENDAR\r\n";
+        $this->assertLessThanOrEqual(VObjectPayloadGuard::MAX_ICS_BYTES, strlen($ics));
+
+        $response = $this->importIcs($ics)->assertCreated();
+
+        $this->assertCount(1, $response->json('list'));
+        $this->assertSame('Good sibling', $response->json('list.0.title'));
+        $this->assertCount(1, $response->json('errors'));
+        $this->assertSame('payload_too_complex', $response->json('errors.0.code'));
+        $this->assertStringContainsString(
+            (string) VObjectPayloadGuard::MAX_ICALENDAR_COMPONENTS,
+            (string) $response->json('errors.0.message'),
+        );
     }
 
     public function test_mixed_vevent_and_vtodo_imports_events_only(): void

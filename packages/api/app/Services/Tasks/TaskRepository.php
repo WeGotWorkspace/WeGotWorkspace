@@ -18,7 +18,9 @@ use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Services\Tasks\Conversion\ConversionSupport;
 use App\Services\Tasks\Conversion\IcsJmapTaskConverter;
+use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
@@ -40,6 +42,8 @@ final class TaskRepository
      */
     public function list(string $username, string $taskListId): array
     {
+        Log::withContext(['principal' => $username]);
+
         $instance = $this->taskLists->findAccessibleTaskList($username, $taskListId);
         if ($instance === null) {
             throw new ApiHttpException(404, 'Task list not found.', 'not_found');
@@ -53,8 +57,15 @@ final class TaskRepository
 
         $tasks = [];
         foreach ($objects as $object) {
-            foreach ($this->mapper->toTasks($object, $taskListId) as $task) {
-                $tasks[] = $task;
+            try {
+                foreach ($this->mapper->toTasks($object, $taskListId) as $task) {
+                    $tasks[] = $task;
+                }
+            } catch (ApiHttpException $e) {
+                if (VObjectPayloadGuard::isPayloadBoundError($e)) {
+                    continue;
+                }
+                throw $e;
             }
         }
 
@@ -83,18 +94,25 @@ final class TaskRepository
         $ids = [];
         $total = 0;
         foreach ($objects as $object) {
-            foreach ($this->mapper->toTasks($object, $taskListId) as $task) {
-                if ($uidFilter !== null && ($task['uid'] ?? null) !== $uidFilter) {
+            try {
+                foreach ($this->mapper->toTasks($object, $taskListId) as $task) {
+                    if ($uidFilter !== null && ($task['uid'] ?? null) !== $uidFilter) {
+                        continue;
+                    }
+                    $id = (string) ($task['id'] ?? '');
+                    if ($id === '') {
+                        continue;
+                    }
+                    $total++;
+                    if ($limit === null || count($ids) < $limit) {
+                        $ids[] = $id;
+                    }
+                }
+            } catch (ApiHttpException $e) {
+                if (VObjectPayloadGuard::isPayloadBoundError($e)) {
                     continue;
                 }
-                $id = (string) ($task['id'] ?? '');
-                if ($id === '') {
-                    continue;
-                }
-                $total++;
-                if ($limit === null || count($ids) < $limit) {
-                    $ids[] = $id;
-                }
+                throw $e;
             }
         }
 

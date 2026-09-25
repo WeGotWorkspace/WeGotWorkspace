@@ -10,6 +10,8 @@ use App\Services\Contacts\ContactCardRepository;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\Methods\Concerns\HandlesGetArguments;
+use App\Services\VObject\VObjectPayloadGuard;
+use Illuminate\Support\Facades\Log;
 
 /**
  * ContactCard/get (RFC 9610 §3.4): no multi-id repository method exists, so
@@ -46,6 +48,8 @@ final class ContactCardGetMethod implements JmapMethodInterface
 
     public function handle(string $username, array $args): array
     {
+        Log::withContext(['principal' => $username]);
+
         $tokens = $this->books->syncTokens($username);
         $state = JmapAccountStateCodec::compose($tokens);
 
@@ -64,7 +68,7 @@ final class ContactCardGetMethod implements JmapMethodInterface
                 try {
                     $list[] = $this->cards->show($username, $id);
                 } catch (ApiHttpException $e) {
-                    if ($e->getStatusCode() === 404) {
+                    if ($e->getStatusCode() === 404 || VObjectPayloadGuard::isPayloadBoundError($e)) {
                         $notFound[] = $id;
 
                         continue;

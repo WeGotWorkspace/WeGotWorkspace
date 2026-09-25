@@ -25,7 +25,7 @@ final class VEventToJmapEventConverter
      */
     public function convertAll(string $ics): array
     {
-        $document = $this->guard->readICalendar($ics);
+        $document = $this->guard->readICalendar($ics, 'calendars', 'debug');
 
         $events = [];
         foreach (RecurrenceOverrideSupport::groupRecurrenceSeries(
