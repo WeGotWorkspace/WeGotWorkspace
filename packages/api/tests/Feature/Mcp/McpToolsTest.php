@@ -94,7 +94,7 @@ final class McpToolsTest extends WgwDatabaseTestCase
 
         WorkspaceServer::actingAs($bob, 'api')
             ->tool(DriveReadTool::class, ['path' => '/users/carol/private.txt'])
-            ->assertHasErrors(['Access denied']);
+            ->assertHasErrors(['Access denied for this path.']);
     }
 
     public function test_drive_read_returns_text_preview_for_own_file(): void
@@ -168,6 +168,7 @@ final class McpToolsTest extends WgwDatabaseTestCase
 
         $response = $tool->handle(new Request([]));
         $this->assertTrue($response->isError());
+        $this->assertSame('This operation is not available through MCP.', (string) $response->content());
         $this->assertSame(1, McpAuditEvent::query()->where('tool', 'admin_wipe')->where('outcome', 'denied')->count());
     }
 
@@ -253,6 +254,38 @@ final class McpToolsTest extends WgwDatabaseTestCase
                 $tool->description(),
                 $class,
             );
+        }
+    }
+
+    public function test_catalog_tools_match_token_scopes(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+
+        foreach (app(McpToolCatalog::class)->enabledTools() as $class) {
+            /** @var WgwMcpTool $tool */
+            $tool = app($class);
+            Passport::actingAs($user, [], 'api', $client);
+            $denied = $tool->handle(new Request([]));
+            $text = (string) $denied->content();
+            if (! str_starts_with($text, 'Missing OAuth scope: ')) {
+                $this->assertFalse($denied->isError(), $class);
+
+                continue;
+            }
+
+            $required = substr($text, strlen('Missing OAuth scope: '));
+            $this->assertContains($required, McpScopes::allRecognizedIds(), $class);
+
+            Passport::actingAs($user, [$required], 'api', $client);
+            try {
+                $allowed = $tool->handle(new Request([]));
+            } catch (\Throwable $e) {
+                $this->assertStringNotContainsString('Missing OAuth scope', $e->getMessage(), $class);
+
+                continue;
+            }
+            $this->assertStringNotContainsString('Missing OAuth scope', (string) $allowed->content(), $class);
         }
     }
 
