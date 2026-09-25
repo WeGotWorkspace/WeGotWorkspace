@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Bell, CircleDot, Link2, MapPin, StickyNote, Trash2, Type, Users } from "lucide-react";
+import { Bell, CircleDot, Link2, MapPin, StickyNote, Type, Users } from "lucide-react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
-import { Button, IconButton } from "@/button/src/button";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import { Input } from "@/ui/input";
@@ -21,11 +20,8 @@ import { CalendarAlarmsRows } from "@/calendar-core/src/calendar-alarms-card";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
 import { CalendarMeetChannelEmailDialog } from "@/calendar-core/src/calendar-meet-channel-email-dialog";
 import { useCalendarMeetChannelEmailCollision } from "@/calendar-core/src/use-calendar-meet-channel-email";
-import {
-  calendarRespondStatus,
-  CalendarRsvpActions,
-  CalendarRsvpSelect,
-} from "@/calendar-core/src/calendar-rsvp-actions";
+import { calendarRespondStatus } from "@/calendar-core/src/calendar-rsvp-actions";
+import { CalendarEventFormFooter } from "@/calendar-core/src/calendar-event-form-footer";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
@@ -457,65 +453,26 @@ export function CalendarEventForm({
           </div>
         </div>
 
-        <footer className="calendar-event-dialog__footer">
-          {showInvitationRsvp && onRsvp ? (
-            <div className="calendar-event-dialog__invitation-rsvp">
-              <CalendarRsvpActions
-                className="calendar-event-dialog__rsvp-actions"
-                currentStatus={inviteeRsvp ?? undefined}
-                labels={labels}
-                busy={busy}
-                size="sm"
-                showLabels
-                onRespond={(status) =>
-                  onRsvp(status, status === "declined" ? undefined : draftCalendarId || undefined)
-                }
-              />
-            </div>
-          ) : null}
-          {showInviteeRsvp ? (
-            <CalendarRsvpSelect
-              className="calendar-event-dialog__rsvp"
-              value={draftRsvp}
-              labels={labels}
-              busy={busy}
-              onChange={setDraftRsvp}
-            />
-          ) : null}
-          {mode === "edit" && onDelete && !readOnly ? (
-            <IconButton
-              type="button"
-              variant="outline"
-              severity="danger"
-              size={controlSize}
-              className="calendar-event-dialog__delete"
-              icon={<Trash2 className="size-3.5" aria-hidden />}
-              label={labels.delete}
-              onClick={onDelete}
-              disabled={busy}
-            />
-          ) : null}
-          {showSaveCancel ? (
-            <div className="calendar-event-dialog__footer-end">
-              <Button
-                type="button"
-                variant="outline"
-                size={controlSize}
-                label={labels.cancel}
-                onClick={dismiss}
-                disabled={busy}
-              />
-              <Button
-                type="submit"
-                size={controlSize}
-                label={saveLabel}
-                disabled={
-                  showInviteeRsvp ? !draftRsvp || busy : !valid || busy || canSubmit === false
-                }
-              />
-            </div>
-          ) : null}
-        </footer>
+        <CalendarEventFormFooter
+          mode={mode}
+          labels={labels}
+          busy={busy}
+          controlSize={controlSize}
+          readOnly={readOnly}
+          valid={valid}
+          canSubmit={canSubmit}
+          saveLabel={saveLabel}
+          showInvitationRsvp={showInvitationRsvp}
+          showInviteeRsvp={showInviteeRsvp}
+          showSaveCancel={showSaveCancel}
+          inviteeRsvp={inviteeRsvp}
+          draftRsvp={draftRsvp}
+          draftCalendarId={draftCalendarId}
+          onDraftRsvpChange={setDraftRsvp}
+          onRsvp={onRsvp}
+          onDelete={onDelete}
+          onDismiss={dismiss}
+        />
       </form>
       <CalendarMeetChannelEmailDialog
         open={collisionOpen}

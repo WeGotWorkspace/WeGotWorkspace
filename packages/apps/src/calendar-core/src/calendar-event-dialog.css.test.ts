@@ -8,6 +8,7 @@ const css = readFileSync(join(here, "calendar-event-dialog.css"), "utf8");
 const formTsx = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
 const whenTsx = readFileSync(join(here, "calendar-event-form-when.tsx"), "utf8");
 const repeatTsx = readFileSync(join(here, "calendar-event-form-recurrence.tsx"), "utf8");
+const footerTsx = readFileSync(join(here, "calendar-event-form-footer.tsx"), "utf8");
 const dialogTsx = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
 const recurrenceTsx = readFileSync(join(here, "calendar-recurrence-scope-dialog.tsx"), "utf8");
 
@@ -94,9 +95,10 @@ describe("calendar event dialog shared form controls", () => {
     expect(formTsx).toMatch(/from "@\/ui\/select"/);
     expect(whenTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
     expect(repeatTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
-    expect(formTsx).toMatch(/from "@\/button\/src\/button"/);
-    expect(formTsx).toMatch(/IconButton/);
-    expect(formTsx).toMatch(/severity="danger"/);
+    expect(footerTsx).toMatch(/from "@\/button\/src\/button"/);
+    expect(footerTsx).toMatch(/IconButton/);
+    expect(footerTsx).toMatch(/severity="danger"/);
+    expect(footerTsx).not.toMatch(/variant="destructive-outline"/);
     expect(formTsx).not.toMatch(/variant="destructive-outline"/);
     expect(formTsx).not.toMatch(/calendar-event-dialog__date-trigger/);
     expect(whenTsx).not.toMatch(/calendar-event-dialog__date-trigger/);
@@ -208,15 +210,15 @@ describe("calendar event dialog Meet field", () => {
 describe("calendar event dialog invitation footer", () => {
   it("end-aligns RSVP actions and omits the series hint in invitation mode", () => {
     expect(formTsx).toContain('mode === "invitation"');
-    expect(formTsx).toContain("calendar-event-dialog__invitation-rsvp");
-    expect(formTsx).toContain("CalendarRsvpActions");
-    expect(formTsx).toMatch(
+    expect(footerTsx).toContain("calendar-event-dialog__invitation-rsvp");
+    expect(footerTsx).toContain("CalendarRsvpActions");
+    expect(footerTsx).toMatch(
       /calendar-event-dialog__invitation-rsvp[\s\S]*CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/,
     );
-    expect(formTsx).not.toMatch(
+    expect(footerTsx).not.toMatch(
       /calendar-event-dialog__invitation-rsvp[\s\S]*CalendarRsvpActions[\s\S]*size="xs"/,
     );
-    expect(formTsx).not.toMatch(/calendar-event-dialog__invitation-rsvp[\s\S]*rsvpSeriesHint/);
+    expect(footerTsx).not.toMatch(/calendar-event-dialog__invitation-rsvp[\s\S]*rsvpSeriesHint/);
     expect(css).toMatch(
       /\.calendar-dialog-surface \.calendar-event-dialog__invitation-rsvp \{[\s\S]*justify-end/,
     );
