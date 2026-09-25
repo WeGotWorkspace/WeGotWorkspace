@@ -7,6 +7,12 @@ import {
 /** Chrome / account apps — listed below a divider, separate from product apps. */
 export const APP_SWITCH_UTILITY_APP_IDS = new Set<WorkspaceAppId>(["admin", "settings"]);
 
+/**
+ * Kept on {@link WORKSPACE_APP_IDS} so icons, branding, and mail-core stories compile.
+ * Filtered here so the home grid and app switcher do not offer an unshipped client.
+ */
+const UNSHIPPED_WORKSPACE_APP_IDS = new Set<WorkspaceAppId>(["mail"]);
+
 export type AppSwitchMenuApp = {
   id: WorkspaceAppId;
   label: string;
@@ -17,7 +23,9 @@ function byDisplayName(a: AppSwitchMenuApp, b: AppSwitchMenuApp): number {
   return a.label.localeCompare(b.label);
 }
 
-export const APP_SWITCH_WORKSPACE_APPS: AppSwitchMenuApp[] = WORKSPACE_APP_IDS.map((id) => ({
+export const APP_SWITCH_WORKSPACE_APPS: AppSwitchMenuApp[] = WORKSPACE_APP_IDS.filter(
+  (id) => !UNSHIPPED_WORKSPACE_APP_IDS.has(id),
+).map((id) => ({
   id,
   label: workspaceAppLabel(id),
   to: `/${id}` as const,

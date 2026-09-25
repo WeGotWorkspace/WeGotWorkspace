@@ -8,7 +8,11 @@ Please report vulnerabilities against the latest [release](https://github.com/We
 
 **Do not** open a public issue for a security report.
 
-Email **[legal@wegotworkspace.org](mailto:legal@wegotworkspace.org)**. Include:
+Email **[legal@wegotworkspace.org](mailto:legal@wegotworkspace.org)**.
+
+Or use **Report a vulnerability** on the repository's [Security tab](https://github.com/WeGotWorkspace/wegotworkspace/security/advisories/new) (GitHub private vulnerability reporting). Same response windows.
+
+Include:
 
 - A description of the issue and its impact
 - Steps to reproduce, or a proof of concept
@@ -16,7 +20,7 @@ Email **[legal@wegotworkspace.org](mailto:legal@wegotworkspace.org)**. Include:
 
 We aim to acknowledge within **7 days** and to say whether we accept the report within **14 days**.
 
-A finding that is already public may use the [DAST finding](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=dast-finding.yml) template. A finding that is not yet public uses the email path above. Do not open a public issue for it.
+A finding that is already public may use the [DAST finding](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=dast-finding.yml) template. A finding that is not yet public uses one of the private paths above. Do not open a public issue for it.
 
 ## What we run in CI
 
@@ -26,6 +30,8 @@ CodeQL, Semgrep, Gitleaks, and Trivy run from [`.github/workflows/security.yml`]
 - on pushes to `main`, except a commit whose message starts with `chore(release):`
 - nightly at 03:00 UTC (`0 3 * * *`)
 - on a manual `workflow_dispatch`
+
+Push and pull request Gitleaks jobs scan only the new commits. Nightly and manual runs scan the full history. [`.gitleaks.toml`](.gitleaks.toml) extends the default rules and ignores two removed minified trees (`packages/openoffice-web/` and `packages/ui/storybook-static/`) that match `generic-api-key` on code identifiers such as `get_VKey`, `metaKey`, and React `key` props.
 
 Dependabot opens weekly version-update pull requests for `packages/api/composer.lock`, the root `pnpm-lock.yaml`, and GitHub Actions ([`.github/dependabot.yml`](.github/dependabot.yml)). Patch and minor updates are grouped. Major updates each open their own pull request.
 
