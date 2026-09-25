@@ -53,7 +53,6 @@ packages/apps/src/docs-core/src/use-docs-home-list.ts	414	grandfathered
 packages/apps/src/drive-core/src/drive-browser.tsx	1054	grandfathered
 packages/apps/src/drive-core/src/drive-folder-picker.tsx	497	grandfathered
 packages/apps/src/drive-core/src/drive-workspace.tsx	480	grandfathered
-packages/apps/src/drive-core/src/use-drive-batch-actions.tsx	401	grandfathered
 packages/apps/src/drive-core/src/use-drive-mutations.tsx	583	grandfathered
 packages/apps/src/drive-core/src/use-drive-shell.tsx	519	grandfathered
 packages/apps/src/lib/api/mock/meet-chat-fixtures.ts	536	grandfathered
