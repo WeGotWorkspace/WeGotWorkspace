@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Bell,
-  CalendarDays,
   CircleDot,
-  Globe,
   Link2,
   MapPin,
   Repeat,
   StickyNote,
-  Sun,
   Trash2,
   Type,
   Users,
@@ -22,7 +19,6 @@ import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import { Input } from "@/ui/input";
 import { LocaleDatePicker } from "@/ui/locale-date-picker";
 import { Textarea } from "@/ui/textarea";
-import { Switch } from "@/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import {
@@ -57,12 +53,8 @@ import {
   type EditableRecurrencePresetId,
   type RecurrencePresetId,
 } from "@/calendar-core/src/calendar-recurrence-presets";
-import {
-  eventTimeZoneFromSelectValue,
-  eventTimeZoneOptions,
-  eventTimeZoneSelectValue,
-} from "@/calendar-core/src/calendar-timezones";
 import { CalendarEventCalendarPicker } from "@/calendar-core/src/calendar-event-calendar-picker";
+import { CalendarEventFormWhen } from "@/calendar-core/src/calendar-event-form-when";
 import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collection-write";
 import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
@@ -217,11 +209,6 @@ export function CalendarEventForm({
       label: recurrencePresetOptionLabel(id, form.startDate, locale),
     }));
   }, [form.startDate, locale, recurrenceLocked]);
-
-  const timeZoneOptions = useMemo(
-    () => eventTimeZoneOptions(locale, labels.eventTimeZoneLocalLabel, form.timeZone),
-    [form.timeZone, labels.eventTimeZoneLocalLabel, locale],
-  );
 
   const {
     commitForm,
@@ -390,125 +377,14 @@ export function CalendarEventForm({
           </div>
 
           {layout?.hideWhen ? null : (
-            <div className="calendar-event-dialog__field-group calendar-event-dialog__field-group--when">
-              <FieldLabelRow
-                className="calendar-event-dialog__field calendar-event-dialog__field--starts"
-                label={labels.eventStartLabel}
-                labelMode="icon"
-                icon={fieldIcon(<CalendarDays className="size-3.5" aria-hidden />)}
-              >
-                <div className="calendar-event-dialog__datetime">
-                  <LocaleDatePicker
-                    value={form.startDate}
-                    locale={locale}
-                    size={controlSize}
-                    label={labels.eventStartLabel}
-                    onChange={(next) => set("startDate", next)}
-                    disabled={fieldsDisabled}
-                  />
-                  <div
-                    className="calendar-event-dialog__time-slot"
-                    aria-hidden={form.allDay || undefined}
-                  >
-                    {!form.allDay ? (
-                      <Input
-                        type="time"
-                        size={controlSize}
-                        lang={locale}
-                        value={form.startTime}
-                        aria-label={`${labels.eventStartLabel} time`}
-                        disabled={fieldsDisabled}
-                        onChange={(event) => set("startTime", event.target.value)}
-                      />
-                    ) : null}
-                  </div>
-                </div>
-              </FieldLabelRow>
-              <FieldLabelRow
-                className="calendar-event-dialog__field calendar-event-dialog__field--ends"
-                label={labels.eventEndLabel}
-                labelMode="icon"
-                icon={fieldIcon(<CalendarDays className="size-3.5" aria-hidden />)}
-              >
-                <div className="calendar-event-dialog__datetime">
-                  <LocaleDatePicker
-                    value={form.endDate}
-                    locale={locale}
-                    size={controlSize}
-                    label={labels.eventEndLabel}
-                    onChange={(next) => set("endDate", next)}
-                    disabled={fieldsDisabled}
-                  />
-                  <div
-                    className="calendar-event-dialog__time-slot"
-                    aria-hidden={form.allDay || undefined}
-                  >
-                    {!form.allDay ? (
-                      <Input
-                        type="time"
-                        size={controlSize}
-                        lang={locale}
-                        value={form.endTime}
-                        aria-label={`${labels.eventEndLabel} time`}
-                        disabled={fieldsDisabled}
-                        onChange={(event) => set("endTime", event.target.value)}
-                      />
-                    ) : null}
-                  </div>
-                </div>
-              </FieldLabelRow>
-              <div className="calendar-event-dialog__when-meta">
-                <FieldLabelRow
-                  className="calendar-event-dialog__field calendar-event-dialog__field--all-day"
-                  label={labels.eventAllDayLabel}
-                  labelMode="icon"
-                  icon={fieldIcon(<Sun className="size-3.5" aria-hidden />)}
-                >
-                  <div className="calendar-event-dialog__all-day">
-                    <Switch
-                      checked={form.allDay}
-                      onCheckedChange={(checked) => set("allDay", checked === true)}
-                      aria-label={labels.eventAllDayLabel}
-                      disabled={fieldsDisabled}
-                    />
-                    <span className="calendar-event-dialog__all-day-caption" aria-hidden>
-                      {labels.eventAllDayLabel}
-                    </span>
-                  </div>
-                </FieldLabelRow>
-                {!form.allDay ? (
-                  <FieldLabelRow
-                    className="calendar-event-dialog__field calendar-event-dialog__field--timezone"
-                    label={labels.eventTimeZoneLabel}
-                    labelMode="icon"
-                    icon={fieldIcon(<Globe className="size-3.5" aria-hidden />)}
-                  >
-                    <Select
-                      value={eventTimeZoneSelectValue(form.timeZone)}
-                      onValueChange={(value) =>
-                        set("timeZone", eventTimeZoneFromSelectValue(value))
-                      }
-                      disabled={fieldsDisabled}
-                    >
-                      <SelectTrigger
-                        size={controlSize}
-                        className="calendar-event-dialog__timezone-trigger"
-                        aria-label={labels.eventTimeZoneLabel}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeZoneOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FieldLabelRow>
-                ) : null}
-              </div>
-            </div>
+            <CalendarEventFormWhen
+              form={form}
+              labels={labels}
+              locale={locale}
+              controlSize={controlSize}
+              disabled={fieldsDisabled}
+              onFieldChange={set}
+            />
           )}
 
           {layout?.hideRecurrence ? null : (

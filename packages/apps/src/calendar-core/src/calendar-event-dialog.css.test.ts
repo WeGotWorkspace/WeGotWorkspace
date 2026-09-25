@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "calendar-event-dialog.css"), "utf8");
 const formTsx = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
+const whenTsx = readFileSync(join(here, "calendar-event-form-when.tsx"), "utf8");
 const dialogTsx = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
 const recurrenceTsx = readFileSync(join(here, "calendar-recurrence-scope-dialog.tsx"), "utf8");
 
@@ -39,7 +40,7 @@ describe("calendar event dialog CSS ownership", () => {
     expect(css).toMatch(/--calendar-event-field-gap:\s*1rem/);
     expect(css).toMatch(/--calendar-event-field-group-gap:\s*0\.5rem/);
     expect(css).toMatch(/row-gap:\s*var\(--calendar-event-field-gap\)/);
-    expect(formTsx).toMatch(/!form\.allDay \? \(/);
+    expect(whenTsx).toMatch(/!form\.allDay \? \(/);
   });
 
   it("keeps a compact card below the mobile breakpoint (no full-bleed sheet)", () => {
@@ -63,8 +64,8 @@ describe("calendar event dialog CSS ownership", () => {
   });
 
   it("puts all-day and timezone on one row with a visible all-day caption", () => {
-    expect(formTsx).toMatch(/calendar-event-dialog__when-meta/);
-    expect(formTsx).toMatch(/calendar-event-dialog__all-day-caption/);
+    expect(whenTsx).toMatch(/calendar-event-dialog__when-meta/);
+    expect(whenTsx).toMatch(/calendar-event-dialog__all-day-caption/);
     expect(css).toMatch(/\.calendar-event-dialog__when-meta/);
     expect(css).toMatch(/calendar-event-dialog__all-day-caption/);
   });
@@ -118,7 +119,7 @@ describe("calendar event dialog shared form controls", () => {
     expect(css).not.toMatch(/calendar-event-dialog__divider/);
     expect(formTsx).toMatch(/labelMode="icon"/);
     expect(formTsx).toMatch(/calendar-event-dialog__field-group--place/);
-    expect(formTsx).toMatch(/calendar-event-dialog__field-group--when/);
+    expect(whenTsx).toMatch(/calendar-event-dialog__field-group--when/);
     expect(css).toMatch(/\.calendar-event-dialog__field-group/);
     expect(css).toMatch(
       /\.calendar-event-dialog__field-group \{[\s\S]*gap:\s*var\(--calendar-event-field-group-gap\)/,
@@ -126,11 +127,11 @@ describe("calendar event dialog shared form controls", () => {
   });
 
   it("reserves datetime time slots so all-day toggle does not reflow neighbors", () => {
-    expect(formTsx).toMatch(/calendar-event-dialog__time-slot/);
+    expect(whenTsx).toMatch(/calendar-event-dialog__time-slot/);
     expect(css).toMatch(/calendar-event-dialog__time-slot/);
     expect(css).toMatch(/--calendar-event-time-slot-width/);
     expect(formTsx).not.toMatch(/calendar-event-dialog__field--inert/);
-    expect(formTsx).toMatch(/field--timezone/);
+    expect(whenTsx).toMatch(/field--timezone/);
   });
 
   it("vertically centers all-day + timezone on a shared stretched row height", () => {
