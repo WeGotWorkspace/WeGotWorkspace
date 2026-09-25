@@ -6,6 +6,12 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "calendar-event-dialog.css"), "utf8");
 const formTsx = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
+const whenTsx = readFileSync(join(here, "calendar-event-form-when.tsx"), "utf8");
+const repeatTsx = readFileSync(join(here, "calendar-event-form-recurrence.tsx"), "utf8");
+const footerTsx = readFileSync(join(here, "calendar-event-form-footer.tsx"), "utf8");
+const secondaryTsx = readFileSync(join(here, "calendar-event-form-secondary.tsx"), "utf8");
+const titleTsx = readFileSync(join(here, "calendar-event-form-title.tsx"), "utf8");
+const showAsTsx = readFileSync(join(here, "calendar-event-form-show-as.tsx"), "utf8");
 const dialogTsx = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
 const recurrenceTsx = readFileSync(join(here, "calendar-recurrence-scope-dialog.tsx"), "utf8");
 
@@ -39,7 +45,7 @@ describe("calendar event dialog CSS ownership", () => {
     expect(css).toMatch(/--calendar-event-field-gap:\s*1rem/);
     expect(css).toMatch(/--calendar-event-field-group-gap:\s*0\.5rem/);
     expect(css).toMatch(/row-gap:\s*var\(--calendar-event-field-gap\)/);
-    expect(formTsx).toMatch(/!form\.allDay \? \(/);
+    expect(whenTsx).toMatch(/!form\.allDay \? \(/);
   });
 
   it("keeps a compact card below the mobile breakpoint (no full-bleed sheet)", () => {
@@ -63,8 +69,8 @@ describe("calendar event dialog CSS ownership", () => {
   });
 
   it("puts all-day and timezone on one row with a visible all-day caption", () => {
-    expect(formTsx).toMatch(/calendar-event-dialog__when-meta/);
-    expect(formTsx).toMatch(/calendar-event-dialog__all-day-caption/);
+    expect(whenTsx).toMatch(/calendar-event-dialog__when-meta/);
+    expect(whenTsx).toMatch(/calendar-event-dialog__all-day-caption/);
     expect(css).toMatch(/\.calendar-event-dialog__when-meta/);
     expect(css).toMatch(/calendar-event-dialog__all-day-caption/);
   });
@@ -73,10 +79,10 @@ describe("calendar event dialog CSS ownership", () => {
 describe("calendar event dialog title row", () => {
   it("uses FieldLabelRow plus name-color row so the summary field can flex", () => {
     expect(dialogTsx).toMatch(/CalendarEventForm/);
-    expect(formTsx).toMatch(/FieldLabelRow/);
-    expect(formTsx).toMatch(/calendar-event-dialog__field--title/);
-    expect(formTsx).toMatch(/NameColorRow/);
-    expect(formTsx).toMatch(/NAME_COLOR_ROW_INPUT_CLASS/);
+    expect(titleTsx).toMatch(/FieldLabelRow/);
+    expect(titleTsx).toMatch(/calendar-event-dialog__field--title/);
+    expect(titleTsx).toMatch(/NameColorRow/);
+    expect(titleTsx).toMatch(/NAME_COLOR_ROW_INPUT_CLASS/);
     expect(css).not.toMatch(/calendar-event-dialog__title-input/);
     expect(css).not.toMatch(/calendar-event-dialog__calendar-trigger \{[\s\S]*width:\s*auto/);
     expect(css).not.toMatch(
@@ -88,14 +94,20 @@ describe("calendar event dialog title row", () => {
 describe("calendar event dialog shared form controls", () => {
   it("uses shared Input, Textarea, Select, LocaleDatePicker, and Button masters", () => {
     expect(formTsx).toMatch(/from "@\/ui\/input"/);
-    expect(formTsx).toMatch(/from "@\/ui\/textarea"/);
-    expect(formTsx).toMatch(/from "@\/ui\/select"/);
-    expect(formTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
-    expect(formTsx).toMatch(/from "@\/button\/src\/button"/);
-    expect(formTsx).toMatch(/IconButton/);
-    expect(formTsx).toMatch(/severity="danger"/);
+    expect(secondaryTsx).toMatch(/from "@\/ui\/textarea"/);
+    expect(whenTsx).toMatch(/from "@\/ui\/select"/);
+    expect(repeatTsx).toMatch(/from "@\/ui\/select"/);
+    expect(showAsTsx).toMatch(/from "@\/ui\/select"/);
+    expect(whenTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
+    expect(repeatTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
+    expect(footerTsx).toMatch(/from "@\/button\/src\/button"/);
+    expect(footerTsx).toMatch(/IconButton/);
+    expect(footerTsx).toMatch(/severity="danger"/);
+    expect(footerTsx).not.toMatch(/variant="destructive-outline"/);
     expect(formTsx).not.toMatch(/variant="destructive-outline"/);
     expect(formTsx).not.toMatch(/calendar-event-dialog__date-trigger/);
+    expect(whenTsx).not.toMatch(/calendar-event-dialog__date-trigger/);
+    expect(repeatTsx).not.toMatch(/calendar-event-dialog__date-trigger/);
     expect(css).not.toMatch(/calendar-event-dialog__date-trigger/);
     expect(css).not.toContain("color: #b91c1c");
   });
@@ -107,18 +119,19 @@ describe("calendar event dialog shared form controls", () => {
   });
 
   it("stacks Invitees→Alarms→Description via display:contents secondary so fields share parent gap", () => {
-    expect(formTsx).toMatch(/calendar-event-dialog__secondary/);
-    expect(formTsx).toMatch(/calendar-event-dialog__secondary-start/);
-    expect(formTsx).toMatch(/calendar-event-dialog__secondary-end/);
+    expect(secondaryTsx).toMatch(/calendar-event-dialog__secondary/);
+    expect(secondaryTsx).toMatch(/calendar-event-dialog__secondary-start/);
+    expect(secondaryTsx).toMatch(/calendar-event-dialog__secondary-end/);
     expect(css).toMatch(/\.calendar-event-dialog__secondary[\s\S]*display:\s*contents/);
     expect(css).toMatch(/\.calendar-event-dialog__secondary-start[\s\S]*display:\s*contents/);
     expect(css).toMatch(/\.calendar-event-dialog__secondary-end[\s\S]*display:\s*contents/);
     expect(css).not.toMatch(/\.calendar-event-dialog__secondary \{[\s\S]*grid-cols-2/);
     expect(formTsx).not.toMatch(/calendar-event-dialog__divider/);
+    expect(secondaryTsx).not.toMatch(/calendar-event-dialog__divider/);
     expect(css).not.toMatch(/calendar-event-dialog__divider/);
     expect(formTsx).toMatch(/labelMode="icon"/);
     expect(formTsx).toMatch(/calendar-event-dialog__field-group--place/);
-    expect(formTsx).toMatch(/calendar-event-dialog__field-group--when/);
+    expect(whenTsx).toMatch(/calendar-event-dialog__field-group--when/);
     expect(css).toMatch(/\.calendar-event-dialog__field-group/);
     expect(css).toMatch(
       /\.calendar-event-dialog__field-group \{[\s\S]*gap:\s*var\(--calendar-event-field-group-gap\)/,
@@ -126,11 +139,11 @@ describe("calendar event dialog shared form controls", () => {
   });
 
   it("reserves datetime time slots so all-day toggle does not reflow neighbors", () => {
-    expect(formTsx).toMatch(/calendar-event-dialog__time-slot/);
+    expect(whenTsx).toMatch(/calendar-event-dialog__time-slot/);
     expect(css).toMatch(/calendar-event-dialog__time-slot/);
     expect(css).toMatch(/--calendar-event-time-slot-width/);
     expect(formTsx).not.toMatch(/calendar-event-dialog__field--inert/);
-    expect(formTsx).toMatch(/field--timezone/);
+    expect(whenTsx).toMatch(/field--timezone/);
   });
 
   it("vertically centers all-day + timezone on a shared stretched row height", () => {
@@ -203,15 +216,15 @@ describe("calendar event dialog Meet field", () => {
 describe("calendar event dialog invitation footer", () => {
   it("end-aligns RSVP actions and omits the series hint in invitation mode", () => {
     expect(formTsx).toContain('mode === "invitation"');
-    expect(formTsx).toContain("calendar-event-dialog__invitation-rsvp");
-    expect(formTsx).toContain("CalendarRsvpActions");
-    expect(formTsx).toMatch(
+    expect(footerTsx).toContain("calendar-event-dialog__invitation-rsvp");
+    expect(footerTsx).toContain("CalendarRsvpActions");
+    expect(footerTsx).toMatch(
       /calendar-event-dialog__invitation-rsvp[\s\S]*CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/,
     );
-    expect(formTsx).not.toMatch(
+    expect(footerTsx).not.toMatch(
       /calendar-event-dialog__invitation-rsvp[\s\S]*CalendarRsvpActions[\s\S]*size="xs"/,
     );
-    expect(formTsx).not.toMatch(/calendar-event-dialog__invitation-rsvp[\s\S]*rsvpSeriesHint/);
+    expect(footerTsx).not.toMatch(/calendar-event-dialog__invitation-rsvp[\s\S]*rsvpSeriesHint/);
     expect(css).toMatch(
       /\.calendar-dialog-surface \.calendar-event-dialog__invitation-rsvp \{[\s\S]*justify-end/,
     );
