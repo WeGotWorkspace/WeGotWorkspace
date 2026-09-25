@@ -36,9 +36,9 @@ jobs:
           extensions: ctype, dom, iconv, imap, json, mbstring, pdo, pdo_mysql, pdo_sqlite, simplexml, zip
           coverage: none
 
-      - uses: pnpm/action-setup@v4.4.0
+      - uses: pnpm/action-setup@v6.1.0
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: pnpm
@@ -50,7 +50,7 @@ jobs:
         run: pnpm --filter @wgw/api-e2e exec playwright install chromium --with-deps
 
       - name: Download the release ZIP
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: wegotworkspace-deploy-zip
           path: dist/releases
@@ -77,14 +77,14 @@ jobs:
         if: always()
         run: echo "${{ matrix.cell }} ${{ job.status }}" > "${{ matrix.cell }}.txt"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: install-e2e-cell-${{ matrix.cell }}
           path: ${{ matrix.cell }}.txt
           retention-days: 3
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-${{ matrix.cell }}
