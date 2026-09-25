@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
+import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { useDriveController } from "@/drive-core/src/use-drive-controller";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
@@ -8,7 +9,13 @@ export type DrivePaneStoryHarnessOptions = {
   listLoading?: boolean;
   filesOverride?: DriveFile[];
   viewPath?: string;
+  operations?: DriveAPIOperations;
 };
+
+/** Doc row the delete-trash modal preset confirms. */
+export function driveModalTrashSampleFile(): DriveFile {
+  return DRIVE_MOCK_FILES.find((file) => file.kind === "doc") ?? DRIVE_MOCK_FILES[0]!;
+}
 
 export type DriveModalStoryPreset = "newFolder" | "rename" | "deleteTrash" | "deletePermanent";
 
@@ -18,7 +25,7 @@ export function useDrivePaneStoryController(options?: DrivePaneStoryHarnessOptio
   const controller = useDriveController({
     data: bootstrap.data,
     session: bootstrap.session,
-    operations: undefined,
+    operations: options?.operations,
     listLoading: options?.listLoading ?? false,
   });
 
@@ -43,8 +50,13 @@ export function useDrivePaneStoryController(options?: DrivePaneStoryHarnessOptio
   return controller;
 }
 
-export function useDriveModalStoryController(preset: DriveModalStoryPreset) {
-  const controller = useDrivePaneStoryController();
+export function useDriveModalStoryController(
+  preset: DriveModalStoryPreset,
+  operations?: DriveAPIOperations,
+) {
+  const controller = useDrivePaneStoryController(
+    operations ? { operations, filesOverride: DRIVE_MOCK_FILES } : undefined,
+  );
   const { setNewFolderDialogOpen, setRenameDialog, setRenameName, setConfirmDelete } = controller;
 
   useEffect(() => {
@@ -53,7 +65,7 @@ export function useDriveModalStoryController(preset: DriveModalStoryPreset) {
     setRenameName("");
     setConfirmDelete(null);
 
-    const sample = DRIVE_MOCK_FILES.find((file) => file.kind === "doc") ?? DRIVE_MOCK_FILES[0]!;
+    const sample = driveModalTrashSampleFile();
 
     switch (preset) {
       case "newFolder":
