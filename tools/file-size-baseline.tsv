@@ -32,7 +32,6 @@ packages/apps/src/admin-core/src/use-admin-mutations.tsx	695	grandfathered
 packages/apps/src/calendar-core/src/calendar-calendar-dialog.tsx	440	grandfathered
 packages/apps/src/calendar-core/src/calendar-editor-model.ts	664	grandfathered
 packages/apps/src/calendar-core/src/calendar-event-details-popover.tsx	401	grandfathered
-packages/apps/src/calendar-core/src/calendar-event-form.tsx	772	grandfathered
 packages/apps/src/calendar-core/src/calendar-event-preview.ts	510	grandfathered
 packages/apps/src/calendar-core/src/calendar-events-api.ts	461	grandfathered
 packages/apps/src/calendar-core/src/calendar-labels.ts	552	grandfathered
