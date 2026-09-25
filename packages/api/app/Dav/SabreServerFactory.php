@@ -11,6 +11,7 @@ use App\Dav\Server\AppCalendarRoot;
 use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
 use App\Dav\Server\CalendarMeetLinkPlugin;
+use App\Dav\Server\CalendarPropfindReadPlugin;
 use App\Dav\Server\ChatHiddenCalendarBackend;
 use App\Dav\Server\EventDispatchPlugin;
 use App\Dav\Server\FileNodeIndexPlugin;
@@ -119,6 +120,7 @@ final class SabreServerFactory
         }
 
         if ($cal) {
+            $server->addPlugin(new CalendarPropfindReadPlugin);
             $server->addPlugin(new CalDAV\Plugin);
             $server->addPlugin(new CalDAV\Schedule\Plugin);
             $server->addPlugin(new CalDAV\SharingPlugin);

@@ -58,6 +58,11 @@ final class UiStaticFront
             return InstallerWebBase::redirectToInstallWizard();
         }
 
+        // Temporary. A 301 would stick in browsers after the Mail client returns in v1.0.
+        if ($this->isUnshippedMailClientPath($webBase, $path)) {
+            return redirect(InstallerWebBase::url($webBase, '/'), 302)->setContent('');
+        }
+
         $pluginMatch = $this->plugins->findActiveByRequestPath($webBase, $path);
         if ($pluginMatch !== null) {
             return $this->handlePluginRoutes($webBase, $path, $method, $pluginMatch);
@@ -144,6 +149,17 @@ final class UiStaticFront
         $served = $this->static->tryServe($dist, $webBase, $path, true);
 
         return $served ?? $this->notFound();
+    }
+
+    /**
+     * Bookmarks and an installed Mail PWA still request `/mail`. That prefix is
+     * not a shell route, so without this redirect the request falls through to SabreDAV.
+     */
+    private function isUnshippedMailClientPath(string $webBase, string $path): bool
+    {
+        $prefix = InstallerWebBase::url($webBase, '/mail');
+
+        return $path === $prefix || $path === $prefix.'/' || str_starts_with($path, $prefix.'/');
     }
 
     private function isPublicAssetPath(string $webBase, string $path): bool
