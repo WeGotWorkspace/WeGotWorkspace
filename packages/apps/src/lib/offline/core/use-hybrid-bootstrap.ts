@@ -7,13 +7,16 @@ export function useHybridBootstrap<T>({
   load,
   readCache,
 }: {
-  load: () => Promise<T>;
+  /** Optional progress paints the first chunk without waiting for the full result. */
+  load: (reportProgress?: (partial: T) => void) => Promise<T>;
   readCache: () => Promise<T | null>;
 }) {
   const [phase, setPhase] = useState<HybridPhase>("loading");
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<T | null>(null);
   const [successVersion, setSuccessVersion] = useState(0);
+  /** Finished snapshot. Progressive pages paint while this stays false. */
+  const [complete, setComplete] = useState(false);
 
   const applySuccess = useCallback((next: T) => {
     setData(next);
@@ -22,17 +25,38 @@ export function useHybridBootstrap<T>({
     setSuccessVersion((v) => v + 1);
   }, []);
 
+  const publishInPlace = useCallback((next: T) => {
+    setData(next);
+    setPhase("ready");
+    setError(null);
+  }, []);
+
   const run = useCallback(() => {
     setPhase("loading");
     setError(null);
-    void load()
-      .then(applySuccess)
+    setComplete(false);
+    let painted = false;
+    const reportProgress = (partial: T) => {
+      if (painted) {
+        publishInPlace(partial);
+        return;
+      }
+      painted = true;
+      applySuccess(partial);
+    };
+    void load(reportProgress)
+      .then((next) => {
+        if (painted) publishInPlace(next);
+        else applySuccess(next);
+        setComplete(true);
+      })
       .catch((e: unknown) => {
         setData(null);
         setError(e instanceof Error ? e.message : String(e));
         setPhase("error");
+        setComplete(false);
       });
-  }, [applySuccess, load]);
+  }, [applySuccess, load, publishInPlace]);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +64,7 @@ export function useHybridBootstrap<T>({
       if (cancelled) return;
       if (cached) {
         applySuccess(cached);
+        setComplete(true);
         if (readBrowserOnline()) {
           void load()
             .then((next) => {
@@ -65,5 +90,5 @@ export function useHybridBootstrap<T>({
     setData(updater);
   }, []);
 
-  return { phase, error, data, load: run, successVersion, patchBootstrap };
+  return { phase, error, data, load: run, successVersion, patchBootstrap, complete };
 }

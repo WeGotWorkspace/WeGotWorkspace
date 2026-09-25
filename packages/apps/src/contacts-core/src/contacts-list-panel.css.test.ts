@@ -13,7 +13,7 @@ describe("contacts list section headers", () => {
       /import \{ ListStickyHeader \} from "@\/list-sticky-header\/src\/list-sticky-header"/,
     );
     expect(tsx).toMatch(
-      /<ListStickyHeader\s+id=\{`contacts-section-\$\{section\.letter\}`\}\s+emphasis=\{section\.letter\}\s*\/>/,
+      /<ListStickyHeader\s+id=\{`contacts-section-\$\{letter\}`\}\s+emphasis=\{letter\}\s*\/>/,
     );
     expect(css).not.toMatch(/contacts-list-panel__section-header/);
   });

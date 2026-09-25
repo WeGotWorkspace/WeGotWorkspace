@@ -109,3 +109,31 @@ export async function reconcileContactsSnapshot(
     await removeAddressBookFromCache(username, book.id);
   }
 }
+
+/**
+ * Reconcile one address book after a full card resync.
+ * Missing from this book's list drops only that membership. A card that still
+ * belongs to other books stays; a card left with no books is deleted.
+ * Pending local writes are left untouched.
+ */
+export async function reconcileAddressBookResync(
+  username: string,
+  addressBookId: string,
+  remoteCards: ContactCard[],
+): Promise<void> {
+  const pending = await pendingSet(username);
+  const remoteIds = new Set(remoteCards.map((card) => card.id).filter(Boolean));
+  const cached = await readContactsBootstrapFromCache(username);
+  for (const card of cached?.data.cards ?? []) {
+    if (!card.id || remoteIds.has(card.id) || pending.has(card.id)) continue;
+    const membership = { ...(card.addressBookIds ?? {}) };
+    if (membership[addressBookId] !== true) continue;
+    delete membership[addressBookId];
+    const stillInAnotherBook = Object.values(membership).some((included) => included === true);
+    if (!stillInAnotherBook) {
+      await removeContactCardFromCache(username, card.id);
+      continue;
+    }
+    await upsertContactCardInCache(username, { ...card, addressBookIds: membership });
+  }
+}

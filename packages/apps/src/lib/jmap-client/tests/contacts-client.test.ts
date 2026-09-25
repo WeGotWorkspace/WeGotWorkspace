@@ -153,8 +153,14 @@ describe("JmapContactsClient contract batches", () => {
       { maxObjectsInGet: 500, maxCallsInRequest: 32 },
     );
 
-    const got = await contacts.getAddressBooksAndCards(ACCOUNT);
+    const pages: number[] = [];
+    const got = await contacts.getAddressBooksAndCards(ACCOUNT, {
+      onPage: (snapshot) => {
+        pages.push(snapshot.cards.list.length);
+      },
+    });
     expect(got.cards.list).toHaveLength(ids.length);
+    expect(pages).toEqual([CONTACT_CARD_GET_MAX_IDS_PER_REQUEST, ids.length]);
     const getBatches = recorded.slice(1);
     expect(getBatches).toHaveLength(2);
     expect(getBatches[0]).toHaveLength(1);
