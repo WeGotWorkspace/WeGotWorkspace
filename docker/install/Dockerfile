@@ -42,6 +42,7 @@ RUN corepack enable \
 
 FROM php:8.5-apache-bookworm
 
+# PHP 8.4+ unbundled ext-imap; the mail API still loads it from PECL.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
@@ -54,7 +55,6 @@ RUN apt-get update \
         libc-client-dev \
         libkrb5-dev \
         libgmp-dev \
-    && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
     && docker-php-ext-install \
         pdo \
         pdo_sqlite \
@@ -62,9 +62,10 @@ RUN apt-get update \
         mbstring \
         zip \
         intl \
-        imap \
         gmp \
         bcmath \
+    && printf '\n' | pecl install imap \
+    && docker-php-ext-enable imap \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
