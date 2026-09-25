@@ -1,6 +1,6 @@
 # Mail Core Reuse Guide
 
-`mail-core` exposes reusable building blocks for apps that need mail-style list/detail behavior.
+`mail-core` exposes reusable building blocks for apps that need mail-style list/detail behavior. Storybook and reuse stay. The live shell does not mount this package in v0.9 — see [packages/api/docs/mail/README.md](../../../api/docs/mail/README.md).
 
 ## Reusable exports
 
