@@ -52,4 +52,26 @@ final class McpRedirectUrisTest extends TestCase
         $this->assertFalse(McpRedirectUris::isAllowed('https://192.168.1.8/callback'));
         $this->assertFalse(McpRedirectUris::isPublicIp('127.0.0.1'));
     }
+
+    public function test_carrier_grade_nat_and_tunnel_prefixes_are_not_public(): void
+    {
+        $blocked = [
+            '100.64.0.1',
+            '100.100.100.200',
+            '100.127.255.255',
+            '64:ff9b::a9fe:a9fe',
+            '64:ff9b::7f00:1',
+            '2002:7f00:1::',
+            '2002:a9fe:a9fe::',
+            '::ffff:127.0.0.1',
+            '::ffff:169.254.169.254',
+            '::ffff:7f00:1',
+        ];
+        foreach ($blocked as $ip) {
+            $this->assertFalse(McpRedirectUris::isPublicIp($ip), $ip);
+        }
+        $this->assertTrue(McpRedirectUris::isPublicIp('100.128.0.1'));
+        $this->assertTrue(McpRedirectUris::isPublicIp('64:ff9b::808:808'));
+        $this->assertFalse(McpRedirectUris::isPublicIp('::ffff:8.8.8.8'));
+    }
 }
