@@ -32,6 +32,7 @@ File: `.github/workflows/ci.yml`
 When `vars.CHROMATIC_ENABLED == 'true'` (and not a release-commit push):
 
 - **`chromatic` job** (single publish path):
+  - If `CHROMATIC_PROJECT_TOKEN` is empty, the job exits successfully without building or publishing. Dependabot cannot read Actions secrets, and the Chromatic CLI otherwise fails with `Missing project token` after the Storybook build.
   - Storybook is built with `pnpm exec storybook build --stats-json` before upload, so the action does not spawn its own Storybook build. `--stats-json` writes `preview-stats.json`, which TurboSnap needs to trace changed files.
   - `chromaui/action@v18` with `workingDir: packages/apps` and `storybookBuildDir: storybook-static`
   - Checkout `fetch-depth: 0` for TurboSnap history
