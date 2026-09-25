@@ -1,11 +1,20 @@
 import { createRef } from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { addressBookDotColor } from "./contacts-addressbook-color";
 import { ContactsListPanel } from "./contacts-list-panel";
 import { defaultContactsLabels } from "./contacts-labels";
+import { contactListRowOffset, flattenContactListRows } from "./contacts-list-window";
 import type { ContactCard } from "./contacts-types";
+
+const reorderIds = vi.hoisted(() => vi.fn());
+
+vi.mock("@/hooks/use-list-reorder-animation", () => ({
+  useListReorderAnimation: (_ref: unknown, ids: readonly string[]) => {
+    reorderIds(ids);
+  },
+}));
 
 afterEach(() => {
   cleanup();
@@ -204,5 +213,149 @@ describe("ContactsListPanel header count", () => {
     expect(count).not.toBeNull();
     expect(count!.getAttribute("aria-label")).toBe(defaultContactsLabels.listContacts(2));
     expect(count!.textContent).toBe("(2)");
+  });
+});
+
+function personAt(index: number): ContactCard {
+  return {
+    "@type": "Card",
+    version: "1.0",
+    id: `card-${index}`,
+    uid: `urn:uuid:card-${index}`,
+    kind: "individual",
+    name: {
+      full: `Contact${index} Person`,
+      components: [
+        { kind: "given", value: `Contact${index}` },
+        { kind: "surname", value: "Person" },
+      ],
+    },
+    addressBookIds: { default: true },
+  } as unknown as ContactCard;
+}
+
+function spyScrollIntoView() {
+  if (typeof Element.prototype.scrollIntoView !== "function") {
+    Element.prototype.scrollIntoView = () => undefined;
+  }
+  return vi.spyOn(Element.prototype, "scrollIntoView");
+}
+
+function WindowHarness({
+  cards,
+  activeId,
+  scrollerRef,
+}: {
+  cards: ContactCard[];
+  activeId: string;
+  scrollerRef: (node: HTMLDivElement | null) => void;
+}) {
+  const panel = ContactsListPanel({
+    L: defaultContactsLabels,
+    sidebarOpen: true,
+    onToggleSidebar: vi.fn(),
+    viewLabel: "All contacts",
+    view: "all",
+    selectedGroupId: null,
+    selectedIds: [],
+    selectionMode: false,
+    listLoading: false,
+    visibleCards: cards,
+    searchQuery: "",
+    setSearchQuery: vi.fn(),
+    searchInputRef: createRef<HTMLInputElement>(),
+    isTouch: false,
+    activeId,
+    isItemDragging: () => false,
+    handleSelect: vi.fn(),
+    enterSelectionFor: vi.fn(),
+    itemDragHandlers: () => ({}),
+    onSwipeDelete: vi.fn(),
+    onSwipeRemoveFromGroup: vi.fn(),
+    selectionBar: null,
+  });
+  return (
+    <div ref={scrollerRef} className="contacts-list-scroller">
+      {panel.listContent}
+    </div>
+  );
+}
+
+describe("ContactsListPanel window", () => {
+  const cards = Array.from({ length: 120 }, (_, index) => personAt(index));
+
+  function mount(activeId: string) {
+    let scroller: HTMLDivElement | null = null;
+    const view = render(
+      <TooltipProvider>
+        <WindowHarness
+          cards={cards}
+          activeId={activeId}
+          scrollerRef={(node) => {
+            scroller = node;
+            if (!node) return;
+            Object.defineProperty(node, "clientHeight", { configurable: true, value: 400 });
+          }}
+        />
+      </TooltipProvider>,
+    );
+    if (!scroller) throw new Error("scroller missing");
+    return { scroller, ...view };
+  }
+
+  it("does not scroll the active row back into view when the window moves", () => {
+    const scrollIntoView = spyScrollIntoView();
+    const { scroller } = mount("card-0");
+    scrollIntoView.mockClear();
+
+    act(() => {
+      scroller.scrollTop = 4000;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(scroller.scrollTop).toBe(4000);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    const labelledBy = scroller.querySelector("section")?.getAttribute("aria-labelledby");
+    expect(labelledBy).toBe("contacts-section-P");
+    expect(scroller.querySelector(`#${labelledBy}`)).toBeTruthy();
+    scrollIntoView.mockRestore();
+  });
+
+  it("scrolls an off-screen row into view when the selection changes", () => {
+    const scrollIntoView = spyScrollIntoView();
+    const { scroller, rerender } = mount("card-0");
+    act(() => {
+      scroller.scrollTop = 4000;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+    scrollIntoView.mockClear();
+
+    rerender(
+      <TooltipProvider>
+        <WindowHarness
+          cards={cards}
+          activeId="card-119"
+          scrollerRef={(node) => {
+            if (!node) return;
+            Object.defineProperty(node, "clientHeight", { configurable: true, value: 400 });
+          }}
+        />
+      </TooltipProvider>,
+    );
+
+    const rows = flattenContactListRows(cards);
+    const index = rows.findIndex((row) => row.kind === "card" && row.card.id === "card-119");
+    expect(scroller.scrollTop).toBe(contactListRowOffset(rows, index));
+    expect(scrollIntoView).toHaveBeenCalled();
+    scrollIntoView.mockRestore();
+  });
+
+  it("animates from the full visible id list, not the mounted window", () => {
+    reorderIds.mockClear();
+    mount("card-0");
+    const ids = reorderIds.mock.calls.at(-1)?.[0] as string[];
+    expect(ids).toHaveLength(cards.length);
+    expect(ids[0]).toBe("card-0");
+    expect(ids.at(-1)).toBe("card-119");
   });
 });

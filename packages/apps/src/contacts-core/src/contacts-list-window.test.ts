@@ -3,6 +3,7 @@ import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
   CONTACTS_LIST_CARD_ROW_PX,
   CONTACTS_LIST_HEADER_ROW_PX,
+  contactListWindowSlice,
   contactsListWindowRange,
   flattenContactListRows,
 } from "./contacts-list-window";
@@ -12,6 +13,20 @@ function card(id: string, full: string): ContactCard {
     id,
     uid: id,
     name: { full },
+  } as ContactCard;
+}
+
+function named(id: string, given: string, surname: string): ContactCard {
+  return {
+    id,
+    uid: id,
+    name: {
+      full: `${given} ${surname}`,
+      components: [
+        { kind: "given", value: given },
+        { kind: "surname", value: surname },
+      ],
+    },
   } as ContactCard;
 }
 
@@ -43,5 +58,28 @@ describe("contactsListWindowRange", () => {
     const visibleHeights =
       (scrolled.end - scrolled.start) * CONTACTS_LIST_CARD_ROW_PX + CONTACTS_LIST_HEADER_ROW_PX;
     expect(visibleHeights).toBeGreaterThan(400);
+  });
+
+  it("keeps the preceding letter header when the window starts mid-section", () => {
+    const cards = [
+      ...Array.from({ length: 90 }, (_, index) => named(`a-${index}`, `Ada ${index}`, "Aaron")),
+      ...Array.from({ length: 20 }, (_, index) => named(`z-${index}`, `Zoe ${index}`, "Zimmerman")),
+    ];
+    const rows = flattenContactListRows(cards);
+    const range = contactsListWindowRange(rows, 2000, 400);
+    expect(rows[range.start]?.kind).toBe("card");
+
+    const slice = contactListWindowSlice(rows, range);
+    expect(slice.rows[0]).toMatchObject({ kind: "header", letter: "A" });
+    expect(slice.paddingTop).toBe(range.paddingTop - CONTACTS_LIST_HEADER_ROW_PX);
+    expect(slice.rows.filter((row) => row.kind === "header" && row.letter === "A")).toHaveLength(1);
+
+    const top = contactsListWindowRange(rows, 0, 400);
+    const topSlice = contactListWindowSlice(rows, top);
+    expect(topSlice.rows[0]).toMatchObject({ kind: "header", letter: "A" });
+    expect(topSlice.paddingTop).toBe(0);
+    expect(topSlice.rows.filter((row) => row.kind === "header" && row.letter === "A")).toHaveLength(
+      1,
+    );
   });
 });

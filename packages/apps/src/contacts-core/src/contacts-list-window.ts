@@ -82,3 +82,35 @@ export function contactsListWindowRange(
   const paddingBottom = contactListRowOffset(rows, rows.length) - contactListRowOffset(rows, end);
   return { start, end, paddingTop, paddingBottom };
 }
+
+/**
+ * Rows to paint for a window. When the slice starts inside a section, the
+ * preceding letter header is included so the sticky label stays mounted.
+ * Its height is removed from `paddingTop` so the list does not grow.
+ */
+export function contactListWindowSlice(
+  rows: ContactsListWindowRow[],
+  range: { start: number; end: number; paddingTop: number; paddingBottom: number },
+): { rows: ContactsListWindowRow[]; paddingTop: number; paddingBottom: number } {
+  const visible = rows.slice(range.start, range.end);
+  const first = visible[0];
+  if (!first || first.kind === "header") {
+    return { rows: visible, paddingTop: range.paddingTop, paddingBottom: range.paddingBottom };
+  }
+  let header: ContactsListWindowRow | null = null;
+  for (let index = range.start - 1; index >= 0; index -= 1) {
+    const row = rows[index];
+    if (row?.kind === "header") {
+      header = row;
+      break;
+    }
+  }
+  if (!header) {
+    return { rows: visible, paddingTop: range.paddingTop, paddingBottom: range.paddingBottom };
+  }
+  return {
+    rows: [header, ...visible],
+    paddingTop: Math.max(0, range.paddingTop - contactListRowHeight(header)),
+    paddingBottom: range.paddingBottom,
+  };
+}

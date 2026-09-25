@@ -28,6 +28,7 @@ import {
 import {
   contactListRowOffset,
   contactsListWindowRange,
+  contactListWindowSlice,
   flattenContactListRows,
   type ContactsListWindowRow,
 } from "@/contacts-core/src/contacts-list-window";
@@ -92,11 +93,12 @@ export function ContactsListPanel({
   const listRef = useRef<HTMLDivElement>(null);
   const rows = useMemo(() => flattenContactListRows(visibleCards), [visibleCards]);
   const windowRange = useContactsListWindow(listRef, rows, activeId);
+  const windowSlice = contactListWindowSlice(rows, windowRange);
+  // Measure against the full visible set. A moving window changes which rows
+  // are mounted, and feeding only those ids looks like a reorder.
   useListReorderAnimation(
     listRef,
-    rows
-      .slice(windowRange.start, windowRange.end)
-      .flatMap((row) => (row.kind === "card" ? [row.card.id] : [])),
+    visibleCards.map((card) => card.id),
   );
 
   const headerCount =
@@ -143,9 +145,9 @@ export function ContactsListPanel({
       <div ref={listRef} className="contacts-list-panel__list">
         <ContactsListRows
           L={L}
-          rows={rows.slice(windowRange.start, windowRange.end)}
-          paddingTop={windowRange.paddingTop}
-          paddingBottom={windowRange.paddingBottom}
+          rows={windowSlice.rows}
+          paddingTop={windowSlice.paddingTop}
+          paddingBottom={windowSlice.paddingBottom}
           isTouch={isTouch}
           activeId={activeId}
           selectedIds={selectedIds}
@@ -191,17 +193,51 @@ function useContactsListWindow(
   }, [listRef, rows.length]);
 
   const range = contactsListWindowRange(rows, metrics.scrollTop, metrics.viewportHeight);
+  const scrolledForActiveIdRef = useRef<string | null>(null);
+  const pendingScrollIntoViewIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!activeId) return;
+    // Scrolling changes the window. Only a new selection should move the list.
+    if (scrolledForActiveIdRef.current === activeId) return;
+    if (!activeId) {
+      scrolledForActiveIdRef.current = activeId;
+      pendingScrollIntoViewIdRef.current = null;
+      return;
+    }
     const index = rows.findIndex((row) => row.kind === "card" && row.card.id === activeId);
-    if (index < 0 || (index >= range.start && index < range.end)) return;
+    if (index < 0) return;
     const scroller = listRef.current?.parentElement;
     if (!scroller || scroller.clientHeight <= 0) return;
-    scroller.scrollTop = contactListRowOffset(rows, index);
+    scrolledForActiveIdRef.current = activeId;
+    const node = activeRowElement(listRef.current, activeId);
+    if (node && index >= range.start && index < range.end) {
+      node.scrollIntoView({ block: "nearest" });
+      return;
+    }
+    const offset = contactListRowOffset(rows, index);
+    scroller.scrollTop = offset;
+    pendingScrollIntoViewIdRef.current = activeId;
+    setMetrics({ scrollTop: offset, viewportHeight: scroller.clientHeight });
+  }, [activeId, listRef, range.end, range.start, rows]);
+
+  useEffect(() => {
+    const id = pendingScrollIntoViewIdRef.current;
+    if (!id) return;
+    const node = activeRowElement(listRef.current, id);
+    if (!node) return;
+    pendingScrollIntoViewIdRef.current = null;
+    node.scrollIntoView({ block: "nearest" });
   }, [activeId, listRef, range.end, range.start, rows]);
 
   return range;
+}
+
+function activeRowElement(list: HTMLElement | null, id: string): HTMLElement | null {
+  if (!list) return null;
+  for (const node of list.querySelectorAll<HTMLElement>("[data-list-item-id]")) {
+    if (node.getAttribute("data-list-item-id") === id) return node;
+  }
+  return null;
 }
 
 function ContactsListRows({
@@ -250,13 +286,8 @@ function ContactsListRows({
       if (!sectionLetter && sectionCards.length === 0) return;
       const letter = sectionLetter || "#";
       blocks.push(
-        <section
-          key={`${letter}-${sectionCards[0]?.id ?? "empty"}`}
-          aria-labelledby={`contacts-section-${letter}`}
-        >
-          {sectionLetter ? (
-            <ListStickyHeader id={`contacts-section-${letter}`} emphasis={letter} />
-          ) : null}
+        <section key={letter} aria-labelledby={`contacts-section-${letter}`}>
+          <ListStickyHeader id={`contacts-section-${letter}`} emphasis={letter} />
           {sectionCards.map((card) => {
             const name = contactDisplayName(card);
             const isPendingSync = pendingCardIds?.has(card.id) ?? false;
