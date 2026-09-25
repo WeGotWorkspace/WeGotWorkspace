@@ -47,6 +47,40 @@ final class WgwInstallConfigTest extends TestCase
         }
     }
 
+    #[Test]
+    public function path_if_inside_install_root_accepts_confined_files_and_rejects_escapes(): void
+    {
+        $install = new WgwInstallConfig;
+        $root = $install->installRoot();
+        $insideDir = rtrim($install->dataDir(), '/');
+        if (! is_dir($insideDir)) {
+            mkdir($insideDir, 0775, true);
+        }
+
+        $insideFile = $insideDir.'/path-confine-test.sqlite';
+        $outsideFile = sys_get_temp_dir().'/wgw-path-confine-outside-'.uniqid('', true).'.sqlite';
+        file_put_contents($insideFile, '');
+        file_put_contents($outsideFile, '');
+
+        try {
+            $this->assertSame(
+                realpath($insideFile),
+                $install->pathIfInsideInstallRoot($insideFile),
+            );
+            $this->assertSame(
+                realpath($insideFile),
+                $install->pathIfInsideInstallRoot($install->resolveInstallPath('./wgw-content/path-confine-test.sqlite')),
+            );
+            $this->assertNull($install->pathIfInsideInstallRoot($outsideFile));
+            $this->assertNull(
+                $install->pathIfInsideInstallRoot($root.'/../path-confine-escape-'.uniqid('', true)),
+            );
+        } finally {
+            @unlink($insideFile);
+            @unlink($outsideFile);
+        }
+    }
+
     private function monorepoRootFromConfigClass(): string
     {
         $file = (new ReflectionClass(WgwInstallConfig::class))->getFileName();

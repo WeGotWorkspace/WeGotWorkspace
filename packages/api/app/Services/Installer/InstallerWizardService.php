@@ -689,19 +689,10 @@ final class InstallerWizardService
         }
 
         $path = $this->paths->resolveProjectPath((string) ($db['sqlite_path'] ?? $this->paths->defaultSqliteRelativePath()));
-        if (is_file($path) && filesize($path) < 1) {
-            @unlink($this->installerSqlitePathAfterWizardValidation($path));
+        $safe = $this->installConfig->pathIfInsideInstallRoot($path);
+        if ($safe !== null && is_file($safe) && filesize($safe) < 1) {
+            @unlink($safe);
         }
-    }
-
-    /**
-     * Scoped to the empty-sqlite unlink sink after installer wizard validation.
-     *
-     * @psalm-taint-escape file
-     */
-    private function installerSqlitePathAfterWizardValidation(string $path): string
-    {
-        return $path;
     }
 
     private function resolveAppUrlForInstall(): ?string
