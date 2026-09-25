@@ -7,7 +7,7 @@
         "php": "^8.3",
         "kigkonsult/icalcreator": "^2.41",
         "laravel/framework": "^12.61",
-        "laravel/mcp": "^0.9.4",
+        "laravel/mcp": "^1.0.0",
         "laravel/passport": "^13.8",
         "lcobucci/jwt": "^5.5",
         "minishlink/web-push": "^11.0",
