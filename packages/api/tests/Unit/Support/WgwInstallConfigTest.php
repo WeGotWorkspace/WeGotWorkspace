@@ -50,34 +50,65 @@ final class WgwInstallConfigTest extends TestCase
     #[Test]
     public function path_if_inside_install_root_accepts_confined_files_and_rejects_escapes(): void
     {
-        $install = new WgwInstallConfig;
-        $root = $install->installRoot();
-        $insideDir = rtrim($install->dataDir(), '/');
-        if (! is_dir($insideDir)) {
-            mkdir($insideDir, 0775, true);
-        }
+        $base = sys_get_temp_dir().'/wgw-path-confine-'.uniqid('', true);
+        $installRoot = $base.'/install';
+        $dataDir = $installRoot.'/data';
+        $insideFile = $dataDir.'/path-confine-test.sqlite';
+        $outsideFile = $base.'/outside.sqlite';
+        $symlink = $dataDir.'/path-confine-symlink.sqlite';
 
-        $insideFile = $insideDir.'/path-confine-test.sqlite';
-        $outsideFile = sys_get_temp_dir().'/wgw-path-confine-outside-'.uniqid('', true).'.sqlite';
+        mkdir($dataDir, 0775, true);
+        file_put_contents($installRoot.'/index.php', "<?php\n");
         file_put_contents($insideFile, '');
         file_put_contents($outsideFile, '');
 
+        $previousInstallRoot = config('wgw.install_root');
+        $previousDataDir = config('wgw.data_dir');
+        config([
+            'wgw.install_root' => $installRoot,
+            'wgw.data_dir' => $dataDir,
+        ]);
+
         try {
+            $install = new WgwInstallConfig;
+            $root = $install->installRoot();
+            $insideDir = rtrim($install->dataDir(), '/');
+            $rootPrefix = rtrim(str_replace('\\', '/', $root), '/').'/';
+            $insideNormalized = str_replace('\\', '/', $insideFile);
+            $this->assertStringStartsWith($rootPrefix, $insideNormalized);
+            $insideRelative = './'.substr($insideNormalized, strlen($rootPrefix));
+
             $this->assertSame(
                 realpath($insideFile),
                 $install->pathIfInsideInstallRoot($insideFile),
             );
             $this->assertSame(
                 realpath($insideFile),
-                $install->pathIfInsideInstallRoot($install->resolveInstallPath('./wgw-content/path-confine-test.sqlite')),
+                $install->pathIfInsideInstallRoot($install->resolveInstallPath($insideRelative)),
             );
             $this->assertNull($install->pathIfInsideInstallRoot($outsideFile));
-            $this->assertNull(
-                $install->pathIfInsideInstallRoot($root.'/../path-confine-escape-'.uniqid('', true)),
-            );
+
+            // Existing file outside the root, reached via .. from a dir under the install tree.
+            $escapeViaDotDot = $insideDir.'/../../'.basename($outsideFile);
+            $this->assertSame(realpath($outsideFile), realpath($escapeViaDotDot));
+            $this->assertNull($install->pathIfInsideInstallRoot($escapeViaDotDot));
+
+            // Symlink under the install tree that points outside must be rejected.
+            if (@symlink($outsideFile, $symlink)) {
+                $this->assertNull($install->pathIfInsideInstallRoot($symlink));
+            }
         } finally {
+            config([
+                'wgw.install_root' => $previousInstallRoot,
+                'wgw.data_dir' => $previousDataDir,
+            ]);
+            @unlink($symlink);
             @unlink($insideFile);
             @unlink($outsideFile);
+            @unlink($installRoot.'/index.php');
+            @rmdir($dataDir);
+            @rmdir($installRoot);
+            @rmdir($base);
         }
     }
 
