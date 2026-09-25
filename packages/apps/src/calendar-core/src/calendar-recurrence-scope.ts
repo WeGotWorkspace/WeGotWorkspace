@@ -107,8 +107,7 @@ function overridePatchForOccurrence(
  */
 export function occurrenceHasThisInstanceOverride(
   original:
-    | Pick<JmapCalendarEvent, "recurrenceOverrides" | "showWithoutTime" | "start">
-    | undefined,
+    Pick<JmapCalendarEvent, "recurrenceOverrides" | "showWithoutTime" | "start"> | undefined,
   recurrenceId: string,
 ): boolean {
   if (!original) return false;
@@ -572,8 +571,7 @@ export function forkSeriesDraftWithSplitOverrides(
   form: CalendarEventFormValue,
   seriesRules: JSCalendarRecurrenceRule[] | null | undefined,
   original:
-    | Pick<JmapCalendarEvent, "start" | "showWithoutTime" | "recurrenceOverrides">
-    | undefined,
+    Pick<JmapCalendarEvent, "start" | "showWithoutTime" | "recurrenceOverrides"> | undefined,
   splitRecurrenceId: string,
   overrides?: Record<string, JSCalendarPatchObject> | null,
 ): CalendarEventDraft {

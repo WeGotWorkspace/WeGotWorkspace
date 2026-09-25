@@ -14,7 +14,7 @@ RUN mkdir -p /release \
     && unzip -q /tmp/deploy.zip -d /release \
     && rm /tmp/deploy.zip
 
-FROM php:8.3-apache-bookworm@sha256:d9be5f5c49e07c71b1e906cf01a0bb7216dce466d1880d170467b9ca107071dd
+FROM php:8.5-apache-bookworm@sha256:411df529915598ee7d08adf8616b328fb1272cbb272e82ffa572d6fcf3f204cd
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

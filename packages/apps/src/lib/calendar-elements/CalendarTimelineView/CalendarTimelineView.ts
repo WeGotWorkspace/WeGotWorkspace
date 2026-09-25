@@ -1461,11 +1461,11 @@ export class CalendarTimelineView extends CalendarViewBase {
         .slice(dayPartIndex + 1)
         .map((part) => part.value)
         .join("");
-      return html`${before
-        ? html`<span part="day-month-prefix">${before}</span>`
-        : nothing}<span>${dayText}</span>${after
-        ? html`<span part="day-month-prefix">${after}</span>`
-        : nothing}`;
+      return html`${
+        before ? html`<span part="day-month-prefix">${before}</span>` : nothing
+      }<span>${dayText}</span>${
+        after ? html`<span part="day-month-prefix">${after}</span>` : nothing
+      }`;
     })();
     const dayEvents = this.#monthEventsForCell(cellIndex);
     const dotColors = this.#dayDotColors(dayEvents);
@@ -1510,45 +1510,49 @@ export class CalendarTimelineView extends CalendarViewBase {
         >
           <span part=${dayNumberParts} style=${isToday ? "color:#fff" : ""}>
             ${dayNumberContent}
-            ${dotColors.length
-              ? html`
-                  <span part="day-dots" aria-hidden="true">
-                    ${dotColors.map(
-                      (color) =>
-                        html`<span part="day-dot" style=${`background-color:${color}`}></span>`,
-                    )}
-                  </span>
-                `
-              : nothing}
+            ${
+              dotColors.length
+                ? html`
+                    <span part="day-dots" aria-hidden="true">
+                      ${dotColors.map(
+                        (color) =>
+                          html`<span part="day-dot" style=${`background-color:${color}`}></span>`,
+                      )}
+                    </span>
+                  `
+                : nothing
+            }
           </span>
         </button>
         ${this.#renderDayCreateButton(day)}
       </div>
-      ${dayEvents.length
-        ? html`
-            <day-overflow-popover
-              id=${popoverId}
-              popover="auto"
-              role="dialog"
-              .ariaLabel=${`Events on ${fullDateLabel}`}
-              style=${styleMap({
-                "position-anchor": anchorName,
-                "--_lc-all-day-day-number-space": "36px",
-              })}
-              .dayIso=${day.toString()}
-              .dayLabel=${new Intl.NumberFormat(this.#locale).format(day.day)}
-              ?is-current-day=${isToday}
-              ?outside-visible-month=${outsideMonth}
-              ?is-weekend=${isWeekend}
-              .events=${active ? this.#popoverEventsFor(dayEvents) : []}
-              @day-label-selection=${(event: Event) =>
-                this.#handlePopoverDaySelection(day, cellIndex, event)}
-              @toggle=${(event: Event) => this.#handleHeaderPopoverToggle(cellIndex, event)}
-              @select=${this.#handleOverflowPopoverSelect}
-              @delete=${this.#handleOverflowPopoverDelete}
-            ></day-overflow-popover>
-          `
-        : nothing}
+      ${
+        dayEvents.length
+          ? html`
+              <day-overflow-popover
+                id=${popoverId}
+                popover="auto"
+                role="dialog"
+                .ariaLabel=${`Events on ${fullDateLabel}`}
+                style=${styleMap({
+                  "position-anchor": anchorName,
+                  "--_lc-all-day-day-number-space": "36px",
+                })}
+                .dayIso=${day.toString()}
+                .dayLabel=${new Intl.NumberFormat(this.#locale).format(day.day)}
+                ?is-current-day=${isToday}
+                ?outside-visible-month=${outsideMonth}
+                ?is-weekend=${isWeekend}
+                .events=${active ? this.#popoverEventsFor(dayEvents) : []}
+                @day-label-selection=${(event: Event) =>
+                  this.#handlePopoverDaySelection(day, cellIndex, event)}
+                @toggle=${(event: Event) => this.#handleHeaderPopoverToggle(cellIndex, event)}
+                @select=${this.#handleOverflowPopoverSelect}
+                @delete=${this.#handleOverflowPopoverDelete}
+              ></day-overflow-popover>
+            `
+          : nothing
+      }
     `;
   };
 
@@ -1606,8 +1610,9 @@ export class CalendarTimelineView extends CalendarViewBase {
         })}
         .dayIso=${day.toString()}
         .dayLabel=${new Intl.NumberFormat(this.#locale).format(day.day)}
-        ?is-current-day=${Temporal.PlainDate.compare(day, this.#currentDateTime.toPlainDate()) ===
-        0}
+        ?is-current-day=${
+          Temporal.PlainDate.compare(day, this.#currentDateTime.toPlainDate()) === 0
+        }
         ?outside-visible-month=${isMonthMode && isOutsideVisibleMonth(day, anchor)}
         ?is-weekend=${this.#isWeekendDay(day)}
         .events=${popoverEvents}
@@ -1633,15 +1638,17 @@ export class CalendarTimelineView extends CalendarViewBase {
     const shownColors = colors.slice(0, hiddenCount);
     return html`
       <span part="overflow-dots" aria-hidden="true">
-        ${shownColors.length
-          ? shownColors.map(
-              (color) =>
-                html`<span part="overflow-dot" style=${`background-color:${color}`}></span>`,
-            )
-          : Array.from(
-              { length: hiddenCount },
-              () => html`<span part="overflow-dot" style="background-color:currentColor"></span>`,
-            )}
+        ${
+          shownColors.length
+            ? shownColors.map(
+                (color) =>
+                  html`<span part="overflow-dot" style=${`background-color:${color}`}></span>`,
+              )
+            : Array.from(
+                { length: hiddenCount },
+                () => html`<span part="overflow-dot" style="background-color:currentColor"></span>`,
+              )
+        }
       </span>
     `;
   }
@@ -1798,18 +1805,18 @@ export class CalendarTimelineView extends CalendarViewBase {
         .height=${this.#resolvedHeight}
         .markers=${variant === "timed" ? this.#currentTimeMarkers : []}
         .markerTodayCell=${variant === "timed" ? (this.#nowMarkerTodayCell ?? -1) : -1}
-        .eventTemplate=${variant === "all-day"
-          ? this.#renderAllDayTimelineEvent
-          : this.#renderTimedTimelineEvent}
-        .createPreviewTemplate=${variant === "all-day"
-          ? this.#renderAllDayCreatePreview
-          : this.#renderTimedCreatePreview}
+        .eventTemplate=${
+          variant === "all-day" ? this.#renderAllDayTimelineEvent : this.#renderTimedTimelineEvent
+        }
+        .createPreviewTemplate=${
+          variant === "all-day" ? this.#renderAllDayCreatePreview : this.#renderTimedCreatePreview
+        }
         .heldCreatePreview=${this.#heldCreatePreviewFor(variant)}
         .cellAriaLabel=${this.#cellCreateAriaLabel}
         .resizeHandles=${!(this.mode === "month" && this.forceCompact)}
-        .headerTemplate=${this.mode === "month"
-          ? this.#monthDayHeaderTemplate
-          : this.#dayHeaderTemplate}
+        .headerTemplate=${
+          this.mode === "month" ? this.#monthDayHeaderTemplate : this.#dayHeaderTemplate
+        }
         .footerTemplate=${this.#showOverflowFooter ? this.#overflowFooterTemplate : undefined}
         @timeline-event-move=${(event: Event) => this.#handleTimelineMoveCommit(event, variant)}
         @timeline-event-resize=${(event: Event) => this.#handleTimelineResizeCommit(event, variant)}
@@ -2266,16 +2273,21 @@ export class CalendarTimelineView extends CalendarViewBase {
       >
         <span class=${numberClass}>
           ${new Intl.NumberFormat(this.#locale).format(day.day)}
-          ${dotColors.length
-            ? html`
-                <span class="year-day-dots" aria-hidden="true">
-                  ${dotColors.map(
-                    (color) =>
-                      html`<span class="year-day-dot" style=${`background-color:${color}`}></span>`,
-                  )}
-                </span>
-              `
-            : nothing}
+          ${
+            dotColors.length
+              ? html`
+                  <span class="year-day-dots" aria-hidden="true">
+                    ${dotColors.map(
+                      (color) =>
+                        html`<span
+                          class="year-day-dot"
+                          style=${`background-color:${color}`}
+                        ></span>`,
+                    )}
+                  </span>
+                `
+              : nothing
+          }
         </span>
       </button>
     `;

@@ -105,34 +105,38 @@ export class Dropdown extends BaseElement {
           @blur=${this.#handleSelectBlur}
           @change=${this.#handleChange}
         >
-          ${!hasSelection
-            ? html`<option value="" disabled selected>${this.placeholder}</option>`
-            : nothing}
+          ${
+            !hasSelection
+              ? html`<option value="" disabled selected>${this.placeholder}</option>`
+              : nothing
+          }
           ${normalizedOptions.map(
             (option) => html`
               <option value=${option.value} ?disabled=${option.disabled}>${option.label}</option>
             `,
           )}
         </select>
-        ${hasCustomIcon
-          ? html`
-              <span data-role="icon" aria-hidden="true">
-                <slot name="icon" @slotchange=${() => this.requestUpdate()}></slot>
-              </span>
-            `
-          : html`
-              <span data-role="chevron" aria-hidden="true">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  style="width: 1rem; height: 1rem;"
-                >
-                  <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"></path>
-                </svg>
-              </span>
-            `}
+        ${
+          hasCustomIcon
+            ? html`
+                <span data-role="icon" aria-hidden="true">
+                  <slot name="icon" @slotchange=${() => this.requestUpdate()}></slot>
+                </span>
+              `
+            : html`
+                <span data-role="chevron" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    style="width: 1rem; height: 1rem;"
+                  >
+                    <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"></path>
+                  </svg>
+                </span>
+              `
+        }
       </div>
     `;
   }
