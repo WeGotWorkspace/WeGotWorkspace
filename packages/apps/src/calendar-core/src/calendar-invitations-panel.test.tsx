@@ -490,9 +490,11 @@ describe("calendar invitation picker reuse", () => {
   it("imports CalendarEventCalendarPicker from the event form and invite card", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const form = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
+    const title = readFileSync(join(here, "calendar-event-form-title.tsx"), "utf8");
     const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
     const importLine = 'from "@/calendar-core/src/calendar-event-calendar-picker"';
-    expect(form).toContain(importLine);
+    expect(form).toContain("CalendarEventFormTitle");
+    expect(title).toContain(importLine);
     expect(card).toContain(importLine);
   });
 

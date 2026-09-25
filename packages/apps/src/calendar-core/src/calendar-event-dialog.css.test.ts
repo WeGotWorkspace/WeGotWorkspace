@@ -10,6 +10,7 @@ const whenTsx = readFileSync(join(here, "calendar-event-form-when.tsx"), "utf8")
 const repeatTsx = readFileSync(join(here, "calendar-event-form-recurrence.tsx"), "utf8");
 const footerTsx = readFileSync(join(here, "calendar-event-form-footer.tsx"), "utf8");
 const secondaryTsx = readFileSync(join(here, "calendar-event-form-secondary.tsx"), "utf8");
+const titleTsx = readFileSync(join(here, "calendar-event-form-title.tsx"), "utf8");
 const dialogTsx = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
 const recurrenceTsx = readFileSync(join(here, "calendar-recurrence-scope-dialog.tsx"), "utf8");
 
@@ -77,10 +78,10 @@ describe("calendar event dialog CSS ownership", () => {
 describe("calendar event dialog title row", () => {
   it("uses FieldLabelRow plus name-color row so the summary field can flex", () => {
     expect(dialogTsx).toMatch(/CalendarEventForm/);
-    expect(formTsx).toMatch(/FieldLabelRow/);
-    expect(formTsx).toMatch(/calendar-event-dialog__field--title/);
-    expect(formTsx).toMatch(/NameColorRow/);
-    expect(formTsx).toMatch(/NAME_COLOR_ROW_INPUT_CLASS/);
+    expect(titleTsx).toMatch(/FieldLabelRow/);
+    expect(titleTsx).toMatch(/calendar-event-dialog__field--title/);
+    expect(titleTsx).toMatch(/NameColorRow/);
+    expect(titleTsx).toMatch(/NAME_COLOR_ROW_INPUT_CLASS/);
     expect(css).not.toMatch(/calendar-event-dialog__title-input/);
     expect(css).not.toMatch(/calendar-event-dialog__calendar-trigger \{[\s\S]*width:\s*auto/);
     expect(css).not.toMatch(

@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CircleDot, Link2, MapPin, Type } from "lucide-react";
+import { CircleDot, Link2, MapPin } from "lucide-react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import { Input } from "@/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
@@ -29,8 +28,8 @@ import {
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
 import { type CalendarFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
-import { CalendarEventCalendarPicker } from "@/calendar-core/src/calendar-event-calendar-picker";
 import { CalendarEventFormRecurrence } from "@/calendar-core/src/calendar-event-form-recurrence";
+import { CalendarEventFormTitle } from "@/calendar-core/src/calendar-event-form-title";
 import { CalendarEventFormWhen } from "@/calendar-core/src/calendar-event-form-when";
 import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collection-write";
 import type { ControlSize } from "@/ui/control-size";
@@ -236,55 +235,25 @@ export function CalendarEventForm({
         }}
       >
         <div className="calendar-event-dialog__fields">
-          <FieldLabelRow
-            className="calendar-event-dialog__field calendar-event-dialog__field--title"
-            label={labels.eventTitleLabel}
-            labelMode="icon"
-            icon={fieldIcon(<Type className="size-3.5" aria-hidden />)}
-          >
-            <NameColorRow className="calendar-event-dialog__title-row">
-              <Input
-                className={NAME_COLOR_ROW_INPUT_CLASS}
-                size={controlSize}
-                value={form.title}
-                onChange={(event) => set("title", event.target.value)}
-                placeholder={labels.eventTitleLabel}
-                aria-label={labels.eventTitleLabel}
-                disabled={fieldsDisabled}
-                autoFocus={autoFocusTitle && !readOnly}
-              />
-              {layout?.hideCalendarPicker ? null : (
-                <CalendarEventCalendarPicker
-                  calendars={calendars}
-                  calendarId={calendarPickerInteractive ? draftCalendarId : form.calendarId}
-                  labels={labels}
-                  size={controlSize}
-                  disabled={busy || (readOnly && !calendarPickerInteractive)}
-                  onCalendarIdChange={(calendarId) => {
-                    if (showInviteeRsvp) {
-                      setDraftCalendarId(calendarId);
-                      return;
-                    }
-                    if (invitationMode) {
-                      if (busy || calendarId === draftCalendarId) return;
-                      const previous = draftCalendarId;
-                      setDraftCalendarId(calendarId);
-                      // needs-action / declined: keep local until Accept/Maybe (Decline ignores calendarId).
-                      const persisted = incomingRsvp;
-                      if (!persisted || persisted === "declined") return;
-                      void Promise.resolve(onRsvp?.(persisted, calendarId || undefined)).catch(
-                        () => {
-                          setDraftCalendarId(previous);
-                        },
-                      );
-                      return;
-                    }
-                    set("calendarId", calendarId);
-                  }}
-                />
-              )}
-            </NameColorRow>
-          </FieldLabelRow>
+          <CalendarEventFormTitle
+            form={form}
+            calendars={calendars}
+            labels={labels}
+            controlSize={controlSize}
+            busy={busy}
+            readOnly={readOnly}
+            fieldsDisabled={fieldsDisabled}
+            autoFocusTitle={autoFocusTitle}
+            hideCalendarPicker={layout?.hideCalendarPicker}
+            calendarPickerInteractive={calendarPickerInteractive}
+            showInviteeRsvp={showInviteeRsvp}
+            invitationMode={invitationMode}
+            draftCalendarId={draftCalendarId}
+            incomingRsvp={incomingRsvp}
+            onDraftCalendarIdChange={setDraftCalendarId}
+            onRsvp={onRsvp}
+            onFieldChange={set}
+          />
 
           <div className="calendar-event-dialog__field-group calendar-event-dialog__field-group--place">
             {layout?.hideLocation ? null : (
