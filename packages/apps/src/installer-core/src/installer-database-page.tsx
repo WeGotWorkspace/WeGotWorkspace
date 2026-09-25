@@ -18,8 +18,7 @@ export type InstallerMysqlDraft = {
 };
 
 export type InstallerDatabaseValues =
-  | { engine: "sqlite" }
-  | { engine: "mysql"; mysql: InstallerMysqlDraft };
+  { engine: "sqlite" } | { engine: "mysql"; mysql: InstallerMysqlDraft };
 
 export type InstallerDatabasePageProps = {
   initialEngine?: InstallerDatabaseEngine;

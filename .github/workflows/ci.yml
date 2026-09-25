@@ -204,18 +204,37 @@ jobs:
       !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     steps:
+      # Actions secrets are hidden from dependabot[bot]. The Chromatic CLI
+      # exits "Missing project token" when CHROMATIC_PROJECT_TOKEN is empty,
+      # which failed this job after a full Storybook build. Skip publish then.
+      - name: Detect Chromatic project token
+        id: chromatic-token
+        env:
+          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+        run: |
+          if [ -n "$CHROMATIC_PROJECT_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "CHROMATIC_PROJECT_TOKEN is unset. Skipping Storybook publish."
+          fi
+
       - uses: actions/checkout@v7
+        if: steps.chromatic-token.outputs.present == 'true'
         with:
           fetch-depth: 0
 
       - uses: pnpm/action-setup@v6.1.0
+        if: steps.chromatic-token.outputs.present == 'true'
 
       - uses: actions/setup-node@v7
+        if: steps.chromatic-token.outputs.present == 'true'
         with:
           node-version: "24"
           cache: "pnpm"
 
       - name: Install JS workspace
+        if: steps.chromatic-token.outputs.present == 'true'
         run: pnpm install --frozen-lockfile
 
       # Build with pnpm and upload that directory so the action does not spawn
@@ -223,10 +242,12 @@ jobs:
       # --stats-json writes preview-stats.json. TurboSnap (onlyChanged) traces
       # changed files from that manifest; without it the publish step fails.
       - name: Build Storybook
+        if: steps.chromatic-token.outputs.present == 'true'
         working-directory: packages/apps
         run: pnpm exec storybook build --output-dir storybook-static --stats-json
 
       - name: Publish to Chromatic
+        if: steps.chromatic-token.outputs.present == 'true'
         uses: chromaui/action@v18
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}

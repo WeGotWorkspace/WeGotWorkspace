@@ -720,8 +720,7 @@ describe("useDocsCollab offline lifecycle", () => {
     const authorizedCollabFetches = fetchMock.mock.calls.filter(([input, init]) => {
       if (!String(input).includes("/files/collaboration")) return false;
       const headers = (init as RequestInit | undefined)?.headers as
-        | Record<string, string>
-        | undefined;
+        Record<string, string> | undefined;
       return headers?.Authorization === "Bearer live-token";
     });
     expect(authorizedCollabFetches.length).toBeGreaterThan(0);

@@ -11,7 +11,7 @@
         "laravel/passport": "^13.8",
         "lcobucci/jwt": "^5.5",
         "minishlink/web-push": "^11.0",
-        "phpmailer/phpmailer": "^6.9",
+        "phpmailer/phpmailer": "^7.1",
         "sabre/dav": "^4.7",
         "swagger-api/swagger-ui": "^5.32",
         "zbateson/mail-mime-parser": "^4.0"

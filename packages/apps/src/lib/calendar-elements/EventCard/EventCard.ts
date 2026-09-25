@@ -150,10 +150,12 @@ export class EventCard extends BaseElement {
         <div class="event-card-heading">
           <span class="event-card-content">
             <span class="event-card-compact-label">
-              ${hasTimeLabel
-                ? html`<span class="event-card-compact-time">${compactTimeLabel}</span
-                    ><span aria-hidden="true"> </span>`
-                : ""}<span>${this.summary}</span>
+              ${
+                hasTimeLabel
+                  ? html`<span class="event-card-compact-time">${compactTimeLabel}</span
+                      ><span aria-hidden="true"> </span>`
+                  : ""
+              }<span>${this.summary}</span>
             </span>
             <span class="event-card-summary-main">${this.summary}</span>
             ${hasMeta ? this.#renderMetaBlock(hasTimeLabel, hasLocation, location) : nothing}
@@ -175,9 +177,11 @@ export class EventCard extends BaseElement {
 
   #renderMetaBlock(hasTimeLabel: boolean, hasLocation: boolean, location: string) {
     const timeRow = hasTimeLabel
-      ? html`<span class="event-card-time-main">${this.time}</span>${this.timeDetail
-            ? html`<span class="event-card-time-detail">(${this.timeDetail})</span>`
-            : nothing}`
+      ? html`<span class="event-card-time-main">${this.time}</span>${
+            this.timeDetail
+              ? html`<span class="event-card-time-detail">(${this.timeDetail})</span>`
+              : nothing
+          }`
       : nothing;
     return html`
       <time class="event-card-time">${timeRow}</time>

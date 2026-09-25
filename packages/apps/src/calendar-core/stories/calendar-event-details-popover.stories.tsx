@@ -43,8 +43,7 @@ export const Default: Story = {
     const popover = canvas.getByRole("dialog", { name: "Lunch" });
     await expect(popover).toBeTruthy();
     const eventCard = popover.querySelector("event-card.calendar-event-details-popover__event") as
-      | (HTMLElement & { summary?: string })
-      | null;
+      (HTMLElement & { summary?: string }) | null;
     await expect(eventCard).toBeTruthy();
     await expect(eventCard?.summary).toBe("Lunch");
     await expect(popover.querySelector(".calendar-event-details-popover__details")).toBeTruthy();

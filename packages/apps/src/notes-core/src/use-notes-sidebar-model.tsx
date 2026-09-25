@@ -67,26 +67,22 @@ export function collectionsFromNotesData(
   sharedNotebooks: NotesSharedNotebook[] = [],
   notebookCollections?: NotesNotebookCollection[],
 ): NotesNotebookCollection[] {
-  const owned = notebooks.map(
-    (name): NotesNotebookCollection => ({
-      id: name,
-      name,
-      isSharee: false,
-      scope: "personal",
-    }),
-  );
+  const owned = notebooks.map((name): NotesNotebookCollection => ({
+    id: name,
+    name,
+    isSharee: false,
+    scope: "personal",
+  }));
   const shared = sharedNotebooks
     .filter((entry) => entry.scope === "group")
-    .map(
-      (entry): NotesNotebookCollection => ({
-        id: entry.groupSlug ? `group-${entry.groupSlug}` : entry.path,
-        name: entry.notebook,
-        // Group membership is ownership (Tasks/Calendar), not inbound ACL.
-        isSharee: false,
-        scope: "group",
-        groupSlug: entry.groupSlug,
-      }),
-    );
+    .map((entry): NotesNotebookCollection => ({
+      id: entry.groupSlug ? `group-${entry.groupSlug}` : entry.path,
+      name: entry.notebook,
+      // Group membership is ownership (Tasks/Calendar), not inbound ACL.
+      isSharee: false,
+      scope: "group",
+      groupSlug: entry.groupSlug,
+    }));
   if (!notebookCollections || notebookCollections.length === 0) {
     return [...owned, ...shared];
   }

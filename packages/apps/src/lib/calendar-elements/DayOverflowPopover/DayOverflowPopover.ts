@@ -44,9 +44,9 @@ export class DayOverflowPopover extends BaseElement {
   render() {
     return html`
       <div
-        class="day-overflow-popover-cell ${this.isWeekend
-          ? "day-overflow-popover-cell-weekend"
-          : ""}"
+        class="day-overflow-popover-cell ${
+          this.isWeekend ? "day-overflow-popover-cell-weekend" : ""
+        }"
         style=${styleMap({
           "--_lc-days": "1",
           "--_lc-grid-rows": "1",
@@ -55,13 +55,15 @@ export class DayOverflowPopover extends BaseElement {
         })}
       >
         ${this.#renderDayNumber()}
-        ${this.events.length
-          ? html`
-              <div class="day-overflow-popover-events">
-                ${this.events.map((event) => this.#renderEvent(event))}
-              </div>
-            `
-          : ""}
+        ${
+          this.events.length
+            ? html`
+                <div class="day-overflow-popover-events">
+                  ${this.events.map((event) => this.#renderEvent(event))}
+                </div>
+              `
+            : ""
+        }
       </div>
     `;
   }
@@ -70,9 +72,9 @@ export class DayOverflowPopover extends BaseElement {
     return html`
       <button
         type="button"
-        class="day-label day-overflow-popover-day-number ${this.isCurrentDay
-          ? "current-day"
-          : ""} ${this.outsideVisibleMonth ? "outside-month-day-label" : ""}"
+        class="day-label day-overflow-popover-day-number ${
+          this.isCurrentDay ? "current-day" : ""
+        } ${this.outsideVisibleMonth ? "outside-month-day-label" : ""}"
         .ariaLabel=${`Open day ${this.dayLabel}`}
         @click=${this.#handleDaySelectionRequest}
         @keydown=${this.#handleDaySelectionKeyDown}
