@@ -7,7 +7,13 @@
     },
     "typegen": {
       "dependsOn": ["^typegen"],
-      "outputs": ["generated/**"]
+      "outputs": ["generated/**"],
+      "inputs": [
+        "$TURBO_ROOT$/packages/api/openapi/openapi.json",
+        "$TURBO_ROOT$/packages/api/openapi/schemas/**",
+        "scripts/**",
+        "package.json"
+      ]
     },
     "typegen:check": {
       "dependsOn": ["typegen"],
@@ -17,16 +23,40 @@
       "cache": false,
       "persistent": true
     },
-    "lint": {},
-    "format:check": {},
-    "typecheck": {
-      "dependsOn": ["^build"]
+    "lint": {
+      "outputs": [],
+      "env": ["CI"]
     },
-    "test:unit": {},
-    "test:jsdom": {},
-    "test:contract": {},
-    "test:storybook": {},
-    "test:storybook:ci": {},
+    "format:check": {
+      "outputs": [],
+      "env": ["CI"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "env": ["CI"]
+    },
+    "test:unit": {
+      "outputs": [],
+      "env": ["CI"]
+    },
+    "test:jsdom": {
+      "outputs": [],
+      "env": ["CI", "JSDOM_CONCURRENCY", "JSDOM_SOLO_CONCURRENCY"]
+    },
+    "test:contract": {
+      "dependsOn": ["@wgw/openapi-types#typegen"],
+      "outputs": [],
+      "env": ["CI"]
+    },
+    "test:storybook": {
+      "outputs": [],
+      "env": ["CI", "STORYBOOK_A11Y_GATE", "STORYBOOK_VITEST_SMOKE"]
+    },
+    "test:storybook:ci": {
+      "outputs": [],
+      "env": ["CI", "STORYBOOK_A11Y_GATE", "STORYBOOK_VITEST_SMOKE"]
+    },
     "dev": {
       "cache": false,
       "persistent": true,
