@@ -47,7 +47,6 @@ packages/apps/src/contacts-core/src/contacts-edit-utils.ts	888	grandfathered
 packages/apps/src/contacts-core/src/contacts-group-utils.ts	465	grandfathered
 packages/apps/src/contacts-core/src/contacts-workspace.tsx	588	grandfathered
 packages/apps/src/contacts-core/src/use-contacts-controller.tsx	1573	grandfathered
-packages/apps/src/docs-core/src/docs-home-workspace.tsx	551	grandfathered
 packages/apps/src/docs-core/src/use-docs-home-actions.tsx	490	grandfathered
 packages/apps/src/docs-core/src/use-docs-home-list.ts	414	grandfathered
 packages/apps/src/drive-core/src/drive-browser.tsx	1054	grandfathered
