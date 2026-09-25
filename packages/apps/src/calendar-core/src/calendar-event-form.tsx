@@ -1,15 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-  Bell,
-  CircleDot,
-  Link2,
-  MapPin,
-  Repeat,
-  StickyNote,
-  Trash2,
-  Type,
-  Users,
-} from "lucide-react";
+import { Bell, CircleDot, Link2, MapPin, StickyNote, Trash2, Type, Users } from "lucide-react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
@@ -17,7 +7,6 @@ import { Button, IconButton } from "@/button/src/button";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import { Input } from "@/ui/input";
-import { LocaleDatePicker } from "@/ui/locale-date-picker";
 import { Textarea } from "@/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
@@ -44,16 +33,10 @@ import {
   calendarEventFormIsValid,
   patchCalendarEventForm,
   type CalendarEventFormValue,
-  type RecurrenceEndsMode,
 } from "@/calendar-core/src/calendar-editor-model";
 import { type CalendarFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
-import {
-  EDITABLE_RECURRENCE_PRESET_IDS,
-  recurrencePresetOptionLabel,
-  type EditableRecurrencePresetId,
-  type RecurrencePresetId,
-} from "@/calendar-core/src/calendar-recurrence-presets";
 import { CalendarEventCalendarPicker } from "@/calendar-core/src/calendar-event-calendar-picker";
+import { CalendarEventFormRecurrence } from "@/calendar-core/src/calendar-event-form-recurrence";
 import { CalendarEventFormWhen } from "@/calendar-core/src/calendar-event-form-when";
 import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collection-write";
 import type { ControlSize } from "@/ui/control-size";
@@ -198,17 +181,6 @@ export function CalendarEventForm({
   }, [form.calendarId, incomingRsvp]);
 
   const valid = calendarEventFormIsValid(form);
-  const recurrenceLocked = form.recurrencePreset === "custom";
-  const showRecurrenceEnds = !recurrenceLocked && form.recurrencePreset !== "none";
-  const recurrenceOptions = useMemo(() => {
-    const ids: RecurrencePresetId[] = recurrenceLocked
-      ? ["custom"]
-      : EDITABLE_RECURRENCE_PRESET_IDS;
-    return ids.map((id) => ({
-      id,
-      label: recurrencePresetOptionLabel(id, form.startDate, locale),
-    }));
-  }, [form.startDate, locale, recurrenceLocked]);
 
   const {
     commitForm,
@@ -237,15 +209,6 @@ export function CalendarEventForm({
     value: CalendarEventFormValue[K],
   ) => {
     commitForm(patchCalendarEventForm(form, { [key]: value } as Partial<CalendarEventFormValue>));
-  };
-
-  const setRecurrencePreset = (preset: EditableRecurrencePresetId) => {
-    onChange(
-      patchCalendarEventForm(form, {
-        recurrencePreset: preset,
-        customRecurrenceRules: undefined,
-      }),
-    );
   };
 
   const saveLabel =
@@ -388,92 +351,15 @@ export function CalendarEventForm({
           )}
 
           {layout?.hideRecurrence ? null : (
-            <FieldLabelRow
-              className="calendar-event-dialog__field calendar-event-dialog__field--repeat"
-              label={labels.eventRepeatLabel}
-              labelMode="icon"
-              icon={fieldIcon(<Repeat className="size-3.5" aria-hidden />)}
-            >
-              <div className="calendar-event-dialog__repeat-stack">
-                <Select
-                  value={form.recurrencePreset}
-                  onValueChange={(value) =>
-                    setRecurrencePreset(value as EditableRecurrencePresetId)
-                  }
-                  disabled={recurrenceLocked || fieldsDisabled}
-                >
-                  <SelectTrigger
-                    size={controlSize}
-                    className="calendar-event-dialog__repeat-trigger"
-                    aria-label={labels.eventRepeatLabel}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {recurrenceOptions.map((option) => (
-                      <SelectItem key={option.id} value={option.id}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {showRecurrenceEnds ? (
-                  <div className="calendar-event-dialog__recurrence-ends">
-                    <Select
-                      value={form.recurrenceEnds}
-                      onValueChange={(value) => set("recurrenceEnds", value as RecurrenceEndsMode)}
-                      disabled={fieldsDisabled}
-                    >
-                      <SelectTrigger
-                        size={controlSize}
-                        aria-label={labels.eventRecurrenceEndsLabel}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="never">{labels.eventRecurrenceEndsNever}</SelectItem>
-                        <SelectItem value="until">{labels.eventRecurrenceEndsOnDate}</SelectItem>
-                        <SelectItem value="count">{labels.eventRecurrenceEndsAfter}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {form.recurrenceEnds === "until" ? (
-                      <div className="calendar-event-dialog__recurrence-ends-extra">
-                        <LocaleDatePicker
-                          value={form.recurrenceUntilDate || form.startDate}
-                          locale={locale}
-                          size={controlSize}
-                          label={labels.eventRecurrenceEndsOnDate}
-                          onChange={(next) => set("recurrenceUntilDate", next)}
-                          disabled={fieldsDisabled}
-                        />
-                      </div>
-                    ) : null}
-                    {form.recurrenceEnds === "count" ? (
-                      <div className="calendar-event-dialog__recurrence-ends-extra">
-                        <div className="calendar-event-dialog__recurrence-count">
-                          <Input
-                            type="number"
-                            size={controlSize}
-                            min={1}
-                            step={1}
-                            value={form.recurrenceCount}
-                            aria-label={labels.eventRecurrenceEndsAfter}
-                            disabled={fieldsDisabled}
-                            onChange={(event) => {
-                              const parsed = Number.parseInt(event.target.value, 10);
-                              set("recurrenceCount", Number.isFinite(parsed) ? parsed : 0);
-                            }}
-                          />
-                          <span className="calendar-event-dialog__recurrence-count-suffix">
-                            {labels.eventRecurrenceEndsCountSuffix}
-                          </span>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            </FieldLabelRow>
+            <CalendarEventFormRecurrence
+              form={form}
+              labels={labels}
+              locale={locale}
+              controlSize={controlSize}
+              disabled={fieldsDisabled}
+              onChange={onChange}
+              onFieldChange={set}
+            />
           )}
 
           {layout?.hideShowAs ? null : (
