@@ -98,7 +98,7 @@ jobs:
       - name: Install workspace
         run: pnpm install --frozen-lockfile
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - uses: docker/login-action@v4
         with:
@@ -107,7 +107,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download the release ZIP
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: wegotworkspace-deploy-zip
           path: dist/releases
@@ -148,7 +148,7 @@ jobs:
             dist/releases/wgw-docker-install-*.tar.gz
 
       - name: Upload bundle for smoke
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-bundle
           path: dist/releases
@@ -170,7 +170,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download release bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-bundle
           path: dist/releases
@@ -263,7 +263,7 @@ jobs:
       contents: write
     steps:
       - name: Download cell statuses
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: install-e2e-cell-*
           merge-multiple: true

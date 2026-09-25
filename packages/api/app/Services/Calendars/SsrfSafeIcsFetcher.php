@@ -44,7 +44,9 @@ final class SsrfSafeIcsFetcher
     public function fetch(string $url): string
     {
         $current = $this->normalizeUrl($url);
-        $validatedIps = $this->assertSafeUrl($current);
+        $safe = $this->assertSafeUrl($current);
+        $current = $safe['url'];
+        $validatedIps = $safe['ips'];
 
         for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
             $response = $this->request($current, $validatedIps);
@@ -55,7 +57,9 @@ final class SsrfSafeIcsFetcher
                     throw new ApiHttpException(400, 'The calendar feed redirected without a Location header.', 'bad_request');
                 }
                 $current = $this->absoluteUrl($current, $location);
-                $validatedIps = $this->assertSafeUrl($current);
+                $safe = $this->assertSafeUrl($current);
+                $current = $safe['url'];
+                $validatedIps = $safe['ips'];
 
                 continue;
             }
@@ -84,10 +88,12 @@ final class SsrfSafeIcsFetcher
 
     /**
      * Resolve once, reject private / reserved addresses, and return the
-     * validated public IPs. Callers must pin the HTTP client to these IPs
-     * and must not resolve the host again (DNS rebinding).
+     * validated URL plus public IPs for DNS pinning. Callers must pin the
+     * HTTP client to these IPs and must not resolve the host again (DNS rebinding).
      *
-     * @return list<string>
+     * @return array{url: string, ips: list<string>}
+     *
+     * @psalm-taint-escape ssrf
      */
     public function assertSafeUrl(string $url): array
     {
@@ -115,7 +121,7 @@ final class SsrfSafeIcsFetcher
             $this->assertPublicIp($ip);
         }
 
-        return $ips;
+        return ['url' => $url, 'ips' => $ips];
     }
 
     /**

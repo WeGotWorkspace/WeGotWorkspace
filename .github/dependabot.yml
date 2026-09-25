@@ -1,5 +1,7 @@
-# Weekly version updates. Patch and minor updates are grouped so one failure
-# does not block the rest. Major updates stay ungrouped and open on their own.
+# Weekly version updates. Each ecosystem is one group covering major, minor,
+# and patch, so Dependabot opens a single version-update pull request per
+# ecosystem. `applies-to: version-updates` keeps security updates ungrouped
+# so they are not held for the weekly batch.
 #
 # Follow-up (turbo-hybrid): root `npm` only sees pnpm-lock.yaml. If packages/api
 # or tools/api-e2e later gets its own package.json and lockfile, add another npm
@@ -13,10 +15,12 @@ updates:
       interval: weekly
     open-pull-requests-limit: 10
     groups:
-      composer-patch-minor:
+      composer:
+        applies-to: version-updates
         patterns:
           - "*"
         update-types:
+          - major
           - minor
           - patch
 
@@ -26,18 +30,12 @@ updates:
       interval: weekly
     open-pull-requests-limit: 10
     groups:
-      npm-production-patch-minor:
-        dependency-type: production
+      npm:
+        applies-to: version-updates
         patterns:
           - "*"
         update-types:
-          - minor
-          - patch
-      npm-development-patch-minor:
-        dependency-type: development
-        patterns:
-          - "*"
-        update-types:
+          - major
           - minor
           - patch
 
@@ -47,10 +45,12 @@ updates:
       interval: weekly
     open-pull-requests-limit: 10
     groups:
-      github-actions-patch-minor:
+      github-actions:
+        applies-to: version-updates
         patterns:
           - "*"
         update-types:
+          - major
           - minor
           - patch
 
@@ -59,3 +59,13 @@ updates:
     directory: /docker/install
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      docker:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - major
+          - minor
+          - patch

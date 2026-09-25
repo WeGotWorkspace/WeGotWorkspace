@@ -1,7 +1,7 @@
 # Production install image — same document-root layout as the release ZIP (INSTALL.md).
 # Build stage runs the monorepo release packager; runtime is Apache + mod_php only (no composer at boot).
 
-FROM php:8.3-cli-bookworm AS builder
+FROM php:8.5-cli-bookworm AS builder
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -40,7 +40,7 @@ RUN corepack enable \
     && mkdir -p /release \
     && unzip -q dist/releases/wegotworkspace-deploy-*.zip -d /release
 
-FROM php:8.3-apache-bookworm
+FROM php:8.5-apache-bookworm
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

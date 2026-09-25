@@ -7,10 +7,7 @@ type DriveAccessFiltersProps = {
 };
 
 type AccessFilterLabelKey =
-  | "accessFilterAll"
-  | "accessFilterExternal"
-  | "accessFilterPublic"
-  | "accessFilterGroups";
+  "accessFilterAll" | "accessFilterExternal" | "accessFilterPublic" | "accessFilterGroups";
 
 const FILTER_OPTIONS: { id: DriveAccessFilter; labelKey: AccessFilterLabelKey }[] = [
   { id: "all", labelKey: "accessFilterAll" },

@@ -68,10 +68,7 @@ const REFRESH_RETRY_WINDOW_MS = 15 * 60 * 1_000;
 const RETRY_CAP_MARGIN_SEC = 0;
 
 export type WgwSessionClearReason =
-  | "user_initiated"
-  | "401_online"
-  | "refresh_expired"
-  | "retry_cap_exceeded";
+  "user_initiated" | "401_online" | "refresh_expired" | "retry_cap_exceeded";
 
 class AuthHttpError extends Error {
   constructor(

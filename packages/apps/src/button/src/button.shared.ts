@@ -21,12 +21,7 @@ export type ButtonSeverity = "danger" | "success";
 
 /** shadcn / Radix UI kit variant names — mapped to product variants in {@link normalizeButtonVariant}. */
 export type ShadcnButtonVariant =
-  | "default"
-  | "outline"
-  | "secondary"
-  | "destructive"
-  | "ghost"
-  | "link";
+  "default" | "outline" | "secondary" | "destructive" | "ghost" | "link";
 
 /** shadcn / Radix UI kit size names — mapped to product sizes in {@link normalizeButtonSize}. */
 export type ShadcnButtonSize = "default" | "sm" | "lg" | "icon";

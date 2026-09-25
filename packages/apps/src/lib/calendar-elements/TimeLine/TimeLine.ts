@@ -187,8 +187,7 @@ export class TimeLine extends LitElement {
    */
   @property({ attribute: false })
   accessor createPreviewTemplate:
-    | ((preview: TimelineEventPreviewRange) => TemplateResult)
-    | undefined;
+    ((preview: TimelineEventPreviewRange) => TemplateResult) | undefined;
 
   /**
    * Parent-held create range after pointer-up (create dialog open). Combined with the live
@@ -2015,13 +2014,17 @@ export class TimeLine extends LitElement {
         ${this.#eventAccentVars(templateEv)}
       "
       >
-        ${showResizeStart && mountHandles
-          ? this.#resizeHandleFragment("start", "Resize start", ev.key)
-          : nothing}
+        ${
+          showResizeStart && mountHandles
+            ? this.#resizeHandleFragment("start", "Resize start", ev.key)
+            : nothing
+        }
         ${this.renderEventTemplate(templateEv, preview)}
-        ${showResizeEnd && mountHandles
-          ? this.#resizeHandleFragment("end", "Resize end", ev.key)
-          : nothing}
+        ${
+          showResizeEnd && mountHandles
+            ? this.#resizeHandleFragment("end", "Resize end", ev.key)
+            : nothing
+        }
       </div>
     `;
   }
@@ -2201,11 +2204,13 @@ export class TimeLine extends LitElement {
         style="${laneVars}"
         @keydown=${this.#onCellKeyDown}
       >
-        ${this.headerTemplate
-          ? html`<div class="cell-header" part="cell-header">
-              ${this.renderHeaderTemplate(cell)}
-            </div>`
-          : nothing}
+        ${
+          this.headerTemplate
+            ? html`<div class="cell-header" part="cell-header">
+                ${this.renderHeaderTemplate(cell)}
+              </div>`
+            : nothing
+        }
         <div
           class="cell-main${windowed ? " cell-main--windowed" : ""}${gridClass}"
           part="cell-main"
@@ -2219,11 +2224,13 @@ export class TimeLine extends LitElement {
           ${this.#createPreviewFragments(cell, horiz, cols, span, gridMax, w0, w1)}
           ${this.#moveGhostFragments(cell, horiz, cols, span, gridMax, w0, w1, laneMode, rl, vl)}
         </div>
-        ${this.footerTemplate
-          ? html`<div class="cell-footer" part="cell-footer">
-              ${this.renderFooterTemplate(cell, visibleEvents, allCellEvents)}
-            </div>`
-          : nothing}
+        ${
+          this.footerTemplate
+            ? html`<div class="cell-footer" part="cell-footer">
+                ${this.renderFooterTemplate(cell, visibleEvents, allCellEvents)}
+              </div>`
+            : nothing
+        }
       </div>
     `;
   }

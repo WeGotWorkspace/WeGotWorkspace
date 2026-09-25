@@ -113,11 +113,9 @@ export class CalendarsSidebar extends BaseElement {
                   ${group.entries.map(
                     ([id, cal]) => html`
                       <div
-                        class="calendar-row ${visible.has(id)
-                          ? ""
-                          : "calendar-row--hidden"} ${selectedId === id
-                          ? "calendar-row--selected"
-                          : ""}"
+                        class="calendar-row ${visible.has(id) ? "" : "calendar-row--hidden"} ${
+                          selectedId === id ? "calendar-row--selected" : ""
+                        }"
                       >
                         <button
                           type="button"

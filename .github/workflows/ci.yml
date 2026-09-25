@@ -60,7 +60,7 @@ jobs:
           cache: "pnpm"
 
       - name: Cache Composer vendor
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: packages/api/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
@@ -68,7 +68,7 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Cache Turbo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.job }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
@@ -110,7 +110,7 @@ jobs:
           cache: "pnpm"
 
       - name: Cache Turbo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.job }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
@@ -122,7 +122,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
@@ -168,7 +168,7 @@ jobs:
           cache: "pnpm"
 
       - name: Cache Composer vendor
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: packages/api/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
@@ -291,7 +291,7 @@ jobs:
           coverage: none
 
       - name: Cache Composer vendor
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: packages/api/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
@@ -337,7 +337,7 @@ jobs:
           coverage: pcov
 
       - name: Cache Composer vendor
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: packages/api/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
@@ -360,7 +360,7 @@ jobs:
           php vendor/bin/phpunit -c phpunit.xml --coverage-clover=build/logs/clover.xml
           php -r 'if (!preg_match("/<file\\b/", file_get_contents("build/logs/clover.xml"))) { fwrite(STDERR, "clover lists no files\n"); exit(1); }'
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: phpunit-clover
           path: packages/api/build/logs/clover.xml
@@ -378,7 +378,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6.1.0
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: pnpm
@@ -415,7 +415,7 @@ jobs:
             pnpm exec vitest --merge-reports=.vitest-reports-jsdom --coverage.enabled --coverage.reporter=lcov,json-summary --coverage.reportsDirectory=coverage/jsdom
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vitest-coverage
           path: packages/apps/coverage

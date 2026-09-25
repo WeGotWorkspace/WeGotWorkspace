@@ -52,6 +52,6 @@ Details: [docs/dev-layout.md](docs/dev-layout.md), [docs/env.md](docs/env.md). D
 ## Maintainers
 
 - **Release:** Signed tag push → CI publishes ZIP + Docker image; local `pnpm release:publish patch` — see [docs/install-docker-ops.md](docs/install-docker-ops.md).
-- **Security CI:** CodeQL, Semgrep, Gitleaks, and Trivy — see [SECURITY.md](SECURITY.md) for when they run.
+- **Security CI:** CodeQL (JS/TS), Psalm taint (PHP), Semgrep, Gitleaks, and Trivy — see [SECURITY.md](SECURITY.md) for when they run.
 - **Quality gate:** `pnpm run ci:quality` before merge-ready PRs; apps pre-push gate when `packages/apps/**` changes.
 - **Signed commits** required on `main`.

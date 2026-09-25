@@ -60,7 +60,9 @@ final class SsrfSafeIcsFetcherTest extends TestCase
     public function test_accepts_a_public_resolved_host(): void
     {
         $fetcher = $this->fetcher();
-        $this->assertSame([self::PUBLIC_IP], $fetcher->assertSafeUrl('https://feeds.example.test/cal.ics'));
+        $safe = $fetcher->assertSafeUrl('https://feeds.example.test/cal.ics');
+        $this->assertSame('https://feeds.example.test/cal.ics', $safe['url']);
+        $this->assertSame([self::PUBLIC_IP], $safe['ips']);
     }
 
     public function test_pins_http_client_to_first_validated_ip_and_does_not_resolve_again(): void

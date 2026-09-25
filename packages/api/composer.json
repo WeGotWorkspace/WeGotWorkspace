@@ -11,7 +11,7 @@
         "laravel/passport": "^13.8",
         "lcobucci/jwt": "^5.5",
         "minishlink/web-push": "^11.0",
-        "phpmailer/phpmailer": "^6.9",
+        "phpmailer/phpmailer": "^7.1",
         "sabre/dav": "^4.7",
         "swagger-api/swagger-ui": "^5.32",
         "zbateson/mail-mime-parser": "^4.0"
@@ -24,7 +24,9 @@
     "require-dev": {
         "fakerphp/faker": "^1.24",
         "laravel/pint": "^1.18",
-        "phpunit/phpunit": "^11.0"
+        "phpunit/phpunit": "^11.0",
+        "psalm/plugin-laravel": "^3.16",
+        "vimeo/psalm": "^6.16"
     },
     "autoload": {
         "psr-4": {
