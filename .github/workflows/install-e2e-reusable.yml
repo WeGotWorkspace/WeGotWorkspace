@@ -70,7 +70,8 @@ jobs:
 
       - name: Job summary
         if: always()
-        run: echo "### ${{ matrix.cell }}: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "### ${{ matrix.cell }}: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record cell status
         if: always()
