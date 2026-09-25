@@ -72,6 +72,66 @@ jobs:
           path: codeql-sarif-results/
           if-no-files-found: ignore
 
+  sast-psalm-php:
+    name: SAST (Psalm PHP)
+    if: >-
+      github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    defaults:
+      run:
+        working-directory: packages/api
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+
+      - name: Cache Composer vendor
+        uses: actions/cache@v4
+        with:
+          path: packages/api/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare Laravel env
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force --no-interaction
+
+      - name: Run Psalm taint analysis
+        continue-on-error: true
+        run: vendor/bin/psalm --taint-analysis --no-progress --report=psalm-taint.sarif
+
+      - name: Upload Psalm SARIF to Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: packages/api/psalm-taint.sarif
+          category: psalm-php
+
+      - name: Upload Psalm SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: psalm-php-results
+          path: packages/api/psalm-taint.sarif
+          if-no-files-found: ignore
+
+      - name: Enforce error-level severity gate
+        if: always()
+        run: bash "${{ github.workspace }}/.github/scripts/enforce-sarif-severity.sh" psalm-taint.sarif error-level
+
   sast-semgrep-php:
     name: SAST (Semgrep PHP)
     if: >-

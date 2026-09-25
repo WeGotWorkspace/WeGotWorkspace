@@ -689,8 +689,9 @@ final class InstallerWizardService
         }
 
         $path = $this->paths->resolveProjectPath((string) ($db['sqlite_path'] ?? $this->paths->defaultSqliteRelativePath()));
-        if (is_file($path) && filesize($path) < 1) {
-            @unlink($path);
+        $safe = $this->installConfig->pathIfInsideInstallRoot($path);
+        if ($safe !== null && is_file($safe) && filesize($safe) < 1) {
+            @unlink($safe);
         }
     }
 

@@ -90,32 +90,11 @@ final class CimdResolver
      */
     public function fetch(string $url): array
     {
-        $parts = parse_url($url);
-        if (! is_array($parts) || ($parts['scheme'] ?? '') !== 'https') {
-            throw new CimdException('CIMD client_id must be an https URL.', 400);
-        }
-        $host = (string) ($parts['host'] ?? '');
-        if ($host === '' || strtolower($host) === 'localhost') {
-            throw new CimdException('CIMD host is not allowed.', 400);
-        }
-        $port = (int) ($parts['port'] ?? 443);
-        $origin = McpRedirectUris::originOf($url);
-
-        $throttleKey = 'mcp-cimd:'.sha1($origin);
-        if (RateLimiter::tooManyAttempts($throttleKey, 20)) {
-            throw new CimdException('Too many CIMD fetches for this origin.', 429);
-        }
-        RateLimiter::hit($throttleKey, 60);
-
-        $ips = $this->dns->resolve($host);
-        if ($ips === []) {
-            throw new CimdException('CIMD host could not be resolved.', 400);
-        }
-        $public = array_values(array_filter($ips, McpRedirectUris::isPublicIp(...)));
-        if ($public === []) {
-            throw new CimdException('CIMD host resolved to a private or reserved address.', 400);
-        }
-        $pinned = $public[0];
+        $safe = $this->assertSafeCimdUrl($url);
+        $url = $safe['url'];
+        $host = $safe['host'];
+        $port = $safe['port'];
+        $pinned = $safe['pinnedIp'];
         $timeout = (int) config('mcp.cimd.timeout_seconds', 5);
         $maxBytes = (int) config('mcp.cimd.max_bytes', 65536);
 
@@ -159,6 +138,49 @@ final class CimdResolver
         }
 
         return $decoded;
+    }
+
+    /**
+     * Validate https + public DNS for a CIMD metadata URL and return it for fetch.
+     *
+     * @return array{url: string, host: string, port: int, pinnedIp: string}
+     *
+     * @psalm-taint-escape ssrf
+     */
+    private function assertSafeCimdUrl(string $url): array
+    {
+        $parts = parse_url($url);
+        if (! is_array($parts) || ($parts['scheme'] ?? '') !== 'https') {
+            throw new CimdException('CIMD client_id must be an https URL.', 400);
+        }
+        $host = (string) ($parts['host'] ?? '');
+        if ($host === '' || strtolower($host) === 'localhost') {
+            throw new CimdException('CIMD host is not allowed.', 400);
+        }
+        $port = (int) ($parts['port'] ?? 443);
+        $origin = McpRedirectUris::originOf($url);
+
+        $throttleKey = 'mcp-cimd:'.sha1($origin);
+        if (RateLimiter::tooManyAttempts($throttleKey, 20)) {
+            throw new CimdException('Too many CIMD fetches for this origin.', 429);
+        }
+        RateLimiter::hit($throttleKey, 60);
+
+        $ips = $this->dns->resolve($host);
+        if ($ips === []) {
+            throw new CimdException('CIMD host could not be resolved.', 400);
+        }
+        $public = array_values(array_filter($ips, McpRedirectUris::isPublicIp(...)));
+        if ($public === []) {
+            throw new CimdException('CIMD host resolved to a private or reserved address.', 400);
+        }
+
+        return [
+            'url' => $url,
+            'host' => $host,
+            'port' => $port,
+            'pinnedIp' => $public[0],
+        ];
     }
 
     /**

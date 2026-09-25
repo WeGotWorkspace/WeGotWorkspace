@@ -61,6 +61,8 @@ From root [README.md](../../../README.md):
 - `Secrets (Gitleaks)`
 - `SCA (Trivy)`
 
+`SAST (Psalm PHP)` runs in the security workflow and is not a required status check.
+
 Fix failing checks before expecting merge.
 
 ## Merging PRs
