@@ -9,14 +9,18 @@ const appsRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const fullVitest = process.env.APPS_DONE_GATE_FULL === "1";
 
 /** @type {list<{ label: string, cmd: string[], env?: Record<string, string>, ciOnly?: boolean }>} */
+function turbo(task) {
+  return ["pnpm", "exec", "turbo", "run", task, "--filter=@wgw/apps"];
+}
+
 const steps = [
   { label: "Typecheck", cmd: ["pnpm", "typecheck"] },
-  { label: "UI ↔ OpenAPI contract (Vitest)", cmd: ["pnpm", "test:contract"] },
-  { label: "Vitest (unit)", cmd: ["pnpm", "test:unit"], ciOnly: true },
-  { label: "Vitest (jsdom)", cmd: ["pnpm", "test:jsdom"], ciOnly: true },
+  { label: "UI ↔ OpenAPI contract (Vitest)", cmd: turbo("test:contract") },
+  { label: "Vitest (unit)", cmd: turbo("test:unit"), ciOnly: true },
+  { label: "Vitest (jsdom)", cmd: turbo("test:jsdom"), ciOnly: true },
   {
     label: "Storybook Vitest smoke (vitest-ci + a11y gate)",
-    cmd: ["pnpm", "test:storybook:ci"],
+    cmd: turbo("test:storybook:ci"),
     env: { STORYBOOK_VITEST_SMOKE: "1", STORYBOOK_A11Y_GATE: "1" },
   },
   { label: "Storybook coverage", cmd: ["pnpm", "check:storybook-coverage"] },

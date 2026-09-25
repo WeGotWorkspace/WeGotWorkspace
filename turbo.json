@@ -22,6 +22,11 @@
     "typecheck": {
       "dependsOn": ["^build"]
     },
+    "test:unit": {},
+    "test:jsdom": {},
+    "test:contract": {},
+    "test:storybook": {},
+    "test:storybook:ci": {},
     "dev": {
       "cache": false,
       "persistent": true,
