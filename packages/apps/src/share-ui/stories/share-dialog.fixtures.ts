@@ -79,6 +79,8 @@ export function createShareStoryOperations(
         shareWith: body.shareWith ?? null,
         myRights: fullDriveMyRights,
       };
+      // At-path returns the full share on directShares and a summary on
+      // publicShares (DriveShareService). Non-public kinds are unused here.
       if (body.kind === "public") {
         currentAtPath = {
           ...currentAtPath,

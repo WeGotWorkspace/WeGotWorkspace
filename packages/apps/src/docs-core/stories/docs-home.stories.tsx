@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import { resolveTrashName } from "@/drive-core/src/drive-batch-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
@@ -119,8 +120,6 @@ export const SharedWithMe: Story = {
   },
 };
 
-const docsTrashRenameItem = fn<DriveAPIOperations["renameItem"]>(async () => ({}) as never);
-
 function docsTrashRenameExpectation() {
   const roadmap = DOCS_HOME_STORY_FIXTURES.find((item) => item.title === "Roadmap 2026");
   if (!roadmap) throw new Error("Roadmap fixture missing");
@@ -135,7 +134,9 @@ function docsTrashRenameExpectation() {
   };
 }
 
-function createDocsTrashStoryOperations(): DriveAPIOperations {
+function createDocsTrashStoryOperations(
+  renameItem: DriveAPIOperations["renameItem"],
+): DriveAPIOperations {
   const base = createMockHomeOperations();
   const username = docsHomeStorySession.user.username ?? "";
   const groupRoots = new Set<string>();
@@ -143,7 +144,7 @@ function createDocsTrashStoryOperations(): DriveAPIOperations {
   const trashPath = apiPathFromUiPath(DRIVE_TRASH_UI_PATH, username, groupRoots);
   return {
     ...base,
-    renameItem: docsTrashRenameItem,
+    renameItem,
     listAllDirectoryEntries: async (at) => {
       if (normalizeApiVirtualPath(at) === userRoot) {
         return [{ name: DRIVE_TRASH_DIR_NAME, path: trashPath, type: "dir" }];
@@ -153,8 +154,8 @@ function createDocsTrashStoryOperations(): DriveAPIOperations {
   };
 }
 
-function DocsTrashConfirmHarness() {
-  const [operations] = useState(() => createDocsTrashStoryOperations());
+function DocsTrashConfirmHarness({ renameItem }: { renameItem: DriveAPIOperations["renameItem"] }) {
+  const [operations] = useState(() => createDocsTrashStoryOperations(renameItem));
   return (
     <DocsHomeWorkspace
       session={session}
@@ -169,12 +170,12 @@ function DocsTrashConfirmHarness() {
 }
 
 /** Row overflow confirms Move to Trash and renames into the user trash folder. */
-export const MoveToTrash: Story = {
+export const MoveToTrash: StoryObj<typeof DocsTrashConfirmHarness> = {
   name: "Move to Trash",
   tags: ["vitest-ci"],
-  render: () => <DocsTrashConfirmHarness />,
-  play: async () => {
-    docsTrashRenameItem.mockClear();
+  args: { renameItem: fn(async () => createDriveAppBootstrap().data) },
+  render: (args) => <DocsTrashConfirmHarness renameItem={args.renameItem} />,
+  play: async ({ args }) => {
     const canvas = within(document.body);
     await expect(await canvas.findByText("Roadmap 2026")).toBeInTheDocument();
     const row = canvas.getByText("Roadmap 2026").closest("tr");
@@ -192,7 +193,7 @@ export const MoveToTrash: Story = {
     );
     const { from, destination, to } = docsTrashRenameExpectation();
     await waitFor(() =>
-      expect(docsTrashRenameItem).toHaveBeenCalledWith(
+      expect(args.renameItem).toHaveBeenCalledWith(
         expect.objectContaining({ from, destination, to }),
         expect.anything(),
       ),
