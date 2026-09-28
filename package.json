@@ -28,7 +28,7 @@
     "lint": "tools/with-root-env.sh -- turbo run lint --filter=@wgw/apps",
     "format:check": "tools/with-root-env.sh -- turbo run format:check --filter=@wgw/apps",
     "check:licenses": "node tools/check-licenses.mjs",
-    "check:agent-docs": "node tools/check-agent-doc-links.mjs && node tools/check-english-docs.mjs",
+    "check:agent-docs": "node tools/check-agent-doc-links.mjs && node tools/check-english-docs.mjs && node tools/check-plan-structure.mjs && node --test tools/check-plan-structure.test.mjs",
     "check:storybook-coverage": "pnpm --filter @wgw/apps run check:storybook-coverage",
     "typecheck": "tools/with-root-env.sh -- turbo run typecheck --filter=@wgw/apps",
     "test": "tools/with-root-env.sh -- composer --working-dir packages/api done-gate",

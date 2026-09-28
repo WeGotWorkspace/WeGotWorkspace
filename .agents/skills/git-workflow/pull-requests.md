@@ -20,6 +20,8 @@ Ensure commits are **signed** (required for merge to `main`).
 
 **CI validates PR tip only** — `apps-quality` / `api-quality` run on branch HEAD. Intermediate commits may fail the done gate until fix-forward; do not treat old SHAs as merge blockers when HEAD is green ([#250](https://github.com/WeGotWorkspace/wegotworkspace/issues/250)).
 
+**Test commit before the fix commit** for new behavior and bugfixes. Review checks `git log` and can run the test commit. This is a review rule, not a required check. Merge commits keep that order visible on `main`. A preserved behavior is proven by a test that asserts the old contract, not by a green suite that never mentions it.
+
 ## Push branch
 
 ```bash

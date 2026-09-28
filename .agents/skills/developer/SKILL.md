@@ -23,7 +23,8 @@ Context-loading skill for AI agents and developers working in the WeGotWorkspace
 | Workspace shell / *App / *Workspace | [workspace](../workspace/SKILL.md) | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md), [feature-blueprint.md](../workspace/feature-blueprint.md), [collab-hooks.md](../workspace/collab-hooks.md), [apps-done-gate.md](../testing/apps-done-gate.md) |
 | Collab / text-editor hooks (`docs-collab/`) | [workspace](../workspace/SKILL.md) | [collab-hooks.md](../workspace/collab-hooks.md), [clean-code/smells.md](../clean-code/smells.md) (React hooks) |
 | Filing Goals / Epics / Tasks / Chores | [issue-filing.md](issue-filing.md) | [english-only.md](english-only.md), [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md) |
-| Planning a feature | [plan-feature](../plan-feature/SKILL.md) | [issue-filing.md](issue-filing.md) |
+| Planning a feature | [plan-feature](../plan-feature/SKILL.md) | [issue-filing.md](issue-filing.md), [review-findings.md](../../review-findings.md) |
+| Pre-auth path, caller-input parser or upload, limiter or cache key | [security](../security/SKILL.md) | [review-findings.md](../../review-findings.md) |
 | Issue acceptance criteria / "is #N done?" | [verify-issue](../verify-issue/SKILL.md) | Goal vs Task modes in that skill |
 | Writing or running tests | [testing](../testing/SKILL.md) | [test-first.md](../testing/test-first.md), [ui-architecture.md](../testing/ui-architecture.md) |
 | Writing or updating docs | [document](../document/SKILL.md) | — |
@@ -46,6 +47,7 @@ See [dev-environment](../dev-environment/SKILL.md) for commands, URLs, and troub
 5. **Hook structure is a handoff gate** — when a feature adds multiple concerns to one hook, run a structure pass before handoff (split per [clean-code/smells.md](../clean-code/smells.md) React hooks section; collab layout in [collab-hooks.md](../workspace/collab-hooks.md)). Not optional nit — [code-review](../code-review/SKILL.md) blocks merge-ready work that violates thresholds without a documented exception.
 6. **New top-level SPA routes need API allowlist** — adding `/share`, `/tasks`, or any new first path segment in `wegotworkspace-routes.tsx` requires the same prefix on `UiStaticServer` + `FrontRoutingTest` (otherwise production falls through to SabreDAV). Architecture test `SpaShellRouteAllowlistTest` enforces the contract; Playwright e2e stays out of done gates.
 7. **English-only artifacts** — specs, plans, docs, GitHub issues/Goals/comments are English even when the user writes Dutch → [english-only.md](english-only.md)
+8. **Review findings before planning or a security or invariant chunk** — read rows in [review-findings.md](../../review-findings.md) whose `promoted-to` is empty. A plan review counts as review feedback. Append one English line per new recurring finding, then fix. Promote a repeated finding into a skill or lint. Promote a security finding on the first occurrence.
 
 ## Multitask
 

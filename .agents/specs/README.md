@@ -49,8 +49,8 @@ Copy skeletons from [`_template/`](./_template/).
 | File | Contents | Do not |
 |------|----------|--------|
 | `spec.md` | `Source: #134 (body-hash: a1b2c3d4)` header (Task/Epic only), optional `Goal: #M`, goal, non-goals, packages, constraints, edge cases | Use a Goal as `Source:`; re-invent AC or duplicate the full issue body |
-| `plan.md` | Chunks, dependencies, parallelization | — |
-| `tasks.md` | Per-chunk engineering tasks: chunk-id, owner, key paths, verify command | Copy GitHub `- [ ]` AC checklist |
+| `plan.md` | Chunks, invariants, open decisions, what exists, budget, considered alternatives | Cite a premise without a source; leave a chunk choice open |
+| `tasks.md` | Per-chunk engineering tasks: chunk-id, owner, key paths, verify command | Copy the GitHub `- [ ]` AC checklist; record completion status |
 
 ### Issue checklist vs `tasks.md`
 

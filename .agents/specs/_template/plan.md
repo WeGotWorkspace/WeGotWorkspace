@@ -6,9 +6,21 @@ Derived from [spec.md](./spec.md). Chunk layout for parallel or sequential imple
 
 [One paragraph — same intent as spec, or link to spec section]
 
+## Budget
+
+Draws from budget X, displaces Y.
+
 ## Non-goals
 
 - …
+
+## What exists
+
+- [Claim about existing code, a dependency, or issue status.] `path: path/to/file.ext:1`
+
+## Considered
+
+Considered: [existing component], [alternative] — chosen or rejected because [reason].
 
 ## Affected packages
 
@@ -18,13 +30,22 @@ Derived from [spec.md](./spec.md). Chunk layout for parallel or sequential imple
 
 [Ordered list — what must complete before what]
 
+## Open decisions
+
+None — every choice for this work is made. Replace with checkboxes tied to a chunk id while a choice is still open.
+
+## Invariants
+
+- [Behavior that must keep working]. A wrong change [what breaks]. Proof: `path: path/to/File.test.ts` assertion `test_name`, or a command that shows a silent miss.
+- After chunk A, main still works without the next chunk. Proof: the test or command named above.
+
 ## Chunks
 
 ### Chunk A: [name]
 
 - **id:** `chunk-a-slug`
 - **Skill:** api | apps-ui | workspace | testing | document | storybook
-- **Inputs:** …
+- **Inputs:** cited claim — `path: path/to/file.ext:1`
 - **Done when:** …
 - **Verify with:** command or checklist
 - **Parallel with:** chunk IDs or "none"
