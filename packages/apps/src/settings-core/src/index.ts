@@ -24,15 +24,6 @@ export type {
 } from "./settings-types";
 export { BUILTIN_PANEL_IDS } from "./settings-types";
 export { registerBuiltinSettings } from "./register-builtin-settings";
-export {
-  SettingsReachabilityProvider,
-  reachabilityFromShell,
-  reachabilityFromSettingsData,
-  useSettingsReachability,
-} from "./settings-reachability";
-export type { SettingsReachabilityContext } from "./settings-reachability";
-export { SettingsDialogProvider, useSettingsDialog } from "./settings-dialog-provider";
-export type { SettingsDialogApi } from "./settings-dialog-provider";
 export { useWorkspaceAppSettingsEntry } from "./use-workspace-app-settings-entry";
 export { WorkspaceAppSettingsFooter } from "./workspace-app-settings-footer";
 export { notifySettingsSliceSaved, subscribeSettingsSliceSaved } from "./settings-slice-saved";
