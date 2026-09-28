@@ -90,8 +90,7 @@ describe("CalendarApp day dropdown → week (real surface)", { timeout: 15_000 }
 
     let litUpdates = 0;
     const group = host!.shadowRoot?.querySelector("calendar-view-group") as
-      | (HTMLElement & { performUpdate?: () => void })
-      | null;
+      (HTMLElement & { performUpdate?: () => void }) | null;
     const originalPerform = group?.performUpdate?.bind(group);
     if (group && originalPerform) {
       group.performUpdate = function performUpdate(this: typeof group) {

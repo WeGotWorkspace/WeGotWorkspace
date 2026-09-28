@@ -50,9 +50,10 @@ function toReviewItems(
 ): DocsCollabReviewItem[] {
   return [
     ...threads.map((thread): DocsCollabReviewCommentItem => ({ type: "comment", thread })),
-    ...suggestions.map(
-      (suggestion): DocsCollabReviewSuggestionItem => ({ type: "suggestion", suggestion }),
-    ),
+    ...suggestions.map((suggestion): DocsCollabReviewSuggestionItem => ({
+      type: "suggestion",
+      suggestion,
+    })),
   ];
 }
 

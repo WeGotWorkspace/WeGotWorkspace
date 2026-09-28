@@ -442,24 +442,28 @@ export class AllDayEvent extends EventBase {
         ?inert=${!isFocusable}
         aria-label=${this.#interactionLabel}
         aria-describedby=${this.#keyboardHintId}
-        aria-keyshortcuts=${this.interactionDisabled
-          ? "Delete Backspace"
-          : "Delete Backspace Control+Meta+ArrowUp Control+Meta+ArrowDown Control+Meta+ArrowLeft Control+Meta+ArrowRight Control+Shift+ArrowUp Control+Shift+ArrowDown"}
+        aria-keyshortcuts=${
+          this.interactionDisabled
+            ? "Delete Backspace"
+            : "Delete Backspace Control+Meta+ArrowUp Control+Meta+ArrowDown Control+Meta+ArrowLeft Control+Meta+ArrowRight Control+Shift+ArrowUp Control+Shift+ArrowDown"
+        }
         style=${styleMap({
           transform: dragTransform,
           // Disable transform animation entirely to avoid snap/flash at drag end.
           transition: "none",
         })}
-        @pointerdown=${this.interactionDisabled
-          ? null
-          : this.interactionController.pointerDownHandler}
-        @pointermove=${this.interactionDisabled
-          ? null
-          : this.interactionController.pointerMoveHandler}
+        @pointerdown=${
+          this.interactionDisabled ? null : this.interactionController.pointerDownHandler
+        }
+        @pointermove=${
+          this.interactionDisabled ? null : this.interactionController.pointerMoveHandler
+        }
         @pointerup=${this.interactionDisabled ? null : this.interactionController.pointerUpHandler}
-        @keydown=${this.interactionDisabled
-          ? this.#handleDeleteOnlyKeydown
-          : this.interactionController.keydownHandler}
+        @keydown=${
+          this.interactionDisabled
+            ? this.#handleDeleteOnlyKeydown
+            : this.interactionController.keydownHandler
+        }
       >
         <span id=${this.#keyboardHintId} class="keyboard-hint">
           Use Control Command and arrow keys to move this event. Use Control Shift and up or down
@@ -513,24 +517,28 @@ export class AllDayEvent extends EventBase {
         .rsvp=${this.rsvp}
         style=${styleMap(inset.style)}
       >
-        ${!this.interactionDisabled && isFirst && canResizeStart
-          ? html`
-              <resize-handle
-                axis="horizontal"
-                position="start"
-                title="Resize start date"
-              ></resize-handle>
-            `
-          : ""}
-        ${!this.interactionDisabled && isLast
-          ? html`
-              <resize-handle
-                axis="horizontal"
-                position="end"
-                title="Resize end date"
-              ></resize-handle>
-            `
-          : ""}
+        ${
+          !this.interactionDisabled && isFirst && canResizeStart
+            ? html`
+                <resize-handle
+                  axis="horizontal"
+                  position="start"
+                  title="Resize start date"
+                ></resize-handle>
+              `
+            : ""
+        }
+        ${
+          !this.interactionDisabled && isLast
+            ? html`
+                <resize-handle
+                  axis="horizontal"
+                  position="end"
+                  title="Resize end date"
+                ></resize-handle>
+              `
+            : ""
+        }
       </event-card>
     `;
   }

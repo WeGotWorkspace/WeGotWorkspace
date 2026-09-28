@@ -308,8 +308,7 @@ describe("CalendarTimelineView year mode", { timeout: 15_000 }, () => {
     await el.updateComplete;
     await el.updateComplete;
     const popover = el.shadowRoot?.querySelector("day-overflow-popover.year-day-popover") as
-      | (HTMLElement & { events?: { summary?: string }[] })
-      | null;
+      (HTMLElement & { events?: { summary?: string }[] }) | null;
     expect(popover).toBeTruthy();
     const summaries = (popover?.events ?? []).map((entry) => entry.summary);
     expect(summaries).toEqual(

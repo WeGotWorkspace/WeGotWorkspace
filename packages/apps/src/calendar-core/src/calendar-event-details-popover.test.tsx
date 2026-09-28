@@ -114,8 +114,7 @@ describe("CalendarEventDetailsPopover", () => {
     const popover = screen.getByRole("dialog", { name: /Dentist/i });
     expect(popover.className).toContain("calendar-event-details-popover");
     const eventCard = popover.querySelector("event-card.calendar-event-details-popover__event") as
-      | (HTMLElement & { summary?: string; layout?: string })
-      | null;
+      (HTMLElement & { summary?: string; layout?: string }) | null;
     expect(eventCard).toBeTruthy();
     expect(eventCard?.summary).toMatch(/Dentist/i);
     expect(eventCard?.layout).toBe("flow");

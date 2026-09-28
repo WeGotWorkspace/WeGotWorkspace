@@ -35,10 +35,7 @@ type ShareLinkSectionProps = {
 };
 
 type ConfirmAction =
-  | "disable-public"
-  | "disable-password"
-  | "regenerate-link"
-  | "regenerate-password";
+  "disable-public" | "disable-password" | "regenerate-link" | "regenerate-password";
 
 const confirmDialogCopy: Record<ConfirmAction, { title: string; description: string }> = {
   "disable-public": {
