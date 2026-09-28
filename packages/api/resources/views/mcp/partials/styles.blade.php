@@ -23,7 +23,7 @@
     * { box-sizing: border-box; }
 
     body.mcp-page {
-        font-family: system-ui, sans-serif;
+        font-family: "Plus Jakarta Sans", system-ui, sans-serif;
         background: var(--mcp-page-bg);
         color: var(--color-ink);
         margin: 0;
@@ -61,10 +61,34 @@
     }
 
     @font-face {
-        font-family: "Libre Caslon Condensed";
-        src: url("/fonts/LibreCaslonCondensed.woff2") format("woff2-variations");
-        font-weight: 100 900;
+        font-family: "Plus Jakarta Sans";
+        src: url("/fonts/PlusJakartaSans-Variable.woff2") format("woff2-variations");
+        font-weight: 200 800;
         font-style: normal;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: "Plus Jakarta Sans";
+        src: url("/fonts/PlusJakartaSans-Italic-Variable.woff2") format("woff2-variations");
+        font-weight: 200 800;
+        font-style: italic;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: "We Got Serif";
+        src: url("/fonts/WeGotSerif-Regular.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: "We Got Serif";
+        src: url("/fonts/WeGotSerif-Italic.woff2") format("woff2");
+        font-weight: 400;
+        font-style: italic;
         font-display: swap;
     }
 
@@ -76,7 +100,7 @@
     }
 
     .mcp-title {
-        font-family: "Libre Caslon Condensed", Georgia, serif;
+        font-family: "We Got Serif", Georgia, serif;
         font-size: 2.25rem;
         font-weight: 400;
         line-height: 1.15;
@@ -146,7 +170,7 @@
 
     .mcp-permissions-intro {
         margin: 0 0 0.5rem;
-        font-family: "Libre Caslon Condensed", Georgia, serif;
+        font-family: "We Got Serif", Georgia, serif;
         font-size: 1.5rem;
         font-weight: 400;
         line-height: 1;

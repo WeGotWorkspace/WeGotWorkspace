@@ -2,6 +2,9 @@
 
 :host {
   @apply relative block w-full select-none touch-pan-y;
+  --font-sans: var(--font-we-got-sans);
+  --default-font-family: var(--font-we-got-sans);
+  font-family: var(--font-sans);
   height: var(--_lc-swipe-height, 100%);
   min-height: var(--_lc-swipe-min-height, 0);
   overflow-x: var(--_lc-swipe-overflow-x, hidden);

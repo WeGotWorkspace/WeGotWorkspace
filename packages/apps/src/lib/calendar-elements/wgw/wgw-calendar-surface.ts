@@ -25,6 +25,9 @@ export class WgwCalendarSurface extends LitElement {
       flex-direction: column;
       flex: 1;
       min-height: 0;
+      --font-sans: var(--font-we-got-sans);
+      --default-font-family: var(--font-we-got-sans);
+      font-family: var(--font-sans);
     }
     calendar-view-group {
       flex: 1;

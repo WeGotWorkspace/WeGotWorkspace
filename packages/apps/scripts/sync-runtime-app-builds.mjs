@@ -34,7 +34,11 @@ const modules = [
   { name: "meet", title: "Meet - WeGotWorkspace" },
 ];
 
-const RUNTIME_FONT_PRELOADS = ["LibreCaslonCondensed.woff2", "JetBrainsMono-Variable.woff2"];
+const RUNTIME_FONT_PRELOADS = [
+  "PlusJakartaSans-Variable.woff2",
+  "WeGotSerif-Regular.woff2",
+  "JetBrainsMono-Variable.woff2",
+];
 
 /** Public folders Vite copies into dist — keep in sync with UiStaticServer::globalAssetPrefixes(). */
 const STATIC_PUBLIC_DIRS = ["fonts", "app-icons", "pwa-icons", "manifests", "sounds"];
