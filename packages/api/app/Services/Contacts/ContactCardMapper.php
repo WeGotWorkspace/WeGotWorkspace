@@ -25,7 +25,7 @@ final class ContactCardMapper
     public function toContactCard(Card $card, string $addressBookUri, string $username): array
     {
         $raw = is_string($card->carddata) ? $card->carddata : (string) $card->carddata;
-        $contact = $this->converter->cardFromVCard($raw);
+        $contact = $this->converter->cardFromVCard($raw, 'debug');
         $contact = $this->mediaBlobs->exposeBlobsOnRead($username, $contact);
         $contact = $this->members->apply($username, $contact);
         $contact = self::hydrateDerivedNameFull($contact);

@@ -14,7 +14,9 @@ use App\Services\Contacts\Conversion\ConversionSupport;
 use App\Services\Contacts\Conversion\VCardJsContactConverter;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
+use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Sabre\CardDAV\Backend\PDO as CardPDO;
 
@@ -48,7 +50,14 @@ final class ContactCardRepository
             if ($uid !== null && $this->extractUid($card) !== $uid) {
                 continue;
             }
-            $list[] = $this->mapper->toContactCard($card, $bookApiId, $username);
+            try {
+                $list[] = $this->mapper->toContactCard($card, $bookApiId, $username);
+            } catch (ApiHttpException $e) {
+                if (VObjectPayloadGuard::isPayloadBoundError($e)) {
+                    continue;
+                }
+                throw $e;
+            }
         }
 
         return ['list' => $list];
@@ -137,12 +146,34 @@ final class ContactCardRepository
      * Import one or more vCard blocks from a file. Contacts are created before groups so
      * member uids from the same file resolve when groups are persisted.
      *
-     * @return array{list: list<array<string, mixed>>, errors: list<array{index: int, message: string}>}
+     * @return array{list: list<array<string, mixed>>, errors: list<array{index: int, message: string, code?: string}>}
      */
     public function importVcards(string $username, string $vcardText, string $addressBookId): array
     {
+        Log::withContext(['principal' => $username]);
+
         $book = $this->books->requireAccessibleBook($username, $addressBookId);
         $this->books->assertWritable($username, $book);
+
+        $maxBytes = (int) config('wgw.contacts.import_max_bytes', 8_388_608);
+        if ($maxBytes > 0 && strlen($vcardText) > $maxBytes) {
+            $actual = strlen($vcardText);
+            try {
+                Log::warning('vobject_payload_rejected', [
+                    'domain' => 'contacts',
+                    'kind' => 'vcard_import',
+                    'actual' => $actual,
+                    'limit' => $maxBytes,
+                ]);
+            } catch (\Throwable) {
+                // Logging is optional outside the Laravel container.
+            }
+            throw new ApiHttpException(
+                413,
+                'vCard import payload exceeds the maximum allowed size of '.$maxBytes.' bytes.',
+                'payload_too_large',
+            );
+        }
 
         $chunks = ContactCardVcfImportSupport::splitVcards($vcardText);
         if ($chunks === []) {
@@ -161,6 +192,12 @@ final class ContactCardRepository
                 } else {
                     $individuals[] = $card;
                 }
+            } catch (ApiHttpException $e) {
+                $entry = ['index' => $index, 'message' => $e->getMessage()];
+                if (is_string($e->errorCode()) && $e->errorCode() !== '') {
+                    $entry['code'] = $e->errorCode();
+                }
+                $errors[] = $entry;
             } catch (\Throwable) {
                 $errors[] = ['index' => $index, 'message' => 'Invalid vCard block.'];
             }
