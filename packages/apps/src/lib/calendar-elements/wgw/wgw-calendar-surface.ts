@@ -20,11 +20,15 @@ import { filterVisibleCalendarEventsKeepingOverlay } from "@/calendar-core/src/c
  */
 export class WgwCalendarSurface extends LitElement {
   static styles = css`
+    /* Must match styles/host-font.css (Lit css\`\` cannot @import that sheet). */
     :host {
       display: flex;
       flex-direction: column;
       flex: 1;
       min-height: 0;
+      --font-sans: var(--font-we-got-sans);
+      --default-font-family: var(--font-we-got-sans);
+      font-family: var(--font-sans);
     }
     calendar-view-group {
       flex: 1;

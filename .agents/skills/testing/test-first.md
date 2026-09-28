@@ -23,6 +23,8 @@ OpenAPI change → failing feature test → implement → green → done gate
 
 **Red-green at the HTTP boundary:** the feature test is the executable spec; OpenAPI is the shared contract with the UI.
 
+For a **preserved** behavior, the test must assert the old contract, so the wrong implementation fails it. A green suite that never mentions the old contract is not proof. For **new behavior and bugfixes**, commit the test before the fix. Review checks `git log` and can run that commit. That order is a review rule, not a CI gate. Intermediate red commits are allowed ([#250](https://github.com/WeGotWorkspace/wegotworkspace/issues/250)).
+
 Do not implement behavior first and “add tests later.” Do not copy legacy handlers — [api/contract-parity.md](../api/contract-parity.md).
 
 Optional after gate: `pnpm test:api-e2e:docker` (Playwright, local, not CI).
@@ -69,6 +71,8 @@ In [plan-feature](../plan-feature/SKILL.md) chunks, order:
 See [developer/multitask.md](../developer/multitask.md) for parallel vs sequential rules.
 
 Chunk `done-when` must include **automated proof**, not “looks fine in browser.”
+
+For new behavior and bugfixes, the test commit comes before the fix commit. For a preserved contract, the named test asserts the old behavior. Infra and config may use a command that shows a silent miss (for example a typegen cache miss after touching `openapi.json`) when there is no unit test.
 
 ## What we do not require (yet)
 

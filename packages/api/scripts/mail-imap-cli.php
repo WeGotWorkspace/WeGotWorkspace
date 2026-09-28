@@ -15,7 +15,12 @@ use App\Services\Mail\MailResponseException;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
 
-if ($argc < 3) {
+$cliArguments = $_SERVER['argv'] ?? [];
+if (! is_array($cliArguments)) {
+    $cliArguments = [];
+}
+
+if (count($cliArguments) < 3) {
     fwrite(STDERR, "usage: mail-imap-cli.php <operation> <username> [base64-json-params]\n");
     exit(2);
 }
@@ -34,11 +39,11 @@ require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
-$operation = $argv[1];
-$username = $argv[2];
+$operation = $cliArguments[1];
+$username = $cliArguments[2];
 $params = [];
-if (isset($argv[3]) && $argv[3] !== '') {
-    $raw = base64_decode($argv[3], true);
+if (isset($cliArguments[3]) && $cliArguments[3] !== '') {
+    $raw = base64_decode($cliArguments[3], true);
     if ($raw === false) {
         fwrite(STDERR, "invalid params payload\n");
         exit(2);

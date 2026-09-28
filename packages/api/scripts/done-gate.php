@@ -7,7 +7,7 @@ declare(strict_types=1);
  * API done gate with labeled steps and a final summary.
  *
  * Usage:
- *   php scripts/done-gate.php           # guard + phpstan + architecture + full PHPUnit
+ *   php scripts/done-gate.php           # ratchet + guard + phpstan + architecture + PHPUnit
  *   php scripts/done-gate.php --contract
  *   php scripts/done-gate.php --full      # + MySQL test driver
  *   php scripts/done-gate.php --verbose     # testdox on full suite
@@ -16,15 +16,20 @@ $apiRoot = dirname(__DIR__);
 $phpunit = $apiRoot.'/vendor/bin/phpunit';
 $config = $apiRoot.'/phpunit.xml';
 
-$contractOnly = in_array('--contract', $argv, true);
-$full = in_array('--full', $argv, true);
-$verbose = in_array('--verbose', $argv, true) || getenv('DONE_GATE_VERBOSE') === '1';
+$cliArguments = $_SERVER['argv'] ?? [];
+if (! is_array($cliArguments)) {
+    $cliArguments = [];
+}
+
+$contractOnly = in_array('--contract', $cliArguments, true);
+$full = in_array('--full', $cliArguments, true);
+$verbose = in_array('--verbose', $cliArguments, true) || getenv('DONE_GATE_VERBOSE') === '1';
 
 /*
  * Optional CI sharding: DONE_GATE_SHARD=I/N runs only shard I's slice of the
  * unit/feature/storage test files (round-robin by sorted path). Shard 1 also
- * runs greenfield-guard, PHPStan (level 1, committed baseline), and the
- * Architecture suite; later shards run tests only.
+ * runs the file-size ratchet, greenfield-guard, PHPStan (level 1, committed
+ * baseline), and the Architecture suite; later shards run tests only.
  * Unset (local default) keeps the full gate behaviour below.
  */
 $shardSpec = getenv('DONE_GATE_SHARD');
@@ -109,16 +114,27 @@ function done_gate_summary(array $results, bool $passed): void
 
 $step = 1;
 if ($contractOnly) {
-    $totalSteps = 3;
+    $totalSteps = 4;
 } elseif ($full) {
-    $totalSteps = 4 + ($runContractSteps ? 1 : 0);
+    $totalSteps = $runContractSteps ? 6 : 2;
 } elseif (! $runContractSteps) {
     $totalSteps = 1;
 } else {
-    $totalSteps = 4;
+    $totalSteps = 5;
 }
 
 if ($runContractSteps) {
+    done_gate_step("Step {$step}/{$totalSteps}: file-size ratchet");
+    $ratchetScript = dirname($apiRoot, 2).'/tools/file-size-ratchet.mjs';
+    $ratchetCode = done_gate_run(['node', $ratchetScript, 'check', 'packages/api/app']);
+    $results[] = ['label' => 'file-size ratchet', 'ok' => $ratchetCode === 0];
+    $step++;
+
+    if ($ratchetCode !== 0) {
+        done_gate_summary($results, false);
+        exit($ratchetCode);
+    }
+
     done_gate_step("Step {$step}/{$totalSteps}: greenfield-guard");
     $guardCode = done_gate_run(['php', $apiRoot.'/scripts/greenfield-guard.php']);
     $results[] = ['label' => 'greenfield-guard', 'ok' => $guardCode === 0];

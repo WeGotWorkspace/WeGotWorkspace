@@ -93,7 +93,7 @@ export function TokenSection({ title, note, children }: TokenSectionProps) {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <h2 className="text-2xl font-semibold" style={{ fontFamily: "var(--font-serif)" }}>
+        <h2 className="text-2xl font-normal" style={{ fontFamily: "var(--font-serif)" }}>
           {title}
         </h2>
         {note ? (

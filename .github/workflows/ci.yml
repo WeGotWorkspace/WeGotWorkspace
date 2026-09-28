@@ -7,6 +7,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -34,6 +35,9 @@ jobs:
       - name: Build and typecheck MCP server
         run: pnpm exec turbo run build typecheck --filter=@wgw/mcp-server
 
+      - name: File-size ratchet
+        run: node tools/file-size-ratchet.mjs check tools/mcp-server/src
+
   api-quality:
     if: >-
       github.event_name != 'push' ||
@@ -60,7 +64,7 @@ jobs:
           cache: "pnpm"
 
       - name: Cache Composer vendor
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: packages/api/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
@@ -68,7 +72,7 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Cache Turbo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.job }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
@@ -87,9 +91,9 @@ jobs:
           cp packages/api/.env.example packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
 
-      # Shard 1 also runs greenfield-guard, PHPStan level 1, and the
-      # Architecture suite; later shards run only their round-robin slice
-      # of unit/feature/storage tests.
+      # Shard 1 also runs the file-size ratchet, greenfield-guard, PHPStan
+      # level 1, and the Architecture suite; later shards run only their
+      # round-robin slice of unit/feature/storage tests.
       - name: API quality gate (shard ${{ matrix.shard }}/2)
         env:
           DONE_GATE_SHARD: ${{ matrix.shard }}/2
@@ -102,6 +106,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Plan-structure lint diffs against origin/main. Depth 1 leaves
+          # that ref missing and the check would pass on an empty diff.
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v6.1.0
 
@@ -111,7 +119,7 @@ jobs:
           cache: "pnpm"
 
       - name: Cache Turbo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.job }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
@@ -123,7 +131,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
@@ -138,6 +146,15 @@ jobs:
           else
             pnpm --filter @wgw/apps exec playwright install chromium
           fi
+
+      - name: File-size baseline growth
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --depth=1 origin "$BASE_SHA"
+          # Call node directly: `pnpm run … -- <sha>` forwards a literal `--` as argv.
+          node tools/file-size-ratchet.mjs check-growth "$BASE_SHA"
 
       - name: Apps quality gate
         env:
@@ -169,7 +186,7 @@ jobs:
           cache: "pnpm"
 
       - name: Cache Composer vendor
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: packages/api/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
@@ -201,22 +218,42 @@ jobs:
   chromatic:
     if: >-
       vars.CHROMATIC_ENABLED == 'true' &&
+      github.event_name != 'merge_group' &&
       (github.event_name != 'push' ||
       !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     steps:
+      # Actions secrets are hidden from dependabot[bot]. The Chromatic CLI
+      # exits "Missing project token" when CHROMATIC_PROJECT_TOKEN is empty,
+      # which failed this job after a full Storybook build. Skip publish then.
+      - name: Detect Chromatic project token
+        id: chromatic-token
+        env:
+          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+        run: |
+          if [ -n "$CHROMATIC_PROJECT_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "CHROMATIC_PROJECT_TOKEN is unset. Skipping Storybook publish."
+          fi
+
       - uses: actions/checkout@v7
+        if: steps.chromatic-token.outputs.present == 'true'
         with:
           fetch-depth: 0
 
       - uses: pnpm/action-setup@v6.1.0
+        if: steps.chromatic-token.outputs.present == 'true'
 
       - uses: actions/setup-node@v7
+        if: steps.chromatic-token.outputs.present == 'true'
         with:
           node-version: "24"
           cache: "pnpm"
 
       - name: Install JS workspace
+        if: steps.chromatic-token.outputs.present == 'true'
         run: pnpm install --frozen-lockfile
 
       # Build with pnpm and upload that directory so the action does not spawn
@@ -224,10 +261,12 @@ jobs:
       # --stats-json writes preview-stats.json. TurboSnap (onlyChanged) traces
       # changed files from that manifest; without it the publish step fails.
       - name: Build Storybook
+        if: steps.chromatic-token.outputs.present == 'true'
         working-directory: packages/apps
         run: pnpm exec storybook build --output-dir storybook-static --stats-json
 
       - name: Publish to Chromatic
+        if: steps.chromatic-token.outputs.present == 'true'
         uses: chromaui/action@v18
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
@@ -271,7 +310,7 @@ jobs:
           coverage: none
 
       - name: Cache Composer vendor
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: packages/api/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
@@ -317,7 +356,7 @@ jobs:
           coverage: pcov
 
       - name: Cache Composer vendor
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: packages/api/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
@@ -340,7 +379,7 @@ jobs:
           php vendor/bin/phpunit -c phpunit.xml --coverage-clover=build/logs/clover.xml
           php -r 'if (!preg_match("/<file\\b/", file_get_contents("build/logs/clover.xml"))) { fwrite(STDERR, "clover lists no files\n"); exit(1); }'
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: phpunit-clover
           path: packages/api/build/logs/clover.xml
@@ -358,7 +397,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6.1.0
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: pnpm
@@ -395,7 +434,7 @@ jobs:
             pnpm exec vitest --merge-reports=.vitest-reports-jsdom --coverage.enabled --coverage.reporter=lcov,json-summary --coverage.reportsDirectory=coverage/jsdom
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vitest-coverage
           path: packages/apps/coverage

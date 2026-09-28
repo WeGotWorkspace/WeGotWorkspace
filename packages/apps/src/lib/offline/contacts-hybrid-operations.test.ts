@@ -4,7 +4,9 @@ import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import {
   listOutboxMutations,
+  readAddressBooksSyncToken,
   readContactsBootstrapFromCache,
+  readSyncToken,
   writeContactsBootstrapToCache,
 } from "@/lib/offline/contacts-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
@@ -57,13 +59,19 @@ vi.mock("@/lib/offline/browser-online", () => ({
   subscribeBrowserOnline: vi.fn(() => () => undefined),
 }));
 
-const { listAddressBooks, patchAddressBook, pullAddressBookChanges, syncAllContactBooks } =
-  vi.hoisted(() => ({
-    listAddressBooks: vi.fn(),
-    patchAddressBook: vi.fn(),
-    pullAddressBookChanges: vi.fn(),
-    syncAllContactBooks: vi.fn(),
-  }));
+const {
+  listAddressBooks,
+  patchAddressBook,
+  pullAddressBookChanges,
+  syncAllContactBooks,
+  connectedContacts,
+} = vi.hoisted(() => ({
+  listAddressBooks: vi.fn(),
+  patchAddressBook: vi.fn(),
+  pullAddressBookChanges: vi.fn(),
+  syncAllContactBooks: vi.fn(),
+  connectedContacts: vi.fn(),
+}));
 
 vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/contacts")>();
@@ -73,6 +81,7 @@ vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
     listAddressBooks,
     listCards: vi.fn(),
     patchAddressBook,
+    connectedContacts,
   };
 });
 
@@ -91,12 +100,17 @@ import { readBrowserOnline } from "@/lib/offline/browser-online";
 import {
   createHybridContactsOperations,
   fetchContactsHybridBootstrap,
+  loadContactsBootstrapForBoot,
 } from "@/lib/offline/contacts-hybrid-operations";
 
 describe("createHybridContactsOperations", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.mocked(readBrowserOnline).mockReturnValue(true);
+    connectedContacts.mockResolvedValue({
+      client: { getState: () => "sync-1" },
+      accountId: username,
+    });
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
     await contactsCardsTable(db).clear();
@@ -272,5 +286,58 @@ describe("createHybridContactsOperations", () => {
 
     expect(pullAddressBookChanges).not.toHaveBeenCalled();
     expect(syncAllContactBooks).not.toHaveBeenCalled();
+    expect(await readSyncToken(username, "default")).toBe("sync-1");
+  });
+
+  it("stores the first card-page state instead of the state after later pages or the flush", async () => {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await contactsBooksTable(db).clear();
+    await contactsCardsTable(db).clear();
+    await db.meta.clear();
+    connectedContacts.mockResolvedValue({
+      client: {
+        getState: (_accountId: string, type: string) =>
+          type === "AddressBook" ? "books-after-flush" : "cards-after-flush",
+      },
+      accountId: username,
+    });
+    vi.mocked(fetchContactsLiveBootstrap).mockResolvedValue({
+      ...bootstrap,
+      syncAnchor: {
+        addressBookState: "books-page-1",
+        contactCardState: "cards-page-1",
+      },
+    });
+
+    await fetchContactsHybridBootstrap();
+
+    expect(await readSyncToken(username, "default")).toBe("cards-page-1");
+    expect(await readAddressBooksSyncToken(username)).toBe("books-page-1");
+  });
+
+  it("returns a stored book on boot without downloading every card", async () => {
+    const memory = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        memory.set(key, value);
+      },
+      removeItem: (key: string) => {
+        memory.delete(key);
+      },
+      clear: () => {
+        memory.clear();
+      },
+    };
+    vi.stubGlobal("window", { localStorage: storage });
+    vi.stubGlobal("localStorage", storage);
+    await writeContactsBootstrapToCache(username, bootstrap);
+    vi.mocked(fetchContactsLiveBootstrap).mockResolvedValue(bootstrap);
+
+    const loaded = await loadContactsBootstrapForBoot();
+
+    expect(loaded.data.cards.map((row) => row.id)).toEqual(["jane-doe"]);
+    expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });

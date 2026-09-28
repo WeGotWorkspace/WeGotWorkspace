@@ -267,8 +267,7 @@ function BrandingPlaygroundShell({
  */
 export const BrandingWorkspaceDecorator: Decorator = (Story, context) => {
   const branding = context.parameters.brandingPlayground as
-    | BrandingPlaygroundParameters
-    | undefined;
+    BrandingPlaygroundParameters | undefined;
   const workspaceClass = branding?.workspaceClass ?? "";
   const appId = branding?.appId ?? "mail";
   const args = context.args as BrandingStoryArgs;

@@ -22,9 +22,9 @@ final class VCardJsContactConverter
     /**
      * @return array<string, mixed> JSContact Card
      */
-    public function cardFromVCard(string $vcard): array
+    public function cardFromVCard(string $vcard, string $logLevel = 'warning'): array
     {
-        return $this->reader->convert($vcard);
+        return $this->reader->convert($vcard, $logLevel);
     }
 
     /**

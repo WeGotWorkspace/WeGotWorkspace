@@ -1,8 +1,18 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
+import { resolveTrashName } from "@/drive-core/src/drive-batch-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
+import {
+  apiPathFromUiPath,
+  DRIVE_TRASH_DIR_NAME,
+  DRIVE_TRASH_UI_PATH,
+  normalizeApiVirtualPath,
+} from "@/drive-core/src/drive-path-utils";
+import { apiPathFromSearchSourceKey } from "@/drive-core/src/drive-search-utils";
+import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import { DocsHomeWorkspace } from "@/docs-core/src/docs-home-workspace";
 import { DocsHomePane } from "@/docs-core/src/docs-home-pane";
 import { docsLabels } from "@/docs-core/src/docs-labels";
@@ -106,6 +116,87 @@ export const SharedWithMe: Story = {
     await userEvent.dblClick(cell);
     await waitFor(() =>
       expect(args.onOpenFile).toHaveBeenCalledWith("/users/hana/Shared Notes.md"),
+    );
+  },
+};
+
+function docsTrashRenameExpectation() {
+  const roadmap = DOCS_HOME_STORY_FIXTURES.find((item) => item.title === "Roadmap 2026");
+  if (!roadmap) throw new Error("Roadmap fixture missing");
+  const from = apiPathFromSearchSourceKey(roadmap.sourceKey);
+  if (!from) throw new Error("Roadmap source key has no api path");
+  const username = docsHomeStorySession.user.username ?? "";
+  const groupRoots = new Set<string>();
+  return {
+    from,
+    destination: apiPathFromUiPath(DRIVE_TRASH_UI_PATH, username, groupRoots),
+    to: resolveTrashName(roadmap.title, new Set<string>()),
+  };
+}
+
+function createDocsTrashStoryOperations(
+  renameItem: DriveAPIOperations["renameItem"],
+): DriveAPIOperations {
+  const base = createMockHomeOperations();
+  const username = docsHomeStorySession.user.username ?? "";
+  const groupRoots = new Set<string>();
+  const userRoot = apiPathFromUiPath("My Drive", username, groupRoots);
+  const trashPath = apiPathFromUiPath(DRIVE_TRASH_UI_PATH, username, groupRoots);
+  return {
+    ...base,
+    renameItem,
+    listAllDirectoryEntries: async (at) => {
+      if (normalizeApiVirtualPath(at) === userRoot) {
+        return [{ name: DRIVE_TRASH_DIR_NAME, path: trashPath, type: "dir" }];
+      }
+      return [];
+    },
+  };
+}
+
+function DocsTrashConfirmHarness({ renameItem }: { renameItem: DriveAPIOperations["renameItem"] }) {
+  const [operations] = useState(() => createDocsTrashStoryOperations(renameItem));
+  return (
+    <DocsHomeWorkspace
+      session={session}
+      operations={operations}
+      fetcher={createPaginatedFetcher(FIXTURES)}
+      shareOperations={createMockDriveShareOperations()}
+      onOpenFile={() => {}}
+      onCreateDocument={() => {}}
+      onLogout={() => {}}
+    />
+  );
+}
+
+/** Row overflow confirms Move to Trash and renames into the user trash folder. */
+export const MoveToTrash: StoryObj<typeof DocsTrashConfirmHarness> = {
+  name: "Move to Trash",
+  tags: ["vitest-ci"],
+  args: { renameItem: fn(async () => createDriveAppBootstrap().data) },
+  render: (args) => <DocsTrashConfirmHarness renameItem={args.renameItem} />,
+  play: async ({ args }) => {
+    const canvas = within(document.body);
+    await expect(await canvas.findByText("Roadmap 2026")).toBeInTheDocument();
+    const row = canvas.getByText("Roadmap 2026").closest("tr");
+    if (!row) throw new Error("Expected Roadmap 2026 in a list row");
+    await userEvent.click(within(row).getByRole("button", { name: "More actions" }));
+    const menu = await canvas.findByRole("menu");
+    await userEvent.click(
+      await within(menu).findByRole("button", { name: driveLabels.detailDelete }),
+    );
+    const dialog = await canvas.findByRole("alertdialog", {
+      name: docsLabels.homeMoveToTrashTitle,
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: docsLabels.homeMoveToTrashAction }),
+    );
+    const { from, destination, to } = docsTrashRenameExpectation();
+    await waitFor(() =>
+      expect(args.renameItem).toHaveBeenCalledWith(
+        expect.objectContaining({ from, destination, to }),
+        expect.anything(),
+      ),
     );
   },
 };

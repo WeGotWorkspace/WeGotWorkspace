@@ -4,11 +4,13 @@
 
 **API greenfield:** Work under `packages/api/` is a new Laravel app matching OpenAPI — no legacy PHP in tree. Do not restore `packages/api/src/`, `*Kernel`, `MailApi`, or dual autoload. Full guidance: [`.agents/skills/api/`](.agents/skills/api/).
 
-**Git:** Do not `git commit` or open PRs unless the user explicitly asks. Commits touching `packages/apps/**` run the local apps done gate before push (Husky pre-push: typecheck, contract, Storybook smoke, coverage). Vitest unit and jsdom run in CI. [`.agents/skills/git-workflow/`](.agents/skills/git-workflow/).
+**Git:** Do not `git commit` or open PRs unless the user explicitly asks. Open every PR as a draft (`gh pr create --draft`). Commits touching `packages/apps/**` run the local apps done gate before push (Husky pre-push: typecheck, contract, Storybook smoke, coverage). Vitest unit and jsdom run in CI. [`.agents/skills/git-workflow/`](.agents/skills/git-workflow/).
 
 **Verification:** Before handoff, call `run_apps_done_gate` / `run_api_done_gate` via the **wgw-verify** MCP server when available ([developer/mcp-verification.md](.agents/skills/developer/mcp-verification.md)). Use bash (`pnpm test:*-done-gate`) only as fallback.
 
 **English-only:** Specs, plans, docs, GitHub issues (including Goals), and issue/PR comments are **English** even when the user writes Dutch. [english-only.md](.agents/skills/developer/english-only.md).
+
+**File size:** A new counted source file over 800 lines is a merge block unless its baseline entry carries an approved reason. A baselined file is a merge block when its line count grows, or when it shrinks and the stored integer was not lowered.
 
 ## Start here
 
@@ -40,6 +42,7 @@ Agent skills live in [`.agents/skills/`](.agents/skills/) (tool-agnostic [Agent 
 | [apps-ui](.agents/skills/apps-ui/) | UI primitives, CSS variables, components, TypeScript |
 | [workspace](.agents/skills/workspace/) | *App, *Workspace, workspace shell — [workspace-shells.md](packages/apps/docs/workspace-shells.md), [feature-blueprint.md](.agents/skills/workspace/feature-blueprint.md), [collab-hooks.md](.agents/skills/workspace/collab-hooks.md) (text-editor-core / docs-collab), [apps-done-gate.md](.agents/skills/testing/apps-done-gate.md) |
 | [plan-feature](.agents/skills/plan-feature/) | Scoping features, parallel chunk plans; file issues via [issue-filing.md](.agents/skills/developer/issue-filing.md) |
+| [security](.agents/skills/security/) | Pre-auth paths, caller-input parsers and uploads, cache or limiter keys from caller input |
 | [verify-issue](.agents/skills/verify-issue/) | GitHub issue acceptance criteria — fetch, map, verify, report before handoff/PR |
 | [testing](.agents/skills/testing/) | PHPUnit, Vitest, e2e, done-when checklists |
 | [document](.agents/skills/document/) | README, API docs, dev-layout updates |

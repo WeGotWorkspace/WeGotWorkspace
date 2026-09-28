@@ -23,7 +23,7 @@
     * { box-sizing: border-box; }
 
     body.mcp-page {
-        font-family: system-ui, sans-serif;
+        font-family: "Plus Jakarta Sans", system-ui, sans-serif;
         background: var(--mcp-page-bg);
         color: var(--color-ink);
         margin: 0;
@@ -60,14 +60,6 @@
         position: relative;
     }
 
-    @font-face {
-        font-family: "Libre Caslon Condensed";
-        src: url("/fonts/LibreCaslonCondensed.woff2") format("woff2-variations");
-        font-weight: 100 900;
-        font-style: normal;
-        font-display: swap;
-    }
-
     h1 {
         font-size: 1.35rem;
         font-weight: 650;
@@ -76,7 +68,7 @@
     }
 
     .mcp-title {
-        font-family: "Libre Caslon Condensed", Georgia, serif;
+        font-family: "We Got Serif", Georgia, serif;
         font-size: 2.25rem;
         font-weight: 400;
         line-height: 1.15;
@@ -146,7 +138,7 @@
 
     .mcp-permissions-intro {
         margin: 0 0 0.5rem;
-        font-family: "Libre Caslon Condensed", Georgia, serif;
+        font-family: "We Got Serif", Georgia, serif;
         font-size: 1.5rem;
         font-weight: 400;
         line-height: 1;

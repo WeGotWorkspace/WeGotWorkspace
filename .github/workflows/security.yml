@@ -7,6 +7,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
@@ -87,14 +88,14 @@ jobs:
       run:
         working-directory: packages/api
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
 
       - name: Cache Composer vendor
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: packages/api/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
@@ -194,6 +195,9 @@ jobs:
       # Actions secrets are hidden from dependabot[bot]. The action refuses to
       # scan organization repos without GITLEAKS_LICENSE, so that path runs
       # the same gitleaks detect command directly.
+      # gitleaks-action exits 1 on merge_group. Run the direct detect script
+      # there even when a license is present, so the required Secrets check
+      # still scans the merge group (base_sha..head_sha) instead of an empty job.
       - name: Detect Gitleaks license
         id: gitleaks-license
         env:
@@ -206,7 +210,7 @@ jobs:
           fi
 
       - name: Scan for secrets
-        if: steps.gitleaks-license.outputs.present == 'true'
+        if: steps.gitleaks-license.outputs.present == 'true' && github.event_name != 'merge_group'
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -214,7 +218,7 @@ jobs:
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
 
       - name: Scan for secrets without a license
-        if: steps.gitleaks-license.outputs.present != 'true'
+        if: steps.gitleaks-license.outputs.present != 'true' || github.event_name == 'merge_group'
         run: bash .github/scripts/gitleaks-detect.sh
 
       - name: Upload Gitleaks SARIF artifact
@@ -274,7 +278,7 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           trivyignores: .trivyignore
-          exit-code: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+          exit-code: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '0' || '1' }}
           limit-severities-for-sarif: true
 
       - name: Upload Composer SARIF to Security tab
