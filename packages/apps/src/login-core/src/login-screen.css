@@ -67,7 +67,7 @@ html:has(.login-screen) {
 .login-screen__hero {
   font-family: var(--font-serif);
   color: var(--color-we-got-dark);
-  @apply mb-4 text-balance;
+  @apply mb-4 text-balance font-normal;
 }
 
 .login-screen__eyebrow {

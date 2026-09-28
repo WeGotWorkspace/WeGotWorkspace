@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "styles.css"), "utf8");
+const fontsCss = readFileSync(join(here, "../public/fonts/fonts.css"), "utf8");
 
 describe("We Got color primitives and status semantics", () => {
   const primitiveHex: Record<string, string> = {
@@ -77,9 +78,27 @@ describe("shared panel overlay motion tokens", () => {
 });
 
 describe("product UI font tokens", () => {
+  it("imports self-hosted faces from public/fonts/fonts.css", () => {
+    expect(css).toMatch(/@import\s+"\.\.\/public\/fonts\/fonts\.css"/);
+    expect(fontsCss).toMatch(/PlusJakartaSans-Variable\.woff2/);
+    expect(fontsCss).toMatch(/PlusJakartaSans-Italic-Variable\.woff2/);
+    expect(fontsCss).toMatch(/WeGotSerif-Regular\.woff2/);
+    expect(fontsCss).toMatch(/WeGotSerif-Italic\.woff2/);
+    expect(fontsCss).toMatch(/JetBrainsMono-Variable\.woff2/);
+    expect(fontsCss).toMatch(/BebasNeue-Regular\.woff2/);
+    expect(fontsCss).toMatch(/font-weight:\s*200 800/);
+    expect(fontsCss).toMatch(/font-style:\s*italic/);
+    expect(fontsCss).toMatch(/font-family:\s*"Plus Jakarta Sans"/);
+    expect(fontsCss).not.toMatch(/Libre Caslon/);
+    expect(fontsCss).not.toMatch(/font-weight:\s*100 900/);
+  });
+
   it("aliases semantic families through We Got / system primitives", () => {
-    expect(css).toMatch(/--font-sans:\s*var\(--font-system-sans\)/);
-    expect(css).toMatch(/--font-system-sans:\s*ui-sans-serif,\s*system-ui,\s*sans-serif/);
+    expect(css).toMatch(
+      /--font-we-got-sans:\s*"Plus Jakarta Sans",\s*ui-sans-serif,\s*system-ui,\s*sans-serif/,
+    );
+    expect(css).toMatch(/--font-sans:\s*var\(--font-we-got-sans\)/);
+    expect(css).not.toMatch(/--font-system-sans\b/);
     expect(css).not.toMatch(/--font-sans:\s*"General Sans"/);
     expect(css).not.toMatch(/font-family:\s*"General Sans"/);
     expect(css).not.toMatch(/--font-display\b/);
@@ -89,7 +108,7 @@ describe("product UI font tokens", () => {
 
   it("keeps serif display and mark stacks distinct from product sans", () => {
     expect(css).toMatch(/--font-serif:\s*var\(--font-we-got-serif\)/);
-    expect(css).toMatch(/--font-we-got-serif:\s*"Libre Caslon Condensed",\s*serif/);
+    expect(css).toMatch(/--font-we-got-serif:\s*"We Got Serif",\s*serif/);
     expect(css).toMatch(/--font-mark:\s*var\(--font-we-got-mark\)/);
     expect(css).toMatch(
       /--font-we-got-mark:\s*"Bebas Neue",\s*ui-sans-serif,\s*system-ui,\s*sans-serif/,
