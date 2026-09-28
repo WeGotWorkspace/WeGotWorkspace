@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import * as filePreviewUtils from "@/lib/file-preview/file-preview-utils";
@@ -58,6 +58,27 @@ function createOperations(
     uploadFiles: async () => ({}) as never,
   };
 }
+
+/**
+ * Vitest's jsdom environment wraps URL.createObjectURL and reads Blob._buffer.
+ * jsdom 30 blobs no longer have that field, so the wrapper throws and the
+ * hook's catch leaves the preview empty. Stub the browser API the hook calls.
+ */
+function installBlobUrlStubs() {
+  vi.spyOn(URL, "createObjectURL").mockImplementation((value) => {
+    if (value instanceof Blob) {
+      return `blob:jsdom-${value.size}-${value.type}`;
+    }
+    return "blob:jsdom-media";
+  });
+  if (typeof URL.revokeObjectURL !== "function") {
+    URL.revokeObjectURL = () => {};
+  }
+}
+
+beforeEach(() => {
+  installBlobUrlStubs();
+});
 
 afterEach(() => {
   cleanup();

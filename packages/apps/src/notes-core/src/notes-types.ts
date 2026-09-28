@@ -50,9 +50,7 @@ export type NotesUIData = {
 };
 
 export type DeleteNotebookAction =
-  | { kind: "move"; target: string }
-  | { kind: "archive" }
-  | { kind: "purge" };
+  { kind: "move"; target: string } | { kind: "archive" } | { kind: "purge" };
 
 /**
  * Backend-agnostic notes operations consumed by notes UI/controller.

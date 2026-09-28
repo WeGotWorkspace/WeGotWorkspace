@@ -13,5 +13,4 @@ export type CalendarEventPendingByOperation = Map<CalendarEventPendingOperation,
 export type CalendarEventPendingByEventId = Map<string, CalendarEventPendingByOperation>;
 export type CalendarEventPendingByCalendarId = Map<string, CalendarEventPendingByEventId>;
 export type CalendarEventPendingResult =
-  | CalendarEventPendingGroups
-  | CalendarEventPendingByCalendarId;
+  CalendarEventPendingGroups | CalendarEventPendingByCalendarId;
