@@ -36,7 +36,7 @@ CI sharding (`DONE_GATE_SHARD`) runs PHPStan on shard 1 with the other contract 
 
 `phpstan-baseline.neon` may only shrink. The done gate sums every `count:` and fails when that sum is higher than on `origin/main`. A missing file on `origin/main` is the initial baseline. Do not regenerate the file to clear new findings. Fix the code, then delete that finding's entry in the same pull request (remove the entry, or lower its count). There is no composer script that rewrites the baseline.
 
-`tests/` is not analyzed. Eloquent models for raw-SQL tables need a `@property` per column (`packages/api/docs/sql-schema.md`).
+`tests/` is not analyzed. Tables created through `$this->wgw()` in `database/migrations/wgw` are invisible to Larastan; declare each column with `@property` (`packages/api/docs/sql-schema.md`).
 
 Faster check (contract only, no feature suite):
 
