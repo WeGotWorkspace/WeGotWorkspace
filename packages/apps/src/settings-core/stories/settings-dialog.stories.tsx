@@ -31,3 +31,15 @@ export const MailPanel: Story = {
     await expect(body.findByText(/does not read a mailbox/i)).resolves.toBeTruthy();
   },
 };
+
+export const HiddenForNotes: Story = {
+  args: {
+    appId: "notes",
+    session: mockWorkspaceSession,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
+    await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
+  },
+};

@@ -28,6 +28,7 @@ import type { SettingsDialogApi } from "@/settings-core/src/settings-dialog-prov
 import { SettingsWorkspace } from "@/settings-core/src/settings-workspace";
 import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { TooltipProvider } from "@/ui/tooltip";
 
 vi.mock("@/hooks/use-app-toast", () => ({
   useAppToast: () => ({
@@ -77,11 +78,13 @@ async function renderHosted(ui: ReactNode, initialPath = "/mail") {
   const history = createMemoryHistory({ initialEntries: [initialPath] });
   const rootRoute = createRootRoute({
     component: () => (
-      <SettingsReachabilityProvider value={reachabilityFromShell({})}>
-        <SettingsDialogProvider>
-          <Outlet />
-        </SettingsDialogProvider>
-      </SettingsReachabilityProvider>
+      <TooltipProvider delayDuration={0}>
+        <SettingsReachabilityProvider value={reachabilityFromShell({})}>
+          <SettingsDialogProvider>
+            <Outlet />
+          </SettingsDialogProvider>
+        </SettingsReachabilityProvider>
+      </TooltipProvider>
     ),
   });
   const mailRoute = createRoute({
@@ -117,6 +120,14 @@ function footerSettingsButton() {
   const footer = document.querySelector(".workspace-sidebar-account-footer");
   if (!(footer instanceof HTMLElement)) return null;
   return within(footer).queryByRole("button", { name: "Settings" });
+}
+
+function dialogFooterCloseButton() {
+  const footer = document.querySelector(".ui-modal-footer");
+  if (!(footer instanceof HTMLElement)) {
+    throw new Error("dialog footer not found");
+  }
+  return within(footer).getByRole("button", { name: "Close" });
 }
 
 describe("settings dialog and in-app footer", () => {
@@ -168,9 +179,9 @@ describe("settings dialog and in-app footer", () => {
     expect(settingsButton).toBeTruthy();
     settingsButton!.focus();
     fireEvent.click(settingsButton!);
-    expect(await screen.findByRole("button", { name: "Close" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Open in Settings" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(dialogFooterCloseButton());
     await waitFor(() => {
       expect(footerSettingsButton()).toBe(document.activeElement);
     });
@@ -185,10 +196,15 @@ describe("settings dialog and in-app footer", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Open in Settings" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Mail" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Open in Settings" })).toBeNull();
+      const heading = document.querySelector(
+        ".workspace-app-layout__main-header .view-header__title",
+      );
+      expect(heading).toBeInstanceOf(HTMLElement);
+      expect(heading?.textContent).toContain("Mail");
+      expect(document.activeElement).toBe(heading);
     });
     expect(footerSettingsButton()).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Mail" }));
   });
 });
 
