@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
@@ -14,29 +14,36 @@ import {
 
 type DocsHomeGroupDirectory = readonly { id: string; displayName: string }[];
 
-type UseDocsHomeGroupRootModelArgs = {
+type UseDocsHomeGroupRootsArgs = {
   username: string;
   personalDriveLabel: string;
+  operations?: DriveAPIOperations;
+  online: boolean;
 };
 
-export type DocsHomeGroupRootModel = {
+export type DocsHomeGroupRoots = {
   labeledGroupRoots: DocsHomeGroupRoot[];
   drives: DocsHomeDrive[];
   groupRootSlugs: string[];
-  groupRootNames: Set<string>;
-  setKnownGroupRoots: Dispatch<SetStateAction<DocsHomeGroupRoot[]>>;
-  setGroupDirectory: Dispatch<SetStateAction<DocsHomeGroupDirectory>>;
+  /**
+   * Merge group roots found in the current file list.
+   * Call this after `files` exists — the browse list needs `labeledGroupRoots`
+   * first, so discovery cannot be an argument of this hook.
+   */
+  discoverFromFiles: (files: readonly DriveFile[]) => void;
 };
 
 /**
- * Group-root state for Docs home. Call this before the browse list so labeled
- * roots are available as listing input. Discovery runs later via
- * {@link useDocsHomeGroupRootEffects} once `files` exists.
+ * Group-root state for Docs home. Drive listing and settings labels load here.
+ * File discovery stays behind {@link DocsHomeGroupRoots.discoverFromFiles} so
+ * the browse list can be created with the roots from the previous pass.
  */
-export function useDocsHomeGroupRootModel({
+export function useDocsHomeGroupRoots({
   username,
   personalDriveLabel,
-}: UseDocsHomeGroupRootModelArgs): DocsHomeGroupRootModel {
+  operations,
+  online,
+}: UseDocsHomeGroupRootsArgs): DocsHomeGroupRoots {
   const [knownGroupRoots, setKnownGroupRoots] = useState<DocsHomeGroupRoot[]>([]);
   const [groupDirectory, setGroupDirectory] = useState<DocsHomeGroupDirectory>([]);
 
@@ -48,41 +55,19 @@ export function useDocsHomeGroupRootModel({
     () => labeledGroupRoots.map((root) => root.slug),
     [labeledGroupRoots],
   );
-  const groupRootNames = useMemo(
-    () => new Set(labeledGroupRoots.map((root) => root.slug)),
-    [labeledGroupRoots],
-  );
   const drives = useMemo(
     () => buildDocsHomeDrives(username, labeledGroupRoots, personalDriveLabel),
     [username, labeledGroupRoots, personalDriveLabel],
   );
 
-  return {
-    labeledGroupRoots,
-    drives,
-    groupRootSlugs,
-    groupRootNames,
-    setKnownGroupRoots,
-    setGroupDirectory,
-  };
-}
+  const discoverFromFiles = useCallback((files: readonly DriveFile[]) => {
+    const discovered = collectGroupRoots(files);
+    if (discovered.length === 0) return;
+    // mergeGroupRoots returns `prev` when slug/label sets are unchanged so
+    // setState bails out — otherwise labeledGroupRoots remaps files forever.
+    setKnownGroupRoots((prev) => mergeGroupRoots(prev, discovered));
+  }, []);
 
-type UseDocsHomeGroupRootEffectsArgs = {
-  operations?: DriveAPIOperations;
-  online: boolean;
-  files: readonly DriveFile[];
-  setKnownGroupRoots: Dispatch<SetStateAction<DocsHomeGroupRoot[]>>;
-  setGroupDirectory: Dispatch<SetStateAction<DocsHomeGroupDirectory>>;
-};
-
-/** Load group roots from Drive, settings labels, and the files already on screen. */
-export function useDocsHomeGroupRootEffects({
-  operations,
-  online,
-  files,
-  setKnownGroupRoots,
-  setGroupDirectory,
-}: UseDocsHomeGroupRootEffectsArgs): void {
   useEffect(() => {
     if (!operations || !online) return;
     const controller = new AbortController();
@@ -91,7 +76,7 @@ export function useDocsHomeGroupRootEffects({
       setKnownGroupRoots((prev) => mergeGroupRoots(prev, discovered));
     });
     return () => controller.abort();
-  }, [operations, online, setKnownGroupRoots]);
+  }, [operations, online]);
 
   useEffect(() => {
     if (!online || !wgwLiveApiEnabled()) return;
@@ -108,13 +93,12 @@ export function useDocsHomeGroupRootEffects({
         /* best-effort labels only */
       });
     return () => controller.abort();
-  }, [online, setGroupDirectory]);
+  }, [online]);
 
-  useEffect(() => {
-    const discovered = collectGroupRoots(files);
-    if (discovered.length === 0) return;
-    // mergeGroupRoots returns `prev` when slug/label sets are unchanged so
-    // setState bails out — otherwise labeledGroupRoots remaps files forever.
-    setKnownGroupRoots((prev) => mergeGroupRoots(prev, discovered));
-  }, [files, setKnownGroupRoots]);
+  return {
+    labeledGroupRoots,
+    drives,
+    groupRootSlugs,
+    discoverFromFiles,
+  };
 }

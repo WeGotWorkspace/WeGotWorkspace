@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { TooltipProvider } from "@/ui/tooltip";
+import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
+import { cn } from "@/lib/utils";
 import { DOCS_VIEW_MODE_STORAGE_KEY } from "@/hooks/persisted-view-mode";
 import { usePersistedViewMode } from "@/hooks/use-persisted-view-mode";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -18,15 +21,13 @@ import {
 import { docsHomeBrowsePathPrefix, type DocsHomeView } from "@/docs-core/src/docs-home-shared";
 import { useDocsHomeSidebarModel } from "@/docs-core/src/use-docs-home-sidebar-model";
 import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
-import {
-  useDocsHomeGroupRootEffects,
-  useDocsHomeGroupRootModel,
-} from "@/docs-core/src/use-docs-home-group-roots";
+import { useDocsHomeGroupRoots } from "@/docs-core/src/use-docs-home-group-roots";
 import { useDocsHomeCreateDialog } from "@/docs-core/src/use-docs-home-create-dialog";
 import {
   docsHomeEmptyIconKind,
   docsHomeEmptyMessage,
   docsHomeHeaderTitle,
+  docsHomePaneOfflineLabels,
   docsHomeOfflineBadgePendingIds,
   docsHomeOfflineSyncingIds,
   docsHomeViewFlags,
@@ -34,7 +35,10 @@ import {
   resolveDocsHomeFiles,
   resolveDocsHomeListingStatus,
 } from "@/docs-core/src/docs-home-workspace-model";
-import { DocsHomeWorkspaceFrame } from "@/docs-core/src/docs-home-workspace-frame";
+import { DocsHomePane } from "@/docs-core/src/docs-home-pane";
+import { DocsHomeModals } from "@/docs-core/src/docs-home-modals";
+import { DocsHomeSidebar } from "@/docs-core/src/docs-home-sidebar";
+import { docsHomeEmptyIcon } from "@/docs-core/src/docs-home-empty-icon";
 import type { DriveAPIOperations, DriveShareOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import {
@@ -104,16 +108,11 @@ export function DocsHomeWorkspace({
   const [query, setQuery] = useState("");
   const [view, setView] = useState<DocsHomeView>({ type: "all" });
 
-  const {
-    labeledGroupRoots,
-    drives,
-    groupRootSlugs,
-    groupRootNames,
-    setKnownGroupRoots,
-    setGroupDirectory,
-  } = useDocsHomeGroupRootModel({
+  const { labeledGroupRoots, drives, groupRootSlugs, discoverFromFiles } = useDocsHomeGroupRoots({
     username,
     personalDriveLabel: labels.homeMyDrive,
+    operations,
+    online,
   });
 
   const {
@@ -189,18 +188,10 @@ export function DocsHomeWorkspace({
     isAllView,
     usesBrowseList,
     shareOperationsEnabled: Boolean(shareOperations),
-    browseLoading: browseList.loading,
-    browseError: browseList.error,
-    browseLoadingMore: browseList.loadingMore,
-    browseHasMore: browseList.hasMore,
-    browseIsOfflineListing: browseList.isOfflineListing,
-    browseLoadMore: browseList.loadMore,
-    sharedLoading: sharedList.loading,
-    sharedError: sharedList.error,
-    starredLoading: starredList.loading,
-    starredError: starredList.error,
-    trashLoading: trashList.loading,
-    trashError: trashList.error,
+    browse: browseList,
+    shared: sharedList,
+    starred: starredList,
+    trash: trashList,
   });
 
   const reloadBrowse = browseList.reload;
@@ -273,14 +264,10 @@ export function DocsHomeWorkspace({
     onUnavailable: () => showError(labels.homeNotAvailableOffline),
   });
 
-  // Discover group roots after `files` exists. State lives above the browse list.
-  useDocsHomeGroupRootEffects({
-    operations,
-    online,
-    files,
-    setKnownGroupRoots,
-    setGroupDirectory,
-  });
+  // Discover roots after `files` exists. The browse list already used the previous pass.
+  useEffect(() => {
+    discoverFromFiles(files);
+  }, [discoverFromFiles, files]);
 
   const headerTitle = docsHomeHeaderTitle(view, labels, drives);
   useDocumentTitle(headerTitle);
@@ -338,46 +325,75 @@ export function DocsHomeWorkspace({
     browsePathPrefix,
     listingOperations,
     files,
-    groupRootNames,
+    groupRootSlugs,
   });
 
   return (
-    <DocsHomeWorkspaceFrame
-      className={className}
-      session={session}
-      onLogout={onLogout}
-      sidebarOpen={sidebarOpen}
-      onCloseSidebar={() => setSidebarOpen(false)}
-      onToggleSidebar={() => setSidebarOpen((open) => !open)}
-      showNewDocument={Boolean(onCreateDocument)}
-      primaryItems={primaryItems}
-      driveItems={driveItems}
-      labels={labels}
-      headerTitle={headerTitle}
-      emptyMessage={emptyMessage}
-      emptyIconKind={emptyIconKind}
-      syncingOffline={docsBodySyncProgress.running}
-      visibleFiles={visibleFiles}
-      loading={listing.loading}
-      loadingMore={listing.loadingMore}
-      hasMore={listing.hasMore}
-      error={listing.error}
-      offlinePendingSyncIds={offlineBadgePendingIds}
-      query={query}
-      onQueryChange={setQuery}
-      searchEnabled={searchEnabled}
-      viewMode={viewMode}
-      onViewModeChange={setViewMode}
-      onLoadMore={listing.loadMore}
-      onOpenFile={handleOpenFile}
-      actions={actions}
-      inTrashView={isTrashView}
-      operations={operations}
-      shareOperations={shareOperations}
-      username={username}
-      labeledGroupRoots={labeledGroupRoots}
-      files={files}
-      createDialog={createDialog}
-    />
+    <TooltipProvider delayDuration={200}>
+      <WorkspaceAppLayout
+        className={cn("docs-workspace docs-home-workspace", className)}
+        sidebar={
+          <DocsHomeSidebar
+            open={sidebarOpen}
+            onCloseMobile={() => setSidebarOpen(false)}
+            showNewDocument={Boolean(onCreateDocument)}
+            onNewDocument={createDialog.handleCreateDocument}
+            newDocumentLabel={labels.homeNewDocument}
+            session={session}
+            onLogout={onLogout}
+            primaryItems={primaryItems}
+            driveItems={driveItems}
+            drivesSectionLabel={labels.homeDrivesSection}
+          />
+        }
+        main={
+          <DocsHomePane
+            labels={labels}
+            title={headerTitle}
+            emptyMessage={emptyMessage}
+            emptyIcon={docsHomeEmptyIcon(emptyIconKind)}
+            files={visibleFiles}
+            loading={listing.loading}
+            loadingMore={listing.loadingMore}
+            hasMore={listing.hasMore}
+            error={listing.error}
+            offlinePendingSyncIds={offlineBadgePendingIds}
+            offlineLabels={docsHomePaneOfflineLabels(labels, docsBodySyncProgress.running)}
+            query={query}
+            onQueryChange={setQuery}
+            searchEnabled={searchEnabled}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            onLoadMore={listing.loadMore}
+            onOpenFile={handleOpenFile}
+            sidebarOpen={sidebarOpen}
+            onToggleSidebar={() => setSidebarOpen((open) => !open)}
+            starred={actions.starred}
+            onStar={actions.onStar}
+            onDownload={actions.onDownload}
+            onRename={actions.onRename}
+            onMove={actions.onMove}
+            onTrash={actions.onTrash}
+            inTrashView={isTrashView}
+            operations={operations}
+            batchStar={actions.batchStar}
+            requestMoveSelected={actions.requestMoveSelected}
+            requestDeleteSelected={actions.requestDeleteSelected}
+            onUndoQueuedAction={actions.undoLatest}
+            shareOperations={shareOperations}
+            username={username}
+          />
+        }
+      />
+      <DocsHomeModals
+        actions={actions}
+        labels={labels}
+        files={files}
+        username={username}
+        groupRoots={labeledGroupRoots}
+        operations={operations}
+        createDialog={createDialog}
+      />
+    </TooltipProvider>
   );
 }

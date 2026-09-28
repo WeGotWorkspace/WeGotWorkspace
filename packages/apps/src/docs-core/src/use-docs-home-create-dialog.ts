@@ -25,7 +25,7 @@ type UseDocsHomeCreateDialogArgs = {
   browsePathPrefix: string | undefined;
   listingOperations: Pick<DriveAPIOperations, "listDirectory"> | undefined;
   files: readonly DriveFile[];
-  groupRootNames: Set<string>;
+  groupRootSlugs: readonly string[];
 };
 
 /** New-document dialog: freeze the sidebar drive, pick a free name, then confirm the API path. */
@@ -35,8 +35,9 @@ export function useDocsHomeCreateDialog({
   browsePathPrefix,
   listingOperations,
   files,
-  groupRootNames,
+  groupRootSlugs,
 }: UseDocsHomeCreateDialogArgs): DocsHomeCreateDialogState {
+  const groupRootNames = useMemo(() => new Set(groupRootSlugs), [groupRootSlugs]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createDialogDefaultName, setCreateDialogDefaultName] = useState("Untitled.md");
   const [createDialogBrowsePath, setCreateDialogBrowsePath] = useState(DOCS_DRIVE_UI_PERSONAL_PATH);

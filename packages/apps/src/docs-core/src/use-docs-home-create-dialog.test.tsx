@@ -21,7 +21,7 @@ describe("useDocsHomeCreateDialog", () => {
         browsePathPrefix: undefined,
         listingOperations: undefined,
         files: [],
-        groupRootNames: new Set(),
+        groupRootSlugs: [],
       }),
     );
 
@@ -44,7 +44,7 @@ describe("useDocsHomeCreateDialog", () => {
         browsePathPrefix: "groups/eng",
         listingOperations: listing(listDirectory),
         files: [],
-        groupRootNames: new Set(["eng"]),
+        groupRootSlugs: ["eng"],
       }),
     );
 
@@ -79,7 +79,7 @@ describe("useDocsHomeCreateDialog", () => {
         browsePathPrefix: undefined,
         listingOperations: listing(listDirectory),
         files: [],
-        groupRootNames: new Set(),
+        groupRootSlugs: [],
       }),
     );
 
@@ -104,7 +104,7 @@ describe("useDocsHomeCreateDialog", () => {
         browsePathPrefix: undefined,
         listingOperations: undefined,
         files: [] as DriveFile[],
-        groupRootNames: new Set(),
+        groupRootSlugs: [],
       }),
     );
 
@@ -132,7 +132,7 @@ describe("useDocsHomeCreateDialog", () => {
         browsePathPrefix: undefined,
         listingOperations: undefined,
         files: [],
-        groupRootNames: new Set(),
+        groupRootSlugs: [],
       }),
     );
     act(() => {
@@ -146,7 +146,7 @@ describe("useDocsHomeCreateDialog", () => {
         browsePathPrefix: undefined,
         listingOperations: undefined,
         files: [],
-        groupRootNames: new Set(),
+        groupRootSlugs: [],
       }),
     );
     act(() => {

@@ -1,11 +1,9 @@
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useEffect } from "react";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
-import {
-  useDocsHomeGroupRootEffects,
-  useDocsHomeGroupRootModel,
-} from "@/docs-core/src/use-docs-home-group-roots";
+import { useDocsHomeGroupRoots } from "@/docs-core/src/use-docs-home-group-roots";
 
 vi.mock("@/lib/api/wgw/http", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/http")>();
@@ -43,21 +41,21 @@ function useHarness(props: {
   files?: DriveFile[];
   operations?: DriveAPIOperations;
 }) {
-  const model = useDocsHomeGroupRootModel({
+  const model = useDocsHomeGroupRoots({
     username: props.username ?? "alice",
     personalDriveLabel: "Personal",
-  });
-  useDocsHomeGroupRootEffects({
     operations: props.operations,
     online: props.online ?? true,
-    files: props.files ?? [],
-    setKnownGroupRoots: model.setKnownGroupRoots,
-    setGroupDirectory: model.setGroupDirectory,
   });
+  const { discoverFromFiles } = model;
+  const files = props.files;
+  useEffect(() => {
+    discoverFromFiles(files ?? []);
+  }, [discoverFromFiles, files]);
   return model;
 }
 
-describe("useDocsHomeGroupRootEffects", () => {
+describe("useDocsHomeGroupRoots", () => {
   beforeEach(() => {
     cleanup();
     vi.mocked(wgwLiveApiEnabled).mockReturnValue(false);
@@ -80,7 +78,6 @@ describe("useDocsHomeGroupRootEffects", () => {
       "groups/eng",
     ]);
     expect(result.current.groupRootSlugs).toEqual(["eng"]);
-    expect([...result.current.groupRootNames]).toEqual(["eng"]);
 
     const roots = result.current.labeledGroupRoots;
     rerender({ files: [doc("2", "/groups/eng/b.md")] });

@@ -71,6 +71,18 @@ export type DocsHomeListingStatus = {
   loadMore: () => void;
 };
 
+export type DocsHomeListingQuery = {
+  loading: boolean;
+  error: string | null;
+};
+
+export type DocsHomeBrowseListing = DocsHomeListingQuery & {
+  loadingMore: boolean;
+  hasMore: boolean;
+  isOfflineListing: boolean;
+  loadMore: () => void;
+};
+
 type DocsHomeListingStatusInput = {
   isSharedView: boolean;
   isStarredView: boolean;
@@ -79,18 +91,10 @@ type DocsHomeListingStatusInput = {
   usesBrowseList: boolean;
   /** True when Share operations are wired (All docs waits on the shared list too). */
   shareOperationsEnabled: boolean;
-  browseLoading: boolean;
-  browseError: string | null;
-  browseLoadingMore: boolean;
-  browseHasMore: boolean;
-  browseIsOfflineListing: boolean;
-  browseLoadMore: () => void;
-  sharedLoading: boolean;
-  sharedError: string | null;
-  starredLoading: boolean;
-  starredError: string | null;
-  trashLoading: boolean;
-  trashError: string | null;
+  browse: DocsHomeBrowseListing;
+  shared: DocsHomeListingQuery;
+  starred: DocsHomeListingQuery;
+  trash: DocsHomeListingQuery;
 };
 
 /**
@@ -101,28 +105,28 @@ export function resolveDocsHomeListingStatus(
   input: DocsHomeListingStatusInput,
 ): DocsHomeListingStatus {
   const loading = input.isSharedView
-    ? input.sharedLoading
+    ? input.shared.loading
     : input.isStarredView
-      ? input.starredLoading
+      ? input.starred.loading
       : input.isTrashView
-        ? input.trashLoading
+        ? input.trash.loading
         : input.isAllView && input.shareOperationsEnabled
-          ? input.browseLoading || input.sharedLoading
-          : input.browseLoading;
+          ? input.browse.loading || input.shared.loading
+          : input.browse.loading;
   const error = input.isSharedView
-    ? input.sharedError
+    ? input.shared.error
     : input.isStarredView
-      ? input.starredError
+      ? input.starred.error
       : input.isTrashView
-        ? input.trashError
-        : input.browseError;
+        ? input.trash.error
+        : input.browse.error;
   return {
     loading,
-    loadingMore: input.usesBrowseList ? input.browseLoadingMore : false,
-    hasMore: input.usesBrowseList ? input.browseHasMore : false,
+    loadingMore: input.usesBrowseList ? input.browse.loadingMore : false,
+    hasMore: input.usesBrowseList ? input.browse.hasMore : false,
     error,
-    isOfflineListing: input.usesBrowseList ? input.browseIsOfflineListing : false,
-    loadMore: input.browseLoadMore,
+    isOfflineListing: input.usesBrowseList ? input.browse.isOfflineListing : false,
+    loadMore: input.browse.loadMore,
   };
 }
 
@@ -162,6 +166,22 @@ export function docsHomeEmptyMessage(view: DocsHomeView, labels: DocsHomeEmptyLa
 }
 
 export type DocsHomeEmptyIconKind = "share" | "clock" | "star" | "trash";
+
+type DocsHomeOfflineLabelSource = Pick<
+  DocsUILabels,
+  "offlineAvailable" | "offlinePendingSync" | "syncingOffline"
+>;
+
+/** Badge copy for the home list. In-flight body hydration replaces the pending label. */
+export function docsHomePaneOfflineLabels(
+  labels: DocsHomeOfflineLabelSource,
+  syncingOffline: boolean,
+): { offlineAvailable: string; offlinePendingSync: string } {
+  return {
+    offlineAvailable: labels.offlineAvailable,
+    offlinePendingSync: syncingOffline ? labels.syncingOffline : labels.offlinePendingSync,
+  };
+}
 
 /** Empty-state icon kind. `null` keeps the pane's default document icon. */
 export function docsHomeEmptyIconKind(view: DocsHomeView): DocsHomeEmptyIconKind | null {

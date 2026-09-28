@@ -7,12 +7,15 @@ import {
   docsHomeEmptyIconKind,
   docsHomeEmptyMessage,
   docsHomeHeaderTitle,
+  docsHomePaneOfflineLabels,
   docsHomeOfflineBadgePendingIds,
   docsHomeOfflineSyncingIds,
   docsHomeViewFlags,
   filterDocsHomeVisibleFiles,
   resolveDocsHomeFiles,
   resolveDocsHomeListingStatus,
+  type DocsHomeBrowseListing,
+  type DocsHomeListingQuery,
   type DocsHomeListingStatus,
 } from "@/docs-core/src/docs-home-workspace-model";
 
@@ -38,10 +41,30 @@ const drives = [
 ];
 
 const loadMore = () => {};
+const idleQuery: DocsHomeListingQuery = { loading: false, error: null };
+const idleBrowse: DocsHomeBrowseListing = {
+  ...idleQuery,
+  loadingMore: false,
+  hasMore: false,
+  isOfflineListing: false,
+  loadMore,
+};
 
 function status(
-  overrides: Partial<Parameters<typeof resolveDocsHomeListingStatus>[0]> = {},
+  overrides: {
+    isSharedView?: boolean;
+    isStarredView?: boolean;
+    isTrashView?: boolean;
+    isAllView?: boolean;
+    usesBrowseList?: boolean;
+    shareOperationsEnabled?: boolean;
+    browse?: Partial<DocsHomeBrowseListing>;
+    shared?: Partial<DocsHomeListingQuery>;
+    starred?: Partial<DocsHomeListingQuery>;
+    trash?: Partial<DocsHomeListingQuery>;
+  } = {},
 ): DocsHomeListingStatus {
+  const { browse, shared, starred, trash, ...flags } = overrides;
   return resolveDocsHomeListingStatus({
     isSharedView: false,
     isStarredView: false,
@@ -49,19 +72,11 @@ function status(
     isAllView: false,
     usesBrowseList: false,
     shareOperationsEnabled: false,
-    browseLoading: false,
-    browseError: null,
-    browseLoadingMore: false,
-    browseHasMore: false,
-    browseIsOfflineListing: false,
-    browseLoadMore: loadMore,
-    sharedLoading: false,
-    sharedError: null,
-    starredLoading: false,
-    starredError: null,
-    trashLoading: false,
-    trashError: null,
-    ...overrides,
+    browse: { ...idleBrowse, ...browse },
+    shared: { ...idleQuery, ...shared },
+    starred: { ...idleQuery, ...starred },
+    trash: { ...idleQuery, ...trash },
+    ...flags,
   });
 }
 
@@ -142,13 +157,13 @@ describe("resolveDocsHomeListingStatus", () => {
         isAllView: true,
         usesBrowseList: true,
         shareOperationsEnabled: true,
-        browseLoading: false,
-        sharedLoading: true,
-        browseHasMore: true,
-        browseLoadingMore: true,
-        browseIsOfflineListing: true,
-        browseError: "browse",
-        sharedError: "shared",
+        browse: {
+          hasMore: true,
+          loadingMore: true,
+          isOfflineListing: true,
+          error: "browse",
+        },
+        shared: { loading: true, error: "shared" },
       }),
     ).toMatchObject({
       loading: true,
@@ -163,9 +178,7 @@ describe("resolveDocsHomeListingStatus", () => {
       status({
         isAllView: true,
         usesBrowseList: true,
-        shareOperationsEnabled: false,
-        browseLoading: false,
-        sharedLoading: true,
+        shared: { loading: true },
       }).loading,
     ).toBe(false);
   });
@@ -174,10 +187,8 @@ describe("resolveDocsHomeListingStatus", () => {
     expect(
       status({
         isSharedView: true,
-        sharedLoading: true,
-        sharedError: "shared",
-        browseHasMore: true,
-        browseIsOfflineListing: true,
+        shared: { loading: true, error: "shared" },
+        browse: { hasMore: true, isOfflineListing: true },
       }),
     ).toMatchObject({
       loading: true,
@@ -186,10 +197,8 @@ describe("resolveDocsHomeListingStatus", () => {
       loadingMore: false,
       isOfflineListing: false,
     });
-    expect(status({ isStarredView: true, starredError: "starred" }).error).toBe("starred");
-    expect(status({ isTrashView: true, trashLoading: true, browseLoading: false }).loading).toBe(
-      true,
-    );
+    expect(status({ isStarredView: true, starred: { error: "starred" } }).error).toBe("starred");
+    expect(status({ isTrashView: true, trash: { loading: true } }).loading).toBe(true);
   });
 });
 
@@ -237,6 +246,16 @@ describe("docs home chrome", () => {
       null,
       null,
     ]);
+  });
+
+  it("uses the syncing label only while body hydration is running", () => {
+    expect(docsHomePaneOfflineLabels(docsLabels, false).offlinePendingSync).toBe(
+      docsLabels.offlinePendingSync,
+    );
+    expect(docsHomePaneOfflineLabels(docsLabels, true)).toEqual({
+      offlineAvailable: docsLabels.offlineAvailable,
+      offlinePendingSync: docsLabels.syncingOffline,
+    });
   });
 });
 
