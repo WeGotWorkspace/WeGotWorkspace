@@ -4,7 +4,7 @@ import {
   ensureTrashFolder,
   mergeDriveFolderListing,
   resolveDriveFileApiPath,
-  resolveTrashName,
+  resolveFreeName,
 } from "@/drive-core/src/drive-batch-utils";
 import { DRIVE_TRASH_DIR_NAME } from "@/drive-core/src/drive-path-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
@@ -100,24 +100,24 @@ describe("mergeDriveFolderListing", () => {
   });
 });
 
-describe("resolveTrashName", () => {
+describe("resolveFreeName", () => {
   it("returns the original name when trash is empty", () => {
-    expect(resolveTrashName("Untitled.md", new Set())).toBe("Untitled.md");
+    expect(resolveFreeName("Untitled.md", new Set())).toBe("Untitled.md");
   });
 
   it("increments the base name when the title already exists in trash", () => {
     const taken = new Set(["Untitled.md"]);
-    expect(resolveTrashName("Untitled.md", taken)).toBe("Untitled 2.md");
+    expect(resolveFreeName("Untitled.md", taken)).toBe("Untitled 2.md");
   });
 
   it("keeps incrementing until a free trash name is found", () => {
     const taken = new Set(["report.md", "report 2.md"]);
-    expect(resolveTrashName("report.md", taken)).toBe("report 3.md");
+    expect(resolveFreeName("report.md", taken)).toBe("report 3.md");
   });
 
   it("handles extensionless names", () => {
     const taken = new Set(["README"]);
-    expect(resolveTrashName("README", taken)).toBe("README 2");
+    expect(resolveFreeName("README", taken)).toBe("README 2");
   });
 });
 
@@ -170,5 +170,17 @@ describe("claimDirectoryEntryName", () => {
     expect(first).toBe("notes 2.md");
     expect(second).toBe("notes 3.md");
     expect(operations.listAllDirectoryEntries).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects when the destination listing fails", async () => {
+    const operations = {
+      listAllDirectoryEntries: vi.fn(async () => {
+        throw new Error("list failed");
+      }),
+    } as unknown as DriveAPIOperations;
+
+    await expect(
+      claimDirectoryEntryName(operations, "/users/alice", "notes.md", new Map()),
+    ).rejects.toThrow("list failed");
   });
 });

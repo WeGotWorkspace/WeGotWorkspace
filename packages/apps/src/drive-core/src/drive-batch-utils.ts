@@ -63,8 +63,8 @@ export async function reloadDriveFolderListing(
   setFiles((previous) => mergeDriveFolderListing(previous, nextData, username));
 }
 
-/** Pick a unique trash item name when the same title is already in `.Trash`. */
-export function resolveTrashName(fileName: string, taken: ReadonlySet<string>): string {
+/** Pick `fileName`, or `name 2.ext`, when that title is already taken. */
+export function resolveFreeName(fileName: string, taken: ReadonlySet<string>): string {
   const takenLower = new Set(Array.from(taken, (name) => name.toLowerCase()));
   const dot = fileName.lastIndexOf(".");
   const hasExt = dot > 0;
@@ -107,6 +107,7 @@ export async function listTrashEntryNames(
 /**
  * Pick a free name in `directoryApiPath`. `takenByDirectory` caches the listing for later files
  * in the same restore so two siblings do not claim the same title.
+ * A failed listing is thrown: an empty set would treat the original title as free.
  */
 export async function claimDirectoryEntryName(
   operations: DriveAPIOperations,
@@ -116,10 +117,14 @@ export async function claimDirectoryEntryName(
 ): Promise<string> {
   let taken = takenByDirectory.get(directoryApiPath);
   if (!taken) {
-    taken = await listDirectoryEntryNames(operations, directoryApiPath);
+    taken = new Set<string>();
+    if (operations.listAllDirectoryEntries) {
+      const entries = await operations.listAllDirectoryEntries(directoryApiPath);
+      for (const entry of entries) taken.add(entry.name);
+    }
     takenByDirectory.set(directoryApiPath, taken);
   }
-  const name = resolveTrashName(preferredName, taken);
+  const name = resolveFreeName(preferredName, taken);
   taken.add(name);
   return name;
 }

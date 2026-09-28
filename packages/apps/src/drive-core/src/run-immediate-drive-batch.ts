@@ -16,8 +16,8 @@ export type ImmediateDriveBatchArgs = {
    */
   execute: (signal: AbortSignal, markCompleted: (key: string) => void) => Promise<void>;
   /**
-   * Undo the server write. Runs after `execute` resolves, or when it throws after at least one
-   * `markCompleted` call. `completedKeys` lists those marks; an empty set means the whole execute finished.
+   * Undo server renames for `completedKeys` only. Runs after `execute` resolves, or when it
+   * throws after at least one `markCompleted` call.
    */
   revert?: (completedKeys: ReadonlySet<string>) => Promise<void>;
   queueMutation: QueueMutation;
@@ -36,11 +36,19 @@ export function runImmediateDriveBatch({
 }: ImmediateDriveBatchArgs): void {
   const completedKeys = new Set<string>();
   let finished = false;
+  let undone = false;
   const undo = () => {
+    // onError already reverts completed files. The Undo button stays up for the
+    // undo window and would call this again.
+    if (undone) return;
+    undone = true;
     rollback();
     if (!revert) return;
     if (!finished && completedKeys.size === 0) return;
-    void revert(completedKeys).catch((error: unknown) => {
+    // Copy the set. Undo aborts execute, but a rename that already reached the
+    // server can still resolve and call markCompleted after this snapshot.
+    // That file is not reverted; a later undo will not run either.
+    void revert(new Set(completedKeys)).catch((error: unknown) => {
       console.error("Drive batch revert failed", error);
     });
   };

@@ -308,6 +308,32 @@ describe("useDriveBatchActions", () => {
     expect(showToast).toHaveBeenCalledWith("Restored “notes.md” as “notes 2.md”");
   });
 
+  it("reports several renamed restores in one toast", async () => {
+    const operations = createOperations();
+    vi.mocked(operations.listAllDirectoryEntries!).mockImplementation(async (at: string) => {
+      if (at === "/users/alice") {
+        return [listedFile("/users/alice/notes.md"), listedFile("/users/alice/other.md")];
+      }
+      return [];
+    });
+    const { result } = renderActions({
+      operations,
+      files: [driveFile(), driveFile({ id: "other", title: "other.md" })],
+      selectedIds: [NOTES_ID, "other"],
+    });
+
+    act(() => result.current.moveToTrash([NOTES_ID, "other"]));
+    await act(async () => {
+      await queued().execute(new AbortController().signal);
+    });
+    await act(async () => {
+      queued().undo();
+    });
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith("Restored 2 files under a new name");
+  });
+
   it("renames into the destination folder and renames back when undo follows a finished move", async () => {
     const operations = createOperations();
     let refreshes = 0;

@@ -116,6 +116,36 @@ describe("runImmediateDriveBatch", () => {
     expect(reverted).toEqual(new Set(["notes"]));
   });
 
+  it("reverts only once when undo runs again after a failed execute", async () => {
+    const { queued, queueMutation } = captureQueue();
+    let rolledBack = 0;
+    let reverted = 0;
+
+    runImmediateDriveBatch({
+      ...batch,
+      rollback: () => {
+        rolledBack += 1;
+      },
+      execute: async (_signal, markCompleted) => {
+        markCompleted("notes");
+        throw new Error("rename failed");
+      },
+      revert: async () => {
+        reverted += 1;
+      },
+      queueMutation,
+    });
+
+    await expect(queued[0]?.execute?.(new AbortController().signal)).rejects.toThrow(
+      "rename failed",
+    );
+    queued[0]?.undo?.();
+    queued[0]?.undo?.();
+
+    expect(rolledBack).toBe(1);
+    expect(reverted).toBe(1);
+  });
+
   it("rolls back without reverting when no revert is passed", async () => {
     const { queued, queueMutation } = captureQueue();
     let rolledBack = 0;
