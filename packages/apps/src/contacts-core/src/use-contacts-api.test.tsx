@@ -31,12 +31,15 @@ vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
     load: vi.fn(),
     successVersion: 1,
     patchBootstrap: mockPatchBootstrap,
+    complete: true,
   }),
 }));
 
 vi.mock("@/lib/offline/contacts-hybrid-operations", () => ({
   createHybridContactsOperations: vi.fn(),
   getContactsSyncRunner: () => ({ flush: mockFlush }),
+  loadContactsBootstrapForBoot: vi.fn(),
+  refreshCachedContacts: vi.fn().mockResolvedValue(undefined),
 }));
 
 let mockReconnectSyncing = false;

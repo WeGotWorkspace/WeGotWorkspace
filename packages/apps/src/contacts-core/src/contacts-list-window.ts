@@ -1,0 +1,144 @@
+import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import { groupContactCardsBySection } from "@/contacts-core/src/contacts-display-utils";
+
+/**
+ * Fixed row sizes for the windowed list. Must match
+ * `--contacts-list-card-row-size` / `--contacts-list-header-row-size` in
+ * `contacts-workspace.css`. Convert to px with the live root font size —
+ * do not assume 16px.
+ */
+export const CONTACTS_LIST_CARD_ROW_REM = 5.5;
+export const CONTACTS_LIST_HEADER_ROW_REM = 2.25;
+/** Below this, render every row. Large books window to the scrollport. */
+export const CONTACTS_LIST_WINDOW_AFTER = 80;
+const OVERSCAN_PX = 480;
+const DEFAULT_ROOT_FONT_SIZE_PX = 16;
+
+export type ContactsListWindowRow =
+  | { kind: "header"; letter: string; key: string }
+  | { kind: "card"; card: ContactCard; key: string };
+
+export function flattenContactListRows(cards: ContactCard[]): ContactsListWindowRow[] {
+  const rows: ContactsListWindowRow[] = [];
+  for (const section of groupContactCardsBySection(cards)) {
+    rows.push({ kind: "header", letter: section.letter, key: `section-${section.letter}` });
+    for (const card of section.cards) {
+      rows.push({ kind: "card", card, key: card.id });
+    }
+  }
+  return rows;
+}
+
+/** Root `html` font size in px (browser default / accessibility setting). */
+export function readContactsListRootFontSizePx(
+  doc: Document | null | undefined = typeof document !== "undefined" ? document : null,
+): number {
+  if (!doc?.documentElement) return DEFAULT_ROOT_FONT_SIZE_PX;
+  const parsed = parseFloat(getComputedStyle(doc.documentElement).fontSize);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_ROOT_FONT_SIZE_PX;
+}
+
+export function contactListRowHeight(
+  row: ContactsListWindowRow,
+  rootFontSizePx: number = DEFAULT_ROOT_FONT_SIZE_PX,
+): number {
+  const rem = row.kind === "header" ? CONTACTS_LIST_HEADER_ROW_REM : CONTACTS_LIST_CARD_ROW_REM;
+  return rem * rootFontSizePx;
+}
+
+export function contactListRowOffset(
+  rows: ContactsListWindowRow[],
+  index: number,
+  rootFontSizePx: number = DEFAULT_ROOT_FONT_SIZE_PX,
+): number {
+  let offset = 0;
+  const end = Math.min(index, rows.length);
+  for (let i = 0; i < end; i += 1) {
+    offset += contactListRowHeight(rows[i]!, rootFontSizePx);
+  }
+  return offset;
+}
+
+export function contactsListWindowRange(
+  rows: ContactsListWindowRow[],
+  scrollTop: number,
+  viewportHeight: number,
+  rootFontSizePx: number = DEFAULT_ROOT_FONT_SIZE_PX,
+): { start: number; end: number; paddingTop: number; paddingBottom: number } {
+  if (rows.length === 0) {
+    return { start: 0, end: 0, paddingTop: 0, paddingBottom: 0 };
+  }
+  if (rows.length <= CONTACTS_LIST_WINDOW_AFTER) {
+    return { start: 0, end: rows.length, paddingTop: 0, paddingBottom: 0 };
+  }
+  if (viewportHeight <= 0) {
+    const end = Math.min(rows.length, 24);
+    return {
+      start: 0,
+      end,
+      paddingTop: 0,
+      paddingBottom:
+        contactListRowOffset(rows, rows.length, rootFontSizePx) -
+        contactListRowOffset(rows, end, rootFontSizePx),
+    };
+  }
+
+  const from = Math.max(0, scrollTop - OVERSCAN_PX);
+  const to = scrollTop + viewportHeight + OVERSCAN_PX;
+  let offset = 0;
+  let start = 0;
+  let end = rows.length;
+  let startSet = false;
+  for (let index = 0; index < rows.length; index += 1) {
+    const height = contactListRowHeight(rows[index]!, rootFontSizePx);
+    const next = offset + height;
+    if (!startSet && next >= from) {
+      start = index;
+      startSet = true;
+    }
+    if (offset > to) {
+      end = index;
+      break;
+    }
+    offset = next;
+  }
+
+  const paddingTop = contactListRowOffset(rows, start, rootFontSizePx);
+  const paddingBottom =
+    contactListRowOffset(rows, rows.length, rootFontSizePx) -
+    contactListRowOffset(rows, end, rootFontSizePx);
+  return { start, end, paddingTop, paddingBottom };
+}
+
+/**
+ * Rows to paint for a window. When the slice starts inside a section, the
+ * preceding letter header is included so the sticky label stays mounted.
+ * Its height is removed from `paddingTop` so the list does not grow.
+ */
+export function contactListWindowSlice(
+  rows: ContactsListWindowRow[],
+  range: { start: number; end: number; paddingTop: number; paddingBottom: number },
+  rootFontSizePx: number = DEFAULT_ROOT_FONT_SIZE_PX,
+): { rows: ContactsListWindowRow[]; paddingTop: number; paddingBottom: number } {
+  const visible = rows.slice(range.start, range.end);
+  const first = visible[0];
+  if (!first || first.kind === "header") {
+    return { rows: visible, paddingTop: range.paddingTop, paddingBottom: range.paddingBottom };
+  }
+  let header: ContactsListWindowRow | null = null;
+  for (let index = range.start - 1; index >= 0; index -= 1) {
+    const row = rows[index];
+    if (row?.kind === "header") {
+      header = row;
+      break;
+    }
+  }
+  if (!header) {
+    return { rows: visible, paddingTop: range.paddingTop, paddingBottom: range.paddingBottom };
+  }
+  return {
+    rows: [header, ...visible],
+    paddingTop: Math.max(0, range.paddingTop - contactListRowHeight(header, rootFontSizePx)),
+    paddingBottom: range.paddingBottom,
+  };
+}
