@@ -197,7 +197,7 @@ jobs:
       # the same gitleaks detect command directly.
       # gitleaks-action exits 1 on merge_group. Run the direct detect script
       # there even when a license is present, so the required Secrets check
-      # still scans instead of reporting an empty green job.
+      # still scans the merge group (base_sha..head_sha) instead of an empty job.
       - name: Detect Gitleaks license
         id: gitleaks-license
         env:
