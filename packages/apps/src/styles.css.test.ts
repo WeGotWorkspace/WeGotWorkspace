@@ -98,8 +98,7 @@ describe("product UI font tokens", () => {
       /--font-we-got-sans:\s*"Plus Jakarta Sans",\s*ui-sans-serif,\s*system-ui,\s*sans-serif/,
     );
     expect(css).toMatch(/--font-sans:\s*var\(--font-we-got-sans\)/);
-    expect(css).toMatch(/--font-system-sans:\s*ui-sans-serif,\s*system-ui,\s*sans-serif/);
-    expect(css).not.toMatch(/--font-sans:\s*var\(--font-system-sans\)/);
+    expect(css).not.toMatch(/--font-system-sans\b/);
     expect(css).not.toMatch(/--font-sans:\s*"General Sans"/);
     expect(css).not.toMatch(/font-family:\s*"General Sans"/);
     expect(css).not.toMatch(/--font-display\b/);

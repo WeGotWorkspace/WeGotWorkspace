@@ -39,7 +39,7 @@ describe("font family primitives and semantic aliases", () => {
     expect(stylesCss).not.toMatch(/--font-we-got-mark:\s*ui-sans-serif/);
     expect(stylesCss).not.toMatch(/--font-we-got-mark:\s*var\(--font-system-sans\)/);
     expect(stylesCss).not.toMatch(/--font-we-got-mark:\s*var\(--font-sans\)/);
-    expect(stylesCss).toMatch(/--font-system-sans:\s*ui-sans-serif,\s*system-ui,\s*sans-serif/);
+    expect(stylesCss).not.toMatch(/--font-system-sans\b/);
     expect(stylesCss).toMatch(/--font-sans:\s*var\(--font-we-got-sans\)/);
     expect(stylesCss).toMatch(/--font-serif:\s*var\(--font-we-got-serif\)/);
     expect(stylesCss).toMatch(/--font-mono:\s*var\(--font-we-got-mono\)/);

@@ -20,6 +20,7 @@ import { filterVisibleCalendarEventsKeepingOverlay } from "@/calendar-core/src/c
  */
 export class WgwCalendarSurface extends LitElement {
   static styles = css`
+    /* Must match styles/host-font.css (Lit css\`\` cannot @import that sheet). */
     :host {
       display: flex;
       flex-direction: column;

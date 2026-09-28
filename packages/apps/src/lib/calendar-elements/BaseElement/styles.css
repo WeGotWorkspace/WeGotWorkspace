@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../styles/host-font.css";
 
 @layer base {
   * {
@@ -16,15 +17,4 @@
       )
     );
   }
-}
-
-/*
- * Unlayered so it beats Tailwind theme/preflight on :host when sheets @import "tailwindcss".
- * Tailwind emits `--font-sans: ui-sans-serif…` on `:host`, which replaces the document token;
- * re-point `--font-sans` at the inherited brand primitive before using it.
- */
-:host {
-  --font-sans: var(--font-we-got-sans);
-  --default-font-family: var(--font-we-got-sans);
-  font-family: var(--font-sans);
 }

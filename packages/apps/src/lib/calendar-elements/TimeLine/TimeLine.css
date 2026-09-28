@@ -1,3 +1,5 @@
+@import "../styles/host-font.css";
+
 * {
   box-sizing: border-box;
 }
@@ -5,9 +7,6 @@
 :host {
   display: block;
   width: 100%;
-  --font-sans: var(--font-we-got-sans);
-  --default-font-family: var(--font-we-got-sans);
-  font-family: var(--font-sans);
   /* Four-side gutter. `--time-line-event-inline-inset` overrides when set. */
   --time-line-event-inset: var(--time-line-event-inline-inset, var(--_lc-event-card-inset, 1px));
   /* Selected boost is added inside the same z-index formulas as rest/stagger so a later

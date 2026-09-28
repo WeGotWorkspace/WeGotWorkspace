@@ -2,14 +2,18 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { stripLayerBlocks } from "./strip-layer-blocks";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const calendarElementsRoot = join(here, "..");
+const hostFontCssPath = join(calendarElementsRoot, "styles/host-font.css");
 
 const TAILWIND_IMPORT = /@import\s+["']tailwindcss["']/;
 /** Bare `:host {` (not `:host(.x)` / `:host .child`). */
 const BARE_HOST_RULE = /:host\s*\{/;
 const HARDCODED_SYSTEM_SANS = /font-family\s*:[^;{]*(?:ui-sans-serif|system-ui)(?![^;]*\))/;
+const HOST_FONT_IMPORT = /@import\s+["'][^"']*host-font\.css["']/;
+const Z_INDEX_IMPORT = /@import\s+["'][^"']*z-index\.css["']/;
 
 /** Unlayered :host restores brand token (Tailwind theme otherwise sets ui-sans-serif on :host). */
 const HOST_FONT_SANS_TOKEN =
@@ -30,29 +34,6 @@ function walkCssFiles(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-/** Remove `@layer … { … }` blocks so layered-only rules cannot satisfy the SST. */
-function stripLayerBlocks(css: string): string {
-  let depth = 0;
-  let unlayered = "";
-  for (let i = 0; i < css.length; i++) {
-    const slice = css.slice(i);
-    if (depth === 0 && /^@layer\b/.test(slice)) {
-      const brace = slice.indexOf("{");
-      if (brace === -1) break;
-      depth = 1;
-      i += brace;
-      continue;
-    }
-    if (depth > 0) {
-      if (css[i] === "{") depth += 1;
-      else if (css[i] === "}") depth -= 1;
-      continue;
-    }
-    unlayered += css[i];
-  }
-  return unlayered;
-}
-
 /**
  * Product sans pin: unlayered :host must override `--font-sans` (not only set
  * `font-family: var(--font-sans)`, which would resolve to Tailwind's local
@@ -61,6 +42,15 @@ function stripLayerBlocks(css: string): string {
 function hasUnlayeredHostProductSans(css: string): boolean {
   const unlayered = stripLayerBlocks(css);
   return HOST_FONT_SANS_TOKEN.test(unlayered) && HOST_FONT_FAMILY_PRODUCT.test(unlayered);
+}
+
+/** Sheet pins product sans via local rule or shared host-font / z-index import. */
+function pinsProductSans(css: string): boolean {
+  if (hasUnlayeredHostProductSans(css)) return true;
+  if (HOST_FONT_IMPORT.test(css)) return true;
+  // z-index.css re-exports host-font.css for every importer.
+  if (Z_INDEX_IMPORT.test(css)) return true;
+  return false;
 }
 
 /**
@@ -93,9 +83,16 @@ function rel(path: string): string {
 describe("calendar shadow product sans (SST)", () => {
   const cssFiles = walkCssFiles(calendarElementsRoot);
 
-  it("BaseElement/styles.css restores --font-sans and font-family on unlayered :host", () => {
-    const css = readFileSync(join(here, "styles.css"), "utf8");
+  it("styles/host-font.css is the unlayered --font-sans + font-family pin", () => {
+    const css = readFileSync(hostFontCssPath, "utf8");
     expect(hasUnlayeredHostProductSans(css)).toBe(true);
+    expect(css).not.toMatch(/@layer\b/);
+  });
+
+  it("BaseElement/styles.css imports host-font.css (source of the pin)", () => {
+    const css = readFileSync(join(here, "styles.css"), "utf8");
+    expect(HOST_FONT_IMPORT.test(css)).toBe(true);
+    expect(pinsProductSans(css)).toBe(true);
   });
 
   it("font-family: var(--font-sans) alone is insufficient (token override required)", () => {
@@ -106,21 +103,23 @@ describe("calendar shadow product sans (SST)", () => {
 }
 `;
     expect(hasUnlayeredHostProductSans(buggy)).toBe(false);
+    expect(pinsProductSans(buggy)).toBe(false);
   });
 
-  it("TimeLine.css and SwipeContainer.css restore product sans token (no BaseElement.styles)", () => {
+  it("TimeLine.css and SwipeContainer.css import host-font.css (no BaseElement.styles)", () => {
     for (const name of ["TimeLine/TimeLine.css", "SwipeContainer/SwipeContainer.css"]) {
       const css = readFileSync(join(calendarElementsRoot, name), "utf8");
-      expect(
-        hasUnlayeredHostProductSans(css),
-        `${name} must override --font-sans and pin font-family unlayered`,
-      ).toBe(true);
+      expect(HOST_FONT_IMPORT.test(css), `${name} must @import host-font.css`).toBe(true);
+      expect(pinsProductSans(css), `${name} must pin product sans`).toBe(true);
     }
   });
 
-  it("styles/z-index.css restores --font-sans (not only font-family)", () => {
+  it("styles/z-index.css imports host-font.css (re-export for importers)", () => {
     const css = readFileSync(join(calendarElementsRoot, "styles/z-index.css"), "utf8");
-    expect(hasUnlayeredHostProductSans(css)).toBe(true);
+    expect(HOST_FONT_IMPORT.test(css)).toBe(true);
+    expect(pinsProductSans(css)).toBe(true);
+    // Pin lives in host-font.css, not duplicated here.
+    expect(hasUnlayeredHostProductSans(css)).toBe(false);
   });
 
   it("wgw-calendar-surface.ts restores --font-sans and font-family on :host", () => {
@@ -135,7 +134,7 @@ describe("calendar shadow product sans (SST)", () => {
     for (const cssPath of cssFiles) {
       const css = readFileSync(cssPath, "utf8");
       if (!TAILWIND_IMPORT.test(css) || !BARE_HOST_RULE.test(css)) continue;
-      if (hasUnlayeredHostProductSans(css)) continue;
+      if (pinsProductSans(css)) continue;
       if (adoptsBaseElementStyles(cssPath)) continue;
       failures.push(rel(cssPath));
     }

@@ -51,7 +51,6 @@ export const FONT_PRIMITIVES = [
   "--font-we-got-serif",
   "--font-we-got-mono",
   "--font-we-got-mark",
-  "--font-system-sans",
 ] as const;
 
 /** Semantic font roles (utilities: font-sans / font-serif / font-mono / font-mark). */

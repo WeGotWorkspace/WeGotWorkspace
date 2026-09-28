@@ -1,14 +1,11 @@
 @import "tailwindcss";
+@import "./host-font.css";
 
 /*
   Shared z-index layer tokens for component styles.
   Override on :host where needed.
 */
 :host {
-  /* Re-importing tailwind here reintroduces theme+preflight; restore brand token unlayered. */
-  --font-sans: var(--font-we-got-sans);
-  --default-font-family: var(--font-we-got-sans);
-  font-family: var(--font-sans);
   --_lc-z-base: 1;
   --_lc-z-overlay: 2;
   --_lc-z-overlay-raised: 3;
