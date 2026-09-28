@@ -8,6 +8,7 @@ use App\Services\Mcp\CimdException;
 use App\Services\Mcp\CimdResolver;
 use App\Services\Mcp\McpScopes;
 use App\Services\Mcp\PublicHostResolver;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Laravel\Passport\Bridge\Client as BridgeClient;
 use Laravel\Passport\Bridge\Scope;
@@ -94,6 +95,110 @@ final class CimdResolverTest extends WgwDatabaseTestCase
         $this->expectException(CimdException::class);
         $this->expectExceptionMessage('size limit');
         app(CimdResolver::class)->fetch('https://metadata.example.test/client.json');
+    }
+
+    public function test_declared_content_length_over_the_cap_is_rejected(): void
+    {
+        Http::fake([
+            'https://metadata.example.test/client.json' => Http::response(
+                '{"token_endpoint_auth_method":"none"}',
+                200,
+                ['Content-Type' => 'application/json', 'Content-Length' => '65537'],
+            ),
+        ]);
+
+        $this->expectException(CimdException::class);
+        $this->expectExceptionMessage('size limit');
+        app(CimdResolver::class)->fetch('https://metadata.example.test/client.json');
+    }
+
+    public function test_carrier_grade_nat_pin_is_rejected(): void
+    {
+        $this->bindPublicDns(['100.64.0.1']);
+
+        $this->expectException(CimdException::class);
+        $this->expectExceptionMessage('private or reserved');
+        app(CimdResolver::class)->fetch('https://metadata.example.test/client.json');
+    }
+
+    public function test_aaaa_only_public_address_is_fetched(): void
+    {
+        $this->bindPublicDns(['2001:4860:4860::8888']);
+        Http::fake([
+            'https://metadata.example.test/client.json' => Http::response(
+                ['token_endpoint_auth_method' => 'none'],
+                200,
+                ['Content-Type' => 'application/json'],
+            ),
+        ]);
+
+        $metadata = app(CimdResolver::class)->fetch('https://metadata.example.test/client.json');
+
+        $this->assertSame('none', $metadata['token_endpoint_auth_method']);
+    }
+
+    public function test_eleventh_fetch_from_the_same_ip_is_rejected(): void
+    {
+        $this->bindRequesterIp('198.51.100.10');
+        $this->fakeMetadata();
+
+        for ($i = 1; $i <= 10; $i++) {
+            app(CimdResolver::class)->fetch('https://host'.$i.'.example.test/client.json');
+        }
+
+        try {
+            app(CimdResolver::class)->fetch('https://host11.example.test/client.json');
+            $this->fail('expected a rate limit');
+        } catch (CimdException $e) {
+            $this->assertSame(429, $e->status());
+            $this->assertStringContainsString('Too many CIMD fetches.', $e->getMessage());
+        }
+    }
+
+    public function test_cached_client_does_not_consume_the_ip_fetch_budget(): void
+    {
+        $this->bindRequesterIp('198.51.100.20');
+        $this->fakeMetadata();
+        $this->staleCimdClient();
+
+        for ($i = 1; $i <= 9; $i++) {
+            app(CimdResolver::class)->fetch('https://budget'.$i.'.example.test/client.json');
+        }
+        Http::assertSentCount(9);
+
+        app(CimdResolver::class)->resolve('https://metadata.example.test/client.json');
+        Http::assertSentCount(9);
+
+        app(CimdResolver::class)->fetch('https://budget10.example.test/client.json');
+        Http::assertSentCount(10);
+
+        try {
+            app(CimdResolver::class)->fetch('https://budget11.example.test/client.json');
+            $this->fail('expected a rate limit');
+        } catch (CimdException $e) {
+            $this->assertSame(429, $e->status());
+        }
+    }
+
+    public function test_ipv6_clients_in_the_same_prefix_share_the_fetch_budget(): void
+    {
+        $this->bindRequesterIp('2001:db8:1:2::1');
+        $this->fakeMetadata();
+        for ($i = 1; $i <= 10; $i++) {
+            app(CimdResolver::class)->fetch('https://v6-'.$i.'.example.test/client.json');
+        }
+
+        $this->bindRequesterIp('2001:db8:1:2::abcd');
+        try {
+            app(CimdResolver::class)->fetch('https://v6-same.example.test/client.json');
+            $this->fail('expected a shared /64 rate limit');
+        } catch (CimdException $e) {
+            $this->assertSame(429, $e->status());
+        }
+
+        $this->bindRequesterIp('2001:db8:9:9::1');
+        $metadata = app(CimdResolver::class)->fetch('https://v6-other.example.test/client.json');
+        $this->assertSame('none', $metadata['token_endpoint_auth_method']);
     }
 
     public function test_valid_metadata_materializes_a_passport_client(): void
@@ -278,6 +383,20 @@ final class CimdResolverTest extends WgwDatabaseTestCase
             static fn (Scope $scope): string => $scope->getIdentifier(),
             $scopes,
         ));
+    }
+
+    private function fakeMetadata(): void
+    {
+        Http::fake(fn () => Http::response(
+            ['token_endpoint_auth_method' => 'none'],
+            200,
+            ['Content-Type' => 'application/json'],
+        ));
+    }
+
+    private function bindRequesterIp(string $ip): void
+    {
+        $this->app->instance('request', Request::create('/', 'GET', [], [], [], ['REMOTE_ADDR' => $ip]));
     }
 
     /**

@@ -1,8 +1,2 @@
 export type CalendarRecurrenceFrequency =
-  | "SECONDLY"
-  | "MINUTELY"
-  | "HOURLY"
-  | "DAILY"
-  | "WEEKLY"
-  | "MONTHLY"
-  | "YEARLY";
+  "SECONDLY" | "MINUTELY" | "HOURLY" | "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";

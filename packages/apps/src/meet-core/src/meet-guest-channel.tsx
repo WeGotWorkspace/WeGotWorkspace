@@ -16,14 +16,7 @@ import { cn } from "@/lib/utils";
 import "@/meet-core/src/meet-workspace.css";
 
 export type MeetGuestChannelPhase =
-  | "checking"
-  | "waiting"
-  | "missing"
-  | "error"
-  | "ended"
-  | "lobby"
-  | "knocking"
-  | "in-channel";
+  "checking" | "waiting" | "missing" | "error" | "ended" | "lobby" | "knocking" | "in-channel";
 
 export type MeetGuestChannelProps = {
   channelName: string;

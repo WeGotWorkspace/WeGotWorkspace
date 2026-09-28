@@ -24,7 +24,7 @@ A finding that is already public may use the [DAST finding](https://github.com/W
 
 ## What we run in CI
 
-CodeQL, Semgrep, Gitleaks, and Trivy run from [`.github/workflows/security.yml`](.github/workflows/security.yml):
+CodeQL (JS/TS), Psalm taint (PHP, `packages/api/app`), Semgrep, Gitleaks, and Trivy run from [`.github/workflows/security.yml`](.github/workflows/security.yml):
 
 - on pull requests opened from this repository
 - on pushes to `main`, except a commit whose message starts with `chore(release):`
@@ -33,7 +33,7 @@ CodeQL, Semgrep, Gitleaks, and Trivy run from [`.github/workflows/security.yml`]
 
 Push and pull request Gitleaks jobs scan only the new commits. Nightly and manual runs scan the full history. [`.gitleaks.toml`](.gitleaks.toml) extends the default rules and ignores two removed minified trees (`packages/openoffice-web/` and `packages/ui/storybook-static/`) that match `generic-api-key` on code identifiers such as `get_VKey`, `metaKey`, and React `key` props.
 
-Dependabot opens weekly version-update pull requests for `packages/api/composer.lock`, the root `pnpm-lock.yaml`, and GitHub Actions ([`.github/dependabot.yml`](.github/dependabot.yml)). Patch and minor updates are grouped. Major updates each open their own pull request.
+Dependabot opens weekly version-update pull requests for Composer (`packages/api`), the root npm lockfile, GitHub Actions, and Docker images under `docker/install` ([`.github/dependabot.yml`](.github/dependabot.yml)). Each ecosystem is one group covering major, minor, and patch updates, so those version updates arrive as a single pull request per ecosystem. Security updates are not part of those groups.
 
 Those version updates are not advisory-driven. GitHub opens a pull request for a specific advisory only after a maintainer enables **Dependabot security updates** in the repository settings. This repository change cannot turn that setting on. Until it is on, the weekly version-update pull requests are the only automated dependency bumps.
 

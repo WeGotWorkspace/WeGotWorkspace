@@ -3,11 +3,7 @@ import type { CalendarId } from "../calendar/CalendarId.js";
 import type { CalendarEventPendingOperation } from "./CalendarEventPendingOperation.js";
 
 export type CalendarEventParticipationStatus =
-  | "needs-action"
-  | "accepted"
-  | "tentative"
-  | "declined"
-  | "delegated";
+  "needs-action" | "accepted" | "tentative" | "declined" | "delegated";
 
 export type CalendarEventEnvelope = {
   accountId?: CalendarAccountId;

@@ -15,13 +15,7 @@ import type {
 import type { WgwInstallerActionResponse, WgwInstallerRuntimeState } from "@/lib/api/wgw";
 
 export type InstallerBackendStep =
-  | "welcome"
-  | "requirements"
-  | "database"
-  | "site"
-  | "account"
-  | "done"
-  | "installed";
+  "welcome" | "requirements" | "database" | "site" | "account" | "done" | "installed";
 
 export type InstallerCheckStatus = "ok" | "warn" | "error" | "pending";
 

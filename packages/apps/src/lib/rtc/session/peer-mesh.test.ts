@@ -407,8 +407,7 @@ describe("RtcPeerMesh", () => {
     await flushAsyncWork();
 
     const lastPollInput = signaling.client.poll.mock.calls.at(-1)?.[0] as
-      | { sig?: string }
-      | undefined;
+      { sig?: string } | undefined;
     expect(lastPollInput?.sig).toBe("sig-1");
     expect(onPollData).toHaveBeenCalledTimes(2);
     expect(mesh.getRoomPeers()).toEqual([{ id: "peer-b", name: "Guest" }]);
