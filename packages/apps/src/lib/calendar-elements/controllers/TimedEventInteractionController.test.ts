@@ -25,6 +25,7 @@ class TestElement {
   parentElement: TestElement | null = null;
   clientHeight = 0;
   rect: Bounds = bounds(0, 0, 0, 0);
+  dispatched: Event[] = [];
   #attributes = new Map<string, string>();
   #root: TestShadowRoot | null = null;
 
@@ -53,7 +54,8 @@ class TestElement {
 
   releasePointerCapture(_pointerId: number): void {}
 
-  dispatchEvent(_event: Event): boolean {
+  dispatchEvent(event: Event): boolean {
+    this.dispatched.push(event);
     return true;
   }
 
@@ -185,6 +187,39 @@ function resizeHandle(position: "start" | "end"): TestElement {
   return handle;
 }
 
+type UpdateDetail = {
+  source: string;
+  inputMethod: string;
+};
+
+function updateDetails(host: DateTimeHost): UpdateDetail[] {
+  return host.dispatched.flatMap((event) => {
+    if (!(event instanceof CustomEvent) || event.type !== "update") return [];
+    return [event.detail as UpdateDetail];
+  });
+}
+
+function expectPointerUpdate(host: DateTimeHost): void {
+  expect(updateDetails(host)).toEqual([{ source: "interaction", inputMethod: "pointer" }]);
+}
+
+function expectNoUpdate(host: DateTimeHost): void {
+  expect(updateDetails(host)).toEqual([]);
+}
+
+function drag(
+  controller: TimedEventInteractionController,
+  host: TestElement,
+  down: PointerEvent,
+  clientX: number,
+  clientY: number,
+  target: TestElement = host,
+): void {
+  controller.pointerDownHandler(down);
+  controller.pointerMoveHandler(pointerEvent(host, target, clientX, clientY));
+  controller.pointerUpHandler(pointerEvent(host, target, clientX, clientY));
+}
+
 describe("TimedEventInteractionController", () => {
   beforeAll(() => {
     vi.stubGlobal("HTMLElement", TestElement);
@@ -217,15 +252,69 @@ describe("TimedEventInteractionController", () => {
     const upX = dayCenterX(3);
     const upY = timeY(15, 30);
 
-    controller.pointerDownHandler(movePointerDown(host, downX, downY));
-    controller.pointerMoveHandler(pointerEvent(host, host, upX, upY));
-    controller.pointerUpHandler(pointerEvent(host, host, upX, upY));
+    drag(controller, host, movePointerDown(host, downX, downY), upX, upY);
 
     expect(dateTimeText(host.start)).toBe("2026-03-05T15:30:00");
     expect(dateTimeText(host.end)).toBe("2026-03-05T17:00:00");
     expect(durationSeconds(host.start, host.end)).toBe(
       durationSeconds(ORIGINAL_START, ORIGINAL_END),
     );
+    expectPointerUpdate(host);
+  });
+
+  it("moves from the grabbed point inside the card, not from the event start", () => {
+    const host = createHost();
+    const controller = createController(host);
+    const downX = dayCenterX(0);
+    const downY = timeY(9, 45);
+    const upX = dayCenterX(3);
+    const upY = timeY(15, 30);
+
+    drag(controller, host, movePointerDown(host, downX, downY), upX, upY);
+
+    expect(dateTimeText(host.start)).toBe("2026-03-05T14:45:00");
+    expect(dateTimeText(host.end)).toBe("2026-03-05T16:15:00");
+    expectPointerUpdate(host);
+  });
+
+  it("snaps a move that lands off the 5-minute grid", () => {
+    const host = createHost();
+    const controller = createController(host);
+    const downX = dayCenterX(0);
+    const downY = timeY(9, 0);
+
+    drag(controller, host, movePointerDown(host, downX, downY), downX, timeY(9, 7));
+
+    expect(dateTimeText(host.start)).toBe("2026-03-02T09:05:00");
+    expect(dateTimeText(host.end)).toBe("2026-03-02T10:35:00");
+    expectPointerUpdate(host);
+  });
+
+  it("does not move or emit update when the pointer travels less than 4px", () => {
+    const host = createHost();
+    const controller = createController(host);
+    const downX = dayCenterX(0);
+    const downY = timeY(9, 0);
+
+    // 3px stays under the drag threshold. Three minutes would snap to 09:05 if the drag started.
+    drag(controller, host, movePointerDown(host, downX, downY), downX, downY + 3);
+
+    expect(dateTimeText(host.start)).toBe(ORIGINAL_START);
+    expect(dateTimeText(host.end)).toBe(ORIGINAL_END);
+    expectNoUpdate(host);
+  });
+
+  it("does not emit update when a move past the threshold lands on the same time", () => {
+    const host = createHost();
+    const controller = createController(host);
+    const downX = dayCenterX(0);
+    const downY = timeY(9, 0);
+
+    drag(controller, host, movePointerDown(host, downX, downY), downX + 10, downY);
+
+    expect(dateTimeText(host.start)).toBe(ORIGINAL_START);
+    expect(dateTimeText(host.end)).toBe(ORIGINAL_END);
+    expectNoUpdate(host);
   });
 
   it("changes the start when a mouse drag pulls the start resize handle", () => {
@@ -235,12 +324,25 @@ describe("TimedEventInteractionController", () => {
     const x = dayCenterX(0);
     const downY = 200;
 
-    controller.pointerDownHandler(pointerEvent(host, handle, x, downY));
-    controller.pointerMoveHandler(pointerEvent(host, handle, x, downY - 60));
-    controller.pointerUpHandler(pointerEvent(host, handle, x, downY - 60));
+    drag(controller, host, pointerEvent(host, handle, x, downY), x, downY - 60, handle);
 
     expect(dateTimeText(host.start)).toBe("2026-03-02T08:00:00");
     expect(dateTimeText(host.end)).toBe(ORIGINAL_END);
+    expectPointerUpdate(host);
+  });
+
+  it("clamps a start resize that would move past the end", () => {
+    const host = createHost();
+    const controller = createController(host);
+    const handle = resizeHandle("start");
+    const x = dayCenterX(0);
+    const downY = 200;
+
+    drag(controller, host, pointerEvent(host, handle, x, downY), x, downY + 120, handle);
+
+    expect(dateTimeText(host.start)).toBe("2026-03-02T10:25:00");
+    expect(dateTimeText(host.end)).toBe(ORIGINAL_END);
+    expectPointerUpdate(host);
   });
 
   it("changes the end when a mouse drag pulls the end resize handle", () => {
@@ -250,11 +352,38 @@ describe("TimedEventInteractionController", () => {
     const x = dayCenterX(0);
     const downY = 200;
 
-    controller.pointerDownHandler(pointerEvent(host, handle, x, downY));
-    controller.pointerMoveHandler(pointerEvent(host, handle, x, downY + 120));
-    controller.pointerUpHandler(pointerEvent(host, handle, x, downY + 120));
+    drag(controller, host, pointerEvent(host, handle, x, downY), x, downY + 120, handle);
 
     expect(dateTimeText(host.start)).toBe(ORIGINAL_START);
     expect(dateTimeText(host.end)).toBe("2026-03-02T12:30:00");
+    expectPointerUpdate(host);
+  });
+
+  it("clamps an end resize that would shrink the event below 5 minutes", () => {
+    const host = createHost();
+    const controller = createController(host);
+    const handle = resizeHandle("end");
+    const x = dayCenterX(0);
+    const downY = 200;
+
+    drag(controller, host, pointerEvent(host, handle, x, downY), x, downY - 120, handle);
+
+    expect(dateTimeText(host.start)).toBe(ORIGINAL_START);
+    expect(dateTimeText(host.end)).toBe("2026-03-02T09:05:00");
+    expectPointerUpdate(host);
+  });
+
+  it("does not emit update when a resize snaps back to the original time", () => {
+    const host = createHost();
+    const controller = createController(host);
+    const handle = resizeHandle("end");
+    const x = dayCenterX(0);
+    const downY = 200;
+
+    drag(controller, host, pointerEvent(host, handle, x, downY), x, downY + 2, handle);
+
+    expect(dateTimeText(host.start)).toBe(ORIGINAL_START);
+    expect(dateTimeText(host.end)).toBe(ORIGINAL_END);
+    expectNoUpdate(host);
   });
 });
