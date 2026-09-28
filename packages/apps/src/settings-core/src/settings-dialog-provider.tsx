@@ -39,6 +39,9 @@ export function SettingsDialogProvider({ children }: { children: ReactNode }): R
   const [panel, setPanel] = useState<SettingsPanel | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const restoreFocusRef = useRef(true);
+  const lastPanelRef = useRef<SettingsPanel | null>(null);
+  if (panel) lastPanelRef.current = panel;
+  const displayedPanel = panel ?? lastPanelRef.current;
 
   const openRegisteredPanel = useCallback((next: SettingsPanel) => {
     const active = document.activeElement;
@@ -87,9 +90,9 @@ export function SettingsDialogProvider({ children }: { children: ReactNode }): R
           if (!open) setPanel(null);
         }}
       >
-        {panel ? (
+        {displayedPanel ? (
           <SettingsDialogFrame
-            panel={panel}
+            panel={displayedPanel}
             onDismiss={() => closeDialog(true)}
             onOpenInSettings={openInSettings}
             onCloseAutoFocus={(event) => {
@@ -120,7 +123,11 @@ function SettingsDialogFrame({
   const ctx = useSettingsReachability();
 
   return (
-    <DialogContent className="sm:max-w-2xl settings-workspace" onCloseAutoFocus={onCloseAutoFocus}>
+    <DialogContent
+      className="sm:max-w-2xl settings-workspace"
+      aria-describedby={undefined}
+      onCloseAutoFocus={onCloseAutoFocus}
+    >
       <DialogHeader>
         <DialogTitle>{panel.label}</DialogTitle>
       </DialogHeader>
