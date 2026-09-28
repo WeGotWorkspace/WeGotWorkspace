@@ -183,6 +183,41 @@ test("docs and agents paths are the only None exception", () => {
   assert.equal(isDocsOrAgents("packages/api/app/Example.php"), false);
 });
 
+test("a path/to placeholder is not a citation", () => {
+  const after = `# Title
+
+## What exists
+
+- The route exists. \`path: path/to/file.ext:1\`
+
+## Open decisions
+
+None — done.
+
+## Invariants
+
+- Stays. Proof: \`path: packages/api/tests/ExampleTest.php\` assertion \`test_stays\`.
+`;
+  const errors = evaluatePlans({ plans: [plan(after)], diffPaths: [planPath] });
+  assert.ok(errors.some((error) => error.includes("What exists bullet")));
+});
+
+test("deferral markers are case-sensitive for TODO", () => {
+  const errors = evaluatePlans({
+    plans: [plan(basePlan("- **Done when:** the todo list stays\n"))],
+    diffPaths: [planPath],
+  });
+  assert.deepEqual(errors, []);
+});
+
+test("CI without a merge base fails closed", async () => {
+  const { ciBaseError } = await import("./check-plan-structure.mjs");
+  assert.equal(typeof ciBaseError, "function");
+  assert.match(ciBaseError("HEAD", { CI: "true" }), /base branch/);
+  assert.equal(ciBaseError("HEAD", {}), null);
+  assert.equal(ciBaseError("abc123", { CI: "true" }), null);
+});
+
 test("a removal line needs a why", () => {
   assert.equal(
     accountForHeading("Alpha", "- Alpha\n", ["Beta"]).ok,
