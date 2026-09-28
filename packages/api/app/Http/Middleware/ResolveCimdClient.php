@@ -31,8 +31,10 @@ final class ResolveCimdClient
         try {
             $client = $this->cimd->resolve($clientId);
         } catch (CimdException $e) {
+            // EnsureMcpEnabled normally refuses first. If this middleware runs
+            // anyway, a kill-switch 403 uses the same error as that middleware.
             return response()->json([
-                'error' => 'invalid_client',
+                'error' => $e->status() === 403 ? 'temporarily_unavailable' : 'invalid_client',
                 'error_description' => $e->getMessage(),
             ], $e->status());
         }
