@@ -60,7 +60,7 @@ final class CimdResolver
             }
         }
 
-        $metadata = $this->fetch($clientId);
+        $metadata = $this->fetchMetadata($clientId);
         $redirectUris = $this->validatedRedirectUris($metadata);
         $name = $this->clientName($metadata, $clientId);
         $origin = McpRedirectUris::originOf($clientId);
@@ -103,6 +103,17 @@ final class CimdResolver
     public function fetch(string $url): array
     {
         $this->refuseWhenDisabled();
+
+        return $this->fetchMetadata($url);
+    }
+
+    /**
+     * HTTP fetch without a second kill-switch read. resolve() already refused.
+     *
+     * @return array<string, mixed>
+     */
+    private function fetchMetadata(string $url): array
+    {
         $safe = $this->assertSafeCimdUrl($url);
         $url = $safe['url'];
         $host = $safe['host'];

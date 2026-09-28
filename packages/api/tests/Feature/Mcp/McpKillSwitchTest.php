@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Mcp;
 
+use App\Http\Middleware\ResolveCimdClient;
 use App\Models\McpAuditEvent;
 use App\Services\Mcp\CimdException;
 use App\Services\Mcp\CimdResolver;
 use App\Services\Mcp\McpAuditLogger;
 use App\Services\Mcp\McpEnabled;
 use App\Services\Mcp\McpScopes;
-use App\Services\Mcp\PublicHostResolver;
 use App\Services\Settings\SettingKeys;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Laravel\Passport\Passport;
 use Tests\Support\AdminTestFixtures;
@@ -138,6 +139,7 @@ final class McpKillSwitchTest extends WgwDatabaseTestCase
 
     public function test_is_on_reads_only_the_app_setting(): void
     {
+        // None of these exist in config or are read. The spoof is a net against an env override.
         $this->enableMcp();
         $this->withMcpEnvSpoof('false', false, function (): void {
             $this->assertTrue(app(McpEnabled::class)->isOn());
@@ -152,30 +154,9 @@ final class McpKillSwitchTest extends WgwDatabaseTestCase
     public function test_cimd_sends_no_http_when_off(): void
     {
         $this->turnMcpOffViaAdminSettings();
-        $this->app->instance(PublicHostResolver::class, new class extends PublicHostResolver
-        {
-            public function resolve(string $host): array
-            {
-                return ['203.0.113.10'];
-            }
-        });
         Http::fake(fn () => Http::response(['error' => 'should-not-fetch'], 404));
 
         $metadataUrl = 'https://metadata.example.test/client.json';
-        $this->postJson('/oauth/register', [
-            'client_name' => 'Claude',
-            'client_id' => $metadataUrl,
-            'redirect_uris' => ['https://claude.ai/callback'],
-        ])->assertForbidden();
-        $this->postJson('/oauth/token', [
-            'grant_type' => 'authorization_code',
-            'client_id' => $metadataUrl,
-            'code' => 'not-a-code',
-            'redirect_uri' => 'https://claude.ai/callback',
-        ])->assertForbidden();
-        $this->get('/oauth/authorize?client_id='.rawurlencode($metadataUrl))
-            ->assertForbidden();
-
         try {
             app(CimdResolver::class)->resolve($metadataUrl);
             $this->fail('CIMD resolve must refuse while MCP is off.');
@@ -190,6 +171,23 @@ final class McpKillSwitchTest extends WgwDatabaseTestCase
         }
 
         Http::assertNothingSent();
+    }
+
+    public function test_cimd_middleware_uses_temporarily_unavailable_when_off(): void
+    {
+        $this->turnMcpOffViaAdminSettings();
+        $request = Request::create('/oauth/token', 'POST', [
+            'client_id' => 'https://metadata.example.test/client.json',
+        ]);
+
+        $response = app(ResolveCimdClient::class)->handle($request, function (Request $incoming): never {
+            $this->fail('CIMD middleware must refuse while MCP is off.');
+        });
+
+        $this->assertSame(403, $response->getStatusCode());
+        $payload = json_decode((string) $response->getContent(), true);
+        $this->assertSame('temporarily_unavailable', $payload['error'] ?? null);
+        $this->assertSame('MCP is disabled by your administrator.', $payload['error_description'] ?? null);
     }
 
     private function turnMcpOffViaAdminSettings(): void
