@@ -75,7 +75,7 @@
 }
 
 .meet-workspace__title {
-  @apply leading-[0.95] tracking-tight;
+  @apply leading-[0.95] tracking-tight font-normal;
   font-family: var(--font-serif);
 }
 

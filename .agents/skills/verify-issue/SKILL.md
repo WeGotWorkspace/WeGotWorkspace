@@ -143,7 +143,7 @@ Load domain depth when mapping: [testing](../testing/SKILL.md), [api](../api/SKI
 Run the mapped commands and inspections. For each criterion record:
 
 - **Status:** `PASS` | `FAIL` | `PARTIAL` | `BLOCKED` | `N/A`
-- **Evidence:** command output summary, file path, test name, or grep result (one line)
+- **Evidence:** a `path:line`, a command plus the relevant output line, or a `gh issue view` excerpt. `4/4` and "checklist complete" are not evidence.
 - **Gap:** what is missing when not `PASS`
 
 Then run the package-appropriate rows from [done-checklist.md](../developer/done-checklist.md) (smells via [code-review](../code-review/SKILL.md)).
@@ -189,6 +189,19 @@ Use this template in handoff, PR body (when user asks), or parent agent summary:
 - `ISSUE_SATISFIED` — every criterion `PASS` or `N/A`; no blockers; done-checklist satisfied for scope.
 - `ISSUE_PARTIAL` — only `N/A` or documented out-of-scope nits; at least one `PARTIAL` with user-approved deferral.
 - `ISSUE_NOT_SATISFIED` — any `FAIL` or `BLOCKED` on a required criterion, or done-checklist not run.
+- A criterion that is unchecked, or whose text says "not planned", "won't do", or "out of scope", is `N/A` or `FAIL`, never `PASS`.
+
+## Plan claims on the implementation diff
+
+When `.agents/specs/<N>-*/plan.md` exists, check these before the verdict. They stay out of CI. The heading lint is not this check.
+
+**Invariants `None`.** If `## Invariants` is `None`, list the implementation diff (`git diff --name-only <base>...HEAD`). Reject `None` when any path sits outside `docs/` and `.agents/`. A plan that landed in an earlier PR still counts: judge `None` against this diff, not against the plan-only diff.
+
+**Invariant rows.** For each row whose proof is a test, the file exists on the PR tip and contains the assertion name (`test -f` and `grep -n`). One grep per row. For a row whose proof is a command, read that command and confirm it shows the silent miss. A happy-path test of the new behavior does not satisfy a row. One row per chunk boundary must say `main` still works after that chunk without the next.
+
+**What exists and Inputs.** Open the cited `path:line`, command output, or `gh issue view` excerpt and confirm it supports the claim. A link or a `path:` with no bearing on the sentence does not count. An uncited premise is an open decision, not a pass.
+
+Do not cite a `tasks.md` column or a chunk status line as evidence.
 
 Do not close the issue or claim "fixes #N" unless the user asked and verdict is `ISSUE_SATISFIED`.
 

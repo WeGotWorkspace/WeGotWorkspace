@@ -28,7 +28,7 @@
     "lint": "tools/with-root-env.sh -- turbo run lint --filter=@wgw/apps",
     "format:check": "tools/with-root-env.sh -- turbo run format:check --filter=@wgw/apps",
     "check:licenses": "node tools/check-licenses.mjs",
-    "check:agent-docs": "node tools/check-agent-doc-links.mjs && node tools/check-english-docs.mjs && node tools/file-size-ratchet.mjs check-docs",
+    "check:agent-docs": "node tools/check-agent-doc-links.mjs && node tools/check-english-docs.mjs && node tools/check-plan-structure.mjs && node --test tools/check-plan-structure.test.mjs && node tools/file-size-ratchet.mjs check-docs",
     "check:file-size": "node tools/file-size-ratchet.mjs check",
     "check:file-size-growth": "node tools/file-size-ratchet.mjs check-growth",
     "ratchet:update": "node tools/file-size-ratchet.mjs update",

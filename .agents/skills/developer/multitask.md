@@ -38,17 +38,19 @@ Each chunk in a plan should include:
 | `id` | `api-auth-refresh` |
 | `owner` | builder / tester / documenter |
 | `skill` | `api`, `apps-ui`, `testing`, … |
-| `inputs` | OpenAPI paths, files, prior chunk IDs |
+| `inputs` | Cited paths, command output, or `gh issue view` excerpts — not an uncited premise |
 | `done-when` | Feature tests pass; smells checklist on touched files |
 | `verify-with` | `pnpm test:api-done-gate`, `pnpm test` in apps, Storybook a11y addon |
 
 ## Handoff rules
 
 1. **Build chunks** load the domain skill (`api`, `apps-ui`, `workspace`) plus `clean-code`.
-2. **Red-green tests** (API failing feature tests, UI mock-tier stories) belong in the **same chunk as, or immediately before**, the build that implements behavior — see [testing/test-first.md](../testing/test-first.md). Do not implement first and add tests later.
-3. **Hardening / verify chunks** run **after** build chunks merge; load `testing` and route to `api/testing.md` or `ui-architecture.md`. Safe to parallelize across independent domains.
-4. **Doc chunks** run after behavior is stable; load `document` — do not create markdown the user did not ask for.
-5. **Story + a11y chunks** for UI: load `storybook` and `accessibility` when adding or changing stories.
+2. **Red-green tests** (API failing feature tests, UI mock-tier stories) belong in the **same chunk as, or immediately before**, the build that implements behavior — see [testing/test-first.md](../testing/test-first.md). Do not implement first and add tests later. For new behavior and bugfixes, the test commit comes before the fix commit.
+3. **Do not start** a chunk whose id is still an open checkbox under `## Open decisions` in `plan.md`.
+4. **Hardening / verify chunks** run **after** build chunks merge; load `testing` and route to `api/testing.md` or `ui-architecture.md`. Safe to parallelize across independent domains.
+5. **Doc chunks** run after behavior is stable; load `document` — do not create markdown the user did not ask for.
+6. **Story + a11y chunks** for UI: load `storybook` and `accessibility` when adding or changing stories.
+7. **Do not cite** a `tasks.md` column or a chunk status line as evidence. The GitHub issue and the test or file that proves the claim are the record.
 
 ## Worktree per chunk
 
@@ -73,7 +75,7 @@ Chunk `id` must match a row in `tasks.md` (engineering split — not the GitHub 
 
 After parallel builds finish:
 
-1. Parent agent reconciles todos / plan status (subagents may not auto-update plan todos).
+1. Parent agent does not write completion into `plan.md` or `tasks.md`. Issue state and the proving test or file are the record.
 2. Resolve merge conflicts before verification.
 3. Spawn a **verifier subagent** when cross-chunk review is needed — see [multitask-verifier.md](multitask-verifier.md) for when to skip vs spawn, checklist, and prompt template.
 4. Run full verification per [done-checklist.md](done-checklist.md) (parent runs commands; verifier reports gaps).

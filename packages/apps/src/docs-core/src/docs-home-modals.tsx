@@ -25,9 +25,10 @@ import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
 import { DRIVE_FOLDER_PICKER_ROOT } from "@/drive-core/src/drive-breadcrumbs";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
-import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
+import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
+import type { DocsHomeCreateDialogState } from "@/docs-core/src/use-docs-home-create-dialog";
 import {
   buildDocsFolderPickerRootLabels,
   DOCS_DRIVE_UI_PERSONAL_PATH,
@@ -42,12 +43,7 @@ type DocsHomeModalsProps = {
   /** Labeled group roots (SST) — slugs for paths, labels for picker chrome. */
   groupRoots: readonly DocsHomeGroupRoot[];
   operations?: DriveAPIOperations;
-  createDialogOpen?: boolean;
-  createDialogDefaultName?: string;
-  createDialogBrowsePath?: string;
-  createDialogView?: ViewKey;
-  onCloseCreateDialog?: () => void;
-  onConfirmCreateDocument?: (fileName: string, destinationPath: string) => void;
+  createDialog?: DocsHomeCreateDialogState;
 };
 
 export function DocsHomeModals({
@@ -57,12 +53,7 @@ export function DocsHomeModals({
   username,
   groupRoots,
   operations,
-  createDialogOpen = false,
-  createDialogDefaultName = "Untitled.md",
-  createDialogBrowsePath = DOCS_DRIVE_UI_PERSONAL_PATH,
-  createDialogView = { type: "folder", path: DOCS_DRIVE_UI_PERSONAL_PATH },
-  onCloseCreateDialog,
-  onConfirmCreateDocument,
+  createDialog,
 }: DocsHomeModalsProps) {
   const {
     renameState,
@@ -165,24 +156,24 @@ export function DocsHomeModals({
         onConfirm={confirmMove}
       />
 
-      {onCloseCreateDialog && onConfirmCreateDocument ? (
+      {createDialog ? (
         <DriveCreateMarkdownDialog
-          open={createDialogOpen}
+          open={createDialog.createDialogOpen}
           labels={driveLabels}
-          defaultName={createDialogDefaultName}
+          defaultName={createDialog.createDialogDefaultName}
           initialBrowsePath={DRIVE_FOLDER_PICKER_ROOT}
-          initialSelectedPath={createDialogBrowsePath}
+          initialSelectedPath={createDialog.createDialogBrowsePath}
           files={files}
           groupPaths={groupPaths}
-          view={createDialogView}
+          view={createDialog.createDialogView}
           operations={operations}
           currentUsername={username}
           groupRootNames={groupRootNames}
           rootLabels={folderPickerRootLabels}
           rootIcon={folderPickerRootIcon}
           dialogSurfaceClassName="docs-dialog-surface"
-          onClose={onCloseCreateDialog}
-          onConfirm={onConfirmCreateDocument}
+          onClose={createDialog.closeCreateDialog}
+          onConfirm={createDialog.confirmCreateDocument}
         />
       ) : null}
     </>
