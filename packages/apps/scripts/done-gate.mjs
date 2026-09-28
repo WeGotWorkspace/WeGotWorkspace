@@ -8,11 +8,15 @@ const appsRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 /** Unit + jsdom stay on CI (`APPS_DONE_GATE_FULL=1` in apps-quality). */
 const fullVitest = process.env.APPS_DONE_GATE_FULL === "1";
 
-/** @type {list<{ label: string, cmd: string[], env?: Record<string, string>, ciOnly?: boolean }>} */
+/**
+ * @param {string} task
+ * @returns {string[]}
+ */
 function turbo(task) {
   return ["pnpm", "exec", "turbo", "run", task, "--filter=@wgw/apps"];
 }
 
+/** @type {Array<{ label: string, cmd: string[], env?: Record<string, string>, ciOnly?: boolean }>} */
 const steps = [
   { label: "Typecheck", cmd: ["pnpm", "typecheck"] },
   { label: "UI ↔ OpenAPI contract (Vitest)", cmd: turbo("test:contract") },
