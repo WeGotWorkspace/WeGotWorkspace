@@ -82,9 +82,14 @@ describe("JmapContactsClient contract batches", () => {
 
     expect(got.cards.list).toEqual([{ id: "card-1" }]);
     expect(recorded).toHaveLength(2);
-    expect(recorded[0]?.map(([name]) => name)).toEqual(["AddressBook/get", "ContactCard/query"]);
+    expect(recorded[0]?.map(([name]) => name)).toEqual([
+      "AddressBook/get",
+      "ContactCard/query",
+      "ContactCard/get",
+    ]);
     expect(recorded[0]?.[0]?.[1]).toEqual({ accountId: ACCOUNT, ids: null });
     expect(recorded[0]?.[1]?.[1]).toEqual({ accountId: ACCOUNT });
+    expect(recorded[0]?.[2]?.[1]).toEqual({ accountId: ACCOUNT, ids: [] });
     expect(recorded[1]?.[0]).toEqual([
       "ContactCard/get",
       { accountId: ACCOUNT, ids: ["card-1"] },
@@ -153,8 +158,14 @@ describe("JmapContactsClient contract batches", () => {
       { maxObjectsInGet: 500, maxCallsInRequest: 32 },
     );
 
-    const got = await contacts.getAddressBooksAndCards(ACCOUNT);
+    const pages: number[] = [];
+    const got = await contacts.getAddressBooksAndCards(ACCOUNT, {
+      onPage: (snapshot) => {
+        pages.push(snapshot.cards.list.length);
+      },
+    });
     expect(got.cards.list).toHaveLength(ids.length);
+    expect(pages).toEqual([CONTACT_CARD_GET_MAX_IDS_PER_REQUEST, ids.length]);
     const getBatches = recorded.slice(1);
     expect(getBatches).toHaveLength(2);
     expect(getBatches[0]).toHaveLength(1);
@@ -162,6 +173,58 @@ describe("JmapContactsClient contract batches", () => {
       CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
     );
     expect((getBatches[1]?.[0]?.[1].ids as string[]).length).toBe(3);
+  });
+
+  it("reports ContactCard state from the query batch, not later pages", async () => {
+    const ids = ["card-1", "card-2", "card-3"];
+    const { contacts } = await makeClient(
+      (calls) => {
+        return calls.map(([name, args, id]) => {
+          if (name === "AddressBook/get") {
+            return methodResponse(
+              name,
+              { accountId: ACCOUNT, state: "books-1", list: [], notFound: [] },
+              id,
+            );
+          }
+          if (name === "ContactCard/query") {
+            return methodResponse(name, { accountId: ACCOUNT, ids }, id);
+          }
+          const pageIds = (args.ids as string[]) ?? [];
+          if (pageIds.length === 0) {
+            return methodResponse(
+              name,
+              { accountId: ACCOUNT, state: "cards-at-query", list: [], notFound: [] },
+              id,
+            );
+          }
+          const state = pageIds.includes("card-3") ? "cards-page-2" : "cards-page-1";
+          return methodResponse(
+            name,
+            {
+              accountId: ACCOUNT,
+              state,
+              list: pageIds.map((cardId) => ({ id: cardId })),
+              notFound: [],
+            },
+            id,
+          );
+        });
+      },
+      { maxObjectsInGet: 2, maxCallsInRequest: 8 },
+    );
+
+    const pageStates: string[] = [];
+    const got = await contacts.getAddressBooksAndCards(ACCOUNT, {
+      onPage: (snapshot) => {
+        pageStates.push(snapshot.cards.state);
+      },
+    });
+
+    expect(got.contactCardStateAtQuery).toBe("cards-at-query");
+    expect(pageStates).toEqual(["cards-page-1", "cards-page-2"]);
+    expect(got.cards.state).toBe("cards-page-2");
+    expect(got.books.state).toBe("books-1");
   });
 
   it("query+get uses the #ids ResultReference", async () => {

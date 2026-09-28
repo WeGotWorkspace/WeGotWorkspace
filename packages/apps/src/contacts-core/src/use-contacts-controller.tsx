@@ -95,6 +95,8 @@ type UseContactsControllerArgs = {
   listLoading?: boolean;
   /** Header refresh busy — does not empty the list when cards are already shown. */
   listRefreshing?: boolean;
+  /** Cold download: show the list, but do not apply create, edit, or delete. */
+  mutationsLocked?: boolean;
   operations?: ContactsAPIOperations;
   /** Refetch cards after vCard import so group membership resolves against the full list. */
   onRefreshList?: () => void;
@@ -178,6 +180,7 @@ export function useContactsController({
   labels,
   listLoading = false,
   listRefreshing = false,
+  mutationsLocked = false,
   operations,
   onRefreshList,
   initialView,
@@ -333,7 +336,7 @@ export function useContactsController({
     isItemDragging,
     itemDragHandlers,
     sidebarDropZoneProps,
-    queueMutation,
+    queueMutation: enqueueMutation,
     undoLatest,
     navigateListByKeyboard,
   } = useWorkspaceListController<ContactCard>({
@@ -360,6 +363,15 @@ export function useContactsController({
     onMutationError: showMutationError,
     queueDelayMs: WRITE_QUEUE_DELAY_MS,
   });
+
+  /** Single gate for outbox-style writes during a cold download. */
+  const queueMutation = useCallback(
+    (...args: Parameters<typeof enqueueMutation>) => {
+      if (mutationsLocked) return;
+      enqueueMutation(...args);
+    },
+    [enqueueMutation, mutationsLocked],
+  );
 
   const closeMobileDetail = useCallback(() => {
     const during = () => {
@@ -405,18 +417,21 @@ export function useContactsController({
   }, [L.personalAddressBook, L.sidebarAllContacts, addressBooks, contactGroups, view]);
 
   const canCreateContact = useMemo(
-    () => canCreateContactInView(view, addressBooks, selectedGroup, Boolean(operations)),
-    [addressBooks, operations, selectedGroup, view],
+    () =>
+      !mutationsLocked &&
+      canCreateContactInView(view, addressBooks, selectedGroup, Boolean(operations)),
+    [addressBooks, mutationsLocked, operations, selectedGroup, view],
   );
 
   // Import lands in a book only — it does not add members, so stay off group views.
   const canImportVcf = canCreateContact && !view.startsWith("group:");
 
-  const canCreateGroup = writableGroupAddressBooks(addressBooks).length > 0;
+  const canCreateGroup = !mutationsLocked && writableGroupAddressBooks(addressBooks).length > 0;
 
   const canWriteSelectedGroup = useMemo(
-    () => canWriteContactGroup(selectedGroup, addressBooks, Boolean(operations)),
-    [addressBooks, operations, selectedGroup],
+    () =>
+      !mutationsLocked && canWriteContactGroup(selectedGroup, addressBooks, Boolean(operations)),
+    [addressBooks, mutationsLocked, operations, selectedGroup],
   );
   const canRenameGroup = canWriteSelectedGroup;
   const canDeleteGroup = canWriteSelectedGroup;
@@ -427,6 +442,7 @@ export function useContactsController({
   );
 
   const canEdit = useMemo(() => {
+    if (mutationsLocked) return false;
     if (createMode) return true;
     if (!active) return false;
     const bookIds = Object.keys(active.addressBookIds ?? {});
@@ -435,7 +451,7 @@ export function useContactsController({
       const book = addressBooks.find((row) => row.id === bookId);
       return book?.myRights?.mayWrite !== false;
     });
-  }, [active, addressBooks, createMode, operations]);
+  }, [active, addressBooks, createMode, mutationsLocked, operations]);
 
   const writableMoveBooks = useMemo(() => writableMoveAddressBooks(addressBooks), [addressBooks]);
 
@@ -474,12 +490,12 @@ export function useContactsController({
   }, []);
 
   const startEdit = useCallback(() => {
-    if (!active || createMode) return;
+    if (!active || createMode || !canEdit) return;
     setEditMode(true);
     startTransition(() => {
       setEditDraft(contactDraftsRef.current.get(active.id) ?? contactCardToEditDraft(active));
     });
-  }, [active, createMode]);
+  }, [active, canEdit, createMode]);
 
   const cancelEdit = useCallback(() => {
     if (createMode) {
@@ -495,6 +511,7 @@ export function useContactsController({
   }, [activeId, createMode]);
 
   const createContact = useCallback(() => {
+    if (mutationsLocked) return;
     setCreateMode(true);
     setEditMode(true);
     setEditDraft(emptyContactEditDraft());
@@ -502,7 +519,7 @@ export function useContactsController({
     setSelectedIds([]);
     setSelectionMode(false);
     workspaceLayoutRef.current?.openMobileDetail();
-  }, [setSelectedIds, setSelectionMode]);
+  }, [mutationsLocked, setSelectedIds, setSelectionMode]);
 
   const mergeImportedCards = useCallback(
     (list: ContactCard[]) => {
@@ -681,7 +698,7 @@ export function useContactsController({
 
   const deleteCards = useCallback(
     (ids: string[]) => {
-      if (ids.length === 0) return;
+      if (mutationsLocked || ids.length === 0) return;
       const previousCards = cards;
       const previousActiveId = activeId;
       const previousSelectedIds = selectedIds;
@@ -731,6 +748,7 @@ export function useContactsController({
       L.toastDeleted,
       activeId,
       cards,
+      mutationsLocked,
       operations,
       queueMutation,
       selectedIds,
@@ -741,7 +759,7 @@ export function useContactsController({
 
   const openDeleteConfirm = useCallback(
     (ids: string[]) => {
-      if (ids.length === 0) return;
+      if (mutationsLocked || ids.length === 0) return;
       requestConfirm({
         title: L.deleteContactTitle,
         description: L.deleteContactDescription(ids.length),
@@ -751,7 +769,7 @@ export function useContactsController({
         onConfirm: () => deleteCards(ids),
       });
     },
-    [L, deleteCards, requestConfirm],
+    [L, deleteCards, mutationsLocked, requestConfirm],
   );
 
   const deleteActive = useCallback(() => {
@@ -824,7 +842,7 @@ export function useContactsController({
 
   const removeFromGroup = useCallback(
     (cardIds: string[]) => {
-      if (!selectedGroup || cardIds.length === 0) return;
+      if (mutationsLocked || !selectedGroup || cardIds.length === 0) return;
       const groupId = selectedGroup.id;
       const group = cards.find((card) => card.id === groupId);
       if (!group) return;
@@ -886,6 +904,7 @@ export function useContactsController({
       L.toastRemovedFromGroup,
       activeId,
       cards,
+      mutationsLocked,
       operations,
       queueMutation,
       selectedGroup,
@@ -902,6 +921,7 @@ export function useContactsController({
 
   const renameGroup = useCallback(
     (groupId: string, newName: string) => {
+      if (mutationsLocked) return;
       const value = newName.trim();
       const group = cards.find((card) => card.id === groupId);
       if (!value || !group || value === contactDisplayName(group)) return;
@@ -939,11 +959,12 @@ export function useContactsController({
         undoToastMessage: "Rename undone.",
       });
     },
-    [L.toastGroupRenamed, cards, operations, queueMutation],
+    [L.toastGroupRenamed, cards, mutationsLocked, operations, queueMutation],
   );
 
   const deleteGroup = useCallback(
     (groupId: string) => {
+      if (mutationsLocked) return;
       const group = cards.find((card) => card.id === groupId);
       if (!group) return;
 
@@ -977,7 +998,7 @@ export function useContactsController({
         undoToastMessage: "Group deletion undone.",
       });
     },
-    [L.toastGroupDeleted, cards, operations, queueMutation, view],
+    [L.toastGroupDeleted, cards, mutationsLocked, operations, queueMutation, view],
   );
 
   const openDeleteGroupConfirm = useCallback(
@@ -999,6 +1020,7 @@ export function useContactsController({
 
   const createGroup = useCallback(
     (name: string, addressBookId: string, memberIds: string[] = []) => {
+      if (mutationsLocked) return;
       const value = name.trim();
       const book = addressBooks.find((row) => row.id === addressBookId);
       if (!value || !canCreateGroupInAddressBook(book)) return;
@@ -1054,11 +1076,12 @@ export function useContactsController({
         undoToastMessage: "Group creation undone.",
       });
     },
-    [L.toastGroupCreated, addressBooks, cards, operations, queueMutation],
+    [L.toastGroupCreated, addressBooks, cards, mutationsLocked, operations, queueMutation],
   );
 
   const addMembersToGroup = useCallback(
     (groupId: string, cardIds: string[]) => {
+      if (mutationsLocked) return;
       const group = cards.find((card) => card.id === groupId);
       if (!group) return;
 
@@ -1104,12 +1127,12 @@ export function useContactsController({
         undoToastMessage: "Add members undone.",
       });
     },
-    [L, cards, operations, queueMutation],
+    [L, cards, mutationsLocked, operations, queueMutation],
   );
 
   const removeContactFromGroup = useCallback(
     (groupId: string, cardIds: string[]) => {
-      if (cardIds.length === 0) return;
+      if (mutationsLocked || cardIds.length === 0) return;
       const group = cards.find((card) => card.id === groupId);
       if (!group) return;
 
@@ -1147,7 +1170,7 @@ export function useContactsController({
         undoToastMessage: "Removal undone.",
       });
     },
-    [L.toastRemovedFromGroup, cards, operations, queueMutation],
+    [L.toastRemovedFromGroup, cards, mutationsLocked, operations, queueMutation],
   );
 
   const addActiveGroupTag = useCallback(
@@ -1271,6 +1294,7 @@ export function useContactsController({
 
   const persistContactEdit = useCallback(
     async (contactId: string, draft: ContactEditDraft) => {
+      if (mutationsLocked) return;
       const card = cardsRef.current.find((row) => row.id === contactId);
       if (!card) {
         contactDraftsRef.current.delete(contactId);
@@ -1319,7 +1343,7 @@ export function useContactsController({
         }
       }
     },
-    [operations, showMutationError],
+    [mutationsLocked, operations, showMutationError],
   );
 
   useEffect(() => {

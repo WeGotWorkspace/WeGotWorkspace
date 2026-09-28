@@ -213,6 +213,71 @@ describe("pullContactCardChangesForBook", () => {
     expect(await readSyncToken(username, "default")).toBe("card-state-1");
   });
 
+  it("removes a card that only belonged to the book and unlinks a card shared with another", async () => {
+    contactCardChanges.mockRejectedValueOnce(
+      new JmapMethodError("ContactCard/changes", "c0", { type: "cannotCalculateChanges" }),
+    );
+    const onlyHere = {
+      id: "only-here",
+      "@type": "Card",
+      version: "1.0",
+      uid: "urn:uuid:only-here",
+      addressBookIds: { default: true },
+      name: { "@type": "Name", isOrdered: false, full: "Only Here" },
+    } as unknown as ContactCard;
+    const shared = {
+      id: "shared",
+      "@type": "Card",
+      version: "1.0",
+      uid: "urn:uuid:shared",
+      addressBookIds: { default: true, extra: true },
+      name: { "@type": "Name", isOrdered: false, full: "Shared" },
+    } as unknown as ContactCard;
+    const elsewhere = {
+      id: "elsewhere",
+      "@type": "Card",
+      version: "1.0",
+      uid: "urn:uuid:elsewhere",
+      addressBookIds: { extra: true },
+      name: { "@type": "Name", isOrdered: false, full: "Elsewhere" },
+    } as unknown as ContactCard;
+    const kept = {
+      id: "kept",
+      "@type": "Card",
+      version: "1.0",
+      uid: "urn:uuid:kept",
+      addressBookIds: { default: true },
+      name: { "@type": "Name", isOrdered: false, full: "Kept" },
+    } as unknown as ContactCard;
+    const pendingOnly = {
+      id: "pending-only",
+      "@type": "Card",
+      version: "1.0",
+      uid: "urn:uuid:pending-only",
+      addressBookIds: { default: true },
+      name: { "@type": "Name", isOrdered: false, full: "Pending" },
+    } as unknown as ContactCard;
+    await writeContactsBootstrapToCache(username, {
+      session: { ...mockWorkspaceSession, user: { ...mockWorkspaceSession.user, username } },
+      data: {
+        addressBooks: [defaultBook, extraBook],
+        cards: [onlyHere, shared, elsewhere, kept, pendingOnly],
+      },
+    });
+    await upsertContactCardInCache(username, pendingOnly, true);
+    listCards.mockResolvedValueOnce([kept]);
+
+    await pullContactCardChangesForBook(username, "default");
+
+    const cached = await readContactsBootstrapFromCache(username);
+    const byId = new Map((cached?.data.cards ?? []).map((card) => [card.id, card]));
+    expect(byId.has("only-here")).toBe(false);
+    expect(byId.get("shared")?.addressBookIds).toEqual({ extra: true });
+    expect(byId.get("elsewhere")?.addressBookIds).toEqual({ extra: true });
+    expect(byId.get("kept")?.id).toBe("kept");
+    expect(byId.get("pending-only")?.addressBookIds).toEqual({ default: true });
+  });
+
   it("skips pending cards and reports the conflict channel", async () => {
     const card = {
       id: "jane-doe",
