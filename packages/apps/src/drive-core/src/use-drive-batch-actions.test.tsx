@@ -2,6 +2,19 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { showToast } = vi.hoisted(() => ({
+  showToast: vi.fn(() => "toast-1"),
+}));
+
+vi.mock("@/hooks/use-app-toast", () => ({
+  useAppToast: () => ({
+    show: showToast,
+    dismiss: vi.fn(),
+    showSuccess: vi.fn(),
+    showError: vi.fn(),
+  }),
+}));
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
@@ -33,12 +46,13 @@ const EMPTY_DRIVE_UI: DriveUIData = {
   plugins: [],
 };
 
-function driveFile(): DriveFile {
+function driveFile(overrides?: Partial<DriveFile>): DriveFile {
+  const title = overrides?.title ?? "notes.md";
   return {
     id: NOTES_ID,
-    title: "notes.md",
+    title,
     parent: "My Drive",
-    apiPath: "/users/alice/notes.md",
+    apiPath: `/users/alice/${title}`,
     notebook: "",
     category: "",
     date: "",
@@ -48,6 +62,7 @@ function driveFile(): DriveFile {
     wordCount: 0,
     kind: "file",
     size: "1 KB",
+    ...overrides,
   };
 }
 
@@ -83,13 +98,15 @@ function renderActions(options?: {
   viewType?: ViewKey["type"];
   starred?: Record<string, boolean>;
   selectedIds?: string[];
+  files?: DriveFile[];
 }) {
   const viewType = options?.viewType ?? "folder";
   const view: ViewKey =
     viewType === "folder" ? { type: "folder", path: "My Drive" } : { type: viewType };
   const initialSelected = options?.selectedIds ?? [NOTES_ID];
+  const initialFiles = options?.files ?? [driveFile()];
   return renderHook(() => {
-    const [files, setFiles] = useState<DriveFile[]>([driveFile()]);
+    const [files, setFiles] = useState<DriveFile[]>(initialFiles);
     const [selectedIds, setSelectedIds] = useState(initialSelected);
     const [selectionMode, setSelectionMode] = useState(initialSelected.length > 0);
     const [activeId, setActiveId] = useState<string | null>(initialSelected[0] ?? null);
@@ -238,6 +255,59 @@ describe("useDriveBatchActions", () => {
     });
   });
 
+  it("reverts only files already in Trash when a later rename throws", async () => {
+    const operations = createOperations();
+    vi.mocked(operations.renameItem)
+      .mockResolvedValueOnce(EMPTY_DRIVE_UI)
+      .mockRejectedValueOnce(new Error("rename failed"));
+    const { result } = renderActions({
+      operations,
+      files: [driveFile(), driveFile({ id: "other", title: "other.md" })],
+      selectedIds: [NOTES_ID, "other"],
+    });
+
+    act(() => result.current.moveToTrash([NOTES_ID, "other"]));
+    await act(async () => {
+      await expect(queued().execute(new AbortController().signal)).rejects.toThrow("rename failed");
+    });
+
+    await act(async () => {
+      queued().undo();
+    });
+
+    const restores = vi
+      .mocked(operations.renameItem)
+      .mock.calls.filter((call) => call[0].destination === "/users/alice");
+    expect(restores).toEqual([
+      [{ destination: "/users/alice", from: "/users/alice/.Trash/notes.md", to: "notes.md" }],
+    ]);
+  });
+
+  it("restores a trashed file under a free name when the original title is taken", async () => {
+    const operations = createOperations();
+    vi.mocked(operations.listAllDirectoryEntries!).mockImplementation(async (at: string) => {
+      if (at === "/users/alice") return [listedFile("/users/alice/notes.md")];
+      return [];
+    });
+    const { result } = renderActions({ operations });
+
+    act(() => result.current.moveToTrash([NOTES_ID]));
+    await act(async () => {
+      await queued().execute(new AbortController().signal);
+    });
+
+    await act(async () => {
+      queued().undo();
+    });
+
+    expect(operations.renameItem).toHaveBeenLastCalledWith({
+      destination: "/users/alice",
+      from: "/users/alice/.Trash/notes.md",
+      to: "notes 2.md",
+    });
+    expect(showToast).toHaveBeenCalledWith("Restored “notes.md” as “notes 2.md”");
+  });
+
   it("renames into the destination folder and renames back when undo follows a finished move", async () => {
     const operations = createOperations();
     let refreshes = 0;
@@ -288,6 +358,65 @@ describe("useDriveBatchActions", () => {
       to: "notes.md",
     });
     expect(result.current.files[0]?.parent).toBe("My Drive");
+  });
+
+  it("reverts only files already moved when a later rename throws", async () => {
+    const operations = createOperations();
+    vi.mocked(operations.renameItem)
+      .mockResolvedValueOnce(EMPTY_DRIVE_UI)
+      .mockRejectedValueOnce(new Error("rename failed"));
+    const { result } = renderActions({
+      operations,
+      files: [driveFile(), driveFile({ id: "other", title: "other.md" })],
+      selectedIds: [NOTES_ID, "other"],
+    });
+
+    act(() => result.current.moveToFolder([NOTES_ID, "other"], "My Drive/Projects"));
+    await act(async () => {
+      await expect(queued().execute(new AbortController().signal)).rejects.toThrow("rename failed");
+    });
+
+    await act(async () => {
+      queued().undo();
+    });
+
+    const restores = vi
+      .mocked(operations.renameItem)
+      .mock.calls.filter((call) => call[0].from.startsWith("/users/alice/Projects/"));
+    expect(restores).toEqual([
+      [
+        {
+          destination: "/users/alice",
+          from: "/users/alice/Projects/notes.md",
+          to: "notes.md",
+        },
+      ],
+    ]);
+  });
+
+  it("restores a moved file under a free name when the original title is taken", async () => {
+    const operations = createOperations();
+    vi.mocked(operations.listAllDirectoryEntries!).mockImplementation(async (at: string) => {
+      if (at === "/users/alice") return [listedFile("/users/alice/notes.md")];
+      return [];
+    });
+    const { result } = renderActions({ operations });
+
+    act(() => result.current.moveToFolder([NOTES_ID], "My Drive/Projects"));
+    await act(async () => {
+      await queued().execute(new AbortController().signal);
+    });
+
+    await act(async () => {
+      queued().undo();
+    });
+
+    expect(operations.renameItem).toHaveBeenLastCalledWith({
+      destination: "/users/alice",
+      from: "/users/alice/Projects/notes.md",
+      to: "notes 2.md",
+    });
+    expect(showToast).toHaveBeenCalledWith("Restored “notes.md” as “notes 2.md”");
   });
 
   it("keeps a local trash move when there is no drive API", async () => {

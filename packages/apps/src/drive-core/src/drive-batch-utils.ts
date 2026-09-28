@@ -80,20 +80,48 @@ export function resolveTrashName(fileName: string, taken: ReadonlySet<string>): 
   return candidate;
 }
 
-export async function listTrashEntryNames(
+export async function listDirectoryEntryNames(
   operations: DriveAPIOperations,
-  trashApiPath: string,
+  directoryApiPath: string,
   signal?: AbortSignal,
 ): Promise<Set<string>> {
   const taken = new Set<string>();
   if (!operations.listAllDirectoryEntries) return taken;
   try {
-    const entries = await operations.listAllDirectoryEntries(trashApiPath, { signal });
+    const entries = await operations.listAllDirectoryEntries(directoryApiPath, { signal });
     for (const entry of entries) taken.add(entry.name);
   } catch {
-    // Trash folder may not exist yet; ensureTrashFolder handles creation.
+    // The folder may not exist yet.
   }
   return taken;
+}
+
+export async function listTrashEntryNames(
+  operations: DriveAPIOperations,
+  trashApiPath: string,
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  return listDirectoryEntryNames(operations, trashApiPath, signal);
+}
+
+/**
+ * Pick a free name in `directoryApiPath`. `takenByDirectory` caches the listing for later files
+ * in the same restore so two siblings do not claim the same title.
+ */
+export async function claimDirectoryEntryName(
+  operations: DriveAPIOperations,
+  directoryApiPath: string,
+  preferredName: string,
+  takenByDirectory: Map<string, Set<string>>,
+): Promise<string> {
+  let taken = takenByDirectory.get(directoryApiPath);
+  if (!taken) {
+    taken = await listDirectoryEntryNames(operations, directoryApiPath);
+    takenByDirectory.set(directoryApiPath, taken);
+  }
+  const name = resolveTrashName(preferredName, taken);
+  taken.add(name);
+  return name;
 }
 
 export async function ensureTrashFolder(

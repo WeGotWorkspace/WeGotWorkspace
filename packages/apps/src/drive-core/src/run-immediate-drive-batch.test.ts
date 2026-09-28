@@ -91,6 +91,31 @@ describe("runImmediateDriveBatch", () => {
     expect(reverted).toBe(0);
   });
 
+  it("reverts completed files when execute throws after a rename", async () => {
+    const { queued, queueMutation } = captureQueue();
+    let reverted: ReadonlySet<string> | undefined;
+
+    runImmediateDriveBatch({
+      ...batch,
+      rollback: () => undefined,
+      execute: async (_signal, markCompleted) => {
+        markCompleted("notes");
+        throw new Error("rename failed");
+      },
+      revert: async (completedKeys) => {
+        reverted = completedKeys;
+      },
+      queueMutation,
+    });
+
+    await expect(queued[0]?.execute?.(new AbortController().signal)).rejects.toThrow(
+      "rename failed",
+    );
+    queued[0]?.undo?.();
+
+    expect(reverted).toEqual(new Set(["notes"]));
+  });
+
   it("rolls back without reverting when no revert is passed", async () => {
     const { queued, queueMutation } = captureQueue();
     let rolledBack = 0;

@@ -1,10 +1,12 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { FolderInput, Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
+import { useAppToast } from "@/hooks/use-app-toast";
 import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
 import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import type { BeginOptimisticUpdateFn } from "@/hooks/use-entity-batch-actions";
 import {
+  claimDirectoryEntryName,
   ensureTrashFolder,
   listTrashEntryNames,
   reloadDriveFolderListing,
@@ -65,6 +67,7 @@ export function useDriveBatchActions({
   view,
   viewType,
 }: UseDriveBatchActionsArgs) {
+  const { show } = useAppToast();
   const clearSelectionForIds = useCallback(
     (ids: string[]) => {
       setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
@@ -124,7 +127,7 @@ export function useDriveBatchActions({
           setSelectedIds(previousSelectedIds);
           if (previousSelectedIds.length > 0) setSelectionMode(true);
         },
-        execute: async (signal) => {
+        execute: async (signal, markCompleted) => {
           if (!operations) return;
           await ensureTrashFolder(operations, currentUsername, groupRootNames, signal);
           const destination = apiPathFromUiPath(
@@ -139,12 +142,15 @@ export function useDriveBatchActions({
             trashNames.add(to);
             trashedNameById.set(file.id, to);
             await operations.renameItem({ destination, from, to }, { signal });
+            markCompleted(file.id);
           }
           await refreshOpenFolder(signal);
         },
-        revert: async () => {
+        revert: async (completedKeys) => {
           if (!operations) return;
+          const takenByDirectory = new Map<string, Set<string>>();
           for (const { file, previousParent } of snapshots) {
+            if (completedKeys.size > 0 && !completedKeys.has(file.id)) continue;
             const from = resolveDriveFileApiPath(
               {
                 ...file,
@@ -156,7 +162,14 @@ export function useDriveBatchActions({
               groupRootNames,
             );
             const destination = apiPathFromUiPath(previousParent, currentUsername, groupRootNames);
-            await operations.renameItem({ destination, from, to: file.title });
+            const to = await claimDirectoryEntryName(
+              operations,
+              destination,
+              file.title,
+              takenByDirectory,
+            );
+            await operations.renameItem({ destination, from, to });
+            if (to !== file.title) show(`Restored “${file.title}” as “${to}”`);
           }
           await reloadDriveFolderListing(
             operations,
@@ -180,6 +193,7 @@ export function useDriveBatchActions({
       setFiles,
       setSelectedIds,
       setSelectionMode,
+      show,
       view,
     ],
   );
@@ -314,18 +328,21 @@ export function useDriveBatchActions({
         icon: <FolderInput className="size-4" />,
         undoToastMessage: "Move undone.",
         rollback,
-        execute: async (signal) => {
+        execute: async (signal, markCompleted) => {
           if (!operations) return;
           const destination = apiPathFromUiPath(parent, currentUsername, groupRootNames);
           for (const file of rows) {
             const from = resolveDriveFileApiPath(file, currentUsername, groupRootNames);
             await operations.renameItem({ destination, from, to: file.title }, { signal });
+            markCompleted(file.id);
           }
           await refreshOpenFolder(signal);
         },
-        revert: async () => {
+        revert: async (completedKeys) => {
           if (!operations) return;
+          const takenByDirectory = new Map<string, Set<string>>();
           for (const { file, previousParent } of snapshots) {
+            if (completedKeys.size > 0 && !completedKeys.has(file.id)) continue;
             const from = resolveDriveFileApiPath(
               { ...file, apiPath: undefined, parent },
               currentUsername,
@@ -336,11 +353,18 @@ export function useDriveBatchActions({
               currentUsername,
               groupRootNames,
             );
+            const to = await claimDirectoryEntryName(
+              operations,
+              restoreDestination,
+              file.title,
+              takenByDirectory,
+            );
             await operations.renameItem({
               destination: restoreDestination,
               from,
-              to: file.title,
+              to,
             });
+            if (to !== file.title) show(`Restored “${file.title}” as “${to}”`);
           }
           await reloadDriveFolderListing(
             operations,
@@ -361,6 +385,7 @@ export function useDriveBatchActions({
       queueMutation,
       refreshOpenFolder,
       setFiles,
+      show,
       view,
     ],
   );

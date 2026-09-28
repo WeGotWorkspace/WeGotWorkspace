@@ -10,12 +10,20 @@ export type ImmediateDriveBatchArgs = {
   icon: ReactNode;
   undoToastMessage: string;
   rollback: () => void;
-  execute: (signal: AbortSignal) => Promise<void>;
-  revert?: () => Promise<void>;
+  /**
+   * Rename files one at a time. Call `markCompleted` after each rename that reached the server
+   * so undo can revert those files when a later rename throws.
+   */
+  execute: (signal: AbortSignal, markCompleted: (key: string) => void) => Promise<void>;
+  /**
+   * Undo the server write. Runs after `execute` resolves, or when it throws after at least one
+   * `markCompleted` call. `completedKeys` lists those marks; an empty set means the whole execute finished.
+   */
+  revert?: (completedKeys: ReadonlySet<string>) => Promise<void>;
   queueMutation: QueueMutation;
 };
 
-/** Queues a drive batch that runs immediately and only reverts after execute finishes. */
+/** Queues a drive batch that runs immediately and reverts files the server already renamed. */
 export function runImmediateDriveBatch({
   key,
   toastMessage,
@@ -26,11 +34,13 @@ export function runImmediateDriveBatch({
   revert,
   queueMutation,
 }: ImmediateDriveBatchArgs): void {
-  let completed = false;
+  const completedKeys = new Set<string>();
+  let finished = false;
   const undo = () => {
     rollback();
-    if (!completed || !revert) return;
-    void revert().catch((error: unknown) => {
+    if (!revert) return;
+    if (!finished && completedKeys.size === 0) return;
+    void revert(completedKeys).catch((error: unknown) => {
       console.error("Drive batch revert failed", error);
     });
   };
@@ -42,8 +52,10 @@ export function runImmediateDriveBatch({
     icon,
     undoToastMessage,
     execute: async (signal) => {
-      await execute(signal);
-      completed = true;
+      await execute(signal, (itemKey) => {
+        completedKeys.add(itemKey);
+      });
+      finished = true;
     },
     rollback: undo,
     executeImmediately: true,

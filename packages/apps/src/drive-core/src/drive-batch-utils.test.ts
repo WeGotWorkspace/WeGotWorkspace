@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  claimDirectoryEntryName,
   ensureTrashFolder,
   mergeDriveFolderListing,
   resolveDriveFileApiPath,
@@ -151,5 +152,23 @@ describe("ensureTrashFolder", () => {
       { cwd: "/users/alice", name: DRIVE_TRASH_DIR_NAME },
       expect.objectContaining({ refreshState: false }),
     );
+  });
+});
+
+describe("claimDirectoryEntryName", () => {
+  it("keeps a free title and disambiguates the next file that wants the same name", async () => {
+    const operations = {
+      listAllDirectoryEntries: vi.fn(async () => [
+        { name: "notes.md", path: "/users/alice/notes.md" },
+      ]),
+    } as unknown as DriveAPIOperations;
+    const taken = new Map<string, Set<string>>();
+
+    const first = await claimDirectoryEntryName(operations, "/users/alice", "notes.md", taken);
+    const second = await claimDirectoryEntryName(operations, "/users/alice", "notes.md", taken);
+
+    expect(first).toBe("notes 2.md");
+    expect(second).toBe("notes 3.md");
+    expect(operations.listAllDirectoryEntries).toHaveBeenCalledTimes(1);
   });
 });
