@@ -120,9 +120,10 @@
 }
 
 /**
- * Windowed list: fixed row block sizes (see contacts-list-window.ts).
- * Keep md padding equal to py-3 so scroll offsets match the painted DOM
- * at any root font size / zoom. Overflow clips variable subtitle/body lines.
+ * Windowed list: fixed row block sizes in rem (see contacts-list-window.ts).
+ * Keep md padding equal to py-3. JS converts rem with the live root font
+ * size so accessibility font settings stay aligned. Browser zoom scales
+ * CSS and scroll together. Overflow clips variable subtitle/body lines.
  */
 .contacts-list-panel__list {
   --contacts-list-card-row-size: 5.5rem;

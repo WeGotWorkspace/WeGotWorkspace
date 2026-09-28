@@ -4,16 +4,15 @@ import { groupContactCardsBySection } from "@/contacts-core/src/contacts-display
 /**
  * Fixed row sizes for the windowed list. Must match
  * `--contacts-list-card-row-size` / `--contacts-list-header-row-size` in
- * `contacts-workspace.css` (rem × 16px root). Contacts forces these
- * block sizes so scroll offsets stay aligned.
+ * `contacts-workspace.css`. Convert to px with the live root font size —
+ * do not assume 16px.
  */
 export const CONTACTS_LIST_CARD_ROW_REM = 5.5;
 export const CONTACTS_LIST_HEADER_ROW_REM = 2.25;
-export const CONTACTS_LIST_CARD_ROW_PX = CONTACTS_LIST_CARD_ROW_REM * 16;
-export const CONTACTS_LIST_HEADER_ROW_PX = CONTACTS_LIST_HEADER_ROW_REM * 16;
 /** Below this, render every row. Large books window to the scrollport. */
 export const CONTACTS_LIST_WINDOW_AFTER = 80;
 const OVERSCAN_PX = 480;
+const DEFAULT_ROOT_FONT_SIZE_PX = 16;
 
 export type ContactsListWindowRow =
   | { kind: "header"; letter: string; key: string }
@@ -30,15 +29,32 @@ export function flattenContactListRows(cards: ContactCard[]): ContactsListWindow
   return rows;
 }
 
-export function contactListRowHeight(row: ContactsListWindowRow): number {
-  return row.kind === "header" ? CONTACTS_LIST_HEADER_ROW_PX : CONTACTS_LIST_CARD_ROW_PX;
+/** Root `html` font size in px (browser default / accessibility setting). */
+export function readContactsListRootFontSizePx(
+  doc: Document | null | undefined = typeof document !== "undefined" ? document : null,
+): number {
+  if (!doc?.documentElement) return DEFAULT_ROOT_FONT_SIZE_PX;
+  const parsed = parseFloat(getComputedStyle(doc.documentElement).fontSize);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_ROOT_FONT_SIZE_PX;
 }
 
-export function contactListRowOffset(rows: ContactsListWindowRow[], index: number): number {
+export function contactListRowHeight(
+  row: ContactsListWindowRow,
+  rootFontSizePx: number = DEFAULT_ROOT_FONT_SIZE_PX,
+): number {
+  const rem = row.kind === "header" ? CONTACTS_LIST_HEADER_ROW_REM : CONTACTS_LIST_CARD_ROW_REM;
+  return rem * rootFontSizePx;
+}
+
+export function contactListRowOffset(
+  rows: ContactsListWindowRow[],
+  index: number,
+  rootFontSizePx: number = DEFAULT_ROOT_FONT_SIZE_PX,
+): number {
   let offset = 0;
   const end = Math.min(index, rows.length);
   for (let i = 0; i < end; i += 1) {
-    offset += contactListRowHeight(rows[i]!);
+    offset += contactListRowHeight(rows[i]!, rootFontSizePx);
   }
   return offset;
 }
@@ -47,6 +63,7 @@ export function contactsListWindowRange(
   rows: ContactsListWindowRow[],
   scrollTop: number,
   viewportHeight: number,
+  rootFontSizePx: number = DEFAULT_ROOT_FONT_SIZE_PX,
 ): { start: number; end: number; paddingTop: number; paddingBottom: number } {
   if (rows.length === 0) {
     return { start: 0, end: 0, paddingTop: 0, paddingBottom: 0 };
@@ -60,7 +77,9 @@ export function contactsListWindowRange(
       start: 0,
       end,
       paddingTop: 0,
-      paddingBottom: contactListRowOffset(rows, rows.length) - contactListRowOffset(rows, end),
+      paddingBottom:
+        contactListRowOffset(rows, rows.length, rootFontSizePx) -
+        contactListRowOffset(rows, end, rootFontSizePx),
     };
   }
 
@@ -71,7 +90,7 @@ export function contactsListWindowRange(
   let end = rows.length;
   let startSet = false;
   for (let index = 0; index < rows.length; index += 1) {
-    const height = contactListRowHeight(rows[index]!);
+    const height = contactListRowHeight(rows[index]!, rootFontSizePx);
     const next = offset + height;
     if (!startSet && next >= from) {
       start = index;
@@ -84,8 +103,10 @@ export function contactsListWindowRange(
     offset = next;
   }
 
-  const paddingTop = contactListRowOffset(rows, start);
-  const paddingBottom = contactListRowOffset(rows, rows.length) - contactListRowOffset(rows, end);
+  const paddingTop = contactListRowOffset(rows, start, rootFontSizePx);
+  const paddingBottom =
+    contactListRowOffset(rows, rows.length, rootFontSizePx) -
+    contactListRowOffset(rows, end, rootFontSizePx);
   return { start, end, paddingTop, paddingBottom };
 }
 
@@ -97,6 +118,7 @@ export function contactsListWindowRange(
 export function contactListWindowSlice(
   rows: ContactsListWindowRow[],
   range: { start: number; end: number; paddingTop: number; paddingBottom: number },
+  rootFontSizePx: number = DEFAULT_ROOT_FONT_SIZE_PX,
 ): { rows: ContactsListWindowRow[]; paddingTop: number; paddingBottom: number } {
   const visible = rows.slice(range.start, range.end);
   const first = visible[0];
@@ -116,7 +138,7 @@ export function contactListWindowSlice(
   }
   return {
     rows: [header, ...visible],
-    paddingTop: Math.max(0, range.paddingTop - contactListRowHeight(header)),
+    paddingTop: Math.max(0, range.paddingTop - contactListRowHeight(header, rootFontSizePx)),
     paddingBottom: range.paddingBottom,
   };
 }

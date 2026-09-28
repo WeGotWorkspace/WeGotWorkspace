@@ -30,6 +30,7 @@ import {
   contactsListWindowRange,
   contactListWindowSlice,
   flattenContactListRows,
+  readContactsListRootFontSizePx,
   type ContactsListWindowRow,
 } from "@/contacts-core/src/contacts-list-window";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
@@ -92,8 +93,8 @@ export function ContactsListPanel({
 }: ContactsListPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const rows = useMemo(() => flattenContactListRows(visibleCards), [visibleCards]);
-  const windowRange = useContactsListWindow(listRef, rows, activeId);
-  const windowSlice = contactListWindowSlice(rows, windowRange);
+  const { range: windowRange, rootFontSizePx } = useContactsListWindow(listRef, rows, activeId);
+  const windowSlice = contactListWindowSlice(rows, windowRange, rootFontSizePx);
   // Measure against the full visible set. A moving window changes which rows
   // are mounted, and feeding only those ids looks like a reorder.
   useListReorderAnimation(
@@ -174,13 +175,21 @@ function useContactsListWindow(
   rows: ContactsListWindowRow[],
   activeId: string,
 ) {
-  const [metrics, setMetrics] = useState({ scrollTop: 0, viewportHeight: 0 });
+  const [metrics, setMetrics] = useState({
+    scrollTop: 0,
+    viewportHeight: 0,
+    rootFontSizePx: readContactsListRootFontSizePx(),
+  });
 
   useLayoutEffect(() => {
     const scroller = listRef.current?.parentElement;
     if (!scroller) return;
     const update = () => {
-      setMetrics({ scrollTop: scroller.scrollTop, viewportHeight: scroller.clientHeight });
+      setMetrics({
+        scrollTop: scroller.scrollTop,
+        viewportHeight: scroller.clientHeight,
+        rootFontSizePx: readContactsListRootFontSizePx(),
+      });
     };
     update();
     scroller.addEventListener("scroll", update, { passive: true });
@@ -192,7 +201,12 @@ function useContactsListWindow(
     };
   }, [listRef, rows.length]);
 
-  const range = contactsListWindowRange(rows, metrics.scrollTop, metrics.viewportHeight);
+  const range = contactsListWindowRange(
+    rows,
+    metrics.scrollTop,
+    metrics.viewportHeight,
+    metrics.rootFontSizePx,
+  );
   const scrolledForActiveIdRef = useRef<string | null>(null);
   const pendingScrollIntoViewIdRef = useRef<string | null>(null);
 
@@ -214,10 +228,15 @@ function useContactsListWindow(
       node.scrollIntoView({ block: "nearest" });
       return;
     }
-    const offset = contactListRowOffset(rows, index);
+    const rootFontSizePx = readContactsListRootFontSizePx();
+    const offset = contactListRowOffset(rows, index, rootFontSizePx);
     scroller.scrollTop = offset;
     pendingScrollIntoViewIdRef.current = activeId;
-    setMetrics({ scrollTop: offset, viewportHeight: scroller.clientHeight });
+    setMetrics({
+      scrollTop: offset,
+      viewportHeight: scroller.clientHeight,
+      rootFontSizePx,
+    });
   }, [activeId, listRef, range.end, range.start, rows]);
 
   useEffect(() => {
@@ -229,7 +248,7 @@ function useContactsListWindow(
     node.scrollIntoView({ block: "nearest" });
   }, [activeId, listRef, range.end, range.start, rows]);
 
-  return range;
+  return { range, rootFontSizePx: metrics.rootFontSizePx };
 }
 
 function activeRowElement(list: HTMLElement | null, id: string): HTMLElement | null {
