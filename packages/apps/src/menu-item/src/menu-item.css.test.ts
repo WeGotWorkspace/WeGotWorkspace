@@ -7,13 +7,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "menu-item.css"), "utf8");
 
 describe("menu-item sidebar surfaces", () => {
-  it("sets sidebar nav rows to semibold (600)", () => {
-    expect(css).toMatch(/\.sidebar-section \.menu-item--surface-idle \{[\s\S]*font-semibold/);
-    expect(css).toMatch(/\.sidebar-section \.menu-item--surface-selected \{[\s\S]*font-semibold/);
-    expect(css).toMatch(/\.sidebar-section \.menu-item--surface-drop \{[\s\S]*font-semibold/);
-    expect(css).not.toMatch(
-      /\.sidebar-section \.menu-item--surface-(?:idle|selected|drop) \{[\s\S]*font-medium/,
-    );
+  it("sets sidebar nav rows to medium (500)", () => {
+    const surfaceWeight = (surface: "idle" | "selected" | "drop") =>
+      css.match(new RegExp(`\\.sidebar-section \\.menu-item--surface-${surface} \\{[^}]+\\}`))?.[0];
+    expect(surfaceWeight("idle")).toMatch(/font-medium/);
+    expect(surfaceWeight("selected")).toMatch(/font-medium/);
+    expect(surfaceWeight("drop")).toMatch(/font-medium/);
+    expect(surfaceWeight("idle")).not.toMatch(/font-semibold/);
+    expect(surfaceWeight("selected")).not.toMatch(/font-semibold/);
+    expect(surfaceWeight("drop")).not.toMatch(/font-semibold/);
   });
 
   it("washes selected sidebar rows from outline-active tokens", () => {

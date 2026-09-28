@@ -85,7 +85,7 @@
 }
 
 .drive-workspace .drive-access-detail__title {
-  @apply mt-2 font-serif text-2xl;
+  @apply mt-2 font-serif text-2xl font-normal;
   color: var(--color-we-got-dark);
 }
 

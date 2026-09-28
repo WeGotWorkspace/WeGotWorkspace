@@ -30,6 +30,7 @@ final class CimdResolver
         private ClientRepository $clients,
         private PublicHostResolver $dns,
         private McpClientGarbageCollector $gc,
+        private McpEnabled $mcp,
     ) {}
 
     public function looksLikeMetadataUrl(string $clientId): bool
@@ -39,6 +40,7 @@ final class CimdResolver
 
     public function resolve(string $clientId): Client
     {
+        $this->refuseWhenDisabled();
         if (! $this->looksLikeMetadataUrl($clientId)) {
             throw new CimdException('client_id is not a CIMD metadata URL.', 400);
         }
@@ -58,7 +60,7 @@ final class CimdResolver
             }
         }
 
-        $metadata = $this->fetch($clientId);
+        $metadata = $this->fetchMetadata($clientId);
         $redirectUris = $this->validatedRedirectUris($metadata);
         $name = $this->clientName($metadata, $clientId);
         $origin = McpRedirectUris::originOf($clientId);
@@ -99,6 +101,18 @@ final class CimdResolver
      * @return array<string, mixed>
      */
     public function fetch(string $url): array
+    {
+        $this->refuseWhenDisabled();
+
+        return $this->fetchMetadata($url);
+    }
+
+    /**
+     * HTTP fetch without a second kill-switch read. resolve() already refused.
+     *
+     * @return array<string, mixed>
+     */
+    private function fetchMetadata(string $url): array
     {
         $safe = $this->assertSafeCimdUrl($url);
         $url = $safe['url'];
@@ -380,6 +394,18 @@ final class CimdResolver
         $text = inet_ntop(substr($packed, 0, 8).str_repeat("\0", 8));
 
         return $text === false ? null : $text;
+    }
+
+    /**
+     * Kill switch wins before DNS or HTTP. A 4xx from a metadata host is not a refusal.
+     */
+    private function refuseWhenDisabled(): void
+    {
+        if ($this->mcp->isOn()) {
+            return;
+        }
+
+        throw new CimdException('MCP is disabled by your administrator.', 403);
     }
 
     /**

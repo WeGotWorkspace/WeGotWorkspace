@@ -55,6 +55,7 @@ pnpm dev:storybook                       # Storybook — mock-tier stories for c
 - [ ] Storybook a11y panel on new/changed stories ([storybook/a11y-testing.md](../storybook/a11y-testing.md))
 - [ ] Vitest for new/changed hooks, parsers, RTC/session logic ([testing/ui-architecture.md](../testing/ui-architecture.md))
 - [ ] New/changed hook files: [clean-code/smells.md](../clean-code/smells.md) React hooks section — split if over limits, or link a refactor issue with explicit user approval; collab hooks follow [collab-hooks.md](../workspace/collab-hooks.md)
+- [ ] Counted source files: A new counted source file over 800 lines is a merge block unless its baseline entry carries an approved reason. A baselined file is a merge block when its line count grows, or when it shrinks and the stored integer was not lowered. Run `pnpm check:file-size` after a shrink (`pnpm ratchet:update`).
 - [ ] New top-level route in `wegotworkspace-routes.tsx`: also update API `UiStaticServer` allowlist (apps done gate does **not** cover this — Architecture + FrontRouting on API side)
 
 Meet/RTC: `pnpm --dir packages/apps exec vitest run src/lib/rtc/session src/meet-core/src/meet-rtc-session.test.ts`
@@ -85,6 +86,7 @@ pnpm run ci:quality
 ```
 
 - [ ] Signed commits ([git-workflow/pull-requests.md](../git-workflow/pull-requests.md))
+- [ ] PR opened as a draft (`gh pr create --draft`); leave it draft until the user asks to enqueue
 - [ ] PR test plan lists concrete commands run ([testing/SKILL.md](../testing/SKILL.md))
 - [ ] CI validates **PR tip (branch HEAD)** only — intermediate commits may be red until fix-forward; do not require per-commit gates in CI ([#250](https://github.com/WeGotWorkspace/wegotworkspace/issues/250))
 - [ ] Apps unit and jsdom Vitest are left to GitHub `apps-quality` (`APPS_DONE_GATE_FULL=1`). A local `pnpm run ci:quality` does not run them unless that variable is set

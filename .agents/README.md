@@ -18,6 +18,7 @@ Skill directories use **unprefixed names** (e.g. `api`, `developer`, `storybook`
 | [apps-ui](skills/apps-ui/) | UI primitives, CSS variables, components, TypeScript |
 | [workspace](skills/workspace/) | Workspace shell, *App/*Workspace blueprint |
 | [plan-feature](skills/plan-feature/) | Feature planning and parallel chunk templates |
+| [security](skills/security/) | Pre-auth paths, caller-input parsers and uploads, cache or limiter keys |
 | [testing](skills/testing/) | PHPUnit, Vitest, e2e, done-when checklists |
 | [document](skills/document/) | When/where to write docs; templates |
 | [clean-code](skills/clean-code/) | Review checklist — smells.md before handoff |
