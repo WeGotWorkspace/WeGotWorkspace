@@ -15,11 +15,11 @@
  */
 
 @utility text-title {
-  @apply font-serif text-3xl font-semibold;
+  @apply font-serif text-3xl font-normal;
 }
 
 @utility text-title-lg {
-  @apply font-serif text-4xl font-semibold;
+  @apply font-serif text-4xl font-normal;
 }
 
 @utility text-caption {

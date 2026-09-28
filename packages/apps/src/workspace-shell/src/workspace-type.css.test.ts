@@ -10,11 +10,9 @@ const stylesCss = readFileSync(join(here, "../../styles.css"), "utf8");
 
 describe("workspace-type.css shared type roles", () => {
   it("defines title, title-lg, caption, and lockup as @utility (so @apply works)", () => {
+    expect(typeCss).toMatch(/@utility text-title \{[\s\S]*@apply font-serif text-3xl font-normal/);
     expect(typeCss).toMatch(
-      /@utility text-title \{[\s\S]*@apply font-serif text-3xl font-semibold/,
-    );
-    expect(typeCss).toMatch(
-      /@utility text-title-lg \{[\s\S]*@apply font-serif text-4xl font-semibold/,
+      /@utility text-title-lg \{[\s\S]*@apply font-serif text-4xl font-normal/,
     );
     expect(typeCss).toMatch(
       /@utility text-caption \{[\s\S]*@apply font-sans text-xs leading-4 font-medium uppercase/,
@@ -29,7 +27,10 @@ describe("workspace-type.css shared type roles", () => {
 
 describe("font family primitives and semantic aliases", () => {
   it("aliases semantic families through We Got / system primitives", () => {
-    expect(stylesCss).toMatch(/--font-we-got-serif:\s*"Libre Caslon Condensed",\s*serif/);
+    expect(stylesCss).toMatch(
+      /--font-we-got-sans:\s*"Plus Jakarta Sans",\s*ui-sans-serif,\s*system-ui,\s*sans-serif/,
+    );
+    expect(stylesCss).toMatch(/--font-we-got-serif:\s*"We Got Serif",\s*serif/);
     expect(stylesCss).toMatch(/--font-we-got-mono:\s*"JetBrains Mono"/);
     // Mark must lead with Bebas — not the system sans stack alone.
     expect(stylesCss).toMatch(
@@ -38,8 +39,8 @@ describe("font family primitives and semantic aliases", () => {
     expect(stylesCss).not.toMatch(/--font-we-got-mark:\s*ui-sans-serif/);
     expect(stylesCss).not.toMatch(/--font-we-got-mark:\s*var\(--font-system-sans\)/);
     expect(stylesCss).not.toMatch(/--font-we-got-mark:\s*var\(--font-sans\)/);
-    expect(stylesCss).toMatch(/--font-system-sans:\s*ui-sans-serif,\s*system-ui,\s*sans-serif/);
-    expect(stylesCss).toMatch(/--font-sans:\s*var\(--font-system-sans\)/);
+    expect(stylesCss).not.toMatch(/--font-system-sans\b/);
+    expect(stylesCss).toMatch(/--font-sans:\s*var\(--font-we-got-sans\)/);
     expect(stylesCss).toMatch(/--font-serif:\s*var\(--font-we-got-serif\)/);
     expect(stylesCss).toMatch(/--font-mono:\s*var\(--font-we-got-mono\)/);
     expect(stylesCss).toMatch(/--font-mark:\s*var\(--font-we-got-mark\)/);
