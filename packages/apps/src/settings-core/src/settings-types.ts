@@ -3,7 +3,24 @@ import type {
   SettingsProfileRequest,
 } from "@wgw/openapi-types/settings-types";
 
-export type SettingsSection = "profile" | "memberships" | "mail" | "offline" | "assistants";
+export const BUILTIN_PANEL_IDS = [
+  "profile",
+  "memberships",
+  "offline",
+  "assistants",
+  "mail",
+] as const;
+
+/** Handwritten / JIT ids for `openPanel`. `"mial"` is a type error. */
+export type BuiltinPanelId = (typeof BUILTIN_PANEL_IDS)[number];
+
+/** Registry and URL segment id. Do not write `BuiltinPanelId | string`. */
+export type SettingsPanelId = string;
+
+/** Route-owned Settings section; same as {@link SettingsPanelId}. */
+export type SettingsSection = SettingsPanelId;
+
+export type SettingsPanelGroup = "account" | "apps";
 
 export type SettingsSectionDescriptor = {
   id: SettingsSection;

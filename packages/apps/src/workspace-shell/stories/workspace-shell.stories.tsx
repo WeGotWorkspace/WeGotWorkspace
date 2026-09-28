@@ -1,10 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, within } from "storybook/test";
+import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { WorkspaceAppSwitcher } from "@/workspace-app-switcher/src/workspace-app-switcher";
 import {
   WorkspaceBrandHeader,
   WorkspaceAppLayout,
   WorkspaceSidebar,
+  WorkspaceSidebarAccountFooter,
   WorkspaceSidebarScrim,
   WorkspaceSidebarToggle,
   WorkspaceUserFooter,
@@ -12,6 +15,7 @@ import {
 
 const meta: Meta = {
   title: "Layout/Workspace Shell",
+  tags: ["vitest-ci"],
 };
 
 export default meta;
@@ -55,4 +59,34 @@ export const Default: Story = {
       </section>
     </WorkspaceAppLayout>
   ),
+};
+
+export const AccountFooterWithSettings: Story = {
+  render: () => (
+    <div className="w-64 border">
+      <WorkspaceSidebarAccountFooter
+        session={mockWorkspaceSession}
+        settingsItem={{ label: "Settings", onClick: () => {} }}
+        onLogout={() => {}}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Settings" })).toBeTruthy();
+    await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
+  },
+};
+
+export const AccountFooterWithoutSettings: Story = {
+  render: () => (
+    <div className="w-64 border">
+      <WorkspaceSidebarAccountFooter session={mockWorkspaceSession} onLogout={() => {}} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
+    await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
+  },
 };

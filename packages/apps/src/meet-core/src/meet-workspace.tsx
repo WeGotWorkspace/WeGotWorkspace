@@ -7,13 +7,11 @@ import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
-import {
-  WorkspaceAppLayout,
-  WorkspaceUserFooter,
-} from "@/workspace-shell/src/workspace-app-layout";
+import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
-import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
+import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import {
@@ -1160,11 +1158,13 @@ export function MeetWorkspace({
               />
             }
             footer={
-              <WorkspaceUserFooter
-                name={session.user.displayName}
-                initials={workspaceUserInitials(session.user)}
-                detailLine={session.user.username}
-                onLogoutClick={onLogout}
+              <WorkspaceAppSettingsFooter
+                appId="meet"
+                session={session}
+                onLogout={onLogout}
+                onBeforeOpen={() => {
+                  if (isSidebarOverlayViewport()) setSidebarOpen(false);
+                }}
               />
             }
           >

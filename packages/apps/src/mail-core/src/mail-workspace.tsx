@@ -8,9 +8,8 @@ import { MailMoveToDialog } from "@/mail-core/src/mail-move-to-dialog";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
-import { WorkspaceUserFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
-import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
+import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { MailDetailView } from "@/mail-core/src/mail-detail-view";
 import { MailComposeView } from "@/mail-core/src/mail-compose-view";
 import { createComposeAttachment } from "@/mail-core/src/mail-compose-utils";
@@ -160,11 +159,11 @@ export function MailWorkspace({
             open={c.sidebarOpen}
             onCloseMobile={c.closeSidebar}
             footer={
-              <WorkspaceUserFooter
-                name={session.user.displayName}
-                initials={workspaceUserInitials(session.user)}
-                detailLine={session.user.username}
-                onLogoutClick={onLogout}
+              <WorkspaceAppSettingsFooter
+                appId="mail"
+                session={session}
+                onLogout={onLogout}
+                onBeforeOpen={() => closeSidebarOnMobile(c.closeSidebar)}
               />
             }
             primaryButton={

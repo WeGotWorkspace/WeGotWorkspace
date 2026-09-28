@@ -62,6 +62,11 @@
   );
 }
 
+.workspace-sidebar-account-footer__settings {
+  @apply pt-2;
+  padding-inline: var(--app-sidebar-padding-x, 1rem);
+}
+
 /*
  * Open sidebar: accent glyph via `.icon-button--active` + parent `--button-active-color`.
  * Lucide panel/menu marks are stroke-based — keep fill none so active does not solid-blob.

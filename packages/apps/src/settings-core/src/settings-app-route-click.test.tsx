@@ -60,7 +60,14 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     expect(history.location.pathname).toBe("/settings");
     expect(screen.getByRole("heading", { name: "Profile" })).toBeTruthy();
 
-    expect(screen.queryByRole("button", { name: "Mail" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Mail" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Notifications" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Mail" }));
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/settings/mail");
+    });
+    expect(screen.getByRole("heading", { name: "Mail" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Memberships" }));
     await waitFor(() => {
@@ -113,7 +120,7 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
 
   it("explains a direct mailbox-login link without offering the form", async () => {
     await renderSettingsApp("/settings/mail");
-    expect(screen.queryByRole("button", { name: "Mail" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Mail" })).toBeTruthy();
     expect(screen.getByText(/does not read a mailbox/i)).toBeTruthy();
     expect(screen.queryByLabelText(/IMAP\/SMTP login/i)).toBeNull();
   });

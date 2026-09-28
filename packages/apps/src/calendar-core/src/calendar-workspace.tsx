@@ -24,17 +24,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
-import {
-  WorkspaceAppLayout,
-  WorkspaceUserFooter,
-} from "@/workspace-shell/src/workspace-app-layout";
+import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { CollectionSearchInput } from "@/collection-search-input/src/collection-search-input";
 import { useViewHeaderSearchQuery } from "@/view-header/src/use-view-header-search-query";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import { CalendarSearchResultsList } from "@/calendar-core/src/calendar-search-results";
 import { CALENDAR_SEARCH_MIN_QUERY_LENGTH } from "@/calendar-core/src/calendar-route-search";
-import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
+import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { CalendarEventDialog } from "@/calendar-core/src/calendar-event-dialog";
@@ -867,11 +864,12 @@ export function CalendarWorkspace({
               )
             }
             footer={
-              <WorkspaceUserFooter
-                name={session.user.displayName}
-                initials={workspaceUserInitials(session.user)}
+              <WorkspaceAppSettingsFooter
+                appId="calendar"
+                session={session}
                 detailLine={session.user.email}
-                onLogoutClick={onLogout}
+                onLogout={onLogout}
+                onBeforeOpen={() => closeSidebarOnMobile(() => setSidebarOpen(false))}
               />
             }
           >
