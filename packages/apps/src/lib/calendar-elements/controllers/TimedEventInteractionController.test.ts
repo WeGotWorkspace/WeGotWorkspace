@@ -277,6 +277,22 @@ describe("TimedEventInteractionController", () => {
     expectPointerUpdate(host);
   });
 
+  it("moves from a horizontal grab inside the day column, not from the column center", () => {
+    const host = createHost();
+    const controller = createController(host);
+    const downY = timeY(9, 0);
+    // Day columns are 100px wide and the anchor sits at x=50. Grabbing at 95 stores +45.
+    // Dropping at 405 then lands on day 3 (360). Ignoring the offset lands on day 4.
+    const downX = 95;
+    const upX = 405;
+
+    drag(controller, host, movePointerDown(host, downX, downY), upX, downY);
+
+    expect(dateTimeText(host.start)).toBe("2026-03-05T09:00:00");
+    expect(dateTimeText(host.end)).toBe("2026-03-05T10:30:00");
+    expectPointerUpdate(host);
+  });
+
   it("snaps a move that lands off the 5-minute grid", () => {
     const host = createHost();
     const controller = createController(host);
@@ -287,6 +303,19 @@ describe("TimedEventInteractionController", () => {
 
     expect(dateTimeText(host.start)).toBe("2026-03-02T09:05:00");
     expect(dateTimeText(host.end)).toBe("2026-03-02T10:35:00");
+    expectPointerUpdate(host);
+  });
+
+  it("rounds a move at 09:08 up to the next 5-minute mark", () => {
+    const host = createHost();
+    const controller = createController(host);
+    const downX = dayCenterX(0);
+    const downY = timeY(9, 0);
+
+    drag(controller, host, movePointerDown(host, downX, downY), downX, timeY(9, 8));
+
+    expect(dateTimeText(host.start)).toBe("2026-03-02T09:10:00");
+    expect(dateTimeText(host.end)).toBe("2026-03-02T10:40:00");
     expectPointerUpdate(host);
   });
 
