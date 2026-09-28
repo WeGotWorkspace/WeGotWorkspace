@@ -104,6 +104,7 @@ export function useDriveBatchActions({
       }));
       const previousFiles = files;
       const previousSelectedIds = selectedIds;
+      const trashedNameById = new Map<string, string>();
 
       setFiles((prev) =>
         prev.map((file) =>
@@ -136,6 +137,7 @@ export function useDriveBatchActions({
             const from = resolveDriveFileApiPath(file, currentUsername, groupRootNames);
             const to = resolveTrashName(file.title, trashNames);
             trashNames.add(to);
+            trashedNameById.set(file.id, to);
             await operations.renameItem({ destination, from, to }, { signal });
           }
           await refreshOpenFolder(signal);
@@ -144,7 +146,12 @@ export function useDriveBatchActions({
           if (!operations) return;
           for (const { file, previousParent } of snapshots) {
             const from = resolveDriveFileApiPath(
-              { ...file, parent: DRIVE_TRASH_UI_PATH },
+              {
+                ...file,
+                apiPath: undefined,
+                parent: DRIVE_TRASH_UI_PATH,
+                title: trashedNameById.get(file.id) ?? file.title,
+              },
               currentUsername,
               groupRootNames,
             );
@@ -320,7 +327,7 @@ export function useDriveBatchActions({
           if (!operations) return;
           for (const { file, previousParent } of snapshots) {
             const from = resolveDriveFileApiPath(
-              { ...file, parent },
+              { ...file, apiPath: undefined, parent },
               currentUsername,
               groupRootNames,
             );

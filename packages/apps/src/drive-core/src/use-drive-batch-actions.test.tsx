@@ -6,12 +6,25 @@ import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
 import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
+import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 
 const USER = "alice";
 const NOTES_ID = "notes";
 
 const queueMutation = vi.fn();
 const reloadStarredFromServer = vi.fn();
+
+function listedFile(path: string, name = path.split("/").pop() ?? path) {
+  return {
+    name,
+    path,
+    type: "file" as const,
+    size: 100,
+    time: 1,
+    permissions: 644,
+    myRights: fullDriveMyRights,
+  };
+}
 
 const EMPTY_DRIVE_UI: DriveUIData = {
   user: { username: USER, name: USER, role: "user", roots: ["/users"] },
@@ -186,14 +199,59 @@ describe("useDriveBatchActions", () => {
     expect(operations.renameItem).toHaveBeenCalledTimes(2);
     expect(operations.renameItem).toHaveBeenLastCalledWith({
       destination: "/users/alice",
-      from: "/users/alice/notes.md",
+      from: "/users/alice/.Trash/notes.md",
       to: "notes.md",
     });
     expect(result.current.files[0]?.parent).toBe("My Drive");
   });
 
+  it("restores a trashed file under the name Trash actually stored", async () => {
+    const operations = createOperations();
+    vi.mocked(operations.listAllDirectoryEntries!).mockImplementation(async (at: string) => {
+      if (at.endsWith("/.Trash")) return [listedFile(`${at}/notes.md`, "notes.md")];
+      return [];
+    });
+    const { result } = renderActions({ operations });
+
+    act(() => result.current.moveToTrash([NOTES_ID]));
+    await act(async () => {
+      await queued().execute(new AbortController().signal);
+    });
+
+    expect(operations.renameItem).toHaveBeenCalledWith(
+      {
+        destination: "/users/alice/.Trash",
+        from: "/users/alice/notes.md",
+        to: "notes 2.md",
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+
+    await act(async () => {
+      queued().undo();
+    });
+
+    expect(operations.renameItem).toHaveBeenLastCalledWith({
+      destination: "/users/alice",
+      from: "/users/alice/.Trash/notes 2.md",
+      to: "notes.md",
+    });
+  });
+
   it("renames into the destination folder and renames back when undo follows a finished move", async () => {
     const operations = createOperations();
+    let refreshes = 0;
+    vi.mocked(operations.changeDir).mockImplementation(async () => {
+      refreshes += 1;
+      if (refreshes === 1) return EMPTY_DRIVE_UI;
+      return {
+        ...EMPTY_DRIVE_UI,
+        directory: {
+          location: "/users/alice",
+          files: [listedFile("/users/alice/notes.md")],
+        },
+      };
+    });
     const { result } = renderActions({ operations });
 
     act(() => result.current.moveToFolder([NOTES_ID], "My Drive/Projects"));
@@ -226,9 +284,10 @@ describe("useDriveBatchActions", () => {
     expect(operations.renameItem).toHaveBeenCalledTimes(2);
     expect(operations.renameItem).toHaveBeenLastCalledWith({
       destination: "/users/alice",
-      from: "/users/alice/notes.md",
+      from: "/users/alice/Projects/notes.md",
       to: "notes.md",
     });
+    expect(result.current.files[0]?.parent).toBe("My Drive");
   });
 
   it("keeps a local trash move when there is no drive API", async () => {
