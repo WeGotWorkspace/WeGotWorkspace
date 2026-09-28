@@ -1,6 +1,7 @@
 import { defineConfig } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { liveTierSpecPattern } from "./e2e/live-tier.mjs";
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(packageRoot, "..", "..");
@@ -9,8 +10,7 @@ const authFile = path.join(packageRoot, "e2e", ".auth", "admin.json");
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch:
-    /(?:notes-offline-sync|docs-offline-sync|docs-home-browse|calendar-offline-week-event|drive-offline-sync|meet-adhoc-two-users)\.spec\.ts/,
+  testMatch: liveTierSpecPattern,
   globalSetup: "./e2e/global-setup-live.mjs",
   fullyParallel: false,
   workers: 1,
