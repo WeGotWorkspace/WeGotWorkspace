@@ -9,11 +9,19 @@ import {
 
 const manifestsDir = join(import.meta.dirname, "../../public/manifests");
 
+type ManifestIcon = {
+  src: string;
+  sizes: string;
+  type: string;
+  purpose: string;
+};
+
 type WorkspaceManifest = {
   start_url: string;
   scope: string;
   theme_color?: string;
   background_color?: string;
+  icons?: ManifestIcon[];
 };
 
 function readManifest(name: string): WorkspaceManifest {
@@ -38,13 +46,36 @@ describe("workspace PWA manifests", () => {
     });
   });
 
-  it("cache-busts the notes manifest icons with the PWA icon version", () => {
-    const raw = readFileSync(join(manifestsDir, "notes.webmanifest"), "utf8");
+  it("cache-busts every manifest icon from the PWA icon version", () => {
     const version = WORKSPACE_PWA_ICON_CACHE_VERSION;
 
-    expect(raw).toContain(`"/app-icons/notes.svg?v=${version}"`);
-    expect(raw).toContain(`"/pwa-icons/notes-180.png?v=${version}"`);
-    expect(raw).not.toMatch(/#f6d176|#f0bc3a|#fef8ea/i);
+    for (const name of [...WORKSPACE_APP_IDS, "home"]) {
+      const manifest = readManifest(name);
+      expect(manifest.icons).toEqual([
+        {
+          src: `/pwa-icons/${name}-192.png?v=${version}`,
+          sizes: "192x192",
+          type: "image/png",
+          purpose: "any",
+        },
+        {
+          src: `/pwa-icons/${name}-512.png?v=${version}`,
+          sizes: "512x512",
+          type: "image/png",
+          purpose: "any",
+        },
+        {
+          src: `/pwa-icons/${name}-512-maskable.png?v=${version}`,
+          sizes: "512x512",
+          type: "image/png",
+          purpose: "maskable",
+        },
+      ]);
+    }
+
+    const notes = readFileSync(join(manifestsDir, "notes.webmanifest"), "utf8");
+    expect(notes).not.toMatch(/\.svg/);
+    expect(notes).not.toMatch(/#f6d176|#f0bc3a|#fef8ea/i);
   });
 
   it("paints every installed window with the sand UI accent", () => {
@@ -67,7 +98,7 @@ describe("workspace PWA manifests", () => {
     expect(svg).toContain('fill="var(--wai-bg, #1b1d3a)"');
     expect(svg).toContain('fill="var(--wai-fg, #fff5e9)"');
     expect(svg).not.toContain('width="60"');
-    expect(raw).toContain(`"/app-icons/home.svg?v=${version}"`);
-    expect(raw).toContain(`"/pwa-icons/home-180.png?v=${version}"`);
+    expect(raw).toContain(`"/pwa-icons/home-512.png?v=${version}"`);
+    expect(raw).not.toMatch(/\.svg/);
   });
 });

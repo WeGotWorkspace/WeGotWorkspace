@@ -92,7 +92,7 @@ describe("workspaceAppIconUiSrc mapping", () => {
 });
 
 describe("workspaceAppIconManifestSrc", () => {
-  it("points at vector SVG for web app manifests", () => {
+  it("keeps the in-app SVG path; install manifests use generated PNGs", () => {
     expect(workspaceAppIconManifestSrc("mail")).toBe("/app-icons/mail.svg");
   });
 });

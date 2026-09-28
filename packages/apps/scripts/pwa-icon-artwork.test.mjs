@@ -1,0 +1,144 @@
+import { inflateSync } from "node:zlib";
+import { readFileSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { assertFullBleedSquare } from "./pwa-icon-full-bleed.mjs";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const sourceDir = join(here, "../src/assets/app-icons");
+const pwaDir = join(here, "../public/pwa-icons");
+
+/** Anti-aliased glyph edges stay under this per-channel distance from the pad color. */
+const GLYPH_CHANNEL_DELTA = 8;
+/** Extra radius so a glyph pixel on the circle boundary is not a flake. */
+const CIRCLE_RADIUS_SLACK = 2;
+const MASKABLE_CANVAS = 512;
+const SAFE_DIAMETER_RATIO = 0.8;
+
+function paeth(a, b, c) {
+  const p = a + b - c;
+  const pa = Math.abs(p - a);
+  const pb = Math.abs(p - b);
+  const pc = Math.abs(p - c);
+  if (pa <= pb && pa <= pc) return a;
+  if (pb <= pc) return b;
+  return c;
+}
+
+function decodePng(path) {
+  const data = readFileSync(path);
+  if (data.subarray(0, 8).toString("binary") !== "\x89PNG\r\n\x1a\n") {
+    throw new Error(`${path} is not a PNG`);
+  }
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  let colorType = -1;
+  let compressed = Buffer.alloc(0);
+  while (offset < data.length) {
+    const length = data.readUInt32BE(offset);
+    const type = data.subarray(offset + 4, offset + 8).toString("ascii");
+    const chunk = data.subarray(offset + 8, offset + 8 + length);
+    offset += 12 + length;
+    if (type === "IHDR") {
+      width = chunk.readUInt32BE(0);
+      height = chunk.readUInt32BE(4);
+      colorType = chunk[9];
+    } else if (type === "IDAT") {
+      compressed = Buffer.concat([compressed, chunk]);
+    } else if (type === "IEND") {
+      break;
+    }
+  }
+  if (colorType !== 2) {
+    throw new Error(`${path} is not opaque RGB PNG-24 (color type ${colorType})`);
+  }
+  const raw = inflateSync(compressed);
+  const rowLength = width * 3;
+  const rgba = new Uint8Array(width * height * 4);
+  let cursor = 0;
+  let previous = Buffer.alloc(rowLength);
+  for (let y = 0; y < height; y += 1) {
+    const filter = raw[cursor];
+    cursor += 1;
+    const row = Buffer.from(raw.subarray(cursor, cursor + rowLength));
+    cursor += rowLength;
+    for (let x = 0; x < rowLength; x += 1) {
+      const left = x >= 3 ? row[x - 3] : 0;
+      const up = previous[x];
+      const upLeft = x >= 3 ? previous[x - 3] : 0;
+      if (filter === 1) row[x] = (row[x] + left) & 255;
+      else if (filter === 2) row[x] = (row[x] + up) & 255;
+      else if (filter === 3) row[x] = (row[x] + Math.floor((left + up) / 2)) & 255;
+      else if (filter === 4) row[x] = (row[x] + paeth(left, up, upLeft)) & 255;
+      else if (filter !== 0) throw new Error(`${path} uses PNG filter ${filter}`);
+    }
+    previous = row;
+    for (let x = 0; x < width; x += 1) {
+      const target = (y * width + x) * 4;
+      rgba[target] = row[x * 3];
+      rgba[target + 1] = row[x * 3 + 1];
+      rgba[target + 2] = row[x * 3 + 2];
+      rgba[target + 3] = 255;
+    }
+  }
+  return { width, height, rgba };
+}
+
+function isGlyphPixel(rgba, index, background) {
+  for (let channel = 0; channel < 3; channel += 1) {
+    if (Math.abs(rgba[index + channel] - background[channel]) > GLYPH_CHANNEL_DELTA) return true;
+  }
+  return false;
+}
+
+describe("PWA icon artwork", () => {
+  it("keeps every source SVG a full-bleed square", () => {
+    const sources = readdirSync(sourceDir).filter((name) => name.endsWith(".svg"));
+    expect(sources.length).toBeGreaterThan(0);
+    for (const name of sources) {
+      const markup = readFileSync(join(sourceDir, name), "utf8");
+      expect(() => assertFullBleedSquare(name, markup)).not.toThrow();
+    }
+  });
+
+  it("keeps maskable glyphs inside the 80% safe-zone circle", () => {
+    const maskable = readdirSync(pwaDir).filter((name) => name.endsWith("-512-maskable.png"));
+    expect(maskable.length).toBeGreaterThan(0);
+    const radius = (MASKABLE_CANVAS * SAFE_DIAMETER_RATIO) / 2 + CIRCLE_RADIUS_SLACK;
+    const center = (MASKABLE_CANVAS - 1) / 2;
+
+    for (const name of maskable) {
+      const { width, height, rgba } = decodePng(join(pwaDir, name));
+      expect(width).toBe(MASKABLE_CANVAS);
+      expect(height).toBe(MASKABLE_CANVAS);
+      const background = [rgba[0], rgba[1], rgba[2]];
+      const outside = [];
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          const index = (y * width + x) * 4;
+          if (!isGlyphPixel(rgba, index, background)) continue;
+          const dx = x - center;
+          const dy = y - center;
+          if (Math.hypot(dx, dy) > radius) outside.push(`${x},${y}`);
+        }
+      }
+      expect(outside, `${name} glyph pixels outside the safe circle`).toEqual([]);
+    }
+  });
+
+  it("writes opaque RGB PNGs at 180, 192, and 512", () => {
+    const apps = readdirSync(pwaDir)
+      .filter((name) => name.endsWith("-180.png"))
+      .map((name) => name.slice(0, -"-180.png".length));
+    expect(apps.length).toBeGreaterThan(0);
+    for (const app of apps) {
+      for (const size of [180, 192, 512]) {
+        const decoded = decodePng(join(pwaDir, `${app}-${size}.png`));
+        expect(decoded.width).toBe(size);
+        expect(decoded.height).toBe(size);
+      }
+    }
+  });
+});

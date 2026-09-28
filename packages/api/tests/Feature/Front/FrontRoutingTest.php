@@ -206,6 +206,14 @@ final class FrontRoutingTest extends TestCase
         $this->get('/pwa-icons/settings-180.png')
             ->assertOk()
             ->assertHeader('Content-Type', 'image/png');
+
+        $versionFile = dirname(__DIR__, 5).'/packages/apps/src/lib/pwa-icon-cache-version.json';
+        $version = json_decode((string) file_get_contents($versionFile), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertIsArray($version);
+
+        $this->get('/pwa-icons/settings-180.png?v='.$version['version'])
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png');
     }
 
     public function test_inbox_chime_path_serves_shell_asset(): void

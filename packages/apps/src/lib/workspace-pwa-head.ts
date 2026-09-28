@@ -1,12 +1,17 @@
 import { createPwaHead } from "@/lib/pwa-head";
+import pwaIconCacheVersion from "@/lib/pwa-icon-cache-version.json";
 import {
   workspaceAppIconAppleTouchSrc,
   workspaceAppIconUiSrc,
   type WorkspaceAppId,
 } from "@/lib/workspace-app-icons";
 
-/** Bump when launcher / apple-touch artwork changes to bust Safari icon cache. */
-export const WORKSPACE_PWA_ICON_CACHE_VERSION = "19";
+/**
+ * Bump `version` in `pwa-icon-cache-version.json` when launcher or install
+ * artwork changes, then re-run `scripts/generate-pwa-icons.mjs`. The generator
+ * reads that JSON; do not keep a second copy of the number here.
+ */
+export const WORKSPACE_PWA_ICON_CACHE_VERSION = pwaIconCacheVersion.version;
 
 /**
  * Installed window chrome for every suite PWA (`theme_color`, `background_color`,
@@ -114,7 +119,7 @@ export function createWorkspacePwaHead(
     description: overrides?.description ?? meta.description,
     themeColor: WORKSPACE_PWA_THEME_COLOR,
     appTitle: meta.appTitle,
-    manifest: meta.manifest,
+    manifest: cacheBust(meta.manifest),
     appleTouchIcon: workspacePwaAppleTouchSrc(app),
     iconSvg: workspacePwaIconSvgSrc(app),
   });
