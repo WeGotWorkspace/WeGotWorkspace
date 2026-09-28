@@ -2,6 +2,7 @@ import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { FolderInput, Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
+import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import type { BeginOptimisticUpdateFn } from "@/hooks/use-entity-batch-actions";
 import {
   ensureTrashFolder,
@@ -91,49 +92,6 @@ export function useDriveBatchActions({
     [currentUsername, groupRootNames, operations, setFiles, view],
   );
 
-  const runImmediateDriveBatch = useCallback(
-    ({
-      key,
-      toastMessage,
-      icon,
-      undoToastMessage,
-      rollback,
-      execute,
-      revert,
-    }: {
-      key: string;
-      toastMessage: string;
-      icon: React.ReactNode;
-      undoToastMessage: string;
-      rollback: () => void;
-      execute: (signal: AbortSignal) => Promise<void>;
-      revert?: () => Promise<void>;
-    }) => {
-      let completed = false;
-      const undo = () => {
-        rollback();
-        if (completed && operations && revert) {
-          void revert().catch(() => undefined);
-        }
-      };
-
-      runQueuedBatchAction({
-        queueMutation,
-        key,
-        toastMessage,
-        icon,
-        undoToastMessage,
-        execute: async (signal) => {
-          await execute(signal);
-          completed = true;
-        },
-        rollback: undo,
-        executeImmediately: true,
-      });
-    },
-    [operations, queueMutation],
-  );
-
   const moveToTrash = useCallback(
     (ids: string[]) => {
       if (ids.length === 0) return;
@@ -155,6 +113,7 @@ export function useDriveBatchActions({
       clearSelectionForIds(ids);
 
       runImmediateDriveBatch({
+        queueMutation,
         key: `drive:trash:${ids.slice().sort().join(",")}`,
         toastMessage: `Moved ${ids.length} to Trash`,
         icon: <Trash2 className="size-4" />,
@@ -208,8 +167,8 @@ export function useDriveBatchActions({
       files,
       groupRootNames,
       operations,
+      queueMutation,
       refreshOpenFolder,
-      runImmediateDriveBatch,
       selectedIds,
       setFiles,
       setSelectedIds,
@@ -231,6 +190,7 @@ export function useDriveBatchActions({
       clearSelectionForIds(ids);
 
       runImmediateDriveBatch({
+        queueMutation,
         key: `drive:delete:${ids.slice().sort().join(",")}`,
         toastMessage: `Deleted ${ids.length} file${ids.length === 1 ? "" : "s"}`,
         icon: <Trash2 className="size-4" />,
@@ -256,8 +216,8 @@ export function useDriveBatchActions({
       files,
       groupRootNames,
       operations,
+      queueMutation,
       refreshOpenFolder,
-      runImmediateDriveBatch,
       selectedIds,
       setFiles,
       setSelectedIds,
@@ -341,6 +301,7 @@ export function useDriveBatchActions({
       });
 
       runImmediateDriveBatch({
+        queueMutation,
         key: `drive:move:${parent}:${ids.slice().sort().join(",")}`,
         toastMessage: `Moved ${ids.length} to ${parent.split("/").pop()}`,
         icon: <FolderInput className="size-4" />,
@@ -390,8 +351,8 @@ export function useDriveBatchActions({
       files,
       groupRootNames,
       operations,
+      queueMutation,
       refreshOpenFolder,
-      runImmediateDriveBatch,
       setFiles,
       view,
     ],
