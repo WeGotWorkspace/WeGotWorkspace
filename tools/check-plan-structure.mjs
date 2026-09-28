@@ -16,7 +16,13 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const DEFERRAL = /\b(?:TBD|TODO|FIXME)\b|decide later|\?\?\?/i;
+const DEFERRAL_MARKERS = /\b(?:TBD|TODO|FIXME)\b|\?\?\?/;
+const DECIDE_LATER = /decide later/i;
+
+/** @param {string} prose */
+function hasDeferral(prose) {
+  return DEFERRAL_MARKERS.test(prose) || DECIDE_LATER.test(prose);
+}
 
 /** @param {string} text */
 function stripFences(text) {
@@ -139,11 +145,20 @@ export function topLevelBullets(body) {
   return bullets;
 }
 
+/** @param {string} blob */
+function hasRealPathCitation(blob) {
+  const pattern = /path:\s*(\S+)/g;
+  for (const match of blob.matchAll(pattern)) {
+    if (!match[1].includes("path/to/")) return true;
+  }
+  return false;
+}
+
 /** @param {{ line: string, nested: string[] }} bullet */
 export function bulletHasCitation(bullet) {
   const blob = [bullet.line, ...bullet.nested].join("\n");
   if (/\]\(/.test(blob) || /\]\[/.test(blob)) return true;
-  if (blob.includes("path:")) return true;
+  if (hasRealPathCitation(blob)) return true;
   if (bullet.nested.some((line) => /^\s*>/.test(line) || /^\s*```/.test(line))) return true;
   return false;
 }
@@ -226,7 +241,7 @@ export function evaluatePlans({ plans, diffPaths }) {
 
       for (const chunk of chunkBodies(plan.after)) {
         const prose = stripFences(chunk.body);
-        if (DEFERRAL.test(prose)) {
+        if (hasDeferral(prose)) {
           errors.push(`${rel}: deferral marker in ${chunk.title}`);
         }
       }
@@ -264,6 +279,21 @@ function git(args, cwd) {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
+}
+
+/**
+ * CI with no merge base must fail. A shallow checkout has no origin/main,
+ * and comparing to HEAD reports an empty diff as a pass.
+ *
+ * @param {string} base
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {string | null}
+ */
+export function ciBaseError(base, env = process.env) {
+  if (base === "HEAD" && env.CI) {
+    return "Plan structure check could not resolve a merge base. CI must fetch the base branch (fetch-depth: 0, or git fetch origin main). Refusing to report a pass against HEAD.";
+  }
+  return null;
 }
 
 /** @param {string} root */
@@ -308,6 +338,11 @@ function fileAtBase(root, base, rel) {
 
 function main() {
   const base = resolveBase(repoRoot);
+  const baseError = ciBaseError(base);
+  if (baseError) {
+    console.error(baseError);
+    process.exit(1);
+  }
   const diffPaths = changedPaths(repoRoot, base);
   const specPaths = diffPaths.filter(
     (rel) =>

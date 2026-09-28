@@ -32,7 +32,7 @@ Lightweight gate before handoff or PR — not a second copy of domain skills.
 
 - **Block:** spec drift unresolved (`DRIFT:` from [verify-issue](../verify-issue/SKILL.md)), unmet issue acceptance criteria, implementation outside spec non-goals, policy violation in new code, missing tests for new behavior, secrets, legacy API PHP, live HTTP in panes, Dutch prose in specs/plans/docs or in GitHub text the agent wrote ([english-only.md](../developer/english-only.md)).
 - **Block (plan proof):** Invariants `None` on a diff that leaves `docs/` and `.agents/`; an invariant row whose test file or assertion is missing on the PR tip; a What exists or Inputs claim whose citation does not support it; a security checklist left unanswered on a pre-auth path, a caller-input parser or upload, or a caller-derived cache or limiter key.
-- **Block (test order, review only):** new behavior or a bugfix whose test commit does not precede the fix commit. Check `git log`. Not a CI gate.
+- **Block (test order, review only):** new behavior or a bugfix whose test commit does not precede the fix commit. Check `git log`. Not a CI gate. A checker and the tests that pin that checker may share one commit when the PR says so. That exception is only for the checker.
 - **Block (apps hooks):** structural smells in **new or changed** hook files per [clean-code/smells.md](../clean-code/smells.md) React hooks section:
   - Hook body > ~200 lines, or > 4 `useEffect`s, or > 2 unrelated concerns (Yjs, TipTap, DOM, draft UI, etc.) → must split or document an exception in the PR/handoff (link a follow-up issue only with explicit user approval).
   - State + ref mirror for the same value without an explanatory comment → refactor before handoff.

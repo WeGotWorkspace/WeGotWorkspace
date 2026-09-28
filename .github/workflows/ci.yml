@@ -102,6 +102,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Plan-structure lint diffs against origin/main. Depth 1 leaves
+          # that ref missing and the check would pass on an empty diff.
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v6.1.0
 
