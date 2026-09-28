@@ -42,6 +42,7 @@ Agent skills live in [`.agents/skills/`](.agents/skills/) (tool-agnostic [Agent 
 | [apps-ui](.agents/skills/apps-ui/) | UI primitives, CSS variables, components, TypeScript |
 | [workspace](.agents/skills/workspace/) | *App, *Workspace, workspace shell — [workspace-shells.md](packages/apps/docs/workspace-shells.md), [feature-blueprint.md](.agents/skills/workspace/feature-blueprint.md), [collab-hooks.md](.agents/skills/workspace/collab-hooks.md) (text-editor-core / docs-collab), [apps-done-gate.md](.agents/skills/testing/apps-done-gate.md) |
 | [plan-feature](.agents/skills/plan-feature/) | Scoping features, parallel chunk plans; file issues via [issue-filing.md](.agents/skills/developer/issue-filing.md) |
+| [security](.agents/skills/security/) | Pre-auth paths, caller-input parsers and uploads, cache or limiter keys from caller input |
 | [verify-issue](.agents/skills/verify-issue/) | GitHub issue acceptance criteria — fetch, map, verify, report before handoff/PR |
 | [testing](.agents/skills/testing/) | PHPUnit, Vitest, e2e, done-when checklists |
 | [document](.agents/skills/document/) | README, API docs, dev-layout updates |

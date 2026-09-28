@@ -69,6 +69,7 @@ Before writing the plan:
 - [ ] Done gate if API involved: `packages/api/docs/api-done-gate.md`
 - [ ] Existing tests and stories for the area
 - [ ] `developer/multitask.md` if parallel execution expected
+- [ ] Active rows in [review-findings.md](../../review-findings.md) (empty `promoted-to`)
 
 ## Plan template
 
@@ -80,8 +81,17 @@ Write to `.agents/specs/<N>-<slug>/plan.md` (or inline for trivial non-`feat/` w
 ## Goal
 [One paragraph]
 
+## Budget
+Draws from budget X, displaces Y.
+
 ## Non-goals
 - …
+
+## What exists
+- [Claim about existing code, a dependency, or issue status.] `path: path/to/file.ext:1`
+
+## Considered
+Considered: [existing component], [alternative] — chosen or rejected because [reason].
 
 ## Affected packages
 - packages/api | packages/apps | docs
@@ -89,11 +99,18 @@ Write to `.agents/specs/<N>-<slug>/plan.md` (or inline for trivial non-`feat/` w
 ## Dependencies
 [Ordered list — what must complete before what]
 
+## Open decisions
+None — every choice is made. Or checkboxes tied to a chunk id while a choice is still open.
+
+## Invariants
+- [Behavior that must keep working]. A wrong change [what breaks]. Proof: `path: path/to/File.test.ts` assertion `test_name`, or a command that shows a silent miss.
+- After chunk A, main still works without the next chunk. Proof: the test or command named above.
+
 ## Chunks
 
 ### Chunk A: [name]
-- **Skill:** api | apps-ui | workspace | testing | document | storybook
-- **Inputs:** …
+- **Skill:** api | apps-ui | workspace | testing | document | storybook | security
+- **Inputs:** cited claim — `path: path/to/file.ext:1`
 - **Done when:** …
 - **Verify with:** command or checklist
 - **Parallel with:** chunk IDs or "none"
@@ -112,6 +129,27 @@ Optional final chunk after parallel builds merge:
 - …
 ```
 
+`None` under Invariants is valid only when the diff touches nothing outside `docs/` and `.agents/`. A happy-path test of the new behavior does not fill an invariant row. Infra and config often have no unit test; name the command that shows the silent miss instead. Hedges belong only under Open decisions. Do not start a chunk listed under an open checkbox. Chunk **Done when** and **Verify with** are decisions.
+
+Every claim about existing code, a dependency, or issue status under What exists or chunk **Inputs** cites a `path:line`, a command output line, or a `gh issue view` excerpt. An uncited premise is an open decision labeled "to verify". The citation has to support the claim. A link alone is not enough.
+
+On a rewrite, do not drop a previously decided section. If a heading from the previous revision is gone, add `## Removed since previous revision` and name it with a why, or `renamed <old> → <new>` when `<new>` is a heading in the new file. Keeping the old heading text does not replace that note. If an existing component already provides the behavior, say so instead of designing a second one. The Considered line is required on the first draft, not only on a rewrite.
+
+Do not record chunk completion in the plan or in `tasks.md`. The GitHub issue and the test or file that proves the claim are the record.
+
+## Self-review
+
+Run this before handing the plan off. It is a checklist, not a second document.
+
+- [ ] Active rows in [review-findings.md](../../review-findings.md) were read
+- [ ] What exists and Inputs: each premise has a source, and the source supports the claim
+- [ ] Invariants: behavior, break, and proof (test file + assertion, or a command). One row per chunk boundary. `None` only for a docs-and-agents diff
+- [ ] Open decisions is present (`None`, or checkboxes tied to a chunk id). No chunk starts while its checkbox is open
+- [ ] Considered line names the existing component and the alternative
+- [ ] Budget line names what this work draws from and what it displaces
+- [ ] Chunk sections contain no deferral markers (`TBD`, `TODO`, `FIXME`, `decide later`, `???`)
+- [ ] A rewrite names every removed or renamed heading under Removed since previous revision
+
 ## Parallelization
 
 **Canonical rules:** [developer/multitask.md](../developer/multitask.md) — safe vs sequential ordering, red-green vs verify chunks, handoffs, post-parallel sync. **Do not restate those rules in plans**; set **Parallel with** on each chunk instead.
@@ -125,5 +163,6 @@ Chunk `done-when` should reference:
 - Domain skill requirements (e.g. API feature tests, apps-ui CSS rules)
 - [clean-code](../clean-code/SKILL.md) smells checklist on touched files
 - [.agents/POLICY.md](../../POLICY.md) for policy vs enforced expectations
+- [security](../security/SKILL.md) when a chunk is a pre-auth path, an upload or parser of caller-supplied input, or a cache or limiter key derived from caller input
 
 **Collab / text-editor UI:** split plan chunks into **pure lib** (schema, map writes, editor actions — Vitest on exports) vs **orchestrator** (sub-hooks + thin public hook — RTL on contracts). See [workspace/collab-hooks.md](../workspace/collab-hooks.md).
