@@ -14,7 +14,7 @@ import type { DriveFile } from "@/drive-core/src/drive-models";
 import {
   ensureTrashFolder,
   listTrashEntryNames,
-  resolveTrashName,
+  resolveFreeName,
 } from "@/drive-core/src/drive-batch-utils";
 import {
   apiPathFromUiPath,
@@ -371,7 +371,7 @@ export function useDocsHomeActions({
         trashSnapshots = [];
         for (const file of rows) {
           const apiPath = normalizeApiVirtualPath(file.apiPath!);
-          const to = resolveTrashName(file.title, trashNames);
+          const to = resolveFreeName(file.title, trashNames);
           trashNames.add(to);
           await operations.renameItem({ destination, from: apiPath, to }, { signal });
           trashSnapshots.push({

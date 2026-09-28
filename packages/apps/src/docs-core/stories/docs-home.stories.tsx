@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
-import { resolveTrashName } from "@/drive-core/src/drive-batch-utils";
+import { resolveFreeName } from "@/drive-core/src/drive-batch-utils";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import {
   apiPathFromUiPath,
@@ -130,7 +130,7 @@ function docsTrashRenameExpectation() {
   return {
     from,
     destination: apiPathFromUiPath(DRIVE_TRASH_UI_PATH, username, groupRoots),
-    to: resolveTrashName(roadmap.title, new Set<string>()),
+    to: resolveFreeName(roadmap.title, new Set<string>()),
   };
 }
 

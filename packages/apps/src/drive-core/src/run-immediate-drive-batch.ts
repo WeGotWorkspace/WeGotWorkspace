@@ -10,12 +10,20 @@ export type ImmediateDriveBatchArgs = {
   icon: ReactNode;
   undoToastMessage: string;
   rollback: () => void;
-  execute: (signal: AbortSignal) => Promise<void>;
-  revert?: () => Promise<void>;
+  /**
+   * Rename files one at a time. Call `markCompleted` after each rename that reached the server
+   * so undo can revert those files when a later rename throws.
+   */
+  execute: (signal: AbortSignal, markCompleted: (key: string) => void) => Promise<void>;
+  /**
+   * Undo server renames for `completedKeys` only. Runs after `execute` resolves, or when it
+   * throws after at least one `markCompleted` call.
+   */
+  revert?: (completedKeys: ReadonlySet<string>) => Promise<void>;
   queueMutation: QueueMutation;
 };
 
-/** Queues a drive batch that runs immediately and only reverts after execute finishes. */
+/** Queues a drive batch that runs immediately and reverts files the server already renamed. */
 export function runImmediateDriveBatch({
   key,
   toastMessage,
@@ -26,11 +34,19 @@ export function runImmediateDriveBatch({
   revert,
   queueMutation,
 }: ImmediateDriveBatchArgs): void {
-  let completed = false;
+  const completedKeys = new Set<string>();
+  let undone = false;
   const undo = () => {
+    // onError already reverts completed files. The Undo button stays up for the
+    // undo window and would call this again.
+    if (undone) return;
+    undone = true;
     rollback();
-    if (!completed || !revert) return;
-    void revert().catch((error: unknown) => {
+    if (!revert || completedKeys.size === 0) return;
+    // Copy the set. Undo aborts execute, but a rename that already reached the
+    // server can still resolve and call markCompleted after this snapshot.
+    // That file is not reverted, and a later undo will not run either (#965).
+    void revert(new Set(completedKeys)).catch((error: unknown) => {
       console.error("Drive batch revert failed", error);
     });
   };
@@ -42,8 +58,9 @@ export function runImmediateDriveBatch({
     icon,
     undoToastMessage,
     execute: async (signal) => {
-      await execute(signal);
-      completed = true;
+      await execute(signal, (itemKey) => {
+        completedKeys.add(itemKey);
+      });
     },
     rollback: undo,
     executeImmediately: true,

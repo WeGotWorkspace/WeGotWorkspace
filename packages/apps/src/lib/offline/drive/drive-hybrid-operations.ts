@@ -2,7 +2,7 @@ import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import {
   ensureTrashFolder,
   listTrashEntryNames,
-  resolveTrashName,
+  resolveFreeName,
 } from "@/drive-core/src/drive-batch-utils";
 import { normalizeApiVirtualPath, isDriveTrashApiPath } from "@/drive-core/src/drive-path-utils";
 import type {
@@ -224,7 +224,7 @@ export function createHybridDriveOperations(
           let to = input.to;
           if (isTrash) {
             const trashNames = await listTrashEntryNames(live, destination, opts?.signal);
-            to = resolveTrashName(input.to, trashNames);
+            to = resolveFreeName(input.to, trashNames);
           }
           const data = await live.renameItem({ ...input, to }, opts);
           if (isTrash) {
@@ -241,7 +241,7 @@ export function createHybridDriveOperations(
       let to = input.to;
       if (isTrash) {
         const trashNames = await listTrashEntryNames(live, destination, opts?.signal);
-        to = resolveTrashName(input.to, trashNames);
+        to = resolveFreeName(input.to, trashNames);
         await applyOfflineTrashSideEffects(username, from);
       } else {
         await applyOfflineRenameSideEffects(username, from, destination, input.to);
