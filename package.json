@@ -62,10 +62,11 @@
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@commitlint/types": "^19.8.1",
+    "concurrently": "^9.1.2",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.1",
-    "concurrently": "^9.1.2",
-    "turbo": "^2.11.2"
+    "turbo": "^2.11.2",
+    "xml2js": "^0.6.2"
   },
   "pnpm": {
     "overrides": {
