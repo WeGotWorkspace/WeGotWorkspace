@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
@@ -61,7 +61,11 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     expect(screen.getByRole("heading", { name: "Profile" })).toBeTruthy();
 
     expect(screen.getByRole("button", { name: "Mail" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Notifications" })).toBeNull();
+    const sections = document.querySelector(".app-sidebar__sections");
+    expect(sections).toBeInstanceOf(HTMLElement);
+    expect(
+      within(sections as HTMLElement).queryByRole("button", { name: "Notifications" }),
+    ).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Mail" }));
     await waitFor(() => {

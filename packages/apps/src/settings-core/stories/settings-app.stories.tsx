@@ -18,17 +18,25 @@ const meta: Meta<typeof SettingsWorkspace> = {
 export default meta;
 type Story = StoryObj<typeof SettingsWorkspace>;
 
+function settingsNav(canvasElement: HTMLElement) {
+  const sections = canvasElement.querySelector(".app-sidebar__sections");
+  if (!(sections instanceof HTMLElement)) {
+    throw new Error("settings sidebar sections not found");
+  }
+  return within(sections);
+}
+
 export const Default: Story = {
   args: {
     ...createSettingsAppBootstrap(),
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByRole("heading", { name: "Account" })).toBeTruthy();
-    await expect(canvas.getByRole("heading", { name: "Apps" })).toBeTruthy();
-    await expect(canvas.getByRole("button", { name: "Mail" })).toBeTruthy();
-    await expect(canvas.queryByRole("button", { name: "Notifications" })).toBeNull();
-    await expect(canvas.getByRole("button", { name: "Connected assistants" })).toBeTruthy();
+    const nav = settingsNav(canvasElement);
+    await expect(nav.getByRole("heading", { name: "Account" })).toBeTruthy();
+    await expect(nav.getByRole("heading", { name: "Apps" })).toBeTruthy();
+    await expect(nav.getByRole("button", { name: "Mail" })).toBeTruthy();
+    await expect(nav.queryByRole("button", { name: "Notifications" })).toBeNull();
+    await expect(nav.getByRole("button", { name: "Connected assistants" })).toBeTruthy();
   },
 };
 
@@ -42,10 +50,11 @@ export const DisabledByAdmin: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.queryByRole("button", { name: "Connected assistants" })).toBeNull();
+    const nav = settingsNav(canvasElement);
+    await expect(nav.queryByRole("button", { name: "Connected assistants" })).toBeNull();
     await expect(canvas.queryByRole("textbox", { name: "Connection URL" })).toBeNull();
-    await expect(canvas.getByRole("button", { name: "Profile" })).toBeTruthy();
-    await expect(canvas.getByRole("button", { name: "Mail" })).toBeTruthy();
-    await expect(canvas.queryByRole("button", { name: "Notifications" })).toBeNull();
+    await expect(nav.getByRole("button", { name: "Profile" })).toBeTruthy();
+    await expect(nav.getByRole("button", { name: "Mail" })).toBeTruthy();
+    await expect(nav.queryByRole("button", { name: "Notifications" })).toBeNull();
   },
 };

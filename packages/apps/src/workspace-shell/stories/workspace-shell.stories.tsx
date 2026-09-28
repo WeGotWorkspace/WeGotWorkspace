@@ -13,6 +13,15 @@ import {
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
 
+const namedSession = {
+  ...mockWorkspaceSession,
+  user: {
+    ...mockWorkspaceSession.user,
+    displayName: "Demo User",
+    username: "demo.user",
+  },
+};
+
 const meta: Meta = {
   title: "Layout/Workspace Shell",
   tags: ["vitest-ci"],
@@ -65,7 +74,7 @@ export const AccountFooterWithSettings: Story = {
   render: () => (
     <div className="w-64 border">
       <WorkspaceSidebarAccountFooter
-        session={mockWorkspaceSession}
+        session={namedSession}
         settingsItem={{ label: "Settings", onClick: () => {} }}
         onLogout={() => {}}
       />
@@ -81,7 +90,7 @@ export const AccountFooterWithSettings: Story = {
 export const AccountFooterWithoutSettings: Story = {
   render: () => (
     <div className="w-64 border">
-      <WorkspaceSidebarAccountFooter session={mockWorkspaceSession} onLogout={() => {}} />
+      <WorkspaceSidebarAccountFooter session={namedSession} onLogout={() => {}} />
     </div>
   ),
   play: async ({ canvasElement }) => {

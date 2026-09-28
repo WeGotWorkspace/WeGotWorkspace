@@ -6,6 +6,15 @@ import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-se
 
 registerBuiltinSettings();
 
+const namedSession = {
+  ...mockWorkspaceSession,
+  user: {
+    ...mockWorkspaceSession.user,
+    displayName: "Demo User",
+    username: "demo.user",
+  },
+};
+
 const meta: Meta<typeof WorkspaceAppSettingsFooter> = {
   title: "Features/Settings/Dialog",
   component: WorkspaceAppSettingsFooter,
@@ -21,7 +30,7 @@ type Story = StoryObj<typeof WorkspaceAppSettingsFooter>;
 export const MailPanel: Story = {
   args: {
     appId: "mail",
-    session: mockWorkspaceSession,
+    session: namedSession,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -35,7 +44,7 @@ export const MailPanel: Story = {
 export const HiddenForNotes: Story = {
   args: {
     appId: "notes",
-    session: mockWorkspaceSession,
+    session: namedSession,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
