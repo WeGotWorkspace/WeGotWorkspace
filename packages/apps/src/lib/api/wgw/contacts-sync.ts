@@ -15,6 +15,7 @@ import {
   ingestRemoteAddressBookDestroyed,
   ingestRemoteContactCard,
   ingestRemoteContactCardDestroyed,
+  reconcileAddressBookResync,
 } from "@/lib/offline/contacts-jmap-inbound";
 import {
   listCachedAddressBookIds,
@@ -74,6 +75,7 @@ async function fullResyncBook(
     for (const card of list) {
       await ingestRemoteContactCard(username, card);
     }
+    await reconcileAddressBookResync(username, addressBookId, list);
     await writeSyncToken(username, addressBookId, await currentTypeState("ContactCard"));
   } catch (error) {
     if (isContactsNotFound(error)) {

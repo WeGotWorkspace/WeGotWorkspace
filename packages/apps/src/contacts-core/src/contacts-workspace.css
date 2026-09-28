@@ -119,6 +119,37 @@
   @apply flex min-h-48 items-center justify-center;
 }
 
+/**
+ * Windowed list: fixed row block sizes in rem (see contacts-list-window.ts).
+ * Keep md padding equal to py-3. JS converts rem with the live root font
+ * size so accessibility font settings stay aligned. Browser zoom scales
+ * CSS and scroll together. Overflow clips variable subtitle/body lines.
+ */
+.contacts-list-panel__list {
+  --contacts-list-card-row-size: 5.5rem;
+  --contacts-list-header-row-size: 2.25rem;
+  --list-item-intrinsic-block-size: var(--contacts-list-card-row-size);
+}
+
+.contacts-list-panel__list .list-item__button {
+  box-sizing: border-box;
+  block-size: var(--contacts-list-card-row-size);
+  max-block-size: var(--contacts-list-card-row-size);
+  padding-block: 0.75rem;
+  overflow: hidden;
+}
+
+.contacts-list-panel__list .list-sticky-header {
+  box-sizing: border-box;
+  block-size: var(--contacts-list-header-row-size);
+  max-block-size: var(--contacts-list-header-row-size);
+  overflow: hidden;
+}
+
+.contacts-list-panel__spacer {
+  @apply block w-full shrink-0;
+}
+
 .contacts-workspace .collection-list-drop-zone .file-drop-overlay {
   z-index: 20;
 }

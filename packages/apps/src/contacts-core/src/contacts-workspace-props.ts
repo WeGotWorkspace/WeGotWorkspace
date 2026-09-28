@@ -12,6 +12,11 @@ export type ContactsWorkspaceProps = {
   listLoading?: boolean;
   /** Manual refresh / reconnect in flight — button busy only; list stays visible. */
   listRefreshing?: boolean;
+  /**
+   * Cold download still in progress. The list stays visible, but create, edit,
+   * and delete stay closed until the snapshot is complete.
+   */
+  mutationsLocked?: boolean;
   /** Refetch address books and cards without reloading the whole app shell. */
   onRefreshList?: () => void;
   /** Invoked when the user chooses log out; navigation is owned by the app shell. */

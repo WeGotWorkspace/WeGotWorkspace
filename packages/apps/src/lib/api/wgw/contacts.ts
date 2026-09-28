@@ -320,8 +320,27 @@ export async function readContactCardImportResponse(
   return { list: [], errors: [] };
 }
 
+/**
+ * State strings to store for the next `/changes` call.
+ * ContactCard state is taken at query time (empty ContactCard/get in the
+ * same batch), not from the last card page. A change while pages download
+ * must stay visible to `/changes`. Replaying a change is safe; skipping
+ * one is not.
+ */
+export type ContactsBootstrapSyncAnchor = {
+  addressBookState: string;
+  contactCardState: string;
+};
+
+export type ContactsLiveBootstrap = ContactsAppBootstrap & {
+  syncAnchor?: ContactsBootstrapSyncAnchor;
+};
+
 /** Load address books and cards from the configured WeGotWorkspace API. */
-export async function fetchContactsLiveBootstrap(): Promise<ContactsAppBootstrap> {
+export async function fetchContactsLiveBootstrap(options?: {
+  /** First card page (and each later page) so the list can open before the last request. */
+  onProgress?: (bootstrap: ContactsAppBootstrap) => void;
+}): Promise<ContactsLiveBootstrap> {
   const session = await wgwFetchPrincipal();
 
   const settingsRes = await wgwFetch("/settings/state");
@@ -335,7 +354,20 @@ export async function fetchContactsLiveBootstrap(): Promise<ContactsAppBootstrap
   }
 
   const { contacts, accountId } = await connectedContacts();
-  const { books, cards } = await contacts.getAddressBooksAndCards(accountId);
+  const { books, cards, contactCardStateAtQuery } = await contacts.getAddressBooksAndCards(
+    accountId,
+    {
+      onPage: (snapshot) => {
+        options?.onProgress?.({
+          session,
+          data: {
+            addressBooks: snapshot.books.list.map(toAddressBook),
+            cards: snapshot.cards.list.map(toContactCard),
+          },
+        });
+      },
+    },
+  );
 
   return {
     data: {
@@ -343,5 +375,9 @@ export async function fetchContactsLiveBootstrap(): Promise<ContactsAppBootstrap
       cards: cards.list.map(toContactCard),
     },
     session,
+    syncAnchor: {
+      addressBookState: books.state,
+      contactCardState: contactCardStateAtQuery,
+    },
   };
 }
