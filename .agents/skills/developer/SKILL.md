@@ -48,6 +48,7 @@ See [dev-environment](../dev-environment/SKILL.md) for commands, URLs, and troub
 6. **New top-level SPA routes need API allowlist** — adding `/share`, `/tasks`, or any new first path segment in `wegotworkspace-routes.tsx` requires the same prefix on `UiStaticServer` + `FrontRoutingTest` (otherwise production falls through to SabreDAV). Architecture test `SpaShellRouteAllowlistTest` enforces the contract; Playwright e2e stays out of done gates.
 7. **English-only artifacts** — specs, plans, docs, GitHub issues/Goals/comments are English even when the user writes Dutch → [english-only.md](english-only.md)
 8. **Review findings before planning or a security or invariant chunk** — read rows in [review-findings.md](../../review-findings.md) whose `promoted-to` is empty. A plan review counts as review feedback. Append one English line per new recurring finding, then fix. Promote a repeated finding into a skill or lint. Promote a security finding on the first occurrence.
+9. **Counted source files stay at or under 800 lines** — A new counted source file over 800 lines is a merge block unless its baseline entry carries an approved reason. A baselined file is a merge block when its line count grows, or when it shrinks and the stored integer was not lowered. Hook files still follow the stricter ~200-line review block.
 
 ## Multitask
 

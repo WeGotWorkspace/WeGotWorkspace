@@ -18,6 +18,10 @@ function turbo(task) {
 
 /** @type {Array<{ label: string, cmd: string[], env?: Record<string, string>, ciOnly?: boolean }>} */
 const steps = [
+  {
+    label: "File-size ratchet",
+    cmd: ["node", "../../tools/file-size-ratchet.mjs", "check", "packages/apps/src"],
+  },
   { label: "Typecheck", cmd: ["pnpm", "typecheck"] },
   { label: "UI ↔ OpenAPI contract (Vitest)", cmd: turbo("test:contract") },
   { label: "Vitest (unit)", cmd: turbo("test:unit"), ciOnly: true },
