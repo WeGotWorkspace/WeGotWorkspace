@@ -110,7 +110,7 @@ function extractGhPrBody(command) {
 
 function stripQuotedAndHeredocs(source) {
   const withoutHeredocs = source.replace(
-    /<<-?\s*['"]?\w+['"]?\r?\n[\s\S]*?\r?\n\w+\b/g,
+    /<<-?\s*['"]?(\w+)['"]?\r?\n[\s\S]*?\r?\n\1\b/g,
     " ",
   );
   return withoutHeredocs
@@ -124,7 +124,7 @@ if (!/\bgh\s+pr\s+(create|edit)\b/.test(ghPrPrefix)) {
   process.exit(0);
 }
 
-const draftFlag = /(?:^|\s)(?:--draft|-d)(?=\s|$)/;
+const draftFlag = /(?:^|\s)(?:--draft(?:=\S+)?|-d)(?=\s|$)/;
 if (/\bgh\s+pr\s+create\b/.test(ghPrPrefix) && !draftFlag.test(stripQuotedAndHeredocs(command))) {
   console.log(
     JSON.stringify({

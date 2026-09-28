@@ -278,7 +278,7 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           trivyignores: .trivyignore
-          exit-code: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+          exit-code: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '0' || '1' }}
           limit-severities-for-sarif: true
 
       - name: Upload Composer SARIF to Security tab
