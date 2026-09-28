@@ -3,8 +3,9 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { showToast } = vi.hoisted(() => ({
+const { showToast, showErrorToast } = vi.hoisted(() => ({
   showToast: vi.fn(() => "toast-1"),
+  showErrorToast: vi.fn(() => "toast-err"),
 }));
 
 vi.mock("@/hooks/use-app-toast", () => ({
@@ -12,7 +13,7 @@ vi.mock("@/hooks/use-app-toast", () => ({
     show: showToast,
     dismiss: vi.fn(),
     showSuccess: vi.fn(),
-    showError: vi.fn(),
+    showError: showErrorToast,
   }),
 }));
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
@@ -334,6 +335,61 @@ describe("useDriveBatchActions", () => {
     expect(showToast).toHaveBeenCalledWith("Restored 2 files under a new name");
   });
 
+  it("keeps restoring later files when one restore fails and reloads the folder", async () => {
+    const operations = createOperations();
+    vi.mocked(operations.listAllDirectoryEntries!).mockImplementation(async (at: string) => {
+      if (at === "/users/alice") return [listedFile("/users/alice/notes.md")];
+      return [];
+    });
+    vi.mocked(operations.renameItem)
+      .mockResolvedValueOnce(EMPTY_DRIVE_UI)
+      .mockResolvedValueOnce(EMPTY_DRIVE_UI)
+      .mockResolvedValueOnce(EMPTY_DRIVE_UI)
+      .mockRejectedValueOnce(new Error("restore failed"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { result } = renderActions({
+      operations,
+      files: [driveFile(), driveFile({ id: "other", title: "other.md" })],
+      selectedIds: [NOTES_ID, "other"],
+    });
+
+    act(() => result.current.moveToTrash([NOTES_ID, "other"]));
+    await act(async () => {
+      await queued().execute(new AbortController().signal);
+    });
+    const refreshesBeforeUndo = vi.mocked(operations.changeDir).mock.calls.length;
+
+    await act(async () => {
+      queued().undo();
+    });
+
+    expect(operations.renameItem).toHaveBeenLastCalledWith({
+      destination: "/users/alice",
+      from: "/users/alice/.Trash/other.md",
+      to: "other.md",
+    });
+    expect(showToast).toHaveBeenCalledWith("Restored “notes.md” as “notes 2.md”");
+    expect(showErrorToast).toHaveBeenCalledWith("Couldn't restore 1 file");
+    expect(vi.mocked(operations.changeDir).mock.calls.length).toBeGreaterThan(refreshesBeforeUndo);
+    consoleError.mockRestore();
+  });
+
+  it("does not fail the trash batch when the folder refresh fails", async () => {
+    const operations = createOperations();
+    vi.mocked(operations.changeDir).mockRejectedValue(new Error("refresh failed"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { result } = renderActions({ operations });
+
+    act(() => result.current.moveToTrash([NOTES_ID]));
+    await act(async () => {
+      await queued().execute(new AbortController().signal);
+    });
+
+    expect(operations.renameItem).toHaveBeenCalledTimes(1);
+    expect(consoleError).toHaveBeenCalledWith("Drive folder refresh failed", expect.any(Error));
+    consoleError.mockRestore();
+  });
+
   it("renames into the destination folder and renames back when undo follows a finished move", async () => {
     const operations = createOperations();
     let refreshes = 0;
@@ -443,6 +499,22 @@ describe("useDriveBatchActions", () => {
       to: "notes 2.md",
     });
     expect(showToast).toHaveBeenCalledWith("Restored “notes.md” as “notes 2.md”");
+  });
+
+  it("does not fail the move batch when the folder refresh fails", async () => {
+    const operations = createOperations();
+    vi.mocked(operations.changeDir).mockRejectedValue(new Error("refresh failed"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { result } = renderActions({ operations });
+
+    act(() => result.current.moveToFolder([NOTES_ID], "My Drive/Projects"));
+    await act(async () => {
+      await queued().execute(new AbortController().signal);
+    });
+
+    expect(operations.renameItem).toHaveBeenCalledTimes(1);
+    expect(consoleError).toHaveBeenCalledWith("Drive folder refresh failed", expect.any(Error));
+    consoleError.mockRestore();
   });
 
   it("keeps a local trash move when there is no drive API", async () => {

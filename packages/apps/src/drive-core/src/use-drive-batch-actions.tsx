@@ -6,12 +6,15 @@ import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
 import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import type { BeginOptimisticUpdateFn } from "@/hooks/use-entity-batch-actions";
 import {
-  claimDirectoryEntryName,
   ensureTrashFolder,
   listTrashEntryNames,
   reloadDriveFolderListing,
+  restoreCompletedDriveMoves,
+  restoredDriveNamesMessage,
   resolveDriveFileApiPath,
   resolveFreeName,
+  unrestoredDriveFilesMessage,
+  type DriveRestoreMove,
 } from "@/drive-core/src/drive-batch-utils";
 import { apiPathFromUiPath, DRIVE_TRASH_UI_PATH } from "@/drive-core/src/drive-path-utils";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
@@ -19,14 +22,49 @@ import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 
 type QueueMutation = (args: DeferredApiWriteArgs) => void;
 
-type RestoredName = { title: string; to: string };
-
-function restoredNamesMessage(restored: RestoredName[]): string | undefined {
-  if (restored.length === 1) {
-    return `Restored “${restored[0]?.title}” as “${restored[0]?.to}”`;
+/** A failed folder reload is not a failed batch. The renames already reached the server. */
+async function refreshOpenFolderAfterBatch(
+  refresh: (signal?: AbortSignal) => Promise<void>,
+  signal: AbortSignal,
+): Promise<void> {
+  try {
+    await refresh(signal);
+  } catch (error) {
+    console.error("Drive folder refresh failed", error);
   }
-  if (restored.length > 1) return `Restored ${restored.length} files under a new name`;
-  return undefined;
+}
+
+async function finishDriveRestore(input: {
+  operations: DriveAPIOperations;
+  moves: readonly DriveRestoreMove[];
+  completedKeys: ReadonlySet<string>;
+  username: string;
+  groupRoots: Set<string>;
+  folderPath: string;
+  setFiles: Dispatch<SetStateAction<DriveFile[]>>;
+  show: (message: string) => void;
+  showError: (message: string) => void;
+}): Promise<void> {
+  try {
+    const { restored, failures } = await restoreCompletedDriveMoves({
+      operations: input.operations,
+      moves: input.moves,
+      completedKeys: input.completedKeys,
+      username: input.username,
+      groupRoots: input.groupRoots,
+    });
+    const restoredMessage = restoredDriveNamesMessage(restored);
+    if (restoredMessage) input.show(restoredMessage);
+    if (failures > 0) input.showError(unrestoredDriveFilesMessage(failures));
+  } finally {
+    await reloadDriveFolderListing(
+      input.operations,
+      input.folderPath,
+      input.username,
+      input.groupRoots,
+      input.setFiles,
+    );
+  }
 }
 
 type MoveSnapshot = {
@@ -77,7 +115,7 @@ export function useDriveBatchActions({
   view,
   viewType,
 }: UseDriveBatchActionsArgs) {
-  const { show } = useAppToast();
+  const { show, showError } = useAppToast();
   const clearSelectionForIds = useCallback(
     (ids: string[]) => {
       setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
@@ -154,43 +192,35 @@ export function useDriveBatchActions({
             await operations.renameItem({ destination, from, to }, { signal });
             markCompleted(file.id);
           }
-          await refreshOpenFolder(signal);
+          await refreshOpenFolderAfterBatch(refreshOpenFolder, signal);
         },
         revert: async (completedKeys) => {
           if (!operations) return;
-          const takenByDirectory = new Map<string, Set<string>>();
-          const restored: RestoredName[] = [];
-          for (const { file, previousParent } of snapshots) {
-            if (!completedKeys.has(file.id)) continue;
-            const from = resolveDriveFileApiPath(
-              {
-                ...file,
-                apiPath: undefined,
-                parent: DRIVE_TRASH_UI_PATH,
-                title: trashedNameById.get(file.id) ?? file.title,
-              },
-              currentUsername,
-              groupRootNames,
-            );
-            const destination = apiPathFromUiPath(previousParent, currentUsername, groupRootNames);
-            const to = await claimDirectoryEntryName(
-              operations,
-              destination,
-              file.title,
-              takenByDirectory,
-            );
-            await operations.renameItem({ destination, from, to });
-            if (to !== file.title) restored.push({ title: file.title, to });
-          }
-          const restoredMessage = restoredNamesMessage(restored);
-          if (restoredMessage) show(restoredMessage);
-          await reloadDriveFolderListing(
+          await finishDriveRestore({
             operations,
-            view.type === "folder" ? view.path : "My Drive",
-            currentUsername,
-            groupRootNames,
+            completedKeys,
+            username: currentUsername,
+            groupRoots: groupRootNames,
+            folderPath: view.type === "folder" ? view.path : "My Drive",
             setFiles,
-          );
+            show,
+            showError,
+            moves: snapshots.map(({ file, previousParent }) => ({
+              id: file.id,
+              title: file.title,
+              previousParent,
+              from: resolveDriveFileApiPath(
+                {
+                  ...file,
+                  apiPath: undefined,
+                  parent: DRIVE_TRASH_UI_PATH,
+                  title: trashedNameById.get(file.id) ?? file.title,
+                },
+                currentUsername,
+                groupRootNames,
+              ),
+            })),
+          });
         },
       });
     },
@@ -207,6 +237,7 @@ export function useDriveBatchActions({
       setSelectedIds,
       setSelectionMode,
       show,
+      showError,
       view,
     ],
   );
@@ -240,7 +271,7 @@ export function useDriveBatchActions({
             resolveDriveFileApiPath(file, currentUsername, groupRootNames),
           );
           await operations.deleteItems(paths, { signal });
-          await refreshOpenFolder(signal);
+          await refreshOpenFolderAfterBatch(refreshOpenFolder, signal);
         },
       });
     },
@@ -349,46 +380,30 @@ export function useDriveBatchActions({
             await operations.renameItem({ destination, from, to: file.title }, { signal });
             markCompleted(file.id);
           }
-          await refreshOpenFolder(signal);
+          await refreshOpenFolderAfterBatch(refreshOpenFolder, signal);
         },
         revert: async (completedKeys) => {
           if (!operations) return;
-          const takenByDirectory = new Map<string, Set<string>>();
-          const restored: RestoredName[] = [];
-          for (const { file, previousParent } of snapshots) {
-            if (!completedKeys.has(file.id)) continue;
-            const from = resolveDriveFileApiPath(
-              { ...file, apiPath: undefined, parent },
-              currentUsername,
-              groupRootNames,
-            );
-            const restoreDestination = apiPathFromUiPath(
-              previousParent,
-              currentUsername,
-              groupRootNames,
-            );
-            const to = await claimDirectoryEntryName(
-              operations,
-              restoreDestination,
-              file.title,
-              takenByDirectory,
-            );
-            await operations.renameItem({
-              destination: restoreDestination,
-              from,
-              to,
-            });
-            if (to !== file.title) restored.push({ title: file.title, to });
-          }
-          const restoredMessage = restoredNamesMessage(restored);
-          if (restoredMessage) show(restoredMessage);
-          await reloadDriveFolderListing(
+          await finishDriveRestore({
             operations,
-            view.type === "folder" ? view.path : "My Drive",
-            currentUsername,
-            groupRootNames,
+            completedKeys,
+            username: currentUsername,
+            groupRoots: groupRootNames,
+            folderPath: view.type === "folder" ? view.path : "My Drive",
             setFiles,
-          );
+            show,
+            showError,
+            moves: snapshots.map(({ file, previousParent }) => ({
+              id: file.id,
+              title: file.title,
+              previousParent,
+              from: resolveDriveFileApiPath(
+                { ...file, apiPath: undefined, parent },
+                currentUsername,
+                groupRootNames,
+              ),
+            })),
+          });
         },
       });
     },
@@ -402,6 +417,7 @@ export function useDriveBatchActions({
       refreshOpenFolder,
       setFiles,
       show,
+      showError,
       view,
     ],
   );

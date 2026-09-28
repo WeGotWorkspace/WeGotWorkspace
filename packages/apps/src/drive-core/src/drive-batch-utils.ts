@@ -139,6 +139,65 @@ export async function claimDirectoryEntryName(
   return name;
 }
 
+export type RestoredDriveName = { title: string; to: string };
+
+export function restoredDriveNamesMessage(
+  restored: readonly RestoredDriveName[],
+): string | undefined {
+  if (restored.length === 1) {
+    const row = restored[0];
+    if (!row) return undefined;
+    return `Restored “${row.title}” as “${row.to}”`;
+  }
+  if (restored.length > 1) return `Restored ${restored.length} files under a new name`;
+  return undefined;
+}
+
+export function unrestoredDriveFilesMessage(count: number): string {
+  return `Couldn't restore ${count} file${count === 1 ? "" : "s"}`;
+}
+
+export type DriveRestoreMove = {
+  id: string;
+  title: string;
+  from: string;
+  previousParent: string;
+};
+
+/**
+ * Put each completed move back. A listing or rename error is counted and the
+ * next file still runs, so one failure does not leave the rest unrestored.
+ */
+export async function restoreCompletedDriveMoves(input: {
+  operations: DriveAPIOperations;
+  moves: readonly DriveRestoreMove[];
+  completedKeys: ReadonlySet<string>;
+  username: string;
+  groupRoots: Set<string>;
+}): Promise<{ restored: RestoredDriveName[]; failures: number }> {
+  const takenByDirectory = new Map<string, Set<string>>();
+  const restored: RestoredDriveName[] = [];
+  let failures = 0;
+  for (const move of input.moves) {
+    if (!input.completedKeys.has(move.id)) continue;
+    try {
+      const destination = apiPathFromUiPath(move.previousParent, input.username, input.groupRoots);
+      const to = await claimDirectoryEntryName(
+        input.operations,
+        destination,
+        move.title,
+        takenByDirectory,
+      );
+      await input.operations.renameItem({ destination, from: move.from, to });
+      if (to !== move.title) restored.push({ title: move.title, to });
+    } catch (error) {
+      failures += 1;
+      console.error("Drive batch restore failed", error);
+    }
+  }
+  return { restored, failures };
+}
+
 export async function ensureTrashFolder(
   operations: DriveAPIOperations,
   username: string,

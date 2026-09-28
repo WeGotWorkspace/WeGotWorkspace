@@ -14,6 +14,7 @@ import {
   mergeDriveFolderListing,
   resolveDriveFileApiPath,
   resolveFreeName,
+  restoreCompletedDriveMoves,
 } from "@/drive-core/src/drive-batch-utils";
 import { DRIVE_TRASH_DIR_NAME } from "@/drive-core/src/drive-path-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
@@ -221,5 +222,83 @@ describe("claimDirectoryEntryName", () => {
     await expect(
       claimDirectoryEntryName(operations, "/users/alice", "notes.md", new Map()),
     ).resolves.toBe("notes.md");
+  });
+});
+
+describe("restoreCompletedDriveMoves", () => {
+  beforeEach(() => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+  });
+
+  it("restores the next file when one rename fails", async () => {
+    const operations = {
+      listAllDirectoryEntries: vi.fn(async () => []),
+      renameItem: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("rename failed"))
+        .mockResolvedValueOnce(undefined),
+    } as unknown as DriveAPIOperations;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const result = await restoreCompletedDriveMoves({
+      operations,
+      username: USER,
+      groupRoots,
+      completedKeys: new Set(["a", "b"]),
+      moves: [
+        {
+          id: "a",
+          title: "a.md",
+          from: "/users/alice/.Trash/a.md",
+          previousParent: "My Drive",
+        },
+        {
+          id: "b",
+          title: "b.md",
+          from: "/users/alice/.Trash/b.md",
+          previousParent: "My Drive",
+        },
+      ],
+    });
+
+    expect(result).toEqual({ restored: [], failures: 1 });
+    expect(operations.renameItem).toHaveBeenNthCalledWith(2, {
+      destination: "/users/alice",
+      from: "/users/alice/.Trash/b.md",
+      to: "b.md",
+    });
+    expect(consoleError).toHaveBeenCalledWith("Drive batch restore failed", expect.any(Error));
+    consoleError.mockRestore();
+  });
+
+  it("skips files the server never renamed", async () => {
+    const operations = {
+      listAllDirectoryEntries: vi.fn(async () => []),
+      renameItem: vi.fn(async () => undefined),
+    } as unknown as DriveAPIOperations;
+
+    const result = await restoreCompletedDriveMoves({
+      operations,
+      username: USER,
+      groupRoots,
+      completedKeys: new Set(["a"]),
+      moves: [
+        {
+          id: "a",
+          title: "a.md",
+          from: "/users/alice/.Trash/a.md",
+          previousParent: "My Drive",
+        },
+        {
+          id: "b",
+          title: "b.md",
+          from: "/users/alice/.Trash/b.md",
+          previousParent: "My Drive",
+        },
+      ],
+    });
+
+    expect(result.failures).toBe(0);
+    expect(operations.renameItem).toHaveBeenCalledTimes(1);
   });
 });
