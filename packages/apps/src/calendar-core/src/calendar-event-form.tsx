@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CircleDot, Link2, MapPin } from "lucide-react";
+import { Link2, MapPin } from "lucide-react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
 import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-link";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import {
   isSessionEventInvitee,
@@ -27,8 +26,8 @@ import {
   patchCalendarEventForm,
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
-import { type CalendarFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
 import { CalendarEventFormRecurrence } from "@/calendar-core/src/calendar-event-form-recurrence";
+import { CalendarEventFormShowAs } from "@/calendar-core/src/calendar-event-form-show-as";
 import { CalendarEventFormTitle } from "@/calendar-core/src/calendar-event-form-title";
 import { CalendarEventFormWhen } from "@/calendar-core/src/calendar-event-form-when";
 import { isCalendarEventFormReadOnly } from "@/calendar-core/src/calendar-collection-write";
@@ -326,30 +325,13 @@ export function CalendarEventForm({
           )}
 
           {layout?.hideShowAs ? null : (
-            <FieldLabelRow
-              className="calendar-event-dialog__field calendar-event-dialog__field--availability"
-              label={labels.eventShowAs}
-              labelMode="icon"
-              icon={fieldIcon(<CircleDot className="size-3.5" aria-hidden />)}
-            >
-              <Select
-                value={form.freeBusyStatus}
-                onValueChange={(value) => set("freeBusyStatus", value as CalendarFreeBusyStatus)}
-                disabled={fieldsDisabled}
-              >
-                <SelectTrigger
-                  size={controlSize}
-                  className="calendar-event-dialog__show-as-trigger"
-                  aria-label={labels.eventShowAs}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="busy">{labels.eventShowAsBusy}</SelectItem>
-                  <SelectItem value="free">{labels.eventShowAsFree}</SelectItem>
-                </SelectContent>
-              </Select>
-            </FieldLabelRow>
+            <CalendarEventFormShowAs
+              form={form}
+              labels={labels}
+              controlSize={controlSize}
+              disabled={fieldsDisabled}
+              onFieldChange={set}
+            />
           )}
 
           <CalendarEventFormSecondary

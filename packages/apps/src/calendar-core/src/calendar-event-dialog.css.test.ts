@@ -11,6 +11,7 @@ const repeatTsx = readFileSync(join(here, "calendar-event-form-recurrence.tsx"),
 const footerTsx = readFileSync(join(here, "calendar-event-form-footer.tsx"), "utf8");
 const secondaryTsx = readFileSync(join(here, "calendar-event-form-secondary.tsx"), "utf8");
 const titleTsx = readFileSync(join(here, "calendar-event-form-title.tsx"), "utf8");
+const showAsTsx = readFileSync(join(here, "calendar-event-form-show-as.tsx"), "utf8");
 const dialogTsx = readFileSync(join(here, "calendar-event-dialog.tsx"), "utf8");
 const recurrenceTsx = readFileSync(join(here, "calendar-recurrence-scope-dialog.tsx"), "utf8");
 
@@ -94,7 +95,9 @@ describe("calendar event dialog shared form controls", () => {
   it("uses shared Input, Textarea, Select, LocaleDatePicker, and Button masters", () => {
     expect(formTsx).toMatch(/from "@\/ui\/input"/);
     expect(secondaryTsx).toMatch(/from "@\/ui\/textarea"/);
-    expect(formTsx).toMatch(/from "@\/ui\/select"/);
+    expect(whenTsx).toMatch(/from "@\/ui\/select"/);
+    expect(repeatTsx).toMatch(/from "@\/ui\/select"/);
+    expect(showAsTsx).toMatch(/from "@\/ui\/select"/);
     expect(whenTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
     expect(repeatTsx).toMatch(/from "@\/ui\/locale-date-picker"/);
     expect(footerTsx).toMatch(/from "@\/button\/src\/button"/);
