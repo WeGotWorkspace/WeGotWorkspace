@@ -9,8 +9,7 @@ const calendarElementsRoot = join(here, "..");
 const TAILWIND_IMPORT = /@import\s+["']tailwindcss["']/;
 /** Bare `:host {` (not `:host(.x)` / `:host .child`). */
 const BARE_HOST_RULE = /:host\s*\{/;
-const HARDCODED_SYSTEM_SANS =
-  /font-family\s*:[^;{]*(?:ui-sans-serif|system-ui)(?![^;]*\))/;
+const HARDCODED_SYSTEM_SANS = /font-family\s*:[^;{]*(?:ui-sans-serif|system-ui)(?![^;]*\))/;
 
 /** Unlayered :host restores brand token (Tailwind theme otherwise sets ui-sans-serif on :host). */
 const HOST_FONT_SANS_TOKEN =
@@ -125,10 +124,7 @@ describe("calendar shadow product sans (SST)", () => {
   });
 
   it("wgw-calendar-surface.ts restores --font-sans and font-family on :host", () => {
-    const ts = readFileSync(
-      join(calendarElementsRoot, "wgw/wgw-calendar-surface.ts"),
-      "utf8",
-    );
+    const ts = readFileSync(join(calendarElementsRoot, "wgw/wgw-calendar-surface.ts"), "utf8");
     expect(ts).toMatch(/:host\s*\{[\s\S]*?--font-sans:\s*var\(--font-we-got-sans\)/);
     expect(ts).toMatch(/:host\s*\{[\s\S]*?font-family:\s*var\(--font-sans\)/);
   });
@@ -166,9 +162,6 @@ describe("calendar shadow product sans (SST)", () => {
       }
     }
 
-    expect(
-      hits,
-      `hardcoded system sans stacks in calendar CSS:\n${hits.join("\n")}`,
-    ).toEqual([]);
+    expect(hits, `hardcoded system sans stacks in calendar CSS:\n${hits.join("\n")}`).toEqual([]);
   });
 });
