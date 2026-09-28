@@ -60,38 +60,6 @@
         position: relative;
     }
 
-    @font-face {
-        font-family: "Plus Jakarta Sans";
-        src: url("/fonts/PlusJakartaSans-Variable.woff2") format("woff2-variations");
-        font-weight: 200 800;
-        font-style: normal;
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: "Plus Jakarta Sans";
-        src: url("/fonts/PlusJakartaSans-Italic-Variable.woff2") format("woff2-variations");
-        font-weight: 200 800;
-        font-style: italic;
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: "We Got Serif";
-        src: url("/fonts/WeGotSerif-Regular.woff2") format("woff2");
-        font-weight: 400;
-        font-style: normal;
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: "We Got Serif";
-        src: url("/fonts/WeGotSerif-Italic.woff2") format("woff2");
-        font-weight: 400;
-        font-style: italic;
-        font-display: swap;
-    }
-
     h1 {
         font-size: 1.35rem;
         font-weight: 650;
