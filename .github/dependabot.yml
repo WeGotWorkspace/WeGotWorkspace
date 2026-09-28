@@ -29,11 +29,26 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    # Keep vitest and @vitest/* packages on the same major version to prevent
+    # coverage errors like "coverageFilesDirectory is required" from version mismatches.
+    # The check-vitest-versions.mjs tool enforces this constraint in CI.
+    ignore:
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
     groups:
       npm:
         applies-to: version-updates
         patterns:
           - "*"
+        update-types:
+          - major
+          - minor
+          - patch
+      vitest:
+        applies-to: version-updates
+        patterns:
+          - "vitest"
+          - "@vitest/*"
         update-types:
           - major
           - minor
