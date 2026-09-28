@@ -43,14 +43,14 @@ Artifact-based REST surface. **Authoritative contract:** `openapi/openapi.json` 
 
 ## Mail
 
-| Route | Access |
-|-------|--------|
-| `GET /api/v1/mail/status` | user |
-| `GET/POST/PATCH/DELETE /api/v1/mail/folders` | user |
-| `GET/POST /api/v1/mail/messages` | user |
-| `POST /api/v1/mail/drafts` | user |
-| `GET/PATCH/DELETE /api/v1/mail/messages/{messageId}` | user |
-| `GET /api/v1/mail/messages/{messageId}/attachments/{attachmentId}` | user |
+Mailbox REST (`/api/v1/mail/*`) is **not registered** in v0.9. See [mail/README.md](mail/README.md).
+
+Routes that remain:
+
+| Route | Access | Notes |
+|-------|--------|-------|
+| `PUT /api/v1/settings/mail` | user | Stored credentials. The Settings pane is hidden. |
+| `POST /api/v1/admin/mail-delivery/test` | admin | Platform email delivery, not the mailbox client. |
 
 ## Search + Workspace
 

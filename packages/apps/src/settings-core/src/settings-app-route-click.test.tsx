@@ -60,11 +60,13 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     expect(history.location.pathname).toBe("/settings");
     expect(screen.getByRole("heading", { name: "Profile" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Mail" }));
+    expect(screen.queryByRole("button", { name: "Mail" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Memberships" }));
     await waitFor(() => {
-      expect(history.location.pathname).toBe("/settings/mail");
+      expect(history.location.pathname).toBe("/settings/memberships");
     });
-    expect(screen.getByRole("heading", { name: "Mail" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Memberships" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Offline" }));
     await waitFor(() => {
@@ -86,9 +88,9 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
   it("moves between sections with browser back and forward", async () => {
     const { history } = await renderSettingsApp("/settings");
 
-    fireEvent.click(screen.getByRole("button", { name: "Mail" }));
+    fireEvent.click(screen.getByRole("button", { name: "Memberships" }));
     await waitFor(() => {
-      expect(history.location.pathname).toBe("/settings/mail");
+      expect(history.location.pathname).toBe("/settings/memberships");
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Offline" }));
@@ -98,15 +100,22 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
 
     history.back();
     await waitFor(() => {
-      expect(history.location.pathname).toBe("/settings/mail");
+      expect(history.location.pathname).toBe("/settings/memberships");
     });
-    expect(screen.getByRole("heading", { name: "Mail" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Memberships" })).toBeTruthy();
 
     history.forward();
     await waitFor(() => {
       expect(history.location.pathname).toBe("/settings/offline");
     });
     expect(screen.getByRole("heading", { name: "Offline" })).toBeTruthy();
+  });
+
+  it("explains a direct mailbox-login link without offering the form", async () => {
+    await renderSettingsApp("/settings/mail");
+    expect(screen.queryByRole("button", { name: "Mail" })).toBeNull();
+    expect(screen.getByText(/does not read a mailbox/i)).toBeTruthy();
+    expect(screen.queryByLabelText(/IMAP\/SMTP login/i)).toBeNull();
   });
 
   it("does not snap back to Settings after navigating to another app", async () => {

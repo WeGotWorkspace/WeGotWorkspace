@@ -33,7 +33,7 @@ final class HomeStateService
             'availability' => [
                 'filesEnabled' => $filesEnabled,
                 'drive' => $filesEnabled && $this->paths->appDistIndex('drive') !== null,
-                'mail' => $filesEnabled && $this->paths->appDistIndex('mail') !== null,
+                'mail' => false,
                 'meet' => $filesEnabled && $this->paths->appDistIndex('meet') !== null,
                 'notes' => $filesEnabled && $this->paths->appDistIndex('notes') !== null,
             ],

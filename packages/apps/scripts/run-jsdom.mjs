@@ -34,7 +34,7 @@
  *   JSDOM_LIST=1 node scripts/run-jsdom.mjs
  */
 import { spawn } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync, realpathSync, rmSync, unlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -253,13 +253,41 @@ async function runPool(entries, concurrency) {
  * @param {number} totalShards
  * @returns {Array<{ label: string, args: string[] }>}
  */
-function shardEntries(shards, offset, totalShards) {
+/**
+ * Per-shard coverage argv. `blob` is a Vitest test reporter. Each child gets
+ * its own reports directory because v8 coverage clears `reportsDirectory/.tmp`
+ * on start (`clean: true`).
+ *
+ * @param {string} shardId
+ * @returns {string[]}
+ */
+export function coverageVitestArgs(shardId) {
+  return [
+    "--coverage",
+    "--reporter=blob",
+    `--outputFile=.vitest-reports/blob-${shardId}.json`,
+    `--coverage.reportsDirectory=.coverage-shards/${shardId}`,
+  ];
+}
+
+/**
+ * @param {string[][]} shards
+ * @param {number} offset
+ * @param {number} totalShards
+ * @param {boolean} coverage
+ * @returns {Array<{ label: string, args: string[], shardId: string }>}
+ */
+function shardEntries(shards, offset, totalShards, coverage) {
   return shards.map((shardFiles, index) => {
-    const label = `jsdom shard ${offset + index + 1}/${totalShards} (${shardFiles.length} files) ${domainMix(shardFiles)}`;
-    return {
-      label,
-      args: ["run", "--project", "jsdom", "--maxWorkers=1", ...shardFiles],
-    };
+    const shardNumber = offset + index + 1;
+    const shardId = `jsdom-${shardNumber}`;
+    const label = `jsdom shard ${shardNumber}/${totalShards} (${shardFiles.length} files) ${domainMix(shardFiles)}`;
+    const args = ["run", "--project", "jsdom", "--maxWorkers=1"];
+    if (coverage) {
+      args.push(...coverageVitestArgs(shardId));
+    }
+    args.push(...shardFiles);
+    return { label, args, shardId };
   });
 }
 
@@ -270,6 +298,7 @@ async function main() {
     process.env.JSDOM_LIST === "1";
   const verboseList = process.argv.includes("--print");
   const withUnit = process.argv.includes("--with-unit");
+  const coverage = process.argv.includes("--coverage");
   const shardCount = parseShardCount(process.env.JSDOM_SHARDS);
   const files = walkTestFiles(srcRoot);
   const { packed, solo } = assignShards(files, shardCount);
@@ -305,14 +334,36 @@ async function main() {
   /** @type {Array<{ label: string, ok: boolean, detail?: string }>} */
   const results = [];
 
-  if (withUnit) {
-    results.push(await runVitest("Vitest (unit)", ["run", "--project", "unit"]));
+  if (coverage) {
+    clearCoverageReports(withUnit);
   }
 
-  results.push(...(await runPool(shardEntries(packed, 0, totalShards), limits.packed)));
-  results.push(...(await runPool(shardEntries(solo, packed.length, totalShards), limits.solo)));
+  if (withUnit) {
+    const unitArgs = ["run", "--project", "unit"];
+    if (coverage) {
+      unitArgs.push(...coverageVitestArgs("unit"));
+    }
+    results.push(await runVitest("Vitest (unit)", unitArgs));
+  }
 
-  const passed = results.every((row) => row.ok);
+  const packedEntries = shardEntries(packed, 0, totalShards, coverage);
+  const soloEntries = shardEntries(solo, packed.length, totalShards, coverage);
+  results.push(...(await runPool(packedEntries, limits.packed)));
+  results.push(...(await runPool(soloEntries, limits.solo)));
+
+  let passed = results.every((row) => row.ok);
+  if (coverage && passed) {
+    const missing = [...packedEntries, ...soloEntries].filter((entry) => {
+      const blob = path.join(appsRoot, `.vitest-reports/blob-${entry.shardId}.json`);
+      return !existsSync(blob);
+    });
+    if (missing.length > 0) {
+      process.stderr.write(
+        `coverage blobs missing:\n${missing.map((entry) => `  blob-${entry.shardId}.json`).join("\n")}\n`,
+      );
+      passed = false;
+    }
+  }
   const lines = [
     `\n${"═".repeat(72)}\n`,
     passed ? "JSDOM SHARDS: PASSED\n" : "JSDOM SHARDS: FAILED\n",
@@ -328,7 +379,48 @@ async function main() {
   process.exit(passed ? 0 : 1);
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-  process.exit(1);
-});
+/**
+ * True when this file is the process entrypoint. realpath on both sides so a
+ * symlinked argv still runs main(); a mismatch must not exit 0 without tests.
+ *
+ * @param {string} scriptUrl
+ * @param {string | undefined} argvPath
+ */
+export function isDirectInvocation(scriptUrl, argvPath) {
+  if (!argvPath) {
+    return false;
+  }
+  try {
+    return realpathSync(fileURLToPath(scriptUrl)) === realpathSync(argvPath);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @param {boolean} includeUnitBlob
+ */
+function clearCoverageReports(includeUnitBlob) {
+  const reportsDir = path.join(appsRoot, ".vitest-reports");
+  if (includeUnitBlob) {
+    rmSync(reportsDir, { recursive: true, force: true });
+    return;
+  }
+  if (!existsSync(reportsDir)) {
+    return;
+  }
+  for (const name of readdirSync(reportsDir)) {
+    if (name.startsWith("blob-jsdom-")) {
+      unlinkSync(path.join(reportsDir, name));
+    }
+  }
+}
+
+const invokedDirectly = isDirectInvocation(import.meta.url, process.argv[1]);
+
+if (invokedDirectly) {
+  main().catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exit(1);
+  });
+}

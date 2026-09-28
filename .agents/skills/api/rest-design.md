@@ -4,7 +4,7 @@ Artifact-oriented routes for `/api/v1`. **Contract source:** `packages/api/opena
 
 ## Principles
 
-1. **Resources, not verbs** — nouns in path segments (`/files`, `/meetings/rooms`, `/mail/messages`).
+1. **Resources, not verbs** — nouns in path segments (`/files`, `/meetings/rooms`). `/mail/messages` is the same shape and is **not registered** until the Mail client ships.
 2. **Query params for file paths** — always `?path=/users/alice/doc.md`, never encoded path segments.
 3. **Jobs as resources** — long-running admin work uses `POST …/jobs` + `DELETE …/jobs/{jobId}` (updates, search reindex).
 4. **One room session API** — meet and file collab share `/rooms/{roomId}/participants|events|configuration|messages`.
@@ -17,7 +17,7 @@ Artifact-oriented routes for `/api/v1`. **Contract source:** `packages/api/opena
 | Files | `/files/*` | Replaces `/drive/*`. Listing, search, content upload/download, stars, collab document. |
 | Meetings | `/meetings/rooms` | Room lifecycle; `roomId` is opaque (e.g. `daily-room`). |
 | Room session | `/rooms/{roomId}/*` | Signaling + RTC config. File collab uses `roomId = f_{base64url(path)}`. |
-| Mail | `/mail/messages/{messageId}` | `messageId = {folder}:{uid}`. Drafts: `POST /mail/drafts`. Send: `POST /mail/messages`. |
+| Mail | `/mail/messages/{messageId}` | **Unregistered** until the client ships (v0.9). `messageId = {folder}:{uid}`. Drafts: `POST /mail/drafts`. Send: `POST /mail/messages`. Settings `PUT /settings/mail` stays. See [packages/api/docs/mail/README.md](../../../packages/api/docs/mail/README.md). |
 | Search | `/search/results` | Unified search; download via `/search/results/{resultId}/content`. |
 | Workspace | `/workspace/state` | Shell bootstrap (replaces `/home/state`). |
 | Admin jobs | `/admin/update-jobs`, `/admin/search/jobs` | Async admin operations. |

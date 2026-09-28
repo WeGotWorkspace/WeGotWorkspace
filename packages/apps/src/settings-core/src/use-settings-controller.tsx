@@ -8,7 +8,10 @@ import {
 import { useSettingsMailForm } from "@/settings-core/src/use-settings-mail-form";
 import { useSettingsMcpGrants } from "@/settings-core/src/use-settings-mcp-grants";
 import { useSettingsProfileForm } from "@/settings-core/src/use-settings-profile-form";
-import { useSettingsSidebarModel } from "@/settings-core/src/use-settings-sidebar-model";
+import {
+  settingsSectionDescriptor,
+  useSettingsSidebarModel,
+} from "@/settings-core/src/use-settings-sidebar-model";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
 /**
@@ -33,10 +36,7 @@ export function useSettingsController({
   );
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const section = resolveSettingsSection(isControlled ? sectionProp : internalSection, mcpEnabled);
-  const currentSection = useMemo(
-    () => sections.find((candidate) => candidate.id === section) ?? sections[0],
-    [section, sections],
-  );
+  const currentSection = useMemo(() => settingsSectionDescriptor(section), [section]);
 
   const selectSection = (nextSection: SettingsSection) => {
     const resolved = resolveSettingsSection(nextSection, mcpEnabled);

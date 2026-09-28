@@ -63,6 +63,15 @@ final class WgwInstallConfig
         return rtrim($this->dataDir(), '/').'/files';
     }
 
+    /**
+     * Normalize an install-relative or absolute filesystem path.
+     *
+     * Does not confine the result to the install tree: absolute paths and
+     * `..` segments may resolve outside {@see installRoot()}. Callers that
+     * sink to unlink/write must use {@see pathIfInsideInstallRoot()}.
+     *
+     * @psalm-taint-specialize
+     */
     public function resolveInstallPath(string $path): string
     {
         $path = str_replace('\\', '/', trim($path));
@@ -74,6 +83,35 @@ final class WgwInstallConfig
         }
 
         return rtrim($this->installRoot().'/'.$this->relativeInstallSegment($path), '/');
+    }
+
+    /**
+     * Return the real path only when it resolves under the install root.
+     *
+     * Refuses paths that do not exist yet or that escape the install tree
+     * (absolute paths, `..` traversal, or symlinks to outside).
+     *
+     * @psalm-taint-escape file
+     */
+    public function pathIfInsideInstallRoot(string $path): ?string
+    {
+        $root = realpath($this->installRoot());
+        if ($root === false) {
+            return null;
+        }
+
+        $resolved = realpath($path);
+        if ($resolved === false) {
+            return null;
+        }
+
+        $root = $this->normalize($root);
+        $resolved = $this->normalize($resolved);
+        if ($resolved !== $root && ! str_starts_with($resolved, $root.'/')) {
+            return null;
+        }
+
+        return $resolved;
     }
 
     private function isAbsolutePath(string $path): bool

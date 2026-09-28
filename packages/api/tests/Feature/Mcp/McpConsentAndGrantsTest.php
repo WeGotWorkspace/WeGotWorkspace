@@ -9,9 +9,13 @@ use App\Services\Mcp\ConsentIntent;
 use App\Services\Mcp\McpAuditLogger;
 use App\Services\Mcp\McpOAuthSubscriber;
 use App\Services\Mcp\McpScopes;
+use Laravel\Passport\Bridge\Client as BridgeClient;
+use Laravel\Passport\Bridge\Scope;
+use Laravel\Passport\Bridge\User as BridgeUser;
 use Laravel\Passport\Events\AccessTokenCreated;
 use Laravel\Passport\Events\RefreshTokenCreated;
 use Laravel\Passport\Passport;
+use League\OAuth2\Server\RequestTypes\AuthorizationRequest;
 use Tests\Support\ConfiguresMcp;
 use Tests\Support\SettingsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -137,6 +141,7 @@ final class McpConsentAndGrantsTest extends WgwDatabaseTestCase
             ->assertJsonPath('grants.0.clientOrigin', 'https://claude.ai')
             ->assertJsonPath('grants.0.clientName', 'Claude');
         $this->assertContains(McpScopes::DRIVE, $list->json('grants.0.scopes'));
+        $this->assertContains(McpScopes::MAIL_READ, $list->json('grants.0.scopes'));
         $this->assertNotContains(McpScopes::OFFLINE_ACCESS, $list->json('grants.0.scopes'));
 
         $clientId = $list->json('grants.0.clientId');
@@ -154,6 +159,41 @@ final class McpConsentAndGrantsTest extends WgwDatabaseTestCase
             1,
             McpAuditEvent::query()->where('event_type', McpAuditLogger::GRANT_REVOKED)->count(),
         );
+    }
+
+    public function test_approve_drops_unchecked_mail_scope(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+        $redirect = 'https://claude.ai/callback';
+        $authRequest = new AuthorizationRequest;
+        $authRequest->setGrantTypeId('authorization_code');
+        $authRequest->setClient(new BridgeClient((string) $client->getKey(), 'Claude', [$redirect], false));
+        $authRequest->setUser(new BridgeUser((string) $user->getAuthIdentifier()));
+        $authRequest->setRedirectUri($redirect);
+        $authRequest->setScopes([new Scope(McpScopes::MAIL_READ), new Scope(McpScopes::DRIVE_READ)]);
+        $verifier = 'mail-consent-verifier-mail-consent-verifier';
+        $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
+        $authRequest->setCodeChallenge($challenge);
+        $authRequest->setCodeChallengeMethod('S256');
+
+        $authToken = 'approve-mail-filter';
+        $intent = app(ConsentIntent::class)->issue('bob', (string) $client->getKey());
+        $this->actingAs($user, 'web');
+        $this->withSession([
+            'authRequest' => serialize($authRequest),
+            'authToken' => $authToken,
+        ])->post('/oauth/authorize', [
+            'auth_token' => $authToken,
+            'intent' => $intent,
+            'client_id' => (string) $client->getKey(),
+            'scope' => [McpScopes::DRIVE_READ],
+        ])->assertRedirect();
+
+        $stored = Passport::authCode()->newQuery()->where('client_id', $client->getKey())->first();
+        $this->assertNotNull($stored);
+        $scopes = json_decode((string) $stored->getAttribute('scopes'), true);
+        $this->assertSame([McpScopes::DRIVE_READ, McpScopes::OFFLINE_ACCESS], $scopes);
     }
 
     public function test_refresh_tokens_are_kept_without_offline_access_scope(): void

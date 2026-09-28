@@ -98,7 +98,7 @@ function MainContent({ controller }: { controller: SettingsControllerState }) {
       {controller.currentSection.id === "memberships" ? (
         <SettingsMembershipsPane groups={controller.memberships} />
       ) : null}
-      {controller.currentSection.id === "mail" ? <SettingsMailPane mail={controller.mail} /> : null}
+      {controller.currentSection.id === "mail" ? <SettingsMailPane /> : null}
       {controller.currentSection.id === "offline" ? <SettingsOfflinePane /> : null}
       {controller.currentSection.id === "assistants" ? (
         <SettingsAssistantsPane assistants={controller.assistants} />

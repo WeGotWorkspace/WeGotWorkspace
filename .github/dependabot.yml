@@ -1,0 +1,71 @@
+# Weekly version updates. Each ecosystem is one group covering major, minor,
+# and patch, so Dependabot opens a single version-update pull request per
+# ecosystem. `applies-to: version-updates` keeps security updates ungrouped
+# so they are not held for the weekly batch.
+#
+# Follow-up (turbo-hybrid): root `npm` only sees pnpm-lock.yaml. If packages/api
+# or tools/api-e2e later gets its own package.json and lockfile, add another npm
+# directory entry. packages/api is Composer-only today; tools/api-e2e is still
+# in the root workspace (pnpm-workspace.yaml).
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: /packages/api
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      composer:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - major
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      npm:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - major
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - major
+          - minor
+          - patch
+
+  # Docker base-image index digests under docker/install.
+  - package-ecosystem: docker
+    directory: /docker/install
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      docker:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - major
+          - minor
+          - patch

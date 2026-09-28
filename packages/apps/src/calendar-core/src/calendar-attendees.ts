@@ -1,9 +1,5 @@
 export type CalendarParticipationStatus =
-  | "needs-action"
-  | "accepted"
-  | "tentative"
-  | "declined"
-  | "delegated";
+  "needs-action" | "accepted" | "tentative" | "declined" | "delegated";
 
 export type CalendarAttendeeRole = "required" | "optional";
 

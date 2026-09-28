@@ -117,6 +117,7 @@ final class WgwConnectionConfigurator
             ],
         ]);
         DB::purge('wgw');
+        SqliteTextLobStatement::enableOn($pdo);
         DB::connection('wgw')->setPdo($pdo);
     }
 }

@@ -102,7 +102,6 @@ final class FrontRoutingTest extends TestCase
             'drive' => ['/drive'],
             'login' => ['/login'],
             'logout' => ['/logout'],
-            'mail' => ['/mail'],
             'meet' => ['/meet'],
             'notes' => ['/notes'],
             'settings' => ['/settings'],
@@ -128,6 +127,25 @@ final class FrontRoutingTest extends TestCase
             ->assertHeader('Content-Type', 'text/html; charset=utf-8');
         $this->assertStringNotContainsString('Sabre\\DAV\\Exception\\NotFound', (string) $response->getContent());
         $this->assertStringNotContainsString('File not found:', (string) $response->getContent());
+    }
+
+    /**
+     * 302, not 301. Mail returns in v1.0; a permanent redirect would stick in browsers.
+     */
+    public function test_installed_mail_paths_redirect_home_temporarily(): void
+    {
+        $this->repoRoot = UiDistFixture::bootstrapMonorepoLayout();
+        $installRoot = $this->repoRoot.'/apps/wegotworkspace';
+        $data = $installRoot.'/wgw-content';
+        WgwInstallFixture::markInstalled($installRoot, $data);
+        WgwInstallFixture::syncDatabaseConnection();
+
+        foreach (['/mail', '/mail/', '/mail/inbox'] as $path) {
+            $response = $this->get($path);
+            $response->assertStatus(302);
+            $response->assertHeader('Location', url('/'));
+            $this->assertStringNotContainsString('Sabre\\DAV', (string) $response->getContent());
+        }
     }
 
     public function test_api_docs_not_handled_by_webdav_catch_all(): void

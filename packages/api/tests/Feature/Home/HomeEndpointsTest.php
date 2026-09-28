@@ -31,6 +31,7 @@ final class HomeEndpointsTest extends WgwDatabaseTestCase
         $response->assertOk()
             ->assertJsonPath('username', 'alice')
             ->assertJsonPath('isAdmin', false)
+            ->assertJsonPath('availability.mail', false)
             ->assertJsonStructure([
                 'availability' => [
                     'filesEnabled',

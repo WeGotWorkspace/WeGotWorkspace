@@ -46,6 +46,9 @@ final class WhoamiTool extends WgwMcpTool
 
     protected function run(Request $request): Response
     {
-        return $this->json($this->principal());
+        return $this->json([
+            ...$this->principal(),
+            'mailClient' => false,
+        ]);
     }
 }

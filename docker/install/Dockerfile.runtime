@@ -1,20 +1,22 @@
 # Production install image for CI/release — unpacks the deploy ZIP built on the GHA runner.
 # Same runtime layout as Dockerfile; local `docker compose up --build` uses Dockerfile instead.
 
-FROM debian:bookworm-slim AS unpack
+# Index digests (manifest list), not a single-platform digest. Dependabot bumps these.
+FROM debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251 AS unpack
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends unzip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY dist/releases/wegotworkspace-deploy-*.zip /tmp/deploy.zip
+COPY dist/releases/wegotworkspace-deploy.zip /tmp/deploy.zip
 RUN mkdir -p /release \
     && unzip -q /tmp/deploy.zip -d /release \
     && rm /tmp/deploy.zip
 
-FROM php:8.3-apache-bookworm
+FROM php:8.5-apache-bookworm@sha256:411df529915598ee7d08adf8616b328fb1272cbb272e82ffa572d6fcf3f204cd
 
+# PHP 8.4+ unbundled ext-imap; the mail API still loads it from PECL.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
@@ -27,7 +29,6 @@ RUN apt-get update \
         libc-client-dev \
         libkrb5-dev \
         libgmp-dev \
-    && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
     && docker-php-ext-install \
         pdo \
         pdo_sqlite \
@@ -35,9 +36,10 @@ RUN apt-get update \
         mbstring \
         zip \
         intl \
-        imap \
         gmp \
         bcmath \
+    && printf '\n' | pecl install imap \
+    && docker-php-ext-enable imap \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

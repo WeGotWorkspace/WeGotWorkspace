@@ -6,10 +6,12 @@ namespace Tests\Feature\Mail;
 
 use Tests\Support\MailTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
+use Tests\Support\WithMailClientEnabled;
 
 final class MailStatusTest extends WgwDatabaseTestCase
 {
     use MailTestFixtures;
+    use WithMailClientEnabled;
 
     protected function setUp(): void
     {

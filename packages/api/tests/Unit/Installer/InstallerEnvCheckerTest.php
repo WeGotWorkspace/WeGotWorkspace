@@ -8,29 +8,18 @@ use App\Services\Installer\InstallerEnvChecker;
 use Tests\TestCase;
 
 /**
- * ext-imap is a common shared-hosting gap: the wizard must surface it as an
- * informational row, but a missing optional extension must never block
- * install (InstallerWizardService / ProductionInstallBootstrap) or update
- * compatibility (UpdateRunner) — all three gate on allPassed().
+ * php-imap is not an installer check in v0.9. A missing optional row must still
+ * never block install or update — allPassed() ignores optional failures.
  */
 final class InstallerEnvCheckerTest extends TestCase
 {
-    public function test_check_all_includes_an_optional_imap_row(): void
+    public function test_check_all_does_not_warn_about_imap(): void
     {
         $checks = $this->app->make(InstallerEnvChecker::class)->checkAll('sqlite');
 
-        $imap = null;
         foreach ($checks as $check) {
-            if ($check['label'] === 'Extension: imap (optional)') {
-                $imap = $check;
-            }
-        }
-
-        $this->assertNotNull($imap, 'imap row missing from installer checks');
-        $this->assertTrue($imap['optional'] ?? false);
-        $this->assertSame(extension_loaded('imap'), $imap['ok']);
-        if (! $imap['ok']) {
-            $this->assertStringContainsString('Mail app', $imap['detail']);
+            $this->assertStringNotContainsStringIgnoringCase('imap', $check['label']);
+            $this->assertStringNotContainsStringIgnoringCase('imap', $check['detail']);
         }
     }
 

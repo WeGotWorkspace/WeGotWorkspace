@@ -7,10 +7,12 @@ namespace Tests\Feature\Mail;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\Support\MailTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
+use Tests\Support\WithMailClientEnabled;
 
 final class MailEndpointsTest extends WgwDatabaseTestCase
 {
     use MailTestFixtures;
+    use WithMailClientEnabled;
 
     protected function setUp(): void
     {

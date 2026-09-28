@@ -8,15 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin array{
- *   access_token: string,
- *   refresh_token: string,
- *   token_type: string,
- *   expires_in: int,
- *   refresh_expires_in: int,
- *   role: string,
- *   username: string
- * }
+ * @mixin array{access_token: string, refresh_token: string, token_type: string, expires_in: int, refresh_expires_in: int, role: string, username: string}
  */
 final class AuthTokenResource extends JsonResource
 {

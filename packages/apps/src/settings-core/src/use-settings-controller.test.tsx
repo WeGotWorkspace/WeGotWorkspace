@@ -40,7 +40,6 @@ describe("useSettingsController MCP kill-switch", () => {
     expect(result.current.sections.map((section) => section.id)).toEqual([
       "profile",
       "memberships",
-      "mail",
       "offline",
     ]);
     expect(result.current.section).toBe("profile");

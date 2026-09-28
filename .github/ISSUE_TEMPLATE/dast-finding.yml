@@ -8,8 +8,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        This template is used for OWASP ZAP full-scan findings created by the security workflow.
-        If you are reporting a finding manually, fill in the fields below.
+        If this finding is not yet public, report it the way [SECURITY.md](https://github.com/WeGotWorkspace/wegotworkspace/blob/main/SECURITY.md) describes. Do not use this template.
+
+        This template is only for a finding that is already public. The security workflow does not file these issues. It may do so only after authenticated DAST is enabled.
         Write the finding in **English**.
 
   - type: textarea
@@ -41,4 +42,4 @@ body:
     id: workflow
     attributes:
       label: Workflow run (optional)
-      description: Link to the GitHub Actions run that produced this finding
+      description: Link to a GitHub Actions run, if one produced this finding

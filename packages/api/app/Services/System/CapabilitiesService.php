@@ -18,6 +18,7 @@ final class CapabilitiesService
      * @return array{
      *   apiVersion: string,
      *   auth: array{type: string, tokenEndpoint: string, refreshEndpoint: string, revokeEndpoint: string, jwksEndpoint: string, passwordRecovery: bool},
+     *   mailClient: bool,
      *   domains: list<array{name: string, requiredRole: string}>
      * }
      */
@@ -25,6 +26,7 @@ final class CapabilitiesService
     {
         return [
             'apiVersion' => 'v1',
+            'mailClient' => false,
             'auth' => [
                 'type' => 'bearer-jwt-rs256',
                 'tokenEndpoint' => $this->urls->v1('auth/token'),
@@ -54,7 +56,6 @@ final class CapabilitiesService
         $map = [
             'admin' => 'admin',
             'settings' => 'user',
-            'mail' => 'user',
             'drive' => 'user',
             'notes' => 'user',
             'plugins' => 'user',

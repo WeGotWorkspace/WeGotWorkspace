@@ -1,4 +1,5 @@
 import { Button } from "@/button/src/button";
+import { Callout } from "@/callout/src/callout";
 import { Card } from "@/card/src/card";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
@@ -13,6 +14,11 @@ export type AdminMailPaneProps = {
 export function AdminMailPane({ controller }: AdminMailPaneProps) {
   return (
     <>
+      <Callout
+        severity="info"
+        title="For a later release"
+        message="These IMAP and SMTP hosts are for the Mail client. This release does not open a mailbox."
+      />
       <Card title="IMAP (incoming)">
         <FormField htmlFor="admin-mail-imap-host" label="Server">
           <Input

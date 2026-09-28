@@ -15,12 +15,7 @@ export type AdminMailDeliveryTransport = "auto" | "smtp" | "php" | "sendmail";
 export type AdminMailDeliverySelectedTransport = "smtp" | "php" | "sendmail" | null;
 
 export type AdminMailDeliveryStatus =
-  | "accepted_by_transport"
-  | "unavailable"
-  | "connect"
-  | "auth"
-  | "timeout"
-  | "smtp_auth_required";
+  "accepted_by_transport" | "unavailable" | "connect" | "auth" | "timeout" | "smtp_auth_required";
 
 export type AdminMailDeliveryConfig = {
   from: string;

@@ -1,6 +1,9 @@
 import { Bot, HardDrive, Mail as MailIcon, User, Users } from "lucide-react";
 import { useMemo } from "react";
-import type { SettingsSectionDescriptor } from "@/settings-core/src/settings-types";
+import type {
+  SettingsSection,
+  SettingsSectionDescriptor,
+} from "@/settings-core/src/settings-types";
 
 const SETTINGS_SIDEBAR_SECTIONS: Array<SettingsSectionDescriptor & { icon: React.ReactNode }> = [
   {
@@ -35,13 +38,22 @@ const SETTINGS_SIDEBAR_SECTIONS: Array<SettingsSectionDescriptor & { icon: React
   },
 ];
 
+export function settingsSectionDescriptor(
+  id: SettingsSection,
+): SettingsSectionDescriptor & { icon: React.ReactNode } {
+  return (
+    SETTINGS_SIDEBAR_SECTIONS.find((section) => section.id === id) ?? SETTINGS_SIDEBAR_SECTIONS[0]
+  );
+}
+
 export function useSettingsSidebarModel(
   mcpEnabled: boolean,
 ): Array<SettingsSectionDescriptor & { icon: React.ReactNode }> {
   return useMemo(() => {
-    if (mcpEnabled) {
-      return SETTINGS_SIDEBAR_SECTIONS;
-    }
-    return SETTINGS_SIDEBAR_SECTIONS.filter((section) => section.id !== "assistants");
+    return SETTINGS_SIDEBAR_SECTIONS.filter((section) => {
+      if (section.id === "mail") return false;
+      if (section.id === "assistants") return mcpEnabled;
+      return true;
+    });
   }, [mcpEnabled]);
 }

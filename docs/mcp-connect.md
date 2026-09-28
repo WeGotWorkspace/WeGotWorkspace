@@ -1,6 +1,6 @@
 # Connect an AI assistant (MCP)
 
-WeGotWorkspace can expose a remote MCP server so Claude, ChatGPT, Mistral, Cursor, or Claude Code act **as you** on this instance (files, mail, calendar, and the other apps you grant). This is not an in-app chat panel. Your administrator must turn **Connected assistants** on in Admin before anyone can connect.
+WeGotWorkspace can expose a remote MCP server so Claude, ChatGPT, Mistral, Cursor, or Claude Code act **as you** on this instance (files, calendar, and the other apps you grant). This is not an in-app chat panel. Your administrator must turn **Connected assistants** on in Admin before anyone can connect.
 
 ## What you need
 
@@ -83,7 +83,7 @@ Always available when MCP is on: `whoami`, `capabilities`.
 
 `meet_create_scheduled` needs `meet.write`. Creating the calendar event half also needs `calendar.write`; without it the tool still creates the meeting-kind channel and returns the href.
 
-**Not MCP apps:** Mail, Admin, and Settings are not exposed as suite apps on MCP. Keep using `whoami` (scope `settings`) and `mail_status` / `mail_send`. There are no Admin tools and no Settings CRUD tools.
+**Not MCP apps:** Mail, Admin, and Settings are not exposed as suite apps on MCP. `mail_status` and `mail_send` are not registered. `whoami` (scope `settings`) reports `mailClient: false`. `mail.read` and `mail.send` stay in the scope catalog and are hidden on consent; tokens that already have them stay valid and still appear on Settings → Connected assistants as Mail (not active in this release). There are no Admin tools and no Settings CRUD tools. See [packages/api/docs/mail/README.md](../packages/api/docs/mail/README.md).
 
 **Meet** has no join, call, or RTC/signaling tools. Channel and message CRUD only.
 

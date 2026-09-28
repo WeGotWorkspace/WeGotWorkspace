@@ -22,9 +22,6 @@ final class InstallerEnvChecker
             $checks[] = $this->extension($ext);
         }
         $checks[] = $this->extension($dbDriver === 'mysql' ? 'pdo_mysql' : 'pdo_sqlite');
-        // Informational only — common shared-hosting gap. Mail degrades to 503
-        // `imap_extension_required` without it; install/update must not block.
-        $checks[] = $this->optionalExtension('imap', 'required only for the Mail app (IMAP mailbox access)');
         $checks[] = $this->writable($this->paths->dataDir());
         $checks[] = $this->writable($this->paths->configDir());
         foreach ($this->apiRuntimeChecks($this->paths->installRoot()) as $check) {
@@ -112,24 +109,6 @@ final class InstallerEnvChecker
             'ok' => $ok,
             'label' => 'Extension: '.$name,
             'detail' => $ok ? 'Loaded' : 'Missing',
-        ];
-    }
-
-    /**
-     * An extension the app can run without: reported honestly but never
-     * counted by allPassed(), so a missing one cannot block install or update.
-     *
-     * @return array{ok: bool, label: string, detail: string, optional: bool}
-     */
-    private function optionalExtension(string $name, string $why): array
-    {
-        $ok = extension_loaded($name);
-
-        return [
-            'ok' => $ok,
-            'label' => 'Extension: '.$name.' (optional)',
-            'detail' => $ok ? 'Loaded' : 'Missing — '.$why,
-            'optional' => true,
         ];
     }
 

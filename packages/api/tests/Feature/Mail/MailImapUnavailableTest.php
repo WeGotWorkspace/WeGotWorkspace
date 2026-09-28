@@ -7,6 +7,7 @@ namespace Tests\Feature\Mail;
 use App\Services\Mail\ImapExtension;
 use Tests\Support\MailTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
+use Tests\Support\WithMailClientEnabled;
 
 /**
  * Shared-hosting degradation path: ext-imap is optional (absent on many
@@ -18,6 +19,7 @@ use Tests\Support\WgwDatabaseTestCase;
 final class MailImapUnavailableTest extends WgwDatabaseTestCase
 {
     use MailTestFixtures;
+    use WithMailClientEnabled;
 
     protected function setUp(): void
     {

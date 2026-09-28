@@ -60,11 +60,7 @@ Then follow first-run setup:
 - Database (MySQL / MariaDB by default, or SQLite). Skipped when `WGW_INSTALL_*` already has a database
 - First account (username and password)
 
-Required server failures interrupt setup. Optional Mail IMAP is not a first-run row — enable `php-imap` later if you want the Mail app.
-
-### Optional: PHP `imap` extension (Mail app)
-
-The Mail app (IMAP mailbox access) needs `php-imap`. It is not required to install or run WeGotWorkspace and does not block first-run. Without it, mail endpoints answer `503` with `imap_extension_required` and `/api/v1/mail/status` reports `extImap: false` so the web app can explain the limitation; everything else (files, calendars, contacts, tasks, meet, …) works normally. Enable `php-imap` in your hosting control panel (or `apt install php8.3-imap`) to activate Mail.
+Required server failures interrupt setup. `php-imap` is not required for this release and is not an installer check. The Mail client is not in the v0.9 suite — see [packages/api/docs/mail/README.md](packages/api/docs/mail/README.md).
 
 ## 4) Done
 

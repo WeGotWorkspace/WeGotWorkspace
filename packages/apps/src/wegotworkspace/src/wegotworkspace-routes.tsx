@@ -34,7 +34,6 @@ import {
   type MeetChatRouteParams,
 } from "@/meet-core/src/meet-chat-route";
 import { InstallerApp } from "@/installer-core/src/installer-app";
-import { MailApp } from "@/mail-core/src/mail-app";
 import { MeetChatApp } from "@/meet-core/src/meet-chat-app";
 import { MeetInviteGate, MeetChannelDeepLinkGate } from "@/meet-core/src/meet-invite-gate";
 import { wgwHasAuthenticatedSession, wgwLiveApiEnabled } from "@/lib/api/wgw/http";
@@ -48,19 +47,15 @@ import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
 import { createInstallerWorkspaceStoryArgs } from "@/lib/api/mock/installer-bootstrap";
-import { createMailAppBootstrap } from "@/lib/api/mock/mail-bootstrap";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { createDocsAppBootstrap } from "@/lib/api/mock/docs-bootstrap";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
-import { folderTokenFromMailboxLabel } from "@/lib/mail/folder-token";
 import { AdminWorkspace } from "@/admin-core/src/admin-workspace";
 import { ContactsWorkspace } from "@/contacts-core/src/contacts-workspace";
 import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
 import { InstallerWorkspace } from "@/installer-core/src/installer-workspace";
-import { MailWorkspace } from "@/mail-core/src/mail-workspace";
-import { mailStoryLabels } from "@/mail-core/src/mail-app.stories.fixtures";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
 import { DocsWorkspace } from "@/docs-core/src/docs-workspace";
 import { NotesWorkspace } from "@/notes-core/src/notes-workspace";
@@ -94,7 +89,6 @@ const loginPwaHead = () =>
     title: "Sign in — WeGotWorkspace",
     description: "Sign in to your workspace to continue.",
   });
-const mailPwaHead = () => createWorkspacePwaHead("mail");
 const notesPwaHead = () => createWorkspacePwaHead("notes");
 const drivePwaHead = () => createWorkspacePwaHead("drive");
 const docsPwaHead = () => createWorkspacePwaHead("docs");
@@ -114,33 +108,6 @@ const adminPwaHead = () => createWorkspacePwaHead("admin");
 const contactsPwaHead = () => createWorkspacePwaHead("contacts");
 const tasksPwaHead = () => createWorkspacePwaHead("tasks");
 const calendarPwaHead = () => createWorkspacePwaHead("calendar");
-
-const STORY_SYSTEM_MAILBOXES = [
-  "Inbox",
-  "Starred",
-  "Sent",
-  "Drafts",
-  "Spam",
-  "Archive",
-  "Trash",
-] as const;
-
-function MockMailRoute() {
-  const onLogout = useWeGotWorkspaceLogout();
-  const bootstrap = useMemo(() => createMailAppBootstrap(), []);
-  return (
-    <MailWorkspace
-      messages={bootstrap.data.mail}
-      mailboxes={bootstrap.data.mailboxes}
-      session={bootstrap.session}
-      labels={mailStoryLabels}
-      listLoading={false}
-      systemMailboxes={STORY_SYSTEM_MAILBOXES}
-      encodeFolderToken={folderTokenFromMailboxLabel}
-      onLogout={onLogout}
-    />
-  );
-}
 
 function MockDocsRoute() {
   const onLogout = useWeGotWorkspaceLogout();
@@ -370,11 +337,22 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     component: WeGotWorkspaceLogout,
   });
 
+  // Unshipped in v0.9. The service worker can serve index.html for /mail without
+  // hitting the server 302, so the client router sends bookmarks and the Mail PWA home.
+  const redirectMailHome = () => {
+    throw redirect({ to: "/", replace: true });
+  };
+
   const mailRoute = createRoute({
     getParentRoute: () => wegotworkspaceRootRoute,
     path: "/mail",
-    head: mailPwaHead,
-    component: isLive ? withWeGotWorkspaceAuth(MailApp) : MockMailRoute,
+    beforeLoad: redirectMailHome,
+  });
+
+  const mailSplatRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/mail/$",
+    beforeLoad: redirectMailHome,
   });
 
   const NotesComponent = isLive ? withWeGotWorkspaceAuth(NotesApp) : MockNotesRoute;
@@ -806,6 +784,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     loginRoute.addChildren([loginIndexRoute, loginForgotRoute, loginResetRoute]),
     logoutRoute,
     mailRoute,
+    mailSplatRoute,
     notesIndexRoute,
     notesAllRoute,
     notesAllNoteRoute,

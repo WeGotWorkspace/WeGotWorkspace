@@ -99,6 +99,10 @@ final class UiStaticServer
      * When adding a new top-level app route (e.g. `/share`, `/tasks`): update this list,
      * FrontRoutingTest, and the apps router together.
      *
+     * `/mail` is intentionally absent. The client is unshipped in v0.9: the router
+     * redirects `/mail` home, and UiStaticFront answers GET `/mail` with 302 before
+     * SabreDAV. Do not put it back on this list until the client ships.
+     *
      * @return list<string>
      */
     public static function spaRoutePrefixes(): array
@@ -148,7 +152,6 @@ final class UiStaticServer
             '/drive',
             '/login',
             '/logout',
-            '/mail',
             '/meet',
             '/notes',
             '/settings',

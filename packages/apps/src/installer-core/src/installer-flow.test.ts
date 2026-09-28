@@ -100,7 +100,7 @@ describe("installer-flow", () => {
     );
   });
 
-  it("hides optional IMAP failures from the interrupt list", () => {
+  it("hides optional check failures from the interrupt list", () => {
     const blocking = installerBlockingChecks(
       state({
         checks: [

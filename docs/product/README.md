@@ -13,6 +13,8 @@ Goals, delivery issues, and comments are **English** even when maintainers discu
 
 Self-hosted autonomous office: Mail, Drive, Docs, Notes, Calendar, Tasks, Contacts, Meet, and admin — on infrastructure you control.
 
+The Mail client is not in the current release (v0.9). The beta works alongside existing mail. It is not a mail replacement. See [packages/api/docs/mail/README.md](../../packages/api/docs/mail/README.md).
+
 ## One outcome per Goal
 
 Each Goal is **one fulfillable user outcome**. Split multi-outcome tickets into sibling Goals. Do **not** parent Goal→Goal — group with `area:*` and an optional shared milestone. Design language / suite consistency is a **Non-goal constraint** on Goals that need it, not its own Goal. Labels for Goals: `type:goal` + `area:*` (+ optional milestone). Details: [issue-filing.md](../../.agents/skills/developer/issue-filing.md#one-outcome-per-goal).
