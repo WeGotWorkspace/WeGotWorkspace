@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./host-font.css";
 
 /*
   Shared z-index layer tokens for component styles.
