@@ -119,7 +119,7 @@ if ($contractOnly) {
 
 if ($runContractSteps) {
     done_gate_step("Step {$step}/{$totalSteps}: file-size ratchet");
-    $ratchetScript = dirname($apiRoot).'/tools/file-size-ratchet.mjs';
+    $ratchetScript = dirname($apiRoot, 2).'/tools/file-size-ratchet.mjs';
     $ratchetCode = done_gate_run(['node', $ratchetScript, 'check', 'packages/api/app']);
     $results[] = ['label' => 'file-size ratchet', 'ok' => $ratchetCode === 0];
     $step++;
