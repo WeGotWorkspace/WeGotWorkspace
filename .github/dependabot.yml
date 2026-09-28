@@ -74,6 +74,14 @@ updates:
       - dependency-name: react-day-picker
         versions:
           - ">=10.0.0"
+      # 1.169+ pulls seroval-plugins 1.6.7. That build imports isStream,
+      # which the seroval 1.5.3 override does not export, so the Storybook
+      # production build fails. 1.170 also treats a Node process as a server
+      # and skips client navigate(), which fails route unit tests and makes
+      # Storybook play functions query the tree before it commits.
+      - dependency-name: "@tanstack/react-router"
+        versions:
+          - ">=1.169.0"
 
   - package-ecosystem: github-actions
     directory: /
