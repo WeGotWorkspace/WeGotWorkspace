@@ -336,7 +336,7 @@ export function useContactsController({
     isItemDragging,
     itemDragHandlers,
     sidebarDropZoneProps,
-    queueMutation,
+    queueMutation: enqueueMutation,
     undoLatest,
     navigateListByKeyboard,
   } = useWorkspaceListController<ContactCard>({
@@ -363,6 +363,15 @@ export function useContactsController({
     onMutationError: showMutationError,
     queueDelayMs: WRITE_QUEUE_DELAY_MS,
   });
+
+  /** Single gate for outbox-style writes during a cold download. */
+  const queueMutation = useCallback(
+    (...args: Parameters<typeof enqueueMutation>) => {
+      if (mutationsLocked) return;
+      enqueueMutation(...args);
+    },
+    [enqueueMutation, mutationsLocked],
+  );
 
   const closeMobileDetail = useCallback(() => {
     const during = () => {
@@ -420,8 +429,9 @@ export function useContactsController({
   const canCreateGroup = !mutationsLocked && writableGroupAddressBooks(addressBooks).length > 0;
 
   const canWriteSelectedGroup = useMemo(
-    () => canWriteContactGroup(selectedGroup, addressBooks, Boolean(operations)),
-    [addressBooks, operations, selectedGroup],
+    () =>
+      !mutationsLocked && canWriteContactGroup(selectedGroup, addressBooks, Boolean(operations)),
+    [addressBooks, mutationsLocked, operations, selectedGroup],
   );
   const canRenameGroup = canWriteSelectedGroup;
   const canDeleteGroup = canWriteSelectedGroup;
@@ -480,12 +490,12 @@ export function useContactsController({
   }, []);
 
   const startEdit = useCallback(() => {
-    if (!active || createMode) return;
+    if (!active || createMode || !canEdit) return;
     setEditMode(true);
     startTransition(() => {
       setEditDraft(contactDraftsRef.current.get(active.id) ?? contactCardToEditDraft(active));
     });
-  }, [active, createMode]);
+  }, [active, canEdit, createMode]);
 
   const cancelEdit = useCallback(() => {
     if (createMode) {
@@ -832,7 +842,7 @@ export function useContactsController({
 
   const removeFromGroup = useCallback(
     (cardIds: string[]) => {
-      if (!selectedGroup || cardIds.length === 0) return;
+      if (mutationsLocked || !selectedGroup || cardIds.length === 0) return;
       const groupId = selectedGroup.id;
       const group = cards.find((card) => card.id === groupId);
       if (!group) return;
@@ -894,6 +904,7 @@ export function useContactsController({
       L.toastRemovedFromGroup,
       activeId,
       cards,
+      mutationsLocked,
       operations,
       queueMutation,
       selectedGroup,
@@ -1283,6 +1294,7 @@ export function useContactsController({
 
   const persistContactEdit = useCallback(
     async (contactId: string, draft: ContactEditDraft) => {
+      if (mutationsLocked) return;
       const card = cardsRef.current.find((row) => row.id === contactId);
       if (!card) {
         contactDraftsRef.current.delete(contactId);
@@ -1331,7 +1343,7 @@ export function useContactsController({
         }
       }
     },
-    [operations, showMutationError],
+    [mutationsLocked, operations, showMutationError],
   );
 
   useEffect(() => {

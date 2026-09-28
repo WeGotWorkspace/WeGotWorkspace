@@ -207,8 +207,9 @@ export class JmapContactsClient {
   }
 
   /**
-   * Initial sync: AddressBook/get plus ContactCard/query, then ContactCard/get
-   * in {@link CONTACT_CARD_GET_MAX_IDS_PER_REQUEST} pages (one HTTP request
+   * Initial sync: AddressBook/get plus ContactCard/query and an empty
+   * ContactCard/get (state at query time), then ContactCard/get in
+   * {@link CONTACT_CARD_GET_MAX_IDS_PER_REQUEST} pages (one HTTP request
    * each). A get-all (`ids: null`) is rejected once the account has more
    * cards than maxObjectsInGet.
    */
@@ -224,13 +225,18 @@ export class JmapContactsClient {
   ): Promise<{
     books: GetResponse<JmapAddressBook>;
     cards: GetResponse<JmapContactCard>;
+    /** ContactCard state from the same batch as the query — for sync tokens. */
+    contactCardStateAtQuery: JmapState;
   }> {
     const booksCallId = this.client.nextCallId();
     const queryCallId = this.client.nextCallId();
+    const cardStateCallId = this.client.nextCallId();
     const response = await this.client.request(
       [
         ["AddressBook/get", { accountId, ids: null }, booksCallId],
         ["ContactCard/query", { accountId }, queryCallId],
+        // Empty get: state at query time, before later page gets advance it.
+        ["ContactCard/get", { accountId, ids: [] }, cardStateCallId],
       ],
       CONTACTS_USING,
     );
@@ -240,18 +246,25 @@ export class JmapContactsClient {
     const queryInvocation = response.methodResponses.find(
       ([name, , id]) => id === queryCallId && name === "ContactCard/query",
     );
-    if (!booksInvocation || !queryInvocation) {
+    const cardStateInvocation = response.methodResponses.find(
+      ([name, , id]) => id === cardStateCallId && name === "ContactCard/get",
+    );
+    if (!booksInvocation || !queryInvocation || !cardStateInvocation) {
       const errorInvocation = response.methodResponses.find(([name]) => name === "error");
       const detail = errorInvocation ? JSON.stringify(errorInvocation[1]) : "no response";
       throw new Error(`Contacts initial sync failed: ${detail}`);
     }
     const books = booksInvocation[1] as unknown as GetResponse<JmapAddressBook>;
     this.client.setState(accountId, ADDRESS_BOOK_TYPE, books.state);
+    const contactCardStateAtQuery = (
+      cardStateInvocation[1] as unknown as GetResponse<JmapContactCard>
+    ).state;
+    this.client.setState(accountId, CONTACT_CARD_TYPE, contactCardStateAtQuery);
     const queryIds = (queryInvocation[1] as QueryResponse).ids ?? [];
     const cards = await this.#getContactCardsByIds(accountId, queryIds, undefined, (partial) => {
       options?.onPage?.({ books, cards: partial });
     });
-    return { books, cards };
+    return { books, cards, contactCardStateAtQuery };
   }
 
   #coreLimit(name: "maxObjectsInGet", fallback: number): number {

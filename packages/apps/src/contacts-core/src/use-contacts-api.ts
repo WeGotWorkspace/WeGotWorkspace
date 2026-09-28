@@ -186,7 +186,7 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
   }, [complete, offlineUsername, online, patchFromCache, phase]);
 
   const refreshList = useCallback(() => {
-    if (listRefreshing) return;
+    if (listRefreshing || coldDownload) return;
     setListRefreshing(true);
     void resolvedSource
       .loadBootstrap()
@@ -202,7 +202,7 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
       .finally(() => {
         setListRefreshing(false);
       });
-  }, [listRefreshing, patchBootstrap, resolvedSource, show, showError]);
+  }, [coldDownload, listRefreshing, patchBootstrap, resolvedSource, show, showError]);
 
   return {
     phase,

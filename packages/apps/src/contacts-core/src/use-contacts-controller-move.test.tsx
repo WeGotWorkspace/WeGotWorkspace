@@ -81,31 +81,43 @@ describe("useContactsController create and move", () => {
   });
 
   it("keeps create, edit, and delete closed while a cold download is in progress", () => {
+    mockShow.mockClear();
+    mockRequestConfirm.mockClear();
     const { result } = renderHook(() =>
       useContactsController({
         data: bootstrap.data,
         listLoading: false,
         mutationsLocked: true,
         initialContactId: "card-jane",
+        initialView: "group:card-group-friends",
       }),
     );
 
     expect(result.current.canCreateContact).toBe(false);
     expect(result.current.canCreateGroup).toBe(false);
     expect(result.current.canEdit).toBe(false);
+    expect(result.current.canRenameGroup).toBe(false);
 
+    const friendsBefore = result.current.cards.find((row) => row.id === "card-group-friends");
     act(() => {
       result.current.createContact();
       result.current.createGroup("Studio", "default");
       result.current.openDeleteConfirm(["card-jane"]);
+      result.current.startEdit();
+      result.current.removeFromGroup(["card-jane"]);
     });
 
     expect(result.current.createMode).toBe(false);
+    expect(result.current.editMode).toBe(false);
     expect(
       result.current.contactGroups.find((group) => group.name?.full === "Studio"),
     ).toBeUndefined();
     expect(result.current.cards.some((row) => row.id === "card-jane")).toBe(true);
+    expect(result.current.cards.find((row) => row.id === "card-group-friends")?.members).toEqual(
+      friendsBefore?.members,
+    );
     expect(mockRequestConfirm).not.toHaveBeenCalled();
+    expect(mockShow).not.toHaveBeenCalled();
   });
 
   it("does not create a group in an inbound share", () => {

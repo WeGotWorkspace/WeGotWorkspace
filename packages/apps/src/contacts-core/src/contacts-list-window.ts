@@ -1,10 +1,16 @@
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { groupContactCardsBySection } from "@/contacts-core/src/contacts-display-utils";
 
-/** Matches `.list-item` intrinsic block size (5.5rem). */
-export const CONTACTS_LIST_CARD_ROW_PX = 88;
-/** Matches `.list-sticky-header` padding and line. */
-export const CONTACTS_LIST_HEADER_ROW_PX = 36;
+/**
+ * Fixed row sizes for the windowed list. Must match
+ * `--contacts-list-card-row-size` / `--contacts-list-header-row-size` in
+ * `contacts-workspace.css` (rem × 16px root). Contacts forces these
+ * block sizes so scroll offsets stay aligned.
+ */
+export const CONTACTS_LIST_CARD_ROW_REM = 5.5;
+export const CONTACTS_LIST_HEADER_ROW_REM = 2.25;
+export const CONTACTS_LIST_CARD_ROW_PX = CONTACTS_LIST_CARD_ROW_REM * 16;
+export const CONTACTS_LIST_HEADER_ROW_PX = CONTACTS_LIST_HEADER_ROW_REM * 16;
 /** Below this, render every row. Large books window to the scrollport. */
 export const CONTACTS_LIST_WINDOW_AFTER = 80;
 const OVERSCAN_PX = 480;

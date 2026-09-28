@@ -82,9 +82,14 @@ describe("JmapContactsClient contract batches", () => {
 
     expect(got.cards.list).toEqual([{ id: "card-1" }]);
     expect(recorded).toHaveLength(2);
-    expect(recorded[0]?.map(([name]) => name)).toEqual(["AddressBook/get", "ContactCard/query"]);
+    expect(recorded[0]?.map(([name]) => name)).toEqual([
+      "AddressBook/get",
+      "ContactCard/query",
+      "ContactCard/get",
+    ]);
     expect(recorded[0]?.[0]?.[1]).toEqual({ accountId: ACCOUNT, ids: null });
     expect(recorded[0]?.[1]?.[1]).toEqual({ accountId: ACCOUNT });
+    expect(recorded[0]?.[2]?.[1]).toEqual({ accountId: ACCOUNT, ids: [] });
     expect(recorded[1]?.[0]).toEqual([
       "ContactCard/get",
       { accountId: ACCOUNT, ids: ["card-1"] },
@@ -170,7 +175,7 @@ describe("JmapContactsClient contract batches", () => {
     expect((getBatches[1]?.[0]?.[1].ids as string[]).length).toBe(3);
   });
 
-  it("reports the first ContactCard page state before later pages advance it", async () => {
+  it("reports ContactCard state from the query batch, not later pages", async () => {
     const ids = ["card-1", "card-2", "card-3"];
     const { contacts } = await makeClient(
       (calls) => {
@@ -186,6 +191,13 @@ describe("JmapContactsClient contract batches", () => {
             return methodResponse(name, { accountId: ACCOUNT, ids }, id);
           }
           const pageIds = (args.ids as string[]) ?? [];
+          if (pageIds.length === 0) {
+            return methodResponse(
+              name,
+              { accountId: ACCOUNT, state: "cards-at-query", list: [], notFound: [] },
+              id,
+            );
+          }
           const state = pageIds.includes("card-3") ? "cards-page-2" : "cards-page-1";
           return methodResponse(
             name,
@@ -209,6 +221,7 @@ describe("JmapContactsClient contract batches", () => {
       },
     });
 
+    expect(got.contactCardStateAtQuery).toBe("cards-at-query");
     expect(pageStates).toEqual(["cards-page-1", "cards-page-2"]);
     expect(got.cards.state).toBe("cards-page-2");
     expect(got.books.state).toBe("books-1");
