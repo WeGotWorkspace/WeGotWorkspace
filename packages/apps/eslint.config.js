@@ -41,6 +41,44 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ["src/**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "fs",
+              message: "Do not assert on source/CSS text. See .agents/skills/testing/test-first.md",
+            },
+            {
+              name: "node:fs",
+              message: "Do not assert on source/CSS text. See .agents/skills/testing/test-first.md",
+            },
+            {
+              name: "fs/promises",
+              message: "Do not assert on source/CSS text. See .agents/skills/testing/test-first.md",
+            },
+            {
+              name: "node:fs/promises",
+              message: "Do not assert on source/CSS text. See .agents/skills/testing/test-first.md",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "src/**/__tests__/fixtures/**",
+      "src/**/pwa-*.test.ts",
+      "src/**/workspace-pwa-manifests.test.ts",
+    ],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
   eslintPluginPrettier,
   storybook.configs["flat/recommended"],
 );
