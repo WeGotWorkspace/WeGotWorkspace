@@ -35,6 +35,10 @@ if [[ "$event" == "pull_request" ]]; then
     exit 0
   fi
   args+=("--log-opts=--no-merges --first-parent ${first}^..${head}")
+elif [[ "$event" == "merge_group" ]]; then
+  base="$(jq -r '.merge_group.base_sha' "$event_path")"
+  head="$(jq -r '.merge_group.head_sha' "$event_path")"
+  args+=("--log-opts=${base}..${head}")
 elif [[ "$event" == "push" ]]; then
   count="$(jq '.commits | length' "$event_path")"
   if [[ "$count" == "0" ]]; then
