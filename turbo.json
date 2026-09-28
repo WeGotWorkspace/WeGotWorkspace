@@ -22,6 +22,25 @@
     "typecheck": {
       "dependsOn": ["^build"]
     },
+    "test:unit": {
+      "cache": false
+    },
+    "test:jsdom": {
+      "cache": false,
+      "env": ["JSDOM_LIST"],
+      "passThroughEnv": ["CI", "JSDOM_SHARDS", "JSDOM_CONCURRENCY", "JSDOM_SOLO_CONCURRENCY"]
+    },
+    "test:contract": {
+      "cache": false
+    },
+    "test:storybook": {
+      "cache": false,
+      "env": ["STORYBOOK_A11Y_GATE", "STORYBOOK_VITEST_SMOKE"]
+    },
+    "test:storybook:ci": {
+      "cache": false,
+      "env": ["STORYBOOK_A11Y_GATE", "STORYBOOK_VITEST_SMOKE"]
+    },
     "dev": {
       "cache": false,
       "persistent": true,
