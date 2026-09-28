@@ -130,10 +130,11 @@ describe("runImmediateDriveBatch", () => {
 
     await queued[0]?.execute?.(new AbortController().signal);
     queued[0]?.undo?.();
-    await Promise.resolve();
 
     expect(rolledBack).toBe(1);
-    expect(consoleError).toHaveBeenCalledWith("Drive batch revert failed", error);
+    await vi.waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith("Drive batch revert failed", error);
+    });
     consoleError.mockRestore();
   });
 });

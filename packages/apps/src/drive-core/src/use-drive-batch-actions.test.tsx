@@ -98,11 +98,18 @@ function renderActions(options?: {
       groupRootNames: new Set(),
       operations: options?.operations,
       queueMutation,
-      beginOptimisticUpdate: () => ({
-        snapshotById: new Map(),
-        affectedItems: [],
-        rollback: () => undefined,
-      }),
+      beginOptimisticUpdate: ({ ids, updater }) => {
+        const snapshot = files.filter((file) => ids.includes(file.id));
+        setFiles((prev) => prev.map((file) => (ids.includes(file.id) ? updater(file) : file)));
+        const snapshotById = new Map(snapshot.map((file) => [file.id, file]));
+        return {
+          snapshotById,
+          affectedItems: snapshot,
+          rollback: () => {
+            setFiles((prev) => prev.map((file) => snapshotById.get(file.id) ?? file));
+          },
+        };
+      },
       reloadStarredFromServer,
       view,
       viewType,
@@ -183,6 +190,45 @@ describe("useDriveBatchActions", () => {
       to: "notes.md",
     });
     expect(result.current.files[0]?.parent).toBe("My Drive");
+  });
+
+  it("renames into the destination folder and renames back when undo follows a finished move", async () => {
+    const operations = createOperations();
+    const { result } = renderActions({ operations });
+
+    act(() => result.current.moveToFolder([NOTES_ID], "My Drive/Projects"));
+
+    expect(result.current.files[0]?.parent).toBe("My Drive/Projects");
+    expect(queued()).toMatchObject({
+      key: "drive:move:My Drive/Projects:notes",
+      toastMessage: "Moved 1 to Projects",
+      undoToastMessage: "Move undone.",
+      executeImmediately: true,
+    });
+
+    await act(async () => {
+      await queued().execute(new AbortController().signal);
+    });
+
+    expect(operations.renameItem).toHaveBeenCalledWith(
+      {
+        destination: "/users/alice/Projects",
+        from: "/users/alice/notes.md",
+        to: "notes.md",
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+
+    await act(async () => {
+      queued().undo();
+    });
+
+    expect(operations.renameItem).toHaveBeenCalledTimes(2);
+    expect(operations.renameItem).toHaveBeenLastCalledWith({
+      destination: "/users/alice",
+      from: "/users/alice/notes.md",
+      to: "notes.md",
+    });
   });
 
   it("keeps a local trash move when there is no drive API", async () => {
