@@ -55,10 +55,12 @@ describe("tasks workspace header and sidebar", () => {
   });
 
   it("does not close the sidebar when Create list is clicked", () => {
-    expect(tsx).toMatch(
+    const newMenu = tsx.match(/<TasksNewMenu[\s\S]*?\/>/)?.[0];
+    expect(newMenu).toBeDefined();
+    expect(newMenu).toMatch(
       /onCreateList=\{canManageProjects \? openCreateProjectDialog : undefined\}/,
     );
-    expect(tsx).not.toMatch(/onCreateList=\{[\s\S]*setSidebarOpen\(false\)/);
+    expect(newMenu).not.toMatch(/onCreateList=\{[\s\S]*setSidebarOpen\(false\)/);
   });
 
   it("keeps New task in the sidebar primary button, not the ViewHeader", () => {
