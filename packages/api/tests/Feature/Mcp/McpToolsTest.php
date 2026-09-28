@@ -27,6 +27,7 @@ use App\Support\WgwSettings;
 use App\Ui\UiStaticServer;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Passport\Passport;
@@ -38,6 +39,9 @@ final class McpToolsTest extends WgwDatabaseTestCase
 {
     use ConfiguresMcp;
     use DriveTestFixtures;
+
+    /** Tool names that may declare no OAuth scope. */
+    private const SCOPELESS_TOOL_NAMES = ['capabilities'];
 
     protected function setUp(): void
     {
@@ -94,7 +98,7 @@ final class McpToolsTest extends WgwDatabaseTestCase
 
         WorkspaceServer::actingAs($bob, 'api')
             ->tool(DriveReadTool::class, ['path' => '/users/carol/private.txt'])
-            ->assertHasErrors(['Access denied']);
+            ->assertHasErrors(['Access denied for this path.']);
     }
 
     public function test_drive_read_returns_text_preview_for_own_file(): void
@@ -168,6 +172,7 @@ final class McpToolsTest extends WgwDatabaseTestCase
 
         $response = $tool->handle(new Request([]));
         $this->assertTrue($response->isError());
+        $this->assertSame('This operation is not available through MCP.', (string) $response->content());
         $this->assertSame(1, McpAuditEvent::query()->where('tool', 'admin_wipe')->where('outcome', 'denied')->count());
     }
 
@@ -256,6 +261,56 @@ final class McpToolsTest extends WgwDatabaseTestCase
         }
     }
 
+    public function test_catalog_tools_match_token_scopes(): void
+    {
+        config(['wgw.mail.client_enabled' => true]);
+
+        $expected = $this->expectedCatalogScopes();
+        $scopeless = array_keys(array_filter(
+            $expected,
+            static fn (?string $scope): bool => $scope === null,
+        ));
+        sort($scopeless);
+        $this->assertSame(self::SCOPELESS_TOOL_NAMES, $scopeless);
+
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+        $catalogNames = [];
+
+        foreach (app(McpToolCatalog::class)->enabledTools() as $class) {
+            /** @var WgwMcpTool $tool */
+            $tool = app($class);
+            $name = $tool->name();
+            $catalogNames[] = $name;
+            $this->assertArrayHasKey($name, $expected, $class);
+            $scope = $expected[$name];
+
+            Passport::actingAs($user, [], 'api', $client);
+            if ($scope === null) {
+                $response = $tool->handle(new Request([]));
+                $this->assertFalse($response->isError(), $name);
+                $this->assertStringNotContainsString('Missing OAuth scope', (string) $response->content(), $name);
+                $this->assertSame(0, $this->deniedToolCalls($name), $name);
+
+                continue;
+            }
+
+            $this->assertContains($scope, McpScopes::allRecognizedIds(), $name);
+            $denied = $tool->handle(new Request([]));
+            $this->assertTrue($denied->isError(), $name);
+            $this->assertSame('Missing OAuth scope: '.$scope, (string) $denied->content(), $name);
+            $this->assertSame(1, $this->deniedToolCalls($name), $name);
+
+            Passport::actingAs($user, [$scope], 'api', $client);
+            $this->assertMappedScopePassesGuard($tool);
+        }
+
+        $expectedNames = array_keys($expected);
+        sort($expectedNames);
+        sort($catalogNames);
+        $this->assertSame($expectedNames, $catalogNames);
+    }
+
     public function test_capabilities_lists_mcp_tool_names_not_php_classes(): void
     {
         $user = $this->mcpUser('bob');
@@ -292,6 +347,86 @@ final class McpToolsTest extends WgwDatabaseTestCase
             ->tool(DriveReadTool::class, ['path' => '/users/bob/notes.txt'])
             ->assertOk()
             ->assertSee('hello from drive');
+    }
+
+    /**
+     * Catalog tool name => required scope. Null is only valid for {@see self::SCOPELESS_TOOL_NAMES}.
+     *
+     * @return array<string, string|null>
+     */
+    private function expectedCatalogScopes(): array
+    {
+        return [
+            'addressbook_list' => McpScopes::CONTACTS_READ,
+            'addressbook_share' => McpScopes::CONTACTS_WRITE,
+            'addressbook_write' => McpScopes::CONTACTS_WRITE,
+            'calendar_event_write' => McpScopes::CALENDAR_WRITE,
+            'calendar_events' => McpScopes::CALENDAR_READ,
+            'calendar_list' => McpScopes::CALENDAR_READ,
+            'calendar_share' => McpScopes::CALENDAR_WRITE,
+            'calendar_write' => McpScopes::CALENDAR_WRITE,
+            'capabilities' => null,
+            'contact_query' => McpScopes::CONTACTS_READ,
+            'contact_write' => McpScopes::CONTACTS_WRITE,
+            'contacts_search' => McpScopes::CONTACTS_READ,
+            'docs_read' => McpScopes::DOCS_READ,
+            'docs_search' => McpScopes::DOCS_READ,
+            'docs_share' => McpScopes::DOCS_WRITE,
+            'docs_write' => McpScopes::DOCS_WRITE,
+            'drive_list' => McpScopes::DRIVE_READ,
+            'drive_read' => McpScopes::DRIVE_READ,
+            'drive_search' => McpScopes::DRIVE_READ,
+            'drive_share' => McpScopes::DRIVE_WRITE,
+            'drive_write' => McpScopes::DRIVE_WRITE,
+            'mail_send' => McpScopes::MAIL_SEND,
+            'mail_status' => McpScopes::MAIL_READ,
+            'meet_channel_list' => McpScopes::MEET_READ,
+            'meet_channel_write' => McpScopes::MEET_WRITE,
+            'meet_create_scheduled' => McpScopes::MEET_WRITE,
+            'meet_message_list' => McpScopes::MEET_READ,
+            'meet_message_write' => McpScopes::MEET_WRITE,
+            'note_write' => McpScopes::NOTES_WRITE,
+            'notebook_list' => McpScopes::NOTES_READ,
+            'notebook_share' => McpScopes::NOTES_WRITE,
+            'notebook_write' => McpScopes::NOTES_WRITE,
+            'notes_query' => McpScopes::NOTES_READ,
+            'notes_search' => McpScopes::NOTES_READ,
+            'task_write' => McpScopes::TASKS_WRITE,
+            'tasklist_share' => McpScopes::TASKS_WRITE,
+            'tasklist_write' => McpScopes::TASKS_WRITE,
+            'tasks_list' => McpScopes::TASKS_READ,
+            'whoami' => McpScopes::SETTINGS,
+        ];
+    }
+
+    /**
+     * Empty arguments may fail validation. That is not a scope denial.
+     * The scope guard records an audit row with outcome denied.
+     */
+    private function assertMappedScopePassesGuard(WgwMcpTool $tool): void
+    {
+        $name = $tool->name();
+        $deniedBefore = $this->deniedToolCalls($name);
+
+        try {
+            $allowed = $tool->handle(new Request([]));
+        } catch (ValidationException $e) {
+            $this->assertSame($deniedBefore, $this->deniedToolCalls($name), $name);
+            $this->assertStringNotContainsString('Missing OAuth scope', $e->getMessage(), $name);
+
+            return;
+        }
+
+        $this->assertSame($deniedBefore, $this->deniedToolCalls($name), $name);
+        $this->assertStringNotContainsString('Missing OAuth scope', (string) $allowed->content(), $name);
+    }
+
+    private function deniedToolCalls(string $tool): int
+    {
+        return McpAuditEvent::query()
+            ->where('tool', $tool)
+            ->where('outcome', 'denied')
+            ->count();
     }
 
     private function calendarWriteStub(): WgwMcpTool
