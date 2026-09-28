@@ -183,6 +183,34 @@ test("docs and agents paths are the only None exception", () => {
   assert.equal(isDocsOrAgents("packages/api/app/Example.php"), false);
 });
 
+test("the spec template is not linted, and a copy of it is", () => {
+  const unfilled = `# Title
+
+## What exists
+
+- Claim. \`path: path/to/file.ext:1\`
+
+### Chunk A: work
+
+- **Done when:** TBD
+`;
+  const templatePath = ".agents/specs/_template/plan.md";
+  assert.deepEqual(
+    evaluatePlans({
+      plans: [{ path: templatePath, before: null, after: unfilled }],
+      diffPaths: [templatePath, "package.json"],
+    }),
+    [],
+  );
+  const copied = evaluatePlans({
+    plans: [{ path: planPath, before: null, after: unfilled }],
+    diffPaths: [planPath],
+  });
+  assert.ok(copied.some((error) => error.includes("What exists bullet")));
+  assert.ok(copied.some((error) => error.includes("missing ## Invariants")));
+  assert.ok(copied.some((error) => error.includes("deferral marker")));
+});
+
 test("a path/to placeholder is not a citation", () => {
   const after = `# Title
 
