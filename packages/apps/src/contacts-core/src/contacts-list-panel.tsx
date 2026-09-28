@@ -296,7 +296,7 @@ function ContactsListRows({
                 key={card.id}
                 id={card.id}
                 title={name}
-                subtitle={contactListSubtitle(card) || "\u00a0"}
+                subtitle={contactListSubtitle(card)}
                 metaPosition="below"
                 date=""
                 text={contactListDetail(card)}

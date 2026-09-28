@@ -121,8 +121,8 @@
 
 /**
  * Windowed list: fixed row block sizes (see contacts-list-window.ts).
- * Always reserve the subtitle line and keep md padding equal to py-3 so
- * scroll offsets match the painted DOM at any root font size / zoom.
+ * Keep md padding equal to py-3 so scroll offsets match the painted DOM
+ * at any root font size / zoom. Overflow clips variable subtitle/body lines.
  */
 .contacts-list-panel__list {
   --contacts-list-card-row-size: 5.5rem;
@@ -136,10 +136,6 @@
   max-block-size: var(--contacts-list-card-row-size);
   padding-block: 0.75rem;
   overflow: hidden;
-}
-
-.contacts-list-panel__list .list-item__subtitle--below {
-  @apply mb-1 min-h-[1.25rem];
 }
 
 .contacts-list-panel__list .list-sticky-header {

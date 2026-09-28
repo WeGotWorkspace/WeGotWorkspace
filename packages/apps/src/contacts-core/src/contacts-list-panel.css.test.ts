@@ -39,9 +39,4 @@ describe("contacts list fixed row sizes", () => {
     expect(CONTACTS_LIST_CARD_ROW_PX).toBe(CONTACTS_LIST_CARD_ROW_REM * 16);
     expect(CONTACTS_LIST_HEADER_ROW_PX).toBe(CONTACTS_LIST_HEADER_ROW_REM * 16);
   });
-
-  it("always reserves the subtitle line so empty rows keep the same height", () => {
-    expect(tsx).toMatch(/subtitle=\{contactListSubtitle\(card\) \|\| "\\u00a0"\}/);
-    expect(css).toMatch(/\.list-item__subtitle--below[\s\S]*min-h-\[1\.25rem\]/);
-  });
 });
