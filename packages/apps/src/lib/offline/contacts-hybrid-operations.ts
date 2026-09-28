@@ -21,6 +21,7 @@ import {
   listAddressBooks,
   listCards,
   patchAddressBook,
+  type ContactsBootstrapSyncAnchor,
 } from "@/lib/api/wgw/contacts";
 import { syncContactBooksAfterAddressBookChanges } from "@/lib/api/wgw/contacts-sync";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/browser-online";
@@ -290,10 +291,15 @@ export function createHybridContactsOperations(username: string): ContactsAPIOpe
 async function rememberContactsSyncState(
   username: string,
   books: { id?: string }[],
+  anchor?: ContactsBootstrapSyncAnchor,
 ): Promise<void> {
-  const { client, accountId } = await connectedContacts();
-  const bookState = client.getState(accountId, "AddressBook");
-  const cardState = client.getState(accountId, "ContactCard");
+  let bookState = anchor?.addressBookState;
+  let cardState = anchor?.contactCardState;
+  if (!bookState || !cardState) {
+    const { client, accountId } = await connectedContacts();
+    if (!bookState) bookState = client.getState(accountId, "AddressBook");
+    if (!cardState) cardState = client.getState(accountId, "ContactCard");
+  }
   if (bookState) await writeAddressBooksSyncToken(username, bookState);
   if (!cardState) return;
   for (const book of books) {
@@ -313,7 +319,7 @@ export async function fetchContactsHybridBootstrap(
     await flushContactsOutboxAndReport(username);
   }
   await writeContactsBootstrapToCache(username, bootstrap);
-  await rememberContactsSyncState(username, bootstrap.data.addressBooks);
+  await rememberContactsSyncState(username, bootstrap.data.addressBooks, bootstrap.syncAnchor);
   return bootstrap;
 }
 

@@ -4,6 +4,7 @@ import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import {
   listOutboxMutations,
+  readAddressBooksSyncToken,
   readContactsBootstrapFromCache,
   readSyncToken,
   writeContactsBootstrapToCache,
@@ -286,6 +287,32 @@ describe("createHybridContactsOperations", () => {
     expect(pullAddressBookChanges).not.toHaveBeenCalled();
     expect(syncAllContactBooks).not.toHaveBeenCalled();
     expect(await readSyncToken(username, "default")).toBe("sync-1");
+  });
+
+  it("stores the first card-page state instead of the state after later pages or the flush", async () => {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await contactsBooksTable(db).clear();
+    await contactsCardsTable(db).clear();
+    await db.meta.clear();
+    connectedContacts.mockResolvedValue({
+      client: {
+        getState: (_accountId: string, type: string) =>
+          type === "AddressBook" ? "books-after-flush" : "cards-after-flush",
+      },
+      accountId: username,
+    });
+    vi.mocked(fetchContactsLiveBootstrap).mockResolvedValue({
+      ...bootstrap,
+      syncAnchor: {
+        addressBookState: "books-page-1",
+        contactCardState: "cards-page-1",
+      },
+    });
+
+    await fetchContactsHybridBootstrap();
+
+    expect(await readSyncToken(username, "default")).toBe("cards-page-1");
+    expect(await readAddressBooksSyncToken(username)).toBe("books-page-1");
   });
 
   it("returns a stored book on boot without downloading every card", async () => {

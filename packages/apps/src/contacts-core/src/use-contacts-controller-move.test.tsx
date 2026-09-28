@@ -80,6 +80,34 @@ describe("useContactsController create and move", () => {
     expect(created?.addressBookIds).toEqual({ default: true });
   });
 
+  it("keeps create, edit, and delete closed while a cold download is in progress", () => {
+    const { result } = renderHook(() =>
+      useContactsController({
+        data: bootstrap.data,
+        listLoading: false,
+        mutationsLocked: true,
+        initialContactId: "card-jane",
+      }),
+    );
+
+    expect(result.current.canCreateContact).toBe(false);
+    expect(result.current.canCreateGroup).toBe(false);
+    expect(result.current.canEdit).toBe(false);
+
+    act(() => {
+      result.current.createContact();
+      result.current.createGroup("Studio", "default");
+      result.current.openDeleteConfirm(["card-jane"]);
+    });
+
+    expect(result.current.createMode).toBe(false);
+    expect(
+      result.current.contactGroups.find((group) => group.name?.full === "Studio"),
+    ).toBeUndefined();
+    expect(result.current.cards.some((row) => row.id === "card-jane")).toBe(true);
+    expect(mockRequestConfirm).not.toHaveBeenCalled();
+  });
+
   it("does not create a group in an inbound share", () => {
     const { result } = renderHook(() =>
       useContactsController({

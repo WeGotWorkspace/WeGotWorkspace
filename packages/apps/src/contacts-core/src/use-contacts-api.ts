@@ -72,13 +72,17 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
     },
   );
 
+  /** First page is on screen; later pages are still downloading. */
+  const coldDownload = phase === "ready" && !complete;
+
   const operations = useMemo(() => {
+    if (coldDownload) return undefined;
     const fromSource = resolvedSource.createOperations(data ?? undefined);
     if (fromSource) return fromSource;
     const username = resolveContactsOfflineUsername(data?.session.user.username);
     if (!username) return undefined;
     return createHybridContactsOperations(username);
-  }, [resolvedSource, data]);
+  }, [coldDownload, resolvedSource, data]);
 
   const offlineUsername = useMemo(
     () => resolveContactsOfflineUsername(data?.session.user.username),
@@ -208,7 +212,9 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
     // First paint only. Refresh / reconnect keep cached cards and use listRefreshing
     // (header icon) — same split as Notes.
     listLoading: phase === "loading",
-    listRefreshing: listRefreshing || reconnectSyncing,
+    listRefreshing: listRefreshing || reconnectSyncing || coldDownload,
+    /** Cold download: list is visible but create, edit, and delete stay closed. */
+    mutationsLocked: coldDownload,
     refreshList,
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,

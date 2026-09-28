@@ -170,6 +170,50 @@ describe("JmapContactsClient contract batches", () => {
     expect((getBatches[1]?.[0]?.[1].ids as string[]).length).toBe(3);
   });
 
+  it("reports the first ContactCard page state before later pages advance it", async () => {
+    const ids = ["card-1", "card-2", "card-3"];
+    const { contacts } = await makeClient(
+      (calls) => {
+        return calls.map(([name, args, id]) => {
+          if (name === "AddressBook/get") {
+            return methodResponse(
+              name,
+              { accountId: ACCOUNT, state: "books-1", list: [], notFound: [] },
+              id,
+            );
+          }
+          if (name === "ContactCard/query") {
+            return methodResponse(name, { accountId: ACCOUNT, ids }, id);
+          }
+          const pageIds = (args.ids as string[]) ?? [];
+          const state = pageIds.includes("card-3") ? "cards-page-2" : "cards-page-1";
+          return methodResponse(
+            name,
+            {
+              accountId: ACCOUNT,
+              state,
+              list: pageIds.map((cardId) => ({ id: cardId })),
+              notFound: [],
+            },
+            id,
+          );
+        });
+      },
+      { maxObjectsInGet: 2, maxCallsInRequest: 8 },
+    );
+
+    const pageStates: string[] = [];
+    const got = await contacts.getAddressBooksAndCards(ACCOUNT, {
+      onPage: (snapshot) => {
+        pageStates.push(snapshot.cards.state);
+      },
+    });
+
+    expect(pageStates).toEqual(["cards-page-1", "cards-page-2"]);
+    expect(got.cards.state).toBe("cards-page-2");
+    expect(got.books.state).toBe("books-1");
+  });
+
   it("query+get uses the #ids ResultReference", async () => {
     const { contacts, recorded } = await makeClient((calls) => {
       const queryId = calls[0]?.[2] ?? "c1";

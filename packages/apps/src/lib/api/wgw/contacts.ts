@@ -320,11 +320,26 @@ export async function readContactCardImportResponse(
   return { list: [], errors: [] };
 }
 
+/**
+ * State strings to store for the next `/changes` call.
+ * ContactCard state is the first card page, not the last: a change to an
+ * earlier page while later pages are still downloading must stay visible to
+ * `/changes`. Replaying a change is safe; skipping one is not.
+ */
+export type ContactsBootstrapSyncAnchor = {
+  addressBookState: string;
+  contactCardState: string;
+};
+
+export type ContactsLiveBootstrap = ContactsAppBootstrap & {
+  syncAnchor?: ContactsBootstrapSyncAnchor;
+};
+
 /** Load address books and cards from the configured WeGotWorkspace API. */
 export async function fetchContactsLiveBootstrap(options?: {
   /** First card page (and each later page) so the list can open before the last request. */
   onProgress?: (bootstrap: ContactsAppBootstrap) => void;
-}): Promise<ContactsAppBootstrap> {
+}): Promise<ContactsLiveBootstrap> {
   const session = await wgwFetchPrincipal();
 
   const settingsRes = await wgwFetch("/settings/state");
@@ -338,8 +353,15 @@ export async function fetchContactsLiveBootstrap(options?: {
   }
 
   const { contacts, accountId } = await connectedContacts();
+  let syncAnchor: ContactsBootstrapSyncAnchor | undefined;
   const { books, cards } = await contacts.getAddressBooksAndCards(accountId, {
     onPage: (snapshot) => {
+      if (!syncAnchor) {
+        syncAnchor = {
+          addressBookState: snapshot.books.state,
+          contactCardState: snapshot.cards.state,
+        };
+      }
       options?.onProgress?.({
         session,
         data: {
@@ -356,5 +378,6 @@ export async function fetchContactsLiveBootstrap(options?: {
       cards: cards.list.map(toContactCard),
     },
     session,
+    ...(syncAnchor ? { syncAnchor } : {}),
   };
 }

@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { JmapMethodError } from "@/lib/jmap-client";
-import { readSyncToken } from "@/lib/offline/contacts-offline-store";
+import {
+  readContactsBootstrapFromCache,
+  readSyncToken,
+} from "@/lib/offline/contacts-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { contactsBooksTable, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 
@@ -74,6 +77,7 @@ vi.mock("@/hooks/use-app-toast", () => ({
   }),
 }));
 
+import { getCard } from "@/lib/api/wgw/contacts";
 import { useContactsAPI } from "./use-contacts-api";
 
 const book = {
@@ -182,5 +186,81 @@ describe("useContactsAPI first visit", () => {
     expect(addressBookChanges).toHaveBeenCalledWith("books-state", undefined);
     expect(listCards).not.toHaveBeenCalled();
     expect(listAddressBooks).not.toHaveBeenCalled();
+  });
+
+  it("stays read-only during a cold download and fetches a page-1 edit on the next changes", async () => {
+    let resolveBoot: (
+      value: BootSnapshot & {
+        syncAnchor: { addressBookState: string; contactCardState: string };
+      },
+    ) => void = () => undefined;
+    const boot = new Promise<
+      BootSnapshot & { syncAnchor: { addressBookState: string; contactCardState: string } }
+    >((resolve) => {
+      resolveBoot = resolve;
+    });
+    fetchContactsLiveBootstrap.mockImplementation(
+      async (options?: { onProgress?: (partial: BootSnapshot) => void }) => {
+        options?.onProgress?.({
+          session,
+          data: { addressBooks: [book], cards: [card("page-1")] },
+        });
+        return boot;
+      },
+    );
+    connectedContacts.mockResolvedValue({
+      client: {
+        getState: () => "cards-after-flush",
+      },
+      accountId: username,
+    });
+    const updated = {
+      ...card("page-1"),
+      name: { "@type": "Name", isOrdered: false, full: "Ada Updated" },
+    } as ContactCard;
+    contactCardChanges.mockImplementation(async (since: string) => {
+      if (since === "cards-page-1") {
+        return {
+          oldState: since,
+          newState: "cards-page-2",
+          created: [],
+          updated: ["page-1"],
+          destroyed: [],
+        };
+      }
+      return emptyChanges(since, "cards-ignored");
+    });
+    vi.mocked(getCard).mockResolvedValue(updated);
+
+    const { result } = renderHook(() => useContactsAPI());
+
+    await waitFor(() => {
+      expect(result.current.data.cards.map((row) => row.id)).toEqual(["page-1"]);
+    });
+    expect(result.current.mutationsLocked).toBe(true);
+    expect(result.current.operations).toBeUndefined();
+    expect(result.current.listRefreshing).toBe(true);
+    expect(result.current.listLoading).toBe(false);
+
+    await act(async () => {
+      resolveBoot({
+        session,
+        data: { addressBooks: [book], cards: [card("page-1"), card("page-2")] },
+        syncAnchor: { addressBookState: "books-page-1", contactCardState: "cards-page-1" },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.data.cards.find((row) => row.id === "page-1")?.name?.full).toBe(
+        "Ada Updated",
+      );
+    });
+    expect(contactCardChanges).toHaveBeenCalledWith("cards-page-1", undefined);
+    expect(contactCardChanges).not.toHaveBeenCalledWith("cards-after-flush", undefined);
+    expect(result.current.mutationsLocked).toBe(false);
+    expect(result.current.operations).toBeDefined();
+    expect(result.current.listRefreshing).toBe(false);
+    const cached = await readContactsBootstrapFromCache(username);
+    expect(cached?.data.cards.find((row) => row.id === "page-1")?.name?.full).toBe("Ada Updated");
   });
 });
