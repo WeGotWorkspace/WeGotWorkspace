@@ -1,7 +1,7 @@
-# Weekly version updates. Each ecosystem is one group covering major, minor,
-# and patch, so Dependabot opens a single version-update pull request per
-# ecosystem. `applies-to: version-updates` keeps security updates ungrouped
-# so they are not held for the weekly batch.
+# Weekly version updates. npm majors are their own group so a breaking bump
+# does not ride along with the minor and patch batch. Other ecosystems stay
+# one group covering major, minor, and patch. `applies-to: version-updates`
+# keeps security updates ungrouped so they are not held for the weekly batch.
 #
 # Follow-up (turbo-hybrid): root `npm` only sees pnpm-lock.yaml. If packages/api
 # or tools/api-e2e later gets its own package.json and lockfile, add another npm
@@ -30,21 +30,30 @@ updates:
       interval: weekly
     open-pull-requests-limit: 10
     groups:
-      npm:
+      npm-major:
         applies-to: version-updates
         patterns:
           - "*"
         update-types:
           - major
+      npm:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
           - minor
           - patch
+    # Held majors are tracked in #968. Remove an ignore only in the PR that
+    # upgrades that package.
     ignore:
-      # TypeScript 7.0 is the native compiler and does not ship the JS compiler
-      # API. openapi-typescript and Storybook react-docgen still call
-      # ts.factory / ts.sys, and typescript-eslint 8 peers on typescript <6.1.
+      # The pnpm override pins typescript to 5.9.3. A 6.x bump would change
+      # package.json and leave the lockfile on 5.9.3. typescript-eslint 8
+      # peers on typescript <6.1, and TypeScript 7 does not ship the JS
+      # compiler API (ts.factory / ts.sys) that openapi-typescript and
+      # Storybook react-docgen still call.
       - dependency-name: typescript
         versions:
-          - ">=7.0.0"
+          - ">=6.0.0"
       # These majors change lint rules or public types the apps package still
       # targets. Hold them until a dedicated upgrade.
       - dependency-name: eslint
@@ -68,17 +77,31 @@ updates:
       - dependency-name: "@vitest/browser-playwright"
         versions:
           - ">=5.0.0"
+      - dependency-name: "@vitest/coverage-v8"
+        versions:
+          - ">=5.0.0"
       - dependency-name: recharts
         versions:
           - ">=3.0.0"
       - dependency-name: react-day-picker
         versions:
           - ">=10.0.0"
-      # 1.169+ pulls seroval-plugins 1.6.7. That build imports isStream,
-      # which the seroval 1.5.3 override does not export, so the Storybook
-      # production build fails. 1.170 also treats a Node process as a server
-      # and skips client navigate(), which fails route unit tests and makes
-      # Storybook play functions query the tree before it commits.
+      # 2.3 leaves the listbox open across the next query, so getByRole
+      # misses the dialog button while the rest of the dialog is hidden.
+      - dependency-name: "@radix-ui/react-select"
+        versions:
+          - ">=2.3.0"
+      # CI runs Node 24. Node 25 and 26 types accept APIs that runtime does
+      # not have.
+      - dependency-name: "@types/node"
+        versions:
+          - ">=25.0.0"
+      # 1.170 treats a Node process as a server and skips client navigate(),
+      # which fails route unit tests and races Storybook play functions.
+      # package.json also pins seroval-plugins to 1.5.2. main already
+      # resolves 1.5.2 while the router stays on 1.168.23; 1.6.7 imports
+      # isStream, which the seroval 1.5.3 override does not export. Remove
+      # that override when this hold is lifted.
       - dependency-name: "@tanstack/react-router"
         versions:
           - ">=1.169.0"
