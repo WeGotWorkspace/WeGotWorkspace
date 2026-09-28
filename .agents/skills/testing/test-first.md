@@ -74,8 +74,6 @@ Chunk `done-when` must include **automated proof**, not “looks fine in browser
 
 For new behavior and bugfixes, the test commit comes before the fix commit. For a preserved contract, the named test asserts the old behavior. Infra and config may use a command that shows a silent miss (for example a typegen cache miss after touching `openapi.json`) when there is no unit test.
 
-A checker and the tests that pin that checker may share one commit. Say so in the PR. That exception is only for the checker, not for the behavior it guards.
-
 ## What we do not require (yet)
 
 Enforcement status for Storybook coverage, `play` functions, Vitest smoke, and e2e: [.agents/POLICY.md](../../POLICY.md). Apps measurable done criteria: [apps-done-gate.md](apps-done-gate.md). Coverage audit closed ([#72](https://github.com/WeGotWorkspace/wegotworkspace/issues/72) / [#76](https://github.com/WeGotWorkspace/wegotworkspace/pull/76)); expand `play` / WCAG / [Chromatic](../storybook/chromatic.md) over time.

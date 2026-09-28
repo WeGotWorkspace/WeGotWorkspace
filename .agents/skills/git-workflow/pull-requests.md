@@ -22,8 +22,6 @@ Ensure commits are **signed** (required for merge to `main`).
 
 **Test commit before the fix commit** for new behavior and bugfixes. Review checks `git log` and can run the test commit. This is a review rule, not a required check. Merge commits keep that order visible on `main`. A preserved behavior is proven by a test that asserts the old contract, not by a green suite that never mentions it.
 
-A checker and the tests that pin that checker may share one commit. Say so in the PR. That exception is only for the checker, not for the behavior it guards.
-
 ## Push branch
 
 ```bash
