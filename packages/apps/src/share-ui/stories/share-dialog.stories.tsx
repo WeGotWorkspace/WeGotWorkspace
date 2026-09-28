@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
 import { ShareDialog } from "@/share-ui/share-dialog";
+import { shareLabels } from "@/share-ui/share-labels";
 import {
   createShareStoryOperations,
   SHARE_STORY_PATH,
@@ -21,6 +23,7 @@ function ShareDialogHarness({
   title?: string;
 }) {
   const [open, setOpen] = useState(true);
+  const [shareOperations] = useState(() => createShareStoryOperations(fixture));
 
   return (
     <DriveStoryScope className="max-w-xl p-6">
@@ -28,7 +31,7 @@ function ShareDialogHarness({
         open={open}
         path={SHARE_STORY_PATH}
         title={title}
-        shareOperations={createShareStoryOperations(fixture)}
+        shareOperations={shareOperations}
         onOpenChange={setOpen}
       />
     </DriveStoryScope>
@@ -53,7 +56,20 @@ export const PublicPasswordOn: Story = {
 };
 
 export const PublicOff: Story = {
+  tags: ["vitest-ci"],
   render: () => <ShareDialogHarness fixture={shareStoryAtPathPublicOff} />,
+  play: async () => {
+    const body = within(document.body);
+    const toggle = await body.findByRole("switch", { name: shareLabels.enablePublicAccess });
+    await userEvent.click(toggle);
+    await waitFor(() =>
+      expect(body.getByRole("switch", { name: shareLabels.enablePublicAccess })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      ),
+    );
+    await body.findByRole("button", { name: shareLabels.copyLink });
+  },
 };
 
 export const InheritedRows: Story = {

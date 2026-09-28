@@ -591,87 +591,91 @@ export class EventCalendar extends BaseElement {
         class="event-calendar-shell ${hasCalendars ? "event-calendar-has-calendars" : ""}"
         dir=${headerDirection}
       >
-        ${hasCalendars
-          ? html`
-              <div
-                id="event-calendar-calendars-mount"
-                class="event-calendar-calendars event-calendar-calendars--docked"
-                dir=${headerDirection}
-              >
-                <div class="event-calendar-calendars-panel">
-                  <calendars-sidebar
-                    class="event-calendar-calendars-sidebar"
-                    dir=${headerDirection}
-                    .calendars=${this.calendars}
-                    .visibleCalendarIds=${this.visibleCalendarIds}
-                    .selectedCalendarId=${this.selectedCalendarId}
-                    @visibleCalendarIds-changed=${this.#handlevisibleCalendarIdsChanged}
-                    @selectedCalendarId-changed=${this.#handleSelectedCalendarIdChanged}
-                  ></calendars-sidebar>
-                </div>
-              </div>
-              <dialog
-                id="event-calendar-calendars-dialog"
-                class="event-calendar-calendars-dialog"
-                dir=${headerDirection}
-                aria-label=${getCalendarsMenuLabel(this.lang)}
-                @cancel=${this.#onCalendarsDialogCancel}
-                @close=${this.#onCalendarsDialogClose}
-              >
+        ${
+          hasCalendars
+            ? html`
                 <div
-                  class="event-calendar-calendars-backdrop"
-                  aria-hidden="true"
-                  @click=${this.#closeCalendarsOverlay}
-                ></div>
-                <div class="event-calendar-calendars-panel">
-                  <div class="event-calendar-calendars-panel-header">
-                    <lc-button
-                      label="Close calendars"
-                      style=${EVENT_CALENDAR_MENU_BUTTON_STYLE}
-                      @click=${this.#closeCalendarsOverlay}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2.5"
-                        aria-hidden="true"
-                        class="event-calendar-nav-icon"
-                      >
-                        <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"></path>
-                      </svg>
-                    </lc-button>
+                  id="event-calendar-calendars-mount"
+                  class="event-calendar-calendars event-calendar-calendars--docked"
+                  dir=${headerDirection}
+                >
+                  <div class="event-calendar-calendars-panel">
+                    <calendars-sidebar
+                      class="event-calendar-calendars-sidebar"
+                      dir=${headerDirection}
+                      .calendars=${this.calendars}
+                      .visibleCalendarIds=${this.visibleCalendarIds}
+                      .selectedCalendarId=${this.selectedCalendarId}
+                      @visibleCalendarIds-changed=${this.#handlevisibleCalendarIdsChanged}
+                      @selectedCalendarId-changed=${this.#handleSelectedCalendarIdChanged}
+                    ></calendars-sidebar>
                   </div>
-                  <calendars-sidebar
-                    class="event-calendar-calendars-sidebar"
-                    dir=${headerDirection}
-                    .calendars=${this.calendars}
-                    .visibleCalendarIds=${this.visibleCalendarIds}
-                    .selectedCalendarId=${this.selectedCalendarId}
-                    @visibleCalendarIds-changed=${this.#handlevisibleCalendarIdsChanged}
-                    @selectedCalendarId-changed=${this.#handleSelectedCalendarIdChanged}
-                  ></calendars-sidebar>
                 </div>
-              </dialog>
-            `
-          : nothing}
+                <dialog
+                  id="event-calendar-calendars-dialog"
+                  class="event-calendar-calendars-dialog"
+                  dir=${headerDirection}
+                  aria-label=${getCalendarsMenuLabel(this.lang)}
+                  @cancel=${this.#onCalendarsDialogCancel}
+                  @close=${this.#onCalendarsDialogClose}
+                >
+                  <div
+                    class="event-calendar-calendars-backdrop"
+                    aria-hidden="true"
+                    @click=${this.#closeCalendarsOverlay}
+                  ></div>
+                  <div class="event-calendar-calendars-panel">
+                    <div class="event-calendar-calendars-panel-header">
+                      <lc-button
+                        label="Close calendars"
+                        style=${EVENT_CALENDAR_MENU_BUTTON_STYLE}
+                        @click=${this.#closeCalendarsOverlay}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2.5"
+                          aria-hidden="true"
+                          class="event-calendar-nav-icon"
+                        >
+                          <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"></path>
+                        </svg>
+                      </lc-button>
+                    </div>
+                    <calendars-sidebar
+                      class="event-calendar-calendars-sidebar"
+                      dir=${headerDirection}
+                      .calendars=${this.calendars}
+                      .visibleCalendarIds=${this.visibleCalendarIds}
+                      .selectedCalendarId=${this.selectedCalendarId}
+                      @visibleCalendarIds-changed=${this.#handlevisibleCalendarIdsChanged}
+                      @selectedCalendarId-changed=${this.#handleSelectedCalendarIdChanged}
+                    ></calendars-sidebar>
+                  </div>
+                </dialog>
+              `
+            : nothing
+        }
         <div class="event-calendar-main">
           <header class="event-calendar-header" dir=${headerDirection}>
             <div class="event-calendar-toolbar" style=${EVENT_CALENDAR_GHOST_ICON_BUTTON_STYLE}>
-              ${hasCalendars
-                ? html`
-                    <lc-button
-                      class="event-calendar-calendars-toggle"
-                      .label=${getCalendarsMenuLabel(this.lang)}
-                      .disclosureExpanded=${this.#calendarsOverlayOpen}
-                      .hasPopup=${"dialog"}
-                      style=${EVENT_CALENDAR_MENU_BUTTON_STYLE}
-                      @click=${this.#toggleCalendarsOverlay}
-                    >
-                      ${renderHamburgerIcon({ className: "event-calendar-nav-icon" })}
-                    </lc-button>
-                  `
-                : nothing}
+              ${
+                hasCalendars
+                  ? html`
+                      <lc-button
+                        class="event-calendar-calendars-toggle"
+                        .label=${getCalendarsMenuLabel(this.lang)}
+                        .disclosureExpanded=${this.#calendarsOverlayOpen}
+                        .hasPopup=${"dialog"}
+                        style=${EVENT_CALENDAR_MENU_BUTTON_STYLE}
+                        @click=${this.#toggleCalendarsOverlay}
+                      >
+                        ${renderHamburgerIcon({ className: "event-calendar-nav-icon" })}
+                      </lc-button>
+                    `
+                  : nothing
+              }
               <div class="event-calendar-heading-row" dir=${headerDirection}>
                 <div class="event-calendar-nav-buttons">
                   <lc-button
@@ -719,13 +723,15 @@ export class EventCalendar extends BaseElement {
                 </div>
                 <span class="event-calendar-divider" aria-hidden="true"></span>
                 <h2 class="event-calendar-range-label" aria-live="polite" dir=${headerDirection}>
-                  ${this.#rangeLabelParts.length
-                    ? this.#rangeLabelParts.map((part) =>
-                        part.isYear
-                          ? html`<span class="event-calendar-range-year">${part.text}</span>`
-                          : part.text,
-                      )
-                    : this.#rangeLabelText}
+                  ${
+                    this.#rangeLabelParts.length
+                      ? this.#rangeLabelParts.map((part) =>
+                          part.isYear
+                            ? html`<span class="event-calendar-range-year">${part.text}</span>`
+                            : part.text,
+                        )
+                      : this.#rangeLabelText
+                  }
                 </h2>
               </div>
               <lc-button

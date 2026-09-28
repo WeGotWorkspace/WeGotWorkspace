@@ -38,10 +38,40 @@ function installPriorityFlagStyles(): void {
   document.head.appendChild(style);
 }
 
+/** Winning `!important` declaration on `.tasks-priority-flag svg`. */
+const PRIORITY_FLAG_STROKE_REF = "var(--tasks-priority-flag-stroke)";
+
 function normalizedStrokeColor(value: string): string {
   const probe = document.createElement("span");
   probe.style.color = value;
   return probe.style.color;
+}
+
+function importantMatchingStroke(flag: Element): string {
+  let declared = "";
+  for (const sheet of Array.from(document.styleSheets)) {
+    for (const rule of Array.from(sheet.cssRules)) {
+      if (!(rule instanceof CSSStyleRule)) continue;
+      if (rule.style.getPropertyPriority("stroke") !== "important") continue;
+      if (!flag.matches(rule.selectorText)) continue;
+      const value = rule.style.getPropertyValue("stroke").trim();
+      if (value) declared = value;
+    }
+  }
+  return declared;
+}
+
+/**
+ * jsdom 30 reports the winning specified value and does not substitute custom
+ * properties, so `stroke` stays `var(--tasks-priority-flag-stroke)`. Read that
+ * variable from the flag wrapper. Engines that do resolve variables already
+ * return a concrete color.
+ */
+function strokeColorFromSpecified(flag: SVGElement, specified: string): string {
+  if (specified !== PRIORITY_FLAG_STROKE_REF) return specified;
+  const wrapper = flag.closest(".tasks-priority-flag");
+  if (!(wrapper instanceof HTMLElement)) return specified;
+  return wrapper.style.getPropertyValue("--tasks-priority-flag-stroke").trim();
 }
 
 function expectPriorityFlagStroke(flag: SVGElement | null | undefined, color: string): void {
@@ -946,10 +976,19 @@ describe("TasksMainView task rows", () => {
     const flag = meta?.querySelector(".tasks-priority-flag svg") as SVGElement | null;
 
     expectPriorityFlagStroke(flag, TASK_PRIORITY_FLAG_COLORS.high);
-    expect(normalizedStrokeColor(window.getComputedStyle(flag!).stroke)).toBe(
-      normalizedStrokeColor(TASK_PRIORITY_FLAG_COLORS.high),
+    expect(importantMatchingStroke(flag!)).toBe(PRIORITY_FLAG_STROKE_REF);
+
+    const specifiedStroke = window.getComputedStyle(flag!).stroke.trim();
+    const highStroke = normalizedStrokeColor(TASK_PRIORITY_FLAG_COLORS.high);
+    expect(specifiedStroke).not.toBe("currentColor");
+    expect(specifiedStroke).not.toBe(window.getComputedStyle(meta!).color);
+    expect(
+      specifiedStroke === PRIORITY_FLAG_STROKE_REF ||
+        normalizedStrokeColor(specifiedStroke) === highStroke,
+    ).toBe(true);
+    expect(normalizedStrokeColor(strokeColorFromSpecified(flag!, specifiedStroke))).toBe(
+      highStroke,
     );
-    expect(window.getComputedStyle(flag!).stroke).not.toBe(window.getComputedStyle(meta!).color);
   });
 
   it("hides priority meta when task priority is none", () => {

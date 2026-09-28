@@ -78,5 +78,4 @@ export function createDataBinding(options: DataBindingOptions) {
 }
 
 export type RtcSessionBinding =
-  | ReturnType<typeof createMediaBinding>
-  | ReturnType<typeof createDataBinding>;
+  ReturnType<typeof createMediaBinding> | ReturnType<typeof createDataBinding>;

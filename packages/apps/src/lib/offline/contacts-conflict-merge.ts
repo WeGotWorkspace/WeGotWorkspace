@@ -9,15 +9,7 @@ import type { ContactCard, ContactCardPatch } from "@/contacts-core/src/contacts
 
 /** Editable contact sections surfaced in the field-level conflict merge UI. */
 export type ContactConflictFieldKey =
-  | "name"
-  | "kind"
-  | "title"
-  | "organization"
-  | "notes"
-  | "phones"
-  | "emails"
-  | "addresses"
-  | "urls";
+  "name" | "kind" | "title" | "organization" | "notes" | "phones" | "emails" | "addresses" | "urls";
 
 export type ContactConflictFieldChoice = "local" | "server";
 

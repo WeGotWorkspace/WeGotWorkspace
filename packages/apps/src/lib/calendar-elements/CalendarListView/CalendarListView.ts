@@ -115,32 +115,38 @@ export class CalendarListView extends CalendarViewBase {
 
     return html`
       <div class="agenda-shell collection-state-host" dir=${direction}>
-        ${days.length
-          ? html`
-              ${days.map(
-                ({ date, items }) => html`
-                  <section class="agenda-day" aria-labelledby=${`agenda-day-${date}`}>
-                    <h2
-                      class="list-sticky-header agenda-day-heading"
-                      id=${`agenda-day-${date}`}
-                      aria-label=${this.#formatLongDateLabel(date)}
-                    >
-                      <span class="list-sticky-header__emphasis">${this.#formatWeekday(date)}</span>
-                      <span class="list-sticky-header__rest">${this.#formatDayLabel(date)}</span>
-                    </h2>
-                    <ul class="agenda-event-list">
-                      ${items.map((item) => this.#renderItem(item))}
-                    </ul>
-                  </section>
-                `,
-              )}
-            `
-          : html`
-              <div class="collection-state">
-                <div class="collection-state__icon" aria-hidden="true">${renderCalendarIcon()}</div>
-                <div class="collection-state__body">${this.emptyLabel}</div>
-              </div>
-            `}
+        ${
+          days.length
+            ? html`
+                ${days.map(
+                  ({ date, items }) => html`
+                    <section class="agenda-day" aria-labelledby=${`agenda-day-${date}`}>
+                      <h2
+                        class="list-sticky-header agenda-day-heading"
+                        id=${`agenda-day-${date}`}
+                        aria-label=${this.#formatLongDateLabel(date)}
+                      >
+                        <span class="list-sticky-header__emphasis"
+                          >${this.#formatWeekday(date)}</span
+                        >
+                        <span class="list-sticky-header__rest">${this.#formatDayLabel(date)}</span>
+                      </h2>
+                      <ul class="agenda-event-list">
+                        ${items.map((item) => this.#renderItem(item))}
+                      </ul>
+                    </section>
+                  `,
+                )}
+              `
+            : html`
+                <div class="collection-state">
+                  <div class="collection-state__icon" aria-hidden="true">
+                    ${renderCalendarIcon()}
+                  </div>
+                  <div class="collection-state__body">${this.emptyLabel}</div>
+                </div>
+              `
+        }
       </div>
     `;
   }
@@ -166,10 +172,12 @@ export class CalendarListView extends CalendarViewBase {
           .recurring=${isRecurring}
           .exception=${isException}
           ?past=${isPast}
-          .rsvp=${event.participationStatus === "needs-action" ||
-          event.participationStatus === "tentative"
-            ? event.participationStatus
-            : ""}
+          .rsvp=${
+            event.participationStatus === "needs-action" ||
+            event.participationStatus === "tentative"
+              ? event.participationStatus
+              : ""
+          }
           .overlay=${event.overlayKind === "task" ? "task" : ""}
           style=${styleMap(colorStyles)}
         ></event-card>

@@ -3,12 +3,7 @@ import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { applyTaskPatch } from "@/lib/offline/tasks/tasks-patch-merge";
 
 export type TaskConflictFieldKey =
-  | "title"
-  | "description"
-  | "due"
-  | "workflowStatus"
-  | "priority"
-  | "categories";
+  "title" | "description" | "due" | "workflowStatus" | "priority" | "categories";
 
 export type TaskConflictFieldChoice = "local" | "server";
 

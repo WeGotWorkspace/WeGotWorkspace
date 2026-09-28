@@ -14,8 +14,7 @@ export type ShareDestinationRoute = {
 };
 
 export type ShareDestination =
-  | { kind: "route"; route: ShareDestinationRoute }
-  | { kind: "download"; apiPath: string };
+  { kind: "route"; route: ShareDestinationRoute } | { kind: "download"; apiPath: string };
 
 function lastPathSegment(apiPath: string): string {
   const normalized = normalizeApiVirtualPath(apiPath);
