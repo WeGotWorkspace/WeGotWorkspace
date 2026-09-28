@@ -91,8 +91,15 @@ jobs:
           cp packages/api/.env.example packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
 
-      # Shard 1 also runs greenfield-guard + the Architecture suite; later
-      # shards run only their round-robin slice of unit/feature/storage tests.
+      # origin/main is the ceiling for the PHPStan baseline sum. A depth-1
+      # checkout of the PR head does not include that ref. Pin the refspec
+      # so the update does not depend on the remote's default fetch mapping.
+      - name: Fetch main for the PHPStan baseline shrink check
+        run: git fetch --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+
+      # Shard 1 also runs the file-size ratchet, greenfield-guard, PHPStan
+      # level 1, and the Architecture suite; later shards run only their
+      # round-robin slice of unit/feature/storage tests.
       - name: API quality gate (shard ${{ matrix.shard }}/2)
         env:
           DONE_GATE_SHARD: ${{ matrix.shard }}/2

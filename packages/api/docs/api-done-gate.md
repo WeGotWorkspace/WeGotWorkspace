@@ -24,9 +24,19 @@ composer done-gate
 
 This runs, in order:
 
-1. **`greenfield:guard`** — no legacy patterns in `app/` (Flysystem, no `*Kernel`, etc.)
-2. **Architecture tests** — bidirectional OpenAPI ↔ routes (`OpenApiRouteContractTest`) + guard smoke
-3. **Full PHPUnit** — unit, feature, and storage suites
+1. **File-size ratchet** — `packages/api/app` stays within the committed line-count baseline
+2. **`greenfield:guard`** — no legacy patterns in `app/` (Flysystem, no `*Kernel`, etc.)
+3. **PHPStan level 1** — `composer phpstan` (Larastan). Findings already listed in `phpstan-baseline.neon` are allowed. A finding that is not in the baseline fails the gate.
+4. **Architecture tests** — bidirectional OpenAPI ↔ routes (`OpenApiRouteContractTest`) + guard smoke
+5. **Full PHPUnit** — unit, feature, and storage suites
+
+CI sharding (`DONE_GATE_SHARD`) runs PHPStan on shard 1 with the other contract steps. Later shards run their PHPUnit slice only.
+
+## PHPStan baseline
+
+`phpstan-baseline.neon` may only shrink. The done gate sums every `count:` and fails when that sum is higher than on `origin/main`. A missing file on `origin/main` is the initial baseline. Do not regenerate the file to clear new findings. Fix the code, then delete that finding's entry in the same pull request (remove the entry, or lower its count). There is no composer script that rewrites the baseline.
+
+`tests/` is not analyzed. Tables created through `$this->wgw()` in `database/migrations/wgw` are invisible to Larastan; declare each column with `@property` (`packages/api/docs/sql-schema.md`).
 
 Faster check (contract only, no feature suite):
 
