@@ -17,6 +17,8 @@ Legacy `app_migrations` (versions 1–9) remains on upgraded installs as audit h
 
 All models use [`UsesWgwConnection`](app/Models/Concerns/UsesWgwConnection.php) (`getConnectionName(): 'wgw'`).
 
+Larastan does not infer columns for tables created from raw SQL. Declare each column with `@property` on the model, in the same change that adds the column. `App\Models\User` is the pattern.
+
 | Table | Model | Notes |
 |-------|--------|--------|
 | `users` | `App\Models\User` | Sabre HTTP Basic (`digest` bcrypt) |

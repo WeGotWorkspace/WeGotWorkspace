@@ -91,6 +91,11 @@ jobs:
           cp packages/api/.env.example packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
 
+      # origin/main is the ceiling for the PHPStan baseline sum. A depth-1
+      # checkout of the PR head does not include that ref.
+      - name: Fetch main for the PHPStan baseline shrink check
+        run: git fetch --depth=1 origin main
+
       # Shard 1 also runs the file-size ratchet, greenfield-guard, PHPStan
       # level 1, and the Architecture suite; later shards run only their
       # round-robin slice of unit/feature/storage tests.

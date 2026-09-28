@@ -20,6 +20,15 @@ use Laravel\Passport\HasApiTokens;
  * Implements {@see AuthenticatableContract} so Passport/MCP can resolve
  * the same principal as Sabre digest auth. Password verification stays in
  * {@see SabreUserProvider} via {@see SabreCredentialValidator}.
+ *
+ * The table is raw SQL, so Larastan cannot see its columns. Declare every
+ * column here. Add a `@property` in the same change that adds a column.
+ *
+ * @property int $id
+ * @property string $username
+ * @property string $digesta1
+ * @property string $digest
+ * @property bool $enabled
  */
 final class User extends Model implements AuthenticatableContract, OAuthenticatable
 {

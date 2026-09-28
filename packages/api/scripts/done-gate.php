@@ -145,7 +145,14 @@ if ($runContractSteps) {
         exit($guardCode);
     }
 
-    done_gate_step("Step {$step}/{$totalSteps}: PHPStan (level 1, committed baseline)");
+    done_gate_step("Step {$step}/{$totalSteps}: PHPStan (level 1, shrink-only baseline)");
+    $shrinkCode = done_gate_run(['php', $apiRoot.'/scripts/phpstan-baseline-shrink.php']);
+    if ($shrinkCode !== 0) {
+        $results[] = ['label' => 'phpstan baseline', 'ok' => false, 'detail' => 'count must not rise'];
+        done_gate_summary($results, false);
+        exit($shrinkCode);
+    }
+
     $phpstan = $apiRoot.'/vendor/bin/phpstan';
     if (! is_file($phpstan)) {
         fwrite(STDERR, "done-gate: vendor/bin/phpstan missing — run: composer install\n");

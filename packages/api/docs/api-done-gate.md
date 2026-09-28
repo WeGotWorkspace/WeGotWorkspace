@@ -30,11 +30,13 @@ This runs, in order:
 4. **Architecture tests** — bidirectional OpenAPI ↔ routes (`OpenApiRouteContractTest`) + guard smoke
 5. **Full PHPUnit** — unit, feature, and storage suites
 
-CI sharding (`DONE_GATE_SHARD`) runs PHPStan on shard 1 with the other contract steps. Later shards run their PHPUnit slice only. The PHPUnit suite does not require a tree cleaner than the committed baseline.
+CI sharding (`DONE_GATE_SHARD`) runs PHPStan on shard 1 with the other contract steps. Later shards run their PHPUnit slice only.
 
 ## PHPStan baseline
 
-`phpstan-baseline.neon` may only shrink. Do not regenerate it to clear new findings. Fix the code, then delete that finding's entry in the same pull request (remove the entry, or lower its count). There is no composer script that rewrites the baseline.
+`phpstan-baseline.neon` may only shrink. The done gate sums every `count:` and fails when that sum is higher than on `origin/main`. A missing file on `origin/main` is the initial baseline. Do not regenerate the file to clear new findings. Fix the code, then delete that finding's entry in the same pull request (remove the entry, or lower its count). There is no composer script that rewrites the baseline.
+
+`tests/` is not analyzed. Eloquent models for raw-SQL tables need a `@property` per column (`packages/api/docs/sql-schema.md`).
 
 Faster check (contract only, no feature suite):
 
