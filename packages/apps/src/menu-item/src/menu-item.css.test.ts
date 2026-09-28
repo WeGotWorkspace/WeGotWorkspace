@@ -9,9 +9,7 @@ const css = readFileSync(join(here, "menu-item.css"), "utf8");
 describe("menu-item sidebar surfaces", () => {
   it("sets sidebar nav rows to medium (500)", () => {
     const surfaceWeight = (surface: "idle" | "selected" | "drop") =>
-      css.match(
-        new RegExp(`\\.sidebar-section \\.menu-item--surface-${surface} \\{[^}]+\\}`),
-      )?.[0];
+      css.match(new RegExp(`\\.sidebar-section \\.menu-item--surface-${surface} \\{[^}]+\\}`))?.[0];
     expect(surfaceWeight("idle")).toMatch(/font-medium/);
     expect(surfaceWeight("selected")).toMatch(/font-medium/);
     expect(surfaceWeight("drop")).toMatch(/font-medium/);
