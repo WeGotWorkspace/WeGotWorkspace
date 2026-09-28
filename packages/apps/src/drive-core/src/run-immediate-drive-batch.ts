@@ -35,7 +35,6 @@ export function runImmediateDriveBatch({
   queueMutation,
 }: ImmediateDriveBatchArgs): void {
   const completedKeys = new Set<string>();
-  let finished = false;
   let undone = false;
   const undo = () => {
     // onError already reverts completed files. The Undo button stays up for the
@@ -43,11 +42,10 @@ export function runImmediateDriveBatch({
     if (undone) return;
     undone = true;
     rollback();
-    if (!revert) return;
-    if (!finished && completedKeys.size === 0) return;
+    if (!revert || completedKeys.size === 0) return;
     // Copy the set. Undo aborts execute, but a rename that already reached the
     // server can still resolve and call markCompleted after this snapshot.
-    // That file is not reverted; a later undo will not run either.
+    // That file is not reverted, and a later undo will not run either (#965).
     void revert(new Set(completedKeys)).catch((error: unknown) => {
       console.error("Drive batch revert failed", error);
     });
@@ -63,7 +61,6 @@ export function runImmediateDriveBatch({
       await execute(signal, (itemKey) => {
         completedKeys.add(itemKey);
       });
-      finished = true;
     },
     rollback: undo,
     executeImmediately: true,

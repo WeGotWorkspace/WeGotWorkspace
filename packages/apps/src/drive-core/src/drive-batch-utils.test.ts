@@ -1,4 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
+
+vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/offline/core/browser-online")>();
+  return {
+    ...actual,
+    readBrowserOnline: vi.fn(() => true),
+  };
+});
 import {
   claimDirectoryEntryName,
   ensureTrashFolder,
@@ -156,6 +165,10 @@ describe("ensureTrashFolder", () => {
 });
 
 describe("claimDirectoryEntryName", () => {
+  beforeEach(() => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+  });
+
   it("keeps a free title and disambiguates the next file that wants the same name", async () => {
     const operations = {
       listAllDirectoryEntries: vi.fn(async () => [
@@ -182,5 +195,31 @@ describe("claimDirectoryEntryName", () => {
     await expect(
       claimDirectoryEntryName(operations, "/users/alice", "notes.md", new Map()),
     ).rejects.toThrow("list failed");
+  });
+
+  it("keeps the preferred name when the browser is offline", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = {
+      listAllDirectoryEntries: vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    } as unknown as DriveAPIOperations;
+
+    await expect(
+      claimDirectoryEntryName(operations, "/users/alice", "notes.md", new Map()),
+    ).resolves.toBe("notes.md");
+    expect(operations.listAllDirectoryEntries).not.toHaveBeenCalled();
+  });
+
+  it("keeps the preferred name when the listing fails because the network is down", async () => {
+    const operations = {
+      listAllDirectoryEntries: vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    } as unknown as DriveAPIOperations;
+
+    await expect(
+      claimDirectoryEntryName(operations, "/users/alice", "notes.md", new Map()),
+    ).resolves.toBe("notes.md");
   });
 });

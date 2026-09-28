@@ -9,6 +9,7 @@ import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-typ
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import type { Dispatch, SetStateAction } from "react";
 import type { ViewKey } from "@/drive-core/src/drive-models";
+import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 
 export function resolveDriveFileApiPath(
   file: DriveFile,
@@ -107,7 +108,9 @@ export async function listTrashEntryNames(
 /**
  * Pick a free name in `directoryApiPath`. `takenByDirectory` caches the listing for later files
  * in the same restore so two siblings do not claim the same title.
- * A failed listing is thrown: an empty set would treat the original title as free.
+ * Offline, or when the listing fails because the network is down, keep `preferredName` so a
+ * hybrid rename can queue the restore. Any other listing failure is thrown: an empty set would
+ * treat the original title as free.
  */
 export async function claimDirectoryEntryName(
   operations: DriveAPIOperations,
@@ -115,12 +118,19 @@ export async function claimDirectoryEntryName(
   preferredName: string,
   takenByDirectory: Map<string, Set<string>>,
 ): Promise<string> {
+  if (!readBrowserOnline()) return preferredName;
+
   let taken = takenByDirectory.get(directoryApiPath);
   if (!taken) {
     taken = new Set<string>();
     if (operations.listAllDirectoryEntries) {
-      const entries = await operations.listAllDirectoryEntries(directoryApiPath);
-      for (const entry of entries) taken.add(entry.name);
+      try {
+        const entries = await operations.listAllDirectoryEntries(directoryApiPath);
+        for (const entry of entries) taken.add(entry.name);
+      } catch (error) {
+        if (isFetchNetworkError(error)) return preferredName;
+        throw error;
+      }
     }
     takenByDirectory.set(directoryApiPath, taken);
   }

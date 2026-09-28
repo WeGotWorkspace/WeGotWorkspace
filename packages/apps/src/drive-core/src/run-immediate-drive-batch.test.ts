@@ -50,7 +50,9 @@ describe("runImmediateDriveBatch", () => {
     runImmediateDriveBatch({
       ...batch,
       rollback: () => undefined,
-      execute: async () => undefined,
+      execute: async (_signal, markCompleted) => {
+        markCompleted("notes");
+      },
       revert: async () => {
         reverted += 1;
       },
@@ -176,7 +178,9 @@ describe("runImmediateDriveBatch", () => {
       rollback: () => {
         rolledBack += 1;
       },
-      execute: async () => undefined,
+      execute: async (_signal, markCompleted) => {
+        markCompleted("notes");
+      },
       revert: async () => {
         throw error;
       },
