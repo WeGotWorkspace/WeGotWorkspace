@@ -490,9 +490,11 @@ describe("calendar invitation picker reuse", () => {
   it("imports CalendarEventCalendarPicker from the event form and invite card", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const form = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
+    const title = readFileSync(join(here, "calendar-event-form-title.tsx"), "utf8");
     const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
     const importLine = 'from "@/calendar-core/src/calendar-event-calendar-picker"';
-    expect(form).toContain(importLine);
+    expect(form).toContain("CalendarEventFormTitle");
+    expect(title).toContain(importLine);
     expect(card).toContain(importLine);
   });
 
@@ -509,11 +511,14 @@ describe("calendar invitation picker reuse", () => {
   it("reuses RSVP controls from calendar-rsvp-actions in the event form and invite card", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const form = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
+    const footer = readFileSync(join(here, "calendar-event-form-footer.tsx"), "utf8");
     const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
     const importLine = 'from "@/calendar-core/src/calendar-rsvp-actions"';
     expect(form).toContain(importLine);
-    expect(form).toContain("CalendarRsvpSelect");
-    expect(form).toMatch(
+    expect(form).toContain("CalendarEventFormFooter");
+    expect(footer).toContain(importLine);
+    expect(footer).toContain("CalendarRsvpSelect");
+    expect(footer).toMatch(
       /calendar-event-dialog__invitation-rsvp[\s\S]*CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/,
     );
     expect(card).toContain(importLine);
