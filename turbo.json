@@ -27,7 +27,8 @@
     },
     "test:jsdom": {
       "cache": false,
-      "passThroughEnv": ["CI", "JSDOM_*"]
+      "env": ["JSDOM_LIST"],
+      "passThroughEnv": ["CI", "JSDOM_SHARDS", "JSDOM_CONCURRENCY", "JSDOM_SOLO_CONCURRENCY"]
     },
     "test:contract": {
       "cache": false
