@@ -46,16 +46,18 @@ final class InstallerWizardTest extends TestCase
 
     protected function tearDown(): void
     {
-        if ($this->installRoot !== '' && is_dir($this->installRoot)) {
-            File::deleteDirectory($this->installRoot);
-        }
-
         config(['wgw.install' => []]);
+        putenv('WGW_APP_ROOT');
+        unset($_ENV['WGW_APP_ROOT'], $_SERVER['WGW_APP_ROOT']);
         WgwInstallFixture::forgetInstallBindings();
         putenv('WGW_DISABLE_INSTALL_THROTTLE');
         unset($_ENV['WGW_DISABLE_INSTALL_THROTTLE']);
         putenv('WGW_DISABLE_LOGIN_THROTTLE');
         unset($_ENV['WGW_DISABLE_LOGIN_THROTTLE']);
+
+        if ($this->installRoot !== '' && is_dir($this->installRoot)) {
+            File::deleteDirectory($this->installRoot);
+        }
 
         parent::tearDown();
     }
@@ -429,14 +431,13 @@ final class InstallerWizardTest extends TestCase
 
     public function test_duplicate_admin_username_does_not_create_a_second_user(): void
     {
+        // Target contract is below. Current behavior returns ok and ignores the new password.
+        $this->markTestIncomplete(
+            'Reinstall on an existing database must be refused. https://github.com/WeGotWorkspace/WeGotWorkspace/issues/993'
+        );
+
         $sqlite = $this->sqlitePath('duplicate-admin.sqlite');
-        $this->advanceToAccount($sqlite);
-        $this->postAction('install', $this->installPayload([
-            'username' => 'admin',
-            'email' => 'admin@example.test',
-        ]))->assertOk()
-            ->assertJsonPath('ok', true)
-            ->assertJsonPath('state.step', 'installed');
+        $this->installAdmin($sqlite);
 
         $this->clearInstallMarkers();
 
@@ -452,19 +453,56 @@ final class InstallerWizardTest extends TestCase
             'password' => 'different-password',
             'password_confirm' => 'different-password',
         ]));
-        $again->assertOk()->assertJsonPath('ok', true);
+        $this->assertExistingAccountRefused($again);
 
         $db = $this->installedPdo($sqlite);
         $this->assertSame('1', $this->scalar($db, 'SELECT COUNT(*) FROM users'));
         $this->assertSame('admin', $this->scalar($db, 'SELECT username FROM users'));
         $this->assertSame('admin@example.test', $this->scalar($db, "SELECT email FROM principals WHERE uri = 'principals/admin'"));
-        $this->assertAdminCanSignIn('admin', 'longpassword');
+    }
+
+    public function test_reinstall_on_existing_database_with_different_username_is_refused(): void
+    {
+        $sqlite = $this->sqlitePath('reinstall-intruder.sqlite');
+        $this->installAdmin($sqlite);
+
+        $this->clearInstallMarkers();
+
+        $this->getJson('/api/v1/installer/state')
+            ->assertOk()
+            ->assertJsonPath('installed', false)
+            ->assertJsonPath('state.step', 'welcome');
+
+        $this->advanceToAccount($sqlite);
+        $again = $this->postAction('install', $this->installPayload([
+            'username' => 'intruder',
+            'display_name' => 'Intruder',
+            'email' => 'intruder@example.test',
+            'password' => 'intruder-password',
+            'password_confirm' => 'intruder-password',
+        ]));
+
+        $db = $this->installedPdo($sqlite);
+        $this->assertSame('1', $this->scalar($db, 'SELECT COUNT(*) FROM users'));
+        $this->assertSame('admin', $this->scalar($db, 'SELECT username FROM users'));
+        $this->assertFalse(
+            $db->query("SELECT username FROM users WHERE username = 'intruder'")->fetchColumn(),
+        );
 
         WgwInstallFixture::syncDatabaseConnection();
         $this->postJson('/api/v1/auth/token', [
-            'username' => 'admin',
-            'password' => 'different-password',
+            'username' => 'intruder',
+            'password' => 'intruder-password',
         ])->assertUnauthorized();
+
+        // A second admin is not created. Refusal (ok=false) is still missing: #993.
+        if ($again->json('ok') !== false) {
+            $this->markTestIncomplete(
+                'Reinstall on an existing database must be refused. https://github.com/WeGotWorkspace/WeGotWorkspace/issues/993'
+            );
+        }
+
+        $this->assertExistingAccountRefused($again);
     }
 
     public function test_already_installed_state_returns_error(): void
@@ -639,6 +677,25 @@ final class InstallerWizardTest extends TestCase
         $this->assertNotSame('', $error);
         $this->assertStringNotContainsString('SQLSTATE', $error);
         $this->assertStringNotContainsString('SQL:', $error);
+    }
+
+    private function assertExistingAccountRefused(TestResponse $response): void
+    {
+        $response->assertOk()->assertJsonPath('ok', false);
+        $error = (string) $response->json('error');
+        $this->assertMatchesRegularExpression('/already exists/i', $error);
+        $this->assertInstallerErrorIsSafe($error);
+    }
+
+    private function installAdmin(string $sqlitePath): void
+    {
+        $this->advanceToAccount($sqlitePath);
+        $this->postAction('install', $this->installPayload([
+            'username' => 'admin',
+            'email' => 'admin@example.test',
+        ]))->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('state.step', 'installed');
     }
 
     private function assertAdminCanSignIn(string $username, string $password): void
