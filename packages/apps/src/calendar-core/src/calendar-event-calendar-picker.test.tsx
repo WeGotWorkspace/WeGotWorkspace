@@ -43,6 +43,9 @@ describe("CalendarEventCalendarPicker", () => {
     const personal = screen.getByRole("menuitem", { name: "Personal" });
     expect(personal.querySelector(".calendar-sidebar-dot")).toBeTruthy();
     expect(personal.textContent).toContain("Personal");
+    const menu = document.querySelector(".calendar-event-dialog__calendar-menu");
+    expect(menu).toBeTruthy();
+    expect(menu?.className).not.toContain("calendar-event-dialog__calendar-menu--match-trigger");
   });
 
   it("shows the calendar name on the closed trigger when showName is set", () => {
@@ -59,5 +62,12 @@ describe("CalendarEventCalendarPicker", () => {
     const trigger = screen.getByRole("button", { name: /Calendar: Work/i });
     expect(trigger.className).toContain("color-swatch-trigger--labeled");
     expect(trigger.querySelector(".color-swatch-trigger__caption")?.textContent).toBe("Work");
+
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    const menu = document.querySelector(".calendar-event-dialog__calendar-menu");
+    expect(menu).toBeTruthy();
+    expect(menu?.className).toContain("calendar-event-dialog__calendar-menu--match-trigger");
+    expect(menu?.getAttribute("data-align")).toBe("start");
   });
 });

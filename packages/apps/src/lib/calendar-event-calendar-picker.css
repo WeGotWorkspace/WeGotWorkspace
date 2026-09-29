@@ -2,6 +2,11 @@
   min-width: 12rem;
 }
 
+.calendar-event-dialog__calendar-menu--match-trigger {
+  width: var(--radix-dropdown-menu-trigger-width);
+  min-width: var(--radix-dropdown-menu-trigger-width);
+}
+
 .calendar-event-dialog__calendar-option {
   display: flex;
   align-items: center;

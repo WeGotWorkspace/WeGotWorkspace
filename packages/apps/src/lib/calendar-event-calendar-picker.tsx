@@ -111,7 +111,13 @@ export function CalendarEventCalendarPicker({
           {showName ? selectedCalendar?.name : null}
         </ColorSwatchTrigger>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="calendar-event-dialog__calendar-menu">
+      <DropdownMenuContent
+        align={showName ? "start" : "end"}
+        className={cn(
+          "calendar-event-dialog__calendar-menu",
+          showName && "calendar-event-dialog__calendar-menu--match-trigger",
+        )}
+      >
         {writableCalendars.map((calendar) => (
           <CalendarPickerMenuItem
             key={calendar.id}
