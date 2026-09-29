@@ -39,6 +39,10 @@ paths:
 
 Handoff and PR verification: [developer/done-checklist.md](../developer/done-checklist.md). Issue acceptance criteria: [verify-issue](../verify-issue/SKILL.md). Policy vs CI: [.agents/POLICY.md](../../POLICY.md). Review gate: [code-review](../code-review/SKILL.md).
 
+## Coverage ratchet
+
+Per-package coverage can only go up. Run `node tools/coverage-ratchet.mjs update` after raising coverage in a PR. The baseline lives in `tools/coverage-baseline.json`.
+
 **SPA front routes:** new top-level apps router paths need `UiStaticServer` allowlist + `FrontRoutingTest` coverage (Architecture `SpaShellRouteAllowlistTest`). That is API done-gate territory. Storybook-tier Playwright (`apps-e2e`) does not cover new SPA prefixes.
 
 ## Multitask

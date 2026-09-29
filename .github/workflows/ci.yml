@@ -503,3 +503,151 @@ jobs:
           name: vitest-coverage
           path: packages/apps/coverage
           if-no-files-found: error
+
+  coverage-ratchet:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [api-coverage, apps-coverage]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6.1.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Download API coverage
+        uses: actions/download-artifact@v7
+        with:
+          name: phpunit-clover
+          path: packages/api/build/logs
+
+      - name: Download apps coverage
+        uses: actions/download-artifact@v7
+        with:
+          name: vitest-coverage
+          path: packages/apps/coverage
+
+      - name: Check coverage ratchet
+        id: check
+        run: |
+          set +e
+          node tools/coverage-ratchet.mjs check
+          CODE=$?
+          set -e
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+          if [[ $CODE -eq 2 ]]; then
+            echo "Baseline proposal"
+          elif [[ $CODE -eq 0 ]]; then
+            echo "Coverage stable"
+          elif [[ $CODE -eq 1 ]]; then
+            echo "Coverage ratchet check failed"
+          else
+            echo "Coverage ratchet check failed with exit $CODE"
+            exit "$CODE"
+          fi
+
+      - name: Report coverage regression
+        if: steps.check.outputs.exit_code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          set +e
+          FAILURE_OUTPUT=$(node tools/coverage-ratchet.mjs check 2>&1)
+          set -e
+
+          gh label create coverage-regression --color d73a4a --description "Coverage regression on main" --force
+
+          ISSUE_NUMBER=$(gh issue list --label "coverage-regression" --state open --json number --jq '.[0].number // empty')
+
+          REPORT="## Coverage Regression Detected
+
+          **Run:** ${{ github.run_id }}
+          **Commit:** ${{ github.sha }}
+          **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          ```
+          ${FAILURE_OUTPUT}
+          ```
+
+          Coverage per package can only go up. Please investigate and fix the regression."
+
+          if [[ -n "$ISSUE_NUMBER" ]]; then
+            gh issue comment "$ISSUE_NUMBER" --body "$REPORT"
+            echo "Commented on existing issue #$ISSUE_NUMBER"
+          else
+            gh issue create \
+              --title "Coverage regression detected on main" \
+              --label "coverage-regression" \
+              --body "$REPORT"
+            echo "Opened new coverage-regression issue"
+          fi
+
+          exit 1
+
+      - name: Propose baseline increase
+        if: steps.check.outputs.exit_code == '2'
+        run: |
+          set -euo pipefail
+
+          INCREASES_OUTPUT=$(node tools/coverage-ratchet.mjs check 2>&1 || true)
+
+          node tools/coverage-ratchet.mjs update
+
+          {
+            echo "## Coverage Baseline Proposal"
+            echo ""
+            echo "### New, increased, or removed packages"
+            echo ""
+
+            if echo "$INCREASES_OUTPUT" | grep -q "📈 Coverage increases detected"; then
+              echo "**Increases:**"
+              echo ""
+              echo "| Package | From | To |"
+              echo "|---------|------|-----|"
+              echo "$INCREASES_OUTPUT" | sed -n '/📈 Coverage increases detected/,/^$/p' | grep -E '^\s+packages/' | sed 's/^\s*//' | while read -r line; do
+                if [[ $line =~ (.+):[[:space:]]+([0-9.]+)%[[:space:]]+→[[:space:]]+([0-9.]+)% ]]; then
+                  echo "| \`${BASH_REMATCH[1]}\` | ${BASH_REMATCH[2]}% | ${BASH_REMATCH[3]}% |"
+                fi
+              done
+              echo ""
+            fi
+
+            if echo "$INCREASES_OUTPUT" | grep -q "📦 New packages detected"; then
+              echo "**New packages:**"
+              echo ""
+              echo "| Package | Coverage |"
+              echo "|---------|----------|"
+              echo "$INCREASES_OUTPUT" | sed -n '/📦 New packages detected/,/^$/p' | grep -E '^\s+packages/' | sed 's/^\s*//' | while read -r line; do
+                if [[ $line =~ (.+):[[:space:]]+([0-9.]+)% ]]; then
+                  echo "| \`${BASH_REMATCH[1]}\` | ${BASH_REMATCH[2]}% |"
+                fi
+              done
+              echo ""
+            fi
+
+            if echo "$INCREASES_OUTPUT" | grep -q "package missing from current coverage"; then
+              echo "**Baseline keys absent from the report:**"
+              echo ""
+              echo '```'
+              echo "$INCREASES_OUTPUT" | grep "package missing from current coverage"
+              echo '```'
+              echo ""
+            fi
+
+            echo "Download the \`coverage-baseline-proposal\` artifact and commit it to \`tools/coverage-baseline.json\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload baseline proposal
+        if: steps.check.outputs.exit_code == '2'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-baseline-proposal
+          path: tools/coverage-baseline.json
