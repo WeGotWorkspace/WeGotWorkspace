@@ -11,7 +11,13 @@ test.describe("TOTP sign-in stories", () => {
       "autocomplete",
       "username",
     );
-    await otp.fill("123 456");
+    await otp.evaluate((input) => {
+      const data = new DataTransfer();
+      data.setData("text/plain", "123 456");
+      input.dispatchEvent(
+        new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: data }),
+      );
+    });
     await expect(otp).toHaveValue("123456");
   });
 

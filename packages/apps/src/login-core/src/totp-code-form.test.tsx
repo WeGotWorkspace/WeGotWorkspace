@@ -30,6 +30,16 @@ describe("TotpCodeForm", () => {
     expect(onSubmit).toHaveBeenCalledWith("123456");
     expect(digitsOnly("12 34 56")).toBe("123456");
   });
+
+  it("keeps all six digits when a spaced code is pasted", () => {
+    const onSubmit = vi.fn();
+    render(<TotpCodeForm username="alice" onSubmit={onSubmit} />);
+    fireEvent.paste(screen.getByLabelText("Authentication code"), {
+      clipboardData: { getData: () => "123 456" },
+    });
+    expect((screen.getByLabelText("Authentication code") as HTMLInputElement).value).toBe("123456");
+    expect(onSubmit).toHaveBeenCalledWith("123456");
+  });
 });
 
 describe("RecoveryCodeForm", () => {

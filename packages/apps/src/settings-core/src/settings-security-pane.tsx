@@ -15,7 +15,7 @@ import {
 } from "@/lib/api/wgw/mfa-client";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { TotpWizard } from "@/login-core/src/totp-wizard";
-import { digitsOnly } from "@/login-core/src/totp-format";
+import { applyTotpPaste, digitsOnly } from "@/login-core/src/totp-format";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 
@@ -254,6 +254,7 @@ function ReauthForm({
           onChange={(event) =>
             setValue(enabled ? digitsOnly(event.target.value) : event.target.value)
           }
+          onPaste={enabled ? (event) => applyTotpPaste(event, setValue) : undefined}
           autoComplete={enabled ? "one-time-code" : "current-password"}
           inputMode={enabled ? "numeric" : undefined}
           pattern={enabled ? "[0-9]*" : undefined}
@@ -327,6 +328,7 @@ function AppPasswordCreateForm({
           onChange={(event) =>
             setSecret(enabled ? digitsOnly(event.target.value) : event.target.value)
           }
+          onPaste={enabled ? (event) => applyTotpPaste(event, setSecret) : undefined}
           autoComplete={enabled ? "one-time-code" : "current-password"}
           inputMode={enabled ? "numeric" : undefined}
           pattern={enabled ? "[0-9]*" : undefined}

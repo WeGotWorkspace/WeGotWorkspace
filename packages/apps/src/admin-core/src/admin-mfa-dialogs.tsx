@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
 import { Input } from "@/ui/input";
-import { digitsOnly } from "@/login-core/src/totp-format";
+import { applyTotpPaste, digitsOnly } from "@/login-core/src/totp-format";
 
 type CodeDialogProps = {
   open: boolean;
@@ -80,6 +80,7 @@ export function AdminMfaCodeDialog({
             name="otp"
             value={code}
             onChange={(event) => setCode(digitsOnly(event.target.value))}
+            onPaste={(event) => applyTotpPaste(event, setCode)}
             autoComplete="one-time-code"
             inputMode="numeric"
             pattern="[0-9]*"

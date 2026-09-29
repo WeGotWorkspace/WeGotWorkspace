@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/button/src/button";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { digitsOnly } from "@/login-core/src/totp-format";
+import { applyTotpPaste, digitsOnly } from "@/login-core/src/totp-format";
 import { Input } from "@/ui/input";
 
 type TotpCodeFormProps = {
@@ -50,6 +50,12 @@ export function TotpCodeForm({
             const next = digitsOnly(event.target.value);
             setCode(next);
             if (next.length === 6) submitCode(next);
+          }}
+          onPaste={(event) => {
+            applyTotpPaste(event, (next) => {
+              setCode(next);
+              if (next.length === 6) submitCode(next);
+            });
           }}
           autoComplete="one-time-code"
           inputMode="numeric"

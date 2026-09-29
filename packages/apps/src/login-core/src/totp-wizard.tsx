@@ -3,7 +3,7 @@ import { Button } from "@/button/src/button";
 import type { TotpWizardSource } from "@/lib/api/wgw/mfa-client";
 import { MfaRequestError } from "@/lib/api/wgw/mfa-client";
 import { AuthenticationPage } from "@/login-core/src/authentication-page";
-import { digitsOnly, groupTotpSecret } from "@/login-core/src/totp-format";
+import { applyTotpPaste, digitsOnly, groupTotpSecret } from "@/login-core/src/totp-format";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 
@@ -198,6 +198,7 @@ function SetupStep({
           type="text"
           value={code}
           onChange={(event) => onCodeChange(digitsOnly(event.target.value))}
+          onPaste={(event) => applyTotpPaste(event, onCodeChange)}
           autoComplete="one-time-code"
           inputMode="numeric"
           pattern="[0-9]*"
