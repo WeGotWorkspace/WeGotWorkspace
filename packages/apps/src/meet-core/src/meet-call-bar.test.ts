@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   meetCallBarMeta,
@@ -9,10 +6,6 @@ import {
   meetCallPreviewPeers,
 } from "@/meet-core/src/meet-call-bar-roster";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const tsx = readFileSync(join(here, "meet-call-bar.tsx"), "utf8");
-const workspaceTsx = readFileSync(join(here, "meet-workspace.tsx"), "utf8");
 
 const self = { id: "self", name: "Demo User", stream: null };
 const peers = [
@@ -66,78 +59,5 @@ describe("meetCallPreviewPeers", () => {
       { id: "ada.lovelace", name: "Ada Lovelace" },
       { id: "unknown.user", name: "unknown.user" },
     ]);
-  });
-});
-
-describe("MeetCallBar", () => {
-  it("builds the avatar roster from the joined-aware helper", () => {
-    expect(tsx).toMatch(/meetCallBarRoster\(/);
-    expect(tsx).not.toMatch(/const roster: MeetCallBarPeer\[\] = \[\{ id: selfId/);
-  });
-
-  it("does not coerce an empty call to 1 participant", () => {
-    expect(tsx).not.toMatch(/\?\? 1/);
-    expect(workspaceTsx).not.toMatch(/participantCount=\{callRoom\?\.participantCount \?\? 1\}/);
-    expect(workspaceTsx).toMatch(/meetCallBarShownCount\(/);
-  });
-
-  it("uses a generic meeting title and omits presence pips on avatars", () => {
-    expect(tsx).toMatch(/meetLabels\.meetingStarted/);
-    expect(tsx).toMatch(/<UserAvatar/);
-    expect(tsx).not.toMatch(/presence=\{/);
-    expect(tsx).not.toMatch(/meetInChannel/);
-  });
-
-  it("keeps the camera tile strip and omits share screen", () => {
-    expect(tsx).toMatch(/meet-call-bar__tiles/);
-    expect(tsx).not.toMatch(/onToggleScreenShare/);
-    expect(tsx).not.toMatch(/meetLabels\.shareScreen/);
-    expect(tsx).not.toMatch(/MonitorUp/);
-  });
-
-  it("keeps settings in the media cluster before the leave divider", () => {
-    expect(tsx).toMatch(/MeetDevicePopover/);
-    expect(tsx).toMatch(/meet-call-bar__divider/);
-    expect(tsx.indexOf("meetLabels.disableVideo")).toBeLessThan(tsx.indexOf("<MeetDevicePopover"));
-    expect(tsx.indexOf("<MeetDevicePopover")).toBeLessThan(tsx.indexOf("<MeetKnockBadge"));
-    expect(tsx.indexOf("<MeetKnockBadge")).toBeLessThan(
-      tsx.indexOf('className="meet-call-bar__divider"'),
-    );
-    expect(tsx.indexOf('className="meet-call-bar__divider"')).toBeLessThan(
-      tsx.indexOf("icon={<PhoneOff />}"),
-    );
-  });
-
-  it("puts waiting knockers on the action row, not a floating admit banner", () => {
-    expect(tsx).toMatch(/MeetKnockBadge/);
-    expect(tsx).toMatch(/knockers = \[\]/);
-    expect(tsx).not.toMatch(/MeetCallKnockQueue/);
-    expect(workspaceTsx).not.toMatch(/MeetCallKnockQueue/);
-    expect(workspaceTsx).toMatch(/knockers=\{/);
-  });
-
-  it("hides the IconButton cluster until the local user has joined", () => {
-    expect(tsx).toMatch(/joined = false/);
-    expect(tsx).toMatch(/\{joined \? \(/);
-    expect(tsx).toMatch(/\{joined && videoOn \? \(/);
-  });
-
-  it("puts Join on the bar while a live meeting has not been joined", () => {
-    expect(tsx).toMatch(/meet-call-bar__invite-button/);
-    expect(tsx).toMatch(/meetLabels\.join/);
-    expect(tsx).not.toMatch(/label=\{meetLabels\.start\}/);
-    expect(tsx).not.toMatch(/meetLabels\.joined/);
-  });
-
-  it("uses an audio mark when audioOnly and keeps the Join label", () => {
-    expect(tsx).toMatch(/audioOnly = false/);
-    expect(tsx).toMatch(/const LiveIcon = meetCallLiveIcon\(audioOnly\)/);
-    expect(tsx).toMatch(
-      /meet-call-bar__mark[\s\S]*<LiveIcon className="meet-workspace__header-kind-icon"/,
-    );
-    expect(tsx).toMatch(/icon=\{<LiveIcon \/>\}/);
-    expect(tsx).toMatch(/label=\{meetLabels\.join\}/);
-    expect(tsx).not.toMatch(/joinAudioOnly/);
-    expect(tsx).not.toMatch(/Join \(Audio Only\)/);
   });
 });

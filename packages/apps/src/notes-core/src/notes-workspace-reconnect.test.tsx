@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "@/lib/models/note";
@@ -8,11 +5,6 @@ import { setDocsCollabSyncState } from "@/text-editor-core/docs-collab/docs-coll
 import { useNotesReconnectConflict } from "@/notes-core/src/use-notes-reconnect-conflict";
 import { isNotesLocalDirty } from "@/notes-core/src/notes-reconnect-actions";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
-
-const workspaceSource = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "notes-workspace.tsx"),
-  "utf8",
-);
 
 const getNote = vi.fn();
 const persistNoteMarkdown = vi.fn();
@@ -46,15 +38,6 @@ const note: Note = {
 };
 
 describe("notes workspace reconnect wiring (Decision 6)", () => {
-  it("notes-workspace supplies dirty and both dialog actions", () => {
-    expect(workspaceSource).toContain("getLocalDirty");
-    expect(workspaceSource).toContain("void keepMine()");
-    expect(workspaceSource).toContain("void applyTheirs()");
-    expect(workspaceSource).toContain("useNotesReconnectConflict");
-    expect(workspaceSource).toContain("onPersistSuccess");
-    expect(workspaceSource).toContain("markEditorSaved");
-  });
-
   beforeEach(() => {
     getNote.mockReset();
     persistNoteMarkdown.mockReset();

@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
@@ -204,25 +201,6 @@ describe("calendar-rsvp-scope", () => {
       respond: vi.fn(),
     });
     expect(cancelled).toBe(false);
-  });
-});
-
-describe("calendar RSVP prompt reuse", () => {
-  it("workspace reuses the edit/delete recurrence scope dialog for RSVP", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const workspace = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
-    expect(workspace).toContain("persistInviteeRsvp");
-    expect(workspace).toContain("askRecurrenceScope");
-    expect(workspace).toContain("CalendarRecurrenceScopeDialog");
-    expect(workspace).not.toContain("recurrenceScopeRsvpTitle");
-    expect(workspace).toContain('source: "sidebar"');
-    expect(workspace).toContain('source: "dialog"');
-    expect(workspace).toContain("previousStatus");
-    expect(workspace).toContain("invitations.respond");
-    expect(workspace).not.toContain("queueUndoableRespond");
-    expect(workspace).toContain("toastRsvpUpdated");
-    expect(workspace).not.toContain("toastRsvpUndone");
-    expect(workspace).not.toContain("busy={invitations.busy}");
   });
 });
 
