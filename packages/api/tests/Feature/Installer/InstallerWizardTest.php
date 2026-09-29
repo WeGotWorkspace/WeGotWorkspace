@@ -19,10 +19,30 @@ use Tests\TestCase;
  */
 final class InstallerWizardTest extends TestCase
 {
+    private const array RUNTIME_ENV_KEYS = [
+        'WGW_DATA_DIR',
+        'WGW_UPDATE_FEED_URL',
+        'WGW_DB_CONNECTION',
+        'WGW_DB_DATABASE',
+        'WGW_DB_HOST',
+        'WGW_DB_PORT',
+        'WGW_DB_USERNAME',
+        'WGW_DB_PASSWORD',
+    ];
+
     private string $installRoot = '';
+
+    /**
+     * getenv false means absent. $_ENV and $_SERVER use false for a missing key.
+     *
+     * @var array<string, array{getenv: string|false, env: string|false, server: string|false}>
+     */
+    private array $runtimeEnvSnapshot = [];
 
     protected function setUp(): void
     {
+        $this->snapshotRuntimeEnv();
+
         $this->installRoot = sys_get_temp_dir().'/wgw-installer-wizard-'.uniqid('', true);
         mkdir($this->installRoot, 0775, true);
         mkdir($this->installRoot.'/wgw-content', 0775, true);
@@ -47,6 +67,8 @@ final class InstallerWizardTest extends TestCase
 
     protected function tearDown(): void
     {
+        $this->restoreRuntimeEnv();
+
         config(['wgw.install' => []]);
         putenv('WGW_APP_ROOT');
         unset($_ENV['WGW_APP_ROOT'], $_SERVER['WGW_APP_ROOT']);
@@ -778,18 +800,49 @@ final class InstallerWizardTest extends TestCase
         return $material;
     }
 
+    private function snapshotRuntimeEnv(): void
+    {
+        $this->runtimeEnvSnapshot = [];
+        foreach (self::RUNTIME_ENV_KEYS as $key) {
+            $fromGetenv = getenv($key);
+            $this->runtimeEnvSnapshot[$key] = [
+                'getenv' => is_string($fromGetenv) ? $fromGetenv : false,
+                'env' => array_key_exists($key, $_ENV) && is_string($_ENV[$key]) ? $_ENV[$key] : false,
+                'server' => array_key_exists($key, $_SERVER) && is_string($_SERVER[$key]) ? $_SERVER[$key] : false,
+            ];
+        }
+    }
+
+    private function restoreRuntimeEnv(): void
+    {
+        foreach ($this->runtimeEnvSnapshot as $key => $snapshot) {
+            if ($snapshot['getenv'] === false) {
+                putenv($key);
+            } else {
+                putenv($key.'='.$snapshot['getenv']);
+            }
+
+            if ($snapshot['env'] === false) {
+                unset($_ENV[$key]);
+            } else {
+                $_ENV[$key] = $snapshot['env'];
+            }
+
+            if ($snapshot['server'] === false) {
+                unset($_SERVER[$key]);
+            } else {
+                $_SERVER[$key] = $snapshot['server'];
+            }
+        }
+
+        if ($this->app !== null) {
+            DB::purge('wgw');
+        }
+    }
+
     private function forgetInstallerDatabaseRuntime(): void
     {
-        foreach ([
-            'WGW_DATA_DIR',
-            'WGW_UPDATE_FEED_URL',
-            'WGW_DB_CONNECTION',
-            'WGW_DB_DATABASE',
-            'WGW_DB_HOST',
-            'WGW_DB_PORT',
-            'WGW_DB_USERNAME',
-            'WGW_DB_PASSWORD',
-        ] as $key) {
+        foreach (self::RUNTIME_ENV_KEYS as $key) {
             putenv($key);
             unset($_ENV[$key], $_SERVER[$key]);
         }
