@@ -36,7 +36,7 @@ final class DocsSearchTool extends WgwMcpTool
         ];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::DOCS_READ;
     }
@@ -46,7 +46,7 @@ final class DocsSearchTool extends WgwMcpTool
         return 'read';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): array
     {
         return ['query' => (string) $request->get('query', '')];
     }
@@ -65,11 +65,8 @@ final class DocsSearchTool extends WgwMcpTool
         );
         $files = [];
         foreach ($found['files'] as $entry) {
-            if (! is_array($entry)) {
-                continue;
-            }
-            $path = (string) ($entry['path'] ?? '');
-            $type = (string) ($entry['type'] ?? '');
+            $path = (string) $entry['path'];
+            $type = (string) $entry['type'];
             if ($type === 'dir' || ! str_ends_with(strtolower($path), '.md')) {
                 continue;
             }
@@ -80,7 +77,7 @@ final class DocsSearchTool extends WgwMcpTool
         }
 
         return $this->json([
-            'location' => $found['location'] ?? '/',
+            'location' => $found['location'],
             'files' => $files,
         ]);
     }

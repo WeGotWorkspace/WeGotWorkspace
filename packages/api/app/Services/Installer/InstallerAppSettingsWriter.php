@@ -16,7 +16,7 @@ final class InstallerAppSettingsWriter
     {
         $allowed = array_flip(SettingKeys::all());
         foreach ($values as $key => $value) {
-            if (is_string($key) && isset($allowed[$key])) {
+            if (isset($allowed[$key])) {
                 AppSetting::setValue($key, $value);
             }
         }

@@ -11,6 +11,7 @@ use App\Services\VObject\ICalendarAlarmTrigger;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
@@ -21,7 +22,6 @@ use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
 use Sabre\VObject\Property\ICalendar\Duration as IcsDuration;
 use Sabre\VObject\Reader;
 use Sabre\VObject\Recur\EventIterator;
-use Sabre\VObject\Recur\NoInstancesException;
 
 final class AlertDueScheduler
 {
@@ -37,6 +37,7 @@ final class AlertDueScheduler
         $windowStart = $now->sub(new DateInterval('PT90S'));
         $windowEnd = $now->add(new DateInterval('PT30S'));
         $fired = 0;
+        $this->warnOnNullCalendarData();
 
         $objects = CalendarObject::query()
             ->whereIn('componenttype', ['VEVENT', 'VTODO'])
@@ -45,7 +46,15 @@ final class AlertDueScheduler
             ->get();
 
         foreach ($objects as $object) {
-            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+            if (! is_string($object->calendardata)) {
+                Log::warning('Skipping calendar object with null calendardata.', [
+                    'id' => $object->id,
+                    'uri' => $object->uri,
+                ]);
+
+                continue;
+            }
+            $raw = $object->calendardata;
             if ($raw === '') {
                 continue;
             }
@@ -101,6 +110,35 @@ final class AlertDueScheduler
         }
 
         return $fired;
+    }
+
+    private function warnOnNullCalendarData(): void
+    {
+        if (Cache::has('alerts:null-calendardata-warned')) {
+            return;
+        }
+
+        $query = CalendarObject::query()
+            ->whereIn('componenttype', ['VEVENT', 'VTODO'])
+            ->whereNull('calendardata');
+
+        $count = (clone $query)->count();
+        if ($count === 0 || ! Cache::add('alerts:null-calendardata-warned', true, 3600)) {
+            return;
+        }
+
+        $ids = (clone $query)
+            ->orderBy('id')
+            ->limit(5)
+            ->pluck('id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
+
+        Log::warning(sprintf('%d calendar objects with NULL calendardata skipped', $count), [
+            'count' => $count,
+            'ids' => $ids,
+        ]);
     }
 
     /**
@@ -179,7 +217,7 @@ final class AlertDueScheduler
     {
         if ($parsed['kind'] === 'absolute') {
             $when = $parsed['when'] ?? '';
-            if (! is_string($when) || $when === '') {
+            if ($when === '') {
                 return null;
             }
             try {
@@ -189,15 +227,12 @@ final class AlertDueScheduler
             }
         }
         $offset = $parsed['offset'] ?? '';
-        if (! is_string($offset) || $offset === '') {
+        if ($offset === '') {
             return null;
         }
         $anchor = $occurrenceStart;
         if (($parsed['relatedTo'] ?? 'start') === 'end') {
-            $end = $this->endDate($component, $occurrenceStart);
-            if ($end !== null) {
-                $anchor = $end;
-            }
+            $anchor = $this->endDate($component, $occurrenceStart);
         }
 
         return $this->applyIcalDuration($anchor, $offset);
@@ -229,7 +264,7 @@ final class AlertDueScheduler
             }
 
             return $out !== [] ? $out : array_filter([$this->startDate($component)]);
-        } catch (NoInstancesException|\Throwable) {
+        } catch (\Throwable) {
             $start = $this->startDate($component);
 
             return $start !== null ? [$start] : [];
@@ -249,7 +284,7 @@ final class AlertDueScheduler
         }
     }
 
-    private function endDate(VEvent|VTodo $component, DateTimeImmutable $start): ?DateTimeImmutable
+    private function endDate(VEvent|VTodo $component, DateTimeImmutable $start): DateTimeImmutable
     {
         $duration = $component->DURATION ?? null;
         if ($duration !== null) {

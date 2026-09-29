@@ -120,8 +120,8 @@ final class DriveSharePresenter
             'type' => $isDir ? 'dir' : 'file',
             'path' => $path,
             'name' => basename($path),
-            'size' => $isDir ? 0 : max(0, (int) ($disk->size($key) ?? 0)),
-            'time' => max(0, (int) ($disk->lastModified($key) ?? time())),
+            'size' => $isDir ? 0 : max(0, $disk->size($key)),
+            'time' => max(0, $disk->lastModified($key)),
             'permissions' => 0,
             'myRights' => DriveShareAccess::rightsFor($grantAccess, $isCollabDoc, false, $isNotePath),
         ];

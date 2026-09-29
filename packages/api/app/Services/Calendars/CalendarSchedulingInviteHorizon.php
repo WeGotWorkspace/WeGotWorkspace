@@ -71,18 +71,12 @@ final class CalendarSchedulingInviteHorizon
             throw new \InvalidArgumentException('VEVENT DTSTART is not a date-time.');
         }
         $start = $startProp->getDateTime($timeZone);
-        if (! $start instanceof DateTimeInterface) {
-            throw new \InvalidArgumentException('VEVENT DTSTART is empty.');
-        }
         if (isset($vevent->DTEND)) {
             $endProp = $vevent->DTEND;
             if (! $endProp instanceof IcsDateTime) {
                 throw new \InvalidArgumentException('VEVENT DTEND is not a date-time.');
             }
             $end = $endProp->getDateTime($timeZone);
-            if (! $end instanceof DateTimeInterface) {
-                throw new \InvalidArgumentException('VEVENT DTEND is empty.');
-            }
 
             return $end;
         }

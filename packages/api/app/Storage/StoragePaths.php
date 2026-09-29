@@ -97,7 +97,7 @@ final class StoragePaths
         }
 
         $segments = explode('/', ltrim($normalized, '/'));
-        $first = $segments[0] ?? '';
+        $first = $segments[0];
         if ($first === 'users') {
             if (count($segments) === 1) {
                 return ! $forWrite;

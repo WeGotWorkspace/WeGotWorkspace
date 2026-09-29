@@ -113,8 +113,8 @@ final class JscopmsSupport
         $skipLegacyStreet = $useRfc9554 && self::hasExtendedStreetComponents($components);
         $positionCounts = [];
         foreach ($components as $component) {
-            $kind = (string) ($component['kind'] ?? '');
-            $value = (string) ($component['value'] ?? '');
+            $kind = (string) $component['kind'];
+            $value = (string) $component['value'];
             if ($kind === 'separator') {
                 $entries[] = self::encodeSeparator($value);
 
@@ -145,7 +145,7 @@ final class JscopmsSupport
     private static function hasExtendedStreetComponents(array $components): bool
     {
         foreach ($components as $component) {
-            $kind = (string) ($component['kind'] ?? '');
+            $kind = (string) $component['kind'];
             if (in_array($kind, ['number', 'block', 'building', 'room', 'floor', 'direction', 'landmark', 'subdistrict', 'district'], true)) {
                 return true;
             }
@@ -170,13 +170,13 @@ final class JscopmsSupport
         $entries = array_map('trim', explode(';', $raw));
         $defaultSeparator = null;
         $start = 0;
-        if ($entries !== [] && str_starts_with($entries[0], 's,')) {
+        if (str_starts_with($entries[0], 's,')) {
             $defaultSeparator = self::decodeSeparator($entries[0]);
             $start = 1;
-        } elseif ($entries !== [] && $entries[0] !== '' && ! ctype_digit($entries[0][0])) {
+        } elseif ($entries[0] !== '' && ! ctype_digit($entries[0][0])) {
             $defaultSeparator = self::decodeSeparator('s,'.self::escapeSeparatorValue($entries[0]));
             $start = 1;
-        } elseif ($entries !== [] && $entries[0] === '') {
+        } elseif ($entries[0] === '') {
             $start = 1;
         }
 

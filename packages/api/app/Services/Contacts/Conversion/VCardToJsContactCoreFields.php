@@ -163,8 +163,8 @@ final class VCardToJsContactCoreFields
                 if (isset($bucket['adr'])) {
                     $merged['adr'] = $bucket['adr'];
                 }
-                $merged['geos'] = array_merge($merged['geos'], $bucket['geos'] ?? []);
-                $merged['tzs'] = array_merge($merged['tzs'], $bucket['tzs'] ?? []);
+                $merged['geos'] = array_merge($merged['geos'], $bucket['geos']);
+                $merged['tzs'] = array_merge($merged['tzs'], $bucket['tzs']);
             }
             $buckets = ['' => $merged];
         }
@@ -176,8 +176,8 @@ final class VCardToJsContactCoreFields
         $addresses = [];
         foreach ($buckets as $bucket) {
             if (isset($bucket['adr'])) {
-                $geos = $bucket['geos'] ?? [];
-                $tzs = $bucket['tzs'] ?? [];
+                $geos = $bucket['geos'];
+                $tzs = $bucket['tzs'];
                 $mergeTzIntoAdr = ! isset($bucket['adr']['TZ']);
                 $addresses[] = $this->addressEntryFromAdr(
                     $bucket['adr'],
@@ -198,11 +198,11 @@ final class VCardToJsContactCoreFields
                 continue;
             }
 
-            foreach ($bucket['geos'] ?? [] as $index => $property) {
+            foreach ($bucket['geos'] as $index => $property) {
                 $addresses[] = $this->minimalAddressFromGeo($property, $index);
             }
 
-            foreach ($bucket['tzs'] ?? [] as $index => $property) {
+            foreach ($bucket['tzs'] as $index => $property) {
                 $entry = $this->minimalAddressFromTz($property, $index);
                 if ($entry !== null) {
                     $addresses[] = $entry;

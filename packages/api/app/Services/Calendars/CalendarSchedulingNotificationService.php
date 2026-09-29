@@ -73,7 +73,7 @@ final class CalendarSchedulingNotificationService
 
         return [
             'list' => $list,
-            'canSubmitEmail' => (bool) ($capability['canSubmit'] ?? false),
+            'canSubmitEmail' => (bool) $capability['canSubmit'],
         ];
     }
 
@@ -185,8 +185,8 @@ final class CalendarSchedulingNotificationService
         $patch = $this->rsvpScope->patch(
             $event,
             $status,
-            isset($payload['scope']) && is_string($payload['scope']) ? $payload['scope'] : null,
-            isset($payload['recurrenceId']) && is_string($payload['recurrenceId']) ? $payload['recurrenceId'] : null,
+            isset($payload['scope']) ? $payload['scope'] : null,
+            isset($payload['recurrenceId']) ? $payload['recurrenceId'] : null,
             $payload['calendarId'] ?? null,
             $isOwn,
             $ics,
@@ -317,7 +317,6 @@ final class CalendarSchedulingNotificationService
             $copy === null
             && $uid !== ''
             && $method === 'REQUEST'
-            && $vevent instanceof VEvent
             && $this->isListedAttendee($username, $vevent)
         ) {
             $copy = $this->ensureInviteeEventCopy($username, $raw, $uid);

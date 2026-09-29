@@ -13,7 +13,6 @@ final class UpdateJobController
 {
     public function __construct(
         private UpdateOperationsService $updates,
-        private UpdateCancelController $cancel,
     ) {}
 
     public function store(Request $request): JsonResponse

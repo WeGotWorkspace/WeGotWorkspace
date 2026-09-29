@@ -238,9 +238,6 @@ final class DriveService
         $disk = $this->disk();
 
         foreach ($items as $item) {
-            if (! is_array($item)) {
-                continue;
-            }
             $path = $this->paths->normalizeVirtualPath((string) ($item['path'] ?? '/'));
             $this->authorizer->assertMayManageStructure($path, $principal);
             $key = $this->paths->virtualToStorageKey($path);
@@ -564,7 +561,7 @@ final class DriveService
                 if (! $disk->directoryExists($key)) {
                     continue;
                 }
-                $out[] = $this->serializeEntry($root, true, 0, (int) ($disk->lastModified($key) ?? time()), $principal);
+                $out[] = $this->serializeEntry($root, true, 0, (int) ($disk->lastModified($key)), $principal);
             }
 
             return $this->annotateHasShares($principal, $this->sortEntries($out));
@@ -590,7 +587,7 @@ final class DriveService
             if ($this->isHiddenBrowsePath($virt)) {
                 continue;
             }
-            $out[] = $this->serializeEntry($virt, true, 0, (int) ($disk->lastModified($dirKey) ?? time()), $principal, $listingContext);
+            $out[] = $this->serializeEntry($virt, true, 0, (int) ($disk->lastModified($dirKey)), $principal, $listingContext);
         }
         foreach ($disk->files($prefix) as $fileKey) {
             $virt = $this->paths->normalizeVirtualPath('/'.$fileKey);
@@ -603,8 +600,8 @@ final class DriveService
             $out[] = $this->serializeEntry(
                 $virt,
                 false,
-                (int) ($disk->size($fileKey) ?? 0),
-                (int) ($disk->lastModified($fileKey) ?? time()),
+                (int) ($disk->size($fileKey)),
+                (int) ($disk->lastModified($fileKey)),
                 $principal,
                 $listingContext,
             );
@@ -620,7 +617,7 @@ final class DriveService
      */
     private function annotateHasShares(array $principal, array $entries): array
     {
-        if (($principal['role'] ?? '') === 'guest' || $entries === []) {
+        if ($principal['role'] === 'guest' || $entries === []) {
             return $entries;
         }
 
@@ -679,8 +676,8 @@ final class DriveService
             $out[] = $this->serializeEntry(
                 $virt,
                 $isDir,
-                (int) ($disk->size($fileKey) ?? 0),
-                (int) ($disk->lastModified($fileKey) ?? time()),
+                (int) ($disk->size($fileKey)),
+                (int) ($disk->lastModified($fileKey)),
                 $principal,
             );
             if (count($out) >= 400) {
@@ -702,7 +699,7 @@ final class DriveService
             if ($query !== null && ! str_contains(mb_strtolower($name), $query)) {
                 continue;
             }
-            $out[] = $this->serializeEntry($virt, true, 0, (int) ($disk->lastModified($dirKey) ?? time()), $principal);
+            $out[] = $this->serializeEntry($virt, true, 0, (int) ($disk->lastModified($dirKey)), $principal);
             if (count($out) >= 400) {
                 break;
             }
@@ -821,15 +818,6 @@ final class DriveService
 
         $requested = $this->paths->normalizeVirtualPath($cwd);
         $this->authorizer->assertMayManageStructure($requested, $principal);
-    }
-
-    private function requireGuestParentPath(?string $cwd): string
-    {
-        if ($cwd === null || trim($cwd) === '') {
-            throw new \InvalidArgumentException('Missing path query parameter.');
-        }
-
-        return $this->paths->normalizeVirtualPath($cwd);
     }
 
     /**

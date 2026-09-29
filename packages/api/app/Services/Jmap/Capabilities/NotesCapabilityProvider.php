@@ -24,7 +24,7 @@ final class NotesCapabilityProvider implements JmapCapabilityProviderInterface
         return (bool) ($cfg[WgwSettings::NOTES_ENABLED] ?? true);
     }
 
-    public function sessionCapability(): object|array
+    public function sessionCapability(): object
     {
         return (object) [];
     }

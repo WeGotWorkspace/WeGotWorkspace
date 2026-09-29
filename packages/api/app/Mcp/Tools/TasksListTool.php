@@ -37,7 +37,7 @@ final class TasksListTool extends WgwMcpTool
         ];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::TASKS_READ;
     }
@@ -47,7 +47,7 @@ final class TasksListTool extends WgwMcpTool
         return 'read';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): array
     {
         return ['taskListId' => $request->get('taskListId')];
     }

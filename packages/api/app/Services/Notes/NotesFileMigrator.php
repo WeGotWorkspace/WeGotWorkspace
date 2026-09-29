@@ -182,7 +182,7 @@ final class NotesFileMigrator
     {
         preg_match_all('/!\[[^\]]*\]\([^)]+\)/', $body, $matches);
 
-        return count($matches[0] ?? []);
+        return count($matches[0]);
     }
 
     /**
@@ -278,7 +278,7 @@ final class NotesFileMigrator
             ->where('principal_id', (int) $group->id)
             ->orderBy('id')
             ->first();
-        $uri = (string) ($member?->member?->uri ?? '');
+        $uri = (string) ($member?->member->uri ?? '');
         if (str_starts_with($uri, 'principals/') && ! str_starts_with($uri, 'principals/groups/')) {
             return substr($uri, strlen('principals/'));
         }

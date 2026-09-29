@@ -29,7 +29,7 @@ final class ContactsCapabilityProvider implements JmapCapabilityProviderInterfac
      * Session-level contacts capability is the empty object; the two-property
      * object lives in accountCapabilities (RFC 9610 §1.3).
      */
-    public function sessionCapability(): object|array
+    public function sessionCapability(): object
     {
         return (object) [];
     }

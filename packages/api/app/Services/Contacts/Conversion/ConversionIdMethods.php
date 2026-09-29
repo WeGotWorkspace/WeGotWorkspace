@@ -322,7 +322,7 @@ final class ConversionIdMethods
             if (! is_array($entry)) {
                 continue;
             }
-            $id = self::resolveMapEntryId(is_string($key) ? $key : '', $existingKeys);
+            $id = self::resolveMapEntryId($key, $existingKeys);
             $normalized[$id] = $entry;
         }
 

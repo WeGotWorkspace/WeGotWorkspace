@@ -12,7 +12,7 @@ namespace Laravel\Passport;
  * @property string $name
  * @property string|null $secret
  * @property string|null $provider
- * @property array<string, mixed> $redirect_uris
+ * @property list<string> $redirect_uris
  * @property array<string, mixed> $grant_types
  * @property array<string, mixed>|null $scopes
  * @property bool $revoked

@@ -28,7 +28,7 @@ $verbose = in_array('--verbose', $cliArguments, true) || getenv('DONE_GATE_VERBO
 /*
  * Optional CI sharding: DONE_GATE_SHARD=I/N runs only shard I's slice of the
  * unit/feature/storage test files (round-robin by sorted path). Shard 1 also
- * runs the file-size ratchet, greenfield-guard, PHPStan (level 3, committed
+ * runs the file-size ratchet, greenfield-guard, PHPStan (level 4, committed
  * baseline), and the Architecture suite; later shards run tests only.
  * Unset (local default) keeps the full gate behaviour below.
  */
@@ -145,7 +145,7 @@ if ($runContractSteps) {
         exit($guardCode);
     }
 
-    done_gate_step("Step {$step}/{$totalSteps}: PHPStan (level 3, shrink-only baseline)");
+    done_gate_step("Step {$step}/{$totalSteps}: PHPStan (level 4, shrink-only baseline)");
     $shrinkCode = done_gate_run(['php', $apiRoot.'/scripts/phpstan-baseline-shrink.php']);
     if ($shrinkCode !== 0) {
         $results[] = ['label' => 'phpstan baseline', 'ok' => false, 'detail' => 'count must not rise'];
@@ -156,7 +156,7 @@ if ($runContractSteps) {
     $phpstan = $apiRoot.'/vendor/bin/phpstan';
     if (! is_file($phpstan)) {
         fwrite(STDERR, "done-gate: vendor/bin/phpstan missing — run: composer install\n");
-        $results[] = ['label' => 'phpstan', 'ok' => false, 'detail' => 'level 3 + baseline'];
+        $results[] = ['label' => 'phpstan', 'ok' => false, 'detail' => 'level 4 + baseline'];
         done_gate_summary($results, false);
         exit(127);
     }
@@ -164,7 +164,7 @@ if ($runContractSteps) {
     $results[] = [
         'label' => 'phpstan',
         'ok' => $phpstanCode === 0,
-        'detail' => 'level 3 + baseline',
+        'detail' => 'level 4 + baseline',
     ];
     $step++;
 

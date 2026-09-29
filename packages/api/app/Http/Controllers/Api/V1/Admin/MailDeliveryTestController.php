@@ -33,7 +33,7 @@ final class MailDeliveryTestController
         $to = $request->recipient();
         if ($to === '') {
             $row = Principal::forUsername($principal['username']);
-            $to = trim((string) ($row?->email ?? ''));
+            $to = trim((string) ($row->email ?? ''));
         }
 
         $config = $this->delivery->loadConfig();

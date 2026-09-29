@@ -587,16 +587,6 @@ final class TaskRepository
         return $uris;
     }
 
-    private function findOwnedInstance(string $username, string $taskListId): ?CalendarInstance
-    {
-        return CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $this->principalUri($username))
-            ->where('uri', $taskListId)
-            ->whereHas('calendar', fn ($query) => $query->supportsVtodo())
-            ->first();
-    }
-
     private function findObjectInCalendar(int $calendarId, string $objectUri): ?CalendarObject
     {
         return CalendarObject::query()

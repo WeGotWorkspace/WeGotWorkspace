@@ -57,7 +57,7 @@ final class MailFolderOperations
         foreach ($raw as $row) {
             $mb = $row['mailbox'];
             $id = MailOperationService::folderIdEncode($mb);
-            $del = self::normalizeMailboxDelimiter($row['delimiter'] ?? '.');
+            $del = self::normalizeMailboxDelimiter($row['delimiter']);
             $pCanon = self::resolveParentByLongestListedPrefix($mb, $raw);
             if ($pCanon === null) {
                 $pCanon = self::resolveParentMailboxForTree($mb, $del, $byLower);
@@ -121,7 +121,7 @@ final class MailFolderOperations
         if (strtoupper($mb) === 'INBOX') {
             return $decoded !== '' ? $decoded : 'Inbox';
         }
-        $del = self::normalizeMailboxDelimiter($row['delimiter'] ?? '.');
+        $del = self::normalizeMailboxDelimiter($row['delimiter']);
         $leaf = self::mailboxLeafSegment($mb, $del);
 
         return MailImapClient::decodeMailboxName($leaf);
@@ -129,7 +129,7 @@ final class MailFolderOperations
 
     private function normalizeMailboxDelimiter(string $delimiter): string
     {
-        if (strlen($delimiter) === 1 && $delimiter !== '') {
+        if (strlen($delimiter) === 1) {
             return $delimiter;
         }
 
@@ -178,11 +178,11 @@ final class MailFolderOperations
         $bestLen = -1;
         foreach ($raw as $row) {
             $k = $row['mailbox'];
-            if (! is_string($k) || $k === '') {
+            if ($k === '') {
                 continue;
             }
             $lk = strlen($k);
-            if ($lk === 0 || $lk >= $mLen) {
+            if ($lk >= $mLen) {
                 continue;
             }
             if (strncasecmp($mailbox, $k, $lk) !== 0) {
@@ -210,7 +210,7 @@ final class MailFolderOperations
         $m = [];
         foreach ($raw as $row) {
             $mb = $row['mailbox'];
-            if (! is_string($mb) || $mb === '') {
+            if ($mb === '') {
                 continue;
             }
             $k = strtolower($mb);
@@ -300,16 +300,16 @@ final class MailFolderOperations
     {
         foreach ($raw as $row) {
             if (strcasecmp($row['mailbox'], $mailbox) === 0) {
-                $d = $row['delimiter'] ?? '.';
+                $d = $row['delimiter'];
 
-                return is_string($d) && strlen($d) === 1 ? $d : '.';
+                return strlen($d) === 1 ? $d : '.';
             }
         }
         foreach ($raw as $row) {
             if (strtoupper($row['mailbox']) === 'INBOX') {
-                $d = $row['delimiter'] ?? '.';
+                $d = $row['delimiter'];
 
-                return is_string($d) && strlen($d) === 1 ? $d : '.';
+                return strlen($d) === 1 ? $d : '.';
             }
         }
 

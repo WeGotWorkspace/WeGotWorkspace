@@ -36,7 +36,7 @@ final class ContactsSearchTool extends WgwMcpTool
         ];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::CONTACTS_READ;
     }
@@ -46,7 +46,7 @@ final class ContactsSearchTool extends WgwMcpTool
         return 'read';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): array
     {
         return ['query' => (string) $request->get('query', '')];
     }
