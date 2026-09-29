@@ -44,7 +44,7 @@ final class WritePathContractTest extends TestCase
     public function test_calendar_contacts_notes_tasks_use_caldav_or_carddav_backends(): void
     {
         $pairs = [
-            'Services/Calendars/CalendarEventRepository.php' => 'Sabre\\CalDAV\\Backend\\PDO',
+            'Services/Calendars/CalendarEventMutationSupport.php' => 'Sabre\\CalDAV\\Backend\\PDO',
             'Services/Tasks/TaskRepository.php' => 'Sabre\\CalDAV\\Backend\\PDO',
             'Services/Notes/NoteRepository.php' => 'Sabre\\CalDAV\\Backend\\PDO',
             'Services/Contacts/ContactCardRepository.php' => 'Sabre\\CardDAV\\Backend\\PDO',

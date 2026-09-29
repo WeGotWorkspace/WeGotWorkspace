@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin array{username: string, role: string}
+ * Payload: array{username: string, role: string}.
  */
 final class PrincipalResource extends JsonResource
 {

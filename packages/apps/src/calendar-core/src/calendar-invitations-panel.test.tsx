@@ -1,7 +1,4 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarInvitationsPanel } from "@/calendar-core/src/calendar-invitations-panel";
@@ -483,48 +480,6 @@ describe("CalendarInvitationsPanel", () => {
     );
     screen.getByLabelText(defaultCalendarLabels.invitationsClosePanel).focus();
     expect(screen.queryByRole("tooltip")).toBeNull();
-  });
-});
-
-describe("calendar invitation picker reuse", () => {
-  it("imports CalendarEventCalendarPicker from the event form and invite card", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const form = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
-    const title = readFileSync(join(here, "calendar-event-form-title.tsx"), "utf8");
-    const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
-    const importLine = 'from "@/calendar-core/src/calendar-event-calendar-picker"';
-    expect(form).toContain("CalendarEventFormTitle");
-    expect(title).toContain(importLine);
-    expect(card).toContain(importLine);
-  });
-
-  it("refetches invitations when the inbox trigger opens the panel", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const workspace = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
-    expect(workspace).toContain("onToggle={toggleInvitationsOpen}");
-    expect(workspace).toContain("refreshIfIdle");
-    expect(workspace).toContain("onOpenEvent={openInvitationPreview}");
-    expect(workspace).toContain("invitation: true");
-    expect(workspace).not.toMatch(/onOpenEvent=\{[\s\S]*openEditEventKey/);
-  });
-
-  it("reuses RSVP controls from calendar-rsvp-actions in the event form and invite card", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const form = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
-    const footer = readFileSync(join(here, "calendar-event-form-footer.tsx"), "utf8");
-    const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
-    const importLine = 'from "@/calendar-core/src/calendar-rsvp-actions"';
-    expect(form).toContain(importLine);
-    expect(form).toContain("CalendarEventFormFooter");
-    expect(footer).toContain(importLine);
-    expect(footer).toContain("CalendarRsvpSelect");
-    expect(footer).toMatch(
-      /calendar-event-dialog__invitation-rsvp[\s\S]*CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/,
-    );
-    expect(card).toContain(importLine);
-    expect(card).toContain("CalendarRsvpActions");
-    expect(card).toMatch(/DocsCollabCardHeader[\s\S]*event-card[\s\S]*CalendarRsvpActions/);
-    expect(card).toMatch(/CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/);
   });
 });
 

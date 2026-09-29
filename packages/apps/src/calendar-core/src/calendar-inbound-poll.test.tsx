@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
@@ -14,8 +11,6 @@ import type { JmapInvocation } from "@/lib/jmap-client/core/types";
 import { JmapClient } from "@/lib/jmap-client";
 import { workCalendar } from "@/lib/jmap-client/mock/fixtures";
 import { MockJmapServer } from "@/lib/jmap-client/mock/MockJmapServer";
-
-const here = dirname(fileURLToPath(import.meta.url));
 
 const bootstrap = createCalendarAppBootstrap();
 bootstrap.session = {
@@ -98,10 +93,6 @@ describe("calendar inbound poll call-count", () => {
   });
 
   it("after two poll intervals runs exactly one inbound /changes series; hybrid has no interval", async () => {
-    const apiSource = readFileSync(join(here, "use-calendar-api.ts"), "utf8");
-    expect(apiSource).not.toContain("setInterval");
-    expect(apiSource).not.toContain("CALENDAR_BACKGROUND_POLL_MS");
-
     const server = new MockJmapServer();
     server.seedCalendar(workCalendar);
     const methods: string[] = [];

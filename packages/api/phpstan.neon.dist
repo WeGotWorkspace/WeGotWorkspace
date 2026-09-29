@@ -1,4 +1,4 @@
-# PHPStan level 1 (Larastan) for packages/api.
+# PHPStan level 3 (Larastan) for packages/api.
 #
 # The committed baseline (phpstan-baseline.neon) may only shrink.
 # scripts/phpstan-baseline-shrink.php fails the done gate when the sum of
@@ -16,7 +16,13 @@ includes:
     - phpstan-baseline.neon
 
 parameters:
-    level: 1
+    level: 3
+    # Sabre components expose arbitrary iCalendar/vCard children via __get/__set.
+    universalObjectCratesClasses:
+        - Sabre\VObject\Component
+    stubFiles:
+        - stubs/phpstan/SabreVObject.php
+        - stubs/phpstan/PassportClient.php
     paths:
         - app
         - bootstrap

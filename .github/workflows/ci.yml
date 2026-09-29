@@ -98,7 +98,7 @@ jobs:
         run: git fetch --depth=1 origin +refs/heads/main:refs/remotes/origin/main
 
       # Shard 1 also runs the file-size ratchet, greenfield-guard, PHPStan
-      # level 1, and the Architecture suite; later shards run only their
+      # level 3, and the Architecture suite; later shards run only their
       # round-robin slice of unit/feature/storage tests.
       - name: API quality gate (shard ${{ matrix.shard }}/2)
         env:

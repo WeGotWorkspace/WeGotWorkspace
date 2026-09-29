@@ -11,11 +11,14 @@ use App\Services\VObject\ICalendarAlarmTrigger;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Component\VTodo;
+use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
+use Sabre\VObject\Property\ICalendar\Duration as IcsDuration;
 use Sabre\VObject\Reader;
 use Sabre\VObject\Recur\EventIterator;
 use Sabre\VObject\Recur\NoInstancesException;
@@ -236,7 +239,7 @@ final class AlertDueScheduler
     private function startDate(VEvent|VTodo $component): ?DateTimeImmutable
     {
         $prop = $component->DTSTART ?? $component->DUE ?? null;
-        if ($prop === null) {
+        if (! $prop instanceof IcsDateTime) {
             return null;
         }
         try {
@@ -248,15 +251,28 @@ final class AlertDueScheduler
 
     private function endDate(VEvent|VTodo $component, DateTimeImmutable $start): ?DateTimeImmutable
     {
-        $prop = $component->DTEND ?? $component->DUE ?? $component->DURATION ?? null;
-        if ($prop === null) {
+        $duration = $component->DURATION ?? null;
+        if ($duration !== null) {
+            if (! $duration instanceof IcsDuration) {
+                return $start;
+            }
+            try {
+                return $start->add($duration->getDateInterval());
+            } catch (\Throwable $e) {
+                Log::warning('Alert due scheduler could not apply DURATION; falling back to DTSTART.', [
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
+
+                return $start;
+            }
+        }
+
+        $prop = $component->DTEND ?? $component->DUE ?? null;
+        if (! $prop instanceof IcsDateTime) {
             return $start;
         }
         try {
-            if ($component->DURATION ?? null) {
-                return $start->add($component->DURATION->getDateInterval());
-            }
-
             return DateTimeImmutable::createFromInterface($prop->getDateTime())->setTimezone(new DateTimeZone('UTC'));
         } catch (\Throwable) {
             return $start;

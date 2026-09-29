@@ -8,6 +8,14 @@ use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property int $id
+ * @property string $username
+ * @property int $calendar_object_id
+ * @property string $note_uid
+ */
 final class NoteStar extends Model
 {
     use UsesWgwConnection;

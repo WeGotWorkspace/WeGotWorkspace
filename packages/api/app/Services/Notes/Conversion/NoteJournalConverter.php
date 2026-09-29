@@ -72,7 +72,7 @@ final class NoteJournalConverter
         }
 
         $journal = null;
-        foreach ($calendar->getComponents('VJOURNAL') as $component) {
+        foreach ($calendar->select('VJOURNAL') as $component) {
             if ($component instanceof VJournal) {
                 $journal = $component;
                 break;
@@ -155,7 +155,7 @@ final class NoteJournalConverter
 
         $journal = null;
         if ($calendar instanceof VCalendar) {
-            foreach ($calendar->getComponents('VJOURNAL') as $component) {
+            foreach ($calendar->select('VJOURNAL') as $component) {
                 if ($component instanceof VJournal) {
                     $journal = $component;
                     break;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars\Conversion;
 
+use App\Services\VObject\VObjectScalar;
 use Sabre\VObject\Component;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VTimeZone;
@@ -99,7 +100,7 @@ final class TimeZoneSupport
         $ids = [];
         foreach (['DTSTART', 'DTEND', 'DUE', 'RECURRENCE-ID'] as $name) {
             if (isset($component->{$name}['TZID'])) {
-                $tzid = trim((string) $component->{$name}['TZID']);
+                $tzid = trim(VObjectScalar::string($component->{$name}['TZID']));
                 if ($tzid !== '') {
                     $ids[] = $tzid;
                 }

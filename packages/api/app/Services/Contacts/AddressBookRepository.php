@@ -255,9 +255,6 @@ final class AddressBookRepository
         ));
     }
 
-    /**
-     * @param  list<string>  $disallowedKeys
-     */
     private function assertShareePatchAllowed(array $payload): void
     {
         $disallowed = [];
