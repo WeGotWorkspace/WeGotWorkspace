@@ -11,6 +11,10 @@ use Illuminate\Support\Str;
 
 final class JmapContactStateService
 {
+    /**
+     * @param  array<string, mixed>  $contact
+     * @return array<mixed>
+     */
     public function attachStateToken(
         string $username,
         array $contact,
@@ -82,13 +86,13 @@ final class JmapContactStateService
      */
     public function recordedCardIdsForBook(string $username, string $addressBookUri): array
     {
-        return JmapContactState::query()
+        return array_values(JmapContactState::query()
             ->where('username', $username)
             ->where('address_book_uri', $addressBookUri)
             ->orderBy('card_id')
             ->pluck('card_id')
             ->map(fn ($id): string => (string) $id)
-            ->all();
+            ->all());
     }
 
     /**

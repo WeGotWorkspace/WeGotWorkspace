@@ -22,6 +22,9 @@ final class CalendarEventQuerySupport
         private readonly CalendarEventMutationSupport $mutations,
     ) {}
 
+    /**
+     * @return list<CalendarInstance>
+     */
     public function resolveQueryCalendars(string $username, mixed $inCalendars): array
     {
         if (! is_array($inCalendars) || $inCalendars === []) {
@@ -247,9 +250,11 @@ final class CalendarEventQuerySupport
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
 
+        $syncToken = $this->normalizeSyncToken($instance, $since);
+        // Sabre's PDO backend treats a falsy token as the initial sync.
         $changes = $this->mutations->calBackend()->getChangesForCalendar(
             $this->mutations->calBackendCalendarId($instance),
-            $this->normalizeSyncToken($instance, $since),
+            $syncToken === null ? '0' : $syncToken,
             1,
         );
         if ($changes === null) {

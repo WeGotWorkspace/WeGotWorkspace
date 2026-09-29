@@ -27,31 +27,49 @@ final class MailOperationService
         return MailImapProcess::runJson('listFolders', $username, [], fn () => $this->folders->handleFolders($username));
     }
 
-    /** @param array<string, mixed> $body @return array<string, mixed> */
+    /** @param array<string, mixed> $body */
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
     public function createFolder(string $username, array $body): array
     {
         return MailImapProcess::runJson('createFolder', $username, $body, fn () => $this->folders->handleFolderCreate($username, $body));
     }
 
-    /** @param array<string, mixed> $body @return array<string, mixed> */
+    /** @param array<string, mixed> $body */
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
     public function moveFolder(string $username, array $body): array
     {
         return MailImapProcess::runJson('moveFolder', $username, $body, fn () => $this->folders->handleFolderMove($username, $body));
     }
 
-    /** @param array<string, mixed> $body @return array<string, mixed> */
+    /** @param array<string, mixed> $body */
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
     public function deleteFolder(string $username, array $body): array
     {
         return MailImapProcess::runJson('deleteFolder', $username, $body, fn () => $this->folders->handleFolderDelete($username, $body));
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>
+     */
     public function listMessages(string $username, array $query): array
     {
         return MailImapProcess::runJson('listMessages', $username, $query, fn () => $this->messages->handleMessages($username, $query));
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>
+     */
     public function listMessageAttachments(string $username, array $query): array
     {
         return MailImapProcess::runJson(
@@ -62,12 +80,16 @@ final class MailOperationService
         );
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>
+     */
     public function getMessage(string $username, array $query): array
     {
         return MailImapProcess::runJson('getMessage', $username, $query, fn () => $this->messages->handleMessageGet($username, $query));
     }
 
+    /** @param array<string, mixed> $query */
     public function downloadAttachment(string $username, array $query): MailBinaryDownload
     {
         return MailImapProcess::runBinary(
@@ -78,36 +100,57 @@ final class MailOperationService
         );
     }
 
-    /** @param array<string, mixed> $body @return array<string, mixed> */
+    /** @param array<string, mixed> $body */
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
     public function patchMessage(string $username, array $body): array
     {
         return MailImapProcess::runJson('patchMessage', $username, $body, fn () => $this->messages->handleMessagePatch($username, $body));
     }
 
-    /** @param array<string, mixed> $query @return array<string, mixed> */
+    /** @param array<string, mixed> $query */
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>
+     */
     public function deleteMessage(string $username, array $query): array
     {
         return MailImapProcess::runJson('deleteMessage', $username, $query, fn () => $this->messages->handleMessageDelete($username, $query));
     }
 
-    /** @param array<string, mixed> $body @return array<string, mixed> */
+    /** @param array<string, mixed> $body */
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
     public function moveMessage(string $username, array $body): array
     {
         return MailImapProcess::runJson('moveMessage', $username, $body, fn () => $this->messages->handleMove($username, $body));
     }
 
-    /** @param array<string, mixed> $body @return array<string, mixed> */
+    /** @param array<string, mixed> $body */
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
     public function send(string $username, array $body): array
     {
         return MailImapProcess::runJson('send', $username, $body, fn () => $this->compose->handleSend($username, $body));
     }
 
-    /** @param array<string, mixed> $body @return array<string, mixed> */
+    /** @param array<string, mixed> $body */
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
     public function saveDraft(string $username, array $body): array
     {
         return MailImapProcess::runJson('saveDraft', $username, $body, fn () => $this->compose->handleSaveDraft($username, $body));
     }
 
+    /** @return array<mixed> */
     private function handleStatus(string $username): array
     {
         $cfg = WgwSettings::normalized();
@@ -151,8 +194,4 @@ final class MailOperationService
 
         return is_string($raw) ? $raw : '';
     }
-
-    /**
-     * @param  array{host: string, port: int, security: string, smtpAuth: bool}|null  $transport
-     */
 }

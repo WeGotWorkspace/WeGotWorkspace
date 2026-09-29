@@ -145,6 +145,7 @@ final class TaskConversionSupport
     }
 
     /**
+     * @param  array<string, mixed>  $task
      * @return array<string, mixed>
      */
     public static function normalizeTaskMapKeys(array $task): array

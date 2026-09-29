@@ -56,7 +56,7 @@ final class DriveShareByPrincipalQuery
             });
         }
 
-        $shareIds = $shares->pluck('id')->map(static fn ($id): string => (string) $id)->values()->all();
+        $shareIds = array_values($shares->pluck('id')->map(static fn ($id): string => (string) $id)->all());
         if ($shareIds === []) {
             return [
                 'principal' => $this->normalizedPrincipalForResponse($principal, $principalType),

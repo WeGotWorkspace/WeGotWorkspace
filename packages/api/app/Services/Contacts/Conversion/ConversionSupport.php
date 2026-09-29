@@ -136,6 +136,7 @@ final class ConversionSupport
         return ConversionIdMethods::collectCardMapKeys($card);
     }
 
+    /** @return array<string, true>|null */
     public static function contextsFromType(Property $property): ?array
     {
         return ConversionPropertyMethods::contextsFromType($property);
@@ -159,6 +160,7 @@ final class ConversionSupport
 
     /**
      * @param  array<string, true>  $features
+     * @param  array<mixed>|null  $contexts
      * @return list<string>
      */
     public static function telTypesFromFeatures(array $features, ?array $contexts): array
@@ -210,6 +212,7 @@ final class ConversionSupport
         return ConversionPropertyMethods::structuredParts($property);
     }
 
+    /** @param list<string> $parts */
     public static function isRfc9554Adr(array $parts): bool
     {
         return ConversionPropertyMethods::isRfc9554Adr($parts);
@@ -353,6 +356,7 @@ final class ConversionSupport
 
     /**
      * @param  array<string, mixed>  $date
+     * @return array{0: string, 1: array<string, string>}
      */
     public static function anniversaryDateToVCardValue(array $date, string $propertyName): array
     {

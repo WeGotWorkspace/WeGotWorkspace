@@ -37,11 +37,13 @@ final class Principal extends Model
         'displayname',
     ];
 
+    /** @return HasMany<GroupMember, $this> */
     public function groupMemberships(): HasMany
     {
         return $this->hasMany(GroupMember::class, 'member_id');
     }
 
+    /** @return BelongsToMany<Principal, $this> */
     public function groupMembers(): BelongsToMany
     {
         return $this->belongsToMany(

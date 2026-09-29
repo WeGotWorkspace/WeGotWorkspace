@@ -20,6 +20,8 @@ final class CalendarRsvpController
 
     public function respond(CalendarSchedulingNotificationRespondRequest $request, string $token): JsonResponse
     {
-        return response()->json($this->rsvp->respond($token, $request->validated(), (string) $request->ip()));
+        return response()->json($this->rsvp->respond($token, [
+            'participationStatus' => $request->payload()['participationStatus'],
+        ], (string) $request->ip()));
     }
 }

@@ -7,10 +7,10 @@ namespace App\Services\Docs\Conversion;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarObject;
 use DateTimeImmutable;
-use DateTimeInterface;
 use DateTimeZone;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VJournal;
+use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
 use Sabre\VObject\Reader;
 
 /**
@@ -115,7 +115,7 @@ final class DocsThreadJournalConverter
 
         unset($journal->{'X-WGW-REACTIONS'});
         if ($reactions !== []) {
-            $journal->add('X-WGW-REACTIONS', json_encode(array_values($reactions), JSON_UNESCAPED_UNICODE));
+            $journal->add('X-WGW-REACTIONS', json_encode($reactions, JSON_UNESCAPED_UNICODE));
         }
 
         return $calendar->serialize();
@@ -280,10 +280,10 @@ final class DocsThreadJournalConverter
             return null;
         }
         $prop = $journal->{$property};
-        if (method_exists($prop, 'getDateTime')) {
-            $dateTime = $prop->getDateTime();
-            if ($dateTime instanceof DateTimeInterface) {
-                return DateTimeImmutable::createFromInterface($dateTime)
+        if ($prop instanceof IcsDateTime) {
+            $dateTimes = $prop->getDateTimes();
+            if ($dateTimes !== []) {
+                return DateTimeImmutable::createFromInterface($dateTimes[0])
                     ->setTimezone(new DateTimeZone('UTC'))
                     ->format('Y-m-d\TH:i:s\Z');
             }

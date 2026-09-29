@@ -44,10 +44,10 @@ final class FileNodeMapper
     {
         $starredPaths = $this->starredPathsFor((string) $principal['username']);
 
-        return array_values(array_map(
+        return array_map(
             fn (JmapFileNode $node): array => $this->toFileNode($node, $principal, $starredPaths),
             $nodes,
-        ));
+        );
     }
 
     /**

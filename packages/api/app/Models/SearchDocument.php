@@ -57,6 +57,7 @@ final class SearchDocument extends Model
         'updated_at',
     ];
 
+    /** @return HasMany<SearchTerm, $this> */
     public function terms(): HasMany
     {
         return $this->hasMany(SearchTerm::class, 'document_id');

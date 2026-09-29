@@ -36,7 +36,7 @@ final class DocsThreadsController
             $this->principal($request),
             $this->requirePath($request),
             $threadId,
-            $request->validated(),
+            $request->payload(),
         ));
     }
 
@@ -56,7 +56,7 @@ final class DocsThreadsController
             $this->principal($request),
             $this->requirePath($request),
             $threadId,
-            $request->validated(),
+            $request->payload(),
         ));
     }
 

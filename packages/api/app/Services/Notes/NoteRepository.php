@@ -58,7 +58,13 @@ final class NoteRepository
             ->orderBy('id')
             ->get();
 
-        $starredIds = $this->starredObjectIds($username, $objects->pluck('id')->all());
+        $objectIds = [];
+        foreach ($objects->pluck('id') as $id) {
+            if (is_int($id) || (is_string($id) && $id !== '')) {
+                $objectIds[] = $id;
+            }
+        }
+        $starredIds = $this->starredObjectIds($username, $objectIds);
         $apiId = $this->notebooks->apiIdForInstance($instance);
         $notes = [];
         foreach ($objects as $object) {
@@ -310,9 +316,11 @@ final class NoteRepository
             throw new ApiHttpException(404, 'Notebook not found.', 'not_found');
         }
 
+        $syncToken = $this->normalizeSyncToken($since);
+        // Sabre's PDO backend treats a falsy token as the initial sync.
         $changes = $this->calBackend()->getChangesForCalendar(
             [(int) $instance->calendarid, (int) $instance->id],
-            $this->normalizeSyncToken($since),
+            $syncToken === null ? '0' : (string) $syncToken,
             1,
         );
         if ($changes === null) {

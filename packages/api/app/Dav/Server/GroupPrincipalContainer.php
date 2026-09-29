@@ -63,7 +63,7 @@ final class GroupPrincipalContainer extends User
             'protected' => true,
         ];
 
-        return $acl;
+        return array_values($acl);
     }
 
     public function childExists($name)

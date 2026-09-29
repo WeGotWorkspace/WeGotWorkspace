@@ -26,6 +26,7 @@ final class VCardToJsContactCoreFields
         $this->extra = $extra;
     }
 
+    /** @param array<string, mixed> $card */
     public function convertName(VCard $document, array &$card): void
     {
         $name = [];

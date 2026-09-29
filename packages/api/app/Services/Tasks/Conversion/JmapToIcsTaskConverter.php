@@ -205,7 +205,7 @@ final class JmapToIcsTaskConverter
                 $todo->add('EXDATE', implode(',', $values));
             }
         } elseif (isset($task['excludedRecurrenceDates']) && is_array($task['excludedRecurrenceDates']) && $task['excludedRecurrenceDates'] !== []) {
-            $values = ICalendarDateList::toIcsValues($task['excludedRecurrenceDates']);
+            $values = ICalendarDateList::toIcsValues(array_values($task['excludedRecurrenceDates']));
             if ($values !== []) {
                 $todo->add('EXDATE', implode(',', $values));
             }

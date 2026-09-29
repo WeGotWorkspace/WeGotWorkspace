@@ -31,6 +31,10 @@ final class CalendarEventMutationSupport
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
     public function create(string $username, array $payload): array
     {
         $instance = $this->resolveCalendarFromPayload($username, $payload);

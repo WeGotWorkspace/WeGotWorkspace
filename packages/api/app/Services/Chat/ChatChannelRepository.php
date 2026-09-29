@@ -797,13 +797,13 @@ final class ChatChannelRepository
     private function usernamesForPrincipalUri(string $principalUri): array
     {
         if (str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)) {
-            return GroupMember::query()
+            return array_values(GroupMember::query()
                 ->join('principals as g', 'g.id', '=', 'groupmembers.principal_id')
                 ->join('principals as m', 'm.id', '=', 'groupmembers.member_id')
                 ->where('g.uri', $principalUri)
                 ->pluck('m.uri')
                 ->map(static fn (mixed $uri): string => str_replace('principals/', '', (string) $uri))
-                ->all();
+                ->all());
         }
         if (str_starts_with($principalUri, 'principals/')) {
             return [substr($principalUri, strlen('principals/'))];

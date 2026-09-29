@@ -13,6 +13,10 @@ final class MailMessageOperations
         private MailFolderOperations $folders,
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array<mixed>
+     */
     public function handleMessages(string $username, array $query): array
     {
         $folderEnc = (string) ($query['folder'] ?? '');
@@ -98,6 +102,13 @@ final class MailMessageOperations
     /**
      * GET {@code messages/attachments?folder=…&uids=1,2,3} — MIME structure scan for list paperclips (after fast overview).
      */
+
+    /**
+     * GET {@code messages/attachments?folder=…&uids=1,2,3} — MIME structure scan for list paperclips (after fast overview).
+     *
+     * @param  array<string, mixed>  $query
+     * @return array<mixed>
+     */
     public function handleMessageAttachments(string $username, array $query): array
     {
         $folderEnc = (string) ($query['folder'] ?? '');
@@ -149,6 +160,10 @@ final class MailMessageOperations
     /**
      * @return list<int>
      */
+
+    /**
+     * @return list<int>
+     */
     private function parseUidListParam(string $uidsRaw, int $max): array
     {
         $seen = [];
@@ -172,6 +187,11 @@ final class MailMessageOperations
 
     /**
      * @param  list<array{id: string, name: string, size: int, type: string, part: string}>  $attachments
+     */
+
+    /**
+     * @param  list<array{id: string, name: string, size: int, type: string, part: string}>  $attachments
+     * @return array<mixed>
      */
     private function overviewToMessage(object $o, string $realMailbox, string $folderIdForUi, array $attachments = []): array
     {
@@ -205,6 +225,10 @@ final class MailMessageOperations
             'attachments' => $attachments,
         ];
     }
+
+    /**
+     * @return list<array{id: string, name: string, size: int, type: string, part: string}>
+     */
 
     /**
      * @return list<array{id: string, name: string, size: int, type: string, part: string}>
@@ -248,10 +272,17 @@ final class MailMessageOperations
             return mb_substr(trim(html_entity_decode(strip_tags($s), ENT_QUOTES | ENT_HTML5, 'UTF-8')), 0, 220);
         }
         $t = preg_replace('/\s+/u', ' ', trim($t));
+        if (! is_string($t)) {
+            return '';
+        }
 
         return mb_substr($t, 0, 220);
     }
 
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array<mixed>
+     */
     public function handleMessageGet(string $username, array $query): array
     {
         $folderEnc = (string) ($query['folder'] ?? '');
@@ -328,6 +359,7 @@ final class MailMessageOperations
         return $resp[1];
     }
 
+    /** @param array<string, mixed> $query */
     public function handleMessageAttachmentDownload(string $username, array $query): MailBinaryDownload
     {
         $folderEnc = (string) ($query['folder'] ?? '');
@@ -380,10 +412,13 @@ final class MailMessageOperations
         } finally {
             @imap_close($conn);
         }
-
         throw new MailResponseException($resp[0], $resp[1]);
     }
 
+    /**
+     * @param  array<string, mixed>  $j
+     * @return array<mixed>
+     */
     public function handleMessagePatch(string $username, array $j): array
     {
 
@@ -431,6 +466,10 @@ final class MailMessageOperations
         return $resp[1];
     }
 
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array<mixed>
+     */
     public function handleMessageDelete(string $username, array $query): array
     {
         $folderEnc = isset($query['folder']) && is_string($query['folder']) ? $query['folder'] : '';
@@ -465,6 +504,10 @@ final class MailMessageOperations
         return $resp[1];
     }
 
+    /**
+     * @param  array<string, mixed>  $j
+     * @return array<mixed>
+     */
     public function handleMove(string $username, array $j): array
     {
 
@@ -519,8 +562,4 @@ final class MailMessageOperations
 
         return $resp[1];
     }
-
-    /**
-     * @param  mixed  $attachments  JSON {@code attachments}: list of {@code { filename, mimeType, contentBase64 }}
-     */
 }

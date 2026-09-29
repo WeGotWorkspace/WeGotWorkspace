@@ -6,6 +6,7 @@ namespace App\Services\Update;
 
 final class UpdateRunnerFilesystem
 {
+    /** @param list<string> $paths */
     public function assertApplyCapacity(string $sourceRoot, string $targetRoot, array $paths): void
     {
         $existing = self::collectPathStats($targetRoot, $paths);

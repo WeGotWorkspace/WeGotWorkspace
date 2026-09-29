@@ -20,16 +20,15 @@ final class UsersController
     {
         /** @var array{username: string} $principal */
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $validated = $request->validated();
+        $payload = $request->payload();
 
         try {
-            $groups = $validated['groups'] ?? [];
             $this->users->create(
-                (string) $validated['username'],
-                (string) $validated['password'],
-                trim((string) ($validated['displayName'] ?? '')),
-                isset($validated['email']) ? trim((string) $validated['email']) : null,
-                is_array($groups) ? $groups : [],
+                $payload['username'],
+                $payload['password'],
+                $payload['displayName'],
+                $payload['email'],
+                $payload['groups'],
                 $principal['username'],
             );
         } catch (\InvalidArgumentException $e) {

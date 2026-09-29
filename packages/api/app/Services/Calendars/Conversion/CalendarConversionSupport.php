@@ -139,6 +139,7 @@ final class CalendarConversionSupport
 
     /**
      * @param  array<string, mixed>  $event
+     * @param  array<string, mixed>  $existing
      * @return array<string, mixed>
      */
     public static function normalizeEventMapKeys(array $event, ?array $existing = null): array
@@ -185,6 +186,7 @@ final class CalendarConversionSupport
         return $event;
     }
 
+    /** @param array<string, mixed> $event */
     public static function deriveTitle(array $event): string
     {
         if (isset($event['title']) && is_string($event['title']) && trim($event['title']) !== '') {

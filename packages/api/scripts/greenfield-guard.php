@@ -38,6 +38,7 @@ $forbidden = [
     ['pattern' => '/\*\s*ApiService\s+that\s+only\s+forwards/i', 'message' => 'Remove misleading comments; implement services'],
 ];
 
+/** @var list<array{file: string, line: int, message: string}> $errors */
 $errors = [];
 
 foreach ($scanRoots as $root) {
@@ -187,6 +188,9 @@ function domainServiceExcludedPrefixes(string $servicesRoot): array
     ];
 }
 
+/**
+ * @param  list<array{file: string, line: int, message: string}>  $errors
+ */
 function scanServicesNoDbTable(string $servicesRoot, array &$errors): void
 {
     $excludedPrefixes = domainServiceExcludedPrefixes($servicesRoot);

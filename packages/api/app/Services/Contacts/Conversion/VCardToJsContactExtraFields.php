@@ -22,6 +22,7 @@ final class VCardToJsContactExtraFields
         $this->state = $state;
     }
 
+    /** @param array<string, mixed> $card */
     public function convertLinks(VCard $document, array &$card): void
     {
         $links = [];
@@ -531,7 +532,7 @@ final class VCardToJsContactExtraFields
     public function tzToTimeZone(Property $property): ?string
     {
         $value = trim((string) $property->getValue());
-        $valueType = strtolower((string) ($property['VALUE'] ?? $property->getValueType()));
+        $valueType = VObjectScalar::parameterOrValueType($property['VALUE'] ?? null, $property->getValueType());
 
         if ($valueType === 'text' || ($valueType === 'unknown' && ! preg_match('/^[+-]?\d/', $value))) {
             return $value;
