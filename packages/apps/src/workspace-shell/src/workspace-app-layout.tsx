@@ -4,7 +4,6 @@ import { useNotificationsInbox } from "@/notifications-core/src/notifications-in
 import { useInboxBadgePulseAttr } from "@/notifications-core/src/use-inbox-badge-pulse";
 import { SidebarLogo } from "@/sidebar-logo/src/sidebar-logo";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
-import { MenuItem } from "@/menu-item/src/menu-item";
 import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import "@/workspace-shell/src/workspace-app-layout.css";
@@ -181,11 +180,18 @@ export function WorkspaceSidebarAccountFooter({
     <div className="workspace-sidebar-account-footer">
       {settingsItem ? (
         <div className="workspace-sidebar-account-footer__settings">
-          <MenuItem
-            label={settingsItem.label}
-            icon={<Settings className="size-3.5" />}
+          <button
+            type="button"
+            className="workspace-sidebar-account-footer__settings-button"
             onClick={settingsItem.onClick}
-          />
+          >
+            <span className="workspace-sidebar-account-footer__settings-icon" aria-hidden>
+              <Settings className="size-4" />
+            </span>
+            <span className="workspace-sidebar-account-footer__settings-label">
+              {settingsItem.label}
+            </span>
+          </button>
         </div>
       ) : null}
       <WorkspaceUserFooter

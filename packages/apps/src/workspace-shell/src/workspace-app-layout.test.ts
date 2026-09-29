@@ -78,6 +78,28 @@ describe("WorkspaceUserFooter logout chrome", () => {
   });
 });
 
+describe("WorkspaceSidebarAccountFooter settings row", () => {
+  it("is a full-width footer button sharing the avatar row inset, not a sidebar MenuItem", () => {
+    const footerBlock = tsx.slice(
+      tsx.indexOf("export function WorkspaceSidebarAccountFooter"),
+      tsx.indexOf("export function WorkspaceSidebarScrim"),
+    );
+    expect(footerBlock).toMatch(/workspace-sidebar-account-footer__settings-button/);
+    expect(footerBlock).not.toMatch(/MenuItem/);
+    expect(tsx).not.toMatch(/from "@\/menu-item\/src\/menu-item"/);
+    expect(css).toMatch(
+      /\.workspace-sidebar-account-footer \{[\s\S]*padding-inline:\s*var\(\s*--app-sidebar-padding-x/,
+    );
+    expect(css).toMatch(
+      /\.workspace-sidebar-account-footer \.workspace-app-layout__user-footer \{[\s\S]*padding-inline:\s*0/,
+    );
+    expect(css).toMatch(/\.workspace-sidebar-account-footer__settings-button \{[\s\S]*\bw-full\b/);
+    expect(css).toMatch(
+      /\.workspace-sidebar-account-footer__settings-icon \{[\s\S]*width:\s*var\(\s*--control-height-md/,
+    );
+  });
+});
+
 describe("WorkspaceSidebarToggle chrome", () => {
   it("uses outline IconButton matching Select/dropdown borders, not filled subtle", () => {
     const toggleBlock = tsx.match(/export function WorkspaceSidebarToggle\([\s\S]*?\n\}/)?.[0];

@@ -16,6 +16,7 @@ import {
 import { useCalendarPickerCollections } from "@/lib/calendar-picker-collections";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import { settingsWorkspacePaneClasses } from "@/settings-core/src/settings-workspace.styles";
+import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import { useSettingsCalendarForm } from "@/settings-core/src/use-settings-calendar-form";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Form, FormField } from "@/ui/form";
@@ -58,77 +59,79 @@ export function SettingsCalendarPane() {
 
   return (
     <Form {...form}>
-      <div className={settingsWorkspacePaneClasses.stack}>
-        <FormField
-          control={form.control}
-          name="timeZone"
-          render={({ field }) => (
-            <FieldLabelRow label="Timezone">
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger aria-label="Timezone">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value={CALENDAR_DISPLAY_DEVICE_ZONE}>
-                    Device default ({formatTimeZoneLabel(deviceZone, uiLocale)})
-                  </SelectItem>
-                  {timeZoneOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FieldLabelRow>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="weekStart"
-          render={({ field }) => (
-            <FieldLabelRow label="Day starts on">
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger aria-label="Day starts on">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value={CALENDAR_DISPLAY_WEEK_START_LOCALE}>
-                    Browser default ({calendarWeekdayLabel(localeDefaultWeekday, uiLocale)})
-                  </SelectItem>
-                  {weekStartDays.map((day) => (
-                    <SelectItem key={day} value={String(day)}>
-                      {calendarWeekdayLabel(day, uiLocale)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FieldLabelRow>
-          )}
-        />
-        {calendars.length > 0 ? (
+      <SettingsPaneCard>
+        <div className={settingsWorkspacePaneClasses.stack}>
           <FormField
             control={form.control}
-            name="inviteCalendarId"
+            name="timeZone"
             render={({ field }) => (
-              <FieldLabelRow label="Default calendar">
-                <CalendarEventCalendarPicker
-                  calendars={calendars}
-                  calendarId={defaultPickerCalendarId(calendars, field.value || undefined)}
-                  label="Default calendar"
-                  showName
-                  onCalendarIdChange={(calendarId) => field.onChange(calendarId)}
-                />
+              <FieldLabelRow label="Timezone">
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger aria-label="Timezone">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    <SelectItem value={CALENDAR_DISPLAY_DEVICE_ZONE}>
+                      Device default ({formatTimeZoneLabel(deviceZone, uiLocale)})
+                    </SelectItem>
+                    {timeZoneOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </FieldLabelRow>
             )}
           />
-        ) : null}
-        <FormSaveActionRow
-          className={settingsWorkspacePaneClasses.saveActionRow}
-          label="Save"
-          disabled={!form.formState.isDirty}
-          onSave={saveDisplay}
-        />
-      </div>
+          <FormField
+            control={form.control}
+            name="weekStart"
+            render={({ field }) => (
+              <FieldLabelRow label="Day starts on">
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger aria-label="Day starts on">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    <SelectItem value={CALENDAR_DISPLAY_WEEK_START_LOCALE}>
+                      Browser default ({calendarWeekdayLabel(localeDefaultWeekday, uiLocale)})
+                    </SelectItem>
+                    {weekStartDays.map((day) => (
+                      <SelectItem key={day} value={String(day)}>
+                        {calendarWeekdayLabel(day, uiLocale)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldLabelRow>
+            )}
+          />
+          {calendars.length > 0 ? (
+            <FormField
+              control={form.control}
+              name="inviteCalendarId"
+              render={({ field }) => (
+                <FieldLabelRow label="Default calendar">
+                  <CalendarEventCalendarPicker
+                    calendars={calendars}
+                    calendarId={defaultPickerCalendarId(calendars, field.value || undefined)}
+                    label="Default calendar"
+                    showName
+                    onCalendarIdChange={(calendarId) => field.onChange(calendarId)}
+                  />
+                </FieldLabelRow>
+              )}
+            />
+          ) : null}
+          <FormSaveActionRow
+            className={settingsWorkspacePaneClasses.saveActionRow}
+            label="Save"
+            disabled={!form.formState.isDirty}
+            onSave={saveDisplay}
+          />
+        </div>
+      </SettingsPaneCard>
     </Form>
   );
 }

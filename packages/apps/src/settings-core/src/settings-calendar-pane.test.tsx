@@ -26,5 +26,6 @@ describe("SettingsCalendarPane", () => {
     expect(screen.queryByText(/coming soon/i)).toBeNull();
     expect(screen.queryByText(/placeholder/i)).toBeNull();
     expect(screen.queryByRole("combobox", { name: /working hours/i })).toBeNull();
+    expect(document.querySelector(".settings-pane-card")).toBeTruthy();
   });
 });

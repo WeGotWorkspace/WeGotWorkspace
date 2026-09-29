@@ -62,9 +62,49 @@
   );
 }
 
+.workspace-sidebar-account-footer {
+  padding-inline: var(--app-sidebar-padding-x, 1rem);
+}
+
+.workspace-sidebar-account-footer .workspace-app-layout__user-footer {
+  padding-inline: 0;
+}
+
 .workspace-sidebar-account-footer__settings {
   @apply pt-2;
-  padding-inline: var(--app-sidebar-padding-x, 1rem);
+}
+
+.workspace-sidebar-account-footer__settings-button {
+  @apply flex w-full min-w-0 items-center gap-2 text-left;
+  min-height: var(--control-height-md, 2.25rem);
+  color: var(
+    --workspace-user-footer-text-color,
+    color-mix(in oklab, var(--color-we-got-dark) 70%, transparent)
+  );
+  background-color: transparent;
+  border-radius: var(--control-radius);
+}
+
+.workspace-sidebar-account-footer__settings-button:hover {
+  background-color: var(
+    --workspace-user-footer-link-hover-bg,
+    color-mix(in oklch, var(--color-we-got-dark) 10%, transparent)
+  );
+}
+
+.workspace-sidebar-account-footer__settings-button:focus-visible {
+  @apply outline-none ring-2 ring-offset-1 ring-offset-transparent;
+  --tw-ring-color: color-mix(in oklab, currentColor 35%, transparent);
+}
+
+.workspace-sidebar-account-footer__settings-icon {
+  @apply flex shrink-0 items-center justify-center;
+  width: var(--control-height-md, 2.25rem);
+  height: var(--control-height-md, 2.25rem);
+}
+
+.workspace-sidebar-account-footer__settings-label {
+  @apply min-w-0 truncate text-sm font-medium;
 }
 
 /*

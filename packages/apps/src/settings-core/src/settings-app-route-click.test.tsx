@@ -134,6 +134,9 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     expect(screen.getByRole("button", { name: "Calendar" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: "Language" })).toBeNull();
+    expect(
+      document.querySelector(".workspace-app-layout__main-content .settings-pane-card"),
+    ).toBeTruthy();
   });
 
   it("opens Tasks default-collection settings from a deep link", async () => {

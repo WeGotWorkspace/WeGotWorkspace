@@ -184,6 +184,9 @@ describe("settings dialog and in-app footer", () => {
     expect(await screen.findByRole("combobox", { name: "Timezone" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Day starts on" })).toBeTruthy();
     expect(screen.queryByText("Display")).toBeNull();
+    expect(
+      document.querySelector(".ui-modal-surface.settings-workspace .settings-pane-card"),
+    ).toBeTruthy();
     const footer = document.querySelector(".ui-modal-footer");
     expect(footer).toBeInstanceOf(HTMLElement);
     expect(

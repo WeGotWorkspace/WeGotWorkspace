@@ -139,6 +139,15 @@
   @apply me-auto;
 }
 
+/* Catalog panes sit on Card chrome. The dialog is already a surface — strip it. */
+.ui-modal-surface.settings-workspace .settings-pane-card {
+  border: none;
+  background-color: transparent;
+  padding: 0;
+  margin-bottom: 0;
+  border-radius: 0;
+}
+
 .settings-workspace .settings-form-field {
   @apply space-y-1.5 mb-4 last:mb-0;
 }
