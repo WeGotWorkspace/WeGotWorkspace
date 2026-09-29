@@ -503,8 +503,11 @@ jobs:
           FAILURE_OUTPUT=$(node tools/coverage-ratchet.mjs check 2>&1)
           set -e
           
+          # Ensure label exists
+          gh label create coverage-regression --color d73a4a --description "Coverage regression on main" --force || true
+          
           # Find or create coverage-regression issue
-          ISSUE_NUMBER=$(gh issue list --label "coverage-regression" --state open --json number --jq '.[0].number')
+          ISSUE_NUMBER=$(gh issue list --label "coverage-regression" --state open --json number --jq '.[0].number // empty')
           
           REPORT="## Coverage Regression Detected
 
@@ -537,24 +540,46 @@ Coverage per package can only go up. Please investigate and fix the regression."
         run: |
           set -euo pipefail
           
+          # Capture the output showing increases and new packages
+          INCREASES_OUTPUT=$(node tools/coverage-ratchet.mjs check 2>&1 || true)
+          
           node tools/coverage-ratchet.mjs update
           
           # Write to job summary
           {
             echo "## Coverage Baseline Increase Detected"
             echo ""
-            echo "The following packages have increased coverage:"
+            echo "### New or Increased Packages"
             echo ""
-            echo "| Package | Coverage |"
-            echo "|---------|----------|"
-            while IFS= read -r line; do
-              if [[ $line =~ \"(.+)\":[[:space:]]*([0-9.]+) ]]; then
-                pkg="${BASH_REMATCH[1]}"
-                pct="${BASH_REMATCH[2]}"
-                echo "| \`$pkg\` | ${pct}% |"
-              fi
-            done < <(jq -r 'to_entries | .[] | "\"\(.key)\": \(.value)"' tools/coverage-baseline.json)
-            echo ""
+            
+            # Extract and format increases
+            if echo "$INCREASES_OUTPUT" | grep -q "📈 Coverage increases detected"; then
+              echo "**Increases:**"
+              echo ""
+              echo "| Package | From | To |"
+              echo "|---------|------|-----|"
+              echo "$INCREASES_OUTPUT" | sed -n '/📈 Coverage increases detected/,/^$/p' | grep -E '^\s+packages/' | sed 's/^\s*//' | while read -r line; do
+                if [[ $line =~ (.+):[[:space:]]+([0-9.]+)%[[:space:]]+→[[:space:]]+([0-9.]+)% ]]; then
+                  echo "| \`${BASH_REMATCH[1]}\` | ${BASH_REMATCH[2]}% | ${BASH_REMATCH[3]}% |"
+                fi
+              done
+              echo ""
+            fi
+            
+            # Extract and format new packages
+            if echo "$INCREASES_OUTPUT" | grep -q "📦 New packages detected"; then
+              echo "**New packages:**"
+              echo ""
+              echo "| Package | Coverage |"
+              echo "|---------|----------|"
+              echo "$INCREASES_OUTPUT" | sed -n '/📦 New packages detected/,/^$/p' | grep -E '^\s+packages/' | sed 's/^\s*//' | while read -r line; do
+                if [[ $line =~ (.+):[[:space:]]+([0-9.]+)% ]]; then
+                  echo "| \`${BASH_REMATCH[1]}\` | ${BASH_REMATCH[2]}% |"
+                fi
+              done
+              echo ""
+            fi
+            
             echo "Download the \`coverage-baseline-proposal\` artifact and commit it to \`tools/coverage-baseline.json\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
