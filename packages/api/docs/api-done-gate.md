@@ -26,7 +26,7 @@ This runs, in order:
 
 1. **File-size ratchet** — `packages/api/app` stays within the committed line-count baseline
 2. **`greenfield:guard`** — no legacy patterns in `app/` (Flysystem, no `*Kernel`, etc.)
-3. **PHPStan level 2** — `composer phpstan` (Larastan). Findings already listed in `phpstan-baseline.neon` are allowed. A finding that is not in the baseline fails the gate.
+3. **PHPStan level 3** — `composer phpstan` (Larastan). Findings already listed in `phpstan-baseline.neon` are allowed. A finding that is not in the baseline fails the gate.
 4. **Architecture tests** — bidirectional OpenAPI ↔ routes (`OpenApiRouteContractTest`) + guard smoke
 5. **Full PHPUnit** — unit, feature, and storage suites
 

@@ -1610,7 +1610,7 @@ final class DriveShareService
      */
     private function loadScopedGrants(array $shareIds): array
     {
-        /** @var Collection<int, DriveShare> $sharesById */
+        /** @var Collection<int|string, DriveShare> $sharesById */
         $sharesById = DriveShare::query()
             ->whereIn('id', $shareIds)
             ->get()
