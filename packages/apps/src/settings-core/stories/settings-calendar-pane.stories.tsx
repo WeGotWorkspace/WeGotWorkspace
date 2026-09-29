@@ -23,11 +23,13 @@ export const Display: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
-    await expect(canvas.getByRole("combobox", { name: "Language" })).toBeTruthy();
     await expect(canvas.getByRole("combobox", { name: "Day starts on" })).toBeTruthy();
-    await expect(
-      canvas.findByRole("button", { name: /Incoming invites: Personal/i }),
-    ).resolves.toBeTruthy();
+    const calendarTrigger = await canvas.findByRole("button", {
+      name: /Default calendar: Personal/i,
+    });
+    await expect(calendarTrigger).toBeTruthy();
+    await expect(calendarTrigger.textContent).toContain("Personal");
+    await expect(canvas.queryByRole("combobox", { name: "Language" })).toBeNull();
     await expect(canvas.queryByRole("combobox", { name: /working hours/i })).toBeNull();
   },
 };

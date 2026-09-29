@@ -11,18 +11,20 @@ afterEach(() => {
 });
 
 describe("SettingsCalendarPane", () => {
-  it("renders timezone, language, day starts on, and incoming invites without placeholder copy", async () => {
+  it("renders timezone, day starts on, and default calendar without language or placeholder copy", async () => {
     render(<SettingsCalendarPane />);
     expect(screen.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: "Language" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Day starts on" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Incoming invites: Personal/i })).toBeTruthy();
+      const trigger = screen.getByRole("button", { name: /Default calendar: Personal/i });
+      expect(trigger).toBeTruthy();
+      expect(trigger.textContent).toContain("Personal");
     });
+    expect(screen.queryByRole("combobox", { name: "Language" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Locale" })).toBeNull();
     expect(screen.queryByText(/coming soon/i)).toBeNull();
     expect(screen.queryByText(/placeholder/i)).toBeNull();
     expect(screen.queryByRole("combobox", { name: /working hours/i })).toBeNull();
-    expect(screen.queryByRole("combobox", { name: "Locale" })).toBeNull();
   });
 });

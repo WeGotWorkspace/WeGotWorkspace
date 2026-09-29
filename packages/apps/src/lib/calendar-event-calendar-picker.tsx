@@ -57,6 +57,8 @@ export type CalendarEventCalendarPickerProps = {
   triggerClassName?: string;
   /** Shared control height. Default `md`. */
   size?: ControlSize;
+  /** Show the selected calendar name on the closed trigger (settings). Default false. */
+  showName?: boolean;
   onCalendarIdChange: (calendarId: string) => void;
 };
 
@@ -85,6 +87,7 @@ export function CalendarEventCalendarPicker({
   disabled = false,
   triggerClassName = "calendar-event-dialog__calendar-trigger",
   size = "md",
+  showName = false,
   onCalendarIdChange,
 }: CalendarEventCalendarPickerProps) {
   const writableCalendars = writableCalendarsForPicker(calendars);
@@ -104,7 +107,9 @@ export function CalendarEventCalendarPicker({
           className={triggerClassName}
           size={size}
           disabled={disabled}
-        />
+        >
+          {showName ? selectedCalendar?.name : null}
+        </ColorSwatchTrigger>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="calendar-event-dialog__calendar-menu">
         {writableCalendars.map((calendar) => (

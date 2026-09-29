@@ -44,4 +44,20 @@ describe("CalendarEventCalendarPicker", () => {
     expect(personal.querySelector(".calendar-sidebar-dot")).toBeTruthy();
     expect(personal.textContent).toContain("Personal");
   });
+
+  it("shows the calendar name on the closed trigger when showName is set", () => {
+    render(
+      <CalendarEventCalendarPicker
+        calendars={calendars}
+        calendarId="work"
+        labels={defaultCalendarLabels}
+        showName
+        onCalendarIdChange={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole("button", { name: /Calendar: Work/i });
+    expect(trigger.className).toContain("color-swatch-trigger--labeled");
+    expect(trigger.querySelector(".color-swatch-trigger__caption")?.textContent).toBe("Work");
+  });
 });

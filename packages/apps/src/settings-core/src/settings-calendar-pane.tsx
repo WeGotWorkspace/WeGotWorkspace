@@ -1,12 +1,9 @@
 import { useMemo } from "react";
 import { Temporal } from "@js-temporal/polyfill";
 import {
-  CALENDAR_DISPLAY_BROWSER_LOCALE,
   CALENDAR_DISPLAY_DEVICE_ZONE,
-  CALENDAR_DISPLAY_LOCALES,
   CALENDAR_DISPLAY_WEEK_START_LOCALE,
   CALENDAR_WEEK_START_CHOICES,
-  calendarDisplayLocaleLabel,
   calendarDisplayTimeZoneOptions,
   calendarWeekdayLabel,
   formatTimeZoneLabel,
@@ -26,7 +23,8 @@ import { FormSaveActionRow } from "@/ui/form-save-action-row";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 
 /**
- * Timezone, language, week start, and invite calendar for Calendar. Device-local.
+ * Timezone, week start, and default calendar for Calendar. Device-local.
+ * Language stays off this pane until workspace-wide i18n exists.
  */
 export function SettingsCalendarPane() {
   const { form, saveDisplay } = useSettingsCalendarForm();
@@ -34,11 +32,8 @@ export function SettingsCalendarPane() {
   const uiLocale = resolveLocale(undefined);
   const deviceZone = Temporal.Now.timeZoneId();
   const timeZoneWatch = form.watch("timeZone");
-  const localeWatch = form.watch("locale");
   const weekStartWatch = form.watch("weekStart");
-  const resolvedFormLocale =
-    localeWatch === CALENDAR_DISPLAY_BROWSER_LOCALE ? uiLocale : localeWatch;
-  const localeDefaultWeekday = resolveCalendarWeekStart({}, resolvedFormLocale);
+  const localeDefaultWeekday = resolveCalendarWeekStart({}, uiLocale);
   const weekStartDays = useMemo(() => {
     const days = [...CALENDAR_WEEK_START_CHOICES];
     const current = Number(weekStartWatch);
@@ -89,27 +84,6 @@ export function SettingsCalendarPane() {
         />
         <FormField
           control={form.control}
-          name="locale"
-          render={({ field }) => (
-            <FieldLabelRow label="Language">
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger aria-label="Language">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value={CALENDAR_DISPLAY_BROWSER_LOCALE}>Browser default</SelectItem>
-                  {CALENDAR_DISPLAY_LOCALES.map((locale) => (
-                    <SelectItem key={locale} value={locale}>
-                      {calendarDisplayLocaleLabel(locale, uiLocale)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FieldLabelRow>
-          )}
-        />
-        <FormField
-          control={form.control}
           name="weekStart"
           render={({ field }) => (
             <FieldLabelRow label="Day starts on">
@@ -119,7 +93,7 @@ export function SettingsCalendarPane() {
                 </SelectTrigger>
                 <SelectContent className="max-h-72">
                   <SelectItem value={CALENDAR_DISPLAY_WEEK_START_LOCALE}>
-                    Language default ({calendarWeekdayLabel(localeDefaultWeekday, uiLocale)})
+                    Browser default ({calendarWeekdayLabel(localeDefaultWeekday, uiLocale)})
                   </SelectItem>
                   {weekStartDays.map((day) => (
                     <SelectItem key={day} value={String(day)}>
@@ -136,11 +110,12 @@ export function SettingsCalendarPane() {
             control={form.control}
             name="inviteCalendarId"
             render={({ field }) => (
-              <FieldLabelRow label="Incoming invites">
+              <FieldLabelRow label="Default calendar">
                 <CalendarEventCalendarPicker
                   calendars={calendars}
                   calendarId={defaultPickerCalendarId(calendars, field.value || undefined)}
-                  label="Incoming invites"
+                  label="Default calendar"
+                  showName
                   onCalendarIdChange={(calendarId) => field.onChange(calendarId)}
                 />
               </FieldLabelRow>
