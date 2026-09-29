@@ -103,7 +103,7 @@ final class HttpSignalingStore
             $this->leave($room, (string) $id);
         }
 
-        return array_map(static fn ($id): string => (string) $id, $staleIds);
+        return array_values(array_map(static fn ($id): string => (string) $id, $staleIds));
     }
 
     /**
@@ -129,7 +129,7 @@ final class HttpSignalingStore
             $this->leave($room, (string) $id);
         }
 
-        return array_map(static fn ($id): string => (string) $id, $staleIds);
+        return array_values(array_map(static fn ($id): string => (string) $id, $staleIds));
     }
 
     /**

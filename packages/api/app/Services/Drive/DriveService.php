@@ -36,10 +36,6 @@ final class DriveService
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
-    /**
-     * FileNode index maintenance is best-effort (the SearchIndexPlugin
-     * posture): failures log and never fail the user's write.
-     */
     private function syncFileNodeIndex(callable $operation): void
     {
         try {
@@ -143,6 +139,7 @@ final class DriveService
         return ['cwd' => $to];
     }
 
+    /** @param array{username: string, role: string} $principal */
     public function createItem(
         array $principal,
         string $name,
@@ -182,6 +179,7 @@ final class DriveService
         return 'Created';
     }
 
+    /** @param array{username: string, role: string} $principal */
     public function renameItem(
         array $principal,
         string $destination,
@@ -230,6 +228,7 @@ final class DriveService
     }
 
     /**
+     * @param  array{username: string, role: string}  $principal
      * @param  list<array{path?: string, type?: string}>  $items
      */
     public function deleteItems(array $principal, array $items): string
@@ -339,8 +338,6 @@ final class DriveService
     }
 
     /**
-     * Small text write for MCP. Does not use chunked {@see handleUpload}.
-     *
      * @param  array{username: string, role: string}  $principal
      * @return array{ok: true, path: string, size: int}
      */
@@ -407,6 +404,7 @@ final class DriveService
         return ['ok' => true, 'from' => $fromPath, 'to' => $toPath];
     }
 
+    /** @param array{username: string, role: string} $principal */
     public function downloadResponse(array $principal, string $path): StreamedResponse
     {
         $this->assertReadableFile($principal, $path);
@@ -416,9 +414,7 @@ final class DriveService
     }
 
     /**
-     * Stream a file by FileNode id. Callers who mayView the path (including
-     * inherited Doc ACL on `.attachments/{docId}/`) succeed even when the
-     * node is outside FileNode account roots.
+     * @param  array{username: string, role: string}  $principal
      */
     public function downloadResponseByNodeId(array $principal, string $nodeId): StreamedResponse
     {
@@ -427,6 +423,7 @@ final class DriveService
         return $this->streamDownload($virtual);
     }
 
+    /** @param array{username: string, role: string} $principal */
     /**
      * @param  array{username: string, role: string}  $principal
      */
@@ -476,6 +473,7 @@ final class DriveService
         );
     }
 
+    /** @param array{username: string, role: string} $principal */
     public function handleUpload(
         array $principal,
         UploadedFile $file,

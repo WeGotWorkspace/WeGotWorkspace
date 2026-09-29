@@ -34,10 +34,10 @@ final class CalendarCollectionAccess
      * Personal + group + inbound sharee instances for $username, filtered by
      * component set, then highest-access-per-calendarid, then dismissals.
      *
-     * @param  callable(Builder<Calendar>): void  $componentQuery
+     * @param  \Closure(Builder<Calendar>): mixed  $componentQuery
      * @return Collection<int, CalendarInstance>
      */
-    public function accessibleInstances(string $username, callable $componentQuery)
+    public function accessibleInstances(string $username, \Closure $componentQuery)
     {
         $instances = $this->personalInstances($username, $componentQuery);
         foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
@@ -95,6 +95,7 @@ final class CalendarCollectionAccess
      * Sharees may change their instance name/color only.
      *
      * @param  list<string>  $disallowedKeys
+     * @param  array<string, mixed>  $payload
      */
     public function assertShareePatchAllowed(
         CalendarInstance $instance,
@@ -128,10 +129,10 @@ final class CalendarCollectionAccess
     }
 
     /**
-     * @param  callable(Builder<Calendar>): void  $componentQuery
+     * @param  \Closure(Builder<Calendar>): mixed  $componentQuery
      * @return Collection<int, CalendarInstance>
      */
-    private function personalInstances(string $username, callable $componentQuery)
+    private function personalInstances(string $username, \Closure $componentQuery)
     {
         return CalendarInstance::query()
             ->with('calendar')
@@ -143,10 +144,10 @@ final class CalendarCollectionAccess
     }
 
     /**
-     * @param  callable(Builder<Calendar>): void  $componentQuery
+     * @param  \Closure(Builder<Calendar>): mixed  $componentQuery
      * @return list<CalendarInstance>
      */
-    private function groupInstances(string $groupSlug, callable $componentQuery): array
+    private function groupInstances(string $groupSlug, \Closure $componentQuery): array
     {
         $groupUri = AdminConstants::GROUP_PREFIX.$groupSlug;
         $group = Principal::query()->where('uri', $groupUri)->first(['uri', 'displayname']);
@@ -159,14 +160,14 @@ final class CalendarCollectionAccess
             (string) ($group->displayname ?? $groupSlug),
         );
 
-        return CalendarInstance::query()
+        return array_values(CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $groupUri)
             ->whereHas('calendar', $componentQuery)
             ->orderBy('calendarorder')
             ->orderBy('id')
             ->get()
-            ->all();
+            ->all());
     }
 
     private function principalUri(string $username): string

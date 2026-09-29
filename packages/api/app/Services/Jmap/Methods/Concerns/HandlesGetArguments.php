@@ -14,6 +14,7 @@ use App\Services\Jmap\JmapMethodException;
 trait HandlesGetArguments
 {
     /**
+     * @param  array<string, mixed>  $args
      * @return list<string>|null null means "all records"
      */
     private function requestedIds(array $args): ?array
@@ -53,6 +54,7 @@ trait HandlesGetArguments
 
     /**
      * @param  list<array<string, mixed>>  $records
+     * @param  array<string, mixed>  $args
      * @return list<array<string, mixed>>
      */
     private function projectProperties(array $records, array $args): array
@@ -75,6 +77,10 @@ trait HandlesGetArguments
         }
 
         return array_map(
+            /**
+             * @param  array<string, mixed>  $record
+             * @return array<string, mixed>
+             */
             static fn (array $record): array => array_intersect_key($record, $keep),
             $records,
         );

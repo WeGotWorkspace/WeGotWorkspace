@@ -62,6 +62,7 @@ final class Notification extends Model
         'created_at' => 'datetime',
     ];
 
+    /** @return HasMany<NotificationDelivery, $this> */
     public function deliveries(): HasMany
     {
         return $this->hasMany(NotificationDelivery::class, 'notification_id');

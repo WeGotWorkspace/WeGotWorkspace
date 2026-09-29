@@ -433,7 +433,7 @@ final class CalendarEventRepository
 
         $changes = $this->calBackend()->getChangesForCalendar(
             $this->calBackendCalendarId($instance),
-            $this->normalizeSyncToken($instance, $since),
+            $this->normalizeSyncToken($instance, $since) ?? '',
             1,
         );
         if ($changes === null) {

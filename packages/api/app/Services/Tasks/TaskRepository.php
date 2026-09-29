@@ -72,6 +72,10 @@ final class TaskRepository
         return ['list' => $tasks];
     }
 
+    /**
+     * @param  array<string, mixed>  $filter
+     * @return array<mixed>
+     */
     public function query(string $username, array $filter, ?int $limit = null): array
     {
         $taskListId = $filter['inTaskList'] ?? null;
@@ -119,6 +123,7 @@ final class TaskRepository
         return ['ids' => $ids, 'total' => $total];
     }
 
+    /** @return array<mixed> */
     public function show(string $username, string $taskId): array
     {
         $located = $this->findOwnedTask($username, $taskId);

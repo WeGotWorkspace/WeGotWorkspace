@@ -115,7 +115,7 @@ final class ContactCardRepository
         $book = $this->books->requireAccessibleBook($username, $addressBookId);
 
         $syncToken = ($since === null || $since === '' || $since === '0') ? null : $since;
-        $changes = $this->cardBackend()->getChangesForAddressBook((int) $book->id, $syncToken, 1);
+        $changes = $this->cardBackend()->getChangesForAddressBook((string) $book->id, $syncToken ?? '', 1);
         if ($changes === null) {
             throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
         }
@@ -775,10 +775,10 @@ final class ContactCardRepository
      */
     private function mapChangeUris(array $uris): array
     {
-        return array_values(array_map(
+        return array_map(
             fn (string $uri): string => ContactCardMapper::cardIdFromUri($uri),
             $uris,
-        ));
+        );
     }
 
     private function extractUid(Card $card): ?string

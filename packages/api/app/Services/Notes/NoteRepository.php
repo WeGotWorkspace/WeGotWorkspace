@@ -312,7 +312,7 @@ final class NoteRepository
 
         $changes = $this->calBackend()->getChangesForCalendar(
             [(int) $instance->calendarid, (int) $instance->id],
-            $this->normalizeSyncToken($since),
+            $this->normalizeSyncToken($since) ?? '',
             1,
         );
         if ($changes === null) {

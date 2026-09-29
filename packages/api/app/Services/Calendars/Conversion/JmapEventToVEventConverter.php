@@ -104,7 +104,11 @@ final class JmapEventToVEventConverter
      */
     private function appendSeriesVevents(VCalendar $calendar, array $event): void
     {
-        $this->populateVEvent($calendar->add('VEVENT', []), $event);
+        $master = $calendar->add('VEVENT', []);
+        if (! $master instanceof VEvent) {
+            return;
+        }
+        $this->populateVEvent($master, $event);
         $this->appendOverrideVevents($calendar, $event);
     }
 
@@ -132,6 +136,9 @@ final class JmapEventToVEventConverter
             }
 
             $overrideVevent = $calendar->add('VEVENT', []);
+            if (! $overrideVevent instanceof VEvent) {
+                continue;
+            }
             if (RecurrenceOverrideSupport::isExcludedOverride($patch)) {
                 RecurrenceOverrideSupport::populateExcludedOverrideVEvent(
                     $overrideVevent,

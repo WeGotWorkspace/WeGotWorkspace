@@ -14,6 +14,7 @@ final class JsContactToVCardConverter
     /** @var array<string, string> */
     private array $organizationGroups = [];
 
+    /** @param array<string, mixed> $card */
     public function convert(array $card): string
     {
         $card = ConversionSupport::normalizeCardMapKeys($card);
@@ -382,8 +383,7 @@ final class JsContactToVCardConverter
     }
 
     /**
-     * Map an image/* MIME type to the TYPE parameter value used by vCard 3.0.
-     * Returns null when no well-known mapping exists.
+     * Map an image/* MIME type to the TYPE parameter value used by vCard 3.0. Returns null when no well-known mapping exists.
      */
     private function mimeTypeToVCard3Type(string $mimeType): ?string
     {
@@ -743,6 +743,7 @@ final class JsContactToVCardConverter
     }
 
     /**
+     * @param  array<string, mixed>  $entry
      * @return array<string, mixed>
      */
     private function sharedParams(array $entry, string $id): array
@@ -791,8 +792,7 @@ final class JsContactToVCardConverter
     }
 
     /**
-     * Emit Apple `itemN.X-ABLabel` for custom JSContact `label`, or for known
-     * standard contexts/features (Home/Work/Mobile/School). Keeps PROP-ID + TYPE.
+     * Emit Apple `itemN.X-ABLabel` for custom JSContact `label`, or for known standard contexts/features (Home/Work/Mobile/School). Keeps PROP-ID + TYPE.
      *
      * @param  array<string, mixed>  $entry
      * @param  array<string, mixed>  $params

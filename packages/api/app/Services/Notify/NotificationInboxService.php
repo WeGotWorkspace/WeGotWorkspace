@@ -30,7 +30,7 @@ final class NotificationInboxService
             ->count();
 
         return [
-            'list' => $rows->map(fn (Notification $row): array => $this->serialize($row))->all(),
+            'list' => array_values($rows->map(fn (Notification $row): array => $this->serialize($row))->all()),
             'unreadCount' => $unreadCount,
         ];
     }

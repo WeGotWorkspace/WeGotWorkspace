@@ -13,8 +13,7 @@ use Sabre\VObject\InvalidDataException;
 use Sabre\VObject\Property;
 
 /**
- * Shared helpers for RFC 9555 vCard ↔ JSContact conversion.
- * uid rules for JSContact 2.0 are updated by RFC 9982; see docs/contacts/rfc9982-conversion-matrix.md.
+ * Shared helpers for RFC 9555 vCard ↔ JSContact conversion. uid rules for JSContact 2.0 are updated by RFC 9982; see docs/contacts/rfc9982-conversion-matrix.md.
  */
 final class ConversionSupport
 {
@@ -186,9 +185,7 @@ final class ConversionSupport
     ];
 
     /**
-     * Apple-style group vCards use `FN` plus `N:GroupName;;;;`. After a partial
-     * name patch (`name.full` only), stale `name.components` would otherwise
-     * round-trip as an outdated structured `N` while `FN` updates.
+     * Apple-style group vCards use `FN` plus `N:GroupName;;;;`. After a partial name patch (`name.full` only), stale `name.components` would otherwise round-trip as an outdated structured `N` while `FN` updates.
      *
      * @param  array<string, mixed>  $card
      * @return array<string, mixed>
@@ -468,7 +465,7 @@ final class ConversionSupport
         return json_encode([
             'params' => $params,
             'value' => $property->getJsonValue(),
-            'valueType' => strtolower((string) ($property['VALUE'] ?? $property->getValueType())),
+            'valueType' => strtolower(($valueNode = ($property['VALUE'] ?? null)) instanceof Property ? (string) $valueNode : $property->getValueType()),
         ], JSON_THROW_ON_ERROR);
     }
 
@@ -530,6 +527,7 @@ final class ConversionSupport
 
     /**
      * @param  array<string, true>  $features
+     * @param  array<string, mixed>|null  $contexts
      * @return list<string>
      */
     public static function telTypesFromFeatures(array $features, ?array $contexts): array
@@ -618,9 +616,10 @@ final class ConversionSupport
      */
     public static function structuredParts(Property $property): array
     {
-        return $property->getParts();
+        return array_values($property->getParts());
     }
 
+    /** @param array<mixed> $parts */
     public static function isRfc9554Adr(array $parts): bool
     {
         return count($parts) >= 17;
@@ -874,7 +873,7 @@ final class ConversionSupport
             $params[$name] = count($values) === 1 ? $values[0] : $values;
         }
 
-        $valueType = strtolower((string) ($property['VALUE'] ?? $property->getValueType()));
+        $valueType = strtolower(($valueNode = ($property['VALUE'] ?? null)) instanceof Property ? (string) $valueNode : $property->getValueType());
 
         return [
             strtoupper((string) $property->name),
@@ -1073,7 +1072,7 @@ final class ConversionSupport
     public static function anniversaryDateFromProperty(Property $property, bool $preferTimestamp): ?array
     {
         $value = trim((string) $property->getValue());
-        $valueType = strtolower((string) ($property['VALUE'] ?? $property->getValueType()));
+        $valueType = strtolower(($valueNode = ($property['VALUE'] ?? null)) instanceof Property ? (string) $valueNode : $property->getValueType());
         $calendarScale = isset($property['CALSCALE']) ? strtolower(VObjectScalar::string($property['CALSCALE'])) : null;
 
         if ($valueType === 'timestamp' || preg_match('/^\d{8}T\d{6}Z$/', $value) === 1) {
@@ -1142,6 +1141,7 @@ final class ConversionSupport
     {
         $type = (string) ($date['@type'] ?? 'PartialDate');
         if ($type === 'Timestamp' && isset($date['utc'])) {
+            /** @return array<mixed> */
             $params = [];
             if (in_array(strtoupper($propertyName), ['BDAY', 'DEATHDATE'], true)) {
                 $params['value'] = 'TIMESTAMP';
@@ -1174,7 +1174,7 @@ final class ConversionSupport
     public static function placeFromProperty(Property $property): array
     {
         $value = trim((string) $property->getValue());
-        $valueType = strtolower((string) ($property['VALUE'] ?? $property->getValueType()));
+        $valueType = strtolower(($valueNode = ($property['VALUE'] ?? null)) instanceof Property ? (string) $valueNode : $property->getValueType());
         $place = ['@type' => 'Address'];
 
         if ($valueType === 'uri' || str_starts_with(strtolower($value), 'geo:')) {

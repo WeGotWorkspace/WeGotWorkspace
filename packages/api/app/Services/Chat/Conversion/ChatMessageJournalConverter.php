@@ -82,7 +82,7 @@ final class ChatMessageJournalConverter
                 $normalized[] = ['id' => $id, 'displayName' => $display !== '' ? $display : $id];
             }
             if ($normalized !== []) {
-                $journal->add('X-WGW-MENTIONS', json_encode(array_values($normalized), JSON_UNESCAPED_UNICODE));
+                $journal->add('X-WGW-MENTIONS', json_encode($normalized, JSON_UNESCAPED_UNICODE));
             }
         }
         $journal->SEQUENCE = 0;
@@ -138,7 +138,7 @@ final class ChatMessageJournalConverter
 
         unset($journal->{'X-WGW-REACTIONS'});
         if ($reactions !== []) {
-            $journal->add('X-WGW-REACTIONS', json_encode(array_values($reactions), JSON_UNESCAPED_UNICODE));
+            $journal->add('X-WGW-REACTIONS', json_encode($reactions, JSON_UNESCAPED_UNICODE));
         }
 
         return $calendar->serialize();

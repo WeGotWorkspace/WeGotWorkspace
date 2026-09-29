@@ -66,9 +66,18 @@ final class PropIdEnsuringPlugin extends ServerPlugin
         $this->sanitizeAndPersistCard($location['addressBookId'], $location['cardUri'], $raw, true);
     }
 
+    /** @param array<string, mixed> $location */
     private function afterCardGet(array $location, ResponseInterface $response): void
     {
-        $raw = (string) $response->getBody();
+        $body = $response->getBody();
+        if (is_string($body)) {
+            $raw = $body;
+        } elseif (is_resource($body)) {
+            $contents = stream_get_contents($body);
+            $raw = is_string($contents) ? $contents : '';
+        } else {
+            $raw = '';
+        }
         if ($raw === '') {
             $card = $this->cardBackend->getCard($location['addressBookId'], $location['cardUri']);
             $raw = is_string($card['carddata'] ?? null) ? $card['carddata'] : (string) ($card['carddata'] ?? '');

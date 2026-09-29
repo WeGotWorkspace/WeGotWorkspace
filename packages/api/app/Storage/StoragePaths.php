@@ -89,6 +89,7 @@ final class StoragePaths
         return '';
     }
 
+    /** @param list<string> $groupSlugs */
     public function isPathAllowed(string $path, string $username, array $groupSlugs, bool $forWrite): bool
     {
         $normalized = $this->normalizeVirtualPath($path);

@@ -23,6 +23,10 @@ final class MailServerSettings
      * @param  array<string, mixed>  $cfg
      * @return array{imap: array{host: string, port: int, security: string}, smtp: array{host: string, port: int, security: string}}
      */
+    /**
+     * @param  array<string, mixed>  $cfg
+     * @return array{imap: array{host: string, port: int, security: string}, smtp: array{host: string, port: int, security: string}}
+     */
     public static function endpoints(array $cfg): array
     {
         return [

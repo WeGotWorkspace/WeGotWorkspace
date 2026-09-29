@@ -15,6 +15,7 @@ final class ChatMentionedNotify
     public const ACTION = 'mentioned';
 
     /**
+     * @param  list<mixed>  $mentions
      * @return array{
      *     actor: string,
      *     actorUsername: string,
@@ -52,7 +53,7 @@ final class ChatMentionedNotify
 
         return [
             ...$base,
-            'mentions' => array_values($mentions),
+            'mentions' => $mentions,
             'messageId' => $messageUid,
             'tag' => self::dedupeKey($messageUid),
             'dedupe_key' => self::dedupeKey($messageUid),

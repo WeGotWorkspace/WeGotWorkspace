@@ -186,6 +186,7 @@ function domainServiceExcludedPrefixes(string $servicesRoot): array
     ];
 }
 
+/** @param list<mixed> $errors */
 function scanServicesNoDbTable(string $servicesRoot, array &$errors): void
 {
     $excludedPrefixes = domainServiceExcludedPrefixes($servicesRoot);

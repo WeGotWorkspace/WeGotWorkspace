@@ -92,6 +92,7 @@ final class AppCalDAVPrincipalCollection extends CalDAVPrincipalCollection
      * schedule plugin can read calendar-home-set / schedule-inbox for a known
      * ATTENDEE without listing the user directory.
      *
+     * @param  array<string, mixed>  $searchProperties
      * @return list<string>
      */
     public function searchPrincipals(array $searchProperties, $test = 'allof')
@@ -113,6 +114,7 @@ final class AppCalDAVPrincipalCollection extends CalDAVPrincipalCollection
     }
 
     /**
+     * @param  array<string, mixed>  $principalInfo
      * @return User|GroupPrincipalContainer
      */
     public function getChildForPrincipal(array $principalInfo)

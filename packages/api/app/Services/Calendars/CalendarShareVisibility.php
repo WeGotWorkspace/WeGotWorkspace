@@ -21,11 +21,11 @@ final class CalendarShareVisibility
      */
     public function dismissedCalendarIds(string $username): array
     {
-        return CalendarShareDismissal::query()
+        return array_values(CalendarShareDismissal::query()
             ->where('username', $username)
             ->pluck('calendarid')
             ->map(static fn (mixed $id): int => (int) $id)
-            ->all();
+            ->all());
     }
 
     public function isDismissed(string $username, int $calendarId): bool

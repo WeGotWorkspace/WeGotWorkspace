@@ -1149,7 +1149,7 @@ final class VCardToJsContactConverter
     private function tzToTimeZone(Property $property): ?string
     {
         $value = trim((string) $property->getValue());
-        $valueType = strtolower((string) ($property['VALUE'] ?? $property->getValueType()));
+        $valueType = strtolower(($valueNode = ($property['VALUE'] ?? null)) instanceof Property ? (string) $valueNode : $property->getValueType());
 
         if ($valueType === 'text' || ($valueType === 'unknown' && ! preg_match('/^[+-]?\d/', $value))) {
             return $value;

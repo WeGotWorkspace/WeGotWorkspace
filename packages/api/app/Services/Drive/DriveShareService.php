@@ -64,10 +64,7 @@ final class DriveShareService
     }
 
     /**
-     * Rewrite share rows whose path equals or is nested under $fromPath so they
-     * follow a rename/move to $toPath (directory prefix rewrite).
-     *
-     * Grants stay on share_id; only drive_shares.path is updated.
+     * Rewrite share rows whose path equals or is nested under $fromPath so they follow a rename/move to $toPath (directory prefix rewrite). Grants stay on share_id; only drive_shares.path is updated.
      *
      * @return int number of share rows rewritten
      */
@@ -1606,6 +1603,7 @@ final class DriveShareService
     }
 
     /**
+     * @param  list<string>  $shareIds
      * @return array{sharesById: Collection<string|int, DriveShare>, grants: Collection<int, DriveShareGrant>}
      */
     private function loadScopedGrants(array $shareIds): array
@@ -2128,12 +2126,12 @@ final class DriveShareService
     {
         $uri = AdminConstants::GROUP_PREFIX.$slug;
 
-        return GroupMember::query()
+        return array_values(GroupMember::query()
             ->join('principals as g', 'g.id', '=', 'groupmembers.principal_id')
             ->join('principals as m', 'm.id', '=', 'groupmembers.member_id')
             ->where('g.uri', $uri)
             ->pluck('m.uri')
             ->map(static fn (mixed $uri): string => str_replace('principals/', '', (string) $uri))
-            ->all();
+            ->all());
     }
 }
