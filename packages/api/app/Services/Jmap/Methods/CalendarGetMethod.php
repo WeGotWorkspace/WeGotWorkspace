@@ -42,10 +42,10 @@ final class CalendarGetMethod implements JmapMethodInterface
     public function handle(string $username, array $args): array
     {
         $state = JmapAccountStateCodec::compose($this->events->calendarSyncTokens($username));
-        $all = array_map(
+        $all = array_values(array_map(
             CalendarRightsMapper::remap(...),
             $this->calendars->list($username)['list'],
-        );
+        ));
 
         $ids = $this->requestedIds($args);
         $notFound = [];

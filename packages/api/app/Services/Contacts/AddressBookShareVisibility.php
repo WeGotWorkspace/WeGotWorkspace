@@ -16,11 +16,11 @@ final class AddressBookShareVisibility
      */
     public function dismissedAddressBookIds(string $username): array
     {
-        return AddressBookShareDismissal::query()
+        return array_values(AddressBookShareDismissal::query()
             ->where('username', $username)
             ->pluck('addressbookid')
             ->map(static fn (mixed $id): int => (int) $id)
-            ->all();
+            ->all());
     }
 
     public function isDismissed(string $username, int $addressBookId): bool

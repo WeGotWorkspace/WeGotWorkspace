@@ -14,7 +14,7 @@ final class MailImapGate
     ) {}
 
     /**
-     * @return array{displayName: string, emailAddress: string, imap: array, smtp: array}
+     * @return array{displayName: string, emailAddress: string, imap: array{host: string, port: int, security: string, username: string, password: string}, smtp: array{host: string, port: int, security: string, username: string, password: string}}
      */
     public function requireImap(string $username): array
     {

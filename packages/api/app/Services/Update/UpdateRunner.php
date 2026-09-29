@@ -498,6 +498,7 @@ final class UpdateRunner
         @unlink($this->store->absolutePath($this->store->maintenancePath()));
     }
 
+    /** @param array<string, mixed>|null $latest */
     private function isUpdateAvailable(string $installed, ?array $latest): bool
     {
         if ($latest === null) {

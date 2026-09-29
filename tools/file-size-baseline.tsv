@@ -1,8 +1,8 @@
-packages/api/app/Services/Calendars/CalendarRepository.php	885	grandfathered
+packages/api/app/Services/Calendars/CalendarRepository.php	879	grandfathered
 packages/api/app/Services/Chat/ChatChannelRepository.php	918	grandfathered
-packages/api/app/Services/Contacts/Conversion/JsContactToVCardConverter.php	921	grandfathered
+packages/api/app/Services/Contacts/Conversion/JsContactToVCardConverter.php	920	grandfathered
 packages/api/app/Services/Docs/DocsThreadRepository.php	851	grandfathered
-packages/api/app/Services/Drive/DriveService.php	924	grandfathered
+packages/api/app/Services/Drive/DriveService.php	922	grandfathered
 packages/api/app/Services/Mail/MailImapClient.php	1022	grandfathered
 packages/apps/src/calendar-core/src/calendar-workspace.tsx	1377	grandfathered
 packages/apps/src/calendar-core/src/use-calendar-controller.ts	1504	grandfathered

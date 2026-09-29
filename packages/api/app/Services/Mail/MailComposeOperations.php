@@ -14,6 +14,10 @@ final class MailComposeOperations
         private MailFolderOperations $folders,
     ) {}
 
+    /**
+     * @param  mixed  $attachments  JSON {@code attachments}: list of {@code { filename, mimeType, contentBase64 }}
+     * @return array<mixed>
+     */
     private function attachDecodedUploads(PHPMailer $mail, mixed $attachments): array
     {
         if (! is_array($attachments)) {
@@ -73,7 +77,14 @@ final class MailComposeOperations
     /**
      * Shared SMTP client configuration for building RFC822 via {@see PHPMailer::preSend()} (and for sending).
      *
-     * @param  array{displayName: string, emailAddress: string, imap: array, smtp: array}  $cred
+     * @param  array{displayName: string, emailAddress: string, imap: array{host: string, port: int, security: string, username: string, password: string}, smtp: array{host: string, port: int, security: string, username: string, password: string}}  $cred
+     * @return string Envelope From address used in {@see PHPMailer::setFrom()}
+     */
+
+    /**
+     * Shared SMTP client configuration for building RFC822 via {@see PHPMailer::preSend()} (and for sending).
+     *
+     * @param  array{displayName: string, emailAddress: string, imap: array{host: string, port: int, security: string, username: string, password: string}, smtp: array{host: string, port: int, security: string, username: string, password: string}}  $cred
      * @return string Envelope From address used in {@see PHPMailer::setFrom()}
      */
     private function configureMailerSmtp(PHPMailer $mail, array $cred, int $smtpTimeout = 30): string
@@ -113,6 +124,10 @@ final class MailComposeOperations
         return $fromAddr;
     }
 
+    /**
+     * @param  array<string, mixed>  $j
+     * @return array<mixed>
+     */
     public function handleSend(string $username, array $j): array
     {
         $cred = MailUserRuntime::resolve($username, $this->credentials);
@@ -179,10 +194,7 @@ final class MailComposeOperations
         } catch (\Throwable $e) {
             throw $this->mailSendException($e, $transport);
         }
-        $payload = [
-            'ok' => true,
-            'attachment_report' => $attachReport,
-        ];
+        $payload = ['ok' => true, 'attachment_report' => $attachReport];
         if ($appendErr !== null) {
             $payload['sent_copy_failed'] = $appendErr;
         }
@@ -192,6 +204,13 @@ final class MailComposeOperations
 
     /**
      * Build RFC822 from the composer and append it to the account’s Drafts mailbox (IMAP {@code APPEND}).
+     */
+
+    /**
+     * Build RFC822 from the composer and append it to the account’s Drafts mailbox (IMAP {@code APPEND}).
+     *
+     * @param  array<string, mixed>  $j
+     * @return array<mixed>
      */
     public function handleSaveDraft(string $username, array $j): array
     {
@@ -253,13 +272,14 @@ final class MailComposeOperations
         if ($appendErr !== null) {
             throw new MailResponseException(400, ['error' => 'draft_append_failed', 'message' => $appendErr]);
         }
+        $payload = ['ok' => true, 'attachment_report' => $attachReport];
 
-        return [
-            'ok' => true,
-            'attachment_report' => $attachReport,
-        ];
+        return $payload;
     }
 
+    /**
+     * @param  array{host: string, port: int, security: string, smtpAuth: bool}|null  $transport
+     */
     private function mailSendException(\Throwable $e, ?array $transport = null): MailResponseException
     {
         $message = trim($e->getMessage());

@@ -65,6 +65,7 @@ final class ConversionPropertyMethods
         'voice' => 'voice',
     ];
 
+    /** @return array<string, true>|null */
     public static function contextsFromType(Property $property): ?array
     {
         $contexts = [];
@@ -120,6 +121,7 @@ final class ConversionPropertyMethods
 
     /**
      * @param  array<string, true>  $features
+     * @param  array<mixed>|null  $contexts
      * @return list<string>
      */
     public static function telTypesFromFeatures(array $features, ?array $contexts): array
@@ -208,9 +210,10 @@ final class ConversionPropertyMethods
      */
     public static function structuredParts(Property $property): array
     {
-        return $property->getParts();
+        return array_values($property->getParts());
     }
 
+    /** @param list<string> $parts */
     public static function isRfc9554Adr(array $parts): bool
     {
         return count($parts) >= 17;
@@ -464,7 +467,7 @@ final class ConversionPropertyMethods
             $params[$name] = count($values) === 1 ? $values[0] : $values;
         }
 
-        $valueType = strtolower((string) ($property['VALUE'] ?? $property->getValueType()));
+        $valueType = VObjectScalar::parameterOrValueType($property['VALUE'] ?? null, $property->getValueType());
 
         return [
             strtoupper((string) $property->name),

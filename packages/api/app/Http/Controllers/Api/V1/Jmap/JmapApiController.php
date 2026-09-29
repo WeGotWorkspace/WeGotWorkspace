@@ -86,6 +86,7 @@ final class JmapApiController
             && is_string($callId);
     }
 
+    /** @param array<string, mixed> $extra */
     private function problem(string $type, int $status, string $detail, array $extra = []): JsonResponse
     {
         return response()

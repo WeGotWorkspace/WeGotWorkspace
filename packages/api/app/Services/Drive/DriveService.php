@@ -36,10 +36,6 @@ final class DriveService
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
-    /**
-     * FileNode index maintenance is best-effort (the SearchIndexPlugin
-     * posture): failures log and never fail the user's write.
-     */
     private function syncFileNodeIndex(callable $operation): void
     {
         try {
@@ -103,7 +99,7 @@ final class DriveService
     }
 
     /**
-     * @return array{location: string, files: list<array{type: string, path: string, name: string, size: int, time: int, permissions: int}>}
+     * @return array{location: string, files: list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}, hasShares?: bool, hasPublicShare?: bool, hasTeamShare?: bool}>}
      */
     public function search(string $username, string $query, int $limit): array
     {
@@ -143,6 +139,7 @@ final class DriveService
         return ['cwd' => $to];
     }
 
+    /** @param array{username: string, role: string} $principal */
     public function createItem(
         array $principal,
         string $name,
@@ -182,6 +179,7 @@ final class DriveService
         return 'Created';
     }
 
+    /** @param array{username: string, role: string} $principal */
     public function renameItem(
         array $principal,
         string $destination,
@@ -230,6 +228,7 @@ final class DriveService
     }
 
     /**
+     * @param  array{username: string, role: string}  $principal
      * @param  list<array{path?: string, type?: string}>  $items
      */
     public function deleteItems(array $principal, array $items): string
@@ -339,8 +338,6 @@ final class DriveService
     }
 
     /**
-     * Small text write for MCP. Does not use chunked {@see handleUpload}.
-     *
      * @param  array{username: string, role: string}  $principal
      * @return array{ok: true, path: string, size: int}
      */
@@ -407,6 +404,7 @@ final class DriveService
         return ['ok' => true, 'from' => $fromPath, 'to' => $toPath];
     }
 
+    /** @param array{username: string, role: string} $principal */
     public function downloadResponse(array $principal, string $path): StreamedResponse
     {
         $this->assertReadableFile($principal, $path);
@@ -416,9 +414,7 @@ final class DriveService
     }
 
     /**
-     * Stream a file by FileNode id. Callers who mayView the path (including
-     * inherited Doc ACL on `.attachments/{docId}/`) succeed even when the
-     * node is outside FileNode account roots.
+     * @param  array{username: string, role: string}  $principal
      */
     public function downloadResponseByNodeId(array $principal, string $nodeId): StreamedResponse
     {
@@ -427,6 +423,7 @@ final class DriveService
         return $this->streamDownload($virtual);
     }
 
+    /** @param array{username: string, role: string} $principal */
     /**
      * @param  array{username: string, role: string}  $principal
      */
@@ -476,6 +473,7 @@ final class DriveService
         );
     }
 
+    /** @param array{username: string, role: string} $principal */
     public function handleUpload(
         array $principal,
         UploadedFile $file,
@@ -504,7 +502,7 @@ final class DriveService
         }
 
         if ($totalChunks <= 1) {
-            $contents = $file->get();
+            $contents = is_string($rawContents = $file->get()) ? $rawContents : throw new \RuntimeException('Failed to read upload.');
             $disk->put($targetKey, $contents);
             $this->search->indexFileStorageKey($targetKey);
             $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', $contents)));
@@ -514,11 +512,11 @@ final class DriveService
 
         $tempDisk = $this->storage->data();
         $partKey = 'drive-upload-temp/'.hash('sha256', $identifier.'|'.$filename.'|'.$targetVirtual).'.part';
-        $chunk = $file->get();
+        $chunk = is_string($rawChunk = $file->get()) ? $rawChunk : throw new \RuntimeException('Failed to read upload.');
         if ($chunkNumber === 1) {
             $tempDisk->put($partKey, $chunk);
         } else {
-            $existing = $tempDisk->exists($partKey) ? $tempDisk->get($partKey) : '';
+            $existing = is_string($existingRaw = ($tempDisk->exists($partKey) ? $tempDisk->get($partKey) : '')) ? $existingRaw : throw new \RuntimeException('Failed to read upload.');
             $tempDisk->put($partKey, $existing.$chunk);
         }
 
@@ -527,7 +525,7 @@ final class DriveService
         }
 
         $assembled = $tempDisk->get($partKey);
-        $disk->put($targetKey, $assembled);
+        $disk->put($targetKey, is_string($assembled) ? $assembled : throw new \RuntimeException('Failed to read upload.'));
         $tempDisk->delete($partKey);
         $this->search->indexFileStorageKey($targetKey);
         $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', (string) $assembled)));
@@ -537,7 +535,7 @@ final class DriveService
 
     /**
      * @param  array{username: string, role: string}  $principal
-     * @return list<array<string, mixed>>
+     * @return list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}, hasShares?: bool, hasPublicShare?: bool, hasTeamShare?: bool}>
      */
     private function listEntries(
         string $virtualDir,
@@ -612,8 +610,8 @@ final class DriveService
 
     /**
      * @param  array{username: string, role: string}  $principal
-     * @param  list<array<string, mixed>>  $entries
-     * @return list<array<string, mixed>>
+     * @param  list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}}>  $entries
+     * @return list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}, hasShares?: bool, hasPublicShare?: bool, hasTeamShare?: bool}>
      */
     private function annotateHasShares(array $principal, array $entries): array
     {
@@ -650,7 +648,7 @@ final class DriveService
 
     /**
      * @param  array{username: string, role: string}  $principal
-     * @return list<array<string, mixed>>
+     * @return list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}}>
      */
     private function searchRecursive(
         Filesystem $disk,
@@ -727,8 +725,8 @@ final class DriveService
     }
 
     /**
-     * @param  list<array{type: string, path: string, name: string, size: int, time: int, permissions: int}>  $entries
-     * @return list<array{type: string, path: string, name: string, size: int, time: int, permissions: int}>
+     * @param  list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}}>  $entries
+     * @return list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}}>
      */
     private function sortEntries(array $entries): array
     {
@@ -748,7 +746,7 @@ final class DriveService
 
     /**
      * @param  array{username: string, role: string}  $principal
-     * @return array<string, mixed>
+     * @return array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}}
      */
     private function serializeEntry(
         string $virtualPath,

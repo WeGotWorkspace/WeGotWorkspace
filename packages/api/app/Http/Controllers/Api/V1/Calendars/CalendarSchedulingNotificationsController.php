@@ -39,7 +39,7 @@ final class CalendarSchedulingNotificationsController
         $notification = $this->notifications->respond(
             $principal['username'],
             $notificationId,
-            $request->validated(),
+            $request->payload(),
         );
 
         return (new CalendarSchedulingNotificationResource($notification))->response();

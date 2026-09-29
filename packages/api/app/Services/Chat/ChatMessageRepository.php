@@ -248,7 +248,10 @@ final class ChatMessageRepository
             $ics,
         );
 
-        return $this->presentSingle($object->fresh(), $instance);
+        $fresh = $object->fresh();
+
+        // The row was just written; fresh() is null only if it disappeared.
+        return $this->presentSingle($fresh instanceof CalendarObject ? $fresh : $object, $instance);
     }
 
     /**
@@ -321,7 +324,10 @@ final class ChatMessageRepository
             );
         });
 
-        return $this->presentSingle($object->fresh(), $instance);
+        $fresh = $object->fresh();
+
+        // The row was just written; fresh() is null only if it disappeared.
+        return $this->presentSingle($fresh instanceof CalendarObject ? $fresh : $object, $instance);
     }
 
     /**
@@ -452,7 +458,7 @@ final class ChatMessageRepository
                 continue;
             }
             $found = true;
-            $authors = array_values(array_map('strval', $reaction['authors']));
+            $authors = array_map('strval', $reaction['authors']);
             $authors = in_array($username, $authors, true)
                 ? array_values(array_diff($authors, [$username]))
                 : [...$authors, $username];

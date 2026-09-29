@@ -53,11 +53,13 @@ final class DriveShare extends Model
         'revoked_at' => 'datetime',
     ];
 
+    /** @return HasMany<DriveShareGrant, $this> */
     public function grants(): HasMany
     {
         return $this->hasMany(DriveShareGrant::class, 'share_id');
     }
 
+    /** @return HasMany<DriveShareSession, $this> */
     public function sessions(): HasMany
     {
         return $this->hasMany(DriveShareSession::class, 'share_id');

@@ -443,7 +443,7 @@ final class SearchIndexerService
         }
 
         $raw = $this->storage->files()->get($key);
-        if ($raw === '') {
+        if (! is_string($raw) || $raw === '') {
             return ['body' => null, 'frontmatter' => null];
         }
 
@@ -629,7 +629,7 @@ final class SearchIndexerService
     }
 
     /**
-     * @return array{title?: string, body?: string, location?: string, organizer?: string, attendees?: list<string>, categories?: list<string>}
+     * @return array{title?: string|null, body?: string, location?: string|null, organizer?: string|null, attendees?: list<string>, categories?: list<string>}
      */
     private function extractCalendarSearchPayload(string $raw): array
     {
@@ -684,17 +684,17 @@ final class SearchIndexerService
 
     /**
      * @return array{
-     *   fullName?: string,
-     *   firstName?: string,
-     *   lastName?: string,
+     *   fullName?: string|null,
+     *   firstName?: string|null,
+     *   lastName?: string|null,
      *   emails?: list<string>,
      *   phones?: list<string>,
-     *   organization?: string,
-     *   title?: string,
-     *   note?: string,
+     *   organization?: string|null,
+     *   title?: string|null,
+     *   note?: string|null,
      *   address?: list<string>,
-     *   city?: string,
-     *   country?: string
+     *   city?: string|null,
+     *   country?: string|null
      * }
      */
     private function extractCardSearchPayload(string $raw): array

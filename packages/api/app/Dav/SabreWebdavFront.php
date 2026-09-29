@@ -116,7 +116,10 @@ final class SabreWebdavFront
         foreach ($headers as $name => $value) {
             $response->setHeader($name, $value);
         }
-        $response->setBody($dom->saveXML());
+        $xml = $dom->saveXML();
+        if (is_string($xml)) {
+            $response->setBody($xml);
+        }
 
         return $response;
     }

@@ -198,8 +198,7 @@ final class MailImapClient
     }
 
     /**
-     * SEARCH with arbitrary AND criteria (e.g. {@code TEXT "…"}, {@code UNSEEN TEXT "…"}, {@code FLAGGED TEXT "…"}),
-     * then newest-first paging like {@see sortUidsNewestFirstPaged}.
+     * SEARCH with arbitrary AND criteria (e.g. {@code TEXT "…"}, {@code UNSEEN TEXT "…"}, {@code FLAGGED TEXT "…"}), then newest-first paging like {@see sortUidsNewestFirstPaged}.
      *
      * @return array{uids: list<int>, hasMore: bool}
      */
@@ -240,6 +239,7 @@ final class MailImapClient
     }
 
     /**
+     * @param  list<int|string>  $uids
      * @return list<\stdClass>
      */
     public static function fetchOverviews(Connection $conn, array $uids): array
@@ -679,6 +679,8 @@ final class MailImapClient
 
     /**
      * Map HTML {@code cid:…} to a data URL; supports short refs ({@code cid:img1}) vs full Content-IDs ({@code <img1@host>}).
+     *
+     * @param  array<string, string>  $cidToDataUrl
      */
     private static function resolveCidToDataUrl(string $cidUri, array $cidToDataUrl): ?string
     {
@@ -843,8 +845,6 @@ final class MailImapClient
 
     public static function moveUid(Connection $conn, string $ref, int $uid, string $targetMailbox): bool
     {
-        // imap_mail_move expects a mailbox name (not the full "{host}…" ref).
-        // For non-ASCII mailbox names, use modified UTF-7 if available.
         $mb = $targetMailbox;
         if (function_exists('imap_utf7_encode')) {
             $enc = @imap_utf7_encode($targetMailbox);

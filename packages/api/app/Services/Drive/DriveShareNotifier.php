@@ -82,12 +82,12 @@ final class DriveShareNotifier
     {
         $uri = AdminConstants::GROUP_PREFIX.$slug;
 
-        return GroupMember::query()
+        return array_values(GroupMember::query()
             ->join('principals as g', 'g.id', '=', 'groupmembers.principal_id')
             ->join('principals as m', 'm.id', '=', 'groupmembers.member_id')
             ->where('g.uri', $uri)
             ->pluck('m.uri')
             ->map(static fn (mixed $uri): string => str_replace('principals/', '', (string) $uri))
-            ->all();
+            ->all());
     }
 }

@@ -82,6 +82,9 @@ final class SabreUiAuthGate
         }
 
         $username = strtolower(trim($username));
+        if ($username === '') {
+            return null;
+        }
         // Extra keyed users.enabled lookup per DAV request: HMAC/expiry alone
         // is not enough after disable — do not cache "logged in" across requests.
         if (! app(UserEnabledGuard::class)->isEnabled($username)) {

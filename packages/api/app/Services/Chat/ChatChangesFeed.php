@@ -33,9 +33,10 @@ final class ChatChangesFeed
     {
         $syncToken = $this->normalizeSyncToken($since);
 
+        // Sabre's PDO backend treats a falsy token as the initial sync.
         $changes = $this->calBackend()->getChangesForCalendar(
             [(int) $instance->calendarid, (int) $instance->id],
-            $syncToken,
+            $syncToken === null ? '0' : (string) $syncToken,
             1,
             $limit,
         );

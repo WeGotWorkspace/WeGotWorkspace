@@ -52,7 +52,7 @@ final class DriveShareService
         /** @var Collection<int, DriveShare> $shares */
         $shares = $query->get();
 
-        return $shares->map(fn (DriveShare $share): array => $this->presenter->serializeShareForOwner($share))->values()->all();
+        return array_values($shares->map(fn (DriveShare $share): array => $this->presenter->serializeShareForOwner($share))->all());
     }
 
     /**
@@ -501,7 +501,7 @@ final class DriveShareService
         $session->revoked_at = null;
         $session->save();
 
-        $exp = min($sessionExpiresAt->timestamp, $now->timestamp + self::GUEST_JWT_TTL_SECONDS);
+        $exp = min($sessionExpiresAt->getTimestamp(), $now->getTimestamp() + self::GUEST_JWT_TTL_SECONDS);
         $sessionSubject = 'share:'.$session->session_key;
         $jwt = $this->jwtTokens->issue([
             'sub' => $sessionSubject,
@@ -512,7 +512,7 @@ final class DriveShareService
         return [
             'access_token' => $jwt,
             'token_type' => 'Bearer',
-            'expires_in' => max(1, $exp - $now->timestamp),
+            'expires_in' => max(1, $exp - $now->getTimestamp()),
             'role' => 'guest',
             'username' => $sessionSubject,
             'share' => [

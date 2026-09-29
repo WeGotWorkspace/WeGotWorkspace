@@ -27,6 +27,8 @@ interface JmapCapabilityProviderInterface
      * Session-level capability value (RFC 8620 §2 `capabilities`). For the
      * calendars draft this is the empty object; other domains may advertise
      * limits here.
+     *
+     * @return array<mixed>
      */
     public function sessionCapability(): object|array;
 

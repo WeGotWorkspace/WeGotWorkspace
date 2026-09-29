@@ -87,7 +87,7 @@ final class MailDeliveryMailerFactory
                 $command = '/usr/sbin/sendmail -bs -i';
             }
 
-            return new SendmailTransport($command, (int) ($config['timeout'] ?? self::TIMEOUT_SECONDS));
+            return new SendmailTransport($command);
         });
         self::$sendmailExtended = true;
     }
