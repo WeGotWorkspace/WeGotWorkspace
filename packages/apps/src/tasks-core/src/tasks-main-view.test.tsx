@@ -119,7 +119,12 @@ function calendarDataDay(date: Date): string {
 function selectComposerDueDay(dayOffset: number, now = new Date()): void {
   const targetDay = new Date(now);
   targetDay.setDate(targetDay.getDate() + dayOffset);
-  const dayButton = document.querySelector(`button[data-day="${calendarDataDay(targetDay)}"]`);
+  const selector = `button[data-day="${calendarDataDay(targetDay)}"]`;
+  let dayButton = document.querySelector(selector);
+  if (!dayButton) {
+    fireEvent.click(screen.getByRole("button", { name: "Go to the Next Month" }));
+    dayButton = document.querySelector(selector);
+  }
   expect(dayButton).toBeTruthy();
   fireEvent.click(dayButton!);
 }
@@ -660,10 +665,7 @@ describe("TasksMainView composer", () => {
 
     const targetDay = new Date();
     targetDay.setDate(targetDay.getDate() + 3);
-    const dataDay = `${targetDay.getMonth() + 1}/${targetDay.getDate()}/${targetDay.getFullYear()}`;
-    const dayButton = document.querySelector(`button[data-day="${dataDay}"]`);
-    expect(dayButton).toBeTruthy();
-    fireEvent.click(dayButton!);
+    selectComposerDueDay(3);
 
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }));
 
@@ -692,12 +694,7 @@ describe("TasksMainView composer", () => {
 
     fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
 
-    const targetDay = new Date();
-    targetDay.setDate(targetDay.getDate() + 5);
-    const dataDay = `${targetDay.getMonth() + 1}/${targetDay.getDate()}/${targetDay.getFullYear()}`;
-    const dayButton = document.querySelector(`button[data-day="${dataDay}"]`);
-    expect(dayButton).toBeTruthy();
-    fireEvent.click(dayButton!);
+    selectComposerDueDay(5);
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.noDue }));
 
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }));

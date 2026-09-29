@@ -161,6 +161,9 @@ final class JmapToIcsTaskConverter
         }
 
         $todo = $calendar->add('VTODO', $properties);
+        if (! $todo instanceof VTodo) {
+            throw new \InvalidArgumentException('Expected a VTODO component.');
+        }
 
         TaskConversionSupport::writeDateTimesToVtodo($todo, $task);
 

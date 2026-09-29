@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
-use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Services\VObject\VObjectPayloadGuard;
 
@@ -186,7 +185,7 @@ final class CalendarEventRepository
     }
 
     /**
-     * @return list<CalendarInstance>
+     * @return array<string, mixed>
      */
     public function show(string $username, string $eventId): array
     {
