@@ -21,7 +21,7 @@ final class MfaReauth
     {
         $username = strtolower(trim($username));
         if ($this->mfa->isEnabled($username)) {
-            if (trim((string) $password) !== '') {
+            if ((string) $password !== '') {
                 throw new ApiHttpException(
                     422,
                     'Account password is not accepted while two-factor authentication is on.',
@@ -33,7 +33,7 @@ final class MfaReauth
             return;
         }
 
-        $password = trim((string) $password);
+        $password = (string) $password;
         if ($password === '') {
             throw new ApiHttpException(422, 'Account password is required.', 'bad_request');
         }

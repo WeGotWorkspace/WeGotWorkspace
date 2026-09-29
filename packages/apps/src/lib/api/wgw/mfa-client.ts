@@ -206,7 +206,9 @@ export function challengeWizardSource(
 ): TotpWizardSource | null {
   if (login.status === "mfa_required") return null;
   const carried =
-    login.status === "mfa_setup_required" ? knownPassword?.trim() || undefined : undefined;
+    login.status === "mfa_setup_required" && knownPassword !== undefined && knownPassword !== ""
+      ? knownPassword
+      : undefined;
   return {
     mode: login.status === "mfa_replace_required" ? "replace" : "enroll",
     username,

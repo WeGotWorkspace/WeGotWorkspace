@@ -128,7 +128,7 @@ A recovery code at login does not return tokens. It starts authenticator replace
 
 Turning two-factor authentication on requires the account password before the QR code is shown, and again when the authenticator code is confirmed. Sign-in that already accepted that password reuses it for a required setup challenge. A setup challenge cannot replace an authenticator that is already on.
 
-Failed account-password checks on enrollment and app-password creation share the sign-in rate limit. A successful check clears that user-and-IP counter.
+Failed account-password checks on enrollment and app-password creation share the sign-in rate limit. A successful check clears that user-and-IP counter. The password is compared exactly, including spaces at either end.
 
 Changing the account password revokes refresh tokens and bumps `session_generation`. `PUT /settings/profile` then returns a new token pair and `Set-Cookie` for the browser that changed it. Older access tokens and the previous `sabre_ui_auth` cookie stop working.
 

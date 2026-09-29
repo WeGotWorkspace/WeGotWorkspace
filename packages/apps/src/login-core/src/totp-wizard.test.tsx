@@ -51,4 +51,19 @@ describe("TotpWizard", () => {
     });
     expect(await screen.findByText("ABCD EFGH IJKL MNOP")).toBeTruthy();
   });
+
+  it("keeps spaces around the password collected at sign-in", async () => {
+    const start = vi.fn().mockResolvedValue(provision);
+    render(
+      <TotpWizard
+        source={source({ knownPassword: " secret ", start })}
+        onFinished={() => undefined}
+        onLogout={() => undefined}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(start).toHaveBeenCalledWith(" secret ");
+    });
+  });
 });

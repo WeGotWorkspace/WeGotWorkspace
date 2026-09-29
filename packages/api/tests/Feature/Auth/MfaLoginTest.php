@@ -425,6 +425,22 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         }
     }
 
+    public function test_reauth_keeps_spaces_around_the_account_password(): void
+    {
+        User::query()->where('username', 'alice')->update([
+            'digest' => password_hash('secret ', PASSWORD_DEFAULT),
+        ]);
+        $token = $this->issueBearerToken('alice', 'secret ');
+
+        $this->withBearer($token)->postJson('/api/v1/settings/totp', [
+            'password' => 'secret ',
+        ])->assertOk();
+
+        $this->withBearer($token)->postJson('/api/v1/settings/totp', [
+            'password' => 'secret',
+        ])->assertUnauthorized();
+    }
+
     public function test_enrollment_requires_the_account_password_before_the_secret(): void
     {
         $token = $this->issueBearerToken();

@@ -16,7 +16,7 @@ type TotpWizardProps = {
 type WizardStep = "password" | "setup" | "codes";
 
 export function TotpWizard({ source, onFinished, onLogout }: TotpWizardProps) {
-  const carriedPassword = source.knownPassword?.trim() ?? "";
+  const carriedPassword = source.knownPassword ?? "";
   const asksForPassword = source.mode === "enroll" && carriedPassword === "";
   const [step, setStep] = useState<WizardStep>(asksForPassword ? "password" : "setup");
   const [accountPassword, setAccountPassword] = useState(carriedPassword);
@@ -60,7 +60,7 @@ export function TotpWizard({ source, onFinished, onLogout }: TotpWizardProps) {
   }, [source, carriedPassword]);
 
   const beginWithPassword = async (password: string) => {
-    if (submitting || password.trim() === "") return;
+    if (submitting || password === "") return;
     setSubmitting(true);
     setError("");
     try {
