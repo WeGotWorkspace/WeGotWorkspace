@@ -51,6 +51,7 @@ $servicesRoot = $appRoot.'/Services';
 if (is_dir($servicesRoot)) {
     scanServicesNoDbTable($servicesRoot, $errors);
     scanServicesNoRuntimeDdl($servicesRoot, $errors);
+    scanServicesLineLimitTraits($servicesRoot, $appRoot, $errors);
 }
 
 $composerPath = $apiRoot.'/composer.json';
@@ -220,6 +221,161 @@ function scanServicesNoDbTable(string $servicesRoot, array &$errors): void
             }
         }
     }
+}
+
+/**
+ * Traits under Services must live in a Concerns/ directory and be shared by
+ * at least two classes. Traits that exist only to shrink one class under the
+ * 800-line ratchet are not a valid split — use injected classes instead.
+ *
+ * @param  list<array{file: string, line: int, message: string}>  $errors
+ */
+function scanServicesLineLimitTraits(string $servicesRoot, string $appRoot, array &$errors): void
+{
+    foreach (collectLineLimitTraitViolations($servicesRoot, $appRoot) as $violation) {
+        $errors[] = $violation;
+    }
+}
+
+/**
+ * @return list<array{file: string, line: int, message: string}>
+ */
+function collectLineLimitTraitViolations(string $servicesRoot, string $appRoot): array
+{
+    /** @var list<array{file: string, line: int, shortName: string, inConcerns: bool}> $traits */
+    $traits = [];
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($servicesRoot, FilesystemIterator::SKIP_DOTS)
+    );
+
+    foreach ($iterator as $file) {
+        if (! $file->isFile() || $file->getExtension() !== 'php') {
+            continue;
+        }
+        $path = $file->getPathname();
+        $lines = file($path);
+        if ($lines === false) {
+            continue;
+        }
+        foreach ($lines as $num => $line) {
+            if (preg_match('/^\s*(?:final\s+|abstract\s+)?trait\s+(\w+)\b/', $line, $matches) !== 1) {
+                continue;
+            }
+            $normalized = str_replace('\\', '/', $path);
+            $traits[] = [
+                'file' => relativePath($path),
+                'line' => $num + 1,
+                'shortName' => $matches[1],
+                'inConcerns' => str_contains($normalized, '/Concerns/'),
+            ];
+            break;
+        }
+    }
+
+    if ($traits === []) {
+        return [];
+    }
+
+    $classBodyUseCounts = countClassBodyTraitUses($appRoot);
+    $message = 'Service traits must live under Concerns/ and be used by 2+ classes; '
+        .'traits that exist only to get a file under 800 lines are not a split — use injected classes';
+
+    $violations = [];
+    foreach ($traits as $trait) {
+        $uses = $classBodyUseCounts[$trait['shortName']] ?? 0;
+        if ($trait['inConcerns'] && $uses >= 2) {
+            continue;
+        }
+        $detail = $trait['inConcerns']
+            ? "used by {$uses} class(es)"
+            : 'not under Concerns/';
+        $violations[] = [
+            'file' => $trait['file'],
+            'line' => $trait['line'],
+            'message' => $message.' ('.$detail.')',
+        ];
+    }
+
+    return $violations;
+}
+
+/**
+ * Count `use TraitName;` inside class bodies under app/ (not header imports).
+ *
+ * @return array<string, int> short trait name => class use count
+ */
+function countClassBodyTraitUses(string $appRoot): array
+{
+    /** @var array<string, int> $counts */
+    $counts = [];
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($appRoot, FilesystemIterator::SKIP_DOTS)
+    );
+
+    foreach ($iterator as $file) {
+        if (! $file->isFile() || $file->getExtension() !== 'php') {
+            continue;
+        }
+        $content = (string) file_get_contents($file->getPathname());
+        if (! preg_match('/\bclass\s+\w+/', $content)) {
+            continue;
+        }
+        foreach (extractPhpTypeBodies($content) as $body) {
+            if (preg_match_all('/^\s*use\s+(?!function\b|const\b)([^;]+);/m', $body, $matches) === false) {
+                continue;
+            }
+            foreach ($matches[1] as $clause) {
+                foreach (explode(',', $clause) as $part) {
+                    $aliasSplit = preg_split('/\s+as\s+/i', trim($part), 2) ?: [];
+                    $name = ltrim(trim((string) ($aliasSplit[0] ?? '')), '\\');
+                    if ($name === '') {
+                        continue;
+                    }
+                    if (str_contains($name, '\\')) {
+                        $name = basename(str_replace('\\', '/', $name));
+                    }
+                    if ($name === '') {
+                        continue;
+                    }
+                    $counts[$name] = ($counts[$name] ?? 0) + 1;
+                }
+            }
+        }
+    }
+
+    return $counts;
+}
+
+/**
+ * @return list<string>
+ */
+function extractPhpTypeBodies(string $content): array
+{
+    $stripped = preg_replace('/\/\*[\s\S]*?\*\//', '', $content) ?? $content;
+    $stripped = preg_replace('/\/\/[^\n]*/', '', $stripped) ?? $stripped;
+    $bodies = [];
+    if (preg_match_all('/\b(?:class|trait|interface|enum)\s+\w+[^{]*\{/', $stripped, $matches, PREG_OFFSET_CAPTURE) === false) {
+        return [];
+    }
+    foreach ($matches[0] as $match) {
+        $openAt = $match[1] + strlen($match[0]) - 1;
+        $depth = 0;
+        $len = strlen($stripped);
+        for ($i = $openAt; $i < $len; $i++) {
+            $ch = $stripped[$i];
+            if ($ch === '{') {
+                $depth++;
+            } elseif ($ch === '}') {
+                $depth--;
+                if ($depth === 0) {
+                    $bodies[] = substr($stripped, $openAt, $i - $openAt + 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    return $bodies;
 }
 
 /**

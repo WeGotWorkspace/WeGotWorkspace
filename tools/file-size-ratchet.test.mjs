@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  applyPhpTraitLineCounts,
   baselineGrowthErrors,
   classifyGitShowBaselineStderr,
   countLines,
   evaluate,
+  extractBodyTraitUses,
   FILE_SIZE_RULE,
   growthBaseRefFromArgs,
   nextBaseline,
@@ -23,6 +25,73 @@ test("counts a last line that has no trailing newline", () => {
   assert.equal(countLines("a\nb\n"), 2);
   assert.equal(countLines(""), 0);
   assert.equal(countLines("\n"), 1);
+});
+
+test("class-body use Trait increases counted lines; header import does not", () => {
+  const classPath = "packages/api/app/Services/Demo/DemoService.php";
+  const traitPath = "packages/api/app/Services/Demo/DemoOps.php";
+  const traitExact = [
+    "<?php",
+    "namespace App\\Services\\Demo;",
+    "",
+    "trait DemoOps",
+    "{",
+    "    // pad",
+    "    // pad",
+    "    // pad",
+    "    // pad",
+    "}",
+  ].join("\n");
+  assert.equal(countLines(traitExact), 10);
+
+  const classExact = [
+    "<?php",
+    "namespace App\\Services\\Demo;",
+    "",
+    "use App\\Services\\Other\\IgnoredImport;",
+    "",
+    "final class DemoService",
+    "{",
+    "    use DemoOps;",
+    "",
+    "    public function run(): void {}",
+    "}",
+  ].join("\n");
+  assert.equal(countLines(classExact), 11);
+  assert.deepEqual(extractBodyTraitUses(classExact), ["DemoOps"]);
+  assert.ok(!extractBodyTraitUses(classExact).includes("IgnoredImport"));
+
+  const raw = new Map([
+    [classPath, countLines(classExact)],
+    [traitPath, countLines(traitExact)],
+  ]);
+  const texts = new Map([
+    [classPath, classExact],
+    [traitPath, traitExact],
+  ]);
+  const combined = applyPhpTraitLineCounts(raw, texts);
+  assert.equal(combined.get(classPath), 11 + 10);
+  assert.equal(combined.get(traitPath), 10);
+});
+
+test("header-only use import does not add trait lines", () => {
+  const classPath = "packages/api/app/Services/Demo/OnlyImport.php";
+  const classExact = [
+    "<?php",
+    "namespace App\\Services\\Demo;",
+    "",
+    "use App\\Services\\Demo\\DemoOps;",
+    "",
+    "final class OnlyImport",
+    "{",
+    "    public function run(): void {}",
+    "}",
+  ].join("\n");
+  assert.deepEqual(extractBodyTraitUses(classExact), []);
+  const raw = new Map([[classPath, countLines(classExact)]]);
+  const texts = new Map([[classPath, classExact]]);
+  const combined = applyPhpTraitLineCounts(raw, texts);
+  assert.equal(combined.get(classPath), countLines(classExact));
 });
 
 test("rule sentence names both the new-file and the shrink cases", () => {
