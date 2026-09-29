@@ -110,22 +110,23 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
 
     public function test_ip_level_rate_limit_blocks_credential_stuffing(): void
     {
-        $this->seedWgwUser('bob', displayName: 'Bob');
-        $this->seedWgwUser('carol', displayName: 'Carol');
+        // Guard: each username gets exactly one attempt, so per-user limit is irrelevant
+        $this->assertLessThan(
+            LoginRateLimiter::USER_IP_LIMIT * LoginRateLimiter::IP_LIMIT,
+            LoginRateLimiter::IP_LIMIT,
+            'Test assumes IP_LIMIT is reached before any user hits USER_IP_LIMIT'
+        );
 
-        // Attempt LoginRateLimiter::IP_LIMIT failed logins across different users
-        for ($attempt = 0; $attempt < LoginRateLimiter::IP_LIMIT; $attempt++) {
-            $username = match ($attempt % 3) {
-                0 => self::USERNAME,
-                1 => 'bob',
-                default => 'carol',
-            };
-            // Don't assert status - the last few will already be throttled
-            $this->postCredentials($username, 'wrong');
+        // Attempt IP_LIMIT failed logins, each with a unique username
+        for ($i = 0; $i < LoginRateLimiter::IP_LIMIT; $i++) {
+            $username = "stuffing-user-{$i}";
+            $this->seedWgwUser($username, displayName: "Stuffing User {$i}");
+            $this->postCredentials($username, 'wrong')->assertUnauthorized();
         }
 
-        // Next attempt from same IP should be throttled regardless of username
-        $this->postCredentials('bob', self::PASSWORD)
+        // Next attempt from same IP should be throttled by IP limit
+        $this->seedWgwUser('fresh-user', displayName: 'Fresh User');
+        $this->postCredentials('fresh-user', self::PASSWORD)
             ->assertStatus(429)
             ->assertJson([
                 'error' => 'Too many login attempts. Please try again later.',
