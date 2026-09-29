@@ -17,7 +17,6 @@ function clearStorage(): void {
 
 const validPrefs: CalendarDisplayPrefs = {
   timeZone: "Europe/Amsterdam",
-  locale: "nl-NL",
   weekStart: 7,
   inviteCalendarId: "work",
 };
@@ -54,7 +53,7 @@ describe("readCalendarDisplayPrefs / writeCalendarDisplayPrefs", () => {
   });
 
   it("round-trips stored prefs", () => {
-    writeCalendarDisplayPrefs(validPrefs);
+    expect(writeCalendarDisplayPrefs(validPrefs)).toBe(true);
     expect(window.localStorage.getItem(CALENDAR_DISPLAY_PREFS_STORAGE_KEY)).toBe(
       JSON.stringify(validPrefs),
     );
@@ -70,11 +69,11 @@ describe("readCalendarDisplayPrefs / writeCalendarDisplayPrefs", () => {
     vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
       throw new Error("quota exceeded");
     });
-    expect(() => writeCalendarDisplayPrefs(validPrefs)).not.toThrow();
+    expect(writeCalendarDisplayPrefs(validPrefs)).toBe(false);
 
     vi.stubGlobal("window", undefined);
     expect(readCalendarDisplayPrefs()).toEqual({});
-    expect(() => writeCalendarDisplayPrefs(validPrefs)).not.toThrow();
+    expect(writeCalendarDisplayPrefs(validPrefs)).toBe(false);
   });
 });
 

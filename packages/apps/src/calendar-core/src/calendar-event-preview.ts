@@ -1,5 +1,9 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { readCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
+import {
+  defaultPickerCalendarId,
+  type CalendarPickerCalendar,
+} from "@/lib/calendar-event-calendar-picker";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { localToPlainDateTime, type JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
@@ -138,13 +142,25 @@ function invitationOrganizerAttendees(
   ];
 }
 
+export type InvitationEventPreviewOptions = {
+  untitledLabel: string;
+  defaultCalendarId?: string;
+  calendars?: readonly CalendarPickerCalendar[];
+};
+
+function invitePreviewCalendarId(options: InvitationEventPreviewOptions): string {
+  const preferred =
+    readCalendarDisplayPrefs().inviteCalendarId?.trim() || options.defaultCalendarId || "";
+  if (!options.calendars) return preferred;
+  return defaultPickerCalendarId([...options.calendars], preferred);
+}
+
 /** Compact popover model when the invite is not yet on a loaded calendar. */
 export function invitationToEventPreview(
   notification: CalendarSchedulingNotification,
-  options: { untitledLabel: string; defaultCalendarId?: string },
+  options: InvitationEventPreviewOptions,
 ): CalendarEventPreviewModel {
-  const calendarId =
-    readCalendarDisplayPrefs().inviteCalendarId?.trim() || options.defaultCalendarId || "";
+  const calendarId = invitePreviewCalendarId(options);
   const startRaw = notification.start?.trim() ?? "";
   const allDay = INVITATION_DATE_ONLY.test(startRaw);
   let form = emptyCalendarEventForm(calendarId, Temporal.Now.plainDateISO().toString());
@@ -189,12 +205,10 @@ export function invitationToEventPreview(
 /** Prefer the loaded calendar event; fall back to inbox fields. */
 export function resolveInvitationEventPreview(
   notification: CalendarSchedulingNotification,
-  options: {
+  options: InvitationEventPreviewOptions & {
     events: readonly JmapCalendarEvent[];
     surfaceEvents?: CalendarEventsMap;
     pendingDeletedEventIds?: ReadonlySet<string>;
-    untitledLabel: string;
-    defaultCalendarId?: string;
   },
 ): CalendarEventPreviewModel {
   const eventId = notification.eventId?.trim();

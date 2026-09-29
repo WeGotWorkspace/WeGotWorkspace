@@ -1,6 +1,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 
-const DISPLAY_ZONE_PAD = { hours: 14 };
+/** Max wall-clock gap between two IANA zones is 26h (UTC+14 vs UTC−12). */
+const DISPLAY_ZONE_PAD = { hours: 26 };
 
 export type EventDisplayTimeFields = {
   allDay?: boolean;
@@ -49,6 +50,28 @@ export function displayOccurrenceInEventZone(
 ): Temporal.PlainDateTime {
   if (event.allDay) return wall;
   return wallClockInTimeZone(wall, displayTimeZone, event.timeZone);
+}
+
+/** Shift a display-zone span by seconds, then convert both edges back to the event zone. */
+export function shiftDisplayRangeInEventZone(
+  displayStart: Temporal.PlainDateTime,
+  displayEnd: Temporal.PlainDateTime,
+  event: EventDisplayTimeFields,
+  displayTimeZone: string,
+  deltaSeconds: number,
+): { start: Temporal.PlainDateTime; end: Temporal.PlainDateTime } {
+  return {
+    start: displayOccurrenceInEventZone(
+      displayStart.add({ seconds: deltaSeconds }),
+      event,
+      displayTimeZone,
+    ),
+    end: displayOccurrenceInEventZone(
+      displayEnd.add({ seconds: deltaSeconds }),
+      event,
+      displayTimeZone,
+    ),
+  };
 }
 
 export function padRangeForDisplayZone(range: {

@@ -1,5 +1,5 @@
 import { enabledAddressBookIds } from "@/contacts-core/src/contacts-addressbook-color";
-import { readDefaultCollectionId } from "@/lib/default-collection-prefs";
+import { resolveDefaultCreateAddressBook } from "@/contacts-core/src/contacts-addressbook-write";
 import {
   findBirthAnniversary,
   mapEntriesSorted,
@@ -111,10 +111,7 @@ export function resolveCreateAddressBookIds(
       }) ?? bookIds[0];
     if (preferred) return { [preferred]: true };
   }
-  const defaultBook =
-    addressBooks.find((book) => book.id === readDefaultCollectionId("contacts")) ??
-    addressBooks.find((book) => book.isDefault) ??
-    addressBooks[0];
+  const defaultBook = resolveDefaultCreateAddressBook(addressBooks);
   if (!defaultBook) throw new Error("No address book available for create");
   return { [defaultBook.id]: true };
 }

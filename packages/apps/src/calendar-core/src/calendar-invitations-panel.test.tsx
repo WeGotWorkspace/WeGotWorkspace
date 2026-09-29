@@ -374,6 +374,14 @@ describe("CalendarInvitationsPanel", () => {
     expect(onRespond).toHaveBeenCalledWith("invite-1.ics", "accepted", "work");
   });
 
+  it("falls back when the stored invite calendar is missing or read-only", () => {
+    writeCalendarDisplayPrefs({ inviteCalendarId: "family" });
+    const { onRespond } = renderPanel();
+    expect(screen.getByRole("button", { name: /Calendar: Personal/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }));
+    expect(onRespond).toHaveBeenCalledWith("invite-1.ics", "accepted", "default");
+  });
+
   it("keeps other invitation RSVP controls enabled while one respond is in flight", () => {
     let release: (() => void) | undefined;
     const onRespond = vi.fn(

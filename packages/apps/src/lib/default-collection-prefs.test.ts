@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_COLLECTION_STORAGE_KEYS,
@@ -6,8 +7,10 @@ import {
   pickPreferredCollectionId,
   preferredCollectionName,
   readDefaultCollectionId,
+  useDefaultCollectionId,
   writeDefaultCollectionPrefs,
 } from "@/lib/default-collection-prefs";
+import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
 
 describe("default-collection-prefs", () => {
   it("parses a trimmed collection id and ignores blanks", () => {
@@ -20,14 +23,23 @@ describe("default-collection-prefs", () => {
 
   it("writes and reads per-app keys without touching other apps", () => {
     window.localStorage.clear();
-    writeDefaultCollectionPrefs("tasks", { collectionId: "work" });
-    writeDefaultCollectionPrefs("contacts", { collectionId: "default" });
+    expect(writeDefaultCollectionPrefs("tasks", { collectionId: "work" })).toBe(true);
+    expect(writeDefaultCollectionPrefs("contacts", { collectionId: "default" })).toBe(true);
     expect(readDefaultCollectionId("tasks")).toBe("work");
     expect(readDefaultCollectionId("contacts")).toBe("default");
     expect(readDefaultCollectionId("notes")).toBeUndefined();
     expect(window.localStorage.getItem(DEFAULT_COLLECTION_STORAGE_KEYS.notes)).toBeNull();
     writeDefaultCollectionPrefs("tasks", {});
     expect(readDefaultCollectionId("tasks")).toBeUndefined();
+  });
+
+  it("returns false when storage throws", () => {
+    const original = window.localStorage.setItem;
+    window.localStorage.setItem = () => {
+      throw new Error("quota exceeded");
+    };
+    expect(writeDefaultCollectionPrefs("tasks", { collectionId: "work" })).toBe(false);
+    window.localStorage.setItem = original;
   });
 
   it("picks a preferred id only when it is in the writable set", () => {
@@ -43,5 +55,20 @@ describe("default-collection-prefs", () => {
     expect(preferredCollectionName("notes", ["Drafts"])).toBeUndefined();
     writeDefaultCollectionPrefs("notes", {});
     expect(preferredCollectionName("notes", ["The Journal", "Drafts"])).toBeUndefined();
+  });
+
+  it("refreshes useDefaultCollectionId after notifySettingsSliceSaved", () => {
+    window.localStorage.clear();
+    const { result } = renderHook(() => useDefaultCollectionId("tasks"));
+    expect(result.current).toBeUndefined();
+    writeDefaultCollectionPrefs("tasks", { collectionId: "work" });
+    act(() => {
+      notifySettingsSliceSaved({ panelId: "contacts", sliceId: "contacts-default-collection" });
+    });
+    expect(result.current).toBeUndefined();
+    act(() => {
+      notifySettingsSliceSaved({ panelId: "tasks", sliceId: "tasks-default-collection" });
+    });
+    expect(result.current).toBe("work");
   });
 });

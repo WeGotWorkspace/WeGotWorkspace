@@ -43,9 +43,6 @@ export function SettingsDialogProvider({ children }: { children: ReactNode }): R
   const [panel, setPanel] = useState<SettingsPanel | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const restoreFocusRef = useRef(true);
-  const lastPanelRef = useRef<SettingsPanel | null>(null);
-  if (panel) lastPanelRef.current = panel;
-  const displayedPanel = panel ?? lastPanelRef.current;
 
   const openRegisteredPanel = useCallback((next: SettingsPanel) => {
     const active = document.activeElement;
@@ -66,6 +63,11 @@ export function SettingsDialogProvider({ children }: { children: ReactNode }): R
   const closeDialog = useCallback((restoreFocus: boolean) => {
     restoreFocusRef.current = restoreFocus;
     setPanel(null);
+    if (restoreFocus) {
+      requestAnimationFrame(() => {
+        openerRef.current?.focus();
+      });
+    }
   }, []);
 
   const openInSettings = useCallback(() => {
@@ -84,6 +86,12 @@ export function SettingsDialogProvider({ children }: { children: ReactNode }): R
   }, [closeDialog, panel, router]);
 
   const api = useMemo(() => ({ openPanel, openRegisteredPanel }), [openPanel, openRegisteredPanel]);
+  const onCloseAutoFocus = useCallback((event: Event) => {
+    event.preventDefault();
+    if (restoreFocusRef.current) {
+      openerRef.current?.focus();
+    }
+  }, []);
 
   return (
     <SettingsDialogContext.Provider value={api}>
@@ -94,37 +102,43 @@ export function SettingsDialogProvider({ children }: { children: ReactNode }): R
           if (!open) setPanel(null);
         }}
       >
-        {displayedPanel ? (
-          <SettingsDialogFrame
-            panel={displayedPanel}
-            onDismiss={() => closeDialog(true)}
-            onOpenInSettings={openInSettings}
-            onCloseAutoFocus={(event) => {
-              event.preventDefault();
-              if (restoreFocusRef.current) {
-                openerRef.current?.focus();
-              }
-            }}
-          />
+        {panel ? (
+          panel.needsSettingsApi ? (
+            <SettingsDialogApiFrame
+              panel={panel}
+              onDismiss={() => closeDialog(true)}
+              onOpenInSettings={openInSettings}
+              onCloseAutoFocus={onCloseAutoFocus}
+            />
+          ) : (
+            <SettingsDialogLocalFrame
+              panel={panel}
+              onDismiss={() => closeDialog(true)}
+              onOpenInSettings={openInSettings}
+              onCloseAutoFocus={onCloseAutoFocus}
+            />
+          )
         ) : null}
       </Dialog>
     </SettingsDialogContext.Provider>
   );
 }
 
-function SettingsDialogFrame({
-  panel,
-  onDismiss,
-  onOpenInSettings,
-  onCloseAutoFocus,
-}: {
+type SettingsDialogFrameProps = {
   panel: SettingsPanel;
   onDismiss: () => void;
   onOpenInSettings: () => void;
   onCloseAutoFocus: (event: Event) => void;
-}) {
-  const { phase, error, retry, successVersion, data, operations } = useSettingsAPI();
-  const ctx = useSettingsReachability();
+  children: ReactNode;
+};
+
+function SettingsDialogChrome({
+  panel,
+  onDismiss,
+  onOpenInSettings,
+  onCloseAutoFocus,
+  children,
+}: SettingsDialogFrameProps) {
   const { paneSave, onSaveChange } = useSettingsDialogPaneSaveState();
 
   return (
@@ -137,16 +151,7 @@ function SettingsDialogFrame({
         <DialogTitle>{panel.label}</DialogTitle>
       </DialogHeader>
       <SettingsDialogPaneActionsProvider onSaveChange={onSaveChange}>
-        <WorkspaceLiveAppShell
-          phase={phase}
-          error={error}
-          retry={retry}
-          errorTitle="Could not load settings"
-          successVersion={successVersion}
-          render={() => (
-            <SettingsDialogBody panel={panel} data={data} operations={operations} ctx={ctx} />
-          )}
-        />
+        {children}
       </SettingsDialogPaneActionsProvider>
       <DialogFooter>
         <Button
@@ -171,7 +176,57 @@ function SettingsDialogFrame({
   );
 }
 
-function SettingsDialogBody({
+function SettingsDialogLocalFrame({
+  panel,
+  onDismiss,
+  onOpenInSettings,
+  onCloseAutoFocus,
+}: Omit<SettingsDialogFrameProps, "children">) {
+  const ctx = useSettingsReachability();
+
+  return (
+    <SettingsDialogChrome
+      panel={panel}
+      onDismiss={onDismiss}
+      onOpenInSettings={onOpenInSettings}
+      onCloseAutoFocus={onCloseAutoFocus}
+    >
+      <SettingsPanelHost panelId={panel.id} ctx={ctx} />
+    </SettingsDialogChrome>
+  );
+}
+
+function SettingsDialogApiFrame({
+  panel,
+  onDismiss,
+  onOpenInSettings,
+  onCloseAutoFocus,
+}: Omit<SettingsDialogFrameProps, "children">) {
+  const { phase, error, retry, successVersion, data, operations } = useSettingsAPI();
+  const ctx = useSettingsReachability();
+
+  return (
+    <SettingsDialogChrome
+      panel={panel}
+      onDismiss={onDismiss}
+      onOpenInSettings={onOpenInSettings}
+      onCloseAutoFocus={onCloseAutoFocus}
+    >
+      <WorkspaceLiveAppShell
+        phase={phase}
+        error={error}
+        retry={retry}
+        errorTitle="Could not load settings"
+        successVersion={successVersion}
+        render={() => (
+          <SettingsDialogApiBody panel={panel} data={data} operations={operations} ctx={ctx} />
+        )}
+      />
+    </SettingsDialogChrome>
+  );
+}
+
+function SettingsDialogApiBody({
   panel,
   data,
   operations,

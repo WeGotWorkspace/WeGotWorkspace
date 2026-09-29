@@ -32,6 +32,8 @@ export type SettingsPanel = {
   group: SettingsPanelGroup;
   appId?: WorkspaceAppId;
   reachable?: (ctx: SettingsReachabilityContext) => boolean;
+  /** Profile, memberships, and assistants read the Settings API. Local panes skip it. */
+  needsSettingsApi?: boolean;
 };
 
 const panels = new Map<SettingsPanelId, SettingsPanel>();

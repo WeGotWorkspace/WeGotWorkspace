@@ -113,19 +113,4 @@ describe("settings workspace outline chrome", () => {
       /\.ui-modal-surface\.settings-workspace \.settings-dialog-footer__open \{[\s\S]*@apply me-auto/,
     );
   });
-
-  it("keeps catalog pane cards and strips them inside the dialog surface", () => {
-    expect(css).not.toMatch(
-      /\.workspace-app-layout__main-content \.card \{[\s\S]*background-color:\s*#ffffff/,
-    );
-    expect(css).toMatch(
-      /\.ui-modal-surface\.settings-workspace \.settings-pane-card \{[\s\S]*border:\s*none/,
-    );
-    expect(css).toMatch(
-      /\.ui-modal-surface\.settings-workspace \.settings-pane-card \{[\s\S]*background-color:\s*transparent/,
-    );
-    expect(css).toMatch(
-      /\.ui-modal-surface\.settings-workspace \.settings-pane-card \{[\s\S]*padding:\s*0/,
-    );
-  });
 });

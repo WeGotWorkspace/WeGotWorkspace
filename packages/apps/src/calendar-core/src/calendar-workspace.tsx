@@ -694,6 +694,7 @@ export function CalendarWorkspace({
             pendingDeletedEventIds,
             untitledLabel: L.untitledEvent,
             defaultCalendarId,
+            calendars: data.calendars,
           })
         : resolveCalendarEventPreview(key, {
             events: data.events,

@@ -26,7 +26,9 @@ export function useSettingsCalendarForm() {
     await runWithAppToast(
       async () => {
         const prefs = calendarDisplayFormToPrefs(values);
-        writeCalendarDisplayPrefs(prefs);
+        if (!writeCalendarDisplayPrefs(prefs)) {
+          throw new Error("Could not save Calendar settings");
+        }
         form.reset(calendarDisplayPrefsToForm(prefs));
         notifySettingsSliceSaved({ panelId: "calendar", sliceId: "calendar-display" });
       },

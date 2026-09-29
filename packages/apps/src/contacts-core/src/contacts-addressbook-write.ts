@@ -1,4 +1,5 @@
 import type { AddressBook, ContactsAPIOperations } from "@/contacts-core/src/contacts-types";
+import { readDefaultCollectionId } from "@/lib/default-collection-prefs";
 import type { CollectionShareWith } from "@/share-ui/collection-share";
 
 /** Owned personal book — `default` / `isDefault`, never an inbound sharee. */
@@ -95,6 +96,28 @@ export function writableOwnedAddressBooks(
 /** Destinations for moving a card — owned or sharee, using existing `mayWrite`. */
 export function canMoveIntoAddressBook(book?: ContactsAddressBookRow): boolean {
   return Boolean(book) && !isViewOnlyAddressBook(book);
+}
+
+/**
+ * New-contact destination: not an inbound sharee and not view-only. Broader than
+ * {@link canWriteOwnedAddressBook} so a stored "Work" book still counts.
+ */
+export function canCreateContactInAddressBook(book?: ContactsAddressBookRow): boolean {
+  if (!book || isSharedAddressBook(book) || isViewOnlyAddressBook(book)) return false;
+  return true;
+}
+
+export function resolveDefaultCreateAddressBook(
+  addressBooks: readonly ContactsAddressBookRow[],
+): ContactsAddressBookRow | undefined {
+  const writable = addressBooks.filter(canCreateContactInAddressBook);
+  const storedId = readDefaultCollectionId("contacts");
+  return (
+    writable.find((book) => book.id === storedId) ??
+    writable.find((book) => book.isDefault) ??
+    writable[0] ??
+    addressBooks[0]
+  );
 }
 
 export function writableMoveAddressBooks(

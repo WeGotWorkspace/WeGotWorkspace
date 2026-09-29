@@ -5,6 +5,7 @@ import {
   displayOccurrenceInEventZone,
   eventOccurrenceInDisplayZone,
   padRangeForDisplayZone,
+  shiftDisplayRangeInEventZone,
   wallClockInTimeZone,
 } from "./event-display-time.js";
 
@@ -48,17 +49,31 @@ describe("eventOccurrenceInDisplayZone", () => {
       displayOccurrenceInEventZone(display, { timeZone: "UTC" }, "America/New_York").toString(),
     ).toBe(utcNine.toString());
   });
+
+  it("shifts a display-zone drag back into the event zone", () => {
+    const displayStart = Temporal.PlainDateTime.from("2026-09-29T19:00:00");
+    const displayEnd = Temporal.PlainDateTime.from("2026-09-29T20:00:00");
+    const moved = shiftDisplayRangeInEventZone(
+      displayStart,
+      displayEnd,
+      { timeZone: "Pacific/Auckland" },
+      "America/Los_Angeles",
+      3600,
+    );
+    expect(moved.start.toString()).toBe("2026-09-30T16:00:00");
+    expect(moved.end.toString()).toBe("2026-09-30T17:00:00");
+  });
 });
 
 describe("padRangeForDisplayZone", () => {
-  it("extends both edges by 14 hours", () => {
+  it("extends both edges by 26 hours", () => {
     const range = {
       start: Temporal.PlainDateTime.from("2025-01-13T00:00:00"),
       end: Temporal.PlainDateTime.from("2025-01-14T00:00:00"),
     };
     const padded = padRangeForDisplayZone(range);
-    expect(padded.start.toString()).toBe("2025-01-12T10:00:00");
-    expect(padded.end.toString()).toBe("2025-01-14T14:00:00");
+    expect(padded.start.toString()).toBe("2025-01-11T22:00:00");
+    expect(padded.end.toString()).toBe("2025-01-15T02:00:00");
   });
 });
 

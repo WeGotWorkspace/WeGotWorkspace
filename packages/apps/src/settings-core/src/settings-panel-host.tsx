@@ -3,14 +3,16 @@ import type { SettingsReachabilityContext } from "@/settings-core/src/settings-r
 import { slicesFor, type SettingsSliceRenderProps } from "@/settings-core/src/settings-registry";
 import type { SettingsPanelId } from "@/settings-core/src/settings-types";
 
+const EMPTY_SLICE_PROPS = { memberships: [] } as SettingsSliceRenderProps;
+
 export function SettingsPanelHost({
   panelId,
   ctx,
-  slices,
+  slices = EMPTY_SLICE_PROPS,
 }: {
   panelId: SettingsPanelId;
   ctx: SettingsReachabilityContext;
-  slices: SettingsSliceRenderProps;
+  slices?: SettingsSliceRenderProps;
 }) {
   return (
     <>

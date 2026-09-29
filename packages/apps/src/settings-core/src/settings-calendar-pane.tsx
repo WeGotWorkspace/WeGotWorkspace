@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   CALENDAR_DISPLAY_DEVICE_ZONE,
@@ -34,6 +34,14 @@ export function SettingsCalendarPane() {
   const deviceZone = Temporal.Now.timeZoneId();
   const timeZoneWatch = form.watch("timeZone");
   const weekStartWatch = form.watch("weekStart");
+  const inviteWatch = form.watch("inviteCalendarId");
+  useEffect(() => {
+    if (calendars.length === 0) return;
+    const resolved = defaultPickerCalendarId(calendars, inviteWatch || undefined);
+    if (inviteWatch && resolved && resolved !== inviteWatch) {
+      form.setValue("inviteCalendarId", resolved, { shouldDirty: true });
+    }
+  }, [calendars, form, inviteWatch]);
   const localeDefaultWeekday = resolveCalendarWeekStart({}, uiLocale);
   const weekStartDays = useMemo(() => {
     const days = [...CALENDAR_WEEK_START_CHOICES];

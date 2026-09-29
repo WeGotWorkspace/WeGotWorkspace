@@ -27,7 +27,7 @@ Register reachable Tasks, Contacts, and Notes panels under Settings → Apps. Th
 - `settings-core` must not import product cores. Shared prefs, collection loaders, and the color+name picker live in `packages/apps/src/lib/`.
 - Storage follows Calendar display prefs (device `localStorage`, swallow quota / private-mode failures). Empty id = existing app fallback (Tasks Inbox / Contacts `isDefault` / Notes first personal notebook).
 - Settings trigger shows color + collection name (`CalendarEventCalendarPicker` `showName`).
-- After save, `notifySettingsSliceSaved({ panelId, sliceId })` so a mounted workspace refreshes the New target without reload.
+- After save, `notifySettingsSliceSaved({ panelId, sliceId })` refreshes a mounted workspace in the same tab. Other tabs listen to the `storage` event on the same key.
 - Do not export the new panes from `settings-core` `index.ts`; add Storybook stories.
 - Do not grow baselined `use-contacts-controller.tsx`, `contacts-edit-utils.ts`, or `use-notes-mutations.tsx`. A shrink must lower the ratchet integer.
 - `openPanel("tasks" | "contacts" | "notes")` is a `BuiltinPanelId`. Footers already pass `appId`.
@@ -36,6 +36,7 @@ Register reachable Tasks, Contacts, and Notes panels under Settings → Apps. Th
 ## Edge cases
 
 - Stored id missing from the writable set falls back to the app default
+- Notes picker id is the notebook name; renaming the notebook drops the stored default back to the first personal notebook
 - Sidebar `list:` / `book:` / `nb:` views ignore the setting
 - Notes Starred / Archive New still goes through All Items, then the saved notebook
 - `registerBuiltinSettings()` remains idempotent; Apps nav is Mail, Calendar, Tasks, Contacts, Notes

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { subscribeSettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
 
 export const DEFAULT_COLLECTION_APPS = ["tasks", "contacts", "notes"] as const;
 export type DefaultCollectionApp = (typeof DEFAULT_COLLECTION_APPS)[number];
@@ -12,8 +13,6 @@ export const DEFAULT_COLLECTION_STORAGE_KEYS: Record<DefaultCollectionApp, strin
   contacts: "wgw.ui.contacts.defaultCollection",
   notes: "wgw.ui.notes.defaultCollection",
 };
-
-export const DEFAULT_COLLECTION_CHANGED_EVENT = "wgw-default-collection-changed";
 
 export type DefaultCollectionAppMeta = {
   label: string;
@@ -78,17 +77,18 @@ export function readDefaultCollectionId(app: DefaultCollectionApp): string | und
   return readDefaultCollectionPrefs(app).collectionId;
 }
 
+/** Returns false when the write throws (quota / private mode). */
 export function writeDefaultCollectionPrefs(
   app: DefaultCollectionApp,
   prefs: DefaultCollectionPrefs,
-): void {
+): boolean {
   try {
     const collectionId = prefs.collectionId?.trim();
     const payload: DefaultCollectionPrefs = collectionId ? { collectionId } : {};
     window.localStorage.setItem(DEFAULT_COLLECTION_STORAGE_KEYS[app], JSON.stringify(payload));
-    window.dispatchEvent(new CustomEvent(DEFAULT_COLLECTION_CHANGED_EVENT, { detail: { app } }));
+    return true;
   } catch {
-    // quota / private mode
+    return false;
   }
 }
 
@@ -100,6 +100,10 @@ export function pickPreferredCollectionId(
   return undefined;
 }
 
+/**
+ * Notes picker id is the notebook name. A rename drops the stored default
+ * back to the first personal notebook.
+ */
 export function preferredCollectionName(
   app: DefaultCollectionApp,
   names: readonly string[],
@@ -112,23 +116,19 @@ export function useDefaultCollectionId(app: DefaultCollectionApp): string | unde
   const [collectionId, setCollectionId] = useState(() => readDefaultCollectionId(app));
 
   useEffect(() => {
-    const refresh = (event?: Event) => {
-      if (
-        event instanceof CustomEvent &&
-        event.detail &&
-        typeof event.detail === "object" &&
-        "app" in event.detail &&
-        event.detail.app !== app
-      ) {
-        return;
-      }
-      setCollectionId(readDefaultCollectionId(app));
+    const refresh = () => setCollectionId(readDefaultCollectionId(app));
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== DEFAULT_COLLECTION_STORAGE_KEYS[app]) return;
+      refresh();
     };
-    window.addEventListener(DEFAULT_COLLECTION_CHANGED_EVENT, refresh);
-    window.addEventListener("storage", refresh);
+    window.addEventListener("storage", onStorage);
+    const stop = subscribeSettingsSliceSaved((event) => {
+      if (event.panelId !== app) return;
+      refresh();
+    });
     return () => {
-      window.removeEventListener(DEFAULT_COLLECTION_CHANGED_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
+      window.removeEventListener("storage", onStorage);
+      stop();
     };
   }, [app]);
 

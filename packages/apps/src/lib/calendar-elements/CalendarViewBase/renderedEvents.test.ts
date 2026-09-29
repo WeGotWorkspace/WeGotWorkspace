@@ -169,4 +169,28 @@ describe("visibleEventsInRange display timezone", () => {
       true,
     );
   });
+
+  it("keeps an Auckland afternoon event that lands on the previous day in Los Angeles", () => {
+    const events: CalendarEventsMap = new Map([
+      [
+        "auckland-standup",
+        {
+          eventId: "auckland-standup@example.test",
+          data: {
+            start: Temporal.PlainDateTime.from("2026-09-30T15:00:00"),
+            end: Temporal.PlainDateTime.from("2026-09-30T16:00:00"),
+            summary: "Auckland standup",
+            timeZone: "Pacific/Auckland",
+          },
+        },
+      ],
+    ]);
+    const losAngelesDay = {
+      start: Temporal.PlainDateTime.from("2026-09-29T00:00:00"),
+      end: Temporal.PlainDateTime.from("2026-09-30T00:00:00"),
+    };
+    expect(
+      visibleEventsInRange(events, losAngelesDay, "America/Los_Angeles").has("auckland-standup"),
+    ).toBe(true);
+  });
 });

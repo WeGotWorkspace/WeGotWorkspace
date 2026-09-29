@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   CalendarEventCalendarPicker,
   defaultPickerCalendarId,
@@ -15,6 +16,14 @@ export function SettingsDefaultCollectionPane({ app }: { app: DefaultCollectionA
   const { form, saveDisplay, meta } = useSettingsDefaultCollectionForm(app);
   const collections = useAppPickerCollections(app);
   const fieldLabel = meta.fieldLabel;
+  const collectionWatch = form.watch("collectionId");
+  useEffect(() => {
+    if (collections.length === 0) return;
+    const resolved = defaultPickerCalendarId(collections, collectionWatch || undefined);
+    if (collectionWatch && resolved && resolved !== collectionWatch) {
+      form.setValue("collectionId", resolved, { shouldDirty: true });
+    }
+  }, [collections, collectionWatch, form]);
 
   return (
     <Form {...form}>

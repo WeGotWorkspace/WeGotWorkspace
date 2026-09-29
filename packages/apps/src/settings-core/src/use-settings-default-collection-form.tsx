@@ -31,7 +31,9 @@ export function useSettingsDefaultCollectionForm(app: DefaultCollectionApp) {
     await runWithAppToast(
       async () => {
         const prefs = defaultCollectionFormToPrefs(values);
-        writeDefaultCollectionPrefs(app, prefs);
+        if (!writeDefaultCollectionPrefs(app, prefs)) {
+          throw new Error(meta.saveError);
+        }
         form.reset(defaultCollectionPrefsToForm(app));
         notifySettingsSliceSaved({ panelId: app, sliceId: `${app}-default-collection` });
       },

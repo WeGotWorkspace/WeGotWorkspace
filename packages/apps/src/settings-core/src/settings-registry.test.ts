@@ -115,6 +115,13 @@ describe("settings-registry", () => {
     registerBuiltinSettings();
     expect(() => registerBuiltinSettings()).not.toThrow();
     expect(getSettingsPanel("mail")?.id).toBe("mail");
+    expect(getSettingsPanel("profile")?.needsSettingsApi).toBe(true);
+    expect(getSettingsPanel("memberships")?.needsSettingsApi).toBe(true);
+    expect(getSettingsPanel("assistants")?.needsSettingsApi).toBe(true);
+    expect(getSettingsPanel("calendar")?.needsSettingsApi).toBeUndefined();
+    expect(getSettingsPanel("mail")?.needsSettingsApi).toBeUndefined();
+    expect(getSettingsPanel("tasks")?.needsSettingsApi).toBeUndefined();
+    expect(getSettingsPanel("offline")?.needsSettingsApi).toBeUndefined();
   });
 
   it("clears the builtin flag so reset then register restores builtins", () => {

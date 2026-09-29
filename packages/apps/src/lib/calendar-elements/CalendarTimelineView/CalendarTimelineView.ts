@@ -74,6 +74,7 @@ import {
 } from "./pendingOccurrenceGeometry.js";
 import {
   displayOccurrenceInEventZone,
+  shiftDisplayRangeInEventZone,
   eventOccurrenceInDisplayZone,
 } from "../utils/event-display-time.js";
 import { renderPlusIcon } from "../icons/PlusIcon.js";
@@ -754,10 +755,13 @@ export class CalendarTimelineView extends CalendarViewBase {
 
     const deltaSeconds = Math.round((deltaUnits * SECONDS_PER_DAY) / unitsPerDay);
     if (deltaSeconds === 0) return null;
-    return {
-      start: timelineEvent.originalStart.add({ seconds: deltaSeconds }),
-      end: timelineEvent.originalEnd.add({ seconds: deltaSeconds }),
-    };
+    return shiftDisplayRangeInEventZone(
+      timelineEvent.displayStart,
+      timelineEvent.displayEnd,
+      { timeZone: timelineEvent.timeZone },
+      this.timezone,
+      deltaSeconds,
+    );
   }
 
   /** Resizes convert only the dragged edge back through the scale; the other edge stays exact. */

@@ -111,8 +111,36 @@ describe("invitationToEventPreview", () => {
     const preview = invitationToEventPreview(invite, {
       untitledLabel: defaultCalendarLabels.untitledEvent,
       defaultCalendarId: "work",
+      calendars: [
+        { id: "work", name: "Work", color: "#0ea5e9", mayWrite: true },
+        { id: "home", name: "Home", color: "#22c55e", mayWrite: true },
+      ],
     });
     expect(preview.form.calendarId).toBe("home");
+  });
+
+  it("falls back when the stored invite calendar is missing or read-only", () => {
+    writeCalendarDisplayPrefs({ inviteCalendarId: "gone" });
+    const calendars = [
+      { id: "work", name: "Work", color: "#0ea5e9", mayWrite: true },
+      { id: "family", name: "Family", color: "#f59e0b", mayWrite: false },
+    ];
+    expect(
+      invitationToEventPreview(invite, {
+        untitledLabel: defaultCalendarLabels.untitledEvent,
+        defaultCalendarId: "work",
+        calendars,
+      }).form.calendarId,
+    ).toBe("work");
+
+    writeCalendarDisplayPrefs({ inviteCalendarId: "family" });
+    expect(
+      invitationToEventPreview(invite, {
+        untitledLabel: defaultCalendarLabels.untitledEvent,
+        defaultCalendarId: "work",
+        calendars,
+      }).form.calendarId,
+    ).toBe("work");
   });
 
   it("treats a date-only start as all-day", () => {

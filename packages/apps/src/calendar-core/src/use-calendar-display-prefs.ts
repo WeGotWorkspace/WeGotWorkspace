@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import {
+  CALENDAR_DISPLAY_PREFS_STORAGE_KEY,
   readCalendarDisplayPrefs,
   resolveCalendarWeekStart,
   type CalendarDisplayPrefs,
@@ -20,7 +21,7 @@ export function resolveCalendarDisplay(
   prefs: CalendarDisplayPrefs | null | undefined,
 ): CalendarDisplayResolved {
   const stored = prefs ?? {};
-  const locale = resolveLocale(stored.locale);
+  const locale = resolveLocale(undefined);
   const weekStart = resolveCalendarWeekStart(stored, locale);
   const timeZone = defaultTimedEventTimeZone(stored.timeZone);
   const inviteCalendarId = stored.inviteCalendarId?.trim();
@@ -37,10 +38,20 @@ export function useCalendarDisplayPrefs(): CalendarDisplayResolved {
   const [prefs, setPrefs] = useState<CalendarDisplayPrefs>(() => readCalendarDisplayPrefs());
 
   useEffect(() => {
-    return subscribeSettingsSliceSaved((event) => {
+    const refresh = () => setPrefs(readCalendarDisplayPrefs());
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== CALENDAR_DISPLAY_PREFS_STORAGE_KEY) return;
+      refresh();
+    };
+    window.addEventListener("storage", onStorage);
+    const stop = subscribeSettingsSliceSaved((event) => {
       if (event.panelId !== "calendar") return;
-      setPrefs(readCalendarDisplayPrefs());
+      refresh();
     });
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      stop();
+    };
   }, []);
 
   return useMemo(() => resolveCalendarDisplay(prefs), [prefs]);

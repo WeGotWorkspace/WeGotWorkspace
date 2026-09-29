@@ -37,6 +37,7 @@ export function registerBuiltinSettings(): void {
     description: "Your account details",
     icon: <User className="size-3.5" />,
     group: "account",
+    needsSettingsApi: true,
   });
   registerPanel({
     id: "memberships",
@@ -44,6 +45,7 @@ export function registerBuiltinSettings(): void {
     description: "Groups you belong to",
     icon: <Users className="size-3.5" />,
     group: "account",
+    needsSettingsApi: true,
   });
   registerPanel({
     id: "offline",
@@ -59,6 +61,7 @@ export function registerBuiltinSettings(): void {
     icon: <Bot className="size-3.5" />,
     group: "account",
     reachable: (ctx) => ctx.mcpEnabled === true,
+    needsSettingsApi: true,
   });
   registerPanel({
     id: "mail",

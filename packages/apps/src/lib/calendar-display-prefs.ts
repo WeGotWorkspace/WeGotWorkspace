@@ -10,39 +10,22 @@ import { getLocaleWeekInfo } from "@/lib/calendar-elements/utils/Locale";
 export const CALENDAR_DISPLAY_PREFS_STORAGE_KEY = "wgw.ui.calendar.displayPrefs";
 
 export const CALENDAR_DISPLAY_DEVICE_ZONE = "device";
-export const CALENDAR_DISPLAY_BROWSER_LOCALE = "browser";
 export const CALENDAR_DISPLAY_WEEK_START_LOCALE = "locale";
-
-export const CALENDAR_DISPLAY_LOCALES = [
-  "en-US",
-  "en-GB",
-  "nl-NL",
-  "de-DE",
-  "fr-FR",
-  "es-ES",
-  "it-IT",
-  "pt-BR",
-  "ja-JP",
-  "zh-CN",
-] as const;
 
 export const CALENDAR_WEEKDAY_VALUES = [1, 2, 3, 4, 5, 6, 7] as const;
 /** Monday and Sunday — the two first-day choices consumer calendars actually offer. */
 export const CALENDAR_WEEK_START_CHOICES = [1, 7] as const;
 
-export type CalendarDisplayLocale = (typeof CALENDAR_DISPLAY_LOCALES)[number];
 export type CalendarWeekday = (typeof CALENDAR_WEEKDAY_VALUES)[number];
 
 export type CalendarDisplayPrefs = {
   timeZone?: string;
-  locale?: string;
   /** ISO weekday 1–7 (Monday=1). Omitted = language default. */
   weekStart?: CalendarWeekday;
   /** Writable calendar id for incoming invites. Omitted = collection default. */
   inviteCalendarId?: string;
 };
 
-const DISPLAY_LOCALES = new Set<string>(CALENDAR_DISPLAY_LOCALES);
 /** Monday 2024-01-01 — ISO weekday 1. */
 const WEEKDAY_LABEL_MONDAY = Temporal.PlainDate.from("2024-01-01");
 
@@ -52,10 +35,6 @@ function hasWindowStorage(): boolean {
 
 function isStoredTimeZone(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
-}
-
-function isStoredLocale(value: unknown): value is CalendarDisplayLocale {
-  return typeof value === "string" && DISPLAY_LOCALES.has(value);
 }
 
 function isWeekStart(value: unknown): value is CalendarWeekday {
@@ -75,7 +54,6 @@ export function parseCalendarDisplayPrefs(raw: string | null): CalendarDisplayPr
     const record = parsed as Record<string, unknown>;
     const prefs: CalendarDisplayPrefs = {};
     if (isStoredTimeZone(record.timeZone)) prefs.timeZone = record.timeZone.trim();
-    if (isStoredLocale(record.locale)) prefs.locale = record.locale;
     if (isWeekStart(record.weekStart)) prefs.weekStart = record.weekStart;
     if (isInviteCalendarId(record.inviteCalendarId)) {
       prefs.inviteCalendarId = record.inviteCalendarId.trim();
@@ -97,12 +75,14 @@ export function readCalendarDisplayPrefs(): CalendarDisplayPrefs {
   }
 }
 
-export function writeCalendarDisplayPrefs(prefs: CalendarDisplayPrefs): void {
-  if (!hasWindowStorage()) return;
+/** Returns false when storage is missing or the write throws (quota / private mode). */
+export function writeCalendarDisplayPrefs(prefs: CalendarDisplayPrefs): boolean {
+  if (!hasWindowStorage()) return false;
   try {
     window.localStorage.setItem(CALENDAR_DISPLAY_PREFS_STORAGE_KEY, JSON.stringify(prefs));
+    return true;
   } catch {
-    // Ignore storage failures (private mode, quota).
+    return false;
   }
 }
 
@@ -126,17 +106,6 @@ export function calendarWeekdayLabel(isoWeekday: number, locale: string): string
   } catch {
     return date.toLocaleString("en-US", { weekday: "long" });
   }
-}
-
-export function calendarDisplayLocaleLabel(locale: string, displayLocale: string): string {
-  try {
-    const names = new Intl.DisplayNames([displayLocale], { type: "language" });
-    const label = names.of(locale);
-    if (label) return `${label} (${locale})`;
-  } catch {
-    // Fall through to the tag.
-  }
-  return locale;
 }
 
 export function calendarDisplayTimeZoneOptions(

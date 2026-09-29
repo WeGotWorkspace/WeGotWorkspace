@@ -37,7 +37,6 @@ describe("useSettingsCalendarForm onSaved", () => {
 
     await act(async () => {
       result.current.form.setValue("timeZone", "Europe/Amsterdam", { shouldDirty: true });
-      result.current.form.setValue("locale", "nl-NL", { shouldDirty: true });
       result.current.form.setValue("weekStart", "7", { shouldDirty: true });
       result.current.form.setValue("inviteCalendarId", "work", { shouldDirty: true });
       await result.current.saveDisplay();
@@ -47,13 +46,11 @@ describe("useSettingsCalendarForm onSaved", () => {
       JSON.parse(window.localStorage.getItem(CALENDAR_DISPLAY_PREFS_STORAGE_KEY) ?? "{}"),
     ).toEqual({
       timeZone: "Europe/Amsterdam",
-      locale: "nl-NL",
       weekStart: 7,
       inviteCalendarId: "work",
     });
     expect(readCalendarDisplayPrefs()).toEqual({
       timeZone: "Europe/Amsterdam",
-      locale: "nl-NL",
       weekStart: 7,
       inviteCalendarId: "work",
     });

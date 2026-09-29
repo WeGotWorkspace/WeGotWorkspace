@@ -77,6 +77,32 @@ describe("contacts-edit-utils", () => {
     ];
     expect(resolveCreateAddressBookIds("all", books)).toEqual({ work: true });
     expect(resolveCreateAddressBookIds("book:default", books)).toEqual({ default: true });
+    writeDefaultCollectionPrefs("contacts", { collectionId: "shared-42" });
+    expect(
+      resolveCreateAddressBookIds("all", [
+        { id: "default", name: "Default", isDefault: true, isSharee: false } as never,
+        {
+          id: "shared-42",
+          name: "Alice",
+          isDefault: false,
+          isSharee: true,
+          myRights: { mayWrite: true },
+        } as never,
+      ]),
+    ).toEqual({ default: true });
+    writeDefaultCollectionPrefs("contacts", { collectionId: "readonly" });
+    expect(
+      resolveCreateAddressBookIds("all", [
+        { id: "default", name: "Default", isDefault: true, isSharee: false } as never,
+        {
+          id: "readonly",
+          name: "Read only",
+          isDefault: false,
+          isSharee: false,
+          myRights: { mayWrite: false },
+        } as never,
+      ]),
+    ).toEqual({ default: true });
     writeDefaultCollectionPrefs("contacts", {});
   });
 

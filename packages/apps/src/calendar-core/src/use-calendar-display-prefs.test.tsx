@@ -11,15 +11,23 @@ describe("useCalendarDisplayPrefs", () => {
     vi.restoreAllMocks();
   });
 
-  it("resolves stored locale, timezone, and week start", () => {
+  it("resolves stored timezone and week start, and ignores a leftover locale", () => {
     writeCalendarDisplayPrefs({
       timeZone: "America/New_York",
-      locale: "en-US",
       weekStart: 7,
       inviteCalendarId: "work",
     });
+    window.localStorage.setItem(
+      "wgw.ui.calendar.displayPrefs",
+      JSON.stringify({
+        timeZone: "America/New_York",
+        locale: "ja-JP",
+        weekStart: 7,
+        inviteCalendarId: "work",
+      }),
+    );
     const { result } = renderHook(() => useCalendarDisplayPrefs());
-    expect(result.current.locale).toBe("en-US");
+    expect(result.current.locale).not.toBe("ja-JP");
     expect(result.current.timeZone).toBe("America/New_York");
     expect(result.current.timezone).toBe("America/New_York");
     expect(result.current.weekStart).toBe(7);
@@ -40,7 +48,7 @@ describe("useCalendarDisplayPrefs", () => {
     const { result } = renderHook(() => useCalendarDisplayPrefs());
     expect(result.current.timezone).toBe("Europe/Berlin");
 
-    writeCalendarDisplayPrefs({ timeZone: "Asia/Tokyo", locale: "ja-JP", weekStart: 1 });
+    writeCalendarDisplayPrefs({ timeZone: "Asia/Tokyo", weekStart: 1 });
     act(() => {
       notifySettingsSliceSaved({ panelId: "mail", sliceId: "mail-accounts" });
     });
@@ -50,7 +58,26 @@ describe("useCalendarDisplayPrefs", () => {
       notifySettingsSliceSaved({ panelId: "calendar", sliceId: "calendar-display" });
     });
     expect(result.current.timezone).toBe("Asia/Tokyo");
-    expect(result.current.locale).toBe("ja-JP");
     expect(result.current.weekStart).toBe(1);
+  });
+
+  it("refreshes after a storage event for the calendar prefs key", () => {
+    vi.spyOn(Temporal.Now, "timeZoneId").mockReturnValue("Europe/Berlin");
+    const { result } = renderHook(() => useCalendarDisplayPrefs());
+    expect(result.current.timezone).toBe("Europe/Berlin");
+
+    window.localStorage.setItem(
+      "wgw.ui.calendar.displayPrefs",
+      JSON.stringify({ timeZone: "America/Los_Angeles" }),
+    );
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "wgw.ui.calendar.displayPrefs",
+          newValue: JSON.stringify({ timeZone: "America/Los_Angeles" }),
+        }),
+      );
+    });
+    expect(result.current.timezone).toBe("America/Los_Angeles");
   });
 });
