@@ -845,8 +845,6 @@ final class MailImapClient
 
     public static function moveUid(Connection $conn, string $ref, int $uid, string $targetMailbox): bool
     {
-        // imap_mail_move expects a mailbox name (not the full "{host}…" ref).
-        // For non-ASCII mailbox names, use modified UTF-7 if available.
         $mb = $targetMailbox;
         if (function_exists('imap_utf7_encode')) {
             $enc = @imap_utf7_encode($targetMailbox);

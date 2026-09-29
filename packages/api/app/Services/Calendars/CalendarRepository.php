@@ -425,8 +425,6 @@ final class CalendarRepository
     }
 
     /**
-     * Calendars the user may update (name, color, …). Provisioned group calendars are included; {@see delete()} separately forbids destroying them.
-     *
      * @return array{0: CalendarInstance, 1: ?string}|null
      */
     private function resolveWritableCalendar(string $username, string $calendarId): ?array

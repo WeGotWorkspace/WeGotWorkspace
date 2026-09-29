@@ -185,8 +185,6 @@ final class ConversionSupport
     ];
 
     /**
-     * Apple-style group vCards use `FN` plus `N:GroupName;;;;`. After a partial name patch (`name.full` only), stale `name.components` would otherwise round-trip as an outdated structured `N` while `FN` updates.
-     *
      * @param  array<string, mixed>  $card
      * @return array<string, mixed>
      */

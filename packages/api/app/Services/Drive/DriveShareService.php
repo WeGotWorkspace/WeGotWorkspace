@@ -694,7 +694,6 @@ final class DriveShareService
             }
         }
 
-        // v1 intentionally couples JWT TTL and DB session lifetime (both 1h) — no refresh flow yet.
         $now = Carbon::now();
         $sessionExpiresAt = $now->copy()->addSeconds(self::GUEST_JWT_TTL_SECONDS);
         if ($share->expires_at !== null && $share->expires_at->lessThan($sessionExpiresAt)) {

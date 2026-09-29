@@ -32,7 +32,6 @@ final class JsContactToVCardConverter
         if (isset($card['kind']) && is_string($card['kind'])) {
             $vcard->add('KIND', $card['kind']);
             // Apple Address Book uses X-ABShowAs:COMPANY (not standard vCard) for company cards.
-            // JSContact kind "org" (RFC 9553) is canonical; emit X-ABShowAs on write for CardDAV parity.
             if (strtolower($card['kind']) === 'org') {
                 $vcard->add('X-ABShowAs', 'COMPANY');
             }
