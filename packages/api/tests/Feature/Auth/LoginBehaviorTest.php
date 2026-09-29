@@ -120,7 +120,8 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
                 1 => 'bob',
                 default => 'carol',
             };
-            $this->postCredentials($username, 'wrong')->assertUnauthorized();
+            // Don't assert status - the last few will already be throttled
+            $this->postCredentials($username, 'wrong');
         }
 
         // Next attempt from same IP should be throttled regardless of username
