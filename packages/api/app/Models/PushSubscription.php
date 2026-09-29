@@ -6,7 +6,21 @@ namespace App\Models;
 
 use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property string $id
+ * @property string $principal
+ * @property string $endpoint
+ * @property string $endpoint_hash
+ * @property string $p256dh
+ * @property string $auth
+ * @property string|null $user_agent
+ * @property Carbon $created_at
+ * @property Carbon|null $updated_at
+ */
 final class PushSubscription extends Model
 {
     use UsesWgwConnection;

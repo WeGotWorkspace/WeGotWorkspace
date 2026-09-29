@@ -26,7 +26,7 @@ final class ICalendarDateTime
      */
     public static function fromProperty(Property $property): array
     {
-        $tzid = isset($property['TZID']) ? trim((string) $property['TZID']) : null;
+        $tzid = isset($property['TZID']) ? trim(VObjectScalar::string($property['TZID'])) : null;
         if ($tzid === '') {
             $tzid = null;
         }
@@ -48,7 +48,7 @@ final class ICalendarDateTime
         }
 
         $raw = trim((string) $property->getValue());
-        $isDate = isset($property['VALUE']) && strtoupper((string) $property['VALUE']) === 'DATE';
+        $isDate = isset($property['VALUE']) && strtoupper(VObjectScalar::string($property['VALUE'])) === 'DATE';
 
         return [
             'value' => self::toJmap($raw),

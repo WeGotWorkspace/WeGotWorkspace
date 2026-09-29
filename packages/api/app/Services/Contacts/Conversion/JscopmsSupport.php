@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts\Conversion;
 
+use App\Services\VObject\VObjectScalar;
 use Sabre\VObject\Property;
 
 /**
@@ -84,7 +85,7 @@ final class JscopmsSupport
     }
 
     /**
-     * @param  list<array{kind: string, value: string, @type?: string}>  $components
+     * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      */
     public static function shouldEmitJscopms(array $components, bool $isOrdered, bool $useRfc9554): bool
     {
@@ -92,7 +93,7 @@ final class JscopmsSupport
     }
 
     /**
-     * @param  list<array{kind: string, value: string, @type?: string}>  $components
+     * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      * @return array<string, string>
      */
     public static function jscopmsParamsFromComponents(
@@ -139,7 +140,7 @@ final class JscopmsSupport
     }
 
     /**
-     * @param  list<array{kind: string, value: string, @type?: string}>  $components
+     * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      */
     private static function hasExtendedStreetComponents(array $components): bool
     {
@@ -164,7 +165,7 @@ final class JscopmsSupport
         array $kindToIndex,
         string $componentType,
     ): array {
-        $raw = (string) $property['JSCOMPS'];
+        $raw = VObjectScalar::string($property['JSCOMPS']);
         $raw = trim($raw, '"');
         $entries = array_map('trim', explode(';', $raw));
         $defaultSeparator = null;

@@ -47,8 +47,8 @@ final class GroupMembershipResolver
             ->get(['g.uri as group_uri', 'm.uri as member_uri']);
 
         foreach ($rows as $row) {
-            $groupUri = (string) $row->group_uri;
-            $memberUri = (string) $row->member_uri;
+            $groupUri = (string) $row->getAttribute('group_uri');
+            $memberUri = (string) $row->getAttribute('member_uri');
             $out[$groupUri][] = $memberUri;
         }
 

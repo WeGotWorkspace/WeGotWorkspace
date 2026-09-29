@@ -1481,7 +1481,7 @@ final class MailOperationService
     }
 
     /**
-     * @return array{displayName: string, emailAddress: string, imap: array, smtp: array}|null
+     * @return array{displayName: string, emailAddress: string, imap: array, smtp: array}
      */
     private function requireImap(string $username): array
     {

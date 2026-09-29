@@ -7,6 +7,17 @@ namespace App\Models;
 use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property int $id
+ * @property string $token_hash
+ * @property string $event_uid
+ * @property string $attendee_email
+ * @property string $organizer_username
+ * @property int $expires_at
+ * @property string|null $used_partstat
+ */
 final class CalendarRsvpToken extends Model
 {
     use UsesWgwConnection;

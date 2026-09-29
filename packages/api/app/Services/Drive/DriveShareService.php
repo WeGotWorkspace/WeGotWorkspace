@@ -1606,7 +1606,7 @@ final class DriveShareService
     }
 
     /**
-     * @return array{sharesById: Collection<string|int, DriveShare>, grants: Collection<int, DriveShareGrant>}|null
+     * @return array{sharesById: Collection<string|int, DriveShare>, grants: Collection<int, DriveShareGrant>}
      */
     private function loadScopedGrants(array $shareIds): array
     {

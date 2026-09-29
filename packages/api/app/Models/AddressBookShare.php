@@ -8,6 +8,16 @@ use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property int $id
+ * @property int $addressbookid
+ * @property string $principaluri
+ * @property string $href
+ * @property int $access
+ * @property string|null $displayname
+ */
 final class AddressBookShare extends Model
 {
     use UsesWgwConnection;

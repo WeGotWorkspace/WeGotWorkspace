@@ -9,6 +9,12 @@ use Database\Factories\AppSettingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property string $name
+ * @property string $value
+ */
 final class AppSetting extends Model
 {
     /** @use HasFactory<AppSettingFactory> */

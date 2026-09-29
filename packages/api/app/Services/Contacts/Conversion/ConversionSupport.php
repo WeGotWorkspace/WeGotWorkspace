@@ -6,6 +6,7 @@ namespace App\Services\Contacts\Conversion;
 
 use App\Services\VObject\ICalendarDateTime;
 use App\Services\VObject\ICalendarUid;
+use App\Services\VObject\VObjectScalar;
 use Illuminate\Support\Str;
 use Sabre\VObject\DateTimeParser;
 use Sabre\VObject\InvalidDataException;
@@ -13,7 +14,6 @@ use Sabre\VObject\Property;
 
 /**
  * Shared helpers for RFC 9555 vCard ↔ JSContact conversion.
- *
  * uid rules for JSContact 2.0 are updated by RFC 9982; see docs/contacts/rfc9982-conversion-matrix.md.
  */
 final class ConversionSupport
@@ -337,7 +337,7 @@ final class ConversionSupport
     public static function propertyId(Property $property, int $index): string
     {
         if (isset($property['PROP-ID'])) {
-            return (string) $property['PROP-ID'];
+            return VObjectScalar::string($property['PROP-ID']);
         }
 
         return self::fallbackPropertyId($property, strtoupper((string) $property->name), $index);
@@ -563,7 +563,7 @@ final class ConversionSupport
             return null;
         }
 
-        return (int) (string) $property['PREF'];
+        return (int) VObjectScalar::string($property['PREF']);
     }
 
     /**
@@ -580,7 +580,7 @@ final class ConversionSupport
             $object['pref'] = $pref;
         }
         if (isset($property['LABEL'])) {
-            $object['label'] = (string) $property['LABEL'];
+            $object['label'] = VObjectScalar::string($property['LABEL']);
         }
     }
 
@@ -593,7 +593,7 @@ final class ConversionSupport
             return [];
         }
 
-        $raw = (string) $property['TYPE'];
+        $raw = VObjectScalar::string($property['TYPE']);
 
         return array_values(array_filter(array_map('trim', preg_split('/,/', $raw) ?: [])));
     }
@@ -610,7 +610,7 @@ final class ConversionSupport
 
     public static function isDerived(Property $property): bool
     {
-        return isset($property['DERIVED']) && strtolower((string) $property['DERIVED']) === 'true';
+        return isset($property['DERIVED']) && strtolower(VObjectScalar::string($property['DERIVED'])) === 'true';
     }
 
     /**
@@ -681,7 +681,7 @@ final class ConversionSupport
     }
 
     /**
-     * @param  list<array{kind: string, value: string, @type?: string}>  $components
+     * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      * @return list<string>
      */
     public static function adrPartsFromComponents(array $components, bool $useRfc9554): array
@@ -723,7 +723,7 @@ final class ConversionSupport
      * Build legacy ADR components when a JSContact address has no `components` array.
      *
      * @param  array<string, mixed>  $entry
-     * @return list<array{@type: string, kind: string, value: string}>
+     * @return list<array{'@type': string, kind: string, value: string}>
      */
     public static function addressComponentsFromEntry(array $entry): array
     {
@@ -757,7 +757,7 @@ final class ConversionSupport
     }
 
     /**
-     * @return list<array{@type: string, kind: string, value: string}>
+     * @return list<array{'@type': string, kind: string, value: string}>
      */
     public static function nameComponentsFromProperty(Property $property): array
     {
@@ -779,7 +779,7 @@ final class ConversionSupport
     }
 
     /**
-     * @param  list<array{kind: string, value: string, @type?: string}>  $components
+     * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      * @return list<string>
      */
     public static function nPartsFromComponents(array $components): array
@@ -836,11 +836,11 @@ final class ConversionSupport
     private static function mimeTypeFromMediaProperty(Property $property): string
     {
         if (isset($property['MEDIATYPE'])) {
-            return (string) $property['MEDIATYPE'];
+            return VObjectScalar::string($property['MEDIATYPE']);
         }
 
         if (isset($property['TYPE'])) {
-            $type = strtolower(trim((string) $property['TYPE']));
+            $type = strtolower(trim(VObjectScalar::string($property['TYPE'])));
             $known = [
                 'jpeg' => 'image/jpeg',
                 'jpg' => 'image/jpeg',
@@ -1074,7 +1074,7 @@ final class ConversionSupport
     {
         $value = trim((string) $property->getValue());
         $valueType = strtolower((string) ($property['VALUE'] ?? $property->getValueType()));
-        $calendarScale = isset($property['CALSCALE']) ? strtolower((string) $property['CALSCALE']) : null;
+        $calendarScale = isset($property['CALSCALE']) ? strtolower(VObjectScalar::string($property['CALSCALE'])) : null;
 
         if ($valueType === 'timestamp' || preg_match('/^\d{8}T\d{6}Z$/', $value) === 1) {
             if ($preferTimestamp) {
@@ -1147,7 +1147,7 @@ final class ConversionSupport
                 $params['value'] = 'TIMESTAMP';
             }
 
-            return [self::utcDateTimeToVCard((string) $date['utc']), $params];
+            return [self::utcDateTimeToVCard(VObjectScalar::string($date['utc'])), $params];
         }
 
         $params = ['value' => 'DATE'];
@@ -1163,7 +1163,7 @@ final class ConversionSupport
             return ['--'.$month.$day, $params];
         }
 
-        $year = str_pad((string) $date['year'], 4, '0', STR_PAD_LEFT);
+        $year = str_pad(VObjectScalar::string($date['year']), 4, '0', STR_PAD_LEFT);
 
         return [$year.$month.$day, $params];
     }
