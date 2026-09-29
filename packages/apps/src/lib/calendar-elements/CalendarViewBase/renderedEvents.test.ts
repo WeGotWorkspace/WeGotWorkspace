@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
-import { UTC_TIMEZONE, type CalendarEventsMap } from "@/lib/calendar-engine";
+import { UTC_TIMEZONE, type CalendarEventsMap, type IANATimeZone } from "@/lib/calendar-engine";
 import { createDailySeriesState } from "@/lib/calendar-engine/tests/support/mockEvents.js";
 import * as expandModule from "@/lib/calendar-engine";
 import {
@@ -180,7 +180,7 @@ describe("visibleEventsInRange display timezone", () => {
             start: Temporal.PlainDateTime.from("2026-09-30T15:00:00"),
             end: Temporal.PlainDateTime.from("2026-09-30T16:00:00"),
             summary: "Auckland standup",
-            timeZone: "Pacific/Auckland",
+            timeZone: "Pacific/Auckland" as IANATimeZone,
           },
         },
       ],
