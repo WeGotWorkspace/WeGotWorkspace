@@ -123,8 +123,8 @@ export function LoginScreen({
   const oauthConnect = isWgwOAuthAuthorizeReturnPath(resolvedReturnPath);
   const wizardSource = useMemo(() => {
     if (!pending || pending.status === "mfa_required") return null;
-    return challengeWizardSource(pending, username.trim());
-  }, [pending, username]);
+    return challengeWizardSource(pending, username.trim(), password);
+  }, [pending, username, password]);
 
   const finishSignedIn = async () => {
     if (oauthConnect) {

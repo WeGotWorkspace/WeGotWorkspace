@@ -30,5 +30,26 @@
       "logoutUrl",
       "mcpEnabled"
     ]
+  },
+  "SettingsProfileUpdateResponse": {
+    "allOf": [
+      { "$ref": "#/components/schemas/SettingsStateResponse" },
+      {
+        "type": "object",
+        "description": "Token fields are present only when this request changed the account password. The current browser stores the new pair; older tokens stay revoked.",
+        "properties": {
+          "access_token": { "type": "string" },
+          "refresh_token": { "type": "string" },
+          "token_type": { "type": "string" },
+          "expires_in": { "type": "integer" },
+          "refresh_expires_in": { "type": "integer" },
+          "role": {
+            "type": "string",
+            "enum": ["guest", "user", "admin"]
+          },
+          "username": { "type": "string" }
+        }
+      }
+    ]
   }
 }

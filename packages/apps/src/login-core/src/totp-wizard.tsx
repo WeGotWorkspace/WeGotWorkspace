@@ -16,8 +16,10 @@ type TotpWizardProps = {
 type WizardStep = "password" | "setup" | "codes";
 
 export function TotpWizard({ source, onFinished, onLogout }: TotpWizardProps) {
-  const [step, setStep] = useState<WizardStep>(source.mode === "enroll" ? "password" : "setup");
-  const [accountPassword, setAccountPassword] = useState("");
+  const carriedPassword = source.knownPassword?.trim() ?? "";
+  const asksForPassword = source.mode === "enroll" && carriedPassword === "";
+  const [step, setStep] = useState<WizardStep>(asksForPassword ? "password" : "setup");
+  const [accountPassword, setAccountPassword] = useState(carriedPassword);
   const [secret, setSecret] = useState("");
   const [otpauthUri, setOtpauthUri] = useState("");
   const [davWarning, setDavWarning] = useState(false);
@@ -30,16 +32,17 @@ export function TotpWizard({ source, onFinished, onLogout }: TotpWizardProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (source.mode === "enroll") {
+    if (source.mode === "enroll" && carriedPassword === "") {
       setLoading(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
     void source
-      .start()
+      .start(carriedPassword || undefined)
       .then((provision) => {
         if (cancelled) return;
+        if (carriedPassword) setAccountPassword(carriedPassword);
         setSecret(provision.secret);
         setOtpauthUri(provision.otpauthUri);
         setDavWarning(provision.davWarning);
@@ -48,12 +51,13 @@ export function TotpWizard({ source, onFinished, onLogout }: TotpWizardProps) {
       .catch((cause: unknown) => {
         if (cancelled) return;
         setError(cause instanceof Error ? cause.message : "Could not start setup.");
+        if (carriedPassword) setStep("password");
         setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [source]);
+  }, [source, carriedPassword]);
 
   const beginWithPassword = async (password: string) => {
     if (submitting || password.trim() === "") return;

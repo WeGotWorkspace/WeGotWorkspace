@@ -12076,6 +12076,45 @@
                         "type": "string"
                     }
                 }
+            },
+            "SettingsProfileUpdateResponse": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/SettingsStateResponse"
+                    },
+                    {
+                        "type": "object",
+                        "description": "Token fields are present only when this request changed the account password. The current browser stores the new pair; older tokens stay revoked.",
+                        "properties": {
+                            "access_token": {
+                                "type": "string"
+                            },
+                            "refresh_token": {
+                                "type": "string"
+                            },
+                            "token_type": {
+                                "type": "string"
+                            },
+                            "expires_in": {
+                                "type": "integer"
+                            },
+                            "refresh_expires_in": {
+                                "type": "integer"
+                            },
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "guest",
+                                    "user",
+                                    "admin"
+                                ]
+                            },
+                            "username": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ]
             }
         },
         "responses": {
@@ -12577,7 +12616,7 @@
                 "tags": [
                     "Settings"
                 ],
-                "summary": "Update profile details for current user",
+                "summary": "Update profile details for current user. A password change returns a new token pair.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -12589,7 +12628,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/SettingsStateResponse"
+                                    "$ref": "#/components/schemas/SettingsProfileUpdateResponse"
                                 }
                             }
                         }

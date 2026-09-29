@@ -14,6 +14,7 @@ final class MfaReauth
         private TotpService $totp,
         private SabreCredentialValidator $credentials,
         private MfaCodeFailCounter $codeFails,
+        private LoginRateLimiter $loginLimiter,
     ) {}
 
     public function assert(string $username, ?string $password, ?string $code): void
@@ -35,6 +36,9 @@ final class MfaReauth
         $password = trim((string) $password);
         if ($password === '') {
             throw new ApiHttpException(422, 'Account password is required.', 'bad_request');
+        }
+        if (! $this->loginLimiter->allow($username, (string) request()->ip())) {
+            throw new ApiHttpException(429, 'Too many login attempts. Please try again later.', 'throttled');
         }
         $realm = (string) AppSetting::getValue('auth_realm', (string) config('wgw.auth_realm'));
         if (! $this->credentials->validate($username, $password, $realm)) {

@@ -395,6 +395,23 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         $this->assertSame($secret, UserMfa::query()->where('username', 'alice')->firstOrFail()->totp_secret);
     }
 
+    public function test_password_reauth_locks_after_the_sign_in_limiter(): void
+    {
+        putenv('WGW_DISABLE_LOGIN_THROTTLE');
+        unset($_ENV['WGW_DISABLE_LOGIN_THROTTLE'], $_SERVER['WGW_DISABLE_LOGIN_THROTTLE']);
+
+        $token = $this->issueBearerToken();
+        for ($i = 0; $i < 8; $i++) {
+            $this->withBearer($token)->postJson('/api/v1/settings/totp', [
+                'password' => 'wrong-password',
+            ])->assertUnauthorized();
+        }
+
+        $this->withBearer($token)->postJson('/api/v1/settings/totp', [
+            'password' => 'secret',
+        ])->assertStatus(429)->assertJsonPath('code', 'throttled');
+    }
+
     public function test_enrollment_requires_the_account_password_before_the_secret(): void
     {
         $token = $this->issueBearerToken();

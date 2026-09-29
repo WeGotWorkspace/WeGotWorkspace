@@ -48,6 +48,8 @@ export type TotpWizardSource = {
   presentation: "challenge" | "session";
   /** Enforcement and login challenges cannot be skipped. */
   forced: boolean;
+  /** Password just accepted at sign-in. Enrollment skips asking again. */
+  knownPassword?: string;
   start: (password?: string) => Promise<TotpProvision>;
   confirm: (code: string, password?: string) => Promise<{ recoveryCodes: string[] }>;
 };
@@ -200,27 +202,32 @@ export async function confirmSessionTotp(
 export function challengeWizardSource(
   login: Exclude<AuthLoginResult, { status: "ok" }>,
   username: string,
+  knownPassword?: string,
 ): TotpWizardSource | null {
   if (login.status === "mfa_required") return null;
+  const carried =
+    login.status === "mfa_setup_required" ? knownPassword?.trim() || undefined : undefined;
   return {
     mode: login.status === "mfa_replace_required" ? "replace" : "enroll",
     username,
     presentation: "challenge",
     forced: true,
-    start: (password) => provisionMfaChallenge(login.challenge, password),
+    knownPassword: carried,
+    start: (password) => provisionMfaChallenge(login.challenge, password ?? carried),
     confirm: async (code, password) => {
+      const accountPassword = password ?? carried;
       if (login.client === "oauth") {
         const result = await completeOAuthMfa({
           challenge: login.challenge,
           code,
-          password,
+          password: accountPassword,
         });
         if (result.status !== "ok") {
           throw new MfaRequestError("Confirmation did not return a session.", 500);
         }
         return { recoveryCodes: result.recoveryCodes };
       }
-      return confirmMfaChallenge(login.challenge, code, password);
+      return confirmMfaChallenge(login.challenge, code, accountPassword);
     },
   };
 }

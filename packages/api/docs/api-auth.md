@@ -126,9 +126,11 @@ Challenge bodies include `client`: `spa` for `POST /api/v1/auth/token`, or `oaut
 
 A recovery code at login does not return tokens. It starts authenticator replacement. Confirming that replacement, or turning two-factor authentication on in Settings, signs out other sessions and returns a new token pair.
 
-Turning two-factor authentication on requires the account password before the QR code is shown, and again when the authenticator code is confirmed. A setup challenge cannot replace an authenticator that is already on.
+Turning two-factor authentication on requires the account password before the QR code is shown, and again when the authenticator code is confirmed. Sign-in that already accepted that password reuses it for a required setup challenge. A setup challenge cannot replace an authenticator that is already on.
 
-Changing the account password revokes refresh tokens and bumps `session_generation`, so existing access tokens and the `sabre_ui_auth` cookie stop working.
+Failed account-password checks on enrollment and app-password creation share the sign-in rate limit.
+
+Changing the account password revokes refresh tokens and bumps `session_generation`. `PUT /settings/profile` then returns a new token pair and `Set-Cookie` for the browser that changed it. Older access tokens and the previous `sabre_ui_auth` cookie stop working.
 
 App passwords are named secrets for calendar and contact clients. Create and revoke them under Settings → Security. After two-factor authentication is on, DAV and Meet Basic reject the account password and accept an app password. Users who have not enrolled can still use the account password on DAV.
 

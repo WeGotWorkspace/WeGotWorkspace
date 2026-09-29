@@ -5723,7 +5723,7 @@
         "tags": [
           "Settings"
         ],
-        "summary": "Update profile details for current user",
+        "summary": "Update profile details for current user. A password change returns a new token pair.",
         "security": [
           {
             "bearerAuth": []
@@ -5735,7 +5735,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SettingsStateResponse"
+                  "$ref": "#/components/schemas/SettingsProfileUpdateResponse"
                 }
               }
             }

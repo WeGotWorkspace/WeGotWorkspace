@@ -1,9 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AuthLoginChallenge } from "@/lib/api/wgw/auth-login";
 import { LoginScreen } from "@/login-core/src/login-screen";
 import { wgwEstablishMcpWebSession, wgwLoginWithCredentials } from "@/lib/api/wgw/http";
 
 const mockNavigate = vi.fn();
+const harness = vi.hoisted(() => ({
+  challengeWizardSource: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
@@ -14,6 +18,13 @@ vi.mock("@tanstack/react-router", () => ({
   }) => select({ location: { pathname: "/login" } }),
   Link: ({ to, children }: { to: string; children: string }) => <a href={to}>{children}</a>,
 }));
+
+vi.mock("@/lib/api/wgw/mfa-client", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api/wgw/mfa-client")>(
+    "@/lib/api/wgw/mfa-client",
+  );
+  return { ...actual, challengeWizardSource: harness.challengeWizardSource };
+});
 
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwLoginWithCredentials: vi.fn().mockResolvedValue(undefined),
@@ -31,6 +42,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
 describe("LoginScreen return path", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
+    harness.challengeWizardSource.mockReset();
     vi.mocked(wgwEstablishMcpWebSession).mockClear();
     vi.mocked(wgwLoginWithCredentials).mockClear();
     window.history.replaceState({}, "", "/login");
@@ -123,5 +135,47 @@ describe("LoginScreen return path", () => {
       expect(assign).toHaveBeenCalledWith(returnPath);
     });
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("reuses the sign-in password for required authenticator setup", async () => {
+    const start = vi.fn().mockResolvedValue({
+      secret: "ABCDEFGHIJKLMNOP",
+      otpauthUri: "otpauth://totp/WeGotWorkspace:demo?secret=ABCDEFGHIJKLMNOP",
+      davWarning: false,
+    });
+    harness.challengeWizardSource.mockImplementation(
+      (login: { status: string }, username: string, knownPassword?: string) => ({
+        mode: "enroll" as const,
+        username,
+        presentation: "challenge" as const,
+        forced: true,
+        knownPassword: login.status === "mfa_setup_required" ? knownPassword : undefined,
+        start,
+        confirm: vi.fn(),
+      }),
+    );
+    vi.mocked(wgwLoginWithCredentials).mockRejectedValueOnce(
+      new AuthLoginChallenge({
+        status: "mfa_setup_required",
+        challenge: "abc",
+        client: "spa",
+      }),
+    );
+
+    render(<LoginScreen />);
+    fireEvent.change(screen.getByPlaceholderText("yourname"), { target: { value: "demo" } });
+    fireEvent.change(screen.getByPlaceholderText("••••••••"), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(harness.challengeWizardSource).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "mfa_setup_required", challenge: "abc" }),
+        "demo",
+        "secret",
+      );
+      expect(start).toHaveBeenCalledWith("secret");
+    });
+    expect(screen.queryByText("Enter your account password to start setup.")).toBeNull();
+    expect(await screen.findByText("ABCD EFGH IJKL MNOP")).toBeTruthy();
   });
 });

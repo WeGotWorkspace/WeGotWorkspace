@@ -206,14 +206,20 @@ final class MfaEnforcementTest extends WgwDatabaseTestCase
         $access = (string) $issued->json('access_token');
         $refresh = (string) $issued->json('refresh_token');
 
-        $this->withBearer($access)->putJson('/api/v1/settings/profile', [
+        $changed = $this->withBearer($access)->putJson('/api/v1/settings/profile', [
             'password' => 'newpassword12',
         ])->assertOk();
+        $fresh = (string) $changed->json('access_token');
+        $this->assertNotSame('', $fresh);
+        $changed->assertCookie('sabre_ui_auth');
 
         $this->postJson('/api/v1/auth/refresh', [
             'refresh_token' => $refresh,
         ])->assertUnauthorized();
+        $this->flushHeaders();
         $this->withBearer($access)->getJson('/api/v1/me')->assertUnauthorized();
+        $this->flushHeaders();
+        $this->withBearer($fresh)->getJson('/api/v1/me')->assertOk();
         $this->assertGreaterThan(0, (int) User::query()->where('username', 'bob')->value('session_generation'));
     }
 

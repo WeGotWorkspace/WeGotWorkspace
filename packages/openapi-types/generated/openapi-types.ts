@@ -559,7 +559,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Update profile details for current user */
+        /** Update profile details for current user. A password change returns a new token pair. */
         put: {
             parameters: {
                 query?: never;
@@ -575,7 +575,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["SettingsStateResponse"];
+                        "application/json": components["schemas"]["SettingsProfileUpdateResponse"];
                     };
                 };
             };
@@ -12180,6 +12180,16 @@ export interface components {
         AppPasswordRevokeAllRequest: {
             password?: string;
             code?: string;
+        };
+        SettingsProfileUpdateResponse: components["schemas"]["SettingsStateResponse"] & {
+            access_token?: string;
+            refresh_token?: string;
+            token_type?: string;
+            expires_in?: number;
+            refresh_expires_in?: number;
+            /** @enum {string} */
+            role?: "guest" | "user" | "admin";
+            username?: string;
         };
     };
     responses: {
