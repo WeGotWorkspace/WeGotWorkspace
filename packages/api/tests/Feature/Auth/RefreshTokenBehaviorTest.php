@@ -47,7 +47,13 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
                 'code' => 'unauthorized',
             ]);
 
-        $this->refresh($nextRefresh)->assertOk();
+        // RFC 9700: reuse of a rotated token indicates theft; revoke entire chain
+        $this->refresh($nextRefresh)
+            ->assertUnauthorized()
+            ->assertJson([
+                'error' => 'Invalid refresh token.',
+                'code' => 'unauthorized',
+            ]);
     }
 
     public function test_revoked_access_token_is_rejected_until_refresh(): void
