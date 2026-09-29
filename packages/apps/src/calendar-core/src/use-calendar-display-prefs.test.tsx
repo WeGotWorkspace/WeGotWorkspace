@@ -71,12 +71,9 @@ describe("useCalendarDisplayPrefs", () => {
       JSON.stringify({ timeZone: "America/Los_Angeles" }),
     );
     act(() => {
-      window.dispatchEvent(
-        new StorageEvent("storage", {
-          key: "wgw.ui.calendar.displayPrefs",
-          newValue: JSON.stringify({ timeZone: "America/Los_Angeles" }),
-        }),
-      );
+      const storageEvent = new StorageEvent("storage");
+      Object.defineProperty(storageEvent, "key", { value: "wgw.ui.calendar.displayPrefs" });
+      window.dispatchEvent(storageEvent);
     });
     expect(result.current.timezone).toBe("America/Los_Angeles");
   });
