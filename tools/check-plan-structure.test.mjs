@@ -276,6 +276,20 @@ function proofError(line) {
   return `${planPath}: invariant needs a test path: or cmd: after Proof: ${line}`;
 }
 
+test("a test path before Proof does not count", () => {
+  const line = "- See `path: a.test.ts`. Proof: route-click tests";
+  assert.deepEqual(evaluatePlans({ plans: [plan(invariantsPlan(line))], diffPaths: [planPath] }), [
+    proofError(line),
+  ]);
+});
+
+test("an invariant without Proof fails", () => {
+  const line = "- Stays. `path: packages/apps/src/a.test.ts`";
+  assert.deepEqual(evaluatePlans({ plans: [plan(invariantsPlan(line))], diffPaths: [planPath] }), [
+    proofError(line),
+  ]);
+});
+
 test("an invariant with Proof and no citation fails", () => {
   const line = "- Stays. Proof: route-click tests.";
   assert.deepEqual(evaluatePlans({ plans: [plan(invariantsPlan(line))], diffPaths: [planPath] }), [
@@ -327,6 +341,7 @@ test("invariant proofs accept stories, phpunit, tests, spec, and e2e paths", () 
 - PHPUnit. Proof: \`path: packages/api/tests/Feature/ExampleTest.php\`
 - Directory. Proof: \`path: packages/api/tests/Feature/Something.php\`
 - Spec. Proof: \`path: packages/apps/src/mail.spec.ts\`
-- End to end. Proof: \`path: e2e/smoke.ts\``);
+- End to end. Proof: \`path: e2e/smoke.ts\`
+- Line number. Proof: \`path: packages/api/app/ExampleTest.php:12\``);
   assert.deepEqual(evaluatePlans({ plans: [plan(after)], diffPaths: [planPath] }), []);
 });
