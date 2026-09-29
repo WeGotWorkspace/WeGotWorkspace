@@ -51,8 +51,14 @@ final class RefreshTokenRepository
         if ($row === null) {
             return null;
         }
-        if ((int) $row->revoked === 1 || (int) $row->expires_at <= time()) {
+        if ((int) $row->expires_at <= time()) {
             ApiRefreshToken::query()->where('token_hash', $hash)->delete();
+
+            return null;
+        }
+        if ((int) $row->revoked === 1) {
+            // RFC 9700: reuse of a rotated token signals theft; revoke entire chain
+            $this->revokeAllForUsername((string) $row->username);
 
             return null;
         }
