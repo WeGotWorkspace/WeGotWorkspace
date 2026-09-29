@@ -27,7 +27,7 @@ final class ICalendarAlarmTrigger
         }
 
         $isDateTime = isset($trigger['VALUE'])
-            && strtoupper((string) $trigger['VALUE']) === 'DATE-TIME';
+            && strtoupper(VObjectScalar::string($trigger['VALUE'])) === 'DATE-TIME';
         if ($isDateTime || preg_match('/^\d{8}T\d{6}Z?$/', $triggerValue) === 1) {
             return [
                 'kind' => 'absolute',
@@ -36,7 +36,7 @@ final class ICalendarAlarmTrigger
         }
 
         $relatedTo = isset($trigger['RELATED'])
-            && strtoupper((string) $trigger['RELATED']) === 'END'
+            && strtoupper(VObjectScalar::string($trigger['RELATED'])) === 'END'
             ? 'end'
             : 'start';
 

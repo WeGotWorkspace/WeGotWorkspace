@@ -9,6 +9,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property int $id
+ * @property int $synctoken
+ * @property string $components
+ */
 final class Calendar extends Model
 {
     use UsesWgwConnection;

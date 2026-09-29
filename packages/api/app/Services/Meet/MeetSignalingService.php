@@ -388,9 +388,6 @@ final class MeetSignalingService
         }
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
     private function fail(string $error, int $status = 400, ?string $message = null): never
     {
         $payload = ['error' => $error];

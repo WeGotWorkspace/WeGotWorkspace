@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars\Conversion;
 
+use App\Services\VObject\VObjectScalar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Property;
 
@@ -126,46 +127,46 @@ final class ParticipantConversionSupport
         ];
 
         if (isset($property['PARTSTAT'])) {
-            $partstat = strtolower(trim((string) $property['PARTSTAT']));
+            $partstat = strtolower(trim(VObjectScalar::string($property['PARTSTAT'])));
             if ($partstat !== '') {
                 $entry['participationStatus'] = $partstat;
             }
         }
 
         if (isset($property['ROLE'])) {
-            $mappedRole = self::ROLE_FROM_ICS[strtoupper(trim((string) $property['ROLE']))] ?? null;
+            $mappedRole = self::ROLE_FROM_ICS[strtoupper(trim(VObjectScalar::string($property['ROLE'])))] ?? null;
             if ($mappedRole !== null && ! in_array($mappedRole, $entry['roles'], true)) {
                 $entry['roles'][] = $mappedRole;
             }
         }
 
         if (isset($property['CUTYPE'])) {
-            $kind = self::CUTYPE_FROM_ICS[strtoupper(trim((string) $property['CUTYPE']))] ?? null;
+            $kind = self::CUTYPE_FROM_ICS[strtoupper(trim(VObjectScalar::string($property['CUTYPE'])))] ?? null;
             if ($kind !== null) {
                 $entry['kind'] = $kind;
             }
         }
 
         if (isset($property['RSVP'])) {
-            $entry['expectReply'] = strtoupper(trim((string) $property['RSVP'])) === 'TRUE';
+            $entry['expectReply'] = strtoupper(trim(VObjectScalar::string($property['RSVP']))) === 'TRUE';
         }
 
         if (isset($property['LANGUAGE'])) {
-            $language = trim((string) $property['LANGUAGE']);
+            $language = trim(VObjectScalar::string($property['LANGUAGE']));
             if ($language !== '') {
                 $entry['language'] = $language;
             }
         }
 
         if (isset($property['DELEGATED-TO'])) {
-            $delegatedTo = self::emailFromCalAddress((string) $property['DELEGATED-TO']);
+            $delegatedTo = self::emailFromCalAddress(VObjectScalar::string($property['DELEGATED-TO']));
             if ($delegatedTo !== null) {
                 $entry['delegatedTo'] = $delegatedTo;
             }
         }
 
         if (isset($property['DELEGATED-FROM'])) {
-            $delegatedFrom = self::emailFromCalAddress((string) $property['DELEGATED-FROM']);
+            $delegatedFrom = self::emailFromCalAddress(VObjectScalar::string($property['DELEGATED-FROM']));
             if ($delegatedFrom !== null) {
                 $entry['delegatedFrom'] = $delegatedFrom;
             }
@@ -275,7 +276,7 @@ final class ParticipantConversionSupport
             return [];
         }
 
-        $mapped = self::ROLE_FROM_ICS[strtoupper(trim((string) $property['ROLE']))] ?? null;
+        $mapped = self::ROLE_FROM_ICS[strtoupper(trim(VObjectScalar::string($property['ROLE'])))] ?? null;
 
         return $mapped !== null ? [$mapped] : [];
     }
@@ -283,7 +284,7 @@ final class ParticipantConversionSupport
     private static function participantNameFromProperty(Property $property): ?string
     {
         if (isset($property['CN'])) {
-            $name = trim((string) $property['CN']);
+            $name = trim(VObjectScalar::string($property['CN']));
             if ($name !== '') {
                 return $name;
             }

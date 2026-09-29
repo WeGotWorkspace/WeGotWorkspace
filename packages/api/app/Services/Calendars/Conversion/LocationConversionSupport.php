@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars\Conversion;
 
+use App\Services\VObject\VObjectScalar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Property;
 
@@ -51,7 +52,7 @@ final class LocationConversionSupport
                     'name' => $location,
                 ];
                 if (isset($vevent->LOCATION['ALTREP'])) {
-                    $altrep = trim((string) $vevent->LOCATION['ALTREP']);
+                    $altrep = trim(VObjectScalar::string($vevent->LOCATION['ALTREP']));
                     if ($altrep !== '') {
                         $entry['description'] = $altrep;
                     }
@@ -76,7 +77,7 @@ final class LocationConversionSupport
                 '@type' => 'Link',
                 'href' => $href,
             ];
-            if (isset($vevent->URL['VALUE']) && strtoupper((string) $vevent->URL['VALUE']) === 'URI') {
+            if (isset($vevent->URL['VALUE']) && strtoupper(VObjectScalar::string($vevent->URL['VALUE'])) === 'URI') {
                 $link['contentType'] = 'text/uri-list';
             }
             $event['links'] = ['link1' => $link];
@@ -98,7 +99,7 @@ final class LocationConversionSupport
                 'rel' => 'enclosure',
             ];
             if (isset($attach['FMTTYPE'])) {
-                $attachment['contentType'] = trim((string) $attach['FMTTYPE']);
+                $attachment['contentType'] = trim(VObjectScalar::string($attach['FMTTYPE']));
             }
             $attachments['attach'.(++$attachIndex)] = $attachment;
         }

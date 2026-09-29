@@ -212,6 +212,7 @@ final class SearchIndexerService
 
         $raw = is_string($row->calendardata) ? $row->calendardata : (string) $row->calendardata;
         $parsed = $this->extractCalendarSearchPayload($raw);
+        $calendarName = $row->getAttribute('calendar_name');
         $document = [
             'source_subtype' => is_string($row->componenttype) ? strtolower($row->componenttype) : 'calendar',
             'owner_username' => $principal,
@@ -225,7 +226,7 @@ final class SearchIndexerService
             'metadata' => [
                 'principal' => $principal,
                 'calendarUri' => $calendarUri,
-                'calendarName' => is_string($row->calendar_name) ? $row->calendar_name : null,
+                'calendarName' => is_string($calendarName) ? $calendarName : null,
                 'objectUri' => $objectUri,
                 'componentType' => $row->componenttype,
                 'firstOccurrence' => $row->firstoccurence,
@@ -297,6 +298,7 @@ final class SearchIndexerService
             implode(' ', $parsed['address'] ?? []),
         ];
 
+        $bookName = $row->getAttribute('book_name');
         $document = [
             'owner_username' => $principal,
             'title' => $title,
@@ -309,7 +311,7 @@ final class SearchIndexerService
             'metadata' => [
                 'principal' => $principal,
                 'addressBookUri' => $bookUri,
-                'addressBookName' => is_string($row->book_name) ? $row->book_name : null,
+                'addressBookName' => is_string($bookName) ? $bookName : null,
                 'cardUri' => $cardUri,
                 'firstName' => $parsed['firstName'] ?? null,
                 'lastName' => $parsed['lastName'] ?? null,
