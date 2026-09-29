@@ -24,7 +24,7 @@ final class ChatCapabilityProvider implements JmapCapabilityProviderInterface
         return true;
     }
 
-    public function sessionCapability(): object|array
+    public function sessionCapability(): object
     {
         return (object) [];
     }

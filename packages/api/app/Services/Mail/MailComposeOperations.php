@@ -179,10 +179,10 @@ final class MailComposeOperations
         } catch (\Throwable $e) {
             throw $this->mailSendException($e, $transport);
         }
-        $payload = ['ok' => true];
-        if ($attachReport !== null) {
-            $payload['attachment_report'] = $attachReport;
-        }
+        $payload = [
+            'ok' => true,
+            'attachment_report' => $attachReport,
+        ];
         if ($appendErr !== null) {
             $payload['sent_copy_failed'] = $appendErr;
         }
@@ -253,12 +253,11 @@ final class MailComposeOperations
         if ($appendErr !== null) {
             throw new MailResponseException(400, ['error' => 'draft_append_failed', 'message' => $appendErr]);
         }
-        $payload = ['ok' => true];
-        if ($attachReport !== null) {
-            $payload['attachment_report'] = $attachReport;
-        }
 
-        return $payload;
+        return [
+            'ok' => true,
+            'attachment_report' => $attachReport,
+        ];
     }
 
     private function mailSendException(\Throwable $e, ?array $transport = null): MailResponseException
@@ -279,9 +278,7 @@ final class MailComposeOperations
         if ($connectFailed && $endpoint !== '') {
             return new MailResponseException(400, [
                 'error' => 'smtp_connect',
-                'message' => $message !== ''
-                    ? $message.' (configured: '.$endpoint.')'
-                    : 'Could not connect to SMTP server at '.$endpoint.'.',
+                'message' => $message.' (configured: '.$endpoint.')',
                 'smtp' => [
                     'host' => $transport['host'],
                     'port' => $transport['port'],

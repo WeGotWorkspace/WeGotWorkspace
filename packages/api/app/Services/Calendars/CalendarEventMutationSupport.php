@@ -643,11 +643,6 @@ final class CalendarEventMutationSupport
         return 'calendars/'.$username.'/'.$calendarUri.'/'.$eventUri;
     }
 
-    private function principalUri(string $username): string
-    {
-        return 'principals/'.$username;
-    }
-
     private function assertObjectPreconditions(
         CalendarObject $object,
         ?string $ifMatch,

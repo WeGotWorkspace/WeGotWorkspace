@@ -85,7 +85,7 @@ final class DriveShareRules
     public function principalOwnsSharePath(string $username, string $path): bool
     {
         $segments = explode('/', ltrim($path, '/'));
-        $root = (string) ($segments[0] ?? '');
+        $root = $segments[0];
         if ($root === 'users' && strcasecmp((string) ($segments[1] ?? ''), $username) === 0) {
             return true;
         }
@@ -169,7 +169,7 @@ final class DriveShareRules
         }
 
         $meta = $this->noteListingMetaFromPath($path);
-        if ($meta !== null && ($meta['kind'] ?? '') === 'notebook') {
+        if ($meta !== null && $meta['kind'] === 'notebook') {
             throw new ApiHttpException(
                 400,
                 'Notebook directories cannot be shared; share individual notes instead.',
@@ -207,7 +207,7 @@ final class DriveShareRules
         $scope = $root === 'groups' ? 'group' : 'personal';
         $groupSlug = $scope === 'group' ? $owner : null;
 
-        if ($noteId !== null && $noteId !== '') {
+        if ($noteId !== null) {
             return [
                 'kind' => 'note',
                 'owner' => $owner,

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Mcp;
 
-use Laravel\Passport\Client;
 use Laravel\Passport\Passport;
 
 final class McpClientGarbageCollector
@@ -24,9 +23,6 @@ final class McpClientGarbageCollector
             ->get();
 
         foreach ($stale as $client) {
-            if (! $client instanceof Client) {
-                continue;
-            }
             $hasTokens = Passport::token()->newQuery()
                 ->where('client_id', $client->getKey())
                 ->where('revoked', false)

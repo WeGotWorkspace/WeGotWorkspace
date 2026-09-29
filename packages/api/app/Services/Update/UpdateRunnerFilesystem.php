@@ -193,7 +193,7 @@ final class UpdateRunnerFilesystem
     private function readFilesystemFreeBytes(string $path): ?int
     {
         $freeBytesRaw = @disk_free_space($path);
-        if (! is_int($freeBytesRaw) && ! is_float($freeBytesRaw)) {
+        if (! is_float($freeBytesRaw)) {
             return null;
         }
 
@@ -265,7 +265,7 @@ final class UpdateRunnerFilesystem
             return null;
         }
         $value = (float) $m[1];
-        $unit = strtoupper($m[2] ?? '');
+        $unit = strtoupper($m[2]);
         $power = match ($unit) {
             'K' => 1,
             'M' => 2,
@@ -282,9 +282,7 @@ final class UpdateRunnerFilesystem
     public function lastFilesystemError(): string
     {
         $last = error_get_last();
-        $message = is_array($last) && isset($last['message']) && is_string($last['message'])
-            ? trim($last['message'])
-            : '';
+        $message = is_array($last) ? trim($last['message']) : '';
 
         return $message;
     }

@@ -202,7 +202,7 @@ final class JmapMethodDispatcher
     private function resolveResultReferences(array $args, array $responses): array
     {
         foreach (array_keys($args) as $key) {
-            if (! is_string($key) || ! str_starts_with($key, '#')) {
+            if (! str_starts_with($key, '#')) {
                 continue;
             }
 

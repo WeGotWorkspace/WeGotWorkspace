@@ -46,9 +46,6 @@ final class DriveShareSessionsController
     private function body(Request $request): array
     {
         $payload = $request->json()->all();
-        if (! is_array($payload)) {
-            throw new ApiHttpException(400, 'Invalid request body.', 'bad_request');
-        }
 
         return $payload;
     }

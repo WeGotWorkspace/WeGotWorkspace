@@ -47,7 +47,7 @@ final class ProductionInstallBootstrap
                 $checks,
                 static fn (array $check): bool => ! $check['ok'],
             ));
-            $labels = array_map(static fn (array $check): string => (string) ($check['label'] ?? 'check'), $failed);
+            $labels = array_map(static fn (array $check): string => (string) $check['label'], $failed);
             throw new \RuntimeException(
                 'Install requirements not met: '.implode(', ', $labels),
             );

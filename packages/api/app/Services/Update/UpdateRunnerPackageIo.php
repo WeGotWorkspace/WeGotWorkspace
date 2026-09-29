@@ -195,30 +195,6 @@ final class UpdateRunnerPackageIo
         return $stagingDir;
     }
 
-    /**
-     * @param  list<string>  $paths
-     */
-    private function backupPaths(
-        string $sourceRoot,
-        string $backupRoot,
-        array $paths,
-        string $fromVersion,
-        string $toVersion
-    ): void {
-        $total = count($paths);
-        $done = 0;
-        foreach ($paths as $relative) {
-            $this->runner()->throwIfCancelRequested();
-            $src = $sourceRoot.'/'.$relative;
-            if (file_exists($src)) {
-                $dest = $backupRoot.'/'.$relative;
-                self::copyRecursive($src, $dest, true);
-            }
-            $done++;
-            $this->runner()->writePhaseProgress('backing_up', $fromVersion, $toVersion, $done, $total);
-        }
-    }
-
     public function backupDatabase(
         string $backupRoot,
         string $fromVersion,
@@ -423,25 +399,6 @@ final class UpdateRunnerPackageIo
         }
         if (@copy($env, $backupDir.'/packages-api.env')) {
             $this->store->appendLog('Backed up packages/api/.env into the update backup folder.');
-        }
-    }
-
-    /**
-     * @param  list<string>  $paths
-     */
-    private function restorePaths(string $backupRoot, string $targetRoot, array $paths): void
-    {
-        if (! is_dir($backupRoot)) {
-            return;
-        }
-        foreach ($paths as $relative) {
-            $src = $backupRoot.'/'.$relative;
-            if (! file_exists($src)) {
-                continue;
-            }
-            $dest = $targetRoot.'/'.$relative;
-            $this->files->rmRecursive($dest);
-            self::copyRecursive($src, $dest);
         }
     }
 

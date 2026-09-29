@@ -13,7 +13,7 @@ final class SabreHttpResponseConverter
 {
     public function toIlluminate(ResponseInterface $sabre): SymfonyResponse
     {
-        $status = (int) ($sabre->getStatus() ?? 200);
+        $status = (int) $sabre->getStatus();
         $headers = $this->flattenHeaders($sabre->getHeaders());
         $body = $sabre->getBody();
 

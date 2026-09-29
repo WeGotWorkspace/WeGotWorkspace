@@ -146,9 +146,6 @@ final class RoomSessionController
     private function bodyWithRoom(Request $request, string $room): array
     {
         $body = $request->json()->all();
-        if (! is_array($body)) {
-            $body = [];
-        }
         $body['room'] = $room;
 
         return $body;

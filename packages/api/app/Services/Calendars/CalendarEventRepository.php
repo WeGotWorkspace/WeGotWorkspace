@@ -124,7 +124,7 @@ final class CalendarEventRepository
 
         $queryTokens = [];
         foreach ($instances as $instance) {
-            $queryTokens[$this->calendars->apiIdForInstance($instance)] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+            $queryTokens[$this->calendars->apiIdForInstance($instance)] = (string) (int) ($instance->calendar->synctoken ?? 1);
         }
 
         return [
@@ -170,7 +170,7 @@ final class CalendarEventRepository
         $tokens = [];
         $instances = $this->calendars->accessibleVeventInstances($username);
         foreach ($instances as $instance) {
-            $tokens[$this->calendars->apiIdForInstance($instance)] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+            $tokens[$this->calendars->apiIdForInstance($instance)] = (string) (int) ($instance->calendar->synctoken ?? 1);
         }
 
         return $tokens;

@@ -184,7 +184,7 @@ final class CalendarEventQuerySupport
     {
         $comparators = [];
         foreach ($sort as $spec) {
-            $property = is_array($spec) ? (string) ($spec['property'] ?? '') : '';
+            $property = (string) ($spec['property'] ?? '');
             if (! in_array($property, ['start', 'title', 'uid'], true)) {
                 continue;
             }
@@ -381,7 +381,7 @@ final class CalendarEventQuerySupport
             return null;
         }
 
-        $currentToken = (int) ($instance->calendar?->synctoken ?? 0);
+        $currentToken = (int) ($instance->calendar->synctoken ?? 0);
         if (! ctype_digit($since) || (int) $since > $currentToken) {
             throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
         }

@@ -149,7 +149,7 @@ final class DriveShareByPrincipalQuery
     {
         $slugs = [];
         foreach ($this->groupDirectory->groupsForUser($username) as $group) {
-            $uri = (string) ($group['id'] ?? '');
+            $uri = $group['id'];
             if (str_starts_with($uri, 'principals/groups/')) {
                 $slugs[] = substr($uri, strlen('principals/groups/'));
             }

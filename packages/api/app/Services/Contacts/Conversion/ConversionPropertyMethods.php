@@ -125,10 +125,10 @@ final class ConversionPropertyMethods
     public static function telTypesFromFeatures(array $features, ?array $contexts): array
     {
         $types = [];
-        foreach ($features as $feature => $enabled) {
+        foreach (array_keys($features) as $feature) {
             // RFC 6350 §6.4.1: voice is the default TEL type — omit on write so Apple
             // Address Book does not show a spurious "voice" label alongside home/work.
-            if ($enabled && $feature !== 'voice' && isset(self::TEL_FEATURES[$feature])) {
+            if ($feature !== 'voice' && isset(self::TEL_FEATURES[$feature])) {
                 $types[] = self::TEL_FEATURES[$feature];
             }
         }
@@ -279,8 +279,8 @@ final class ConversionPropertyMethods
         if ($useRfc9554) {
             $parts = array_fill(0, 18, '');
             foreach ($components as $component) {
-                $kind = (string) ($component['kind'] ?? '');
-                $value = (string) ($component['value'] ?? '');
+                $kind = (string) ($component['kind']);
+                $value = (string) ($component['value']);
                 $index = array_search($kind, self::ADR_RFC9554_KINDS, true);
                 if ($index === false) {
                     continue;
@@ -293,8 +293,8 @@ final class ConversionPropertyMethods
 
         $parts = array_fill(0, 7, '');
         foreach ($components as $component) {
-            $kind = (string) ($component['kind'] ?? '');
-            $value = (string) ($component['value'] ?? '');
+            $kind = (string) ($component['kind']);
+            $value = (string) ($component['value']);
             $index = array_search($kind, self::ADR_LEGACY_KINDS, true);
             if ($index === false) {
                 if ($kind === 'number' || $kind === 'block' || $kind === 'direction' || $kind === 'landmark' || $kind === 'subdistrict' || $kind === 'district' || $kind === 'room' || $kind === 'floor' || $kind === 'building') {
@@ -386,8 +386,8 @@ final class ConversionPropertyMethods
         ];
 
         foreach ($components as $component) {
-            $kind = (string) ($component['kind'] ?? '');
-            $value = (string) ($component['value'] ?? '');
+            $kind = (string) ($component['kind']);
+            $value = (string) ($component['value']);
             if ($value === '' || ! isset($buckets[$kind])) {
                 continue;
             }

@@ -55,7 +55,7 @@ final class MeetMessageWriteTool extends WgwMcpTool
         ];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::MEET_WRITE;
     }
@@ -65,7 +65,7 @@ final class MeetMessageWriteTool extends WgwMcpTool
         return 'write';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): array
     {
         return [
             'action' => (string) $request->get('action', ''),

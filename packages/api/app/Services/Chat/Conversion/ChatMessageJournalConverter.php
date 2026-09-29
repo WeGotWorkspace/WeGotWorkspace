@@ -69,17 +69,14 @@ final class ChatMessageJournalConverter
             $journal->add('RELATED-TO', self::normalizeUlid($parentId));
         }
         $mentions = $message['mentions'] ?? [];
-        if (is_array($mentions) && $mentions !== []) {
+        if ($mentions !== []) {
             $normalized = [];
             foreach ($mentions as $mention) {
-                if (! is_array($mention) || ! is_string($mention['id'] ?? null)) {
-                    continue;
-                }
-                $id = strtolower(trim((string) $mention['id']));
+                $id = strtolower(trim($mention['id']));
                 if ($id === '') {
                     continue;
                 }
-                $display = isset($mention['displayName']) && is_string($mention['displayName'])
+                $display = isset($mention['displayName'])
                     ? trim($mention['displayName'])
                     : $id;
                 $normalized[] = ['id' => $id, 'displayName' => $display !== '' ? $display : $id];

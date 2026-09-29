@@ -72,9 +72,6 @@ final class MailMessageOperations
                 $ov = MailImapClient::fetchOverviews($conn, $uidsForOverview);
                 $messages = [];
                 foreach ($ov as $o) {
-                    if (! is_object($o)) {
-                        continue;
-                    }
                     $uid = (int) ($o->uid ?? 0);
                     if ($uid <= 0) {
                         continue;
@@ -90,9 +87,6 @@ final class MailMessageOperations
             }
         } finally {
             @imap_close($conn);
-        }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
         }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);
@@ -144,9 +138,6 @@ final class MailMessageOperations
             }
         } finally {
             @imap_close($conn);
-        }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
         }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);
@@ -225,7 +216,7 @@ final class MailMessageOperations
             return [];
         }
         $st = @imap_fetchstructure($conn, $msgno);
-        if ($st === false || ! is_object($st)) {
+        if ($st === false) {
             return [];
         }
 
@@ -330,9 +321,6 @@ final class MailMessageOperations
         } finally {
             @imap_close($conn);
         }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
-        }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);
         }
@@ -368,7 +356,7 @@ final class MailMessageOperations
                     $summaries = self::attachmentSummariesForUid($conn, $uid);
                     $meta = null;
                     foreach ($summaries as $s) {
-                        if (isset($s['part']) && $s['part'] === $part) {
+                        if ($s['part'] === $part) {
                             $meta = $s;
                             break;
                         }
@@ -382,7 +370,7 @@ final class MailMessageOperations
                         } else {
                             return new MailBinaryDownload(
                                 $got['mime'],
-                                isset($meta['name']) && is_string($meta['name']) ? $meta['name'] : 'attachment',
+                                $meta['name'],
                                 $got['bytes'],
                             );
                         }
@@ -392,14 +380,8 @@ final class MailMessageOperations
         } finally {
             @imap_close($conn);
         }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
-        }
-        if ($resp[0] !== 200) {
-            throw new MailResponseException($resp[0], $resp[1]);
-        }
 
-        return $resp[1];
+        throw new MailResponseException($resp[0], $resp[1]);
     }
 
     public function handleMessagePatch(string $username, array $j): array
@@ -442,9 +424,6 @@ final class MailMessageOperations
         } finally {
             @imap_close($conn);
         }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
-        }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);
         }
@@ -478,9 +457,6 @@ final class MailMessageOperations
             }
         } finally {
             @imap_close($conn);
-        }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
         }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);
@@ -520,7 +496,7 @@ final class MailMessageOperations
                 $resp = [400, ['error' => 'mailbox']];
             } else {
                 $target = $to;
-                if ($target === '' && $toSys !== null) {
+                if ($target === '') {
                     $resolved = $this->folders->resolveSystemMailbox($conn, $ref, $toSys);
                     if ($resolved === null || $resolved === '') {
                         $resp = [400, ['error' => 'no_target_mailbox', 'message' => 'No mailbox found for '.$toSys]];
@@ -536,9 +512,6 @@ final class MailMessageOperations
             }
         } finally {
             @imap_close($conn);
-        }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
         }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);

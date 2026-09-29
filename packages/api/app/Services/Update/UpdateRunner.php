@@ -6,7 +6,6 @@ namespace App\Services\Update;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\AppUpdateHistory;
-use App\Services\Installer\ApiRuntimeEnvService;
 use App\Services\Installer\InstallerEnvChecker;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
@@ -18,13 +17,14 @@ final class UpdateRunner
     /** Orphan progress in state.json without a lock is cleared after this many seconds. */
     private const STALE_PROGRESS_SECONDS = 120;
 
+    private bool $applyFinished = false;
+
     public function __construct(
         private UpdateStateStore $store,
         private WgwInstallConfig $install,
         private AppVersion $appVersion,
         private InstallerEnvChecker $envChecker,
         private ReleaseFeedClient $releaseFeed,
-        private ApiRuntimeEnvService $apiEnv,
         private WgwSchemaMigrator $schemaMigrator,
         private WgwConfigMigrator $configMigrator,
         private UpdateRunnerPackageIo $packages,
@@ -310,17 +310,16 @@ final class UpdateRunner
             'finishedAt' => null,
         ];
 
-        $applyFinished = false;
+        $this->applyFinished = false;
         $runner = $this;
         register_shutdown_function(static function () use (
             $runner,
-            &$applyFinished,
             &$result,
             &$lock,
             $beforeVersion,
             $targetVersion,
         ): void {
-            if ($applyFinished) {
+            if ($runner->applyFinished) {
                 return;
             }
             $runner->finalizeAbortedApply($result, $lock, $beforeVersion, $targetVersion);
@@ -399,7 +398,7 @@ final class UpdateRunner
                 fclose($lock);
             }
             $this->store->cleanupTemporaryData();
-            $applyFinished = true;
+            $this->applyFinished = true;
         }
 
         return $result;
@@ -594,7 +593,7 @@ final class UpdateRunner
     private function assertHttpsUrl(string $url, string $label): void
     {
         $parts = parse_url(trim($url));
-        $scheme = is_array($parts) && isset($parts['scheme']) && is_string($parts['scheme'])
+        $scheme = is_array($parts) && isset($parts['scheme'])
             ? strtolower($parts['scheme'])
             : '';
         if ($scheme !== 'https') {

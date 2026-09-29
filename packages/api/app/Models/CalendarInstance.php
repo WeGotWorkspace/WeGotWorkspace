@@ -11,13 +11,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ * Nullability follows Sabre's MySQL and SQLite bundles: nullable when either allows NULL.
  *
  * @property int $id
  * @property int $calendarid
  * @property string|null $principaluri
  * @property int $access
  * @property string|null $displayname
- * @property string $uri
+ * @property string|null $uri
  * @property string|null $description
  * @property int|null $calendarorder
  * @property string|null $calendarcolor

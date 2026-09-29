@@ -14,4 +14,13 @@ abstract class Component
      * @return Component
      */
     public function add() {}
+
+    /**
+     * First child with this name. Vendor code types the match as Property,
+     * but select() also returns components such as VEVENT. mixed keeps both
+     * property methods and component instanceof checks valid.
+     *
+     * @return mixed
+     */
+    public function __get(string $name) {}
 }

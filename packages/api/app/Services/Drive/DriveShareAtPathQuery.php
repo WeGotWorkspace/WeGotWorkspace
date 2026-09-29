@@ -40,7 +40,7 @@ final class DriveShareAtPathQuery
      */
     public function atPath(array $principal, string $virtualPath): array
     {
-        $username = strtolower(trim((string) ($principal['username'] ?? '')));
+        $username = strtolower(trim($principal['username']));
         $path = $this->scope->normalize($virtualPath);
 
         if ($this->rules->principalOwnsSharePath($username, $path)) {

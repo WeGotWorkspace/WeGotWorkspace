@@ -28,7 +28,7 @@ final class FilesCapabilityProvider implements JmapCapabilityProviderInterface
     /**
      * Session-level filenode capability is the empty object (draft-14 §2.1).
      */
-    public function sessionCapability(): object|array
+    public function sessionCapability(): object
     {
         return (object) [];
     }

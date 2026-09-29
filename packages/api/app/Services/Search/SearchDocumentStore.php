@@ -201,7 +201,7 @@ final class SearchDocumentStore
     ): ?array {
         $groupPrincipalOwners = array_values(array_unique(array_map(
             static fn (string $slug): string => 'groups/'.$slug,
-            array_values(array_filter($groupSlugs, static fn (mixed $slug): bool => is_string($slug) && trim($slug) !== ''))
+            array_values(array_filter($groupSlugs, static fn (mixed $slug): bool => trim($slug) !== ''))
         )));
 
         $row = SearchDocument::query()

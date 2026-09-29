@@ -25,7 +25,7 @@ final class CalendarEventImportController
         }
 
         $body = $request->getContent();
-        if (! is_string($body) || trim($body) === '') {
+        if (trim($body) === '') {
             throw new ApiHttpException(400, 'ICS body is required.', 'bad_request');
         }
 
