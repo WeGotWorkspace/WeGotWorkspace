@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Services\Auth\LoginRateLimiter;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -64,7 +65,7 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
 
     public function test_login_locks_out_after_repeated_failures(): void
     {
-        for ($attempt = 0; $attempt < 8; $attempt++) {
+        for ($attempt = 0; $attempt < LoginRateLimiter::USER_IP_LIMIT; $attempt++) {
             $this->postCredentials(self::USERNAME, 'wrong')->assertUnauthorized();
         }
 
@@ -78,12 +79,12 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
 
     public function test_login_lockout_expires(): void
     {
-        for ($attempt = 0; $attempt < 8; $attempt++) {
+        for ($attempt = 0; $attempt < LoginRateLimiter::USER_IP_LIMIT; $attempt++) {
             $this->postCredentials(self::USERNAME, 'wrong')->assertUnauthorized();
         }
         $this->postCredentials(self::USERNAME, self::PASSWORD)->assertStatus(429);
 
-        $this->travel(601)->seconds();
+        $this->travel(LoginRateLimiter::DECAY_SECONDS + 1)->seconds();
 
         $this->postCredentials(self::USERNAME, self::PASSWORD)
             ->assertOk()
@@ -92,13 +93,13 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
 
     public function test_successful_login_resets_the_user_lockout_counter(): void
     {
-        for ($attempt = 0; $attempt < 7; $attempt++) {
+        for ($attempt = 0; $attempt < LoginRateLimiter::USER_IP_LIMIT - 1; $attempt++) {
             $this->postCredentials(self::USERNAME, 'wrong')->assertUnauthorized();
         }
 
         $this->postCredentials(self::USERNAME, self::PASSWORD)->assertOk();
 
-        for ($attempt = 0; $attempt < 8; $attempt++) {
+        for ($attempt = 0; $attempt < LoginRateLimiter::USER_IP_LIMIT; $attempt++) {
             $this->postCredentials(self::USERNAME, 'wrong')->assertUnauthorized();
         }
 
