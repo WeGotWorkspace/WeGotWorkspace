@@ -8,6 +8,7 @@ use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Models\AppSetting;
 use App\Services\Auth\AuthTokenService;
+use App\Services\Auth\DavClientWarning;
 use App\Services\Auth\MfaReauth;
 use App\Services\Auth\MfaSessionReissue;
 use App\Services\Auth\RecoveryCodeService;
@@ -28,6 +29,7 @@ final class TotpSettingsController
         private MfaSessionReissue $sessionReissue,
         private AuthTokenService $tokens,
         private UiSessionService $uiSession,
+        private DavClientWarning $davWarning,
     ) {}
 
     public function store(Request $request): JsonResponse
@@ -46,7 +48,15 @@ final class TotpSettingsController
         return response()->json([
             'secret' => $secret,
             'otpauth_uri' => $this->totp->provisioningUri($this->issuer($request), $username, $secret),
+            'dav_warning' => $this->davWarning->applies($username),
         ]);
+    }
+
+    public function snoozeSuggestion(Request $request): JsonResponse
+    {
+        $this->mfa->snoozeSuggestion($this->username($request));
+
+        return response()->json(['suggest' => false]);
     }
 
     public function confirm(Request $request): JsonResponse

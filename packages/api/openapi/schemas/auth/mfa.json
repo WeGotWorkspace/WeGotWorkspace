@@ -1,0 +1,156 @@
+{
+  "AuthTokenOkResponse": {
+    "allOf": [
+      { "$ref": "#/components/schemas/AuthTokenResponse" },
+      {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": { "const": "ok" }
+        }
+      }
+    ]
+  },
+  "MfaRequiredResponse": {
+    "type": "object",
+    "required": ["status", "challenge", "methods"],
+    "properties": {
+      "status": { "const": "mfa_required" },
+      "challenge": { "type": "string" },
+      "methods": {
+        "type": "array",
+        "items": { "type": "string", "enum": ["totp", "recovery"] }
+      }
+    }
+  },
+  "MfaSetupRequiredResponse": {
+    "type": "object",
+    "required": ["status", "challenge"],
+    "properties": {
+      "status": { "const": "mfa_setup_required" },
+      "challenge": { "type": "string" }
+    }
+  },
+  "MfaReplaceRequiredResponse": {
+    "type": "object",
+    "required": ["status", "challenge"],
+    "properties": {
+      "status": { "const": "mfa_replace_required" },
+      "challenge": { "type": "string" }
+    }
+  },
+  "AuthLoginResponse": {
+    "oneOf": [
+      { "$ref": "#/components/schemas/AuthTokenOkResponse" },
+      { "$ref": "#/components/schemas/MfaRequiredResponse" },
+      { "$ref": "#/components/schemas/MfaSetupRequiredResponse" },
+      { "$ref": "#/components/schemas/MfaReplaceRequiredResponse" }
+    ]
+  },
+  "MfaVerificationResponse": {
+    "oneOf": [
+      { "$ref": "#/components/schemas/AuthTokenOkResponse" },
+      { "$ref": "#/components/schemas/MfaReplaceRequiredResponse" }
+    ]
+  },
+  "MfaConfirmationResponse": {
+    "allOf": [
+      { "$ref": "#/components/schemas/AuthTokenOkResponse" },
+      {
+        "type": "object",
+        "required": ["recovery_codes"],
+        "properties": {
+          "recovery_codes": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    ]
+  },
+  "TotpProvisioningResponse": {
+    "type": "object",
+    "required": ["secret", "otpauth_uri", "dav_warning"],
+    "properties": {
+      "secret": { "type": "string" },
+      "otpauth_uri": { "type": "string" },
+      "dav_warning": { "type": "boolean" }
+    }
+  },
+  "RecoveryCodesResponse": {
+    "type": "object",
+    "required": ["recovery_codes"],
+    "properties": {
+      "recovery_codes": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  },
+  "AppPasswordSummary": {
+    "type": "object",
+    "required": ["id", "name", "createdAt"],
+    "properties": {
+      "id": { "type": "integer" },
+      "name": { "type": "string" },
+      "createdAt": { "type": "string" },
+      "lastUsedAt": { "type": ["string", "null"] },
+      "lastUsedClient": { "type": ["string", "null"] }
+    }
+  },
+  "AppPasswordListResponse": {
+    "type": "object",
+    "required": ["appPasswords"],
+    "properties": {
+      "appPasswords": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/AppPasswordSummary" }
+      }
+    }
+  },
+  "AppPasswordCreateRequest": {
+    "type": "object",
+    "required": ["name"],
+    "properties": {
+      "name": { "type": "string", "maxLength": 60 },
+      "password": { "type": "string" },
+      "code": { "type": "string" }
+    }
+  },
+  "AppPasswordCreatedResponse": {
+    "type": "object",
+    "required": ["password", "item"],
+    "properties": {
+      "password": { "type": "string" },
+      "item": { "$ref": "#/components/schemas/AppPasswordSummary" }
+    }
+  },
+  "AppPasswordRevokeAllRequest": {
+    "type": "object",
+    "properties": {
+      "password": { "type": "string" },
+      "code": { "type": "string" }
+    }
+  },
+  "Principal": {
+    "type": "object",
+    "required": ["username", "role"],
+    "properties": {
+      "username": { "type": "string" },
+      "role": {
+        "type": "string",
+        "enum": ["guest", "user", "admin"]
+      },
+      "mfa": {
+        "type": "object",
+        "required": ["enabled", "required", "recovery_codes_remaining", "suggest"],
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "required": { "type": "boolean" },
+          "recovery_codes_remaining": { "type": "integer" },
+          "suggest": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

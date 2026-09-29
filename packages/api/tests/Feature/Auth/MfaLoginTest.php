@@ -6,6 +6,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\AppSetting;
 use App\Models\AuthChallenge;
+use App\Models\User;
 use App\Models\UserMfa;
 use App\Services\Auth\AppPasswordService;
 use App\Services\Auth\RecoveryCodeService;
@@ -215,6 +216,24 @@ final class MfaLoginTest extends WgwDatabaseTestCase
             'code' => $this->otp($secret),
         ])->assertOk();
         $this->assertFalse(app(UserMfaService::class)->isEnabled('alice'));
+    }
+
+    public function test_provisioning_reports_dav_use_and_suggestion_snooze_hides_the_prompt(): void
+    {
+        $token = $this->issueBearerToken();
+        $first = $this->withBearer($token)->postJson('/api/v1/settings/totp');
+        $first->assertOk();
+        $first->assertJsonPath('dav_warning', false);
+
+        User::query()->where('username', 'alice')->update(['dav_password_used_at' => Carbon::now()]);
+        $second = $this->withBearer($token)->postJson('/api/v1/settings/totp');
+        $second->assertOk();
+        $second->assertJsonPath('dav_warning', true);
+        $second->assertJsonPath('secret', $first->json('secret'));
+
+        $this->withBearer($token)->postJson('/api/v1/settings/totp/suggestion')->assertOk()
+            ->assertJsonPath('suggest', false);
+        $this->withBearer($token)->getJson('/api/v1/me')->assertOk()->assertJsonPath('mfa.suggest', false);
     }
 
     public function test_oauth_session_does_not_log_in_before_the_code(): void

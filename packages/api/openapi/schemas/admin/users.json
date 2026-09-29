@@ -50,6 +50,9 @@
       },
       "enabled": {
         "type": "boolean"
+      },
+      "mfaEnabled": {
+        "type": "boolean"
       }
     },
     "required": [
@@ -59,7 +62,8 @@
       "displayName",
       "groups",
       "createdAt",
-      "enabled"
+      "enabled",
+      "mfaEnabled"
     ]
   }
 }

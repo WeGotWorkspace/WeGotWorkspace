@@ -24,6 +24,7 @@ final class MfaChallengeService
         private UserMfaService $mfa,
         private MfaSessionReissue $sessionReissue,
         private AuthTokenService $tokens,
+        private DavClientWarning $davWarning,
     ) {}
 
     /**
@@ -66,7 +67,7 @@ final class MfaChallengeService
     }
 
     /**
-     * @return array{secret: string, otpauth_uri: string}
+     * @return array{secret: string, otpauth_uri: string, dav_warning: bool}
      */
     public function provision(string $challengeId, string $requestHost): array
     {
@@ -89,6 +90,7 @@ final class MfaChallengeService
                 $challenge->username,
                 $secret,
             ),
+            'dav_warning' => $this->davWarning->applies($challenge->username),
         ];
     }
 

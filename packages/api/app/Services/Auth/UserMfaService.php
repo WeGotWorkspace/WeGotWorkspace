@@ -67,6 +67,17 @@ final class UserMfaService
         UserMfa::query()->where('username', $this->normalize($username))->delete();
     }
 
+    public function snoozeSuggestion(string $username): void
+    {
+        if ($this->isEnabled($username)) {
+            return;
+        }
+
+        $row = UserMfa::query()->firstOrNew(['username' => $this->normalize($username)]);
+        $row->suggest_snoozed_until = Carbon::now()->addDays(30);
+        $row->save();
+    }
+
     private function normalize(string $username): string
     {
         return strtolower(trim($username));

@@ -144,10 +144,11 @@
       },
       "TotpProvisioningResponse": {
         "type": "object",
-        "required": ["secret", "otpauth_uri"],
+        "required": ["secret", "otpauth_uri", "dav_warning"],
         "properties": {
           "secret": {"type": "string"},
-          "otpauth_uri": {"type": "string"}
+          "otpauth_uri": {"type": "string"},
+          "dav_warning": {"type": "boolean"}
         }
       },
       "RecoveryCodesResponse": {
@@ -5599,6 +5600,28 @@
           "200": {"description": "Turned off"},
           "401": {"description": "Re-authentication rejected"},
           "422": {"description": "Re-authentication missing"}
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/settings/totp/suggestion": {
+      "post": {
+        "tags": ["Settings"],
+        "summary": "Snooze the two-factor suggestion for 30 days",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Suggestion snoozed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["suggest"],
+                  "properties": {"suggest": {"type": "boolean"}}
+                }
+              }
+            }
+          }
         },
         "x-wgw-access": "user"
       }

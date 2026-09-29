@@ -212,6 +212,7 @@ Route::middleware(['wgw.auth', 'wgw.mfa', 'wgw.role:user'])->group(function () u
     Route::post('settings/app-passwords/revocations', [AppPasswordsController::class, 'revokeAll']);
     Route::delete('settings/app-passwords/{id}', [AppPasswordsController::class, 'destroy'])->whereNumber('id');
     Route::post('settings/totp', [TotpSettingsController::class, 'store']);
+    Route::post('settings/totp/suggestion', [TotpSettingsController::class, 'snoozeSuggestion']);
     Route::post('settings/totp/confirmation', [TotpSettingsController::class, 'confirm']);
     Route::delete('settings/totp', [TotpSettingsController::class, 'destroy']);
     Route::post('settings/totp/recovery-codes', [TotpSettingsController::class, 'regenerate']);
