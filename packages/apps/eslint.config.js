@@ -74,6 +74,9 @@ export default tseslint.config(
       "src/**/__tests__/fixtures/**",
       "src/**/pwa-*.test.ts",
       "src/**/workspace-pwa-manifests.test.ts",
+      // Design-token invariants; replace with stylelint rules in a follow-up PR.
+      "src/control-height.tokens.test.ts",
+      "src/foundations/token-catalog.test.ts",
     ],
     rules: {
       "no-restricted-imports": "off",
