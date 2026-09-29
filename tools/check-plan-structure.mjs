@@ -4,9 +4,11 @@
  *
  * Changed plan.md files must have Invariants and Open decisions. Invariants
  * set to None are allowed only when every file in the diff is under docs/
- * or .agents/. Chunk sections reject deferral markers. What exists bullets
- * need a link, path:, or a nested quote or code block. Disappeared ## / ###
- * headings must be named under Removed since previous revision.
+ * or .agents/. Each Invariants bullet needs Proof: followed by a test path:
+ * or a non-empty `cmd:`. A citation before Proof: does not count. Chunk
+ * sections reject deferral markers. What exists bullets need a link, path:,
+ * or a nested quote or code block. Disappeared ## / ### headings must be
+ * named under Removed since previous revision.
  */
 
 import { execFileSync } from "node:child_process";
@@ -145,13 +147,54 @@ export function topLevelBullets(body) {
   return bullets;
 }
 
-/** @param {string} blob */
-function hasRealPathCitation(blob) {
+/** @param {string} blob @returns {string[]} */
+function realPathCitations(blob) {
+  const paths = [];
   const pattern = /path:\s*(\S+)/g;
   for (const match of blob.matchAll(pattern)) {
-    if (!match[1].includes("path/to/")) return true;
+    if (!match[1].includes("path/to/")) paths.push(match[1]);
+  }
+  return paths;
+}
+
+/** @param {string} blob */
+function hasRealPathCitation(blob) {
+  return realPathCitations(blob).length > 0;
+}
+
+/** @param {string} raw */
+function citedPathIsTest(raw) {
+  let value = raw.replace(/^[`'"]+|[,.;`'"]+$/g, "");
+  value = value.replace(/:\d+(?::\d+)?$/, "");
+  const file = value.split("/").pop() ?? "";
+  if (/\.(?:test|spec|stories)\./.test(file)) return true;
+  if (/Test\.php$/.test(file)) return true;
+  return /(?:^|\/)(?:tests|e2e)\//.test(value);
+}
+
+/**
+ * A command proof is a backtick `cmd:` whose body is not empty, not
+ * whitespace, and not only a `<…>` placeholder.
+ *
+ * @param {string} blob
+ */
+function hasCommandProof(blob) {
+  const pattern = /`cmd:\s*([^`]*)`/g;
+  for (const match of blob.matchAll(pattern)) {
+    const body = match[1].trim();
+    if (body.length > 0 && !/^<[^>]*>$/.test(body)) return true;
   }
   return false;
+}
+
+/** @param {{ line: string, nested: string[] }} bullet */
+function bulletHasTestProof(bullet) {
+  const blob = [bullet.line, ...bullet.nested].join("\n");
+  const at = blob.indexOf("Proof:");
+  if (at === -1) return false;
+  const after = blob.slice(at + "Proof:".length);
+  if (realPathCitations(after).some(citedPathIsTest)) return true;
+  return hasCommandProof(after);
 }
 
 /** @param {{ line: string, nested: string[] }} bullet */
@@ -233,6 +276,14 @@ export function evaluatePlans({ plans, diffPaths }) {
           errors.push(
             `${rel}: Invariants is None, but the diff touches ${outside.join(", ")}`,
           );
+        }
+      } else {
+        for (const bullet of topLevelBullets(invariants)) {
+          if (!bulletHasTestProof(bullet)) {
+            errors.push(
+              `${rel}: invariant needs a test path: or cmd: after Proof: ${bullet.line.trim()}`,
+            );
+          }
         }
       }
 
