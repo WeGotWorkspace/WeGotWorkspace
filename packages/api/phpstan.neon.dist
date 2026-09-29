@@ -22,6 +22,7 @@ parameters:
         - Sabre\VObject\Component
     stubFiles:
         - stubs/phpstan/SabreVObject.php
+        - stubs/phpstan/SabreITipBroker.php
         - stubs/phpstan/PassportClient.php
     paths:
         - app

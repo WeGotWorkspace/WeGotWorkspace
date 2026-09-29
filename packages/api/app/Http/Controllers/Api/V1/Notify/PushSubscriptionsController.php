@@ -25,18 +25,7 @@ final class PushSubscriptionsController
     public function store(PushSubscriptionRequest $request): JsonResponse
     {
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $validated = $request->validated();
-        $endpoint = $validated['endpoint'] ?? null;
-        $keys = $validated['keys'] ?? null;
-        $p256dh = is_array($keys) ? ($keys['p256dh'] ?? null) : null;
-        $auth = is_array($keys) ? ($keys['auth'] ?? null) : null;
-        if (! is_string($endpoint) || $endpoint === '' || ! is_string($p256dh) || $p256dh === '' || ! is_string($auth) || $auth === '') {
-            abort(422, 'endpoint and keys are required.');
-        }
-        $row = $this->push->subscribe($principal['username'], [
-            'endpoint' => $endpoint,
-            'keys' => ['p256dh' => $p256dh, 'auth' => $auth],
-        ], $request->userAgent());
+        $row = $this->push->subscribe($principal['username'], $request->payload(), $request->userAgent());
 
         return response()->json([
             'id' => $row->id,

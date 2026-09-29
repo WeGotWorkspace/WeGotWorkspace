@@ -188,7 +188,7 @@ final class CalendarSchedulingService
 
         try {
             /** @var list<Message> $messages */
-            $messages = (new Broker)->parseEvent($newIcs, $actorAddresses, $oldIcs); // @phpstan-ignore argument.type (Sabre Broker treats a null calendar as delete/CANCEL)
+            $messages = (new Broker)->parseEvent($newIcs, $actorAddresses, $oldIcs);
         } catch (ITipException) {
             return [];
         }
