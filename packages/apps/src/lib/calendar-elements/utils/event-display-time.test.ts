@@ -5,7 +5,6 @@ import {
   displayOccurrenceInEventZone,
   eventOccurrenceInDisplayZone,
   padRangeForDisplayZone,
-  shiftDisplayRangeInEventZone,
   wallClockInTimeZone,
 } from "./event-display-time.js";
 
@@ -48,20 +47,6 @@ describe("eventOccurrenceInDisplayZone", () => {
     expect(
       displayOccurrenceInEventZone(display, { timeZone: "UTC" }, "America/New_York").toString(),
     ).toBe(utcNine.toString());
-  });
-
-  it("shifts a display-zone drag back into the event zone", () => {
-    const displayStart = Temporal.PlainDateTime.from("2026-09-29T19:00:00");
-    const displayEnd = Temporal.PlainDateTime.from("2026-09-29T20:00:00");
-    const moved = shiftDisplayRangeInEventZone(
-      displayStart,
-      displayEnd,
-      { timeZone: "Pacific/Auckland" },
-      "America/Los_Angeles",
-      3600,
-    );
-    expect(moved.start.toString()).toBe("2026-09-30T16:00:00");
-    expect(moved.end.toString()).toBe("2026-09-30T17:00:00");
   });
 });
 

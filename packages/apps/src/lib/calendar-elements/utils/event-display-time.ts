@@ -52,28 +52,6 @@ export function displayOccurrenceInEventZone(
   return wallClockInTimeZone(wall, displayTimeZone, event.timeZone);
 }
 
-/** Shift a display-zone span by seconds, then convert both edges back to the event zone. */
-export function shiftDisplayRangeInEventZone(
-  displayStart: Temporal.PlainDateTime,
-  displayEnd: Temporal.PlainDateTime,
-  event: EventDisplayTimeFields,
-  displayTimeZone: string,
-  deltaSeconds: number,
-): { start: Temporal.PlainDateTime; end: Temporal.PlainDateTime } {
-  return {
-    start: displayOccurrenceInEventZone(
-      displayStart.add({ seconds: deltaSeconds }),
-      event,
-      displayTimeZone,
-    ),
-    end: displayOccurrenceInEventZone(
-      displayEnd.add({ seconds: deltaSeconds }),
-      event,
-      displayTimeZone,
-    ),
-  };
-}
-
 export function padRangeForDisplayZone(range: {
   start: Temporal.PlainDateTime;
   end: Temporal.PlainDateTime;

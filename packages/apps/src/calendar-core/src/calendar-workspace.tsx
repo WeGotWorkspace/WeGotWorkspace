@@ -503,7 +503,6 @@ export function CalendarWorkspace({
     year: L.viewYear,
   };
   const periodNav = calendarPeriodNavLabels(view, L);
-
   useDocumentTitle(title);
 
   useEffect(() => {
