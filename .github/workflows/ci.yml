@@ -445,3 +445,94 @@ jobs:
           name: vitest-coverage
           path: packages/apps/coverage
           if-no-files-found: error
+
+  coverage-ratchet:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [api-coverage, apps-coverage]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6.1.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Download API coverage
+        uses: actions/download-artifact@v7
+        with:
+          name: phpunit-clover
+          path: packages/api/build/logs
+
+      - name: Download apps coverage
+        uses: actions/download-artifact@v7
+        with:
+          name: vitest-coverage
+          path: packages/apps/coverage
+
+      - name: Check coverage ratchet
+        id: check
+        run: |
+          set +e
+          node tools/coverage-ratchet.mjs check
+          CODE=$?
+          set -e
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+          if [[ $CODE -eq 2 ]]; then
+            echo "Coverage increased, will create PR"
+          elif [[ $CODE -eq 0 ]]; then
+            echo "Coverage stable"
+          else
+            echo "Coverage ratchet check failed"
+            exit 1
+          fi
+
+      - name: Update baseline and create PR
+        if: steps.check.outputs.exit_code == '2'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          
+          git config user.name "WeGotWorkspace Bot"
+          git config user.email "bot@wegotworkspace.com"
+          
+          BRANCH="chore/raise-coverage-baseline-$(date +%s)"
+          git checkout -b "$BRANCH"
+          
+          node tools/coverage-ratchet.mjs update
+          
+          git add tools/coverage-baseline.json
+          git commit -m "chore(coverage): raise baseline after coverage improvements"
+          git push -u origin "$BRANCH"
+          
+          # Build PR body with coverage table
+          BODY="## Coverage Baseline Update
+
+This PR raises the coverage baseline after improvements on \`main\`.
+
+### Updated Packages
+
+| Package | Coverage |
+|---------|----------|
+"
+          while IFS= read -r line; do
+            if [[ $line =~ \"(.+)\":[[:space:]]*([0-9.]+) ]]; then
+              pkg="${BASH_REMATCH[1]}"
+              pct="${BASH_REMATCH[2]}"
+              BODY+="| \`$pkg\` | ${pct}% |"$'\n'
+            fi
+          done < <(jq -r 'to_entries | .[] | "\"\(.key)\": \(.value)"' tools/coverage-baseline.json)
+          
+          gh pr create \
+            --draft \
+            --title "chore(coverage): raise baseline after improvements" \
+            --body "$BODY" \
+            --base main \
+            --head "$BRANCH"

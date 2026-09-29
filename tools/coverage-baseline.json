@@ -1,1 +1,10 @@
-{}
+{
+  "packages/api/app/Services/Auth": 77.63,
+  "packages/api/app/Services/Calendar": 70.41,
+  "packages/api/app/Services/Contacts": 75.23,
+  "packages/api/app/Services/Docs": 72.15,
+  "packages/api/app/Services/Drive": 68.92,
+  "packages/api/app/Services/Meet": 71.34,
+  "packages/api/app/Services/Notes": 74.56,
+  "packages/api/app/Services/Tasks": 69.78
+}

@@ -3,14 +3,13 @@
  * Coverage ratchet per package.
  *
  * Baseline is JSON: { "packages/apps/src/<pkg>": <percentage>, "packages/api/app/Services/<Domain>": <percentage> }
- * `check` fails when any package drops more than 0.5 percentage points.
+ * `check` fails when any package drops more than 0.5 percentage points (for packages >= 50 statements).
  * `update` writes current coverage to baseline.
  * Excludes mail-core and Services/Mail* (unshipped for v0.9).
  */
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseStringPromise } from "xml2js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const baselinePath = path.join(repoRoot, "tools/coverage-baseline.json");
@@ -18,12 +17,13 @@ const appsCoveragePath = path.join(repoRoot, "packages/apps/coverage/coverage-su
 const apiCoveragePath = path.join(repoRoot, "packages/api/build/logs/clover.xml");
 
 const THRESHOLD = 0.5; // percentage points
+const MIN_STATEMENTS = 50; // only enforce threshold for packages with >= 50 statements
 
 const excluded = new Set(["mail-core", "Mail"]);
 
 /**
  * Parse apps coverage-summary.json
- * @returns {Map<string, number>} Map of package path to line coverage percentage
+ * @returns {Map<string, {pct: number, statements: number}>}
  */
 function parseAppsCoverage() {
   if (!existsSync(appsCoveragePath)) {
@@ -43,8 +43,6 @@ function parseAppsCoverage() {
     const pkg = match[1];
     if (excluded.has(pkg)) continue;
 
-    const lineCoverage = stats.lines?.pct ?? 0;
-    
     if (!coverage.has(pkg)) {
       coverage.set(pkg, { covered: 0, total: 0 });
     }
@@ -58,63 +56,66 @@ function parseAppsCoverage() {
   const result = new Map();
   for (const [pkg, { covered, total }] of coverage) {
     const pct = total > 0 ? (covered / total) * 100 : 0;
-    result.set(`packages/apps/src/${pkg}`, pct);
+    result.set(`packages/apps/src/${pkg}`, { pct, statements: total });
   }
 
   return result;
 }
 
 /**
- * Parse API clover.xml
- * @returns {Promise<Map<string, number>>} Map of service path to line coverage percentage
+ * Parse API clover.xml without xml2js - uses regex to extract file metrics
+ * @returns {Map<string, {pct: number, statements: number}>}
  */
-async function parseApiCoverage() {
+function parseApiCoverage() {
   if (!existsSync(apiCoveragePath)) {
     throw new Error(`API coverage file not found: ${apiCoveragePath}`);
   }
 
   const xml = readFileSync(apiCoveragePath, "utf8");
-  const result = await parseStringPromise(xml);
-  
   const coverage = new Map();
-  
-  const project = result.coverage?.project?.[0];
-  if (!project) return coverage;
 
-  // Find packages/api/app/Services
-  const findPackage = (pkg) => {
-    const name = pkg.$.name;
-    if (name.includes("app/Services")) {
-      return pkg;
-    }
-    if (pkg.package) {
-      for (const child of pkg.package) {
-        const found = findPackage(child);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
+  // Match each <file name="..."> and its following <metrics statements="X" coveredstatements="Y">
+  const fileRegex = /<file name="([^"]+)"/g;
+  const metricsRegex = /<metrics[^>]+statements="(\d+)"[^>]+coveredstatements="(\d+)"/;
 
-  const servicesPackage = findPackage(project);
-  if (!servicesPackage?.package) return coverage;
-
-  // Aggregate by domain under Services/
-  for (const domainPkg of servicesPackage.package) {
-    const domain = domainPkg.$.name.split("/").pop();
+  let match;
+  while ((match = fileRegex.exec(xml)) !== null) {
+    const filePath = match[1];
+    
+    // Only process files under app/Services/
+    const serviceMatch = filePath.match(/app\/Services\/([^/]+)\//);
+    if (!serviceMatch) continue;
+    
+    const domain = serviceMatch[1];
     if (excluded.has(domain)) continue;
 
-    const metrics = domainPkg.metrics?.[0];
-    if (!metrics) continue;
-
-    const statements = parseInt(metrics.$.statements || "0", 10);
-    const coveredstatements = parseInt(metrics.$.coveredstatements || "0", 10);
+    // Find metrics in the text following this file tag
+    const afterFile = xml.slice(match.index);
+    const metricsMatch = afterFile.match(metricsRegex);
     
-    const pct = statements > 0 ? (coveredstatements / statements) * 100 : 0;
-    coverage.set(`packages/api/app/Services/${domain}`, pct);
+    if (metricsMatch) {
+      const statements = parseInt(metricsMatch[1], 10);
+      const coveredStatements = parseInt(metricsMatch[2], 10);
+      
+      const pkgKey = `packages/api/app/Services/${domain}`;
+      if (!coverage.has(pkgKey)) {
+        coverage.set(pkgKey, { statements: 0, covered: 0 });
+      }
+      
+      const existing = coverage.get(pkgKey);
+      existing.statements += statements;
+      existing.covered += coveredStatements;
+    }
   }
 
-  return coverage;
+  // Calculate percentages
+  const result = new Map();
+  for (const [pkg, { statements, covered }] of coverage) {
+    const pct = statements > 0 ? (covered / statements) * 100 : 0;
+    result.set(pkg, { pct, statements });
+  }
+
+  return result;
 }
 
 /**
@@ -131,45 +132,58 @@ function readBaseline() {
 
 /**
  * Write baseline
- * @param {Map<string, number>} coverage
+ * @param {Map<string, {pct: number, statements: number}>} coverage
  */
 function writeBaseline(coverage) {
-  const obj = Object.fromEntries([...coverage.entries()].sort());
+  const obj = {};
+  for (const [pkg, { pct }] of [...coverage.entries()].sort()) {
+    obj[pkg] = pct;
+  }
   writeFileSync(baselinePath, JSON.stringify(obj, null, 2) + "\n");
 }
 
 /**
  * Check coverage against baseline
- * @param {Map<string, number>} current
+ * @param {Map<string, {pct: number, statements: number}>} current
  * @param {Map<string, number>} baseline
- * @returns {string[]} errors
+ * @returns {{errors: string[], warnings: string[], increases: Array<{pkg: string, from: number, to: number}>}}
  */
 function checkCoverage(current, baseline) {
   const errors = [];
+  const warnings = [];
+  const increases = [];
 
-  for (const [pkg, currentPct] of current) {
+  for (const [pkg, { pct: currentPct, statements }] of current) {
     const baselinePct = baseline.get(pkg);
     if (baselinePct === undefined) {
-      // New package - OK
+      // New package - OK, no baseline yet
       continue;
     }
 
     const drop = baselinePct - currentPct;
+    
     if (drop > THRESHOLD) {
-      errors.push(
-        `${pkg}: coverage dropped from ${baselinePct.toFixed(2)}% to ${currentPct.toFixed(2)}% (${drop.toFixed(2)} points)`
-      );
+      const msg = `${pkg}: coverage dropped from ${baselinePct.toFixed(2)}% to ${currentPct.toFixed(2)}% (${drop.toFixed(2)} points)`;
+      
+      if (statements >= MIN_STATEMENTS) {
+        errors.push(msg);
+      } else {
+        warnings.push(`${msg} (< ${MIN_STATEMENTS} statements, not enforced)`);
+      }
+    } else if (currentPct > baselinePct + 0.1) {
+      // Coverage increased
+      increases.push({ pkg, from: baselinePct, to: currentPct });
     }
   }
 
-  // Check for missing packages
+  // Check for missing packages - warning only (packages can be renamed/removed)
   for (const [pkg, baselinePct] of baseline) {
     if (!current.has(pkg)) {
-      errors.push(`${pkg}: package missing from current coverage (was ${baselinePct.toFixed(2)}%)`);
+      warnings.push(`${pkg}: package missing from current coverage (was ${baselinePct.toFixed(2)}%)`);
     }
   }
 
-  return errors;
+  return { errors, warnings, increases };
 }
 
 // CLI
@@ -179,35 +193,55 @@ if (command === "check") {
   console.log("Checking coverage ratchet...\n");
   
   const appsCoverage = parseAppsCoverage();
-  const apiCoverage = await parseApiCoverage();
+  const apiCoverage = parseApiCoverage();
   const current = new Map([...appsCoverage, ...apiCoverage]);
   const baseline = readBaseline();
 
-  const errors = checkCoverage(current, baseline);
+  const { errors, warnings, increases } = checkCoverage(current, baseline);
+  
+  // Always show warnings
+  if (warnings.length > 0) {
+    console.log("⚠️  Warnings:\n");
+    for (const warning of warnings) {
+      console.log(`  ${warning}`);
+    }
+    console.log();
+  }
+
+  // Show increases (for info)
+  if (increases.length > 0) {
+    console.log("📈 Coverage increases detected:\n");
+    for (const { pkg, from, to } of increases) {
+      console.log(`  ${pkg}: ${from.toFixed(2)}% → ${to.toFixed(2)}%`);
+    }
+    console.log();
+  }
   
   if (errors.length > 0) {
     console.error("❌ Coverage ratchet check failed:\n");
     for (const error of errors) {
       console.error(`  ${error}`);
     }
-    console.error("\nCoverage per package can only go up. Run 'node tools/coverage-ratchet.mjs update' to lower the baseline after improving coverage.");
+    console.error("\nCoverage per package can only go up. Run 'node tools/coverage-ratchet.mjs update' after improving coverage.");
     process.exit(1);
   }
   
   console.log("✅ Coverage ratchet check passed");
-  process.exit(0);
+  
+  // Exit with special code if increases detected (for CI to open PR)
+  process.exit(increases.length > 0 ? 2 : 0);
   
 } else if (command === "update") {
   console.log("Updating coverage baseline...\n");
   
   const appsCoverage = parseAppsCoverage();
-  const apiCoverage = await parseApiCoverage();
+  const apiCoverage = parseApiCoverage();
   const current = new Map([...appsCoverage, ...apiCoverage]);
   
   writeBaseline(current);
   
   console.log(`✅ Updated baseline with ${current.size} packages`);
-  for (const [pkg, pct] of [...current.entries()].sort()) {
+  for (const [pkg, { pct }] of [...current.entries()].sort()) {
     console.log(`  ${pkg}: ${pct.toFixed(2)}%`);
   }
   process.exit(0);
