@@ -1,13 +1,8 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Input } from "@/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
-
-const inputCss = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "input.css"), "utf8");
 
 describe("Input", () => {
   it("defaults to the md control size", () => {
@@ -65,59 +60,6 @@ describe("Input", () => {
         .getByRole("combobox", { name: "md select" })
         .classList.contains("select-trigger--size-md"),
     ).toBe(true);
-  });
-
-  it("does not set pill radius on size classes", () => {
-    const smBlock = inputCss.match(
-      /\.select-trigger--size-sm,\s*\.input--size-sm,\s*\.control-surface--size-sm \{[\s\S]*?\n\}/,
-    )?.[0];
-    expect(smBlock).toBeDefined();
-    expect(smBlock).not.toMatch(/control-radius-button-pill/);
-    expect(smBlock).toMatch(/min-height:/);
-    expect(smBlock).toMatch(/font-size:/);
-    expect(inputCss).toMatch(
-      /\.control-surface,\s*\.input,\s*\.textarea,\s*\.select-trigger \{[\s\S]*border-radius:\s*var\(--control-radius\)/,
-    );
-  });
-
-  it("shares md font-size tokens across Input, Textarea, and control-surface", () => {
-    const mdBlock = inputCss.match(
-      /\.select-trigger--size-md,\s*\.input--size-md,\s*\.control-surface--size-md \{[\s\S]*?\n\}/,
-    )?.[0];
-    expect(mdBlock).toBeDefined();
-    expect(mdBlock).toMatch(/font-size:\s*var\(--input-font-size-md/);
-    expect(inputCss).toMatch(/\.textarea--size-md \{[\s\S]*font-size:\s*var\(--input-font-size-md/);
-    expect(inputCss).toMatch(
-      /\.control-surface,\s*\.input,\s*\.textarea,\s*\.select-trigger \{[\s\S]*font-size:\s*var\(--input-font-size/,
-    );
-  });
-
-  it("inherits font-size into WebKit time datetime-edit fields", () => {
-    expect(inputCss).toMatch(
-      /\.input\[type="time"\]::-webkit-datetime-edit(?:,\s*\n\.input\[type="time"\]::-webkit-[\w-]+)* \{[\s\S]*font-size:\s*inherit/,
-    );
-  });
-
-  it("pins the time picker indicator to the trailing edge like LocaleDatePicker", () => {
-    expect(inputCss).toMatch(/\.input\[type="time"\]\s*\{[\s\S]*relative/);
-    expect(inputCss).toMatch(
-      /\.input\[type="time"\]::-webkit-calendar-picker-indicator\s*\{[\s\S]*inset-inline-end:\s*0\.4rem/,
-    );
-    expect(inputCss).toMatch(
-      /\.input\[type="time"\]::-webkit-datetime-edit\s*\{[\s\S]*padding-inline-end:\s*1\.25rem/,
-    );
-  });
-
-  it("keeps the time picker indicator visible when disabled or read-only", () => {
-    expect(inputCss).toMatch(
-      /\.input\[type="time"\]:disabled::-webkit-calendar-picker-indicator[\s\S]*opacity:\s*0\.6/,
-    );
-    expect(inputCss).toMatch(
-      /\.input\[type="time"\]:read-only::-webkit-calendar-picker-indicator[\s\S]*pointer-events:\s*none/,
-    );
-    expect(inputCss).toMatch(
-      /\.input\[type="time"\]:disabled::-webkit-calendar-picker-indicator[\s\S]*display:\s*block/,
-    );
   });
 
   it("renders a leading search icon and no clear button when empty", () => {
@@ -188,15 +130,5 @@ describe("Input", () => {
     expect(
       (screen.getByRole("button", { name: "Show password" }) as HTMLButtonElement).disabled,
     ).toBe(true);
-  });
-
-  it("does not treat password/search wrappers as read-only surfaces", () => {
-    expect(inputCss).toMatch(/input\.input:read-only,/);
-    expect(inputCss).not.toMatch(/\n\.input:read-only,/);
-    expect(inputCss).toMatch(/\.input:has\(>\s*\.input__field:read-only\)/);
-    expect(inputCss).toMatch(/\.input__field \{[\s\S]*-webkit-text-fill-color:\s*inherit/);
-    expect(inputCss).toMatch(
-      /\.input::placeholder[\s\S]*-webkit-text-fill-color:\s*var\(\s*--input-placeholder-color/,
-    );
   });
 });

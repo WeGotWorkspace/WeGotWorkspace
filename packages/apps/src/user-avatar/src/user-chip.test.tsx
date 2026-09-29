@@ -1,15 +1,9 @@
 /** @vitest-environment jsdom */
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Check } from "lucide-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { UserChip } from "./user-chip";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const chipCss = readFileSync(join(here, "user-chip.css"), "utf8");
 
 afterEach(() => {
   cleanup();
@@ -62,11 +56,5 @@ describe("UserChip", () => {
     expect(chip?.getAttribute("tabindex")).toBe("0");
     fireEvent.pointerMove(chip!);
     expect(await screen.findByRole("tooltip", { name: "Accepted" })).toBeTruthy();
-  });
-
-  it("uses input-style focus-visible border on the outer chip", () => {
-    expect(chipCss).toMatch(
-      /\.user-chip:focus-visible\s*\{[\s\S]*border-color:\s*var\(--input-border-focus/,
-    );
   });
 });

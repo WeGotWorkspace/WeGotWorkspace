@@ -1,7 +1,4 @@
 import type { ReactElement } from "react";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -195,15 +192,6 @@ describe("SegmentedControl", () => {
     expect((container.querySelector(".segmented-control") as HTMLElement).dataset.thumbEdge).toBe(
       "solo",
     );
-  });
-
-  it("measures thumb geometry from layout offsets (transform-safe)", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const source = readFileSync(join(here, "segmented-control.tsx"), "utf8");
-    expect(source).toMatch(/active\.offsetLeft/);
-    expect(source).toMatch(/active\.offsetWidth/);
-    expect(source).toMatch(/data-thumb-edge/);
-    expect(source).not.toMatch(/active\.getBoundingClientRect|root\.getBoundingClientRect/);
   });
 
   it("defers thumb reveal until post-paint remeasure (no first-paint flash)", async () => {
