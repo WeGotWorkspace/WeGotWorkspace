@@ -1,4 +1,4 @@
-Source: #983 (body-hash: 3c10a483)
+Source: #983 (body-hash: 57237024)
 Goal: #971
 
 # Default list, address book, and notebook settings

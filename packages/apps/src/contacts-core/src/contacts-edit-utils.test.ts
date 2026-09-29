@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 import { afterEach, describe, expect, it } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { writeDefaultCollectionPrefs } from "@/lib/default-collection-prefs";

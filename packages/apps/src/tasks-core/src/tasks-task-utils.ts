@@ -393,8 +393,7 @@ export function defaultTaskListId(taskLists: TaskListIdentity[], preferredId?: s
   }
   const inbox = taskLists.find(isInboxTaskList);
   if (inbox) return inbox.id;
-  const preferred = owned.find((list) => list.isDefault) ?? owned[0] ?? taskLists[0];
-  return preferred?.id ?? INBOX_TASK_LIST_ID;
+  return owned.find((list) => list.isDefault)?.id ?? owned[0]?.id ?? INBOX_TASK_LIST_ID;
 }
 
 export const TASK_LIST_DOT_COLORS = [

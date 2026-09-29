@@ -56,8 +56,8 @@ None — every choice for this work is made.
 
 - **id:** `file-spec`
 - **Skill:** plan-feature
-- **Inputs:** Task #983 body-hash `3c10a483`
-- **Done when:** spec/plan/tasks exist with `Source: #983 (body-hash: 3c10a483)` and `Goal: #971`
+- **Inputs:** Task #983 body-hash `57237024`
+- **Done when:** spec/plan/tasks exist with `Source: #983 (body-hash: 57237024)` and `Goal: #971`
 - **Verify with:** `gh issue view 983 --json body --jq .body | shasum -a 256`
 - **Parallel with:** none
 
@@ -85,7 +85,7 @@ None — every choice for this work is made.
 - **Skill:** workspace
 - **Inputs:** Chunk A
 - **Done when:** All-view New uses the stored id; single-collection views ignore it; Tasks composer default updates after save
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/tasks-core/src/tasks-task-utils.test.ts src/tasks-core/src/use-tasks-controller.test.tsx src/contacts-core/src/contacts-edit-utils.test.ts src/notes-core/src/notes-note-utils.test.ts`
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/tasks-core/src/tasks-task-utils.test.ts src/tasks-core/src/use-tasks-controller.test.tsx src/contacts-core/src/contacts-edit-utils.test.ts src/notes-core/src/notes-note-utils.test.ts src/notes-core/src/notes-create-target.test.ts`
 - **Parallel with:** chunk B
 
 ## Test plan

@@ -14,7 +14,7 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 | `file-spec` | builder | plan-feature | `.agents/specs/983-default-collections/` | `gh issue view 983` |
 | `default-prefs` | builder | apps-ui | `packages/apps/src/lib/default-collection-prefs.ts`, `packages/apps/src/lib/app-picker-collections.ts` | `pnpm --dir packages/apps exec vitest run src/lib/default-collection-prefs.test.ts` |
 | `collection-panes` | builder | workspace, storybook | `settings-default-collection-pane.tsx`, `register-builtin-settings.tsx`, `settings-types.ts` | `pnpm --dir packages/apps exec vitest run src/settings-core/src/settings-registry.test.ts src/settings-core/src/settings-default-collection-pane.test.tsx` |
-| `create-wiring` | builder | workspace | `use-tasks-shell.tsx`, `contacts-edit-utils.ts`, `notes-note-utils.ts` | `pnpm --dir packages/apps exec vitest run src/tasks-core/src/tasks-task-utils.test.ts src/contacts-core/src/contacts-edit-utils.test.ts src/notes-core/src/notes-note-utils.test.ts` |
+| `create-wiring` | builder | workspace | `use-tasks-shell.tsx`, `contacts-edit-utils.ts`, `notes-create-target.ts` | `pnpm --dir packages/apps exec vitest run src/tasks-core/src/tasks-task-utils.test.ts src/contacts-core/src/contacts-edit-utils.test.ts src/notes-core/src/notes-create-target.test.ts` |
 
 ## Notes
 
