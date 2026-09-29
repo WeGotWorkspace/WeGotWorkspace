@@ -114,15 +114,16 @@ final class AlertDueScheduler
 
     private function warnOnNullCalendarData(): void
     {
+        if (Cache::has('alerts:null-calendardata-warned')) {
+            return;
+        }
+
         $query = CalendarObject::query()
             ->whereIn('componenttype', ['VEVENT', 'VTODO'])
             ->whereNull('calendardata');
 
         $count = (clone $query)->count();
-        if ($count === 0) {
-            return;
-        }
-        if (! Cache::add('alerts:null-calendardata-warned', true, 3600)) {
+        if ($count === 0 || ! Cache::add('alerts:null-calendardata-warned', true, 3600)) {
             return;
         }
 

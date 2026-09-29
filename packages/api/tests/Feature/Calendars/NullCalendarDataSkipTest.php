@@ -70,7 +70,17 @@ final class NullCalendarDataSkipTest extends WgwDatabaseTestCase
         $this->assertSame([$objectId], $summaries[0]['context']['ids']);
 
         $logged = count($warnings);
+        $db = DB::connection('wgw');
+        $db->flushQueryLog();
+        $db->enableQueryLog();
         $this->assertSame(0, app(AlertDueScheduler::class)->scan($now));
+        $nullScans = array_values(array_filter(
+            $db->getQueryLog(),
+            static fn (array $query): bool => str_contains(strtolower($query['query']), 'calendardata')
+                && str_contains(strtolower($query['query']), 'is null'),
+        ));
+        $db->disableQueryLog();
+        $this->assertSame([], $nullScans);
         $this->assertSame([], self::nullCalendarDataSummaries(array_slice($warnings, $logged)));
     }
 
