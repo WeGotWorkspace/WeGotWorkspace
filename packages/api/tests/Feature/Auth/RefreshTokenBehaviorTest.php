@@ -10,8 +10,11 @@ use Tests\Support\WgwDatabaseTestCase;
 
 final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
 {
+    private ?string $previousThrottleEnv = null;
+
     protected function setUp(): void
     {
+        $this->previousThrottleEnv = getenv('WGW_DISABLE_LOGIN_THROTTLE') ?: null;
         parent::setUp();
 
         putenv('WGW_DISABLE_LOGIN_THROTTLE=1');
@@ -20,6 +23,18 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
         config(['wgw.auth_realm' => 'SabreDAV']);
         $this->setAppSetting('auth_realm', 'SabreDAV');
         $this->seedWgwUser('alice', displayName: 'Alice');
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->previousThrottleEnv !== null) {
+            putenv("WGW_DISABLE_LOGIN_THROTTLE={$this->previousThrottleEnv}");
+            $_ENV['WGW_DISABLE_LOGIN_THROTTLE'] = $this->previousThrottleEnv;
+        } else {
+            putenv('WGW_DISABLE_LOGIN_THROTTLE');
+            unset($_ENV['WGW_DISABLE_LOGIN_THROTTLE'], $_SERVER['WGW_DISABLE_LOGIN_THROTTLE']);
+        }
+        parent::tearDown();
     }
 
     public function test_refresh_rotates_the_refresh_token(): void

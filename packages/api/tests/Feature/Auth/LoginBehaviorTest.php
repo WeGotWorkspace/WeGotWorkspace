@@ -14,8 +14,11 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
 
     private const string PASSWORD = 'secret';
 
+    private ?string $previousThrottleEnv = null;
+
     protected function setUp(): void
     {
+        $this->previousThrottleEnv = getenv('WGW_DISABLE_LOGIN_THROTTLE') ?: null;
         $this->enableLoginThrottle();
         parent::setUp();
         $this->enableLoginThrottle();
@@ -28,7 +31,12 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
 
     protected function tearDown(): void
     {
-        $this->enableLoginThrottle();
+        if ($this->previousThrottleEnv !== null) {
+            putenv("WGW_DISABLE_LOGIN_THROTTLE={$this->previousThrottleEnv}");
+            $_ENV['WGW_DISABLE_LOGIN_THROTTLE'] = $this->previousThrottleEnv;
+        } else {
+            $this->enableLoginThrottle();
+        }
         parent::tearDown();
     }
 
