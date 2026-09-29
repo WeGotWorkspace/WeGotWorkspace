@@ -130,7 +130,13 @@ describe("useNotesMutations star toast undo", () => {
       mutationConfig.undo();
     });
 
-    expect(applyStarToggle).toHaveBeenCalledWith("n-1");
-    expect(setNotes).toHaveBeenCalledWith(expect.any(Function));
+    expect(applyStarToggle).toHaveBeenCalledTimes(2);
+    expect(setNotes).toHaveBeenCalledTimes(2);
+
+    const lastSetNotesCall = setNotes.mock.calls[1];
+    const updater = lastSetNotesCall[0];
+    const mockNotes = [{ id: "n-1", starred: false } as Note];
+    const updatedNotes = updater(mockNotes);
+    expect(updatedNotes[0].starred).toBe(true);
   });
 });

@@ -135,6 +135,10 @@ describe("useDriveMutations star toast undo", () => {
       mutationConfig.undo();
     });
 
-    expect(setStarred).toHaveBeenCalledWith(expect.any(Function));
+    expect(setStarred).toHaveBeenCalledTimes(2);
+    const lastCall = setStarred.mock.calls[1];
+    const updater = lastCall[0];
+    const updatedState = updater({ "f-1": false });
+    expect(updatedState).toEqual({ "f-1": true });
   });
 });

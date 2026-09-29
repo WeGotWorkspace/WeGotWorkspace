@@ -15,25 +15,67 @@ describe("wegotworkspace meet routes", () => {
     expect(router.state.location.pathname).toBe("/meet/meetings/room-123");
   });
 
-  it("has redirect logic for /meet/guest?room=X", () => {
+  it("/meet/guest?room=abc triggers redirect to /meet/meetings/abc", () => {
     const history = createMemoryHistory({ initialEntries: ["/"] });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createWeGotWorkspaceRouter({ mode: "live", history });
     const route = router.routesByPath["/meet/guest"];
-    expect(route?.options.beforeLoad).toEqual(expect.any(Function));
+    const beforeLoad = route?.options.beforeLoad;
+
+    expect(beforeLoad).toBeDefined();
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      beforeLoad?.({ search: { room: "abc" }, location: { pathname: "/meet/guest" } } as any);
+      throw new Error("Expected redirect to be thrown");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      expect(error).toBeDefined();
+      expect(error.options.to).toBe("/meet/meetings/$meetingId");
+      expect(error.options.params).toEqual({ meetingId: "abc" });
+      expect(error.options.replace).toBe(true);
+    }
   });
 
-  it("has redirect logic for /meet/join?room=X", () => {
+  it("/meet/join?room=abc triggers redirect to /meet/meetings/abc", () => {
     const history = createMemoryHistory({ initialEntries: ["/"] });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createWeGotWorkspaceRouter({ mode: "live", history });
     const route = router.routesByPath["/meet/join"];
-    expect(route?.options.beforeLoad).toEqual(expect.any(Function));
+    const beforeLoad = route?.options.beforeLoad;
+
+    expect(beforeLoad).toBeDefined();
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      beforeLoad?.({ search: { room: "abc" }, location: { pathname: "/meet/join" } } as any);
+      throw new Error("Expected redirect to be thrown");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      expect(error).toBeDefined();
+      expect(error.options.to).toBe("/meet/meetings/$meetingId");
+      expect(error.options.params).toEqual({ meetingId: "abc" });
+      expect(error.options.replace).toBe(true);
+    }
   });
 
-  it("has redirect logic for /meet?room= query parameter", () => {
+  it("/meet?room=abc triggers redirect to /meet/meetings/abc", () => {
     const history = createMemoryHistory({ initialEntries: ["/"] });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createWeGotWorkspaceRouter({ mode: "live", history });
     const route = router.routesByPath["/meet"];
-    expect(route?.options.beforeLoad).toEqual(expect.any(Function));
+    const beforeLoad = route?.options.beforeLoad;
+
+    expect(beforeLoad).toBeDefined();
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      beforeLoad?.({ search: { room: "abc" }, location: { pathname: "/meet" } } as any);
+      throw new Error("Expected redirect to be thrown");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      expect(error).toBeDefined();
+      expect(error.options.to).toBe("/meet/meetings/$meetingId");
+      expect(error.options.params).toEqual({ meetingId: "abc" });
+      expect(error.options.replace).toBe(true);
+    }
   });
 
   it("matches /meet index without query parameters", async () => {

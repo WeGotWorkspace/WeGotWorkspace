@@ -1,5 +1,5 @@
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { MOBILE_BREAKPOINT_PX, MOBILE_MEDIA_QUERY, useIsMobile } from "./use-mobile";
 
 describe("mobile breakpoint constants", () => {
@@ -13,6 +13,15 @@ describe("mobile breakpoint constants", () => {
 });
 
 describe("useIsMobile hook", () => {
+  let originalMatchMedia: typeof window.matchMedia;
+
+  beforeEach(() => {
+    originalMatchMedia = window.matchMedia;
+  });
+
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
   it("returns true when matchMedia indicates mobile viewport", () => {
     const mockMatchMedia = vi.fn((query: string) => ({
       matches: query === "(max-width: 767px)",
