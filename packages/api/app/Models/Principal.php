@@ -11,6 +11,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property int $id
+ * @property string $uri
+ * @property string|null $email
+ * @property string|null $displayname
+ */
 final class Principal extends Model
 {
     /** @use HasFactory<PrincipalFactory> */

@@ -37,3 +37,6 @@ storybook-static
 /test-results/
 /playwright-report/
 /e2e/.auth/
+
+# Coverage output
+coverage/

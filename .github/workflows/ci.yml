@@ -98,7 +98,7 @@ jobs:
         run: git fetch --depth=1 origin +refs/heads/main:refs/remotes/origin/main
 
       # Shard 1 also runs the file-size ratchet, greenfield-guard, PHPStan
-      # level 1, and the Architecture suite; later shards run only their
+      # level 4, and the Architecture suite; later shards run only their
       # round-robin slice of unit/feature/storage tests.
       - name: API quality gate (shard ${{ matrix.shard }}/2)
         env:
@@ -168,6 +168,64 @@ jobs:
           # pool themselves from CPU and memory (see jsdom-concurrency.mjs).
           APPS_DONE_GATE_FULL: "1"
         run: pnpm run ci:quality:apps
+
+  # Mock-tier Playwright against a Storybook build. The Chromatic job also
+  # builds storybook-static, but only when CHROMATIC_ENABLED is set, and it
+  # skips merge_group. Building here keeps apps-e2e independent so it can be
+  # a required check. Live-app specs stay on playwright.live.config.mjs.
+  apps-e2e:
+    if: >-
+      github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6.1.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install JS workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-chromium-
+
+      - name: Install Playwright Chromium
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != 'true' ]; then
+            pnpm --filter @wgw/apps exec playwright install chromium --with-deps
+          else
+            pnpm --filter @wgw/apps exec playwright install chromium
+          fi
+
+      - name: Build Storybook
+        working-directory: packages/apps
+        run: pnpm exec storybook build --output-dir storybook-static
+
+      - name: Mock-tier Playwright
+        working-directory: packages/apps
+        env:
+          WGW_APPS_E2E_STATIC: "1"
+        run: pnpm exec playwright test
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: apps-e2e-traces
+          path: packages/apps/test-results
+          if-no-files-found: ignore
 
   build:
     needs: [api-quality, apps-quality]

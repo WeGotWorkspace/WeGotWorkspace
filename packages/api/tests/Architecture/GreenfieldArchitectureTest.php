@@ -28,6 +28,22 @@ final class GreenfieldArchitectureTest extends TestCase
         );
     }
 
+    public function test_split_service_files_are_classes_not_line_limit_traits(): void
+    {
+        $app = dirname(__DIR__, 2).'/app/Services/';
+        $files = [
+            'Update/UpdateRunnerBackupArchive.php',
+            'Mail/MailFolderOperations.php',
+            'Calendars/CalendarEventMutationSupport.php',
+            'Contacts/Conversion/VCardToJsContactCoreFields.php',
+        ];
+        foreach ($files as $file) {
+            $source = (string) file_get_contents($app.$file);
+            $this->assertStringContainsString('final class ', $source, $file);
+            $this->assertDoesNotMatchRegularExpression('/^\s*trait\s+/m', $source, $file);
+        }
+    }
+
     public function test_legacy_src_directory_must_not_exist(): void
     {
         $this->assertDirectoryDoesNotExist(dirname(__DIR__, 2).'/src');

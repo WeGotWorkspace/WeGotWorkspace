@@ -32,7 +32,8 @@ final class PluginInstallerService
         if (strtolower((string) $archive->getClientOriginalExtension()) !== 'zip') {
             throw new \InvalidArgumentException('Plugin archive must be a .zip file.');
         }
-        if ($archive->getSize() !== null && $archive->getSize() > self::MAX_PLUGIN_ARCHIVE_BYTES) {
+        $archiveSize = $archive->getSize();
+        if (is_int($archiveSize) && $archiveSize > self::MAX_PLUGIN_ARCHIVE_BYTES) {
             throw new \InvalidArgumentException('Plugin archive is too large.');
         }
 
@@ -126,7 +127,7 @@ final class PluginInstallerService
         $plugins = $this->registry->list();
         $plugin = null;
         foreach ($plugins as $candidate) {
-            if (($candidate['id'] ?? null) === $pluginId) {
+            if ($candidate['id'] === $pluginId) {
                 $plugin = $candidate;
                 break;
             }

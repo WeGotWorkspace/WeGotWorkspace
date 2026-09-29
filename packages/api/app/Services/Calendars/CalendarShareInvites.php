@@ -167,7 +167,7 @@ final class CalendarShareInvites
     private function hrefForPrincipal(Principal $principal, array $currentInvites): string
     {
         foreach ($currentInvites as $invite) {
-            if ((string) $invite->principal === (string) $principal->uri && is_string($invite->href) && $invite->href !== '') {
+            if ((string) $invite->principal === (string) $principal->uri && $invite->href !== '') {
                 return $invite->href;
             }
         }
@@ -183,7 +183,7 @@ final class CalendarShareInvites
             return $fromPrincipal;
         }
 
-        $href = is_string($sharee->href) ? $sharee->href : '';
+        $href = $sharee->href;
 
         return $this->addresses->jmapIdForShareHref($href);
     }

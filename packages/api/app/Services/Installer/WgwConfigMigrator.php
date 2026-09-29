@@ -149,7 +149,7 @@ final class WgwConfigMigrator
         sort($backups);
         $latest = end($backups);
 
-        return is_string($latest) && is_readable($latest) ? $latest : null;
+        return is_readable($latest) ? $latest : null;
     }
 
     /**
@@ -159,7 +159,7 @@ final class WgwConfigMigrator
     {
         $connection = $pairs['WGW_DB_CONNECTION'] ?? '';
 
-        return is_string($connection) && trim($connection) !== '';
+        return trim($connection) !== '';
     }
 
     /**

@@ -70,7 +70,7 @@ final class CalendarConversionSupport
         }
 
         $interval = $startDt->diff($endDt);
-        if ($interval->invert === 1 || ! is_int($interval->days) || $interval->days < 0) {
+        if ($interval->invert === 1 || $interval->days < 0) {
             return null;
         }
 
@@ -163,13 +163,12 @@ final class CalendarConversionSupport
                     continue;
                 }
                 if (! isset($entry['@type'])) {
-                    $entry['@type'] = match ($mapKey) {
+                    $entry['@type'] = [
                         'locations' => 'Location',
                         'participants' => 'Participant',
                         'alerts' => 'Alert',
                         'links' => 'Link',
-                        default => null,
-                    };
+                    ][$mapKey];
                 }
                 $normalized[(string) $id] = $entry;
             }

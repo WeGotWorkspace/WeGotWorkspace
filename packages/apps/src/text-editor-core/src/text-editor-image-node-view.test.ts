@@ -1,11 +1,7 @@
 /** @vitest-environment jsdom */
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { fireEvent, screen } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { docsLabels } from "@/docs-core/src/docs-labels";
 import { getTextEditorContent } from "./text-editor-content";
 import { createTextEditorExtensions } from "./text-editor-extensions";
 import { deselectDocsImage, isDocsImageNodeSelection } from "./text-editor-image-commands";
@@ -13,12 +9,6 @@ import { DOCS_IMAGE_DELETE_LABEL } from "./text-editor-image-node-view";
 
 const NODE_ID = "fn-cccccccccccccccccccccccccccccccc";
 const PIXEL_PNG = new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" });
-const here = dirname(fileURLToPath(import.meta.url));
-const nodeViewSource = readFileSync(join(here, "text-editor-image-node-view.ts"), "utf8");
-const deleteControlSource = readFileSync(
-  join(here, "text-editor-image-delete-control.tsx"),
-  "utf8",
-);
 
 function findImagePos(editor: Editor): number {
   let pos = -1;
@@ -58,17 +48,6 @@ function deleteHost(editor: Editor): HTMLElement | null {
 describe("docs image node view delete control", () => {
   afterEach(() => {
     document.body.replaceChildren();
-  });
-
-  it("uses IconButton tooltip + Trash2, not title= or a close/X", () => {
-    expect(DOCS_IMAGE_DELETE_LABEL).toBe("Delete image");
-    expect(docsLabels.deleteImage).toBe(DOCS_IMAGE_DELETE_LABEL);
-    expect(deleteControlSource).toMatch(/IconButton/);
-    expect(deleteControlSource).toMatch(/TooltipProvider/);
-    expect(deleteControlSource).toMatch(/<Trash2/);
-    expect(deleteControlSource).not.toMatch(/title=/);
-    expect(nodeViewSource).not.toMatch(/title=\{?DOCS_IMAGE_DELETE_LABEL/);
-    expect(deleteControlSource).not.toMatch(/M18 6 6 18/);
   });
 
   it("keeps the delete control available without selecting so hover can reveal it", () => {

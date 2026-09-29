@@ -66,7 +66,7 @@ final class FileNodeBlobResolver
 
         return [
             'contents' => $contents,
-            'mediaType' => is_string($type) && $type !== '' ? $type : 'application/octet-stream',
+            'mediaType' => is_string($type) ? $type : 'application/octet-stream',
             'size' => strlen($contents),
         ];
     }

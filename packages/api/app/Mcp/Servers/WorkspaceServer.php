@@ -6,6 +6,7 @@ namespace App\Mcp\Servers;
 
 use App\Mcp\McpToolCatalog;
 use Laravel\Mcp\Server;
+use Laravel\Mcp\Server\Tool;
 
 final class WorkspaceServer extends Server
 {
@@ -21,7 +22,7 @@ final class WorkspaceServer extends Server
     MARKDOWN;
 
     /**
-     * @var array<int, class-string>
+     * @var array<int|string, Tool|class-string<Tool>|array<int, Tool|class-string<Tool>>>
      */
     protected array $tools = [];
 

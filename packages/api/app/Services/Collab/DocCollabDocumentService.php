@@ -67,7 +67,7 @@ final class DocCollabDocumentService
             return null;
         }
 
-        $size = (int) ($disk->size($key) ?? 0);
+        $size = (int) ($disk->size($key));
         if ($size <= 0) {
             return null;
         }
@@ -112,7 +112,7 @@ final class DocCollabDocumentService
                 'files/'.$documentKey,
             );
             $this->eventDispatch->fireMutation(
-                (string) ($this->actors->requirePrincipal($request)['username'] ?? ''),
+                $this->actors->requirePrincipal($request)['username'],
                 'collab',
                 'written',
                 'files/'.$documentKey,
@@ -153,7 +153,7 @@ final class DocCollabDocumentService
             $this->fail('forbidden', 403);
         }
         // Public share guests stay on the non-collab Docs shell; collab mesh is members-only.
-        if (($principal['role'] ?? '') === 'guest') {
+        if ($principal['role'] === 'guest') {
             $this->fail('forbidden', 403);
         }
         // View-only member grants may load the document/Yjs snapshot read-only; writes stay gated

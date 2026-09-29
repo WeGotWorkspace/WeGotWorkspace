@@ -143,7 +143,7 @@ final class CimdResolver
             throw new CimdException('CIMD metadata must be application/json.', 400);
         }
         $declared = $response->header('Content-Length');
-        if (is_string($declared) && ctype_digit($declared) && (int) $declared > $maxBytes) {
+        if (ctype_digit($declared) && (int) $declared > $maxBytes) {
             throw new CimdException('CIMD metadata exceeds size limit.', 400);
         }
         $body = $response->body();

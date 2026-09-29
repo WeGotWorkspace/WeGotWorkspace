@@ -35,7 +35,7 @@ final class DocsReadTool extends WgwMcpTool
         ];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::DOCS_READ;
     }
@@ -45,7 +45,7 @@ final class DocsReadTool extends WgwMcpTool
         return 'read';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): array
     {
         return ['path' => (string) $request->get('path', '')];
     }

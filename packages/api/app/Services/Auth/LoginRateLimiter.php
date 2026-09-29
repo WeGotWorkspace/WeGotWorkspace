@@ -8,12 +8,12 @@ use Illuminate\Cache\RateLimiter;
 
 final class LoginRateLimiter
 {
-    private const int IP_LIMIT = 40;
+    public const int IP_LIMIT = 40;
 
-    private const int USER_IP_LIMIT = 8;
+    public const int USER_IP_LIMIT = 8;
 
     /** @var int Sliding window equivalent: 10 minutes */
-    private const int DECAY_SECONDS = 600;
+    public const int DECAY_SECONDS = 600;
 
     public function __construct(private RateLimiter $rateLimiter) {}
 

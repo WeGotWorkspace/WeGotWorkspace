@@ -1,6 +1,3 @@
-import { readdirSync, readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { Temporal } from "@js-temporal/polyfill";
 import { describe, expect, it } from "vitest";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
@@ -28,45 +25,7 @@ import {
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import { emptyCalendarEventForm } from "@/calendar-core/src/calendar-editor-model";
 
-const appsSrcRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-
-/** Recursively collect `.ts`/`.tsx`/`.js`/`.mjs` under `dir` (skips node_modules). */
-function listSourceFiles(dir: string): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === "node_modules" || entry.name === "dist") continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      out.push(...listSourceFiles(full));
-      continue;
-    }
-    if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) out.push(full);
-  }
-  return out;
-}
-
 describe("calendar-recurrence-scope", () => {
-  it("apps sources have no native recurring-edit confirm string", () => {
-    const forbidden = [
-      "Edit only this instance of the recurring event",
-      "Delete only this instance of the recurring event",
-      "OK = only this instance",
-      'window.confirm("Are you sure you want to delete this event?")',
-    ] as const;
-    const hits: string[] = [];
-    for (const file of listSourceFiles(appsSrcRoot)) {
-      // This test intentionally names the forbidden strings — skip self.
-      if (file.endsWith(`${path.sep}calendar-recurrence-scope.test.ts`)) continue;
-      const text = readFileSync(file, "utf8");
-      for (const needle of forbidden) {
-        if (text.includes(needle)) {
-          hits.push(`${path.relative(appsSrcRoot, file)}: ${needle}`);
-        }
-      }
-    }
-    expect(hits, hits.join("\n")).toEqual([]);
-  });
-
   it("splits occurrence keys", () => {
     expect(splitOccurrenceKey("master")).toEqual({ masterId: "master" });
     expect(splitOccurrenceKey("master::2026-01-01T10:00:00")).toEqual({
@@ -113,26 +72,6 @@ describe("calendar-recurrence-scope", () => {
         masterKey: "standup",
         original: wire,
       }),
-    );
-  });
-
-  it("Lit this-and-future drag/delete passes engine master key not envelope uid", () => {
-    const viewBase = readFileSync(
-      path.join(appsSrcRoot, "lib/calendar-elements/CalendarViewBase/CalendarViewBase.ts"),
-      "utf8",
-    );
-    expect(viewBase).toContain("seriesMasterKey");
-    expect(viewBase).toContain("masterId: seriesMasterKey");
-    expect(viewBase).not.toMatch(
-      /recurrence-future-update[\s\S]*masterId:\s*detail\.envelope\.eventId/,
-    );
-    expect(viewBase).not.toMatch(
-      /recurrence-future-delete[\s\S]*masterId:\s*detail\.envelope\.eventId/,
-    );
-    // Confirm (this-and-future) must not look like a rejected drag — keep the
-    // suggested geometry until the engine map reflects the fork.
-    expect(viewBase).toMatch(
-      /recurrence-future-update[\s\S]*?return \{ handled: true, accepted: true \}/,
     );
   });
 

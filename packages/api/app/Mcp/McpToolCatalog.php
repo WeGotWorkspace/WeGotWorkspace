@@ -44,11 +44,12 @@ use App\Mcp\Tools\TasksListTool;
 use App\Mcp\Tools\TaskWriteTool;
 use App\Mcp\Tools\WhoamiTool;
 use App\Support\WgwSettings;
+use Laravel\Mcp\Server\Tool;
 
 final class McpToolCatalog
 {
     /**
-     * @return list<class-string>
+     * @return list<class-string<Tool>>
      */
     public function enabledTools(): array
     {

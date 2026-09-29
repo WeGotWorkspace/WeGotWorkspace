@@ -7,7 +7,25 @@ namespace App\Models;
 use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property string $id
+ * @property string $principal
+ * @property string $event_id
+ * @property string $domain
+ * @property string $action
+ * @property string $title
+ * @property string|null $body
+ * @property string $navigate
+ * @property string|null $tag
+ * @property string $dedupe_key
+ * @property Carbon|null $read_at
+ * @property Carbon $created_at
+ * @property array<string, mixed>|null $data
+ */
 final class Notification extends Model
 {
     use UsesWgwConnection;

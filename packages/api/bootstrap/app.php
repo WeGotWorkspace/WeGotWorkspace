@@ -101,7 +101,7 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json($payload, $e->getStatusCode());
         });
         $exceptions->render(function (ValidationException $e) {
-            $message = $e->validator->errors()->first() ?? 'Invalid request.';
+            $message = $e->validator->errors()->first();
 
             return response()->json([
                 'error' => $message,

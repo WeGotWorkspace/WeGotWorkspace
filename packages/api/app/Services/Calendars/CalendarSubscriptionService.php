@@ -49,7 +49,7 @@ final class CalendarSubscriptionService
 
         $name = $this->subscriptionName($payload['name'] ?? null, $url, $ics);
         $color = $this->subscriptionColor($payload['color'] ?? null);
-        $groupSlug = isset($payload['groupSlug']) && is_string($payload['groupSlug'])
+        $groupSlug = isset($payload['groupSlug'])
             ? trim($payload['groupSlug'])
             : null;
         $calendar = $this->calendars->create($username, [

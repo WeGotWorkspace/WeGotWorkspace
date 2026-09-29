@@ -293,7 +293,7 @@ final class CalendarRepository
 
         $currentMap = [];
         foreach ($instances as $instance) {
-            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar?->synctoken ?? 1);
+            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar->synctoken ?? 1);
         }
 
         $created = [];
@@ -551,7 +551,7 @@ final class CalendarRepository
         if (str_starts_with($base, 'group-')) {
             $base = 'calendar-'.substr($base, strlen('group-'));
         }
-        if ($base === '' || in_array($base, CalendarCollectionUris::reservedEventUris(), true)) {
+        if (in_array($base, CalendarCollectionUris::reservedEventUris(), true)) {
             $base = 'calendar';
         }
         if ($groupSlug !== null && $base === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug)) {
@@ -571,7 +571,7 @@ final class CalendarRepository
     {
         $parts = [];
         foreach ($instances as $instance) {
-            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar?->synctoken ?? 1);
+            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar->synctoken ?? 1);
         }
 
         return (string) count($parts).':'.implode(',', $parts);
@@ -585,7 +585,7 @@ final class CalendarRepository
         if (! preg_match('/^(\d+):(.+)$/', $state, $matches)) {
             return null;
         }
-        $entries = $matches[2] === '' ? [] : explode(',', $matches[2]);
+        $entries = explode(',', $matches[2]);
         if (count($entries) !== (int) $matches[1]) {
             return null;
         }
@@ -627,7 +627,7 @@ final class CalendarRepository
         $id = (string) ($mapped['id'] ?? $instance->uri);
         foreach ($added as $sharee) {
             $grant = $grants[$sharee] ?? null;
-            $access = is_array($grant) && ($grant['mayWrite'] ?? false) === true ? 'write' : 'read';
+            $access = is_array($grant) && $grant['mayWrite'] === true ? 'write' : 'read';
             $this->eventDispatch->fireMutation(
                 $username,
                 'calendar',

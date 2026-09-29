@@ -34,7 +34,7 @@ final class CalendarCollectionAccess
      * Personal + group + inbound sharee instances for $username, filtered by
      * component set, then highest-access-per-calendarid, then dismissals.
      *
-     * @param  callable(Builder): void  $componentQuery
+     * @param  callable(Builder<Calendar>): void  $componentQuery
      * @return Collection<int, CalendarInstance>
      */
     public function accessibleInstances(string $username, callable $componentQuery)
@@ -128,7 +128,7 @@ final class CalendarCollectionAccess
     }
 
     /**
-     * @param  callable(Builder): void  $componentQuery
+     * @param  callable(Builder<Calendar>): void  $componentQuery
      * @return Collection<int, CalendarInstance>
      */
     private function personalInstances(string $username, callable $componentQuery)
@@ -143,7 +143,7 @@ final class CalendarCollectionAccess
     }
 
     /**
-     * @param  callable(Builder): void  $componentQuery
+     * @param  callable(Builder<Calendar>): void  $componentQuery
      * @return list<CalendarInstance>
      */
     private function groupInstances(string $groupSlug, callable $componentQuery): array

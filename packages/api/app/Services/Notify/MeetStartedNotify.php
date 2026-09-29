@@ -91,7 +91,7 @@ final class MeetStartedNotify
             $trimmed = substr($trimmed, 2);
         }
         $principal = Principal::forUsername($trimmed);
-        $name = trim((string) ($principal?->displayname ?? ''));
+        $name = trim((string) ($principal->displayname ?? ''));
 
         return $name !== '' ? $name : $trimmed;
     }

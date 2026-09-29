@@ -255,9 +255,6 @@ final class AddressBookRepository
         ));
     }
 
-    /**
-     * @param  list<string>  $disallowedKeys
-     */
     private function assertShareePatchAllowed(array $payload): void
     {
         $disallowed = [];
@@ -298,7 +295,7 @@ final class AddressBookRepository
         }
 
         $expectedCount = (int) $matches[1];
-        $entries = $matches[2] === '' ? [] : explode(',', $matches[2]);
+        $entries = explode(',', $matches[2]);
         if (count($entries) !== $expectedCount) {
             return null;
         }

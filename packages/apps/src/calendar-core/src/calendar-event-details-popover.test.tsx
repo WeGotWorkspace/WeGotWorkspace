@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import type React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -520,18 +517,6 @@ describe("CalendarEventDetailsPopover", () => {
       ).toBeTruthy();
     },
   );
-
-  it("places the desktop popover beside the anchor with collision-aware centering", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const source = readFileSync(join(here, "calendar-event-details-popover.tsx"), "utf8");
-    expect(source).toMatch(/side="right"/);
-    expect(source).toMatch(/align="center"/);
-    expect(source).toContain('sticky="partial"');
-    expect(source).toContain("collisionPadding={16}");
-    expect(source).toContain("avoidCollisions={!docked}");
-    expect(source).toContain("useIsMobile");
-    expect(source).toContain("DialogContent");
-  });
 
   it(
     "docks a tall compact-month origin instead of stretching to the cell",

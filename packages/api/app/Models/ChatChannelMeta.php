@@ -14,6 +14,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * channels, and default_for_group (the group slug when this is the group's
  * auto-provisioned default channel; unique per group). Rows cascade away with
  * the calendar.
+ *
+ * @property int $calendarid
+ * @property string $kind
+ * @property string|null $topic
+ * @property string|null $room_code
+ * @property string|null $default_for_group
  */
 final class ChatChannelMeta extends Model
 {

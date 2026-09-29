@@ -57,3 +57,4 @@ wgw-content/
 /.cache/
 .env.local
 wgw-plugins
+.agents/handoff-*
