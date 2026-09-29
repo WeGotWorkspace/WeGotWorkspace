@@ -119,12 +119,7 @@ function calendarDataDay(date: Date): string {
 function selectComposerDueDay(dayOffset: number, now = new Date()): void {
   const targetDay = new Date(now);
   targetDay.setDate(targetDay.getDate() + dayOffset);
-  const selector = `button[data-day="${calendarDataDay(targetDay)}"]`;
-  let dayButton = document.querySelector(selector);
-  if (!dayButton) {
-    fireEvent.click(screen.getByRole("button", { name: "Go to the Next Month" }));
-    dayButton = document.querySelector(selector);
-  }
+  const dayButton = document.querySelector(`button[data-day="${calendarDataDay(targetDay)}"]`);
   expect(dayButton).toBeTruthy();
   fireEvent.click(dayButton!);
 }
@@ -653,62 +648,75 @@ describe("TasksMainView composer", () => {
     ]);
   });
 
-  it("submits optional due date with createTask when selected", () => {
-    const onCreateTask = vi.fn();
-    renderComposer(onCreateTask);
+  describe("composer due date selection", () => {
+    // Mid-month so today+5 stays on the open grid. A live clock near month-end
+    // puts that day on the next page (showOutsideDays only paints a few days).
+    const mockedNow = new Date(2026, 6, 8, 12, 0, 0);
 
-    fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
-      target: { value: "Due task" },
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(mockedNow);
     });
 
-    fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
-
-    const targetDay = new Date();
-    targetDay.setDate(targetDay.getDate() + 3);
-    selectComposerDueDay(3);
-
-    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }));
-
-    const expectedDue = `${targetDay.getFullYear()}-${String(targetDay.getMonth() + 1).padStart(2, "0")}-${String(targetDay.getDate()).padStart(2, "0")}`;
-
-    expect(onCreateTask).toHaveBeenCalledWith({
-      title: "Due task",
-      description: "",
-      listId: "default",
-      workflowStatus: "needs-action",
-      priority: 0,
-      due: expectedDue,
-      showWithoutTime: true,
-      timeZone: null,
-      alerts: undefined,
-    });
-  });
-
-  it("clears selected due date from the composer", () => {
-    const onCreateTask = vi.fn();
-    renderComposer(onCreateTask);
-
-    fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
-      target: { value: "Clear due task" },
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
-    fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
+    it("submits optional due date with createTask when selected", () => {
+      const onCreateTask = vi.fn();
+      renderComposer(onCreateTask);
 
-    selectComposerDueDay(5);
-    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.noDue }));
+      fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
+        target: { value: "Due task" },
+      });
 
-    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }));
+      fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
+      selectComposerDueDay(3, mockedNow);
 
-    expect(onCreateTask).toHaveBeenCalledWith({
-      title: "Clear due task",
-      description: "",
-      listId: "default",
-      workflowStatus: "needs-action",
-      priority: 0,
-      due: null,
-      showWithoutTime: true,
-      timeZone: null,
-      alerts: undefined,
+      const targetDay = new Date(mockedNow);
+      targetDay.setDate(targetDay.getDate() + 3);
+      const expectedDue = `${targetDay.getFullYear()}-${String(targetDay.getMonth() + 1).padStart(2, "0")}-${String(targetDay.getDate()).padStart(2, "0")}`;
+
+      fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }));
+
+      expect(onCreateTask).toHaveBeenCalledWith({
+        title: "Due task",
+        description: "",
+        listId: "default",
+        workflowStatus: "needs-action",
+        priority: 0,
+        due: expectedDue,
+        showWithoutTime: true,
+        timeZone: null,
+        alerts: undefined,
+      });
+    });
+
+    it("clears selected due date from the composer", () => {
+      const onCreateTask = vi.fn();
+      renderComposer(onCreateTask);
+
+      fireEvent.change(screen.getByLabelText(defaultTasksLabels.addTaskName), {
+        target: { value: "Clear due task" },
+      });
+
+      fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
+      selectComposerDueDay(5, mockedNow);
+      fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.noDue }));
+
+      fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.addTaskButton }));
+
+      expect(onCreateTask).toHaveBeenCalledWith({
+        title: "Clear due task",
+        description: "",
+        listId: "default",
+        workflowStatus: "needs-action",
+        priority: 0,
+        due: null,
+        showWithoutTime: true,
+        timeZone: null,
+        alerts: undefined,
+      });
     });
   });
 
