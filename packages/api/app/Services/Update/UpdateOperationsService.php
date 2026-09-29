@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Update;
 
 use App\Support\UpdateFeedDefaults;
-use App\Support\WgwInstallConfig;
 
 final class UpdateOperationsService
 {
     public function __construct(
         private UpdateRunner $runner,
-        private WgwInstallConfig $install,
     ) {}
 
     /**

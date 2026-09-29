@@ -47,7 +47,7 @@ final class TaskWriteTool extends WgwMcpTool
         ];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::TASKS_WRITE;
     }
@@ -57,7 +57,7 @@ final class TaskWriteTool extends WgwMcpTool
         return 'write';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): array
     {
         return [
             'action' => (string) $request->get('action', ''),

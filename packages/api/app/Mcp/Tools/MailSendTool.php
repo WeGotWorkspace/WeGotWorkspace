@@ -37,7 +37,7 @@ final class MailSendTool extends WgwMcpTool
         ];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::MAIL_SEND;
     }
@@ -47,7 +47,7 @@ final class MailSendTool extends WgwMcpTool
         return 'write';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): array
     {
         return ['to' => (string) $request->get('to', '')];
     }

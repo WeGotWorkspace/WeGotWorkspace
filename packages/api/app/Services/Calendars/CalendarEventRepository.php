@@ -60,7 +60,7 @@ final class CalendarEventRepository
 
         $events = [];
         foreach ($objects as $object) {
-            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+            $raw = $object->calendardata;
             try {
                 foreach ($this->mapper->toCalendarEvents($object, $calendarId, $username) as $event) {
                     if ($expandRecurrences && $after !== null && $before !== null && $this->expansion->isRecurring($event)) {
@@ -110,7 +110,7 @@ final class CalendarEventRepository
         $matches = [];
         foreach ($instances as $instance) {
             foreach ($this->candidateObjects($instance, $window) as $object) {
-                $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+                $raw = $object->calendardata;
                 $calendarApiId = $this->calendars->apiIdForInstance($instance);
                 try {
                     foreach ($this->mapper->toCalendarEvents($object, $calendarApiId, $username) as $event) {
@@ -143,7 +143,7 @@ final class CalendarEventRepository
 
         $queryTokens = [];
         foreach ($instances as $instance) {
-            $queryTokens[$this->calendars->apiIdForInstance($instance)] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+            $queryTokens[$this->calendars->apiIdForInstance($instance)] = (string) (int) ($instance->calendar->synctoken ?? 1);
         }
 
         return [
@@ -189,7 +189,7 @@ final class CalendarEventRepository
         $tokens = [];
         $instances = $this->calendars->accessibleVeventInstances($username);
         foreach ($instances as $instance) {
-            $tokens[$this->calendars->apiIdForInstance($instance)] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+            $tokens[$this->calendars->apiIdForInstance($instance)] = (string) (int) ($instance->calendar->synctoken ?? 1);
         }
 
         return $tokens;
@@ -368,7 +368,7 @@ final class CalendarEventRepository
     {
         $comparators = [];
         foreach ($sort as $spec) {
-            $property = is_array($spec) ? (string) ($spec['property'] ?? '') : '';
+            $property = (string) ($spec['property'] ?? '');
             if (! in_array($property, ['start', 'title', 'uid'], true)) {
                 continue;
             }
@@ -565,7 +565,7 @@ final class CalendarEventRepository
             return null;
         }
 
-        $currentToken = (int) ($instance->calendar?->synctoken ?? 0);
+        $currentToken = (int) ($instance->calendar->synctoken ?? 0);
         if (! ctype_digit($since) || (int) $since > $currentToken) {
             throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
         }
@@ -850,10 +850,10 @@ final class CalendarEventRepository
         $object = $located['object'];
         $eventUri = (string) $object->uri;
         $veventUid = $located['veventUid'];
-        $oldIcs = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $oldIcs = $object->calendardata;
 
         if ($veventUid !== null) {
-            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+            $raw = $object->calendardata;
             $remaining = $this->mapper->removeVEventFromIcs($raw, $veventUid);
             if ($remaining === null) {
                 $this->calBackend()->deleteCalendarObject($this->calBackendCalendarId($instance), $eventUri);
@@ -951,7 +951,7 @@ final class CalendarEventRepository
             $this->calendars->assertEventWritable($targetInstance);
             $eventPayload['calendarIds'] = [$this->calendars->apiIdForInstance($targetInstance) => true];
 
-            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+            $raw = $object->calendardata;
             $ics = $this->scheduling->persistableIcs(
                 $username,
                 $raw,
@@ -1207,11 +1207,6 @@ final class CalendarEventRepository
         return 'calendars/'.$username.'/'.$calendarUri.'/'.$eventUri;
     }
 
-    private function principalUri(string $username): string
-    {
-        return 'principals/'.$username;
-    }
-
     private function assertObjectPreconditions(
         CalendarObject $object,
         ?string $ifMatch,
@@ -1221,7 +1216,7 @@ final class CalendarEventRepository
         OptimisticConcurrency::assertPreconditions(
             $ifMatch,
             $ifUnmodifiedSince,
-            is_string($object->etag) ? $object->etag : null,
+            $object->etag,
             (int) ($object->lastmodified ?? 0),
             $requirePrecondition,
         );

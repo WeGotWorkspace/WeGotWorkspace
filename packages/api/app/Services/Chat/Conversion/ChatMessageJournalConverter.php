@@ -69,17 +69,14 @@ final class ChatMessageJournalConverter
             $journal->add('RELATED-TO', self::normalizeUlid($parentId));
         }
         $mentions = $message['mentions'] ?? [];
-        if (is_array($mentions) && $mentions !== []) {
+        if ($mentions !== []) {
             $normalized = [];
             foreach ($mentions as $mention) {
-                if (! is_array($mention) || ! is_string($mention['id'] ?? null)) {
-                    continue;
-                }
-                $id = strtolower(trim((string) $mention['id']));
+                $id = strtolower(trim($mention['id']));
                 if ($id === '') {
                     continue;
                 }
-                $display = isset($mention['displayName']) && is_string($mention['displayName'])
+                $display = isset($mention['displayName'])
                     ? trim($mention['displayName'])
                     : $id;
                 $normalized[] = ['id' => $id, 'displayName' => $display !== '' ? $display : $id];
@@ -152,7 +149,7 @@ final class ChatMessageJournalConverter
      */
     public function fromObject(CalendarObject $object, string $channelId): array
     {
-        $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $raw = $object->calendardata;
         $message = $this->fromIcs($raw, (string) $object->uid);
         $message['channelId'] = $channelId;
 

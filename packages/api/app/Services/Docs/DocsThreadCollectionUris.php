@@ -22,7 +22,7 @@ final class DocsThreadCollectionUris
     public static function ownerPrincipalUri(string $normalizedPath): string
     {
         $segments = explode('/', ltrim($normalizedPath, '/'));
-        $root = $segments[0] ?? '';
+        $root = $segments[0];
         $owner = strtolower(trim((string) ($segments[1] ?? '')));
         if ($owner === '') {
             throw new ApiHttpException(400, 'Threads require a user or group file path.', 'bad_request');

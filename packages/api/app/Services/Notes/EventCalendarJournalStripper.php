@@ -160,7 +160,7 @@ final class EventCalendarJournalStripper
                 if ($sourceUid !== '') {
                     $existingUids[$sourceUid] = true;
                 }
-                $data = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+                $data = $object->calendardata;
                 $caldav->createCalendarObject($targetId, $targetUri, $data);
                 $caldav->deleteCalendarObject($sourceId, $objectUri);
                 $moved++;

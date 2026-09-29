@@ -101,9 +101,9 @@ final class SearchIndexerService
         $segments = explode('/', $key);
         $owner = null;
         $group = null;
-        if (($segments[0] ?? '') === 'users' && isset($segments[1])) {
+        if ($segments[0] === 'users' && isset($segments[1])) {
             $owner = $segments[1];
-        } elseif (($segments[0] ?? '') === 'groups' && isset($segments[1])) {
+        } elseif ($segments[0] === 'groups' && isset($segments[1])) {
             $group = $segments[1];
         }
         $isDirectory = $disk->directoryExists($key);
@@ -136,8 +136,8 @@ final class SearchIndexerService
             $this->store->delete('note', $key);
         }
         $category = $isDirectory ? 'folder' : ($isNotePath ? 'note' : $this->categoryForExtension($extension));
-        $size = $isDirectory ? 0 : (int) ($disk->size($key) ?? 0);
-        $modified = (int) ($disk->lastModified($key) ?? time());
+        $size = $isDirectory ? 0 : (int) $disk->size($key);
+        $modified = (int) $disk->lastModified($key);
         $indexedText = $this->readFileBodyForIndexing($key, $extension, $size, $isDirectory, $isNotePath);
         $body = $indexedText['body'];
         $frontmatter = $indexedText['frontmatter'];
@@ -168,7 +168,7 @@ final class SearchIndexerService
             'metadata' => $metadata,
         ];
         $tokens = [
-            'title' => $this->tokens->tokenize((string) ($document['title'] ?? $name)),
+            'title' => $this->tokens->tokenize((string) $document['title']),
             'meta' => $this->tokens->tokenize(
                 trim($category.' '.$extension.' /'.$key.' '.($frontmatter ?? ''))
             ),
@@ -210,7 +210,7 @@ final class SearchIndexerService
             return;
         }
 
-        $raw = is_string($row->calendardata) ? $row->calendardata : (string) $row->calendardata;
+        $raw = $row->calendardata;
         $parsed = $this->extractCalendarSearchPayload($raw);
         $calendarName = $row->getAttribute('calendar_name');
         $document = [
@@ -234,7 +234,7 @@ final class SearchIndexerService
             ],
         ];
         $tokens = [
-            'title' => $this->tokens->tokenize((string) ($document['title'] ?? '')),
+            'title' => $this->tokens->tokenize((string) $document['title']),
             'meta' => $this->tokens->tokenize(
                 implode(' ', [
                     (string) ($parsed['location'] ?? ''),
@@ -503,11 +503,8 @@ final class SearchIndexerService
             return [$raw, null];
         }
 
-        $block = (string) ($matches[0] ?? '');
-        $frontmatter = trim((string) ($matches[1] ?? ''));
-        if ($block === '') {
-            return [$raw, $frontmatter !== '' ? $frontmatter : null];
-        }
+        $block = (string) $matches[0];
+        $frontmatter = trim((string) $matches[1]);
 
         return [substr($raw, strlen($block)) ?: '', $frontmatter !== '' ? $frontmatter : null];
     }
@@ -532,7 +529,7 @@ final class SearchIndexerService
         $header = trim(substr($normalized, 0, $idx));
         $body = substr($normalized, $idx + strlen($token));
 
-        return [$body === false ? '' : $body, $header !== '' ? $header : null];
+        return [$body, $header !== '' ? $header : null];
     }
 
     private function isHiddenPath(string $key): bool
@@ -562,7 +559,7 @@ final class SearchIndexerService
             return null;
         }
 
-        $value = trim((string) ($matches[1] ?? ''));
+        $value = trim((string) $matches[1]);
         if ($value === '') {
             return null;
         }

@@ -59,9 +59,6 @@ final class CalendarMeetLinkIcsAnalysis
             }
 
             foreach ($series['overrides'] as $override) {
-                if (! $override instanceof VEvent) {
-                    continue;
-                }
                 $href = LocationConversionSupport::conferenceHrefFromVEvent($override);
                 $code = $href !== null ? $this->hrefs->parseWgwRoom($href) : null;
                 if ($code === null || $code === $masterCode) {

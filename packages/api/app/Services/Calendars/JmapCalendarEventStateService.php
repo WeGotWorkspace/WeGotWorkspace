@@ -110,7 +110,7 @@ final class JmapCalendarEventStateService
             ->where('event_id', $eventId)
             ->first();
 
-        $rawEtag = is_string($object->etag) ? $object->etag : null;
+        $rawEtag = $object->etag;
 
         if ($row === null) {
             return JmapCalendarEventState::query()->create([
@@ -123,7 +123,7 @@ final class JmapCalendarEventStateService
             ]);
         }
 
-        if ($rawEtag !== null && $rawEtag !== '' && $row->etag !== $rawEtag) {
+        if ($rawEtag !== '' && $row->etag !== $rawEtag) {
             $row->etag = $rawEtag;
             $row->state_token = $this->generateStateToken();
             $row->save();

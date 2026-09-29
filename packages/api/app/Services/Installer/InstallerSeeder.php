@@ -30,9 +30,6 @@ final class InstallerSeeder
     ): void {
         $email = $email !== null && $email !== '' ? $email : $username.'@localhost';
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        if ($hash === false) {
-            throw new \RuntimeException('Password hashing failed.');
-        }
 
         User::query()->create([
             'username' => $username,

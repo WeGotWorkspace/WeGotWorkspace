@@ -27,7 +27,7 @@ final class CalendarFeedIcsBuilder
 
         $timezones = [];
         foreach ($objects as $object) {
-            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+            $raw = $object->calendardata;
             if ($raw === '') {
                 continue;
             }

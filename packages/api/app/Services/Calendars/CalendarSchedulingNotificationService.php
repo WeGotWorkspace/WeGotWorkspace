@@ -73,7 +73,7 @@ final class CalendarSchedulingNotificationService
 
         return [
             'list' => $list,
-            'canSubmitEmail' => (bool) ($capability['canSubmit'] ?? false),
+            'canSubmitEmail' => (bool) $capability['canSubmit'],
         ];
     }
 
@@ -179,14 +179,14 @@ final class CalendarSchedulingNotificationService
             ? $this->findEventByUid($username, VObjectScalar::string($notification['uid']))
             : null;
         $ics = $copy !== null
-            ? (is_string($copy->calendardata) ? $copy->calendardata : (string) $copy->calendardata)
+            ? ($copy->calendardata)
             : null;
 
         $patch = $this->rsvpScope->patch(
             $event,
             $status,
-            isset($payload['scope']) && is_string($payload['scope']) ? $payload['scope'] : null,
-            isset($payload['recurrenceId']) && is_string($payload['recurrenceId']) ? $payload['recurrenceId'] : null,
+            isset($payload['scope']) ? $payload['scope'] : null,
+            isset($payload['recurrenceId']) ? $payload['recurrenceId'] : null,
             $payload['calendarId'] ?? null,
             $isOwn,
             $ics,
@@ -317,7 +317,6 @@ final class CalendarSchedulingNotificationService
             $copy === null
             && $uid !== ''
             && $method === 'REQUEST'
-            && $vevent instanceof VEvent
             && $this->isListedAttendee($username, $vevent)
         ) {
             $copy = $this->ensureInviteeEventCopy($username, $raw, $uid);
@@ -360,7 +359,7 @@ final class CalendarSchedulingNotificationService
 
     private function schedulingObjectFromCalendarCopy(CalendarObject $copy): SchedulingObject
     {
-        $raw = is_string($copy->calendardata) ? $copy->calendardata : (string) $copy->calendardata;
+        $raw = $copy->calendardata;
         $row = new SchedulingObject;
         $row->uri = CalendarEventMapper::eventIdFromUri((string) $copy->uri);
         $row->calendardata = $raw;

@@ -167,7 +167,7 @@ final class NoteRepository
             $ifMatch,
             $ifUnmodifiedSince,
             (string) $located['object']->etag,
-            is_numeric($located['object']->lastmodified) ? (int) $located['object']->lastmodified : null,
+            (int) $located['object']->lastmodified,
             $requirePrecondition,
         );
 
@@ -191,7 +191,7 @@ final class NoteRepository
         $fieldPatch = $patch;
         unset($fieldPatch['notebookId']);
         if ($fieldPatch !== []) {
-            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+            $raw = $object->calendardata;
             $ics = $this->converter->mergeIntoIcs($raw, $fieldPatch);
             try {
                 $this->calBackend()->updateCalendarObject(
@@ -242,7 +242,7 @@ final class NoteRepository
             $ifMatch,
             $ifUnmodifiedSince,
             (string) $located['object']->etag,
-            is_numeric($located['object']->lastmodified) ? (int) $located['object']->lastmodified : null,
+            (int) $located['object']->lastmodified,
             $requirePrecondition,
         );
 
@@ -462,7 +462,7 @@ final class NoteRepository
             $username,
             (string) ($note['id'] ?? $object->uid),
             $notebookUri,
-            is_string($object->uri) ? (string) $object->uri : null,
+            $object->uri,
         );
 
         return $note;

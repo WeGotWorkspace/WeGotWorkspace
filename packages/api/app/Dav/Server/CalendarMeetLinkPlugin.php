@@ -42,7 +42,7 @@ final class CalendarMeetLinkPlugin extends ServerPlugin
 
         try {
             $node = $this->server->tree->getNodeForPath($path);
-            $this->oldIcsByPath[$path] = is_object($node) && method_exists($node, 'get')
+            $this->oldIcsByPath[$path] = method_exists($node, 'get')
                 ? (string) $node->get()
                 : null;
         } catch (\Throwable) {
@@ -81,7 +81,7 @@ final class CalendarMeetLinkPlugin extends ServerPlugin
         if (! $object instanceof CalendarObject) {
             return;
         }
-        $newIcs = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $newIcs = $object->calendardata;
         if (trim($newIcs) === '') {
             return;
         }
@@ -134,7 +134,7 @@ final class CalendarMeetLinkPlugin extends ServerPlugin
 
         $objectUri = array_pop($segments);
         $calendarUri = array_pop($segments);
-        if ($objectUri === null || $calendarUri === null || $calendarUri === 'inbox') {
+        if ($calendarUri === 'inbox') {
             return null;
         }
         if ($calendarUri === '' || $objectUri === '') {
@@ -142,7 +142,7 @@ final class CalendarMeetLinkPlugin extends ServerPlugin
         }
 
         $principalName = implode('/', $segments);
-        if ($principalName === '' || $principalName === 'inbox') {
+        if ($principalName === 'inbox') {
             return null;
         }
 

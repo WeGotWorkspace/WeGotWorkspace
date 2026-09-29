@@ -21,7 +21,6 @@ use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
 use Sabre\VObject\Property\ICalendar\Duration as IcsDuration;
 use Sabre\VObject\Reader;
 use Sabre\VObject\Recur\EventIterator;
-use Sabre\VObject\Recur\NoInstancesException;
 
 final class AlertDueScheduler
 {
@@ -45,7 +44,7 @@ final class AlertDueScheduler
             ->get();
 
         foreach ($objects as $object) {
-            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+            $raw = $object->calendardata;
             if ($raw === '') {
                 continue;
             }
@@ -179,7 +178,7 @@ final class AlertDueScheduler
     {
         if ($parsed['kind'] === 'absolute') {
             $when = $parsed['when'] ?? '';
-            if (! is_string($when) || $when === '') {
+            if ($when === '') {
                 return null;
             }
             try {
@@ -189,15 +188,12 @@ final class AlertDueScheduler
             }
         }
         $offset = $parsed['offset'] ?? '';
-        if (! is_string($offset) || $offset === '') {
+        if ($offset === '') {
             return null;
         }
         $anchor = $occurrenceStart;
         if (($parsed['relatedTo'] ?? 'start') === 'end') {
-            $end = $this->endDate($component, $occurrenceStart);
-            if ($end !== null) {
-                $anchor = $end;
-            }
+            $anchor = $this->endDate($component, $occurrenceStart);
         }
 
         return $this->applyIcalDuration($anchor, $offset);
@@ -229,7 +225,7 @@ final class AlertDueScheduler
             }
 
             return $out !== [] ? $out : array_filter([$this->startDate($component)]);
-        } catch (NoInstancesException|\Throwable) {
+        } catch (\Throwable) {
             $start = $this->startDate($component);
 
             return $start !== null ? [$start] : [];
@@ -249,7 +245,7 @@ final class AlertDueScheduler
         }
     }
 
-    private function endDate(VEvent|VTodo $component, DateTimeImmutable $start): ?DateTimeImmutable
+    private function endDate(VEvent|VTodo $component, DateTimeImmutable $start): DateTimeImmutable
     {
         $duration = $component->DURATION ?? null;
         if ($duration !== null) {

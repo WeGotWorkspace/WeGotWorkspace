@@ -425,7 +425,7 @@ final class DriveShareService
      */
     public function atPath(array $principal, string $virtualPath): array
     {
-        $username = strtolower(trim((string) ($principal['username'] ?? '')));
+        $username = strtolower(trim((string) $principal['username']));
         $path = $this->scope->normalize($virtualPath);
 
         if ($this->principalOwnsSharePath($username, $path)) {
@@ -829,7 +829,7 @@ final class DriveShareService
     private function principalOwnsSharePath(string $username, string $path): bool
     {
         $segments = explode('/', ltrim($path, '/'));
-        $root = (string) ($segments[0] ?? '');
+        $root = (string) $segments[0];
         if ($root === 'users' && strcasecmp((string) ($segments[1] ?? ''), $username) === 0) {
             return true;
         }
@@ -913,7 +913,7 @@ final class DriveShareService
         }
 
         $meta = $this->noteListingMetaFromPath($path);
-        if ($meta !== null && ($meta['kind'] ?? '') === 'notebook') {
+        if ($meta !== null && $meta['kind'] === 'notebook') {
             throw new ApiHttpException(
                 400,
                 'Notebook directories cannot be shared; share individual notes instead.',
@@ -1221,8 +1221,8 @@ final class DriveShareService
             'type' => $isDir ? 'dir' : 'file',
             'path' => $path,
             'name' => basename($path),
-            'size' => $isDir ? 0 : max(0, (int) ($disk->size($key) ?? 0)),
-            'time' => max(0, (int) ($disk->lastModified($key) ?? time())),
+            'size' => $isDir ? 0 : max(0, (int) ($disk->size($key))),
+            'time' => max(0, (int) ($disk->lastModified($key))),
             'permissions' => 0,
             'myRights' => DriveShareAccess::rightsFor($grantAccess, $isCollabDoc, false, $isNotePath),
         ];
@@ -1255,7 +1255,7 @@ final class DriveShareService
         $scope = $root === 'groups' ? 'group' : 'personal';
         $groupSlug = $scope === 'group' ? $owner : null;
 
-        if ($noteId !== null && $noteId !== '') {
+        if ($noteId !== null) {
             return [
                 'kind' => 'note',
                 'owner' => $owner,
@@ -1825,7 +1825,7 @@ final class DriveShareService
     {
         $slugs = [];
         foreach ($this->groupDirectory->groupsForUser($username) as $group) {
-            $uri = (string) ($group['id'] ?? '');
+            $uri = (string) $group['id'];
             if (str_starts_with($uri, 'principals/groups/')) {
                 $slugs[] = substr($uri, strlen('principals/groups/'));
             }

@@ -35,7 +35,7 @@ final class DriveListTool extends WgwMcpTool
         ];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::DRIVE_READ;
     }
@@ -45,7 +45,7 @@ final class DriveListTool extends WgwMcpTool
         return 'read';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): array
     {
         return ['path' => (string) $request->get('path', '/')];
     }

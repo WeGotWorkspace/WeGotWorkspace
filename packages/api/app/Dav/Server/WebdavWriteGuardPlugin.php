@@ -117,13 +117,13 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             } catch (\Throwable) {
                 throw new Forbidden('Invalid Destination.');
             }
-            if (self::isPrincipalsSubtree($path) || self::isPrincipalsSubtree($destPath)) {
+            if (self::isPrincipalsSubtree($destPath)) {
                 throw new Forbidden('Moving or copying resources under principals/ is not allowed.');
             }
-            if (self::isStrayFilesPath($path) || self::isStrayFilesPath($destPath)) {
+            if (self::isStrayFilesPath($destPath)) {
                 throw new Forbidden('Moving or copying to or from this path under files/ is not allowed.');
             }
-            if (DocAttachmentPaths::davIsProtected($path) || DocAttachmentPaths::davIsProtected($destPath)) {
+            if (DocAttachmentPaths::davIsProtected($destPath)) {
                 throw new Forbidden('The .attachments tree is server-owned.');
             }
             if (self::isCalendarFolderPath($path) || self::isCalendarFolderPath($destPath)) {

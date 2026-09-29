@@ -176,7 +176,7 @@ final class MailOperationService
         foreach ($raw as $row) {
             $mb = $row['mailbox'];
             $id = self::folderIdEncode($mb);
-            $del = self::normalizeMailboxDelimiter($row['delimiter'] ?? '.');
+            $del = self::normalizeMailboxDelimiter($row['delimiter']);
             $pCanon = self::resolveParentByLongestListedPrefix($mb, $raw);
             if ($pCanon === null) {
                 $pCanon = self::resolveParentMailboxForTree($mb, $del, $byLower);
@@ -240,7 +240,7 @@ final class MailOperationService
         if (strtoupper($mb) === 'INBOX') {
             return $decoded !== '' ? $decoded : 'Inbox';
         }
-        $del = self::normalizeMailboxDelimiter($row['delimiter'] ?? '.');
+        $del = self::normalizeMailboxDelimiter($row['delimiter']);
         $leaf = self::mailboxLeafSegment($mb, $del);
 
         return MailImapClient::decodeMailboxName($leaf);
@@ -248,7 +248,7 @@ final class MailOperationService
 
     private function normalizeMailboxDelimiter(string $delimiter): string
     {
-        if (strlen($delimiter) === 1 && $delimiter !== '') {
+        if (strlen($delimiter) === 1) {
             return $delimiter;
         }
 
@@ -297,11 +297,11 @@ final class MailOperationService
         $bestLen = -1;
         foreach ($raw as $row) {
             $k = $row['mailbox'];
-            if (! is_string($k) || $k === '') {
+            if ($k === '') {
                 continue;
             }
             $lk = strlen($k);
-            if ($lk === 0 || $lk >= $mLen) {
+            if ($lk >= $mLen) {
                 continue;
             }
             if (strncasecmp($mailbox, $k, $lk) !== 0) {
@@ -329,7 +329,7 @@ final class MailOperationService
         $m = [];
         foreach ($raw as $row) {
             $mb = $row['mailbox'];
-            if (! is_string($mb) || $mb === '') {
+            if ($mb === '') {
                 continue;
             }
             $k = strtolower($mb);
@@ -419,16 +419,16 @@ final class MailOperationService
     {
         foreach ($raw as $row) {
             if (strcasecmp($row['mailbox'], $mailbox) === 0) {
-                $d = $row['delimiter'] ?? '.';
+                $d = $row['delimiter'];
 
-                return is_string($d) && strlen($d) === 1 ? $d : '.';
+                return strlen($d) === 1 ? $d : '.';
             }
         }
         foreach ($raw as $row) {
             if (strtoupper($row['mailbox']) === 'INBOX') {
-                $d = $row['delimiter'] ?? '.';
+                $d = $row['delimiter'];
 
-                return is_string($d) && strlen($d) === 1 ? $d : '.';
+                return strlen($d) === 1 ? $d : '.';
             }
         }
 
@@ -755,9 +755,6 @@ final class MailOperationService
                 $ov = MailImapClient::fetchOverviews($conn, $uidsForOverview);
                 $messages = [];
                 foreach ($ov as $o) {
-                    if (! is_object($o)) {
-                        continue;
-                    }
                     $uid = (int) ($o->uid ?? 0);
                     if ($uid <= 0) {
                         continue;
@@ -773,9 +770,6 @@ final class MailOperationService
             }
         } finally {
             @imap_close($conn);
-        }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
         }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);
@@ -827,9 +821,6 @@ final class MailOperationService
             }
         } finally {
             @imap_close($conn);
-        }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
         }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);
@@ -908,7 +899,7 @@ final class MailOperationService
             return [];
         }
         $st = @imap_fetchstructure($conn, $msgno);
-        if ($st === false || ! is_object($st)) {
+        if ($st === false) {
             return [];
         }
 
@@ -1013,9 +1004,6 @@ final class MailOperationService
         } finally {
             @imap_close($conn);
         }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
-        }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);
         }
@@ -1051,7 +1039,7 @@ final class MailOperationService
                     $summaries = self::attachmentSummariesForUid($conn, $uid);
                     $meta = null;
                     foreach ($summaries as $s) {
-                        if (isset($s['part']) && $s['part'] === $part) {
+                        if ($s['part'] === $part) {
                             $meta = $s;
                             break;
                         }
@@ -1065,7 +1053,7 @@ final class MailOperationService
                         } else {
                             return new MailBinaryDownload(
                                 $got['mime'],
-                                isset($meta['name']) && is_string($meta['name']) ? $meta['name'] : 'attachment',
+                                $meta['name'],
                                 $got['bytes'],
                             );
                         }
@@ -1075,14 +1063,7 @@ final class MailOperationService
         } finally {
             @imap_close($conn);
         }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
-        }
-        if ($resp[0] !== 200) {
-            throw new MailResponseException($resp[0], $resp[1]);
-        }
-
-        return $resp[1];
+        throw new MailResponseException($resp[0], $resp[1]);
     }
 
     private function handleMessagePatch(string $username, array $j): array
@@ -1125,9 +1106,6 @@ final class MailOperationService
         } finally {
             @imap_close($conn);
         }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
-        }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);
         }
@@ -1161,9 +1139,6 @@ final class MailOperationService
             }
         } finally {
             @imap_close($conn);
-        }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
         }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);
@@ -1203,7 +1178,7 @@ final class MailOperationService
                 $resp = [400, ['error' => 'mailbox']];
             } else {
                 $target = $to;
-                if ($target === '' && $toSys !== null) {
+                if ($target === '') {
                     $resolved = self::resolveSystemMailbox($conn, $ref, $toSys);
                     if ($resolved === null || $resolved === '') {
                         $resp = [400, ['error' => 'no_target_mailbox', 'message' => 'No mailbox found for '.$toSys]];
@@ -1219,9 +1194,6 @@ final class MailOperationService
             }
         } finally {
             @imap_close($conn);
-        }
-        if ($resp === null) {
-            throw new MailResponseException(500, ['error' => 'server_error']);
         }
         if ($resp[0] !== 200) {
             throw new MailResponseException($resp[0], $resp[1]);
@@ -1398,10 +1370,7 @@ final class MailOperationService
         } catch (\Throwable $e) {
             throw $this->mailSendException($e, $transport);
         }
-        $payload = ['ok' => true];
-        if ($attachReport !== null) {
-            $payload['attachment_report'] = $attachReport;
-        }
+        $payload = ['ok' => true, 'attachment_report' => $attachReport];
         if ($appendErr !== null) {
             $payload['sent_copy_failed'] = $appendErr;
         }
@@ -1472,10 +1441,7 @@ final class MailOperationService
         if ($appendErr !== null) {
             throw new MailResponseException(400, ['error' => 'draft_append_failed', 'message' => $appendErr]);
         }
-        $payload = ['ok' => true];
-        if ($attachReport !== null) {
-            $payload['attachment_report'] = $attachReport;
-        }
+        $payload = ['ok' => true, 'attachment_report' => $attachReport];
 
         return $payload;
     }
@@ -1537,9 +1503,7 @@ final class MailOperationService
         if ($connectFailed && $endpoint !== '') {
             return new MailResponseException(400, [
                 'error' => 'smtp_connect',
-                'message' => $message !== ''
-                    ? $message.' (configured: '.$endpoint.')'
-                    : 'Could not connect to SMTP server at '.$endpoint.'.',
+                'message' => $message.' (configured: '.$endpoint.')',
                 'smtp' => [
                     'host' => $transport['host'],
                     'port' => $transport['port'],

@@ -21,9 +21,9 @@ final class TaskMapper
      */
     public function toTasks(CalendarObject $object, string $taskListUri): array
     {
-        $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $raw = $object->calendardata;
         $tasks = $this->converter->tasksFromIcs($raw, (string) $object->uri, $taskListUri);
-        $etag = OptimisticConcurrency::formatEtag(is_string($object->etag) ? $object->etag : null);
+        $etag = OptimisticConcurrency::formatEtag($object->etag);
         $lastModified = (int) ($object->lastmodified ?? 0);
         if ($lastModified <= 0 && $etag === null) {
             return $tasks;
@@ -53,13 +53,13 @@ final class TaskMapper
      */
     public function toTask(CalendarObject $object, string $taskListUri, ?string $vtodoUid = null): ?array
     {
-        $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $raw = $object->calendardata;
         $task = $this->converter->taskFromIcsComponent($raw, (string) $object->uri, $taskListUri, $vtodoUid);
         if ($task === null) {
             return null;
         }
 
-        $etag = OptimisticConcurrency::formatEtag(is_string($object->etag) ? $object->etag : null);
+        $etag = OptimisticConcurrency::formatEtag($object->etag);
         if ($etag !== null) {
             $task['etag'] = $etag;
         }

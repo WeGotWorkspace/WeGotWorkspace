@@ -35,7 +35,7 @@ final class AddressBookListTool extends WgwMcpTool
         ];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::CONTACTS_READ;
     }
@@ -45,7 +45,7 @@ final class AddressBookListTool extends WgwMcpTool
         return 'read';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): array
     {
         return ['addressBookId' => (string) $request->get('addressBookId', '')];
     }

@@ -19,7 +19,7 @@ final class RequireWgwRole
     {
         /** @var array{username: string, role: string}|null $principal */
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $actual = is_array($principal) ? (string) ($principal['role'] ?? 'guest') : 'guest';
+        $actual = is_array($principal) ? (string) $principal['role'] : 'guest';
 
         if (! RoleAuthorizer::allows($actual, $minimumRole)) {
             if ($principal === null) {

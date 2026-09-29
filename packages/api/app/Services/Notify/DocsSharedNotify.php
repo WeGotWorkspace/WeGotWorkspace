@@ -63,7 +63,7 @@ final class DocsSharedNotify
             return 'Someone';
         }
         $principal = Principal::forUsername($trimmed);
-        $name = trim((string) ($principal?->displayname ?? ''));
+        $name = trim((string) ($principal->displayname ?? ''));
 
         return $name !== '' ? $name : $trimmed;
     }

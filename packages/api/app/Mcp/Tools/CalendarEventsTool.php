@@ -39,7 +39,7 @@ final class CalendarEventsTool extends WgwMcpTool
         ];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::CALENDAR_READ;
     }
@@ -49,7 +49,7 @@ final class CalendarEventsTool extends WgwMcpTool
         return 'read';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): array
     {
         return [
             'eventId' => (string) $request->get('eventId', ''),

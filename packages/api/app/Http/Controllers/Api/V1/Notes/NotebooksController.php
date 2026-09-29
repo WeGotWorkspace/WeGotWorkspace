@@ -49,7 +49,7 @@ final class NotebooksController
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
         $options = $request->validated();
         $queryFlag = $request->query('onDestroyRemoveContents');
-        if ($queryFlag === '1' || $queryFlag === 'true' || $queryFlag === true) {
+        if ($queryFlag === '1' || $queryFlag === 'true') {
             $options['onDestroyRemoveContents'] = true;
         }
 

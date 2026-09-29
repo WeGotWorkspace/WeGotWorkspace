@@ -109,7 +109,7 @@ final class DefaultMixedCalendarMigrator
                 $targetUri = $this->allocateTargetUri($objectUri, $existingInboxUris);
                 $existingInboxUris[$targetUri] = true;
 
-                $data = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+                $data = $object->calendardata;
                 $caldav->createCalendarObject($targetCalendarId, $targetUri, $data);
                 $caldav->deleteCalendarObject($sourceCalendarId, $objectUri);
                 $movedObjects++;

@@ -121,7 +121,7 @@ final class NoteJournalConverter
      */
     public function fromObject(CalendarObject $object, string $notebookId, bool $starred = false): array
     {
-        $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $raw = $object->calendardata;
         $note = $this->fromIcs($raw, (string) $object->uid);
         $note['notebookId'] = $notebookId;
         $note['etag'] = OptimisticConcurrency::formatEtag((string) $object->etag) ?? (string) $object->etag;

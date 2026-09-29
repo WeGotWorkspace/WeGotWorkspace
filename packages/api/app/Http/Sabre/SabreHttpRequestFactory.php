@@ -23,7 +23,7 @@ final class SabreHttpRequestFactory
         $sabre = Sapi::createFromServerArray($server);
 
         foreach ($request->headers->all() as $name => $values) {
-            if (! is_array($values) || $values === []) {
+            if ($values === []) {
                 continue;
             }
             $sabre->setHeader($name, $values[0]);

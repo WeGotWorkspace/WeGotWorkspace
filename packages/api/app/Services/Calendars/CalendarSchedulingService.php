@@ -57,7 +57,7 @@ final class CalendarSchedulingService
             return $newIcs;
         }
         foreach ($this->brokerMessages($username, $newIcs, $oldIcs) as $message) {
-            $method = strtoupper((string) ($message->method ?? ''));
+            $method = strtoupper((string) ($message->method));
             if (in_array($method, ['REQUEST', 'CANCEL'], true) && $message->significantChange) {
                 return $this->incrementSequence($newIcs);
             }
@@ -98,7 +98,7 @@ final class CalendarSchedulingService
             return $event;
         }
         $principal = Principal::forUsername($username);
-        $name = trim((string) ($principal?->displayname ?? ''));
+        $name = trim((string) ($principal->displayname ?? ''));
         $event['participants'] = [
             'org' => [
                 '@type' => 'Participant',
@@ -196,7 +196,7 @@ final class CalendarSchedulingService
 
     private function shouldDeliver(Message $message, ?string $oldIcs): bool
     {
-        $method = strtoupper((string) ($message->method ?? ''));
+        $method = strtoupper((string) ($message->method));
         if ($method === 'REQUEST' && $oldIcs !== null && trim($oldIcs) !== '' && ! $message->significantChange) {
             return false;
         }
@@ -321,13 +321,13 @@ final class CalendarSchedulingService
 
     private function isOrganizerRequestToSelf(Message $message, Principal $recipient): bool
     {
-        $method = strtoupper((string) ($message->method ?? 'REQUEST'));
+        $method = strtoupper((string) ($message->method));
         if ($method !== '' && $method !== 'REQUEST') {
             return false;
         }
 
-        $organizerMailto = (string) ($message->sender ?? '');
-        $vevent = isset($message->message) ? ($message->message->VEVENT ?? null) : null;
+        $organizerMailto = (string) ($message->sender);
+        $vevent = $message->message->VEVENT ?? null;
         if ($vevent !== null && isset($vevent->ORGANIZER)) {
             $organizerMailto = (string) $vevent->ORGANIZER;
         }
@@ -348,7 +348,7 @@ final class CalendarSchedulingService
 
     private function deliverLocal(string $actorUsername, Message $message, string $principalUri): void
     {
-        $method = strtoupper((string) ($message->method ?? ''));
+        $method = strtoupper((string) ($message->method));
         if ($method === 'CANCEL') {
             $this->consumeCancel($actorUsername, $principalUri, $message);
 
@@ -365,7 +365,7 @@ final class CalendarSchedulingService
         $existing = $this->findEventByUid($principalUri, (string) $message->uid);
         $current = null;
         if ($existing !== null) {
-            $raw = is_string($existing->calendardata) ? $existing->calendardata : (string) $existing->calendardata;
+            $raw = $existing->calendardata;
             $current = Reader::read($raw);
         }
 
@@ -420,7 +420,7 @@ final class CalendarSchedulingService
             return;
         }
 
-        $raw = is_string($existing->calendardata) ? $existing->calendardata : (string) $existing->calendardata;
+        $raw = $existing->calendardata;
         $current = Reader::read($raw);
         $newObject = (new Broker)->processMessage($message, $current);
         $instance = $this->instanceForObject($principalUri, $existing);
@@ -451,7 +451,7 @@ final class CalendarSchedulingService
         if ($copy === null) {
             return;
         }
-        $uid = trim((string) ($message->uid ?? ''));
+        $uid = trim((string) ($message->uid));
         $this->eventDispatch->fireMutation(
             $actorUsername,
             'calendar',
@@ -494,7 +494,7 @@ final class CalendarSchedulingService
         if ($copy === null) {
             return;
         }
-        $uid = trim((string) ($message->uid ?? ''));
+        $uid = trim((string) ($message->uid));
         $this->eventDispatch->fireMutation(
             $actorUsername,
             'calendar',

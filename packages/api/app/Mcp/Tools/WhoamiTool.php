@@ -29,7 +29,7 @@ final class WhoamiTool extends WgwMcpTool
         return [];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::SETTINGS;
     }
@@ -39,7 +39,7 @@ final class WhoamiTool extends WgwMcpTool
         return 'read';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): string
     {
         return 'profile';
     }

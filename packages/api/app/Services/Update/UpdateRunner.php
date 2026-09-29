@@ -19,6 +19,8 @@ final class UpdateRunner
     /** Orphan progress in state.json without a lock is cleared after this many seconds. */
     private const STALE_PROGRESS_SECONDS = 120;
 
+    private bool $applyFinished = false;
+
     public function __construct(
         private UpdateStateStore $store,
         private WgwInstallConfig $install,
@@ -306,17 +308,16 @@ final class UpdateRunner
             'finishedAt' => null,
         ];
 
-        $applyFinished = false;
+        $this->applyFinished = false;
         $runner = $this;
         register_shutdown_function(static function () use (
             $runner,
-            &$applyFinished,
             &$result,
             &$lock,
             $beforeVersion,
             $targetVersion,
         ): void {
-            if ($applyFinished) {
+            if ($runner->applyFinished) {
                 return;
             }
             $runner->finalizeAbortedApply($result, $lock, $beforeVersion, $targetVersion);
@@ -395,7 +396,7 @@ final class UpdateRunner
                 fclose($lock);
             }
             $this->store->cleanupTemporaryData();
-            $applyFinished = true;
+            $this->applyFinished = true;
         }
 
         return $result;
@@ -656,30 +657,6 @@ final class UpdateRunner
         return $stagingDir;
     }
 
-    /**
-     * @param  list<string>  $paths
-     */
-    private function backupPaths(
-        string $sourceRoot,
-        string $backupRoot,
-        array $paths,
-        string $fromVersion,
-        string $toVersion
-    ): void {
-        $total = count($paths);
-        $done = 0;
-        foreach ($paths as $relative) {
-            self::throwIfCancelRequested();
-            $src = $sourceRoot.'/'.$relative;
-            if (file_exists($src)) {
-                $dest = $backupRoot.'/'.$relative;
-                self::copyRecursive($src, $dest, true);
-            }
-            $done++;
-            self::writePhaseProgress('backing_up', $fromVersion, $toVersion, $done, $total);
-        }
-    }
-
     private function backupDatabase(
         string $backupRoot,
         string $fromVersion,
@@ -884,25 +861,6 @@ final class UpdateRunner
         }
         if (@copy($env, $backupDir.'/packages-api.env')) {
             $this->store->appendLog('Backed up packages/api/.env into the update backup folder.');
-        }
-    }
-
-    /**
-     * @param  list<string>  $paths
-     */
-    private function restorePaths(string $backupRoot, string $targetRoot, array $paths): void
-    {
-        if (! is_dir($backupRoot)) {
-            return;
-        }
-        foreach ($paths as $relative) {
-            $src = $backupRoot.'/'.$relative;
-            if (! file_exists($src)) {
-                continue;
-            }
-            $dest = $targetRoot.'/'.$relative;
-            self::rmRecursive($dest);
-            self::copyRecursive($src, $dest);
         }
     }
 
@@ -1150,7 +1108,7 @@ final class UpdateRunner
     private function readFilesystemFreeBytes(string $path): ?int
     {
         $freeBytesRaw = @disk_free_space($path);
-        if (! is_int($freeBytesRaw) && ! is_float($freeBytesRaw)) {
+        if (! is_float($freeBytesRaw)) {
             return null;
         }
 
@@ -1222,7 +1180,7 @@ final class UpdateRunner
             return null;
         }
         $value = (float) $m[1];
-        $unit = strtoupper($m[2] ?? '');
+        $unit = strtoupper($m[2]);
         $power = match ($unit) {
             'K' => 1,
             'M' => 2,
@@ -1239,7 +1197,7 @@ final class UpdateRunner
     private function lastFilesystemError(): string
     {
         $last = error_get_last();
-        $message = is_array($last) && isset($last['message']) && is_string($last['message'])
+        $message = is_array($last)
             ? trim($last['message'])
             : '';
 
@@ -1367,7 +1325,7 @@ final class UpdateRunner
     private function assertHttpsUrl(string $url, string $label): void
     {
         $parts = parse_url(trim($url));
-        $scheme = is_array($parts) && isset($parts['scheme']) && is_string($parts['scheme'])
+        $scheme = is_array($parts) && isset($parts['scheme'])
             ? strtolower($parts['scheme'])
             : '';
         if ($scheme !== 'https') {

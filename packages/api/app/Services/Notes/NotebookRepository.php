@@ -215,7 +215,7 @@ final class NotebookRepository
         $tokens = [];
         $instances = $this->accessibleNotebookInstances($username);
         foreach ($instances as $instance) {
-            $tokens[$this->apiIdForInstance($instance)] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+            $tokens[$this->apiIdForInstance($instance)] = (string) (int) ($instance->calendar->synctoken ?? 1);
         }
 
         return $tokens;
@@ -241,7 +241,7 @@ final class NotebookRepository
 
         $currentMap = [];
         foreach ($instances as $instance) {
-            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar?->synctoken ?? 1);
+            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar->synctoken ?? 1);
         }
         $created = [];
         $updated = [];
@@ -486,7 +486,7 @@ final class NotebookRepository
         if (ChatCollectionUris::isChatUri($base)) {
             $base = 'notebook-'.$base;
         }
-        if ($base === '' || in_array($base, CalendarCollectionUris::reservedNoteUriSlugs(), true)) {
+        if (in_array($base, CalendarCollectionUris::reservedNoteUriSlugs(), true)) {
             $base = 'notebook';
         }
         $candidate = $base;
@@ -503,7 +503,7 @@ final class NotebookRepository
     {
         $parts = [];
         foreach ($instances as $instance) {
-            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar?->synctoken ?? 1);
+            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar->synctoken ?? 1);
         }
 
         return (string) count($parts).':'.implode(',', $parts);
@@ -517,7 +517,7 @@ final class NotebookRepository
         if (! preg_match('/^(\d+):(.+)$/', $state, $matches)) {
             return null;
         }
-        $entries = $matches[2] === '' ? [] : explode(',', $matches[2]);
+        $entries = explode(',', $matches[2]);
         if (count($entries) !== (int) $matches[1]) {
             return null;
         }
@@ -559,7 +559,7 @@ final class NotebookRepository
         $id = (string) ($mapped['id'] ?? $instance->uri);
         foreach ($added as $sharee) {
             $grant = $grants[$sharee] ?? null;
-            $access = is_array($grant) && ($grant['mayWrite'] ?? false) === true ? 'write' : 'read';
+            $access = is_array($grant) && $grant['mayWrite'] === true ? 'write' : 'read';
             $this->eventDispatch->fireMutation(
                 $username,
                 'notes',

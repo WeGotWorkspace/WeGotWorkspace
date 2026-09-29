@@ -247,7 +247,7 @@ final class MeetReservationService
 
         $out = [];
         foreach ($rows as $row) {
-            $raw = is_string($row->calendardata) ? $row->calendardata : (string) $row->calendardata;
+            $raw = $row->calendardata;
             if ($raw === '') {
                 continue;
             }

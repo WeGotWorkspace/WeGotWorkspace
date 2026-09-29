@@ -22,11 +22,11 @@ final class CalendarEventMapper
      */
     public function toCalendarEvents(CalendarObject $object, string $calendarUri, ?string $username = null): array
     {
-        $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $raw = $object->calendardata;
         $events = $this->converter->eventsFromIcs($raw);
         $objectId = self::eventIdFromUri((string) $object->uri);
         $multi = count($events) > 1;
-        $etag = OptimisticConcurrency::formatEtag(is_string($object->etag) ? $object->etag : null);
+        $etag = OptimisticConcurrency::formatEtag($object->etag);
 
         return array_map(function (array $event) use ($object, $calendarUri, $objectId, $multi, $etag, $username): array {
             $uid = is_string($event['uid'] ?? null) ? $event['uid'] : '';

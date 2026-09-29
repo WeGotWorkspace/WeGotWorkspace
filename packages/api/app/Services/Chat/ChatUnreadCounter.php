@@ -34,7 +34,7 @@ final class ChatUnreadCounter
             ->get(['uid', 'calendardata']);
         foreach ($objects as $object) {
             $message = $this->converter->fromIcs(
-                is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata,
+                $object->calendardata,
                 (string) $object->uid,
             );
             if (($message['authorId'] ?? '') === $username || ($message['deletedAt'] ?? null) !== null) {

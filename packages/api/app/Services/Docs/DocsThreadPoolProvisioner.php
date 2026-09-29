@@ -36,7 +36,7 @@ final class DocsThreadPoolProvisioner
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             $this->calendarCollections->ensureForGroupPrincipal(
                 $principalUri,
-                (string) ($group?->displayname ?? $slug),
+                (string) ($group->displayname ?? $slug),
             );
         } else {
             $this->calendarCollections->ensureForPrincipal($principalUri);

@@ -131,7 +131,7 @@ final class McpRedirectUris
     public static function displayHost(string $origin): string
     {
         $parts = parse_url($origin);
-        if (is_array($parts) && isset($parts['host']) && is_string($parts['host']) && $parts['host'] !== '') {
+        if (is_array($parts) && isset($parts['host']) && $parts['host'] !== '') {
             $host = trim($parts['host'], '[]');
             if (isset($parts['port'])) {
                 return $host.':'.$parts['port'];

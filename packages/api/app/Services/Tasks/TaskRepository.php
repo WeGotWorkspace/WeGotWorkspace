@@ -212,7 +212,7 @@ final class TaskRepository
         $taskPayload['taskListId'] = $this->taskLists->apiIdForInstance($instance);
         $taskPayload['uid'] = $existingTask['uid'];
 
-        $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $raw = $object->calendardata;
         $ics = $located['vtodoUid'] !== null
             ? $this->mapper->mergeIntoIcs($raw, $taskPayload, $located['vtodoUid'])
             : $this->mapper->toIcs($taskPayload);
@@ -280,7 +280,7 @@ final class TaskRepository
         $taskPayload['taskListId'] = $this->taskLists->apiIdForInstance($instance);
         $taskPayload['uid'] = $existingTask['uid'];
 
-        $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $raw = $object->calendardata;
         $ics = $located['vtodoUid'] !== null
             ? $this->mapper->mergeIntoIcs($raw, $taskPayload, $located['vtodoUid'])
             : $this->mapper->toIcs($taskPayload);
@@ -338,7 +338,7 @@ final class TaskRepository
         $davPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
 
         if ($located['vtodoUid'] !== null) {
-            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+            $raw = $object->calendardata;
             $remaining = $this->mapper->removeVtodoFromIcs($raw, $located['vtodoUid']);
             if ($remaining === null) {
                 $this->calBackend()->deleteCalendarObject($calendarIdPair, $objectUri);
@@ -587,16 +587,6 @@ final class TaskRepository
         return $uris;
     }
 
-    private function findOwnedInstance(string $username, string $taskListId): ?CalendarInstance
-    {
-        return CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $this->principalUri($username))
-            ->where('uri', $taskListId)
-            ->whereHas('calendar', fn ($query) => $query->supportsVtodo())
-            ->first();
-    }
-
     private function findObjectInCalendar(int $calendarId, string $objectUri): ?CalendarObject
     {
         return CalendarObject::query()
@@ -629,7 +619,7 @@ final class TaskRepository
         OptimisticConcurrency::assertPreconditions(
             $ifMatch,
             $ifUnmodifiedSince,
-            is_string($object->etag) ? $object->etag : null,
+            $object->etag,
             (int) ($object->lastmodified ?? 0),
             $requirePrecondition,
         );
