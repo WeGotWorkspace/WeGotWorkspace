@@ -34,11 +34,12 @@ paths:
 | Apps Vitest (unit + jsdom) | `pnpm test` in `packages/apps` |
 | Storybook Vitest smoke (`vitest-ci`) | `pnpm test:storybook:ci` in `packages/apps` |
 | API e2e (Docker) | `pnpm test:api-e2e:docker` |
-| Apps Playwright smoke (Storybook) | `pnpm test:apps-e2e` |
+| Apps Playwright smoke (Storybook) | `pnpm test:apps-e2e` — CI job `apps-e2e` |
+| Apps Playwright live | `pnpm --filter @wgw/apps test:e2e:live` — local only |
 
 Handoff and PR verification: [developer/done-checklist.md](../developer/done-checklist.md). Issue acceptance criteria: [verify-issue](../verify-issue/SKILL.md). Policy vs CI: [.agents/POLICY.md](../../POLICY.md). Review gate: [code-review](../code-review/SKILL.md).
 
-**SPA front routes:** new top-level apps router paths need `UiStaticServer` allowlist + `FrontRoutingTest` coverage (Architecture `SpaShellRouteAllowlistTest`). That is API done-gate territory — not Playwright e2e (still out of scope in POLICY).
+**SPA front routes:** new top-level apps router paths need `UiStaticServer` allowlist + `FrontRoutingTest` coverage (Architecture `SpaShellRouteAllowlistTest`). That is API done-gate territory. Storybook-tier Playwright (`apps-e2e`) does not cover new SPA prefixes.
 
 ## Multitask
 
