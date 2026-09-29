@@ -108,6 +108,30 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
             ->assertJsonPath('code', 'throttled');
     }
 
+    public function test_ip_level_rate_limit_blocks_credential_stuffing(): void
+    {
+        $this->seedWgwUser('bob', displayName: 'Bob');
+        $this->seedWgwUser('carol', displayName: 'Carol');
+
+        // Attempt LoginRateLimiter::IP_LIMIT failed logins across different users
+        for ($attempt = 0; $attempt < LoginRateLimiter::IP_LIMIT; $attempt++) {
+            $username = match ($attempt % 3) {
+                0 => self::USERNAME,
+                1 => 'bob',
+                default => 'carol',
+            };
+            $this->postCredentials($username, 'wrong')->assertUnauthorized();
+        }
+
+        // Next attempt from same IP should be throttled regardless of username
+        $this->postCredentials('bob', self::PASSWORD)
+            ->assertStatus(429)
+            ->assertJson([
+                'error' => 'Too many login attempts. Please try again later.',
+                'code' => 'throttled',
+            ]);
+    }
+
     private function postCredentials(string $username, string $password): TestResponse
     {
         return $this->postJson('/api/v1/auth/token', [
