@@ -441,7 +441,8 @@ final class TaskListRepository
         return $candidate;
     }
 
-    private function computeInstancesState($instances): string
+    /** @param iterable<CalendarInstance> $instances */
+    private function computeInstancesState(iterable $instances): string
     {
         $parts = [];
         foreach ($instances as $instance) {

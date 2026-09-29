@@ -16,7 +16,9 @@ final class SabreUserProvider implements UserProvider
 
     public function retrieveById($identifier): ?Authenticatable
     {
-        return User::query()->find($identifier);
+        $user = User::query()->find($identifier);
+
+        return $user instanceof Authenticatable ? $user : null;
     }
 
     public function retrieveByToken($identifier, #[\SensitiveParameter] $token): ?Authenticatable

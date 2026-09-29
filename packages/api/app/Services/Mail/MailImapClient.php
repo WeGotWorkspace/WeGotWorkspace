@@ -239,7 +239,7 @@ final class MailImapClient
     }
 
     /**
-     * @param  list<string>  $uids
+     * @param  list<int|string>  $uids
      * @return list<\stdClass>
      */
     public static function fetchOverviews(Connection $conn, array $uids): array
