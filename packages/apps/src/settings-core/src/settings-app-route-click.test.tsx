@@ -133,7 +133,7 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     await renderSettingsApp("/settings/calendar");
     expect(screen.getByRole("button", { name: "Calendar" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: "Locale" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Language" })).toBeTruthy();
   });
 
   it("does not snap back to Settings after navigating to another app", async () => {

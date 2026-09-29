@@ -37,5 +37,7 @@ describe("mapTimelineOccurrenceEvents", () => {
     expect(utc?.start).toBe(9 * 60);
     expect(amsterdam?.start).toBe(10 * 60);
     expect(amsterdam?.originalStart.toString()).toBe("2025-01-13T09:00:00");
+    expect(amsterdam?.displayStart.toString()).toBe("2025-01-13T10:00:00");
+    expect(utc?.displayStart.toString()).toBe("2025-01-13T09:00:00");
   });
 });

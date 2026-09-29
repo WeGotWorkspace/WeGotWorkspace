@@ -13,6 +13,7 @@ export type CalendarDisplayResolved = {
   timeZone: string;
   timezone: string;
   weekStart: number;
+  inviteCalendarId?: string;
 };
 
 export function resolveCalendarDisplay(
@@ -22,11 +23,13 @@ export function resolveCalendarDisplay(
   const locale = resolveLocale(stored.locale);
   const weekStart = resolveCalendarWeekStart(stored, locale);
   const timeZone = defaultTimedEventTimeZone(stored.timeZone);
+  const inviteCalendarId = stored.inviteCalendarId?.trim();
   return {
     locale,
     timeZone,
     timezone: timeZone,
     weekStart,
+    ...(inviteCalendarId ? { inviteCalendarId } : {}),
   };
 }
 

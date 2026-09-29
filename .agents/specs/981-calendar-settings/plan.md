@@ -4,7 +4,7 @@ Derived from [spec.md](./spec.md). Sequential chunks. Source Task #981.
 
 ## Goal
 
-Device-local Calendar display prefs (timezone, locale, day starts on) in Settings and the in-app dialog, wired into the grid.
+Device-local Calendar display prefs (timezone, language, day starts on, incoming invites) in Settings and the in-app dialog, wired into the grid.
 
 ## Budget
 

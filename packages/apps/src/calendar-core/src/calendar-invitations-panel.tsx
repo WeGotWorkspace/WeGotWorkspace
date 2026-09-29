@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { CheckCheck, Inbox } from "lucide-react";
 import type { CalendarEventSelectionOrigin } from "@/calendar-core/src/calendar-event-preview";
+import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-display-prefs";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarInvitationCard } from "@/calendar-core/src/calendar-invitation-card";
 import {
@@ -55,6 +56,8 @@ export function CalendarInvitationsPanel({
   const tab = tabProp ?? uncontrolledTab;
   const visible = useMemo(() => filterInvitationsByTab(notifications, tab), [notifications, tab]);
   const count = visible.length;
+  const { inviteCalendarId } = useCalendarDisplayPrefs();
+  const inviteTargetId = inviteCalendarId || defaultCalendarId;
 
   return (
     <DocsCollabSidebarPanel
@@ -97,7 +100,7 @@ export function CalendarInvitationsPanel({
           labels={labels}
           locale={locale}
           calendars={calendars}
-          defaultCalendarId={defaultCalendarId}
+          defaultCalendarId={inviteTargetId}
           active={activeId === notification.id}
           onSelect={(origin) => {
             onSelect?.(notification.id);

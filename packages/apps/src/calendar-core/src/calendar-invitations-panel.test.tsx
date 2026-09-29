@@ -8,6 +8,7 @@ import { CalendarInvitationsPanel } from "@/calendar-core/src/calendar-invitatio
 import { CalendarInvitationsTrigger } from "@/calendar-core/src/calendar-invitations-trigger";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import { writeCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
 import { TooltipProvider } from "@/ui/tooltip";
 
@@ -99,6 +100,7 @@ function renderPanel(overrides: Partial<ComponentProps<typeof CalendarInvitation
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
 });
 
 describe("CalendarInvitationsPanel", () => {
@@ -362,6 +364,14 @@ describe("CalendarInvitationsPanel", () => {
     const next = renderPanel();
     fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpDecline }));
     expect(next.onRespond).toHaveBeenCalledWith("invite-1.ics", "declined", undefined);
+  });
+
+  it("defaults Accept to the stored incoming-invite calendar", () => {
+    writeCalendarDisplayPrefs({ inviteCalendarId: "work" });
+    const { onRespond } = renderPanel();
+    expect(screen.getByRole("button", { name: /Calendar: Work/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }));
+    expect(onRespond).toHaveBeenCalledWith("invite-1.ics", "accepted", "work");
   });
 
   it("keeps other invitation RSVP controls enabled while one respond is in flight", () => {

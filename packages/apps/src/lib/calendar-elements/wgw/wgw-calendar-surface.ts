@@ -128,7 +128,7 @@ export class WgwCalendarSurface extends LitElement {
         presentation=${this.presentation}
         start-date=${this.startDate}
         week-start=${this.weekStart}
-        timezone=${this.timezone ?? ""}
+        .timezone=${this.timezone}
         lang=${this.lang ?? ""}
         .visibleHours=${this.visibleHours}
         .visibleHoursStart=${this.visibleHoursStart}

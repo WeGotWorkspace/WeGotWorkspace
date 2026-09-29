@@ -1,0 +1,29 @@
+.calendar-event-dialog__calendar-menu {
+  min-width: 12rem;
+}
+
+.calendar-event-dialog__calendar-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.calendar-event-dialog__calendar-option .calendar-sidebar-dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  opacity: 1;
+}
+
+.calendar-event-dialog__calendar-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.calendar-event-dialog__calendar-check {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}

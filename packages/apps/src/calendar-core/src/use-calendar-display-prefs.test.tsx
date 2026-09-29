@@ -16,12 +16,14 @@ describe("useCalendarDisplayPrefs", () => {
       timeZone: "America/New_York",
       locale: "en-US",
       weekStart: 7,
+      inviteCalendarId: "work",
     });
     const { result } = renderHook(() => useCalendarDisplayPrefs());
     expect(result.current.locale).toBe("en-US");
     expect(result.current.timeZone).toBe("America/New_York");
     expect(result.current.timezone).toBe("America/New_York");
     expect(result.current.weekStart).toBe(7);
+    expect(result.current.inviteCalendarId).toBe("work");
   });
 
   it("uses the device zone and locale week start when prefs are unset", () => {

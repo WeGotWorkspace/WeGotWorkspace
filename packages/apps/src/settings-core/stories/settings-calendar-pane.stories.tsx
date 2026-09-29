@@ -23,8 +23,11 @@ export const Display: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
-    await expect(canvas.getByRole("combobox", { name: "Locale" })).toBeTruthy();
+    await expect(canvas.getByRole("combobox", { name: "Language" })).toBeTruthy();
     await expect(canvas.getByRole("combobox", { name: "Day starts on" })).toBeTruthy();
+    await expect(
+      canvas.findByRole("button", { name: /Incoming invites: Personal/i }),
+    ).resolves.toBeTruthy();
     await expect(canvas.queryByRole("combobox", { name: /working hours/i })).toBeNull();
   },
 };

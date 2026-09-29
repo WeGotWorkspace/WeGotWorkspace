@@ -1038,7 +1038,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       return formatShortTimeRange(this.lang, range.start, range.end);
     }
     if (timelineEvent.allDay) return "";
-    return formatShortTimeRange(this.lang, timelineEvent.originalStart, timelineEvent.originalEnd);
+    return formatShortTimeRange(this.lang, timelineEvent.displayStart, timelineEvent.displayEnd);
   }
 
   /** Stable per-variant template references so <time-line> props keep their identity. */

@@ -27,6 +27,8 @@ export type CalendarTimelineEvent = TimelineEvent & {
   location: string;
   originalStart: Temporal.PlainDateTime;
   originalEnd: Temporal.PlainDateTime;
+  displayStart: Temporal.PlainDateTime;
+  displayEnd: Temporal.PlainDateTime;
   timeZone?: string;
   allDay: boolean;
   past: boolean;
@@ -75,6 +77,8 @@ export function mapTimelineOccurrenceEvents(
       color: args.resolveColor(event),
       originalStart,
       originalEnd,
+      displayStart,
+      displayEnd,
       timeZone: event.data.timeZone,
       allDay: event.data.allDay === true,
       past: Temporal.PlainDateTime.compare(displayEnd, args.now) <= 0,

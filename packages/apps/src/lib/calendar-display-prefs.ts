@@ -27,6 +27,8 @@ export const CALENDAR_DISPLAY_LOCALES = [
 ] as const;
 
 export const CALENDAR_WEEKDAY_VALUES = [1, 2, 3, 4, 5, 6, 7] as const;
+/** Monday and Sunday — the two first-day choices consumer calendars actually offer. */
+export const CALENDAR_WEEK_START_CHOICES = [1, 7] as const;
 
 export type CalendarDisplayLocale = (typeof CALENDAR_DISPLAY_LOCALES)[number];
 export type CalendarWeekday = (typeof CALENDAR_WEEKDAY_VALUES)[number];
@@ -34,8 +36,10 @@ export type CalendarWeekday = (typeof CALENDAR_WEEKDAY_VALUES)[number];
 export type CalendarDisplayPrefs = {
   timeZone?: string;
   locale?: string;
-  /** ISO weekday 1–7 (Monday=1). Omitted = locale default. */
+  /** ISO weekday 1–7 (Monday=1). Omitted = language default. */
   weekStart?: CalendarWeekday;
+  /** Writable calendar id for incoming invites. Omitted = collection default. */
+  inviteCalendarId?: string;
 };
 
 const DISPLAY_LOCALES = new Set<string>(CALENDAR_DISPLAY_LOCALES);
@@ -58,6 +62,10 @@ function isWeekStart(value: unknown): value is CalendarWeekday {
   return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 7;
 }
 
+function isInviteCalendarId(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 /** Parse stored JSON. Invalid or empty payloads return {}. */
 export function parseCalendarDisplayPrefs(raw: string | null): CalendarDisplayPrefs {
   if (!raw) return {};
@@ -69,6 +77,9 @@ export function parseCalendarDisplayPrefs(raw: string | null): CalendarDisplayPr
     if (isStoredTimeZone(record.timeZone)) prefs.timeZone = record.timeZone.trim();
     if (isStoredLocale(record.locale)) prefs.locale = record.locale;
     if (isWeekStart(record.weekStart)) prefs.weekStart = record.weekStart;
+    if (isInviteCalendarId(record.inviteCalendarId)) {
+      prefs.inviteCalendarId = record.inviteCalendarId.trim();
+    }
     return prefs;
   } catch {
     return {};

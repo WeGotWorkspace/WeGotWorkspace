@@ -1,13 +1,13 @@
 Source: #981 (body-hash: e57dee26)
 Goal: #617
 
-# Calendar settings pane (timezone, locale, day starts on)
+# Calendar settings pane (timezone, language, day starts on)
 
 Technical translation of Task #981. Calendar gets a real Settings pane on the app-settings registry from #973. Prefs are device-local (`localStorage`), not a new API.
 
 ## Goal
 
-Register a reachable Calendar panel under Settings → Apps. The same pane opens from the Calendar workspace footer dialog. Saving timezone, locale, and day-starts-on persists on this device and applies to Calendar views (labels, first day of week, grid timezone, now line, today, timed-event default). Timed events with a zone convert into the display timezone on the grid.
+Register a reachable Calendar panel under Settings → Apps. The same pane opens from the Calendar workspace footer dialog. Saving timezone, language, day-starts-on, and the incoming-invite calendar persists on this device and applies to Calendar views (labels, first day of week, grid timezone, now line, today, timed-event default) and invitation RSVP targets. Timed events with a zone convert into the display timezone on the grid, including card time labels.
 
 ## Non-goals
 
@@ -16,7 +16,7 @@ Register a reachable Calendar panel under Settings → Apps. The same pane opens
 - Working-hours shading or a second timezone on the grid (#527)
 - Per-event timezone editor (already shipped)
 - Instance-wide admin locale / timezone defaults
-- Default-calendar picker, iMIP account, notification prefs
+- iMIP account, notification prefs
 - Persisting hidden calendars (#619 / #627)
 - Empty placeholder copy or a production Notifications hub
 
@@ -26,11 +26,12 @@ Register a reachable Calendar panel under Settings → Apps. The same pane opens
 
 ## Technical constraints
 
-- `settings-core` must not import `calendar-core`. Shared timezone list and display-prefs helpers live in `packages/apps/src/lib/`.
+- `settings-core` must not import `calendar-core`. Shared timezone list, display-prefs helpers, and the calendar color picker live in `packages/apps/src/lib/`.
 - Storage follows `calendar-view-prefs` (device `localStorage`, swallow quota / private-mode failures).
-- Empty timezone / locale = device / browser default.
-- Empty week start = locale first weekday (`getLocaleWeekInfo`, Monday when unknown).
-- Timed events convert from `data.timeZone` into the display IANA zone at render time; all-day and floating wall clocks stay put. Engine storage keeps original wall clocks.
+- Empty timezone / language = device / browser default.
+- Empty week start = language first weekday (`getLocaleWeekInfo`, Monday when unknown). Day-starts-on offers language default, Monday, and Sunday (Google/Apple-style). Stored ISO 1–7 still applies if present.
+- Timed events convert from `data.timeZone` into the display IANA zone at render time; all-day and floating wall clocks stay put. Engine storage keeps original wall clocks. Card labels use the converted display times.
+- Empty invite calendar id = writable `isDefault` / first writable collection.
 - After save, `notifySettingsSliceSaved({ panelId: "calendar", sliceId: "calendar-display" })` so a mounted Calendar workspace refreshes without reload.
 - Do not export `SettingsCalendarPane` from `settings-core` `index.ts`; add a Storybook story.
 - Do not grow baselined `use-calendar-controller.ts` or `calendar-workspace.tsx`.
@@ -41,9 +42,11 @@ Register a reachable Calendar panel under Settings → Apps. The same pane opens
 
 Owner request during implementation (issue body-hash unchanged; `gh issue edit` was not available):
 
-- Timezone must move the grid (now line, today, zoned event placement), not only the new-event default
+- Timezone must move the grid (now line, today, zoned event placement and card times), not only the new-event default
 - Remove working hours from the pane
-- Add Day starts on with a locale-default option
+- Add Day starts on with a language-default option; Monday and Sunday only (not all seven weekdays)
+- Label language as Language, not Locale
+- Default calendar for incoming invites, reusing the event-dialog calendar dropdown
 - Dialog: no Card; Save primary at the end; Cancel next to it; Open in Settings on the other corner, not primary
 
 ## Edge cases
@@ -52,3 +55,4 @@ Owner request during implementation (issue body-hash unchanged; `gh issue edit` 
 - `registerBuiltinSettings()` remains idempotent; Calendar sits next to Mail under Apps
 - jsdom without `Intl.Locale.getWeekInfo` falls back to Monday (1)
 - Cross-midnight zoned events stay visible after converting into the display zone
+- A stored week start other than Monday/Sunday still appears in the select until changed

@@ -1,4 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
+import { readCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { localToPlainDateTime, type JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
@@ -142,7 +143,8 @@ export function invitationToEventPreview(
   notification: CalendarSchedulingNotification,
   options: { untitledLabel: string; defaultCalendarId?: string },
 ): CalendarEventPreviewModel {
-  const calendarId = options.defaultCalendarId ?? "";
+  const calendarId =
+    readCalendarDisplayPrefs().inviteCalendarId?.trim() || options.defaultCalendarId || "";
   const startRaw = notification.start?.trim() ?? "";
   const allDay = INVITATION_DATE_ONLY.test(startRaw);
   let form = emptyCalendarEventForm(calendarId, Temporal.Now.plainDateISO().toString());

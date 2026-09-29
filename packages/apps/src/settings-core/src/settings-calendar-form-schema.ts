@@ -23,6 +23,7 @@ export const settingsCalendarFormSchema = z.object({
   timeZone: z.string().trim().min(1),
   locale: z.enum(localeValues),
   weekStart: z.enum(weekStartValues),
+  inviteCalendarId: z.string(),
 });
 
 export type SettingsCalendarFormValues = z.infer<typeof settingsCalendarFormSchema>;
@@ -41,6 +42,7 @@ export function calendarDisplayPrefsToForm(
       prefs.weekStart != null
         ? (String(prefs.weekStart) as SettingsCalendarFormValues["weekStart"])
         : CALENDAR_DISPLAY_WEEK_START_LOCALE,
+    inviteCalendarId: prefs.inviteCalendarId?.trim() ?? "",
   };
 }
 
@@ -56,5 +58,7 @@ export function calendarDisplayFormToPrefs(
       prefs.weekStart = weekStart as CalendarWeekday;
     }
   }
+  const inviteCalendarId = values.inviteCalendarId.trim();
+  if (inviteCalendarId) prefs.inviteCalendarId = inviteCalendarId;
   return prefs;
 }

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
 import {
@@ -23,8 +23,13 @@ import {
 } from "@/calendar-core/src/calendar-event-preview";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import { writeCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
 
 const bootstrap = createCalendarAppBootstrap();
+
+afterEach(() => {
+  window.localStorage.clear();
+});
 
 describe("resolveCalendarEventPreview", () => {
   it("builds a form from a wire master", () => {
@@ -99,6 +104,15 @@ describe("invitationToEventPreview", () => {
     expect(preview.form.meetingUrl).toContain("meet/guest");
     expect(preview.form.attendees[0]?.email).toBe("bob@example.test");
     expect(preview.form.attendees[0]?.isOrganizer).toBe(true);
+  });
+
+  it("prefers the stored incoming-invite calendar over the caller default", () => {
+    writeCalendarDisplayPrefs({ inviteCalendarId: "home" });
+    const preview = invitationToEventPreview(invite, {
+      untitledLabel: defaultCalendarLabels.untitledEvent,
+      defaultCalendarId: "work",
+    });
+    expect(preview.form.calendarId).toBe("home");
   });
 
   it("treats a date-only start as all-day", () => {

@@ -19,6 +19,7 @@ const validPrefs: CalendarDisplayPrefs = {
   timeZone: "Europe/Amsterdam",
   locale: "nl-NL",
   weekStart: 7,
+  inviteCalendarId: "work",
 };
 
 describe("parseCalendarDisplayPrefs", () => {
@@ -30,6 +31,7 @@ describe("parseCalendarDisplayPrefs", () => {
           timeZone: "  UTC  ",
           locale: "xx-XX",
           weekStart: 8,
+          inviteCalendarId: "  ",
           extra: true,
         }),
       ),
