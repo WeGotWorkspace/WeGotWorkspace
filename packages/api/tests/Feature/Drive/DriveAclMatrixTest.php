@@ -20,7 +20,7 @@ use Tests\Support\WgwDatabaseTestCase;
  *
  * Reads and content writes use /api/v1/files. Folder create, move, and delete
  * use FileNode/set on POST /api/v1/jmap. Share grant, change, and revoke use
- * /api/v1/files/shares.
+ * /api/v1/files/shares. Editor structure success is incomplete until #990.
  */
 #[Group('MySQLParity')]
 final class DriveAclMatrixTest extends WgwDatabaseTestCase
@@ -258,36 +258,95 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
             ->assertJsonMissing(['name' => 'movable.txt']);
     }
 
-    #[DataProvider('granteeProvider')]
-    public function test_grantee_cannot_create_folder_move_or_delete_shared_nodes(string $role): void
+    public function test_viewer_cannot_create_folder_rename_or_delete_shared_nodes(): void
     {
         $workspaceId = $this->workspaceNodeId();
         $planId = $this->planNodeId();
 
         $create = $this->fileNodeJmap([
-            ['FileNode/set', ['accountId' => $this->accountId($role), 'create' => [
-                'd0' => ['parentId' => $workspaceId, 'name' => $role.'-dir', 'nodeType' => 'directory'],
+            ['FileNode/set', ['accountId' => 'carol', 'create' => [
+                'd0' => ['parentId' => $workspaceId, 'name' => 'viewer-dir', 'nodeType' => 'directory'],
             ]], 'c0'],
-        ], $this->token($role))->assertOk();
+        ], $this->token('viewer'))->assertOk();
         $create->assertJsonPath('methodResponses.0.1.notCreated.d0.type', 'invalidProperties');
 
-        $move = $this->fileNodeJmap([
-            ['FileNode/set', ['accountId' => $this->accountId($role), 'update' => [
-                $planId => ['name' => $role.'-renamed.md'],
+        $rename = $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'carol', 'update' => [
+                $planId => ['name' => 'viewer-renamed.md'],
             ]], 'c1'],
-        ], $this->token($role))->assertOk();
-        $move->assertJsonPath('methodResponses.0.1.notUpdated.'.$planId.'.type', 'notFound');
+        ], $this->token('viewer'))->assertOk();
+        $rename->assertJsonPath('methodResponses.0.1.notUpdated.'.$planId.'.type', 'notFound');
 
         $delete = $this->fileNodeJmap([
-            ['FileNode/set', ['accountId' => $this->accountId($role), 'destroy' => [$planId]], 'c2'],
-        ], $this->token($role))->assertOk();
+            ['FileNode/set', ['accountId' => 'carol', 'destroy' => [$planId]], 'c2'],
+        ], $this->token('viewer'))->assertOk();
         $delete->assertJsonPath('methodResponses.0.1.notDestroyed.'.$planId.'.type', 'notFound');
 
         $this->listWorkspace('owner')
             ->assertOk()
             ->assertJsonFragment(['name' => 'plan.md', 'type' => 'file'])
-            ->assertJsonMissing(['name' => $role.'-dir']);
+            ->assertJsonMissing(['name' => 'viewer-dir']);
         $this->assertSame(self::PLAN_BODY, $this->readCollab(self::PLAN, 'owner')->assertOk()->getContent());
+    }
+
+    public function test_editor_can_create_folder_rename_and_delete_in_the_shared_folder(): void
+    {
+        $this->markTestIncomplete('Editor structure rights not honored by FileNode/set — see #990');
+
+        $workspaceId = $this->workspaceNodeId();
+        $planId = $this->planNodeId();
+
+        $createdDir = $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'bob', 'create' => [
+                'd0' => ['parentId' => $workspaceId, 'name' => 'editor-dir', 'nodeType' => 'directory'],
+            ]], 'c0'],
+        ], $this->token('editor'))->assertOk();
+        $createdDir->assertJsonPath('methodResponses.0.1.created.d0.name', 'editor-dir');
+        $dirId = (string) $createdDir->json('methodResponses.0.1.created.d0.id');
+
+        $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'bob', 'update' => [
+                $planId => ['name' => 'plan-renamed.md'],
+            ]], 'c1'],
+        ], $this->token('editor'))->assertOk()
+            ->assertJsonPath('methodResponses.0.1.updated.'.$planId, null);
+
+        $this->listWorkspace('editor')
+            ->assertOk()
+            ->assertJsonFragment(['name' => 'editor-dir', 'type' => 'dir'])
+            ->assertJsonFragment(['name' => 'plan-renamed.md', 'type' => 'file'])
+            ->assertJsonMissing(['name' => 'plan.md']);
+
+        $deleted = $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'bob', 'destroy' => [$dirId, $planId]], 'c2'],
+        ], $this->token('editor'))->assertOk();
+        $this->assertEqualsCanonicalizing(
+            [$dirId, $planId],
+            $deleted->json('methodResponses.0.1.destroyed'),
+        );
+
+        $this->listWorkspace('owner')
+            ->assertOk()
+            ->assertJsonMissing(['name' => 'editor-dir'])
+            ->assertJsonMissing(['name' => 'plan-renamed.md']);
+    }
+
+    public function test_admin_cannot_read_another_users_private_files(): void
+    {
+        app(WgwStorage::class)->files()->put('users/bob/secret.md', 'bob-only');
+
+        $ownerDownload = $this->download('/users/bob/secret.md', 'editor');
+        $ownerDownload->assertOk();
+        $this->assertSame('bob-only', $ownerDownload->streamedContent());
+
+        $this->withBearer($this->token('owner'))
+            ->getJson('/api/v1/files/children?path='.urlencode('/users/bob'))
+            ->assertStatus(400)
+            ->assertJsonPath('error', 'Access denied for this path.');
+
+        $this->download('/users/bob/secret.md', 'owner')
+            ->assertStatus(400)
+            ->assertJsonPath('error', 'Access denied for this path.');
     }
 
     #[DataProvider('rightsProvider')]
