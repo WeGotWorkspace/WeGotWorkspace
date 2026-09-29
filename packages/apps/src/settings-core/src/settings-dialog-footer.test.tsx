@@ -194,12 +194,17 @@ describe("settings dialog and in-app footer", () => {
     expect(screen.queryByRole("combobox", { name: /working hours/i })).toBeNull();
   });
 
-  it("hides the Settings row for Notes", async () => {
+  it("shows the Settings row for Notes", async () => {
     const bootstrap = createNotesAppBootstrap();
     await renderHosted(
       <NotesWorkspace {...bootstrap} listLoading={false} onLogout={() => undefined} />,
       "/notes",
     );
+    expect(footerSettingsButton()).toBeTruthy();
+  });
+
+  it("hides the Settings row for Drive", async () => {
+    await renderHosted(<WorkspaceAppSettingsFooter appId="drive" session={mockWorkspaceSession} />);
     expect(footerSettingsButton()).toBeNull();
   });
 

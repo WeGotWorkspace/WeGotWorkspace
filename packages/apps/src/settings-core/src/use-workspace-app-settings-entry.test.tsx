@@ -35,8 +35,15 @@ describe("useWorkspaceAppSettingsEntry", () => {
     expect(result.current.label).toBe("Settings");
   });
 
-  it("hides Notes when no reachable slice is registered", () => {
+  it("shows Notes when a reachable slice is registered", () => {
     const { result } = renderHook(() => useWorkspaceAppSettingsEntry("notes"), {
+      wrapper: ShellCtx,
+    });
+    expect(result.current.visible).toBe(true);
+  });
+
+  it("hides Drive when no reachable slice is registered", () => {
+    const { result } = renderHook(() => useWorkspaceAppSettingsEntry("drive"), {
       wrapper: ShellCtx,
     });
     expect(result.current.visible).toBe(false);

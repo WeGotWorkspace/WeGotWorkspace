@@ -1,4 +1,5 @@
 import { enabledAddressBookIds } from "@/contacts-core/src/contacts-addressbook-color";
+import { readDefaultCollectionId } from "@/lib/default-collection-prefs";
 import {
   findBirthAnniversary,
   mapEntriesSorted,
@@ -13,14 +14,12 @@ import type {
 } from "@/contacts-core/src/contacts-types";
 
 export const CONTACTS_CREATE_ID = "__contacts_create__";
-
 /** JSContact channel context values exposed in the edit UI (maps to `contexts` on phones/emails/addresses/links). */
 export const CONTACT_CHANNEL_CONTEXTS = ["", "home", "work", "school"] as const;
 export type ContactChannelContext = (typeof CONTACT_CHANNEL_CONTEXTS)[number];
 
 /** New empty channel row default: Home → JSContact `contexts.private` (vCard HOME). */
 export const CONTACT_CHANNEL_DEFAULT_CONTEXT = "home" satisfies ContactChannelContext;
-
 /**
  * Phone type select values. Contexts (`home`/`work`/`school`) map to JSContact `contexts`
  * (vCard TYPE=HOME/WORK/…). `mobile` maps to JSContact `features.mobile` (vCard TYPE=CELL).
@@ -112,10 +111,11 @@ export function resolveCreateAddressBookIds(
       }) ?? bookIds[0];
     if (preferred) return { [preferred]: true };
   }
-  const defaultBook = addressBooks.find((book) => book.isDefault) ?? addressBooks[0];
-  if (!defaultBook) {
-    throw new Error("No address book available for create");
-  }
+  const defaultBook =
+    addressBooks.find((book) => book.id === readDefaultCollectionId("contacts")) ??
+    addressBooks.find((book) => book.isDefault) ??
+    addressBooks[0];
+  if (!defaultBook) throw new Error("No address book available for create");
   return { [defaultBook.id]: true };
 }
 

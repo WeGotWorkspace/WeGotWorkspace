@@ -112,6 +112,18 @@ describe("tasks-task-utils", () => {
     ).toBe("personal");
     expect(defaultTaskListId([{ id: "work", isDefault: false }])).toBe("work");
     expect(defaultTaskListId([])).toBe(INBOX_TASK_LIST_ID);
+    expect(
+      defaultTaskListId(
+        [
+          { id: "work", isDefault: false },
+          { id: INBOX_TASK_LIST_ID, role: "inbox", isDefault: true },
+        ],
+        "work",
+      ),
+    ).toBe("work");
+    expect(defaultTaskListId([{ id: "work", isDefault: false, isSharee: true }], "work")).toBe(
+      INBOX_TASK_LIST_ID,
+    );
   });
 
   it("taskListDotColor prefers explicit list color over hash fallback", () => {

@@ -80,7 +80,7 @@ Verified against current `*-workspace.tsx` (or equivalent) sources:
 | `login-core`               | Custom (header only)     | `login-core/src/login-screen.tsx` — not a product workspace                                                                  |
 | `text-editor-core`         | Split (collab submodule) | `text-editor-core/docs-collab/docs-collab-workspace.tsx` — editor primitive + docs collab demo, not a routed app             |
 
-Settings contributions live in a compile-time registry (`registerBuiltinSettings()` from the SPA shell). The Settings app lists Account sections plus Apps rows that have a reachable slice. Product workspaces that pass `appId` show a Settings row above the avatar; that row opens the same panel in a dialog. Empty apps hide the row. Skip Settings, Admin, Install, and Meet guest.
+Settings contributions live in a compile-time registry (`registerBuiltinSettings()` from the SPA shell). The Settings app lists Account sections plus Apps rows that have a reachable slice (Mail, Calendar, Tasks, Contacts, Notes). Product workspaces that pass `appId` show a Settings row above the avatar; that row opens the same panel in a dialog. Empty apps (Drive, Docs, Meet) hide the row. Skip Settings, Admin, Install, and Meet guest.
 
 ## Required imports and CSS
 

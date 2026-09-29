@@ -54,6 +54,9 @@ describe("useSettingsController MCP kill-switch", () => {
     expect(result.current.sidebarGroups.apps.map((section) => section.id)).toEqual([
       "mail",
       "calendar",
+      "tasks",
+      "contacts",
+      "notes",
     ]);
     expect(result.current.section).toBe("profile");
     expect(result.current.currentSection.id).toBe("profile");

@@ -136,6 +136,24 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     expect(screen.queryByRole("combobox", { name: "Language" })).toBeNull();
   });
 
+  it("opens Tasks, Contacts, and Notes default-collection settings from deep links", async () => {
+    await renderSettingsApp("/settings/tasks");
+    expect(screen.getByRole("button", { name: "Tasks" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Default list: Inbox/i })).toBeTruthy();
+
+    await renderSettingsApp("/settings/contacts");
+    expect(screen.getByRole("button", { name: "Contacts" })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: /Default address book: Personal/i }),
+    ).toBeTruthy();
+
+    await renderSettingsApp("/settings/notes");
+    expect(screen.getByRole("button", { name: "Notes" })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: /Default notebook: The Journal/i }),
+    ).toBeTruthy();
+  });
+
   it("does not snap back to Settings after navigating to another app", async () => {
     const { history, router } = await renderSettingsApp("/settings/mail");
 

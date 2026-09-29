@@ -40,6 +40,7 @@ import {
   preserveLocalListableBodiesOnServerNotes,
 } from "./notes-note-utils";
 import type { Note } from "@/lib/models/note";
+import { writeDefaultCollectionPrefs } from "@/lib/default-collection-prefs";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 
 const sampleNote: Note = {
@@ -1127,6 +1128,21 @@ describe("group notebook create targets", () => {
     });
     expect(resolveNotesCreateTarget("nb:Ideas", ["Drafts"])).toEqual({ notebook: "Ideas" });
     expect(resolveNotesCreateTarget("all", ["Drafts"])).toEqual({ notebook: "Drafts" });
+    writeDefaultCollectionPrefs("notes", { collectionId: "The Journal" });
+    expect(
+      resolveNotesCreateTarget(
+        "all",
+        ["The Journal", "Drafts"],
+        [
+          { id: "The Journal", name: "The Journal" },
+          { id: "Drafts", name: "Drafts" },
+        ],
+      ),
+    ).toEqual({ notebook: "The Journal" });
+    expect(resolveNotesCreateTarget("nb:Drafts", ["The Journal", "Drafts"])).toEqual({
+      notebook: "Drafts",
+    });
+    writeDefaultCollectionPrefs("notes", {});
   });
 });
 

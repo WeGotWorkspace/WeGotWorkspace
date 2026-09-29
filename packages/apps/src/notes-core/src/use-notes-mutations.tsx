@@ -760,7 +760,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const createNote = useCallback(() => {
     if (!canCreateNote) return;
     const createView = notesViewForCreate(view);
-    const target = resolveNotesCreateTarget(createView, notebooks);
+    const target = resolveNotesCreateTarget(createView, notebooks, notebookCollections);
     const targetTag = createView.startsWith("tag:") ? createView.slice(4) : null;
     const id = createTempNoteId();
     const date = new Date().toISOString();

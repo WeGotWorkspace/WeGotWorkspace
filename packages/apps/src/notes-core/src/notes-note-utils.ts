@@ -5,6 +5,7 @@ import {
 } from "@/lib/models/note-body-markdown";
 import type { Note } from "@/lib/models/note";
 import { compareNotesDesc } from "@/notes-core/src/notes-date-utils";
+import { readDefaultCollectionId } from "@/lib/default-collection-prefs";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
 import { autofillNoteTitle } from "@/notes-core/src/notes-title-autofill";
@@ -702,6 +703,7 @@ export type NotesCreateTarget = {
 export function resolveNotesCreateTarget(
   view: string,
   personalNotebooks: string[],
+  collections: readonly { id: string; name: string }[] = [],
 ): NotesCreateTarget {
   if (view.startsWith("shared-nb:")) {
     const parsed = parseGroupNotebookPath(view.slice("shared-nb:".length));
@@ -715,6 +717,13 @@ export function resolveNotesCreateTarget(
   }
   if (view.startsWith("nb:")) {
     return { notebook: view.slice(3) };
+  }
+  const stored = readDefaultCollectionId("notes");
+  const storedName = stored
+    ? (collections.find((row) => row.id === stored)?.name ?? stored)
+    : undefined;
+  if (storedName && personalNotebooks.includes(storedName)) {
+    return { notebook: storedName };
   }
   return { notebook: personalNotebooks[0] ?? "Drafts" };
 }

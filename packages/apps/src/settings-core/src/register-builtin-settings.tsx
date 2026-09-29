@@ -1,10 +1,26 @@
-import { Bot, CalendarDays, HardDrive, Mail as MailIcon, User, Users } from "lucide-react";
+import {
+  Bot,
+  CalendarDays,
+  CheckCircle2,
+  Contact,
+  HardDrive,
+  Mail as MailIcon,
+  StickyNote,
+  User,
+  Users,
+} from "lucide-react";
 import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-pane";
 import { SettingsCalendarPane } from "@/settings-core/src/settings-calendar-pane";
+import {
+  SettingsContactsPane,
+  SettingsNotesPane,
+  SettingsTasksPane,
+} from "@/settings-core/src/settings-default-collection-pane";
 import { SettingsMailPane } from "@/settings-core/src/settings-mail-pane";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
 import { SettingsOfflinePane } from "@/settings-core/src/settings-offline-pane";
 import { SettingsProfilePane } from "@/settings-core/src/settings-profile-pane";
+import { DEFAULT_COLLECTION_APP_META } from "@/lib/default-collection-prefs";
 import {
   markBuiltinSettingsRegistered,
   registerPanel,
@@ -60,6 +76,30 @@ export function registerBuiltinSettings(): void {
     group: "apps",
     appId: "calendar",
   });
+  registerPanel({
+    id: "tasks",
+    label: DEFAULT_COLLECTION_APP_META.tasks.label,
+    description: DEFAULT_COLLECTION_APP_META.tasks.description,
+    icon: <CheckCircle2 className="size-3.5" />,
+    group: "apps",
+    appId: "tasks",
+  });
+  registerPanel({
+    id: "contacts",
+    label: DEFAULT_COLLECTION_APP_META.contacts.label,
+    description: DEFAULT_COLLECTION_APP_META.contacts.description,
+    icon: <Contact className="size-3.5" />,
+    group: "apps",
+    appId: "contacts",
+  });
+  registerPanel({
+    id: "notes",
+    label: DEFAULT_COLLECTION_APP_META.notes.label,
+    description: DEFAULT_COLLECTION_APP_META.notes.description,
+    icon: <StickyNote className="size-3.5" />,
+    group: "apps",
+    appId: "notes",
+  });
 
   registerSlice({
     id: "profile",
@@ -90,5 +130,20 @@ export function registerBuiltinSettings(): void {
     id: "calendar-display",
     panelIds: ["calendar"],
     render: () => <SettingsCalendarPane />,
+  });
+  registerSlice({
+    id: "tasks-default-collection",
+    panelIds: ["tasks"],
+    render: () => <SettingsTasksPane />,
+  });
+  registerSlice({
+    id: "contacts-default-collection",
+    panelIds: ["contacts"],
+    render: () => <SettingsContactsPane />,
+  });
+  registerSlice({
+    id: "notes-default-collection",
+    panelIds: ["notes"],
+    render: () => <SettingsNotesPane />,
   });
 }

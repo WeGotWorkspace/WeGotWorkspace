@@ -41,9 +41,9 @@ export const MailPanel: Story = {
   },
 };
 
-export const HiddenForNotes: Story = {
+export const HiddenForDrive: Story = {
   args: {
-    appId: "notes",
+    appId: "drive",
     session: namedSession,
   },
   play: async ({ canvasElement }) => {
@@ -71,5 +71,20 @@ export const CalendarPanel: Story = {
     await expect(footerQueries.findByRole("button", { name: "Save" })).resolves.toBeTruthy();
     await expect(footerQueries.getByRole("button", { name: "Open in Settings" })).toBeTruthy();
     await expect(footerQueries.getByRole("button", { name: "Cancel" })).toBeTruthy();
+  },
+};
+
+export const TasksPanel: Story = {
+  args: {
+    appId: "tasks",
+    session: namedSession,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Settings" }));
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(body.findByRole("heading", { name: "Tasks" })).resolves.toBeTruthy();
+    const trigger = await body.findByRole("button", { name: /Default list: Inbox/i });
+    await expect(trigger.textContent).toContain("Inbox");
   },
 };
