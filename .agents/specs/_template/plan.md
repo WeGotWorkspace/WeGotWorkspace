@@ -36,8 +36,8 @@ None — every choice for this work is made. Replace with checkboxes tied to a c
 
 ## Invariants
 
-- [Behavior that must keep working]. A wrong change [what breaks]. Proof: `path: path/to/File.test.ts` assertion `test_name`, or a command that shows a silent miss.
-- After chunk A, main still works without the next chunk. Proof: the test or command named above.
+- [Behavior that must keep working]. A wrong change [what breaks]. Proof: `path: path/to/File.test.ts` assertion `test_name`, or `cmd: <command>`.
+- After chunk A, main still works without the next chunk. Proof: `cmd: <command>`.
 
 ## Chunks
 
