@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Installer;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\WgwInstallFixture;
@@ -475,20 +476,30 @@ final class InstallerWizardTest extends TestCase
         $settingsBefore = $this->appSettings($this->installedPdo($sqlite));
         $keysBefore = $this->jwtKeyMaterial();
 
-        $this->clearInstallMarkers();
+        $this->clearInstallMarkers(removeKeys: false);
+        // The installer copied WGW_DB_* into this process. Drop that so the next
+        // request matches a new process whose .env is gone and whose key files remain.
+        $this->forgetInstallerDatabaseRuntime();
 
         $this->getJson('/api/v1/installer/state')
             ->assertOk()
             ->assertJsonPath('installed', false)
             ->assertJsonPath('state.step', 'welcome');
 
-        $this->advanceToAccount($sqlite, [
+        $this->advanceToDatabase();
+        $this->postAction('database_next', [
+            'db_driver' => 'sqlite',
+            'sqlite_path' => $sqlite,
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $this->postAction('site_next', $this->sitePayload([
             'timezone' => 'Pacific/Auckland',
             'base_uri_override' => 'intruder',
             'enable_files' => false,
             'enable_calendars' => false,
             'enable_contacts' => true,
-        ]);
+        ]))->assertOk();
+
         $again = $this->postAction('install', $this->installPayload([
             'username' => 'intruder',
             'display_name' => 'Intruder',
@@ -514,19 +525,22 @@ final class InstallerWizardTest extends TestCase
         $keysAfter = $this->jwtKeyMaterial();
         if ($keysAfter !== $keysBefore) {
             $this->markTestIncomplete(
-                'Reinstall returns ok and writes a new JWT key pair. Launch-blocker: https://github.com/WeGotWorkspace/WeGotWorkspace/issues/993'
+                'Reinstall with the JWT key files still on disk replaced them. Launch-blocker: https://github.com/WeGotWorkspace/WeGotWorkspace/issues/993'
             );
         }
         $this->assertSame($keysBefore, $keysAfter, 'Reinstall must not replace JWT keys.');
 
-        // A second admin is not created. Refusal (ok=false) is still missing: #993.
+        // Keys are still on disk, so connecting to the existing database closes the wizard.
+        // A success here would be the misleading ok:true tracked by #993.
         if ($again->json('ok') !== false) {
             $this->markTestIncomplete(
                 'Reinstall on an existing database must be refused. https://github.com/WeGotWorkspace/WeGotWorkspace/issues/993'
             );
         }
 
-        $this->assertExistingAccountRefused($again);
+        $again->assertOk()
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'This instance is already installed.');
     }
 
     public function test_already_installed_state_returns_error(): void
@@ -764,14 +778,46 @@ final class InstallerWizardTest extends TestCase
         return $material;
     }
 
-    private function clearInstallMarkers(): void
+    private function forgetInstallerDatabaseRuntime(): void
     {
         foreach ([
+            'WGW_DATA_DIR',
+            'WGW_UPDATE_FEED_URL',
+            'WGW_DB_CONNECTION',
+            'WGW_DB_DATABASE',
+            'WGW_DB_HOST',
+            'WGW_DB_PORT',
+            'WGW_DB_USERNAME',
+            'WGW_DB_PASSWORD',
+        ] as $key) {
+            putenv($key);
+            unset($_ENV[$key], $_SERVER[$key]);
+        }
+
+        putenv('WGW_DB_DATABASE=:memory:');
+        $_ENV['WGW_DB_DATABASE'] = ':memory:';
+        $_SERVER['WGW_DB_DATABASE'] = ':memory:';
+
+        config([
+            'database.connections.wgw.driver' => 'sqlite',
+            'database.connections.wgw.database' => ':memory:',
+        ]);
+        DB::purge('wgw');
+        WgwInstallFixture::forgetInstallBindings();
+    }
+
+    private function clearInstallMarkers(bool $removeKeys = true): void
+    {
+        $paths = [
             $this->installRoot.'/wgw-content/.installed',
             $this->installRoot.'/packages/api/.env',
-            $this->installRoot.'/wgw-content/keys/api-jwt-private.pem',
-            $this->installRoot.'/wgw-content/keys/api-jwt-public.pem',
-        ] as $path) {
+        ];
+        if ($removeKeys) {
+            $paths[] = $this->installRoot.'/wgw-content/keys/api-jwt-private.pem';
+            $paths[] = $this->installRoot.'/wgw-content/keys/api-jwt-public.pem';
+        }
+
+        foreach ($paths as $path) {
             if (is_file($path)) {
                 unlink($path);
             }
