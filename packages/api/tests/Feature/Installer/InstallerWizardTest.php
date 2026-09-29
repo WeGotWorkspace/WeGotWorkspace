@@ -464,7 +464,16 @@ final class InstallerWizardTest extends TestCase
     public function test_reinstall_on_existing_database_with_different_username_is_refused(): void
     {
         $sqlite = $this->sqlitePath('reinstall-intruder.sqlite');
-        $this->installAdmin($sqlite);
+        $this->installAdmin($sqlite, [
+            'timezone' => 'Europe/Amsterdam',
+            'base_uri_override' => 'workspace',
+            'enable_files' => true,
+            'enable_calendars' => true,
+            'enable_contacts' => true,
+        ]);
+
+        $settingsBefore = $this->appSettings($this->installedPdo($sqlite));
+        $keysBefore = $this->jwtKeyMaterial();
 
         $this->clearInstallMarkers();
 
@@ -473,7 +482,13 @@ final class InstallerWizardTest extends TestCase
             ->assertJsonPath('installed', false)
             ->assertJsonPath('state.step', 'welcome');
 
-        $this->advanceToAccount($sqlite);
+        $this->advanceToAccount($sqlite, [
+            'timezone' => 'Pacific/Auckland',
+            'base_uri_override' => 'intruder',
+            'enable_files' => false,
+            'enable_calendars' => false,
+            'enable_contacts' => true,
+        ]);
         $again = $this->postAction('install', $this->installPayload([
             'username' => 'intruder',
             'display_name' => 'Intruder',
@@ -488,12 +503,21 @@ final class InstallerWizardTest extends TestCase
         $this->assertFalse(
             $db->query("SELECT username FROM users WHERE username = 'intruder'")->fetchColumn(),
         );
+        $this->assertSame($settingsBefore, $this->appSettings($db), 'Reinstall must not rewrite app_settings.');
 
         WgwInstallFixture::syncDatabaseConnection();
         $this->postJson('/api/v1/auth/token', [
             'username' => 'intruder',
             'password' => 'intruder-password',
         ])->assertUnauthorized();
+
+        $keysAfter = $this->jwtKeyMaterial();
+        if ($keysAfter !== $keysBefore) {
+            $this->markTestIncomplete(
+                'Reinstall returns ok and writes a new JWT key pair. Launch-blocker: https://github.com/WeGotWorkspace/WeGotWorkspace/issues/993'
+            );
+        }
+        $this->assertSame($keysBefore, $keysAfter, 'Reinstall must not replace JWT keys.');
 
         // A second admin is not created. Refusal (ok=false) is still missing: #993.
         if ($again->json('ok') !== false) {
@@ -687,9 +711,12 @@ final class InstallerWizardTest extends TestCase
         $this->assertInstallerErrorIsSafe($error);
     }
 
-    private function installAdmin(string $sqlitePath): void
+    /**
+     * @param  array<string, mixed>  $siteOverrides
+     */
+    private function installAdmin(string $sqlitePath, array $siteOverrides = []): void
     {
-        $this->advanceToAccount($sqlitePath);
+        $this->advanceToAccount($sqlitePath, $siteOverrides);
         $this->postAction('install', $this->installPayload([
             'username' => 'admin',
             'email' => 'admin@example.test',
@@ -708,6 +735,33 @@ final class InstallerWizardTest extends TestCase
         ])->assertOk()
             ->assertJsonPath('username', $username)
             ->assertJsonPath('role', 'admin');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function appSettings(\PDO $db): array
+    {
+        $rows = $db->query('SELECT name, value FROM app_settings ORDER BY name')->fetchAll(\PDO::FETCH_KEY_PAIR);
+        $this->assertIsArray($rows);
+        ksort($rows);
+
+        return $rows;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function jwtKeyMaterial(): array
+    {
+        $material = [];
+        foreach (['api-jwt-private.pem', 'api-jwt-public.pem'] as $name) {
+            $path = $this->installRoot.'/wgw-content/keys/'.$name;
+            $this->assertFileExists($path);
+            $material[$name] = hash_file('sha256', $path);
+        }
+
+        return $material;
     }
 
     private function clearInstallMarkers(): void
