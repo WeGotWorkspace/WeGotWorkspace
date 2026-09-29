@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
  * @property string $id_hash
  * @property string $username
  * @property string $kind
+ * @property string $client
  * @property string|null $pending_secret
  * @property int $attempts
  * @property Carbon $expires_at
@@ -34,6 +35,7 @@ final class AuthChallenge extends Model
         'id_hash',
         'username',
         'kind',
+        'client',
         'pending_secret',
         'attempts',
         'expires_at',

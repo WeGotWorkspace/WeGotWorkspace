@@ -102,7 +102,7 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
       await removeOutboxMutation(username, row.id);
       flushed += 1;
     } catch (error) {
-      if (isMfaSetupRequiredError(error)) continue;
+      if (isMfaSetupRequiredError(error)) break;
       failed += 1;
       const status = (error as { status?: number } | undefined)?.status;
       const message = error instanceof Error ? error.message : String(error);

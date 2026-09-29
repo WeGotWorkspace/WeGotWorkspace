@@ -13,6 +13,7 @@ final class MfaReauth
         private UserMfaService $mfa,
         private TotpService $totp,
         private SabreCredentialValidator $credentials,
+        private MfaCodeFailCounter $codeFails,
     ) {}
 
     public function assert(string $username, ?string $password, ?string $code): void
@@ -43,6 +44,10 @@ final class MfaReauth
 
     private function assertCode(string $username, ?string $code): void
     {
+        if ($this->codeFails->isLocked($username)) {
+            throw new ApiHttpException(429, 'Too many login attempts. Please try again later.', 'throttled');
+        }
+
         $normalized = preg_replace('/\s+/', '', (string) $code) ?? '';
         if ($normalized === '') {
             throw new ApiHttpException(422, 'A current authenticator code is required.', 'mfa_code_required');
@@ -53,6 +58,9 @@ final class MfaReauth
             throw new ApiHttpException(401, TotpService::REUSED_MESSAGE, 'totp_step_reused');
         }
         if ($result !== 'ok') {
+            if ($this->codeFails->recordFailure($username)) {
+                throw new ApiHttpException(429, 'Too many login attempts. Please try again later.', 'throttled');
+            }
             throw new ApiHttpException(401, 'Invalid code.', 'unauthorized');
         }
     }

@@ -20,6 +20,7 @@ final class MfaChallengeConfirmRequest extends FormRequest
     {
         return [
             'code' => ['required', 'string', 'max:16'],
+            'password' => ['nullable', 'string', 'max:1024'],
         ];
     }
 }

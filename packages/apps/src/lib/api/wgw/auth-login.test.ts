@@ -26,6 +26,7 @@ describe("parseAuthLoginBody", () => {
       status: "mfa_required",
       challenge: "abc",
       methods: ["totp", "recovery"],
+      client: "spa",
     });
     expect(parseAuthLoginBody({ status: "mfa_setup_required", challenge: "abc" }).status).toBe(
       "mfa_setup_required",

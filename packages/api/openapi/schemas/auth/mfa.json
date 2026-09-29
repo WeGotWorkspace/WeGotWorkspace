@@ -13,10 +13,11 @@
   },
   "MfaRequiredResponse": {
     "type": "object",
-    "required": ["status", "challenge", "methods"],
+    "required": ["status", "challenge", "methods", "client"],
     "properties": {
       "status": { "const": "mfa_required" },
       "challenge": { "type": "string" },
+      "client": { "type": "string", "enum": ["spa", "oauth"] },
       "methods": {
         "type": "array",
         "items": { "type": "string", "enum": ["totp", "recovery"] }
@@ -25,18 +26,20 @@
   },
   "MfaSetupRequiredResponse": {
     "type": "object",
-    "required": ["status", "challenge"],
+    "required": ["status", "challenge", "client"],
     "properties": {
       "status": { "const": "mfa_setup_required" },
-      "challenge": { "type": "string" }
+      "challenge": { "type": "string" },
+      "client": { "type": "string", "enum": ["spa", "oauth"] }
     }
   },
   "MfaReplaceRequiredResponse": {
     "type": "object",
-    "required": ["status", "challenge"],
+    "required": ["status", "challenge", "client"],
     "properties": {
       "status": { "const": "mfa_replace_required" },
-      "challenge": { "type": "string" }
+      "challenge": { "type": "string" },
+      "client": { "type": "string", "enum": ["spa", "oauth"] }
     }
   },
   "AuthLoginResponse": {

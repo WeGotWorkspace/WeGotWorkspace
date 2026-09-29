@@ -33,10 +33,12 @@ final class UserProfileService
         if ($hash === false) {
             throw new ApiHttpException(500, 'Password hashing failed.', 'server_error');
         }
+        $username = strtolower(trim($username));
         $updated = User::query()->where('username', $username)->update(['digest' => $hash]);
         if ($updated === 0) {
             throw new ApiHttpException(400, 'User not found.', 'bad_request');
         }
-        $this->refreshTokens->revokeAllForUsername(strtolower(trim($username)));
+        User::query()->where('username', $username)->increment('session_generation');
+        $this->refreshTokens->revokeAllForUsername($username);
     }
 }

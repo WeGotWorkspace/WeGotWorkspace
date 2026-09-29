@@ -32,7 +32,11 @@ final class MfaChallengeController
 
     public function provision(Request $request, string $challenge): JsonResponse
     {
-        return response()->json($this->challenges->provision($challenge, $request->getHost()));
+        return response()->json($this->challenges->provision(
+            $challenge,
+            $request->getHost(),
+            $request->input('password') !== null ? (string) $request->input('password') : null,
+        ));
     }
 
     public function confirm(MfaChallengeConfirmRequest $request, string $challenge): JsonResponse
@@ -41,6 +45,8 @@ final class MfaChallengeController
             $challenge,
             (string) $request->validated()['code'],
             (string) $request->ip(),
+            'spa',
+            isset($request->validated()['password']) ? (string) $request->validated()['password'] : null,
         );
 
         return response()->json($payload)->withCookie(

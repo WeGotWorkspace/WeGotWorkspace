@@ -13,10 +13,11 @@ type TotpWizardProps = {
   onLogout: () => void;
 };
 
-type WizardStep = "setup" | "codes";
+type WizardStep = "password" | "setup" | "codes";
 
 export function TotpWizard({ source, onFinished, onLogout }: TotpWizardProps) {
-  const [step, setStep] = useState<WizardStep>("setup");
+  const [step, setStep] = useState<WizardStep>(source.mode === "enroll" ? "password" : "setup");
+  const [accountPassword, setAccountPassword] = useState("");
   const [secret, setSecret] = useState("");
   const [otpauthUri, setOtpauthUri] = useState("");
   const [davWarning, setDavWarning] = useState(false);
@@ -29,6 +30,10 @@ export function TotpWizard({ source, onFinished, onLogout }: TotpWizardProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (source.mode === "enroll") {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     void source
@@ -49,6 +54,24 @@ export function TotpWizard({ source, onFinished, onLogout }: TotpWizardProps) {
       cancelled = true;
     };
   }, [source]);
+
+  const beginWithPassword = async (password: string) => {
+    if (submitting || password.trim() === "") return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const provision = await source.start(password);
+      setAccountPassword(password);
+      setSecret(provision.secret);
+      setOtpauthUri(provision.otpauthUri);
+      setDavWarning(provision.davWarning);
+      setStep("setup");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "That password was not accepted.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (!otpauthUri) return;
@@ -74,7 +97,7 @@ export function TotpWizard({ source, onFinished, onLogout }: TotpWizardProps) {
     setSubmitting(true);
     setError("");
     try {
-      const confirmed = await source.confirm(nextCode);
+      const confirmed = await source.confirm(nextCode, accountPassword || undefined);
       setRecoveryCodes(confirmed.recoveryCodes);
       setStep("codes");
     } catch (cause) {
@@ -92,6 +115,13 @@ export function TotpWizard({ source, onFinished, onLogout }: TotpWizardProps) {
         davWarning={davWarning}
         onSavedChange={setSavedCodes}
         onContinue={onFinished}
+      />
+    ) : step === "password" ? (
+      <PasswordStep
+        username={source.username}
+        error={error}
+        submitting={submitting}
+        onSubmit={(password) => void beginWithPassword(password)}
       />
     ) : (
       <SetupStep
@@ -130,6 +160,61 @@ export function TotpWizard({ source, onFinished, onLogout }: TotpWizardProps) {
         </button>
       </p>
     </AuthenticationPage>
+  );
+}
+
+function PasswordStep({
+  username,
+  error,
+  submitting,
+  onSubmit,
+}: {
+  username: string;
+  error: string;
+  submitting: boolean;
+  onSubmit: (password: string) => void;
+}) {
+  const [password, setPassword] = useState("");
+  return (
+    <form
+      className="login-screen__form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(password);
+      }}
+    >
+      <input type="text" name="username" autoComplete="username" hidden readOnly value={username} />
+      {error ? (
+        <p className="login-screen__error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <p className="login-screen__hint">Enter your account password to start setup.</p>
+      <FieldLabelRow htmlFor="setup-password" label="Password">
+        <Input
+          id="setup-password"
+          name="password"
+          variant="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="current-password"
+          autoFocus
+          required
+          disabled={submitting}
+        />
+      </FieldLabelRow>
+      <div className="login-screen__actions">
+        <Button
+          type="submit"
+          label={submitting ? "Checking..." : "Continue"}
+          variant="primary"
+          size="xl"
+          pill
+          disabled={submitting || password === ""}
+          className="login-screen__submit"
+        />
+      </div>
+    </form>
   );
 }
 

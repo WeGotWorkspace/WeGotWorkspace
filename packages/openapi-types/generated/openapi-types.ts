@@ -7719,7 +7719,13 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        password?: string;
+                    };
+                };
+            };
             responses: {
                 /** @description Pending authenticator secret */
                 200: {
@@ -7768,6 +7774,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         code: string;
+                        password?: string;
                     };
                 };
             };
@@ -7989,7 +7996,13 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        password: string;
+                    };
+                };
+            };
             responses: {
                 /** @description Pending authenticator */
                 200: {
@@ -8113,6 +8126,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         code: string;
+                        password: string;
                     };
                 };
             };
@@ -12113,17 +12127,23 @@ export interface components {
             /** @constant */
             status: "mfa_required";
             challenge: string;
+            /** @enum {string} */
+            client: "spa" | "oauth";
             methods: ("totp" | "recovery")[];
         };
         MfaSetupRequiredResponse: {
             /** @constant */
             status: "mfa_setup_required";
             challenge: string;
+            /** @enum {string} */
+            client: "spa" | "oauth";
         };
         MfaReplaceRequiredResponse: {
             /** @constant */
             status: "mfa_replace_required";
             challenge: string;
+            /** @enum {string} */
+            client: "spa" | "oauth";
         };
         AuthLoginResponse: components["schemas"]["AuthTokenOkResponse"] | components["schemas"]["MfaRequiredResponse"] | components["schemas"]["MfaSetupRequiredResponse"] | components["schemas"]["MfaReplaceRequiredResponse"];
         MfaVerificationResponse: components["schemas"]["AuthTokenOkResponse"] | components["schemas"]["MfaReplaceRequiredResponse"];

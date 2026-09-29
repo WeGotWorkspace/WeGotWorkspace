@@ -113,7 +113,7 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
         await markOutboxError(username, row.id, "stateMismatch");
         continue;
       }
-      if (isMfaSetupRequiredError(error)) continue;
+      if (isMfaSetupRequiredError(error)) break;
       if (isNotFoundSetError(error)) {
         const payload = JSON.parse(row.payload) as Record<string, unknown>;
         const cardId = String(payload.cardId ?? payload.tempCardId ?? payload.creationId ?? "");

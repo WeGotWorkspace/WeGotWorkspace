@@ -103,7 +103,7 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {
-      if (isMfaSetupRequiredError(error)) continue;
+      if (isMfaSetupRequiredError(error)) break;
       if (isEtagMismatch(error)) {
         const taskId = String(JSON.parse(row.payload).taskId ?? "");
         if (taskId) etagMismatches.push(taskId);

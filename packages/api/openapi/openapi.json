@@ -87,10 +87,11 @@
       },
       "MfaRequiredResponse": {
         "type": "object",
-        "required": ["status", "challenge", "methods"],
+        "required": ["status", "challenge", "methods", "client"],
         "properties": {
           "status": {"const": "mfa_required"},
           "challenge": {"type": "string"},
+          "client": {"type": "string", "enum": ["spa", "oauth"]},
           "methods": {
             "type": "array",
             "items": {"type": "string", "enum": ["totp", "recovery"]}
@@ -99,18 +100,20 @@
       },
       "MfaSetupRequiredResponse": {
         "type": "object",
-        "required": ["status", "challenge"],
+        "required": ["status", "challenge", "client"],
         "properties": {
           "status": {"const": "mfa_setup_required"},
-          "challenge": {"type": "string"}
+          "challenge": {"type": "string"},
+          "client": {"type": "string", "enum": ["spa", "oauth"]}
         }
       },
       "MfaReplaceRequiredResponse": {
         "type": "object",
-        "required": ["status", "challenge"],
+        "required": ["status", "challenge", "client"],
         "properties": {
           "status": {"const": "mfa_replace_required"},
-          "challenge": {"type": "string"}
+          "challenge": {"type": "string"},
+          "client": {"type": "string", "enum": ["spa", "oauth"]}
         }
       },
       "AuthLoginResponse": {
@@ -3496,6 +3499,17 @@
       "post": {
         "tags": ["Auth"],
         "summary": "Start or repeat TOTP setup for a challenge. Repeating returns the same secret.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {"password": {"type": "string"}}
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "name": "challenge",
@@ -3538,7 +3552,8 @@
                 "type": "object",
                 "required": ["code"],
                 "properties": {
-                  "code": {"type": "string"}
+                  "code": {"type": "string"},
+                  "password": {"type": "string"}
                 }
               }
             }
@@ -5565,6 +5580,18 @@
         "tags": ["Settings"],
         "summary": "Begin TOTP enrollment. Repeating returns the same pending secret.",
         "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["password"],
+                "properties": {"password": {"type": "string"}}
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Pending authenticator",
@@ -5637,8 +5664,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["code"],
-                "properties": {"code": {"type": "string"}}
+                "required": ["code", "password"],
+                "properties": {
+                  "code": {"type": "string"},
+                  "password": {"type": "string"}
+                }
               }
             }
           }

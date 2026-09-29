@@ -36,6 +36,8 @@ test.describe("TOTP sign-in stories", () => {
     ).toBeVisible({
       timeout: 30_000,
     });
+    await page.getByLabel("Password").fill("secret");
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("link", { name: "Settings → Security" })).toBeVisible();
   });
 });

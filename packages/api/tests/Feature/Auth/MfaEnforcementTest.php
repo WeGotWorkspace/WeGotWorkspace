@@ -112,9 +112,12 @@ final class MfaEnforcementTest extends WgwDatabaseTestCase
         $this->assertNotNull($oldCookie);
 
         $this->flushHeaders();
-        $secret = (string) $this->withBearer($oldToken)->postJson('/api/v1/settings/totp')->json('secret');
+        $secret = (string) $this->withBearer($oldToken)->postJson('/api/v1/settings/totp', [
+            'password' => 'secret',
+        ])->json('secret');
         $confirmed = $this->withBearer($oldToken)->postJson('/api/v1/settings/totp/confirmation', [
             'code' => $this->otp($secret),
+            'password' => 'secret',
         ])->assertOk();
         $confirmed->assertJsonPath('status', 'ok');
         $this->assertNotSame('', (string) $confirmed->json('access_token'));
@@ -141,9 +144,12 @@ final class MfaEnforcementTest extends WgwDatabaseTestCase
     {
         Storage::disk('wgw_files')->put('users/alice/note.txt', 'hello');
         $oldToken = $this->issueBearerTokenFor('alice');
-        $secret = (string) $this->withBearer($oldToken)->postJson('/api/v1/settings/totp')->json('secret');
+        $secret = (string) $this->withBearer($oldToken)->postJson('/api/v1/settings/totp', [
+            'password' => 'secret',
+        ])->json('secret');
         $confirmed = $this->withBearer($oldToken)->postJson('/api/v1/settings/totp/confirmation', [
             'code' => $this->otp($secret),
+            'password' => 'secret',
         ])->assertOk();
         $previousToken = (string) $confirmed->json('access_token');
         $previousCookie = $this->cookieNamed($confirmed, 'sabre_ui_auth');
@@ -207,7 +213,8 @@ final class MfaEnforcementTest extends WgwDatabaseTestCase
         $this->postJson('/api/v1/auth/refresh', [
             'refresh_token' => $refresh,
         ])->assertUnauthorized();
-        $this->withBearer($access)->getJson('/api/v1/me')->assertOk();
+        $this->withBearer($access)->getJson('/api/v1/me')->assertUnauthorized();
+        $this->assertGreaterThan(0, (int) User::query()->where('username', 'bob')->value('session_generation'));
     }
 
     private function enableTotp(string $username): string

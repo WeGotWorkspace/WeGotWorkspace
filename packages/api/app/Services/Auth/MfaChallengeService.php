@@ -25,15 +25,23 @@ final class MfaChallengeService
         private MfaSessionReissue $sessionReissue,
         private AuthTokenService $tokens,
         private DavClientWarning $davWarning,
+        private MfaReauth $reauth,
     ) {}
 
     /**
      * @return array<string, mixed>
      */
-    public function verify(string $challengeId, ?string $code, ?string $recoveryCode, string $ip): array
-    {
+    public function verify(
+        string $challengeId,
+        ?string $code,
+        ?string $recoveryCode,
+        string $ip,
+        string $expectedClient = 'spa',
+    ): array {
         $this->assertNotLocked($challengeId);
         $challenge = $this->challenges->findOpen($challengeId);
+        $this->assertClient($challenge, $expectedClient);
+        $this->assertAttemptAllowed($challenge, $ip);
         $code = $this->blankToNull($code);
         $recoveryCode = $this->blankToNull($recoveryCode);
         if (($code === null) === ($recoveryCode === null)) {
@@ -69,11 +77,14 @@ final class MfaChallengeService
     /**
      * @return array{secret: string, otpauth_uri: string, dav_warning: bool}
      */
-    public function provision(string $challengeId, string $requestHost): array
+    public function provision(string $challengeId, string $requestHost, ?string $password = null): array
     {
         $challenge = $this->challenges->findOpen($challengeId);
         if (! in_array($challenge->kind, ['totp_setup', 'totp_replace'], true)) {
             throw new ApiHttpException(409, 'This challenge is waiting for a code.', 'conflict');
+        }
+        if ($challenge->kind === 'totp_setup') {
+            $this->reauth->assert($challenge->username, $password, null);
         }
 
         $secret = $challenge->pending_secret;
@@ -97,12 +108,27 @@ final class MfaChallengeService
     /**
      * @return array<string, mixed>
      */
-    public function confirm(string $challengeId, string $code, string $ip): array
-    {
+    public function confirm(
+        string $challengeId,
+        string $code,
+        string $ip,
+        string $expectedClient = 'spa',
+        ?string $password = null,
+    ): array {
         $this->assertNotLocked($challengeId);
         $challenge = $this->challenges->findOpen($challengeId);
+        $this->assertClient($challenge, $expectedClient);
+        $this->assertAttemptAllowed($challenge, $ip);
         if (! in_array($challenge->kind, ['totp_setup', 'totp_replace'], true)) {
             throw new ApiHttpException(400, 'Confirm this challenge with verification.', 'bad_request');
+        }
+        $replace = $challenge->kind === 'totp_replace';
+        if (! $replace && $this->mfa->isEnabled($challenge->username)) {
+            $challenge->delete();
+            throw new ApiHttpException(409, 'Two-factor authentication is already on.', 'conflict');
+        }
+        if (! $replace) {
+            $this->reauth->assert($challenge->username, $password, null);
         }
         $secret = $challenge->pending_secret;
         if (! is_string($secret) || $secret === '') {
@@ -123,7 +149,7 @@ final class MfaChallengeService
         }
 
         $username = $challenge->username;
-        $this->mfa->enable($username, $secret, $step);
+        $this->mfa->enable($username, $secret, $step, $replace);
         $codes = $this->recoveryCodes->replaceAll($username);
         $this->sessionReissue->afterAuthenticatorChanged($username);
         $this->attempts->succeed($username, $ip);
@@ -157,7 +183,36 @@ final class MfaChallengeService
         return [
             'status' => 'mfa_replace_required',
             'challenge' => strtolower(trim($challengeId)),
+            'client' => $challenge->client === 'oauth' ? 'oauth' : 'spa',
         ];
+    }
+
+    private function assertClient(AuthChallenge $challenge, string $expectedClient): void
+    {
+        $expected = $expectedClient === 'oauth' ? 'oauth' : 'spa';
+        $actual = $challenge->client === 'oauth' ? 'oauth' : 'spa';
+        if ($actual !== $expected) {
+            throw new ApiHttpException(
+                409,
+                $expected === 'oauth'
+                    ? 'This challenge belongs to the app sign-in.'
+                    : 'Complete this sign-in on the assistant login.',
+                'conflict',
+            );
+        }
+    }
+
+    private function assertAttemptAllowed(AuthChallenge $challenge, string $ip): void
+    {
+        $capped = (int) $challenge->attempts >= self::MAX_ATTEMPTS;
+        if (! $capped && ! $this->ipLimiter->tooManyAttempts($challenge->username, $ip)) {
+            return;
+        }
+        if ($capped) {
+            $challenge->delete();
+        }
+
+        throw new ApiHttpException(429, 'Too many login attempts. Please try again later.', 'throttled');
     }
 
     private function rejectCode(AuthChallenge $challenge, string $ip): never

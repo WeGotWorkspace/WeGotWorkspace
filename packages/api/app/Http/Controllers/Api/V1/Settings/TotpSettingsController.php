@@ -38,6 +38,11 @@ final class TotpSettingsController
         if ($this->mfa->isEnabled($username)) {
             throw new ApiHttpException(409, 'Two-factor authentication is already on.', 'conflict');
         }
+        $this->reauth->assert(
+            $username,
+            $request->input('password') !== null ? (string) $request->input('password') : null,
+            null,
+        );
 
         $secret = $this->mfa->pendingSecret($username);
         if ($secret === null) {
@@ -63,8 +68,13 @@ final class TotpSettingsController
     {
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:16'],
+            'password' => ['required', 'string', 'max:1024'],
         ]);
         $username = $this->username($request);
+        if ($this->mfa->isEnabled($username)) {
+            throw new ApiHttpException(409, 'Two-factor authentication is already on.', 'conflict');
+        }
+        $this->reauth->assert($username, (string) $validated['password'], null);
         $secret = $this->mfa->pendingSecret($username);
         if ($secret === null) {
             throw new ApiHttpException(400, 'Set up an authenticator first.', 'bad_request');

@@ -11833,7 +11833,8 @@
                 "required": [
                     "status",
                     "challenge",
-                    "methods"
+                    "methods",
+                    "client"
                 ],
                 "properties": {
                     "status": {
@@ -11841,6 +11842,13 @@
                     },
                     "challenge": {
                         "type": "string"
+                    },
+                    "client": {
+                        "type": "string",
+                        "enum": [
+                            "spa",
+                            "oauth"
+                        ]
                     },
                     "methods": {
                         "type": "array",
@@ -11858,7 +11866,8 @@
                 "type": "object",
                 "required": [
                     "status",
-                    "challenge"
+                    "challenge",
+                    "client"
                 ],
                 "properties": {
                     "status": {
@@ -11866,6 +11875,13 @@
                     },
                     "challenge": {
                         "type": "string"
+                    },
+                    "client": {
+                        "type": "string",
+                        "enum": [
+                            "spa",
+                            "oauth"
+                        ]
                     }
                 }
             },
@@ -11873,7 +11889,8 @@
                 "type": "object",
                 "required": [
                     "status",
-                    "challenge"
+                    "challenge",
+                    "client"
                 ],
                 "properties": {
                     "status": {
@@ -11881,6 +11898,13 @@
                     },
                     "challenge": {
                         "type": "string"
+                    },
+                    "client": {
+                        "type": "string",
+                        "enum": [
+                            "spa",
+                            "oauth"
+                        ]
                     }
                 }
             },
@@ -19613,6 +19637,21 @@
                     "Auth"
                 ],
                 "summary": "Start or repeat TOTP setup for a challenge. Repeating returns the same secret.",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "password": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "parameters": [
                     {
                         "name": "challenge",
@@ -19668,6 +19707,9 @@
                                 ],
                                 "properties": {
                                     "code": {
+                                        "type": "string"
+                                    },
+                                    "password": {
                                         "type": "string"
                                     }
                                 }
@@ -19840,6 +19882,24 @@
                         "bearerAuth": []
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "password"
+                                ],
+                                "properties": {
+                                    "password": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Pending authenticator",
@@ -19951,10 +20011,14 @@
                             "schema": {
                                 "type": "object",
                                 "required": [
-                                    "code"
+                                    "code",
+                                    "password"
                                 ],
                                 "properties": {
                                     "code": {
+                                        "type": "string"
+                                    },
+                                    "password": {
                                         "type": "string"
                                     }
                                 }

@@ -22,6 +22,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
   wgwLogout: vi.fn().mockResolvedValue(undefined),
   wgwLiveApiEnabled: () => false,
   wgwApiBaseUrl: () => "/api/v1",
+  wgwOAuthSessionUrl: () => "/oauth/session",
   wgwApplyTokenResponse: vi.fn(),
   wgwFetch: vi.fn(),
   wgwReadJson: vi.fn(),

@@ -211,7 +211,7 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {
-      if (isMfaSetupRequiredError(error)) continue;
+      if (isMfaSetupRequiredError(error)) break;
       await markOutboxError(
         username,
         row.id,

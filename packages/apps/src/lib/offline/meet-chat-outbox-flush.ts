@@ -113,7 +113,7 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
       await removeOutboxMutation(username, row.id);
       flushed += 1;
     } catch (error) {
-      if (isMfaSetupRequiredError(error)) continue;
+      if (isMfaSetupRequiredError(error)) break;
       const messageId = meetChatOutboxMessageId(row);
       if (messageId) failedMessageIds.push(messageId);
       await markOutboxError(

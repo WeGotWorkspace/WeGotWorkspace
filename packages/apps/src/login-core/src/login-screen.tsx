@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/wgw/http";
 import {
   challengeWizardSource,
+  completeOAuthMfa,
   MfaRequestError,
   verifyMfaChallenge,
 } from "@/lib/api/wgw/mfa-client";
@@ -138,7 +139,14 @@ export function LoginScreen({
     setSubmitting(true);
     setRuntimeError("");
     try {
-      const result = await verifyMfaChallenge(pending.challenge, body);
+      const result =
+        pending.client === "oauth"
+          ? await completeOAuthMfa({
+              challenge: pending.challenge,
+              ...body,
+              intent: search.get("intent"),
+            })
+          : await verifyMfaChallenge(pending.challenge, body);
       if (result.status === "ok") {
         await finishSignedIn();
         return;

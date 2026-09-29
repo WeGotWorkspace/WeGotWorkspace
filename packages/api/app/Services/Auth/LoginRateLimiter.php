@@ -17,6 +17,23 @@ final class LoginRateLimiter
 
     public function __construct(private RateLimiter $rateLimiter) {}
 
+    /**
+     * True when this username or IP is already over the limit.
+     * Does not record another attempt.
+     */
+    public function tooManyAttempts(string $username, string $ip): bool
+    {
+        if ($this->isDisabled()) {
+            return false;
+        }
+
+        $ipNorm = $this->normalizeIp($ip);
+        $user = $this->normalizeUser($username);
+
+        return $this->rateLimiter->tooManyAttempts($this->ipKey($ipNorm), self::IP_LIMIT)
+            || $this->rateLimiter->tooManyAttempts($this->userIpKey($user, $ipNorm), self::USER_IP_LIMIT);
+    }
+
     public function allow(string $username, string $ip): bool
     {
         if ($this->isDisabled()) {

@@ -23,20 +23,23 @@ final class AuthChallengeService
     /**
      * @return array<string, mixed>
      */
-    public function beginAfterPassword(string $username): array
+    public function beginAfterPassword(string $username, string $client = 'spa'): array
     {
         $username = strtolower(trim($username));
+        $client = $client === 'oauth' ? 'oauth' : 'spa';
         if ($this->mfa->isEnabled($username)) {
             return [
                 'status' => 'mfa_required',
-                'challenge' => $this->issue($username, 'totp'),
+                'challenge' => $this->issue($username, 'totp', $client),
                 'methods' => ['totp', 'recovery'],
+                'client' => $client,
             ];
         }
         if ($this->enforcement->isRequired()) {
             return [
                 'status' => 'mfa_setup_required',
-                'challenge' => $this->issue($username, 'totp_setup'),
+                'challenge' => $this->issue($username, 'totp_setup', $client),
+                'client' => $client,
             ];
         }
 
@@ -46,7 +49,7 @@ final class AuthChallengeService
         ];
     }
 
-    public function issue(string $username, string $kind): string
+    public function issue(string $username, string $kind, string $client = 'spa'): string
     {
         $id = bin2hex(random_bytes(32));
         $ttl = $kind === 'totp' ? self::TOTP_TTL_SECONDS : self::SETUP_TTL_SECONDS;
@@ -55,6 +58,7 @@ final class AuthChallengeService
             'id_hash' => hash('sha256', $id),
             'username' => $username,
             'kind' => $kind,
+            'client' => $client === 'oauth' ? 'oauth' : 'spa',
             'attempts' => 0,
             'expires_at' => Carbon::now()->addSeconds($ttl),
             'created_at' => Carbon::now(),

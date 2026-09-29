@@ -122,7 +122,13 @@ TOTP is opt-in. `POST /api/v1/auth/token` still returns `access_token` and `refr
 | `mfa_setup_required` | An admin requires two-factor authentication and this account has not enrolled. |
 | `mfa_replace_required` | A recovery code was accepted. Confirm a new authenticator before any tokens are issued. |
 
+Challenge bodies include `client`: `spa` for `POST /api/v1/auth/token`, or `oauth` for assistant login. An `oauth` challenge is finished on `POST /oauth/session` with `{challenge, code}` or `{challenge, recovery_code}` (and `{challenge, code, password}` when confirming setup). That request signs in the web session Passport needs. The API verification route refuses an `oauth` challenge.
+
 A recovery code at login does not return tokens. It starts authenticator replacement. Confirming that replacement, or turning two-factor authentication on in Settings, signs out other sessions and returns a new token pair.
+
+Turning two-factor authentication on requires the account password before the QR code is shown, and again when the authenticator code is confirmed. A setup challenge cannot replace an authenticator that is already on.
+
+Changing the account password revokes refresh tokens and bumps `session_generation`, so existing access tokens and the `sabre_ui_auth` cookie stop working.
 
 App passwords are named secrets for calendar and contact clients. Create and revoke them under Settings → Security. After two-factor authentication is on, DAV and Meet Basic reject the account password and accept an app password. Users who have not enrolled can still use the account password on DAV.
 
@@ -138,4 +144,4 @@ php artisan wgw:mfa:enforce off
 
 The CLI commands do not ask for an authenticator code. The HTTP enforcement route does, and it refuses to turn the requirement on until that admin has enrolled.
 
-Failed authenticator and recovery codes are limited per username. The sign-in screen says "Lost access? Ask your admin." See [Two-factor authentication](../../../docs/two-factor-authentication.md).
+Ten failed authenticator or recovery codes for one username, including codes sent as re-authentication on an existing session, lock that username for an hour. A correct code does not clear the lock. Each login challenge also stops after five failures, and a correct code after that cap is refused. The sign-in screen says "Lost access? Ask your admin." See [Two-factor authentication](../../../docs/two-factor-authentication.md).

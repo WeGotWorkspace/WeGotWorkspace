@@ -4,6 +4,7 @@ import {
   wgwApplyTokenResponse,
   wgwFetch,
   wgwLiveApiEnabled,
+  wgwOAuthSessionUrl,
   wgwReadJson,
 } from "@/lib/api/wgw/http";
 
@@ -47,8 +48,8 @@ export type TotpWizardSource = {
   presentation: "challenge" | "session";
   /** Enforcement and login challenges cannot be skipped. */
   forced: boolean;
-  start: () => Promise<TotpProvision>;
-  confirm: (code: string) => Promise<{ recoveryCodes: string[] }>;
+  start: (password?: string) => Promise<TotpProvision>;
+  confirm: (code: string, password?: string) => Promise<{ recoveryCodes: string[] }>;
 };
 
 async function readMfaPayload(res: Response): Promise<unknown> {
@@ -103,6 +104,31 @@ function recoveryCodesFrom(body: unknown): string[] {
   return codes.filter((code): code is string => typeof code === "string");
 }
 
+export async function completeOAuthMfa(input: {
+  challenge: string;
+  code?: string;
+  recovery_code?: string;
+  password?: string;
+  intent?: string | null;
+}): Promise<AuthLoginResult & { recoveryCodes: string[] }> {
+  const body: Record<string, string> = { challenge: input.challenge };
+  if (input.code) body.code = input.code;
+  if (input.recovery_code) body.recovery_code = input.recovery_code;
+  if (input.password) body.password = input.password;
+  const intent = input.intent?.trim();
+  if (intent) body.intent = intent;
+  const res = await fetch(wgwOAuthSessionUrl(), {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await readMfaPayload(res);
+  const parsed = parseAuthLoginBody(payload);
+  if (parsed.status === "ok") wgwApplyTokenResponse(parsed.tokens);
+  return { ...parsed, recoveryCodes: recoveryCodesFrom(payload) };
+}
+
 export async function verifyMfaChallenge(
   challenge: string,
   body: { code?: string; recovery_code?: string },
@@ -116,19 +142,25 @@ export async function verifyMfaChallenge(
   return parsed;
 }
 
-export async function provisionMfaChallenge(challenge: string): Promise<TotpProvision> {
+export async function provisionMfaChallenge(
+  challenge: string,
+  password?: string,
+): Promise<TotpProvision> {
   return asProvision(
-    await postPublic(`/auth/mfa-challenges/${encodeURIComponent(challenge)}/totp`, {}),
+    await postPublic(`/auth/mfa-challenges/${encodeURIComponent(challenge)}/totp`, {
+      ...(password ? { password } : {}),
+    }),
   );
 }
 
 export async function confirmMfaChallenge(
   challenge: string,
   code: string,
+  password?: string,
 ): Promise<{ recoveryCodes: string[] }> {
   const payload = await postPublic(
     `/auth/mfa-challenges/${encodeURIComponent(challenge)}/confirmation`,
-    { code },
+    { code, ...(password ? { password } : {}) },
   );
   const parsed = parseAuthLoginBody(payload);
   if (parsed.status !== "ok") {
@@ -138,16 +170,23 @@ export async function confirmMfaChallenge(
   return { recoveryCodes: recoveryCodesFrom(payload) };
 }
 
-export async function provisionSessionTotp(): Promise<TotpProvision> {
-  const res = await wgwFetch("/settings/totp", { method: "POST" });
+export async function provisionSessionTotp(password?: string): Promise<TotpProvision> {
+  const res = await wgwFetch("/settings/totp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: password ?? "" }),
+  });
   return asProvision(await readMfaPayload(res));
 }
 
-export async function confirmSessionTotp(code: string): Promise<{ recoveryCodes: string[] }> {
+export async function confirmSessionTotp(
+  code: string,
+  password?: string,
+): Promise<{ recoveryCodes: string[] }> {
   const res = await wgwFetch("/settings/totp/confirmation", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, password: password ?? "" }),
   });
   const payload = await readMfaPayload(res);
   const parsed = parseAuthLoginBody(payload);
@@ -168,8 +207,21 @@ export function challengeWizardSource(
     username,
     presentation: "challenge",
     forced: true,
-    start: () => provisionMfaChallenge(login.challenge),
-    confirm: (code) => confirmMfaChallenge(login.challenge, code),
+    start: (password) => provisionMfaChallenge(login.challenge, password),
+    confirm: async (code, password) => {
+      if (login.client === "oauth") {
+        const result = await completeOAuthMfa({
+          challenge: login.challenge,
+          code,
+          password,
+        });
+        if (result.status !== "ok") {
+          throw new MfaRequestError("Confirmation did not return a session.", 500);
+        }
+        return { recoveryCodes: result.recoveryCodes };
+      }
+      return confirmMfaChallenge(login.challenge, code, password);
+    },
   };
 }
 
@@ -179,8 +231,8 @@ export function sessionWizardSource(username: string, forced: boolean): TotpWiza
     username,
     presentation: "session",
     forced,
-    start: provisionSessionTotp,
-    confirm: confirmSessionTotp,
+    start: (password) => provisionSessionTotp(password),
+    confirm: (code, password) => confirmSessionTotp(code, password),
   };
 }
 

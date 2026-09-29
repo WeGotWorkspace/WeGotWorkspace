@@ -34,7 +34,7 @@ final class AuthTokenService
             );
         }
 
-        $result = $this->passwordLogin->accept($username, $password, $ip);
+        $result = $this->passwordLogin->accept($username, $password, $ip, 'spa');
         if ($result['status'] !== 'ok') {
             return $result;
         }

@@ -18,7 +18,7 @@ final class PasswordLogin
     /**
      * @return array<string, mixed>
      */
-    public function accept(string $username, string $password, string $ip): array
+    public function accept(string $username, string $password, string $ip, string $client = 'spa'): array
     {
         $username = strtolower(trim($username));
         if ($username === '' || $password === '') {
@@ -31,7 +31,7 @@ final class PasswordLogin
             throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
 
-        $next = $this->challenges->beginAfterPassword($username);
+        $next = $this->challenges->beginAfterPassword($username, $client);
         if ($next['status'] === 'ok') {
             $this->attempts->succeed($username, $ip);
         }
