@@ -22,7 +22,13 @@ vi.mock("@/lib/api/wgw/http", () => ({
   wgwLiveApiEnabled: () => false,
 }));
 
-describe("LoginScreen return path", () => {
+function submitCredentials(username = "demo", password = "secret") {
+  fireEvent.change(screen.getByPlaceholderText("yourname"), { target: { value: username } });
+  fireEvent.change(screen.getByPlaceholderText("••••••••"), { target: { value: password } });
+  fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+}
+
+describe("LoginScreen", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     vi.mocked(wgwEstablishMcpWebSession).mockClear();
@@ -39,10 +45,7 @@ describe("LoginScreen return path", () => {
     window.history.replaceState({}, "", "/login?return=%2Fdocs");
 
     render(<LoginScreen />);
-
-    fireEvent.change(screen.getByPlaceholderText("yourname"), { target: { value: "demo" } });
-    fireEvent.change(screen.getByPlaceholderText("••••••••"), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    submitCredentials();
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/docs" });
@@ -53,10 +56,7 @@ describe("LoginScreen return path", () => {
     window.history.replaceState({}, "", "/login?return=%2Fmail");
 
     render(<LoginScreen returnPath="/notes" />);
-
-    fireEvent.change(screen.getByPlaceholderText("yourname"), { target: { value: "demo" } });
-    fireEvent.change(screen.getByPlaceholderText("••••••••"), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    submitCredentials();
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/notes" });
@@ -80,10 +80,7 @@ describe("LoginScreen return path", () => {
 
   it("falls back to home when no return is provided", async () => {
     render(<LoginScreen />);
-
-    fireEvent.change(screen.getByPlaceholderText("yourname"), { target: { value: "demo" } });
-    fireEvent.change(screen.getByPlaceholderText("••••••••"), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    submitCredentials();
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
@@ -94,6 +91,91 @@ describe("LoginScreen return path", () => {
     render(<LoginScreen returnPath="/oauth/authorize" passwordRecoveryEnabled={false} />);
     expect(screen.getByRole("heading", { name: "Connect Assistant" })).toBeTruthy();
     expect(screen.queryByText("Welcome back.")).toBeNull();
+  });
+
+  it("shows a validation error and does not submit when fields are blank", async () => {
+    render(<LoginScreen />);
+
+    fireEvent.change(screen.getByPlaceholderText("yourname"), { target: { value: "   " } });
+    fireEvent.change(screen.getByPlaceholderText("••••••••"), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "Username and password are required.",
+    );
+    expect(wgwLoginWithCredentials).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("shows the invalid-credentials message when sign-in is rejected", async () => {
+    vi.mocked(wgwLoginWithCredentials).mockRejectedValueOnce(new Error("Invalid credentials."));
+
+    render(<LoginScreen />);
+    submitCredentials();
+
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "That username or password does not match this server.",
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("maps an unrecognized account error to the same invalid-credentials message", async () => {
+    vi.mocked(wgwLoginWithCredentials).mockRejectedValueOnce(new Error("Account not recognized."));
+
+    render(<LoginScreen />);
+    submitCredentials();
+
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "That username or password does not match this server.",
+    );
+  });
+
+  it("shows the rate-limit message when sign-in is throttled", async () => {
+    vi.mocked(wgwLoginWithCredentials).mockRejectedValueOnce(
+      new Error("Too many login attempts. Please try again later."),
+    );
+
+    render(<LoginScreen />);
+    submitCredentials();
+
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "Too many sign-in attempts. Wait a few minutes and try again.",
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("shows the invalid-credentials message from the error query", () => {
+    window.history.replaceState({}, "", "/login?error=invalid");
+
+    render(<LoginScreen />);
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      "That username or password does not match this server.",
+    );
+  });
+
+  it("shows the rate-limit message from the error query", () => {
+    window.history.replaceState({}, "", "/login?error=throttled");
+
+    render(<LoginScreen />);
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Too many sign-in attempts. Wait a few minutes and try again.",
+    );
+  });
+
+  it("shows a server error message that is not an auth failure", async () => {
+    vi.mocked(wgwLoginWithCredentials).mockRejectedValueOnce(new Error("Server unavailable"));
+
+    render(<LoginScreen />);
+    submitCredentials();
+
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Server unavailable");
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("establishes a web session and assigns the authorize URL", async () => {
@@ -107,10 +189,7 @@ describe("LoginScreen return path", () => {
     vi.stubGlobal("location", { ...window.location, assign });
 
     render(<LoginScreen />);
-
-    fireEvent.change(screen.getByPlaceholderText("yourname"), { target: { value: "demo" } });
-    fireEvent.change(screen.getByPlaceholderText("••••••••"), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    submitCredentials();
 
     await waitFor(() => {
       expect(wgwEstablishMcpWebSession).toHaveBeenCalledWith("demo", "secret", "intent-token");

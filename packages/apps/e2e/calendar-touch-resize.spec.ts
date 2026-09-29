@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /** Offline Calendar day story — timed “Design review” on 2033-01-12. */
-const CALENDAR_DAY_STORY = "apps-calendar--day";
+const CALENDAR_DAY_STORY = "features-calendar--day";
 
 test.describe("Calendar touch resize (Storybook)", () => {
   test.use({
