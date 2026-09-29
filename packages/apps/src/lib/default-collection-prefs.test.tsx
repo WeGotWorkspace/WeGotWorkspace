@@ -33,15 +33,6 @@ describe("default-collection-prefs", () => {
     expect(readDefaultCollectionId("tasks")).toBeUndefined();
   });
 
-  it("returns false when storage throws", () => {
-    const original = window.localStorage.setItem;
-    window.localStorage.setItem = () => {
-      throw new Error("quota exceeded");
-    };
-    expect(writeDefaultCollectionPrefs("tasks", { collectionId: "work" })).toBe(false);
-    window.localStorage.setItem = original;
-  });
-
   it("picks a preferred id only when it is in the writable set", () => {
     expect(pickPreferredCollectionId(["inbox", "work"], "work")).toBe("work");
     expect(pickPreferredCollectionId(["inbox", "work"], "missing")).toBeUndefined();

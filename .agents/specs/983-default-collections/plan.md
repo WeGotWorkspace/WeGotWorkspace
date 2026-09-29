@@ -46,7 +46,7 @@ None — every choice for this work is made.
 ## Invariants
 
 - Mail and Calendar remain under Apps. Proof: `path: packages/apps/src/settings-core/src/settings-registry.test.ts` assertion `keeps Mail and Calendar under Apps`.
-- After chunk A, existing view-prefs keys are untouched. Proof: `path: packages/apps/src/lib/default-collection-prefs.test.ts`
+- After chunk A, existing view-prefs keys are untouched. Proof: `path: packages/apps/src/lib/default-collection-prefs.test.tsx`
 - After chunk C, a list/book/notebook sidebar view still creates into that collection. Proof: existing `book:work` / `nb:Ideas` / `list:` tests plus new preferred-id cases.
 - Drive still hides the Settings row. Proof: `path: packages/apps/src/settings-core/stories/settings-dialog.stories.tsx` HiddenForDrive.
 
@@ -67,7 +67,7 @@ None — every choice for this work is made.
 - **Skill:** apps-ui
 - **Inputs:** Calendar display-prefs + picker-collections pattern
 - **Done when:** `lib/default-collection-prefs.ts` reads/writes; `lib/app-picker-collections.ts` mock/live lists; unit tests
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/default-collection-prefs.test.ts src/lib/app-picker-collections.test.ts`
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/default-collection-prefs.test.tsx src/lib/app-picker-collections.test.ts`
 - **Parallel with:** none
 
 ### Chunk B: Settings panes + registry
