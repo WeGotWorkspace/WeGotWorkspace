@@ -1,3 +1,4 @@
+import { isMfaSetupRequiredError } from "@/lib/api/wgw/mfa-error";
 import {
   chatMessageFromWire,
   deleteChatMessage,
@@ -112,6 +113,7 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
       await removeOutboxMutation(username, row.id);
       flushed += 1;
     } catch (error) {
+      if (isMfaSetupRequiredError(error)) continue;
       const messageId = meetChatOutboxMessageId(row);
       if (messageId) failedMessageIds.push(messageId);
       await markOutboxError(

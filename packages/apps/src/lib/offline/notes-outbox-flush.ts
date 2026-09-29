@@ -29,6 +29,7 @@ import {
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
+import { isMfaSetupRequiredError } from "@/lib/api/wgw/mfa-error";
 import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
 
 export type OutboxFlushResult = {
@@ -210,6 +211,7 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {
+      if (isMfaSetupRequiredError(error)) continue;
       await markOutboxError(
         username,
         row.id,

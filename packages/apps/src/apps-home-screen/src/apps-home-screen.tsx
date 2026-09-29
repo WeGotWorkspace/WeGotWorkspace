@@ -25,6 +25,8 @@ type AppsHomeScreenProps = {
   userDisplayName?: string;
   showUserMenu?: boolean;
   onLogout?: () => void;
+  /** Optional note above the grid. It does not block opening an app. */
+  banner?: ReactNode;
 };
 
 /** Shared, presentational app home screen with a rounded icon grid. */
@@ -34,6 +36,7 @@ export function AppsHomeScreen({
   userDisplayName = "User",
   showUserMenu = false,
   onLogout,
+  banner,
 }: AppsHomeScreenProps) {
   return (
     <section className={cn("apps-home-screen flex w-full min-h-dvh flex-col", className)}>
@@ -48,7 +51,8 @@ export function AppsHomeScreen({
         displayName={userDisplayName}
       />
 
-      <div className="flex flex-1 items-center justify-center px-6 py-10 md:px-10 md:py-14">
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-10 md:px-10 md:py-14">
+        {banner}
         <div className="grid w-full max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4">
           {apps.map((app) => (
             <button

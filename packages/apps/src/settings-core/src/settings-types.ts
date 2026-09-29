@@ -3,7 +3,8 @@ import type {
   SettingsProfileRequest,
 } from "@wgw/openapi-types/settings-types";
 
-export type SettingsSection = "profile" | "memberships" | "mail" | "offline" | "assistants";
+export type SettingsSection =
+  "profile" | "memberships" | "mail" | "offline" | "assistants" | "security";
 
 export type SettingsSectionDescriptor = {
   id: SettingsSection;

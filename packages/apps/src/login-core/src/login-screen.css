@@ -112,6 +112,37 @@ html:has(.login-screen) {
   color: color-mix(in oklab, var(--color-we-got-dark) 78%, transparent);
 }
 
+.login-screen__text-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.totp-wizard__qr {
+  width: 196px;
+  height: 196px;
+}
+
+.totp-wizard__secret {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.04em;
+}
+
+.totp-wizard__codes {
+  list-style: none;
+  padding: 0;
+  font-family: ui-monospace, monospace;
+}
+
+.totp-wizard__saved {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .login-screen .input__clear:hover,
 .login-screen .input__visibility:hover:not(:disabled) {
   background-color: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);

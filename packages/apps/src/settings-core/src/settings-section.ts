@@ -8,6 +8,7 @@ export const SETTINGS_SECTIONS = [
   "mail",
   "offline",
   "assistants",
+  "security",
 ] as const satisfies readonly SettingsSection[];
 
 export type SettingsNavigateTarget = {

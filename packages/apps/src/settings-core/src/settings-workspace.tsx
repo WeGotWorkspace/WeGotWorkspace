@@ -18,6 +18,7 @@ import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-
 import { SettingsMailPane } from "@/settings-core/src/settings-mail-pane";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
 import { SettingsProfilePane } from "@/settings-core/src/settings-profile-pane";
+import { SettingsSecurityPane } from "@/settings-core/src/settings-security-pane";
 import { cn } from "@/lib/utils";
 import "@/settings-core/src/settings-workspace.css";
 
@@ -103,6 +104,7 @@ function MainContent({ controller }: { controller: SettingsControllerState }) {
       {controller.currentSection.id === "assistants" ? (
         <SettingsAssistantsPane assistants={controller.assistants} />
       ) : null}
+      {controller.currentSection.id === "security" ? <SettingsSecurityPane /> : null}
     </>
   );
 }

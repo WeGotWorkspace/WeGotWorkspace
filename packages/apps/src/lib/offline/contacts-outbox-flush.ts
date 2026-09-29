@@ -5,6 +5,7 @@ import type {
 } from "@/contacts-core/src/contacts-types";
 import { contactCardSet, ContactStateMismatchError } from "@/lib/api/wgw/contacts-set";
 import { getCard, patchAddressBook } from "@/lib/api/wgw/contacts";
+import { isMfaSetupRequiredError } from "@/lib/api/wgw/mfa-error";
 import { JmapSetItemError } from "@/lib/jmap-client";
 import { pullAddressBookChanges, syncAllContactBooks } from "@/lib/api/wgw/contacts-sync";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
@@ -112,6 +113,7 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
         await markOutboxError(username, row.id, "stateMismatch");
         continue;
       }
+      if (isMfaSetupRequiredError(error)) continue;
       if (isNotFoundSetError(error)) {
         const payload = JSON.parse(row.payload) as Record<string, unknown>;
         const cardId = String(payload.cardId ?? payload.tempCardId ?? payload.creationId ?? "");

@@ -2,7 +2,14 @@ import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
+import {
+  AuthLoginChallenge,
+  parseAuthLoginBody,
+  shouldLeaveForLoginAfterStorage,
+  type AuthLoginResult,
+} from "@/lib/api/wgw/auth-login";
 import { decodeJwtExp, decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
+import { noticeMfaSetupRequiredResponse } from "@/lib/api/wgw/mfa-setup-signal";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 
 /** When true, mail/notes routes load from WeGotWorkspace instead of mock adapters. */
@@ -288,6 +295,10 @@ async function readTokenResponse(res: Response): Promise<TokenResponse> {
   };
 }
 
+export function wgwApplyTokenResponse(tokens: TokenResponse): void {
+  applyTokens(tokens);
+}
+
 function applyTokens(tokens: TokenResponse): void {
   accessToken = tokens.access_token;
   refreshToken = tokens.refresh_token;
@@ -504,8 +515,7 @@ export async function wgwLoginWithCredentials(username: string, password: string
     return;
   }
   const res = await postJson("/auth/token", { username: normalized, password });
-  const tokens = await readTokenResponse(res);
-  applyTokens(tokens);
+  await acceptAuthLoginResponse(res);
 }
 
 /** Origin-root Passport login. Relative `/api/v1` stays same-origin (Vite proxy). */
@@ -562,6 +572,11 @@ export async function wgwEstablishMcpWebSession(
         ? String((payload as { error: unknown }).error)
         : text;
     throw new AuthHttpError(res.status, err || `HTTP ${res.status}`);
+  }
+  if (isAuthLoginChallengeBody(payload)) {
+    throw new AuthLoginChallenge(
+      parseAuthLoginBody(payload) as Exclude<AuthLoginResult, { status: "ok" }>,
+    );
   }
   if (payload && typeof payload === "object" && "redirect" in payload) {
     const redirect = (payload as { redirect: unknown }).redirect;
@@ -812,8 +827,75 @@ export async function wgwFetch(path: string, init: RequestInit = {}): Promise<Re
     const ok = await wgwTryRefresh();
     if (ok && accessToken) res = await doOnce(accessToken);
   }
+  void noticeMfaSetupRequiredResponse(res);
   return res;
 }
+
+async function acceptAuthLoginResponse(res: Response): Promise<void> {
+  const text = await res.text();
+  let body: unknown;
+  try {
+    body = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`Auth response was not JSON (${res.status})`);
+  }
+  if (!res.ok) {
+    const err =
+      body && typeof body === "object" && "error" in body
+        ? String((body as { error: unknown }).error)
+        : text;
+    throw new AuthHttpError(res.status, err || `HTTP ${res.status}`);
+  }
+  const parsed = parseAuthLoginBody(body);
+  if (parsed.status !== "ok") {
+    throw new AuthLoginChallenge(parsed);
+  }
+  applyTokens(parsed.tokens);
+}
+
+function isAuthLoginChallengeBody(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object" || !("status" in payload)) return false;
+  const status = (payload as { status?: unknown }).status;
+  return (
+    status === "mfa_required" ||
+    status === "mfa_setup_required" ||
+    status === "mfa_replace_required"
+  );
+}
+
+const TOKEN_STORAGE_KEYS = new Set([
+  ACCESS_TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  ACCESS_EXPIRES_AT_KEY,
+  REFRESH_EXPIRES_AT_KEY,
+]);
+
+/** Reload tokens written by another tab. A cleared pair sends this tab to `/login`. */
+export function handleWgwTokenStorageEvent(key: string | null): void {
+  if (key !== null && !TOKEN_STORAGE_KEYS.has(key)) return;
+  const hadSession = Boolean(accessToken || refreshToken);
+  reloadTokensFromStorage();
+  if (
+    shouldLeaveForLoginAfterStorage({
+      key,
+      hadSession,
+      accessToken,
+      refreshToken,
+      pathname: typeof window === "undefined" ? "" : window.location.pathname,
+    })
+  ) {
+    window.location.assign("/login");
+  }
+}
+
+function installTokenStorageListener(): void {
+  if (typeof window === "undefined") return;
+  window.addEventListener("storage", (event) => {
+    handleWgwTokenStorageEvent(event.key);
+  });
+}
+
+installTokenStorageListener();
 
 /** Read a short error message from a WGW API error response body. */
 export function wgwLooksLikeHtml(body: string): boolean {

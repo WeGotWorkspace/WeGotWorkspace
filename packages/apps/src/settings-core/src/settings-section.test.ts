@@ -37,6 +37,8 @@ describe("settings-section", () => {
     expect(settingsSectionFromLocation("/settings")).toBe("profile");
     expect(settingsSectionFromLocation("/settings/mail")).toBe("mail");
     expect(settingsSectionFromLocation("/settings/offline")).toBe("offline");
+    expect(settingsSectionFromLocation("/settings/security")).toBe("security");
+    expect(settingsPathFor("security")).toBe("/settings/security");
     expect(settingsSectionFromLocation("/admin")).toBe("profile");
   });
 
