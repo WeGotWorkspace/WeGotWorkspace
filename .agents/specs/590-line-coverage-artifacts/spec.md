@@ -30,7 +30,7 @@ Upload a PHPUnit clover report and a Vitest v8 report for pushes to `main`, so d
 - Vitest `coverage.include` is `src/**`, so files that no test loaded still appear in the report. `coverage.exclude` drops `**/*.stories.*`, `**/stories/**`, `**/mock/**`, `**/*.test.*`, `**/*.spec.*`, and `src/jsdom-setup.ts`. Vitest 4 appends the root test include after a custom exclude, but project setup files are not on that root list.
 - Vitest unit and jsdom only. Each jsdom child gets `--coverage --reporter=blob --outputFile=.vitest-reports/blob-<shard>.json` and its own `--coverage.reportsDirectory` under `.coverage-shards/`. The uploaded artifact is the merged `coverage/` directory, not the shard temp dirs.
 - `isDirectInvocation` compares `realpath` of the script and `argv[1]`. The unit project include already lists `scripts/**/*.test.mjs`, so the argv test runs in the normal unit suite.
-- Merge with `vitest --merge-reports=.vitest-reports --coverage.enabled --coverage.reporter=lcov,json-summary` against `packages/apps/vitest.config.ts`. If unit and jsdom blobs do not merge, upload two reports.
+- Merge with `vitest --merge-reports=.vitest-reports --coverage.enabled --coverage.reporter=lcov --coverage.reporter=json-summary` against `packages/apps/vitest.config.ts`. If unit and jsdom blobs do not merge, upload two reports.
 
 ## Edge cases
 
