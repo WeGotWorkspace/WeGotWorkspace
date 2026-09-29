@@ -115,8 +115,8 @@ describe("settings workspace outline chrome", () => {
   });
 
   it("keeps catalog pane cards and strips them inside the dialog surface", () => {
-    expect(css).toMatch(
-      /\.settings-workspace:not\(\.ui-modal-surface\) \.workspace-app-layout__main-content \.card \{[\s\S]*background-color:\s*#ffffff/,
+    expect(css).not.toMatch(
+      /\.workspace-app-layout__main-content \.card \{[\s\S]*background-color:\s*#ffffff/,
     );
     expect(css).toMatch(
       /\.ui-modal-surface\.settings-workspace \.settings-pane-card \{[\s\S]*border:\s*none/,

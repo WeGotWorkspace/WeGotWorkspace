@@ -131,11 +131,6 @@
   @apply flex flex-col gap-4;
 }
 
-/* Catalog: pane cards read on cream. Dialog is already a surface — leave it flat. */
-.settings-workspace:not(.ui-modal-surface) .workspace-app-layout__main-content .card {
-  background-color: #ffffff;
-}
-
 .ui-modal-surface.settings-workspace .settings-form-actions {
   display: none;
 }
