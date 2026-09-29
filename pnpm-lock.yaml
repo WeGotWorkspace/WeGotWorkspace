@@ -4,6 +4,12 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    zod:
+      specifier: ^4.6.5
+      version: 4.6.5
+
 overrides:
   '@tiptap/core': 3.30.5
   '@tiptap/pm': 3.30.5

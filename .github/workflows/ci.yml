@@ -452,8 +452,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: write
-      pull-requests: write
       issues: write
     steps:
       - uses: actions/checkout@v7
@@ -485,54 +483,84 @@ jobs:
           set -e
           echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
           if [[ $CODE -eq 2 ]]; then
-            echo "Coverage increased, will create PR"
+            echo "Coverage increased"
           elif [[ $CODE -eq 0 ]]; then
             echo "Coverage stable"
           else
             echo "Coverage ratchet check failed"
-            exit 1
+            # Don't exit yet - report the regression first
           fi
 
-      - name: Update baseline and create PR
-        if: steps.check.outputs.exit_code == '2'
+      - name: Report coverage regression
+        if: steps.check.outputs.exit_code == '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           
-          git config user.name "WeGotWorkspace Bot"
-          git config user.email "bot@wegotworkspace.com"
+          # Capture the failure output
+          set +e
+          FAILURE_OUTPUT=$(node tools/coverage-ratchet.mjs check 2>&1)
+          set -e
           
-          BRANCH="chore/raise-coverage-baseline-$(date +%s)"
-          git checkout -b "$BRANCH"
+          # Find or create coverage-regression issue
+          ISSUE_NUMBER=$(gh issue list --label "coverage-regression" --state open --json number --jq '.[0].number')
+          
+          REPORT="## Coverage Regression Detected
+
+**Run:** ${{ github.run_id }}
+**Commit:** ${{ github.sha }}
+**Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+\`\`\`
+${FAILURE_OUTPUT}
+\`\`\`
+
+Coverage per package can only go up. Please investigate and fix the regression."
+          
+          if [[ -n "$ISSUE_NUMBER" ]]; then
+            gh issue comment "$ISSUE_NUMBER" --body "$REPORT"
+            echo "Commented on existing issue #$ISSUE_NUMBER"
+          else
+            gh issue create \
+              --title "Coverage regression detected on main" \
+              --label "coverage-regression" \
+              --body "$REPORT"
+            echo "Opened new coverage-regression issue"
+          fi
+          
+          # Now fail the job
+          exit 1
+
+      - name: Propose baseline increase
+        if: steps.check.outputs.exit_code == '2'
+        run: |
+          set -euo pipefail
           
           node tools/coverage-ratchet.mjs update
           
-          git add tools/coverage-baseline.json
-          git commit -m "chore(coverage): raise baseline after coverage improvements"
-          git push -u origin "$BRANCH"
-          
-          # Build PR body with coverage table
-          BODY="## Coverage Baseline Update
+          # Write to job summary
+          {
+            echo "## Coverage Baseline Increase Detected"
+            echo ""
+            echo "The following packages have increased coverage:"
+            echo ""
+            echo "| Package | Coverage |"
+            echo "|---------|----------|"
+            while IFS= read -r line; do
+              if [[ $line =~ \"(.+)\":[[:space:]]*([0-9.]+) ]]; then
+                pkg="${BASH_REMATCH[1]}"
+                pct="${BASH_REMATCH[2]}"
+                echo "| \`$pkg\` | ${pct}% |"
+              fi
+            done < <(jq -r 'to_entries | .[] | "\"\(.key)\": \(.value)"' tools/coverage-baseline.json)
+            echo ""
+            echo "Download the \`coverage-baseline-proposal\` artifact and commit it to \`tools/coverage-baseline.json\`."
+          } >> "$GITHUB_STEP_SUMMARY"
 
-This PR raises the coverage baseline after improvements on \`main\`.
-
-### Updated Packages
-
-| Package | Coverage |
-|---------|----------|
-"
-          while IFS= read -r line; do
-            if [[ $line =~ \"(.+)\":[[:space:]]*([0-9.]+) ]]; then
-              pkg="${BASH_REMATCH[1]}"
-              pct="${BASH_REMATCH[2]}"
-              BODY+="| \`$pkg\` | ${pct}% |"$'\n'
-            fi
-          done < <(jq -r 'to_entries | .[] | "\"\(.key)\": \(.value)"' tools/coverage-baseline.json)
-          
-          gh pr create \
-            --draft \
-            --title "chore(coverage): raise baseline after improvements" \
-            --body "$BODY" \
-            --base main \
-            --head "$BRANCH"
+      - name: Upload baseline proposal
+        if: steps.check.outputs.exit_code == '2'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-baseline-proposal
+          path: tools/coverage-baseline.json
