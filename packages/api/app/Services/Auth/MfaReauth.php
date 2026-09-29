@@ -37,13 +37,15 @@ final class MfaReauth
         if ($password === '') {
             throw new ApiHttpException(422, 'Account password is required.', 'bad_request');
         }
-        if (! $this->loginLimiter->allow($username, (string) request()->ip())) {
+        $ip = (string) request()->ip();
+        if (! $this->loginLimiter->allow($username, $ip)) {
             throw new ApiHttpException(429, 'Too many login attempts. Please try again later.', 'throttled');
         }
         $realm = (string) AppSetting::getValue('auth_realm', (string) config('wgw.auth_realm'));
         if (! $this->credentials->validate($username, $password, $realm)) {
             throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
+        $this->loginLimiter->reset($username, $ip);
     }
 
     private function assertCode(string $username, ?string $code): void

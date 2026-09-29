@@ -412,6 +412,19 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         ])->assertStatus(429)->assertJsonPath('code', 'throttled');
     }
 
+    public function test_successful_password_reauths_do_not_trip_the_sign_in_limiter(): void
+    {
+        putenv('WGW_DISABLE_LOGIN_THROTTLE');
+        unset($_ENV['WGW_DISABLE_LOGIN_THROTTLE'], $_SERVER['WGW_DISABLE_LOGIN_THROTTLE']);
+
+        $token = $this->issueBearerToken();
+        for ($i = 0; $i < 9; $i++) {
+            $this->withBearer($token)->postJson('/api/v1/settings/totp', [
+                'password' => 'secret',
+            ])->assertOk();
+        }
+    }
+
     public function test_enrollment_requires_the_account_password_before_the_secret(): void
     {
         $token = $this->issueBearerToken();
