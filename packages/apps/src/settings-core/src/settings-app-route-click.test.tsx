@@ -136,17 +136,21 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     expect(screen.queryByRole("combobox", { name: "Language" })).toBeNull();
   });
 
-  it("opens Tasks, Contacts, and Notes default-collection settings from deep links", async () => {
+  it("opens Tasks default-collection settings from a deep link", async () => {
     await renderSettingsApp("/settings/tasks");
     expect(screen.getByRole("button", { name: "Tasks" })).toBeTruthy();
     expect(await screen.findByRole("button", { name: /Default list: Inbox/i })).toBeTruthy();
+  });
 
+  it("opens Contacts default-collection settings from a deep link", async () => {
     await renderSettingsApp("/settings/contacts");
     expect(screen.getByRole("button", { name: "Contacts" })).toBeTruthy();
     expect(
       await screen.findByRole("button", { name: /Default address book: Personal/i }),
     ).toBeTruthy();
+  });
 
+  it("opens Notes default-collection settings from a deep link", async () => {
     await renderSettingsApp("/settings/notes");
     expect(screen.getByRole("button", { name: "Notes" })).toBeTruthy();
     expect(

@@ -3,6 +3,7 @@ import {
   DEFAULT_COLLECTION_STORAGE_KEYS,
   parseDefaultCollectionPrefs,
   pickPreferredCollectionId,
+  preferredCollectionName,
   readDefaultCollectionId,
   writeDefaultCollectionPrefs,
 } from "@/lib/default-collection-prefs";
@@ -32,5 +33,14 @@ describe("default-collection-prefs", () => {
     expect(pickPreferredCollectionId(["inbox", "work"], "work")).toBe("work");
     expect(pickPreferredCollectionId(["inbox", "work"], "missing")).toBeUndefined();
     expect(pickPreferredCollectionId(["inbox"], undefined)).toBeUndefined();
+  });
+
+  it("returns a stored notebook name only when it is still in the personal set", () => {
+    window.localStorage.clear();
+    writeDefaultCollectionPrefs("notes", { collectionId: "The Journal" });
+    expect(preferredCollectionName("notes", ["The Journal", "Drafts"])).toBe("The Journal");
+    expect(preferredCollectionName("notes", ["Drafts"])).toBeUndefined();
+    writeDefaultCollectionPrefs("notes", {});
+    expect(preferredCollectionName("notes", ["The Journal", "Drafts"])).toBeUndefined();
   });
 });

@@ -45,9 +45,9 @@ function toAddressBookPicker(book: JmapAddressBook): CalendarPickerCalendar {
   };
 }
 
-function toNotebookPicker(notebook: JmapNotebook): CalendarPickerCalendar {
+export function toNotebookPicker(notebook: JmapNotebook): CalendarPickerCalendar {
   return {
-    id: notebook.id,
+    id: notebook.name,
     name: notebook.name,
     color: notebook.color ?? hashDotColor(notebook.id),
     mayWrite: notebook.myRights

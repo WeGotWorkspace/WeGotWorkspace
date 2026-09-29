@@ -100,6 +100,14 @@ export function pickPreferredCollectionId(
   return undefined;
 }
 
+export function preferredCollectionName(
+  app: DefaultCollectionApp,
+  names: readonly string[],
+): string | undefined {
+  const stored = readDefaultCollectionId(app);
+  return stored && names.includes(stored) ? stored : undefined;
+}
+
 export function useDefaultCollectionId(app: DefaultCollectionApp): string | undefined {
   const [collectionId, setCollectionId] = useState(() => readDefaultCollectionId(app));
 

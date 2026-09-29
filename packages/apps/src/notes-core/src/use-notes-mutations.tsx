@@ -28,8 +28,8 @@ import {
   notesViewForCreate,
   noteShowsStarControls,
   persistBestEffort,
-  resolveNotesCreateTarget,
 } from "./notes-note-utils";
+import { resolveNotesCreateTarget } from "./notes-create-target";
 import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import { noteAllowsStructureManage } from "./notes-structure-rights";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
@@ -760,7 +760,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const createNote = useCallback(() => {
     if (!canCreateNote) return;
     const createView = notesViewForCreate(view);
-    const target = resolveNotesCreateTarget(createView, notebooks, notebookCollections);
+    const target = resolveNotesCreateTarget(createView, notebooks);
     const targetTag = createView.startsWith("tag:") ? createView.slice(4) : null;
     const id = createTempNoteId();
     const date = new Date().toISOString();

@@ -88,3 +88,33 @@ export const TasksPanel: Story = {
     await expect(trigger.textContent).toContain("Inbox");
   },
 };
+
+export const ContactsPanel: Story = {
+  args: {
+    appId: "contacts",
+    session: namedSession,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Settings" }));
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(body.findByRole("heading", { name: "Contacts" })).resolves.toBeTruthy();
+    const trigger = await body.findByRole("button", { name: /Default address book: Personal/i });
+    await expect(trigger.textContent).toContain("Personal");
+  },
+};
+
+export const NotesPanel: Story = {
+  args: {
+    appId: "notes",
+    session: namedSession,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Settings" }));
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(body.findByRole("heading", { name: "Notes" })).resolves.toBeTruthy();
+    const trigger = await body.findByRole("button", { name: /Default notebook: The Journal/i });
+    await expect(trigger.textContent).toContain("The Journal");
+  },
+};
