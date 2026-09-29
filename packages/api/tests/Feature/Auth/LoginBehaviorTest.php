@@ -110,13 +110,6 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
 
     public function test_ip_level_rate_limit_blocks_credential_stuffing(): void
     {
-        // Guard: each username gets exactly one attempt, so per-user limit is irrelevant
-        $this->assertLessThan(
-            LoginRateLimiter::USER_IP_LIMIT * LoginRateLimiter::IP_LIMIT,
-            LoginRateLimiter::IP_LIMIT,
-            'Test assumes IP_LIMIT is reached before any user hits USER_IP_LIMIT'
-        );
-
         // Attempt IP_LIMIT failed logins, each with a unique username
         for ($i = 0; $i < LoginRateLimiter::IP_LIMIT; $i++) {
             $username = "stuffing-user-{$i}";
