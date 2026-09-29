@@ -52,6 +52,10 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'notifications',
             'notification_deliveries',
             'push_subscriptions',
+            'wgw_app_passwords',
+            'wgw_user_mfa',
+            'wgw_mfa_recovery_codes',
+            'wgw_auth_challenges',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
@@ -70,5 +74,8 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('oauth_clients', 'cimd_url'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('mcp_audit_events', 'outcome'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'dav_password_used_at'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'session_generation'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'session_generation'));
     }
 }

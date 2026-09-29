@@ -8,6 +8,7 @@ import { hasNoteCollabOfflinePersistence } from "@/lib/offline/notes/notes-colla
 import {
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
+  listFailedNotesOutbox,
   readNotesBootstrapFromCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
@@ -290,5 +291,23 @@ describe("flushNotesOutbox", () => {
       starredNote.id,
       expect.objectContaining({ starred: true, etag: '"etag-1"' }),
     );
+  });
+
+  it("keeps a queued note when setup is required and does not count a sync failure", async () => {
+    await enqueueCoalescedNoteUpdate(username, note.id, note, note.date);
+    updateNoteItem.mockRejectedValue(
+      Object.assign(new Error("Set up two-factor authentication to continue."), {
+        status: 403,
+        code: "mfa_setup_required",
+      }),
+    );
+
+    await flushNotesOutbox(username);
+
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const rows = await db.outbox.toArray();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.retries).toBe(0);
+    expect(await listFailedNotesOutbox(username)).toEqual([]);
   });
 });

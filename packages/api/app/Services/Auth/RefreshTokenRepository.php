@@ -8,7 +8,7 @@ use App\Models\ApiRefreshToken;
 
 final class RefreshTokenRepository
 {
-    public function __construct() {}
+    public function __construct(private UserEnabledGuard $enabled) {}
 
     public function refreshTtl(): int
     {
@@ -18,7 +18,7 @@ final class RefreshTokenRepository
     /**
      * @param  'guest'|'user'|'admin'  $role
      */
-    public function issue(string $username, string $role): string
+    public function issue(string $username, string $role, int $generation = 0): string
     {
         $this->cleanupExpired();
         $token = bin2hex(random_bytes(32));
@@ -33,6 +33,7 @@ final class RefreshTokenRepository
                 'expires_at' => $expiresAt,
                 'revoked' => 0,
                 'created_at' => time(),
+                'session_generation' => $generation,
             ]
         );
 
@@ -55,8 +56,17 @@ final class RefreshTokenRepository
 
             return null;
         }
+        // TOTP changes, password changes, and admin resets mark every previous
+        // refresh token revoked and bump session_generation. Reject those first.
+        // Otherwise presenting one looks like theft and revokes the new pair.
+        $generation = $this->enabled->status((string) $row->username)['generation'];
+        if ((int) $row->session_generation !== $generation) {
+            ApiRefreshToken::query()->where('token_hash', $hash)->update(['revoked' => 1]);
+
+            return null;
+        }
         if ((int) $row->revoked === 1) {
-            // RFC 9700: reuse of a rotated token signals theft; revoke entire chain
+            // RFC 9700: reuse of a rotated token from this generation signals theft.
             $this->revokeAllForUsername((string) $row->username);
 
             return null;

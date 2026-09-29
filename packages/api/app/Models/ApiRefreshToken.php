@@ -7,6 +7,15 @@ namespace App\Models;
 use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property string $token_hash
+ * @property string $username
+ * @property string $role
+ * @property int $expires_at
+ * @property int $revoked
+ * @property int $created_at
+ * @property int $session_generation
+ */
 final class ApiRefreshToken extends Model
 {
     use UsesWgwConnection;
@@ -29,5 +38,6 @@ final class ApiRefreshToken extends Model
         'expires_at',
         'revoked',
         'created_at',
+        'session_generation',
     ];
 }

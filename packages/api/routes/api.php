@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\V1\Admin\GroupMemberController as AdminGroupMemberController;
 use App\Http\Controllers\Api\V1\Admin\GroupsController as AdminGroupsController;
 use App\Http\Controllers\Api\V1\Admin\MailDeliveryTestController as AdminMailDeliveryTestController;
+use App\Http\Controllers\Api\V1\Admin\MfaAdminController;
 use App\Http\Controllers\Api\V1\Admin\PluginInstallController as AdminPluginInstallController;
 use App\Http\Controllers\Api\V1\Admin\SearchJobController as AdminSearchJobController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Api\V1\Admin\UsersController as AdminUsersController;
 use App\Http\Controllers\Api\V1\Auth\ConsumePasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\JwksController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
+use App\Http\Controllers\Api\V1\Auth\MfaChallengeController;
 use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RequestPasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
@@ -54,10 +56,12 @@ use App\Http\Controllers\Api\V1\Plugins\SessionController as PluginsSessionContr
 use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
+use App\Http\Controllers\Api\V1\Settings\AppPasswordsController;
 use App\Http\Controllers\Api\V1\Settings\MailController as SettingsMailController;
 use App\Http\Controllers\Api\V1\Settings\McpGrantsController as SettingsMcpGrantsController;
 use App\Http\Controllers\Api\V1\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\Api\V1\Settings\StateController as SettingsStateController;
+use App\Http\Controllers\Api\V1\Settings\TotpSettingsController;
 use App\Http\Controllers\Api\V1\System\CapabilitiesController;
 use App\Http\Controllers\Api\V1\System\HealthController;
 use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitiesController;
@@ -80,6 +84,12 @@ Route::get('capabilities', CapabilitiesController::class);
 Route::get('.well-known/jwks.json', JwksController::class);
 
 Route::post('auth/token', TokenController::class);
+Route::post('auth/mfa-challenges/{challenge}/verification', [MfaChallengeController::class, 'verify'])
+    ->where('challenge', '[A-Fa-f0-9]{64}');
+Route::post('auth/mfa-challenges/{challenge}/totp', [MfaChallengeController::class, 'provision'])
+    ->where('challenge', '[A-Fa-f0-9]{64}');
+Route::post('auth/mfa-challenges/{challenge}/confirmation', [MfaChallengeController::class, 'confirm'])
+    ->where('challenge', '[A-Fa-f0-9]{64}');
 Route::post('auth/refresh', RefreshController::class);
 Route::post('auth/revoke', RevokeController::class);
 Route::post('auth/password-resets', RequestPasswordResetController::class);
@@ -94,11 +104,11 @@ Route::get('calendars/feeds/{token}', [CalendarFeedsController::class, 'publicSh
     ->where('token', '[A-Za-z0-9]+(?:\\.ics)?');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store'])
-    ->middleware('wgw.auth');
+    ->middleware(['wgw.auth', 'wgw.mfa']);
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 Route::patch('meetings/rooms/{roomId}', [MeetingsController::class, 'update'])
-    ->middleware('wgw.auth')
+    ->middleware(['wgw.auth', 'wgw.mfa'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 
 Route::post('rooms/{roomId}/participants', [RoomSessionController::class, 'storeParticipant'])
@@ -131,7 +141,7 @@ $filesSession = [
     StartSession::class,
 ];
 
-Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesSession): void {
+Route::middleware(['wgw.auth', 'wgw.mfa', 'wgw.role:user'])->group(function () use ($filesSession): void {
     Route::get('me', MeController::class);
     Route::get('workspace/state', HomeStateController::class);
     Route::get('dav/capabilities', DavCapabilitiesController::class);
@@ -197,6 +207,15 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('id', '[a-z0-9_-]+');
     Route::get('settings/state', SettingsStateController::class);
     Route::put('settings/profile', SettingsProfileController::class);
+    Route::get('settings/app-passwords', [AppPasswordsController::class, 'index']);
+    Route::post('settings/app-passwords', [AppPasswordsController::class, 'store']);
+    Route::post('settings/app-passwords/revocations', [AppPasswordsController::class, 'revokeAll']);
+    Route::delete('settings/app-passwords/{id}', [AppPasswordsController::class, 'destroy'])->whereNumber('id');
+    Route::post('settings/totp', [TotpSettingsController::class, 'store']);
+    Route::post('settings/totp/suggestion', [TotpSettingsController::class, 'snoozeSuggestion']);
+    Route::post('settings/totp/confirmation', [TotpSettingsController::class, 'confirm']);
+    Route::delete('settings/totp', [TotpSettingsController::class, 'destroy']);
+    Route::post('settings/totp/recovery-codes', [TotpSettingsController::class, 'regenerate']);
     Route::put('settings/mail', SettingsMailController::class);
     Route::get('settings/mcp-grants', [SettingsMcpGrantsController::class, 'index']);
     Route::delete('settings/mcp-grants/{clientId}', [SettingsMcpGrantsController::class, 'destroy'])
@@ -343,7 +362,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('jmap/events/{types}/{closeafter}/{ping}', [JmapStubController::class, 'eventSource']);
 });
 
-Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
+Route::middleware(['wgw.auth', 'wgw.mfa'])->group(function () use ($filesSession): void {
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/children', [FilesController::class, 'children']);
         Route::match(['GET', 'HEAD'], 'files/content', [FilesController::class, 'content']);
@@ -354,7 +373,7 @@ Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
 
 Route::post('files/share-sessions', [DriveShareSessionsController::class, 'store']);
 
-Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
+Route::middleware(['wgw.auth', 'wgw.mfa', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
     Route::get('state', AdminStateController::class);
     Route::post('users', [AdminUsersController::class, 'store']);
     Route::patch('users/{username}', [AdminUsersController::class, 'update'])
@@ -367,6 +386,9 @@ Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(functi
     Route::delete('groups/{group}', [AdminGroupsController::class, 'destroy'])
         ->where('group', '[a-z0-9_-]+');
     Route::put('settings', AdminSettingsController::class);
+    Route::put('mfa-enforcement', [MfaAdminController::class, 'updateEnforcement']);
+    Route::post('users/{username}/mfa-resets', [MfaAdminController::class, 'reset'])
+        ->where('username', '[a-z0-9_-]+');
     Route::post('mail-delivery/test', AdminMailDeliveryTestController::class);
     Route::get('updates/state', AdminUpdateStateController::class);
     Route::get('updates/log', [AdminUpdateLogController::class, 'show']);

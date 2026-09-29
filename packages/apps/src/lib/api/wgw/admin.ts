@@ -126,15 +126,19 @@ export function mapWgwAdminStateToUI(
   searchReindex: AdminSearchReindexState,
 ): AdminUIData {
   return {
-    users: state.users.map((user) => ({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      displayName: user.displayName,
-      groups: user.groups,
-      createdAt: user.createdAt,
-      enabled: user.enabled !== false,
-    })),
+    users: state.users.map((user) => {
+      const mfaEnabled = (user as { mfaEnabled?: boolean }).mfaEnabled === true;
+      return {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        groups: user.groups,
+        createdAt: user.createdAt,
+        enabled: user.enabled !== false,
+        mfaEnabled,
+      };
+    }),
     groups: state.groups.map((group) => ({
       id: group.id,
       name: group.name,

@@ -73,6 +73,142 @@
           }
         }
       },
+      "AuthTokenOkResponse": {
+        "allOf": [
+          {"$ref": "#/components/schemas/AuthTokenResponse"},
+          {
+            "type": "object",
+            "required": ["status"],
+            "properties": {
+              "status": {"const": "ok"}
+            }
+          }
+        ]
+      },
+      "MfaRequiredResponse": {
+        "type": "object",
+        "required": ["status", "challenge", "methods", "client"],
+        "properties": {
+          "status": {"const": "mfa_required"},
+          "challenge": {"type": "string"},
+          "client": {"type": "string", "enum": ["spa", "oauth"]},
+          "methods": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["totp", "recovery"]}
+          }
+        }
+      },
+      "MfaSetupRequiredResponse": {
+        "type": "object",
+        "required": ["status", "challenge", "client"],
+        "properties": {
+          "status": {"const": "mfa_setup_required"},
+          "challenge": {"type": "string"},
+          "client": {"type": "string", "enum": ["spa", "oauth"]}
+        }
+      },
+      "MfaReplaceRequiredResponse": {
+        "type": "object",
+        "required": ["status", "challenge", "client"],
+        "properties": {
+          "status": {"const": "mfa_replace_required"},
+          "challenge": {"type": "string"},
+          "client": {"type": "string", "enum": ["spa", "oauth"]}
+        }
+      },
+      "AuthLoginResponse": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/AuthTokenOkResponse"},
+          {"$ref": "#/components/schemas/MfaRequiredResponse"},
+          {"$ref": "#/components/schemas/MfaSetupRequiredResponse"},
+          {"$ref": "#/components/schemas/MfaReplaceRequiredResponse"}
+        ]
+      },
+      "MfaVerificationResponse": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/AuthTokenOkResponse"},
+          {"$ref": "#/components/schemas/MfaReplaceRequiredResponse"}
+        ]
+      },
+      "MfaConfirmationResponse": {
+        "allOf": [
+          {"$ref": "#/components/schemas/AuthTokenOkResponse"},
+          {
+            "type": "object",
+            "required": ["recovery_codes"],
+            "properties": {
+              "recovery_codes": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            }
+          }
+        ]
+      },
+      "TotpProvisioningResponse": {
+        "type": "object",
+        "required": ["secret", "otpauth_uri", "dav_warning"],
+        "properties": {
+          "secret": {"type": "string"},
+          "otpauth_uri": {"type": "string"},
+          "dav_warning": {"type": "boolean"}
+        }
+      },
+      "RecoveryCodesResponse": {
+        "type": "object",
+        "required": ["recovery_codes"],
+        "properties": {
+          "recovery_codes": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        }
+      },
+      "AppPasswordSummary": {
+        "type": "object",
+        "required": ["id", "name", "createdAt"],
+        "properties": {
+          "id": {"type": "integer"},
+          "name": {"type": "string"},
+          "createdAt": {"type": "string"},
+          "lastUsedAt": {"type": ["string", "null"]},
+          "lastUsedClient": {"type": ["string", "null"]}
+        }
+      },
+      "AppPasswordListResponse": {
+        "type": "object",
+        "required": ["appPasswords"],
+        "properties": {
+          "appPasswords": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/AppPasswordSummary"}
+          }
+        }
+      },
+      "AppPasswordCreateRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {"type": "string", "maxLength": 60},
+          "password": {"type": "string"},
+          "code": {"type": "string"}
+        }
+      },
+      "AppPasswordCreatedResponse": {
+        "type": "object",
+        "required": ["password", "item"],
+        "properties": {
+          "password": {"type": "string"},
+          "item": {"$ref": "#/components/schemas/AppPasswordSummary"}
+        }
+      },
+      "AppPasswordRevokeAllRequest": {
+        "type": "object",
+        "properties": {
+          "password": {"type": "string"},
+          "code": {"type": "string"}
+        }
+      },
       "Principal": {
         "type": "object",
         "required": [
@@ -90,6 +226,16 @@
               "user",
               "admin"
             ]
+          },
+          "mfa": {
+            "type": "object",
+            "required": ["enabled", "required", "recovery_codes_remaining", "suggest"],
+            "properties": {
+              "enabled": {"type": "boolean"},
+              "required": {"type": "boolean"},
+              "recovery_codes_remaining": {"type": "integer"},
+              "suggest": {"type": "boolean"}
+            }
           }
         }
       },
@@ -2748,6 +2894,68 @@
         "x-wgw-access": "admin"
       }
     },
+    "/admin/mfa-enforcement": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Require TOTP for interactive sign-in. The caller must already have TOTP.",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["required", "code"],
+                "properties": {
+                  "required": {"type": "boolean"},
+                  "code": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Updated"},
+          "422": {"description": "Caller has no authenticator"}
+        },
+        "x-wgw-access": "admin"
+      }
+    },
+    "/admin/users/{username}/mfa-resets": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Delete a user's TOTP and recovery codes and sign their sessions out",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code", "confirm_username"],
+                "properties": {
+                  "code": {"type": "string"},
+                  "confirm_username": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Reset"},
+          "404": {"description": "User not found"}
+        },
+        "x-wgw-access": "admin"
+      }
+    },
     "/admin/settings": {
       "put": {
         "tags": [
@@ -3225,7 +3433,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthTokenResponse"
+                  "$ref": "#/components/schemas/AuthLoginResponse"
                 }
               }
             }
@@ -3242,6 +3450,126 @@
           "503": {
             "description": "JWT not configured"
           }
+        },
+        "x-wgw-access": "guest"
+      }
+    },
+    "/auth/mfa-challenges/{challenge}/verification": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Submit a TOTP code or a recovery code for a login challenge",
+        "parameters": [
+          {
+            "name": "challenge",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {"type": "string"},
+                  "recovery_code": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tokens, or authenticator replacement required",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/MfaVerificationResponse"}
+              }
+            }
+          },
+          "401": {"description": "Invalid code or challenge"},
+          "429": {"description": "Too many attempts"}
+        },
+        "x-wgw-access": "guest"
+      }
+    },
+    "/auth/mfa-challenges/{challenge}/totp": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Start or repeat TOTP setup for a challenge. Repeating returns the same secret.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {"password": {"type": "string"}}
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "challenge",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pending authenticator secret",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/TotpProvisioningResponse"}
+              }
+            }
+          },
+          "401": {"description": "Invalid or expired challenge"}
+        },
+        "x-wgw-access": "guest"
+      }
+    },
+    "/auth/mfa-challenges/{challenge}/confirmation": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Confirm a pending authenticator and issue tokens plus recovery codes",
+        "parameters": [
+          {
+            "name": "challenge",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code"],
+                "properties": {
+                  "code": {"type": "string"},
+                  "password": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticator saved and tokens issued",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/MfaConfirmationResponse"}
+              }
+            }
+          },
+          "401": {"description": "Invalid code or challenge"},
+          "429": {"description": "Too many attempts"}
         },
         "x-wgw-access": "guest"
       }
@@ -5162,12 +5490,240 @@
         "x-wgw-access": "user"
       }
     },
+    "/settings/app-passwords": {
+      "get": {
+        "tags": ["Settings"],
+        "summary": "List active app passwords for the current user",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Active app passwords",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/AppPasswordListResponse"}
+              }
+            }
+          }
+        },
+        "x-wgw-access": "user"
+      },
+      "post": {
+        "tags": ["Settings"],
+        "summary": "Create an app password. The plaintext is returned once.",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/AppPasswordCreateRequest"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created app password",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/AppPasswordCreatedResponse"}
+              }
+            }
+          },
+          "401": {"description": "Re-authentication rejected"},
+          "422": {"description": "Authenticator code required"}
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/settings/app-passwords/revocations": {
+      "post": {
+        "tags": ["Settings"],
+        "summary": "Revoke every active app password for the current user",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/AppPasswordRevokeAllRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Revoked"},
+          "401": {"description": "Re-authentication rejected"},
+          "422": {"description": "Authenticator code required"}
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/settings/app-passwords/{id}": {
+      "delete": {
+        "tags": ["Settings"],
+        "summary": "Revoke one app password",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "responses": {
+          "200": {"description": "Revoked"},
+          "404": {"description": "Not found"}
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/settings/totp": {
+      "post": {
+        "tags": ["Settings"],
+        "summary": "Begin TOTP enrollment. Repeating returns the same pending secret.",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["password"],
+                "properties": {"password": {"type": "string"}}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pending authenticator",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/TotpProvisioningResponse"}
+              }
+            }
+          },
+          "409": {"description": "Already enabled"}
+        },
+        "x-wgw-access": "user"
+      },
+      "delete": {
+        "tags": ["Settings"],
+        "summary": "Turn off TOTP for the current user",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {"type": "string"},
+                  "code": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Turned off"},
+          "401": {"description": "Re-authentication rejected"},
+          "422": {"description": "Re-authentication missing"}
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/settings/totp/suggestion": {
+      "post": {
+        "tags": ["Settings"],
+        "summary": "Snooze the two-factor suggestion for 30 days",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Suggestion snoozed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["suggest"],
+                  "properties": {"suggest": {"type": "boolean"}}
+                }
+              }
+            }
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/settings/totp/confirmation": {
+      "post": {
+        "tags": ["Settings"],
+        "summary": "Confirm TOTP enrollment and show recovery codes once",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code", "password"],
+                "properties": {
+                  "code": {"type": "string"},
+                  "password": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Enabled",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/MfaConfirmationResponse"}
+              }
+            }
+          },
+          "401": {"description": "Invalid code"}
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/settings/totp/recovery-codes": {
+      "post": {
+        "tags": ["Settings"],
+        "summary": "Replace recovery codes. Requires a current authenticator code.",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {"code": {"type": "string"}}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New recovery codes",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/RecoveryCodesResponse"}
+              }
+            }
+          },
+          "401": {"description": "Invalid code"},
+          "409": {"description": "TOTP is off"}
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/settings/profile": {
       "put": {
         "tags": [
           "Settings"
         ],
-        "summary": "Update profile details for current user",
+        "summary": "Update profile details for current user. A password change returns a new token pair.",
         "security": [
           {
             "bearerAuth": []
@@ -5179,7 +5735,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SettingsStateResponse"
+                  "$ref": "#/components/schemas/SettingsProfileUpdateResponse"
                 }
               }
             }

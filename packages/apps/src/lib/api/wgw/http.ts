@@ -2,8 +2,29 @@ import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
+import {
+  AuthLoginChallenge,
+  parseAuthLoginBody,
+  shouldLeaveForLoginAfterStorage,
+  type AuthLoginResult,
+} from "@/lib/api/wgw/auth-login";
 import { decodeJwtExp, decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
+import { wgwReadJson } from "@/lib/api/wgw/api-error";
+import { noticeMfaSetupRequiredResponse } from "@/lib/api/wgw/mfa-setup-signal";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
+
+export {
+  parseApiErrorJson,
+  wgwErrorMessageFromBody,
+  wgwLooksLikeHtml,
+  wgwReadJson,
+  wgwReadJsonFailureMessage,
+} from "@/lib/api/wgw/api-error";
+export {
+  wgwFetchPasswordRecoveryEnabled,
+  wgwRequestPasswordReset,
+  wgwResetPasswordWithToken,
+} from "@/lib/api/wgw/password-recovery";
 
 /** When true, mail/notes routes load from WeGotWorkspace instead of mock adapters. */
 export function wgwLiveApiEnabled(): boolean {
@@ -288,6 +309,10 @@ async function readTokenResponse(res: Response): Promise<TokenResponse> {
   };
 }
 
+export function wgwApplyTokenResponse(tokens: TokenResponse): void {
+  applyTokens(tokens);
+}
+
 function applyTokens(tokens: TokenResponse): void {
   accessToken = tokens.access_token;
   refreshToken = tokens.refresh_token;
@@ -504,8 +529,7 @@ export async function wgwLoginWithCredentials(username: string, password: string
     return;
   }
   const res = await postJson("/auth/token", { username: normalized, password });
-  const tokens = await readTokenResponse(res);
-  applyTokens(tokens);
+  await acceptAuthLoginResponse(res);
 }
 
 /** Origin-root Passport login. Relative `/api/v1` stays same-origin (Vite proxy). */
@@ -563,67 +587,16 @@ export async function wgwEstablishMcpWebSession(
         : text;
     throw new AuthHttpError(res.status, err || `HTTP ${res.status}`);
   }
+  if (isAuthLoginChallengeBody(payload)) {
+    throw new AuthLoginChallenge(
+      parseAuthLoginBody(payload) as Exclude<AuthLoginResult, { status: "ok" }>,
+    );
+  }
   if (payload && typeof payload === "object" && "redirect" in payload) {
     const redirect = (payload as { redirect: unknown }).redirect;
     return typeof redirect === "string" && redirect.startsWith("/") ? redirect : null;
   }
   return null;
-}
-
-export async function wgwFetchPasswordRecoveryEnabled(): Promise<boolean> {
-  if (!wgwLiveApiEnabled()) return true;
-  try {
-    const res = await fetch(`${wgwApiBaseUrl()}/capabilities`, {
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) return false;
-    const payload = (await res.json()) as { auth?: { passwordRecovery?: unknown } };
-    return payload.auth?.passwordRecovery === true;
-  } catch {
-    return false;
-  }
-}
-
-export async function wgwRequestPasswordReset(identifier: string): Promise<void> {
-  const normalized = identifier.trim();
-  if (!normalized) {
-    throw new Error("Username or email is required.");
-  }
-  if (!wgwLiveApiEnabled()) return;
-  const res = await postJson("/auth/password-resets", { identifier: normalized });
-  await assertOkResponse(res);
-}
-
-export async function wgwResetPasswordWithToken(token: string, password: string): Promise<void> {
-  const normalizedToken = token.trim();
-  if (!normalizedToken) {
-    throw new Error("This reset link is invalid or has expired.");
-  }
-  if (password.length < 10) {
-    throw new Error("Use a password of at least 10 characters.");
-  }
-  if (!wgwLiveApiEnabled()) return;
-  const res = await postJson(`/auth/password-resets/${encodeURIComponent(normalizedToken)}`, {
-    password,
-  });
-  await assertOkResponse(res);
-}
-
-async function assertOkResponse(res: Response): Promise<void> {
-  const text = await res.text();
-  let payload: unknown;
-  try {
-    payload = text ? JSON.parse(text) : {};
-  } catch {
-    throw new AuthHttpError(res.status, `Auth response was not JSON (${res.status})`);
-  }
-  if (!res.ok) {
-    const err =
-      payload && typeof payload === "object" && "error" in payload
-        ? String((payload as { error: unknown }).error)
-        : text;
-    throw new AuthHttpError(res.status, err || `HTTP ${res.status}`);
-  }
 }
 
 export async function wgwLogout(): Promise<void> {
@@ -812,88 +785,75 @@ export async function wgwFetch(path: string, init: RequestInit = {}): Promise<Re
     const ok = await wgwTryRefresh();
     if (ok && accessToken) res = await doOnce(accessToken);
   }
+  void noticeMfaSetupRequiredResponse(res);
   return res;
 }
 
-/** Read a short error message from a WGW API error response body. */
-export function wgwLooksLikeHtml(body: string): boolean {
-  const head = body.trimStart().slice(0, 240).toLowerCase();
+async function acceptAuthLoginResponse(res: Response): Promise<void> {
+  const text = await res.text();
+  let body: unknown;
+  try {
+    body = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`Auth response was not JSON (${res.status})`);
+  }
+  if (!res.ok) {
+    const err =
+      body && typeof body === "object" && "error" in body
+        ? String((body as { error: unknown }).error)
+        : text;
+    throw new AuthHttpError(res.status, err || `HTTP ${res.status}`);
+  }
+  const parsed = parseAuthLoginBody(body);
+  if (parsed.status !== "ok") {
+    throw new AuthLoginChallenge(parsed);
+  }
+  applyTokens(parsed.tokens);
+}
+
+function isAuthLoginChallengeBody(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object" || !("status" in payload)) return false;
+  const status = (payload as { status?: unknown }).status;
   return (
-    head.startsWith("<!doctype") ||
-    head.startsWith("<html") ||
-    head.startsWith("<br") ||
-    head.includes("<b>warning</b>")
+    status === "mfa_required" ||
+    status === "mfa_setup_required" ||
+    status === "mfa_replace_required"
   );
 }
 
-export function parseApiErrorJson(
-  body: string,
-): { error?: unknown; message?: unknown; code?: unknown } | null {
-  try {
-    return JSON.parse(body) as { error?: unknown; message?: unknown; code?: unknown };
-  } catch {
-    const start = body.indexOf("{");
-    const end = body.lastIndexOf("}");
-    if (start < 0 || end <= start) {
-      return null;
-    }
-    try {
-      return JSON.parse(body.slice(start, end + 1)) as {
-        error?: unknown;
-        message?: unknown;
-        code?: unknown;
-      };
-    } catch {
-      return null;
-    }
+const TOKEN_STORAGE_KEYS = new Set([
+  ACCESS_TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  ACCESS_EXPIRES_AT_KEY,
+  REFRESH_EXPIRES_AT_KEY,
+]);
+
+/** Reload tokens written by another tab. A cleared pair sends this tab to `/login`. */
+export function handleWgwTokenStorageEvent(key: string | null): void {
+  if (key !== null && !TOKEN_STORAGE_KEYS.has(key)) return;
+  const hadSession = Boolean(accessToken || refreshToken);
+  reloadTokensFromStorage();
+  if (
+    shouldLeaveForLoginAfterStorage({
+      key,
+      hadSession,
+      accessToken,
+      refreshToken,
+      pathname: typeof window === "undefined" ? "" : window.location.pathname,
+    })
+  ) {
+    window.location.assign("/login");
   }
 }
 
-export function wgwErrorMessageFromBody(body: string, status: number, statusText = ""): string {
-  const fallback = statusText.trim() || `HTTP ${status}`;
-  const trimmed = body.trim();
-  if (!trimmed) {
-    return fallback;
-  }
-  const json = parseApiErrorJson(trimmed);
-  if (json) {
-    const candidate =
-      typeof json.error === "string"
-        ? json.error
-        : typeof json.message === "string"
-          ? json.message
-          : typeof json.code === "string"
-            ? json.code
-            : null;
-    if (candidate?.trim()) {
-      return candidate.trim();
-    }
-  }
-  return fallback;
+function installTokenStorageListener(): void {
+  if (typeof window === "undefined") return;
+  window.addEventListener("storage", (event) => {
+    handleWgwTokenStorageEvent(event.key);
+  });
 }
 
-export function wgwReadJsonFailureMessage(body: string, status: number): string {
-  const fromJson = wgwErrorMessageFromBody(body, status);
-  if (fromJson && fromJson !== `HTTP ${status}` && fromJson !== "OK") {
-    return fromJson;
-  }
-  if (wgwLooksLikeHtml(body)) {
-    return "Server returned HTML instead of a result";
-  }
-  return `Server returned a non-JSON response (${status})`;
-}
-
-export async function wgwReadJson(res: Response): Promise<unknown> {
-  const text = await res.text();
-  if (!text.trim()) return {};
-  try {
-    return JSON.parse(text);
-  } catch {
-    const extracted = parseApiErrorJson(text);
-    if (extracted) return extracted;
-    throw new Error(wgwReadJsonFailureMessage(text, res.status));
-  }
-}
+installTokenStorageListener();
 
 function wgwGuestPrincipalFromAccessToken(token: string): WorkspaceSession {
   const json = decodeJwtPayload(token);

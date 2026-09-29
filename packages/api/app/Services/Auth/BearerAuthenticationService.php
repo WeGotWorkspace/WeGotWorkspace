@@ -36,7 +36,8 @@ final class BearerAuthenticationService
         if ($this->revokedTokens->isRevoked($claims['jti'])) {
             return null;
         }
-        if (! $this->enabled->isEnabled($claims['sub'])) {
+        $status = $this->enabled->status($claims['sub']);
+        if (! $status['enabled'] || (int) ($claims['gen'] ?? 0) !== $status['generation']) {
             return null;
         }
 

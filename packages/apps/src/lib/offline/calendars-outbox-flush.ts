@@ -1,3 +1,4 @@
+import { isMfaSetupRequiredError } from "@/lib/api/wgw/mfa-error";
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import type {
   CalendarDraft,
@@ -174,6 +175,7 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {
+      if (isMfaSetupRequiredError(error)) break;
       const payload = JSON.parse(row.payload) as Record<string, unknown>;
       if (isOutboxConflict(error, row.op)) {
         const conflictId = outboxConflictId(row.op, payload);

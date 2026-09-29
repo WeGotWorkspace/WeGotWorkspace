@@ -140,7 +140,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["AuthTokenResponse"];
+                        "application/json": components["schemas"]["AuthLoginResponse"];
                     };
                 };
                 /** @description Invalid request */
@@ -559,7 +559,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Update profile details for current user */
+        /** Update profile details for current user. A password change returns a new token pair. */
         put: {
             parameters: {
                 query?: never;
@@ -575,7 +575,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["SettingsStateResponse"];
+                        "application/json": components["schemas"]["SettingsProfileUpdateResponse"];
                     };
                 };
             };
@@ -7543,6 +7543,674 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/mfa-enforcement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Require TOTP for interactive sign-in. The caller must already have TOTP. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        required: boolean;
+                        code: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller has no authenticator */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{username}/mfa-resets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Delete a user's TOTP and recovery codes and sign their sessions out */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        code: string;
+                        confirm_username: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Reset */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description User not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa-challenges/{challenge}/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a TOTP code or a recovery code for a login challenge */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    challenge: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        code?: string;
+                        recovery_code?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tokens, or authenticator replacement required */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MfaVerificationResponse"];
+                    };
+                };
+                /** @description Invalid code or challenge */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Too many attempts */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa-challenges/{challenge}/totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start or repeat TOTP setup for a challenge. Repeating returns the same secret. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    challenge: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        password?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Pending authenticator secret */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TotpProvisioningResponse"];
+                    };
+                };
+                /** @description Invalid or expired challenge */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa-challenges/{challenge}/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm a pending authenticator and issue tokens plus recovery codes */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    challenge: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        code: string;
+                        password?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Authenticator saved and tokens issued */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MfaConfirmationResponse"];
+                    };
+                };
+                /** @description Invalid code or challenge */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Too many attempts */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/app-passwords": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List active app passwords for the current user */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Active app passwords */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AppPasswordListResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create an app password. The plaintext is returned once. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AppPasswordCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description Created app password */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AppPasswordCreatedResponse"];
+                    };
+                };
+                /** @description Re-authentication rejected */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authenticator code required */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/app-passwords/revocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke every active app password for the current user */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AppPasswordRevokeAllRequest"];
+                };
+            };
+            responses: {
+                /** @description Revoked */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Re-authentication rejected */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authenticator code required */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/app-passwords/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke one app password */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Revoked */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin TOTP enrollment. Repeating returns the same pending secret. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        password: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Pending authenticator */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TotpProvisioningResponse"];
+                    };
+                };
+                /** @description Already enabled */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /** Turn off TOTP for the current user */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        password?: string;
+                        code?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Turned off */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Re-authentication rejected */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Re-authentication missing */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/totp/suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snooze the two-factor suggestion for 30 days */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Suggestion snoozed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            suggest: boolean;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/totp/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm TOTP enrollment and show recovery codes once */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        code: string;
+                        password: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Enabled */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MfaConfirmationResponse"];
+                    };
+                };
+                /** @description Invalid code */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/totp/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace recovery codes. Requires a current authenticator code. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        code?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description New recovery codes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecoveryCodesResponse"];
+                    };
+                };
+                /** @description Invalid code */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description TOTP is off */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7565,6 +8233,12 @@ export interface components {
             username: string;
             /** @enum {string} */
             role: "guest" | "user" | "admin";
+            mfa?: {
+                enabled: boolean;
+                required: boolean;
+                recovery_codes_remaining: number;
+                suggest: boolean;
+            };
         };
         GenericObject: Record<string, never>;
         /** Format: binary */
@@ -7787,6 +8461,7 @@ export interface components {
             groups: components["schemas"]["AdminUserGroupList"];
             createdAt: string;
             enabled: boolean;
+            mfaEnabled: boolean;
         };
         AdminGroupSummary: {
             id: string;
@@ -11443,6 +12118,78 @@ export interface components {
         PushUnsubscribeRequest: {
             /** Format: uri */
             endpoint: string;
+        };
+        AuthTokenOkResponse: components["schemas"]["AuthTokenResponse"] & {
+            /** @constant */
+            status: "ok";
+        };
+        MfaRequiredResponse: {
+            /** @constant */
+            status: "mfa_required";
+            challenge: string;
+            /** @enum {string} */
+            client: "spa" | "oauth";
+            methods: ("totp" | "recovery")[];
+        };
+        MfaSetupRequiredResponse: {
+            /** @constant */
+            status: "mfa_setup_required";
+            challenge: string;
+            /** @enum {string} */
+            client: "spa" | "oauth";
+        };
+        MfaReplaceRequiredResponse: {
+            /** @constant */
+            status: "mfa_replace_required";
+            challenge: string;
+            /** @enum {string} */
+            client: "spa" | "oauth";
+        };
+        AuthLoginResponse: components["schemas"]["AuthTokenOkResponse"] | components["schemas"]["MfaRequiredResponse"] | components["schemas"]["MfaSetupRequiredResponse"] | components["schemas"]["MfaReplaceRequiredResponse"];
+        MfaVerificationResponse: components["schemas"]["AuthTokenOkResponse"] | components["schemas"]["MfaReplaceRequiredResponse"];
+        MfaConfirmationResponse: components["schemas"]["AuthTokenOkResponse"] & {
+            recovery_codes: string[];
+        };
+        TotpProvisioningResponse: {
+            secret: string;
+            otpauth_uri: string;
+            dav_warning: boolean;
+        };
+        RecoveryCodesResponse: {
+            recovery_codes: string[];
+        };
+        AppPasswordSummary: {
+            id: number;
+            name: string;
+            createdAt: string;
+            lastUsedAt?: string | null;
+            lastUsedClient?: string | null;
+        };
+        AppPasswordListResponse: {
+            appPasswords: components["schemas"]["AppPasswordSummary"][];
+        };
+        AppPasswordCreateRequest: {
+            name: string;
+            password?: string;
+            code?: string;
+        };
+        AppPasswordCreatedResponse: {
+            password: string;
+            item: components["schemas"]["AppPasswordSummary"];
+        };
+        AppPasswordRevokeAllRequest: {
+            password?: string;
+            code?: string;
+        };
+        SettingsProfileUpdateResponse: components["schemas"]["SettingsStateResponse"] & {
+            access_token?: string;
+            refresh_token?: string;
+            token_type?: string;
+            expires_in?: number;
+            refresh_expires_in?: number;
+            /** @enum {string} */
+            role?: "guest" | "user" | "admin";
+            username?: string;
         };
     };
     responses: {

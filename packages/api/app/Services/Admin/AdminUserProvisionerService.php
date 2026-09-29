@@ -95,6 +95,7 @@ final class AdminUserProvisionerService
                 throw new \RuntimeException('Password hashing failed.');
             }
             User::query()->where('username', $username)->update(['digest' => $hash]);
+            $this->refreshTokens->revokeAllForUsername($username);
         }
 
         if (array_key_exists('displayName', $input) || array_key_exists('email', $input)) {

@@ -7,9 +7,12 @@ namespace App\Services\Settings;
 use App\Exceptions\ApiHttpException;
 use App\Models\Principal;
 use App\Models\User;
+use App\Services\Auth\RefreshTokenRepository;
 
 final class UserProfileService
 {
+    public function __construct(private RefreshTokenRepository $refreshTokens) {}
+
     public function updateProfile(string $username, string $displayName, ?string $email): void
     {
         $principal = Principal::forUsername($username);
@@ -30,9 +33,12 @@ final class UserProfileService
         if ($hash === false) {
             throw new ApiHttpException(500, 'Password hashing failed.', 'server_error');
         }
+        $username = strtolower(trim($username));
         $updated = User::query()->where('username', $username)->update(['digest' => $hash]);
         if ($updated === 0) {
             throw new ApiHttpException(400, 'User not found.', 'bad_request');
         }
+        User::query()->where('username', $username)->increment('session_generation');
+        $this->refreshTokens->revokeAllForUsername($username);
     }
 }

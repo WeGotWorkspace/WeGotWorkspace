@@ -7,6 +7,7 @@ namespace App\Services\Auth;
 use App\Dav\Auth\UiAuthSecret;
 use App\Services\Installer\InstallerWebBase;
 use App\Support\WgwInstallConfig;
+use App\Support\WgwSettings;
 use Symfony\Component\HttpFoundation\Cookie;
 
 /**
@@ -20,13 +21,30 @@ final class UiSessionService
 
     private const TTL_SEC = 2592000;
 
-    public function __construct(private WgwInstallConfig $install) {}
+    public function __construct(
+        private WgwInstallConfig $install,
+        private UserEnabledGuard $enabled,
+    ) {}
+
+    public function issueForRequest(string $username): Cookie
+    {
+        $cfg = WgwSettings::normalized();
+        $realm = (string) ($cfg[WgwSettings::AUTH_REALM] ?? 'SabreDAV');
+
+        return $this->establish($username, $realm, InstallerWebBase::detect());
+    }
 
     public function establish(string $username, string $realm, string $webBase): Cookie
     {
         $this->ensureSecretFile();
+        $username = strtolower(trim($username));
 
-        return $this->buildCookie(strtolower(trim($username)), $realm, $this->cookiePath($webBase));
+        return $this->buildCookie(
+            $username,
+            $realm,
+            $this->cookiePath($webBase),
+            $this->enabled->status($username)['generation'],
+        );
     }
 
     private function ensureSecretFile(): void
@@ -37,7 +55,7 @@ final class UiSessionService
     /**
      * @param  non-empty-string  $username
      */
-    public function buildCookie(string $username, string $realm, string $path): Cookie
+    public function buildCookie(string $username, string $realm, string $path, int $generation = 0): Cookie
     {
         $secret = UiAuthSecret::read();
         if ($secret === null) {
@@ -51,6 +69,7 @@ final class UiSessionService
             'r' => $realm,
             'e' => $exp,
             'exp' => $exp,
+            'g' => $generation,
         ], JSON_THROW_ON_ERROR);
 
         $b64Payload = $this->base64UrlEncode($payload);

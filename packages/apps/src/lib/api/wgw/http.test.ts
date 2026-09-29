@@ -16,6 +16,7 @@ import {
   wgwIsGuestSession,
   wgwFetchPasswordRecoveryEnabled,
   wgwLoginWithCredentials,
+  handleWgwTokenStorageEvent,
   wgwEstablishMcpWebSession,
   wgwOAuthSessionUrl,
   wgwRequestPasswordReset,
@@ -24,6 +25,7 @@ import {
   wgwRefreshInFlight,
   WGW_GUEST_REFRESH_TOKEN,
 } from "./http";
+import { AuthLoginChallenge } from "./auth-login";
 import { decodeJwtExp } from "./jwt-exp";
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
@@ -405,6 +407,51 @@ describe("login applies refresh expiry metadata", () => {
 
     await expect(wgwLoginWithCredentials("alice", "secret")).resolves.toBeUndefined();
     expect(Number(window.localStorage.getItem(REFRESH_EXPIRES_AT_KEY))).toBeGreaterThan(Date.now());
+  });
+
+  it("does not store tokens when the server asks for a second factor", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          status: "mfa_required",
+          challenge: "abc",
+          methods: ["totp", "recovery"],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }) as typeof fetch;
+
+    await expect(wgwLoginWithCredentials("alice", "secret")).rejects.toBeInstanceOf(
+      AuthLoginChallenge,
+    );
+    expect(window.localStorage.getItem(ACCESS_TOKEN_KEY)).toBeNull();
+  });
+
+  it("sends this tab to login when another tab clears the token keys", async () => {
+    const assign = vi.fn();
+    const location = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...location, pathname: "/notes", assign },
+    });
+    globalThis.fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600),
+          refresh_token: "refresh-new",
+          expires_in: 3600,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }) as typeof fetch;
+    await wgwLoginWithCredentials("alice", "secret");
+    window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+    window.localStorage.removeItem(ACCESS_EXPIRES_AT_KEY);
+    window.localStorage.removeItem(REFRESH_EXPIRES_AT_KEY);
+    handleWgwTokenStorageEvent(ACCESS_TOKEN_KEY);
+    expect(assign).toHaveBeenCalledWith("/login");
+    Object.defineProperty(window, "location", { configurable: true, value: location });
   });
 });
 

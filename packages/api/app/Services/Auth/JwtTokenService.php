@@ -19,7 +19,7 @@ final class JwtTokenService
     }
 
     /**
-     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string}|null
+     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string, gen: int}|null
      */
     public function validate(string $token, string $kid): ?array
     {

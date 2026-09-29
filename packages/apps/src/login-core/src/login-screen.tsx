@@ -2,12 +2,22 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/button/src/button";
 import { AuthenticationPage } from "@/login-core/src/authentication-page";
+import { AuthLoginChallenge, type AuthLoginChallengeResult } from "@/lib/api/wgw/auth-login";
 import {
   wgwEstablishMcpWebSession,
   wgwFetchPasswordRecoveryEnabled,
   wgwLoginWithCredentials,
+  wgwLogout,
 } from "@/lib/api/wgw/http";
+import {
+  challengeWizardSource,
+  completeOAuthMfa,
+  MfaRequestError,
+  verifyMfaChallenge,
+} from "@/lib/api/wgw/mfa-client";
 import { isWgwOAuthAuthorizeReturnPath, sanitizeWgwReturnPath } from "@/lib/api/wgw/route-guard";
+import { RecoveryCodeForm, TotpCodeForm } from "@/login-core/src/totp-code-form";
+import { TotpWizard } from "@/login-core/src/totp-wizard";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 
@@ -36,6 +46,8 @@ export function LoginScreen({
   const [submitting, setSubmitting] = useState(false);
   const [runtimeError, setRuntimeError] = useState("");
   const [showForgot, setShowForgot] = useState(passwordRecoveryEnabled ?? false);
+  const [pending, setPending] = useState<AuthLoginChallengeResult | null>(null);
+  const [useRecovery, setUseRecovery] = useState(false);
 
   useEffect(() => {
     if (passwordRecoveryEnabled !== undefined) {
@@ -85,6 +97,12 @@ export function LoginScreen({
       await wgwLoginWithCredentials(normalizedUsername, password);
       await navigate({ to: resolvedReturnPath });
     } catch (cause) {
+      if (cause instanceof AuthLoginChallenge) {
+        setPending(cause.login);
+        setUseRecovery(false);
+        setRuntimeError("");
+        return;
+      }
       const message = cause instanceof Error ? cause.message.trim() : "Could not sign in.";
       const normalized = message.toLowerCase();
       if (normalized.includes("invalid credentials") || normalized.includes("not recognized")) {
@@ -103,6 +121,94 @@ export function LoginScreen({
   };
 
   const oauthConnect = isWgwOAuthAuthorizeReturnPath(resolvedReturnPath);
+  const wizardSource = useMemo(() => {
+    if (!pending || pending.status === "mfa_required") return null;
+    return challengeWizardSource(pending, username.trim(), password);
+  }, [pending, username, password]);
+
+  const finishSignedIn = async () => {
+    if (oauthConnect) {
+      window.location.assign(resolvedReturnPath);
+      return;
+    }
+    await navigate({ to: resolvedReturnPath });
+  };
+
+  const submitSecondFactor = async (body: { code?: string; recovery_code?: string }) => {
+    if (!pending) return;
+    setSubmitting(true);
+    setRuntimeError("");
+    try {
+      const result =
+        pending.client === "oauth"
+          ? await completeOAuthMfa({
+              challenge: pending.challenge,
+              ...body,
+              intent: search.get("intent"),
+            })
+          : await verifyMfaChallenge(pending.challenge, body);
+      if (result.status === "ok") {
+        await finishSignedIn();
+        return;
+      }
+      setPending(result);
+      setUseRecovery(false);
+    } catch (cause) {
+      const message =
+        cause instanceof MfaRequestError ? cause.message : "That code was not accepted.";
+      setRuntimeError(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (wizardSource) {
+    return (
+      <TotpWizard
+        source={wizardSource}
+        onFinished={() => void finishSignedIn()}
+        onLogout={() => {
+          void wgwLogout();
+          setPending(null);
+          setPassword("");
+        }}
+      />
+    );
+  }
+
+  if (pending?.status === "mfa_required") {
+    return (
+      <AuthenticationPage title="Two-factor authentication">
+        {useRecovery ? (
+          <RecoveryCodeForm
+            username={username.trim()}
+            submitting={submitting}
+            error={runtimeError}
+            onSubmit={(recoveryCode) => void submitSecondFactor({ recovery_code: recoveryCode })}
+            onUseAuthenticator={() => {
+              setUseRecovery(false);
+              setRuntimeError("");
+            }}
+          />
+        ) : (
+          <TotpCodeForm
+            username={username.trim()}
+            submitting={submitting}
+            error={runtimeError}
+            onSubmit={(code) => void submitSecondFactor({ code })}
+            onUseRecovery={
+              pending.methods.includes("recovery")
+                ? () => {
+                    setUseRecovery(true);
+                    setRuntimeError("");
+                  }
+                : undefined
+            }
+          />
+        )}
+      </AuthenticationPage>
+    );
+  }
 
   return (
     <AuthenticationPage title={oauthConnect ? "Connect Assistant" : "Welcome back."}>

@@ -1,3 +1,4 @@
+import { isMfaSetupRequiredError } from "@/lib/api/wgw/mfa-error";
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { ensureTrashFolder } from "@/drive-core/src/drive-batch-utils";
 import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
@@ -101,6 +102,7 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
       await removeOutboxMutation(username, row.id);
       flushed += 1;
     } catch (error) {
+      if (isMfaSetupRequiredError(error)) break;
       failed += 1;
       const status = (error as { status?: number } | undefined)?.status;
       const message = error instanceof Error ? error.message : String(error);

@@ -1,4 +1,4 @@
-import { Bot, HardDrive, Mail as MailIcon, User, Users } from "lucide-react";
+import { Bot, HardDrive, Mail as MailIcon, Shield, User, Users } from "lucide-react";
 import { useMemo } from "react";
 import type {
   SettingsSection,
@@ -35,6 +35,12 @@ const SETTINGS_SIDEBAR_SECTIONS: Array<SettingsSectionDescriptor & { icon: React
     label: "Connected assistants",
     description: "Assistants that can act as you",
     icon: <Bot className="size-3.5" />,
+  },
+  {
+    id: "security",
+    label: "Security",
+    description: "Two-factor authentication and app passwords",
+    icon: <Shield className="size-3.5" />,
   },
 ];
 

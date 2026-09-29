@@ -6,9 +6,7 @@ namespace App\Http\Controllers\Api\V1\Plugins;
 
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Auth\UiSessionService;
-use App\Services\Installer\InstallerWebBase;
 use App\Services\Plugins\PluginRegistryService;
-use App\Support\WgwSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,14 +26,7 @@ final class SessionController
 
         /** @var array{username: string} $principal */
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $cfg = WgwSettings::normalized();
-        $realm = (string) ($cfg[WgwSettings::AUTH_REALM] ?? 'SabreDAV');
-
-        $cookie = $this->uiSession->establish(
-            $principal['username'],
-            $realm,
-            InstallerWebBase::detect(),
-        );
+        $cookie = $this->uiSession->issueForRequest($principal['username']);
 
         return response()->json(['ok' => true])->withCookie($cookie);
     }

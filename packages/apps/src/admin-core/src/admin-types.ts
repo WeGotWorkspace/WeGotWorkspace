@@ -61,6 +61,7 @@ export type AdminUser = {
   groups: string[];
   createdAt: string;
   enabled: boolean;
+  mfaEnabled?: boolean;
 };
 
 export type AdminGroup = {

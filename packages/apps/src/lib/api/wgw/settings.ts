@@ -3,7 +3,12 @@ import type {
   SettingsProfileRequest,
 } from "@wgw/openapi-types/settings-types";
 import type { SettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
-import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  wgwApplyTokenResponse,
+  wgwFetch,
+  wgwFetchPrincipal,
+  wgwReadJson,
+} from "@/lib/api/wgw/http";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import type {
   WgwSettingsStateResponse,
@@ -92,7 +97,27 @@ async function requestSettings(
   if (!res.ok) {
     throw new Error(`PUT ${path} failed (${res.status})`);
   }
-  return (await wgwReadJson(res)) as WgwSettingsStateResponse;
+  const payload = (await wgwReadJson(res)) as WgwSettingsStateResponse;
+  applyReissuedSession(payload);
+  return payload;
+}
+
+function applyReissuedSession(body: WgwSettingsStateResponse): void {
+  const record = body as WgwSettingsStateResponse & {
+    access_token?: unknown;
+    refresh_token?: unknown;
+    expires_in?: unknown;
+    refresh_expires_in?: unknown;
+  };
+  if (typeof record.access_token !== "string" || typeof record.refresh_token !== "string") return;
+  const expiresIn = Number(record.expires_in);
+  const refreshExpiresIn = Number(record.refresh_expires_in);
+  wgwApplyTokenResponse({
+    access_token: record.access_token,
+    refresh_token: record.refresh_token,
+    expires_in: Number.isFinite(expiresIn) ? expiresIn : undefined,
+    refresh_expires_in: Number.isFinite(refreshExpiresIn) ? refreshExpiresIn : undefined,
+  });
 }
 
 export async function saveSettingsProfile(

@@ -201,11 +201,15 @@ final class OpenApiContract
             '{clientId}' => '550e8400-e29b-41d4-a716-446655440099',
             '{notificationId}' => 'missing-notification.ics',
             '{token}' => 'missingrsvptoken',
+            '{challenge}' => '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
         ];
 
         $path = $openApiPath;
         foreach ($replacements as $placeholder => $sample) {
             $path = str_replace($placeholder, $sample, $path);
+        }
+        if ($openApiPath === '/settings/app-passwords/{id}') {
+            return '/settings/app-passwords/1';
         }
         if (str_starts_with($openApiPath, '/auth/password-resets/')) {
             $path = str_replace(

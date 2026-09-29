@@ -1,3 +1,4 @@
+import { isMfaSetupRequiredError } from "@/lib/api/wgw/mfa-error";
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type {
   TaskCreate,
@@ -102,6 +103,7 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {
+      if (isMfaSetupRequiredError(error)) break;
       if (isEtagMismatch(error)) {
         const taskId = String(JSON.parse(row.payload).taskId ?? "");
         if (taskId) etagMismatches.push(taskId);

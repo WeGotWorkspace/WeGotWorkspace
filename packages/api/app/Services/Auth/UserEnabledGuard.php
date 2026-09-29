@@ -13,15 +13,29 @@ use App\Models\User;
  */
 final class UserEnabledGuard
 {
-    public function isEnabled(string $username): bool
+    /**
+     * @return array{enabled: bool, generation: int}
+     */
+    public function status(string $username): array
     {
         $username = strtolower(trim($username));
         if ($username === '') {
-            return false;
+            return ['enabled' => false, 'generation' => 0];
         }
 
         $user = User::query()->where('username', $username)->first();
+        if ($user === null) {
+            return ['enabled' => true, 'generation' => 0];
+        }
 
-        return $user === null || $user->isEnabled();
+        return [
+            'enabled' => $user->isEnabled(),
+            'generation' => (int) $user->session_generation,
+        ];
+    }
+
+    public function isEnabled(string $username): bool
+    {
+        return $this->status($username)['enabled'];
     }
 }
