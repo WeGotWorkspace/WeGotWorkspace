@@ -7,10 +7,12 @@ namespace App\Http\Controllers\Api\V1\Settings;
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Models\AppSetting;
+use App\Services\Auth\AuthTokenService;
 use App\Services\Auth\MfaReauth;
 use App\Services\Auth\MfaSessionReissue;
 use App\Services\Auth\RecoveryCodeService;
 use App\Services\Auth\TotpService;
+use App\Services\Auth\UiSessionService;
 use App\Services\Auth\UserMfaService;
 use App\Services\Settings\SettingKeys;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +26,8 @@ final class TotpSettingsController
         private RecoveryCodeService $recoveryCodes,
         private MfaReauth $reauth,
         private MfaSessionReissue $sessionReissue,
+        private AuthTokenService $tokens,
+        private UiSessionService $uiSession,
     ) {}
 
     public function store(Request $request): JsonResponse
@@ -64,10 +68,12 @@ final class TotpSettingsController
         $this->mfa->enable($username, $secret, $step);
         $codes = $this->recoveryCodes->replaceAll($username);
         $this->sessionReissue->afterAuthenticatorChanged($username);
+        $tokens = $this->tokens->issueForUsername($username);
 
         return response()->json([
             'recovery_codes' => $codes,
-        ]);
+            'status' => 'ok',
+        ] + $tokens)->withCookie($this->uiSession->issueForRequest($username));
     }
 
     public function destroy(Request $request): JsonResponse

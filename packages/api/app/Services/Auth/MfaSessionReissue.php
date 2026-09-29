@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
-/**
- * Enabling TOTP and confirming a replacement will bump session generation here.
- * The column is added with enforcement; until then confirmation still issues tokens.
- */
+use App\Models\User;
+
 final class MfaSessionReissue
 {
+    public function __construct(private RefreshTokenRepository $refreshTokens) {}
+
     public function afterAuthenticatorChanged(string $username): void
     {
-        unset($username);
+        $username = strtolower(trim($username));
+        User::query()->where('username', $username)->increment('session_generation');
+        $this->refreshTokens->revokeAllForUsername($username);
     }
 }

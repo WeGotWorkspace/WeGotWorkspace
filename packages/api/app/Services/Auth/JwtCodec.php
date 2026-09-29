@@ -47,6 +47,7 @@ final class JwtCodec
             ->relatedTo($sub)
             ->identifiedBy(bin2hex(random_bytes(16)))
             ->withClaim('role', $role)
+            ->withClaim('gen', (int) ($claims['gen'] ?? 0))
             ->getToken($config->signer(), $config->signingKey());
 
         return $token->toString();
@@ -60,7 +61,7 @@ final class JwtCodec
      *   audience: string,
      *   kid: string
      * } $cfg
-     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string}|null
+     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string, gen: int}|null
      */
     public static function validate(string $token, array $cfg): ?array
     {
@@ -112,6 +113,8 @@ final class JwtCodec
             return null;
         }
 
+        $genClaim = $parsed->claims()->get('gen', 0);
+
         return [
             'sub' => $sub,
             'role' => $role,
@@ -120,6 +123,7 @@ final class JwtCodec
             'iss' => $iss,
             'aud' => $aud,
             'jti' => $jti,
+            'gen' => is_numeric($genClaim) ? (int) $genClaim : 0,
         ];
     }
 

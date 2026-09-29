@@ -7,12 +7,16 @@ namespace App\Http\Controllers\Api\V1\Auth;
 use App\Http\Requests\Api\V1\MfaChallengeConfirmRequest;
 use App\Http\Requests\Api\V1\MfaChallengeVerifyRequest;
 use App\Services\Auth\MfaChallengeService;
+use App\Services\Auth\UiSessionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class MfaChallengeController
 {
-    public function __construct(private MfaChallengeService $challenges) {}
+    public function __construct(
+        private MfaChallengeService $challenges,
+        private UiSessionService $uiSession,
+    ) {}
 
     public function verify(MfaChallengeVerifyRequest $request, string $challenge): JsonResponse
     {
@@ -33,10 +37,14 @@ final class MfaChallengeController
 
     public function confirm(MfaChallengeConfirmRequest $request, string $challenge): JsonResponse
     {
-        return response()->json($this->challenges->confirm(
+        $payload = $this->challenges->confirm(
             $challenge,
             (string) $request->validated()['code'],
             (string) $request->ip(),
-        ));
+        );
+
+        return response()->json($payload)->withCookie(
+            $this->uiSession->issueForRequest((string) $payload['username']),
+        );
     }
 }

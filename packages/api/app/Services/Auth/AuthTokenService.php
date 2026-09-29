@@ -66,11 +66,12 @@ final class AuthTokenService
         if ($principal === null) {
             throw new ApiHttpException(401, 'Invalid refresh token.', 'unauthorized');
         }
-        if (! $this->enabled->isEnabled($principal['username'])) {
+        $status = $this->enabled->status($principal['username']);
+        if (! $status['enabled']) {
             throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
 
-        return $this->issueTokenPair($principal['username'], $principal['role']);
+        return $this->issueTokenPair($principal['username'], $principal['role'], $status['generation']);
     }
 
     /**
@@ -106,13 +107,14 @@ final class AuthTokenService
         if ($this->jwtConfig->signingConfig() === null) {
             throw new ApiHttpException(503, 'JWT key configuration missing.', 'config_error');
         }
-        if (! $this->enabled->isEnabled($username)) {
+        $status = $this->enabled->status($username);
+        if (! $status['enabled']) {
             throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
 
         $role = $this->adminRoles->isAdmin($username) ? 'admin' : 'user';
 
-        return $this->issueTokenPair($username, $role);
+        return $this->issueTokenPair($username, $role, $status['generation']);
     }
 
     /**
@@ -143,15 +145,16 @@ final class AuthTokenService
      *   username: string
      * }
      */
-    private function issueTokenPair(string $username, string $role): array
+    private function issueTokenPair(string $username, string $role, int $generation): array
     {
         $ttl = $this->jwtConfig->accessTtl();
         $access = $this->jwtTokens->issue([
             'sub' => $username,
             'role' => $role,
             'exp' => time() + $ttl,
+            'gen' => $generation,
         ]);
-        $refresh = $this->refreshTokens->issue($username, $role);
+        $refresh = $this->refreshTokens->issue($username, $role, $generation);
 
         return [
             'access_token' => $access,

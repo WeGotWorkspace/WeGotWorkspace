@@ -6,6 +6,7 @@ namespace App\Services\Admin;
 
 use App\Models\Principal;
 use App\Models\User;
+use App\Models\UserMfa;
 use App\Services\Settings\GroupDirectoryService;
 
 final class AdminUserDirectoryService
@@ -13,10 +14,14 @@ final class AdminUserDirectoryService
     public function __construct(private GroupDirectoryService $groups) {}
 
     /**
-     * @return list<array{id: string, username: string, email: string, displayName: string, groups: list<string>, createdAt: string, enabled: bool}>
+     * @return list<array{id: string, username: string, email: string, displayName: string, groups: list<string>, createdAt: string, enabled: bool, mfaEnabled: bool}>
      */
     public function listSummaries(): array
     {
+        $mfaEnabled = array_fill_keys(
+            UserMfa::query()->whereNotNull('enabled_at')->pluck('username')->all(),
+            true,
+        );
         $groupMembers = [];
         foreach ($this->groups->listGroupSummaries() as $group) {
             $groupMembers[(string) $group['id']] = $this->groups->memberPrincipalUris((string) $group['id']);
@@ -42,6 +47,7 @@ final class AdminUserDirectoryService
                 'groups' => $memberOf,
                 'createdAt' => '',
                 'enabled' => $user->isEnabled(),
+                'mfaEnabled' => isset($mfaEnabled[$username]),
             ];
         }
 

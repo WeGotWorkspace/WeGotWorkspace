@@ -12,6 +12,8 @@ final class SettingKeys
 
     public const AUTH_REALM = 'auth_realm';
 
+    public const AUTH_MFA_REQUIRED = 'auth_mfa_required';
+
     public const BROWSER_PLUGIN = 'browser_plugin';
 
     public const FILES_ENABLED = 'files_enabled';

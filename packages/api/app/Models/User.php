@@ -33,6 +33,7 @@ use Laravel\Passport\HasApiTokens;
  * @property string $digest
  * @property bool $enabled
  * @property Carbon|null $dav_password_used_at
+ * @property int $session_generation
  */
 final class User extends Model implements AuthenticatableContract, OAuthenticatable
 {
@@ -54,6 +55,7 @@ final class User extends Model implements AuthenticatableContract, OAuthenticata
         'digesta1',
         'enabled',
         'dav_password_used_at',
+        'session_generation',
     ];
 
     /** @var list<string> */
@@ -70,6 +72,7 @@ final class User extends Model implements AuthenticatableContract, OAuthenticata
         return [
             'enabled' => 'boolean',
             'dav_password_used_at' => 'datetime',
+            'session_generation' => 'integer',
         ];
     }
 

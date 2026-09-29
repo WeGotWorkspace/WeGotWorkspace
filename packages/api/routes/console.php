@@ -1,5 +1,10 @@
 <?php
 
+use App\Models\AppSetting;
+use App\Models\User;
+use App\Services\Auth\MfaSessionReissue;
+use App\Services\Auth\RecoveryCodeService;
+use App\Services\Auth\UserMfaService;
 use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
@@ -24,6 +29,7 @@ use App\Services\Notes\EventCalendarJournalStripper;
 use App\Services\Notes\NotesFileMigrator;
 use App\Services\Notify\AlertDueScheduler;
 use App\Services\Notify\VapidPushService;
+use App\Services\Settings\SettingKeys;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use Illuminate\Console\Command;
@@ -397,6 +403,36 @@ Artisan::command('wgw:notify:vapid-sweep', function (VapidPushService $push): in
 
     return Command::SUCCESS;
 })->purpose('Send Web Push for local deliveries that were not acked in the 20s local-ack window');
+
+Artisan::command('wgw:mfa:reset {username}', function (string $username): int {
+    $username = strtolower(trim($username));
+    if ($username === '' || ! User::query()->where('username', $username)->exists()) {
+        $this->error('User not found.');
+
+        return Command::FAILURE;
+    }
+
+    app(UserMfaService::class)->disable($username);
+    app(RecoveryCodeService::class)->deleteAll($username);
+    app(MfaSessionReissue::class)->afterAuthenticatorChanged($username);
+    $this->info("Reset two-factor authentication for {$username}.");
+
+    return Command::SUCCESS;
+})->purpose('Delete a user\'s TOTP and recovery codes and sign their sessions out');
+
+Artisan::command('wgw:mfa:enforce {state}', function (string $state): int {
+    $normalized = strtolower(trim($state));
+    if (! in_array($normalized, ['on', 'off'], true)) {
+        $this->error('Pass on or off.');
+
+        return Command::FAILURE;
+    }
+
+    AppSetting::setValue(SettingKeys::AUTH_MFA_REQUIRED, $normalized === 'on');
+    $this->info($normalized === 'on' ? 'Two-factor authentication is required.' : 'Two-factor authentication is optional.');
+
+    return Command::SUCCESS;
+})->purpose('Turn the interactive two-factor requirement on or off without an admin authenticator check');
 
 Artisan::command('wgw:vapid-keys', function (InstallerVapidKeyGenerator $vapid): int {
     $vapid->ensureKeys();

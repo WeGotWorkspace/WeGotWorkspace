@@ -21,7 +21,7 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 
 | Table | Model | Notes |
 |-------|--------|--------|
-| `users` | `App\Models\User` | Sabre HTTP Basic (`digest` bcrypt); nullable `dav_password_used_at` when the account password was accepted on DAV/Meet Basic |
+| `users` | `App\Models\User` | Sabre HTTP Basic (`digest` bcrypt); nullable `dav_password_used_at` when the account password was accepted on DAV/Meet Basic; `session_generation` bumps when TOTP is enabled, replaced, or reset |
 | `wgw_app_passwords` | `App\Models\AppPassword` | Named app passwords (`token_hash` SHA-256). Plaintext is shown once. |
 | `wgw_user_mfa` | `App\Models\UserMfa` | TOTP secret (encrypted), `enabled_at`, replay step, suggestion snooze |
 | `wgw_mfa_recovery_codes` | `App\Models\MfaRecoveryCode` | Single-use recovery codes (`code_hash` SHA-256) |
@@ -29,7 +29,7 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `principals` | `App\Models\Principal` | DAV principals, profile `email` / `displayname` |
 | `groupmembers` | `App\Models\GroupMember` | Group membership join |
 | `app_settings` | `App\Models\AppSetting` | Key/value site settings (string PK `name`) |
-| `api_refresh_tokens` | `App\Models\ApiRefreshToken` | JWT refresh tokens (`token_hash` PK) |
+| `api_refresh_tokens` | `App\Models\ApiRefreshToken` | JWT refresh tokens (`token_hash` PK). `session_generation` must match `users.session_generation` at consume. |
 | `api_password_reset_tokens` | `App\Models\ApiPasswordResetToken` | Hashed one-time password-reset tokens (`token_hash` PK) |
 | `api_revoked_tokens` | `App\Models\ApiRevokedToken` | Revoked JWT JTIs |
 | `app_update_history` | `App\Models\AppUpdateHistory` | In-place update audit log |

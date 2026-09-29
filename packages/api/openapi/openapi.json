@@ -222,6 +222,16 @@
               "user",
               "admin"
             ]
+          },
+          "mfa": {
+            "type": "object",
+            "required": ["enabled", "required", "recovery_codes_remaining", "suggest"],
+            "properties": {
+              "enabled": {"type": "boolean"},
+              "required": {"type": "boolean"},
+              "recovery_codes_remaining": {"type": "integer"},
+              "suggest": {"type": "boolean"}
+            }
           }
         }
       },
@@ -2876,6 +2886,68 @@
           "429": {
             "description": "Rate limited"
           }
+        },
+        "x-wgw-access": "admin"
+      }
+    },
+    "/admin/mfa-enforcement": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Require TOTP for interactive sign-in. The caller must already have TOTP.",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["required", "code"],
+                "properties": {
+                  "required": {"type": "boolean"},
+                  "code": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Updated"},
+          "422": {"description": "Caller has no authenticator"}
+        },
+        "x-wgw-access": "admin"
+      }
+    },
+    "/admin/users/{username}/mfa-resets": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Delete a user's TOTP and recovery codes and sign their sessions out",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code", "confirm_username"],
+                "properties": {
+                  "code": {"type": "string"},
+                  "confirm_username": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Reset"},
+          "404": {"description": "User not found"}
         },
         "x-wgw-access": "admin"
       }
@@ -5553,7 +5625,7 @@
             "description": "Enabled",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/RecoveryCodesResponse"}
+                "schema": {"$ref": "#/components/schemas/MfaConfirmationResponse"}
               }
             }
           },
