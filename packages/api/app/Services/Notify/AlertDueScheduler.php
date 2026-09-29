@@ -11,6 +11,7 @@ use App\Services\VObject\ICalendarAlarmTrigger;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
@@ -113,18 +114,30 @@ final class AlertDueScheduler
 
     private function warnOnNullCalendarData(): void
     {
-        $rows = CalendarObject::query()
+        $query = CalendarObject::query()
             ->whereIn('componenttype', ['VEVENT', 'VTODO'])
-            ->whereNull('calendardata')
-            ->limit(500)
-            ->get(['id', 'uri']);
+            ->whereNull('calendardata');
 
-        foreach ($rows as $row) {
-            Log::warning('Skipping calendar object with null calendardata.', [
-                'id' => $row->id,
-                'uri' => $row->uri,
-            ]);
+        $count = (clone $query)->count();
+        if ($count === 0) {
+            return;
         }
+        if (! Cache::add('alerts:null-calendardata-warned', true, 3600)) {
+            return;
+        }
+
+        $ids = (clone $query)
+            ->orderBy('id')
+            ->limit(5)
+            ->pluck('id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
+
+        Log::warning(sprintf('%d calendar objects with NULL calendardata skipped', $count), [
+            'count' => $count,
+            'ids' => $ids,
+        ]);
     }
 
     /**

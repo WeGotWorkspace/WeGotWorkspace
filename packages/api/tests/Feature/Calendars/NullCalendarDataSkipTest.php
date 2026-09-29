@@ -11,6 +11,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\QueryException;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Tests\Support\CalendarsTestFixtures;
@@ -31,16 +32,22 @@ final class NullCalendarDataSkipTest extends WgwDatabaseTestCase
         $uri = 'null-data.ics';
         $this->seedEventViaPdo('bob', $uri, $this->sampleIcs('Null data'));
         $this->storeNullCalendarData($uri);
+        $objectId = (int) DB::connection('wgw')->table('calendarobjects')->where('uri', $uri)->value('id');
 
+        Cache::forget('alerts:null-calendardata-warned');
         $warnings = [];
         Log::listen(function (MessageLogged $event) use (&$warnings): void {
             if ($event->level === 'warning') {
-                $warnings[] = $event->message;
+                $warnings[] = [
+                    'message' => $event->message,
+                    'context' => $event->context,
+                ];
             }
         });
 
         app(SearchIndexerService::class)->indexCalendarObjectFromPath('calendars/bob/default/'.$uri);
-        $fired = app(AlertDueScheduler::class)->scan(new DateTimeImmutable('2026-09-12T12:00:00Z', new DateTimeZone('UTC')));
+        $now = new DateTimeImmutable('2026-09-12T12:00:00Z', new DateTimeZone('UTC'));
+        $fired = app(AlertDueScheduler::class)->scan($now);
 
         $this->assertSame(0, $fired);
         $this->assertSame(
@@ -50,11 +57,33 @@ final class NullCalendarDataSkipTest extends WgwDatabaseTestCase
                 ->where('source_key', 'bob|default|'.$uri)
                 ->count(),
         );
-        $matches = array_values(array_filter(
+        $indexerWarnings = array_values(array_filter(
             $warnings,
-            static fn (string $message): bool => str_contains($message, 'null calendardata'),
+            static fn (array $warning): bool => $warning['message'] === 'Skipping calendar object with null calendardata.',
         ));
-        $this->assertGreaterThanOrEqual(2, count($matches));
+        $this->assertCount(1, $indexerWarnings);
+
+        $summaries = self::nullCalendarDataSummaries($warnings);
+        $this->assertCount(1, $summaries);
+        $this->assertSame('1 calendar objects with NULL calendardata skipped', $summaries[0]['message']);
+        $this->assertSame(1, $summaries[0]['context']['count']);
+        $this->assertSame([$objectId], $summaries[0]['context']['ids']);
+
+        $logged = count($warnings);
+        $this->assertSame(0, app(AlertDueScheduler::class)->scan($now));
+        $this->assertSame([], self::nullCalendarDataSummaries(array_slice($warnings, $logged)));
+    }
+
+    /**
+     * @param  list<array{message: string, context: array<string, mixed>}>  $warnings
+     * @return list<array{message: string, context: array<string, mixed>}>
+     */
+    private static function nullCalendarDataSummaries(array $warnings): array
+    {
+        return array_values(array_filter(
+            $warnings,
+            static fn (array $warning): bool => str_contains($warning['message'], 'NULL calendardata skipped'),
+        ));
     }
 
     private function storeNullCalendarData(string $uri): void
