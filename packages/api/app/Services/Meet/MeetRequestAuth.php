@@ -54,7 +54,8 @@ final class MeetRequestAuth
 
         [$user, $password] = explode(':', $decoded, 2);
         $username = strtolower(trim($user));
-        if ($username === '' || ! $this->credentials->validate($username, $password, $realm)) {
+        $client = $request->userAgent();
+        if ($username === '' || ! $this->credentials->validateProtocol($username, $password, $realm, $client)) {
             return null;
         }
 

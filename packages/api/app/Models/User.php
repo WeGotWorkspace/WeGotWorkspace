@@ -11,6 +11,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
 
@@ -31,6 +32,7 @@ use Laravel\Passport\HasApiTokens;
  * @property string $digesta1
  * @property string $digest
  * @property bool $enabled
+ * @property Carbon|null $dav_password_used_at
  */
 final class User extends Model implements AuthenticatableContract, OAuthenticatable
 {
@@ -51,6 +53,7 @@ final class User extends Model implements AuthenticatableContract, OAuthenticata
         'digest',
         'digesta1',
         'enabled',
+        'dav_password_used_at',
     ];
 
     /** @var list<string> */
@@ -66,6 +69,7 @@ final class User extends Model implements AuthenticatableContract, OAuthenticata
     {
         return [
             'enabled' => 'boolean',
+            'dav_password_used_at' => 'datetime',
         ];
     }
 

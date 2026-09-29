@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dav\Auth;
 
-use App\Services\Auth\UserEnabledGuard;
+use App\Services\Auth\SabreCredentialValidator;
 use Sabre\DAV\Auth\Backend\PDOBasicAuth;
 use Sabre\HTTP\RequestInterface;
 use Sabre\HTTP\ResponseInterface;
@@ -23,10 +23,13 @@ final class SabrePdoBasicAndCookieAuth extends PDOBasicAuth
 
     public function validateUserPass($username, $password)
     {
-        if (! parent::validateUserPass($username, $password)) {
-            return false;
-        }
+        $client = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
-        return app(UserEnabledGuard::class)->isEnabled((string) $username);
+        return app(SabreCredentialValidator::class)->validateProtocol(
+            (string) $username,
+            (string) $password,
+            (string) $this->realm,
+            is_string($client) ? $client : null,
+        );
     }
 }

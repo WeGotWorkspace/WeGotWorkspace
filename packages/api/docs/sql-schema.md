@@ -21,7 +21,8 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 
 | Table | Model | Notes |
 |-------|--------|--------|
-| `users` | `App\Models\User` | Sabre HTTP Basic (`digest` bcrypt) |
+| `users` | `App\Models\User` | Sabre HTTP Basic (`digest` bcrypt); nullable `dav_password_used_at` when the account password was accepted on DAV/Meet Basic |
+| `wgw_app_passwords` | `App\Models\AppPassword` | Named app passwords (`token_hash` SHA-256). Plaintext is shown once. |
 | `principals` | `App\Models\Principal` | DAV principals, profile `email` / `displayname` |
 | `groupmembers` | `App\Models\GroupMember` | Group membership join |
 | `app_settings` | `App\Models\AppSetting` | Key/value site settings (string PK `name`) |

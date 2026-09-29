@@ -123,6 +123,7 @@ final class WgwSchemaMigratorTest extends TestCase
             'notifications',
             'notification_deliveries',
             'push_subscriptions',
+            'wgw_app_passwords',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
@@ -136,6 +137,7 @@ final class WgwSchemaMigratorTest extends TestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('drive_share_grants', 'grantee_group'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('chat_channel_meta', 'default_for_group'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'dav_password_used_at'));
         // Format-at-edge notify facts; without this column NotifyListener inserts are
         // swallowed by EventDispatch and chat/docs/calendar inbox rows never appear.
         $this->assertTrue(Schema::connection('wgw')->hasColumn('notifications', 'data'));

@@ -54,6 +54,7 @@ use App\Http\Controllers\Api\V1\Plugins\SessionController as PluginsSessionContr
 use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
+use App\Http\Controllers\Api\V1\Settings\AppPasswordsController;
 use App\Http\Controllers\Api\V1\Settings\MailController as SettingsMailController;
 use App\Http\Controllers\Api\V1\Settings\McpGrantsController as SettingsMcpGrantsController;
 use App\Http\Controllers\Api\V1\Settings\ProfileController as SettingsProfileController;
@@ -197,6 +198,10 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('id', '[a-z0-9_-]+');
     Route::get('settings/state', SettingsStateController::class);
     Route::put('settings/profile', SettingsProfileController::class);
+    Route::get('settings/app-passwords', [AppPasswordsController::class, 'index']);
+    Route::post('settings/app-passwords', [AppPasswordsController::class, 'store']);
+    Route::post('settings/app-passwords/revocations', [AppPasswordsController::class, 'revokeAll']);
+    Route::delete('settings/app-passwords/{id}', [AppPasswordsController::class, 'destroy'])->whereNumber('id');
     Route::put('settings/mail', SettingsMailController::class);
     Route::get('settings/mcp-grants', [SettingsMcpGrantsController::class, 'index']);
     Route::delete('settings/mcp-grants/{clientId}', [SettingsMcpGrantsController::class, 'destroy'])
