@@ -1,7 +1,8 @@
-# Weekly version updates. Each ecosystem is one group covering major, minor,
-# and patch, so Dependabot opens a single version-update pull request per
-# ecosystem. `applies-to: version-updates` keeps security updates ungrouped
-# so they are not held for the weekly batch.
+# Weekly version updates. Composer, GitHub Actions, and Docker stay one group
+# covering major, minor, and patch. The npm groups are minor and patch only.
+# npm majors that break CI are ignored and tracked in #968. Any other npm
+# major opens its own pull request. `applies-to: version-updates` keeps
+# security updates ungrouped so they are not held for the weekly batch.
 #
 # Follow-up (turbo-hybrid): root `npm` only sees pnpm-lock.yaml. If packages/api
 # or tools/api-e2e later gets its own package.json and lockfile, add another npm
@@ -29,10 +30,12 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
-    # Keep vitest and @vitest/* packages on the same major version to prevent
-    # coverage errors like "coverageFilesDirectory is required" from version mismatches.
-    # The vitest group must come first, otherwise the npm group (pattern "*") catches everything.
-    # The check-vitest-versions.mjs tool enforces this constraint in CI.
+    # Keep vitest and @vitest/* on the same minor. The vitest group must come
+    # first, otherwise the npm group (pattern "*") catches those packages.
+    # tools/check-vitest-versions.mjs enforces the same constraint in CI.
+    # Held majors are tracked in #968. Remove an ignore only in the PR that
+    # upgrades that package. Lift the Vitest ignores together so vitest and
+    # every @vitest/* package move in one pull request.
     groups:
       vitest:
         applies-to: version-updates
@@ -40,7 +43,6 @@ updates:
           - "vitest"
           - "@vitest/*"
         update-types:
-          - major
           - minor
           - patch
       npm:
@@ -48,9 +50,66 @@ updates:
         patterns:
           - "*"
         update-types:
-          - major
           - minor
           - patch
+    ignore:
+      # The pnpm override pins typescript to 5.9.3. A 6.x bump would change
+      # package.json and leave the lockfile on 5.9.3. typescript-eslint 8
+      # peers on typescript <6.1, and TypeScript 7 does not ship the JS
+      # compiler API (ts.factory / ts.sys) that openapi-typescript and
+      # Storybook react-docgen still call.
+      - dependency-name: typescript
+        versions:
+          - ">=6.0.0"
+      # These majors change lint rules or public types the apps package still
+      # targets.
+      - dependency-name: eslint
+        versions:
+          - ">=10.0.0"
+      - dependency-name: "@eslint/js"
+        versions:
+          - ">=10.0.0"
+      - dependency-name: eslint-plugin-react-hooks
+        versions:
+          - ">=6.0.0"
+      - dependency-name: vite
+        versions:
+          - ">=8.0.0"
+      - dependency-name: "@vitejs/plugin-react"
+        versions:
+          - ">=6.0.0"
+      - dependency-name: vitest
+        versions:
+          - ">=5.0.0"
+      - dependency-name: "@vitest/browser-playwright"
+        versions:
+          - ">=5.0.0"
+      - dependency-name: "@vitest/coverage-v8"
+        versions:
+          - ">=5.0.0"
+      - dependency-name: recharts
+        versions:
+          - ">=3.0.0"
+      - dependency-name: react-day-picker
+        versions:
+          - ">=10.0.0"
+      # 2.3 leaves the listbox open across the next query, so getByRole
+      # misses the dialog button while the rest of the dialog is hidden.
+      - dependency-name: "@radix-ui/react-select"
+        versions:
+          - ">=2.3.0"
+      # CI runs Node 24. Node 25 and 26 types accept APIs that runtime does
+      # not have.
+      - dependency-name: "@types/node"
+        versions:
+          - ">=25.0.0"
+      # 1.169 pulls seroval-plugins 1.6.7, which imports isStream. The seroval
+      # 1.5.3 override does not export that. 1.170 also treats a Node process
+      # as a server and skips client navigate(). Drop the seroval-plugins
+      # 1.5.2 override in the same PR that lifts this hold.
+      - dependency-name: "@tanstack/react-router"
+        versions:
+          - ">=1.169.0"
 
   - package-ecosystem: github-actions
     directory: /
