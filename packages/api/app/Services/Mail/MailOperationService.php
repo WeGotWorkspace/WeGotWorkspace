@@ -135,6 +135,9 @@ final class MailOperationService
         ];
     }
 
+    /**
+     * @return array{displayName: string, emailAddress: string, imap: array, smtp: array}
+     */
     private function requireImap(string $username): array
     {
         if (! ImapExtension::loaded()) {

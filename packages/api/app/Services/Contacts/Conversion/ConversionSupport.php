@@ -13,7 +13,6 @@ use Sabre\VObject\Property;
 
 /**
  * Shared helpers for RFC 9555 vCard ↔ JSContact conversion.
- *
  * uid rules for JSContact 2.0 are updated by RFC 9982; see docs/contacts/rfc9982-conversion-matrix.md.
  */
 final class ConversionSupport

@@ -7,6 +7,7 @@ namespace App\Services\Contacts\Conversion;
 use Sabre\VObject\Component\VCard;
 use Sabre\VObject\Property;
 use DateTimeInterface;
+use App\Services\VObject\VObjectScalar;
 
 trait VCardToJsContactExtraFields
 {
@@ -69,10 +70,10 @@ trait VCardToJsContactExtraFields
                 'vCardName' => 'impp',
             ];
             if (isset($property['SERVICE-TYPE'])) {
-                $entry['service'] = (string) $property['SERVICE-TYPE'];
+                $entry['service'] = VObjectScalar::string($property['SERVICE-TYPE']);
             }
             if (isset($property['USERNAME'])) {
-                $entry['user'] = (string) $property['USERNAME'];
+                $entry['user'] = VObjectScalar::string($property['USERNAME']);
             }
             ConversionSupport::applySharedFields($entry, $property);
             $services[ConversionSupport::propertyId($property, $index)] = $entry;
@@ -89,10 +90,10 @@ trait VCardToJsContactExtraFields
                 $entry['user'] = $value;
             }
             if (isset($property['SERVICE-TYPE'])) {
-                $entry['service'] = (string) $property['SERVICE-TYPE'];
+                $entry['service'] = VObjectScalar::string($property['SERVICE-TYPE']);
             }
             if (isset($property['USERNAME'])) {
-                $entry['user'] = (string) $property['USERNAME'];
+                $entry['user'] = VObjectScalar::string($property['USERNAME']);
             }
             ConversionSupport::applySharedFields($entry, $property);
             $services[ConversionSupport::propertyId($property, $index)] = $entry;
@@ -263,7 +264,7 @@ trait VCardToJsContactExtraFields
                 'uri' => trim((string) $property->getValue()),
             ];
             if (isset($property['INDEX'])) {
-                $entry['listAs'] = (int) (string) $property['INDEX'];
+                $entry['listAs'] = (int) VObjectScalar::string($property['INDEX']);
             }
             ConversionSupport::applySharedFields($entry, $property);
             $directories[ConversionSupport::propertyId($property, $index)] = $entry;
@@ -287,10 +288,10 @@ trait VCardToJsContactExtraFields
                 'value' => trim((string) $property->getValue()),
             ];
             if (isset($property['LEVEL'])) {
-                $entry['level'] = ConversionSupport::expertiseLevelFromVCard((string) $property['LEVEL']);
+                $entry['level'] = ConversionSupport::expertiseLevelFromVCard(VObjectScalar::string($property['LEVEL']));
             }
             if (isset($property['INDEX'])) {
-                $entry['listAs'] = (int) (string) $property['INDEX'];
+                $entry['listAs'] = (int) VObjectScalar::string($property['INDEX']);
             }
             ConversionSupport::applySharedFields($entry, $property);
             $personalInfo[ConversionSupport::propertyId($property, $index)] = $entry;
@@ -302,7 +303,7 @@ trait VCardToJsContactExtraFields
                 'value' => trim((string) $property->getValue()),
             ];
             if (isset($property['INDEX'])) {
-                $entry['listAs'] = (int) (string) $property['INDEX'];
+                $entry['listAs'] = (int) VObjectScalar::string($property['INDEX']);
             }
             ConversionSupport::applySharedFields($entry, $property);
             $personalInfo[ConversionSupport::propertyId($property, $index)] = $entry;
@@ -314,7 +315,7 @@ trait VCardToJsContactExtraFields
                 'value' => trim((string) $property->getValue()),
             ];
             if (isset($property['INDEX'])) {
-                $entry['listAs'] = (int) (string) $property['INDEX'];
+                $entry['listAs'] = (int) VObjectScalar::string($property['INDEX']);
             }
             ConversionSupport::applySharedFields($entry, $property);
             $personalInfo[ConversionSupport::propertyId($property, $index)] = $entry;
@@ -337,7 +338,7 @@ trait VCardToJsContactExtraFields
                 'uri' => ConversionSupport::mediaUriFromProperty($property),
             ];
             if (isset($property['MEDIATYPE'])) {
-                $entry['mediaType'] = (string) $property['MEDIATYPE'];
+                $entry['mediaType'] = VObjectScalar::string($property['MEDIATYPE']);
             }
             ConversionSupport::applySharedFields($entry, $property);
             $cryptoKeys[ConversionSupport::propertyId($property, $index)] = $entry;
@@ -458,8 +459,7 @@ trait VCardToJsContactExtraFields
         }
 
         $label = $this->groupLabels[$group] ?? null;
-        // When TYPE already encodes Home/Work/Mobile/School, skip both the custom
-        // `label` and the Apple `itemN` group so PROP-ID + TYPE round-trips cleanly.
+        // When TYPE already encodes Home/Work/Mobile/School, skip the custom label and Apple itemN group so PROP-ID + TYPE round-trips.
         if (is_string($label) && $this->isRedundantStandardAbLabel($label, $entry)) {
             return;
         }

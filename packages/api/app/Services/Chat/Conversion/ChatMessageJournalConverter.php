@@ -242,7 +242,7 @@ final class ChatMessageJournalConverter
         if (! $calendar instanceof VCalendar) {
             throw new ApiHttpException(400, 'Invalid message payload.', 'bad_request');
         }
-        foreach ($calendar->getComponents('VJOURNAL') as $component) {
+        foreach ($calendar->select('VJOURNAL') as $component) {
             if ($component instanceof VJournal) {
                 return [$calendar, $component];
             }

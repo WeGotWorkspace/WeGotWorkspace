@@ -6,6 +6,7 @@ namespace App\Services\Contacts\Conversion;
 
 use Illuminate\Support\Str;
 use Sabre\VObject\Property;
+use App\Services\VObject\VObjectScalar;
 
 trait ConversionIdMethods
 {
@@ -204,7 +205,7 @@ trait ConversionIdMethods
     public static function propertyId(Property $property, int $index): string
     {
         if (isset($property['PROP-ID'])) {
-            return (string) $property['PROP-ID'];
+            return VObjectScalar::string($property['PROP-ID']);
         }
 
         return self::fallbackPropertyId($property, strtoupper((string) $property->name), $index);

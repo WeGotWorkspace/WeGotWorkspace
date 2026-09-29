@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin array<string, mixed>
+ * Payload: array<string, mixed>.
  */
 final class MeetRoomResource extends JsonResource
 {

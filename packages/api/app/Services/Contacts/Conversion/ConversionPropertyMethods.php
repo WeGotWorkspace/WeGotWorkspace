@@ -6,6 +6,7 @@ namespace App\Services\Contacts\Conversion;
 
 use App\Services\VObject\ICalendarDateTime;
 use Sabre\VObject\Property;
+use App\Services\VObject\VObjectScalar;
 
 trait ConversionPropertyMethods
 {
@@ -100,7 +101,7 @@ trait ConversionPropertyMethods
             return null;
         }
 
-        return (int) (string) $property['PREF'];
+        return (int) VObjectScalar::string($property['PREF']);
     }
 
     /**
@@ -118,7 +119,7 @@ trait ConversionPropertyMethods
             $object['pref'] = $pref;
         }
         if (isset($property['LABEL'])) {
-            $object['label'] = (string) $property['LABEL'];
+            $object['label'] = VObjectScalar::string($property['LABEL']);
         }
     }
 
@@ -132,7 +133,7 @@ trait ConversionPropertyMethods
             return [];
         }
 
-        $raw = (string) $property['TYPE'];
+        $raw = VObjectScalar::string($property['TYPE']);
 
         return array_values(array_filter(array_map('trim', preg_split('/,/', $raw) ?: [])));
     }
@@ -149,7 +150,7 @@ trait ConversionPropertyMethods
 
     public static function isDerived(Property $property): bool
     {
-        return isset($property['DERIVED']) && strtolower((string) $property['DERIVED']) === 'true';
+        return isset($property['DERIVED']) && strtolower(VObjectScalar::string($property['DERIVED'])) === 'true';
     }
 
     /**
@@ -224,7 +225,7 @@ trait ConversionPropertyMethods
     }
 
     /**
-     * @param  list<array{kind: string, value: string, @type?: string}>  $components
+     * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      * @return list<string>
      */
 
@@ -267,7 +268,7 @@ trait ConversionPropertyMethods
      * Build legacy ADR components when a JSContact address has no `components` array.
      *
      * @param  array<string, mixed>  $entry
-     * @return list<array{@type: string, kind: string, value: string}>
+     * @return list<array{'@type': string, kind: string, value: string}>
      */
 
     public static function addressComponentsFromEntry(array $entry): array
@@ -302,7 +303,7 @@ trait ConversionPropertyMethods
     }
 
     /**
-     * @return list<array{@type: string, kind: string, value: string}>
+     * @return list<array{'@type': string, kind: string, value: string}>
      */
 
     public static function nameComponentsFromProperty(Property $property): array
@@ -325,7 +326,7 @@ trait ConversionPropertyMethods
     }
 
     /**
-     * @param  list<array{kind: string, value: string, @type?: string}>  $components
+     * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      * @return list<string>
      */
 
@@ -385,11 +386,11 @@ trait ConversionPropertyMethods
     private static function mimeTypeFromMediaProperty(Property $property): string
     {
         if (isset($property['MEDIATYPE'])) {
-            return (string) $property['MEDIATYPE'];
+            return VObjectScalar::string($property['MEDIATYPE']);
         }
 
         if (isset($property['TYPE'])) {
-            $type = strtolower(trim((string) $property['TYPE']));
+            $type = strtolower(trim(VObjectScalar::string($property['TYPE'])));
             $known = [
                 'jpeg' => 'image/jpeg',
                 'jpg' => 'image/jpeg',

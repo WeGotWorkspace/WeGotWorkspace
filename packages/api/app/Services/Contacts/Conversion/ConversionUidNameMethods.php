@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Sabre\VObject\DateTimeParser;
 use Sabre\VObject\InvalidDataException;
 use Sabre\VObject\Property;
+use App\Services\VObject\VObjectScalar;
 
 trait ConversionUidNameMethods
 {
@@ -205,7 +206,7 @@ trait ConversionUidNameMethods
     {
         $value = trim((string) $property->getValue());
         $valueType = strtolower((string) ($property['VALUE'] ?? $property->getValueType()));
-        $calendarScale = isset($property['CALSCALE']) ? strtolower((string) $property['CALSCALE']) : null;
+        $calendarScale = isset($property['CALSCALE']) ? strtolower(VObjectScalar::string($property['CALSCALE'])) : null;
 
         if ($valueType === 'timestamp' || preg_match('/^\d{8}T\d{6}Z$/', $value) === 1) {
             if ($preferTimestamp) {
@@ -279,7 +280,7 @@ trait ConversionUidNameMethods
                 $params['value'] = 'TIMESTAMP';
             }
 
-            return [self::utcDateTimeToVCard((string) $date['utc']), $params];
+            return [self::utcDateTimeToVCard(VObjectScalar::string($date['utc'])), $params];
         }
 
         $params = ['value' => 'DATE'];
@@ -295,7 +296,7 @@ trait ConversionUidNameMethods
             return ['--'.$month.$day, $params];
         }
 
-        $year = str_pad((string) $date['year'], 4, '0', STR_PAD_LEFT);
+        $year = str_pad(VObjectScalar::string($date['year']), 4, '0', STR_PAD_LEFT);
 
         return [$year.$month.$day, $params];
     }
