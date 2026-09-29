@@ -1134,12 +1134,12 @@ final class ConversionSupport
 
     /**
      * @param  array<string, mixed>  $date
+     * @return array{0: string, 1: array<string, string>}
      */
     public static function anniversaryDateToVCardValue(array $date, string $propertyName): array
     {
         $type = (string) ($date['@type'] ?? 'PartialDate');
         if ($type === 'Timestamp' && isset($date['utc'])) {
-            /** @return array<mixed> */
             $params = [];
             if (in_array(strtoupper($propertyName), ['BDAY', 'DEATHDATE'], true)) {
                 $params['value'] = 'TIMESTAMP';

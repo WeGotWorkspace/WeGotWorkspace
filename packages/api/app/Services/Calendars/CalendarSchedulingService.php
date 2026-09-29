@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\VObject\Component\VCalendar;
+use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\ITip\Broker;
 use Sabre\VObject\ITip\ITipException;
 use Sabre\VObject\ITip\Message;
@@ -180,7 +181,7 @@ final class CalendarSchedulingService
 
         $newIcs = $this->ensureOrganizerIcs($newIcs, $actorAddresses);
 
-        if (! $this->hasSingleEventUid($newIcs) || ! $this->hasSingleEventUid($oldIcs)) {
+        if ($newIcs === null || ! $this->hasSingleEventUid($newIcs) || ! $this->hasSingleEventUid($oldIcs)) {
             return [];
         }
 
@@ -266,6 +267,9 @@ final class CalendarSchedulingService
 
         $changed = false;
         foreach ($parsed->select('VEVENT') as $event) {
+            if (! $event instanceof VEvent) {
+                continue;
+            }
             if (isset($event->ORGANIZER) || ! isset($event->ATTENDEE)) {
                 continue;
             }
@@ -365,8 +369,8 @@ final class CalendarSchedulingService
         $existing = $this->findEventByUid($principalUri, (string) $message->uid);
         $current = null;
         if ($existing !== null) {
-            $raw = $existing->calendardata;
-            $current = Reader::read($raw);
+            $parsedCurrent = Reader::read($existing->calendardata);
+            $current = $parsedCurrent instanceof VCalendar ? $parsedCurrent : null;
         }
 
         $newObject = (new Broker)->processMessage($message, $current);
@@ -421,7 +425,8 @@ final class CalendarSchedulingService
         }
 
         $raw = $existing->calendardata;
-        $current = Reader::read($raw);
+        $parsedCurrent = Reader::read($raw);
+        $current = $parsedCurrent instanceof VCalendar ? $parsedCurrent : null;
         $newObject = (new Broker)->processMessage($message, $current);
         $instance = $this->instanceForObject($principalUri, $existing);
         if ($instance === null) {

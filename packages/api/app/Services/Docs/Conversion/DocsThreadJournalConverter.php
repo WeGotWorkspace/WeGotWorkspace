@@ -7,10 +7,10 @@ namespace App\Services\Docs\Conversion;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarObject;
 use DateTimeImmutable;
-use DateTimeInterface;
 use DateTimeZone;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VJournal;
+use Sabre\VObject\Property\ICalendar\DateTime;
 use Sabre\VObject\Reader;
 
 /**
@@ -280,10 +280,10 @@ final class DocsThreadJournalConverter
             return null;
         }
         $prop = $journal->{$property};
-        if (method_exists($prop, 'getDateTime')) {
-            $dateTime = $prop->getDateTime();
-            if ($dateTime instanceof DateTimeInterface) {
-                return DateTimeImmutable::createFromInterface($dateTime)
+        if ($prop instanceof DateTime) {
+            $dateTimes = $prop->getDateTimes();
+            if ($dateTimes !== []) {
+                return DateTimeImmutable::createFromInterface($dateTimes[0])
                     ->setTimezone(new DateTimeZone('UTC'))
                     ->format('Y-m-d\TH:i:s\Z');
             }

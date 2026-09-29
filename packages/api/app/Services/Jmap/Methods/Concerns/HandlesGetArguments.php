@@ -43,7 +43,7 @@ trait HandlesGetArguments
      * maxObjectsInGet must be rejected with requestTooLarge, same as an
      * over-long explicit ids list.
      *
-     * @param  list<array<string, mixed>>  $records
+     * @param  list<mixed>  $records
      */
     private function guardGetAllBound(array $records): void
     {

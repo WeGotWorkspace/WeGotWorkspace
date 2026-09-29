@@ -58,7 +58,10 @@ final class NoteRepository
             ->orderBy('id')
             ->get();
 
-        $starredIds = $this->starredObjectIds($username, $objects->pluck('id')->all());
+        $starredIds = $this->starredObjectIds($username, array_values(array_filter(
+            $objects->pluck('id')->all(),
+            static fn (mixed $id): bool => is_int($id) || is_string($id),
+        )));
         $apiId = $this->notebooks->apiIdForInstance($instance);
         $notes = [];
         foreach ($objects as $object) {
@@ -312,7 +315,7 @@ final class NoteRepository
 
         $changes = $this->calBackend()->getChangesForCalendar(
             [(int) $instance->calendarid, (int) $instance->id],
-            $this->normalizeSyncToken($since) ?? '',
+            (string) ($this->normalizeSyncToken($since) ?? ''),
             1,
         );
         if ($changes === null) {

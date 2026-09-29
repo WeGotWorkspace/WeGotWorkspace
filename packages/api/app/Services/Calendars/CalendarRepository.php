@@ -795,14 +795,14 @@ final class CalendarRepository
             (string) ($group->displayname ?? $groupSlug),
         );
 
-        return CalendarInstance::query()
+        return array_values(CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $groupUri)
             ->whereHas('calendar', fn ($query) => $query->supportsVevent())
             ->orderBy('calendarorder')
             ->orderBy('id')
             ->get()
-            ->all();
+            ->all());
     }
 
     private function findCalendarInstance(string $principalUri, string $calendarUri): ?CalendarInstance
@@ -842,15 +842,15 @@ final class CalendarRepository
      */
     private function ownedVeventCalendarIds(string $ownerPrincipalUri): array
     {
-        return CalendarInstance::query()
+        return array_values(CalendarInstance::query()
             ->where('principaluri', $ownerPrincipalUri)
             ->where(function ($query): void {
                 $query->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
                     ->orWhereNull('access');
             })
             ->whereHas('calendar', fn ($query) => $query->supportsVevent())
-            ->pluck('calendarid')
-            ->all();
+            ->pluck('calendarid')->map(static fn (mixed $id): int => (int) $id)
+            ->all());
     }
 
     /**

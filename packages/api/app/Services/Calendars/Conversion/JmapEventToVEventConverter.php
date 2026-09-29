@@ -271,7 +271,7 @@ final class JmapEventToVEventConverter
         }
 
         if (isset($event['excludedRecurrenceDates']) && is_array($event['excludedRecurrenceDates']) && $event['excludedRecurrenceDates'] !== []) {
-            $values = ICalendarDateList::toIcsValues($event['excludedRecurrenceDates']);
+            $values = ICalendarDateList::toIcsValues(array_values($event['excludedRecurrenceDates']));
             if ($values !== []) {
                 $vevent->add('EXDATE', implode(',', $values));
             }

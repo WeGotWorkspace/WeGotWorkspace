@@ -108,7 +108,7 @@ final class JsContactToVCardConverter
         }
 
         $components = $name['components'] ?? null;
-        if (! is_array($components) || $components === []) {
+        if (! is_array($components) || ($components = JscopmsSupport::typedComponents($components)) === []) {
             return;
         }
 
@@ -193,10 +193,10 @@ final class JsContactToVCardConverter
             if (! is_array($entry)) {
                 continue;
             }
-            $components = $entry['components'] ?? [];
-            if (! is_array($components) || $components === []) {
-                $components = ConversionSupport::addressComponentsFromEntry($entry);
-            }
+            $rawComponents = $entry['components'] ?? [];
+            $components = is_array($rawComponents) && $rawComponents !== []
+                ? JscopmsSupport::typedComponents($rawComponents)
+                : ConversionSupport::addressComponentsFromEntry($entry);
             $hasComponents = $components !== [];
             $hasCoordinates = isset($entry['coordinates']);
             $hasTimeZone = isset($entry['timeZone']);

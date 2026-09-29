@@ -31,7 +31,7 @@ final class ChatChangesFeed
      */
     public function changes(CalendarInstance $instance, ?string $since, int $limit = self::DEFAULT_LIMIT): array
     {
-        $syncToken = $this->normalizeSyncToken($since) ?? '';
+        $syncToken = (string) ($this->normalizeSyncToken($since) ?? '');
 
         $changes = $this->calBackend()->getChangesForCalendar(
             [(int) $instance->calendarid, (int) $instance->id],

@@ -607,14 +607,14 @@ final class TaskListRepository
             (string) ($group->displayname ?? $groupSlug),
         );
 
-        return CalendarInstance::query()
+        return array_values(CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $groupUri)
             ->whereHas('calendar', fn ($query) => $query->vtodoOnly())
             ->orderBy('calendarorder')
             ->orderBy('id')
             ->get()
-            ->all();
+            ->all());
     }
 
     private function findTaskListInstance(string $principalUri, string $taskListUri): ?CalendarInstance

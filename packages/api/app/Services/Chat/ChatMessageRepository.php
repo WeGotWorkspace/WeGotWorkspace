@@ -248,7 +248,12 @@ final class ChatMessageRepository
             $ics,
         );
 
-        return $this->presentSingle($object->fresh(), $instance);
+        $fresh = $object->fresh();
+        if ($fresh === null) {
+            throw new ApiHttpException(404, 'Message not found.', 'not_found');
+        }
+
+        return $this->presentSingle($fresh, $instance);
     }
 
     /**
@@ -321,7 +326,12 @@ final class ChatMessageRepository
             );
         });
 
-        return $this->presentSingle($object->fresh(), $instance);
+        $fresh = $object->fresh();
+        if ($fresh === null) {
+            throw new ApiHttpException(404, 'Message not found.', 'not_found');
+        }
+
+        return $this->presentSingle($fresh, $instance);
     }
 
     /**

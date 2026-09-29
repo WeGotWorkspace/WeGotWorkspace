@@ -11,6 +11,7 @@ use DateTimeInterface;
 use DateTimeZone;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VJournal;
+use Sabre\VObject\Property\ICalendar\DateTime;
 use Sabre\VObject\Reader;
 
 /**
@@ -264,10 +265,10 @@ final class ChatMessageJournalConverter
             return null;
         }
         $prop = $journal->{$property};
-        if (method_exists($prop, 'getDateTime')) {
-            $dateTime = $prop->getDateTime();
-            if ($dateTime instanceof DateTimeInterface) {
-                return $this->formatUtc($dateTime);
+        if ($prop instanceof DateTime) {
+            $dateTimes = $prop->getDateTimes();
+            if ($dateTimes !== []) {
+                return $this->formatUtc($dateTimes[0]);
             }
         }
 

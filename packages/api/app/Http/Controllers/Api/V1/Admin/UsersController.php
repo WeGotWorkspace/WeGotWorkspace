@@ -29,7 +29,7 @@ final class UsersController
                 (string) $validated['password'],
                 trim((string) ($validated['displayName'] ?? '')),
                 isset($validated['email']) ? trim((string) $validated['email']) : null,
-                is_array($groups) ? $groups : [],
+                is_array($groups) ? array_values(array_filter($groups, is_string(...))) : [],
                 $principal['username'],
             );
         } catch (\InvalidArgumentException $e) {

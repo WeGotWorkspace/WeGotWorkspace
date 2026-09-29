@@ -41,7 +41,7 @@ final class NotesFileMigrator
     public function migrate(): array
     {
         $disk = $this->storage->files();
-        $pathToUid = $this->buildPathUidMap($disk->allFiles());
+        $pathToUid = $this->buildPathUidMap(array_values($disk->allFiles()));
         $imported = 0;
         $skipped = 0;
         $starred = 0;
@@ -115,7 +115,7 @@ final class NotesFileMigrator
         }
 
         $starred = $this->backfillStars($pathToUid, $notices);
-        $discardedYjs = $this->discardYjsSidecars($disk->allFiles());
+        $discardedYjs = $this->discardYjsSidecars(array_values($disk->allFiles()));
         $this->reindexImported(array_values($pathToUid));
 
         return [

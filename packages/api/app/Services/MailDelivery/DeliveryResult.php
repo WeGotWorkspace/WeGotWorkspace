@@ -36,7 +36,18 @@ final class DeliveryResult
 
     public static function failure(string $status, string $transport, string $at, ?string $message): self
     {
-        return new self(false, $status, $transport, $at, $message);
+        return new self(false, self::knownFailureStatus($status), $transport, $at, $message);
+    }
+
+    /**
+     * @return self::UNAVAILABLE|self::CONNECT|self::AUTH|self::TIMEOUT|self::SMTP_AUTH_REQUIRED
+     */
+    private static function knownFailureStatus(string $status): string
+    {
+        return match ($status) {
+            self::UNAVAILABLE, self::CONNECT, self::AUTH, self::TIMEOUT, self::SMTP_AUTH_REQUIRED => $status,
+            default => self::UNAVAILABLE,
+        };
     }
 
     /**

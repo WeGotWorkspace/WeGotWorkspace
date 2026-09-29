@@ -60,7 +60,7 @@ final class DriveShareService
         /** @var Collection<int, DriveShare> $shares */
         $shares = $query->get();
 
-        return $shares->map(fn (DriveShare $share): array => $this->serializeShareForOwner($share))->values()->all();
+        return array_values($shares->map(fn (DriveShare $share): array => $this->serializeShareForOwner($share))->all());
     }
 
     /**
@@ -311,7 +311,7 @@ final class DriveShareService
             });
         }
 
-        $shareIds = $shares->pluck('id')->map(static fn ($id): string => (string) $id)->values()->all();
+        $shareIds = array_values($shares->pluck('id')->map(static fn ($id): string => (string) $id)->all());
         if ($shareIds === []) {
             return [
                 'principal' => $this->normalizedPrincipalForResponse($principal, $principalType),
@@ -708,7 +708,7 @@ final class DriveShareService
         $session->revoked_at = null;
         $session->save();
 
-        $exp = min($sessionExpiresAt->timestamp, $now->timestamp + self::GUEST_JWT_TTL_SECONDS);
+        $exp = min((int) $sessionExpiresAt->timestamp, (int) $now->timestamp + self::GUEST_JWT_TTL_SECONDS);
         $sessionSubject = 'share:'.$session->session_key;
         $jwt = $this->jwtTokens->issue([
             'sub' => $sessionSubject,
@@ -719,7 +719,7 @@ final class DriveShareService
         return [
             'access_token' => $jwt,
             'token_type' => 'Bearer',
-            'expires_in' => max(1, $exp - $now->timestamp),
+            'expires_in' => max(1, $exp - (int) $now->timestamp),
             'role' => 'guest',
             'username' => $sessionSubject,
             'share' => [
@@ -1394,7 +1394,6 @@ final class DriveShareService
 
         $now = Carbon::now();
 
-        /** @var array<string, list<array{candidate: array<string, mixed>, grant: DriveShareGrant}>> $buckets */
         $buckets = [];
         foreach ($grants as $grant) {
             $principalKey = $this->principalKeyForGrant($grant);
@@ -1425,7 +1424,7 @@ final class DriveShareService
 
         $entries = [];
         foreach ($buckets as $principalKey => $items) {
-            $candidates = array_column($items, 'candidate');
+            $candidates = array_map(static fn (array $item) => $item['candidate'], $items);
             $winner = $this->grantResolver->resolveWinningGrant($candidates);
             if ($winner === null) {
                 continue;
@@ -1638,7 +1637,7 @@ final class DriveShareService
     }
 
     /**
-     * @param  Collection<int, DriveShare>  $sharesById
+     * @param  Collection<int|string, DriveShare>  $sharesById
      * @return array<string, mixed>|null
      */
     private function grantSourceEntryFromGrant(

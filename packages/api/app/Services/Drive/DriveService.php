@@ -99,7 +99,7 @@ final class DriveService
     }
 
     /**
-     * @return array{location: string, files: list<array{type: string, path: string, name: string, size: int, time: int, permissions: int}>}
+     * @return array{location: string, files: list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}, hasShares?: bool, hasPublicShare?: bool, hasTeamShare?: bool}>}
      */
     public function search(string $username, string $query, int $limit): array
     {
@@ -502,7 +502,7 @@ final class DriveService
         }
 
         if ($totalChunks <= 1) {
-            $contents = $file->get();
+            $contents = is_string($rawContents = $file->get()) ? $rawContents : throw new \RuntimeException('Failed to read upload.');
             $disk->put($targetKey, $contents);
             $this->search->indexFileStorageKey($targetKey);
             $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', $contents)));
@@ -512,11 +512,11 @@ final class DriveService
 
         $tempDisk = $this->storage->data();
         $partKey = 'drive-upload-temp/'.hash('sha256', $identifier.'|'.$filename.'|'.$targetVirtual).'.part';
-        $chunk = $file->get();
+        $chunk = is_string($rawChunk = $file->get()) ? $rawChunk : throw new \RuntimeException('Failed to read upload.');
         if ($chunkNumber === 1) {
             $tempDisk->put($partKey, $chunk);
         } else {
-            $existing = $tempDisk->exists($partKey) ? $tempDisk->get($partKey) : '';
+            $existing = is_string($existingRaw = ($tempDisk->exists($partKey) ? $tempDisk->get($partKey) : '')) ? $existingRaw : '';
             $tempDisk->put($partKey, $existing.$chunk);
         }
 
@@ -525,7 +525,7 @@ final class DriveService
         }
 
         $assembled = $tempDisk->get($partKey);
-        $disk->put($targetKey, $assembled);
+        $disk->put($targetKey, is_string($assembled) ? $assembled : throw new \RuntimeException('Failed to read upload.'));
         $tempDisk->delete($partKey);
         $this->search->indexFileStorageKey($targetKey);
         $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', (string) $assembled)));
@@ -535,7 +535,7 @@ final class DriveService
 
     /**
      * @param  array{username: string, role: string}  $principal
-     * @return list<array<string, mixed>>
+     * @return list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}, hasShares?: bool, hasPublicShare?: bool, hasTeamShare?: bool}>
      */
     private function listEntries(
         string $virtualDir,
@@ -610,8 +610,8 @@ final class DriveService
 
     /**
      * @param  array{username: string, role: string}  $principal
-     * @param  list<array<string, mixed>>  $entries
-     * @return list<array<string, mixed>>
+     * @param  list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}}>  $entries
+     * @return list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}, hasShares?: bool, hasPublicShare?: bool, hasTeamShare?: bool}>
      */
     private function annotateHasShares(array $principal, array $entries): array
     {
@@ -648,7 +648,7 @@ final class DriveService
 
     /**
      * @param  array{username: string, role: string}  $principal
-     * @return list<array<string, mixed>>
+     * @return list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}}>
      */
     private function searchRecursive(
         Filesystem $disk,
@@ -725,8 +725,8 @@ final class DriveService
     }
 
     /**
-     * @param  list<array{type: string, path: string, name: string, size: int, time: int, permissions: int}>  $entries
-     * @return list<array{type: string, path: string, name: string, size: int, time: int, permissions: int}>
+     * @param  list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}}>  $entries
+     * @return list<array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}}>
      */
     private function sortEntries(array $entries): array
     {
@@ -746,7 +746,7 @@ final class DriveService
 
     /**
      * @param  array{username: string, role: string}  $principal
-     * @return array<string, mixed>
+     * @return array{type: string, path: string, name: string, size: int, time: int, permissions: int, myRights: array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}}
      */
     private function serializeEntry(
         string $virtualPath,

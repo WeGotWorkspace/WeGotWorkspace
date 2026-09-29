@@ -678,7 +678,7 @@ final class NotebookRepository
             (string) ($group->displayname ?? $groupSlug),
         );
 
-        return CalendarInstance::query()
+        return array_values(CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $groupUri)
             ->whereHas('calendar', fn ($query) => $query->vjournalOnly())
@@ -686,8 +686,7 @@ final class NotebookRepository
             ->orderBy('id')
             ->get()
             ->filter(static fn (CalendarInstance $instance): bool => ! ChatCollectionUris::isChatUri((string) $instance->uri))
-            ->values()
-            ->all();
+            ->all());
     }
 
     private function findNotebookInstance(string $principalUri, string $notebookUri): ?CalendarInstance

@@ -71,7 +71,7 @@ final class CalendarShareInvites
             throw new ApiHttpException(403, 'Only collection administrators can change sharing.', 'forbidden');
         }
 
-        $currentInvites = $this->calBackend()->getInvites($this->backendId($instance));
+        $currentInvites = array_values($this->calBackend()->getInvites($this->backendId($instance)));
         $sharees = $shareWith === null
             ? $this->revokeAllSharees($currentInvites)
             : $this->shareesFromPatch($instance, $shareWith, $currentInvites);

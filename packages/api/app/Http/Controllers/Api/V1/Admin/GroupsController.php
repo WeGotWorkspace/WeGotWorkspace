@@ -46,7 +46,7 @@ final class GroupsController
                     ? trim((string) ($validated['displayName'] ?? ''))
                     : null,
                 array_key_exists('members', $validated) && is_array($validated['members'])
-                    ? $validated['members']
+                    ? array_values(array_filter($validated['members'], is_string(...)))
                     : null,
                 $principal['username'],
             );

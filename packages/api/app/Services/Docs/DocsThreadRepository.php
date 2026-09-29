@@ -235,7 +235,7 @@ final class DocsThreadRepository
 
     /**
      * @param  array{username: string, role: string}  $principal
-     * @param  array{resolved?: bool, archived?: bool, changeId?: string, anchorText?: string, anchorFrom?: int, anchorTo?: int}  $payload
+     * @param  array{resolved?: bool, archived?: bool, changeId?: string, anchorText?: string|null, anchorFrom?: int|null, anchorTo?: int|null}  $payload
      * @return array<string, mixed>
      */
     public function patch(array $principal, string $path, string $threadId, array $payload): array
@@ -341,7 +341,7 @@ final class DocsThreadRepository
         $syncToken = $this->normalizeSyncToken($since);
         $changes = $this->calBackend()->getChangesForCalendar(
             [(int) $instance->calendarid, (int) $instance->id],
-            $syncToken,
+            (string) ($syncToken ?? ''),
             1,
             self::CHANGES_PAGE_SIZE,
         );

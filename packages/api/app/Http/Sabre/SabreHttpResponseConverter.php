@@ -20,7 +20,10 @@ final class SabreHttpResponseConverter
         if (is_resource($body)) {
             return new StreamedResponse(function () use ($body): void {
                 rewind($body);
-                stream_copy_to_stream($body, fopen('php://output', 'wb'));
+                $output = fopen('php://output', 'wb');
+                if (is_resource($output)) {
+                    stream_copy_to_stream($body, $output);
+                }
             }, $status, $headers);
         }
 

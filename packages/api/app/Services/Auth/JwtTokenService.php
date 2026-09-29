@@ -15,7 +15,20 @@ final class JwtTokenService
     {
         $cfg = $this->requireSigningConfig();
 
-        return JwtCodec::issue($claims, $cfg);
+        $exp = $claims['exp'] ?? null;
+        if (! is_int($exp)) {
+            throw new \InvalidArgumentException('JWT exp claim is required.');
+        }
+        $issued = [
+            'sub' => $claims['sub'],
+            'role' => $claims['role'],
+            'exp' => $exp,
+        ];
+        if (isset($claims['iat'])) {
+            $issued['iat'] = $claims['iat'];
+        }
+
+        return JwtCodec::issue($issued, $cfg);
     }
 
     /**

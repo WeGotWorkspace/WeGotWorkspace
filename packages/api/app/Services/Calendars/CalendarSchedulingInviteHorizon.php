@@ -81,7 +81,12 @@ final class CalendarSchedulingInviteHorizon
             return $end;
         }
         if (isset($vevent->DURATION)) {
-            return $start->add(DateTimeParser::parseDuration((string) $vevent->DURATION));
+            $duration = DateTimeParser::parseDuration((string) $vevent->DURATION);
+            if (! $duration instanceof \DateInterval) {
+                throw new \InvalidArgumentException('VEVENT DURATION is not a duration.');
+            }
+
+            return $start->add($duration);
         }
         if (! $startProp->hasTime()) {
             return $start->modify('+1 day');

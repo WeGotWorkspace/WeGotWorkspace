@@ -36,10 +36,37 @@ final class CalendarSchedulingNotificationsController
         string $notificationId,
     ): JsonResponse {
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+        $validated = $request->validated();
+        $status = $validated['participationStatus'] ?? null;
+        if (! is_string($status) || $status === '') {
+            abort(422, 'participationStatus is required.');
+        }
+        $payload = ['participationStatus' => $status];
+        if (array_key_exists('calendarId', $validated)) {
+            $calendarId = $validated['calendarId'];
+            if ($calendarId !== null && ! is_string($calendarId)) {
+                abort(422, 'calendarId must be a string.');
+            }
+            $payload['calendarId'] = $calendarId;
+        }
+        if (array_key_exists('recurrenceId', $validated)) {
+            $recurrenceId = $validated['recurrenceId'];
+            if ($recurrenceId !== null && ! is_string($recurrenceId)) {
+                abort(422, 'recurrenceId must be a string.');
+            }
+            $payload['recurrenceId'] = $recurrenceId;
+        }
+        if (array_key_exists('scope', $validated)) {
+            $scope = $validated['scope'];
+            if ($scope !== null && ! is_string($scope)) {
+                abort(422, 'scope must be a string.');
+            }
+            $payload['scope'] = $scope;
+        }
         $notification = $this->notifications->respond(
             $principal['username'],
             $notificationId,
-            $request->validated(),
+            $payload,
         );
 
         return (new CalendarSchedulingNotificationResource($notification))->response();

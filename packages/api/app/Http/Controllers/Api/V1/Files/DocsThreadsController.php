@@ -32,11 +32,18 @@ final class DocsThreadsController
 
     public function reply(DocsThreadReplyRequest $request, string $threadId): JsonResponse
     {
+        $validated = $request->validated();
+        $id = $validated['id'] ?? null;
+        $body = $validated['body'] ?? null;
+        if (! is_string($id) || $id === '' || ! is_string($body)) {
+            abort(422, 'id and body are required.');
+        }
+
         return response()->json($this->threads->reply(
             $this->principal($request),
             $this->requirePath($request),
             $threadId,
-            $request->validated(),
+            ['id' => $id, 'body' => $body],
         ));
     }
 
@@ -52,11 +59,52 @@ final class DocsThreadsController
 
     public function patch(DocsThreadPatchRequest $request, string $threadId): JsonResponse
     {
+        $validated = $request->validated();
+        $payload = [];
+        if (array_key_exists('resolved', $validated)) {
+            $resolved = $validated['resolved'];
+            if (! is_bool($resolved)) {
+                abort(422, 'resolved must be a boolean.');
+            }
+            $payload['resolved'] = $resolved;
+        }
+        if (array_key_exists('archived', $validated)) {
+            $archived = $validated['archived'];
+            if (! is_bool($archived)) {
+                abort(422, 'archived must be a boolean.');
+            }
+            $payload['archived'] = $archived;
+        }
+        if (array_key_exists('changeId', $validated) && is_string($validated['changeId'])) {
+            $payload['changeId'] = $validated['changeId'];
+        }
+        if (array_key_exists('anchorText', $validated)) {
+            $anchorText = $validated['anchorText'];
+            if ($anchorText !== null && ! is_string($anchorText)) {
+                abort(422, 'anchorText must be a string.');
+            }
+            $payload['anchorText'] = $anchorText;
+        }
+        if (array_key_exists('anchorFrom', $validated)) {
+            $anchorFrom = $validated['anchorFrom'];
+            if ($anchorFrom !== null && ! is_int($anchorFrom)) {
+                abort(422, 'anchorFrom must be an integer.');
+            }
+            $payload['anchorFrom'] = $anchorFrom;
+        }
+        if (array_key_exists('anchorTo', $validated)) {
+            $anchorTo = $validated['anchorTo'];
+            if ($anchorTo !== null && ! is_int($anchorTo)) {
+                abort(422, 'anchorTo must be an integer.');
+            }
+            $payload['anchorTo'] = $anchorTo;
+        }
+
         return response()->json($this->threads->patch(
             $this->principal($request),
             $this->requirePath($request),
             $threadId,
-            $request->validated(),
+            $payload,
         ));
     }
 

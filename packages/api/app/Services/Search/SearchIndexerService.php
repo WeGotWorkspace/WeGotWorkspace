@@ -432,7 +432,7 @@ final class SearchIndexerService
         }
 
         $raw = $this->storage->files()->get($key);
-        if ($raw === '') {
+        if (! is_string($raw) || $raw === '') {
             return ['body' => null, 'frontmatter' => null];
         }
 
@@ -660,15 +660,22 @@ final class SearchIndexerService
         }
 
         $bodyParts = array_filter([$summary, $description, $location, $organizer, implode(' ', $attendees), implode(' ', $categories)]);
-
-        return [
-            'title' => $summary ?: null,
+        $payload = [
             'body' => trim(implode("\n", $bodyParts)),
-            'location' => $location ?: null,
-            'organizer' => $organizer ?: null,
             'attendees' => array_values(array_filter($attendees, static fn (string $v): bool => $v !== '')),
-            'categories' => array_values(array_filter(array_map('trim', $categories), static fn (string $v): bool => $v !== '')),
+            'categories' => array_values(array_filter(array_map(static fn (mixed $value): string => trim((string) $value), $categories), static fn (string $v): bool => $v !== '')),
         ];
+        if (is_string($summary) && $summary !== '') {
+            $payload['title'] = $summary;
+        }
+        if (is_string($location) && $location !== '') {
+            $payload['location'] = $location;
+        }
+        if (is_string($organizer) && $organizer !== '') {
+            $payload['organizer'] = $organizer;
+        }
+
+        return $payload;
     }
 
     /**
@@ -728,19 +735,40 @@ final class SearchIndexerService
             }
         }
 
-        return [
-            'fullName' => $fullName,
-            'firstName' => $firstName,
-            'lastName' => $lastName,
+        $organization = isset($vobject->ORG) ? trim((string) $vobject->ORG->getValue()) : null;
+        $title = isset($vobject->TITLE) ? trim((string) $vobject->TITLE->getValue()) : null;
+        $note = isset($vobject->NOTE) ? trim((string) $vobject->NOTE->getValue()) : null;
+        $payload = [
             'emails' => array_values(array_filter($emails, static fn (string $v): bool => $v !== '')),
             'phones' => array_values(array_filter($phones, static fn (string $v): bool => $v !== '')),
-            'organization' => isset($vobject->ORG) ? trim((string) $vobject->ORG->getValue()) : null,
-            'title' => isset($vobject->TITLE) ? trim((string) $vobject->TITLE->getValue()) : null,
-            'note' => isset($vobject->NOTE) ? trim((string) $vobject->NOTE->getValue()) : null,
             'address' => array_values(array_filter($addressParts, static fn (string $v): bool => $v !== '')),
-            'city' => $city,
-            'country' => $country,
         ];
+        if (is_string($fullName)) {
+            $payload['fullName'] = $fullName;
+        }
+        if (is_string($firstName)) {
+            $payload['firstName'] = $firstName;
+        }
+        if (is_string($lastName)) {
+            $payload['lastName'] = $lastName;
+        }
+        if (is_string($organization)) {
+            $payload['organization'] = $organization;
+        }
+        if (is_string($title)) {
+            $payload['title'] = $title;
+        }
+        if (is_string($note)) {
+            $payload['note'] = $note;
+        }
+        if (is_string($city)) {
+            $payload['city'] = $city;
+        }
+        if (is_string($country)) {
+            $payload['country'] = $country;
+        }
+
+        return $payload;
     }
 
     private function principalFromUri(string $principalUri): ?string
