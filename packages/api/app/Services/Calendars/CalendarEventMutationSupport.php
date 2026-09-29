@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
@@ -12,13 +13,24 @@ use App\Services\Calendars\Conversion\CalendarConversionSupport;
 use App\Services\Calendars\Conversion\CalendarIcsSplitSupport;
 use App\Services\Calendars\Conversion\ICalendarJmapEventConverter;
 use App\Services\Search\BestEffortSearchIndexSync;
+use App\Services\Search\SearchIndexerService;
 use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 
-trait CalendarEventMutationSupport
+final class CalendarEventMutationSupport
 {
+    public function __construct(
+        private readonly CalendarRepository $calendars,
+        private readonly CalendarEventMapper $mapper,
+        private readonly CalendarSchedulingService $scheduling,
+        private readonly CalendarMeetLinkWriteHook $meetLinkHook,
+        private readonly SearchIndexerService $searchIndexer,
+        private readonly BestEffortSearchIndexSync $searchIndexSync,
+        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
+    ) {}
+
     public function create(string $username, array $payload): array
     {
         $instance = $this->resolveCalendarFromPayload($username, $payload);
@@ -50,7 +62,7 @@ trait CalendarEventMutationSupport
 
             $object = $this->findObjectInCalendar((int) $instance->calendarid, $eventUri, fresh: true);
             if ($object === null) {
-                throw new \App\Exceptions\ApiHttpException(500, 'Could not load created calendar event.', 'server_error');
+                throw new ApiHttpException(500, 'Could not load created calendar event.', 'server_error');
             }
 
             return $this->mapper->toCalendarEvent($object, $this->calendars->apiIdForInstance($instance), null, $username);
@@ -62,17 +74,16 @@ trait CalendarEventMutationSupport
      *
      * @return array{list: list<array<string, mixed>>, errors: list<array{index: int, message: string, code?: string}>}
      */
-
     public function importFromIcs(string $username, string $icsText, string $calendarId): array
     {
         Log::withContext(['principal' => $username]);
 
         $instance = $this->calendars->findAccessibleCalendar($username, $calendarId);
         if ($instance === null) {
-            throw new \App\Exceptions\ApiHttpException(404, 'Calendar not found.', 'not_found');
+            throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
         if (! $this->calendars->instanceMayWrite($instance)) {
-            throw new \App\Exceptions\ApiHttpException(403, 'Calendar is not writable.', 'forbidden');
+            throw new ApiHttpException(403, 'Calendar is not writable.', 'forbidden');
         }
 
         (new VObjectPayloadGuard)->assertIcsSize($icsText);
@@ -80,11 +91,11 @@ trait CalendarEventMutationSupport
         try {
             $groups = CalendarIcsSplitSupport::splitUidGroups($icsText);
         } catch (\InvalidArgumentException $exception) {
-            throw new \App\Exceptions\ApiHttpException(400, $exception->getMessage(), 'bad_request');
+            throw new ApiHttpException(400, $exception->getMessage(), 'bad_request');
         }
 
         if ($groups === []) {
-            throw new \App\Exceptions\ApiHttpException(400, 'No VEVENT data found.', 'bad_request');
+            throw new ApiHttpException(400, 'No VEVENT data found.', 'bad_request');
         }
 
         $list = [];
@@ -96,7 +107,7 @@ trait CalendarEventMutationSupport
                 foreach ($this->persistImportedUidGroup($username, $instance, $group['ics']) as $event) {
                     $list[] = $event;
                 }
-            } catch (\App\Exceptions\ApiHttpException $exception) {
+            } catch (ApiHttpException $exception) {
                 $entry = ['index' => $index, 'message' => $exception->getMessage()];
                 if (is_string($exception->errorCode()) && $exception->errorCode() !== '') {
                     $entry['code'] = $exception->errorCode();
@@ -113,7 +124,6 @@ trait CalendarEventMutationSupport
     /**
      * @return list<array<string, mixed>>
      */
-
     private function persistImportedUidGroup(string $username, CalendarInstance $instance, string $ics): array
     {
         return DB::connection('wgw')->transaction(function () use ($username, $instance, $ics): array {
@@ -135,7 +145,7 @@ trait CalendarEventMutationSupport
 
             $object = $this->findObjectInCalendar((int) $instance->calendarid, $eventUri, fresh: true);
             if ($object === null) {
-                throw new \App\Exceptions\ApiHttpException(500, 'Could not load imported calendar event.', 'server_error');
+                throw new ApiHttpException(500, 'Could not load imported calendar event.', 'server_error');
             }
 
             return $this->mapper->toCalendarEvents(
@@ -161,7 +171,7 @@ trait CalendarEventMutationSupport
                 }
                 $frequency = strtolower((string) ($rule['frequency'] ?? ''));
                 if ($frequency !== '' && ! in_array($frequency, $knownFrequencies, true)) {
-                    throw new \App\Exceptions\ApiHttpException(400, 'Unparseable recurrence rule.', 'bad_request');
+                    throw new ApiHttpException(400, 'Unparseable recurrence rule.', 'bad_request');
                 }
             }
         }
@@ -183,7 +193,6 @@ trait CalendarEventMutationSupport
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-
     public function update(
         string $username,
         string $eventId,
@@ -198,7 +207,6 @@ trait CalendarEventMutationSupport
      * @param  array<string, mixed>  $patch
      * @return array<string, mixed>
      */
-
     public function patch(
         string $username,
         string $eventId,
@@ -213,7 +221,6 @@ trait CalendarEventMutationSupport
      * @param  array<string, mixed>  $patch
      * @return array<string, mixed>
      */
-
     public function patchWithPrecondition(
         string $username,
         string $eventId,
@@ -236,7 +243,6 @@ trait CalendarEventMutationSupport
     /**
      * @return array{ok: true}
      */
-
     public function delete(
         string $username,
         string $eventId,
@@ -249,7 +255,6 @@ trait CalendarEventMutationSupport
     /**
      * @return array{ok: true}
      */
-
     public function deleteWithPrecondition(
         string $username,
         string $eventId,
@@ -260,7 +265,7 @@ trait CalendarEventMutationSupport
         return DB::connection('wgw')->transaction(function () use ($username, $eventId, $ifMatch, $ifUnmodifiedSince, $requirePrecondition): array {
             $located = $this->findOwnedEvent($username, $eventId, lock: true);
             if ($located === null) {
-                throw new \App\Exceptions\ApiHttpException(404, 'Calendar event not found.', 'not_found');
+                throw new ApiHttpException(404, 'Calendar event not found.', 'not_found');
             }
 
             $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
@@ -274,7 +279,6 @@ trait CalendarEventMutationSupport
      * @param  array{object: CalendarObject, instance: CalendarInstance, calendarUri: string, veventUid: string|null}  $located
      * @return array{ok: true}
      */
-
     private function finishDelete(string $username, array $located): array
     {
         $instance = $located['instance'];
@@ -327,7 +331,6 @@ trait CalendarEventMutationSupport
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-
     private function persistEventMutation(
         string $username,
         string $eventId,
@@ -348,7 +351,7 @@ trait CalendarEventMutationSupport
         ): array {
             $located = $this->findOwnedEvent($username, $eventId, lock: true);
             if ($located === null) {
-                throw new \App\Exceptions\ApiHttpException(404, 'Calendar event not found.', 'not_found');
+                throw new ApiHttpException(404, 'Calendar event not found.', 'not_found');
             }
 
             $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
@@ -422,7 +425,7 @@ trait CalendarEventMutationSupport
 
             $updated = $this->findObjectInCalendar((int) $targetInstance->calendarid, $eventUri, fresh: true);
             if ($updated === null) {
-                throw new \App\Exceptions\ApiHttpException(500, 'Could not load updated calendar event.', 'server_error');
+                throw new ApiHttpException(500, 'Could not load updated calendar event.', 'server_error');
             }
 
             return $this->mapper->toCalendarEvent(
@@ -437,7 +440,6 @@ trait CalendarEventMutationSupport
     /**
      * @param  array<string, mixed>  $payload
      */
-
     private function resolvePatchTargetCalendar(
         string $username,
         array $payload,
@@ -461,7 +463,7 @@ trait CalendarEventMutationSupport
 
         $target = $this->calendars->findAccessibleCalendar($username, $requestedId);
         if ($target === null) {
-            throw new \App\Exceptions\ApiHttpException(404, 'Calendar not found.', 'not_found');
+            throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
         $this->assertAcceptsEventWrites($username, $target);
 
@@ -471,19 +473,18 @@ trait CalendarEventMutationSupport
     private function assertAcceptsEventWrites(string $username, CalendarInstance $instance): void
     {
         if ($this->calendars->isSubscriptionCalendar($username, $this->calendars->apiIdForInstance($instance))) {
-            throw new \App\Exceptions\ApiHttpException(403, 'Subscription calendars are read-only.', 'forbidden');
+            throw new ApiHttpException(403, 'Subscription calendars are read-only.', 'forbidden');
         }
     }
 
     /**
      * @param  array<string, mixed>  $payload
      */
-
     private function resolveCalendarFromPayload(string $username, array $payload): CalendarInstance
     {
         $calendarIds = $payload['calendarIds'] ?? null;
         if (! is_array($calendarIds) || $calendarIds === []) {
-            throw new \App\Exceptions\ApiHttpException(400, 'calendarIds is required.', 'bad_request', ['calendarIds']);
+            throw new ApiHttpException(400, 'calendarIds is required.', 'bad_request', ['calendarIds']);
         }
 
         $calendarUri = null;
@@ -495,12 +496,12 @@ trait CalendarEventMutationSupport
         }
 
         if ($calendarUri === null || $calendarUri === '') {
-            throw new \App\Exceptions\ApiHttpException(400, 'calendarIds is required.', 'bad_request', ['calendarIds']);
+            throw new ApiHttpException(400, 'calendarIds is required.', 'bad_request', ['calendarIds']);
         }
 
         $instance = $this->calendars->findAccessibleCalendar($username, $calendarUri);
         if ($instance === null) {
-            throw new \App\Exceptions\ApiHttpException(404, 'Calendar not found.', 'not_found');
+            throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
 
         return $instance;
@@ -511,7 +512,6 @@ trait CalendarEventMutationSupport
      * @param  array<string, mixed>|null  $existingEvent
      * @return array<string, mixed>
      */
-
     private function normalizeEventPayload(array $payload, ?array $existingEvent = null): array
     {
         $event = $payload;
@@ -521,7 +521,7 @@ trait CalendarEventMutationSupport
             if ($existingEvent !== null && isset($existingEvent['start']) && is_string($existingEvent['start'])) {
                 $event['start'] = $existingEvent['start'];
             } else {
-                throw new \App\Exceptions\ApiHttpException(400, 'start is required.', 'bad_request', ['start']);
+                throw new ApiHttpException(400, 'start is required.', 'bad_request', ['start']);
             }
         }
 
@@ -533,19 +533,18 @@ trait CalendarEventMutationSupport
     /**
      * @param  array<string, mixed>  $event
      */
-
     private function assertEventTitle(array &$event, bool $requireTitle): void
     {
         if (! array_key_exists('title', $event)) {
             if ($requireTitle) {
-                throw new \App\Exceptions\ApiHttpException(400, 'title is required.', 'bad_request', ['title']);
+                throw new ApiHttpException(400, 'title is required.', 'bad_request', ['title']);
             }
 
             return;
         }
 
         if (! is_string($event['title']) || trim($event['title']) === '') {
-            throw new \App\Exceptions\ApiHttpException(400, 'title is required.', 'bad_request', ['title']);
+            throw new ApiHttpException(400, 'title is required.', 'bad_request', ['title']);
         }
 
         $event['title'] = trim($event['title']);
@@ -554,7 +553,6 @@ trait CalendarEventMutationSupport
     /**
      * @param  array<string, mixed>  $payload
      */
-
     private function allocateEventUri(int $calendarId, array $payload): string
     {
         for ($attempt = 0; $attempt < 5; $attempt++) {
@@ -564,14 +562,13 @@ trait CalendarEventMutationSupport
             }
         }
 
-        throw new \App\Exceptions\ApiHttpException(500, 'Could not allocate calendar event id.', 'server_error');
+        throw new ApiHttpException(500, 'Could not allocate calendar event id.', 'server_error');
     }
 
     /**
      * @return array{object: CalendarObject, instance: CalendarInstance, calendarUri: string, veventUid: string|null}|null
      */
-
-    private function findOwnedEvent(string $username, string $eventId, bool $lock = false): ?array
+    public function findOwnedEvent(string $username, string $eventId, bool $lock = false): ?array
     {
         $parsed = CalendarConversionSupport::parseEventId($eventId);
         $eventUri = CalendarEventMapper::eventUriFromId($eventId);
@@ -627,7 +624,7 @@ trait CalendarEventMutationSupport
         ];
     }
 
-    private function findObjectInCalendar(int $calendarId, string $eventUri, bool $fresh = false): ?CalendarObject
+    public function findObjectInCalendar(int $calendarId, string $eventUri, bool $fresh = false): ?CalendarObject
     {
         $object = CalendarObject::query()
             ->where('calendarid', $calendarId)
@@ -666,7 +663,7 @@ trait CalendarEventMutationSupport
         );
     }
 
-    private function calBackend(): CalPDO
+    public function calBackend(): CalPDO
     {
         return new CalPDO(DB::connection('wgw')->getPdo());
     }
@@ -674,10 +671,8 @@ trait CalendarEventMutationSupport
     /**
      * @return array{0: int, 1: int}
      */
-
-    private function calBackendCalendarId(CalendarInstance $instance): array
+    public function calBackendCalendarId(CalendarInstance $instance): array
     {
         return [(int) $instance->calendarid, (int) $instance->id];
     }
-
 }

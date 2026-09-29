@@ -4,13 +4,37 @@ declare(strict_types=1);
 
 namespace App\Services\Update;
 
-use App\Exceptions\ApiHttpException;
 use App\Services\Installer\ApiRuntimeEnvService;
+use App\Support\WgwInstallConfig;
 use Illuminate\Support\Facades\DB;
 
-trait UpdateRunnerPackageIo
+final class UpdateRunnerPackageIo
 {
-    private function downloadPackage(string $url, string $target, string $fromVersion, string $toVersion): void
+    private ?UpdateRunner $runner = null;
+
+    public function __construct(
+        private UpdateStateStore $store,
+        private WgwInstallConfig $install,
+        private ApiRuntimeEnvService $apiEnv,
+        private UpdateRunnerFilesystem $files,
+    ) {}
+
+    public function bindRunner(UpdateRunner $runner): void
+    {
+        $this->runner = $runner;
+    }
+
+    private function runner(): UpdateRunner
+    {
+        $runner = $this->runner;
+        if (! $runner instanceof UpdateRunner) {
+            throw new \LogicException('Update runner is not bound.');
+        }
+
+        return $runner;
+    }
+
+    public function downloadPackage(string $url, string $target, string $fromVersion, string $toVersion): void
     {
         $ctx = stream_context_create([
             'http' => [
@@ -31,14 +55,14 @@ trait UpdateRunnerPackageIo
             throw new \RuntimeException('Could not write downloaded package.');
         }
         $meta = stream_get_meta_data($input);
-        $totalBytes = self::parseContentLength($meta['wrapper_data'] ?? null);
+        $totalBytes = $this->runner()->parseContentLength($meta['wrapper_data'] ?? null);
         $downloadedBytes = 0;
         $lastProgressWriteAt = 0.0;
-        self::writeDownloadProgress($fromVersion, $toVersion, $downloadedBytes, $totalBytes);
+        $this->runner()->writeDownloadProgress($fromVersion, $toVersion, $downloadedBytes, $totalBytes);
 
         try {
             while (! feof($input)) {
-                self::throwIfCancelRequested();
+                $this->runner()->throwIfCancelRequested();
                 $chunk = fread($input, 1024 * 1024);
                 if ($chunk === false) {
                     throw new \RuntimeException('Could not download release package.');
@@ -53,7 +77,7 @@ trait UpdateRunnerPackageIo
                 $downloadedBytes += $written;
                 $now = microtime(true);
                 if (($now - $lastProgressWriteAt) >= 0.2 || ($totalBytes !== null && $downloadedBytes >= $totalBytes)) {
-                    self::writeDownloadProgress($fromVersion, $toVersion, $downloadedBytes, $totalBytes);
+                    $this->runner()->writeDownloadProgress($fromVersion, $toVersion, $downloadedBytes, $totalBytes);
                     $lastProgressWriteAt = $now;
                 }
             }
@@ -70,15 +94,15 @@ trait UpdateRunnerPackageIo
             @unlink($tmpTarget);
             throw new \RuntimeException('Downloaded package is incomplete.');
         }
-        self::throwIfCancelRequested();
+        $this->runner()->throwIfCancelRequested();
         if (! @rename($tmpTarget, $target)) {
             @unlink($tmpTarget);
             throw new \RuntimeException('Could not write downloaded package.');
         }
-        self::writeDownloadProgress($fromVersion, $toVersion, $downloadedBytes, $downloadedBytes);
+        $this->runner()->writeDownloadProgress($fromVersion, $toVersion, $downloadedBytes, $downloadedBytes);
     }
 
-    private function verifyChecksum(string $path, string $expected): void
+    public function verifyChecksum(string $path, string $expected): void
     {
         $actual = hash_file('sha256', $path);
         if (! is_string($actual) || ! hash_equals(strtolower($expected), strtolower($actual))) {
@@ -86,7 +110,7 @@ trait UpdateRunnerPackageIo
         }
     }
 
-    private function verifyChecksumSignature(string $checksum, string $signature): void
+    public function verifyChecksumSignature(string $checksum, string $signature): void
     {
         if (! function_exists('openssl_verify')) {
             throw new \RuntimeException('OpenSSL extension is required for signature verification.');
@@ -112,8 +136,7 @@ trait UpdateRunnerPackageIo
     /**
      * @return array{version: string, package_url: string, checksum_sha256: string, checksum_signature: string}
      */
-
-    private function latestFromState(): array
+    public function latestFromState(): array
     {
         $state = $this->store->read();
         $latest = isset($state['latest']) && is_array($state['latest']) ? $state['latest'] : null;
@@ -121,12 +144,12 @@ trait UpdateRunnerPackageIo
             throw new \RuntimeException('No checked update metadata found. Run Check now first.');
         }
 
-        return self::normalizeRequiredReleaseMetadata($latest);
+        return $this->runner()->normalizeRequiredReleaseMetadata($latest);
     }
 
-    private function extractPackage(string $zipPath, string $targetDir, string $fromVersion, string $toVersion): void
+    public function extractPackage(string $zipPath, string $targetDir, string $fromVersion, string $toVersion): void
     {
-        self::rmRecursive($targetDir);
+        $this->files->rmRecursive($targetDir);
         @mkdir($targetDir, 0775, true);
         $zip = new \ZipArchive;
         if ($zip->open($zipPath) !== true) {
@@ -137,10 +160,10 @@ trait UpdateRunnerPackageIo
             $zip->close();
             throw new \RuntimeException('Release ZIP is empty.');
         }
-        self::writePhaseProgress('extracting', $fromVersion, $toVersion, 0, $total);
+        $this->runner()->writePhaseProgress('extracting', $fromVersion, $toVersion, 0, $total);
         $done = 0;
         for ($i = 0; $i < $total; $i++) {
-            self::throwIfCancelRequested();
+            $this->runner()->throwIfCancelRequested();
             $name = $zip->getNameIndex($i);
             if (! is_string($name) || $name === '') {
                 continue;
@@ -150,12 +173,12 @@ trait UpdateRunnerPackageIo
                 throw new \RuntimeException('Could not extract release ZIP.');
             }
             $done++;
-            self::writePhaseProgress('extracting', $fromVersion, $toVersion, $done, $total);
+            $this->runner()->writePhaseProgress('extracting', $fromVersion, $toVersion, $done, $total);
         }
         $zip->close();
     }
 
-    private function resolveReleaseRoot(string $stagingDir): string
+    public function resolveReleaseRoot(string $stagingDir): string
     {
         $items = scandir($stagingDir);
         if (! is_array($items)) {
@@ -175,7 +198,6 @@ trait UpdateRunnerPackageIo
     /**
      * @param  list<string>  $paths
      */
-
     private function backupPaths(
         string $sourceRoot,
         string $backupRoot,
@@ -186,23 +208,23 @@ trait UpdateRunnerPackageIo
         $total = count($paths);
         $done = 0;
         foreach ($paths as $relative) {
-            self::throwIfCancelRequested();
+            $this->runner()->throwIfCancelRequested();
             $src = $sourceRoot.'/'.$relative;
             if (file_exists($src)) {
                 $dest = $backupRoot.'/'.$relative;
                 self::copyRecursive($src, $dest, true);
             }
             $done++;
-            self::writePhaseProgress('backing_up', $fromVersion, $toVersion, $done, $total);
+            $this->runner()->writePhaseProgress('backing_up', $fromVersion, $toVersion, $done, $total);
         }
     }
 
-    private function backupDatabase(
+    public function backupDatabase(
         string $backupRoot,
         string $fromVersion,
         string $toVersion
     ): void {
-        self::writePhaseProgress('backing_up', $fromVersion, $toVersion, 0, 1);
+        $this->runner()->writePhaseProgress('backing_up', $fromVersion, $toVersion, 0, 1);
         $driver = $this->wgwDriver();
         if ($driver === 'sqlite') {
             $pdo = DB::connection('wgw')->getPdo();
@@ -212,26 +234,26 @@ trait UpdateRunnerPackageIo
             }
             $dest = $backupRoot.'/database.sqlite';
             if (! @copy($sqlitePath, $dest)) {
-                $reason = self::lastFilesystemError();
+                $reason = $this->files->lastFilesystemError();
                 throw new \RuntimeException(
                     'Could not create SQLite backup: '.$sqlitePath.' -> '.$dest.($reason !== '' ? ' ('.$reason.')' : '')
                 );
             }
-            self::writePhaseProgress('backing_up', $fromVersion, $toVersion, 1, 1);
+            $this->runner()->writePhaseProgress('backing_up', $fromVersion, $toVersion, 1, 1);
 
             return;
         }
         if ($driver === 'mysql') {
             $dest = $backupRoot.'/database.sql';
             self::exportMysqlDatabase(DB::connection('wgw')->getPdo(), $dest);
-            self::writePhaseProgress('backing_up', $fromVersion, $toVersion, 1, 1);
+            $this->runner()->writePhaseProgress('backing_up', $fromVersion, $toVersion, 1, 1);
 
             return;
         }
         throw new \RuntimeException('Database backup is not supported for PDO driver: '.$driver);
     }
 
-    private function wgwDriver(): string
+    public function wgwDriver(): string
     {
         return DB::connection('wgw')->getDriverName();
     }
@@ -263,7 +285,7 @@ trait UpdateRunnerPackageIo
         }
         $out = @fopen($destPath, 'wb');
         if (! is_resource($out)) {
-            $reason = self::lastFilesystemError();
+            $reason = $this->files->lastFilesystemError();
             throw new \RuntimeException(
                 'Could not create MySQL backup file: '.$destPath.($reason !== '' ? ' ('.$reason.')' : '')
             );
@@ -352,8 +374,7 @@ trait UpdateRunnerPackageIo
     /**
      * @param  list<string>  $paths
      */
-
-    private function applyPaths(string $sourceRoot, string $targetRoot, array $paths): void
+    public function applyPaths(string $sourceRoot, string $targetRoot, array $paths): void
     {
         $preservation = new ApiPackageLocalPreservation;
 
@@ -367,7 +388,7 @@ trait UpdateRunnerPackageIo
                 ? $preservation->snapshot($dest)
                 : ['files' => [], 'dirs' => [], 'tempBase' => null];
             $hadLocalState = $preserved['files'] !== [] || $preserved['dirs'] !== [];
-            self::rmRecursive($dest);
+            $this->files->rmRecursive($dest);
             self::copyRecursive($src, $dest);
             if ($relative === 'packages/api') {
                 if ($hadLocalState) {
@@ -376,7 +397,7 @@ trait UpdateRunnerPackageIo
                 } else {
                     $preservation->cleanupSnapshot($preserved);
                 }
-                $envResult = $this->apiEnv->ensure($targetRoot, \App\Services\Installer\ApiRuntimeEnvService::guessRequestAppUrl());
+                $envResult = $this->apiEnv->ensure($targetRoot, ApiRuntimeEnvService::guessRequestAppUrl());
                 if ($envResult['createdEnv']) {
                     $this->store->appendLog('Created packages/api/.env from .env.example.');
                 }
@@ -390,7 +411,7 @@ trait UpdateRunnerPackageIo
         }
     }
 
-    private function backupApiEnvFile(string $backupDir): void
+    public function backupApiEnvFile(string $backupDir): void
     {
         $apiRoot = $this->apiEnv->apiPackageRoot($this->install->installRoot());
         if ($apiRoot === null) {
@@ -408,7 +429,6 @@ trait UpdateRunnerPackageIo
     /**
      * @param  list<string>  $paths
      */
-
     private function restorePaths(string $backupRoot, string $targetRoot, array $paths): void
     {
         if (! is_dir($backupRoot)) {
@@ -420,7 +440,7 @@ trait UpdateRunnerPackageIo
                 continue;
             }
             $dest = $targetRoot.'/'.$relative;
-            self::rmRecursive($dest);
+            $this->files->rmRecursive($dest);
             self::copyRecursive($src, $dest);
         }
     }
@@ -428,11 +448,11 @@ trait UpdateRunnerPackageIo
     private function copyRecursive(string $source, string $dest, bool $allowCancellation = false): void
     {
         if ($allowCancellation) {
-            self::throwIfCancelRequested();
+            $this->runner()->throwIfCancelRequested();
         }
         if (is_dir($source)) {
             if (! is_dir($dest) && ! @mkdir($dest, 0775, true)) {
-                $reason = self::lastFilesystemError();
+                $reason = $this->files->lastFilesystemError();
                 throw new \RuntimeException(
                     'Could not create destination directory: '.$dest.($reason !== '' ? ' ('.$reason.')' : '')
                 );
@@ -452,7 +472,7 @@ trait UpdateRunnerPackageIo
         }
         $destDir = dirname($dest);
         if (! is_dir($destDir) && ! @mkdir($destDir, 0775, true)) {
-            $reason = self::lastFilesystemError();
+            $reason = $this->files->lastFilesystemError();
             throw new \RuntimeException(
                 'Could not create destination directory: '.$destDir.($reason !== '' ? ' ('.$reason.')' : '')
             );
@@ -461,26 +481,25 @@ trait UpdateRunnerPackageIo
             throw new \RuntimeException('Destination directory is not writable: '.$destDir);
         }
         if (! @copy($source, $dest)) {
-            $reason = self::lastFilesystemError();
+            $reason = $this->files->lastFilesystemError();
             throw new \RuntimeException(
                 'Could not copy file: '.$source.' -> '.$dest.($reason !== '' ? ' ('.$reason.')' : '')
             );
         }
     }
 
-    private function removeLegacySourceTrees(string $appRoot): void
+    public function removeLegacySourceTrees(string $appRoot): void
     {
         foreach (['wgw-src', 'src', 'resources', 'composer.json', 'composer.lock', 'vendor'] as $relative) {
             $path = $appRoot.'/'.$relative;
             if (! file_exists($path)) {
                 continue;
             }
-            self::rmRecursive($path);
+            $this->files->rmRecursive($path);
         }
     }
 
     /**
      * @param  list<string>  $paths
      */
-
 }

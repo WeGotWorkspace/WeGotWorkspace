@@ -4,11 +4,25 @@ declare(strict_types=1);
 
 namespace App\Services\Update;
 
-use App\Exceptions\ApiHttpException;
-
-trait UpdateRunnerBackupArchive
+final class UpdateRunnerBackupArchive
 {
-    private function listBackups(): array
+    public function __construct(
+        private UpdateStateStore $store,
+        private UpdateRunnerFilesystem $files,
+    ) {}
+
+    /**
+     * @return list<array{
+     *   name: string,
+     *   sizeBytes: int,
+     *   modifiedAt: string|null,
+     *   fromVersion: string|null,
+     *   toVersion: string|null,
+     *   format: string,
+     *   downloadable: bool
+     * }>
+     */
+    public function listBackups(): array
     {
         $dir = $this->store->absolutePath($this->store->backupDir());
         if (! is_dir($dir)) {
@@ -54,7 +68,6 @@ trait UpdateRunnerBackupArchive
     /**
      * @return array<string, string>
      */
-
     private function readMetadataFromName(string $name): array
     {
         if (preg_match('/-from-([A-Za-z0-9._-]+)-to-([A-Za-z0-9._-]+)(?:\.zip)?$/', $name, $m) !== 1) {
@@ -93,7 +106,7 @@ trait UpdateRunnerBackupArchive
         return $size;
     }
 
-    private function buildBackupBaseName(string $fromVersion, string $toVersion): string
+    public function buildBackupBaseName(string $fromVersion, string $toVersion): string
     {
         $from = preg_replace('/[^A-Za-z0-9.]+/', '_', trim($fromVersion)) ?: 'unknown';
         $to = preg_replace('/[^A-Za-z0-9.]+/', '_', trim($toVersion)) ?: 'unknown';
@@ -101,7 +114,7 @@ trait UpdateRunnerBackupArchive
         return 'backup-'.date('YmdHis').'-from-'.$from.'-to-'.$to;
     }
 
-    private function finalizeBackupArchive(
+    public function finalizeBackupArchive(
         string $backupDir,
         string $archivePath,
         string $fromVersion,
@@ -117,13 +130,12 @@ trait UpdateRunnerBackupArchive
                 'created_at' => date('c'),
             ]
         );
-        self::rmRecursive($backupDir);
+        $this->files->rmRecursive($backupDir);
     }
 
     /**
      * @param  array<string, mixed>  $metadata
      */
-
     private function createZipFromDirectory(string $sourceDir, string $archivePath, array $metadata): void
     {
         $zip = new \ZipArchive;
@@ -165,7 +177,6 @@ trait UpdateRunnerBackupArchive
     /**
      * @return array<string, mixed>
      */
-
     private function readBackupMetadata(string $archivePath): array
     {
         $zip = new \ZipArchive;
@@ -181,5 +192,4 @@ trait UpdateRunnerBackupArchive
 
         return is_array($decoded) ? $decoded : [];
     }
-
 }

@@ -6,16 +6,21 @@ namespace App\Services\Mail;
 
 use IMAP\Connection;
 
-trait MailMessageOperations
+final class MailMessageOperations
 {
-    private function handleMessages(string $username, array $query): array
+    public function __construct(
+        private MailImapGate $imap,
+        private MailFolderOperations $folders,
+    ) {}
+
+    public function handleMessages(string $username, array $query): array
     {
         $folderEnc = (string) ($query['folder'] ?? '');
-        $folder = self::folderIdDecode($folderEnc);
+        $folder = MailOperationService::folderIdDecode($folderEnc);
         if ($folder === '') {
             throw new MailResponseException(400, ['error' => 'mailbox_required']);
         }
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
         $limit = isset($query['limit']) ? (int) $query['limit'] : 40;
         $offset = isset($query['offset']) ? (int) $query['offset'] : 0;
         $limit = max(1, min(80, $limit));
@@ -78,7 +83,7 @@ trait MailMessageOperations
                     $messages[] = self::overviewToMessage(
                         $o,
                         $mbForMsg,
-                        $folder === '__starred__' ? '__starred__' : self::folderIdEncode($mbForMsg),
+                        $folder === '__starred__' ? '__starred__' : MailOperationService::folderIdEncode($mbForMsg),
                     );
                 }
                 $resp = [200, ['messages' => $messages, 'hasMore' => $hasMore]];
@@ -99,15 +104,14 @@ trait MailMessageOperations
     /**
      * GET {@code messages/attachments?folder=…&uids=1,2,3} — MIME structure scan for list paperclips (after fast overview).
      */
-
-    private function handleMessageAttachments(string $username, array $query): array
+    public function handleMessageAttachments(string $username, array $query): array
     {
         $folderEnc = (string) ($query['folder'] ?? '');
-        $folder = self::folderIdDecode($folderEnc);
+        $folder = MailOperationService::folderIdDecode($folderEnc);
         if ($folder === '') {
             throw new MailResponseException(400, ['error' => 'mailbox_required']);
         }
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
         $uidsRaw = isset($query['uids']) && is_string($query['uids']) ? $query['uids'] : '';
         $uids = self::parseUidListParam($uidsRaw, 80);
         if ($uids === []) {
@@ -132,7 +136,7 @@ trait MailMessageOperations
                         continue;
                     }
                     $items[] = [
-                        'id' => self::folderIdEncode($mbForMsg).':'.$uid,
+                        'id' => MailOperationService::folderIdEncode($mbForMsg).':'.$uid,
                         'attachments' => self::attachmentSummariesForUid($conn, $uid),
                     ];
                 }
@@ -154,7 +158,6 @@ trait MailMessageOperations
     /**
      * @return list<int>
      */
-
     private function parseUidListParam(string $uidsRaw, int $max): array
     {
         $seen = [];
@@ -179,7 +182,6 @@ trait MailMessageOperations
     /**
      * @param  list<array{id: string, name: string, size: int, type: string, part: string}>  $attachments
      */
-
     private function overviewToMessage(object $o, string $realMailbox, string $folderIdForUi, array $attachments = []): array
     {
         $fromRaw = isset($o->from) ? (string) $o->from : '';
@@ -197,7 +199,7 @@ trait MailMessageOperations
         $subjectSnippet = mb_substr($subject, 0, 140);
 
         return [
-            'id' => self::folderIdEncode($realMailbox).':'.$uid,
+            'id' => MailOperationService::folderIdEncode($realMailbox).':'.$uid,
             'folderId' => $folderIdForUi,
             'mailbox' => $realMailbox,
             'from' => $from,
@@ -216,7 +218,6 @@ trait MailMessageOperations
     /**
      * @return list<array{id: string, name: string, size: int, type: string, part: string}>
      */
-
     private function attachmentSummariesForUid(Connection $conn, int $uid): array
     {
         $msgno = MailImapClient::msgnoFromUid($conn, $uid);
@@ -260,7 +261,7 @@ trait MailMessageOperations
         return mb_substr($t, 0, 220);
     }
 
-    private function handleMessageGet(string $username, array $query): array
+    public function handleMessageGet(string $username, array $query): array
     {
         $folderEnc = (string) ($query['folder'] ?? '');
         $uid = is_numeric($query['uid'] ?? null) ? (int) $query['uid'] : 0;
@@ -269,11 +270,11 @@ trait MailMessageOperations
             $iv = (string) $query['inline_images'];
             $inlineImages = $iv === '1' || strtolower($iv) === 'true';
         }
-        $mb = self::folderIdDecode($folderEnc);
+        $mb = MailOperationService::folderIdDecode($folderEnc);
         if ($mb === '' || $uid <= 0) {
             throw new MailResponseException(400, ['error' => 'bad_params']);
         }
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
         $err = null;
         $conn = MailImapClient::connect($cred['imap'], $err);
         if ($conn === null) {
@@ -292,7 +293,7 @@ trait MailMessageOperations
                     $msg = self::overviewToMessage(
                         $ov[0],
                         $mb,
-                        self::folderIdEncode($mb),
+                        MailOperationService::folderIdEncode($mb),
                         self::attachmentSummariesForUid($conn, $uid),
                     );
                     $msgno = MailImapClient::msgnoFromUid($conn, $uid);
@@ -339,16 +340,16 @@ trait MailMessageOperations
         return $resp[1];
     }
 
-    private function handleMessageAttachmentDownload(string $username, array $query): MailBinaryDownload
+    public function handleMessageAttachmentDownload(string $username, array $query): MailBinaryDownload
     {
         $folderEnc = (string) ($query['folder'] ?? '');
         $uid = is_numeric($query['uid'] ?? null) ? (int) $query['uid'] : 0;
         $part = is_string($query['part'] ?? null) ? trim($query['part']) : '';
-        $mb = self::folderIdDecode($folderEnc);
+        $mb = MailOperationService::folderIdDecode($folderEnc);
         if ($mb === '' || $uid <= 0 || $part === '' || preg_match('/^[1-9][0-9]*(\.[1-9][0-9]*)*$/', $part) !== 1) {
             throw new MailResponseException(400, ['error' => 'bad_params']);
         }
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
         $err = null;
         $conn = MailImapClient::connect($cred['imap'], $err);
         if ($conn === null) {
@@ -401,16 +402,16 @@ trait MailMessageOperations
         return $resp[1];
     }
 
-    private function handleMessagePatch(string $username, array $j): array
+    public function handleMessagePatch(string $username, array $j): array
     {
 
         $folderEnc = isset($j['folder']) && is_string($j['folder']) ? $j['folder'] : '';
         $uid = isset($j['uid']) && is_numeric($j['uid']) ? (int) $j['uid'] : 0;
-        $mb = self::folderIdDecode($folderEnc);
+        $mb = MailOperationService::folderIdDecode($folderEnc);
         if ($mb === '' || $uid <= 0) {
             throw new MailResponseException(400, ['error' => 'bad_params']);
         }
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
         $err = null;
         $conn = MailImapClient::connect($cred['imap'], $err);
         if ($conn === null) {
@@ -451,15 +452,15 @@ trait MailMessageOperations
         return $resp[1];
     }
 
-    private function handleMessageDelete(string $username, array $query): array
+    public function handleMessageDelete(string $username, array $query): array
     {
         $folderEnc = isset($query['folder']) && is_string($query['folder']) ? $query['folder'] : '';
         $uid = isset($query['uid']) && is_numeric($query['uid']) ? (int) $query['uid'] : 0;
-        $mb = self::folderIdDecode($folderEnc);
+        $mb = MailOperationService::folderIdDecode($folderEnc);
         if ($mb === '' || $uid <= 0) {
             throw new MailResponseException(400, ['error' => 'bad_params']);
         }
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
         $err = null;
         $conn = MailImapClient::connect($cred['imap'], $err);
         if ($conn === null) {
@@ -488,14 +489,14 @@ trait MailMessageOperations
         return $resp[1];
     }
 
-    private function handleMove(string $username, array $j): array
+    public function handleMove(string $username, array $j): array
     {
 
         $fromEnc = isset($j['fromFolder']) && is_string($j['fromFolder']) ? $j['fromFolder'] : '';
         $toEnc = isset($j['toFolder']) && is_string($j['toFolder']) ? $j['toFolder'] : '';
         $uid = isset($j['uid']) && is_numeric($j['uid']) ? (int) $j['uid'] : 0;
-        $from = self::folderIdDecode($fromEnc);
-        $to = self::folderIdDecode($toEnc);
+        $from = MailOperationService::folderIdDecode($fromEnc);
+        $to = MailOperationService::folderIdDecode($toEnc);
         $toSys = null;
         if ($to === '') {
             $t = strtolower(trim($toEnc));
@@ -506,7 +507,7 @@ trait MailMessageOperations
         if ($from === '' || ($to === '' && $toSys === null) || $uid <= 0 || $to === '__starred__') {
             throw new MailResponseException(400, ['error' => 'bad_params']);
         }
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
         $err = null;
         $conn = MailImapClient::connect($cred['imap'], $err);
         if ($conn === null) {
@@ -520,7 +521,7 @@ trait MailMessageOperations
             } else {
                 $target = $to;
                 if ($target === '' && $toSys !== null) {
-                    $resolved = self::resolveSystemMailbox($conn, $ref, $toSys);
+                    $resolved = $this->folders->resolveSystemMailbox($conn, $ref, $toSys);
                     if ($resolved === null || $resolved === '') {
                         $resp = [400, ['error' => 'no_target_mailbox', 'message' => 'No mailbox found for '.$toSys]];
                     } else {
@@ -549,5 +550,4 @@ trait MailMessageOperations
     /**
      * @param  mixed  $attachments  JSON {@code attachments}: list of {@code { filename, mimeType, contentBase64 }}
      */
-
 }

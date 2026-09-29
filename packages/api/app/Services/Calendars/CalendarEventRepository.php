@@ -4,40 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
-use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
-use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
-use App\Services\Calendars\Conversion\CalendarConversionSupport;
-use App\Services\Calendars\Conversion\CalendarIcsSplitSupport;
-use App\Services\Calendars\Conversion\ICalendarJmapEventConverter;
-use App\Services\Search\BestEffortSearchIndexSync;
-use App\Services\Search\SearchIndexerService;
 use App\Services\VObject\VObjectPayloadGuard;
-use DateInterval;
-use DateTimeImmutable;
-use DateTimeZone;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 
 final class CalendarEventRepository
 {
-    use CalendarEventQuerySupport;
-    use CalendarEventMutationSupport;
-
     public function __construct(
         private readonly CalendarEventMapper $mapper,
-        private readonly SearchIndexerService $searchIndexer,
-        private readonly BestEffortSearchIndexSync $searchIndexSync,
         private readonly CalendarEventExpansionService $expansion,
-        private readonly JmapCalendarEventStateService $eventStates,
         private readonly CalendarRepository $calendars,
-        private readonly CalendarSchedulingService $scheduling,
-        private readonly CalendarMeetLinkWriteHook $meetLinkHook,
-        private readonly EventDispatch $eventDispatch = new EventDispatch([]),
+        private readonly CalendarEventQuerySupport $queries,
+        private readonly CalendarEventMutationSupport $mutations,
     ) {}
 
     /**
@@ -104,15 +83,15 @@ final class CalendarEventRepository
         int $position = 0,
         ?int $limit = null,
     ): array {
-        $instances = $this->resolveQueryCalendars($username, $filter['inCalendars'] ?? null);
-        $window = $this->parseQueryWindow($filter);
+        $instances = $this->queries->resolveQueryCalendars($username, $filter['inCalendars'] ?? null);
+        $window = $this->queries->parseQueryWindow($filter);
         $title = isset($filter['title']) && is_string($filter['title']) && trim($filter['title']) !== ''
             ? trim($filter['title'])
             : null;
 
         $matches = [];
         foreach ($instances as $instance) {
-            foreach ($this->candidateObjects($instance, $window) as $object) {
+            foreach ($this->queries->candidateObjects($instance, $window) as $object) {
                 $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
                 $calendarApiId = $this->calendars->apiIdForInstance($instance);
                 try {
@@ -120,7 +99,7 @@ final class CalendarEventRepository
                         if ($title !== null && stripos((string) ($event['title'] ?? ''), $title) === false) {
                             continue;
                         }
-                        if ($window !== null && ! $this->eventIntersectsWindow($event, $raw, $calendarApiId, $window)) {
+                        if ($window !== null && ! $this->queries->eventIntersectsWindow($event, $raw, $calendarApiId, $window)) {
                             continue;
                         }
                         $matches[] = $event;
@@ -134,7 +113,7 @@ final class CalendarEventRepository
             }
         }
 
-        $this->sortEvents($matches, $sort);
+        $this->queries->sortEvents($matches, $sort);
 
         $ids = [];
         foreach ($matches as $event) {
@@ -203,7 +182,7 @@ final class CalendarEventRepository
      */
     public function calendarUriForEvent(string $username, string $eventId): ?string
     {
-        return $this->findOwnedEvent($username, $eventId)['calendarUri'] ?? null;
+        return $this->mutations->findOwnedEvent($username, $eventId)['calendarUri'] ?? null;
     }
 
     /**
@@ -211,7 +190,7 @@ final class CalendarEventRepository
      */
     public function show(string $username, string $eventId): array
     {
-        $located = $this->findOwnedEvent($username, $eventId);
+        $located = $this->mutations->findOwnedEvent($username, $eventId);
         if ($located === null) {
             throw new ApiHttpException(404, 'Calendar event not found.', 'not_found');
         }
@@ -228,4 +207,114 @@ final class CalendarEventRepository
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
+    public function create(string $username, array $payload): array
+    {
+        return $this->mutations->create($username, $payload);
+    }
+
+    /**
+     * Import VEVENT UID groups from an ICS file. Does not run iTIP/iMIP.
+     *
+     * @return array{list: list<array<string, mixed>>, errors: list<array{index: int, message: string, code?: string}>}
+     */
+    public function importFromIcs(string $username, string $icsText, string $calendarId): array
+    {
+        return $this->mutations->importFromIcs($username, $icsText, $calendarId);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function update(
+        string $username,
+        string $eventId,
+        array $payload,
+        ?string $ifMatch = null,
+        ?string $ifUnmodifiedSince = null,
+    ): array {
+        return $this->mutations->update($username, $eventId, $payload, $ifMatch, $ifUnmodifiedSince);
+    }
+
+    /**
+     * @param  array<string, mixed>  $patch
+     * @return array<string, mixed>
+     */
+    public function patch(
+        string $username,
+        string $eventId,
+        array $patch,
+        ?string $ifMatch = null,
+        ?string $ifUnmodifiedSince = null,
+    ): array {
+        return $this->mutations->patch($username, $eventId, $patch, $ifMatch, $ifUnmodifiedSince);
+    }
+
+    /**
+     * @param  array<string, mixed>  $patch
+     * @return array<string, mixed>
+     */
+    public function patchWithPrecondition(
+        string $username,
+        string $eventId,
+        array $patch,
+        ?string $ifMatch = null,
+        ?string $ifUnmodifiedSince = null,
+        bool $requirePrecondition = true,
+    ): array {
+        return $this->mutations->patchWithPrecondition(
+            $username,
+            $eventId,
+            $patch,
+            $ifMatch,
+            $ifUnmodifiedSince,
+            $requirePrecondition,
+        );
+    }
+
+    /**
+     * @return array{ok: true}
+     */
+    public function delete(
+        string $username,
+        string $eventId,
+        ?string $ifMatch = null,
+        ?string $ifUnmodifiedSince = null,
+    ): array {
+        return $this->mutations->delete($username, $eventId, $ifMatch, $ifUnmodifiedSince);
+    }
+
+    /**
+     * @return array{ok: true}
+     */
+    public function deleteWithPrecondition(
+        string $username,
+        string $eventId,
+        ?string $ifMatch = null,
+        ?string $ifUnmodifiedSince = null,
+        bool $requirePrecondition = true,
+    ): array {
+        return $this->mutations->deleteWithPrecondition(
+            $username,
+            $eventId,
+            $ifMatch,
+            $ifUnmodifiedSince,
+            $requirePrecondition,
+        );
+    }
+
+    /**
+     * @return array{
+     *     oldState: string,
+     *     newState: string,
+     *     hasMoreChanges: bool,
+     *     created: list<string>,
+     *     updated: list<string>,
+     *     destroyed: list<string>
+     * }
+     */
+    public function changes(string $username, string $calendarId, ?string $since): array
+    {
+        return $this->queries->changes($username, $calendarId, $since);
+    }
 }

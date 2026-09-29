@@ -12,14 +12,9 @@ use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
 use App\Support\AppVersion;
 use App\Support\WgwInstallConfig;
-use Illuminate\Support\Facades\DB;
 
 final class UpdateRunner
 {
-    use UpdateRunnerPackageIo;
-    use UpdateRunnerFilesystem;
-    use UpdateRunnerBackupArchive;
-
     /** Orphan progress in state.json without a lock is cleared after this many seconds. */
     private const STALE_PROGRESS_SECONDS = 120;
 
@@ -32,7 +27,12 @@ final class UpdateRunner
         private ApiRuntimeEnvService $apiEnv,
         private WgwSchemaMigrator $schemaMigrator,
         private WgwConfigMigrator $configMigrator,
-    ) {}
+        private UpdateRunnerPackageIo $packages,
+        private UpdateRunnerFilesystem $files,
+        private UpdateRunnerBackupArchive $backups,
+    ) {
+        $this->packages->bindRunner($this);
+    }
 
     /**
      * @return array<string, mixed>
@@ -47,10 +47,10 @@ final class UpdateRunner
         $state = $this->store->read();
         $latest = isset($state['latest']) && is_array($state['latest']) ? $state['latest'] : null;
         $hasRequiredMetadata = self::hasRequiredReleaseMetadata($latest);
-        $driver = $this->wgwDriver();
+        $driver = $this->packages->wgwDriver();
         $checks = $this->envChecker->checkAll($driver === 'mysql' ? 'mysql' : 'sqlite');
         $compatible = $this->envChecker->allPassed($checks);
-        $checks = array_merge($checks, self::capacityChecks($this->install->installRoot()));
+        $checks = array_merge($checks, $this->files->capacityChecks($this->install->installRoot()));
         $lockHeld = is_file($this->store->absolutePath($this->store->lockPath()));
         $phase = self::phaseFromState($state);
         $inProgress = $lockHeld || $phase !== null;
@@ -73,7 +73,7 @@ final class UpdateRunner
             'latest' => $latest,
             'updateAvailable' => $hasRequiredMetadata && self::isUpdateAvailable($installedVersion, $latest),
             'compatible' => $compatible,
-            'backups' => self::listBackups(),
+            'backups' => $this->backups->listBackups(),
             'checks' => $checks,
             'inProgress' => $inProgress,
             'phase' => $phase,
@@ -281,7 +281,7 @@ final class UpdateRunner
         }
 
         $beforeVersion = $this->appVersion->current();
-        $release = self::latestFromState();
+        $release = $this->packages->latestFromState();
         $requestedVersion = trim((string) ($input['version'] ?? ''));
         if ($requestedVersion !== '' && ! hash_equals($release['version'], $requestedVersion)) {
             throw new \InvalidArgumentException('Checked release does not match the requested version. Check for updates again.');
@@ -291,7 +291,7 @@ final class UpdateRunner
         $checksum = $release['checksum_sha256'];
         $checksumSignature = $release['checksum_signature'];
 
-        $backupBaseName = self::buildBackupBaseName($beforeVersion, $targetVersion);
+        $backupBaseName = $this->backups->buildBackupBaseName($beforeVersion, $targetVersion);
         $backupDir = $this->store->absolutePath($this->store->backupDir()).'/'.$backupBaseName;
         $backupArchivePath = $this->store->absolutePath($this->store->backupDir()).'/'.$backupBaseName.'.zip';
         $replacePaths = [
@@ -332,25 +332,25 @@ final class UpdateRunner
             self::writeStatus('downloading', $beforeVersion, $targetVersion);
             $this->store->cleanupTemporaryData();
             @mkdir(dirname($this->store->absolutePath($this->store->packageKey())), 0775, true);
-            self::downloadPackage($packageUrl, $this->store->absolutePath($this->store->packageKey()), $beforeVersion, $targetVersion);
-            self::verifyChecksum($this->store->absolutePath($this->store->packageKey()), $checksum);
-            self::verifyChecksumSignature($checksum, $checksumSignature);
+            $this->packages->downloadPackage($packageUrl, $this->store->absolutePath($this->store->packageKey()), $beforeVersion, $targetVersion);
+            $this->packages->verifyChecksum($this->store->absolutePath($this->store->packageKey()), $checksum);
+            $this->packages->verifyChecksumSignature($checksum, $checksumSignature);
 
             self::writeStatus('extracting', $beforeVersion, $targetVersion);
-            self::extractPackage($this->store->absolutePath($this->store->packageKey()), $this->store->absolutePath($this->store->stagingKey()), $beforeVersion, $targetVersion);
-            $releaseRoot = self::resolveReleaseRoot($this->store->absolutePath($this->store->stagingKey()));
+            $this->packages->extractPackage($this->store->absolutePath($this->store->packageKey()), $this->store->absolutePath($this->store->stagingKey()), $beforeVersion, $targetVersion);
+            $releaseRoot = $this->packages->resolveReleaseRoot($this->store->absolutePath($this->store->stagingKey()));
 
             self::writeStatus('backing_up', $beforeVersion, $targetVersion);
             @mkdir($backupDir, 0775, true);
-            self::backupDatabase($backupDir, $beforeVersion, $targetVersion);
-            $this->backupApiEnvFile($backupDir);
+            $this->packages->backupDatabase($backupDir, $beforeVersion, $targetVersion);
+            $this->packages->backupApiEnvFile($backupDir);
             self::throwIfCancelRequested();
-            self::assertApplyCapacity($releaseRoot, $this->install->installRoot(), $replacePaths);
+            $this->files->assertApplyCapacity($releaseRoot, $this->install->installRoot(), $replacePaths);
 
             self::writeMaintenanceMode(true);
             self::writeStatus('applying_files', $beforeVersion, $targetVersion);
-            self::applyPaths($releaseRoot, $this->install->installRoot(), $replacePaths);
-            self::removeLegacySourceTrees($this->install->installRoot());
+            $this->packages->applyPaths($releaseRoot, $this->install->installRoot(), $replacePaths);
+            $this->packages->removeLegacySourceTrees($this->install->installRoot());
             file_put_contents($this->install->installRoot().'/VERSION', $targetVersion."\n", LOCK_EX);
 
             self::writeStatus('running_migrations', $beforeVersion, $targetVersion);
@@ -383,7 +383,7 @@ final class UpdateRunner
             self::writeMaintenanceMode(false);
             if (is_dir($backupDir)) {
                 try {
-                    self::finalizeBackupArchive($backupDir, $backupArchivePath, $beforeVersion, $targetVersion);
+                    $this->backups->finalizeBackupArchive($backupDir, $backupArchivePath, $beforeVersion, $targetVersion);
                 } catch (\Throwable $archiveError) {
                     $this->store->appendLog('Backup archive creation failed: '.$archiveError->getMessage());
                 }
@@ -454,7 +454,7 @@ final class UpdateRunner
             throw new \InvalidArgumentException('Backup not found.');
         }
         if (is_dir($path)) {
-            self::rmRecursive($path);
+            $this->files->rmRecursive($path);
         } elseif (! @unlink($path)) {
             throw new \RuntimeException('Could not delete backup.');
         }
@@ -562,7 +562,7 @@ final class UpdateRunner
      * @param  array<string, mixed>  $latest
      * @return array{version: string, package_url: string, checksum_sha256: string, checksum_signature: string}
      */
-    private function normalizeRequiredReleaseMetadata(array $latest): array
+    public function normalizeRequiredReleaseMetadata(array $latest): array
     {
         $version = self::requiredNonEmptyString($latest, 'version');
         $packageUrl = self::requiredNonEmptyString($latest, 'package_url');
@@ -623,7 +623,7 @@ final class UpdateRunner
         }
     }
 
-    private function writeDownloadProgress(
+    public function writeDownloadProgress(
         string $fromVersion,
         string $toVersion,
         int $downloadedBytes,
@@ -649,7 +649,7 @@ final class UpdateRunner
         $this->store->write($state);
     }
 
-    private function writePhaseProgress(
+    public function writePhaseProgress(
         string $phase,
         string $fromVersion,
         string $toVersion,
@@ -681,7 +681,7 @@ final class UpdateRunner
         return in_array($phase, ['downloading', 'extracting', 'backing_up'], true);
     }
 
-    private function throwIfCancelRequested(): void
+    public function throwIfCancelRequested(): void
     {
         if (! $this->store->isCancelRequested()) {
             return;
@@ -697,7 +697,7 @@ final class UpdateRunner
         return $phase === 'applying_files' || $phase === 'running_migrations';
     }
 
-    private function parseContentLength(mixed $headers): ?int
+    public function parseContentLength(mixed $headers): ?int
     {
         if (! is_array($headers)) {
             return null;
@@ -754,17 +754,6 @@ final class UpdateRunner
         };
     }
 
-    /**
-     * @return list<array{
-     *   name: string,
-     *   sizeBytes: int,
-     *   modifiedAt: string|null,
-     *   fromVersion: string|null,
-     *   toVersion: string|null,
-     *   format: string,
-     *   downloadable: bool
-     * }>
-     */
     private static function recordHistory(
         string $fromVersion,
         string $toVersion,

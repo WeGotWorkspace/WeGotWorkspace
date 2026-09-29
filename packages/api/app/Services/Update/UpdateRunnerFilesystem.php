@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Update;
 
-use App\Exceptions\ApiHttpException;
-
-trait UpdateRunnerFilesystem
+final class UpdateRunnerFilesystem
 {
-    private function assertApplyCapacity(string $sourceRoot, string $targetRoot, array $paths): void
+    public function assertApplyCapacity(string $sourceRoot, string $targetRoot, array $paths): void
     {
         $existing = self::collectPathStats($targetRoot, $paths);
         $incoming = self::collectPathStats($sourceRoot, $paths);
@@ -60,7 +58,6 @@ trait UpdateRunnerFilesystem
      * @param  list<string>  $paths
      * @return array{bytes: int, inodes: int}
      */
-
     private function collectPathStats(string $root, array $paths): array
     {
         $bytes = 0;
@@ -81,7 +78,6 @@ trait UpdateRunnerFilesystem
     /**
      * @return array{bytes: int, inodes: int}
      */
-
     private function pathStats(string $path): array
     {
         if (is_link($path)) {
@@ -142,8 +138,7 @@ trait UpdateRunnerFilesystem
     /**
      * @return list<array{ok: bool, label: string, detail: string, status?: string}>
      */
-
-    private function capacityChecks(string $path): array
+    public function capacityChecks(string $path): array
     {
         $freeBytes = self::readFilesystemFreeBytes($path);
         $quotaFreeBytes = self::detectQuotaFreeBytes();
@@ -284,7 +279,7 @@ trait UpdateRunnerFilesystem
         return max(0, $bytes);
     }
 
-    private function lastFilesystemError(): string
+    public function lastFilesystemError(): string
     {
         $last = error_get_last();
         $message = is_array($last) && isset($last['message']) && is_string($last['message'])
@@ -294,7 +289,7 @@ trait UpdateRunnerFilesystem
         return $message;
     }
 
-    private function rmRecursive(string $path): void
+    public function rmRecursive(string $path): void
     {
         if (is_file($path) || is_link($path)) {
             @unlink($path);
@@ -320,5 +315,4 @@ trait UpdateRunnerFilesystem
     /**
      * @param  array<string, mixed>|null  $latest
      */
-
 }

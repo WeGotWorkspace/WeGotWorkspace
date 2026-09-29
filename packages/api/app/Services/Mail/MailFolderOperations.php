@@ -6,11 +6,15 @@ namespace App\Services\Mail;
 
 use IMAP\Connection;
 
-trait MailFolderOperations
+final class MailFolderOperations
 {
-    private function handleFolders(string $username): array
+    public function __construct(
+        private MailImapGate $imap,
+    ) {}
+
+    public function handleFolders(string $username): array
     {
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
         $err = null;
         $conn = MailImapClient::connect($cred['imap'], $err);
         if ($conn === null) {
@@ -39,7 +43,6 @@ trait MailFolderOperations
      * @param  list<array{name: string, mailbox: string, delimiter: string, noSelect?: bool}>  $raw
      * @return list<array<string, mixed>>
      */
-
     private function buildFolderTree(array $raw): array
     {
         $inboxMb = self::findInbox($raw);
@@ -53,13 +56,13 @@ trait MailFolderOperations
         }
         foreach ($raw as $row) {
             $mb = $row['mailbox'];
-            $id = self::folderIdEncode($mb);
+            $id = MailOperationService::folderIdEncode($mb);
             $del = self::normalizeMailboxDelimiter($row['delimiter'] ?? '.');
             $pCanon = self::resolveParentByLongestListedPrefix($mb, $raw);
             if ($pCanon === null) {
                 $pCanon = self::resolveParentMailboxForTree($mb, $del, $byLower);
             }
-            $parentId = $pCanon !== null ? self::folderIdEncode($pCanon) : null;
+            $parentId = $pCanon !== null ? MailOperationService::folderIdEncode($pCanon) : null;
             $sys = self::detectSystem($mb, $inboxMb);
             $out[] = [
                 'id' => $id,
@@ -77,7 +80,6 @@ trait MailFolderOperations
      * @param  list<array{name: string, mailbox: string, delimiter: string, noSelect?: bool}>  $raw
      * @return list<array<string, mixed>>
      */
-
     private function foldersWithUnreadCounts(Connection $conn, string $ref, array $folders, array $raw): array
     {
         $noSelect = [];
@@ -94,7 +96,7 @@ trait MailFolderOperations
             if (! is_string($id) || $id === '') {
                 continue;
             }
-            $mb = self::folderIdDecode($id);
+            $mb = MailOperationService::folderIdDecode($id);
             if ($mb === '' || $mb === '__starred__') {
                 continue;
             }
@@ -112,7 +114,6 @@ trait MailFolderOperations
     /**
      * @param  array{name: string, mailbox: string, delimiter: string}  $row
      */
-
     private function folderDisplayName(array $row): string
     {
         $mb = $row['mailbox'];
@@ -138,7 +139,6 @@ trait MailFolderOperations
     /**
      * @return non-empty-string|null
      */
-
     private function parentMailboxPath(string $mailbox, string $delimiter): ?string
     {
         $del = self::normalizeMailboxDelimiter($delimiter);
@@ -154,7 +154,6 @@ trait MailFolderOperations
     /**
      * Last hierarchy segment (IMAP mailbox form, e.g. modified UTF-7).
      */
-
     private function mailboxLeafSegment(string $mailbox, string $delimiter): string
     {
         $del = self::normalizeMailboxDelimiter($delimiter);
@@ -172,7 +171,6 @@ trait MailFolderOperations
      *
      * @param  list<array{name: string, mailbox: string, delimiter: string}>  $raw
      */
-
     private function resolveParentByLongestListedPrefix(string $mailbox, array $raw): ?string
     {
         $mLen = strlen($mailbox);
@@ -207,7 +205,6 @@ trait MailFolderOperations
      * @param  list<array{name: string, mailbox: string, delimiter: string}>  $raw
      * @return array<string, string> lower(mailbox) => mailbox string as returned by IMAP (first occurrence wins)
      */
-
     private function mailboxCanonicalIndex(array $raw): array
     {
         $m = [];
@@ -230,7 +227,6 @@ trait MailFolderOperations
      *
      * @param  array<string, string>  $canonicalByLower
      */
-
     private function nearestListedAncestor(string $startPath, string $delimiter, array $canonicalByLower): ?string
     {
         $del = self::normalizeMailboxDelimiter($delimiter);
@@ -260,7 +256,6 @@ trait MailFolderOperations
      *
      * @param  array<string, string>  $canonicalByLower
      */
-
     private function resolveParentMailboxForTree(string $mailbox, string $rowDelimiter, array $canonicalByLower): ?string
     {
         $d0 = self::normalizeMailboxDelimiter($rowDelimiter);
@@ -287,7 +282,6 @@ trait MailFolderOperations
     /**
      * @param  list<array{name: string, mailbox: string, delimiter: string}>  $raw
      */
-
     private function findInbox(array $raw): string
     {
         foreach ($raw as $row) {
@@ -302,7 +296,6 @@ trait MailFolderOperations
     /**
      * @param  list<array{name: string, mailbox: string, delimiter: string}>  $raw
      */
-
     private function delimiterForMailbox(array $raw, string $mailbox): string
     {
         foreach ($raw as $row) {
@@ -363,7 +356,7 @@ trait MailFolderOperations
         return null;
     }
 
-    private function resolveSystemMailbox(Connection $conn, string $ref, string $sys): ?string
+    public function resolveSystemMailbox(Connection $conn, string $ref, string $sys): ?string
     {
         $raw = MailImapClient::listMailboxes($conn, $ref);
         $inboxMb = self::findInbox($raw);
@@ -382,8 +375,7 @@ trait MailFolderOperations
      * @param  array{displayName: string, emailAddress: string, imap: array, smtp: array}  $cred
      * @param  'drafts'|'sent'  $system
      */
-
-    private function tryAppendRfc822ToSystemFolder(
+    public function tryAppendRfc822ToSystemFolder(
         array $cred,
         string $rfc822,
         string $system,
@@ -439,22 +431,21 @@ trait MailFolderOperations
      *
      * @param  array{displayName: string, emailAddress: string, imap: array, smtp: array}  $cred
      */
-
-    private function tryAppendSentCopy(array $cred, string $rfc822, ?string &$outErr): void
+    public function tryAppendSentCopy(array $cred, string $rfc822, ?string &$outErr): void
     {
         self::tryAppendRfc822ToSystemFolder($cred, $rfc822, 'sent', '\\Seen', $outErr);
     }
 
-    private function handleFolderCreate(string $username, array $j): array
+    public function handleFolderCreate(string $username, array $j): array
     {
 
         $name = trim((string) ($j['name'] ?? ''));
         if ($name === '') {
             throw new MailResponseException(400, ['error' => 'name_required']);
         }
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
         $parentEnc = isset($j['parentMailbox']) && is_string($j['parentMailbox']) ? $j['parentMailbox'] : '';
-        $parent = $parentEnc !== '' ? self::folderIdDecode($parentEnc) : '';
+        $parent = $parentEnc !== '' ? MailOperationService::folderIdDecode($parentEnc) : '';
         $err = null;
         $conn = MailImapClient::connect($cred['imap'], $err);
         if ($conn === null) {
@@ -473,7 +464,7 @@ trait MailFolderOperations
             if (! MailImapClient::createMailbox($conn, $ref, $full)) {
                 $resp = [400, ['error' => 'create_failed', 'message' => imap_last_error() ?: '']];
             } else {
-                $resp = [200, ['ok' => true, 'mailbox' => $full, 'id' => self::folderIdEncode($full)]];
+                $resp = [200, ['ok' => true, 'mailbox' => $full, 'id' => MailOperationService::folderIdEncode($full)]];
             }
         } finally {
             @imap_close($conn);
@@ -485,17 +476,17 @@ trait MailFolderOperations
         return $resp[1];
     }
 
-    private function handleFolderMove(string $username, array $j): array
+    public function handleFolderMove(string $username, array $j): array
     {
 
         $folderEnc = isset($j['folder']) && is_string($j['folder']) ? $j['folder'] : '';
-        $fromMb = self::folderIdDecode($folderEnc);
+        $fromMb = MailOperationService::folderIdDecode($folderEnc);
         if ($fromMb === '' || strtoupper($fromMb) === 'INBOX' || $fromMb === '__starred__') {
             throw new MailResponseException(400, ['error' => 'cannot_move']);
         }
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
         $parentEnc = isset($j['parentMailbox']) && is_string($j['parentMailbox']) ? $j['parentMailbox'] : '';
-        $parent = $parentEnc !== '' ? self::folderIdDecode($parentEnc) : '';
+        $parent = $parentEnc !== '' ? MailOperationService::folderIdDecode($parentEnc) : '';
         $err = null;
         $conn = MailImapClient::connect($cred['imap'], $err);
         if ($conn === null) {
@@ -525,7 +516,7 @@ trait MailFolderOperations
             $leaf = self::mailboxLeafSegment($fromMb, $del);
             $newMb = $parent !== '' ? $parent.$del.$leaf : $leaf;
             if (strcasecmp($fromMb, $newMb) === 0) {
-                return ['ok' => true, 'id' => self::folderIdEncode($fromMb)];
+                return ['ok' => true, 'id' => MailOperationService::folderIdEncode($fromMb)];
             }
             $fromLower = strtolower($fromMb);
             $delLower = strtolower($del);
@@ -538,7 +529,7 @@ trait MailFolderOperations
             if (! MailImapClient::renameMailbox($conn, $ref, $fromMb, $newMb)) {
                 $resp = [400, ['error' => 'rename_failed', 'message' => imap_last_error() ?: '']];
             } else {
-                $resp = [200, ['ok' => true, 'mailbox' => $newMb, 'id' => self::folderIdEncode($newMb)]];
+                $resp = [200, ['ok' => true, 'mailbox' => $newMb, 'id' => MailOperationService::folderIdEncode($newMb)]];
             }
         } finally {
             @imap_close($conn);
@@ -550,14 +541,14 @@ trait MailFolderOperations
         return $resp[1];
     }
 
-    private function handleFolderDelete(string $username, array $j): array
+    public function handleFolderDelete(string $username, array $j): array
     {
         $enc = (string) ($j['folder'] ?? '');
-        $mb = self::folderIdDecode($enc);
+        $mb = MailOperationService::folderIdDecode($enc);
         if ($mb === '' || strtoupper($mb) === 'INBOX' || $mb === '__starred__') {
             throw new MailResponseException(400, ['error' => 'cannot_delete']);
         }
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
         $err = null;
         $conn = MailImapClient::connect($cred['imap'], $err);
         if ($conn === null) {
@@ -585,5 +576,4 @@ trait MailFolderOperations
 
         return $resp[1];
     }
-
 }

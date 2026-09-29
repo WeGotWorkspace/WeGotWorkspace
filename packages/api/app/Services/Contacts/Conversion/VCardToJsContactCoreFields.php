@@ -4,13 +4,29 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts\Conversion;
 
+use App\Services\VObject\VObjectScalar;
 use Sabre\VObject\Component\VCard;
 use Sabre\VObject\Property;
-use App\Services\VObject\VObjectScalar;
 
-trait VCardToJsContactCoreFields
+final class VCardToJsContactCoreFields
 {
-    private function convertName(VCard $document, array &$card): void
+    private VCardToJsContactState $state;
+
+    private VCardToJsContactExtraFields $extra;
+
+    public function __construct()
+    {
+        $this->state = new VCardToJsContactState;
+        $this->extra = new VCardToJsContactExtraFields;
+    }
+
+    public function bindState(VCardToJsContactState $state, VCardToJsContactExtraFields $extra): void
+    {
+        $this->state = $state;
+        $this->extra = $extra;
+    }
+
+    public function convertName(VCard $document, array &$card): void
     {
         $name = [];
 
@@ -54,8 +70,7 @@ trait VCardToJsContactCoreFields
     /**
      * @param  array<string, mixed>  $card
      */
-
-    private function convertEmails(VCard $document, array &$card): void
+    public function convertEmails(VCard $document, array &$card): void
     {
         $emails = [];
         foreach ($document->select('EMAIL') as $index => $property) {
@@ -64,7 +79,7 @@ trait VCardToJsContactCoreFields
                 'address' => trim((string) $property->getValue()),
             ];
             ConversionSupport::applySharedFields($entry, $property);
-            $this->applyGroupLabel($entry, $property);
+            $this->extra->applyGroupLabel($entry, $property);
             $emails[ConversionSupport::propertyId($property, $index)] = $entry;
         }
         if ($emails !== []) {
@@ -75,8 +90,7 @@ trait VCardToJsContactCoreFields
     /**
      * @param  array<string, mixed>  $card
      */
-
-    private function convertPhones(VCard $document, array &$card): void
+    public function convertPhones(VCard $document, array &$card): void
     {
         $phones = [];
         foreach ($document->select('TEL') as $index => $property) {
@@ -92,7 +106,7 @@ trait VCardToJsContactCoreFields
                 $entry['features'] = $features;
             }
             ConversionSupport::applySharedFields($entry, $property);
-            $this->applyGroupLabel($entry, $property);
+            $this->extra->applyGroupLabel($entry, $property);
             $phones[ConversionSupport::propertyId($property, $index)] = $entry;
         }
         if ($phones !== []) {
@@ -103,8 +117,7 @@ trait VCardToJsContactCoreFields
     /**
      * @param  array<string, mixed>  $card
      */
-
-    private function convertAddresses(VCard $document, array &$card): void
+    public function convertAddresses(VCard $document, array &$card): void
     {
         /** @var array<string, array{adr?: Property, geos: list<Property>, tzs: list<Property>}> $buckets */
         $buckets = [];
@@ -218,7 +231,6 @@ trait VCardToJsContactCoreFields
      * @param  list<Property>  $tzs
      * @return array<string, mixed>
      */
-
     private function addressEntryFromAdr(Property $property, array $geos, array $tzs): array
     {
         $parsed = JscopmsSupport::addressComponentsFromProperty($property);
@@ -240,15 +252,15 @@ trait VCardToJsContactCoreFields
             $entry['full'] = VObjectScalar::string($property['LABEL']);
         }
         if (isset($property['GEO'])) {
-            $entry['coordinates'] = $this->geoToCoordinates(VObjectScalar::string($property['GEO']));
+            $entry['coordinates'] = $this->extra->geoToCoordinates(VObjectScalar::string($property['GEO']));
         } elseif ($geos !== []) {
-            $entry['coordinates'] = $this->geoToCoordinates((string) $geos[0]->getValue());
+            $entry['coordinates'] = $this->extra->geoToCoordinates((string) $geos[0]->getValue());
         }
         if (isset($property['TZ'])) {
             $entry['timeZone'] = trim(VObjectScalar::string($property['TZ']));
         } elseif ($tzs !== []) {
             foreach ($tzs as $tzProperty) {
-                $timeZone = $this->tzToTimeZone($tzProperty);
+                $timeZone = $this->extra->tzToTimeZone($tzProperty);
                 if ($timeZone !== null) {
                     $entry['timeZone'] = $timeZone;
                     break;
@@ -256,7 +268,7 @@ trait VCardToJsContactCoreFields
             }
         }
         ConversionSupport::applySharedFields($entry, $property);
-        $this->applyGroupLabel($entry, $property);
+        $this->extra->applyGroupLabel($entry, $property);
 
         return $entry;
     }
@@ -264,17 +276,16 @@ trait VCardToJsContactCoreFields
     /**
      * @return array<string, mixed>
      */
-
     private function minimalAddressFromGeo(Property $property, int $index): array
     {
         $entry = [
             '@type' => 'Address',
-            'coordinates' => $this->geoToCoordinates((string) $property->getValue()),
+            'coordinates' => $this->extra->geoToCoordinates((string) $property->getValue()),
             '__propId' => ConversionSupport::propertyId($property, $index),
             '__property' => $property,
         ];
         ConversionSupport::applySharedFields($entry, $property);
-        $this->applyGroupLabel($entry, $property);
+        $this->extra->applyGroupLabel($entry, $property);
 
         return $entry;
     }
@@ -282,12 +293,11 @@ trait VCardToJsContactCoreFields
     /**
      * @return array<string, mixed>|null
      */
-
     private function minimalAddressFromTz(Property $property, int $index): ?array
     {
-        $timeZone = $this->tzToTimeZone($property);
+        $timeZone = $this->extra->tzToTimeZone($property);
         if ($timeZone === null) {
-            $this->deferredKnownProperties[] = $property;
+            $this->state->deferredKnownProperties[] = $property;
 
             return null;
         }
@@ -299,7 +309,7 @@ trait VCardToJsContactCoreFields
             '__property' => $property,
         ];
         ConversionSupport::applySharedFields($entry, $property);
-        $this->applyGroupLabel($entry, $property);
+        $this->extra->applyGroupLabel($entry, $property);
 
         return $entry;
     }
@@ -314,8 +324,7 @@ trait VCardToJsContactCoreFields
     /**
      * @param  array<string, mixed>  $card
      */
-
-    private function convertOrganizations(VCard $document, array &$card): void
+    public function convertOrganizations(VCard $document, array &$card): void
     {
         $organizations = [];
         foreach ($document->select('ORG') as $index => $property) {
@@ -350,9 +359,9 @@ trait VCardToJsContactCoreFields
                 }
             }
             ConversionSupport::applySharedFields($entry, $property);
-            $group = $this->groupNameFromProperty($property);
+            $group = $this->extra->groupNameFromProperty($property);
             if ($group !== null) {
-                $this->organizationIdsByGroup[$group] = ConversionSupport::propertyId($property, $index);
+                $this->state->organizationIdsByGroup[$group] = ConversionSupport::propertyId($property, $index);
             }
             $organizations[ConversionSupport::propertyId($property, $index)] = $entry;
         }
@@ -364,8 +373,7 @@ trait VCardToJsContactCoreFields
     /**
      * @param  array<string, mixed>  $card
      */
-
-    private function convertNotes(VCard $document, array &$card): void
+    public function convertNotes(VCard $document, array &$card): void
     {
         $notes = [];
         foreach ($document->select('NOTE') as $index => $property) {
@@ -397,8 +405,7 @@ trait VCardToJsContactCoreFields
     /**
      * @param  array<string, mixed>  $card
      */
-
-    private function convertMedia(VCard $document, array &$card): void
+    public function convertMedia(VCard $document, array &$card): void
     {
         $media = [];
         foreach ($document->select('PHOTO') as $index => $property) {
@@ -439,8 +446,7 @@ trait VCardToJsContactCoreFields
     /**
      * @param  array<string, mixed>  $card
      */
-
-    private function convertKeywords(VCard $document, array &$card): void
+    public function convertKeywords(VCard $document, array &$card): void
     {
         $keywords = [];
         foreach ($document->select('CATEGORIES') as $property) {
@@ -459,8 +465,7 @@ trait VCardToJsContactCoreFields
     /**
      * @param  array<string, mixed>  $card
      */
-
-    private function convertMembers(VCard $document, array &$card): void
+    public function convertMembers(VCard $document, array &$card): void
     {
         $members = [];
         $seen = [];
@@ -489,8 +494,7 @@ trait VCardToJsContactCoreFields
     /**
      * @param  array<string, mixed>  $card
      */
-
-    private function convertNicknames(VCard $document, array &$card): void
+    public function convertNicknames(VCard $document, array &$card): void
     {
         $nicknames = [];
         foreach ($document->select('NICKNAME') as $index => $property) {
@@ -509,8 +513,7 @@ trait VCardToJsContactCoreFields
     /**
      * @param  array<string, mixed>  $card
      */
-
-    private function convertTitles(VCard $document, array &$card): void
+    public function convertTitles(VCard $document, array &$card): void
     {
         $titles = [];
         foreach ($document->select('TITLE') as $index => $property) {
@@ -520,7 +523,7 @@ trait VCardToJsContactCoreFields
                 'name' => trim((string) $property->getValue()),
             ];
             ConversionSupport::applySharedFields($entry, $property);
-            $this->applyOrganizationId($entry, $property);
+            $this->extra->applyOrganizationId($entry, $property);
             $titles[ConversionSupport::propertyId($property, $index)] = $entry;
         }
         foreach ($document->select('ROLE') as $index => $property) {
@@ -530,7 +533,7 @@ trait VCardToJsContactCoreFields
                 'name' => trim((string) $property->getValue()),
             ];
             ConversionSupport::applySharedFields($entry, $property);
-            $this->applyOrganizationId($entry, $property);
+            $this->extra->applyOrganizationId($entry, $property);
             $titles[ConversionSupport::propertyId($property, $index)] = $entry;
         }
         if ($titles !== []) {
@@ -541,5 +544,4 @@ trait VCardToJsContactCoreFields
     /**
      * @param  array<string, mixed>  $card
      */
-
 }

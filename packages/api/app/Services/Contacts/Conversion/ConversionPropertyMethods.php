@@ -5,11 +5,66 @@ declare(strict_types=1);
 namespace App\Services\Contacts\Conversion;
 
 use App\Services\VObject\ICalendarDateTime;
-use Sabre\VObject\Property;
 use App\Services\VObject\VObjectScalar;
+use Sabre\VObject\Property;
 
-trait ConversionPropertyMethods
+final class ConversionPropertyMethods
 {
+    /** @var array<int, string> */
+    private const N_LEGACY_KINDS = ['surname', 'given', 'given2', 'title', 'credential'];
+
+    /** @var array<int, string> */
+    private const N_EXTENDED_KINDS = ['surname', 'given', 'given2', 'title', 'credential', 'surname2', 'generation'];
+
+    /** @var array<int, string> */
+    private const ADR_LEGACY_KINDS = ['postOfficeBox', 'apartment', 'name', 'locality', 'region', 'postcode', 'country'];
+
+    /** @var array<int, string> */
+    private const ADR_RFC9554_KINDS = [
+        'postOfficeBox',
+        'apartment',
+        'name',
+        'locality',
+        'region',
+        'postcode',
+        'country',
+        'room',
+        'floor',
+        'apartment',
+        'building',
+        'block',
+        'number',
+        'name',
+        'direction',
+        'landmark',
+        'subdistrict',
+        'district',
+    ];
+
+    /** @var array<string, string> */
+    private const TEL_TYPE_TO_FEATURE = [
+        'cell' => 'mobile',
+        'fax' => 'fax',
+        'main-number' => 'main-number',
+        'pager' => 'pager',
+        'text' => 'text',
+        'textphone' => 'textphone',
+        'video' => 'video',
+        'voice' => 'voice',
+    ];
+
+    /** @var array<string, string> */
+    private const TEL_FEATURES = [
+        'mobile' => 'cell',
+        'fax' => 'fax',
+        'main-number' => 'main-number',
+        'pager' => 'pager',
+        'text' => 'text',
+        'textphone' => 'textphone',
+        'video' => 'video',
+        'voice' => 'voice',
+    ];
+
     public static function contextsFromType(Property $property): ?array
     {
         $contexts = [];
@@ -34,7 +89,6 @@ trait ConversionPropertyMethods
     /**
      * @return list<string>
      */
-
     public static function telTypeValues(Property $property): array
     {
         $types = [];
@@ -52,7 +106,6 @@ trait ConversionPropertyMethods
     /**
      * @return array<string, true>|null
      */
-
     public static function telFeaturesFromProperty(Property $property): ?array
     {
         $features = [];
@@ -69,7 +122,6 @@ trait ConversionPropertyMethods
      * @param  array<string, true>  $features
      * @return list<string>
      */
-
     public static function telTypesFromFeatures(array $features, ?array $contexts): array
     {
         $types = [];
@@ -107,7 +159,6 @@ trait ConversionPropertyMethods
     /**
      * @param  array<string, mixed>  $object
      */
-
     public static function applySharedFields(array &$object, Property $property): void
     {
         $contexts = self::contextsFromType($property);
@@ -126,7 +177,6 @@ trait ConversionPropertyMethods
     /**
      * @return list<string>
      */
-
     public static function typeValues(Property $property): array
     {
         if (! isset($property['TYPE'])) {
@@ -140,12 +190,12 @@ trait ConversionPropertyMethods
 
     public static function normalizeUtcDateTime(string $value): string
     {
-        return strtoupper(\App\Services\VObject\ICalendarDateTime::toJmap($value));
+        return strtoupper(ICalendarDateTime::toJmap($value));
     }
 
     public static function utcDateTimeToVCard(string $value): string
     {
-        return strtoupper(\App\Services\VObject\ICalendarDateTime::toIcs(\App\Services\VObject\ICalendarDateTime::toJmap($value)));
+        return strtoupper(ICalendarDateTime::toIcs(ICalendarDateTime::toJmap($value)));
     }
 
     public static function isDerived(Property $property): bool
@@ -156,7 +206,6 @@ trait ConversionPropertyMethods
     /**
      * @return list<string>
      */
-
     public static function structuredParts(Property $property): array
     {
         return $property->getParts();
@@ -171,7 +220,6 @@ trait ConversionPropertyMethods
      * @param  list<string>  $parts
      * @return list<array{kind: string, value: string}>
      */
-
     public static function addressComponentsFromParts(array $parts): array
     {
         if (self::isRfc9554Adr($parts)) {
@@ -185,7 +233,6 @@ trait ConversionPropertyMethods
      * @param  list<string>  $parts
      * @return list<array{kind: string, value: string}>
      */
-
     private static function addressComponentsFromLegacyParts(array $parts): array
     {
         $components = [];
@@ -204,7 +251,6 @@ trait ConversionPropertyMethods
      * @param  list<string>  $parts
      * @return list<array{kind: string, value: string}>
      */
-
     private static function addressComponentsFromRfc9554Parts(array $parts): array
     {
         $hasExtendedStreet = trim((string) ($parts[12] ?? '')) !== ''
@@ -228,7 +274,6 @@ trait ConversionPropertyMethods
      * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      * @return list<string>
      */
-
     public static function adrPartsFromComponents(array $components, bool $useRfc9554): array
     {
         if ($useRfc9554) {
@@ -270,7 +315,6 @@ trait ConversionPropertyMethods
      * @param  array<string, mixed>  $entry
      * @return list<array{'@type': string, kind: string, value: string}>
      */
-
     public static function addressComponentsFromEntry(array $entry): array
     {
         $components = [];
@@ -305,7 +349,6 @@ trait ConversionPropertyMethods
     /**
      * @return list<array{'@type': string, kind: string, value: string}>
      */
-
     public static function nameComponentsFromProperty(Property $property): array
     {
         $parts = self::structuredParts($property);
@@ -329,7 +372,6 @@ trait ConversionPropertyMethods
      * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      * @return list<string>
      */
-
     public static function nPartsFromComponents(array $components): array
     {
         $parts = array_fill(0, 7, '');
@@ -359,7 +401,6 @@ trait ConversionPropertyMethods
     /**
      * @return list<string>
      */
-
     public static function splitStructuredValues(string $raw): array
     {
         return array_values(array_filter(array_map('trim', explode(',', $raw)), static fn (string $value): bool => $value !== ''));
@@ -382,7 +423,6 @@ trait ConversionPropertyMethods
      *
      * vCard 4.0 uses MEDIATYPE=image/jpeg; vCard 3.0 (Apple) uses TYPE=JPEG.
      */
-
     private static function mimeTypeFromMediaProperty(Property $property): string
     {
         if (isset($property['MEDIATYPE'])) {
@@ -412,7 +452,6 @@ trait ConversionPropertyMethods
     /**
      * @return array{0: string, 1: array<string, string|list<string>>}
      */
-
     public static function jCardTupleFromProperty(Property $property): array
     {
         $params = [];
@@ -439,5 +478,4 @@ trait ConversionPropertyMethods
      * Stable uid for vCard → JSContact 1.0 when UID is absent (RFC 9555 §2.1.1).
      * RFC 9982 §5 forbids generating uid for JSContact 2.0+ in that case.
      */
-
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Update;
 
-use App\Services\Update\UpdateRunner;
+use App\Services\Update\UpdateRunnerFilesystem;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -12,8 +12,8 @@ final class UpdateRunnerFilesystemTest extends TestCase
 {
     public function test_format_byte_count(): void
     {
-        $runner = $this->app->make(UpdateRunner::class);
-        $method = new ReflectionMethod(UpdateRunner::class, 'formatByteCount');
+        $runner = $this->app->make(UpdateRunnerFilesystem::class);
+        $method = new ReflectionMethod(UpdateRunnerFilesystem::class, 'formatByteCount');
         $method->setAccessible(true);
 
         $this->assertSame('0 B', $method->invoke($runner, 0));
@@ -23,8 +23,8 @@ final class UpdateRunnerFilesystemTest extends TestCase
 
     public function test_parse_quota_size_token(): void
     {
-        $runner = $this->app->make(UpdateRunner::class);
-        $method = new ReflectionMethod(UpdateRunner::class, 'parseQuotaSizeToken');
+        $runner = $this->app->make(UpdateRunnerFilesystem::class);
+        $method = new ReflectionMethod(UpdateRunnerFilesystem::class, 'parseQuotaSizeToken');
         $method->setAccessible(true);
 
         $this->assertSame(1024, $method->invoke($runner, '1K'));

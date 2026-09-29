@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace App\Services\Mail;
 
 use PHPMailer\PHPMailer\PHPMailer;
-use App\Support\WgwSettings;
 
-trait MailComposeOperations
+final class MailComposeOperations
 {
+    public function __construct(
+        private MailCredentialService $credentials,
+        private MailImapGate $imap,
+        private MailFolderOperations $folders,
+    ) {}
+
     private function attachDecodedUploads(PHPMailer $mail, mixed $attachments): array
     {
         if (! is_array($attachments)) {
@@ -71,7 +76,6 @@ trait MailComposeOperations
      * @param  array{displayName: string, emailAddress: string, imap: array, smtp: array}  $cred
      * @return string Envelope From address used in {@see PHPMailer::setFrom()}
      */
-
     private function configureMailerSmtp(PHPMailer $mail, array $cred, int $smtpTimeout = 30): string
     {
         $transport = MailSmtpTransportConfig::normalize($cred['smtp']);
@@ -109,7 +113,7 @@ trait MailComposeOperations
         return $fromAddr;
     }
 
-    private function handleSend(string $username, array $j): array
+    public function handleSend(string $username, array $j): array
     {
         $cred = MailUserRuntime::resolve($username, $this->credentials);
         if ($cred === null) {
@@ -171,7 +175,7 @@ trait MailComposeOperations
             if (! $mail->postSend()) {
                 throw new \RuntimeException($mail->ErrorInfo);
             }
-            self::tryAppendSentCopy($cred, $sentMime, $appendErr);
+            $this->folders->tryAppendSentCopy($cred, $sentMime, $appendErr);
         } catch (\Throwable $e) {
             throw $this->mailSendException($e, $transport);
         }
@@ -189,10 +193,9 @@ trait MailComposeOperations
     /**
      * Build RFC822 from the composer and append it to the account’s Drafts mailbox (IMAP {@code APPEND}).
      */
-
-    private function handleSaveDraft(string $username, array $j): array
+    public function handleSaveDraft(string $username, array $j): array
     {
-        $cred = $this->requireImap($username);
+        $cred = $this->imap->requireImap($username);
 
         $to = trim((string) ($j['to'] ?? ''));
         $subject = trim((string) ($j['subject'] ?? ''));
@@ -243,7 +246,7 @@ trait MailComposeOperations
                 throw new \RuntimeException($mail->ErrorInfo);
             }
             $mime = $mail->getSentMIMEMessage();
-            self::tryAppendRfc822ToSystemFolder($cred, $mime, 'drafts', '\\Draft', $appendErr);
+            $this->folders->tryAppendRfc822ToSystemFolder($cred, $mime, 'drafts', '\\Draft', $appendErr);
         } catch (\Throwable $e) {
             throw new MailResponseException(400, ['error' => 'draft_failed', 'message' => $e->getMessage()]);
         }
@@ -257,10 +260,6 @@ trait MailComposeOperations
 
         return $payload;
     }
-
-    /**
-     * @return array{displayName: string, emailAddress: string, imap: array, smtp: array}|null
-     */
 
     private function mailSendException(\Throwable $e, ?array $transport = null): MailResponseException
     {
@@ -296,5 +295,4 @@ trait MailComposeOperations
             'message' => $message !== '' ? $message : 'SMTP send failed.',
         ]);
     }
-
 }

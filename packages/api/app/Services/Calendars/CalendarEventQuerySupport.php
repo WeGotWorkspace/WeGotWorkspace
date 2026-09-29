@@ -7,28 +7,35 @@ namespace App\Services\Calendars;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
-use App\Services\Calendars\Conversion\CalendarConversionSupport;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\Eloquent\Collection;
 
-trait CalendarEventQuerySupport
+final class CalendarEventQuerySupport
 {
-    private function resolveQueryCalendars(string $username, mixed $inCalendars): array
+    public function __construct(
+        private readonly CalendarRepository $calendars,
+        private readonly CalendarEventMapper $mapper,
+        private readonly CalendarEventExpansionService $expansion,
+        private readonly JmapCalendarEventStateService $eventStates,
+        private readonly CalendarEventMutationSupport $mutations,
+    ) {}
+
+    public function resolveQueryCalendars(string $username, mixed $inCalendars): array
     {
         if (! is_array($inCalendars) || $inCalendars === []) {
-            throw new \App\Exceptions\ApiHttpException(400, 'filter.inCalendars is required.', 'bad_request');
+            throw new ApiHttpException(400, 'filter.inCalendars is required.', 'bad_request');
         }
 
         $instances = [];
         foreach ($inCalendars as $calendarId) {
             if (! is_string($calendarId) || trim($calendarId) === '') {
-                throw new \App\Exceptions\ApiHttpException(400, 'filter.inCalendars must contain calendar ids.', 'bad_request');
+                throw new ApiHttpException(400, 'filter.inCalendars must contain calendar ids.', 'bad_request');
             }
             $instance = $this->calendars->findAccessibleCalendar($username, $calendarId);
             if ($instance === null) {
-                throw new \App\Exceptions\ApiHttpException(404, 'Calendar not found.', 'not_found');
+                throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
             }
             $instances[] = $instance;
         }
@@ -40,8 +47,7 @@ trait CalendarEventQuerySupport
      * @param  array<string, mixed>  $filter
      * @return array{after: DateTimeImmutable, before: DateTimeImmutable, afterRaw: string, beforeRaw: string}|null
      */
-
-    private function parseQueryWindow(array $filter): ?array
+    public function parseQueryWindow(array $filter): ?array
     {
         $after = isset($filter['after']) && is_string($filter['after']) && trim($filter['after']) !== ''
             ? trim($filter['after'])
@@ -54,7 +60,7 @@ trait CalendarEventQuerySupport
             return null;
         }
         if ($after === null || $before === null) {
-            throw new \App\Exceptions\ApiHttpException(400, 'filter.after and filter.before must be provided together.', 'bad_request');
+            throw new ApiHttpException(400, 'filter.after and filter.before must be provided together.', 'bad_request');
         }
 
         try {
@@ -67,7 +73,7 @@ trait CalendarEventQuerySupport
                 'beforeRaw' => $before,
             ];
         } catch (\Exception) {
-            throw new \App\Exceptions\ApiHttpException(400, 'filter.after and filter.before must be valid date-times.', 'bad_request');
+            throw new ApiHttpException(400, 'filter.after and filter.before must be valid date-times.', 'bad_request');
         }
     }
 
@@ -75,8 +81,7 @@ trait CalendarEventQuerySupport
      * @param  array{after: DateTimeImmutable, before: DateTimeImmutable}|null  $window
      * @return Collection<int, CalendarObject>
      */
-
-    private function candidateObjects(CalendarInstance $instance, ?array $window): Collection
+    public function candidateObjects(CalendarInstance $instance, ?array $window): Collection
     {
         $query = CalendarObject::query()
             ->where('calendarid', (int) $instance->calendarid)
@@ -102,8 +107,7 @@ trait CalendarEventQuerySupport
      * @param  array<string, mixed>  $event
      * @param  array{after: DateTimeImmutable, before: DateTimeImmutable, afterRaw: string, beforeRaw: string}  $window
      */
-
-    private function eventIntersectsWindow(array $event, string $raw, string $calendarUri, array $window): bool
+    public function eventIntersectsWindow(array $event, string $raw, string $calendarUri, array $window): bool
     {
         if ($this->expansion->isRecurring($event)) {
             return $this->expansion->expandInWindow($event, $raw, $calendarUri, $window['afterRaw'], $window['beforeRaw']) !== [];
@@ -120,7 +124,6 @@ trait CalendarEventQuerySupport
     /**
      * @param  array<string, mixed>  $event
      */
-
     private function resolveEventEnd(array $event, DateTimeImmutable $start): DateTimeImmutable
     {
         $end = $this->parseEventDate($event['end'] ?? null, $event);
@@ -143,7 +146,6 @@ trait CalendarEventQuerySupport
     /**
      * @param  array<string, mixed>  $event
      */
-
     private function parseEventDate(mixed $value, array $event): ?DateTimeImmutable
     {
         if (! is_string($value) || trim($value) === '') {
@@ -160,7 +162,6 @@ trait CalendarEventQuerySupport
     /**
      * @param  array<string, mixed>  $event
      */
-
     private function eventTimeZone(array $event): DateTimeZone
     {
         $tzid = isset($event['timeZone']) && is_string($event['timeZone']) ? trim($event['timeZone']) : '';
@@ -179,8 +180,7 @@ trait CalendarEventQuerySupport
      * @param  list<array<string, mixed>>  $events
      * @param  list<array<string, mixed>>  $sort
      */
-
-    private function sortEvents(array &$events, array $sort): void
+    public function sortEvents(array &$events, array $sort): void
     {
         $comparators = [];
         foreach ($sort as $spec) {
@@ -210,7 +210,6 @@ trait CalendarEventQuerySupport
      * @param  array<string, mixed>  $a
      * @param  array<string, mixed>  $b
      */
-
     private function compareEventsBy(string $property, array $a, array $b): int
     {
         if ($property === 'start') {
@@ -241,21 +240,20 @@ trait CalendarEventQuerySupport
      *     destroyed: list<string>
      * }
      */
-
     public function changes(string $username, string $calendarId, ?string $since): array
     {
         $instance = $this->calendars->findAccessibleCalendar($username, $calendarId);
         if ($instance === null) {
-            throw new \App\Exceptions\ApiHttpException(404, 'Calendar not found.', 'not_found');
+            throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
 
-        $changes = $this->calBackend()->getChangesForCalendar(
-            $this->calBackendCalendarId($instance),
+        $changes = $this->mutations->calBackend()->getChangesForCalendar(
+            $this->mutations->calBackendCalendarId($instance),
             $this->normalizeSyncToken($instance, $since),
             1,
         );
         if ($changes === null) {
-            throw new \App\Exceptions\ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
+            throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
         }
 
         $createdByUri = $this->currentEventIdsByUri($username, $instance, $changes['added'] ?? []);
@@ -279,7 +277,6 @@ trait CalendarEventQuerySupport
      * @param  list<string>  $uris
      * @return array<string, list<string>>
      */
-
     private function currentEventIdsByUri(string $username, CalendarInstance $instance, array $uris): array
     {
         $idsByUri = [];
@@ -290,7 +287,7 @@ trait CalendarEventQuerySupport
                 // change entry with an empty object uri — not an event.
                 continue;
             }
-            $object = $this->findObjectInCalendar((int) $instance->calendarid, $uri);
+            $object = $this->mutations->findObjectInCalendar((int) $instance->calendarid, $uri);
             if ($object === null) {
                 $idsByUri[$uri] = [CalendarEventMapper::eventIdFromUri($uri)];
 
@@ -323,7 +320,6 @@ trait CalendarEventQuerySupport
      * @param  array<string, list<string>>  $updatedByUri
      * @return list<string>
      */
-
     private function destroyedEventIds(string $username, array $deletedUris, array $updatedByUri): array
     {
         $destroyed = [];
@@ -353,7 +349,6 @@ trait CalendarEventQuerySupport
      *
      * @return list<string>
      */
-
     private function recordedEventIdsForObject(string $username, string $objectUri): array
     {
         return $this->eventStates->recordedEventIdsForObject($username, $objectUri);
@@ -363,7 +358,6 @@ trait CalendarEventQuerySupport
      * @param  array<string, list<string>>  $idsByUri
      * @return list<string>
      */
-
     private function flattenIds(array $idsByUri): array
     {
         $ids = [];
@@ -381,7 +375,6 @@ trait CalendarEventQuerySupport
      * no newer than the calendar's current synctoken (Sabre never returns null
      * for a bogus non-empty token, so validate here).
      */
-
     private function normalizeSyncToken(CalendarInstance $instance, ?string $since): ?string
     {
         if ($since === null || $since === '' || $since === '0') {
@@ -390,7 +383,7 @@ trait CalendarEventQuerySupport
 
         $currentToken = (int) ($instance->calendar?->synctoken ?? 0);
         if (! ctype_digit($since) || (int) $since > $currentToken) {
-            throw new \App\Exceptions\ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
+            throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
         }
 
         return $since;
@@ -399,5 +392,4 @@ trait CalendarEventQuerySupport
     /**
      * @return array<string, mixed>
      */
-
 }

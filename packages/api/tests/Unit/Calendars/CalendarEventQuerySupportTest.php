@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Calendars;
 
+use App\Services\Calendars\CalendarEventQuerySupport;
 use App\Services\Calendars\CalendarEventRepository;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -20,8 +21,8 @@ final class CalendarEventQuerySupportTest extends TestCase
 
     public function test_flatten_ids(): void
     {
-        $repo = $this->app->make(CalendarEventRepository::class);
-        $method = new ReflectionMethod(CalendarEventRepository::class, 'flattenIds');
+        $repo = $this->app->make(CalendarEventQuerySupport::class);
+        $method = new ReflectionMethod(CalendarEventQuerySupport::class, 'flattenIds');
         $method->setAccessible(true);
 
         $flat = $method->invoke($repo, [

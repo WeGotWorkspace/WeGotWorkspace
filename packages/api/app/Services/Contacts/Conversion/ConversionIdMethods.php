@@ -4,12 +4,70 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts\Conversion;
 
+use App\Services\VObject\VObjectScalar;
 use Illuminate\Support\Str;
 use Sabre\VObject\Property;
-use App\Services\VObject\VObjectScalar;
 
-trait ConversionIdMethods
+final class ConversionIdMethods
 {
+    /** @var array<string, true> */
+    private const KNOWN_VCARD_PROPERTIES = [
+        'UID' => true,
+        'KIND' => true,
+        'FN' => true,
+        'N' => true,
+        'NICKNAME' => true,
+        'PHOTO' => true,
+        'EMAIL' => true,
+        'TEL' => true,
+        'ADR' => true,
+        'ORG' => true,
+        'TITLE' => true,
+        'ROLE' => true,
+        'NOTE' => true,
+        'CATEGORIES' => true,
+        'MEMBER' => true,
+        'PRODID' => true,
+        'CREATED' => true,
+        'REV' => true,
+        'LANGUAGE' => true,
+        'LOGO' => true,
+        'SOUND' => true,
+        'URL' => true,
+        'CONTACT-URI' => true,
+        'LANG' => true,
+        'IMPP' => true,
+        'SOCIALPROFILE' => true,
+        'KEY' => true,
+        'CALADRURI' => true,
+        'CALURI' => true,
+        'FBURL' => true,
+        'GEO' => true,
+        'TZ' => true,
+        'GRAMGENDER' => true,
+        'PRONOUNS' => true,
+        'BDAY' => true,
+        'BIRTHPLACE' => true,
+        'DEATHDATE' => true,
+        'DEATHPLACE' => true,
+        'ANNIVERSARY' => true,
+        'EXPERTISE' => true,
+        'HOBBY' => true,
+        'INTEREST' => true,
+        'ORG-DIRECTORY' => true,
+        'SOURCE' => true,
+        'RELATED' => true,
+        'X-ABLABEL' => true,
+    ];
+
+    /** @var array<string, true> */
+    private const PRESERVE_VCARD_PROPERTIES = [
+        'VERSION' => true,
+        'CLIENTPIDMAP' => true,
+        'GENDER' => true,
+        'XML' => true,
+    ];
+
     public static function isKnownVCardProperty(string $name): bool
     {
         return isset(self::KNOWN_VCARD_PROPERTIES[strtoupper($name)]);
@@ -58,7 +116,6 @@ trait ConversionIdMethods
      * @param  array<string, mixed>  $card
      * @return array<string, mixed>
      */
-
     public static function syncGroupDisplayName(array $card): array
     {
         if (strtolower((string) ($card['kind'] ?? '')) !== 'group') {
@@ -97,7 +154,6 @@ trait ConversionIdMethods
      * @param  array<string, mixed>  $patch
      * @return array<string, mixed>
      */
-
     public static function deepMergeContactCardPatch(array $existing, array $patch): array
     {
         $result = $existing;
@@ -151,7 +207,6 @@ trait ConversionIdMethods
      * @param  array<string, mixed>  $patch
      * @return array<string, mixed>
      */
-
     public static function mergeIdKeyedMap(array $existing, array $patch): array
     {
         $result = $existing;
@@ -215,7 +270,6 @@ trait ConversionIdMethods
      * Legacy vCards without RFC 9554 PROP-ID: deterministic hash over property identity.
      * Same vCard bytes always yield the same map key on read.
      */
-
     public static function fallbackPropertyId(Property $property, string $propertyName, int $index): string
     {
         $seed = strtoupper($propertyName)
@@ -233,7 +287,6 @@ trait ConversionIdMethods
      * @param  array<string, mixed>|null  $existingCard
      * @return array<string, mixed>
      */
-
     public static function normalizeCardMapKeys(array $card, ?array $existingCard = null): array
     {
         $existingKeys = self::collectCardMapKeys($existingCard);
@@ -262,7 +315,6 @@ trait ConversionIdMethods
      * @param  array<string, true>  $existingKeys
      * @return array<string, mixed>
      */
-
     public static function normalizeMapKeys(array $map, array $existingKeys = []): array
     {
         $normalized = [];
@@ -280,7 +332,6 @@ trait ConversionIdMethods
     /**
      * @param  array<string, true>  $existingKeys
      */
-
     public static function resolveMapEntryId(string $key, array $existingKeys = []): string
     {
         if ($key !== ''
@@ -296,7 +347,6 @@ trait ConversionIdMethods
      * @param  array<string, mixed>|null  $card
      * @return array<string, array<string, true>>
      */
-
     public static function collectCardMapKeys(?array $card): array
     {
         if ($card === null) {
@@ -348,5 +398,4 @@ trait ConversionIdMethods
     /**
      * @return array<string, true>|null
      */
-
 }

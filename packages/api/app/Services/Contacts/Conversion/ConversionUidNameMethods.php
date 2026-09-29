@@ -4,16 +4,28 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts\Conversion;
 
-use App\Services\VObject\ICalendarDateTime;
 use App\Services\VObject\ICalendarUid;
-use Illuminate\Support\Str;
+use App\Services\VObject\VObjectScalar;
 use Sabre\VObject\DateTimeParser;
 use Sabre\VObject\InvalidDataException;
 use Sabre\VObject\Property;
-use App\Services\VObject\VObjectScalar;
 
-trait ConversionUidNameMethods
+final class ConversionUidNameMethods
 {
+    /** @var array<string, string> */
+    private const EXPERTISE_LEVEL_TO_JS = [
+        'beginner' => 'low',
+        'average' => 'medium',
+        'expert' => 'high',
+    ];
+
+    /** @var array<string, string> */
+    private const EXPERTISE_LEVEL_TO_VCARD = [
+        'low' => 'beginner',
+        'medium' => 'average',
+        'high' => 'expert',
+    ];
+
     public static function generateUid(string $seed): string
     {
         return ICalendarUid::fromSeed($seed);
@@ -25,7 +37,6 @@ trait ConversionUidNameMethods
      * macOS AddressBookCore CardDAV PUT may emit corrupt values such as
      * urn:uuid:"urn:uuid:<uuid>" (double prefix, embedded quotes, line folding).
      */
-
     public static function normalizeMemberUid(string $memberUid): string
     {
         $memberUid = trim($memberUid);
@@ -68,7 +79,6 @@ trait ConversionUidNameMethods
      * Apple CardDAV group members use urn:uuid: URIs; contact cards often store bare UUIDs.
      * Normalize member references on write so Apple Contacts.app reconciles membership correctly.
      */
-
     public static function memberUidForVCardWrite(string $memberUid): string
     {
         return self::normalizeMemberUid($memberUid);
@@ -78,7 +88,6 @@ trait ConversionUidNameMethods
      * Case-insensitive uid comparison key — Apple CardDAV often uses bare UUIDs on cards
      * while group MEMBER / X-ADDRESSBOOKSERVER-MEMBER values use urn:uuid: prefixes.
      */
-
     public static function normalizeContactUidForMatch(string $uid): string
     {
         $normalized = self::normalizeMemberUid($uid);
@@ -104,7 +113,6 @@ trait ConversionUidNameMethods
     /**
      * @param  array<string, mixed>  $card
      */
-
     public static function deriveFullName(array $card): string
     {
         $name = $card['name'] ?? null;
@@ -172,7 +180,6 @@ trait ConversionUidNameMethods
      * @param  array<string, mixed>  $object
      * @return array<string, string|list<string>>|null
      */
-
     public static function vCardParamsFromObject(array $object): ?array
     {
         $params = $object['vCardParams'] ?? null;
@@ -201,7 +208,6 @@ trait ConversionUidNameMethods
     /**
      * @return array<string, mixed>|null PartialDate or Timestamp structure
      */
-
     public static function anniversaryDateFromProperty(Property $property, bool $preferTimestamp): ?array
     {
         $value = trim((string) $property->getValue());
@@ -212,11 +218,11 @@ trait ConversionUidNameMethods
             if ($preferTimestamp) {
                 return [
                     '@type' => 'Timestamp',
-                    'utc' => self::normalizeUtcDateTime($value),
+                    'utc' => ConversionPropertyMethods::normalizeUtcDateTime($value),
                 ];
             }
 
-            $normalized = self::normalizeUtcDateTime($value);
+            $normalized = ConversionPropertyMethods::normalizeUtcDateTime($value);
             if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $normalized, $matches) === 1) {
                 $date = [
                     '@type' => 'PartialDate',
@@ -270,7 +276,6 @@ trait ConversionUidNameMethods
     /**
      * @param  array<string, mixed>  $date
      */
-
     public static function anniversaryDateToVCardValue(array $date, string $propertyName): array
     {
         $type = (string) ($date['@type'] ?? 'PartialDate');
@@ -280,7 +285,7 @@ trait ConversionUidNameMethods
                 $params['value'] = 'TIMESTAMP';
             }
 
-            return [self::utcDateTimeToVCard(VObjectScalar::string($date['utc'])), $params];
+            return [ConversionPropertyMethods::utcDateTimeToVCard(VObjectScalar::string($date['utc'])), $params];
         }
 
         $params = ['value' => 'DATE'];
@@ -304,7 +309,6 @@ trait ConversionUidNameMethods
     /**
      * @return array<string, mixed>
      */
-
     public static function placeFromProperty(Property $property): array
     {
         $value = trim((string) $property->getValue());
@@ -323,11 +327,10 @@ trait ConversionUidNameMethods
     /**
      * @return array<string, true>
      */
-
     public static function relationTypesFromProperty(Property $property): array
     {
         $relations = [];
-        foreach (self::typeValues($property) as $type) {
+        foreach (ConversionPropertyMethods::typeValues($property) as $type) {
             $normalized = strtolower($type);
             if ($normalized !== '') {
                 $relations[$normalized] = true;
@@ -341,5 +344,4 @@ trait ConversionUidNameMethods
     {
         return preg_match('#^[a-z][a-z0-9+.-]*:#i', $value) === 1;
     }
-
 }

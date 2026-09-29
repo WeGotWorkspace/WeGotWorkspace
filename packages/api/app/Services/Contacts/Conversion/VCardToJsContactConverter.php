@@ -5,29 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Contacts\Conversion;
 
 use App\Services\VObject\VObjectPayloadGuard;
-use Sabre\VObject\Component\VCard;
-use Sabre\VObject\Property;
 
 final class VCardToJsContactConverter
 {
-    use VCardToJsContactCoreFields;
-    use VCardToJsContactExtraFields;
-
     public function __construct(
         private readonly VObjectPayloadGuard $guard = new VObjectPayloadGuard,
+        private readonly VCardToJsContactCoreFields $core = new VCardToJsContactCoreFields,
+        private readonly VCardToJsContactExtraFields $extra = new VCardToJsContactExtraFields,
     ) {}
-
-    /** @var array<string, string> */
-    private array $groupLabels = [];
-
-    /** @var array<string, string> */
-    private array $organizationIdsByGroup = [];
-
-    /** @var list<Property> */
-    private array $deferredKnownProperties = [];
-
-    /** @var list<Property> */
-    private array $extraFnProperties = [];
 
     /**
      * @return array<string, mixed>
@@ -36,14 +21,14 @@ final class VCardToJsContactConverter
     {
         $document = $this->guard->readVCard($vcard, 'contacts', $logLevel);
 
-        $this->groupLabels = [];
-        $this->organizationIdsByGroup = [];
-        $this->deferredKnownProperties = [];
-        $this->extraFnProperties = LocalizationSupport::extraFnProperties($document);
+        $state = new VCardToJsContactState;
+        $this->core->bindState($state, $this->extra);
+        $this->extra->bindState($state);
+        $state->extraFnProperties = LocalizationSupport::extraFnProperties($document);
         foreach ($document->select('X-ABLABEL') as $labelProperty) {
-            $group = $this->groupNameFromProperty($labelProperty);
+            $group = $this->extra->groupNameFromProperty($labelProperty);
             if ($group !== null) {
-                $this->groupLabels[$group] = trim((string) $labelProperty->getValue());
+                $state->groupLabels[$group] = trim((string) $labelProperty->getValue());
             }
         }
 
@@ -93,30 +78,30 @@ final class VCardToJsContactConverter
             $card['updated'] = ConversionSupport::normalizeUtcDateTime((string) $document->REV->getValue());
         }
 
-        $this->convertName($document, $card);
-        $this->convertEmails($document, $card);
-        $this->convertPhones($document, $card);
-        $this->convertAddresses($document, $card);
-        $this->convertOrganizations($document, $card);
-        $this->convertNotes($document, $card);
-        $this->convertMedia($document, $card);
-        $this->convertKeywords($document, $card);
-        $this->convertMembers($document, $card);
-        $this->convertNicknames($document, $card);
-        $this->convertTitles($document, $card);
-        $this->convertLinks($document, $card);
-        $this->convertPreferredLanguages($document, $card);
-        $this->convertOnlineServices($document, $card);
-        $this->convertSpeakToAs($document, $card);
-        $this->convertAnniversaries($document, $card);
-        $this->convertRelated($document, $card);
-        $this->convertDirectories($document, $card);
-        $this->convertPersonalInfo($document, $card);
-        $this->convertCryptoKeys($document, $card);
-        $this->convertCalendars($document, $card);
-        $this->convertSchedulingAddresses($document, $card);
+        $this->core->convertName($document, $card);
+        $this->core->convertEmails($document, $card);
+        $this->core->convertPhones($document, $card);
+        $this->core->convertAddresses($document, $card);
+        $this->core->convertOrganizations($document, $card);
+        $this->core->convertNotes($document, $card);
+        $this->core->convertMedia($document, $card);
+        $this->core->convertKeywords($document, $card);
+        $this->core->convertMembers($document, $card);
+        $this->core->convertNicknames($document, $card);
+        $this->core->convertTitles($document, $card);
+        $this->extra->convertLinks($document, $card);
+        $this->extra->convertPreferredLanguages($document, $card);
+        $this->extra->convertOnlineServices($document, $card);
+        $this->extra->convertSpeakToAs($document, $card);
+        $this->extra->convertAnniversaries($document, $card);
+        $this->extra->convertRelated($document, $card);
+        $this->extra->convertDirectories($document, $card);
+        $this->extra->convertPersonalInfo($document, $card);
+        $this->extra->convertCryptoKeys($document, $card);
+        $this->extra->convertCalendars($document, $card);
+        $this->extra->convertSchedulingAddresses($document, $card);
         LocalizationSupport::applyFromVCard($document, $card);
-        $this->convertVCardProps($document, $card);
+        $this->extra->convertVCardProps($document, $card);
 
         return $card;
     }
