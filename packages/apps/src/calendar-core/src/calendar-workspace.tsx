@@ -110,19 +110,14 @@ import {
 import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
 import { calendarPeriodNavLabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
+import {
+  CALENDAR_VIEW_ORDER,
+  closeCalendarSidebarOnMobile,
+} from "@/calendar-core/src/calendar-workspace-nav";
 import { SideDrawer } from "@/ui/side-drawer";
 import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./calendar-workspace.css";
-
-/** Day → Year by time span — list is a presentation toggle, not a dropdown option. */
-const VIEW_ORDER: CalendarViewId[] = ["day", "week", "month", "year"];
-
-function closeSidebarOnMobile(close: () => void) {
-  if (!isSidebarOverlayViewport()) return;
-  close();
-}
 
 function CalendarSidebarRows({
   calendars,
@@ -268,6 +263,7 @@ export function CalendarWorkspace({
   const {
     L,
     locale,
+    surfaceDisplay,
     view,
     selectView,
     presentation,
@@ -820,13 +816,13 @@ export function CalendarWorkspace({
                   onCreateEvent={() => {
                     closeEventPreview();
                     openCreateEvent();
-                    closeSidebarOnMobile(() => setSidebarOpen(false));
+                    closeCalendarSidebarOnMobile(() => setSidebarOpen(false));
                   }}
                   onCreateCalendar={
                     canCreateCalendar
                       ? () => {
                           openCreateCalendarDialog();
-                          closeSidebarOnMobile(() => setSidebarOpen(false));
+                          closeCalendarSidebarOnMobile(() => setSidebarOpen(false));
                         }
                       : undefined
                   }
@@ -834,7 +830,7 @@ export function CalendarWorkspace({
                     canSubscribeCalendar
                       ? () => {
                           openSubscribeCalendarDialog();
-                          closeSidebarOnMobile(() => setSidebarOpen(false));
+                          closeCalendarSidebarOnMobile(() => setSidebarOpen(false));
                         }
                       : undefined
                   }
@@ -842,7 +838,7 @@ export function CalendarWorkspace({
                     canImportEvents
                       ? () => {
                           closeEventPreview();
-                          closeSidebarOnMobile(() => setSidebarOpen(false));
+                          closeCalendarSidebarOnMobile(() => setSidebarOpen(false));
                           icsFileInputRef.current?.click();
                         }
                       : undefined
@@ -854,7 +850,7 @@ export function CalendarWorkspace({
                   icon={<CalendarDays />}
                   onClick={() => {
                     goToday();
-                    closeSidebarOnMobile(() => setSidebarOpen(false));
+                    closeCalendarSidebarOnMobile(() => setSidebarOpen(false));
                   }}
                   size="xl"
                   pill
@@ -869,7 +865,7 @@ export function CalendarWorkspace({
                 session={session}
                 detailLine={session.user.email}
                 onLogout={onLogout}
-                onBeforeOpen={() => closeSidebarOnMobile(() => setSidebarOpen(false))}
+                onBeforeOpen={() => closeCalendarSidebarOnMobile(() => setSidebarOpen(false))}
               />
             }
           >
@@ -1021,7 +1017,7 @@ export function CalendarWorkspace({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {VIEW_ORDER.map((id) => (
+                    {CALENDAR_VIEW_ORDER.map((id) => (
                       <SelectItem key={id} value={id}>
                         {viewLabels[id]}
                       </SelectItem>
@@ -1062,6 +1058,7 @@ export function CalendarWorkspace({
                   view={litSurface.view}
                   presentation={litSurface.presentation}
                   startDate={anchor}
+                  {...surfaceDisplay}
                   events={surfaceEventsForView ?? surface?.events ?? new Map()}
                   taskDueMarkers={taskDueOverlay.overlayEvents}
                   visibleCalendarIds={[...visibleCalendarIds]}

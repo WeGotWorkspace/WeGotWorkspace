@@ -35,6 +35,7 @@ export const Default: Story = {
     await expect(nav.getByRole("heading", { name: "Account" })).toBeTruthy();
     await expect(nav.getByRole("heading", { name: "Apps" })).toBeTruthy();
     await expect(nav.getByRole("button", { name: "Mail" })).toBeTruthy();
+    await expect(nav.getByRole("button", { name: "Calendar" })).toBeTruthy();
     await expect(nav.queryByRole("button", { name: "Notifications" })).toBeNull();
     await expect(nav.getByRole("button", { name: "Connected assistants" })).toBeTruthy();
   },
@@ -55,6 +56,7 @@ export const DisabledByAdmin: Story = {
     await expect(canvas.queryByRole("textbox", { name: "Connection URL" })).toBeNull();
     await expect(nav.getByRole("button", { name: "Profile" })).toBeTruthy();
     await expect(nav.getByRole("button", { name: "Mail" })).toBeTruthy();
+    await expect(nav.getByRole("button", { name: "Calendar" })).toBeTruthy();
     await expect(nav.queryByRole("button", { name: "Notifications" })).toBeNull();
   },
 };

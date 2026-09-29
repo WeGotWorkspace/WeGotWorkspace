@@ -52,3 +52,17 @@ export const HiddenForNotes: Story = {
     await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
   },
 };
+
+export const CalendarPanel: Story = {
+  args: {
+    appId: "calendar",
+    session: namedSession,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Settings" }));
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(body.findByRole("heading", { name: "Calendar" })).resolves.toBeTruthy();
+    await expect(body.findByRole("combobox", { name: "Timezone" })).resolves.toBeTruthy();
+  },
+};

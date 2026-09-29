@@ -221,6 +221,11 @@ describe("formToDraft", () => {
     expect(formToDraft(form).timeZone).toBe(form.timeZone);
   });
 
+  it("uses a preferred display timezone for a new timed create", () => {
+    const form = emptyCalendarEventForm("work", "2033-01-12", "14:00", "Asia/Tokyo");
+    expect(form.timeZone).toBe("Asia/Tokyo");
+  });
+
   it("round-trips an all-day form to an exclusive-end day duration without timeZone", () => {
     const draft = formToDraft(calendarEventToForm(allDayEvent));
     expect(draft.start).toBe("2033-01-17T00:00:00");

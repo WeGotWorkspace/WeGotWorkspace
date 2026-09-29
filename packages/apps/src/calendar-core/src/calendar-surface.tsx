@@ -67,6 +67,11 @@ export type CalendarSurfaceProps = {
    * keeps coarse resize handles off until a short-press selection.
    */
   selectedEventKey?: string;
+  locale?: string;
+  timezone?: string;
+  weekStart?: number;
+  visibleHours?: number;
+  visibleHoursStart?: number;
   /** Ask Only-this / This-and-future (delete also offers All instances). */
   requestRecurrenceScope?: (
     request: RecurrenceScopeRequest,
@@ -112,6 +117,11 @@ export function CalendarSurface({
   onCreateRequested,
   pendingCreateIntent,
   selectedEventKey,
+  locale,
+  timezone,
+  weekStart,
+  visibleHours,
+  visibleHoursStart,
   requestRecurrenceScope,
   onRecurrenceFutureDelete,
   onRecurrenceFutureUpdate,
@@ -152,6 +162,11 @@ export function CalendarSurface({
     host.requestRecurrenceScope = requestRecurrenceScope;
     host.pendingCreateIntent = pendingCreateIntent ?? null;
     host.selectedEventKey = selectedEventKey ?? "";
+    host.lang = locale ?? "";
+    host.timezone = timezone;
+    if (weekStart != null) host.weekStart = weekStart;
+    host.visibleHours = visibleHours;
+    host.visibleHoursStart = visibleHoursStart;
   }, [
     view,
     presentation,
@@ -164,6 +179,11 @@ export function CalendarSurface({
     requestRecurrenceScope,
     pendingCreateIntent,
     selectedEventKey,
+    locale,
+    timezone,
+    weekStart,
+    visibleHours,
+    visibleHoursStart,
   ]);
 
   useEffect(() => {

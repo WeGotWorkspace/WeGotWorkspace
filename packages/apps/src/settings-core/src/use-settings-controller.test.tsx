@@ -51,7 +51,10 @@ describe("useSettingsController MCP kill-switch", () => {
       "memberships",
       "offline",
     ]);
-    expect(result.current.sidebarGroups.apps.map((section) => section.id)).toEqual(["mail"]);
+    expect(result.current.sidebarGroups.apps.map((section) => section.id)).toEqual([
+      "mail",
+      "calendar",
+    ]);
     expect(result.current.section).toBe("profile");
     expect(result.current.currentSection.id).toBe("profile");
   });

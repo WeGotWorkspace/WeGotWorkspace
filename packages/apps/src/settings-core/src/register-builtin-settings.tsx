@@ -1,5 +1,6 @@
-import { Bot, HardDrive, Mail as MailIcon, User, Users } from "lucide-react";
+import { Bot, CalendarDays, HardDrive, Mail as MailIcon, User, Users } from "lucide-react";
 import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-pane";
+import { SettingsCalendarPane } from "@/settings-core/src/settings-calendar-pane";
 import { SettingsMailPane } from "@/settings-core/src/settings-mail-pane";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
 import { SettingsOfflinePane } from "@/settings-core/src/settings-offline-pane";
@@ -51,6 +52,14 @@ export function registerBuiltinSettings(): void {
     group: "apps",
     appId: "mail",
   });
+  registerPanel({
+    id: "calendar",
+    label: "Calendar",
+    description: "Timezone, working hours, and locale",
+    icon: <CalendarDays className="size-3.5" />,
+    group: "apps",
+    appId: "calendar",
+  });
 
   registerSlice({
     id: "profile",
@@ -76,5 +85,10 @@ export function registerBuiltinSettings(): void {
     id: "mail-accounts",
     panelIds: ["mail"],
     render: () => <SettingsMailPane />,
+  });
+  registerSlice({
+    id: "calendar-display",
+    panelIds: ["calendar"],
+    render: () => <SettingsCalendarPane />,
   });
 }

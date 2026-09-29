@@ -12,6 +12,7 @@ describe("CalendarViewGroup day ↔ week remount", () => {
   it("keys each time-range view so day → week remounts instead of reusing the day timeline", () => {
     expect(source).toContain('import { keyed } from "lit/directives/keyed.js"');
     expect(source).toContain("keyed(`${this.presentation}:${this.view}`");
+    expect(source).toContain(".visibleHoursStart=${this.visibleHoursStart}");
     expect(source).not.toContain('import { cache } from "lit/directives/cache.js"');
   });
 

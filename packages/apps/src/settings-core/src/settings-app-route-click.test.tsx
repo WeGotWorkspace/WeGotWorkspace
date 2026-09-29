@@ -129,6 +129,13 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     expect(screen.queryByLabelText(/IMAP\/SMTP login/i)).toBeNull();
   });
 
+  it("opens Calendar display settings from a deep link", async () => {
+    await renderSettingsApp("/settings/calendar");
+    expect(screen.getByRole("button", { name: "Calendar" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Locale" })).toBeTruthy();
+  });
+
   it("does not snap back to Settings after navigating to another app", async () => {
     const { history, router } = await renderSettingsApp("/settings/mail");
 

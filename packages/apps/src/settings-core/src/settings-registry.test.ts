@@ -60,14 +60,16 @@ describe("settings-registry", () => {
     expect(panelsForNav({ mcpEnabled: true }).map((panel) => panel.id)).toContain("assistants");
   });
 
-  it("keeps Mail under Apps with no production Notifications panel", () => {
+  it("keeps Mail and Calendar under Apps with no production Notifications panel", () => {
     registerBuiltinSettings();
     const nav = panelsForNav({});
     expect(nav.filter((panel) => panel.group === "apps").map((panel) => panel.id)).toEqual([
       "mail",
+      "calendar",
     ]);
     expect(nav.map((panel) => panel.id)).not.toContain("notifications");
     expect(panelForApp("mail", {})?.id).toBe("mail");
+    expect(panelForApp("calendar", {})?.id).toBe("calendar");
     expect(panelForApp("notes", {})).toBeUndefined();
   });
 

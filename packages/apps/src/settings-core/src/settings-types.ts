@@ -9,6 +9,7 @@ export const BUILTIN_PANEL_IDS = [
   "offline",
   "assistants",
   "mail",
+  "calendar",
 ] as const;
 
 /** Handwritten / JIT ids for `openPanel`. `"mial"` is a type error. */

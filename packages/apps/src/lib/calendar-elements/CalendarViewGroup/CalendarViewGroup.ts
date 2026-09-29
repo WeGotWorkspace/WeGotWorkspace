@@ -32,6 +32,7 @@ export class CalendarViewGroup extends CalendarViewBase {
   #daysPerWeekStored = 7;
   snapInterval = 15;
   visibleHours?: number;
+  visibleHoursStart?: number;
   rtl = false;
   /** Create-dialog range from the React surface; forwarded to the timeline. */
   pendingCreateIntent: PendingCreateGeometry | null = null;
@@ -63,6 +64,7 @@ export class CalendarViewGroup extends CalendarViewBase {
       },
       snapInterval: { type: Number, attribute: "snap-interval" },
       visibleHours: { type: Number, attribute: "visible-hours" },
+      visibleHoursStart: { type: Number, attribute: "visible-hours-start" },
       rtl: { type: Boolean, reflect: true },
       pendingCreateIntent: { attribute: false },
       selectedEventKey: { type: String, attribute: "selected-event-key" },
@@ -343,6 +345,7 @@ export class CalendarViewGroup extends CalendarViewBase {
         .currentTime=${this.pinnedCurrentTime}
         .snapInterval=${this.snapInterval}
         .visibleHours=${this.visibleHours}
+        .visibleHoursStart=${this.visibleHoursStart}
         .selectedCalendarId=${this.selectedCalendarId}
         .pendingCreateIntent=${this.pendingCreateIntent}
         .selectedEventKey=${this.selectedEventKey}

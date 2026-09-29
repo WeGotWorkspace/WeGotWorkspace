@@ -14,6 +14,7 @@ describe("CalendarWorkspace popover → resize selection", () => {
     expect(workspace).toContain("canWriteCalendarCollection");
     expect(workspace).toContain("previewCanEdit");
     expect(workspace).toContain("liveEventPreview && previewCanResize");
+    expect(workspace).toContain("{...surfaceDisplay}");
     expect(workspace).toContain("onEventTimesDraft");
     expect(workspace).toContain("resolveLiveEventPreview");
     expect(workspace).toContain("openInvitationPreview");

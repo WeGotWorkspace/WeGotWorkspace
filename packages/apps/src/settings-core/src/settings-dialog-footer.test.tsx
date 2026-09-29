@@ -164,6 +164,19 @@ describe("settings dialog and in-app footer", () => {
     expect(screen.getByText(/does not read a mailbox/i)).toBeTruthy();
   });
 
+  it("opens Calendar in the dialog from the footer", async () => {
+    await renderHosted(
+      <WorkspaceAppSettingsFooter appId="calendar" session={mockWorkspaceSession} />,
+    );
+    const settingsButton = footerSettingsButton();
+    expect(settingsButton).toBeTruthy();
+    settingsButton!.focus();
+    fireEvent.click(settingsButton!);
+
+    expect(await screen.findByRole("heading", { name: "Calendar" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
+  });
+
   it("hides the Settings row for Notes", async () => {
     const bootstrap = createNotesAppBootstrap();
     await renderHosted(

@@ -10,8 +10,8 @@ packages/api/app/Services/Drive/DriveShareService.php	2139	grandfathered
 packages/api/app/Services/Mail/MailImapClient.php	1120	grandfathered
 packages/api/app/Services/Mail/MailOperationService.php	1556	grandfathered
 packages/api/app/Services/Update/UpdateRunner.php	1726	grandfathered
-packages/apps/src/calendar-core/src/calendar-workspace.tsx	1375	grandfathered
-packages/apps/src/calendar-core/src/use-calendar-controller.ts	1504	grandfathered
+packages/apps/src/calendar-core/src/calendar-workspace.tsx	1372	grandfathered
+packages/apps/src/calendar-core/src/use-calendar-controller.ts	1490	grandfathered
 packages/apps/src/contacts-core/src/contacts-edit-utils.ts	888	grandfathered
 packages/apps/src/contacts-core/src/use-contacts-controller.tsx	1597	grandfathered
 packages/apps/src/drive-core/src/drive-browser.tsx	1054	grandfathered

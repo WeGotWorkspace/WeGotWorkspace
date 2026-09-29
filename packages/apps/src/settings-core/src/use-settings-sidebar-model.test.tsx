@@ -14,7 +14,7 @@ describe("useSettingsSidebarModel", () => {
     resetSettingsRegistryForTests();
   });
 
-  it("groups Account plus Apps → Mail and includes Connected assistants when MCP is on", () => {
+  it("groups Account plus Apps → Mail and Calendar and includes Connected assistants when MCP is on", () => {
     const { result } = renderHook(() => useSettingsSidebarModel(true));
     expect(result.current.account.map((section) => section.id)).toEqual([
       "profile",
@@ -22,7 +22,7 @@ describe("useSettingsSidebarModel", () => {
       "offline",
       "assistants",
     ]);
-    expect(result.current.apps.map((section) => section.id)).toEqual(["mail"]);
+    expect(result.current.apps.map((section) => section.id)).toEqual(["mail", "calendar"]);
     expect(result.current.account.some((section) => section.label === "Connected assistants")).toBe(
       true,
     );
@@ -35,7 +35,7 @@ describe("useSettingsSidebarModel", () => {
       "memberships",
       "offline",
     ]);
-    expect(result.current.apps.map((section) => section.id)).toEqual(["mail"]);
+    expect(result.current.apps.map((section) => section.id)).toEqual(["mail", "calendar"]);
     expect(result.current.account.some((section) => section.label === "Connected assistants")).toBe(
       false,
     );
