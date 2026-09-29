@@ -257,3 +257,76 @@ test("a removal line needs a why", () => {
   );
   assert.equal(bulletHasCitation({ line: "- just words", nested: [] }), false);
 });
+
+function invariantsPlan(bullets) {
+  return `# Title
+
+## Open decisions
+
+None — done.
+
+## Invariants
+
+${bullets}
+`;
+}
+
+/** @param {string} line */
+function proofError(line) {
+  return `${planPath}: invariant needs a test path: or cmd: after Proof: ${line}`;
+}
+
+test("an invariant with Proof and no citation fails", () => {
+  const line = "- Stays. Proof: route-click tests.";
+  assert.deepEqual(evaluatePlans({ plans: [plan(invariantsPlan(line))], diffPaths: [planPath] }), [
+    proofError(line),
+  ]);
+});
+
+test("an invariant path/to placeholder fails", () => {
+  const line = "- Stays. Proof: `path: path/to/x.test.ts`";
+  assert.deepEqual(evaluatePlans({ plans: [plan(invariantsPlan(line))], diffPaths: [planPath] }), [
+    proofError(line),
+  ]);
+});
+
+test("an invariant citation of a non-test file fails", () => {
+  const line = "- Stays. Proof: `path: packages/apps/src/foo.ts`";
+  assert.deepEqual(evaluatePlans({ plans: [plan(invariantsPlan(line))], diffPaths: [planPath] }), [
+    proofError(line),
+  ]);
+});
+
+test("an invariant command after Proof passes", () => {
+  const line = "- Stays. Proof: `cmd: pnpm test`";
+  assert.deepEqual(evaluatePlans({ plans: [plan(invariantsPlan(line))], diffPaths: [planPath] }), []);
+});
+
+test("an empty invariant command fails", () => {
+  const line = "- Stays. Proof: `cmd:`";
+  assert.deepEqual(evaluatePlans({ plans: [plan(invariantsPlan(line))], diffPaths: [planPath] }), [
+    proofError(line),
+  ]);
+});
+
+test("an invariant command placeholder fails", () => {
+  const line = "- Stays. Proof: `cmd: <command>`";
+  assert.deepEqual(evaluatePlans({ plans: [plan(invariantsPlan(line))], diffPaths: [planPath] }), [
+    proofError(line),
+  ]);
+});
+
+test("an invariant proof on a nested line counts", () => {
+  const after = invariantsPlan(`- Old contract stays.
+  Proof: \`path: packages/apps/src/mail.test.tsx\``);
+  assert.deepEqual(evaluatePlans({ plans: [plan(after)], diffPaths: [planPath] }), []);
+});
+
+test("invariant proofs accept stories, phpunit, tests, spec, and e2e paths", () => {
+  const after = invariantsPlan(`- Stories. Proof: \`path: packages/apps/src/mail.stories.tsx\`
+- PHPUnit. Proof: \`path: packages/api/tests/Feature/ExampleTest.php\`
+- Directory. Proof: \`path: packages/api/tests/Feature/Something.php\`
+- Spec. Proof: \`path: packages/apps/src/mail.spec.ts\`
+- End to end. Proof: \`path: e2e/smoke.ts\``);
+  assert.deepEqual(evaluatePlans({ plans: [plan(after)], diffPaths: [planPath] }), []);
+});
