@@ -10,6 +10,8 @@ Please report vulnerabilities against the latest [release](https://github.com/We
 
 Email **[legal@wegotworkspace.org](mailto:legal@wegotworkspace.org)**.
 
+Account sign-in, two-factor authentication, and app passwords are described in [packages/api/docs/api-auth.md](packages/api/docs/api-auth.md).
+
 Or use **Report a vulnerability** on the repository's [Security tab](https://github.com/WeGotWorkspace/wegotworkspace/security/advisories/new) (GitHub private vulnerability reporting). Same response windows.
 
 Include:

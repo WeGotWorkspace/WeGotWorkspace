@@ -110,3 +110,32 @@ Public keys are exposed at:
 ```text
 /api/v1/.well-known/jwks.json
 ```
+
+## 6) Two-factor authentication and app passwords
+
+TOTP is opt-in. `POST /api/v1/auth/token` still returns `access_token` and `refresh_token` when the account has no authenticator. The body also includes `status`:
+
+| `status` | Meaning |
+| --- | --- |
+| `ok` | Tokens are in the body. |
+| `mfa_required` | Password matched. Send the authenticator `code` or a `recovery_code` to `POST /api/v1/auth/mfa-challenges/{challenge}/verification`. |
+| `mfa_setup_required` | An admin requires two-factor authentication and this account has not enrolled. |
+| `mfa_replace_required` | A recovery code was accepted. Confirm a new authenticator before any tokens are issued. |
+
+A recovery code at login does not return tokens. It starts authenticator replacement. Confirming that replacement, or turning two-factor authentication on in Settings, signs out other sessions and returns a new token pair.
+
+App passwords are named secrets for calendar and contact clients. Create and revoke them under Settings → Security. After two-factor authentication is on, DAV and Meet Basic reject the account password and accept an app password. Users who have not enrolled can still use the account password on DAV.
+
+`GET /api/v1/me` includes `mfa.suggest` when the account has no authenticator and has not snoozed the prompt. `POST /api/v1/settings/totp/suggestion` snoozes that prompt for 30 days.
+
+Lost the authenticator and the recovery codes? An admin can reset two-factor authentication for that user, or an operator can run:
+
+```bash
+php artisan wgw:mfa:reset {username}
+php artisan wgw:mfa:enforce on
+php artisan wgw:mfa:enforce off
+```
+
+The CLI commands do not ask for an authenticator code. The HTTP enforcement route does, and it refuses to turn the requirement on until that admin has enrolled.
+
+Failed authenticator and recovery codes are limited per username. The sign-in screen says "Lost access? Ask your admin." See [Two-factor authentication](../../../docs/two-factor-authentication.md).
