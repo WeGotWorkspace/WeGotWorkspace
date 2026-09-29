@@ -56,15 +56,18 @@ final class RefreshTokenRepository
 
             return null;
         }
-        if ((int) $row->revoked === 1) {
-            // RFC 9700: reuse of a rotated token signals theft; revoke entire chain
-            $this->revokeAllForUsername((string) $row->username);
-
-            return null;
-        }
+        // TOTP changes, password changes, and admin resets mark every previous
+        // refresh token revoked and bump session_generation. Reject those first.
+        // Otherwise presenting one looks like theft and revokes the new pair.
         $generation = $this->enabled->status((string) $row->username)['generation'];
         if ((int) $row->session_generation !== $generation) {
             ApiRefreshToken::query()->where('token_hash', $hash)->update(['revoked' => 1]);
+
+            return null;
+        }
+        if ((int) $row->revoked === 1) {
+            // RFC 9700: reuse of a rotated token from this generation signals theft.
+            $this->revokeAllForUsername((string) $row->username);
 
             return null;
         }

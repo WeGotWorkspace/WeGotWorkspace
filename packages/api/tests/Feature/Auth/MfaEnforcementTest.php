@@ -140,6 +140,35 @@ final class MfaEnforcementTest extends WgwDatabaseTestCase
         unset($_COOKIE['sabre_ui_auth']);
     }
 
+    public function test_old_refresh_after_totp_enable_does_not_revoke_the_new_pair(): void
+    {
+        $issued = $this->postJson('/api/v1/auth/token', [
+            'username' => 'alice',
+            'password' => 'secret',
+        ])->assertOk();
+        $access = (string) $issued->json('access_token');
+        $oldRefresh = (string) $issued->json('refresh_token');
+
+        $secret = (string) $this->withBearer($access)->postJson('/api/v1/settings/totp', [
+            'password' => 'secret',
+        ])->json('secret');
+        $confirmed = $this->withBearer($access)->postJson('/api/v1/settings/totp/confirmation', [
+            'code' => $this->otp($secret),
+            'password' => 'secret',
+        ])->assertOk();
+        $newRefresh = (string) $confirmed->json('refresh_token');
+        $this->assertNotSame('', $newRefresh);
+        $this->assertNotSame($oldRefresh, $newRefresh);
+
+        $this->postJson('/api/v1/auth/refresh', [
+            'refresh_token' => $oldRefresh,
+        ])->assertUnauthorized();
+
+        $this->postJson('/api/v1/auth/refresh', [
+            'refresh_token' => $newRefresh,
+        ])->assertOk();
+    }
+
     public function test_replace_confirmation_rejects_the_previous_bearer_and_cookie(): void
     {
         Storage::disk('wgw_files')->put('users/alice/note.txt', 'hello');

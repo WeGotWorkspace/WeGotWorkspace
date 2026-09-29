@@ -130,7 +130,7 @@ Turning two-factor authentication on requires the account password before the QR
 
 Failed account-password checks on enrollment and app-password creation share the sign-in rate limit. A successful check clears that user-and-IP counter. The password is compared exactly, including spaces at either end.
 
-Changing the account password revokes refresh tokens and bumps `session_generation`. `PUT /settings/profile` then returns a new token pair and `Set-Cookie` for the browser that changed it. Older access tokens and the previous `sabre_ui_auth` cookie stop working.
+Changing the account password revokes refresh tokens and bumps `session_generation`. `PUT /settings/profile` then returns a new token pair and `Set-Cookie` for the browser that changed it. Older access tokens and the previous `sabre_ui_auth` cookie stop working. An older refresh token is refused because its session generation no longer matches, and that refusal leaves the new refresh token in place. Reuse of a refresh token from the current generation still revokes the chain.
 
 App passwords are named secrets for calendar and contact clients. Create and revoke them under Settings → Security. After two-factor authentication is on, DAV and Meet Basic reject the account password and accept an app password. Users who have not enrolled can still use the account password on DAV.
 
