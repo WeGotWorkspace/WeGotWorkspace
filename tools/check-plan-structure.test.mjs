@@ -28,7 +28,7 @@ None — every choice is made.
 ## Invariants
 
 - Old contract stays. A wrong change drops it. Proof: \`path: packages/api/tests/ExampleTest.php\` assertion \`test_old\`.
-- After chunk A, main still works without the next chunk. Proof: the test above.
+- After chunk A, main still works without the next chunk. Proof: \`path: packages/api/tests/ExampleTest.php\`.
 
 ## Chunks
 

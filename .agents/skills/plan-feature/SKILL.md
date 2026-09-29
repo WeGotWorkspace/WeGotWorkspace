@@ -103,8 +103,8 @@ Considered: [existing component], [alternative] — chosen or rejected because [
 None — every choice is made. Or checkboxes tied to a chunk id while a choice is still open.
 
 ## Invariants
-- [Behavior that must keep working]. A wrong change [what breaks]. Proof: `path: path/to/File.test.ts` assertion `test_name`, or a command that shows a silent miss.
-- After chunk A, main still works without the next chunk. Proof: the test or command named above.
+- [Behavior that must keep working]. A wrong change [what breaks]. Proof: `path: path/to/File.test.ts` assertion `test_name`, or `cmd: <command>`.
+- After chunk A, main still works without the next chunk. Proof: `cmd: <command>`.
 
 ## Chunks
 
@@ -129,7 +129,7 @@ Optional final chunk after parallel builds merge:
 - …
 ```
 
-`None` under Invariants is valid only when the diff touches nothing outside `docs/` and `.agents/`. A happy-path test of the new behavior does not fill an invariant row. Infra and config often have no unit test; name the command that shows the silent miss instead. Hedges belong only under Open decisions. Do not start a chunk listed under an open checkbox. Chunk **Done when** and **Verify with** are decisions.
+`None` under Invariants is valid only when the diff touches nothing outside `docs/` and `.agents/`. A happy-path test of the new behavior does not fill an invariant row. Infra and config often have no unit test; name the command that shows the silent miss instead. Each invariant needs `Proof:` followed by `path: <test file>` or `` `cmd: <command>` ``. Hedges belong only under Open decisions. Do not start a chunk listed under an open checkbox. Chunk **Done when** and **Verify with** are decisions.
 
 Every claim about existing code, a dependency, or issue status under What exists or chunk **Inputs** cites a `path:line`, a command output line, or a `gh issue view` excerpt. An uncited premise is an open decision labeled "to verify". The citation has to support the claim. A link alone is not enough.
 
@@ -143,7 +143,7 @@ Run this before handing the plan off. It is a checklist, not a second document.
 
 - [ ] Active rows in [review-findings.md](../../review-findings.md) were read
 - [ ] What exists and Inputs: each premise has a source, and the source supports the claim
-- [ ] Invariants: behavior, break, and proof (test file + assertion, or a command). One row per chunk boundary. `None` only for a docs-and-agents diff
+- [ ] Invariants: behavior, break, and proof (`path:` to a test file + assertion, or `cmd:`). One row per chunk boundary. `None` only for a docs-and-agents diff
 - [ ] Open decisions is present (`None`, or checkboxes tied to a chunk id). No chunk starts while its checkbox is open
 - [ ] Considered line names the existing component and the alternative
 - [ ] Budget line names what this work draws from and what it displaces
