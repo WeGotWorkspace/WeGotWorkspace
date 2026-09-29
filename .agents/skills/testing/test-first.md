@@ -44,6 +44,18 @@ Optional after gate: `pnpm test:api-e2e:docker` (Playwright, local, not CI).
 2. **Inject dependencies** — `operations` / slice handlers; never import `@/lib/api/wgw/http` in panes ([apps-ui/components.md](../apps-ui/components.md)).
 3. **Vitest for logic** — state machines, mappers, hooks; co-locate `*.test.ts(x)` ([ui-architecture.md](ui-architecture.md)).
 4. **Do not** rely on live API stories for development or CI — `Live …` stories are optional smoke only.
+5. **Never read source or CSS files in a test to assert on their text.**
+
+### Red step per change type
+
+Different types of changes require different approaches to the "red" step in test-first development:
+
+| Change type | Red step |
+|-------------|----------|
+| Visual/CSS bug | Create story for the broken state — Chromatic diff is the red |
+| Structural rule | Write lint rule that fails before the fix |
+| Logic bug | Write behavior test that fails before the fix |
+| Refactor (no behavior change) | Existing tests stay green — no new test required |
 
 ### UI red-green example (hook)
 
