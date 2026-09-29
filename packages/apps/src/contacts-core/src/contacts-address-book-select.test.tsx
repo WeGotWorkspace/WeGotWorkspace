@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { ReactElement } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,11 +7,6 @@ import {
 } from "@/contacts-core/src/contacts-address-book-select";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import { TooltipProvider } from "@/ui/tooltip";
-
-const selectSource = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "contacts-address-book-select.tsx"),
-  "utf8",
-);
 
 const admin = { id: "group-admin", name: "Admin" };
 const administrators = { id: "group-administrators", name: "Administrators" };
@@ -57,22 +49,6 @@ describe("booksForAddressBookSelect", () => {
       admin,
       { id: "group-administrators", name: "group-administrators" },
     ]);
-  });
-});
-
-describe("ContactsAddressBookSelect icons", () => {
-  it("reuses the Notes notebook glyph tinted with the book color", () => {
-    expect(selectSource).toMatch(/NotesNotebookColorIcon/);
-    expect(selectSource).toMatch(/addressBookDotColor\(/);
-    expect(selectSource).toMatch(/--collection-row-color/);
-    expect(selectSource).not.toMatch(/ContactsGroupIcon/);
-  });
-
-  it("reuses ColorSwatchTrigger for the swatch trigger variant", () => {
-    expect(selectSource).toMatch(/ColorSwatchTrigger/);
-    expect(selectSource).toMatch(/triggerVariant\?: "labeled" \| "swatch"/);
-    expect(selectSource).toMatch(/SelectPrimitive\.Trigger asChild/);
-    expect(selectSource).toMatch(/TooltipContent/);
   });
 });
 

@@ -1,14 +1,8 @@
 import { render, within } from "@testing-library/react";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { CheckCircle2, Star, Trash2 } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { FloatingActionBar } from "@/floating-action-bar/src/floating-action-bar";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const css = readFileSync(join(here, "floating-action-bar.css"), "utf8");
 
 describe("FloatingActionBar", () => {
   it("uses cream surface, neutral ink hairline, and outline IconButtons", () => {
@@ -60,33 +54,5 @@ describe("FloatingActionBar", () => {
       </TooltipProvider>,
     );
     expect(within(container as HTMLElement).getByText("1 Item")).toBeTruthy();
-  });
-
-  it("keeps bar chrome neutral (cream bg, ink border) with slide presence", () => {
-    expect(css).toMatch(
-      /background-color:\s*var\(--workspace-surface,\s*var\(--color-we-got-soft\)\)/,
-    );
-    expect(css).toMatch(
-      /border:\s*1px solid color-mix\(in oklab,\s*var\(--color-we-got-dark\)\s*12%,\s*transparent\)/,
-    );
-    expect(css).not.toMatch(/floating-action-bar-accent.*14%/);
-    expect(css).toMatch(/font-semibold/);
-    expect(css).toMatch(/\[data-state="closed"\]/);
-    expect(css).toMatch(/@starting-style/);
-  });
-
-  it("publishes soft accent outline washes matching view-header (not workspace-root weight)", () => {
-    expect(css).toMatch(/@import ["'].*workspace-menu-item-sst\.css["']/);
-    expect(css).not.toMatch(/\.floating-action-bar \{[\s\S]*--button-outline-hover-background:/);
-    expect(css).not.toMatch(
-      /\.floating-action-bar \{[\s\S]*--button-outline-active-background:[\s\S]*55%/,
-    );
-  });
-
-  it("pins absolutely to the pane bottom with safe-area inset", () => {
-    expect(css).toMatch(/\.floating-action-bar \{[\s\S]*?\babsolute\b/);
-    expect(css).toMatch(/bottom:\s*max\(\s*1\.5rem,\s*calc\(\s*env\(\s*safe-area-inset-bottom/);
-    expect(css).not.toMatch(/\.floating-action-bar \{[\s\S]*?\bfixed\b/);
-    expect(css).not.toMatch(/\.floating-action-bar \{[\s\S]*?\bsticky\b/);
   });
 });

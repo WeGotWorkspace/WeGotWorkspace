@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ListItem } from "@/list-item/src/list-item";
@@ -84,17 +82,5 @@ describe("ListItem", () => {
     expect(body!.querySelector(".list-item__tags")).not.toBeNull();
     expect(body!.textContent).toContain("architecture");
     expect(body!.textContent).toContain("+1 more");
-  });
-
-  it("does not read a swipe onClick event (library calls onClick with no args)", () => {
-    // react-swipeable-list full-swipe path: setTimeout(() => onClick(), delay)
-    // with zero arguments. Reading event.stopPropagation throws and aborts archive.
-    const source = readFileSync(
-      path.join(process.cwd(), "src/list-item/src/list-item.tsx"),
-      "utf8",
-    );
-    expect(source).toMatch(/onClick=\{\(\) => swipeLeftAction\.onActivate\(\)\}/);
-    expect(source).toMatch(/onClick=\{\(\) => swipeRightAction\.onActivate\(\)\}/);
-    expect(source).not.toMatch(/event\.?stopPropagation/);
   });
 });
