@@ -104,4 +104,13 @@ describe("settings workspace outline chrome", () => {
       /\.settings-workspace \.app-sidebar__scroll \{[\s\S]*--button-outline-hover-color:\s*var\(--color-we-got-dark\)/,
     );
   });
+
+  it("hides in-pane save in the dialog and pins Open in Settings to the start", () => {
+    expect(css).toMatch(
+      /\.ui-modal-surface\.settings-workspace \.settings-form-actions \{[\s\S]*display:\s*none/,
+    );
+    expect(css).toMatch(
+      /\.ui-modal-surface\.settings-workspace \.settings-dialog-footer__open \{[\s\S]*@apply me-auto/,
+    );
+  });
 });

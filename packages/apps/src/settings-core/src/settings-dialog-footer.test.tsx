@@ -122,12 +122,12 @@ function footerSettingsButton() {
   return within(footer).queryByRole("button", { name: "Settings" });
 }
 
-function dialogFooterCloseButton() {
+function dialogFooterCancelButton() {
   const footer = document.querySelector(".ui-modal-footer");
   if (!(footer instanceof HTMLElement)) {
     throw new Error("dialog footer not found");
   }
-  return within(footer).getByRole("button", { name: "Close" });
+  return within(footer).getByRole("button", { name: "Cancel" });
 }
 
 describe("settings dialog and in-app footer", () => {
@@ -162,6 +162,13 @@ describe("settings dialog and in-app footer", () => {
 
     expect(await screen.findByRole("heading", { name: "Mail" })).toBeTruthy();
     expect(screen.getByText(/does not read a mailbox/i)).toBeTruthy();
+    const footer = document.querySelector(".ui-modal-footer");
+    expect(footer).toBeInstanceOf(HTMLElement);
+    expect(
+      within(footer as HTMLElement).getByRole("button", { name: "Open in Settings" }),
+    ).toBeTruthy();
+    expect(within(footer as HTMLElement).getByRole("button", { name: "Cancel" })).toBeTruthy();
+    expect(within(footer as HTMLElement).queryByRole("button", { name: "Save" })).toBeNull();
   });
 
   it("opens Calendar in the dialog from the footer", async () => {
@@ -174,7 +181,17 @@ describe("settings dialog and in-app footer", () => {
     fireEvent.click(settingsButton!);
 
     expect(await screen.findByRole("heading", { name: "Calendar" })).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
+    expect(await screen.findByRole("combobox", { name: "Timezone" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Day starts on" })).toBeTruthy();
+    expect(screen.queryByText("Display")).toBeNull();
+    const footer = document.querySelector(".ui-modal-footer");
+    expect(footer).toBeInstanceOf(HTMLElement);
+    expect(
+      within(footer as HTMLElement).getByRole("button", { name: "Open in Settings" }),
+    ).toBeTruthy();
+    expect(within(footer as HTMLElement).getByRole("button", { name: "Cancel" })).toBeTruthy();
+    expect(await within(footer as HTMLElement).findByRole("button", { name: "Save" })).toBeTruthy();
+    expect(screen.queryByRole("combobox", { name: /working hours/i })).toBeNull();
   });
 
   it("hides the Settings row for Notes", async () => {
@@ -194,7 +211,7 @@ describe("settings dialog and in-app footer", () => {
     fireEvent.click(settingsButton!);
     expect(await screen.findByRole("button", { name: "Open in Settings" })).toBeTruthy();
 
-    fireEvent.click(dialogFooterCloseButton());
+    fireEvent.click(dialogFooterCancelButton());
     await waitFor(() => {
       expect(footerSettingsButton()).toBe(document.activeElement);
     });

@@ -8,6 +8,7 @@ import {
 } from "@/lib/calendar-engine";
 import { jmapEventToInternalRows, type JmapCalendarEvent } from "@/lib/jmap-client";
 import { localToInternalRecurrenceId } from "@/lib/jmap-client/mapping/datetime";
+import { readCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
 import type { JmapParticipant } from "@/calendar-core/src/calendar-attendees";
 import {
   ownEventRsvpPresentation,
@@ -280,9 +281,14 @@ export function occurrencesInRange(
   return occurrences;
 }
 
-/** ISO date (YYYY-MM-DD) for "today" in the runtime's local time zone. */
-export function todayISODate(): string {
-  return Temporal.Now.plainDateISO().toString();
+/** ISO date (YYYY-MM-DD) for "today" in the display timezone, else the device zone. */
+export function todayISODate(timeZone?: string): string {
+  const zone = timeZone?.trim() || readCalendarDisplayPrefs().timeZone?.trim();
+  try {
+    return Temporal.Now.plainDateISO(zone || undefined).toString();
+  } catch {
+    return Temporal.Now.plainDateISO().toString();
+  }
 }
 
 export type CalendarDateRange = {

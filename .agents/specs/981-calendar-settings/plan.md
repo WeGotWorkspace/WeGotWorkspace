@@ -4,7 +4,7 @@ Derived from [spec.md](./spec.md). Sequential chunks. Source Task #981.
 
 ## Goal
 
-Device-local Calendar display prefs (timezone, working hours, locale) in Settings and the in-app dialog, wired into the grid.
+Device-local Calendar display prefs (timezone, locale, day starts on) in Settings and the in-app dialog, wired into the grid.
 
 ## Budget
 
@@ -67,8 +67,8 @@ None — every choice for this work is made.
 - **id:** `display-prefs`
 - **Skill:** apps-ui
 - **Inputs:** view-prefs pattern; curated event timezone list
-- **Done when:** `lib/calendar-display-prefs.ts` reads/writes/parses; shared timezone list lives in `lib/`; resolve visible-hours window; unit tests
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/calendar-display-prefs.test.ts src/lib/calendar-time-zones.test.ts`
+- **Done when:** `lib/calendar-display-prefs.ts` reads/writes/parses; shared timezone list lives in `lib/`; resolve week start; unit tests
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/calendar-display-prefs.test.tsx src/lib/calendar-time-zones.test.ts`
 - **Parallel with:** none
 
 ### Chunk B: Settings pane + registry
@@ -85,13 +85,13 @@ None — every choice for this work is made.
 - **id:** `grid-wiring`
 - **Skill:** workspace
 - **Inputs:** Chunk A
-- **Done when:** controller subscribes to calendar slice saves; locale/timezone/weekStart/visibleHours reach Lit; new timed events use the chosen zone; viewDateRange honors weekStart
+- **Done when:** controller subscribes to calendar slice saves; locale/timezone/weekStart reach Lit; zoned events convert into the display zone; new timed events use the chosen zone; viewDateRange honors weekStart
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/calendar-core/src/use-calendar-display-prefs.test.tsx src/calendar-core/src/calendar-event-model.test.ts src/calendar-core/src/calendar-surface-display.test.tsx src/calendar-core/src/calendar-editor-model.test.ts src/lib/calendar-elements/CalendarViewGroup/CalendarViewGroup.day-week.test.ts`
 - **Parallel with:** chunk B
 
 ## Test plan
 
-- [ ] Vitest for prefs parse/write, visible-hours resolve, form save bus
+- [ ] Vitest for prefs parse/write, week-start resolve, form save bus
 - [ ] Registry/nav/dialog stories: Mail + Calendar, no Notifications
-- [ ] Controller/surface: locale, timezone, weekStart, visibleHours after notify
+- [ ] Controller/surface: locale, timezone, weekStart after notify; zoned events shift on the grid
 - [ ] Local apps done gate before push

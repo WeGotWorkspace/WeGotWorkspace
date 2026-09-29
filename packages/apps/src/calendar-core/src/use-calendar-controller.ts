@@ -163,8 +163,7 @@ export function useCalendarController({
 }: UseCalendarControllerOptions) {
   const L = useMemo(() => (labels ? mergeCalendarLabels(labels) : defaultCalendarLabels), [labels]);
   const { show, showError } = useAppToast();
-  const { locale, timeZone, timezone, weekStart, visibleHours, visibleHoursStart } =
-    useCalendarDisplayPrefs();
+  const { locale, timeZone, weekStart } = useCalendarDisplayPrefs();
 
   const [view, setView] = useState<CalendarViewId>(initialView ?? DEFAULT_CALENDAR_VIEW);
   const [presentation, setPresentationState] = useState<CalendarPresentation>(initialPresentation);
@@ -329,12 +328,12 @@ export function useCalendarController({
   );
 
   const goToday = useCallback(() => {
-    const next = todayISODate();
+    const next = todayISODate(timeZone);
     if (anchorRef.current === next) return;
     anchorRef.current = next;
     setAnchorState(next);
     emitRouteState(currentRouteState());
-  }, [emitRouteState, currentRouteState]);
+  }, [emitRouteState, currentRouteState, timeZone]);
 
   const goPrevious = useCallback(() => {
     const next = shiftAnchor(viewRef.current, anchorRef.current, -1);
@@ -422,8 +421,8 @@ export function useCalendarController({
   applyQueryFromRouteRef.current = applyQueryFromRoute;
 
   const showingToday = useMemo(
-    () => isViewShowingToday(view, anchor, todayISODate(), weekStart),
-    [view, anchor, weekStart],
+    () => isViewShowingToday(view, anchor, todayISODate(timeZone), weekStart),
+    [view, anchor, weekStart, timeZone],
   );
 
   /** Lit surface mirrors time-range `view` and independent grid/list `presentation`. */
@@ -1420,7 +1419,7 @@ export function useCalendarController({
     deleteCalendarEvent,
     L,
     locale,
-    surfaceDisplay: { locale, timezone, weekStart, visibleHours, visibleHoursStart },
+    surfaceDisplay: { locale, timezone: timeZone, weekStart },
     view,
     selectView,
     presentation,

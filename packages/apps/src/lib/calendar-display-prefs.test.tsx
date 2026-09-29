@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CALENDAR_DISPLAY_PREFS_STORAGE_KEY,
+  calendarWeekdayLabel,
   parseCalendarDisplayPrefs,
   readCalendarDisplayPrefs,
-  resolveCalendarVisibleHours,
+  resolveCalendarWeekStart,
   writeCalendarDisplayPrefs,
   type CalendarDisplayPrefs,
 } from "@/lib/calendar-display-prefs";
@@ -17,8 +18,7 @@ function clearStorage(): void {
 const validPrefs: CalendarDisplayPrefs = {
   timeZone: "Europe/Amsterdam",
   locale: "nl-NL",
-  workdayStartHour: 9,
-  workdayEndHour: 17,
+  weekStart: 7,
 };
 
 describe("parseCalendarDisplayPrefs", () => {
@@ -29,8 +29,7 @@ describe("parseCalendarDisplayPrefs", () => {
         JSON.stringify({
           timeZone: "  UTC  ",
           locale: "xx-XX",
-          workdayStartHour: 24,
-          workdayEndHour: 0,
+          weekStart: 8,
           extra: true,
         }),
       ),
@@ -77,18 +76,24 @@ describe("readCalendarDisplayPrefs / writeCalendarDisplayPrefs", () => {
   });
 });
 
-describe("resolveCalendarVisibleHours", () => {
-  it("maps a workday window onto visibleHours / start", () => {
-    expect(resolveCalendarVisibleHours(validPrefs)).toEqual({
-      visibleHours: 8,
-      visibleHoursStart: 9,
-    });
-  });
-
-  it("keeps a 24-hour grid when hours are unset, partial, or inverted", () => {
-    expect(resolveCalendarVisibleHours({})).toEqual({});
-    expect(resolveCalendarVisibleHours({ workdayStartHour: 9 })).toEqual({});
-    expect(resolveCalendarVisibleHours({ workdayStartHour: 17, workdayEndHour: 9 })).toEqual({});
-    expect(resolveCalendarVisibleHours({ workdayStartHour: 9, workdayEndHour: 9 })).toEqual({});
+describe("resolveCalendarWeekStart", () => {
+  it("uses a stored weekday and otherwise the locale first day", () => {
+    expect(resolveCalendarWeekStart({ weekStart: 7 }, "nl-NL")).toBe(7);
+    expect(resolveCalendarWeekStart({}, "en-US")).toBe(getLocaleFirstDay("en-US"));
   });
 });
+
+describe("calendarWeekdayLabel", () => {
+  it("names ISO weekdays in the display locale", () => {
+    expect(calendarWeekdayLabel(1, "en-US")).toMatch(/monday/i);
+    expect(calendarWeekdayLabel(7, "en-US")).toMatch(/sunday/i);
+  });
+});
+
+function getLocaleFirstDay(locale: string): number {
+  const localeInfo = new Intl.Locale(locale) as Intl.Locale & {
+    getWeekInfo?: () => { firstDay?: number };
+    weekInfo?: { firstDay?: number };
+  };
+  return localeInfo.getWeekInfo?.()?.firstDay ?? localeInfo.weekInfo?.firstDay ?? 1;
+}

@@ -127,6 +127,18 @@
   @apply flex justify-end pt-2;
 }
 
+.settings-workspace .settings-pane-stack {
+  @apply flex flex-col gap-4;
+}
+
+.ui-modal-surface.settings-workspace .settings-form-actions {
+  display: none;
+}
+
+.ui-modal-surface.settings-workspace .settings-dialog-footer__open {
+  @apply me-auto;
+}
+
 .settings-workspace .settings-form-field {
   @apply space-y-1.5 mb-4 last:mb-0;
 }

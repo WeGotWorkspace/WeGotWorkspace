@@ -11,14 +11,14 @@ afterEach(() => {
 });
 
 describe("SettingsCalendarPane", () => {
-  it("renders timezone, working hours, and locale without placeholder copy", () => {
+  it("renders timezone, locale, and day starts on without placeholder copy", () => {
     render(<SettingsCalendarPane />);
     expect(screen.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Locale" })).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: "Working hours start" })).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: "Working hours end" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Day starts on" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
     expect(screen.queryByText(/coming soon/i)).toBeNull();
     expect(screen.queryByText(/placeholder/i)).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /working hours/i })).toBeNull();
   });
 });

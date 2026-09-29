@@ -3,8 +3,10 @@ import {
   CALENDAR_DISPLAY_BROWSER_LOCALE,
   CALENDAR_DISPLAY_DEVICE_ZONE,
   CALENDAR_DISPLAY_LOCALES,
-  CALENDAR_DISPLAY_WORKDAY_UNSET,
+  CALENDAR_DISPLAY_WEEK_START_LOCALE,
+  CALENDAR_WEEKDAY_VALUES,
   type CalendarDisplayPrefs,
+  type CalendarWeekday,
 } from "@/lib/calendar-display-prefs";
 
 const localeValues = [CALENDAR_DISPLAY_BROWSER_LOCALE, ...CALENDAR_DISPLAY_LOCALES] as [
@@ -12,41 +14,18 @@ const localeValues = [CALENDAR_DISPLAY_BROWSER_LOCALE, ...CALENDAR_DISPLAY_LOCAL
   ...string[],
 ];
 
-export const settingsCalendarFormSchema = z
-  .object({
-    timeZone: z.string().trim().min(1),
-    locale: z.enum(localeValues),
-    workdayStartHour: z.string().min(1),
-    workdayEndHour: z.string().min(1),
-  })
-  .superRefine((values, ctx) => {
-    const startUnset = values.workdayStartHour === CALENDAR_DISPLAY_WORKDAY_UNSET;
-    const endUnset = values.workdayEndHour === CALENDAR_DISPLAY_WORKDAY_UNSET;
-    if (startUnset && endUnset) return;
-    if (startUnset || endUnset) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Set both working hours or leave both unset",
-        path: ["workdayEndHour"],
-      });
-      return;
-    }
-    const start = Number(values.workdayStartHour);
-    const end = Number(values.workdayEndHour);
-    if (!Number.isInteger(start) || !Number.isInteger(end) || start >= end) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "End must be after start",
-        path: ["workdayEndHour"],
-      });
-    }
-  });
+const weekStartValues = [
+  CALENDAR_DISPLAY_WEEK_START_LOCALE,
+  ...CALENDAR_WEEKDAY_VALUES.map(String),
+] as [string, ...string[]];
+
+export const settingsCalendarFormSchema = z.object({
+  timeZone: z.string().trim().min(1),
+  locale: z.enum(localeValues),
+  weekStart: z.enum(weekStartValues),
+});
 
 export type SettingsCalendarFormValues = z.infer<typeof settingsCalendarFormSchema>;
-
-function hourOrUnset(value: number | undefined): string {
-  return value == null ? CALENDAR_DISPLAY_WORKDAY_UNSET : String(value);
-}
 
 export function calendarDisplayPrefsToForm(
   prefs: CalendarDisplayPrefs,
@@ -58,8 +37,10 @@ export function calendarDisplayPrefsToForm(
       locale && (CALENDAR_DISPLAY_LOCALES as readonly string[]).includes(locale)
         ? (locale as SettingsCalendarFormValues["locale"])
         : CALENDAR_DISPLAY_BROWSER_LOCALE,
-    workdayStartHour: hourOrUnset(prefs.workdayStartHour),
-    workdayEndHour: hourOrUnset(prefs.workdayEndHour),
+    weekStart:
+      prefs.weekStart != null
+        ? (String(prefs.weekStart) as SettingsCalendarFormValues["weekStart"])
+        : CALENDAR_DISPLAY_WEEK_START_LOCALE,
   };
 }
 
@@ -69,15 +50,10 @@ export function calendarDisplayFormToPrefs(
   const prefs: CalendarDisplayPrefs = {};
   if (values.timeZone !== CALENDAR_DISPLAY_DEVICE_ZONE) prefs.timeZone = values.timeZone;
   if (values.locale !== CALENDAR_DISPLAY_BROWSER_LOCALE) prefs.locale = values.locale;
-  if (
-    values.workdayStartHour !== CALENDAR_DISPLAY_WORKDAY_UNSET &&
-    values.workdayEndHour !== CALENDAR_DISPLAY_WORKDAY_UNSET
-  ) {
-    const start = Number(values.workdayStartHour);
-    const end = Number(values.workdayEndHour);
-    if (Number.isInteger(start) && Number.isInteger(end) && start < end) {
-      prefs.workdayStartHour = start;
-      prefs.workdayEndHour = end;
+  if (values.weekStart !== CALENDAR_DISPLAY_WEEK_START_LOCALE) {
+    const weekStart = Number(values.weekStart);
+    if ((CALENDAR_WEEKDAY_VALUES as readonly number[]).includes(weekStart)) {
+      prefs.weekStart = weekStart as CalendarWeekday;
     }
   }
   return prefs;

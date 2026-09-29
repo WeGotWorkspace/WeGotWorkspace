@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
-import type { CalendarEventsMap } from "@/lib/calendar-engine";
+import { UTC_TIMEZONE, type CalendarEventsMap } from "@/lib/calendar-engine";
 import { createDailySeriesState } from "@/lib/calendar-engine/tests/support/mockEvents.js";
 import * as expandModule from "@/lib/calendar-engine";
 import {
   adjacentRenderedEventRanges,
   cachedVisibleEventsInRange,
   prefetchVisibleEventsInRange,
+  visibleEventsInRange,
 } from "./renderedEvents.js";
 
 const RANGE = {
@@ -140,5 +141,32 @@ describe("prefetchVisibleEventsInRange", () => {
 
     expect(expandSpy).toHaveBeenCalledTimes(1);
     expandSpy.mockRestore();
+  });
+});
+
+describe("visibleEventsInRange display timezone", () => {
+  it("keeps a UTC evening event that lands on the next day in Europe/Amsterdam", () => {
+    const events: CalendarEventsMap = new Map([
+      [
+        "late-utc",
+        {
+          eventId: "late-utc@example.test",
+          data: {
+            start: Temporal.PlainDateTime.from("2025-01-12T23:30:00"),
+            end: Temporal.PlainDateTime.from("2025-01-13T00:15:00"),
+            summary: "Late UTC",
+            timeZone: UTC_TIMEZONE,
+          },
+        },
+      ],
+    ]);
+    const amsterdamDay = {
+      start: Temporal.PlainDateTime.from("2025-01-13T00:00:00"),
+      end: Temporal.PlainDateTime.from("2025-01-14T00:00:00"),
+    };
+    expect(visibleEventsInRange(events, amsterdamDay, "UTC").has("late-utc")).toBe(true);
+    expect(visibleEventsInRange(events, amsterdamDay, "Europe/Amsterdam").has("late-utc")).toBe(
+      true,
+    );
   });
 });

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { getLocaleWeekInfo, resolveLocale } from "@/lib/calendar-elements/utils/Locale";
+import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import {
   readCalendarDisplayPrefs,
-  resolveCalendarVisibleHours,
+  resolveCalendarWeekStart,
   type CalendarDisplayPrefs,
 } from "@/lib/calendar-display-prefs";
 import { defaultTimedEventTimeZone } from "@/calendar-core/src/calendar-timezones";
@@ -11,10 +11,8 @@ import { subscribeSettingsSliceSaved } from "@/settings-core/src/settings-slice-
 export type CalendarDisplayResolved = {
   locale: string;
   timeZone: string;
-  timezone?: string;
+  timezone: string;
   weekStart: number;
-  visibleHours?: number;
-  visibleHoursStart?: number;
 };
 
 export function resolveCalendarDisplay(
@@ -22,15 +20,13 @@ export function resolveCalendarDisplay(
 ): CalendarDisplayResolved {
   const stored = prefs ?? {};
   const locale = resolveLocale(stored.locale);
-  const weekStart = getLocaleWeekInfo(locale).firstDay ?? 1;
-  const hours = resolveCalendarVisibleHours(stored);
-  const storedZone = stored.timeZone?.trim();
+  const weekStart = resolveCalendarWeekStart(stored, locale);
+  const timeZone = defaultTimedEventTimeZone(stored.timeZone);
   return {
     locale,
-    timeZone: defaultTimedEventTimeZone(storedZone),
-    timezone: storedZone || undefined,
+    timeZone,
+    timezone: timeZone,
     weekStart,
-    ...hours,
   };
 }
 

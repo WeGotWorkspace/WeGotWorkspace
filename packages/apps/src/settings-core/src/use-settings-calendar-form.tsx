@@ -11,6 +11,7 @@ import {
   type SettingsCalendarFormValues,
 } from "@/settings-core/src/settings-calendar-form-schema";
 import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
+import { useRegisterSettingsDialogSave } from "@/settings-core/src/settings-dialog-pane-actions";
 
 export function useSettingsCalendarForm() {
   const runWithAppToast = useRunWithAppToast();
@@ -37,6 +38,8 @@ export function useSettingsCalendarForm() {
       },
     );
   });
+
+  useRegisterSettingsDialogSave(saveDisplay, !form.formState.isDirty);
 
   return { form, saveDisplay };
 }

@@ -18,6 +18,10 @@ import type { BuiltinPanelId } from "@/settings-core/src/settings-types";
 import { useSettingsAPI } from "@/settings-core/src/use-settings-api";
 import { useSettingsController } from "@/settings-core/src/use-settings-controller";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
+import {
+  SettingsDialogPaneActionsProvider,
+  useSettingsDialogPaneSaveState,
+} from "@/settings-core/src/settings-dialog-pane-actions";
 import "@/settings-core/src/settings-workspace.css";
 
 export type SettingsDialogApi = {
@@ -121,6 +125,7 @@ function SettingsDialogFrame({
 }) {
   const { phase, error, retry, successVersion, data, operations } = useSettingsAPI();
   const ctx = useSettingsReachability();
+  const { paneSave, onSaveChange } = useSettingsDialogPaneSaveState();
 
   return (
     <DialogContent
@@ -131,24 +136,36 @@ function SettingsDialogFrame({
       <DialogHeader>
         <DialogTitle>{panel.label}</DialogTitle>
       </DialogHeader>
-      <WorkspaceLiveAppShell
-        phase={phase}
-        error={error}
-        retry={retry}
-        errorTitle="Could not load settings"
-        successVersion={successVersion}
-        render={() => (
-          <SettingsDialogBody panel={panel} data={data} operations={operations} ctx={ctx} />
-        )}
-      />
+      <SettingsDialogPaneActionsProvider onSaveChange={onSaveChange}>
+        <WorkspaceLiveAppShell
+          phase={phase}
+          error={error}
+          retry={retry}
+          errorTitle="Could not load settings"
+          successVersion={successVersion}
+          render={() => (
+            <SettingsDialogBody panel={panel} data={data} operations={operations} ctx={ctx} />
+          )}
+        />
+      </SettingsDialogPaneActionsProvider>
       <DialogFooter>
-        <Button type="button" variant="outline" label="Close" onClick={onDismiss} />
         <Button
           type="button"
-          variant="primary"
+          variant="outline"
+          className="settings-dialog-footer__open"
           label="Open in Settings"
           onClick={onOpenInSettings}
         />
+        <Button type="button" variant="outline" label="Cancel" onClick={onDismiss} />
+        {paneSave ? (
+          <Button
+            type="button"
+            variant="primary"
+            label="Save"
+            disabled={paneSave.disabled}
+            onClick={() => void paneSave.save()}
+          />
+        ) : null}
       </DialogFooter>
     </DialogContent>
   );

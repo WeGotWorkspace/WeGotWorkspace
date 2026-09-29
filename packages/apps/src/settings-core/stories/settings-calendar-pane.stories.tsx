@@ -24,7 +24,7 @@ export const Display: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
     await expect(canvas.getByRole("combobox", { name: "Locale" })).toBeTruthy();
-    await expect(canvas.getByRole("combobox", { name: "Working hours start" })).toBeTruthy();
-    await expect(canvas.getByRole("combobox", { name: "Working hours end" })).toBeTruthy();
+    await expect(canvas.getByRole("combobox", { name: "Day starts on" })).toBeTruthy();
+    await expect(canvas.queryByRole("combobox", { name: /working hours/i })).toBeNull();
   },
 };

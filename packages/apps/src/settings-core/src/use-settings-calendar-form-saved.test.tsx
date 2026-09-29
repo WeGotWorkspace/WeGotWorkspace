@@ -38,8 +38,7 @@ describe("useSettingsCalendarForm onSaved", () => {
     await act(async () => {
       result.current.form.setValue("timeZone", "Europe/Amsterdam", { shouldDirty: true });
       result.current.form.setValue("locale", "nl-NL", { shouldDirty: true });
-      result.current.form.setValue("workdayStartHour", "9", { shouldDirty: true });
-      result.current.form.setValue("workdayEndHour", "17", { shouldDirty: true });
+      result.current.form.setValue("weekStart", "7", { shouldDirty: true });
       await result.current.saveDisplay();
     });
 
@@ -48,14 +47,12 @@ describe("useSettingsCalendarForm onSaved", () => {
     ).toEqual({
       timeZone: "Europe/Amsterdam",
       locale: "nl-NL",
-      workdayStartHour: 9,
-      workdayEndHour: 17,
+      weekStart: 7,
     });
     expect(readCalendarDisplayPrefs()).toEqual({
       timeZone: "Europe/Amsterdam",
       locale: "nl-NL",
-      workdayStartHour: 9,
-      workdayEndHour: 17,
+      weekStart: 7,
     });
     expect(notifySettingsSliceSaved).toHaveBeenCalledWith({
       panelId: "calendar",

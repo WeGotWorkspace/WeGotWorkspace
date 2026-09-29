@@ -1,15 +1,17 @@
+import { Temporal } from "@js-temporal/polyfill";
 import {
   COMMON_EVENT_TIME_ZONES,
   commonTimeZoneOptions,
   formatTimeZoneLabel,
   type CommonEventTimeZone,
 } from "@/lib/calendar-time-zones";
+import { getLocaleWeekInfo } from "@/lib/calendar-elements/utils/Locale";
 
 export const CALENDAR_DISPLAY_PREFS_STORAGE_KEY = "wgw.ui.calendar.displayPrefs";
 
 export const CALENDAR_DISPLAY_DEVICE_ZONE = "device";
 export const CALENDAR_DISPLAY_BROWSER_LOCALE = "browser";
-export const CALENDAR_DISPLAY_WORKDAY_UNSET = "unset";
+export const CALENDAR_DISPLAY_WEEK_START_LOCALE = "locale";
 
 export const CALENDAR_DISPLAY_LOCALES = [
   "en-US",
@@ -24,28 +26,24 @@ export const CALENDAR_DISPLAY_LOCALES = [
   "zh-CN",
 ] as const;
 
+export const CALENDAR_WEEKDAY_VALUES = [1, 2, 3, 4, 5, 6, 7] as const;
+
 export type CalendarDisplayLocale = (typeof CALENDAR_DISPLAY_LOCALES)[number];
+export type CalendarWeekday = (typeof CALENDAR_WEEKDAY_VALUES)[number];
 
 export type CalendarDisplayPrefs = {
   timeZone?: string;
   locale?: string;
-  workdayStartHour?: number;
-  workdayEndHour?: number;
-};
-
-export type CalendarVisibleHours = {
-  visibleHours?: number;
-  visibleHoursStart?: number;
+  /** ISO weekday 1–7 (Monday=1). Omitted = locale default. */
+  weekStart?: CalendarWeekday;
 };
 
 const DISPLAY_LOCALES = new Set<string>(CALENDAR_DISPLAY_LOCALES);
+/** Monday 2024-01-01 — ISO weekday 1. */
+const WEEKDAY_LABEL_MONDAY = Temporal.PlainDate.from("2024-01-01");
 
 function hasWindowStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
-
-function isHour(value: unknown, min: number, max: number): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
 }
 
 function isStoredTimeZone(value: unknown): value is string {
@@ -54,6 +52,10 @@ function isStoredTimeZone(value: unknown): value is string {
 
 function isStoredLocale(value: unknown): value is CalendarDisplayLocale {
   return typeof value === "string" && DISPLAY_LOCALES.has(value);
+}
+
+function isWeekStart(value: unknown): value is CalendarWeekday {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 7;
 }
 
 /** Parse stored JSON. Invalid or empty payloads return {}. */
@@ -66,8 +68,7 @@ export function parseCalendarDisplayPrefs(raw: string | null): CalendarDisplayPr
     const prefs: CalendarDisplayPrefs = {};
     if (isStoredTimeZone(record.timeZone)) prefs.timeZone = record.timeZone.trim();
     if (isStoredLocale(record.locale)) prefs.locale = record.locale;
-    if (isHour(record.workdayStartHour, 0, 23)) prefs.workdayStartHour = record.workdayStartHour;
-    if (isHour(record.workdayEndHour, 1, 24)) prefs.workdayEndHour = record.workdayEndHour;
+    if (isWeekStart(record.weekStart)) prefs.weekStart = record.weekStart;
     return prefs;
   } catch {
     return {};
@@ -94,18 +95,26 @@ export function writeCalendarDisplayPrefs(prefs: CalendarDisplayPrefs): void {
   }
 }
 
-/**
- * Day/week timeline window. Unset, partial, or start ≥ end keeps a full 24h grid.
- * `workdayEndHour` is exclusive (9–17 → eight hours starting at 09:00).
- */
-export function resolveCalendarVisibleHours(
-  prefs: Pick<CalendarDisplayPrefs, "workdayStartHour" | "workdayEndHour">,
-): CalendarVisibleHours {
-  const start = prefs.workdayStartHour;
-  const end = prefs.workdayEndHour;
-  if (start == null || end == null) return {};
-  if (!isHour(start, 0, 23) || !isHour(end, 1, 24) || start >= end) return {};
-  return { visibleHours: end - start, visibleHoursStart: start };
+/** ISO weekday for the week grid. Unset follows the locale first day (Monday when unknown). */
+export function resolveCalendarWeekStart(
+  prefs: Pick<CalendarDisplayPrefs, "weekStart">,
+  locale: string,
+): CalendarWeekday {
+  if (isWeekStart(prefs.weekStart)) return prefs.weekStart;
+  return getLocaleWeekInfo(locale).firstDay ?? 1;
+}
+
+/** Long weekday name for ISO day 1–7 (Monday–Sunday). */
+export function calendarWeekdayLabel(isoWeekday: number, locale: string): string {
+  const day = ((Math.trunc(isoWeekday) - 1 + 7) % 7) + 1;
+  const date = WEEKDAY_LABEL_MONDAY.add({ days: day - 1 });
+  try {
+    return new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(
+      new Date(Date.UTC(date.year, date.month - 1, date.day)),
+    );
+  } catch {
+    return date.toLocaleString("en-US", { weekday: "long" });
+  }
 }
 
 export function calendarDisplayLocaleLabel(locale: string, displayLocale: string): string {

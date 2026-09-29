@@ -55,7 +55,7 @@ export function registerBuiltinSettings(): void {
   registerPanel({
     id: "calendar",
     label: "Calendar",
-    description: "Timezone, working hours, and locale",
+    description: "Timezone, locale, and first day of week",
     icon: <CalendarDays className="size-3.5" />,
     group: "apps",
     appId: "calendar",
