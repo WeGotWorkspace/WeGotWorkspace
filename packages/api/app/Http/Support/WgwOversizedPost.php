@@ -112,7 +112,7 @@ final class WgwOversizedPost
         if (! is_array($last)) {
             return false;
         }
-        $message = (string) ($last['message'] ?? '');
+        $message = (string) $last['message'];
 
         return str_contains($message, 'post_max_size')
             || (str_contains($message, 'POST Content-Length') && str_contains($message, 'exceeds'));

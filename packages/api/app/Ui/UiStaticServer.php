@@ -75,7 +75,6 @@ final class UiStaticServer
                 continue;
             }
             $suffix = $path === $full ? '' : substr($path, strlen($full) + 1);
-            $suffix = is_string($suffix) ? $suffix : '';
             $rel = ltrim($prefix, '/').($suffix !== '' ? '/'.str_replace('\\', '/', rawurldecode($suffix)) : '');
 
             return $this->serveResolvedPath($root, $rel, false);
@@ -176,7 +175,7 @@ final class UiStaticServer
         }
         $relative = substr($path, strlen($prefix) + 1);
 
-        return is_string($relative) ? str_replace('\\', '/', rawurldecode($relative)) : '';
+        return str_replace('\\', '/', rawurldecode($relative));
     }
 
     private function serveResolvedPath(string $root, string $rel, bool $allowSpaFallback): ?Response
@@ -277,7 +276,7 @@ final class UiStaticServer
         $prefix = InstallerWebBase::url($webBase, '/');
         $suffix = $prefix === '/' ? ltrim($path, '/') : substr($path, strlen($prefix));
 
-        return is_string($suffix) ? ltrim($suffix, '/') : '';
+        return ltrim($suffix, '/');
     }
 
     private function isPwaRootAssetFile(string $basename): bool

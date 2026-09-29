@@ -125,7 +125,7 @@ final class DocsThreadActivityNotify
             return 'Someone';
         }
         $principal = Principal::forUsername($trimmed);
-        $name = trim((string) ($principal?->displayname ?? ''));
+        $name = trim((string) ($principal->displayname ?? ''));
 
         return $name !== '' ? $name : $trimmed;
     }
@@ -139,7 +139,7 @@ final class DocsThreadActivityNotify
     public static function pathAclOwnerUsernames(string $path): array
     {
         $segments = explode('/', ltrim($path, '/'));
-        $root = $segments[0] ?? '';
+        $root = $segments[0];
         $owner = strtolower(trim((string) ($segments[1] ?? '')));
         if ($owner === '') {
             return [];
@@ -190,9 +190,6 @@ final class DocsThreadActivityNotify
         $out = [];
         foreach ([$owners, $participants, $mentions] as $set) {
             foreach ($set as $username) {
-                if (! is_string($username)) {
-                    continue;
-                }
                 $trimmed = strtolower(trim($username));
                 if ($trimmed !== '') {
                     $out[$trimmed] = $trimmed;

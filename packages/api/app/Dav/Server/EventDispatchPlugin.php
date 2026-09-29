@@ -127,7 +127,7 @@ class EventDispatchPlugin extends ServerPlugin
 
     private function domainFromPath(string $path): string
     {
-        $first = explode('/', $path, 2)[0] ?? '';
+        $first = explode('/', $path, 2)[0];
 
         return match ($first) {
             'files' => 'drive',

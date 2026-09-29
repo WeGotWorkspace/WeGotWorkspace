@@ -33,7 +33,7 @@ final class MailStatusTool extends WgwMcpTool
         return [];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::MAIL_READ;
     }
@@ -43,7 +43,7 @@ final class MailStatusTool extends WgwMcpTool
         return 'read';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): string
     {
         return 'mail-status';
     }

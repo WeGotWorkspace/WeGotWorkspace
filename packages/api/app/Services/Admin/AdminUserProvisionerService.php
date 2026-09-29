@@ -74,7 +74,7 @@ final class AdminUserProvisionerService
             throw new \InvalidArgumentException('User not found.');
         }
 
-        if (array_key_exists('enabled', $input) && $input['enabled'] !== null) {
+        if (array_key_exists('enabled', $input)) {
             $enabled = (bool) $input['enabled'];
             if (! $enabled && $username === strtolower(trim($actingAdmin))) {
                 throw new \InvalidArgumentException('You cannot disable your own account.');
@@ -85,15 +85,12 @@ final class AdminUserProvisionerService
             }
         }
 
-        if (array_key_exists('password', $input) && $input['password'] !== null && $input['password'] !== '') {
+        if (array_key_exists('password', $input) && $input['password'] !== '') {
             $password = (string) $input['password'];
             if (strlen($password) < 10) {
                 throw new \InvalidArgumentException('Use a password of at least 10 characters.');
             }
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            if ($hash === false) {
-                throw new \RuntimeException('Password hashing failed.');
-            }
             User::query()->where('username', $username)->update(['digest' => $hash]);
             $this->refreshTokens->revokeAllForUsername($username);
         }
@@ -114,7 +111,7 @@ final class AdminUserProvisionerService
             $principal->save();
         }
 
-        if (array_key_exists('groups', $input) && is_array($input['groups'])) {
+        if (array_key_exists('groups', $input)) {
             $this->syncGroupMemberships($username, $input['groups'], $actingAdmin, skipAdminBootstrap: true);
         }
     }

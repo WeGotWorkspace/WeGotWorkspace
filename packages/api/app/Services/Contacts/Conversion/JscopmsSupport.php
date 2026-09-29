@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts\Conversion;
 
+use App\Services\VObject\VObjectScalar;
 use Sabre\VObject\Property;
 
 /**
@@ -84,7 +85,7 @@ final class JscopmsSupport
     }
 
     /**
-     * @param  list<array{kind: string, value: string, @type?: string}>  $components
+     * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      */
     public static function shouldEmitJscopms(array $components, bool $isOrdered, bool $useRfc9554): bool
     {
@@ -92,7 +93,7 @@ final class JscopmsSupport
     }
 
     /**
-     * @param  list<array{kind: string, value: string, @type?: string}>  $components
+     * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      * @return array<string, string>
      */
     public static function jscopmsParamsFromComponents(
@@ -112,8 +113,8 @@ final class JscopmsSupport
         $skipLegacyStreet = $useRfc9554 && self::hasExtendedStreetComponents($components);
         $positionCounts = [];
         foreach ($components as $component) {
-            $kind = (string) ($component['kind'] ?? '');
-            $value = (string) ($component['value'] ?? '');
+            $kind = (string) $component['kind'];
+            $value = (string) $component['value'];
             if ($kind === 'separator') {
                 $entries[] = self::encodeSeparator($value);
 
@@ -139,12 +140,12 @@ final class JscopmsSupport
     }
 
     /**
-     * @param  list<array{kind: string, value: string, @type?: string}>  $components
+     * @param  list<array{kind: string, value: string, '@type'?: string}>  $components
      */
     private static function hasExtendedStreetComponents(array $components): bool
     {
         foreach ($components as $component) {
-            $kind = (string) ($component['kind'] ?? '');
+            $kind = (string) $component['kind'];
             if (in_array($kind, ['number', 'block', 'building', 'room', 'floor', 'direction', 'landmark', 'subdistrict', 'district'], true)) {
                 return true;
             }
@@ -164,18 +165,18 @@ final class JscopmsSupport
         array $kindToIndex,
         string $componentType,
     ): array {
-        $raw = (string) $property['JSCOMPS'];
+        $raw = VObjectScalar::string($property['JSCOMPS']);
         $raw = trim($raw, '"');
         $entries = array_map('trim', explode(';', $raw));
         $defaultSeparator = null;
         $start = 0;
-        if ($entries !== [] && str_starts_with($entries[0], 's,')) {
+        if (str_starts_with($entries[0], 's,')) {
             $defaultSeparator = self::decodeSeparator($entries[0]);
             $start = 1;
-        } elseif ($entries !== [] && $entries[0] !== '' && ! ctype_digit($entries[0][0])) {
+        } elseif ($entries[0] !== '' && ! ctype_digit($entries[0][0])) {
             $defaultSeparator = self::decodeSeparator('s,'.self::escapeSeparatorValue($entries[0]));
             $start = 1;
-        } elseif ($entries !== [] && $entries[0] === '') {
+        } elseif ($entries[0] === '') {
             $start = 1;
         }
 

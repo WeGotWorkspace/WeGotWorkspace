@@ -119,7 +119,7 @@ final class PasswordRecoveryService
 
     private function principalEmail(string $username): ?string
     {
-        $email = trim((string) (Principal::forUsername($username)?->email ?? ''));
+        $email = trim((string) (Principal::forUsername($username)->email ?? ''));
         if ($email === '') {
             return null;
         }

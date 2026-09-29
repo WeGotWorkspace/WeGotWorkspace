@@ -6,7 +6,6 @@ namespace App\Services\Plugins;
 
 use App\Models\AppSetting;
 use App\Services\Installer\InstallerWebBase;
-use App\Support\AppPaths;
 use App\Support\SafePath;
 use Illuminate\Support\Facades\File;
 
@@ -15,7 +14,6 @@ final class PluginRegistryService
     private const ACTIVE_OVERRIDES_SETTING = 'plugins_active_overrides';
 
     public function __construct(
-        private AppPaths $paths,
         private PluginPaths $pluginPaths,
     ) {}
 
@@ -56,7 +54,7 @@ final class PluginRegistryService
         $plugins = array_values($pluginsById);
         $overrides = $this->activeOverrides();
         foreach ($plugins as &$plugin) {
-            $id = (string) ($plugin['id'] ?? '');
+            $id = (string) $plugin['id'];
             if ($id !== '' && array_key_exists($id, $overrides)) {
                 $plugin['active'] = (bool) $overrides[$id];
             }
@@ -92,7 +90,7 @@ final class PluginRegistryService
 
         $existing = $this->list();
         $knownIds = array_map(
-            static fn (array $plugin): string => (string) ($plugin['id'] ?? ''),
+            static fn (array $plugin): string => (string) $plugin['id'],
             $existing,
         );
         if (! in_array($id, $knownIds, true)) {
@@ -105,7 +103,7 @@ final class PluginRegistryService
 
         $plugins = $this->list();
         foreach ($plugins as $plugin) {
-            if ((string) ($plugin['id'] ?? '') === $id) {
+            if ((string) $plugin['id'] === $id) {
                 return [
                     'plugin' => $plugin,
                     'plugins' => $plugins,
@@ -124,17 +122,17 @@ final class PluginRegistryService
         }
 
         foreach ($this->list() as $plugin) {
-            if (! ($plugin['active'] ?? false)) {
+            if (! $plugin['active']) {
                 continue;
             }
-            $pluginRoute = isset($plugin['appTile']['route']) && is_string($plugin['appTile']['route'])
+            $pluginRoute = isset($plugin['appTile']['route'])
                 ? $this->normalizeRoute($plugin['appTile']['route'])
                 : '';
             if ($pluginRoute !== $route) {
                 continue;
             }
 
-            $index = $this->assetIndexPath((string) ($plugin['id'] ?? ''));
+            $index = $this->assetIndexPath((string) $plugin['id']);
             if ($index !== null) {
                 return $index;
             }
@@ -151,17 +149,17 @@ final class PluginRegistryService
         }
 
         foreach ($this->list() as $plugin) {
-            if (! ($plugin['active'] ?? false)) {
+            if (! $plugin['active']) {
                 continue;
             }
-            $pluginRoute = isset($plugin['appTile']['route']) && is_string($plugin['appTile']['route'])
+            $pluginRoute = isset($plugin['appTile']['route'])
                 ? $this->normalizeRoute($plugin['appTile']['route'])
                 : '';
             if ($pluginRoute !== $route) {
                 continue;
             }
 
-            $manifest = $this->manifestPathForPlugin((string) ($plugin['id'] ?? ''));
+            $manifest = $this->manifestPathForPlugin((string) $plugin['id']);
             if ($manifest !== null && $this->pluginPaths->editorReadyForManifest($manifest)) {
                 return true;
             }
@@ -181,10 +179,10 @@ final class PluginRegistryService
     public function findActiveByRequestPath(string $webBase, string $path): ?array
     {
         foreach ($this->list() as $plugin) {
-            if (! ($plugin['active'] ?? false)) {
+            if (! $plugin['active']) {
                 continue;
             }
-            if (! isset($plugin['appTile']['route']) || ! is_string($plugin['appTile']['route'])) {
+            if (! isset($plugin['appTile']['route'])) {
                 continue;
             }
             $route = trim($plugin['appTile']['route']);
@@ -196,7 +194,7 @@ final class PluginRegistryService
                 continue;
             }
 
-            $indexPath = $this->assetIndexPath((string) ($plugin['id'] ?? ''));
+            $indexPath = $this->assetIndexPath((string) $plugin['id']);
 
             return [
                 'plugin' => $plugin,
@@ -453,7 +451,7 @@ final class PluginRegistryService
      */
     private function runtimeForPlugin(array $plugin): array
     {
-        $id = (string) ($plugin['id'] ?? '');
+        $id = (string) $plugin['id'];
         if ($id === '') {
             return [
                 'indexReady' => false,

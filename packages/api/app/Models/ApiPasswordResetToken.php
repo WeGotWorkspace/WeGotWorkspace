@@ -7,6 +7,13 @@ namespace App\Models;
 use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property string $token_hash
+ * @property string $username
+ * @property int $expires_at
+ */
 final class ApiPasswordResetToken extends Model
 {
     use UsesWgwConnection;

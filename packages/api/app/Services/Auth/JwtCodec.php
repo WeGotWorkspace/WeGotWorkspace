@@ -30,9 +30,9 @@ final class JwtCodec
     {
         $now = time();
         $iat = (int) ($claims['iat'] ?? $now);
-        $exp = (int) ($claims['exp'] ?? ($now + 3600));
-        $sub = (string) ($claims['sub'] ?? '');
-        $role = (string) ($claims['role'] ?? '');
+        $exp = (int) $claims['exp'];
+        $sub = (string) $claims['sub'];
+        $role = (string) $claims['role'];
         $issuedAt = (new \DateTimeImmutable)->setTimestamp($iat);
         $expiresAt = (new \DateTimeImmutable)->setTimestamp($exp);
 

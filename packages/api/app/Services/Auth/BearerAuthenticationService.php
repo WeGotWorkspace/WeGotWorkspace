@@ -21,7 +21,7 @@ final class BearerAuthenticationService
         if ($authorizationHeader === null || ! preg_match('/^Bearer\s+(.+)$/i', $authorizationHeader, $matches)) {
             return null;
         }
-        $token = trim((string) ($matches[1] ?? ''));
+        $token = trim((string) $matches[1]);
         if ($token === '') {
             return null;
         }
@@ -52,7 +52,7 @@ final class BearerAuthenticationService
         if ($authorizationHeader === null || ! preg_match('/^Bearer\s+(.+)$/i', $authorizationHeader, $matches)) {
             return null;
         }
-        $token = trim((string) ($matches[1] ?? ''));
+        $token = trim((string) $matches[1]);
 
         return $token !== '' ? $token : null;
     }

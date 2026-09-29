@@ -42,7 +42,7 @@ final class SessionController
         }
 
         foreach ($this->plugins->list() as $plugin) {
-            if ((string) ($plugin['id'] ?? '') === $id && ($plugin['active'] ?? false)) {
+            if ((string) $plugin['id'] === $id && $plugin['active']) {
                 return $plugin;
             }
         }

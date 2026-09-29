@@ -116,9 +116,8 @@ final class McpGrantService
 
     private function originFromRedirects(Client $client): string
     {
-        $uris = $client->redirect_uris;
-        $first = is_array($uris) ? ($uris[0] ?? '') : '';
-        if (! is_string($first) || $first === '') {
+        $first = $client->redirect_uris[0] ?? '';
+        if ($first === '') {
             return '';
         }
 

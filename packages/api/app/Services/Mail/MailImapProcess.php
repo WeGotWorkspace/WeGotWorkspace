@@ -171,7 +171,7 @@ final class MailImapProcess
 
         if (defined('PHP_BINARY')) {
             $binary = PHP_BINARY;
-            if (is_string($binary) && $binary !== '' && is_executable($binary)) {
+            if (is_executable($binary)) {
                 return $binary;
             }
         }

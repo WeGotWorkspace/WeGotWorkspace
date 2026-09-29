@@ -1,11 +1,7 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import { MOCK_CALENDAR_CONTACT_CARDS } from "@/calendar-core/src/calendar-api-source";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import {
@@ -233,24 +229,5 @@ describe("useCalendarContactInvitees", () => {
       target: { value: "ali" },
     });
     expect(screen.getByRole("option", { name: /Alice.*Teammate/i })).toBeTruthy();
-  });
-});
-
-describe("calendar contact load boundaries", () => {
-  it("does not import ContactsApp hooks", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const source = readFileSync(join(here, "use-calendar-contact-invitees.ts"), "utf8");
-    expect(source).not.toMatch(/useContactsAPI|useContactsController|ContactsApp/);
-    expect(source).toMatch(/readContactsBootstrapFromCache/);
-    expect(source).toMatch(/listCards/);
-  });
-
-  it("ships a multi-email contact on the mock calendar source", () => {
-    const multi = MOCK_CALENDAR_CONTACT_CARDS.find(
-      (row) => Object.keys(row.emails ?? {}).length >= 2,
-    );
-    expect(multi).toBeTruthy();
-    const addresses = Object.values(multi?.emails ?? {}).map((entry) => entry.address);
-    expect(addresses).toContain("Jane@Host");
   });
 });

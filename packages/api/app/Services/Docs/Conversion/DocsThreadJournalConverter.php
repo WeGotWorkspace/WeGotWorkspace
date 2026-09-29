@@ -87,13 +87,13 @@ final class DocsThreadJournalConverter
         $kind = (string) ($message['kind'] ?? self::KIND_COMMENT);
         $journal->add('X-WGW-THREAD-KIND', $kind);
         $journal->add('X-WGW-ANCHOR-TEXT', (string) ($message['anchorText'] ?? ''));
-        if (isset($message['anchorFrom']) && is_int($message['anchorFrom'])) {
+        if (isset($message['anchorFrom'])) {
             $journal->add('X-WGW-ANCHOR-FROM', (string) $message['anchorFrom']);
         }
-        if (isset($message['anchorTo']) && is_int($message['anchorTo'])) {
+        if (isset($message['anchorTo'])) {
             $journal->add('X-WGW-ANCHOR-TO', (string) $message['anchorTo']);
         }
-        if (isset($message['anchorOccurrence']) && is_int($message['anchorOccurrence'])) {
+        if (isset($message['anchorOccurrence'])) {
             $journal->add('X-WGW-ANCHOR-OCCURRENCE', (string) $message['anchorOccurrence']);
         }
         $changeId = $message['changeId'] ?? null;
@@ -243,7 +243,7 @@ final class DocsThreadJournalConverter
         if (! $calendar instanceof VCalendar) {
             throw new ApiHttpException(400, 'Invalid thread payload.', 'bad_request');
         }
-        foreach ($calendar->getComponents('VJOURNAL') as $component) {
+        foreach ($calendar->select('VJOURNAL') as $component) {
             if ($component instanceof VJournal) {
                 return [$calendar, $component];
             }

@@ -8,6 +8,8 @@ use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 
 /**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
  * @property string $token_hash
  * @property string $username
  * @property string $role

@@ -74,7 +74,7 @@ final class JmapToIcsTaskConverter
         $this->removeVtodoComponents($calendar, static fn (VTodo $existing): bool => isset($existing->UID)
             && (string) $existing->UID->getValue() === $uid);
 
-        if ($calendar->getComponents('VTODO') === []) {
+        if ($calendar->select('VTODO') === []) {
             return null;
         }
 
@@ -161,6 +161,9 @@ final class JmapToIcsTaskConverter
         }
 
         $todo = $calendar->add('VTODO', $properties);
+        if (! $todo instanceof VTodo) {
+            throw new \InvalidArgumentException('Expected a VTODO component.');
+        }
 
         TaskConversionSupport::writeDateTimesToVtodo($todo, $task);
 
@@ -214,7 +217,7 @@ final class JmapToIcsTaskConverter
      */
     private function removeVtodoComponents(VCalendar $calendar, callable $matcher): void
     {
-        foreach ($calendar->getComponents('VTODO') as $existing) {
+        foreach ($calendar->select('VTODO') as $existing) {
             if ($existing instanceof VTodo && $matcher($existing)) {
                 $calendar->remove($existing);
             }

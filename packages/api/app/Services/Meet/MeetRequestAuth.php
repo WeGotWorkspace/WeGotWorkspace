@@ -38,7 +38,7 @@ final class MeetRequestAuth
             is_string($cookieRaw) ? $cookieRaw : null,
             $realm,
         );
-        if ($cookieUser !== null && $cookieUser !== '') {
+        if ($cookieUser !== null) {
             return $cookieUser;
         }
 

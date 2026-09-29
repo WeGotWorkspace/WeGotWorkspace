@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Contacts\Conversion;
 
 use Sabre\VObject\Component\VCard;
-use Sabre\VObject\Property;
 
 final class JsContactToVCardConverter
 {
@@ -223,10 +222,8 @@ final class JsContactToVCardConverter
                 continue;
             }
 
-            $useRfc9554 = is_array($components) && $this->usesRfc9554AddressComponents($components);
-            $parts = is_array($components)
-                ? ConversionSupport::adrPartsFromComponents($components, $useRfc9554)
-                : array_fill(0, $useRfc9554 ? 18 : 7, '');
+            $useRfc9554 = $this->usesRfc9554AddressComponents($components);
+            $parts = ConversionSupport::adrPartsFromComponents($components, $useRfc9554);
 
             $params = $this->sharedParams($entry, $id);
             if (isset($entry['countryCode'])) {
@@ -242,14 +239,14 @@ final class JsContactToVCardConverter
                 $params['tz'] = (string) $entry['timeZone'];
             }
             if (JscopmsSupport::shouldEmitJscopms(
-                is_array($components) ? $components : [],
+                $components,
                 (bool) ($entry['isOrdered'] ?? false),
                 $useRfc9554,
             )) {
                 $params = array_merge(
                     $params,
                     JscopmsSupport::jscopmsParamsFromComponents(
-                        is_array($components) ? $components : [],
+                        $components,
                         $useRfc9554,
                         isset($entry['defaultSeparator']) ? (string) $entry['defaultSeparator'] : null,
                     ),
@@ -739,7 +736,7 @@ final class JsContactToVCardConverter
                 $vparams['value'] = strtoupper($valueType);
             }
             $property = $vcard->add($name, $value, $vparams);
-            if ($property instanceof Property && isset($params['group'])) {
+            if (isset($params['group'])) {
                 $property->group = (string) $params['group'];
             }
         }
@@ -862,9 +859,6 @@ final class JsContactToVCardConverter
     {
         $rfc9554Kinds = ['number', 'block', 'direction', 'landmark', 'subdistrict', 'district', 'room', 'floor', 'building'];
         foreach ($components as $component) {
-            if (! is_array($component)) {
-                continue;
-            }
             if (in_array((string) ($component['kind'] ?? ''), $rfc9554Kinds, true)) {
                 return true;
             }

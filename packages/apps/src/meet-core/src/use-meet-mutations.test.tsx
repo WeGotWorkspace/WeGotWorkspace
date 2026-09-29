@@ -96,16 +96,22 @@ describe("useMeetMutations joinRoom", () => {
     room.statusRef.current = "idle";
     room.roomCodeRef.current = null;
     room.selfIdRef.current = null;
-    room.setStatus = vi.fn((status: string) => {
-      room.statusRef.current = status as typeof room.statusRef.current;
+    room.setStatus = vi.fn((status) => {
+      room.statusRef.current =
+        typeof status === "function"
+          ? status(room.statusRef.current)
+          : (status as typeof room.statusRef.current);
     });
     let releaseJoin: (() => void) | undefined;
-    session.meetRtc.join = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          releaseJoin = resolve;
-        }),
-    );
+    session.meetRtc.join = vi.fn(async () => {
+      return new Promise<{ peerId: string; peers: never[]; sessionKey?: string | null }>(
+        (resolve) => {
+          releaseJoin = () => {
+            resolve({ peerId: "peer-1", peers: [], sessionKey: null });
+          };
+        },
+      );
+    });
     const leaveRef = { current: null as null | (() => Promise<void>) };
 
     const { result } = renderHook(() =>

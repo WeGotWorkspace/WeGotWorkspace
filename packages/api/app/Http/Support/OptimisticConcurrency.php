@@ -39,7 +39,7 @@ final class OptimisticConcurrency
             return;
         }
 
-        if ($ifUnmodifiedSince !== null && $lastModified !== null && $lastModified > 0) {
+        if ($lastModified !== null && $lastModified > 0) {
             $since = self::parseHttpDate($ifUnmodifiedSince);
             if ($since !== null && $lastModified > $since) {
                 throw new ApiHttpException(

@@ -30,7 +30,7 @@ final class CalendarsCapabilityProvider implements JmapCapabilityProviderInterfa
      * six-property object lives in accountCapabilities
      * (draft-ietf-jmap-calendars-27 §1.5.1).
      */
-    public function sessionCapability(): object|array
+    public function sessionCapability(): object
     {
         return (object) [];
     }

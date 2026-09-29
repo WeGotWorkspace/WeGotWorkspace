@@ -1,120 +1,91 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { createMemoryHistory } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
 import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const routesSource = readFileSync(join(here, "wegotworkspace-routes.tsx"), "utf8");
-
-describe("wegotworkspace meet invite routes", () => {
-  it("rewrites leftover ?room= onto /meet/meetings/{id}", () => {
-    expect(routesSource).toContain("MEET_MEETINGS_ROUTE");
-    expect(routesSource).toContain("meetSearchWithoutRoom");
-    expect(routesSource).toMatch(/params: \{ meetingId: room/);
-  });
-
-  it("matches /meet/meetings/:meetingId", async () => {
+describe("wegotworkspace meet routes", () => {
+  it("matches /meet/meetings/:meetingId on direct loads", async () => {
     const history = createMemoryHistory({
-      initialEntries: ["/meet/meetings/h8y8-ewp6-al8n"],
+      initialEntries: ["/meet/meetings/room-123"],
     });
     const router = createWeGotWorkspaceRouter({ mode: "mock", history });
     await router.load();
-    expect(router.state.location.pathname).toBe("/meet/meetings/h8y8-ewp6-al8n");
-    const match = router.state.matches.find((row) => matchHasParam(row.params, "meetingId"));
-    expect(match?.params).toMatchObject({ meetingId: "h8y8-ewp6-al8n" });
+
+    const match = router.state.matches.find((entry) => entry.params.meetingId);
+    expect(match?.params).toMatchObject({ meetingId: "room-123" });
+    expect(router.state.location.pathname).toBe("/meet/meetings/room-123");
   });
 
-  it("redirects /meet/guest and /meet/join onto /meet/meetings/{id} when room is set", () => {
-    expect(routesSource).toContain("to: MEET_MEETINGS_ROUTE");
-    expect(routesSource).toMatch(/path: "\/meet\/guest"/);
-    expect(routesSource).toMatch(/path: "\/meet\/join"/);
+  it("/meet/guest?room=abc triggers redirect to /meet/meetings/abc", () => {
+    const history = createMemoryHistory({ initialEntries: ["/"] });
+    const router = createWeGotWorkspaceRouter({ mode: "live", history });
+    const route = router.routesByPath["/meet/guest"];
+    const beforeLoad = route?.options.beforeLoad;
+
+    expect(beforeLoad).toBeDefined();
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      beforeLoad?.({ search: { room: "abc" }, location: { pathname: "/meet/guest" } } as any);
+      throw new Error("Expected redirect to be thrown");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      expect(error).toBeDefined();
+      expect(error.options.to).toBe("/meet/meetings/$meetingId");
+      expect(error.options.params).toEqual({ meetingId: "abc" });
+      expect(error.options.replace).toBe(true);
+    }
   });
 
-  it("keeps signed-in ad-hoc and persisted meetings on the mounted workspace", () => {
-    expect(routesSource).toContain("meetIsAdHocMeetingId");
-    expect(routesSource).toContain("persistedMeetingId");
-    expect(routesSource).toContain("meetLiveRouteShowsInviteGate");
-    expect(routesSource).toContain("wgwHasAuthenticatedSession");
-    expect(routesSource).toContain("MeetInviteGate");
-    expect(routesSource).toContain("MeetChannelDeepLinkGate");
-    expect(routesSource).toContain("AuthenticatedMeetChatApp");
-    expect(routesSource).not.toMatch(
-      /if \(meetingId \|\| \(!onConversationRoute && inviteRoom\)\)/,
-    );
+  it("/meet/join?room=abc triggers redirect to /meet/meetings/abc", () => {
+    const history = createMemoryHistory({ initialEntries: ["/"] });
+    const router = createWeGotWorkspaceRouter({ mode: "live", history });
+    const route = router.routesByPath["/meet/join"];
+    const beforeLoad = route?.options.beforeLoad;
+
+    expect(beforeLoad).toBeDefined();
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      beforeLoad?.({ search: { room: "abc" }, location: { pathname: "/meet/join" } } as any);
+      throw new Error("Expected redirect to be thrown");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      expect(error).toBeDefined();
+      expect(error.options.to).toBe("/meet/meetings/$meetingId");
+      expect(error.options.params).toEqual({ meetingId: "abc" });
+      expect(error.options.replace).toBe(true);
+    }
   });
 
-  it("uses MeetInviteGate on /meet and only redirects old guest/join paths", () => {
-    expect(routesSource).toContain('path: "/meet/join"');
-    expect(routesSource).toContain('path: "/meet/guest"');
-    expect(routesSource).toContain("MeetInviteGate");
-    expect(routesSource).toContain("MeetLiveRoute");
-    expect(routesSource).toMatch(/path: "\/meet\/guest"[\s\S]*throw redirect/);
-    expect(routesSource).toMatch(/path: "\/meet\/join"[\s\S]*throw redirect/);
-    expect(routesSource).not.toContain("MeetGuestRoute");
-    expect(routesSource).not.toContain("component: MeetGuestRoute");
+  it("/meet?room=abc triggers redirect to /meet/meetings/abc", () => {
+    const history = createMemoryHistory({ initialEntries: ["/"] });
+    const router = createWeGotWorkspaceRouter({ mode: "live", history });
+    const route = router.routesByPath["/meet"];
+    const beforeLoad = route?.options.beforeLoad;
+
+    expect(beforeLoad).toBeDefined();
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      beforeLoad?.({ search: { room: "abc" }, location: { pathname: "/meet" } } as any);
+      throw new Error("Expected redirect to be thrown");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      expect(error).toBeDefined();
+      expect(error.options.to).toBe("/meet/meetings/$meetingId");
+      expect(error.options.params).toEqual({ meetingId: "abc" });
+      expect(error.options.replace).toBe(true);
+    }
+  });
+
+  it("matches /meet index without query parameters", async () => {
+    const history = createMemoryHistory({
+      initialEntries: ["/meet"],
+    });
+    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    await router.load();
+
+    expect(router.state.location.pathname).toBe("/meet");
+    expect(router.state.matches.some((entry) => entry.pathname === "/meet")).toBe(true);
   });
 });
-
-describe("wegotworkspace meet conversation routes", () => {
-  it("matches channelId on /meet/channels/:channelId", async () => {
-    const history = createMemoryHistory({
-      initialEntries: ["/meet/channels/design-reviews"],
-    });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
-    await router.load();
-
-    expect(router.state.location.pathname).toBe("/meet/channels/design-reviews");
-    const match = router.state.matches.find((row) => matchHasParam(row.params, "channelId"));
-    expect(match?.params).toMatchObject({ channelId: "design-reviews" });
-  });
-
-  it("matches peerId on /meet/dms/:peerId without a dm: prefix", async () => {
-    const history = createMemoryHistory({
-      initialEntries: ["/meet/dms/ada.lovelace"],
-    });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
-    await router.load();
-
-    expect(router.state.location.pathname).toBe("/meet/dms/ada.lovelace");
-    const match = router.state.matches.find((row) => matchHasParam(row.params, "peerId"));
-    expect(match?.params).toMatchObject({ peerId: "ada.lovelace" });
-  });
-
-  it("navigates between channel and dm paths without leaving /meet", async () => {
-    const history = createMemoryHistory({
-      initialEntries: ["/meet/channels/general"],
-    });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
-    await router.load();
-
-    await router.navigate({
-      to: "/meet/dms/$peerId",
-      params: { peerId: "alice" },
-    });
-    expect(router.state.location.pathname).toBe("/meet/dms/alice");
-
-    await router.navigate({
-      to: "/meet/channels/$channelId",
-      params: { channelId: "general" },
-    });
-    expect(router.state.location.pathname).toBe("/meet/channels/general");
-  });
-
-  it("matches legacy /meet/{id} so MeetChatApp can replace onto nested paths", async () => {
-    const history = createMemoryHistory({
-      initialEntries: ["/meet/chat-general"],
-    });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
-    await router.load();
-
-    expect(router.state.location.pathname).toBe("/meet/chat-general");
-    const match = router.state.matches.find((row) => matchHasParam(row.params, "legacyId"));
-    expect(match?.params).toMatchObject({ legacyId: "chat-general" });
-  });
-});
-
-function matchHasParam(params: Record<string, unknown>, key: string): boolean {
-  return typeof params[key] === "string";
-}

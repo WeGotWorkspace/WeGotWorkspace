@@ -27,7 +27,7 @@ final class ContactCardImportController
         }
 
         $body = $request->getContent();
-        if (! is_string($body) || trim($body) === '') {
+        if (trim($body) === '') {
             if (WgwOversizedPost::emptyBodyLooksDiscarded($request)) {
                 throw new PostTooLargeException;
             }

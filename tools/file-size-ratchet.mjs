@@ -69,7 +69,201 @@ export function isUnderCountedTree(filePath) {
   return countedRoots.some((root) => filePath === root || filePath.startsWith(`${root}/`));
 }
 
-function walk(dir, extensions, out) {
+/**
+ * Strip comments/strings enough that brace matching and body `use` scans
+ * do not trip on noise. Preserves newlines so offsets stay line-aligned.
+ * @param {string} src
+ */
+export function stripPhpNoise(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, " "))
+    .replace(/\/\/[^\n]*/g, "")
+    .replace(/'(?:\\.|[^'\\])*'/g, "''")
+    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    .replace(/<<<(['"]?)(\w+)\1[\s\S]*?\n\2;?/g, "''");
+}
+
+/**
+ * Trait names from `use Trait;` inside class/trait/interface/enum bodies.
+ * Header `use Foo\Bar;` imports are ignored.
+ * @param {string} phpSource
+ * @returns {string[]}
+ */
+export function extractBodyTraitUses(phpSource) {
+  const clean = stripPhpNoise(phpSource);
+  /** @type {string[]} */
+  const bodies = [];
+  const declRe = /\b(class|trait|interface|enum)\s+\w+[^{]*\{/g;
+  let match;
+  while ((match = declRe.exec(clean))) {
+    let i = match.index + match[0].length - 1;
+    let depth = 0;
+    for (; i < clean.length; i++) {
+      const ch = clean[i];
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          bodies.push(clean.slice(match.index + match[0].length - 1, i + 1));
+          break;
+        }
+      }
+    }
+  }
+
+  /** @type {Set<string>} */
+  const names = new Set();
+  for (const body of bodies) {
+    const useRe = /^\s*use\s+(?!function\b|const\b)([^;]+);/gm;
+    let useMatch;
+    while ((useMatch = useRe.exec(body))) {
+      for (const part of useMatch[1].split(",")) {
+        const name = part.trim().split(/\s+as\s+/i)[0].trim().replace(/^\\/, "");
+        if (name) names.add(name);
+      }
+    }
+  }
+  return [...names];
+}
+
+/**
+ * @param {string} rel
+ * @param {string} text
+ * @param {{ byFqcn: Map<string, string>, byShort: Map<string, { fqcn: string, path: string }[]> }} index
+ */
+function indexTraitSource(rel, text, index) {
+  const nsMatch = text.match(/\bnamespace\s+([^;]+);/);
+  const traitMatch = text.match(/\btrait\s+(\w+)/);
+  if (!nsMatch || !traitMatch) return;
+  const fqcn = `${nsMatch[1].trim()}\\${traitMatch[1]}`;
+  index.byFqcn.set(fqcn, rel);
+  const short = traitMatch[1];
+  const list = index.byShort.get(short) ?? [];
+  if (!list.some((entry) => entry.path === rel)) {
+    list.push({ fqcn, path: rel });
+  }
+  index.byShort.set(short, list);
+}
+
+/**
+ * @param {string} rootAbs
+ * @returns {{ byFqcn: Map<string, string>, byShort: Map<string, { fqcn: string, path: string }[]> }}
+ */
+function buildTraitIndex(rootAbs) {
+  /** @type {{ byFqcn: Map<string, string>, byShort: Map<string, { fqcn: string, path: string }[]> }} */
+  const index = { byFqcn: new Map(), byShort: new Map() };
+
+  function walkTraits(dir) {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walkTraits(full);
+        continue;
+      }
+      if (!entry.isFile() || path.extname(entry.name) !== ".php") continue;
+      const rel = path.relative(repoRoot, full).split(path.sep).join("/");
+      if (isExcluded(rel)) continue;
+      indexTraitSource(rel, readFileSync(full, "utf8"), index);
+    }
+  }
+
+  walkTraits(rootAbs);
+  return index;
+}
+
+/**
+ * Resolve a body trait name (short or FQCN) to a repo-relative PHP path.
+ * @param {string} name
+ * @param {string} fromNamespace
+ * @param {{ byFqcn: Map<string, string>, byShort: Map<string, { fqcn: string, path: string }[]> }} index
+ */
+export function resolveTraitPath(name, fromNamespace, index) {
+  const normalized = name.replace(/^\\/, "");
+  if (normalized.includes("\\")) {
+    return index.byFqcn.get(normalized) ?? null;
+  }
+  const sameNs = `${fromNamespace}\\${normalized}`;
+  if (index.byFqcn.has(sameNs)) return index.byFqcn.get(sameNs) ?? null;
+  const hits = index.byShort.get(normalized) ?? [];
+  return hits.length === 1 ? hits[0].path : null;
+}
+
+/**
+ * Transitive trait files used by a PHP source file (each path once).
+ * @param {string} filePath repo-relative
+ * @param {string} phpSource
+ * @param {{ byFqcn: Map<string, string>, byShort: Map<string, { fqcn: string, path: string }[]> }} index
+ * @param {Map<string, string>} fileTexts
+ * @param {Set<string>} [visited]
+ * @returns {Set<string>}
+ */
+export function collectTraitFiles(filePath, phpSource, index, fileTexts, visited = new Set()) {
+  const nsMatch = phpSource.match(/\bnamespace\s+([^;]+);/);
+  const fromNamespace = nsMatch ? nsMatch[1].trim() : "";
+  for (const name of extractBodyTraitUses(phpSource)) {
+    const traitPath = resolveTraitPath(name, fromNamespace, index);
+    if (!traitPath || visited.has(traitPath)) continue;
+    visited.add(traitPath);
+    const traitText = fileTexts.get(traitPath);
+    if (traitText === undefined) continue;
+    collectTraitFiles(traitPath, traitText, index, fileTexts, visited);
+  }
+  return visited;
+}
+
+/**
+ * For PHP under packages/api/app, add transitive trait file line counts to
+ * each file that uses traits in its type body. Raw trait files stay at their
+ * own line count (plus nested traits they use). Header imports do not count.
+ * @param {Map<string, number>} rawCounts
+ * @param {Map<string, string>} fileTexts
+ * @param {string} [apiAppRootRel]
+ * @returns {Map<string, number>}
+ */
+export function applyPhpTraitLineCounts(
+  rawCounts,
+  fileTexts,
+  apiAppRootRel = "packages/api/app",
+) {
+  const apiAbs = path.join(repoRoot, apiAppRootRel);
+  /** @type {{ byFqcn: Map<string, string>, byShort: Map<string, { fqcn: string, path: string }[]> }} */
+  const index = statSync(apiAbs, { throwIfNoEntry: false })?.isDirectory()
+    ? buildTraitIndex(apiAbs)
+    : { byFqcn: new Map(), byShort: new Map() };
+  for (const [rel, text] of fileTexts) {
+    if (rel.startsWith(`${apiAppRootRel}/`) && rel.endsWith(".php")) {
+      indexTraitSource(rel, text, index);
+    }
+  }
+  /** @type {Map<string, number>} */
+  const combined = new Map();
+  for (const [filePath, own] of rawCounts) {
+    if (!filePath.startsWith(`${apiAppRootRel}/`) || !filePath.endsWith(".php")) {
+      combined.set(filePath, own);
+      continue;
+    }
+    const text = fileTexts.get(filePath);
+    if (text === undefined) {
+      combined.set(filePath, own);
+      continue;
+    }
+    const traits = collectTraitFiles(filePath, text, index, fileTexts);
+    let total = own;
+    for (const traitPath of traits) {
+      total += rawCounts.get(traitPath) ?? countLines(fileTexts.get(traitPath) ?? "");
+    }
+    combined.set(filePath, total);
+  }
+  return combined;
+}
+
+function walk(dir, extensions, outCounts, outTexts) {
   let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
@@ -79,7 +273,7 @@ function walk(dir, extensions, out) {
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      walk(full, extensions, out);
+      walk(full, extensions, outCounts, outTexts);
       continue;
     }
     if (!entry.isFile()) continue;
@@ -88,21 +282,28 @@ function walk(dir, extensions, out) {
     const rel = path.relative(repoRoot, full).split(path.sep).join("/");
     if (isExcluded(rel)) continue;
     const text = readFileSync(full, "utf8");
-    out.set(rel, countLines(text));
+    outCounts.set(rel, countLines(text));
+    if (outTexts && ext === ".php") outTexts.set(rel, text);
   }
 }
 
 function countedFiles(onlyRoot) {
-  const counts = new Map();
+  /** @type {Map<string, number>} */
+  const rawCounts = new Map();
+  /** @type {Map<string, string>} */
+  const fileTexts = new Map();
   for (const tree of trees) {
     if (onlyRoot && tree.root !== onlyRoot) continue;
     const abs = path.join(repoRoot, tree.root);
     if (!statSync(abs, { throwIfNoEntry: false })?.isDirectory()) {
       throw new Error(`counted tree missing: ${tree.root}`);
     }
-    walk(abs, tree.extensions, counts);
+    walk(abs, tree.extensions, rawCounts, tree.root === "packages/api/app" ? fileTexts : null);
   }
-  return counts;
+  if (!onlyRoot || onlyRoot === "packages/api/app") {
+    return applyPhpTraitLineCounts(rawCounts, fileTexts);
+  }
+  return rawCounts;
 }
 
 function parseBaseline(text) {

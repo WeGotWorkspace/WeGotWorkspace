@@ -20,7 +20,7 @@ final class MailCredentialService
             return false;
         }
 
-        return trim($account['imapUsername']) !== '' && ($account['imapPassword'] ?? '') !== '';
+        return trim($account['imapUsername']) !== '' && $account['imapPassword'] !== '';
     }
 
     /**

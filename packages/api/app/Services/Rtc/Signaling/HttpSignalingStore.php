@@ -147,7 +147,10 @@ final class HttpSignalingStore
             ->where('peer_id', '!=', $selfId)
             ->get($columns)
             ->map(function ($row): array {
-                $peer = ['id' => (string) $row->id, 'name' => (string) $row->name];
+                $peer = [
+                    'id' => (string) $row->getAttribute('id'),
+                    'name' => (string) $row->getAttribute('name'),
+                ];
                 if ($this->policy->rosterIncludesOwner) {
                     $peer['user'] = $this->ownerUsername((string) ($row->owner_user ?? ''));
                 }
@@ -276,12 +279,12 @@ final class HttpSignalingStore
 
             $messages = [];
             foreach ($query->get(['id', 'from_peer as from', 'to_peer as to', 'type', 'payload']) as $row) {
-                $decoded = json_decode((string) $row->payload, true);
+                $decoded = json_decode((string) $row->getAttribute('payload'), true);
                 $messages[] = [
-                    'id' => (int) $row->id,
-                    'from' => (string) $row->from,
-                    'to' => (string) $row->to,
-                    'type' => (string) $row->type,
+                    'id' => (int) $row->getAttribute('id'),
+                    'from' => (string) $row->getAttribute('from'),
+                    'to' => (string) $row->getAttribute('to'),
+                    'type' => (string) $row->getAttribute('type'),
                     'payload' => $decoded,
                 ];
             }
@@ -304,10 +307,10 @@ final class HttpSignalingStore
             $ids = $rows->pluck('id')->all();
             $this->messageQuery()->whereIn('id', $ids)->delete();
             foreach ($rows as $row) {
-                $decoded = json_decode((string) $row->payload, true);
+                $decoded = json_decode((string) $row->getAttribute('payload'), true);
                 $messages[] = [
-                    'from' => (string) $row->from,
-                    'type' => (string) $row->type,
+                    'from' => (string) $row->getAttribute('from'),
+                    'type' => (string) $row->getAttribute('type'),
                     'payload' => $decoded,
                 ];
             }

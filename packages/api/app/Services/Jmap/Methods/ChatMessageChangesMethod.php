@@ -81,7 +81,7 @@ final class ChatMessageChangesMethod implements JmapMethodInterface
         foreach ($this->channels->accessibleChatInstances($username) as $instance) {
             $uri = (string) $instance->uri;
             $instances[$uri] = $instance;
-            $current[$uri] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+            $current[$uri] = (string) (int) ($instance->calendar->synctoken ?? 1);
         }
         ksort($current);
 

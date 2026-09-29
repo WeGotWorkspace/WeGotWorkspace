@@ -338,7 +338,7 @@ Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', f
 
     foreach ($results as $result) {
         $extra = '';
-        if (isset($result['extra']) && is_array($result['extra'])) {
+        if (isset($result['extra'])) {
             foreach ($result['extra'] as $key => $value) {
                 $extra .= sprintf(', %s %d', $key, $value);
             }
