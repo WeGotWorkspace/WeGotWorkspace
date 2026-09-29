@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Mcp;
 
-use App\Auth\SabreUserProvider;
+use App\Exceptions\ApiHttpException;
 use App\Models\User;
-use App\Services\Auth\LoginRateLimiter;
+use App\Services\Auth\PasswordLogin;
 use App\Services\Mcp\ConsentIntent;
 use App\Services\Mcp\McpOAuthLoginRedirect;
 use Illuminate\Http\JsonResponse;
@@ -17,8 +17,7 @@ use Illuminate\Support\Facades\Auth;
 final class OAuthSessionController
 {
     public function __construct(
-        private SabreUserProvider $users,
-        private LoginRateLimiter $limiter,
+        private PasswordLogin $passwordLogin,
         private ConsentIntent $intent,
     ) {}
 
@@ -43,26 +42,47 @@ final class OAuthSessionController
         if ($username === '' || $password === '') {
             return $this->failed($request, 'Username and password are required.', 400);
         }
-        if (! $this->limiter->allow($username, $ip)) {
-            return $this->failed($request, 'Too many sign-in attempts. Try again later.', 429);
+
+        try {
+            $result = $this->passwordLogin->accept($username, $password, $ip);
+        } catch (ApiHttpException $e) {
+            return $this->failed($request, $this->failureMessage($e), $e->getStatusCode());
         }
 
-        $user = $this->users->retrieveByCredentials(['username' => $username]);
-        if (! $user instanceof User || ! $this->users->validateCredentials($user, ['password' => $password])) {
+        if ($result['status'] !== 'ok') {
+            if ($request->expectsJson()) {
+                return response()->json($result);
+            }
+
+            $intent = (string) $request->session()->get('mcp_login_intent', '');
+
+            return redirect(McpOAuthLoginRedirect::spaLoginUrl($request, $intent, (string) $result['status']));
+        }
+
+        $user = User::query()->where('username', $username)->first();
+        if (! $user instanceof User) {
             return $this->failed($request, 'Those credentials were not recognized.', 401);
         }
 
-        $this->limiter->reset($username, $ip);
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
         $request->session()->forget('mcp_login_intent');
 
         $target = McpOAuthLoginRedirect::relativeAuthorize($request);
         if ($request->expectsJson()) {
-            return response()->json(['ok' => true, 'redirect' => $target]);
+            return response()->json(['ok' => true, 'status' => 'ok', 'redirect' => $target]);
         }
 
         return redirect($target);
+    }
+
+    private function failureMessage(ApiHttpException $e): string
+    {
+        return match ($e->getStatusCode()) {
+            429 => 'Too many sign-in attempts. Try again later.',
+            401 => 'Those credentials were not recognized.',
+            default => $e->getMessage(),
+        };
     }
 
     private function failed(Request $request, string $message, int $status): JsonResponse|RedirectResponse

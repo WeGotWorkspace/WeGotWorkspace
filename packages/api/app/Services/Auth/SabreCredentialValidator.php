@@ -16,6 +16,7 @@ final class SabreCredentialValidator
     public function __construct(
         private UserEnabledGuard $enabled,
         private AppPasswordService $appPasswords,
+        private UserMfaService $mfa,
     ) {}
 
     public function validate(string $username, string $password, string $realm): bool
@@ -30,14 +31,17 @@ final class SabreCredentialValidator
     }
 
     /**
-     * DAV and Meet Basic auth. An app password matches first. Otherwise the
-     * account password is accepted. TOTP refusal is added when MFA lands.
+     * DAV and Meet Basic auth. An app password matches first. An account
+     * password is refused once TOTP is enabled; otherwise it is accepted.
      */
     public function validateProtocol(string $username, string $password, string $realm, ?string $client = null): bool
     {
         $username = strtolower(trim($username));
         if ($this->appPasswords->matches($username, $password, $client)) {
             return $this->enabled->isEnabled($username);
+        }
+        if ($this->mfa->isEnabled($username)) {
+            return false;
         }
 
         if (! $this->validate($username, $password, $realm)) {

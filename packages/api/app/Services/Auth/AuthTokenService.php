@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Auth;
 
 use App\Exceptions\ApiHttpException;
-use App\Models\AppSetting;
 
 final class AuthTokenService
 {
@@ -14,32 +13,19 @@ final class AuthTokenService
         private JwtTokenService $jwtTokens,
         private RefreshTokenRepository $refreshTokens,
         private RevokedTokenRepository $revokedTokens,
-        private LoginRateLimiter $rateLimiter,
-        private SabreCredentialValidator $credentials,
+        private PasswordLogin $passwordLogin,
         private AdminRoleResolver $adminRoles,
         private UserEnabledGuard $enabled,
     ) {}
 
     /**
-     * @return array{
-     *   access_token: string,
-     *   refresh_token: string,
-     *   token_type: string,
-     *   expires_in: int,
-     *   refresh_expires_in: int,
-     *   role: 'guest'|'user'|'admin',
-     *   username: string
-     * }
+     * Password step. A matching password does not reset the login limiter;
+     * that happens only when this method issues tokens.
+     *
+     * @return array<string, mixed>
      */
     public function issueFromCredentials(string $username, string $password, string $ip): array
     {
-        $username = strtolower(trim($username));
-        if ($username === '' || $password === '') {
-            throw new ApiHttpException(400, 'Username and password are required.', 'bad_request');
-        }
-        if (! $this->rateLimiter->allow($username, $ip)) {
-            throw new ApiHttpException(429, 'Too many login attempts. Please try again later.', 'throttled');
-        }
         if ($this->jwtConfig->signingConfig() === null) {
             throw new ApiHttpException(
                 503,
@@ -48,14 +34,12 @@ final class AuthTokenService
             );
         }
 
-        $realm = (string) AppSetting::getValue('auth_realm', (string) config('wgw.auth_realm'));
-        if (! $this->credentials->validate($username, $password, $realm)) {
-            throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
+        $result = $this->passwordLogin->accept($username, $password, $ip);
+        if ($result['status'] !== 'ok') {
+            return $result;
         }
 
-        $this->rateLimiter->reset($username, $ip);
-
-        return $this->issueForUsername($username);
+        return ['status' => 'ok'] + $this->issueForUsername((string) $result['username']);
     }
 
     /**

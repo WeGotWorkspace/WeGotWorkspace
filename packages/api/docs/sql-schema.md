@@ -23,6 +23,9 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 |-------|--------|--------|
 | `users` | `App\Models\User` | Sabre HTTP Basic (`digest` bcrypt); nullable `dav_password_used_at` when the account password was accepted on DAV/Meet Basic |
 | `wgw_app_passwords` | `App\Models\AppPassword` | Named app passwords (`token_hash` SHA-256). Plaintext is shown once. |
+| `wgw_user_mfa` | `App\Models\UserMfa` | TOTP secret (encrypted), `enabled_at`, replay step, suggestion snooze |
+| `wgw_mfa_recovery_codes` | `App\Models\MfaRecoveryCode` | Single-use recovery codes (`code_hash` SHA-256) |
+| `wgw_auth_challenges` | `App\Models\AuthChallenge` | Login challenges (`id_hash` SHA-256). `totp` expires in 5 minutes; setup and replace expire in 15. |
 | `principals` | `App\Models\Principal` | DAV principals, profile `email` / `displayname` |
 | `groupmembers` | `App\Models\GroupMember` | Group membership join |
 | `app_settings` | `App\Models\AppSetting` | Key/value site settings (string PK `name`) |

@@ -6,7 +6,7 @@ namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-final class AppPasswordCreateRequest extends FormRequest
+final class MfaChallengeConfirmRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -19,9 +19,7 @@ final class AppPasswordCreateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:60'],
-            'password' => ['nullable', 'string', 'max:4096'],
-            'code' => ['nullable', 'string', 'max:16'],
+            'code' => ['required', 'string', 'max:16'],
         ];
     }
 }

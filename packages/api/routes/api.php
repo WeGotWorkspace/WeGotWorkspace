@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\Admin\UsersController as AdminUsersController;
 use App\Http\Controllers\Api\V1\Auth\ConsumePasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\JwksController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
+use App\Http\Controllers\Api\V1\Auth\MfaChallengeController;
 use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RequestPasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
@@ -59,6 +60,7 @@ use App\Http\Controllers\Api\V1\Settings\MailController as SettingsMailControlle
 use App\Http\Controllers\Api\V1\Settings\McpGrantsController as SettingsMcpGrantsController;
 use App\Http\Controllers\Api\V1\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\Api\V1\Settings\StateController as SettingsStateController;
+use App\Http\Controllers\Api\V1\Settings\TotpSettingsController;
 use App\Http\Controllers\Api\V1\System\CapabilitiesController;
 use App\Http\Controllers\Api\V1\System\HealthController;
 use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitiesController;
@@ -81,6 +83,12 @@ Route::get('capabilities', CapabilitiesController::class);
 Route::get('.well-known/jwks.json', JwksController::class);
 
 Route::post('auth/token', TokenController::class);
+Route::post('auth/mfa-challenges/{challenge}/verification', [MfaChallengeController::class, 'verify'])
+    ->where('challenge', '[A-Fa-f0-9]{64}');
+Route::post('auth/mfa-challenges/{challenge}/totp', [MfaChallengeController::class, 'provision'])
+    ->where('challenge', '[A-Fa-f0-9]{64}');
+Route::post('auth/mfa-challenges/{challenge}/confirmation', [MfaChallengeController::class, 'confirm'])
+    ->where('challenge', '[A-Fa-f0-9]{64}');
 Route::post('auth/refresh', RefreshController::class);
 Route::post('auth/revoke', RevokeController::class);
 Route::post('auth/password-resets', RequestPasswordResetController::class);
@@ -202,6 +210,10 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::post('settings/app-passwords', [AppPasswordsController::class, 'store']);
     Route::post('settings/app-passwords/revocations', [AppPasswordsController::class, 'revokeAll']);
     Route::delete('settings/app-passwords/{id}', [AppPasswordsController::class, 'destroy'])->whereNumber('id');
+    Route::post('settings/totp', [TotpSettingsController::class, 'store']);
+    Route::post('settings/totp/confirmation', [TotpSettingsController::class, 'confirm']);
+    Route::delete('settings/totp', [TotpSettingsController::class, 'destroy']);
+    Route::post('settings/totp/recovery-codes', [TotpSettingsController::class, 'regenerate']);
     Route::put('settings/mail', SettingsMailController::class);
     Route::get('settings/mcp-grants', [SettingsMcpGrantsController::class, 'index']);
     Route::delete('settings/mcp-grants/{clientId}', [SettingsMcpGrantsController::class, 'destroy'])

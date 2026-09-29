@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Settings;
 
-use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\Requests\Api\V1\AppPasswordCreateRequest;
 use App\Http\Requests\Api\V1\AppPasswordRevokeAllRequest;
-use App\Models\AppSetting;
 use App\Services\Auth\AppPasswordService;
-use App\Services\Auth\SabreCredentialValidator;
+use App\Services\Auth\MfaReauth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,7 +16,7 @@ final class AppPasswordsController
 {
     public function __construct(
         private AppPasswordService $appPasswords,
-        private SabreCredentialValidator $credentials,
+        private MfaReauth $reauth,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -32,7 +30,7 @@ final class AppPasswordsController
     {
         $username = $this->username($request);
         $validated = $request->validated();
-        $this->assertAccountPassword($username, (string) $validated['password']);
+        $this->reauth->assert($username, $validated['password'] ?? null, $validated['code'] ?? null);
         $created = $this->appPasswords->create($username, trim((string) $validated['name']));
 
         return response()->json($created, 201);
@@ -48,7 +46,8 @@ final class AppPasswordsController
     public function revokeAll(AppPasswordRevokeAllRequest $request): JsonResponse
     {
         $username = $this->username($request);
-        $this->assertAccountPassword($username, (string) $request->validated()['password']);
+        $validated = $request->validated();
+        $this->reauth->assert($username, $validated['password'] ?? null, $validated['code'] ?? null);
         $this->appPasswords->revokeAll($username);
 
         return response()->json(['ok' => true]);
@@ -60,13 +59,5 @@ final class AppPasswordsController
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
 
         return (string) $principal['username'];
-    }
-
-    private function assertAccountPassword(string $username, string $password): void
-    {
-        $realm = (string) AppSetting::getValue('auth_realm', (string) config('wgw.auth_realm'));
-        if (! $this->credentials->validate($username, $password, $realm)) {
-            throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
-        }
     }
 }

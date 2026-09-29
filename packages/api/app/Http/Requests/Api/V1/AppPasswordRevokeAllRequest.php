@@ -19,7 +19,8 @@ final class AppPasswordRevokeAllRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'password' => ['required', 'string', 'max:4096'],
+            'password' => ['nullable', 'string', 'max:4096'],
+            'code' => ['nullable', 'string', 'max:16'],
         ];
     }
 }

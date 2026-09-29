@@ -124,6 +124,9 @@ final class WgwSchemaMigratorTest extends TestCase
             'notification_deliveries',
             'push_subscriptions',
             'wgw_app_passwords',
+            'wgw_user_mfa',
+            'wgw_mfa_recovery_codes',
+            'wgw_auth_challenges',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
