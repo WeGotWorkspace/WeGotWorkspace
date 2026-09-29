@@ -391,7 +391,7 @@ final class ConversionIdMethods
         return json_encode([
             'params' => $params,
             'value' => $property->getJsonValue(),
-            'valueType' => strtolower((string) ($property['VALUE'] ?? $property->getValueType())),
+            'valueType' => VObjectScalar::parameterOrValueType($property['VALUE'] ?? null, $property->getValueType()),
         ], JSON_THROW_ON_ERROR);
     }
 

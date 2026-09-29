@@ -26,7 +26,12 @@ final class UiSessionService
     {
         $this->ensureSecretFile();
 
-        return $this->buildCookie(strtolower(trim($username)), $realm, $this->cookiePath($webBase));
+        $normalized = strtolower(trim($username));
+        if ($normalized === '') {
+            throw new \InvalidArgumentException('Username is required.');
+        }
+
+        return $this->buildCookie($normalized, $realm, $this->cookiePath($webBase));
     }
 
     private function ensureSecretFile(): void

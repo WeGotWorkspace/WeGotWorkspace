@@ -12,6 +12,7 @@ final class MailFolderOperations
         private MailImapGate $imap,
     ) {}
 
+    /** @return array<mixed> */
     public function handleFolders(string $username): array
     {
         $cred = $this->imap->requireImap($username);
@@ -38,6 +39,11 @@ final class MailFolderOperations
 
         return ['folders' => $folders];
     }
+
+    /**
+     * @param  list<array{name: string, mailbox: string, delimiter: string, noSelect?: bool}>  $raw
+     * @return list<array<string, mixed>>
+     */
 
     /**
      * @param  list<array{name: string, mailbox: string, delimiter: string, noSelect?: bool}>  $raw
@@ -80,6 +86,12 @@ final class MailFolderOperations
      * @param  list<array{name: string, mailbox: string, delimiter: string, noSelect?: bool}>  $raw
      * @return list<array<string, mixed>>
      */
+
+    /**
+     * @param  list<array<string, mixed>>  $folders
+     * @param  list<array{name: string, mailbox: string, delimiter: string, noSelect?: bool}>  $raw
+     * @return list<array<string, mixed>>
+     */
     private function foldersWithUnreadCounts(Connection $conn, string $ref, array $folders, array $raw): array
     {
         $noSelect = [];
@@ -114,6 +126,10 @@ final class MailFolderOperations
     /**
      * @param  array{name: string, mailbox: string, delimiter: string}  $row
      */
+
+    /**
+     * @param  array{name: string, mailbox: string, delimiter: string}  $row
+     */
     private function folderDisplayName(array $row): string
     {
         $mb = $row['mailbox'];
@@ -139,6 +155,10 @@ final class MailFolderOperations
     /**
      * @return non-empty-string|null
      */
+
+    /**
+     * @return non-empty-string|null
+     */
     private function parentMailboxPath(string $mailbox, string $delimiter): ?string
     {
         $del = self::normalizeMailboxDelimiter($delimiter);
@@ -154,6 +174,10 @@ final class MailFolderOperations
     /**
      * Last hierarchy segment (IMAP mailbox form, e.g. modified UTF-7).
      */
+
+    /**
+     * Last hierarchy segment (IMAP mailbox form, e.g. modified UTF-7).
+     */
     private function mailboxLeafSegment(string $mailbox, string $delimiter): string
     {
         $del = self::normalizeMailboxDelimiter($delimiter);
@@ -164,6 +188,13 @@ final class MailFolderOperations
 
         return substr($mailbox, $pos + strlen($del));
     }
+
+    /**
+     * Prefer the longest listed mailbox that is a strict case-insensitive prefix of {@code $mailbox}
+     * and is followed by {@code /} or {@code .} (hierarchy boundary). Does not depend on delimiter metadata.
+     *
+     * @param  list<array{name: string, mailbox: string, delimiter: string}>  $raw
+     */
 
     /**
      * Prefer the longest listed mailbox that is a strict case-insensitive prefix of {@code $mailbox}
@@ -205,6 +236,11 @@ final class MailFolderOperations
      * @param  list<array{name: string, mailbox: string, delimiter: string}>  $raw
      * @return array<string, string> lower(mailbox) => mailbox string as returned by IMAP (first occurrence wins)
      */
+
+    /**
+     * @param  list<array{name: string, mailbox: string, delimiter: string}>  $raw
+     * @return array<string, string> lower(mailbox) => mailbox string as returned by IMAP (first occurrence wins)
+     */
     private function mailboxCanonicalIndex(array $raw): array
     {
         $m = [];
@@ -221,6 +257,12 @@ final class MailFolderOperations
 
         return $m;
     }
+
+    /**
+     * Walk up from {@code $startPath} using {@code $delimiter} until a mailbox exists in {@code $canonicalByLower}.
+     *
+     * @param  array<string, string>  $canonicalByLower
+     */
 
     /**
      * Walk up from {@code $startPath} using {@code $delimiter} until a mailbox exists in {@code $canonicalByLower}.
@@ -256,6 +298,14 @@ final class MailFolderOperations
      *
      * @param  array<string, string>  $canonicalByLower
      */
+
+    /**
+     * Resolve parent mailbox to one that actually exists in the LIST/LSUB result (case-insensitive),
+     * skipping missing intermediates. Tries the row delimiter first, then {@code /} and {@code .} so a wrong
+     * delimiter from the server does not orphan nested folders or mis-attach them in the UI.
+     *
+     * @param  array<string, string>  $canonicalByLower
+     */
     private function resolveParentMailboxForTree(string $mailbox, string $rowDelimiter, array $canonicalByLower): ?string
     {
         $d0 = self::normalizeMailboxDelimiter($rowDelimiter);
@@ -282,6 +332,10 @@ final class MailFolderOperations
     /**
      * @param  list<array{name: string, mailbox: string, delimiter: string}>  $raw
      */
+
+    /**
+     * @param  list<array{name: string, mailbox: string, delimiter: string}>  $raw
+     */
     private function findInbox(array $raw): string
     {
         foreach ($raw as $row) {
@@ -292,6 +346,10 @@ final class MailFolderOperations
 
         return 'INBOX';
     }
+
+    /**
+     * @param  list<array{name: string, mailbox: string, delimiter: string}>  $raw
+     */
 
     /**
      * @param  list<array{name: string, mailbox: string, delimiter: string}>  $raw
@@ -372,7 +430,14 @@ final class MailFolderOperations
     /**
      * Append an RFC822 message to a detected system mailbox (Sent, Drafts, …).
      *
-     * @param  array{displayName: string, emailAddress: string, imap: array, smtp: array}  $cred
+     * @param  array{displayName: string, emailAddress: string, imap: array{host: string, port: int, security: string, username: string, password: string}, smtp: array{host: string, port: int, security: string, username: string, password: string}}  $cred
+     * @param  'drafts'|'sent'  $system
+     */
+
+    /**
+     * Append an RFC822 message to a detected system mailbox (Sent, Drafts, …).
+     *
+     * @param  array{displayName: string, emailAddress: string, imap: array{host: string, port: int, security: string, username: string, password: string}, smtp: array{host: string, port: int, security: string, username: string, password: string}}  $cred
      * @param  'drafts'|'sent'  $system
      */
     public function tryAppendRfc822ToSystemFolder(
@@ -429,13 +494,23 @@ final class MailFolderOperations
     /**
      * After SMTP send, append the same RFC822 message to the account’s Sent mailbox (best-effort).
      *
-     * @param  array{displayName: string, emailAddress: string, imap: array, smtp: array}  $cred
+     * @param  array{displayName: string, emailAddress: string, imap: array{host: string, port: int, security: string, username: string, password: string}, smtp: array{host: string, port: int, security: string, username: string, password: string}}  $cred
+     */
+
+    /**
+     * After SMTP send, append the same RFC822 message to the account’s Sent mailbox (best-effort).
+     *
+     * @param  array{displayName: string, emailAddress: string, imap: array{host: string, port: int, security: string, username: string, password: string}, smtp: array{host: string, port: int, security: string, username: string, password: string}}  $cred
      */
     public function tryAppendSentCopy(array $cred, string $rfc822, ?string &$outErr): void
     {
         self::tryAppendRfc822ToSystemFolder($cred, $rfc822, 'sent', '\\Seen', $outErr);
     }
 
+    /**
+     * @param  array<string, mixed>  $j
+     * @return array<mixed>
+     */
     public function handleFolderCreate(string $username, array $j): array
     {
 
@@ -476,6 +551,10 @@ final class MailFolderOperations
         return $resp[1];
     }
 
+    /**
+     * @param  array<string, mixed>  $j
+     * @return array<mixed>
+     */
     public function handleFolderMove(string $username, array $j): array
     {
 
@@ -541,6 +620,10 @@ final class MailFolderOperations
         return $resp[1];
     }
 
+    /**
+     * @param  array<string, mixed>  $j
+     * @return array<mixed>
+     */
     public function handleFolderDelete(string $username, array $j): array
     {
         $enc = (string) ($j['folder'] ?? '');

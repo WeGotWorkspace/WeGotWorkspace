@@ -69,13 +69,12 @@ final class JmapCalendarEventStateService
      */
     public function recordedEventIdsForObject(string $username, string $objectUri): array
     {
-        return JmapCalendarEventState::query()
+        return array_values(JmapCalendarEventState::query()
             ->where('username', $username)
             ->where('object_uri', $objectUri)
             ->pluck('event_id')
             ->map(static fn ($id): string => (string) $id)
-            ->values()
-            ->all();
+            ->all());
     }
 
     /**
@@ -87,13 +86,12 @@ final class JmapCalendarEventStateService
      */
     public function recordedEventIdsForCalendar(string $username, string $calendarUri): array
     {
-        return JmapCalendarEventState::query()
+        return array_values(JmapCalendarEventState::query()
             ->where('username', $username)
             ->where('calendar_uri', $calendarUri)
             ->pluck('event_id')
             ->map(static fn ($id): string => (string) $id)
-            ->values()
-            ->all();
+            ->all());
     }
 
     /**

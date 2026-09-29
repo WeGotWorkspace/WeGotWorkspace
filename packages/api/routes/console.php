@@ -215,8 +215,14 @@ Artisan::command('wgw:notes:strip-event-journals', function (EventCalendarJourna
 })->purpose('Strip VJOURNAL from event calendars and move stray journals into notes-general (idempotent)');
 
 Artisan::command('wgw:calendars:seed-dev {--force} {--username=} {--profile=}', function (DevCalendarEventSeeder $seeder): int {
-    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
-    $profile = strtolower(trim((string) ($this->option('profile') ?: DevCalendarEventCatalog::PROFILE_FULL)));
+    $rawName = $this->option('username');
+    if (! is_string($rawName) || $rawName === '') {
+        $fromEnv = getenv('WGW_DEV_USERNAME');
+        $rawName = is_string($fromEnv) && $fromEnv !== '' ? $fromEnv : 'admin';
+    }
+    $username = strtolower(trim($rawName));
+    $rawProfile = $this->option('profile');
+    $profile = strtolower(trim(is_string($rawProfile) && $rawProfile !== '' ? $rawProfile : DevCalendarEventCatalog::PROFILE_FULL));
     if ($profile === '') {
         $profile = DevCalendarEventCatalog::PROFILE_FULL;
     }
@@ -243,8 +249,14 @@ Artisan::command('wgw:calendars:seed-dev {--force} {--username=} {--profile=}', 
 })->purpose('Seed hundreds of local-dev calendar events for the admin user (idempotent; --force recreates)');
 
 Artisan::command('wgw:notes:seed-dev {--force} {--username=} {--profile=}', function (DevNoteSeeder $seeder): int {
-    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
-    $profile = strtolower(trim((string) ($this->option('profile') ?: DevNoteCatalog::PROFILE_FULL)));
+    $rawName = $this->option('username');
+    if (! is_string($rawName) || $rawName === '') {
+        $fromEnv = getenv('WGW_DEV_USERNAME');
+        $rawName = is_string($fromEnv) && $fromEnv !== '' ? $fromEnv : 'admin';
+    }
+    $username = strtolower(trim($rawName));
+    $rawProfile = $this->option('profile');
+    $profile = strtolower(trim(is_string($rawProfile) && $rawProfile !== '' ? $rawProfile : DevNoteCatalog::PROFILE_FULL));
     if ($profile === '') {
         $profile = DevNoteCatalog::PROFILE_FULL;
     }
@@ -273,8 +285,14 @@ Artisan::command('wgw:notes:seed-dev {--force} {--username=} {--profile=}', func
 })->purpose('Seed ~1000 local-dev VJOURNAL notes for the admin user (idempotent; --force recreates)');
 
 Artisan::command('wgw:contacts:seed-dev {--force} {--username=} {--profile=} {--count=}', function (DevContactSeeder $seeder): int {
-    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
-    $profile = strtolower(trim((string) ($this->option('profile') ?: DevContactCatalog::PROFILE_FULL)));
+    $rawName = $this->option('username');
+    if (! is_string($rawName) || $rawName === '') {
+        $fromEnv = getenv('WGW_DEV_USERNAME');
+        $rawName = is_string($fromEnv) && $fromEnv !== '' ? $fromEnv : 'admin';
+    }
+    $username = strtolower(trim($rawName));
+    $rawProfile = $this->option('profile');
+    $profile = strtolower(trim(is_string($rawProfile) && $rawProfile !== '' ? $rawProfile : DevContactCatalog::PROFILE_FULL));
     if ($profile === '') {
         $profile = DevContactCatalog::PROFILE_FULL;
     }
@@ -311,8 +329,14 @@ Artisan::command('wgw:contacts:seed-dev {--force} {--username=} {--profile=} {--
 })->purpose('Seed local-dev vCard contacts for the admin user (idempotent; --force recreates; --profile=large or --count=)');
 
 Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', function (DevSeedRunner $runner): int {
-    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
-    $profile = strtolower(trim((string) ($this->option('profile') ?: 'full')));
+    $rawName = $this->option('username');
+    if (! is_string($rawName) || $rawName === '') {
+        $fromEnv = getenv('WGW_DEV_USERNAME');
+        $rawName = is_string($fromEnv) && $fromEnv !== '' ? $fromEnv : 'admin';
+    }
+    $username = strtolower(trim($rawName));
+    $rawProfile = $this->option('profile');
+    $profile = strtolower(trim(is_string($rawProfile) && $rawProfile !== '' ? $rawProfile : 'full'));
     if ($profile === '') {
         $profile = 'full';
     }

@@ -63,6 +63,7 @@ final class NotificationDelivery extends Model
         'created_at' => 'datetime',
     ];
 
+    /** @return BelongsTo<Notification, $this> */
     public function notification(): BelongsTo
     {
         return $this->belongsTo(Notification::class, 'notification_id');

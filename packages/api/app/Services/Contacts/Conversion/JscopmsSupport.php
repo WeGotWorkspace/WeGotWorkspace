@@ -238,6 +238,36 @@ final class JscopmsSupport
         return $result;
     }
 
+    /**
+     * @param  array<mixed>  $components
+     * @return list<array{kind: string, value: string, '@type'?: string}>
+     */
+    public static function typedComponents(array $components): array
+    {
+        $typed = [];
+        foreach ($components as $component) {
+            if (! is_array($component)) {
+                continue;
+            }
+            $kind = $component['kind'] ?? null;
+            $value = $component['value'] ?? null;
+            if (! is_string($kind) && ! is_int($kind) && ! is_float($kind)) {
+                continue;
+            }
+            if (! is_string($value) && ! is_int($value) && ! is_float($value)) {
+                continue;
+            }
+            $item = ['kind' => (string) $kind, 'value' => (string) $value];
+            $type = $component['@type'] ?? null;
+            if (is_string($type)) {
+                $item['@type'] = $type;
+            }
+            $typed[] = $item;
+        }
+
+        return $typed;
+    }
+
     private static function encodeSeparator(string $value): string
     {
         return 's,'.self::escapeSeparatorValue($value);

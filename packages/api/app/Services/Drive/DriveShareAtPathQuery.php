@@ -239,7 +239,7 @@ final class DriveShareAtPathQuery
 
         $now = Carbon::now();
 
-        /** @var array<string, list<array{candidate: array<string, mixed>, grant: DriveShareGrant}>> $buckets */
+        /** @var array<string, list<array{candidate: array{shareId: string, rootPath: string, access: string, kind: string, ownerUsername: string, grantKind: string, grantId: string, granteeGroup: string|null, granteeEmail: string|null}, grant: DriveShareGrant}>> $buckets */
         $buckets = [];
         foreach ($grants as $grant) {
             $principalKey = $this->principalKeyForGrant($grant);
@@ -270,7 +270,10 @@ final class DriveShareAtPathQuery
 
         $entries = [];
         foreach ($buckets as $principalKey => $items) {
-            $candidates = array_column($items, 'candidate');
+            $candidates = [];
+            foreach ($items as $item) {
+                $candidates[] = $item['candidate'];
+            }
             $winner = $this->grantResolver->resolveWinningGrant($candidates);
             if ($winner === null) {
                 continue;
@@ -461,7 +464,7 @@ final class DriveShareAtPathQuery
     }
 
     /**
-     * @param  Collection<int, DriveShare>  $sharesById
+     * @param  Collection<int|string, DriveShare>  $sharesById
      * @return array<string, mixed>|null
      */
     private function grantSourceEntryFromGrant(

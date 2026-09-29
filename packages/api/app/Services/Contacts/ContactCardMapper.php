@@ -130,10 +130,10 @@ final class ContactCardMapper
             },
         );
 
-        return array_values(array_map(
+        return array_map(
             static fn (array $item): array => $item['component'],
             $decorated,
-        ));
+        );
     }
 
     /**

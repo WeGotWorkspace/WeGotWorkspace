@@ -24,6 +24,6 @@ final class GroupMemberPrincipal extends DAVACL\Principal
             'protected' => true,
         ];
 
-        return $acl;
+        return array_values($acl);
     }
 }

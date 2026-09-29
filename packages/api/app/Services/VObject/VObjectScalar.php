@@ -30,4 +30,19 @@ final class VObjectScalar
 
         return '';
     }
+
+    /**
+     * VALUE parameter when it is a string or stringable; otherwise the property value type.
+     */
+    public static function parameterOrValueType(mixed $valueNode, string $fallback): string
+    {
+        if (is_string($valueNode)) {
+            return strtolower($valueNode);
+        }
+        if ($valueNode instanceof \Stringable) {
+            return strtolower((string) $valueNode);
+        }
+
+        return strtolower($fallback);
+    }
 }

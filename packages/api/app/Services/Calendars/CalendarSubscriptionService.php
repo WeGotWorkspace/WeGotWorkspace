@@ -21,12 +21,12 @@ final class CalendarSubscriptionService
      */
     public function list(string $username): array
     {
-        return CalendarSubscription::query()
+        return array_values(CalendarSubscription::query()
             ->where('username', $username)
             ->orderBy('id')
             ->get()
             ->map(fn (CalendarSubscription $row): array => $this->toArray($row))
-            ->all();
+            ->all());
     }
 
     /**

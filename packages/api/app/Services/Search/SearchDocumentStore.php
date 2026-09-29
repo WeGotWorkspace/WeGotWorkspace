@@ -76,6 +76,10 @@ final class SearchDocumentStore
     }
 
     /**
+     * @param  array<string, mixed>  $filters
+     * @param  list<string>  $groupSlugs
+     * @param  list<string>  $sources
+     * @param  list<string>  $tokens
      * @return list<array<string, mixed>>
      */
     public function search(
@@ -89,7 +93,7 @@ final class SearchDocumentStore
     ): array {
         $groupPrincipalOwners = array_values(array_unique(array_map(
             static fn (string $slug): string => 'groups/'.$slug,
-            array_values(array_filter($groupSlugs, static fn (mixed $slug): bool => is_string($slug) && trim($slug) !== ''))
+            array_values(array_filter($groupSlugs, static fn (string $slug): bool => trim($slug) !== ''))
         )));
         $query = SearchDocument::query()
             ->from('search_documents as d')
@@ -306,6 +310,8 @@ final class SearchDocumentStore
             return null;
         }
 
-        return json_encode($value, JSON_UNESCAPED_SLASHES);
+        $encoded = json_encode($value, JSON_UNESCAPED_SLASHES);
+
+        return $encoded === false ? null : $encoded;
     }
 }

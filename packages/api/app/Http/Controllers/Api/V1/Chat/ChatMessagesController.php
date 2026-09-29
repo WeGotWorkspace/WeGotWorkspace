@@ -36,7 +36,24 @@ final class ChatMessagesController
     public function store(ChatMessageCreateRequest $request, string $channelId): JsonResponse
     {
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $result = $this->messages->create($principal['username'], $channelId, $request->validated());
+        $validated = $request->validated();
+        $id = $validated['id'] ?? null;
+        $body = $validated['body'] ?? null;
+        if (! is_string($id) || $id === '' || ! is_string($body)) {
+            abort(422, 'id and body are required.');
+        }
+        $payload = ['id' => $id, 'body' => $body];
+        if (array_key_exists('parentId', $validated)) {
+            $parentId = $validated['parentId'];
+            if ($parentId !== null && ! is_string($parentId)) {
+                abort(422, 'parentId must be a string.');
+            }
+            $payload['parentId'] = $parentId;
+        }
+        if (array_key_exists('mentions', $validated)) {
+            $payload['mentions'] = $validated['mentions'];
+        }
+        $result = $this->messages->create($principal['username'], $channelId, $payload);
 
         // Idempotent replays return the existing message under the same 201.
         return response()->json($result['message'], 201);

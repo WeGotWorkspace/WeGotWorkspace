@@ -103,7 +103,7 @@ final class HttpSignalingStore
             $this->leave($room, (string) $id);
         }
 
-        return array_map(static fn ($id): string => (string) $id, $staleIds);
+        return array_values(array_map(static fn ($id): string => (string) $id, $staleIds));
     }
 
     /**
@@ -129,7 +129,7 @@ final class HttpSignalingStore
             $this->leave($room, (string) $id);
         }
 
-        return array_map(static fn ($id): string => (string) $id, $staleIds);
+        return array_values(array_map(static fn ($id): string => (string) $id, $staleIds));
     }
 
     /**
@@ -142,7 +142,7 @@ final class HttpSignalingStore
             $columns[] = 'owner_user';
         }
 
-        return $this->peerQuery()
+        return array_values($this->peerQuery()
             ->where('room', $room)
             ->where('peer_id', '!=', $selfId)
             ->get($columns)
@@ -157,8 +157,7 @@ final class HttpSignalingStore
 
                 return $peer;
             })
-            ->values()
-            ->all();
+            ->all());
     }
 
     /** Strip the `u:` owner marker so rosters carry the plain Sabre username. */
@@ -439,12 +438,12 @@ final class HttpSignalingStore
      */
     public function peerIdsInRoomExcept(string $room, string $exceptPeerId): array
     {
-        return $this->peerQuery()
+        return array_values($this->peerQuery()
             ->where('room', $room)
             ->where('peer_id', '!=', $exceptPeerId)
             ->pluck('peer_id')
             ->map(static fn ($id) => (string) $id)
-            ->all();
+            ->all());
     }
 
     /**
@@ -452,11 +451,17 @@ final class HttpSignalingStore
      */
     public function peersInRoom(string $room, int $limit = 32): array
     {
-        return $this->peerQuery()
+        return array_values($this->peerQuery()
             ->where('room', $room)
             ->limit($limit)
             ->get(['owner_user', 'name'])
-            ->all();
+            ->map(static function ($row): object {
+                return (object) [
+                    'owner_user' => $row->getAttribute('owner_user'),
+                    'name' => $row->getAttribute('name'),
+                ];
+            })
+            ->all());
     }
 
     private function trimMessages(string $room): void

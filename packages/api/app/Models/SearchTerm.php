@@ -37,6 +37,7 @@ final class SearchTerm extends Model
         'updated_at',
     ];
 
+    /** @return BelongsTo<SearchDocument, $this> */
     public function document(): BelongsTo
     {
         return $this->belongsTo(SearchDocument::class, 'document_id');

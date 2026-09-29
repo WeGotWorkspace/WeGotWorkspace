@@ -90,6 +90,7 @@ final class GroupFilesPrincipalCollection extends AbstractPrincipalCollection im
         return $this->principalIsMemberOfGroup($current, $principalInfo['uri']);
     }
 
+    /** @param array<string, mixed> $principalInfo */
     public function getChildForPrincipal(array $principalInfo): DAV\INode
     {
         $uri = $principalInfo['uri'];

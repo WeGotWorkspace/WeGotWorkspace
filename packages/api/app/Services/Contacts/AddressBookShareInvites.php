@@ -146,11 +146,11 @@ final class AddressBookShareInvites
      */
     public function grantsForBook(int $addressBookId): array
     {
-        return AddressBookShare::query()
+        return array_values(AddressBookShare::query()
             ->where('addressbookid', $addressBookId)
             ->orderBy('id')
             ->get()
-            ->all();
+            ->all());
     }
 
     /**

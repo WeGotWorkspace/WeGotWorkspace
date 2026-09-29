@@ -11,6 +11,7 @@ use DateTimeInterface;
 use DateTimeZone;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VJournal;
+use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
 use Sabre\VObject\Reader;
 
 /**
@@ -82,7 +83,7 @@ final class ChatMessageJournalConverter
                 $normalized[] = ['id' => $id, 'displayName' => $display !== '' ? $display : $id];
             }
             if ($normalized !== []) {
-                $journal->add('X-WGW-MENTIONS', json_encode(array_values($normalized), JSON_UNESCAPED_UNICODE));
+                $journal->add('X-WGW-MENTIONS', json_encode($normalized, JSON_UNESCAPED_UNICODE));
             }
         }
         $journal->SEQUENCE = 0;
@@ -138,7 +139,7 @@ final class ChatMessageJournalConverter
 
         unset($journal->{'X-WGW-REACTIONS'});
         if ($reactions !== []) {
-            $journal->add('X-WGW-REACTIONS', json_encode(array_values($reactions), JSON_UNESCAPED_UNICODE));
+            $journal->add('X-WGW-REACTIONS', json_encode($reactions, JSON_UNESCAPED_UNICODE));
         }
 
         return $calendar->serialize();
@@ -264,10 +265,10 @@ final class ChatMessageJournalConverter
             return null;
         }
         $prop = $journal->{$property};
-        if (method_exists($prop, 'getDateTime')) {
-            $dateTime = $prop->getDateTime();
-            if ($dateTime instanceof DateTimeInterface) {
-                return $this->formatUtc($dateTime);
+        if ($prop instanceof IcsDateTime) {
+            $dateTimes = $prop->getDateTimes();
+            if ($dateTimes !== []) {
+                return $this->formatUtc($dateTimes[0]);
             }
         }
 

@@ -16,6 +16,7 @@ final class ConversionSupport
         return TaskConversionSupport::mergeTaskPatch($existing, $patch);
     }
 
+    /** @param array<string, mixed> $payload */
     public static function deriveTitle(array $payload): string
     {
         $title = $payload['title'] ?? null;

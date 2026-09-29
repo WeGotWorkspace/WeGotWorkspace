@@ -211,7 +211,7 @@ final class ConversionUidNameMethods
     public static function anniversaryDateFromProperty(Property $property, bool $preferTimestamp): ?array
     {
         $value = trim((string) $property->getValue());
-        $valueType = strtolower((string) ($property['VALUE'] ?? $property->getValueType()));
+        $valueType = VObjectScalar::parameterOrValueType($property['VALUE'] ?? null, $property->getValueType());
         $calendarScale = isset($property['CALSCALE']) ? strtolower(VObjectScalar::string($property['CALSCALE'])) : null;
 
         if ($valueType === 'timestamp' || preg_match('/^\d{8}T\d{6}Z$/', $value) === 1) {
@@ -275,6 +275,7 @@ final class ConversionUidNameMethods
 
     /**
      * @param  array<string, mixed>  $date
+     * @return array{0: string, 1: array<string, string>}
      */
     public static function anniversaryDateToVCardValue(array $date, string $propertyName): array
     {
@@ -312,7 +313,7 @@ final class ConversionUidNameMethods
     public static function placeFromProperty(Property $property): array
     {
         $value = trim((string) $property->getValue());
-        $valueType = strtolower((string) ($property['VALUE'] ?? $property->getValueType()));
+        $valueType = VObjectScalar::parameterOrValueType($property['VALUE'] ?? null, $property->getValueType());
         $place = ['@type' => 'Address'];
 
         if ($valueType === 'uri' || str_starts_with(strtolower($value), 'geo:')) {

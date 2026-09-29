@@ -158,12 +158,12 @@ final class FileNodeIndexService
      */
     public function liveChildren(string $parentNodeId): array
     {
-        return JmapFileNode::query()
+        return array_values(JmapFileNode::query()
             ->where('parent_node_id', $parentNodeId)
             ->whereNull('deleted_at')
             ->orderBy('storage_key')
             ->get()
-            ->all();
+            ->all());
     }
 
     public function hasLiveChildren(string $parentNodeId): bool
@@ -190,7 +190,7 @@ final class FileNodeIndexService
             }
         });
 
-        return $query->orderBy('storage_key')->get()->all();
+        return array_values($query->orderBy('storage_key')->get()->all());
     }
 
     /**
@@ -205,7 +205,7 @@ final class FileNodeIndexService
             return [];
         }
 
-        return JmapFileNode::query()
+        return array_values(JmapFileNode::query()
             ->whereNull('deleted_at')
             ->where(function ($query) use ($key): void {
                 $query->where('storage_key', $key)
@@ -213,7 +213,7 @@ final class FileNodeIndexService
             })
             ->orderBy('storage_key')
             ->get()
-            ->all();
+            ->all());
     }
 
     // ---------------------------------------------------------------

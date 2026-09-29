@@ -46,7 +46,12 @@ final class CollabActorResolver
      */
     public function requireUsername(Request $request): string
     {
-        return $this->requirePrincipal($request)['username'];
+        $username = $this->requirePrincipal($request)['username'];
+        if ($username === '') {
+            throw new \RuntimeException('Authenticated principal is missing a username.');
+        }
+
+        return $username;
     }
 
     /**
