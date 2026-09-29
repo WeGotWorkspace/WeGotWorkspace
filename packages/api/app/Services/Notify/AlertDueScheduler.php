@@ -11,6 +11,7 @@ use App\Services\VObject\ICalendarAlarmTrigger;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 use Sabre\VObject\Component\VCalendar;
@@ -257,7 +258,12 @@ final class AlertDueScheduler
             }
             try {
                 return $start->add($duration->getDateInterval());
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                Log::warning('Alert due scheduler could not apply DURATION; falling back to DTSTART.', [
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
+
                 return $start;
             }
         }
