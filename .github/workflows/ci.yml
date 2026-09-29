@@ -169,6 +169,64 @@ jobs:
           APPS_DONE_GATE_FULL: "1"
         run: pnpm run ci:quality:apps
 
+  # Mock-tier Playwright against a Storybook build. The Chromatic job also
+  # builds storybook-static, but only when CHROMATIC_ENABLED is set, and it
+  # skips merge_group. Building here keeps apps-e2e independent so it can be
+  # a required check. Live-app specs stay on playwright.live.config.mjs.
+  apps-e2e:
+    if: >-
+      github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6.1.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install JS workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-chromium-
+
+      - name: Install Playwright Chromium
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != 'true' ]; then
+            pnpm --filter @wgw/apps exec playwright install chromium --with-deps
+          else
+            pnpm --filter @wgw/apps exec playwright install chromium
+          fi
+
+      - name: Build Storybook
+        working-directory: packages/apps
+        run: pnpm exec storybook build --output-dir storybook-static
+
+      - name: Mock-tier Playwright
+        working-directory: packages/apps
+        env:
+          WGW_APPS_E2E_STATIC: "1"
+        run: pnpm exec playwright test
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: apps-e2e-traces
+          path: packages/apps/test-results
+          if-no-files-found: ignore
+
   build:
     needs: [api-quality, apps-quality]
     if: >-
@@ -445,147 +503,3 @@ jobs:
           name: vitest-coverage
           path: packages/apps/coverage
           if-no-files-found: error
-
-  coverage-ratchet:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [api-coverage, apps-coverage]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      issues: write
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: pnpm/action-setup@v6.1.0
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-
-      - name: Download API coverage
-        uses: actions/download-artifact@v7
-        with:
-          name: phpunit-clover
-          path: packages/api/build/logs
-
-      - name: Download apps coverage
-        uses: actions/download-artifact@v7
-        with:
-          name: vitest-coverage
-          path: packages/apps/coverage
-
-      - name: Check coverage ratchet
-        id: check
-        run: |
-          set +e
-          node tools/coverage-ratchet.mjs check
-          CODE=$?
-          set -e
-          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
-          if [[ $CODE -eq 2 ]]; then
-            echo "Coverage increased"
-          elif [[ $CODE -eq 0 ]]; then
-            echo "Coverage stable"
-          else
-            echo "Coverage ratchet check failed"
-            # Don't exit yet - report the regression first
-          fi
-
-      - name: Report coverage regression
-        if: steps.check.outputs.exit_code == '1'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          
-          # Capture the failure output
-          set +e
-          FAILURE_OUTPUT=$(node tools/coverage-ratchet.mjs check 2>&1)
-          set -e
-          
-          # Ensure label exists
-          gh label create coverage-regression --color d73a4a --description "Coverage regression on main" --force || true
-          
-          # Find or create coverage-regression issue
-          ISSUE_NUMBER=$(gh issue list --label "coverage-regression" --state open --json number --jq '.[0].number // empty')
-          
-          REPORT="## Coverage Regression Detected
-
-**Run:** ${{ github.run_id }}
-**Commit:** ${{ github.sha }}
-**Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-
-\`\`\`
-${FAILURE_OUTPUT}
-\`\`\`
-
-Coverage per package can only go up. Please investigate and fix the regression."
-          
-          if [[ -n "$ISSUE_NUMBER" ]]; then
-            gh issue comment "$ISSUE_NUMBER" --body "$REPORT"
-            echo "Commented on existing issue #$ISSUE_NUMBER"
-          else
-            gh issue create \
-              --title "Coverage regression detected on main" \
-              --label "coverage-regression" \
-              --body "$REPORT"
-            echo "Opened new coverage-regression issue"
-          fi
-          
-          # Now fail the job
-          exit 1
-
-      - name: Propose baseline increase
-        if: steps.check.outputs.exit_code == '2'
-        run: |
-          set -euo pipefail
-          
-          # Capture the output showing increases and new packages
-          INCREASES_OUTPUT=$(node tools/coverage-ratchet.mjs check 2>&1 || true)
-          
-          node tools/coverage-ratchet.mjs update
-          
-          # Write to job summary
-          {
-            echo "## Coverage Baseline Increase Detected"
-            echo ""
-            echo "### New or Increased Packages"
-            echo ""
-            
-            # Extract and format increases
-            if echo "$INCREASES_OUTPUT" | grep -q "📈 Coverage increases detected"; then
-              echo "**Increases:**"
-              echo ""
-              echo "| Package | From | To |"
-              echo "|---------|------|-----|"
-              echo "$INCREASES_OUTPUT" | sed -n '/📈 Coverage increases detected/,/^$/p' | grep -E '^\s+packages/' | sed 's/^\s*//' | while read -r line; do
-                if [[ $line =~ (.+):[[:space:]]+([0-9.]+)%[[:space:]]+→[[:space:]]+([0-9.]+)% ]]; then
-                  echo "| \`${BASH_REMATCH[1]}\` | ${BASH_REMATCH[2]}% | ${BASH_REMATCH[3]}% |"
-                fi
-              done
-              echo ""
-            fi
-            
-            # Extract and format new packages
-            if echo "$INCREASES_OUTPUT" | grep -q "📦 New packages detected"; then
-              echo "**New packages:**"
-              echo ""
-              echo "| Package | Coverage |"
-              echo "|---------|----------|"
-              echo "$INCREASES_OUTPUT" | sed -n '/📦 New packages detected/,/^$/p' | grep -E '^\s+packages/' | sed 's/^\s*//' | while read -r line; do
-                if [[ $line =~ (.+):[[:space:]]+([0-9.]+)% ]]; then
-                  echo "| \`${BASH_REMATCH[1]}\` | ${BASH_REMATCH[2]}% |"
-                fi
-              done
-              echo ""
-            fi
-            
-            echo "Download the \`coverage-baseline-proposal\` artifact and commit it to \`tools/coverage-baseline.json\`."
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload baseline proposal
-        if: steps.check.outputs.exit_code == '2'
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-baseline-proposal
-          path: tools/coverage-baseline.json

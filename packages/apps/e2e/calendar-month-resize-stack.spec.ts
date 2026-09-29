@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { colorDistance, pngPixelAt, type Rgba } from "./helpers/png-pixel";
 
 /** Mock-tier seeded month (~360 events, anchor 2033-01-12). */
-const CALENDAR_SEEDED_WIDE = "apps-calendar--seeded-wide";
+const CALENDAR_SEEDED_WIDE = "features-calendar--seeded-wide";
 
 type CardBox = {
   summary: string;
@@ -184,7 +184,12 @@ function clamp(value: number, min: number, max: number): number {
 async function dayColumn(page: Page, name: string) {
   const header = page.getByRole("button", { name, exact: true });
   await expect(header).toBeVisible({ timeout: 30_000 });
-  return header.boundingBox();
+  // The accessible name sits on a 24px day-number button. The day column is `.cell`.
+  return header.evaluate((button) => {
+    const cell = button.closest(".cell") ?? button;
+    const rect = cell.getBoundingClientRect();
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  });
 }
 
 function clipAround(x: number, y: number, width: number, height: number) {
