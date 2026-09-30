@@ -14,6 +14,8 @@
  * 0 — reports were read and none of the above apply
  * `update` keeps max(baseline, current) for existing keys, adds new keys,
  * and drops keys that disappeared. A drop is never written into the baseline.
+ * `update --reseed` writes the current report as-is. It is the one-time
+ * escape hatch when the baseline was seeded above what CI measures.
  * mail-core and Services/Mail are unshipped for v0.9 and are excluded.
  * `check --json` prints the machine-readable report on stdout and the human
  * report on stderr. Exit codes stay the same.
@@ -298,13 +300,19 @@ function readBaseline() {
 }
 
 /**
- * Existing keys stay at max(baseline, current). New keys are copied.
+ * Existing keys stay at max(baseline, current) unless `reseed` is set.
+ * Reseed copies the current report and drops keys the report does not contain.
  * Keys absent from the report are omitted, so a rename drops the old key.
  * @param {Map<string, {pct: number, statements: number}>} coverage
  * @param {Map<string, number>} baseline
+ * @param {{ reseed?: boolean }} [options]
+ * @returns {{ packages: Record<string, number>, lowered: Array<{pkg: string, from: number, to: number}> }}
  */
-function writeBaseline(coverage, baseline) {
+function writeBaseline(coverage, baseline, options = {}) {
+  const reseed = options.reseed === true;
   const obj = {};
+  /** @type {Array<{pkg: string, from: number, to: number}>} */
+  const lowered = [];
   for (const [pkg, { pct }] of [...coverage.entries()].sort(([a], [b]) =>
     a.localeCompare(b),
   )) {
@@ -312,13 +320,19 @@ function writeBaseline(coverage, baseline) {
     const previous = baseline.get(pkg);
     const previousPct =
       previous === undefined ? undefined : roundPct(Number(previous));
-    obj[pkg] =
-      previousPct === undefined || !Number.isFinite(previousPct)
-        ? current
-        : Math.max(previousPct, current);
+    const hasPrevious =
+      previousPct !== undefined && Number.isFinite(previousPct);
+    if (reseed) {
+      if (hasPrevious && current < previousPct) {
+        lowered.push({ pkg, from: previousPct, to: current });
+      }
+      obj[pkg] = current;
+    } else {
+      obj[pkg] = hasPrevious ? Math.max(previousPct, current) : current;
+    }
   }
   writeFileSync(baselinePath, `${JSON.stringify(obj, null, 2)}\n`);
-  return obj;
+  return { packages: obj, lowered };
 }
 
 /**
@@ -486,9 +500,7 @@ function runCheck(json) {
   process.exit(exitCodeFor(report));
 }
 
-function runUpdate() {
-  console.log("Updating coverage baseline...\n");
-
+function runUpdate(reseed) {
   let current;
   try {
     current = loadReports();
@@ -497,14 +509,28 @@ function runUpdate() {
     process.exit(3);
   }
 
-  const written = writeBaseline(current, readBaseline());
+  const { packages, lowered } = writeBaseline(current, readBaseline(), {
+    reseed,
+  });
+
+  if (reseed) {
+    console.log(
+      "Reseeded baseline from current reports (previous values ignored)",
+    );
+    for (const { pkg, from, to } of lowered) {
+      console.log(`  ${pkg}: ${from.toFixed(2)}% -> ${to.toFixed(2)}%`);
+    }
+    console.log();
+  } else {
+    console.log("Updating coverage baseline...\n");
+  }
 
   console.log(
-    `✅ Updated baseline with ${Object.keys(written).length} packages`,
+    `✅ Updated baseline with ${Object.keys(packages).length} packages`,
   );
-  for (const [pkg, pct] of Object.entries(written)) {
+  for (const [pkg, pct] of Object.entries(packages)) {
     const currentPct = roundPct(current.get(pkg).pct);
-    if (currentPct < pct) {
+    if (!reseed && currentPct < pct) {
       console.log(
         `  ${pkg}: kept ${pct.toFixed(2)}% (report ${currentPct.toFixed(2)}%)`,
       );
@@ -518,19 +544,34 @@ function runUpdate() {
 const args = process.argv.slice(2);
 const command = args.find((arg) => !arg.startsWith("--"));
 const json = args.includes("--json");
-const unknown = args.filter((arg) => arg.startsWith("--") && arg !== "--json");
+const reseed = args.includes("--reseed");
+const knownFlags = new Set(["--json", "--reseed"]);
+const unknown = args.filter(
+  (arg) => arg.startsWith("--") && !knownFlags.has(arg),
+);
+
+function printUsage() {
+  console.error(
+    "Usage: node tools/coverage-ratchet.mjs <check|update> [--json] [--reseed]",
+  );
+}
 
 if (unknown.length > 0 || (command !== "check" && command !== "update")) {
-  console.error(
-    "Usage: node tools/coverage-ratchet.mjs <check|update> [--json]",
-  );
+  printUsage();
+  process.exit(3);
+}
+
+if (reseed && command !== "update") {
+  console.error("--reseed is only valid with update");
+  printUsage();
   process.exit(3);
 }
 
 if (command === "update" && json) {
   console.error("--json is only valid with check");
+  printUsage();
   process.exit(3);
 }
 
 if (command === "check") runCheck(json);
-else runUpdate();
+else runUpdate(reseed);
