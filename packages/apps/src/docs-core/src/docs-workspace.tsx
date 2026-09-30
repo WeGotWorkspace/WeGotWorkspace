@@ -3,20 +3,17 @@ import type { Editor } from "@tiptap/react";
 import { Code2, Pencil, Printer, Share } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
-import {
-  WorkspaceAppLayout,
-  WorkspaceUserFooter,
-} from "@/workspace-shell/src/workspace-app-layout";
+import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import {
   workspaceUserFooterDetailLine,
-  workspaceUserInitials,
   type WorkspaceSession,
 } from "@/lib/workspace/workspace-session";
 import { wgwIsGuestSession, wgwRedirectGuestShareReauth } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { cn } from "@/lib/utils";
+import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
@@ -210,11 +207,14 @@ function DocsSidebar({
       appSwitchDisabled={wgwIsGuestSession()}
       appSwitchSubtitle="Docs"
       footer={
-        <WorkspaceUserFooter
-          name={session.user.displayName}
-          initials={workspaceUserInitials(session.user)}
+        <WorkspaceAppSettingsFooter
+          appId="docs"
+          session={session}
           detailLine={workspaceUserFooterDetailLine(session, controller.readOnly)}
-          onLogoutClick={onLogout}
+          onLogout={onLogout}
+          onBeforeOpen={() => {
+            if (isSidebarOverlayViewport()) controller.setSidebarOpen(false);
+          }}
         />
       }
     >

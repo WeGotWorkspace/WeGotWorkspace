@@ -280,9 +280,13 @@ export function occurrencesInRange(
   return occurrences;
 }
 
-/** ISO date (YYYY-MM-DD) for "today" in the runtime's local time zone. */
-export function todayISODate(): string {
-  return Temporal.Now.plainDateISO().toString();
+/** ISO date (YYYY-MM-DD) for "today" in `timeZone`. */
+export function todayISODate(timeZone: string): string {
+  try {
+    return Temporal.Now.plainDateISO(timeZone.trim() || undefined).toString();
+  } catch {
+    return Temporal.Now.plainDateISO().toString();
+  }
 }
 
 export type CalendarDateRange = {
@@ -294,15 +298,24 @@ export type CalendarDateRange = {
 
 /**
  * Rendered date range for a view anchored at `anchor` (ISO date). Month covers
- * full weeks around the month (Monday start).
+ * full weeks around the month. `weekStart` is ISO weekday 1–7 (Monday=1); default Monday.
  */
-export function viewDateRange(view: CalendarViewId, anchorISO: string): CalendarDateRange {
+export function viewDateRange(
+  view: CalendarViewId,
+  anchorISO: string,
+  weekStart: number = 1,
+): CalendarDateRange {
   const anchor = Temporal.PlainDate.from(anchorISO);
+  const startWeekday = ((Math.trunc(weekStart) - 1 + 7) % 7) + 1;
+  const startOfWeek = (date: Temporal.PlainDate) => {
+    const weekdayOffset = (date.dayOfWeek - startWeekday + 7) % 7;
+    return date.subtract({ days: weekdayOffset });
+  };
   switch (view) {
     case "day":
       return { start: anchor, end: anchor.add({ days: 1 }) };
     case "week": {
-      const start = anchor.subtract({ days: anchor.dayOfWeek - 1 });
+      const start = startOfWeek(anchor);
       return { start, end: start.add({ days: 7 }) };
     }
     case "year": {
@@ -311,10 +324,10 @@ export function viewDateRange(view: CalendarViewId, anchorISO: string): Calendar
     }
     case "month": {
       const first = anchor.with({ day: 1 });
-      const gridStart = first.subtract({ days: first.dayOfWeek - 1 });
-      const last = first.add({ months: 1 });
-      const trailing = last.dayOfWeek === 1 ? 0 : 8 - last.dayOfWeek;
-      return { start: gridStart, end: last.add({ days: trailing }) };
+      const gridStart = startOfWeek(first);
+      const monthEndExclusive = first.add({ months: 1 });
+      const lastIncluded = monthEndExclusive.subtract({ days: 1 });
+      return { start: gridStart, end: startOfWeek(lastIncluded).add({ days: 7 }) };
     }
   }
 }
@@ -323,10 +336,11 @@ export function viewDateRange(view: CalendarViewId, anchorISO: string): Calendar
 export function isViewShowingToday(
   view: CalendarViewId,
   anchorISO: string,
-  todayISO: string = todayISODate(),
+  todayISO: string,
+  weekStart: number = 1,
 ): boolean {
-  const current = viewDateRange(view, anchorISO);
-  const todayRange = viewDateRange(view, todayISO);
+  const current = viewDateRange(view, anchorISO, weekStart);
+  const todayRange = viewDateRange(view, todayISO, weekStart);
   return (
     Temporal.PlainDate.compare(current.start, todayRange.start) === 0 &&
     Temporal.PlainDate.compare(current.end, todayRange.end) === 0

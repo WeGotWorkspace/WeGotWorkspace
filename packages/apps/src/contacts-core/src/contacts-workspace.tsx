@@ -3,9 +3,8 @@ import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
-import { WorkspaceUserFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
-import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
+import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -305,11 +304,11 @@ export function ContactsWorkspace({
               open={c.sidebarOpen}
               onCloseMobile={c.closeSidebar}
               footer={
-                <WorkspaceUserFooter
-                  name={session.user.displayName}
-                  initials={workspaceUserInitials(session.user)}
-                  detailLine={session.user.username}
-                  onLogoutClick={onLogout}
+                <WorkspaceAppSettingsFooter
+                  appId="contacts"
+                  session={session}
+                  onLogout={onLogout}
+                  onBeforeOpen={() => closeSidebarOnMobile(c.closeSidebar)}
                 />
               }
               primaryButton={

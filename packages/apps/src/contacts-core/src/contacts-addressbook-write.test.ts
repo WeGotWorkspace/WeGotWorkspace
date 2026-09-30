@@ -4,6 +4,7 @@ import {
   addressBookPatchOp,
   contactsAddressBookDisplayName,
   canCreateGroupInAddressBook,
+  canCreateContactInAddressBook,
   canDeleteAddressBook,
   canHideSharedAddressBook,
   canOpenAddressBookSettings,
@@ -13,6 +14,7 @@ import {
   canWriteOwnedAddressBook,
   defaultCreateGroupAddressBookId,
   defaultWritableAddressBookId,
+  resolveDefaultCreateAddressBook,
   writableGroupAddressBooks,
   writableMoveAddressBooks,
   writableOwnedAddressBooks,
@@ -130,6 +132,23 @@ describe("contacts-addressbook-write", () => {
     expect(canCreateGroupInAddressBook(teamBook)).toBe(true);
     expect(canCreateGroupInAddressBook(viewOnlySharee)).toBe(false);
     expect(canCreateGroupInAddressBook(editSharee)).toBe(false);
+    expect(canCreateContactInAddressBook(ownerBook)).toBe(true);
+    expect(canCreateContactInAddressBook(teamBook)).toBe(true);
+    expect(
+      canCreateContactInAddressBook({
+        ...ownerBook,
+        id: "work",
+        isDefault: false,
+      }),
+    ).toBe(true);
+    expect(canCreateContactInAddressBook(viewOnlySharee)).toBe(false);
+    expect(canCreateContactInAddressBook(editSharee)).toBe(false);
+    expect(
+      canCreateContactInAddressBook({
+        ...ownerBook,
+        myRights: { ...ownerBook.myRights, mayWrite: false },
+      }),
+    ).toBe(false);
     expect(
       canCreateGroupInAddressBook({
         ...ownerBook,
@@ -155,6 +174,9 @@ describe("contacts-addressbook-write", () => {
       "default",
     );
     expect(defaultCreateGroupAddressBookId("all", [viewOnlySharee, editSharee])).toBeUndefined();
+    expect(resolveDefaultCreateAddressBook([ownerBook, teamBook, viewOnlySharee])?.id).toBe(
+      "default",
+    );
 
     const adminBook: ContactsAddressBookRow = {
       ...teamBook,

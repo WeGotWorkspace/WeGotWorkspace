@@ -35,7 +35,7 @@ paths:
 | Storybook Vitest smoke (`vitest-ci`) | `pnpm test:storybook:ci` in `packages/apps` |
 | API e2e (Docker) | `pnpm test:api-e2e:docker` |
 | Apps Playwright smoke (Storybook) | `pnpm test:apps-e2e` — CI job `apps-e2e` |
-| Apps Playwright live | `pnpm --filter @wgw/apps test:e2e:live` — local only |
+| Apps Playwright live | `pnpm --filter @wgw/apps test:e2e:live` — nightly `.github/workflows/nightly-live-e2e.yml`, not a pull-request check |
 
 Handoff and PR verification: [developer/done-checklist.md](../developer/done-checklist.md). Issue acceptance criteria: [verify-issue](../verify-issue/SKILL.md). Policy vs CI: [.agents/POLICY.md](../../POLICY.md). Review gate: [code-review](../code-review/SKILL.md).
 

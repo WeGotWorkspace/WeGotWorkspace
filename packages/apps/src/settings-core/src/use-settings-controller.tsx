@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { SettingsWorkspaceProps } from "@/settings-core/src/settings-workspace-props";
-import type { SettingsSection } from "@/settings-core/src/settings-types";
+import type { SettingsPanelId } from "@/settings-core/src/settings-types";
 import {
   resolveSettingsSection,
   SETTINGS_DEFAULT_SECTION,
@@ -29,16 +29,16 @@ export function useSettingsController({
   "data" | "operations" | "section" | "initialSection" | "onSectionChange"
 >) {
   const mcpEnabled = data.mcpEnabled;
-  const sections = useSettingsSidebarModel(mcpEnabled);
+  const sidebarGroups = useSettingsSidebarModel(mcpEnabled);
   const isControlled = sectionProp !== undefined;
-  const [internalSection, setInternalSection] = useState<SettingsSection>(() =>
+  const [internalSection, setInternalSection] = useState<SettingsPanelId>(() =>
     resolveSettingsSection(initialSection ?? SETTINGS_DEFAULT_SECTION, mcpEnabled),
   );
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const section = resolveSettingsSection(isControlled ? sectionProp : internalSection, mcpEnabled);
   const currentSection = useMemo(() => settingsSectionDescriptor(section), [section]);
 
-  const selectSection = (nextSection: SettingsSection) => {
+  const selectSection = (nextSection: SettingsPanelId) => {
     const resolved = resolveSettingsSection(nextSection, mcpEnabled);
     if (!isControlled) {
       setInternalSection(resolved);
@@ -60,7 +60,7 @@ export function useSettingsController({
 
   return {
     section,
-    sections,
+    sidebarGroups,
     currentSection,
     sidebarOpen,
     setSidebarOpen,
@@ -69,6 +69,7 @@ export function useSettingsController({
     memberships: data.groups,
     mail,
     assistants,
+    mcpEnabled,
   };
 }
 

@@ -8,6 +8,7 @@ import {
   readOfflineDeviceContentSettings,
   writeOfflineDeviceContentSettings,
 } from "@/lib/offline/core/offline-device-settings";
+import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 
 export function SettingsOfflinePane() {
   const [contentSyncEnabled, setContentSyncEnabled] = useState(true);
@@ -31,46 +32,48 @@ export function SettingsOfflinePane() {
   };
 
   return (
-    <div className="settings-offline-pane space-y-8 max-w-lg">
-      <p className="text-sm text-muted-foreground">
-        Folder and file names sync automatically for Drive and Docs. These settings control whether
-        file contents are saved on this device for offline use.
-      </p>
+    <SettingsPaneCard>
+      <div className="settings-offline-pane space-y-8 max-w-lg">
+        <p className="text-sm text-muted-foreground">
+          Folder and file names sync automatically for Drive and Docs. These settings control
+          whether file contents are saved on this device for offline use.
+        </p>
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="space-y-1">
-          <Label htmlFor="offline-content-sync">Make files available offline</Label>
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="offline-content-sync">Make files available offline</Label>
+            <p className="text-sm text-muted-foreground">
+              Automatically save file contents up to the max size below.
+            </p>
+          </div>
+          <Switch
+            checked={contentSyncEnabled}
+            onCheckedChange={(checked) => persist({ contentSyncEnabled: checked })}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="offline-max-size">Max file size (MB)</Label>
+          <Input
+            id="offline-max-size"
+            type="number"
+            min={1}
+            max={100}
+            step={1}
+            value={maxFileSizeMb}
+            disabled={!contentSyncEnabled}
+            onChange={(event) => {
+              const parsed = Number.parseInt(event.target.value, 10);
+              if (Number.isNaN(parsed)) return;
+              persist({ maxFileSizeMb: Math.min(100, Math.max(1, parsed)) });
+            }}
+          />
           <p className="text-sm text-muted-foreground">
-            Automatically save file contents up to the max size below.
+            Files larger than this limit are not synced automatically. You can pin them manually
+            from Drive while online.
           </p>
         </div>
-        <Switch
-          checked={contentSyncEnabled}
-          onCheckedChange={(checked) => persist({ contentSyncEnabled: checked })}
-        />
       </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="offline-max-size">Max file size (MB)</Label>
-        <Input
-          id="offline-max-size"
-          type="number"
-          min={1}
-          max={100}
-          step={1}
-          value={maxFileSizeMb}
-          disabled={!contentSyncEnabled}
-          onChange={(event) => {
-            const parsed = Number.parseInt(event.target.value, 10);
-            if (Number.isNaN(parsed)) return;
-            persist({ maxFileSizeMb: Math.min(100, Math.max(1, parsed)) });
-          }}
-        />
-        <p className="text-sm text-muted-foreground">
-          Files larger than this limit are not synced automatically. You can pin them manually from
-          Drive while online.
-        </p>
-      </div>
-    </div>
+    </SettingsPaneCard>
   );
 }

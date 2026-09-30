@@ -12,7 +12,7 @@ export type AppsHomeScreenItem = {
   appId?: WorkspaceAppId;
   /** Lucide or custom node when neither `appId` nor `iconSrc` is set. */
   icon?: ReactNode;
-  /** @deprecated Prefer `appId` — legacy PNG callers; manifests now use SVG via `appId`. */
+  /** @deprecated Prefer `appId` — legacy PNG callers. Install manifests use generated PNGs. */
   iconSrc?: string;
   accent: string;
   fg?: string;

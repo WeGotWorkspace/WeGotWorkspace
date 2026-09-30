@@ -32,6 +32,9 @@ final class NoteJournalConverter
             'UID' => (string) $note['id'],
             'DTSTAMP' => (new DateTimeImmutable('now', new DateTimeZone('UTC'))),
         ]);
+        if (! $journal instanceof VJournal) {
+            throw new \LogicException('Expected a VJOURNAL component.');
+        }
         $title = $note['title'] ?? null;
         if (is_string($title)) {
             $journal->SUMMARY = $title;

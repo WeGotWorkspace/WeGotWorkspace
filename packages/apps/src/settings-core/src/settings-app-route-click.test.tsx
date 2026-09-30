@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
@@ -61,6 +61,18 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     expect(screen.getByRole("heading", { name: "Profile" })).toBeTruthy();
 
     expect(screen.queryByRole("button", { name: "Mail" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Calendar" })).toBeTruthy();
+    const sections = document.querySelector(".app-sidebar__sections");
+    expect(sections).toBeInstanceOf(HTMLElement);
+    expect(
+      within(sections as HTMLElement).queryByRole("button", { name: "Notifications" }),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/settings/calendar");
+    });
+    expect(screen.getByRole("heading", { name: "Calendar" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Memberships" }));
     await waitFor(() => {
@@ -116,6 +128,38 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     expect(screen.queryByRole("button", { name: "Mail" })).toBeNull();
     expect(screen.getByText(/does not read a mailbox/i)).toBeTruthy();
     expect(screen.queryByLabelText(/IMAP\/SMTP login/i)).toBeNull();
+  });
+
+  it("opens Calendar display settings from a deep link", async () => {
+    await renderSettingsApp("/settings/calendar");
+    expect(screen.getByRole("button", { name: "Calendar" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
+    expect(screen.queryByRole("combobox", { name: "Language" })).toBeNull();
+    expect(
+      document.querySelector(".workspace-app-layout__main-content .settings-pane-card"),
+    ).toBeTruthy();
+  });
+
+  it("opens Tasks default-collection settings from a deep link", async () => {
+    await renderSettingsApp("/settings/tasks");
+    expect(screen.getByRole("button", { name: "Tasks" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Default list: Inbox/i })).toBeTruthy();
+  });
+
+  it("opens Contacts default-collection settings from a deep link", async () => {
+    await renderSettingsApp("/settings/contacts");
+    expect(screen.getByRole("button", { name: "Contacts" })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: /Default address book: Personal/i }),
+    ).toBeTruthy();
+  });
+
+  it("opens Notes default-collection settings from a deep link", async () => {
+    await renderSettingsApp("/settings/notes");
+    expect(screen.getByRole("button", { name: "Notes" })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: /Default notebook: The Journal/i }),
+    ).toBeTruthy();
   });
 
   it("does not snap back to Settings after navigating to another app", async () => {

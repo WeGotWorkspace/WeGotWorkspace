@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Temporal } from "@js-temporal/polyfill";
 import { todayISODate } from "@/calendar-core/src/calendar-event-model";
 import {
   calendarNavigateTarget,
@@ -45,7 +46,7 @@ describe("calendar-route-search", () => {
   });
 
   it("falls back to today's defaults for missing or invalid segments", () => {
-    const today = todayISODate();
+    const today = todayISODate(Temporal.Now.timeZoneId());
     expect(calendarStateFromLocation("/calendar")).toEqual({
       view: DEFAULT_CALENDAR_VIEW,
       date: today,
@@ -91,7 +92,7 @@ describe("calendar-route-search", () => {
   });
 
   it("uses injected fallbacks only when the path omits view or presentation", () => {
-    const today = todayISODate();
+    const today = todayISODate(Temporal.Now.timeZoneId());
     const fallbacks = { view: "week" as const, presentation: "list" as const };
     expect(calendarStateFromLocation("/calendar", {}, fallbacks)).toEqual({
       view: "week",

@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
+import { resetSettingsRegistryForTests } from "@/settings-core/src/settings-registry";
 import {
   isSettingsPathname,
   isSettingsSection,
@@ -11,6 +13,14 @@ import {
 } from "@/settings-core/src/settings-section";
 
 describe("settings-section", () => {
+  beforeEach(() => {
+    resetSettingsRegistryForTests();
+    registerBuiltinSettings();
+  });
+
+  afterEach(() => {
+    resetSettingsRegistryForTests();
+  });
   it("treats assistants as unreachable when the admin kill-switch is off", () => {
     expect(settingsSectionIsReachable("assistants", false)).toBe(false);
     expect(resolveSettingsSection("assistants", false)).toBe(SETTINGS_DEFAULT_SECTION);

@@ -62,6 +62,56 @@
   );
 }
 
+.workspace-sidebar-account-footer {
+  padding-inline: var(--app-sidebar-padding-x, 1rem);
+}
+
+.workspace-sidebar-account-footer .workspace-app-layout__user-footer {
+  padding-inline: 0;
+}
+
+.workspace-sidebar-account-footer__settings {
+  @apply border-t py-2;
+  border-color: var(
+    --workspace-user-footer-border-color,
+    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
+  );
+}
+
+.workspace-sidebar-account-footer__settings-button {
+  @apply relative flex w-full min-w-0 items-center gap-2 rounded text-left text-sm font-medium;
+  min-height: var(--app-sidebar-item-height, var(--control-height-md, 2.25rem));
+  /* Same glyph inset as collection / menu rows so the icon column lines up. */
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: color-mix(in oklab, var(--color-we-got-dark) 75%, transparent);
+}
+
+.workspace-sidebar-account-footer__settings-button:hover {
+  color: var(--button-outline-hover-color, var(--button-outline-color, var(--color-we-got-dark)));
+  background-color: var(
+    --button-outline-hover-background,
+    var(--app-sidebar-item-hover-bg, color-mix(in oklab, var(--color-we-got-dark) 8%, transparent))
+  );
+}
+
+.workspace-sidebar-account-footer__settings-button:focus-visible {
+  @apply outline-none ring-2 ring-offset-1 ring-offset-transparent;
+  --tw-ring-color: color-mix(in oklab, currentColor 35%, transparent);
+}
+
+.workspace-sidebar-account-footer__settings-icon {
+  @apply inline-flex shrink-0 items-center justify-center self-center;
+  width: 1rem;
+  min-width: 1rem;
+  height: 1rem;
+}
+
+.workspace-sidebar-account-footer__settings-label {
+  @apply min-w-0 truncate;
+}
+
 /*
  * Open sidebar: accent glyph via `.icon-button--active` + parent `--button-active-color`.
  * Lucide panel/menu marks are stroke-based — keep fill none so active does not solid-blob.

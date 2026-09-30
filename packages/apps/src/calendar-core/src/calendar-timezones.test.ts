@@ -29,6 +29,11 @@ describe("defaultTimedEventTimeZone", () => {
     expect(defaultTimedEventTimeZone()).toBe("Europe/Amsterdam");
   });
 
+  it("prefers a stored IANA timezone over the device zone", () => {
+    vi.spyOn(Temporal.Now, "timeZoneId").mockReturnValue("Europe/Amsterdam");
+    expect(defaultTimedEventTimeZone("America/New_York")).toBe("America/New_York");
+  });
+
   it("normalizes device Etc/UTC to UTC", () => {
     vi.spyOn(Temporal.Now, "timeZoneId").mockReturnValue("Etc/UTC");
     expect(defaultTimedEventTimeZone()).toBe("UTC");

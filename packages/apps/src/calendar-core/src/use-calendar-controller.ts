@@ -20,10 +20,6 @@ import {
   viewDateRange,
 } from "@/calendar-core/src/calendar-event-model";
 import {
-  calendarRangeLabel,
-  type CalendarRangeLabelDensity,
-} from "@/lib/calendar-elements/CalendarViewGroup/calendar-range-label";
-import {
   calendarRouteKey,
   DEFAULT_CALENDAR_PRESENTATION,
   DEFAULT_CALENDAR_VIEW,
@@ -92,9 +88,10 @@ import {
   resolveCalendarEventPreview,
   type CalendarEventSelectionOrigin,
 } from "@/calendar-core/src/calendar-event-preview";
-import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { persistCalendarRoutePrefs } from "@/calendar-core/src/calendar-view-prefs";
+import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-display-prefs";
+import { calendarViewRangeTitle } from "@/calendar-core/src/calendar-range-title";
 import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
 import { useCalendarSearch } from "@/calendar-core/src/use-calendar-search";
 
@@ -140,27 +137,6 @@ export type UseCalendarControllerOptions = {
   sessionName?: string;
 };
 
-function rangeTitle(
-  view: CalendarViewId,
-  anchorISO: string,
-  locale: string,
-  density: CalendarRangeLabelDensity = "full",
-): string {
-  const anchor = Temporal.PlainDate.from(anchorISO);
-  if (view !== "week") {
-    return calendarRangeLabel({ view, anchor, locale, density });
-  }
-  const range = viewDateRange(view, anchorISO);
-  return calendarRangeLabel({
-    view,
-    anchor,
-    locale,
-    density,
-    weekStart: range.start,
-    weekEnd: range.end.subtract({ days: 1 }),
-  });
-}
-
 function draftFromForm(
   form: CalendarEventFormValue,
   organizer?: { email: string; name?: string },
@@ -187,11 +163,11 @@ export function useCalendarController({
 }: UseCalendarControllerOptions) {
   const L = useMemo(() => (labels ? mergeCalendarLabels(labels) : defaultCalendarLabels), [labels]);
   const { show, showError } = useAppToast();
-  const locale = useMemo(() => resolveLocale(undefined), []);
-
+  const { locale, timeZone, weekStart, visibleHours, visibleHoursStart } =
+    useCalendarDisplayPrefs();
   const [view, setView] = useState<CalendarViewId>(initialView ?? DEFAULT_CALENDAR_VIEW);
   const [presentation, setPresentationState] = useState<CalendarPresentation>(initialPresentation);
-  const [anchor, setAnchorState] = useState<string>(initialAnchor ?? todayISODate());
+  const [anchor, setAnchorState] = useState<string>(initialAnchor ?? todayISODate(timeZone));
   const viewRef = useRef(view);
   viewRef.current = view;
   const presentationRef = useRef(presentation);
@@ -204,7 +180,7 @@ export function useCalendarController({
   const lastInitialRouteKeyRef = useRef(
     calendarRouteKey({
       view: initialView ?? DEFAULT_CALENDAR_VIEW,
-      date: initialAnchor ?? todayISODate(),
+      date: initialAnchor ?? todayISODate(timeZone),
       presentation: initialPresentation,
       searchQuery: searchQueryRef.current,
     }),
@@ -285,7 +261,7 @@ export function useCalendarController({
   useEffect(() => {
     const incoming: CalendarRouteState = {
       view: initialView ?? DEFAULT_CALENDAR_VIEW,
-      date: initialAnchor ?? todayISODate(),
+      date: initialAnchor ?? todayISODate(timeZone),
       presentation: initialPresentation,
       searchQuery: normalizeCalendarSearchQuery(initialSearchQuery),
     };
@@ -352,12 +328,12 @@ export function useCalendarController({
   );
 
   const goToday = useCallback(() => {
-    const next = todayISODate();
+    const next = todayISODate(timeZone);
     if (anchorRef.current === next) return;
     anchorRef.current = next;
     setAnchorState(next);
     emitRouteState(currentRouteState());
-  }, [emitRouteState, currentRouteState]);
+  }, [emitRouteState, currentRouteState, timeZone]);
 
   const goPrevious = useCallback(() => {
     const next = shiftAnchor(viewRef.current, anchorRef.current, -1);
@@ -401,7 +377,10 @@ export function useCalendarController({
     [calendars, hiddenCalendarIds],
   );
 
-  const dateRange = useMemo(() => viewDateRange(view, anchor), [view, anchor]);
+  const dateRange = useMemo(
+    () => viewDateRange(view, anchor, weekStart),
+    [view, anchor, weekStart],
+  );
   const visibleSearchRange = useMemo(() => rangeToPlainDateTimeStrings(dateRange), [dateRange]);
 
   const restoreBrowse = useCallback(
@@ -441,7 +420,10 @@ export function useCalendarController({
   });
   applyQueryFromRouteRef.current = applyQueryFromRoute;
 
-  const showingToday = useMemo(() => isViewShowingToday(view, anchor), [view, anchor]);
+  const showingToday = useMemo(
+    () => isViewShowingToday(view, anchor, todayISODate(timeZone), weekStart),
+    [view, anchor, weekStart, timeZone],
+  );
 
   /** Lit surface mirrors time-range `view` and independent grid/list `presentation`. */
   const litSurface = useMemo(() => ({ view, presentation }) as const, [view, presentation]);
@@ -478,10 +460,10 @@ export function useCalendarController({
       setEditor({
         mode: "create",
         source: "menu",
-        form: emptyCalendarEventForm(calendarId, dateISO ?? anchor, startTime),
+        form: emptyCalendarEventForm(calendarId, dateISO ?? anchor, startTime, timeZone),
       });
     },
-    [calendars, defaultCalendarId, anchor, ensureCalendarVisible],
+    [calendars, defaultCalendarId, anchor, ensureCalendarVisible, timeZone],
   );
 
   /** Drag/click create from the Lit surface — popover UI; nothing persisted yet. */
@@ -498,11 +480,11 @@ export function useCalendarController({
       setEditor({
         mode: "create",
         source: "pointer",
-        form: createIntentToForm(calendarId, intent),
+        form: createIntentToForm(calendarId, intent, timeZone),
         ...(intent.origin ? { origin: intent.origin } : {}),
       });
     },
-    [calendars, defaultCalendarId, ensureCalendarVisible],
+    [calendars, defaultCalendarId, ensureCalendarVisible, timeZone],
   );
 
   const askRecurrenceScope = useCallback((request: RecurrenceScopeRequest) => {
@@ -1437,6 +1419,7 @@ export function useCalendarController({
     deleteCalendarEvent,
     L,
     locale,
+    surfaceDisplay: { locale, timezone: timeZone, weekStart, visibleHours, visibleHoursStart },
     view,
     selectView,
     presentation,
@@ -1444,9 +1427,11 @@ export function useCalendarController({
     anchor,
     setAnchor,
     dateRange,
-    title: rangeTitle(view, anchor, locale),
+    title: calendarViewRangeTitle(view, anchor, locale, "full", weekStart),
     compactTitle:
-      view === "day" || view === "week" ? rangeTitle(view, anchor, locale, "compact") : undefined,
+      view === "day" || view === "week"
+        ? calendarViewRangeTitle(view, anchor, locale, "compact", weekStart)
+        : undefined,
     showingToday,
     goToday,
     goPrevious,

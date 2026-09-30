@@ -17,13 +17,19 @@ includes:
 
 parameters:
     level: 8
-    # Sabre components expose arbitrary iCalendar/vCard children via __get/__set.
-    universalObjectCratesClasses:
-        - Sabre\VObject\Component
+    # Sabre component fields are typed in stubs/phpstan/V*.stub.php.
+    # Hyphenated names stay on vendor __get(): Property|null.
     stubFiles:
         - stubs/phpstan/SabreVObject.php
+        - stubs/phpstan/SabreVObjectTypes.stub.php
         - stubs/phpstan/SabreITipBroker.php
         - stubs/phpstan/PassportClient.php
+        - stubs/phpstan/VCalendar.stub.php
+        - stubs/phpstan/VEvent.stub.php
+        - stubs/phpstan/VTodo.stub.php
+        - stubs/phpstan/VJournal.stub.php
+        - stubs/phpstan/VAlarm.stub.php
+        - stubs/phpstan/VCard.stub.php
     paths:
         - app
         - bootstrap

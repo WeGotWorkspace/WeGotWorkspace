@@ -13,9 +13,13 @@ describe("createWorkspacePwaHead", () => {
       const head = createWorkspacePwaHead(appId);
       expect(head.links).toEqual(
         expect.arrayContaining([
-          { rel: "manifest", href: `/manifests/${appId}.webmanifest` },
+          {
+            rel: "manifest",
+            href: `/manifests/${appId}.webmanifest?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
+          },
           {
             rel: "apple-touch-icon",
+            sizes: "180x180",
             href: `/pwa-icons/${appId}-180.png?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
           },
           {
@@ -41,15 +45,19 @@ describe("createWorkspacePwaHead", () => {
     const head = createWorkspacePwaHead("home");
     expect(head.links).toEqual(
       expect.arrayContaining([
-        { rel: "manifest", href: "/manifests/home.webmanifest" },
+        {
+          rel: "manifest",
+          href: `/manifests/home.webmanifest?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
+        },
         {
           rel: "apple-touch-icon",
+          sizes: "180x180",
           href: `/pwa-icons/home-180.png?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
         },
         {
           rel: "icon",
           type: "image/svg+xml",
-          href: `/app-icons/home.svg?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
+          href: `/app-icons/home-pwa.svg?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
         },
       ]),
     );

@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+/** @vitest-environment jsdom */
+import { afterEach, describe, expect, it } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
+import { writeDefaultCollectionPrefs } from "@/lib/default-collection-prefs";
 import { contactBirthdayDisplay } from "./contacts-display-utils";
 import { mergeContactFromPatch } from "./contacts-patch-merge";
 import {
@@ -35,6 +37,9 @@ const janeCard = {
 } as unknown as ContactCard;
 
 describe("contacts-edit-utils", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
   it("resolves default view as all contacts regardless of address books", () => {
     expect(
       resolveDefaultContactsView([
@@ -62,6 +67,43 @@ describe("contacts-edit-utils", () => {
       ]),
     ).toEqual({ work: true });
     expect(resolveCreateAddressBookIds("group:missing", books, [])).toEqual({ default: true });
+  });
+
+  it("uses the stored default address book when All contacts is selected", () => {
+    writeDefaultCollectionPrefs("contacts", { collectionId: "work" });
+    const books = [
+      { id: "default", name: "Default", isDefault: true } as never,
+      { id: "work", name: "Work", isDefault: false } as never,
+    ];
+    expect(resolveCreateAddressBookIds("all", books)).toEqual({ work: true });
+    expect(resolveCreateAddressBookIds("book:default", books)).toEqual({ default: true });
+    writeDefaultCollectionPrefs("contacts", { collectionId: "shared-42" });
+    expect(
+      resolveCreateAddressBookIds("all", [
+        { id: "default", name: "Default", isDefault: true, isSharee: false } as never,
+        {
+          id: "shared-42",
+          name: "Alice",
+          isDefault: false,
+          isSharee: true,
+          myRights: { mayWrite: true },
+        } as never,
+      ]),
+    ).toEqual({ default: true });
+    writeDefaultCollectionPrefs("contacts", { collectionId: "readonly" });
+    expect(
+      resolveCreateAddressBookIds("all", [
+        { id: "default", name: "Default", isDefault: true, isSharee: false } as never,
+        {
+          id: "readonly",
+          name: "Read only",
+          isDefault: false,
+          isSharee: false,
+          myRights: { mayWrite: false },
+        } as never,
+      ]),
+    ).toEqual({ default: true });
+    writeDefaultCollectionPrefs("contacts", {});
   });
 
   it("enables New on writable group views and disables it on view-only books", () => {

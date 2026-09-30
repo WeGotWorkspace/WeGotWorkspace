@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { useDefaultCollectionId } from "@/lib/default-collection-prefs";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeTasksLabels, type TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASKS_VIEW, normalizeTasksView } from "@/tasks-core/src/tasks-route-search";
@@ -97,9 +98,10 @@ export function useTasksShell({
   }, [L, taskLists, view]);
 
   const selectedListId = view.startsWith("list:") ? view.slice(5) : null;
+  const preferredListId = useDefaultCollectionId("tasks");
   const createListId = useMemo(
-    () => selectedListId ?? defaultTaskListId(taskLists),
-    [selectedListId, taskLists],
+    () => selectedListId ?? defaultTaskListId(taskLists, preferredListId),
+    [selectedListId, taskLists, preferredListId],
   );
   const createTargetList = useMemo(
     () => taskLists.find((list) => list.id === createListId),

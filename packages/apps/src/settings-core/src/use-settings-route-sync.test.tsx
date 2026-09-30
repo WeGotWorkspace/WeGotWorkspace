@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const navigate = vi.fn(async (_opts?: unknown) => undefined);
 let mockPathname = "/settings/assistants";
@@ -31,12 +31,20 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 import { useSettingsRouteSync } from "@/settings-core/src/use-settings-route-sync";
+import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
+import { resetSettingsRegistryForTests } from "@/settings-core/src/settings-registry";
 
 describe("useSettingsRouteSync", () => {
   beforeEach(() => {
+    resetSettingsRegistryForTests();
+    registerBuiltinSettings();
     navigate.mockClear();
     mockPathname = "/settings/assistants";
     livePathname = "/settings/assistants";
+  });
+
+  afterEach(() => {
+    resetSettingsRegistryForTests();
   });
 
   it("keeps the assistants section when MCP is enabled", () => {
