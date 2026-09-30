@@ -16,7 +16,7 @@ on:
 
 concurrency:
   group: nightly-live-e2e
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -88,13 +88,7 @@ jobs:
 
       - name: Run live e2e specs
         working-directory: packages/apps
-        run: |
-          pnpm exec playwright test --config playwright.live.config.mjs \
-            e2e/notes-offline-sync.spec.ts \
-            e2e/docs-offline-sync.spec.ts \
-            e2e/docs-home-browse.spec.ts \
-            e2e/calendar-offline-week-event.spec.ts \
-            e2e/meet-adhoc-two-users.spec.ts
+        run: pnpm exec playwright test --config playwright.live.config.mjs
 
       - name: Upload Playwright artifacts
         if: failure()
@@ -109,7 +103,7 @@ jobs:
   notify-failure:
     name: Notify on failure
     needs: live-specs
-    if: failure()
+    if: failure() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -129,16 +123,16 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
-              "Specs: `notes-offline-sync`, `docs-offline-sync`, `docs-home-browse`, `calendar-offline-week-event`, `meet-adhoc-two-users`.",
-              "",
               "Download the `live-e2e-artifacts` artifact from that run for the HTML report and traces.",
-              "",
-              "Tracked by #1022.",
             ].join("\n");
 
-            const query = `repo:${owner}/${repo} is:issue is:open in:title "Nightly live e2e failed"`;
-            const { data } = await github.rest.search.issuesAndPullRequests({ q: query, per_page: 10 });
-            const existing = (data.items ?? []).find((issue) => issue.title === title);
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
             if (existing) {
               await github.rest.issues.createComment({
                 owner,
@@ -156,7 +150,7 @@ jobs:
   notify-recovery:
     name: Close failure issue on success
     needs: live-specs
-    if: success()
+    if: success() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     continue-on-error: true
@@ -172,9 +166,13 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
-            const query = `repo:${owner}/${repo} is:issue is:open in:title "Nightly live e2e failed"`;
-            const { data } = await github.rest.search.issuesAndPullRequests({ q: query, per_page: 10 });
-            const existing = (data.items ?? []).find((issue) => issue.title === title);
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
             if (!existing) {
               core.info("No open nightly failure issue.");
               return;
