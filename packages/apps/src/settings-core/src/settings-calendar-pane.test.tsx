@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 describe("SettingsCalendarPane", () => {
-  it("renders timezone, day starts on, and default calendar without language or placeholder copy", async () => {
+  it("renders default calendar first, then timezone and day starts on, without language or placeholder copy", async () => {
     render(<SettingsCalendarPane />);
     expect(screen.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Day starts on" })).toBeTruthy();
@@ -20,6 +20,14 @@ describe("SettingsCalendarPane", () => {
       const trigger = screen.getByRole("button", { name: /Default calendar: Personal/i });
       expect(trigger).toBeTruthy();
       expect(trigger.textContent).toContain("Personal");
+      const timezone = screen.getByRole("combobox", { name: "Timezone" });
+      const weekStart = screen.getByRole("combobox", { name: "Day starts on" });
+      expect(trigger.compareDocumentPosition(timezone) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(timezone.compareDocumentPosition(weekStart) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
     });
     expect(screen.queryByRole("combobox", { name: "Language" })).toBeNull();
     expect(screen.queryByRole("combobox", { name: "Locale" })).toBeNull();

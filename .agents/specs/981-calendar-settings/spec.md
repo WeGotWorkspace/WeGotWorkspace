@@ -47,7 +47,7 @@ Owner request during implementation (issue body-hash unchanged; `gh issue edit` 
 - Remove working hours from the pane
 - Add Day starts on with a browser-default option; Monday and Sunday only (not all seven weekdays)
 - Hide Language until workspace-wide i18n
-- Default calendar (incoming invites), reusing the event-dialog calendar dropdown with the name visible on the closed trigger
+- Default calendar (incoming invites) is the first control, reusing the event-dialog calendar dropdown with the name visible on the closed trigger
 - Dialog: no Card; Save primary at the end; Cancel next to it; Open in Settings on the other corner, not primary
 
 ## Edge cases

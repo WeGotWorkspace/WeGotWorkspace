@@ -7,7 +7,7 @@ import { connectWgwJmapClient } from "@/lib/wgw-jmap-session";
 
 /** Mock-tier writable calendars — same ids/names as the Calendar story bootstrap. */
 export const MOCK_CALENDAR_PICKER_COLLECTIONS: CalendarPickerCalendar[] = [
-  { id: "default", name: "Personal", color: "#6366f1", isDefault: true },
+  { id: "default", name: "Personal", color: "#6366f1" },
   { id: "work", name: "Work", color: "#0ea5e9" },
 ];
 
@@ -17,7 +17,6 @@ function toPickerCalendar(calendar: JmapCalendar): CalendarPickerCalendar {
     name: calendar.name,
     color: calendar.color ?? "#6366f1",
     mayWrite: calendar.myRights ? shareRightsAllowWrite(calendar.myRights) : true,
-    isDefault: calendar.isDefault,
   };
 }
 

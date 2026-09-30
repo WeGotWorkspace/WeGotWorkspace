@@ -31,7 +31,7 @@ describe("sortCalendarsForSidebar", () => {
 
 describe("calendar sidebar sections", () => {
   const calendars: CalendarInfo[] = [
-    { id: "default", name: "Personal", color: "#6366f1", sortOrder: 0, isDefault: true },
+    { id: "default", name: "Personal", color: "#6366f1", sortOrder: 0 },
     { id: "work", name: "Work", color: "#0ea5e9", sortOrder: 1, scope: "personal" },
     {
       id: "group-eng",
@@ -81,31 +81,11 @@ describe("calendar sidebar sections", () => {
     },
   ];
 
-  it("pins the default calendar at the top of My calendars, then A–Z", () => {
-    expect(
-      ownedAndTeamCalendarsForSidebar([
-        { id: "work", name: "Work", color: "#0ea5e9" },
-        { id: "zeta", name: "Zeta", color: "#111111", isDefault: true },
-        { id: "alpha", name: "Alpha", color: "#222222" },
-      ]).map((entry) => entry.id),
-    ).toEqual(["zeta", "alpha", "work"]);
-  });
-
-  it("treats the provisioned default id as the pinned calendar", () => {
-    expect(
-      ownedAndTeamCalendarsForSidebar([
-        { id: "work", name: "Work", color: "#0ea5e9" },
-        { id: "default", name: "Personal", color: "#6366f1" },
-        { id: "alpha", name: "Alpha", color: "#222222" },
-      ]).map((entry) => entry.id),
-    ).toEqual(["default", "alpha", "work"]);
-  });
-
-  it("unifies owned, team, and subscription calendars with default first, then A–Z, and keeps ACL sharees out", () => {
+  it("unifies owned, team, and subscription calendars A–Z and keeps ACL sharees out", () => {
     expect(ownedAndTeamCalendarsForSidebar(calendars).map((entry) => entry.id)).toEqual([
-      "default",
       "group-design",
       "group-eng",
+      "default",
       "sprint",
       "group-holidays",
       "holidays",

@@ -15,7 +15,6 @@ export type CalendarPickerCalendar = {
   name: string;
   color: string;
   mayWrite?: boolean;
-  isDefault?: boolean;
 };
 
 export type CalendarPickerMenuItemProps = {
@@ -63,35 +62,10 @@ export type CalendarEventCalendarPickerProps = {
   onCalendarIdChange: (calendarId: string) => void;
 };
 
-/** Personal default collection — JMAP `isDefault` or the provisioned `default` id. */
-export function isPinnedDefaultCalendar(
-  calendar: Pick<CalendarPickerCalendar, "id" | "isDefault">,
-): boolean {
-  return calendar.isDefault === true || calendar.id === "default";
-}
-
-function comparePinnedDefaultThenName(
-  left: Pick<CalendarPickerCalendar, "id" | "name" | "isDefault">,
-  right: Pick<CalendarPickerCalendar, "id" | "name" | "isDefault">,
-): number {
-  const leftPin = isPinnedDefaultCalendar(left);
-  const rightPin = isPinnedDefaultCalendar(right);
-  if (leftPin !== rightPin) return leftPin ? -1 : 1;
-  return left.name.localeCompare(right.name, undefined, { sensitivity: "base" });
-}
-
-export function sortCalendarsPinnedDefaultThenName<
-  T extends Pick<CalendarPickerCalendar, "id" | "name" | "isDefault">,
->(calendars: readonly T[]): T[] {
-  return [...calendars].sort(comparePinnedDefaultThenName);
-}
-
 export function writableCalendarsForPicker(
   calendars: CalendarPickerCalendar[],
 ): CalendarPickerCalendar[] {
-  return sortCalendarsPinnedDefaultThenName(
-    calendars.filter((calendar) => calendar.mayWrite !== false),
-  );
+  return calendars.filter((calendar) => calendar.mayWrite !== false);
 }
 
 export function defaultPickerCalendarId(

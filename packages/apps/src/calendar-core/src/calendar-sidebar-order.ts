@@ -3,7 +3,6 @@ import {
   partitionOwnedAndShared,
   sortCollectionsByName,
 } from "@/collection-sidebar/src/collection-sidebar-partition";
-import { sortCalendarsPinnedDefaultThenName } from "@/lib/calendar-event-calendar-picker";
 import type { CalendarInfo } from "@/calendar-core/src/calendar-types";
 
 /** Sidebar display order: `sortOrder` ascending, then name (localeCompare). */
@@ -59,9 +58,7 @@ export function isSharedWithMeCalendar(
 export function ownedAndTeamCalendarsForSidebar<T extends CalendarInfo>(
   calendars: readonly T[],
 ): T[] {
-  return sortCalendarsPinnedDefaultThenName(
-    partitionOwnedAndShared(calendars, CALENDAR_PARTITION).owned,
-  );
+  return partitionOwnedAndShared(calendars, CALENDAR_PARTITION).owned;
 }
 
 export function sharedWithMeCalendarsForSidebar<T extends CalendarInfo>(

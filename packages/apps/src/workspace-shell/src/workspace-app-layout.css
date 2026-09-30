@@ -71,7 +71,11 @@
 }
 
 .workspace-sidebar-account-footer__settings {
-  @apply pt-2;
+  @apply border-t pt-2;
+  border-color: var(
+    --workspace-user-footer-border-color,
+    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
+  );
 }
 
 .workspace-sidebar-account-footer__settings-button {

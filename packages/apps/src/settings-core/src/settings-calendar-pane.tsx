@@ -24,7 +24,7 @@ import { FormSaveActionRow } from "@/ui/form-save-action-row";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 
 /**
- * Timezone, week start, and default calendar for Calendar. Device-local.
+ * Default calendar, timezone, and week start for Calendar. Device-local.
  * Language stays off this pane until workspace-wide i18n exists.
  */
 export function SettingsCalendarPane() {
@@ -69,6 +69,23 @@ export function SettingsCalendarPane() {
     <Form {...form}>
       <SettingsPaneCard>
         <div className={settingsWorkspacePaneClasses.stack}>
+          {calendars.length > 0 ? (
+            <FormField
+              control={form.control}
+              name="inviteCalendarId"
+              render={({ field }) => (
+                <FieldLabelRow label="Default calendar">
+                  <CalendarEventCalendarPicker
+                    calendars={calendars}
+                    calendarId={defaultPickerCalendarId(calendars, field.value || undefined)}
+                    label="Default calendar"
+                    showName
+                    onCalendarIdChange={(calendarId) => field.onChange(calendarId)}
+                  />
+                </FieldLabelRow>
+              )}
+            />
+          ) : null}
           <FormField
             control={form.control}
             name="timeZone"
@@ -115,23 +132,6 @@ export function SettingsCalendarPane() {
               </FieldLabelRow>
             )}
           />
-          {calendars.length > 0 ? (
-            <FormField
-              control={form.control}
-              name="inviteCalendarId"
-              render={({ field }) => (
-                <FieldLabelRow label="Default calendar">
-                  <CalendarEventCalendarPicker
-                    calendars={calendars}
-                    calendarId={defaultPickerCalendarId(calendars, field.value || undefined)}
-                    label="Default calendar"
-                    showName
-                    onCalendarIdChange={(calendarId) => field.onChange(calendarId)}
-                  />
-                </FieldLabelRow>
-              )}
-            />
-          ) : null}
           <FormSaveActionRow
             className={settingsWorkspacePaneClasses.saveActionRow}
             label="Save"
