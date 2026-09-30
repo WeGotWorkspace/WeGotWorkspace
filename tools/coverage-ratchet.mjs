@@ -306,7 +306,7 @@ function readBaseline() {
  * @param {Map<string, {pct: number, statements: number}>} coverage
  * @param {Map<string, number>} baseline
  * @param {{ reseed?: boolean }} [options]
- * @returns {{ packages: Record<string, number>, lowered: Array<{pkg: string, from: number, to: number}> }}
+ * @returns {{ packages: Record<string, number>, lowered: Array<{pkg: string, from: number, to: number}>, removed: Array<{pkg: string, from: number}> }}
  */
 function writeBaseline(coverage, baseline, options = {}) {
   const reseed = options.reseed === true;
@@ -331,8 +331,19 @@ function writeBaseline(coverage, baseline, options = {}) {
       obj[pkg] = hasPrevious ? Math.max(previousPct, current) : current;
     }
   }
+  /** @type {Array<{pkg: string, from: number}>} */
+  const removed = [];
+  if (reseed) {
+    for (const [pkg, previous] of baseline) {
+      if (coverage.has(pkg)) continue;
+      const previousPct = roundPct(Number(previous));
+      if (!Number.isFinite(previousPct)) continue;
+      removed.push({ pkg, from: previousPct });
+    }
+    removed.sort((a, b) => a.pkg.localeCompare(b.pkg));
+  }
   writeFileSync(baselinePath, `${JSON.stringify(obj, null, 2)}\n`);
-  return { packages: obj, lowered };
+  return { packages: obj, lowered, removed };
 }
 
 /**
@@ -509,9 +520,13 @@ function runUpdate(reseed) {
     process.exit(3);
   }
 
-  const { packages, lowered } = writeBaseline(current, readBaseline(), {
-    reseed,
-  });
+  const { packages, lowered, removed } = writeBaseline(
+    current,
+    readBaseline(),
+    {
+      reseed,
+    },
+  );
 
   if (reseed) {
     console.log(
@@ -519,6 +534,9 @@ function runUpdate(reseed) {
     );
     for (const { pkg, from, to } of lowered) {
       console.log(`  ${pkg}: ${from.toFixed(2)}% -> ${to.toFixed(2)}%`);
+    }
+    for (const { pkg, from } of removed) {
+      console.log(`  ${pkg}: ${from.toFixed(2)}% -> removed`);
     }
     console.log();
   } else {

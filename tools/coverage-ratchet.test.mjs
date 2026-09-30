@@ -440,7 +440,8 @@ describe("coverage-ratchet", () => {
       `<?xml version="1.0"?><coverage><project></project></coverage>`,
     );
 
-    runReseed();
+    const output = runReseed();
+    assert.match(output, /packages\/apps\/src\/gone: 50\.00% -> removed/);
 
     const baseline = getBaseline();
     assert.equal(baseline["packages/apps/src/button"], 80.0);
