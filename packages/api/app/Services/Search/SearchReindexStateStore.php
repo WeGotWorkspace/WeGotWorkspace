@@ -24,7 +24,8 @@ final class SearchReindexStateStore
             return [];
         }
 
-        $decoded = json_decode($disk->get($path), true);
+        $raw = $disk->get($path);
+        $decoded = is_string($raw) ? json_decode($raw, true) : null;
 
         return is_array($decoded) ? $decoded : [];
     }
@@ -58,9 +59,10 @@ final class SearchReindexStateStore
         if (! $disk->exists($path)) {
             return [];
         }
-        $lines = preg_split("/\r\n|\n|\r/", $disk->get($path)) ?: [];
+        $raw = $disk->get($path);
+        $lines = is_string($raw) ? (preg_split("/\r\n|\n|\r/", $raw) ?: []) : [];
 
-        return array_values(array_slice(array_filter($lines, static fn (string $line): bool => trim($line) !== ''), -400));
+        return array_slice(array_filter($lines, static fn (string $line): bool => trim($line) !== ''), -400);
     }
 
     public function clearCancelRequest(): void

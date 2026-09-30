@@ -18,6 +18,8 @@ trait ValidatesSetArguments
      * Rejects the whole method call with stateMismatch when args.ifInState
      * is present and differs from the current account-wide state — before
      * any mutation happens (spec §5).
+     *
+     * @param  array<string, mixed>  $args
      */
     private function guardIfInState(array $args, string $currentState): void
     {
@@ -34,6 +36,7 @@ trait ValidatesSetArguments
     }
 
     /**
+     * @param  array<string, mixed>  $args
      * @return array{0: array<string, mixed>, 1: array<string, mixed>, 2: list<mixed>}
      */
     private function setOperations(array $args): array

@@ -105,9 +105,8 @@ function phpstan_baseline_shrink_main(string $repoRoot): int
     }
 
     $base = phpstan_baseline_parse($shown);
-    if ($base['error'] !== null || $base['sum'] === null || $head['sum'] === null) {
-        $message = $base['error'] ?? 'failed to parse the base baseline';
-        fwrite(STDERR, "phpstan-baseline-shrink: {$message}\n");
+    if ($base['error'] !== null) {
+        fwrite(STDERR, "phpstan-baseline-shrink: {$base['error']}\n");
 
         return 1;
     }

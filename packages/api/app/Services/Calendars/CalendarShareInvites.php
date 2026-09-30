@@ -71,7 +71,7 @@ final class CalendarShareInvites
             throw new ApiHttpException(403, 'Only collection administrators can change sharing.', 'forbidden');
         }
 
-        $currentInvites = $this->calBackend()->getInvites($this->backendId($instance));
+        $currentInvites = array_values($this->calBackend()->getInvites($this->backendId($instance)));
         $sharees = $shareWith === null
             ? $this->revokeAllSharees($currentInvites)
             : $this->shareesFromPatch($instance, $shareWith, $currentInvites);
@@ -167,7 +167,7 @@ final class CalendarShareInvites
     private function hrefForPrincipal(Principal $principal, array $currentInvites): string
     {
         foreach ($currentInvites as $invite) {
-            if ((string) $invite->principal === (string) $principal->uri && is_string($invite->href) && $invite->href !== '') {
+            if ((string) $invite->principal === (string) $principal->uri && $invite->href !== '') {
                 return $invite->href;
             }
         }
@@ -183,7 +183,7 @@ final class CalendarShareInvites
             return $fromPrincipal;
         }
 
-        $href = is_string($sharee->href) ? $sharee->href : '';
+        $href = $sharee->href;
 
         return $this->addresses->jmapIdForShareHref($href);
     }

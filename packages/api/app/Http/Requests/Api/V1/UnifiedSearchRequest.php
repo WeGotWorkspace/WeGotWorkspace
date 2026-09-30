@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 final class UnifiedSearchRequest extends FormRequest
 {
@@ -101,9 +102,9 @@ final class UnifiedSearchRequest extends FormRequest
         return true;
     }
 
-    public function withValidator($validator): void
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function ($validator): void {
+        $validator->after(function (Validator $validator): void {
             if (! $this->isBrowseMode()) {
                 $q = $this->input('q');
                 if (! is_string($q) || trim($q) === '') {

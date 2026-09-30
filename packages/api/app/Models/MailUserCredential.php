@@ -7,6 +7,14 @@ namespace App\Models;
 use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property string $username
+ * @property string $imap_username
+ * @property string $password_enc
+ * @property string $updated_at
+ */
 final class MailUserCredential extends Model
 {
     use UsesWgwConnection;

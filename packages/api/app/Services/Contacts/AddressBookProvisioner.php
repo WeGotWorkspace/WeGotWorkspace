@@ -44,7 +44,7 @@ final class AddressBookProvisioner
                 $principal = Principal::forUsername($username);
                 $result = $this->ensureForPrincipal(
                     'principals/'.$username,
-                    (string) ($principal?->displayname ?? $username),
+                    (string) ($principal->displayname ?? $username),
                 );
                 $created += $result['created'];
                 if ($result['created'] === 0) {

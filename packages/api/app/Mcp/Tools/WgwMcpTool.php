@@ -62,7 +62,7 @@ abstract class WgwMcpTool extends Tool
             return Response::error($e->getMessage());
         } catch (MailResponseException $e) {
             $this->record('error', $request);
-            $msg = is_array($e->payload) ? (string) ($e->payload['error'] ?? $e->getMessage()) : $e->getMessage();
+            $msg = (string) ($e->payload['error'] ?? $e->getMessage());
 
             return Response::error($msg !== '' ? $msg : 'Mail operation failed.');
         } catch (\InvalidArgumentException $e) {

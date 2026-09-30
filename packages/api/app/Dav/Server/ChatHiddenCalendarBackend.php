@@ -40,6 +40,7 @@ final class ChatHiddenCalendarBackend extends CalPDO
         parent::__construct($pdo);
     }
 
+    /** @return array<mixed> */
     public function getCalendarsForUser($principalUri)
     {
         return array_values(array_filter(
@@ -48,6 +49,7 @@ final class ChatHiddenCalendarBackend extends CalPDO
         ));
     }
 
+    /** @param array<string, mixed> $properties */
     public function createCalendar($principalUri, $calendarUri, array $properties)
     {
         if ($this->isHiddenUri((string) $calendarUri)) {

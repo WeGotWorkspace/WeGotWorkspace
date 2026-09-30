@@ -7,12 +7,13 @@ import { describe, expect, it } from "vitest";
 import { coverageVitestArgs, isDirectInvocation } from "./run-jsdom.mjs";
 
 describe("coverageVitestArgs", () => {
-  it("passes blob reporter flags and a unique reports directory per shard", () => {
+  it("passes default and blob reporters and a unique reports directory per shard", () => {
     const first = coverageVitestArgs("jsdom-1");
     const second = coverageVitestArgs("jsdom-2");
 
     expect(first).toEqual([
       "--coverage",
+      "--reporter=default",
       "--reporter=blob",
       "--outputFile=.vitest-reports/blob-jsdom-1.json",
       "--coverage.reportsDirectory=.coverage-shards/jsdom-1",

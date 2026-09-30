@@ -42,6 +42,7 @@ final class CalendarRepository
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
+    /** @return array<string, mixed> */
     public function list(string $username): array
     {
         $calendars = $this->accessibleVeventInstances($username)
@@ -56,6 +57,7 @@ final class CalendarRepository
         return ['list' => $calendars];
     }
 
+    /** @return array<string, mixed> */
     public function show(string $username, string $calendarId): array
     {
         $instance = $this->findAccessibleCalendar($username, $calendarId);
@@ -69,6 +71,8 @@ final class CalendarRepository
         return $this->mapCalendar($instance, $groupSlug);
     }
 
+    /** @param array<string, mixed> $payload
+     * @return array<string, mixed> */
     public function create(string $username, array $payload): array
     {
         $name = trim((string) ($payload['name'] ?? ''));
@@ -142,6 +146,8 @@ final class CalendarRepository
         return $this->mapCalendar($instance, $groupSlug);
     }
 
+    /** @param array<string, mixed> $payload
+     * @return array<string, mixed> */
     public function update(string $username, string $calendarId, array $payload): array
     {
         $resolved = $this->resolveWritableCalendar($username, $calendarId);
@@ -198,6 +204,8 @@ final class CalendarRepository
         return $this->mapCalendar($instance, $groupSlug);
     }
 
+    /** @param array<string, mixed> $options
+     * @return array<string, mixed> */
     public function delete(string $username, string $calendarId, array $options = []): array
     {
         $resolved = $this->resolveWritableCalendar($username, $calendarId);
@@ -265,6 +273,7 @@ final class CalendarRepository
         return $instance;
     }
 
+    /** @return array<string, mixed> */
     public function changes(string $username, ?string $since): array
     {
         $instances = $this->accessibleVeventInstances($username);
@@ -293,7 +302,7 @@ final class CalendarRepository
 
         $currentMap = [];
         foreach ($instances as $instance) {
-            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar?->synctoken ?? 1);
+            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar->synctoken ?? 1);
         }
 
         $created = [];
@@ -322,14 +331,6 @@ final class CalendarRepository
             !== SharingPlugin::ACCESS_READ;
     }
 
-    /**
-     * Whether $username may create/modify VEVENTs on a calendar owned by
-     * $ownerPrincipalUri. Same relation JMAP/CalDAV use: owner/member
-     * ACCESS_SHAREDOWNER, or a sharee instance that is not ACCESS_READ.
-     *
-     * Group members with no owner rows yet still pass — listing the group
-     * home provisions the default VEVENT collection.
-     */
     public function userMayWriteEventsOwnedBy(string $username, string $ownerPrincipalUri): bool
     {
         if ($username === '' || $ownerPrincipalUri === '') {
@@ -424,9 +425,6 @@ final class CalendarRepository
     }
 
     /**
-     * Calendars the user may update (name, color, …). Provisioned group calendars
-     * are included; {@see delete()} separately forbids destroying them.
-     *
      * @return array{0: CalendarInstance, 1: ?string}|null
      */
     private function resolveWritableCalendar(string $username, string $calendarId): ?array
@@ -448,10 +446,6 @@ final class CalendarRepository
             && (string) $instance->uri === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug);
     }
 
-    /**
-     * Move the owner instance between personal and group principals.
-     * Events stay on calendarid; sharee rows and shareWith grants are untouched.
-     */
     private function transferOwner(
         string $username,
         CalendarInstance $instance,
@@ -551,7 +545,7 @@ final class CalendarRepository
         if (str_starts_with($base, 'group-')) {
             $base = 'calendar-'.substr($base, strlen('group-'));
         }
-        if ($base === '' || in_array($base, CalendarCollectionUris::reservedEventUris(), true)) {
+        if (in_array($base, CalendarCollectionUris::reservedEventUris(), true)) {
             $base = 'calendar';
         }
         if ($groupSlug !== null && $base === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug)) {
@@ -567,16 +561,18 @@ final class CalendarRepository
         return $candidate;
     }
 
-    private function computeInstancesState($instances): string
+    /** @param iterable<CalendarInstance> $instances */
+    private function computeInstancesState(iterable $instances): string
     {
         $parts = [];
         foreach ($instances as $instance) {
-            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar?->synctoken ?? 1);
+            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar->synctoken ?? 1);
         }
 
         return (string) count($parts).':'.implode(',', $parts);
     }
 
+    /** @return array<string, int>|null */
     private function parseInstancesState(?string $state): ?array
     {
         if ($state === null || $state === '' || $state === '0') {
@@ -585,7 +581,7 @@ final class CalendarRepository
         if (! preg_match('/^(\d+):(.+)$/', $state, $matches)) {
             return null;
         }
-        $entries = $matches[2] === '' ? [] : explode(',', $matches[2]);
+        $entries = explode(',', $matches[2]);
         if (count($entries) !== (int) $matches[1]) {
             return null;
         }
@@ -601,6 +597,7 @@ final class CalendarRepository
         return $map;
     }
 
+    /** @return array{0: int, 1: int} */
     private function calBackendCalendarId(CalendarInstance $instance): array
     {
         return [(int) $instance->calendarid, (int) $instance->id];
@@ -627,7 +624,7 @@ final class CalendarRepository
         $id = (string) ($mapped['id'] ?? $instance->uri);
         foreach ($added as $sharee) {
             $grant = $grants[$sharee] ?? null;
-            $access = is_array($grant) && ($grant['mayWrite'] ?? false) === true ? 'write' : 'read';
+            $access = is_array($grant) && $grant['mayWrite'] === true ? 'write' : 'read';
             $this->eventDispatch->fireMutation(
                 $username,
                 'calendar',
@@ -645,6 +642,7 @@ final class CalendarRepository
         }
     }
 
+    /** @return array<string, mixed> */
     private function mapCalendar(CalendarInstance $instance, ?string $groupSlug = null): array
     {
         $uri = (string) $instance->uri;
@@ -678,7 +676,7 @@ final class CalendarRepository
         }
 
         return [
-            'id' => $isProvisionedGroup ? CalendarCollectionUris::groupCalendarApiId($groupSlug) : $uri,
+            'id' => $isProvisionedGroup && is_string($groupSlug) ? CalendarCollectionUris::groupCalendarApiId($groupSlug) : $uri,
             'name' => $name,
             'description' => is_string($instance->description) && trim($instance->description) !== '' ? trim($instance->description) : null,
             'timeZone' => is_string($instance->timezone) && trim($instance->timezone) !== '' ? trim($instance->timezone) : null,
@@ -710,10 +708,6 @@ final class CalendarRepository
         return $this->sharedGroupSubscriptionId($uri);
     }
 
-    /**
-     * Group-shared collection: same uri on the group principal. A personal
-     * subscription that reuses the slug must not attach to this collection.
-     */
     private function sharedGroupSubscriptionId(string $calendarUri): ?string
     {
         foreach ($this->subscriptionRowsForUri($calendarUri) as $row) {
@@ -801,14 +795,14 @@ final class CalendarRepository
             (string) ($group->displayname ?? $groupSlug),
         );
 
-        return CalendarInstance::query()
+        return array_values(CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $groupUri)
             ->whereHas('calendar', fn ($query) => $query->supportsVevent())
             ->orderBy('calendarorder')
             ->orderBy('id')
             ->get()
-            ->all();
+            ->all());
     }
 
     private function findCalendarInstance(string $principalUri, string $calendarUri): ?CalendarInstance
@@ -848,15 +842,15 @@ final class CalendarRepository
      */
     private function ownedVeventCalendarIds(string $ownerPrincipalUri): array
     {
-        return CalendarInstance::query()
+        return array_values(CalendarInstance::query()
             ->where('principaluri', $ownerPrincipalUri)
             ->where(function ($query): void {
                 $query->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
                     ->orWhereNull('access');
             })
             ->whereHas('calendar', fn ($query) => $query->supportsVevent())
-            ->pluck('calendarid')
-            ->all();
+            ->pluck('calendarid')->map(static fn (mixed $id): int => (int) $id)
+            ->all());
     }
 
     /**

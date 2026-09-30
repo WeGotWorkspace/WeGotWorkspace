@@ -31,6 +31,7 @@ final class AppUserFilesHomeCollection extends HomeCollection
         parent::__construct($principalBackend, $storagePath, $principalPrefix);
     }
 
+    /** @param array<string, mixed> $principalInfo */
     public function getChildForPrincipal(array $principalInfo): DAV\INode
     {
         $owner = $principalInfo['uri'];

@@ -11,6 +11,7 @@ use Sabre\HTTP\ResponseInterface;
 
 final class SabrePdoBasicAndCookieAuth extends PDOBasicAuth
 {
+    /** @return array<mixed> */
     public function check(RequestInterface $request, ResponseInterface $response)
     {
         $fromGate = SabreUiAuthGate::validatedUsername($this->realm);

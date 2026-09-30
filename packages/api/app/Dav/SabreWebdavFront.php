@@ -59,17 +59,9 @@ final class SabreWebdavFront
         try {
             $server->invokeMethod($httpRequest, $httpResponse, false);
         } catch (NotAuthenticated) {
-            if ($httpResponse->getStatus() === null) {
-                $httpResponse->setStatus(401);
-            }
-
             return $this->converter->toIlluminate($httpResponse);
         } catch (\Throwable $e) {
             return $this->converter->toIlluminate($this->exceptionResponse($server, $e));
-        }
-
-        if ($httpResponse->getStatus() === null) {
-            return response('WebDAV request was not handled.', 500, ['Content-Type' => 'text/plain; charset=utf-8']);
         }
 
         return $this->converter->toIlluminate($httpResponse);
@@ -124,7 +116,10 @@ final class SabreWebdavFront
         foreach ($headers as $name => $value) {
             $response->setHeader($name, $value);
         }
-        $response->setBody($dom->saveXML());
+        $xml = $dom->saveXML();
+        if (is_string($xml)) {
+            $response->setBody($xml);
+        }
 
         return $response;
     }

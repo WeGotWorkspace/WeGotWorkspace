@@ -40,17 +40,11 @@ final class CalendarEventQueryMethod implements JmapMethodInterface
     public function handle(string $username, array $args): array
     {
         $filter = $args['filter'] ?? [];
-        if ($filter === null) {
-            $filter = [];
-        }
         if (! is_array($filter) || ($filter !== [] && array_is_list($filter))) {
             throw new JmapMethodException('invalidArguments', 'filter must be null or a FilterCondition object.');
         }
 
         $sort = $args['sort'] ?? [];
-        if ($sort === null) {
-            $sort = [];
-        }
         if (! is_array($sort) || ! array_is_list($sort)) {
             throw new JmapMethodException('invalidArguments', 'sort must be null or an array of comparators.');
         }

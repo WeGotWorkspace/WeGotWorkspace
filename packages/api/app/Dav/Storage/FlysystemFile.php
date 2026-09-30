@@ -92,6 +92,6 @@ class FlysystemFile extends FlysystemNode implements DAV\IFile, IPatchSupport
 
     public function getSize(): int
     {
-        return (int) ($this->filesystem->size($this->key) ?? 0);
+        return (int) ($this->filesystem->size($this->key));
     }
 }

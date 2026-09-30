@@ -103,7 +103,7 @@ final class HttpSignalingStore
             $this->leave($room, (string) $id);
         }
 
-        return array_map(static fn ($id): string => (string) $id, $staleIds);
+        return array_values(array_map(static fn ($id): string => (string) $id, $staleIds));
     }
 
     /**
@@ -129,7 +129,7 @@ final class HttpSignalingStore
             $this->leave($room, (string) $id);
         }
 
-        return array_map(static fn ($id): string => (string) $id, $staleIds);
+        return array_values(array_map(static fn ($id): string => (string) $id, $staleIds));
     }
 
     /**
@@ -142,20 +142,22 @@ final class HttpSignalingStore
             $columns[] = 'owner_user';
         }
 
-        return $this->peerQuery()
+        return array_values($this->peerQuery()
             ->where('room', $room)
             ->where('peer_id', '!=', $selfId)
             ->get($columns)
             ->map(function ($row): array {
-                $peer = ['id' => (string) $row->id, 'name' => (string) $row->name];
+                $peer = [
+                    'id' => (string) $row->getAttribute('id'),
+                    'name' => (string) $row->getAttribute('name'),
+                ];
                 if ($this->policy->rosterIncludesOwner) {
                     $peer['user'] = $this->ownerUsername((string) ($row->owner_user ?? ''));
                 }
 
                 return $peer;
             })
-            ->values()
-            ->all();
+            ->all());
     }
 
     /** Strip the `u:` owner marker so rosters carry the plain Sabre username. */
@@ -276,12 +278,12 @@ final class HttpSignalingStore
 
             $messages = [];
             foreach ($query->get(['id', 'from_peer as from', 'to_peer as to', 'type', 'payload']) as $row) {
-                $decoded = json_decode((string) $row->payload, true);
+                $decoded = json_decode((string) $row->getAttribute('payload'), true);
                 $messages[] = [
-                    'id' => (int) $row->id,
-                    'from' => (string) $row->from,
-                    'to' => (string) $row->to,
-                    'type' => (string) $row->type,
+                    'id' => (int) $row->getAttribute('id'),
+                    'from' => (string) $row->getAttribute('from'),
+                    'to' => (string) $row->getAttribute('to'),
+                    'type' => (string) $row->getAttribute('type'),
                     'payload' => $decoded,
                 ];
             }
@@ -304,10 +306,10 @@ final class HttpSignalingStore
             $ids = $rows->pluck('id')->all();
             $this->messageQuery()->whereIn('id', $ids)->delete();
             foreach ($rows as $row) {
-                $decoded = json_decode((string) $row->payload, true);
+                $decoded = json_decode((string) $row->getAttribute('payload'), true);
                 $messages[] = [
-                    'from' => (string) $row->from,
-                    'type' => (string) $row->type,
+                    'from' => (string) $row->getAttribute('from'),
+                    'type' => (string) $row->getAttribute('type'),
                     'payload' => $decoded,
                 ];
             }
@@ -436,12 +438,12 @@ final class HttpSignalingStore
      */
     public function peerIdsInRoomExcept(string $room, string $exceptPeerId): array
     {
-        return $this->peerQuery()
+        return array_values($this->peerQuery()
             ->where('room', $room)
             ->where('peer_id', '!=', $exceptPeerId)
             ->pluck('peer_id')
             ->map(static fn ($id) => (string) $id)
-            ->all();
+            ->all());
     }
 
     /**
@@ -449,11 +451,17 @@ final class HttpSignalingStore
      */
     public function peersInRoom(string $room, int $limit = 32): array
     {
-        return $this->peerQuery()
+        return array_values($this->peerQuery()
             ->where('room', $room)
             ->limit($limit)
             ->get(['owner_user', 'name'])
-            ->all();
+            ->map(static function ($row): object {
+                return (object) [
+                    'owner_user' => $row->getAttribute('owner_user'),
+                    'name' => $row->getAttribute('name'),
+                ];
+            })
+            ->all());
     }
 
     private function trimMessages(string $room): void

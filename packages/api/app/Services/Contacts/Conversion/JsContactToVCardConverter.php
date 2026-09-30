@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Contacts\Conversion;
 
 use Sabre\VObject\Component\VCard;
-use Sabre\VObject\Property;
 
 final class JsContactToVCardConverter
 {
@@ -15,6 +14,7 @@ final class JsContactToVCardConverter
     /** @var array<string, string> */
     private array $organizationGroups = [];
 
+    /** @param array<string, mixed> $card */
     public function convert(array $card): string
     {
         $card = ConversionSupport::normalizeCardMapKeys($card);
@@ -32,7 +32,6 @@ final class JsContactToVCardConverter
         if (isset($card['kind']) && is_string($card['kind'])) {
             $vcard->add('KIND', $card['kind']);
             // Apple Address Book uses X-ABShowAs:COMPANY (not standard vCard) for company cards.
-            // JSContact kind "org" (RFC 9553) is canonical; emit X-ABShowAs on write for CardDAV parity.
             if (strtolower($card['kind']) === 'org') {
                 $vcard->add('X-ABShowAs', 'COMPANY');
             }
@@ -109,7 +108,7 @@ final class JsContactToVCardConverter
         }
 
         $components = $name['components'] ?? null;
-        if (! is_array($components) || $components === []) {
+        if (! is_array($components) || ($components = JscopmsSupport::typedComponents($components)) === []) {
             return;
         }
 
@@ -194,10 +193,10 @@ final class JsContactToVCardConverter
             if (! is_array($entry)) {
                 continue;
             }
-            $components = $entry['components'] ?? [];
-            if (! is_array($components) || $components === []) {
-                $components = ConversionSupport::addressComponentsFromEntry($entry);
-            }
+            $rawComponents = $entry['components'] ?? [];
+            $components = is_array($rawComponents) && $rawComponents !== []
+                ? JscopmsSupport::typedComponents($rawComponents)
+                : ConversionSupport::addressComponentsFromEntry($entry);
             $hasComponents = $components !== [];
             $hasCoordinates = isset($entry['coordinates']);
             $hasTimeZone = isset($entry['timeZone']);
@@ -223,10 +222,8 @@ final class JsContactToVCardConverter
                 continue;
             }
 
-            $useRfc9554 = is_array($components) && $this->usesRfc9554AddressComponents($components);
-            $parts = is_array($components)
-                ? ConversionSupport::adrPartsFromComponents($components, $useRfc9554)
-                : array_fill(0, $useRfc9554 ? 18 : 7, '');
+            $useRfc9554 = $this->usesRfc9554AddressComponents($components);
+            $parts = ConversionSupport::adrPartsFromComponents($components, $useRfc9554);
 
             $params = $this->sharedParams($entry, $id);
             if (isset($entry['countryCode'])) {
@@ -242,14 +239,14 @@ final class JsContactToVCardConverter
                 $params['tz'] = (string) $entry['timeZone'];
             }
             if (JscopmsSupport::shouldEmitJscopms(
-                is_array($components) ? $components : [],
+                $components,
                 (bool) ($entry['isOrdered'] ?? false),
                 $useRfc9554,
             )) {
                 $params = array_merge(
                     $params,
                     JscopmsSupport::jscopmsParamsFromComponents(
-                        is_array($components) ? $components : [],
+                        $components,
                         $useRfc9554,
                         isset($entry['defaultSeparator']) ? (string) $entry['defaultSeparator'] : null,
                     ),
@@ -385,8 +382,7 @@ final class JsContactToVCardConverter
     }
 
     /**
-     * Map an image/* MIME type to the TYPE parameter value used by vCard 3.0.
-     * Returns null when no well-known mapping exists.
+     * Map an image/* MIME type to the TYPE parameter value used by vCard 3.0. Returns null when no well-known mapping exists.
      */
     private function mimeTypeToVCard3Type(string $mimeType): ?string
     {
@@ -739,13 +735,14 @@ final class JsContactToVCardConverter
                 $vparams['value'] = strtoupper($valueType);
             }
             $property = $vcard->add($name, $value, $vparams);
-            if ($property instanceof Property && isset($params['group'])) {
+            if (isset($params['group'])) {
                 $property->group = (string) $params['group'];
             }
         }
     }
 
     /**
+     * @param  array<string, mixed>  $entry
      * @return array<string, mixed>
      */
     private function sharedParams(array $entry, string $id): array
@@ -794,8 +791,7 @@ final class JsContactToVCardConverter
     }
 
     /**
-     * Emit Apple `itemN.X-ABLabel` for custom JSContact `label`, or for known
-     * standard contexts/features (Home/Work/Mobile/School). Keeps PROP-ID + TYPE.
+     * Emit Apple `itemN.X-ABLabel` for custom JSContact `label`, or for known standard contexts/features (Home/Work/Mobile/School). Keeps PROP-ID + TYPE.
      *
      * @param  array<string, mixed>  $entry
      * @param  array<string, mixed>  $params
@@ -862,9 +858,6 @@ final class JsContactToVCardConverter
     {
         $rfc9554Kinds = ['number', 'block', 'direction', 'landmark', 'subdistrict', 'district', 'room', 'floor', 'building'];
         foreach ($components as $component) {
-            if (! is_array($component)) {
-                continue;
-            }
             if (in_array((string) ($component['kind'] ?? ''), $rfc9554Kinds, true)) {
                 return true;
             }

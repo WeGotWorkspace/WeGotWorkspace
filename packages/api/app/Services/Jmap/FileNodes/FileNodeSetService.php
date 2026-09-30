@@ -336,9 +336,7 @@ final class FileNodeSetService
                 throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'No permission to rename or move this node.']);
             }
 
-            $newParent = $node->parent_node_id !== null
-                ? $this->accounts->visibleLiveNode((string) $node->parent_node_id, $roots)
-                : null;
+            $newParent = $this->accounts->visibleLiveNode($node->parent_node_id, $roots);
             if (array_key_exists('parentId', $patch)) {
                 $parentId = $patch['parentId'];
                 if (! is_string($parentId) || $parentId === '') {

@@ -21,12 +21,12 @@ final class CalendarSubscriptionService
      */
     public function list(string $username): array
     {
-        return CalendarSubscription::query()
+        return array_values(CalendarSubscription::query()
             ->where('username', $username)
             ->orderBy('id')
             ->get()
             ->map(fn (CalendarSubscription $row): array => $this->toArray($row))
-            ->all();
+            ->all());
     }
 
     /**
@@ -49,7 +49,7 @@ final class CalendarSubscriptionService
 
         $name = $this->subscriptionName($payload['name'] ?? null, $url, $ics);
         $color = $this->subscriptionColor($payload['color'] ?? null);
-        $groupSlug = isset($payload['groupSlug']) && is_string($payload['groupSlug'])
+        $groupSlug = isset($payload['groupSlug'])
             ? trim($payload['groupSlug'])
             : null;
         $calendar = $this->calendars->create($username, [

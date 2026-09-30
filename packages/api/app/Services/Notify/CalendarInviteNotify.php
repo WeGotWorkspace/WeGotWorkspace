@@ -109,7 +109,7 @@ final class CalendarInviteNotify
             return 'Someone';
         }
         $principal = Principal::forUsername($trimmed);
-        $name = trim((string) ($principal?->displayname ?? ''));
+        $name = trim((string) ($principal->displayname ?? ''));
 
         return $name !== '' ? $name : $trimmed;
     }
@@ -129,7 +129,7 @@ final class CalendarInviteNotify
      */
     public static function fromITipMessage(string $organizerUsername, Message $message): ?array
     {
-        $uid = trim((string) ($message->uid ?? ''));
+        $uid = trim((string) ($message->uid));
         if ($uid === '') {
             return null;
         }
@@ -167,9 +167,6 @@ final class CalendarInviteNotify
 
     private static function vevent(Message $message): ?VEvent
     {
-        if (! isset($message->message)) {
-            return null;
-        }
         $vevent = $message->message->VEVENT ?? null;
 
         return $vevent instanceof VEvent ? $vevent : null;

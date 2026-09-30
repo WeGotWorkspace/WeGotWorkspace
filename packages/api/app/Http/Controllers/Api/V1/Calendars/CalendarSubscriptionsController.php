@@ -30,7 +30,7 @@ final class CalendarSubscriptionsController
     public function store(CalendarSubscriptionCreateRequest $request): JsonResponse
     {
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $subscription = $this->subscriptions->create($principal['username'], $request->validated());
+        $subscription = $this->subscriptions->create($principal['username'], $request->payload());
 
         return (new CalendarSubscriptionResource($subscription))
             ->response()

@@ -41,7 +41,7 @@ final class NotesFileMigrator
     public function migrate(): array
     {
         $disk = $this->storage->files();
-        $pathToUid = $this->buildPathUidMap($disk->allFiles());
+        $pathToUid = $this->buildPathUidMap(array_values($disk->allFiles()));
         $imported = 0;
         $skipped = 0;
         $starred = 0;
@@ -115,7 +115,7 @@ final class NotesFileMigrator
         }
 
         $starred = $this->backfillStars($pathToUid, $notices);
-        $discardedYjs = $this->discardYjsSidecars($disk->allFiles());
+        $discardedYjs = $this->discardYjsSidecars(array_values($disk->allFiles()));
         $this->reindexImported(array_values($pathToUid));
 
         return [
@@ -182,7 +182,7 @@ final class NotesFileMigrator
     {
         preg_match_all('/!\[[^\]]*\]\([^)]+\)/', $body, $matches);
 
-        return count($matches[0] ?? []);
+        return count($matches[0]);
     }
 
     /**
@@ -278,7 +278,7 @@ final class NotesFileMigrator
             ->where('principal_id', (int) $group->id)
             ->orderBy('id')
             ->first();
-        $uri = (string) ($member?->member?->uri ?? '');
+        $uri = (string) ($member?->member->uri ?? '');
         if (str_starts_with($uri, 'principals/') && ! str_starts_with($uri, 'principals/groups/')) {
             return substr($uri, strlen('principals/'));
         }

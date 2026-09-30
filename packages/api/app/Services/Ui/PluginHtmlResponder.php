@@ -7,14 +7,12 @@ namespace App\Services\Ui;
 use App\Dav\Auth\SabreUiAuthGate;
 use App\Services\Auth\UiSessionService;
 use App\Services\Installer\InstallerWebBase;
-use App\Services\Plugins\PluginRegistryService;
 use App\Support\WgwSettings;
 use Symfony\Component\HttpFoundation\Response;
 
 final class PluginHtmlResponder
 {
     public function __construct(
-        private PluginRegistryService $plugins,
         private UiSessionService $uiSession,
     ) {}
 

@@ -23,10 +23,14 @@ final class SabreHttpRequestFactory
         $sabre = Sapi::createFromServerArray($server);
 
         foreach ($request->headers->all() as $name => $values) {
-            if (! is_array($values) || $values === []) {
+            if ($values === []) {
                 continue;
             }
-            $sabre->setHeader($name, $values[0]);
+            $header = $values[0];
+            if (! is_string($header)) {
+                continue;
+            }
+            $sabre->setHeader($name, $header);
         }
 
         $length = $request->headers->get('Content-Length');
@@ -39,10 +43,10 @@ final class SabreHttpRequestFactory
                 $sabre->setBody($body);
             } else {
                 $content = $request->getContent();
-                $sabre->setBody($content !== '' ? $content : null);
+                if ($content !== '') {
+                    $sabre->setBody($content);
+                }
             }
-        } else {
-            $sabre->setBody(null);
         }
 
         return $sabre;

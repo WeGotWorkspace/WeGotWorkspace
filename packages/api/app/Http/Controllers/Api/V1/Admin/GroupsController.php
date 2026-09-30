@@ -37,17 +37,13 @@ final class GroupsController
     {
         /** @var array{username: string} $principal */
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $validated = $request->validated();
+        $payload = $request->payload();
 
         try {
             $this->groups->update(
                 $group,
-                array_key_exists('displayName', $validated)
-                    ? trim((string) ($validated['displayName'] ?? ''))
-                    : null,
-                array_key_exists('members', $validated) && is_array($validated['members'])
-                    ? $validated['members']
-                    : null,
+                $payload['displayName'],
+                $payload['members'],
                 $principal['username'],
             );
         } catch (\InvalidArgumentException $e) {

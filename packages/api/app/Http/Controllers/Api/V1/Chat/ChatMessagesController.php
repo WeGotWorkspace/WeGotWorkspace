@@ -36,7 +36,7 @@ final class ChatMessagesController
     public function store(ChatMessageCreateRequest $request, string $channelId): JsonResponse
     {
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $result = $this->messages->create($principal['username'], $channelId, $request->validated());
+        $result = $this->messages->create($principal['username'], $channelId, $request->payload());
 
         // Idempotent replays return the existing message under the same 201.
         return response()->json($result['message'], 201);

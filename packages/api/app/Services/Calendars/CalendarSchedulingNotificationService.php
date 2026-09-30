@@ -12,6 +12,8 @@ use App\Models\SchedulingObject;
 use App\Services\Calendars\Conversion\LocationConversionSupport;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\MailDelivery\MailDeliveryTransportResolver;
+use App\Services\VObject\VObjectScalar;
+use DateTimeImmutable;
 use DateTimeInterface;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Reader;
@@ -71,7 +73,7 @@ final class CalendarSchedulingNotificationService
 
         return [
             'list' => $list,
-            'canSubmitEmail' => (bool) ($capability['canSubmit'] ?? false),
+            'canSubmitEmail' => (bool) $capability['canSubmit'],
         ];
     }
 
@@ -174,7 +176,7 @@ final class CalendarSchedulingNotificationService
         }
 
         $copy = is_string($notification['uid'] ?? null) && $notification['uid'] !== ''
-            ? $this->findEventByUid($username, (string) $notification['uid'])
+            ? $this->findEventByUid($username, VObjectScalar::string($notification['uid']))
             : null;
         $ics = $copy !== null
             ? (is_string($copy->calendardata) ? $copy->calendardata : (string) $copy->calendardata)
@@ -183,8 +185,8 @@ final class CalendarSchedulingNotificationService
         $patch = $this->rsvpScope->patch(
             $event,
             $status,
-            isset($payload['scope']) && is_string($payload['scope']) ? $payload['scope'] : null,
-            isset($payload['recurrenceId']) && is_string($payload['recurrenceId']) ? $payload['recurrenceId'] : null,
+            isset($payload['scope']) ? $payload['scope'] : null,
+            isset($payload['recurrenceId']) ? $payload['recurrenceId'] : null,
             $payload['calendarId'] ?? null,
             $isOwn,
             $ics,
@@ -315,7 +317,6 @@ final class CalendarSchedulingNotificationService
             $copy === null
             && $uid !== ''
             && $method === 'REQUEST'
-            && $vevent instanceof VEvent
             && $this->isListedAttendee($username, $vevent)
         ) {
             $copy = $this->ensureInviteeEventCopy($username, $raw, $uid);
@@ -606,7 +607,7 @@ final class CalendarSchedulingNotificationService
         if (! isset($vevent->ORGANIZER['CN'])) {
             return null;
         }
-        $name = trim((string) $vevent->ORGANIZER['CN']);
+        $name = trim(VObjectScalar::string($vevent->ORGANIZER['CN']));
 
         return $name !== '' ? $name : null;
     }
@@ -625,7 +626,9 @@ final class CalendarSchedulingNotificationService
             return null;
         }
 
-        return $date->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
+        return DateTimeImmutable::createFromInterface($date)
+            ->setTimezone(new \DateTimeZone('UTC'))
+            ->format('Y-m-d\TH:i:s\Z');
     }
 
     /**

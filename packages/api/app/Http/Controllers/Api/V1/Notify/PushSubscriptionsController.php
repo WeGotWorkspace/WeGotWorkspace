@@ -25,7 +25,7 @@ final class PushSubscriptionsController
     public function store(PushSubscriptionRequest $request): JsonResponse
     {
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $row = $this->push->subscribe($principal['username'], $request->validated(), $request->userAgent());
+        $row = $this->push->subscribe($principal['username'], $request->payload(), $request->userAgent());
 
         return response()->json([
             'id' => $row->id,

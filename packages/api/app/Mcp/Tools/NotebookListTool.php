@@ -33,7 +33,7 @@ final class NotebookListTool extends WgwMcpTool
         return [];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::NOTES_READ;
     }
@@ -43,7 +43,7 @@ final class NotebookListTool extends WgwMcpTool
         return 'read';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): string
     {
         return 'notebooks';
     }

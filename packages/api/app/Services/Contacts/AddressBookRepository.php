@@ -96,7 +96,7 @@ final class AddressBookRepository
 
         if ($mutations !== []) {
             $propPatch = new PropPatch($mutations);
-            $this->cardBackend()->updateAddressBook((int) $listing->book->id, $propPatch);
+            $this->cardBackend()->updateAddressBook((string) $listing->book->id, $propPatch);
             $propPatch->commit();
         }
 
@@ -249,15 +249,13 @@ final class AddressBookRepository
      */
     public function accessibleBookNumericIds(string $username): array
     {
-        return array_values(array_map(
+        return array_map(
             static fn (AddressBookListing $listing): int => (int) $listing->book->id,
             $this->collectionAccess->accessibleListings($username),
-        ));
+        );
     }
 
-    /**
-     * @param  list<string>  $disallowedKeys
-     */
+    /** @param array<string, mixed> $payload */
     private function assertShareePatchAllowed(array $payload): void
     {
         $disallowed = [];
@@ -298,7 +296,7 @@ final class AddressBookRepository
         }
 
         $expectedCount = (int) $matches[1];
-        $entries = $matches[2] === '' ? [] : explode(',', $matches[2]);
+        $entries = explode(',', $matches[2]);
         if (count($entries) !== $expectedCount) {
             return null;
         }

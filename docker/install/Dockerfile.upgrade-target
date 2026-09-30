@@ -1,0 +1,90 @@
+# Current-branch image for the v0.1.99 upgrade e2e.
+# The fresh-install matrix builds a full release ZIP. This image only needs the
+# API tree, Apache, and the extensions schema-migrate and DAV use. ext-imap is
+# omitted: Mail is out of the v0.9 upgrade check, and pecl imap dominates the build.
+# Volume mounts match docker/install/Dockerfile.runtime.
+
+FROM php:8.5-apache-bookworm@sha256:411df529915598ee7d08adf8616b328fb1272cbb272e82ffa572d6fcf3f204cd
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        libonig-dev \
+        libzip-dev \
+        libicu-dev \
+        libxml2-dev \
+        libsqlite3-dev \
+        default-libmysqlclient-dev \
+    && docker-php-ext-install \
+        pdo \
+        pdo_sqlite \
+        pdo_mysql \
+        mbstring \
+        zip \
+        intl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN a2enmod \
+        rewrite \
+        headers \
+        env \
+        mime \
+        dir \
+        alias \
+        negotiation \
+        setenvif \
+        deflate \
+        filter \
+        authz_core \
+        authz_host \
+        auth_basic \
+    && sed -i '/^Alias \/icons\//d' /etc/apache2/mods-available/alias.conf
+
+ENV APACHE_DOCUMENT_ROOT=/var/www/html
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
+    && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+COPY install/uploads.ini /usr/local/etc/php/conf.d/wgw-uploads.ini
+COPY install/vhost.conf /etc/apache2/conf-available/wgw-install-vhost.conf
+COPY install/http-vhost.conf /etc/apache2/conf-available/wgw-install-http-vhost.conf
+RUN a2enconf wgw-install-vhost wgw-install-http-vhost
+
+COPY install/docker-entrypoint.sh /usr/local/bin/wgw-install-entrypoint
+COPY install/wgw-install-wait-db.sh /usr/local/bin/wgw-install-wait-db.sh
+COPY install/wgw-install-migrate.sh /usr/local/bin/wgw-install-migrate.sh
+COPY install/wgw-install-seed-config.sh /usr/local/bin/wgw-install-seed-config.sh
+RUN chmod +x \
+    /usr/local/bin/wgw-install-entrypoint \
+    /usr/local/bin/wgw-install-wait-db.sh \
+    /usr/local/bin/wgw-install-migrate.sh \
+    /usr/local/bin/wgw-install-seed-config.sh
+
+COPY tree/ /var/www/html/
+
+# package:discover writes bootstrap/cache. Drop the baked .env so runtime uses
+# the install-config volume symlink from the entrypoint.
+RUN cp /var/www/html/packages/api/.env.example /var/www/html/packages/api/.env \
+    && php /var/www/html/packages/api/artisan key:generate --force --no-interaction \
+    && php /var/www/html/packages/api/artisan package:discover --no-interaction \
+    && rm -f /var/www/html/packages/api/.env \
+    && rm -rf /var/www/html/wgw-content \
+    && mkdir -p \
+        /var/www/html/wgw-content \
+        /var/www/html/packages/api/storage/framework/cache \
+        /var/www/html/packages/api/storage/framework/sessions \
+        /var/www/html/packages/api/storage/framework/views \
+        /var/www/html/packages/api/storage/logs \
+        /var/www/html/packages/api/bootstrap/cache \
+    && chown -R www-data:www-data \
+        /var/www/html/wgw-content \
+        /var/www/html/packages/api/storage \
+        /var/www/html/packages/api/bootstrap/cache \
+    && chown www-data:www-data /var/www/html /var/www/html/packages/api
+
+WORKDIR /var/www/html
+
+EXPOSE 80
+
+ENTRYPOINT ["wgw-install-entrypoint"]
+CMD ["apache2-foreground"]

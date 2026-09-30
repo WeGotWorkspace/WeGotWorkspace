@@ -38,6 +38,7 @@ final class NotebookRepository
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
+    /** @return array<mixed> */
     public function list(string $username): array
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
@@ -54,6 +55,7 @@ final class NotebookRepository
         return ['list' => $lists];
     }
 
+    /** @return array<mixed> */
     public function show(string $username, string $notebookId): array
     {
         $instance = $this->findAccessibleNotebook($username, $notebookId);
@@ -67,6 +69,10 @@ final class NotebookRepository
         return $this->mapNotebook($instance, $groupSlug);
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<mixed>
+     */
     public function create(string $username, array $payload): array
     {
         $name = trim((string) ($payload['name'] ?? ''));
@@ -128,6 +134,10 @@ final class NotebookRepository
         return $this->mapNotebook($instance, $groupSlug);
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<mixed>
+     */
     public function update(string $username, string $notebookId, array $payload): array
     {
         $resolved = $this->resolveWritableNotebook($username, $notebookId);
@@ -179,6 +189,10 @@ final class NotebookRepository
         return $this->mapNotebook($instance, $groupSlug);
     }
 
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<mixed>
+     */
     public function delete(string $username, string $notebookId, array $options = []): array
     {
         $resolved = $this->resolveWritableNotebook($username, $notebookId);
@@ -215,12 +229,13 @@ final class NotebookRepository
         $tokens = [];
         $instances = $this->accessibleNotebookInstances($username);
         foreach ($instances as $instance) {
-            $tokens[$this->apiIdForInstance($instance)] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+            $tokens[$this->apiIdForInstance($instance)] = (string) (int) ($instance->calendar->synctoken ?? 1);
         }
 
         return $tokens;
     }
 
+    /** @return array<mixed> */
     public function changes(string $username, ?string $since): array
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
@@ -241,7 +256,7 @@ final class NotebookRepository
 
         $currentMap = [];
         foreach ($instances as $instance) {
-            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar?->synctoken ?? 1);
+            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar->synctoken ?? 1);
         }
         $created = [];
         $updated = [];
@@ -486,7 +501,7 @@ final class NotebookRepository
         if (ChatCollectionUris::isChatUri($base)) {
             $base = 'notebook-'.$base;
         }
-        if ($base === '' || in_array($base, CalendarCollectionUris::reservedNoteUriSlugs(), true)) {
+        if (in_array($base, CalendarCollectionUris::reservedNoteUriSlugs(), true)) {
             $base = 'notebook';
         }
         $candidate = $base;
@@ -499,16 +514,18 @@ final class NotebookRepository
         return $candidate;
     }
 
-    private function computeInstancesState($instances): string
+    /** @param iterable<CalendarInstance> $instances */
+    private function computeInstancesState(iterable $instances): string
     {
         $parts = [];
         foreach ($instances as $instance) {
-            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar?->synctoken ?? 1);
+            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar->synctoken ?? 1);
         }
 
         return (string) count($parts).':'.implode(',', $parts);
     }
 
+    /** @return array<mixed> */
     private function parseInstancesState(?string $state): ?array
     {
         if ($state === null || $state === '' || $state === '0') {
@@ -517,7 +534,7 @@ final class NotebookRepository
         if (! preg_match('/^(\d+):(.+)$/', $state, $matches)) {
             return null;
         }
-        $entries = $matches[2] === '' ? [] : explode(',', $matches[2]);
+        $entries = explode(',', $matches[2]);
         if (count($entries) !== (int) $matches[1]) {
             return null;
         }
@@ -533,6 +550,7 @@ final class NotebookRepository
         return $map;
     }
 
+    /** @return array<mixed> */
     private function calBackendCalendarId(CalendarInstance $instance): array
     {
         return [(int) $instance->calendarid, (int) $instance->id];
@@ -559,7 +577,7 @@ final class NotebookRepository
         $id = (string) ($mapped['id'] ?? $instance->uri);
         foreach ($added as $sharee) {
             $grant = $grants[$sharee] ?? null;
-            $access = is_array($grant) && ($grant['mayWrite'] ?? false) === true ? 'write' : 'read';
+            $access = is_array($grant) && $grant['mayWrite'] === true ? 'write' : 'read';
             $this->eventDispatch->fireMutation(
                 $username,
                 'notes',
@@ -577,6 +595,7 @@ final class NotebookRepository
         }
     }
 
+    /** @return array<mixed> */
     private function mapNotebook(CalendarInstance $instance, ?string $groupSlug = null): array
     {
         $uri = (string) $instance->uri;
@@ -622,7 +641,7 @@ final class NotebookRepository
         };
 
         return [
-            'id' => $isSharedGroupList ? CalendarCollectionUris::groupNotebookApiId($groupSlug) : $uri,
+            'id' => $isSharedGroupList && is_string($groupSlug) ? CalendarCollectionUris::groupNotebookApiId($groupSlug) : $uri,
             'role' => match (true) {
                 $isOwnedGeneral => 'general',
                 $isSharedGroupList => 'group',
@@ -659,7 +678,7 @@ final class NotebookRepository
             (string) ($group->displayname ?? $groupSlug),
         );
 
-        return CalendarInstance::query()
+        return array_values(CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $groupUri)
             ->whereHas('calendar', fn ($query) => $query->vjournalOnly())
@@ -667,8 +686,7 @@ final class NotebookRepository
             ->orderBy('id')
             ->get()
             ->filter(static fn (CalendarInstance $instance): bool => ! ChatCollectionUris::isChatUri((string) $instance->uri))
-            ->values()
-            ->all();
+            ->all());
     }
 
     private function findNotebookInstance(string $principalUri, string $notebookUri): ?CalendarInstance

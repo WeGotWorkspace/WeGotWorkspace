@@ -84,16 +84,20 @@ final class MailDeliverySettingsStore
         ];
     }
 
+    /**
+     * @return MailDeliveryConfig::TRANSPORT_AUTO|MailDeliveryConfig::TRANSPORT_SMTP|MailDeliveryConfig::TRANSPORT_PHP|MailDeliveryConfig::TRANSPORT_SENDMAIL
+     */
     private function normalizeTransport(mixed $value): string
     {
         $transport = strtolower(trim((string) $value));
 
-        return in_array($transport, [
+        return match ($transport) {
             MailDeliveryConfig::TRANSPORT_AUTO,
             MailDeliveryConfig::TRANSPORT_SMTP,
             MailDeliveryConfig::TRANSPORT_PHP,
-            MailDeliveryConfig::TRANSPORT_SENDMAIL,
-        ], true) ? $transport : MailDeliveryConfig::TRANSPORT_AUTO;
+            MailDeliveryConfig::TRANSPORT_SENDMAIL => $transport,
+            default => MailDeliveryConfig::TRANSPORT_AUTO,
+        };
     }
 
     private function normalizePort(mixed $value): int

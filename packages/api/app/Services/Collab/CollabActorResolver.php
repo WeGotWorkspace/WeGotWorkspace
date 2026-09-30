@@ -19,16 +19,16 @@ final class CollabActorResolver
     {
         /** @var array{username: string, role: string}|null $principal */
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        if (is_array($principal) && ($principal['username'] ?? '') !== '') {
+        if (is_array($principal) && $principal['username'] !== '') {
             return [
                 'username' => (string) $principal['username'],
-                'role' => (string) ($principal['role'] ?? 'guest'),
+                'role' => (string) $principal['role'],
             ];
         }
 
         $realm = (string) config('wgw.auth_realm', 'SabreDAV');
         $username = $this->auth->tryAuthenticatedUsername($request, $realm);
-        if ($username === null || $username === '') {
+        if ($username === null) {
             throw new CollabResponseException(401, [
                 'error' => 'auth_required',
                 'message' => 'Sign in to join document collaboration.',
@@ -46,7 +46,12 @@ final class CollabActorResolver
      */
     public function requireUsername(Request $request): string
     {
-        return $this->requirePrincipal($request)['username'];
+        $username = $this->requirePrincipal($request)['username'];
+        if ($username === '') {
+            throw new \RuntimeException('Authenticated principal is missing a username.');
+        }
+
+        return $username;
     }
 
     /**

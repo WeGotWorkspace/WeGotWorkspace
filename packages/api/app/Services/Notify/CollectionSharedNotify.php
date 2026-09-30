@@ -145,7 +145,7 @@ final class CollectionSharedNotify
             return 'Someone';
         }
         $principal = Principal::forUsername($trimmed);
-        $name = trim((string) ($principal?->displayname ?? ''));
+        $name = trim((string) ($principal->displayname ?? ''));
 
         return $name !== '' ? $name : $trimmed;
     }
@@ -161,9 +161,6 @@ final class CollectionSharedNotify
         $grants = $shareInvites->shareWithForOwner($instance, $groupSlug) ?? [];
         $out = [];
         foreach (array_keys($grants) as $id) {
-            if (! is_string($id)) {
-                continue;
-            }
             $trimmed = strtolower(trim($id));
             if ($trimmed !== '' && ! str_starts_with($trimmed, 'groups/')) {
                 $out[$trimmed] = $trimmed;

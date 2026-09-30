@@ -37,8 +37,8 @@ final class AdminUserDirectoryService
             $users[] = [
                 'id' => $username,
                 'username' => $username,
-                'email' => (string) ($principalRow?->email ?? ''),
-                'displayName' => trim((string) ($principalRow?->displayname ?? '')) ?: $username,
+                'email' => (string) ($principalRow->email ?? ''),
+                'displayName' => trim((string) ($principalRow->displayname ?? '')) ?: $username,
                 'groups' => $memberOf,
                 'createdAt' => '',
                 'enabled' => $user->isEnabled(),

@@ -37,13 +37,12 @@ final class JmapNoteStateService
     public function recordedNoteIdsForNotebook(string $username, string $notebookUri): array
     {
         try {
-            return JmapNoteState::query()
+            return array_values(JmapNoteState::query()
                 ->where('username', $username)
                 ->where('notebook_uri', $notebookUri)
                 ->pluck('note_id')
                 ->map(static fn ($id): string => (string) $id)
-                ->values()
-                ->all();
+                ->all());
         } catch (QueryException $exception) {
             $this->logFailure('recordedNoteIdsForNotebook', $username, $notebookUri, $exception);
 

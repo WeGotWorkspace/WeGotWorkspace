@@ -60,6 +60,11 @@ final class JwtRejectionTest extends WgwDatabaseTestCase
         $this->assertBearerRejected($token);
     }
 
+    public function test_rejects_malformed_non_jwt_token(): void
+    {
+        $this->assertBearerRejected('invalid-token');
+    }
+
     public function test_rejects_access_token_with_wrong_issuer(): void
     {
         $token = JwtCodec::issue([

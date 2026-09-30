@@ -32,7 +32,7 @@ final class AdminSettingsService
         $allowed = array_flip(SettingKeys::all());
         $saved = [];
         foreach ($values as $key => $value) {
-            if (! is_string($key) || ! isset($allowed[$key])) {
+            if (! isset($allowed[$key])) {
                 continue;
             }
             if ($key === SettingKeys::TIMEZONE) {

@@ -36,6 +36,7 @@ final class TaskListRepository
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
+    /** @return array<mixed> */
     public function list(string $username): array
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
@@ -53,6 +54,7 @@ final class TaskListRepository
         return ['list' => $lists];
     }
 
+    /** @return array<mixed> */
     public function show(string $username, string $taskListId): array
     {
         $instance = $this->findAccessibleTaskList($username, $taskListId);
@@ -66,6 +68,10 @@ final class TaskListRepository
         return $this->mapTaskList($instance, $groupSlug);
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<mixed>
+     */
     public function create(string $username, array $payload): array
     {
         $name = trim((string) ($payload['name'] ?? ''));
@@ -127,6 +133,10 @@ final class TaskListRepository
         return $this->mapTaskList($instance, $groupSlug);
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<mixed>
+     */
     public function update(string $username, string $taskListId, array $payload): array
     {
         $resolved = $this->resolveWritableTaskList($username, $taskListId);
@@ -178,6 +188,10 @@ final class TaskListRepository
         return $this->mapTaskList($instance, $groupSlug);
     }
 
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<mixed>
+     */
     public function delete(string $username, string $taskListId, array $options = []): array
     {
         $resolved = $this->resolveWritableTaskList($username, $taskListId);
@@ -203,6 +217,7 @@ final class TaskListRepository
         return ['ok' => true];
     }
 
+    /** @return array<mixed> */
     public function changes(string $username, ?string $since): array
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
@@ -226,7 +241,7 @@ final class TaskListRepository
 
         $currentMap = [];
         foreach ($instances as $instance) {
-            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar?->synctoken ?? 1);
+            $currentMap[$this->apiIdForInstance($instance)] = (int) ($instance->calendar->synctoken ?? 1);
         }
         $created = [];
         $updated = [];
@@ -413,7 +428,7 @@ final class TaskListRepository
         if (str_starts_with($base, 'group-')) {
             $base = 'project-'.substr($base, strlen('group-'));
         }
-        if ($base === '' || in_array($base, CalendarCollectionUris::reservedTaskUriSlugs(), true)) {
+        if (in_array($base, CalendarCollectionUris::reservedTaskUriSlugs(), true)) {
             $base = 'project';
         }
         $candidate = $base;
@@ -426,16 +441,18 @@ final class TaskListRepository
         return $candidate;
     }
 
-    private function computeInstancesState($instances): string
+    /** @param iterable<CalendarInstance> $instances */
+    private function computeInstancesState(iterable $instances): string
     {
         $parts = [];
         foreach ($instances as $instance) {
-            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar?->synctoken ?? 1);
+            $parts[] = $this->apiIdForInstance($instance).':'.(int) ($instance->calendar->synctoken ?? 1);
         }
 
         return (string) count($parts).':'.implode(',', $parts);
     }
 
+    /** @return array<mixed> */
     private function parseInstancesState(?string $state): ?array
     {
         if ($state === null || $state === '' || $state === '0') {
@@ -444,7 +461,7 @@ final class TaskListRepository
         if (! preg_match('/^(\d+):(.+)$/', $state, $matches)) {
             return null;
         }
-        $entries = $matches[2] === '' ? [] : explode(',', $matches[2]);
+        $entries = explode(',', $matches[2]);
         if (count($entries) !== (int) $matches[1]) {
             return null;
         }
@@ -460,6 +477,7 @@ final class TaskListRepository
         return $map;
     }
 
+    /** @return array<mixed> */
     private function calBackendCalendarId(CalendarInstance $instance): array
     {
         return [(int) $instance->calendarid, (int) $instance->id];
@@ -486,7 +504,7 @@ final class TaskListRepository
         $id = (string) ($mapped['id'] ?? $instance->uri);
         foreach ($added as $sharee) {
             $grant = $grants[$sharee] ?? null;
-            $access = is_array($grant) && ($grant['mayWrite'] ?? false) === true ? 'write' : 'read';
+            $access = is_array($grant) && $grant['mayWrite'] === true ? 'write' : 'read';
             $this->eventDispatch->fireMutation(
                 $username,
                 'tasks',
@@ -504,6 +522,7 @@ final class TaskListRepository
         }
     }
 
+    /** @return array<mixed> */
     private function mapTaskList(CalendarInstance $instance, ?string $groupSlug = null): array
     {
         $uri = (string) $instance->uri;
@@ -549,7 +568,7 @@ final class TaskListRepository
         };
 
         return [
-            'id' => $isSharedGroupList ? CalendarCollectionUris::groupTaskListApiId($groupSlug) : $uri,
+            'id' => $isSharedGroupList && is_string($groupSlug) ? CalendarCollectionUris::groupTaskListApiId($groupSlug) : $uri,
             'role' => match (true) {
                 $isOwnedInbox => 'inbox',
                 $isSharedGroupList => 'group',
@@ -588,14 +607,14 @@ final class TaskListRepository
             (string) ($group->displayname ?? $groupSlug),
         );
 
-        return CalendarInstance::query()
+        return array_values(CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $groupUri)
             ->whereHas('calendar', fn ($query) => $query->vtodoOnly())
             ->orderBy('calendarorder')
             ->orderBy('id')
             ->get()
-            ->all();
+            ->all());
     }
 
     private function findTaskListInstance(string $principalUri, string $taskListUri): ?CalendarInstance

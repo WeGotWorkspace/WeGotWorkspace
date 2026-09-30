@@ -34,19 +34,11 @@ final class CalendarIcsSplitSupport
         $groups = [];
         foreach (ICalendarSeries::groupByUid(
             $vevents,
-            static fn (VEvent $vevent): string => ICalendarUid::fromSeed((string) $vevent->serialize()),
+            static fn (VEvent $vevent, int $index): string => ICalendarUid::fromSeed($vevent->serialize()),
         ) as $uid => $group) {
-            $eventGroup = array_values(array_filter(
-                $group,
-                static fn (mixed $component): bool => $component instanceof VEvent,
-            ));
-            if ($eventGroup === []) {
-                continue;
-            }
-
             $groups[] = [
                 'uid' => (string) $uid,
-                'ics' => self::serializeGroup($eventGroup, $timeZones),
+                'ics' => self::serializeGroup($group, $timeZones),
             ];
         }
 

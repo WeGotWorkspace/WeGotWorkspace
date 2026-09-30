@@ -8,6 +8,16 @@ use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ * Nullability follows Sabre's MySQL and SQLite bundles: nullable when either allows NULL.
+ *
+ * @property int $id
+ * @property string|null $uri
+ * @property int $synctoken
+ * @property int $calendarid
+ * @property int $operation
+ */
 final class CalendarChange extends Model
 {
     use UsesWgwConnection;

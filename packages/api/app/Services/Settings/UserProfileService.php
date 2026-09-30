@@ -27,9 +27,6 @@ final class UserProfileService
             throw new ApiHttpException(400, 'Use a password of at least 10 characters.', 'bad_request');
         }
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        if ($hash === false) {
-            throw new ApiHttpException(500, 'Password hashing failed.', 'server_error');
-        }
         $updated = User::query()->where('username', $username)->update(['digest' => $hash]);
         if ($updated === 0) {
             throw new ApiHttpException(400, 'User not found.', 'bad_request');

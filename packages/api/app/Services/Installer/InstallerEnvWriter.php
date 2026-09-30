@@ -17,7 +17,7 @@ final class InstallerEnvWriter
     ) {}
 
     /**
-     * @param  array{pdo: array<string, mixed>, data_dir?: string}  $config
+     * @param  array<string, mixed>  $config
      */
     public function writeBootstrap(array $config): void
     {
@@ -25,7 +25,12 @@ final class InstallerEnvWriter
             throw new \RuntimeException('Bootstrap config must contain a pdo array.');
         }
 
-        $pairs = $this->envPairsFromBootstrap($config);
+        $bootstrap = ['pdo' => $config['pdo']];
+        if (isset($config['data_dir']) && is_string($config['data_dir'])) {
+            $bootstrap['data_dir'] = $config['data_dir'];
+        }
+
+        $pairs = $this->envPairsFromBootstrap($bootstrap);
         $envPath = $this->envPath();
         $this->patchEnvFile($envPath, $pairs);
         $this->applyPairsToRuntime($pairs);
@@ -90,7 +95,7 @@ final class InstallerEnvWriter
      */
     public function envPairsFromBootstrap(array $config): array
     {
-        $dataDir = isset($config['data_dir']) && is_string($config['data_dir']) && trim($config['data_dir']) !== ''
+        $dataDir = isset($config['data_dir']) && trim($config['data_dir']) !== ''
             ? trim($config['data_dir'])
             : './wgw-content';
         $pdo = $this->normalizePdo($config['pdo']);
