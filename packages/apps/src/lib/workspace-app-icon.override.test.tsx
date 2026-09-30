@@ -19,7 +19,7 @@ describe("WorkspaceAppIconOverrideProvider", () => {
     const { container } = render(<WorkspaceAppIcon appId="mail" variant="switch-trigger" />);
     const trigger = container.querySelector(".workspace-app-icon--switch-trigger");
     // jsdom may expand self-closing tags; assert production artwork cues, not byte equality.
-    expect(trigger?.innerHTML).toContain('viewBox="0 0 60 61"');
+    expect(trigger?.innerHTML).toContain('viewBox="0 0 60 60"');
     expect(trigger?.innerHTML).toContain("var(--wai-bg, var(--color-we-got-red, #de4b0e))");
     expect(trigger?.innerHTML).toContain("var(--wai-fg, var(--color-we-got-soft, #fff5e9))");
     expect(container.querySelector("[data-branding-override]")).toBeNull();

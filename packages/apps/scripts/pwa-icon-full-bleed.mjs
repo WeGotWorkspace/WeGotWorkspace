@@ -3,11 +3,11 @@
  * corners flattens those corners to the wrong color, and sampling pixel (0,0)
  * then pads the maskable icon with that color.
  *
- * Meet's viewBox is 1px taller than its background rect (`270` vs `271`). One pixel
- * of slack keeps that file valid without accepting a small inset tile.
+ * The viewBox itself must be square. A fraction of a pixel of slack only absorbs
+ * export rounding on the background rect, not a 61px-tall viewBox.
  */
 
-const FULL_BLEED_SLACK = 1;
+const FULL_BLEED_SLACK = 0.05;
 
 function attrNumber(attrs, name) {
   const match = attrs.match(new RegExp(`\\b${name}\\s*=\\s*"([^"]+)"`, "i"));
