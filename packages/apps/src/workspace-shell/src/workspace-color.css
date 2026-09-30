@@ -11,8 +11,10 @@
  * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark.
  *
  * Sidebar rail and row states are one recipe. There is no mix knob. The rail
- * is 12% accent into `--workspace-surface`. Hover / selected / selected-hover
- * mix 12 / 18 / 28 accent into that same rail (about 22 / 28 / 36 on paper).
+ * is 12% `--color-we-got-dark` into `--workspace-surface` (the login and
+ * installer accent). Hover / selected / selected-hover mix 12 / 18 / 28 of
+ * that dark into the same rail (about 22 / 28 / 36 on paper). Solid fills
+ * keep `--workspace-accent`.
  * Those declarations also match `.app-sidebar`, so an ancestor override cannot
  * retune the painted rail. Product files do not redeclare the ladder.
  * Primary and input tokens stay off `.app-sidebar` — Mail darkens
@@ -116,27 +118,27 @@
   .meet-device-popover,
   .app-sidebar
 ) {
-  --app-sidebar-bg: color-mix(in oklch, var(--workspace-accent) 12%, var(--workspace-surface));
+  --app-sidebar-bg: color-mix(in oklch, var(--color-we-got-dark) 12%, var(--workspace-surface));
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
 
   /*
-   * Same accent, same oklch space, base = the rail. Do not mix these into
+   * Dark wash in oklch, base = the rail. Do not mix these into
    * `--workspace-surface` or `--color-we-got-soft`.
    */
   --app-sidebar-item-hover-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 12%,
+    var(--color-we-got-dark) 12%,
     var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 18%,
+    var(--color-we-got-dark) 18%,
     var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
-    var(--workspace-accent) 28%,
+    var(--color-we-got-dark) 28%,
     var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-color: var(--color-we-got-dark);

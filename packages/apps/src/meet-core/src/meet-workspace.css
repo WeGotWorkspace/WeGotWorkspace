@@ -782,7 +782,7 @@
   --workspace-panel-width: 22rem;
   /*
    * Product workspace chrome matches Notes / Tasks / Calendar: cream paper
-   * with a quiet Sand wash from the Meet icon accent (`#ba9689`).
+   * with a quiet Dark wash (login and installer accent, `#003311`).
    * Pin Dark so leftover navy `.meet-workspace` text tokens cannot leak.
    */
   --color-we-got-dark: #003311;

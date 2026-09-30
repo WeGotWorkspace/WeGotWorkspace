@@ -79,10 +79,10 @@ export const BRANDING_APP_ACCENT_DEFAULTS: Record<WorkspaceAppId, string> = {
 
 /**
  * Production `--app-sidebar-bg` from `workspace-color.css`.
- * One 12% accent-into-paper formula for every app.
+ * One 12% Dark-into-paper formula for every app (login and installer accent).
  */
 export const BRANDING_APP_SIDEBAR_DEFAULT =
-  "color-mix(in oklch, var(--workspace-accent) 12%, var(--workspace-surface))";
+  "color-mix(in oklch, var(--color-we-got-dark) 12%, var(--workspace-surface))";
 
 export const BRANDING_APP_SIDEBAR_DEFAULTS: Record<WorkspaceAppId, string> = {
   mail: BRANDING_APP_SIDEBAR_DEFAULT,

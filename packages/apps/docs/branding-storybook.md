@@ -74,7 +74,7 @@ Two panels:
 | `iconPreset` | Quick A/B: keep **current**, swap another app’s SVG, or choose **custom** |
 | `svgMarkup`  | Paste exported SVG when `iconPreset` is **custom**                        |
 
-Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs cream-mix wash.
+Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs the Dark cream-mix wash.
 
 ### CSS props (colors)
 
@@ -84,9 +84,9 @@ Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs cream-m
 | App chrome  | `--workspace-accent`, optional `--app-sidebar-bg`, `--app-sidebar-color` | Primary / CTA / badge; sidebar; nav on-color |
 | Icon layers | `--wai-bg`, `--wai-fg`                                                   | Switch-trigger SVG fills                     |
 
-**Accent vs `--wai-*`:** accent drives workspace chrome (the shared sidebar rail, buttons, badges). `--wai-*` only recolors the switch-trigger mark layers. Change accent for “the app feels different”; change `--wai-*` when the lockup icon itself needs a new palette.
+**Accent vs `--wai-*`:** accent drives solid chrome (buttons, badges, checks). The sidebar rail is a separate 12% mix of `--color-we-got-dark` into paper, the same dark used on login and the installer. `--wai-*` only recolors the switch-trigger mark layers. Change accent for solid fills; change `--wai-*` when the lockup icon itself needs a new palette.
 
-**Defaults match production UI**, not the PWA/home-tile swatch. Calendar, Tasks, and Meet use a different `--workspace-accent` in `*-workspace.css` than `WORKSPACE_APP_ACCENT` (tile theme). The sidebar rail is one 12% recipe in `workspace-color.css`. `--wai-*` comes from the same workspace CSS. `iconPreset` defaults to **current** (that app’s real mark).
+**Defaults match production UI**, not the PWA/home-tile swatch. Calendar, Tasks, and Meet use a different `--workspace-accent` in `*-workspace.css` than `WORKSPACE_APP_ACCENT` (tile theme). The sidebar rail is one 12% Dark recipe in `workspace-color.css`. `--wai-*` comes from the same workspace CSS. `iconPreset` defaults to **current** (that app’s real mark).
 
 ### WCAG AA ratios (resolved brand hex / Soft)
 
