@@ -3,8 +3,8 @@
 @import "../../workspace-shell/src/workspace-color.css";
 
 /**
- * Tasks product shell: cream main pane + Pink sidebar tint (`#ffbdc2`).
- * Primary fills use accent with Dark fg (white on Pink is ~1.6:1).
+ * Tasks product shell: cream main pane, shared Sand sidebar wash.
+ * Primary fills use Dark with white fg.
  * Import only from {@link TasksWorkspace}.
  */
 .tasks-workspace {
@@ -23,14 +23,14 @@
   --tasks-content-inset: calc(2.25rem + 0.75rem);
   --tasks-content-inset-end: 0;
 
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
   --sidebar-logo-close-button-color: var(--color-we-got-dark);
-  --sidebar-badge-fg: var(--workspace-accent);
+  --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
     var(--color-we-got-dark) 10%,
@@ -54,22 +54,22 @@
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
 
   /* Outline action language for header + collection sidebar rows. */
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--workspace-accent) 18%,
+    var(--color-we-got-sand) 18%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--workspace-accent) 24%,
+    var(--color-we-got-sand) 24%,
     var(--workspace-surface)
   );
 }
@@ -81,8 +81,7 @@
 }
 
 .tasks-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  /* Primary fill inherits the workspace (`--button-primary-*`). */
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
 }
@@ -97,7 +96,7 @@
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
   --wai-bg: var(--color-we-got-pink);
-  --wai-fg: #ffffff;
+  --wai-fg: var(--color-we-got-dark);
 }
 
 /**
@@ -142,12 +141,12 @@
  * {@link Button} and {@link buttonVariants} match the tasks shell.
  */
 .tasks-dialog-surface {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */

@@ -5,13 +5,13 @@
 
 .drive-workspace {
   @apply min-w-0 overflow-x-hidden;
-  /* Brand lime from drive.svg tile — same hex as WORKSPACE_APP_ACCENT.drive. */
-  --workspace-accent: var(--color-we-got-sand);
+  /* Solid accent is Dark. The Drive tile stays lime (`WORKSPACE_APP_ACCENT`). */
+  --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
   --sidebar-logo-close-button-color: var(--color-we-got-dark);
-  --sidebar-badge-fg: var(--workspace-accent);
+  --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
@@ -53,19 +53,21 @@
    * Outline language for segmented / tile chrome outside the sidebar.
    * Sidebar row states are the shared rail ladder in `workspace-color.css`.
    */
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --wai-bg: var(--color-we-got-dark);
+  --wai-fg: var(--color-we-got-brat);
+  --button-primary-bg: var(--wai-fg);
+  --button-primary-fg: var(--wai-bg);
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 40%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 40%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--workspace-accent) 55%,
+    var(--color-we-got-sand) 55%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--workspace-accent) 65%,
+    var(--color-we-got-sand) 65%,
     var(--workspace-surface)
   );
   /* Section titles on the accent rail — slate muted fails AA; ink mix clears. */
@@ -81,22 +83,20 @@
 }
 
 .drive-workspace .app-sidebar__scroll {
-  /* New CTA: black/ink on Drive green (same recipe as Tasks/Notes sidebar primaries). */
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  /* Primary fill inherits the workspace (`--button-primary-*`). */
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
 }
 
 /*
- * Bell lives in the header (sibling of scroll). Mirror New CTA: Drive green +
- * ink. Literal ink avoids the notifications `--color-we-got-dark` glyph remap.
+ * Bell lives in the header (sibling of scroll). Mirror New CTA: brat fill +
+ * Dark label.
  */
 .drive-workspace .app-sidebar__notifications {
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #003311;
+  --button-primary-bg: var(--wai-fg);
+  --button-primary-fg: var(--wai-bg);
   --notification-inbox-badge-bg: var(--workspace-accent);
-  --notification-inbox-badge-fg: #003311;
+  --notification-inbox-badge-fg: #ffffff;
 }
 
 /**
@@ -105,16 +105,16 @@
  * any shared switch-trigger remaps (do not recolor the folder mark).
  */
 .drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: #ffffff;
+  --app-switch-icon-bg: var(--color-we-got-dark);
   --app-switch-icon-fg: var(--color-we-got-brat);
-  background-color: #ffffff;
+  background-color: var(--color-we-got-dark);
 }
 
 .drive-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: #ffffff;
+  --wai-bg: var(--color-we-got-dark);
   --wai-fg: var(--color-we-got-brat);
 }
 
@@ -206,13 +206,15 @@
  * Repeat accent tokens here so {@link Button} and destination picker match the drive shell.
  */
 .drive-dialog-surface {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --wai-bg: var(--color-we-got-dark);
+  --wai-fg: var(--color-we-got-brat);
+  --button-primary-bg: var(--wai-fg);
+  --button-primary-fg: var(--wai-bg);
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */

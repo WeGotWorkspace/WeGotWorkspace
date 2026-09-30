@@ -74,19 +74,19 @@ Two panels:
 | `iconPreset` | Quick A/B: keep **current**, swap another app’s SVG, or choose **custom** |
 | `svgMarkup`  | Paste exported SVG when `iconPreset` is **custom**                        |
 
-Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs the Dark cream-mix wash.
+Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs the Soft rail.
 
 ### CSS props (colors)
 
-| Category    | Tokens                                                                   | Purpose                                      |
-| ----------- | ------------------------------------------------------------------------ | -------------------------------------------- |
-| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                             | We Got Soft and We Got Dark                  |
-| App chrome  | `--workspace-accent`, optional `--app-sidebar-bg`, `--app-sidebar-color` | Primary / CTA / badge; sidebar; nav on-color |
-| Icon layers | `--wai-bg`, `--wai-fg`                                                   | Switch-trigger SVG fills                     |
+| Category    | Tokens                                                                                                                                        | Purpose                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                                                                                                  | We Got Soft and We Got Dark                                                             |
+| App chrome  | `--workspace-accent`, `--workspace-surface`, `--button-primary-bg`, `--button-primary-fg`, optional `--app-sidebar-bg`, `--app-sidebar-color` | Accent (Dark); app paper; primary button (starts as icon layers); sidebar; nav on-color |
+| Icon layers | `--wai-bg`, `--wai-fg`                                                                                                                        | Switch-trigger SVG fills                                                                |
 
-**Accent vs `--wai-*`:** accent drives solid chrome (buttons, badges, checks). The sidebar rail is a separate 12% mix of `--color-we-got-dark` into paper, the same dark used on login and the installer. `--wai-*` only recolors the switch-trigger mark layers. Change accent for solid fills; change `--wai-*` when the lockup icon itself needs a new palette.
+**Accent vs `--wai-*`:** `--workspace-accent` is We Got Dark and drives checks, badges, and outline glyphs. The sidebar rail is `--color-we-got-soft`; row states mix Sand into that rail. App paper is `--workspace-surface`, a very light tint of Soft. `--button-primary-bg` / `--button-primary-fg` start as `--wai-bg` / `--wai-fg`, except Drive (brat fill, Dark label), Meet (Sand fill, Dark label), and Notes (icon yellow fill, Dark label). `--wai-*` still recolors the switch-trigger mark layers.
 
-**Defaults match production UI**, not the PWA/home-tile swatch. Calendar, Tasks, and Meet use a different `--workspace-accent` in `*-workspace.css` than `WORKSPACE_APP_ACCENT` (tile theme). The sidebar rail is one 12% Dark recipe in `workspace-color.css`. `--wai-*` comes from the same workspace CSS. `iconPreset` defaults to **current** (that app’s real mark).
+**Defaults match production chrome**, not the PWA/home-tile swatch. Every app’s `--workspace-accent` is Dark, which differs from per-app `WORKSPACE_APP_ACCENT` (tile theme). The primary-button controls are the exception: they start on the icon layers so you can try that pairing in the panel. `iconPreset` defaults to **current** (that app’s real mark).
 
 ### WCAG AA ratios (resolved brand hex / Soft)
 

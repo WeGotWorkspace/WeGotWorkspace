@@ -9,14 +9,14 @@
  * Import only from {@link ContactsWorkspace}.
  */
 .contacts-workspace {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
   --sidebar-logo-close-button-color: var(--color-we-got-dark);
-  --sidebar-badge-fg: var(--workspace-accent);
+  --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
     var(--color-we-got-dark) 10%,
@@ -47,26 +47,26 @@
   --loading-spinner-color: color-mix(in oklch, var(--color-we-got-dark) 45%, transparent);
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
   --checkbox-checked-bg: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
-  --checkbox-checked-fg: var(--color-we-got-dark);
+  --checkbox-checked-fg: #ffffff;
   --switch-on-bg: var(--workspace-accent);
 
   /* Outline action language for header + collection sidebar + action-bar. */
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--workspace-accent) 18%,
+    var(--color-we-got-sand) 18%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--workspace-accent) 24%,
+    var(--color-we-got-sand) 24%,
     var(--workspace-surface)
   );
 }
@@ -80,7 +80,7 @@
 .contacts-workspace .workspace-detail-pane .action-bar,
 .contacts-workspace .workspace-detail-pane {
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --button-primary-fg: #ffffff;
 }
 
 /*
@@ -92,8 +92,7 @@
 }
 
 .contacts-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  /* Primary fill inherits the workspace (`--button-primary-*`). */
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
 }
@@ -112,7 +111,7 @@
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
   --wai-bg: var(--color-we-got-sky);
-  --wai-fg: #ffffff;
+  --wai-fg: var(--color-we-got-dark);
 }
 
 .contacts-list-panel__loading {
@@ -483,12 +482,12 @@
 }
 
 .contacts-dialog-surface {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
   --segmented-control-track-active-bg: var(--color-we-got-dark);

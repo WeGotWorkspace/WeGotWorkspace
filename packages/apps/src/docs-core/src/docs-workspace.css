@@ -7,7 +7,7 @@
   @apply min-w-0 overflow-x-hidden;
 
   /* Cream paper. Sidebar wash and item tints come from workspace-color.css. */
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
   --docs-surface: var(--workspace-surface);
   --background: var(--workspace-surface);
@@ -33,7 +33,7 @@
   --docs-comments-column-gap: 1rem;
   --workspace-panel-width: var(--docs-comments-column-width);
   --docs-stat-tag-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
-  /* Stronger than 88% Sand→Dark so word/char chips clear AA on cream footer. */
+  /* Accent is already Dark, so chip ink stays Dark and clears AA on the cream footer. */
   --docs-stat-tag-color: color-mix(in oklch, var(--workspace-accent) 40%, var(--color-we-got-dark));
   --docs-text: var(--color-we-got-dark);
   /* 72% clears WCAG AA on cream sidebar / footer wash; 65% failed outline nums. */
@@ -55,27 +55,27 @@
     var(--workspace-accent) 10%,
     var(--workspace-surface)
   );
-  --sidebar-badge-fg: var(--workspace-accent);
+  --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --button-primary-fg: #ffffff;
   --checkbox-border-color: var(--workspace-accent);
   --checkbox-checked-bg: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
-  --checkbox-checked-fg: var(--color-we-got-dark);
+  --checkbox-checked-fg: #ffffff;
 
   /* Outline / header chrome: accent-strong for text-on-wash (not primary fills). */
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--workspace-accent) 18%,
+    var(--color-we-got-sand) 18%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--workspace-accent) 24%,
+    var(--color-we-got-sand) 24%,
     var(--workspace-surface)
   );
   /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24).
@@ -126,18 +126,18 @@
   --workspace-accent: inherit;
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --button-primary-fg: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--workspace-accent) 18%,
+    var(--color-we-got-sand) 18%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--workspace-accent) 24%,
+    var(--color-we-got-sand) 24%,
     var(--workspace-surface)
   );
   /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
@@ -165,7 +165,7 @@
   @apply mx-0 flex min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
 }
 
-/** Sidebar lockup: blue tile + white marks. Accent stays Sand. */
+/** Sidebar lockup: blue tile + white marks. UI accent is Dark. */
 .docs-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--color-we-got-blue);
   --app-switch-icon-fg: #ffffff;
@@ -296,13 +296,13 @@
 }
 
 .docs-dialog-surface {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
@@ -312,7 +312,7 @@
 }
 
 .docs-workspace .docs-comments-floating-layer {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
 }
 
 .docs-workspace .text-editor {

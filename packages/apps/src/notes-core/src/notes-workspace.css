@@ -3,13 +3,11 @@
 @import "../../workspace-shell/src/workspace-chrome-footer.css";
 
 /**
- * Notes product shell: cream panes + a light yellow sidebar tint (Calendar /
- * Tasks chrome: accent mixed onto cream, not a full-bleed wash).
- * `--workspace-accent` is the brand yellow (`#ffc800` — same hex as the
- * Notes icon / webmanifest). All notes yellow tints mix from this token.
- * Sidebar selected chips stay that yellow on ink
- * (WCAG AA). Detail pane / desk is the same cream as the footer and action
- * bar (`--workspace-chrome-footer-bg`), so the open-note paper card can
+ * Notes product shell: cream panes. The sidebar rail is the shared Sand wash,
+ * not a full-bleed accent. `--workspace-accent` is Dark (buttons, checks,
+ * selected chips use white on that fill). Detail pane / desk is the same cream
+ * as the footer and action bar (`--workspace-chrome-footer-bg`), so the open-note
+ * paper card can
  * read as a tinted sheet. `--paper-sheet-bg` is cream mixed with
  * `--notes-detail-tint` at 11% in oklab (same % as Calendar’s srgb
  * `surfaceTint`) — a very light notebook wash that keeps chroma/hue,
@@ -24,7 +22,7 @@
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   /*
    * Hover / detail strong fg: yellow is too light for Calendar-style
    * accent-on-wash selected text. 32% accent → ink (~6.5:1 on cream washes)
@@ -55,7 +53,7 @@
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
   --sidebar-logo-close-button-color: var(--color-we-got-dark);
-  --sidebar-badge-fg: var(--workspace-accent);
+  --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
     var(--color-we-got-dark) 10%,
@@ -81,10 +79,10 @@
 
   --notes-list-star-color: var(--workspace-accent);
   /*
-   * Primary fills use brand yellow (not accent-strong). Yellow needs ink fg
-   * for WCAG — cream-on-yellow fails contrast.
+   * Primary fill is the notes icon yellow. Dark label clears AA on that fill.
    */
-  --button-primary-bg: var(--workspace-accent);
+  --wai-bg: var(--color-we-got-yellow);
+  --button-primary-bg: var(--wai-bg);
   --button-primary-fg: var(--color-we-got-dark);
   /*
    * Row fills step accent into the rail (`workspace-color.css`). Yellow stays
@@ -106,7 +104,7 @@
    * Detail editor task-lists use the tag wash on `.note-text-editor-body`. */
   --checkbox-checked-bg: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
-  --checkbox-checked-fg: var(--color-we-got-dark);
+  --checkbox-checked-fg: #ffffff;
   /* Idle tag chips — sidebar filters + list-row pills share this family.
    * Selected sidebar chips use `--notes-tag-selected-*`. Detail CATEGORIES
    * use `--note-detail-tag-*` (notebook wash on the paper sheet). */
@@ -116,7 +114,7 @@
   /* Selected sidebar tag chip — ink + product yellow. Nested `.notes-workspace`
    * inherits the tokens so stories do not reset chip text. */
   --notes-tag-selected-bg: var(--color-we-got-dark);
-  --notes-tag-selected-fg: var(--workspace-accent);
+  --notes-tag-selected-fg: #ffffff;
   --notes-tag-selected-border: var(--color-we-got-dark);
   --note-detail-tag-bg: color-mix(in oklch, var(--notes-detail-accent) 16%, transparent);
   --note-detail-tag-fg: var(--notes-detail-accent-strong);
@@ -158,15 +156,15 @@
    */
   --button-active-color: var(--color-we-got-dark);
   --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 40%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 40%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--workspace-accent) 55%,
+    var(--color-we-got-sand) 55%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--workspace-accent) 65%,
+    var(--color-we-got-sand) 65%,
     var(--workspace-surface)
   );
 }
@@ -274,24 +272,20 @@
 }
 
 .notes-workspace .app-sidebar__scroll {
-  /* New note: warm-yellow fill + ink label (invert of selected chips; Tasks-style accent fill). */
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  /* Primary fill inherits the workspace (`--button-primary-*`). */
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
 }
 
 /*
  * Bell lives in the header (sibling of scroll). Pin the unread badge to the
- * same pair as New note on `.app-sidebar__scroll`: `--workspace-accent` fill + dark
- * ink label. Literal ink hex avoids the notifications `--color-we-got-dark` remap
- * (glyph chrome) and the tray fallback of ink-bg + emerald-fg.
+ * same pair as New note: yellow fill + Dark label.
  */
 .notes-workspace .app-sidebar__notifications {
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #003311;
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--color-we-got-dark);
   --notification-inbox-badge-bg: var(--workspace-accent);
-  --notification-inbox-badge-fg: #003311;
+  --notification-inbox-badge-fg: #ffffff;
 }
 
 /**
@@ -320,12 +314,13 @@
 }
 
 .notes-dialog-surface {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
-  --button-primary-bg: var(--workspace-accent);
+  --wai-bg: var(--color-we-got-yellow);
+  --button-primary-bg: var(--wai-bg);
   --button-primary-fg: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
   --segmented-control-track-active-bg: var(--color-we-got-dark);
@@ -370,15 +365,15 @@
 .notes-workspace :is(.action-bar, .multi-selection-view__actions) {
   --button-active-color: var(--notes-detail-accent-strong);
   --button-outline-hover-color: var(--notes-detail-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--workspace-accent) 18%,
+    var(--color-we-got-sand) 18%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--workspace-accent) 24%,
+    var(--color-we-got-sand) 24%,
     var(--workspace-surface)
   );
 }

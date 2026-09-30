@@ -5,7 +5,7 @@
   /*
    * Unread badge follows the sidebar primary CTA (`Button` variant primary):
    * `--notification-inbox-badge-*` when set, else `--button-primary-bg/fg`
-   * (Notes yellow+ink, Drive green+ink, Docs white+docs-sidebar, …). Glyph
+   * (Dark fill + white label). Glyph
    * and button stroke stay parent-owned (sidebar icon chrome /
    * `--app-sidebar-border-color`); do not pin them here.
    */

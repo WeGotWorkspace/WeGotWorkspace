@@ -7,7 +7,7 @@
  */
 .docs-collab-review-panel-drawer {
   --side-drawer-width: 22rem;
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
 }
 
 .docs-collab-review-panel {

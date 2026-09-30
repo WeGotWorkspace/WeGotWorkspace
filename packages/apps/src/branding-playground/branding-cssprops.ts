@@ -35,11 +35,13 @@ export function waiBrandingCssprops(defaults: { bg: string; fg: string }): Brand
       value: defaults.bg,
       description: 'Icon background layer (fill="var(--wai-bg, …)")',
       category: "Icon layers",
+      control: defaults.bg.startsWith("#") ? "color" : "text",
     },
     "wai-fg": {
       value: defaults.fg,
       description: "Icon foreground / marks",
       category: "Icon layers",
+      control: defaults.fg.startsWith("#") ? "color" : "text",
     },
   };
 }
@@ -61,28 +63,36 @@ export type AppBrandingCsspropsOptions = {
 
 /**
  * Production UI accents from `*-workspace.css` `--workspace-accent`.
- * Every app currently uses Sand (`#ba9689`). Home-tile `WORKSPACE_APP_ACCENT`
- * stays per app.
+ * Every app uses `--color-we-got-dark`. Home-tile `WORKSPACE_APP_ACCENT` stays per app.
+ * The sidebar rail is Soft and does not follow this accent.
  */
+export const BRANDING_APP_ACCENT_DEFAULT = "var(--color-we-got-dark)";
+
 export const BRANDING_APP_ACCENT_DEFAULTS: Record<WorkspaceAppId, string> = {
-  notes: "#ba9689",
-  mail: "#ba9689",
-  calendar: "#ba9689",
-  contacts: "#ba9689",
-  tasks: "#ba9689",
-  drive: "#ba9689",
-  docs: "#ba9689",
-  settings: "#ba9689",
-  meet: "#ba9689",
-  admin: "#ba9689",
+  notes: BRANDING_APP_ACCENT_DEFAULT,
+  mail: BRANDING_APP_ACCENT_DEFAULT,
+  calendar: BRANDING_APP_ACCENT_DEFAULT,
+  contacts: BRANDING_APP_ACCENT_DEFAULT,
+  tasks: BRANDING_APP_ACCENT_DEFAULT,
+  drive: BRANDING_APP_ACCENT_DEFAULT,
+  docs: BRANDING_APP_ACCENT_DEFAULT,
+  settings: BRANDING_APP_ACCENT_DEFAULT,
+  meet: BRANDING_APP_ACCENT_DEFAULT,
+  admin: BRANDING_APP_ACCENT_DEFAULT,
 };
 
 /**
- * Production `--app-sidebar-bg` from `workspace-color.css`.
- * One 12% Dark-into-paper formula for every app (login and installer accent).
+ * App paper from `workspace-color.css`. Very light tint of Soft — lighter than
+ * the sidebar, which is the Soft primitive.
  */
-export const BRANDING_APP_SIDEBAR_DEFAULT =
-  "color-mix(in oklch, var(--color-we-got-dark) 12%, var(--workspace-surface))";
+export const BRANDING_WORKSPACE_SURFACE_DEFAULT =
+  "color-mix(in oklch, var(--color-we-got-soft) 40%, #fff)";
+
+/**
+ * Production `--app-sidebar-bg` from `workspace-color.css`.
+ * The rail is We Got Soft. Row states mix Sand into that rail.
+ */
+export const BRANDING_APP_SIDEBAR_DEFAULT = "var(--color-we-got-soft)";
 
 export const BRANDING_APP_SIDEBAR_DEFAULTS: Record<WorkspaceAppId, string> = {
   mail: BRANDING_APP_SIDEBAR_DEFAULT,
@@ -112,13 +122,33 @@ export function createAppBrandingCssprops(
 ): BrandingCsspropsMap {
   const accentToken = options.accentToken ?? "workspace-accent";
   const accentValue = options.accentValue ?? BRANDING_APP_ACCENT_DEFAULTS[appId];
+  const buttonPrimary = brandingAppButtonPrimary(appId);
   const sidebarToken = options.sidebarToken ?? "app-sidebar-bg";
   const map: BrandingCsspropsMap = {
     ...sharedBrandingCssprops(),
     [accentToken]: {
       value: accentValue,
-      description: `Primary / CTA / badge fill (--${accentToken})`,
+      description: `Solid accent (--${accentToken}). Production follows We Got Dark.`,
       category: "App chrome",
+      control: "text",
+    },
+    "workspace-surface": {
+      value: BRANDING_WORKSPACE_SURFACE_DEFAULT,
+      description: "App paper — very light tint of We Got Soft. The sidebar stays Soft.",
+      category: "App chrome",
+      control: "text",
+    },
+    "button-primary-bg": {
+      value: buttonPrimary.bg,
+      description: "Primary button fill.",
+      category: "App chrome",
+      control: "text",
+    },
+    "button-primary-fg": {
+      value: buttonPrimary.fg,
+      description: "Primary button label.",
+      category: "App chrome",
+      control: "text",
     },
   };
 
@@ -153,22 +183,36 @@ export const BRANDING_APP_WAI_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg:
   mail: { bg: "#de4b0e", fg: "#ffffff" },
   notes: { bg: "#ffc800", fg: "#ffffff" },
   docs: { bg: "#0045ff", fg: "#ffffff" },
-  drive: { bg: "#ffffff", fg: "#8ace00" },
-  tasks: { bg: "#ffbdc2", fg: "#ffffff" },
+  drive: { bg: "var(--color-we-got-dark)", fg: "var(--color-we-got-brat)" },
+  tasks: { bg: "#ffbdc2", fg: "var(--color-we-got-dark)" },
   calendar: { bg: "#962fa8", fg: "#ffffff" },
-  contacts: { bg: "#a3c4e8", fg: "#ffffff" },
-  meet: { bg: "#ffffff", fg: "#ba9689" },
-  admin: { bg: "#ffffff", fg: "#003311" },
-  settings: { bg: "#ffffff", fg: "#003311" },
+  contacts: { bg: "#a3c4e8", fg: "var(--color-we-got-dark)" },
+  meet: { bg: "var(--color-we-got-soft)", fg: "#ba9689" },
+  admin: { bg: "var(--color-we-got-dark)", fg: "var(--color-we-got-soft)" },
+  settings: { bg: "var(--color-we-got-dark)", fg: "var(--color-we-got-soft)" },
 };
+
+/** Storybook primary-button controls. Match each app's workspace CSS. */
+export function brandingAppButtonPrimary(appId: WorkspaceAppId): { bg: string; fg: string } {
+  switch (appId) {
+    case "drive":
+      return { bg: "var(--wai-fg)", fg: "var(--wai-bg)" };
+    case "meet":
+      return { bg: "var(--wai-fg)", fg: "var(--color-we-got-dark)" };
+    case "notes":
+      return { bg: "var(--wai-bg)", fg: "var(--color-we-got-dark)" };
+    default:
+      return { bg: "var(--wai-bg)", fg: "var(--wai-fg)" };
+  }
+}
 
 /**
  * Convenience: shared cream/ink + accent + production `--wai-*` for a workspace app.
  *
- * Omits `--app-sidebar-bg` and `--app-sidebar-color` so the decorator’s `inherit`
- * bridge cannot wipe `workspace-color.css` (shared 12% rail + on-color).
- * Accent stays editable; sidebar tint still tracks accent via the production
- * color-mix. Docs Themes uses Controls `fullAccentSidebar` for the rail
+ * Omits `--app-sidebar-bg` and `--app-sidebar-color` so the decorator cannot
+ * wipe `workspace-color.css` (Soft rail + Dark on-color). Accent follows Dark
+ * and does not retint the rail. Primary button controls start at `--wai-bg` /
+ * `--wai-fg`. Docs Themes uses Controls `fullAccentSidebar` for the rail
  * comparison instead of a `--app-sidebar-bg` cssprop default.
  */
 export function defaultAppBrandingCssprops(appId: WorkspaceAppId): BrandingCsspropsMap {

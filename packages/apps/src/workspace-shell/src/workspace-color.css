@@ -11,10 +11,10 @@
  * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark.
  *
  * Sidebar rail and row states are one recipe. There is no mix knob. The rail
- * is 12% `--color-we-got-dark` into `--workspace-surface` (the login and
- * installer accent). Hover / selected / selected-hover mix 12 / 18 / 28 of
- * that dark into the same rail (about 22 / 28 / 36 on paper). Solid fills
- * keep `--workspace-accent`.
+ * is `--color-we-got-soft`. Hover / selected / selected-hover mix 12 / 18 / 28
+ * Sand into that rail. The main paper is `--workspace-surface`, a very light
+ * tint of Soft. Solid fills use `--workspace-accent`, which is
+ * `--color-we-got-dark`.
  * Those declarations also match `.app-sidebar`, so an ancestor override cannot
  * retune the painted rail. Product files do not redeclare the ladder.
  * Primary and input tokens stay off `.app-sidebar` — Mail darkens
@@ -53,10 +53,11 @@
   .meet-device-popover
 ) {
   /*
-   * App paper is a softer OKLCH tint of Soft. Login, home, forgot-password,
-   * and the installer keep the primitive `--color-we-got-soft`.
+   * App paper. A very light tint of Soft — lighter than the sidebar, which
+   * uses the primitive `--color-we-got-soft`. Login, home, forgot-password,
+   * and the installer keep that primitive too.
    */
-  --workspace-surface: color-mix(in oklch, var(--color-we-got-soft) 70%, #fff);
+  --workspace-surface: color-mix(in oklch, var(--color-we-got-soft) 40%, #fff);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-main-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
@@ -118,27 +119,27 @@
   .meet-device-popover,
   .app-sidebar
 ) {
-  --app-sidebar-bg: color-mix(in oklch, var(--color-we-got-dark) 12%, var(--workspace-surface));
+  --app-sidebar-bg: var(--color-we-got-soft);
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
 
   /*
-   * Dark wash in oklch, base = the rail. Do not mix these into
-   * `--workspace-surface` or `--color-we-got-soft`.
+   * Sand steps in oklch, base = the Soft rail. Do not mix these into
+   * `--color-we-got-dark` — that token is the solid accent.
    */
   --app-sidebar-item-hover-bg: color-mix(
     in oklch,
-    var(--color-we-got-dark) 12%,
+    var(--color-we-got-sand) 12%,
     var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-bg: color-mix(
     in oklch,
-    var(--color-we-got-dark) 18%,
+    var(--color-we-got-sand) 18%,
     var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-hover-bg: color-mix(
     in oklch,
-    var(--color-we-got-dark) 28%,
+    var(--color-we-got-sand) 28%,
     var(--app-sidebar-bg)
   );
   --app-sidebar-item-selected-color: var(--color-we-got-dark);

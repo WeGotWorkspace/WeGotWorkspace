@@ -6,21 +6,22 @@
  * the same Soft paper on `.meet-call-dialog`.
  */
 .meet-channel-dialog {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --workspace-accent-strong: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
     var(--color-we-got-dark)
   );
   --color-emerald: var(--workspace-accent);
-  --button-primary-bg: var(--workspace-accent);
+  --wai-fg: var(--color-we-got-sand);
+  --button-primary-bg: var(--wai-fg);
   --button-primary-fg: var(--color-we-got-dark);
   --button-outline-color: var(--color-we-got-dark);
   --button-outline-border-color: color-mix(in oklab, var(--color-we-got-dark) 20%, transparent);
   --button-active-color: var(--workspace-accent-strong);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
   --field-label-color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
   --foreground: var(--color-we-got-dark);
   --color-foreground: var(--color-we-got-dark);

@@ -5,15 +5,15 @@
 @import "./calendar-event-dialog.css";
 
 /**
- * Calendar product shell: cream main pane + purple sidebar tint from icon marks
- * (`#962fa8`). Tile accent stays pink `#ffbdc2` (WORKSPACE_APP_ACCENT);
- * UI accent and tile may diverge — same as Meet. Primary CTAs use brand purple
- * with white glyphs. Import only from {@link CalendarWorkspace}.
+ * Calendar product shell: cream main pane, Sand sidebar wash, Dark solid
+ * accents (today pill, primary CTA, checks). Tile accent stays pink `#ffbdc2`
+ * (WORKSPACE_APP_ACCENT); UI accent and tile may diverge. Primary CTAs use
+ * Dark with white glyphs. Import only from {@link CalendarWorkspace}.
  * The calendar surface itself is the vendored lit-calendar view stack
  * (shadow DOM, own styles); this file styles the React chrome around it.
  */
 .calendar-workspace {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --calendar-muted: color-mix(in oklch, var(--color-we-got-dark) 80%, var(--color-we-got-soft));
 
   --color-emerald: var(--workspace-accent);
@@ -26,7 +26,7 @@
   --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
   --app-sidebar-color: var(--color-we-got-dark);
   --sidebar-logo-close-button-color: var(--color-we-got-dark);
-  --sidebar-badge-fg: var(--workspace-accent);
+  --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
     var(--color-we-got-dark) 10%,
@@ -56,22 +56,22 @@
 
   --field-label-color: var(--color-we-got-dark);
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
 
   /* Outline action language for header + collection sidebar rows. */
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--workspace-accent) 18%,
+    var(--color-we-got-sand) 18%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--workspace-accent) 24%,
+    var(--color-we-got-sand) 24%,
     var(--workspace-surface)
   );
 
@@ -93,8 +93,7 @@
 }
 
 .calendar-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  /* Primary fill inherits the workspace (`--button-primary-*`), including Storybook controls. */
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
   --button-outline-hover-color: var(--color-we-got-dark);
 }

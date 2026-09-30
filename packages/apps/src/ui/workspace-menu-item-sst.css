@@ -1,12 +1,12 @@
 @import "../styles.css" reference;
 
 /**
- * Soft Select / DropdownMenu / MenuItem washes from `--workspace-accent`.
+ * Soft Select / DropdownMenu / MenuItem washes from Sand.
  * Same 14/18/24 cream recipe as chrome outline IconButtons (see below).
+ * Solid primary fills stay `--workspace-accent` (Dark).
  *
- * Products set `--workspace-accent` on the shell (and dialog surfaces that host
- * selects). Portaled menus copy these via `bridgePortalThemeVars` so hover /
- * selected washes stay accent-tinted everywhere — not ink-gray.
+ * Portaled menus copy these via `bridgePortalThemeVars` so hover / selected
+ * washes stay Sand-tinted everywhere — not a Dark wash, not ink-gray.
  *
  * Dark lobby Meet (`.meet-dialog-surface`) is intentionally omitted — it keeps
  * its own on-dark outline recipe.
@@ -40,19 +40,15 @@
   .meet-channel-dialog,
   .meet-call-dialog
 ) {
-  --menu-item-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent, var(--color-we-got-dark)) 14%,
-    transparent
-  );
+  --menu-item-hover-background: color-mix(in oklab, var(--color-we-got-sand) 14%, transparent);
   --menu-item-selected-background: color-mix(
     in oklab,
-    var(--workspace-accent, var(--color-we-got-dark)) 18%,
+    var(--color-we-got-sand) 18%,
     var(--workspace-surface)
   );
   --menu-item-selected-hover-background: color-mix(
     in oklab,
-    var(--workspace-accent, var(--color-we-got-dark)) 24%,
+    var(--color-we-got-sand) 24%,
     var(--workspace-surface)
   );
 }
@@ -84,19 +80,15 @@
   .meet-channel-dialog,
   .meet-call-dialog
 ) {
-  --button-outline-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent, var(--color-we-got-dark)) 14%,
-    transparent
-  );
+  --button-outline-hover-background: color-mix(in oklab, var(--color-we-got-sand) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklab,
-    var(--workspace-accent, var(--color-we-got-dark)) 18%,
+    var(--color-we-got-sand) 18%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
-    var(--workspace-accent, var(--color-we-got-dark)) 24%,
+    var(--color-we-got-sand) 24%,
     var(--workspace-surface)
   );
   --button-outline-hover-color: var(

@@ -14,7 +14,7 @@
 }
 
 .calendar-dialog-surface {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --workspace-accent-strong: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
@@ -22,9 +22,9 @@
   );
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --button-primary-fg: #ffffff;
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
   --field-label-color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
   --card-title-icon-color: var(--workspace-accent);
@@ -272,7 +272,7 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --card-title-icon-color: var(--workspace-accent);
 }
 
