@@ -93,13 +93,13 @@ function runOnceCaptured(cmd, extraEnv) {
     /** @type {string | undefined} */
     let errorCode;
 
-    child.stdout.on("data", (chunk) => {
-      const text = String(chunk);
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (text) => {
       output += text;
       process.stdout.write(text);
     });
-    child.stderr.on("data", (chunk) => {
-      const text = String(chunk);
+    child.stderr.on("data", (text) => {
       output += text;
       process.stderr.write(text);
     });
@@ -107,8 +107,8 @@ function runOnceCaptured(cmd, extraEnv) {
       errorCode = /** @type {NodeJS.ErrnoException} */ (err).code;
       resolve({ status: null, output, errorCode });
     });
-    child.on("close", (status) => {
-      resolve({ status, output, errorCode });
+    child.on("close", (status, signal) => {
+      resolve({ status, output, errorCode: errorCode ?? signal ?? undefined });
     });
   });
 }
