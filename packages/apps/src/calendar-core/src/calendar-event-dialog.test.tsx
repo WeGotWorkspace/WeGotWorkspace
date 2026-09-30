@@ -329,7 +329,7 @@ describe("CalendarEventDialog", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ freeBusyStatus: "free" }));
   });
 
-  it("shows the alarms card, adds an alarm from the trailing None row, and forwards offset changes", () => {
+  it("shows the alarms card, adds an alarm from the trailing None row, and forwards offset changes", async () => {
     const form = { ...emptyCalendarEventForm("default", "2033-01-12"), title: "Lunch" };
     const { onChange } = renderDialog({ form, locale: "en-US" });
     expect(document.querySelector(".calendar-event-dialog__field--alarms")).not.toBeNull();
@@ -344,17 +344,20 @@ describe("CalendarEventDialog", () => {
     expect(emptyOffset.textContent).toMatch(/None/i);
     fireEvent.click(emptyOffset);
     fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarm15Min }));
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        alerts: [expect.objectContaining({ id: "alert1", action: "display", offset: "-PT15M" })],
-      }),
-    );
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          alerts: [expect.objectContaining({ id: "alert1", action: "display", offset: "-PT15M" })],
+        }),
+      );
+    });
 
     const withAlarm = {
       ...form,
       alerts: [{ id: "alert1", action: "display" as const, offset: "-PT15M" }],
     };
     cleanup();
+    await new Promise((resolve) => setTimeout(resolve, 10));
     const next = renderDialog({ form: withAlarm, locale: "en-US" });
     expect(screen.getAllByText(defaultCalendarLabels.eventAlarmsLabel)).toHaveLength(1);
     expect(screen.queryByText(`${defaultCalendarLabels.eventAlarmRow} 1`)).toBeNull();
@@ -370,15 +373,19 @@ describe("CalendarEventDialog", () => {
     expect(screen.queryByRole("option", { name: /Notification/i })).toBeNull();
     fireEvent.click(offsets[0]!);
     fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarm1Hour }));
-    expect(next.onChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        alerts: [expect.objectContaining({ id: "alert1", action: "display", offset: "-PT1H" })],
-      }),
-    );
+    await waitFor(() => {
+      expect(next.onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          alerts: [expect.objectContaining({ id: "alert1", action: "display", offset: "-PT1H" })],
+        }),
+      );
+    });
 
     fireEvent.click(offsets[0]!);
     fireEvent.click(screen.getByRole("option", { name: defaultCalendarLabels.eventAlarmNone }));
-    expect(next.onChange).toHaveBeenCalledWith(expect.objectContaining({ alerts: [] }));
+    await waitFor(() => {
+      expect(next.onChange).toHaveBeenCalledWith(expect.objectContaining({ alerts: [] }));
+    });
   });
 
   it("shows leftover email alarms without an action menu and keeps offset editable", () => {
