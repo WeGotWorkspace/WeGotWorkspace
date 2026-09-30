@@ -3,8 +3,9 @@ import { Button } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
-import { WorkspaceUserFooter } from "@/workspace-shell/src/workspace-app-layout";
-import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
+import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 
 export type DocsHomeSidebarProps = {
@@ -53,11 +54,13 @@ export function DocsHomeSidebar({
         ) : undefined
       }
       footer={
-        <WorkspaceUserFooter
-          name={session.user.displayName}
-          initials={workspaceUserInitials(session.user)}
-          detailLine={session.user.username}
-          onLogoutClick={onLogout}
+        <WorkspaceAppSettingsFooter
+          appId="docs"
+          session={session}
+          onLogout={onLogout}
+          onBeforeOpen={() => {
+            if (isSidebarOverlayViewport()) onCloseMobile();
+          }}
         />
       }
     >

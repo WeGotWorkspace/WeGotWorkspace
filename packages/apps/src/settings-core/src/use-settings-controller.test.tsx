@@ -1,6 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
+import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
+import { resetSettingsRegistryForTests } from "@/settings-core/src/settings-registry";
 import { useSettingsController } from "@/settings-core/src/use-settings-controller";
 
 vi.mock("@/hooks/use-run-with-app-toast", () => ({
@@ -15,6 +17,8 @@ function bootstrapData(mcpEnabled: boolean) {
 
 describe("useSettingsController MCP kill-switch", () => {
   beforeEach(() => {
+    resetSettingsRegistryForTests();
+    registerBuiltinSettings();
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: (query: string) => ({
@@ -29,6 +33,11 @@ describe("useSettingsController MCP kill-switch", () => {
       }),
     });
   });
+
+  afterEach(() => {
+    resetSettingsRegistryForTests();
+  });
+
   it("omits the assistants section when MCP is disabled", () => {
     const { result } = renderHook(() =>
       useSettingsController({
@@ -37,10 +46,17 @@ describe("useSettingsController MCP kill-switch", () => {
       }),
     );
 
-    expect(result.current.sections.map((section) => section.id)).toEqual([
+    expect(result.current.sidebarGroups.account.map((section) => section.id)).toEqual([
       "profile",
       "memberships",
       "offline",
+    ]);
+    expect(result.current.sidebarGroups.apps.map((section) => section.id)).toEqual([
+      "mail",
+      "calendar",
+      "tasks",
+      "contacts",
+      "notes",
     ]);
     expect(result.current.section).toBe("profile");
     expect(result.current.currentSection.id).toBe("profile");

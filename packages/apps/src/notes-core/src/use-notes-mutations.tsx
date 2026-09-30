@@ -28,8 +28,8 @@ import {
   notesViewForCreate,
   noteShowsStarControls,
   persistBestEffort,
-  resolveNotesCreateTarget,
 } from "./notes-note-utils";
+import { resolveNotesCreateTarget } from "./notes-create-target";
 import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import { noteAllowsStructureManage } from "./notes-structure-rights";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";

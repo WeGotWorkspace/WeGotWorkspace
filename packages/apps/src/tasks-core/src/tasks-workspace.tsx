@@ -9,12 +9,10 @@ import {
   CollectionSidebarMark,
   CollectionSidebarRow,
 } from "@/collection-sidebar/src/collection-sidebar-row";
-import {
-  WorkspaceAppLayout,
-  WorkspaceUserFooter,
-} from "@/workspace-shell/src/workspace-app-layout";
+import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { ViewHeader } from "@/view-header/src/view-header";
-import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
+import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
@@ -242,11 +240,13 @@ export function TasksWorkspace({
               />
             }
             footer={
-              <WorkspaceUserFooter
-                name={session.user.displayName}
-                initials={workspaceUserInitials(session.user)}
-                detailLine={session.user.username}
-                onLogoutClick={onLogout}
+              <WorkspaceAppSettingsFooter
+                appId="tasks"
+                session={session}
+                onLogout={onLogout}
+                onBeforeOpen={() => {
+                  if (isSidebarOverlayViewport()) setSidebarOpen(false);
+                }}
               />
             }
           >

@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
+import { writeDefaultCollectionPrefs } from "@/lib/default-collection-prefs";
 import { INBOX_TASK_LIST_ID } from "@/tasks-core/src/tasks-task-utils";
 import type { TasksAPIOperations } from "@/tasks-core/src/tasks-types";
 import { useTasksController } from "@/tasks-core/src/use-tasks-controller";
@@ -261,6 +262,27 @@ describe("useTasksController URL routing", () => {
 
     expect(result.current.view).toBe("state:all");
     expect(result.current.createListId).toBe(INBOX_TASK_LIST_ID);
+  });
+
+  it("uses the stored default list when All Tasks is selected", () => {
+    writeDefaultCollectionPrefs("tasks", { collectionId: "work" });
+    const allView = renderHook(() =>
+      useTasksController({
+        data: bootstrap.data,
+        operations: mockOperations,
+      }),
+    );
+    expect(allView.result.current.view).toBe("state:all");
+    expect(allView.result.current.createListId).toBe("work");
+
+    const listView = renderHook(() =>
+      useTasksController({
+        data: bootstrap.data,
+        operations: mockOperations,
+        initialView: "list:default",
+      }),
+    );
+    expect(listView.result.current.createListId).toBe("default");
   });
 
   it("disables creation on a view-only shared list", () => {

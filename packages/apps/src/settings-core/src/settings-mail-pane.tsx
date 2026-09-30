@@ -1,4 +1,5 @@
 import { Callout } from "@/callout/src/callout";
+import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 
 /**
  * The settings API still stores IMAP credentials. v0.9 does not read a mailbox,
@@ -6,10 +7,12 @@ import { Callout } from "@/callout/src/callout";
  */
 export function SettingsMailPane() {
   return (
-    <Callout
-      severity="info"
-      title="Mailbox login"
-      message="Credentials are stored for a later release. This release does not read a mailbox."
-    />
+    <SettingsPaneCard>
+      <Callout
+        severity="info"
+        title="Mailbox login"
+        message="Credentials are stored for a later release. This release does not read a mailbox."
+      />
+    </SettingsPaneCard>
   );
 }

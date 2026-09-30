@@ -692,33 +692,6 @@ export function notesCanCreateInView(view: string): boolean {
   return true;
 }
 
-export type NotesCreateTarget = {
-  notebook: string;
-  scope?: "group";
-  groupSlug?: string;
-};
-
-/** Resolve notebook (+ optional group scope) for a new note from the active view. */
-export function resolveNotesCreateTarget(
-  view: string,
-  personalNotebooks: string[],
-): NotesCreateTarget {
-  if (view.startsWith("shared-nb:")) {
-    const parsed = parseGroupNotebookPath(view.slice("shared-nb:".length));
-    if (parsed) {
-      return {
-        notebook: parsed.notebook,
-        scope: "group",
-        groupSlug: parsed.groupSlug,
-      };
-    }
-  }
-  if (view.startsWith("nb:")) {
-    return { notebook: view.slice(3) };
-  }
-  return { notebook: personalNotebooks[0] ?? "Drafts" };
-}
-
 /** Whether a note lives under a shared notebook directory path. */
 export function noteBelongsToSharedNotebook(note: Note, notebookPath: string): boolean {
   const dir = notebookPath.replace(/\/+$/, "").replace(/^\//, "");

@@ -43,6 +43,12 @@ describe("viewDateRange", () => {
     expect(range.end.toString()).toBe("2033-01-17");
   });
 
+  it("week starts on Sunday when weekStart is 7", () => {
+    const range = viewDateRange("week", "2033-01-12", 7);
+    expect(range.start.toString()).toBe("2033-01-09");
+    expect(range.end.toString()).toBe("2033-01-16");
+  });
+
   it("day is a single date", () => {
     const range = viewDateRange("day", "2033-01-12");
     expect(range.start.toString()).toBe("2033-01-12");

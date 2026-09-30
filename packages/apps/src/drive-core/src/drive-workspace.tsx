@@ -6,17 +6,15 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
-import {
-  WorkspaceAppLayout,
-  WorkspaceUserFooter,
-} from "@/workspace-shell/src/workspace-app-layout";
+import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import {
   workspaceUserFooterDetailLine,
-  workspaceUserInitials,
   type WorkspaceSession,
 } from "@/lib/workspace/workspace-session";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
+import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { cn } from "@/lib/utils";
 import { SideDrawer } from "@/ui/side-drawer";
@@ -388,11 +386,14 @@ function DriveSidebar({
       onCloseMobile={() => setSidebarOpen(false)}
       appSwitchDisabled={wgwIsGuestSession()}
       footer={
-        <WorkspaceUserFooter
-          name={session.user.displayName}
-          initials={workspaceUserInitials(session.user)}
+        <WorkspaceAppSettingsFooter
+          appId="drive"
+          session={session}
           detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession())}
-          onLogoutClick={onLogout}
+          onLogout={onLogout}
+          onBeforeOpen={() => {
+            if (isSidebarOverlayViewport()) setSidebarOpen(false);
+          }}
         />
       }
       primaryButton={
