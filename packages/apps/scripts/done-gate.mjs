@@ -71,7 +71,7 @@ function runOnceInherit(cmd, extraEnv) {
   return {
     status: result.status,
     output: "",
-    errorCode: result.error?.code,
+    errorCode: result.error?.code ?? result.signal ?? undefined,
   };
 }
 
