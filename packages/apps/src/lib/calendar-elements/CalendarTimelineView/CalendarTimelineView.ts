@@ -64,14 +64,19 @@ import {
   yearGridWindow,
   yearMonthStarts,
 } from "./CalendarTimelineScale.js";
+import { mapTimelineOccurrenceEvents, type CalendarTimelineEvent } from "./map-timeline-events.js";
 import {
-  occurrenceTimesWithPending,
   pendingCreateRetention,
   pendingOccurrenceRetention,
   shouldRevertPendingGeometry,
   type PendingCreateGeometry,
   type PendingOccurrenceGeometry,
 } from "./pendingOccurrenceGeometry.js";
+import {
+  displayOccurrenceInEventZone,
+  eventOccurrenceInDisplayZone,
+  movedOccurrenceInEventZone,
+} from "../utils/event-display-time.js";
 import { renderPlusIcon } from "../icons/PlusIcon.js";
 import componentStyle from "./CalendarTimelineView.css?inline";
 
@@ -122,25 +127,9 @@ const MODE_PRESETS: Record<Exclude<CalendarTimelineViewMode, "year">, ModePreset
   gantt: { numDays: 7, columns: "days", flow: "horizontal", layout: "timeline", variant: "timed" },
 };
 
-type CalendarTimelineEvent = TimelineEvent & {
-  key: string;
-  summary: string;
-  color: string;
-  location: string;
-  originalStart: Temporal.PlainDateTime;
-  originalEnd: Temporal.PlainDateTime;
-  allDay: boolean;
-  past: boolean;
-  recurring: boolean;
-  exception: boolean;
-  rsvp: "" | "needs-action" | "tentative";
-  locked?: boolean;
-  overlayKind?: "task";
-};
-
 type YearDayChip = Pick<
   CalendarTimelineEvent,
-  "key" | "summary" | "color" | "originalStart" | "originalEnd" | "allDay" | "rsvp"
+  "key" | "summary" | "color" | "displayStart" | "displayEnd" | "allDay" | "rsvp"
 >;
 
 /* Header/footer/event templates render inside <time-line>'s shadow root, out of reach of this
@@ -569,40 +558,12 @@ export class CalendarTimelineView extends CalendarViewBase {
     entries: [string, ApiCalendarEvent][],
     variant: TimelineVariant,
   ): CalendarTimelineEvent[] {
-    const now = this.#currentDateTime;
-    const pending = this.#pendingOccurrenceGeometry;
-    return entries.map(([key, event]) => {
-      const engineStart = event.data.start;
-      const engineEnd = resolvedDataEnd(event.data);
-      const { start: originalStart, end: originalEnd } = occurrenceTimesWithPending(
-        key,
-        { start: engineStart, end: engineEnd },
-        pending,
-      );
-      const range =
-        variant === "all-day"
-          ? toTimelineAllDayRange(originalStart, originalEnd, this.#scale)
-          : toTimelineRange(originalStart, originalEnd, this.#scale);
-      return {
-        key,
-        start: range.start,
-        end: range.end,
-        location: event.data.location ?? "",
-        summary: event.data.summary,
-        color: this.resolveEventDisplayColor(event),
-        originalStart,
-        originalEnd,
-        allDay: event.data.allDay === true,
-        past: Temporal.PlainDateTime.compare(originalEnd, now) <= 0,
-        recurring: isCalendarEventRecurring(event),
-        exception: isCalendarEventException(event),
-        rsvp:
-          event.participationStatus === "needs-action" || event.participationStatus === "tentative"
-            ? event.participationStatus
-            : "",
-        locked: isTaskDueOverlayEvent(event),
-        overlayKind: event.overlayKind === "task" ? "task" : undefined,
-      };
+    return mapTimelineOccurrenceEvents(entries, variant, {
+      now: this.#currentDateTime,
+      pending: this.#pendingOccurrenceGeometry,
+      scale: this.#scale,
+      displayTimeZone: this.timezone,
+      resolveColor: (event) => this.resolveEventDisplayColor(event),
     });
   }
 
@@ -786,18 +747,12 @@ export class CalendarTimelineView extends CalendarViewBase {
     if (variant === "all-day") {
       const dayDelta = Math.round(deltaUnits / unitsPerDay);
       if (dayDelta === 0) return null;
-      return {
-        start: timelineEvent.originalStart.add({ days: dayDelta }),
-        end: timelineEvent.originalEnd.add({ days: dayDelta }),
-      };
+      return movedOccurrenceInEventZone(timelineEvent, { days: dayDelta }, this.timezone);
     }
 
     const deltaSeconds = Math.round((deltaUnits * SECONDS_PER_DAY) / unitsPerDay);
     if (deltaSeconds === 0) return null;
-    return {
-      start: timelineEvent.originalStart.add({ seconds: deltaSeconds }),
-      end: timelineEvent.originalEnd.add({ seconds: deltaSeconds }),
-    };
+    return movedOccurrenceInEventZone(timelineEvent, { seconds: deltaSeconds }, this.timezone);
   }
 
   /** Resizes convert only the dragged edge back through the scale; the other edge stays exact. */
@@ -807,8 +762,16 @@ export class CalendarTimelineView extends CalendarViewBase {
     variant: TimelineVariant,
   ): { start: Temporal.PlainDateTime; end: Temporal.PlainDateTime } | null {
     const allDay = variant === "all-day";
-    const convertEdge = (value: number): Temporal.PlainDateTime =>
-      allDay ? this.#dayRoundedDateTime(value) : fromTimelineValue(value, this.#scale);
+    const convertEdge = (value: number): Temporal.PlainDateTime => {
+      const display = allDay
+        ? this.#dayRoundedDateTime(value)
+        : fromTimelineValue(value, this.#scale);
+      return displayOccurrenceInEventZone(
+        display,
+        { allDay, timeZone: timelineEvent.timeZone },
+        this.timezone,
+      );
+    };
 
     const next =
       detail.edge === "start"
@@ -1070,7 +1033,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       return formatShortTimeRange(this.lang, range.start, range.end);
     }
     if (timelineEvent.allDay) return "";
-    return formatShortTimeRange(this.lang, timelineEvent.originalStart, timelineEvent.originalEnd);
+    return formatShortTimeRange(this.lang, timelineEvent.displayStart, timelineEvent.displayEnd);
   }
 
   /** Stable per-variant template references so <time-line> props keep their identity. */
@@ -1401,8 +1364,8 @@ export class CalendarTimelineView extends CalendarViewBase {
   #popoverEventsFor(events: YearDayChip[]): DayOverflowPopoverEvent[] {
     return events.map((ev) => ({
       id: ev.key,
-      start: ev.allDay ? ev.originalStart.toPlainDate().toString() : ev.originalStart.toString(),
-      end: ev.allDay ? ev.originalEnd.toPlainDate().toString() : ev.originalEnd.toString(),
+      start: ev.allDay ? ev.displayStart.toPlainDate().toString() : ev.displayStart.toString(),
+      end: ev.allDay ? ev.displayEnd.toPlainDate().toString() : ev.displayEnd.toString(),
       summary: ev.summary,
       color: ev.color,
       hidden: false,
@@ -2160,21 +2123,29 @@ export class CalendarTimelineView extends CalendarViewBase {
     });
     const byDay = new Map<string, YearDayChip[]>();
     for (const [key, event] of rendered) {
-      const originalStart = event.data.start;
-      const originalEnd = resolvedDataEnd(event.data);
+      const displayStart = eventOccurrenceInDisplayZone(
+        event.data.start,
+        event.data,
+        this.timezone,
+      );
+      const displayEnd = eventOccurrenceInDisplayZone(
+        resolvedDataEnd(event.data),
+        event.data,
+        this.timezone,
+      );
       const chip: YearDayChip = {
         key,
         summary: event.data.summary,
         color: this.resolveEventDisplayColor(event),
-        originalStart,
-        originalEnd,
+        displayStart,
+        displayEnd,
         allDay: event.data.allDay === true,
         rsvp:
           event.participationStatus === "needs-action" || event.participationStatus === "tentative"
             ? event.participationStatus
             : "",
       };
-      for (const dayKey of occurrenceDayKeys(originalStart, originalEnd)) {
+      for (const dayKey of occurrenceDayKeys(displayStart, displayEnd)) {
         const bucket = byDay.get(dayKey);
         if (bucket) bucket.push(chip);
         else byDay.set(dayKey, [chip]);

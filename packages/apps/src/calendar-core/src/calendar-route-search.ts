@@ -115,7 +115,7 @@ export function defaultCalendarRouteState(
 ): CalendarRouteState {
   return {
     view: fallbacks?.view ?? DEFAULT_CALENDAR_VIEW,
-    date: todayISODate(),
+    date: todayISODate(Temporal.Now.timeZoneId()),
     presentation: fallbacks?.presentation ?? DEFAULT_CALENDAR_PRESENTATION,
     searchQuery: normalizeCalendarSearchQuery(searchQuery),
   };
@@ -166,7 +166,7 @@ export function calendarStateFromLocation(
 
 export function calendarNavigateTarget(state: CalendarRouteState): CalendarNavigateTarget {
   const view = isCalendarViewId(state.view) ? state.view : DEFAULT_CALENDAR_VIEW;
-  const date = parseCalendarISODate(state.date) ?? todayISODate();
+  const date = parseCalendarISODate(state.date) ?? todayISODate(Temporal.Now.timeZoneId());
   const params = { view, date };
   const search = calendarSearchFromQuery(state.searchQuery);
   if (state.presentation === "list") {

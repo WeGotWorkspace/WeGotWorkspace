@@ -2,20 +2,31 @@ import { HeadContent, Link, Outlet } from "@tanstack/react-router";
 import { OfflineStatusIndicator } from "@/lib/offline/offline-status-indicator";
 import { MeetCallMiniPlayer } from "@/meet-core/src/meet-call-mini-player";
 import { NotificationsProvider } from "@/notifications-core/src/notifications-provider";
+import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
+import { SettingsDialogProvider } from "@/settings-core/src/settings-dialog-provider";
+import {
+  reachabilityFromShell,
+  SettingsReachabilityProvider,
+} from "@/settings-core/src/settings-reachability";
 import { AppToaster } from "@/ui/sonner";
 import { TooltipProvider } from "@/ui/tooltip";
 
 export function WeGotWorkspaceShell() {
+  registerBuiltinSettings();
   return (
     <TooltipProvider delayDuration={300}>
-      <NotificationsProvider>
-        <HeadContent />
-        <OfflineStatusIndicator />
-        <Outlet />
-        {/* Active-call card outside /meet; renders nothing without the suite call store. */}
-        <MeetCallMiniPlayer />
-        <AppToaster />
-      </NotificationsProvider>
+      <SettingsReachabilityProvider value={reachabilityFromShell({})}>
+        <SettingsDialogProvider>
+          <NotificationsProvider>
+            <HeadContent />
+            <OfflineStatusIndicator />
+            <Outlet />
+            {/* Active-call card outside /meet; renders nothing without the suite call store. */}
+            <MeetCallMiniPlayer />
+            <AppToaster />
+          </NotificationsProvider>
+        </SettingsDialogProvider>
+      </SettingsReachabilityProvider>
     </TooltipProvider>
   );
 }

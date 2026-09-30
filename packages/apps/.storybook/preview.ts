@@ -13,6 +13,12 @@ import "../src/styles.css";
 // Scoped to Chromatic capture + Storybook Vitest — see chromatic-reduced-motion.css
 import "./chromatic-reduced-motion.css";
 import { NotificationsInboxValueProvider } from "../src/notifications-core/src/notifications-inbox-context";
+import { registerBuiltinSettings } from "../src/settings-core/src/register-builtin-settings";
+import { SettingsDialogProvider } from "../src/settings-core/src/settings-dialog-provider";
+import {
+  reachabilityFromShell,
+  SettingsReachabilityProvider,
+} from "../src/settings-core/src/settings-reachability";
 import { AppToaster } from "../src/ui/sonner";
 import { TooltipProvider } from "../src/ui/tooltip";
 
@@ -52,7 +58,14 @@ const preview: Preview = {
       const initialPath = (context.parameters.routerPath as string) ?? "/notes";
 
       const rootRoute = createRootRoute({
-        component: () => createElement(Outlet),
+        component: () => {
+          registerBuiltinSettings();
+          return createElement(
+            SettingsReachabilityProvider,
+            { value: reachabilityFromShell({}) },
+            createElement(SettingsDialogProvider, null, createElement(Outlet)),
+          );
+        },
       });
 
       const renderStory = () => createElement(Story);
@@ -80,6 +93,11 @@ const preview: Preview = {
         createRoute({ getParentRoute: () => rootRoute, path: "docs", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "install", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "settings", component: renderStory }),
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path: "settings/$section",
+          component: renderStory,
+        }),
         createRoute({ getParentRoute: () => rootRoute, path: "meet", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "admin", component: renderStory }),
       ];

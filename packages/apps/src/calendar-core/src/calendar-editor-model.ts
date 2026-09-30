@@ -125,6 +125,7 @@ export function emptyCalendarEventForm(
   calendarId: string,
   dateISO: string,
   startTime: string = DEFAULT_START_TIME,
+  timeZone?: string | null,
 ): CalendarEventFormValue {
   const start = Temporal.PlainDateTime.from(`${dateISO}T${startTime}:00`);
   const end = start.add({ minutes: DEFAULT_DURATION_MINUTES });
@@ -136,7 +137,7 @@ export function emptyCalendarEventForm(
     startTime,
     endDate: end.toPlainDate().toString(),
     endTime: end.toPlainTime().toString({ smallestUnit: "minute" }),
-    timeZone: defaultTimedEventTimeZone(),
+    timeZone: defaultTimedEventTimeZone(timeZone),
     location: "",
     description: "",
     freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,
@@ -188,6 +189,7 @@ export function createIntentToForm(
     allDay?: boolean;
     title?: string;
   },
+  timeZone?: string | null,
 ): CalendarEventFormValue {
   const allDay = resolveCreateIntentAllDay(intent);
   const formEnd = allDay ? intent.end.subtract({ days: 1 }) : intent.end;
@@ -200,7 +202,7 @@ export function createIntentToForm(
     startTime: intent.start.toPlainTime().toString({ smallestUnit: "minute" }),
     endDate: formEnd.toPlainDate().toString(),
     endTime: formEnd.toPlainTime().toString({ smallestUnit: "minute" }),
-    timeZone: allDay ? null : defaultTimedEventTimeZone(),
+    timeZone: allDay ? null : defaultTimedEventTimeZone(timeZone),
     location: "",
     description: "",
     freeBusyStatus: DEFAULT_FREE_BUSY_STATUS,

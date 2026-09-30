@@ -26,9 +26,8 @@ import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NoteCollabChrome, NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
-import { WorkspaceUserFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
-import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
+import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import { cn } from "@/lib/utils";
 import { ActionBar } from "@/action-bar/src/action-bar";
@@ -480,11 +479,11 @@ export function NotesWorkspace({
             open={c.sidebarOpen}
             onCloseMobile={c.closeSidebar}
             footer={
-              <WorkspaceUserFooter
-                name={session.user.displayName}
-                initials={workspaceUserInitials(session.user)}
-                detailLine={session.user.username}
-                onLogoutClick={onLogout}
+              <WorkspaceAppSettingsFooter
+                appId="notes"
+                session={session}
+                onLogout={onLogout}
+                onBeforeOpen={() => closeSidebarOnMobile(c.closeSidebar)}
               />
             }
             primaryButton={

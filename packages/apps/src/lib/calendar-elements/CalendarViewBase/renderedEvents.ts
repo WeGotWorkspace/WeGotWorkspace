@@ -1,5 +1,11 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { expandEvents, type CalendarEventsMap } from "@/lib/calendar-engine";
+import { resolvedDataEnd } from "../domain/events-api/eventMapBridge.js";
+import {
+  dateTimesOverlapRange,
+  eventOccurrenceInDisplayZone,
+  padRangeForDisplayZone,
+} from "../utils/event-display-time.js";
 
 const EMPTY_EVENTS: CalendarEventsMap = new Map();
 const RENDERED_EVENTS_LRU_LIMIT = 8;
@@ -23,10 +29,19 @@ export function visibleEventsInRange(
   range: RenderedEventsRange,
   timezone: string,
 ): CalendarEventsMap {
-  const expanded = expandEvents(events ?? EMPTY_EVENTS, range, { timezone });
+  const expanded = expandEvents(events ?? EMPTY_EVENTS, padRangeForDisplayZone(range), {
+    timezone,
+  });
   const visible: CalendarEventsMap = new Map();
   for (const [key, event] of expanded) {
     if (event.participationStatus === "declined") continue;
+    const displayStart = eventOccurrenceInDisplayZone(event.data.start, event.data, timezone);
+    const displayEnd = eventOccurrenceInDisplayZone(
+      resolvedDataEnd(event.data),
+      event.data,
+      timezone,
+    );
+    if (!dateTimesOverlapRange(displayStart, displayEnd, range.start, range.end)) continue;
     visible.set(key, event);
   }
   return visible;
