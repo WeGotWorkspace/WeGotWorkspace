@@ -53,9 +53,11 @@
   --mail-swipe-archive-color: var(--color-we-got-dark);
 
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
-  /* White on Dark. Sand is too light for white label text. */
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  /* Primary fill is the mail icon (red + white). */
+  --wai-bg: var(--color-we-got-red);
+  --wai-fg: #ffffff;
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--wai-fg);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   /* Selected nav count pills match the primary CTA (Dark + white). */
@@ -180,9 +182,11 @@
   --workspace-accent: var(--color-we-got-dark);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  /* White on Dark. Sand is too light for white label text. */
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  /* Primary fill is the mail icon (red + white). */
+  --wai-bg: var(--color-we-got-red);
+  --wai-fg: #ffffff;
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--wai-fg);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);

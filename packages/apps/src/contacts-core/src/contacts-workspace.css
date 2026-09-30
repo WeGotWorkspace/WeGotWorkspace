@@ -46,8 +46,10 @@
   --contacts-detail-title-font-family: var(--font-serif);
   --loading-spinner-color: color-mix(in oklch, var(--color-we-got-dark) 45%, transparent);
   --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --wai-bg: var(--color-we-got-sky);
+  --wai-fg: var(--color-we-got-dark);
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--wai-fg);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --checkbox-checked-bg: var(--workspace-accent);
@@ -79,8 +81,10 @@
  */
 .contacts-workspace .workspace-detail-pane .action-bar,
 .contacts-workspace .workspace-detail-pane {
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --wai-bg: var(--color-we-got-sky);
+  --wai-fg: var(--color-we-got-dark);
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--wai-fg);
 }
 
 /*
@@ -484,8 +488,10 @@
 .contacts-dialog-surface {
   --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --wai-bg: var(--color-we-got-sky);
+  --wai-fg: var(--color-we-got-dark);
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--wai-fg);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);

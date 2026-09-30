@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  brandingCsspropEquals,
   buildBrandingWorkspaceOverrideCss,
+  csspropValuesForPaint,
+  reconcileUntouchedCsspropDefaults,
   resolveBrandingCsspropValues,
   resolveBrandingIconMarkup,
   syncBrandingCsspropsToRoot,
@@ -125,6 +128,82 @@ describe("buildBrandingWorkspaceOverrideCss", () => {
     expect(css).toMatch(
       /\.workspace-app-icon--switch-trigger svg \{\s*--wai-bg: oklch\(from #0045ff l c h\);\s*--wai-fg: oklch\(from #ffffff l c h\);/,
     );
+  });
+
+  it("emits no workspace rule when nothing was edited", () => {
+    expect(buildBrandingWorkspaceOverrideCss("tasks-workspace", {})).toBe("");
+  });
+});
+
+describe("csspropValuesForPaint", () => {
+  const entries = [{ key: "button-primary-bg", value: "var(--workspace-accent)" }];
+
+  it("omits parameter defaults so workspace CSS stays the source of truth", () => {
+    const body = styleBag();
+    expect(csspropValuesForPaint(entries, body.style, null, null)).toEqual({});
+  });
+
+  it("omits a body value that matches the parameter default", () => {
+    const body = styleBag();
+    body.style.setProperty("--button-primary-bg", "var(--workspace-accent)");
+    expect(csspropValuesForPaint(entries, body.style, null, "themes-tasks--default")).toEqual({});
+  });
+
+  it("keeps a real panel edit", () => {
+    const body = styleBag();
+    body.style.setProperty("--button-primary-bg", "#ff0000");
+    expect(csspropValuesForPaint(entries, body.style, null, "themes-tasks--default")).toEqual({
+      "--button-primary-bg": "#ff0000",
+    });
+  });
+
+  it("ignores an untouched stored default that no longer matches the parameter", () => {
+    const body = styleBag();
+    body.style.setProperty("--button-primary-bg", "var(--wai-bg)");
+    const store = {
+      customProperties: { "themes-tasks--default": { "button-primary-bg": "var(--wai-bg)" } },
+      initialCustomProperties: {
+        "themes-tasks--default": { "button-primary-bg": "var(--wai-bg)" },
+      },
+    };
+    expect(csspropValuesForPaint(entries, body.style, store, "themes-tasks--default")).toEqual({});
+  });
+});
+
+describe("reconcileUntouchedCsspropDefaults", () => {
+  const entries = [{ key: "button-primary-bg", value: "var(--workspace-accent)" }];
+
+  it("moves an untouched stored default onto the current parameter", () => {
+    const store = {
+      customProperties: { "themes-tasks--default": { "button-primary-bg": "var(--wai-bg)" } },
+      initialCustomProperties: {
+        "themes-tasks--default": { "button-primary-bg": "var(--wai-bg)" },
+      },
+    };
+    const next = reconcileUntouchedCsspropDefaults(store, "themes-tasks--default", entries);
+    expect(next.changed).toBe(true);
+    expect(next.store.customProperties?.["themes-tasks--default"]?.["button-primary-bg"]).toBe(
+      "var(--workspace-accent)",
+    );
+    expect(
+      next.store.initialCustomProperties?.["themes-tasks--default"]?.["button-primary-bg"],
+    ).toBe("var(--workspace-accent)");
+  });
+
+  it("leaves a row the user changed", () => {
+    const store = {
+      customProperties: { "themes-tasks--default": { "button-primary-bg": "#ff0000" } },
+      initialCustomProperties: {
+        "themes-tasks--default": { "button-primary-bg": "var(--workspace-accent)" },
+      },
+    };
+    const next = reconcileUntouchedCsspropDefaults(store, "themes-tasks--default", entries);
+    expect(next.changed).toBe(false);
+    expect(next.store).toBe(store);
+  });
+
+  it("treats oklch(from) as the same value as the hex seed", () => {
+    expect(brandingCsspropEquals("#ffffff", "oklch(from #ffffff l c h)")).toBe(true);
   });
 });
 

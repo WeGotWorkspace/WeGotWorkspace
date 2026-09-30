@@ -57,8 +57,10 @@
   );
   --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --wai-bg: var(--color-we-got-blue);
+  --wai-fg: #ffffff;
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--wai-fg);
   --checkbox-border-color: var(--workspace-accent);
   --checkbox-checked-bg: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
@@ -125,8 +127,10 @@
 :is(.docs-workspace, .docs-dialog-surface) .drive-workspace {
   --workspace-accent: inherit;
   --color-emerald: var(--workspace-accent);
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --wai-bg: var(--color-we-got-blue);
+  --wai-fg: #ffffff;
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--wai-fg);
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
   --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 14%, transparent);
@@ -299,8 +303,10 @@
   --workspace-accent: var(--color-we-got-dark);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --wai-bg: var(--color-we-got-blue);
+  --wai-fg: #ffffff;
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--wai-fg);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);

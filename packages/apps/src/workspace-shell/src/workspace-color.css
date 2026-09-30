@@ -13,12 +13,13 @@
  * Sidebar rail and row states are one recipe. There is no mix knob. The rail
  * is `--color-we-got-soft`. Hover / selected / selected-hover mix 12 / 18 / 28
  * Sand into that rail. The main paper is `--workspace-surface`, a very light
- * tint of Soft. Solid fills use `--workspace-accent`, which is
- * `--color-we-got-dark`.
+ * tint of Soft. Checks and badges use `--workspace-accent`, which is
+ * `--color-we-got-dark`. The primary button follows `--wai-*` on the same
+ * element. Drive, Meet, and Notes redeclare that pair.
  * Those declarations also match `.app-sidebar`, so an ancestor override cannot
  * retune the painted rail. Product files do not redeclare the ladder.
- * Primary and input tokens stay off `.app-sidebar` — Mail darkens
- * `--button-primary-bg` on the workspace, and New sits inside the sidebar.
+ * Primary and input tokens stay off `.app-sidebar` — the primary button
+ * follows the icon on the workspace, and New sits inside the sidebar.
  *
  * Defaults use `:where` (zero specificity). Every product file imports this
  * sheet, and the app loads every product, so a later copy of these rules used
@@ -86,8 +87,13 @@
     var(--color-we-got-dark)
   );
 
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  /*
+   * Primary button follows the switch icon (`--wai-*`). Drive, Meet, and Notes
+   * redeclare the pair on their workspace class. Wai must be set on this
+   * element; the switch-trigger SVG does not inherit upward.
+   */
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--wai-fg);
 }
 
 /*

@@ -192,7 +192,10 @@ export const BRANDING_APP_WAI_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg:
   settings: { bg: "var(--color-we-got-dark)", fg: "var(--color-we-got-soft)" },
 };
 
-/** Storybook primary-button controls. Match each app's workspace CSS. */
+/**
+ * Storybook primary-button controls. Defaults are the production declarations
+ * in each `*-workspace.css`, so Themes starts identical to the app.
+ */
 export function brandingAppButtonPrimary(appId: WorkspaceAppId): { bg: string; fg: string } {
   switch (appId) {
     case "drive":
@@ -211,9 +214,9 @@ export function brandingAppButtonPrimary(appId: WorkspaceAppId): { bg: string; f
  *
  * Omits `--app-sidebar-bg` and `--app-sidebar-color` so the decorator cannot
  * wipe `workspace-color.css` (Soft rail + Dark on-color). Accent follows Dark
- * and does not retint the rail. Primary button controls start at `--wai-bg` /
- * `--wai-fg`. Docs Themes uses Controls `fullAccentSidebar` for the rail
- * comparison instead of a `--app-sidebar-bg` cssprop default.
+ * and does not retint the rail. Primary button controls start at each app's
+ * production `--button-primary-*`. Docs Themes uses Controls `fullAccentSidebar`
+ * for the rail comparison instead of a `--app-sidebar-bg` cssprop default.
  */
 export function defaultAppBrandingCssprops(appId: WorkspaceAppId): BrandingCsspropsMap {
   return createAppBrandingCssprops(appId, {

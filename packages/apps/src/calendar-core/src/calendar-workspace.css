@@ -55,8 +55,10 @@
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
 
   --field-label-color: var(--color-we-got-dark);
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: #ffffff;
+  --wai-bg: var(--color-we-got-prince);
+  --wai-fg: #ffffff;
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--wai-fg);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
 
