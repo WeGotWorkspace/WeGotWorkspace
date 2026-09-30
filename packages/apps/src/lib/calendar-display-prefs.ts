@@ -11,18 +11,17 @@ export const CALENDAR_DISPLAY_PREFS_STORAGE_KEY = "wgw.ui.calendar.displayPrefs"
 
 export const CALENDAR_DISPLAY_DEVICE_ZONE = "device";
 export const CALENDAR_DISPLAY_WEEK_START_LOCALE = "locale";
-export const CALENDAR_DISPLAY_VISIBLE_HOURS_DEFAULT = "default";
 
 export const CALENDAR_WEEKDAY_VALUES = [1, 2, 3, 4, 5, 6, 7] as const;
 /** Monday and Sunday — the two first-day choices consumer calendars actually offer. */
 export const CALENDAR_WEEK_START_CHOICES = [1, 7] as const;
 /** Hour counts offered in Settings; stored 1–24 still apply if present. */
 export const CALENDAR_VISIBLE_HOURS_CHOICES = [8, 10, 12, 16, 24] as const;
+/** Day/week grid zoom when prefs omit `visibleHours`. */
+export const CALENDAR_VISIBLE_HOURS_DEFAULT = 12;
 export const CALENDAR_HOUR_VALUES = [
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
 ] as const;
-/** Initial scroll hour when a zoom is set and the view is not today. */
-export const CALENDAR_VISIBLE_HOURS_START_DEFAULT = 8;
 
 export type CalendarWeekday = (typeof CALENDAR_WEEKDAY_VALUES)[number];
 export type CalendarVisibleHours = number;
@@ -34,7 +33,7 @@ export type CalendarDisplayPrefs = {
   weekStart?: CalendarWeekday;
   /** Writable calendar id for incoming invites. Omitted = collection default. */
   inviteCalendarId?: string;
-  /** Day/week grid zoom: how many hours fill the viewport (1–24). Omitted = default hour height. */
+  /** Day/week grid zoom: how many hours fill the viewport (1–24). Omitted = 12. */
   visibleHours?: CalendarVisibleHours;
   /** First visible hour (0–23) when `visibleHours` is set and today is out of range. */
   visibleHoursStart?: CalendarHour;

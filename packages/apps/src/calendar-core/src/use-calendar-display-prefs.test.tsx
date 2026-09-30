@@ -31,7 +31,7 @@ describe("useCalendarDisplayPrefs", () => {
     expect(result.current.timeZone).toBe("America/New_York");
     expect(result.current.weekStart).toBe(7);
     expect(result.current.inviteCalendarId).toBe("work");
-    expect(result.current.visibleHours).toBeUndefined();
+    expect(result.current.visibleHours).toBe(12);
     expect(result.current.visibleHoursStart).toBeUndefined();
   });
 

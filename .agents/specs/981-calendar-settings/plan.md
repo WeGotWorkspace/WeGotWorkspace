@@ -4,7 +4,7 @@ Derived from [spec.md](./spec.md). Sequential chunks. Source Task #981.
 
 ## Goal
 
-Device-local Calendar display prefs (timezone, day starts on, visible hours, default calendar) in Settings and the in-app dialog, wired into the grid.
+Device-local Calendar display prefs (timezone, visible hours, default calendar) in Settings and the in-app dialog, wired into the grid.
 
 ## Budget
 
