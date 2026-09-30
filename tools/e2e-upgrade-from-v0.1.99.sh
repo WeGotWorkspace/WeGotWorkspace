@@ -39,10 +39,10 @@ cleanup() {
   fi
   docker volume rm "$VOL_CONTENT" "$VOL_STORAGE" "$VOL_CONFIG" >/dev/null 2>&1 || true
   if [[ -n "$STAGE" && -d "$STAGE" ]]; then
-    rm -rf "$STAGE"
+    rm -rf "$STAGE" 2>/dev/null || docker run --rm -v "$STAGE:/stage" alpine:3 rm -rf /stage || true
   fi
   if [[ -n "$WORK" && -d "$WORK" ]]; then
-    rm -rf "$WORK"
+    rm -rf "$WORK" 2>/dev/null || true
   fi
   return "$status"
 }
@@ -89,6 +89,8 @@ stage_current_tree() {
     "$STAGE/install/"
   echo "Installing Composer dependencies for the upgrade image"
   docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -e COMPOSER_HOME=/tmp/composer \
     -v "$STAGE/tree/packages/api:/app" \
     -w /app \
     composer:2 \
