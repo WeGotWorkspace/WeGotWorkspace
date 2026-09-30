@@ -9,6 +9,13 @@ const appsRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const fullVitest = process.env.APPS_DONE_GATE_FULL === "1";
 
 /**
+ * Only retry Storybook when Vitest browser mode drops the page mid-run.
+ * Real story / a11y failures must fail immediately.
+ * @see https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1037
+ */
+const BROWSER_CONNECTION_CLOSED = "Browser connection was closed";
+
+/**
  * @param {string} task
  * @returns {string[]}
  */
@@ -16,7 +23,7 @@ function turbo(task) {
   return ["pnpm", "exec", "turbo", "run", task, "--filter=@wgw/apps"];
 }
 
-/** @type {Array<{ label: string, cmd: string[], env?: Record<string, string>, ciOnly?: boolean }>} */
+/** @type {Array<{ label: string, cmd: string[], env?: Record<string, string>, ciOnly?: boolean, retries?: number }>} */
 const steps = [
   {
     label: "File-size ratchet",
@@ -30,6 +37,8 @@ const steps = [
     label: "Storybook Vitest smoke (vitest-ci + a11y gate)",
     cmd: turbo("test:storybook:ci"),
     env: { STORYBOOK_VITEST_SMOKE: "1", STORYBOOK_A11Y_GATE: "1" },
+    // Retry only when output contains BROWSER_CONNECTION_CLOSED (see runStep).
+    retries: 2,
   },
   { label: "Storybook coverage", cmd: ["pnpm", "check:storybook-coverage"] },
 ];
@@ -43,21 +52,67 @@ process.stdout.write(
 /** @type {Array<{ label: string, ok: boolean, skipped?: boolean, detail?: string }>} */
 const results = [];
 
-function runStep(label, cmd, extraEnv = {}) {
+/**
+ * @param {string} label
+ * @param {string[]} cmd
+ * @param {Record<string, string>} [extraEnv]
+ * @param {number} [retries]
+ */
+function runStep(label, cmd, extraEnv = {}, retries = 0) {
   const line = cmd.join(" ");
   process.stdout.write(`\n${"─".repeat(72)}\n${label}\n${"─".repeat(72)}\n→ ${line}\n\n`);
 
-  const result = spawnSync(cmd[0], cmd.slice(1), {
-    cwd: appsRoot,
-    stdio: ["ignore", "inherit", "inherit"],
-    env: { ...process.env, ...extraEnv },
-  });
+  let attempt = 0;
+  /** @type {import("node:child_process").SpawnSyncReturns<string>} */
+  let result;
+  while (attempt <= retries) {
+    if (attempt > 0) {
+      process.stdout.write(
+        `\n⚠️  Retry attempt ${attempt}/${retries} (browser connection drop)\n\n`,
+      );
+    }
+
+    result = spawnSync(cmd[0], cmd.slice(1), {
+      cwd: appsRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, ...extraEnv },
+    });
+
+    const stdout = result.stdout ?? "";
+    const stderr = result.stderr ?? "";
+    process.stdout.write(stdout);
+    process.stderr.write(stderr);
+
+    if (result.status === 0) {
+      break;
+    }
+
+    const combined = `${stdout}${stderr}`;
+    const isBrowserDrop = combined.includes(BROWSER_CONNECTION_CLOSED);
+    if (!isBrowserDrop || attempt >= retries) {
+      break;
+    }
+    attempt++;
+  }
 
   const ok = result.status === 0;
+  if (ok && attempt > 0 && process.env.GITHUB_ACTIONS) {
+    process.stdout.write(
+      `::warning::Storybook Vitest passed on retry ${attempt} (browser connection drop)\n`,
+    );
+  }
+
   results.push({
     label,
     ok,
-    detail: ok ? undefined : `exit ${result.status ?? "unknown"}`,
+    detail: ok
+      ? attempt > 0
+        ? `passed on retry ${attempt}`
+        : undefined
+      : attempt > 0
+        ? `exit ${result.status ?? "unknown"} after ${attempt + 1} attempts`
+        : `exit ${result.status ?? "unknown"}`,
   });
   return ok;
 }
@@ -73,7 +128,7 @@ for (const step of steps) {
     });
     continue;
   }
-  if (!runStep(step.label, step.cmd, step.env)) {
+  if (!runStep(step.label, step.cmd, step.env, step.retries ?? 0)) {
     passed = false;
   }
 }
