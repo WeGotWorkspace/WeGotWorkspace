@@ -280,6 +280,50 @@ jobs:
       - name: Build (Turbo JS, then Composer prune and sync)
         run: pnpm run build
 
+  # v0.1.99 → this SHA with seeded users, calendars, notes, tasks, drive files, and contacts.
+  # Pull requests and the merge queue only. Pushes to main use the install
+  # workflow's upgrade job, which targets the candidate release image.
+  upgrade-e2e:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v6
+        with:
+          path: ~/.composer/cache
+          key: upgrade-e2e-composer-${{ hashFiles('packages/api/composer.lock') }}
+          restore-keys: |
+            upgrade-e2e-composer-
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # buildx type=gha reads ACTIONS_RUNTIME_TOKEN and ACTIONS_CACHE_URL.
+      # The runner injects those into action steps only, so export them
+      # before the shell step that runs docker buildx.
+      - uses: crazy-max/ghaction-github-runtime@v3
+
+      - name: Upgrade v0.1.99 to this revision
+        env:
+          WGW_UPGRADE_DOCKER_CACHE: gha
+        run: bash tools/e2e-upgrade.sh
+
   chromatic:
     if: >-
       vars.CHROMATIC_ENABLED == 'true' &&
@@ -451,7 +495,13 @@ jobs:
           if-no-files-found: error
 
   apps-coverage:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # A pull request runs this job only while it carries run-apps-coverage.
+    # Triggers stay unchanged: a labeled event would share the CI concurrency
+    # group and cancel the pull request's required checks.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'run-apps-coverage'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     concurrency:
@@ -504,6 +554,16 @@ jobs:
           name: vitest-coverage
           path: packages/apps/coverage
           if-no-files-found: error
+
+      # Fallback only. The default reporter in the job log is the diagnosis.
+      # One shard blob is about 18 MB, so 54 shards plus unit is about 1 GB.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: vitest-reports
+          path: packages/apps/.vitest-reports
+          if-no-files-found: ignore
+          retention-days: 3
 
   coverage-ratchet:
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
