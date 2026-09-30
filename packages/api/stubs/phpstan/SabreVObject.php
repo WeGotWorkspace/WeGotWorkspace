@@ -6,6 +6,7 @@ namespace Sabre\VObject;
  * sabre/vobject 4 add() is variadic at runtime. Its vendor return type is Node,
  * which has no add() and no component properties, so callers that keep the
  * result cannot chain add(). The stub types the return as Component.
+ * Callers narrow VEVENT, VTODO, and VJOURNAL with instanceof.
  *
  * Magic property types live on the component stubs (VEvent, VTodo, VCard,
  * VJournal, VCalendar, VAlarm). Vendor __get() remains Property|null for

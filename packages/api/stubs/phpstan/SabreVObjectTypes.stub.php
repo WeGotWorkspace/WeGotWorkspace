@@ -24,6 +24,8 @@ namespace Sabre\VObject\Property\ICalendar {
 
     class Duration {}
 
+    class Period {}
+
     class Recur {}
 }
 

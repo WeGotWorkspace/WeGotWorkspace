@@ -6,7 +6,6 @@ namespace App\Services\Docs\Conversion;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarObject;
-use App\Services\VObject\ComponentProperty;
 use DateTimeImmutable;
 use DateTimeZone;
 use Sabre\VObject\Component\VCalendar;
@@ -73,10 +72,13 @@ final class DocsThreadJournalConverter
             'UID' => self::normalizeUlid((string) $message['id']),
             'DTSTAMP' => $createdAt->setTimezone(new DateTimeZone('UTC')),
         ]);
-        ComponentProperty::replace($journal, 'DESCRIPTION', $body);
+        if (! $journal instanceof VJournal) {
+            throw new \LogicException('Expected a VJOURNAL component.');
+        }
+        $journal->DESCRIPTION = $body;
         $journal->add('X-WGW-AUTHOR', (string) $message['author']);
         $journal->add('X-WGW-DOC-PATH', (string) $message['docPath']);
-        ComponentProperty::replace($journal, 'SEQUENCE', 0);
+        $journal->SEQUENCE = 0;
 
         $parentId = $message['parentId'] ?? null;
         if (is_string($parentId) && $parentId !== '') {

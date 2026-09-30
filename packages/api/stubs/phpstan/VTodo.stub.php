@@ -7,6 +7,7 @@ use Sabre\VObject\Property\FloatValue;
 use Sabre\VObject\Property\ICalendar\CalAddress;
 use Sabre\VObject\Property\ICalendar\DateTime;
 use Sabre\VObject\Property\ICalendar\Duration;
+use Sabre\VObject\Property\ICalendar\Period;
 use Sabre\VObject\Property\ICalendar\Recur;
 use Sabre\VObject\Property\IntegerValue;
 use Sabre\VObject\Property\Text;
@@ -16,6 +17,7 @@ use Sabre\VObject\Property\Uri;
  * iCalendar VTODO properties. Nullable because Component::__get() returns
  * null when the property is absent. Hyphenated names (PERCENT-COMPLETE,
  * RECURRENCE-ID, LAST-MODIFIED, RELATED-TO) stay on __get().
+ * RDATE is DateTime or Period: VALUE=PERIOD (RFC 5545) selects Period.
  *
  * @property VAlarm|null $VALARM
  * @property CalAddress|null $ATTENDEE
@@ -38,7 +40,7 @@ use Sabre\VObject\Property\Uri;
  * @property FlatText|null $LOCATION
  * @property CalAddress|null $ORGANIZER
  * @property IntegerValue|null $PRIORITY
- * @property DateTime|null $RDATE
+ * @property DateTime|Period|null $RDATE
  * @property Text|null $RESOURCES
  * @property Recur|null $RRULE
  * @property IntegerValue|null $SEQUENCE

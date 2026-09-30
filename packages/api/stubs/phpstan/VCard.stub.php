@@ -14,6 +14,7 @@ use Sabre\VObject\Property\VCard\TimeStamp;
 /**
  * vCard properties. Nullable because Component::__get() returns null when
  * the property is absent. Hyphenated names stay on __get().
+ * PHOTO and LOGO are Binary or Uri: VALUE=URI (common in vCard 3) selects Uri.
  *
  * @property Text|null $ADR
  * @property DateAndOrTime|null $ANNIVERSARY
@@ -43,14 +44,14 @@ use Sabre\VObject\Property\VCard\TimeStamp;
  * @property FlatText|null $LABEL
  * @property LanguageTag|null $LANG
  * @property Property|null $LANGUAGE
- * @property Binary|null $LOGO
+ * @property Binary|Uri|null $LOGO
  * @property FlatText|null $MAILER
  * @property Uri|null $MEMBER
  * @property Text|null $N
  * @property Text|null $NICKNAME
  * @property FlatText|null $NOTE
  * @property Text|null $ORG
- * @property Binary|null $PHOTO
+ * @property Binary|Uri|null $PHOTO
  * @property FlatText|null $PRODID
  * @property Property|null $PRONOUNS
  * @property Uri|null $RELATED

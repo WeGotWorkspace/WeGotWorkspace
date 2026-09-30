@@ -9,7 +9,6 @@ use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Services\Calendars\Conversion\CalendarConversionSupport;
 use App\Services\Calendars\Conversion\RecurrenceOverrideSupport;
-use App\Services\VObject\ComponentProperty;
 use App\Services\VObject\ICalendarUid;
 use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
@@ -104,7 +103,7 @@ final class CalendarSubscriptionIcsSync
     private function serializeSeries(VCalendar $source, array $vevents): string
     {
         $out = new VCalendar;
-        ComponentProperty::replace($out, 'PRODID', '-//WeGotWorkspace//Calendar//EN');
+        $out->PRODID = '-//WeGotWorkspace//Calendar//EN';
         foreach ($source->select('VTIMEZONE') as $timezone) {
             $out->add(clone $timezone);
         }

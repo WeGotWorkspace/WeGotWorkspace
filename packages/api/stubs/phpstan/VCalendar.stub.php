@@ -16,7 +16,8 @@ use Sabre\VObject\Property\FlatText;
  * @property VFreeBusy|null $VFREEBUSY
  * @property FlatText|null $CALSCALE
  * @property FlatText|null $METHOD
- * @property FlatText|null $PRODID
+ * @property-read FlatText|null $PRODID
+ * @property-write string|int|FlatText $PRODID
  * @property FlatText|null $VERSION
  */
 class VCalendar {}
