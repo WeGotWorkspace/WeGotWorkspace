@@ -27,14 +27,14 @@ const meta: Meta<typeof WorkspaceAppSettingsFooter> = {
 export default meta;
 type Story = StoryObj<typeof WorkspaceAppSettingsFooter>;
 
-export const HiddenForMail: Story = {
+export const VisibleForMail: Story = {
   args: {
     appId: "mail",
     session: namedSession,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
+    await expect(canvas.getByRole("button", { name: "Settings" })).toBeTruthy();
     await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
   },
 };
