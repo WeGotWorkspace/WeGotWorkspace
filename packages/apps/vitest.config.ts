@@ -41,6 +41,7 @@ export default defineConfig({
         "**/mock/**",
         "**/*.test.*",
         "**/*.spec.*",
+        "**/*.d.ts",
         "src/jsdom-setup.ts",
       ],
     },
