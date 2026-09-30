@@ -17,14 +17,14 @@ CHANNEL=docker DB=mariadb pnpm test:install-e2e
 
 ## Upgrade from v0.1.99
 
-`pnpm test:upgrade-e2e` (`tools/e2e-upgrade.sh`) installs the published v0.1.99 image by manifest-list digest, seeds an admin, a second user, a calendar event, a drive file, and a contact, then recreates the container on the same volumes. Change the baseline with `WGW_UPGRADE_FROM_IMAGE` (digest form). The default digest is at the top of the script. The host port is ephemeral unless `WGW_E2E_UPGRADE_PORT` is set.
+`pnpm test:upgrade-e2e` (`tools/e2e-upgrade.sh`) installs the published v0.1.99 image by manifest-list digest, seeds an admin, a second user, a calendar event, a note, a task, a drive file, and a contact, then recreates the container on the same volumes. Change the baseline with `WGW_UPGRADE_FROM_IMAGE` (digest form). The default digest is at the top of the script. The host port is ephemeral unless `WGW_E2E_UPGRADE_PORT` is set.
 
 Two current images are tested:
 
 - Every pull request runs `upgrade-e2e`. That job builds `docker/install/Dockerfile.upgrade-target` from `packages/api` and the front controller. Composer runs with `--no-dev --ignore-platform-reqs --no-scripts`, and the image does not install ext-imap. A green job means schema migrate and the seeded rows survived. It does not mean the release ZIP upgrades cleanly.
 - A push to `main` on installer paths also runs the install workflow's `upgrade` job. That job sets `WGW_UPGRADE_TO_IMAGE` to the candidate image built from the release ZIP.
 
-Verification uses `POST /api/v1/auth/token` and sends that JWT on JMAP `Calendar/get`, `CalendarEvent/get`, `FileNode/get`, and `ContactCard/get`. WebDAV `PROPFIND` and CalDAV/CardDAV `REPORT` use HTTP Basic, which is the DAV login. Mail is not part of the fixture.
+Verification uses `POST /api/v1/auth/token` and sends that JWT on JMAP `Calendar/get`, `CalendarEvent/get`, `Note/get`, `FileNode/get`, and `ContactCard/get`, and on `GET /tasks/items/{id}`. Tasks have no method in the JMAP capability registry, so the fixture uses the Tasks app's REST create and get. WebDAV `PROPFIND` and CalDAV/CardDAV `REPORT` use HTTP Basic, which is the DAV login. CalDAV reports cover the default calendar (`VEVENT`), `notes-general` (`VJOURNAL`), and `tasks-inbox` (`VTODO`). Chat and DM collections stay out of the fixture. Mail is not part of the fixture.
 
 `composer install` runs only when you set `WGW_INSTALL_E2E_DEV_COMPOSER=1` for a local tree that is not a release ZIP. CI never sets that flag.
 

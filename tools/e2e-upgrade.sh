@@ -219,4 +219,4 @@ if ! wait_until "upgraded health" curl -fsS "${BASE}/api/v1/health"; then
   exit 1
 fi
 node "$ROOT/tools/upgrade-e2e/integrity.mjs" verify
-echo "Baseline → current upgrade kept users, calendars, drive files, and contacts"
+echo "Baseline → current upgrade kept users, calendars, notes, tasks, drive files, and contacts"

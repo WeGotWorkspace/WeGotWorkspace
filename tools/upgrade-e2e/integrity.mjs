@@ -2,7 +2,8 @@
  * Seed v0.1.99 and verify the same data after the current image migrates.
  *
  * REST and JMAP use the JWT from POST /api/v1/auth/token. WebDAV and CalDAV
- * use HTTP Basic, which is what Sabre accepts. Mail is not seeded.
+ * use HTTP Basic, which is what Sabre accepts. Mail is not seeded. Chat and
+ * DM collections stay out: they are hidden from CalDAV on purpose.
  *
  *   node tools/upgrade-e2e/integrity.mjs seed
  *   node tools/upgrade-e2e/integrity.mjs verify
@@ -18,6 +19,9 @@ const memberPass = process.env.WGW_E2E_MEMBER_PASS ?? "longpassword99";
 const memberEmail = process.env.WGW_E2E_MEMBER_EMAIL ?? "member@e2e.test";
 
 const eventTitle = "Upgrade Launch Review";
+const noteTitle = "Upgrade Note";
+const noteBody = "upgrade-v0.1.99-note";
+const taskTitle = "Upgrade Task";
 const fileName = "upgrade-note.txt";
 const fileBody = "upgrade-v0.1.99-drive";
 const contactName = "Upgrade Contact";
@@ -27,6 +31,9 @@ const CORE = "urn:ietf:params:jmap:core";
 const CALENDARS = "urn:ietf:params:jmap:calendars";
 const CONTACTS = "urn:ietf:params:jmap:contacts";
 const FILENODE = "urn:ietf:params:jmap:filenode";
+const NOTES = "urn:wgw:jmap:notes";
+const NOTEBOOK = "notes-general";
+const TASK_INBOX = "tasks-inbox";
 
 const mode = process.argv[2];
 
@@ -192,6 +199,38 @@ async function seed() {
   ]]);
   const eventId = createdId(event, "e1");
 
+  const note = await jmap(token, [CORE, NOTES], [[
+    "Note/set",
+    {
+      accountId: account,
+      create: {
+        n1: {
+          notebookId: NOTEBOOK,
+          title: noteTitle,
+          body: noteBody,
+        },
+      },
+    },
+    "c0",
+  ]]);
+  const noteId = createdId(note, "n1");
+
+  // JmapCapabilities registers no tasks URN, and JmapMethodDispatcher has no
+  // Task/* method. The Tasks app creates VTODOs with POST /tasks/items.
+  const task = await request("/api/v1/tasks/items", {
+    method: "POST",
+    token,
+    body: {
+      taskListIds: { [TASK_INBOX]: true },
+      title: taskTitle,
+    },
+    ok: (status) => status === 201,
+  });
+  if (typeof task?.id !== "string" || task.id === "" || task.title !== taskTitle) {
+    fail("task create did not return the seeded task", task);
+  }
+  const taskId = task.id;
+
   const nodes = await jmap(token, [CORE, FILENODE], [[
     "FileNode/get",
     { accountId: account, ids: null },
@@ -245,9 +284,14 @@ async function seed() {
   const manifest = {
     accountId: account,
     eventId,
+    noteId,
+    taskId,
     fileId,
     contactId,
     eventTitle,
+    noteTitle,
+    noteBody,
+    taskTitle,
     fileName,
     fileBody,
     contactName,
@@ -262,7 +306,8 @@ async function seed() {
   console.log(`Seeded upgrade fixture for ${adminUser} and ${memberUser}`);
 }
 
-const calendarReport = `<?xml version="1.0" encoding="utf-8"?>
+function calendarQuery(component) {
+  return `<?xml version="1.0" encoding="utf-8"?>
 <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
   <d:prop>
     <d:getetag/>
@@ -270,10 +315,11 @@ const calendarReport = `<?xml version="1.0" encoding="utf-8"?>
   </d:prop>
   <c:filter>
     <c:comp-filter name="VCALENDAR">
-      <c:comp-filter name="VEVENT"/>
+      <c:comp-filter name="${component}"/>
     </c:comp-filter>
   </c:filter>
 </c:calendar-query>`;
+}
 
 const addressbookReport = `<?xml version="1.0" encoding="utf-8"?>
 <card:addressbook-query xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
@@ -354,6 +400,22 @@ async function verify() {
     fail("CalendarEvent/get lost the seeded event", methodBody(events, "CalendarEvent/get"));
   }
 
+  const notes = await jmap(token, [CORE, NOTES], [[
+    "Note/get",
+    { accountId: account, ids: [manifest.noteId] },
+    "c0",
+  ]]);
+  const noteList = methodBody(notes, "Note/get").list ?? [];
+  const note = noteList.find((item) => item.id === manifest.noteId);
+  if (!note || note.title !== manifest.noteTitle || note.body !== manifest.noteBody) {
+    fail("Note/get lost the seeded note", methodBody(notes, "Note/get"));
+  }
+
+  const task = await request(`/api/v1/tasks/items/${encodeURIComponent(manifest.taskId)}`, { token });
+  if (task?.id !== manifest.taskId || task?.title !== manifest.taskTitle) {
+    fail("GET /tasks/items lost the seeded task", task);
+  }
+
   const files = await jmap(token, [CORE, FILENODE], [[
     "FileNode/get",
     { accountId: account, ids: null },
@@ -397,12 +459,28 @@ async function verify() {
     fail("CalDAV PROPFIND did not list the calendar home", calendarHome);
   }
   const calendarData = await dav("REPORT", `/calendars/${adminUser}/default/`, {
-    body: calendarReport,
+    body: calendarQuery("VEVENT"),
     depth: "1",
     ...basic,
   });
   if (!String(calendarData).includes(manifest.eventTitle)) {
     fail("CalDAV REPORT lost the seeded event", calendarData);
+  }
+  const noteData = await dav("REPORT", `/calendars/${adminUser}/${NOTEBOOK}/`, {
+    body: calendarQuery("VJOURNAL"),
+    depth: "1",
+    ...basic,
+  });
+  if (!String(noteData).includes(manifest.noteTitle)) {
+    fail("CalDAV REPORT lost the seeded note", noteData);
+  }
+  const taskData = await dav("REPORT", `/calendars/${adminUser}/${TASK_INBOX}/`, {
+    body: calendarQuery("VTODO"),
+    depth: "1",
+    ...basic,
+  });
+  if (!String(taskData).includes(manifest.taskTitle)) {
+    fail("CalDAV REPORT lost the seeded task", taskData);
   }
 
   const bookHome = await dav("PROPFIND", `/addressbooks/${adminUser}/`, {

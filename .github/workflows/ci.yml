@@ -279,7 +279,7 @@ jobs:
       - name: Build (Turbo JS, then Composer prune and sync)
         run: pnpm run build
 
-  # v0.1.99 → this SHA with seeded users, calendars, drive files, and contacts.
+  # v0.1.99 → this SHA with seeded users, calendars, notes, tasks, drive files, and contacts.
   # Pull requests and the merge queue only. Pushes to main use the install
   # workflow's upgrade job, which targets the candidate release image.
   upgrade-e2e:
