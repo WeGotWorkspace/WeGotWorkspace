@@ -76,7 +76,7 @@ export function TypographySheet() {
   return (
     <FoundationSheetChrome
       title="Typography"
-      description="Font primitives and semantic roles, shared @utility type roles, Tailwind size steps used by those roles, and font-medium / font-semibold. Sans is Plus Jakarta Sans, serif is We Got Serif, mark renders as Bebas Neue."
+      description="Font primitives and semantic roles, shared @utility type roles, Tailwind size steps used by those roles, and font-medium / font-semibold. UI sans is Plus Jakarta Sans, large sans headlines are We Got Sans, serif is We Got Serif, mark renders as Bebas Neue."
       filterValue={filter}
       onFilterChange={setFilter}
       filterPlaceholder="Filter faces, roles, or sizes…"

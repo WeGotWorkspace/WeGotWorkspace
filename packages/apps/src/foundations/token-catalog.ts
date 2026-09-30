@@ -48,6 +48,7 @@ export const COLOR_COMPONENT_CONTRACT = [
 /** Brand / system face primitives. */
 export const FONT_PRIMITIVES = [
   "--font-we-got-sans",
+  "--font-we-got-headline",
   "--font-we-got-serif",
   "--font-we-got-mono",
   "--font-we-got-mark",

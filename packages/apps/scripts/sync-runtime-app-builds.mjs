@@ -50,21 +50,29 @@ function listPwaServiceWorkerFiles(distRoot) {
   );
 }
 
-function renderFontPreloadTags(assetBase) {
-  return RUNTIME_FONT_PRELOADS.map(
-    (file) =>
-      `    <link rel="preload" href="${assetBase}/fonts/${file}" as="font" type="font/woff2" crossorigin>`,
-  ).join("\n");
+function renderFontPreloadTags(assetBase, files = RUNTIME_FONT_PRELOADS) {
+  return files
+    .map(
+      (file) =>
+        `    <link rel="preload" href="${assetBase}/fonts/${file}" as="font" type="font/woff2" crossorigin>`,
+    )
+    .join("\n");
 }
 
-function renderIndexHtml({ title, scriptPath, cssPath, assetBase = "" }) {
+function renderIndexHtml({
+  title,
+  scriptPath,
+  cssPath,
+  assetBase = "",
+  fontPreloads = RUNTIME_FONT_PRELOADS,
+}) {
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
-${renderFontPreloadTags(assetBase)}
+${renderFontPreloadTags(assetBase, fontPreloads)}
     <script type="module" crossorigin src="${scriptPath}"></script>
     <link rel="stylesheet" crossorigin href="${cssPath}">
   </head>
@@ -121,11 +129,16 @@ export function syncRuntimeAppBuilds() {
     // Shell and product apps are served from site-root SPA paths; absolute /assets/* avoids broken
     // relative URLs when index.html is returned for deep links like /contacts/all/:contactId.
     const assetBase = module.name === "install" ? "/install" : "";
+    const fontPreloads =
+      module.name === "install"
+        ? [...RUNTIME_FONT_PRELOADS, "WeGotSans-VF.woff2"]
+        : RUNTIME_FONT_PRELOADS;
     const html = renderIndexHtml({
       title: module.title,
       scriptPath: `${assetBase}/assets/${mainJs}`,
       cssPath: `${assetBase}/assets/${mainCss}`,
       assetBase,
+      fontPreloads,
     });
     writeFileSync(resolve(targetDist, "index.html"), html, "utf8");
   }
