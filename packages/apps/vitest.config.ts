@@ -30,7 +30,7 @@ export default defineConfig({
     execArgv: nodeWebStorageExecArgv,
     coverage: {
       provider: "v8",
-      include: ["src/**"],
+      include: ["src/**/*.{ts,tsx}"],
       // Stories, mocks, tests, and the jsdom setup file are not product dark
       // spots. Vitest 4 appends the root test include after this list, which
       // already dropped *.test.* in a unit run. Project setupFiles are not on
@@ -41,6 +41,7 @@ export default defineConfig({
         "**/mock/**",
         "**/*.test.*",
         "**/*.spec.*",
+        "**/*.d.ts",
         "src/jsdom-setup.ts",
       ],
     },
