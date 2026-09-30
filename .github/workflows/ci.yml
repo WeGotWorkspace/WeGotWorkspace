@@ -505,7 +505,7 @@ jobs:
           if-no-files-found: error
 
   coverage-ratchet:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     needs: [api-coverage, apps-coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -521,12 +521,14 @@ jobs:
 
       - name: Download API coverage
         uses: actions/download-artifact@v7
+        continue-on-error: true
         with:
           name: phpunit-clover
           path: packages/api/build/logs
 
       - name: Download apps coverage
         uses: actions/download-artifact@v7
+        continue-on-error: true
         with:
           name: vitest-coverage
           path: packages/apps/coverage

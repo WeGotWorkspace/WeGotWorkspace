@@ -448,6 +448,9 @@ describe("coverage-ratchet", () => {
     assert.equal(job.includes("REPORT="), false);
     assert.match(job, /--body-file/);
     assert.match(job, /printf '%s\\n' '`{3}'/);
+    assert.match(job, /!cancelled\(\)/);
+    const continued = job.match(/continue-on-error: true/g) ?? [];
+    assert.equal(continued.length, 2);
   });
 
   it("aggregates lib/<sub> packages separately", () => {
