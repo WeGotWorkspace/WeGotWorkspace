@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -53,17 +53,101 @@ process.stdout.write(
 const results = [];
 
 /**
+ * @typedef {{ status: number | null, output: string, errorCode?: string }} StepRun
+ */
+
+/**
+ * Live output, no capture — used when retries are not needed.
+ * @param {string[]} cmd
+ * @param {Record<string, string>} extraEnv
+ * @returns {StepRun}
+ */
+function runOnceInherit(cmd, extraEnv) {
+  const result = spawnSync(cmd[0], cmd.slice(1), {
+    cwd: appsRoot,
+    stdio: ["ignore", "inherit", "inherit"],
+    env: { ...process.env, ...extraEnv },
+  });
+  return {
+    status: result.status,
+    output: "",
+    errorCode: result.error?.code,
+  };
+}
+
+/**
+ * Live tee + capture for browser-drop detection (no maxBuffer limit).
+ * @param {string[]} cmd
+ * @param {Record<string, string>} extraEnv
+ * @returns {Promise<StepRun>}
+ */
+function runOnceCaptured(cmd, extraEnv) {
+  return new Promise((resolve) => {
+    const child = spawn(cmd[0], cmd.slice(1), {
+      cwd: appsRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, ...extraEnv },
+    });
+
+    let output = "";
+    /** @type {string | undefined} */
+    let errorCode;
+
+    child.stdout.on("data", (chunk) => {
+      const text = String(chunk);
+      output += text;
+      process.stdout.write(text);
+    });
+    child.stderr.on("data", (chunk) => {
+      const text = String(chunk);
+      output += text;
+      process.stderr.write(text);
+    });
+    child.on("error", (err) => {
+      errorCode = /** @type {NodeJS.ErrnoException} */ (err).code;
+      resolve({ status: null, output, errorCode });
+    });
+    child.on("close", (status) => {
+      resolve({ status, output, errorCode });
+    });
+  });
+}
+
+/**
+ * @param {StepRun} result
+ * @returns {string}
+ */
+function exitDetail(result) {
+  if (result.status != null) {
+    return `exit ${result.status}`;
+  }
+  return `exit ${result.errorCode ?? "unknown"}`;
+}
+
+/**
  * @param {string} label
  * @param {string[]} cmd
  * @param {Record<string, string>} [extraEnv]
  * @param {number} [retries]
+ * @returns {Promise<boolean>}
  */
-function runStep(label, cmd, extraEnv = {}, retries = 0) {
+async function runStep(label, cmd, extraEnv = {}, retries = 0) {
   const line = cmd.join(" ");
   process.stdout.write(`\n${"─".repeat(72)}\n${label}\n${"─".repeat(72)}\n→ ${line}\n\n`);
 
+  if (retries === 0) {
+    const result = runOnceInherit(cmd, extraEnv);
+    const ok = result.status === 0;
+    results.push({
+      label,
+      ok,
+      detail: ok ? undefined : exitDetail(result),
+    });
+    return ok;
+  }
+
   let attempt = 0;
-  /** @type {import("node:child_process").SpawnSyncReturns<string>} */
+  /** @type {StepRun} */
   let result;
   while (attempt <= retries) {
     if (attempt > 0) {
@@ -72,24 +156,13 @@ function runStep(label, cmd, extraEnv = {}, retries = 0) {
       );
     }
 
-    result = spawnSync(cmd[0], cmd.slice(1), {
-      cwd: appsRoot,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, ...extraEnv },
-    });
-
-    const stdout = result.stdout ?? "";
-    const stderr = result.stderr ?? "";
-    process.stdout.write(stdout);
-    process.stderr.write(stderr);
+    result = await runOnceCaptured(cmd, extraEnv);
 
     if (result.status === 0) {
       break;
     }
 
-    const combined = `${stdout}${stderr}`;
-    const isBrowserDrop = combined.includes(BROWSER_CONNECTION_CLOSED);
+    const isBrowserDrop = result.output.includes(BROWSER_CONNECTION_CLOSED);
     if (!isBrowserDrop || attempt >= retries) {
       break;
     }
@@ -111,8 +184,8 @@ function runStep(label, cmd, extraEnv = {}, retries = 0) {
         ? `passed on retry ${attempt}`
         : undefined
       : attempt > 0
-        ? `exit ${result.status ?? "unknown"} after ${attempt + 1} attempts`
-        : `exit ${result.status ?? "unknown"}`,
+        ? `${exitDetail(result)} after ${attempt + 1} attempts`
+        : exitDetail(result),
   });
   return ok;
 }
@@ -128,7 +201,7 @@ for (const step of steps) {
     });
     continue;
   }
-  if (!runStep(step.label, step.cmd, step.env, step.retries ?? 0)) {
+  if (!(await runStep(step.label, step.cmd, step.env, step.retries ?? 0))) {
     passed = false;
   }
 }
