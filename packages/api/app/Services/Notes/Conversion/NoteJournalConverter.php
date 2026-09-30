@@ -7,6 +7,7 @@ namespace App\Services\Notes\Conversion;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarObject;
+use App\Services\VObject\ComponentProperty;
 use App\Services\VObject\ICalendarDateTime;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -34,18 +35,18 @@ final class NoteJournalConverter
         ]);
         $title = $note['title'] ?? null;
         if (is_string($title)) {
-            $journal->SUMMARY = $title;
+            ComponentProperty::replace($journal, 'SUMMARY', $title);
         }
         if ($body !== '') {
-            $journal->DESCRIPTION = $body;
+            ComponentProperty::replace($journal, 'DESCRIPTION', $body);
         }
         $categories = $note['categories'] ?? [];
         if (is_array($categories) && $categories !== []) {
-            $journal->CATEGORIES = array_values(array_map('strval', $categories));
+            ComponentProperty::replace($journal, 'CATEGORIES', array_values(array_map('strval', $categories)));
         }
         $status = $note['status'] ?? null;
         if ($status === 'CANCELLED' || $status === 'FINAL') {
-            $journal->STATUS = $status;
+            ComponentProperty::replace($journal, 'STATUS', $status);
         }
 
         return $calendar->serialize();
@@ -85,7 +86,7 @@ final class NoteJournalConverter
         if (array_key_exists('title', $patch)) {
             $title = $patch['title'];
             if (is_string($title)) {
-                $journal->SUMMARY = $title;
+                ComponentProperty::replace($journal, 'SUMMARY', $title);
             } else {
                 unset($journal->SUMMARY);
             }
@@ -93,7 +94,7 @@ final class NoteJournalConverter
         if (array_key_exists('body', $patch)) {
             $body = is_string($patch['body']) ? $patch['body'] : '';
             if ($body !== '') {
-                $journal->DESCRIPTION = $body;
+                ComponentProperty::replace($journal, 'DESCRIPTION', $body);
             } else {
                 unset($journal->DESCRIPTION);
             }
@@ -101,13 +102,13 @@ final class NoteJournalConverter
         if (array_key_exists('categories', $patch) && is_array($patch['categories'])) {
             unset($journal->CATEGORIES);
             if ($patch['categories'] !== []) {
-                $journal->CATEGORIES = array_values(array_map('strval', $patch['categories']));
+                ComponentProperty::replace($journal, 'CATEGORIES', array_values(array_map('strval', $patch['categories'])));
             }
         }
         if (array_key_exists('status', $patch)) {
             $status = $patch['status'];
             if ($status === 'CANCELLED' || $status === 'FINAL') {
-                $journal->STATUS = $status;
+                ComponentProperty::replace($journal, 'STATUS', $status);
             } else {
                 unset($journal->STATUS);
             }

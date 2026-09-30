@@ -19,7 +19,6 @@ use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Component\VTodo;
 use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
-use Sabre\VObject\Property\ICalendar\Duration as IcsDuration;
 use Sabre\VObject\Reader;
 use Sabre\VObject\Recur\EventIterator;
 
@@ -288,9 +287,6 @@ final class AlertDueScheduler
     {
         $duration = $component->DURATION ?? null;
         if ($duration !== null) {
-            if (! $duration instanceof IcsDuration) {
-                return $start;
-            }
             try {
                 return $start->add($duration->getDateInterval());
             } catch (\Throwable $e) {

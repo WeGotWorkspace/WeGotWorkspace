@@ -6,6 +6,7 @@ namespace App\Services\Chat\Conversion;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarObject;
+use App\Services\VObject\ComponentProperty;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
@@ -63,7 +64,7 @@ final class ChatMessageJournalConverter
             'UID' => self::normalizeUlid((string) $message['id']),
             'DTSTAMP' => $createdAt->setTimezone(new DateTimeZone('UTC')),
         ]);
-        $journal->DESCRIPTION = $body;
+        ComponentProperty::replace($journal, 'DESCRIPTION', $body);
         $journal->add('X-WGW-AUTHOR', (string) $message['author']);
         $parentId = $message['parentId'] ?? null;
         if (is_string($parentId) && $parentId !== '') {
@@ -86,7 +87,7 @@ final class ChatMessageJournalConverter
                 $journal->add('X-WGW-MENTIONS', json_encode($normalized, JSON_UNESCAPED_UNICODE));
             }
         }
-        $journal->SEQUENCE = 0;
+        ComponentProperty::replace($journal, 'SEQUENCE', 0);
 
         return $calendar->serialize();
     }
@@ -99,8 +100,8 @@ final class ChatMessageJournalConverter
         $this->assertBodySize($body);
         [$calendar, $journal] = $this->readJournal($ics);
 
-        $journal->DESCRIPTION = $body;
-        $journal->SEQUENCE = $this->sequenceOf($journal) + 1;
+        ComponentProperty::replace($journal, 'DESCRIPTION', $body);
+        ComponentProperty::replace($journal, 'SEQUENCE', $this->sequenceOf($journal) + 1);
         unset($journal->{'LAST-MODIFIED'});
         $journal->add('LAST-MODIFIED', $editedAt->setTimezone(new DateTimeZone('UTC')));
 
@@ -120,7 +121,7 @@ final class ChatMessageJournalConverter
             return $ics;
         }
 
-        $journal->STATUS = 'CANCELLED';
+        ComponentProperty::replace($journal, 'STATUS', 'CANCELLED');
         unset($journal->DESCRIPTION);
         $journal->add('X-WGW-DELETED-AT', $this->formatUtc($deletedAt));
 
