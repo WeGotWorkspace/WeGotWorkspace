@@ -134,6 +134,25 @@ describe("PWA icon artwork", () => {
     }
   });
 
+  it("keeps the home install icon off the in-app suite mark", () => {
+    const install = readFileSync(join(sourceDir, "home-pwa.svg"), "utf8");
+    const inApp = readFileSync(join(sourceDir, "home.svg"), "utf8");
+
+    expect(install).toContain('viewBox="0 0 60 60"');
+    expect(install).toContain('fill="var(--color-we-got-dark, #003311)"');
+    expect(install).toContain('fill="url(#home-pwa-clover)"');
+    expect(install).toContain('stop-color="var(--color-we-got-blue, #0045ff)"');
+    expect(install).toContain('stop-color="var(--color-we-got-brat, #8ace00)"');
+    expect(install).not.toContain("--wai-");
+    const raster = svgForRasterization(install);
+    expect(raster).not.toContain("var(");
+    expect(raster).toContain("#003311");
+    expect(raster).toContain("#0045ff");
+    expect(raster).toContain("#8ace00");
+    expect(inApp).toContain('viewBox="0 0 270 270"');
+    expect(inApp).not.toContain("linearGradient");
+  });
+
   it("keeps every source SVG a full-bleed square", () => {
     const sources = readdirSync(sourceDir).filter((name) => name.endsWith(".svg"));
     expect(sources.length).toBeGreaterThan(0);

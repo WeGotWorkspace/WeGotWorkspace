@@ -105,7 +105,9 @@ function workspacePwaAppleTouchSrc(app: WorkspacePwaAppKey): string {
 }
 
 function workspacePwaIconSvgSrc(app: WorkspacePwaAppKey): string {
-  return app === "home" ? cacheBust("/app-icons/home.svg") : cacheBust(workspaceAppIconUiSrc(app));
+  return app === "home"
+    ? cacheBust("/app-icons/home-pwa.svg")
+    : cacheBust(workspaceAppIconUiSrc(app));
 }
 
 export function createWorkspacePwaHead(

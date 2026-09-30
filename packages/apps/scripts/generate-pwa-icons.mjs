@@ -7,6 +7,7 @@
  *
  * Output:
  *   - `public/app-icons/{app}.svg` — copied verbatim for in-app UI
+ *   - `public/app-icons/home-pwa.svg` — `/` favicon only; not the in-app suite mark
  *   - `public/pwa-icons/{app}-{180,192,512}.png` — opaque PNG-24
  *   - `public/pwa-icons/{app}-512-maskable.png` — same artwork at 80%, padded
  *   - `public/manifests/{app}.webmanifest` — PNG icons only, when the file exists
@@ -15,16 +16,19 @@
  * head, and only then falls back to manifest icons. This shell injects both
  * links after hydration, so the manifest PNGs matter when Safari reads the
  * manifest and not the touch link. The source SVG is not a manifest icon: its
- * fills use `var(--wai-*)`, which are unreliable in an external image, and
+ * fills use CSS variables, which are unreliable in an external image, and
  * `sizes: "any"` would outrank the PNGs.
  *
  * Icon query strings come from `src/lib/pwa-icon-cache-version.json`. Bump
  * `version` there and re-run this script. Do not parse the TypeScript module.
  *
- * Switch-trigger inversion uses the same SVG with `--wai-*` CSS vars (see workspace-app-icon.css).
+ * Switch-trigger inversion uses the in-app SVG with `--wai-*` CSS vars (see workspace-app-icon.css).
  * Brand fills nest a `--color-we-got-*` token inside that fallback. Rasterization
  * peels both layers down to the hex (see pwa-icon-raster.mjs). Cream is
  * `--color-we-got-soft`. White has no brand token and stays `#ffffff`.
+ * `home-pwa.svg` is the `/` install tile and favicon. It is never inlined, so
+ * its fills are brand tokens with a hex fallback and no `--wai-*` layer.
+ * `home.svg` stays the in-app suite mark.
  *
  * SVG rasterization uses `rsvg-convert` (librsvg). ImageMagick 6's SVG renderer
  * drops `clip-path` glyphs. ImageMagick (`magick`, or `convert` on ImageMagick 6)
@@ -69,6 +73,10 @@ const WORKSPACE_APPS = [
 const FUTURE_APPS = ["reminders"];
 /** Shell / suite PWA manifest (home.webmanifest) — full-bleed launcher tile, not a home-grid app. */
 const SHELL_APPS = ["home"];
+/**
+ * `/` install PNGs and favicon. Kept off `home.svg`, which is the in-app suite mark.
+ */
+const HOME_INSTALL_SOURCE = "home-pwa.svg";
 const ALL_APPS = [...WORKSPACE_APPS, ...FUTURE_APPS, ...SHELL_APPS];
 const INSTALL_APPS = [...WORKSPACE_APPS, ...SHELL_APPS];
 const RASTER_SIZES = [180, 192, 512];
@@ -242,9 +250,28 @@ for (const app of ALL_APPS) {
   const destSvg = join(uiDir, `${app}.svg`);
   copyFileSync(srcSvg, destSvg);
 
+  let rasterMarkup = markup;
+  if (app === "home") {
+    const installSrc = join(sourceDir, HOME_INSTALL_SOURCE);
+    if (!existsSync(installSrc)) {
+      console.error(`Missing home install source: ${installSrc}`);
+      failed = true;
+      continue;
+    }
+    try {
+      rasterMarkup = assertVectorSvg("home-pwa", installSrc);
+      assertFullBleedSquare("home-pwa", rasterMarkup);
+    } catch (err) {
+      console.error(err.message);
+      failed = true;
+      continue;
+    }
+    copyFileSync(installSrc, join(uiDir, HOME_INSTALL_SOURCE));
+  }
+
   if (INSTALL_APPS.includes(app)) {
     const rasterSvg = join(pwaDir, `.${app}-raster.svg`);
-    writeFileSync(rasterSvg, svgForRasterization(markup));
+    writeFileSync(rasterSvg, svgForRasterization(rasterMarkup));
     for (const size of RASTER_SIZES) {
       rasterizePng(rasterSvg, size, join(pwaDir, `${app}-${size}.png`));
     }

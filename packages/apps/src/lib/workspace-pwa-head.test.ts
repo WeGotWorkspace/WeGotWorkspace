@@ -57,7 +57,7 @@ describe("createWorkspacePwaHead", () => {
         {
           rel: "icon",
           type: "image/svg+xml",
-          href: `/app-icons/home.svg?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
+          href: `/app-icons/home-pwa.svg?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
         },
       ]),
     );

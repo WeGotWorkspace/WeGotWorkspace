@@ -89,8 +89,12 @@ describe("workspace PWA manifests", () => {
     }
   });
 
-  it("publishes a full-bleed home svg instead of a 60px mark", () => {
+  it("keeps the in-app home mark separate from the / install icon", () => {
     const svg = readFileSync(join(import.meta.dirname, "../../public/app-icons/home.svg"), "utf8");
+    const install = readFileSync(
+      join(import.meta.dirname, "../../public/app-icons/home-pwa.svg"),
+      "utf8",
+    );
     const version = WORKSPACE_PWA_ICON_CACHE_VERSION;
     const raw = readFileSync(join(manifestsDir, "home.webmanifest"), "utf8");
 
@@ -98,6 +102,12 @@ describe("workspace PWA manifests", () => {
     expect(svg).toContain('fill="var(--wai-bg, #1b1d3a)"');
     expect(svg).toContain('fill="var(--wai-fg, #fff5e9)"');
     expect(svg).not.toContain('width="60"');
+    expect(svg).not.toContain("linearGradient");
+    expect(install).toContain('viewBox="0 0 60 60"');
+    expect(install).toContain('fill="var(--color-we-got-dark, #003311)"');
+    expect(install).toContain('stop-color="var(--color-we-got-blue, #0045ff)"');
+    expect(install).toContain('stop-color="var(--color-we-got-brat, #8ace00)"');
+    expect(install).not.toContain("--wai-");
     expect(raw).toContain(`"/pwa-icons/home-512.png?v=${version}"`);
     expect(raw).not.toMatch(/\.svg/);
   });
