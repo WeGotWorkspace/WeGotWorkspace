@@ -15,6 +15,14 @@ CHANNEL=docker DB=mariadb pnpm test:install-e2e
 
 `CHANNEL` is `zip` or `docker`. `DB` is `sqlite` or `mariadb`. Docker cells build `docker/install/Dockerfile.runtime` locally when `WGW_INSTALL_E2E_IMAGE` is unset. They never build `docker/install/Dockerfile`.
 
+## Upgrade from v0.1.99
+
+`pnpm test:upgrade-e2e` installs the published `ghcr.io/wegotworkspace/wegotworkspace:0.1.99` image, seeds an admin, a second user, a calendar event, a drive file, and a contact, then recreates the container from the current tree with the same volumes. The current image is `docker/install/Dockerfile.upgrade-target` unless `WGW_UPGRADE_TO_IMAGE` is already set.
+
+Verification uses `POST /api/v1/auth/token` and sends that JWT on JMAP `Calendar/get`, `CalendarEvent/get`, `FileNode/get`, and `ContactCard/get`. WebDAV `PROPFIND` and CalDAV/CardDAV `REPORT` use HTTP Basic, which is the DAV login. Mail is not part of the fixture.
+
+CI runs this on every pull request (`upgrade-e2e` in `.github/workflows/ci.yml`). The install matrix also runs it as cell `upgrade-from-v0.1.99`, passing the candidate digest as `WGW_UPGRADE_TO_IMAGE`.
+
 `composer install` runs only when you set `WGW_INSTALL_E2E_DEV_COMPOSER=1` for a local tree that is not a release ZIP. CI never sets that flag.
 
 ## CI

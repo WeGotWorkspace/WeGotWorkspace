@@ -18,6 +18,9 @@ on:
       - "packages/apps/src/login-core/**"
       - "tools/build-wegotworkspace-release.mjs"
       - "tools/e2e-install-matrix.sh"
+      - "tools/e2e-upgrade-from-v0.1.99.sh"
+      - "tools/upgrade-e2e/**"
+      - "docker/install/Dockerfile.upgrade-target"
       - "tools/ghcr-delete-old-candidates.sh"
       - "package.json"
       - ".github/workflows/install-e2e.yml"
@@ -43,7 +46,7 @@ jobs:
       contents: read
       packages: read
     with:
-      cells: '["zip-sqlite","zip-mariadb","docker-sqlite","docker-mariadb"]'
+      cells: '["zip-sqlite","zip-mariadb","docker-sqlite","docker-mariadb","upgrade-from-v0.1.99"]'
       image: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.amd64_digest }}
 
   cleanup:
