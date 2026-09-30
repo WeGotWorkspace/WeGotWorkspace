@@ -515,8 +515,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v6.1.0
-
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -537,8 +535,10 @@ jobs:
         id: check
         run: |
           set +e
-          node tools/coverage-ratchet.mjs check
+          # One run. JSON on stdout, human text on stderr. tee waits before the step exits.
+          node tools/coverage-ratchet.mjs check --json > coverage-ratchet.json 2> >(tee coverage-ratchet.txt >&2)
           CODE=$?
+          wait
           set -e
           echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
           if [[ $CODE -eq 2 ]]; then
@@ -559,34 +559,33 @@ jobs:
         run: |
           set -euo pipefail
 
-          set +e
-          FAILURE_OUTPUT=$(node tools/coverage-ratchet.mjs check 2>&1)
-          set -e
-
           gh label create coverage-regression --color d73a4a --description "Coverage regression on main" --force
 
           ISSUE_NUMBER=$(gh issue list --label "coverage-regression" --state open --json number --jq '.[0].number // empty')
 
-          REPORT="## Coverage Regression Detected
-
-          **Run:** ${{ github.run_id }}
-          **Commit:** ${{ github.sha }}
-          **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-
-          ```
-          ${FAILURE_OUTPUT}
-          ```
-
-          Coverage per package can only go up. Please investigate and fix the regression."
+          # Quoted pieces only. The saved report is appended as data, so backticks
+          # and $(...) in the check output are not command substitutions.
+          BODY_FILE=$(mktemp)
+          DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          {
+            printf '%s\n' "## Coverage Regression Detected" ""
+            printf '%s\n' "**Run:** ${{ github.run_id }}"
+            printf '%s\n' "**Commit:** ${{ github.sha }}"
+            printf '%s\n' "**Date:** ${DATE}" ""
+            printf '%s\n' '```'
+            cat coverage-ratchet.txt
+            printf '%s\n' '```' ""
+            printf '%s\n' "Coverage per package can only go up. Please investigate and fix the regression."
+          } > "$BODY_FILE"
 
           if [[ -n "$ISSUE_NUMBER" ]]; then
-            gh issue comment "$ISSUE_NUMBER" --body "$REPORT"
+            gh issue comment "$ISSUE_NUMBER" --body-file "$BODY_FILE"
             echo "Commented on existing issue #$ISSUE_NUMBER"
           else
             gh issue create \
               --title "Coverage regression detected on main" \
               --label "coverage-regression" \
-              --body "$REPORT"
+              --body-file "$BODY_FILE"
             echo "Opened new coverage-regression issue"
           fi
 
@@ -597,48 +596,36 @@ jobs:
         run: |
           set -euo pipefail
 
-          INCREASES_OUTPUT=$(node tools/coverage-ratchet.mjs check 2>&1 || true)
-
           node tools/coverage-ratchet.mjs update
 
           {
             echo "## Coverage Baseline Proposal"
             echo ""
-            echo "### New, increased, or removed packages"
+            echo "Existing keys stay at max(baseline, current). A drop is not written into the baseline."
             echo ""
 
-            if echo "$INCREASES_OUTPUT" | grep -q "📈 Coverage increases detected"; then
+            if jq -e '.increases | length > 0' coverage-ratchet.json >/dev/null; then
               echo "**Increases:**"
               echo ""
               echo "| Package | From | To |"
               echo "|---------|------|-----|"
-              echo "$INCREASES_OUTPUT" | sed -n '/📈 Coverage increases detected/,/^$/p' | grep -E '^\s+packages/' | sed 's/^\s*//' | while read -r line; do
-                if [[ $line =~ (.+):[[:space:]]+([0-9.]+)%[[:space:]]+→[[:space:]]+([0-9.]+)% ]]; then
-                  echo "| \`${BASH_REMATCH[1]}\` | ${BASH_REMATCH[2]}% | ${BASH_REMATCH[3]}% |"
-                fi
-              done
+              jq -r '.increases[] | "| `" + .pkg + "` | " + (.from | tostring) + "% | " + (.to | tostring) + "% |"' coverage-ratchet.json
               echo ""
             fi
 
-            if echo "$INCREASES_OUTPUT" | grep -q "📦 New packages detected"; then
+            if jq -e '.proposals | length > 0' coverage-ratchet.json >/dev/null; then
               echo "**New packages:**"
               echo ""
               echo "| Package | Coverage |"
               echo "|---------|----------|"
-              echo "$INCREASES_OUTPUT" | sed -n '/📦 New packages detected/,/^$/p' | grep -E '^\s+packages/' | sed 's/^\s*//' | while read -r line; do
-                if [[ $line =~ (.+):[[:space:]]+([0-9.]+)% ]]; then
-                  echo "| \`${BASH_REMATCH[1]}\` | ${BASH_REMATCH[2]}% |"
-                fi
-              done
+              jq -r '.proposals[] | "| `" + .pkg + "` | " + (.pct | tostring) + "% |"' coverage-ratchet.json
               echo ""
             fi
 
-            if echo "$INCREASES_OUTPUT" | grep -q "package missing from current coverage"; then
+            if jq -e '.missing | length > 0' coverage-ratchet.json >/dev/null; then
               echo "**Baseline keys absent from the report:**"
               echo ""
-              echo '```'
-              echo "$INCREASES_OUTPUT" | grep "package missing from current coverage"
-              echo '```'
+              jq -r '.missing[] | "- `" + . + "`"' coverage-ratchet.json
               echo ""
             fi
 

@@ -41,7 +41,13 @@ Handoff and PR verification: [developer/done-checklist.md](../developer/done-che
 
 ## Coverage ratchet
 
-Per-package coverage can only go up. Run `node tools/coverage-ratchet.mjs update` after raising coverage in a PR. The baseline lives in `tools/coverage-baseline.json`.
+Per-package line coverage can only go up. The baseline lives in `tools/coverage-baseline.json`.
+
+The `coverage-ratchet` job runs on push to `main`, after `api-coverage` and `apps-coverage`. It is a post-merge signal: a drop opens or comments on a `coverage-regression` issue and fails that job. It does not run on pull requests and it is not a required PR check.
+
+API coverage counts only `packages/api/app/Services/<Domain>`, from clover paths under `app/Services/`. Controllers, models, and the rest of `packages/api` are outside the ratchet. `packages/apps/src/mail-core` and `packages/api/app/Services/Mail` are excluded while they stay unshipped for v0.9.
+
+`node tools/coverage-ratchet.mjs check` compares the reports to the baseline. `check --json` prints that report as JSON on stdout. `update` sets each existing key to `max(baseline, current)`, adds new keys, and drops keys that are gone. It does not record a drop, including a drop under the 0.5 point threshold. Run `update` after raising coverage, then commit the baseline.
 
 **SPA front routes:** new top-level apps router paths need `UiStaticServer` allowlist + `FrontRoutingTest` coverage (Architecture `SpaShellRouteAllowlistTest`). That is API done-gate territory. Storybook-tier Playwright (`apps-e2e`) does not cover new SPA prefixes.
 

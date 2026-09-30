@@ -5,14 +5,18 @@
  * Baseline is JSON:
  * { "packages/apps/src/<pkg>": <percentage>, "packages/api/app/Services/<Domain>": <percentage> }
  * Apps packages under src/lib use packages/apps/src/lib/<sub>.
+ * API coverage counts only app/Services/<Domain>. The rest of packages/api is outside this ratchet.
  * `check` exit codes, first match wins:
  * 3 — a required report is missing or unreadable (no comparison, no issue)
  * 1 — a package in a report that was read dropped more than 0.5 points
  *     and has at least 50 statements (beats increases and disappeared keys)
  * 2 — coverage increased, a package is new, or a baseline key is absent
  * 0 — reports were read and none of the above apply
- * `update` rewrites the baseline from the reports that were read.
+ * `update` keeps max(baseline, current) for existing keys, adds new keys,
+ * and drops keys that disappeared. A drop is never written into the baseline.
  * mail-core and Services/Mail are unshipped for v0.9 and are excluded.
+ * `check --json` prints the machine-readable report on stdout and the human
+ * report on stderr. Exit codes stay the same.
  */
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -21,13 +25,28 @@ import { fileURLToPath } from "node:url";
 export const THRESHOLD = 0.5;
 export const MIN_STATEMENTS = 50;
 
-const defaultRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const defaultRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+);
 const repoRoot = process.env.COVERAGE_RATCHET_ROOT || defaultRoot;
 const baselinePath = path.join(repoRoot, "tools/coverage-baseline.json");
-const appsCoveragePath = path.join(repoRoot, "packages/apps/coverage/coverage-summary.json");
-const appsCoverageUnitPath = path.join(repoRoot, "packages/apps/coverage/unit/coverage-summary.json");
-const appsCoverageJsdomPath = path.join(repoRoot, "packages/apps/coverage/jsdom/coverage-summary.json");
-const apiCoveragePath = path.join(repoRoot, "packages/api/build/logs/clover.xml");
+const appsCoveragePath = path.join(
+  repoRoot,
+  "packages/apps/coverage/coverage-summary.json",
+);
+const appsCoverageUnitPath = path.join(
+  repoRoot,
+  "packages/apps/coverage/unit/coverage-summary.json",
+);
+const appsCoverageJsdomPath = path.join(
+  repoRoot,
+  "packages/apps/coverage/jsdom/coverage-summary.json",
+);
+const apiCoveragePath = path.join(
+  repoRoot,
+  "packages/api/build/logs/clover.xml",
+);
 
 export function roundPct(value) {
   return Math.round(Number(value) * 100) / 100;
@@ -56,7 +75,8 @@ export function appsPackageKey(filePath) {
   const at = normalized.indexOf(marker);
   let rest = null;
   if (at !== -1) rest = normalized.slice(at + marker.length);
-  else if (normalized.startsWith("src/")) rest = normalized.slice("src/".length);
+  else if (normalized.startsWith("src/"))
+    rest = normalized.slice("src/".length);
   if (rest == null) return null;
 
   const parts = rest.split("/").filter(Boolean);
@@ -93,7 +113,10 @@ function percentagesFromBuckets(buckets) {
   const result = new Map();
   for (const [key, counts] of buckets) {
     if (counts.total <= 0) continue;
-    result.set(key, { pct: (counts.covered / counts.total) * 100, statements: counts.total });
+    result.set(key, {
+      pct: (counts.covered / counts.total) * 100,
+      statements: counts.total,
+    });
   }
   return result;
 }
@@ -132,7 +155,8 @@ export function coverageFromAppsSummaries(summaries) {
       if (filePath === "total") continue;
       const counts = lineCounts(stats);
       const previous = files.get(filePath);
-      if (!previous || counts.covered > previous.covered) files.set(filePath, counts);
+      if (!previous || counts.covered > previous.covered)
+        files.set(filePath, counts);
     }
   }
   const buckets = new Map();
@@ -143,7 +167,86 @@ export function coverageFromAppsSummaries(summaries) {
 }
 
 /**
- * Parse API clover.xml without xml2js - uses regex to extract file metrics
+ * File-level PHPUnit metrics include loc=. Class metrics inside <class> do not.
+ * Attribute order varies, and ncloc= must not count as loc=.
+ * @param {string} tag
+ * @returns {{ statements: number, covered: number } | null}
+ */
+function readMetricsTag(tag) {
+  const statements = /\bstatements="(\d+)"/.exec(tag);
+  const covered = /\bcoveredstatements="(\d+)"/.exec(tag);
+  if (!statements || !covered) return null;
+  return {
+    statements: Number(statements[1]),
+    covered: Number(covered[1]),
+  };
+}
+
+/**
+ * @param {string} body text inside one <file>…</file>
+ * @returns {{ statements: number, covered: number } | null}
+ */
+function fileLevelMetrics(body) {
+  /** @type {string[]} */
+  const tags = [];
+  let cursor = 0;
+  while (cursor < body.length) {
+    const start = body.indexOf("<metrics", cursor);
+    if (start === -1) break;
+    const end = body.indexOf(">", start);
+    if (end === -1) break;
+    tags.push(body.slice(start, end + 1));
+    cursor = end + 1;
+  }
+  if (tags.length === 0) return null;
+
+  for (let i = tags.length - 1; i >= 0; i -= 1) {
+    if (/(?:^|[\s])loc="/.test(tags[i])) return readMetricsTag(tags[i]);
+  }
+  return readMetricsTag(tags[tags.length - 1]);
+}
+
+/**
+ * One forward scan. Each file body is sliced once; the tail of the document is not.
+ * @param {string} xml
+ * @returns {Map<string, {pct: number, statements: number}>}
+ */
+export function coverageFromClover(xml) {
+  if (!xml.includes("<coverage")) {
+    throw new Error("API coverage file is not clover");
+  }
+
+  const buckets = new Map();
+  let cursor = 0;
+  while (cursor < xml.length) {
+    const fileStart = xml.indexOf("<file ", cursor);
+    if (fileStart === -1) break;
+    const tagEnd = xml.indexOf(">", fileStart);
+    if (tagEnd === -1) break;
+    const openTag = xml.slice(fileStart, tagEnd + 1);
+    const nameMatch = /\bname="([^"]*)"/.exec(openTag);
+    const fileEnd = xml.indexOf("</file>", tagEnd);
+    if (!nameMatch || fileEnd === -1) {
+      cursor = tagEnd + 1;
+      continue;
+    }
+    const metrics = fileLevelMetrics(xml.slice(tagEnd + 1, fileEnd));
+    if (metrics) {
+      addCounts(
+        buckets,
+        apiServiceKey(nameMatch[1]),
+        metrics.covered,
+        metrics.statements,
+      );
+    }
+    cursor = fileEnd + "</file>".length;
+  }
+
+  return percentagesFromBuckets(buckets);
+}
+
+/**
+ * Parse API clover.xml without xml2js.
  * @returns {Map<string, {pct: number, statements: number}>}
  */
 function parseApiCoverage() {
@@ -152,28 +255,7 @@ function parseApiCoverage() {
   }
 
   const xml = readFileSync(apiCoveragePath, "utf8");
-  const buckets = new Map();
-
-  // Match each <file name="..."> and its following <metrics statements="X" coveredstatements="Y">
-  const fileRegex = /<file name="([^"]+)"/g;
-  const metricsRegex = /<metrics[^>]+statements="(\d+)"[^>]+coveredstatements="(\d+)"/;
-
-  let match;
-  while ((match = fileRegex.exec(xml)) !== null) {
-    const filePath = match[1];
-    
-    // Find metrics in the text following this file tag
-    const afterFile = xml.slice(match.index);
-    const metricsMatch = afterFile.match(metricsRegex);
-    
-    if (metricsMatch) {
-      const statements = parseInt(metricsMatch[1], 10);
-      const coveredStatements = parseInt(metricsMatch[2], 10);
-      addCounts(buckets, apiServiceKey(filePath), coveredStatements, statements);
-    }
-  }
-
-  return percentagesFromBuckets(buckets);
+  return coverageFromClover(xml);
 }
 
 /**
@@ -185,8 +267,7 @@ function parseAppsCoverage() {
     const summary = JSON.parse(readFileSync(appsCoveragePath, "utf8"));
     return coverageFromAppsSummary(summary);
   }
-  
-  // Fallback to separate unit and jsdom reports
+
   const summaries = [];
   if (existsSync(appsCoverageUnitPath)) {
     summaries.push(JSON.parse(readFileSync(appsCoverageUnitPath, "utf8")));
@@ -194,11 +275,13 @@ function parseAppsCoverage() {
   if (existsSync(appsCoverageJsdomPath)) {
     summaries.push(JSON.parse(readFileSync(appsCoverageJsdomPath, "utf8")));
   }
-  
+
   if (summaries.length === 0) {
-    throw new Error(`Apps coverage files not found: ${appsCoveragePath}, ${appsCoverageUnitPath}, ${appsCoverageJsdomPath}`);
+    throw new Error(
+      `Apps coverage files not found: ${appsCoveragePath}, ${appsCoverageUnitPath}, ${appsCoverageJsdomPath}`,
+    );
   }
-  
+
   return coverageFromAppsSummaries(summaries);
 }
 
@@ -215,15 +298,27 @@ function readBaseline() {
 }
 
 /**
- * Write baseline
+ * Existing keys stay at max(baseline, current). New keys are copied.
+ * Keys absent from the report are omitted, so a rename drops the old key.
  * @param {Map<string, {pct: number, statements: number}>} coverage
+ * @param {Map<string, number>} baseline
  */
-function writeBaseline(coverage) {
+function writeBaseline(coverage, baseline) {
   const obj = {};
-  for (const [pkg, { pct }] of [...coverage.entries()].sort()) {
-    obj[pkg] = roundPct(pct);
+  for (const [pkg, { pct }] of [...coverage.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    const current = roundPct(pct);
+    const previous = baseline.get(pkg);
+    const previousPct =
+      previous === undefined ? undefined : roundPct(Number(previous));
+    obj[pkg] =
+      previousPct === undefined || !Number.isFinite(previousPct)
+        ? current
+        : Math.max(previousPct, current);
   }
-  writeFileSync(baselinePath, JSON.stringify(obj, null, 2) + "\n");
+  writeFileSync(baselinePath, `${JSON.stringify(obj, null, 2)}\n`);
+  return obj;
 }
 
 /**
@@ -242,35 +337,39 @@ function checkCoverage(current, baseline) {
   for (const [pkg, { pct: currentPct, statements }] of current) {
     const baselinePct = baseline.get(pkg);
     if (baselinePct === undefined) {
-      // New package - proposal
-      proposals.push({ pkg, pct: currentPct });
+      proposals.push({ pkg, pct: roundPct(currentPct) });
       continue;
     }
 
     const drop = roundPct(baselinePct) - roundPct(currentPct);
-    
+
     if (drop > THRESHOLD) {
       const msg = `${pkg}: coverage dropped from ${roundPct(baselinePct).toFixed(2)}% to ${roundPct(currentPct).toFixed(2)}% (${drop.toFixed(2)} points)`;
-      
+
       if (statements >= MIN_STATEMENTS) {
         errors.push(msg);
       } else {
         warnings.push(`${msg} (< ${MIN_STATEMENTS} statements, not enforced)`);
       }
     } else if (roundPct(currentPct) > roundPct(baselinePct) + 0.1) {
-      // Coverage increased
-      increases.push({ pkg, from: baselinePct, to: currentPct });
+      increases.push({
+        pkg,
+        from: roundPct(baselinePct),
+        to: roundPct(currentPct),
+      });
     }
   }
 
-  // A renamed or removed package is a baseline proposal, not a regression.
   for (const [pkg, baselinePct] of baseline) {
     if (!current.has(pkg)) {
       missing.push(pkg);
-      warnings.push(`${pkg}: package missing from current coverage (was ${roundPct(baselinePct).toFixed(2)}%)`);
+      warnings.push(
+        `${pkg}: package missing from current coverage (was ${roundPct(baselinePct).toFixed(2)}%)`,
+      );
     }
   }
 
+  missing.sort();
   return { errors, warnings, increases, proposals, missing };
 }
 
@@ -296,12 +395,61 @@ function loadReports() {
   return new Map([...appsCoverage, ...apiCoverage]);
 }
 
-// CLI
-const command = process.argv[2];
+/**
+ * @param {{errors: string[], warnings: string[], increases: Array<{pkg: string, from: number, to: number}>, proposals: Array<{pkg: string, pct: number}>}} report
+ * @param {{ info: (line: string) => void, error: (line: string) => void }} out
+ */
+function writeHumanReport(report, out) {
+  const { errors, warnings, increases, proposals } = report;
+  out.info("Checking coverage ratchet...\n");
 
-if (command === "check") {
-  console.log("Checking coverage ratchet...\n");
+  if (warnings.length > 0) {
+    out.info("⚠️  Warnings:\n");
+    for (const warning of warnings) out.info(`  ${warning}`);
+    out.info("");
+  }
 
+  if (increases.length > 0) {
+    out.info("📈 Coverage increases detected:\n");
+    for (const { pkg, from, to } of increases) {
+      out.info(`  ${pkg}: ${from.toFixed(2)}% → ${to.toFixed(2)}%`);
+    }
+    out.info("");
+  }
+
+  if (proposals.length > 0) {
+    out.info("📦 New packages detected:\n");
+    for (const { pkg, pct } of proposals) {
+      out.info(`  ${pkg}: ${pct.toFixed(2)}%`);
+    }
+    out.info("");
+  }
+
+  if (errors.length > 0) {
+    out.error("❌ Coverage ratchet check failed:\n");
+    for (const error of errors) out.error(`  ${error}`);
+    out.error(
+      "\nCoverage per package can only go up. Run 'node tools/coverage-ratchet.mjs update' after improving coverage.",
+    );
+    return;
+  }
+
+  out.info("✅ Coverage ratchet check passed");
+}
+
+function exitCodeFor(report) {
+  if (report.errors.length > 0) return 1;
+  if (
+    report.increases.length > 0 ||
+    report.proposals.length > 0 ||
+    report.missing.length > 0
+  ) {
+    return 2;
+  }
+  return 0;
+}
+
+function runCheck(json) {
   let current;
   try {
     current = loadReports();
@@ -311,62 +459,34 @@ if (command === "check") {
   }
 
   const baseline = readBaseline();
-
-  let errors;
-  let warnings;
-  let increases;
-  let proposals;
-  let missing;
+  let report;
   try {
-    ({ errors, warnings, increases, proposals, missing } = checkCoverage(current, baseline));
+    report = checkCoverage(current, baseline);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(3);
   }
-  
-  // Always show warnings
-  if (warnings.length > 0) {
-    console.log("⚠️  Warnings:\n");
-    for (const warning of warnings) {
-      console.log(`  ${warning}`);
-    }
-    console.log();
+
+  const push = (sink) => (line) => {
+    sink(`${line}\n`);
+  };
+  if (json) {
+    writeHumanReport(report, {
+      info: push(console.error),
+      error: push(console.error),
+    });
+    process.stdout.write(`${JSON.stringify(report)}\n`);
+  } else {
+    writeHumanReport(report, {
+      info: push(console.log),
+      error: push(console.error),
+    });
   }
 
-  // Show increases (for info)
-  if (increases.length > 0) {
-    console.log("📈 Coverage increases detected:\n");
-    for (const { pkg, from, to } of increases) {
-      console.log(`  ${pkg}: ${roundPct(from).toFixed(2)}% → ${roundPct(to).toFixed(2)}%`);
-    }
-    console.log();
-  }
-  
-  // Show new packages
-  if (proposals.length > 0) {
-    console.log("📦 New packages detected:\n");
-    for (const { pkg, pct } of proposals) {
-      console.log(`  ${pkg}: ${roundPct(pct).toFixed(2)}%`);
-    }
-    console.log();
-  }
-  
-  if (errors.length > 0) {
-    console.error("❌ Coverage ratchet check failed:\n");
-    for (const error of errors) {
-      console.error(`  ${error}`);
-    }
-    console.error("\nCoverage per package can only go up. Run 'node tools/coverage-ratchet.mjs update' after improving coverage.");
-    process.exit(1);
-  }
-  
-  console.log("✅ Coverage ratchet check passed");
+  process.exit(exitCodeFor(report));
+}
 
-  // 1 beats 2: a drop above already exited. Increases, new packages, and
-  // baseline keys that disappeared are all proposals.
-  process.exit(increases.length > 0 || proposals.length > 0 || missing.length > 0 ? 2 : 0);
-
-} else if (command === "update") {
+function runUpdate() {
   console.log("Updating coverage baseline...\n");
 
   let current;
@@ -376,16 +496,41 @@ if (command === "check") {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(3);
   }
-  
-  writeBaseline(current);
-  
-  console.log(`✅ Updated baseline with ${current.size} packages`);
-  for (const [pkg, { pct }] of [...current.entries()].sort()) {
-    console.log(`  ${pkg}: ${roundPct(pct).toFixed(2)}%`);
+
+  const written = writeBaseline(current, readBaseline());
+
+  console.log(
+    `✅ Updated baseline with ${Object.keys(written).length} packages`,
+  );
+  for (const [pkg, pct] of Object.entries(written)) {
+    const currentPct = roundPct(current.get(pkg).pct);
+    if (currentPct < pct) {
+      console.log(
+        `  ${pkg}: kept ${pct.toFixed(2)}% (report ${currentPct.toFixed(2)}%)`,
+      );
+    } else {
+      console.log(`  ${pkg}: ${pct.toFixed(2)}%`);
+    }
   }
   process.exit(0);
-  
-} else {
-  console.error("Usage: node tools/coverage-ratchet.mjs [check|update]");
+}
+
+const args = process.argv.slice(2);
+const command = args.find((arg) => !arg.startsWith("--"));
+const json = args.includes("--json");
+const unknown = args.filter((arg) => arg.startsWith("--") && arg !== "--json");
+
+if (unknown.length > 0 || (command !== "check" && command !== "update")) {
+  console.error(
+    "Usage: node tools/coverage-ratchet.mjs <check|update> [--json]",
+  );
   process.exit(3);
 }
+
+if (command === "update" && json) {
+  console.error("--json is only valid with check");
+  process.exit(3);
+}
+
+if (command === "check") runCheck(json);
+else runUpdate();
