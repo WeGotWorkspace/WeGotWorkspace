@@ -489,13 +489,13 @@ jobs:
             echo "no jsdom coverage blobs" >&2
             exit 1
           fi
-          if ! pnpm exec vitest --merge-reports=.vitest-reports --coverage.enabled --coverage.reporter=lcov,json-summary --coverage.reportsDirectory=coverage; then
+          if ! pnpm exec vitest --merge-reports=.vitest-reports --coverage.enabled --coverage.reporter=lcov --coverage.reporter=json-summary --coverage.reportsDirectory=coverage; then
             echo "Combined merge failed; writing separate unit and jsdom reports."
             mkdir -p .vitest-reports-unit .vitest-reports-jsdom
             cp .vitest-reports/blob-unit.json .vitest-reports-unit/
             find .vitest-reports -name 'blob-jsdom-*.json' -exec cp {} .vitest-reports-jsdom/ \;
-            pnpm exec vitest --merge-reports=.vitest-reports-unit --coverage.enabled --coverage.reporter=lcov,json-summary --coverage.reportsDirectory=coverage/unit
-            pnpm exec vitest --merge-reports=.vitest-reports-jsdom --coverage.enabled --coverage.reporter=lcov,json-summary --coverage.reportsDirectory=coverage/jsdom
+            pnpm exec vitest --merge-reports=.vitest-reports-unit --coverage.enabled --coverage.reporter=lcov --coverage.reporter=json-summary --coverage.reportsDirectory=coverage/unit
+            pnpm exec vitest --merge-reports=.vitest-reports-jsdom --coverage.enabled --coverage.reporter=lcov --coverage.reporter=json-summary --coverage.reportsDirectory=coverage/jsdom
           fi
 
       - uses: actions/upload-artifact@v7
