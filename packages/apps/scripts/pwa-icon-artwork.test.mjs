@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { assertFullBleedSquare } from "./pwa-icon-full-bleed.mjs";
+import { svgForRasterization } from "./pwa-icon-raster.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const sourceDir = join(here, "../src/assets/app-icons");
@@ -93,7 +94,45 @@ function isGlyphPixel(rgba, index, background) {
   return false;
 }
 
+const BRAND_ICON_TOKEN = {
+  admin: "--color-we-got-dark",
+  calendar: "--color-we-got-prince",
+  contacts: "--color-we-got-sky",
+  drive: "--color-we-got-brat",
+  mail: "--color-we-got-red",
+  meet: "--color-we-got-sand",
+  notes: "--color-we-got-yellow",
+  settings: "--color-we-got-dark",
+  tasks: "--color-we-got-pink",
+};
+
+describe("svgForRasterization", () => {
+  it("peels nested brand tokens down to the hex fallback", () => {
+    expect(
+      svgForRasterization('<rect fill="var(--wai-bg, var(--color-we-got-yellow, #ffc800))"/>'),
+    ).toBe('<rect fill="#ffc800"/>');
+  });
+
+  it("keeps a single-level white fallback", () => {
+    expect(svgForRasterization('<rect fill="var(--wai-fg, #ffffff)"/>')).toBe(
+      '<rect fill="#ffffff"/>',
+    );
+  });
+});
+
 describe("PWA icon artwork", () => {
+  it("nests a brand token inside --wai-* and keeps a hex fallback for install PNGs", () => {
+    for (const [app, token] of Object.entries(BRAND_ICON_TOKEN)) {
+      const markup = readFileSync(join(sourceDir, `${app}.svg`), "utf8");
+      expect(markup, app).toMatch(
+        new RegExp(`var\\(--wai-(?:bg|fg), var\\(${token}, #[0-9a-f]{6}\\)\\)`),
+      );
+      const raster = svgForRasterization(markup);
+      expect(raster, app).not.toContain("var(");
+      expect(raster, app).toMatch(/#[0-9a-f]{6}/);
+    }
+  });
+
   it("keeps every source SVG a full-bleed square", () => {
     const sources = readdirSync(sourceDir).filter((name) => name.endsWith(".svg"));
     expect(sources.length).toBeGreaterThan(0);

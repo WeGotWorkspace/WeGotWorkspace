@@ -22,6 +22,9 @@
  * `version` there and re-run this script. Do not parse the TypeScript module.
  *
  * Switch-trigger inversion uses the same SVG with `--wai-*` CSS vars (see workspace-app-icon.css).
+ * Brand fills nest a `--color-we-got-*` token inside that fallback. Rasterization
+ * peels both layers down to the hex (see pwa-icon-raster.mjs). White has no brand
+ * token and stays `#ffffff`.
  *
  * SVG rasterization uses `rsvg-convert` (librsvg). ImageMagick 6's SVG renderer
  * drops `clip-path` glyphs. ImageMagick (`magick`, or `convert` on ImageMagick 6)
@@ -40,6 +43,7 @@ import {
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertFullBleedSquare } from "./pwa-icon-full-bleed.mjs";
+import { svgForRasterization } from "./pwa-icon-raster.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageDir = join(__dirname, "..");
@@ -133,11 +137,6 @@ function assertVectorSvg(app, svgPath) {
     throw new Error(`${app}: SVG embeds raster data — use vector paths only (${svgPath})`);
   }
   return markup;
-}
-
-/** ImageMagick does not resolve CSS custom properties — inline var() fallbacks for install PNGs. */
-function svgForRasterization(markup) {
-  return markup.replace(/var\(\s*--[\w-]+\s*,\s*([^)]+?)\s*\)/g, "$1");
 }
 
 function rasterizePng(rasterSvg, size, dest) {
