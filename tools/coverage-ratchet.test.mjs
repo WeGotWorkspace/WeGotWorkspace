@@ -68,6 +68,14 @@ function runUpdate() {
   });
 }
 
+function runReseed() {
+  return execSync("node tools/coverage-ratchet.mjs update --reseed", {
+    cwd: repoRoot,
+    encoding: "utf8",
+    env: { ...process.env, COVERAGE_RATCHET_ROOT: tempDir },
+  });
+}
+
 function setBaseline(data) {
   writeFileSync(
     path.join(tempDir, "tools/coverage-baseline.json"),
@@ -397,6 +405,68 @@ describe("coverage-ratchet", () => {
     assert.equal(baseline["packages/apps/src/gone"], undefined);
   });
 
+  it("reseed lowers an existing key", () => {
+    setBaseline({ "packages/apps/src/button": 80.0 });
+    setAppsCoverage({
+      "packages/apps/src/button/src/button.tsx": {
+        lines: { covered: 150, total: 200 },
+      },
+    });
+    setApiCoverage(
+      `<?xml version="1.0"?><coverage><project></project></coverage>`,
+    );
+
+    const output = runReseed();
+    assert.match(
+      output,
+      /Reseeded baseline from current reports \(previous values ignored\)/,
+    );
+    assert.match(output, /packages\/apps\/src\/button: 80\.00% -> 75\.00%/);
+
+    assert.equal(getBaseline()["packages/apps/src/button"], 75.0);
+  });
+
+  it("reseed drops a key absent from the report", () => {
+    setBaseline({
+      "packages/apps/src/button": 80.0,
+      "packages/apps/src/gone": 50.0,
+    });
+    setAppsCoverage({
+      "packages/apps/src/button/src/button.tsx": {
+        lines: { covered: 160, total: 200 },
+      },
+    });
+    setApiCoverage(
+      `<?xml version="1.0"?><coverage><project></project></coverage>`,
+    );
+
+    const output = runReseed();
+    assert.match(output, /packages\/apps\/src\/gone: 50\.00% -> removed/);
+
+    const baseline = getBaseline();
+    assert.equal(baseline["packages/apps/src/button"], 80.0);
+    assert.equal(baseline["packages/apps/src/gone"], undefined);
+  });
+
+  it("check --reseed exits 3", () => {
+    let status = 0;
+    let stderr = "";
+    try {
+      execSync("node tools/coverage-ratchet.mjs check --reseed", {
+        cwd: repoRoot,
+        encoding: "utf8",
+        env: { ...process.env, COVERAGE_RATCHET_ROOT: tempDir },
+      });
+    } catch (err) {
+      status = err.status;
+      stderr = err.stderr;
+    }
+
+    assert.equal(status, 3);
+    assert.match(stderr, /--reseed is only valid with update/);
+    assert.match(stderr, /Usage:/);
+  });
+
   it("check --json prints the report on stdout and keeps the exit code", () => {
     setBaseline({ "packages/apps/src/button": 75.0 });
     setAppsCoverage({
@@ -448,6 +518,9 @@ describe("coverage-ratchet", () => {
     assert.equal(job.includes("REPORT="), false);
     assert.match(job, /--body-file/);
     assert.match(job, /printf '%s\\n' '`{3}'/);
+    assert.match(job, /!cancelled\(\)/);
+    const continued = job.match(/continue-on-error: true/g) ?? [];
+    assert.equal(continued.length, 2);
   });
 
   it("aggregates lib/<sub> packages separately", () => {

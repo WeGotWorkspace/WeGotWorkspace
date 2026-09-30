@@ -43,11 +43,13 @@ Handoff and PR verification: [developer/done-checklist.md](../developer/done-che
 
 Per-package line coverage can only go up. The baseline lives in `tools/coverage-baseline.json`.
 
-The `coverage-ratchet` job runs on push to `main`, after `api-coverage` and `apps-coverage`. It is a post-merge signal: a drop opens or comments on a `coverage-regression` issue and fails that job. It does not run on pull requests and it is not a required PR check.
+The `coverage-ratchet` job runs on push to `main` when the workflow is not cancelled, after `api-coverage` and `apps-coverage`. A failed coverage job does not skip it: a missing report exits 3 and fails the ratchet job, and does not open an issue. A drop opens or comments on a `coverage-regression` issue and fails that job. It does not run on pull requests and it is not a required PR check.
 
 API coverage counts only `packages/api/app/Services/<Domain>`, from clover paths under `app/Services/`. Controllers, models, and the rest of `packages/api` are outside the ratchet. `packages/apps/src/mail-core` and `packages/api/app/Services/Mail` are excluded while they stay unshipped for v0.9.
 
 `node tools/coverage-ratchet.mjs check` compares the reports to the baseline. `check --json` prints that report as JSON on stdout. `update` sets each existing key to `max(baseline, current)`, adds new keys, and drops keys that are gone. It does not record a drop, including a drop under the 0.5 point threshold. Run `update` after raising coverage, then commit the baseline.
+
+`update --reseed` writes the current report as-is and drops keys the report does not contain. It prints each key that went down and each key that disappeared. It exists only to align the baseline with the first CI-measured report (the current apps baseline came from a local merge). It is not a way to accept a regression. A pull request that reseeds must say why and link the CI run whose artifacts it used.
 
 **SPA front routes:** new top-level apps router paths need `UiStaticServer` allowlist + `FrontRoutingTest` coverage (Architecture `SpaShellRouteAllowlistTest`). That is API done-gate territory. Storybook-tier Playwright (`apps-e2e`) does not cover new SPA prefixes.
 
