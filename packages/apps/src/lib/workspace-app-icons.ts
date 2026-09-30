@@ -47,14 +47,6 @@ export function workspaceAppIconUiSrc(appId: WorkspaceAppId): string {
 }
 
 /**
- * Historical alias of {@link workspaceAppIconUiSrc}. Install manifests use the
- * PNGs from `generate-pwa-icons.mjs`, not this path.
- */
-export function workspaceAppIconManifestSrc(appId: WorkspaceAppId): string {
-  return workspaceAppIconUiSrc(appId);
-}
-
-/**
  * 180×180 PNG for `<link rel="apple-touch-icon">`, from `generate-pwa-icons.mjs`.
  * WebKit uses that link when it is in the document head. This shell injects it
  * from the router, so a client that only reads the raw HTML still depends on
@@ -82,7 +74,7 @@ export const WORKSPACE_HOME_ACCENT = "#1B1D3A";
 export function workspaceAppIconSrc(appId: WorkspaceAppId, size = APPLE_TOUCH_SIZE): string {
   return size === APPLE_TOUCH_SIZE
     ? workspaceAppIconAppleTouchSrc(appId)
-    : workspaceAppIconManifestSrc(appId);
+    : workspaceAppIconUiSrc(appId);
 }
 
 export function isWorkspaceAppId(value: string): value is WorkspaceAppId {

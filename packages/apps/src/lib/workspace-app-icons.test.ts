@@ -3,7 +3,6 @@ import {
   WORKSPACE_APP_ACCENT,
   WORKSPACE_APP_IDS,
   workspaceAppIconAppleTouchSrc,
-  workspaceAppIconManifestSrc,
   workspaceAppIconUiSrc,
   workspaceAppLabel,
   workspaceAppLabelFromPath,
@@ -87,12 +86,6 @@ describe("workspaceAppIconUiSrc mapping", () => {
     for (const appId of WORKSPACE_APP_IDS) {
       expect(workspaceAppIconUiSrc(appId)).toBe(`/app-icons/${appId}.svg`);
     }
-  });
-});
-
-describe("workspaceAppIconManifestSrc", () => {
-  it("keeps the in-app SVG path; install manifests use generated PNGs", () => {
-    expect(workspaceAppIconManifestSrc("mail")).toBe("/app-icons/mail.svg");
   });
 });
 
