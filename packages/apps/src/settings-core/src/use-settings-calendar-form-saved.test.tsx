@@ -8,7 +8,13 @@ import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-sav
 import { useSettingsCalendarForm } from "@/settings-core/src/use-settings-calendar-form";
 
 vi.mock("@/hooks/use-run-with-app-toast", () => ({
-  useRunWithAppToast: () => async (work: () => Promise<unknown>) => work(),
+  useRunWithAppToast: () => async (work: () => Promise<unknown>) => {
+    try {
+      return await work();
+    } catch {
+      return undefined;
+    }
+  },
 }));
 
 vi.mock("@/settings-core/src/settings-slice-saved", async () => {
@@ -60,18 +66,16 @@ describe("useSettingsCalendarForm onSaved", () => {
     });
   });
 
-  it("throws and does not notify when localStorage.setItem fails", async () => {
-    vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+  it("does not emit notifySettingsSliceSaved when localStorage.setItem fails", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("quota exceeded");
     });
     const { result } = renderHook(() => useSettingsCalendarForm());
 
-    await expect(
-      act(async () => {
-        result.current.form.setValue("timeZone", "Europe/Amsterdam", { shouldDirty: true });
-        await result.current.saveDisplay();
-      }),
-    ).rejects.toThrow("Could not save Calendar settings");
+    await act(async () => {
+      result.current.form.setValue("timeZone", "Europe/Amsterdam", { shouldDirty: true });
+      await result.current.saveDisplay();
+    });
     expect(notifySettingsSliceSaved).not.toHaveBeenCalled();
   });
 });

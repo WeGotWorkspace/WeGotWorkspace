@@ -83,7 +83,7 @@ describe("default-collection-prefs", () => {
 
   it("returns false when localStorage.setItem throws", () => {
     window.localStorage.clear();
-    const setItem = vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("quota exceeded");
     });
     expect(writeDefaultCollectionPrefs("tasks", { collectionId: "work" })).toBe(false);

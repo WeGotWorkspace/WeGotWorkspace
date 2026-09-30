@@ -66,7 +66,7 @@ describe("readCalendarDisplayPrefs / writeCalendarDisplayPrefs", () => {
     });
     expect(readCalendarDisplayPrefs()).toEqual({});
 
-    vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("quota exceeded");
     });
     expect(writeCalendarDisplayPrefs(validPrefs)).toBe(false);
