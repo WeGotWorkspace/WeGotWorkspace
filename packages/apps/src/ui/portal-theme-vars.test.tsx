@@ -8,6 +8,7 @@ import {
   isResolvedCssColor,
   PORTAL_THEME_BACKGROUND_VARS,
   PORTAL_THEME_COLOR_VARS,
+  portaledSurfaceElement,
   resolveCustomPropertyColor,
 } from "@/ui/portal-theme-vars";
 
@@ -152,6 +153,41 @@ describe("portal-theme-vars", () => {
     expect(hover.toLowerCase()).not.toMatch(/color-ink/);
     expect(hover).toMatch(/workspace-accent|#962fa8|rgba?\(|oklch\(/i);
     expect(target.style.getPropertyValue("--workspace-accent").trim()).toBe("#962fa8");
+  });
+
+  it("paints a portaled menu with the dialog paper, otherwise the main paper", () => {
+    const main = document.createElement("div");
+    main.className = "workspace-app-layout__main";
+    main.style.backgroundColor = "rgb(255, 251, 246)";
+    const dialog = document.createElement("div");
+    dialog.className = "overlay-paper";
+    dialog.style.backgroundColor = "rgb(255, 248, 228)";
+    const mainTrigger = document.createElement("button");
+    mainTrigger.className = "select-trigger";
+    mainTrigger.dataset.state = "open";
+    main.append(mainTrigger);
+    const dialogTrigger = document.createElement("button");
+    dialogTrigger.id = "dialog-select";
+    dialog.append(dialogTrigger);
+    document.body.append(main, dialog);
+
+    expect(portaledSurfaceElement(mainTrigger)).toBe(main);
+    expect(portaledSurfaceElement(dialogTrigger)).toBe(dialog);
+
+    const mainMenu = document.createElement("div");
+    mainMenu.id = "main-menu";
+    mainTrigger.setAttribute("aria-controls", mainMenu.id);
+    document.body.append(mainMenu);
+    bridgePortalThemeFromOpenTrigger(mainMenu);
+    expect(mainMenu.style.backgroundColor).toBe("rgb(255, 251, 246)");
+    expect(mainMenu.style.getPropertyValue("--color-popover").trim()).toBe("rgb(255, 251, 246)");
+
+    const dialogMenu = document.createElement("div");
+    dialogMenu.id = "dialog-menu";
+    dialogTrigger.setAttribute("aria-controls", dialogMenu.id);
+    document.body.append(dialogMenu);
+    bridgePortalThemeFromOpenTrigger(dialogMenu);
+    expect(dialogMenu.style.backgroundColor).toBe("rgb(255, 248, 228)");
   });
 
   it("overwrites seed washes with concrete colors when the engine resolves them", () => {

@@ -13,7 +13,10 @@
 .docs-home-workspace .docs-home-pane__header {
   @apply shrink-0 px-4 pb-3 pt-4 md:px-6 md:pt-6;
   border-bottom: 1px solid
-    var(--docs-border, color-mix(in oklch, var(--color-we-got-dark) 12%, transparent));
+    var(
+      --docs-border,
+      color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 12%, transparent)
+    );
 }
 
 .docs-home-workspace .docs-home-pane__body {

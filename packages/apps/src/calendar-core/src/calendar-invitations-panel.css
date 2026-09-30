@@ -11,7 +11,7 @@
   --workspace-accent-strong: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
-    var(--color-we-got-dark)
+    var(--sidebar-on, var(--color-we-got-dark))
   );
 }
 
@@ -22,10 +22,10 @@
     --docs-collab-sidebar-panel-wash,
     var(--docs-collab-sidebar-panel-wash-recipe, var(--app-sidebar-bg))
   );
-  --docs-collab-sidebar-panel-color: var(--docs-text, var(--color-we-got-dark));
+  --docs-collab-sidebar-panel-color: var(--docs-text, var(--sidebar-on, var(--color-we-got-dark)));
   --docs-collab-sidebar-panel-border-color: var(
     --docs-border,
-    color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+    color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 8%, transparent)
   );
 }
 

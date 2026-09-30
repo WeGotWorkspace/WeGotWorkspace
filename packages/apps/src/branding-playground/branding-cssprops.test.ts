@@ -5,6 +5,7 @@ import {
   BRANDING_APP_SIDEBAR_DEFAULTS,
   BRANDING_APP_WAI_DEFAULTS,
   brandingAppButtonPrimary,
+  brandingAppSidebarBg,
   brandingAppSidebarColorDefault,
   createAppBrandingCssprops,
   defaultAppBrandingCssprops,
@@ -74,6 +75,8 @@ describe("defaultAppBrandingCssprops", () => {
       );
       expect(map["button-primary-bg"]?.value).toBe(brandingAppButtonPrimary(appId).bg);
       expect(map["button-primary-fg"]?.value).toBe(brandingAppButtonPrimary(appId).fg);
+      expect(map["sidebar-bg"]?.value).toBe(brandingAppSidebarBg(appId));
+      expect(map["sidebar-on"]?.value).toBe("var(--color-we-got-dark)");
       expect(map["app-sidebar-bg"]).toBeUndefined();
       expect(map["app-sidebar-color"]).toBeUndefined();
       expect(map["wai-bg"]?.value).toBe(wai.bg);

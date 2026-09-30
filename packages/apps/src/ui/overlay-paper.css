@@ -1,38 +1,61 @@
 @import "../styles.css" reference;
 
 /**
- * Light dialogs and popovers use the login pair:
- * panel `--color-we-got-soft`, fields 6% / 8% Dark into Soft (oklab).
+ * Light dialogs and popovers use the main-area paper (`--workspace-surface`):
+ * 40% Soft mixed into white. Fields match that paper at rest. Focus adds a
+ * very light Dark wash. Primary buttons and switches are brand Dark, not the
+ * app icon color.
  *
- * Set on the portaled surface (`DialogContent`, `AlertDialogContent`,
- * `PopoverContent`). Do not change root `--background` / `--popover` — those
- * also paint the app shell, menus, and select dropdowns. Workspace panes keep
- * the softer `--workspace-surface` from `workspace-color.css`.
+ * The mix is repeated here because these surfaces portal to `document.body`
+ * and do not inherit the workspace rule. Do not change root `--background` /
+ * `--popover` — those also paint the app shell, menus, and select dropdowns.
  *
  * Dark Meet lobby (`.meet-dialog-surface`, `.meet-popover-surface`) opts out.
  * Inset cards use the panel paper (`--card-surface-bg: transparent`) so they
  * do not add a third gray wash.
  */
 .overlay-paper:not(.meet-dialog-surface):not(.meet-popover-surface) {
-  --workspace-surface: var(--color-we-got-soft);
-  --background: var(--color-we-got-soft);
-  --popover: var(--color-we-got-soft);
-  --card: var(--color-we-got-soft);
-  --color-background: var(--color-we-got-soft);
-  --color-popover: var(--color-we-got-soft);
-  --color-card: var(--color-we-got-soft);
-  --input-background: color-mix(in oklab, var(--color-we-got-dark) 6%, var(--color-we-got-soft));
+  --workspace-surface: color-mix(in oklch, var(--color-we-got-soft) 40%, #fff);
+  --background: var(--workspace-surface);
+  --popover: var(--workspace-surface);
+  --card: var(--workspace-surface);
+  --color-background: var(--workspace-surface);
+  --color-popover: var(--workspace-surface);
+  --color-card: var(--workspace-surface);
+  --input-background: var(--workspace-surface);
   --input-background-focus: color-mix(
-    in oklab,
-    var(--color-we-got-dark) 8%,
-    var(--color-we-got-soft)
-  );
-  --input-background-disabled: color-mix(
-    in oklab,
+    in oklch,
     var(--color-we-got-dark) 4%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
+  --input-background-disabled: var(--workspace-surface);
+  --button-primary-bg: var(--color-we-got-dark);
+  --button-primary-fg: #ffffff;
+  --button-outline-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent) 8%,
+    var(--workspace-surface)
+  );
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--workspace-accent) 12%,
+    var(--workspace-surface)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent) 16%,
+    var(--workspace-surface)
+  );
+  --button-outline-hover-color: var(--workspace-accent);
+  --button-ghost-hover-background: var(--button-outline-hover-background);
+  --menu-item-hover-background: var(--button-outline-hover-background);
+  --menu-item-selected-background: var(--button-outline-active-background);
+  --menu-item-selected-hover-background: var(--button-outline-active-hover-background);
+  --switch-off-bg: color-mix(in oklch, var(--workspace-accent) 18%, var(--workspace-surface));
+  --switch-on-bg: var(--workspace-accent);
+  --primary: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
   --card-surface-bg: transparent;
   --card-panel-bg: transparent;
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
 }

@@ -150,6 +150,18 @@ export function createAppBrandingCssprops(
       category: "App chrome",
       control: "text",
     },
+    "sidebar-bg": {
+      value: brandingAppSidebarBg(appId),
+      description: "Sidebar fill — icon color mixed into white. Tasks 20%, Notes 15%, others 5%.",
+      category: "App chrome",
+      control: "text",
+    },
+    "sidebar-on": {
+      value: "var(--color-we-got-dark)",
+      description: "Ink for text, borders, and icons.",
+      category: "App chrome",
+      control: "text",
+    },
   };
 
   // Only emit chrome overrides when callers opt in — otherwise `*-workspace.css`
@@ -193,6 +205,16 @@ export const BRANDING_APP_WAI_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg:
 };
 
 /**
+ * Production `--sidebar-bg`. Most apps mix 5% of the icon into white.
+ * Tasks and Notes use a stronger wash so pink and yellow still read.
+ */
+export function brandingAppSidebarBg(appId: WorkspaceAppId): string {
+  if (appId === "tasks") return "color-mix(in oklch, var(--wai-bg) 20%, #fff)";
+  if (appId === "notes") return "color-mix(in oklch, var(--wai-bg) 15%, #fff)";
+  return "color-mix(in oklch, var(--wai-bg) 5%, #fff)";
+}
+
+/**
  * Storybook primary-button controls. Defaults are the production declarations
  * in each `*-workspace.css`, so Themes starts identical to the app.
  */
@@ -213,10 +235,9 @@ export function brandingAppButtonPrimary(appId: WorkspaceAppId): { bg: string; f
  * Convenience: shared cream/ink + accent + production `--wai-*` for a workspace app.
  *
  * Omits `--app-sidebar-bg` and `--app-sidebar-color` so the decorator cannot
- * wipe `workspace-color.css` (Soft rail + Dark on-color). Accent follows Dark
- * and does not retint the rail. Primary button controls start at each app's
- * production `--button-primary-*`. Docs Themes uses Controls `fullAccentSidebar`
- * for the rail comparison instead of a `--app-sidebar-bg` cssprop default.
+ * wipe the Soft rail. `--sidebar-bg` and `--sidebar-on` are included because
+ * they match `workspace-color.css`; the decorator paints them only after a
+ * control changes. Accent follows Dark and does not retint the rail.
  */
 export function defaultAppBrandingCssprops(appId: WorkspaceAppId): BrandingCsspropsMap {
   return createAppBrandingCssprops(appId, {

@@ -19,19 +19,27 @@
  */
 :where(.admin-workspace, .settings-workspace, .notes-workspace, .mail-workspace) {
   --workspace-root-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(in oklab, var(--color-we-got-dark) 15%, transparent);
+  --app-sidebar-border-color: color-mix(
+    in oklab,
+    var(--sidebar-on, var(--color-we-got-dark)) 15%,
+    transparent
+  );
   --workspace-user-footer-text-color: color-mix(
     in oklab,
-    var(--color-we-got-dark) 80%,
+    var(--sidebar-on, var(--color-we-got-dark)) 80%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
     in oklab,
-    var(--color-we-got-dark) 18%,
+    var(--sidebar-on, var(--color-we-got-dark)) 18%,
     transparent
   );
-  --workspace-user-footer-link-color: var(--color-we-got-dark);
-  --workspace-user-footer-link-bg: color-mix(in oklab, var(--color-we-got-dark) 10%, transparent);
+  --workspace-user-footer-link-color: var(--sidebar-on, var(--color-we-got-dark));
+  --workspace-user-footer-link-bg: color-mix(
+    in oklab,
+    var(--sidebar-on, var(--color-we-got-dark)) 10%,
+    transparent
+  );
 
   --workspace-main-content-max-width: 42rem;
 
@@ -40,5 +48,9 @@
   --primary: #2f302c;
   --primary-foreground: #ffffff;
 
-  --field-label-color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
+  --field-label-color: color-mix(
+    in oklab,
+    var(--sidebar-on, var(--color-we-got-dark)) 68%,
+    transparent
+  );
 }

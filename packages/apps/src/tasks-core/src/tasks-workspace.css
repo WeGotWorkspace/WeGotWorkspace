@@ -27,34 +27,47 @@
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
-  --app-sidebar-color: var(--color-we-got-dark);
-  --sidebar-logo-close-button-color: var(--color-we-got-dark);
+  --app-sidebar-border-color: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 12%,
+    transparent
+  );
+  --app-sidebar-color: var(--sidebar-on, var(--color-we-got-dark));
+  --sidebar-logo-close-button-color: var(--sidebar-on, var(--color-we-got-dark));
   --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
-    var(--color-we-got-dark) 10%,
+    var(--sidebar-on, var(--color-we-got-dark)) 10%,
     transparent
   );
   --workspace-user-footer-text-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 70%,
+    var(--sidebar-on, var(--color-we-got-dark)) 70%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 10%,
+    var(--sidebar-on, var(--color-we-got-dark)) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 65%,
+    var(--sidebar-on, var(--color-we-got-dark)) 65%,
     transparent
   );
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
-  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
+  --workspace-user-footer-link-bg: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 6%,
+    transparent
+  );
+  --field-label-color: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 68%,
+    transparent
+  );
   --wai-bg: var(--color-we-got-pink);
   --wai-fg: var(--color-we-got-dark);
+  --sidebar-bg: color-mix(in oklch, var(--wai-bg) 20%, #fff);
   --button-primary-bg: var(--wai-bg);
   --button-primary-fg: var(--wai-fg);
   --primary: var(--workspace-accent);
@@ -63,15 +76,15 @@
   /* Outline action language for header + collection sidebar rows. */
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 14%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--color-we-got-sand) 18%,
+    var(--sidebar-bg) 18%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--color-we-got-sand) 24%,
+    var(--sidebar-bg) 24%,
     var(--workspace-surface)
   );
 }
@@ -85,7 +98,7 @@
 .tasks-workspace .app-sidebar__scroll {
   /* Primary fill inherits the workspace (`--button-primary-*`). */
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--color-we-got-dark);
+  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 /** App switcher lockup: tasks.svg literals (`#ffbdc2` tile, white marks). */
@@ -147,12 +160,17 @@
   --color-emerald: var(--workspace-accent);
   --wai-bg: var(--color-we-got-pink);
   --wai-fg: var(--color-we-got-dark);
+  --sidebar-bg: color-mix(in oklch, var(--wai-bg) 20%, #fff);
   --button-primary-bg: var(--wai-bg);
   --button-primary-fg: var(--wai-fg);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
+  --field-label-color: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 68%,
+    transparent
+  );
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 

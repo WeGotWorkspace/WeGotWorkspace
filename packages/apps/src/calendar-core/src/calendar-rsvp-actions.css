@@ -17,7 +17,7 @@
 .calendar-rsvp-actions {
   /* Icon-only: hug content (ViewModeToggle), left-aligned — not full-card width. */
   @apply w-auto shrink-0;
-  --segmented-control-color: var(--color-we-got-dark);
+  --segmented-control-color: var(--sidebar-on, var(--color-we-got-dark));
   --segmented-control-active-fg: var(
     --button-active-color,
     var(
@@ -25,7 +25,7 @@
       var(--workspace-accent, var(--workspace-accent, var(--color-we-got-dark)))
     )
   );
-  --segmented-control-hover-color: var(--color-we-got-dark);
+  --segmented-control-hover-color: var(--sidebar-on, var(--color-we-got-dark));
   --segmented-control-track-bg: transparent;
   --segmented-control-track-border-color: var(
     --button-outline-border-color,
@@ -43,7 +43,11 @@
       var(--color-we-got-soft)
     )
   );
-  --segmented-control-hover-bg: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
+  --segmented-control-hover-bg: color-mix(
+    in oklab,
+    var(--sidebar-on, var(--color-we-got-dark)) 8%,
+    transparent
+  );
   --segmented-control-active-shadow: none;
 }
 

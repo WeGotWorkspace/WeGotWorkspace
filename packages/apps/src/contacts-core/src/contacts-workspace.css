@@ -13,39 +13,55 @@
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
-  --app-sidebar-color: var(--color-we-got-dark);
-  --sidebar-logo-close-button-color: var(--color-we-got-dark);
+  --app-sidebar-border-color: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 12%,
+    transparent
+  );
+  --app-sidebar-color: var(--sidebar-on, var(--color-we-got-dark));
+  --sidebar-logo-close-button-color: var(--sidebar-on, var(--color-we-got-dark));
   --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
-    var(--color-we-got-dark) 10%,
+    var(--sidebar-on, var(--color-we-got-dark)) 10%,
     transparent
   );
 
   --workspace-user-footer-text-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 70%,
+    var(--sidebar-on, var(--color-we-got-dark)) 70%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 10%,
+    var(--sidebar-on, var(--color-we-got-dark)) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 65%,
+    var(--sidebar-on, var(--color-we-got-dark)) 65%,
     transparent
   );
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
+  --workspace-user-footer-link-bg: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 6%,
+    transparent
+  );
 
   --contacts-pending-sync-color: #c98a1f;
   --contacts-swipe-delete-color: #dc2626;
   --contacts-swipe-remove-color: var(--workspace-accent);
   --contacts-detail-title-font-family: var(--font-serif);
-  --loading-spinner-color: color-mix(in oklch, var(--color-we-got-dark) 45%, transparent);
-  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
+  --loading-spinner-color: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 45%,
+    transparent
+  );
+  --field-label-color: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 68%,
+    transparent
+  );
   --wai-bg: var(--color-we-got-sky);
   --wai-fg: var(--color-we-got-dark);
   --button-primary-bg: var(--wai-bg);
@@ -60,15 +76,15 @@
   /* Outline action language for header + collection sidebar + action-bar. */
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 14%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--color-we-got-sand) 18%,
+    var(--sidebar-bg) 18%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--color-we-got-sand) 24%,
+    var(--sidebar-bg) 24%,
     var(--workspace-surface)
   );
 }
@@ -98,7 +114,7 @@
 .contacts-workspace .app-sidebar__scroll {
   /* Primary fill inherits the workspace (`--button-primary-*`). */
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--color-we-got-dark);
+  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 /**
@@ -217,13 +233,13 @@
   font-size: 1.75rem;
   font-weight: 400;
   line-height: 1.2;
-  color: var(--color-we-got-dark);
+  color: var(--sidebar-on, var(--color-we-got-dark));
   margin: 0;
 }
 
 .contacts-detail-view__subtitle {
   @apply m-0 text-[0.9375rem] leading-snug;
-  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  color: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 65%, transparent);
 }
 
 .contacts-detail-view__tag-group {
@@ -237,7 +253,8 @@
 .contacts-detail-view__section + .contacts-detail-view__section {
   margin-top: 1.75rem;
   padding-top: 1.75rem;
-  border-top: 1px solid color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
+  border-top: 1px solid
+    color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 10%, transparent);
 }
 
 .contacts-detail-view__section-title {
@@ -245,7 +262,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  color: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 65%, transparent);
   margin: 0 0 0.75rem;
 }
 
@@ -331,13 +348,13 @@
   min-width: 0;
   font-size: 0.9375rem;
   line-height: 1.35;
-  color: var(--color-we-got-dark);
+  color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 .contacts-detail-view__label--none {
   font-style: italic;
   font-size: 0.9375rem;
-  color: color-mix(in oklch, var(--color-we-got-dark) 45%, transparent);
+  color: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 45%, transparent);
 }
 
 .contacts-detail-view__channel-row--editable .input,
@@ -369,7 +386,7 @@
   min-width: 0;
   font-size: 0.9375rem;
   line-height: 1.35;
-  color: var(--color-we-got-dark);
+  color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 .contacts-detail-view__address-entry {
@@ -461,12 +478,12 @@
   align-items: baseline;
   gap: 0.5rem;
   font-size: 0.9375rem;
-  color: var(--color-we-got-dark);
+  color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 .contacts-detail-view__meta {
   font-size: 0.75rem;
-  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  color: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 65%, transparent);
 }
 
 .contacts-detail-view__link {
@@ -482,7 +499,7 @@
   margin: 0;
   font-size: 0.9375rem;
   line-height: 1.5;
-  color: var(--color-we-got-dark);
+  color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 .contacts-dialog-surface {
@@ -495,8 +512,12 @@
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 68%, transparent);
-  --segmented-control-track-active-bg: var(--color-we-got-dark);
+  --field-label-color: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 68%,
+    transparent
+  );
+  --segmented-control-track-active-bg: var(--sidebar-on, var(--color-we-got-dark));
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 

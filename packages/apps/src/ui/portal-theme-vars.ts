@@ -3,8 +3,7 @@
  * so they do not inherit workspace `--menu-item-*` / `--button-outline-*` /
  * `--workspace-accent`. Copy cascaded custom properties from the open trigger
  * onto the portaled content so menu fg/accent match the trigger's workspace.
- * Item washes prefer quiet `--menu-item-*-background` (14/18/24) over loud
- * sidebar `--button-outline-*` chips (40/55/65).
+ * Item washes use the same 8/12/16 accent-into-paper steps as outline buttons.
  *
  * Workspace sheets often publish washes as `color-mix(… var(--*-accent) …)`.
  * Those accent deps are not reliably enumerable via `getComputedStyle().item()`,
@@ -157,5 +156,27 @@ export function findTriggerForPortaledContent(content: HTMLElement): HTMLElement
 /** Bridge theme vars from the trigger that owns `content` (no-op if none found). */
 export function bridgePortalThemeFromOpenTrigger(content: HTMLElement): void {
   const trigger = findTriggerForPortaledContent(content);
-  if (trigger) bridgePortalThemeVars(trigger, content);
+  if (!trigger) return;
+  bridgePortalThemeVars(trigger, content);
+  applyPortaledSurfaceBackground(trigger, content);
+}
+
+/**
+ * Nearest dialog paper, otherwise the main column. Portaled option lists do
+ * not inherit that surface, so paint it onto the menu.
+ */
+export function portaledSurfaceElement(source: Element): HTMLElement | null {
+  const surface = source.closest(".overlay-paper, .workspace-app-layout__main");
+  return surface instanceof HTMLElement ? surface : null;
+}
+
+/** Copy the open surface's painted background onto a portaled dropdown. */
+export function applyPortaledSurfaceBackground(source: Element, target: HTMLElement): void {
+  const surface = portaledSurfaceElement(source);
+  if (!surface) return;
+  const background = getComputedStyle(surface).backgroundColor.trim();
+  if (!isResolvedCssColor(background)) return;
+  target.style.backgroundColor = background;
+  target.style.setProperty("--popover", background);
+  target.style.setProperty("--color-popover", background);
 }

@@ -1,12 +1,11 @@
 @import "../styles.css" reference;
 
 /**
- * Soft Select / DropdownMenu / MenuItem washes from Sand.
- * Same 14/18/24 cream recipe as chrome outline IconButtons (see below).
+ * Select / DropdownMenu / MenuItem washes match outline buttons:
+ * hover 8%, selected 12%, selected-hover 16% accent into the paper.
  * Solid primary fills stay `--workspace-accent` (Dark).
  *
- * Portaled menus copy these via `bridgePortalThemeVars` so hover / selected
- * washes stay Sand-tinted everywhere — not a Dark wash, not ink-gray.
+ * Portaled menus copy these via `bridgePortalThemeVars`.
  *
  * Dark lobby Meet (`.meet-dialog-surface`) is intentionally omitted — it keeps
  * its own on-dark outline recipe.
@@ -40,23 +39,26 @@
   .meet-channel-dialog,
   .meet-call-dialog
 ) {
-  --menu-item-hover-background: color-mix(in oklab, var(--color-we-got-sand) 14%, transparent);
+  --menu-item-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent) 8%,
+    var(--workspace-surface)
+  );
   --menu-item-selected-background: color-mix(
     in oklab,
-    var(--color-we-got-sand) 18%,
+    var(--workspace-accent) 12%,
     var(--workspace-surface)
   );
   --menu-item-selected-hover-background: color-mix(
     in oklab,
-    var(--color-we-got-sand) 24%,
+    var(--workspace-accent) 16%,
     var(--workspace-surface)
   );
 }
 
 /**
- * Soft outline Button / IconButton washes (14/18/24→cream) for chrome that
- * must not inherit heavier workspace-root tile washes (Notes/Tasks/Drive 40/55).
- * Prefer `--button-active-color` (accent-strong) for hover fg.
+ * Outline Button / IconButton washes (8/12/16 accent into the paper) for chrome
+ * that must not inherit heavier workspace-root tile washes (Notes/Tasks/Drive).
  *
  * Scoped to header, floating action bar, and cream dialog / overlay surfaces —
  * not product workspace roots (those publish their own outline weights) and not
@@ -80,19 +82,20 @@
   .meet-channel-dialog,
   .meet-call-dialog
 ) {
-  --button-outline-hover-background: color-mix(in oklab, var(--color-we-got-sand) 14%, transparent);
+  --button-outline-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent) 8%,
+    var(--workspace-surface)
+  );
   --button-outline-active-background: color-mix(
     in oklab,
-    var(--color-we-got-sand) 18%,
+    var(--workspace-accent) 12%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
-    var(--color-we-got-sand) 24%,
+    var(--workspace-accent) 16%,
     var(--workspace-surface)
   );
-  --button-outline-hover-color: var(
-    --button-active-color,
-    var(--workspace-accent, var(--color-we-got-dark))
-  );
+  --button-outline-hover-color: var(--workspace-accent);
 }

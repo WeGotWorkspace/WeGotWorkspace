@@ -119,17 +119,20 @@
 }
 
 .button--variant-outline {
-  color: var(--button-outline-color, var(--color-we-got-dark));
+  color: var(--button-outline-color, var(--sidebar-on, var(--color-we-got-dark)));
   background-color: transparent;
   /* Match Select/Input `--control-border-color` so outline chrome aligns with dropdowns. */
   border: 1px solid var(--button-outline-border-color, var(--control-border-color));
 }
 
 .button--variant-outline:hover {
-  color: var(--button-outline-hover-color, var(--button-outline-color, var(--color-we-got-dark)));
+  color: var(
+    --button-outline-hover-color,
+    var(--button-outline-color, var(--sidebar-on, var(--color-we-got-dark)))
+  );
   background-color: var(
     --button-outline-hover-background,
-    color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+    color-mix(in oklab, var(--sidebar-bg, var(--color-we-got-sand)) 14%, transparent)
   );
 }
 
@@ -173,7 +176,11 @@
 .button--severity-success {
   --button-severity-color: var(
     --button-severity-success-color,
-    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--color-we-got-dark))
+    color-mix(
+      in oklab,
+      var(--color-ghost, #22c55e) 55%,
+      var(--sidebar-on, var(--color-we-got-dark))
+    )
   );
   --button-severity-hover-background: var(
     --button-severity-success-hover-background,
@@ -206,7 +213,7 @@
     --button-outline-active-background,
     var(
       --button-outline-hover-background,
-      color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+      color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 8%, transparent)
     )
   );
 }
@@ -219,7 +226,7 @@
       --button-outline-active-background,
       var(
         --button-outline-hover-background,
-        color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+        color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 8%, transparent)
       )
     )
   );
@@ -231,14 +238,14 @@
 }
 
 .button--variant-ghost {
-  color: var(--button-ghost-color, var(--color-we-got-dark));
+  color: var(--button-ghost-color, var(--sidebar-on, var(--color-we-got-dark)));
   background-color: transparent;
 }
 
 .button--variant-ghost:hover {
   background-color: var(
     --button-ghost-hover-background,
-    color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
+    color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 12%, transparent)
   );
 }
 

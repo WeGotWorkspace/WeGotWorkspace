@@ -21,7 +21,11 @@
   color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
   background-color: var(
     --menu-item-hover-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-we-got-dark)) 14%, transparent)
+    color-mix(
+      in oklab,
+      var(--workspace-accent, var(--color-we-got-dark)) 8%,
+      var(--workspace-surface, #fff)
+    )
   );
 }
 
@@ -53,8 +57,8 @@
     --menu-item-selected-background,
     color-mix(
       in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 18%,
-      var(--color-we-got-soft)
+      var(--workspace-accent, var(--color-we-got-dark)) 12%,
+      var(--workspace-surface, #fff)
     )
   );
 }
@@ -66,8 +70,8 @@
     --menu-item-selected-hover-background,
     color-mix(
       in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 24%,
-      var(--color-we-got-soft)
+      var(--workspace-accent, var(--color-we-got-dark)) 16%,
+      var(--workspace-surface, #fff)
     )
   );
 }

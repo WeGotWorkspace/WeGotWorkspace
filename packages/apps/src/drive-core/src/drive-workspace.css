@@ -8,32 +8,40 @@
   /* Solid accent is Dark. The Drive tile stays lime (`WORKSPACE_APP_ACCENT`). */
   --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
-  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
-  --app-sidebar-color: var(--color-we-got-dark);
-  --sidebar-logo-close-button-color: var(--color-we-got-dark);
+  --app-sidebar-border-color: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 12%,
+    transparent
+  );
+  --app-sidebar-color: var(--sidebar-on, var(--color-we-got-dark));
+  --sidebar-logo-close-button-color: var(--sidebar-on, var(--color-we-got-dark));
   --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
-    var(--color-we-got-dark) 10%,
+    var(--sidebar-on, var(--color-we-got-dark)) 10%,
     transparent
   );
   --workspace-user-footer-text-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 70%,
+    var(--sidebar-on, var(--color-we-got-dark)) 70%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 10%,
+    var(--sidebar-on, var(--color-we-got-dark)) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 65%,
+    var(--sidebar-on, var(--color-we-got-dark)) 65%,
     transparent
   );
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
+  --workspace-user-footer-link-bg: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 6%,
+    transparent
+  );
   --upload-progress-active-fill: var(--workspace-accent);
   --upload-progress-done-fill: var(--color-emerald);
   --file-drop-overlay-card-color: var(--workspace-accent);
@@ -59,19 +67,23 @@
   --button-primary-fg: var(--wai-bg);
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--color-we-got-sand) 40%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 40%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--color-we-got-sand) 55%,
+    var(--sidebar-bg) 55%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--color-we-got-sand) 65%,
+    var(--sidebar-bg) 65%,
     var(--workspace-surface)
   );
   /* Section titles on the accent rail — slate muted fails AA; ink mix clears. */
-  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
+  --field-label-color: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 72%,
+    transparent
+  );
 }
 
 .drive-workspace .workspace-app-layout__main-scroll {
@@ -85,7 +97,7 @@
 .drive-workspace .app-sidebar__scroll {
   /* Primary fill inherits the workspace (`--button-primary-*`). */
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--color-we-got-dark);
+  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 /*
@@ -105,9 +117,9 @@
  * any shared switch-trigger remaps (do not recolor the folder mark).
  */
 .drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--color-we-got-dark);
+  --app-switch-icon-bg: var(--sidebar-on, var(--color-we-got-dark));
   --app-switch-icon-fg: var(--color-we-got-brat);
-  background-color: var(--color-we-got-dark);
+  background-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 .drive-workspace
@@ -144,8 +156,8 @@
   padding: 0.875rem 1rem;
   background-color: var(--workspace-surface);
   box-shadow:
-    0 4px 24px color-mix(in oklch, var(--color-we-got-dark) 16%, transparent),
-    0 0 0 1px color-mix(in oklch, var(--color-we-got-dark) 8%, transparent);
+    0 4px 24px color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 16%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 8%, transparent);
 }
 
 @media (max-width: 767px) {
@@ -177,8 +189,12 @@
   border-bottom: 1px solid color-mix(in oklch, var(--workspace-accent) 12%, transparent);
   --path-breadcrumb-lead-color: var(--workspace-accent);
   --path-breadcrumb-lead-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);
-  --path-breadcrumb-link-color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
-  --path-breadcrumb-current-color: var(--color-we-got-dark);
+  --path-breadcrumb-link-color: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 65%,
+    transparent
+  );
+  --path-breadcrumb-current-color: var(--sidebar-on, var(--color-we-got-dark));
   --path-breadcrumb-link-hover-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
 }
 
@@ -189,7 +205,7 @@
 
 .drive-workspace .drive-main-header__actions {
   @apply flex items-center gap-2;
-  --button-outline-color: var(--color-we-got-dark);
+  --button-outline-color: var(--sidebar-on, var(--color-we-got-dark));
   --segmented-control-color: var(--button-outline-color);
   --segmented-control-track-bg: transparent;
   --segmented-control-track-border-color: var(
@@ -216,7 +232,11 @@
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+  --field-label-color: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 65%,
+    transparent
+  );
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
@@ -238,7 +258,7 @@
   flex: 0 0 var(--drive-detail-column-width);
   width: var(--drive-detail-column-width);
   max-width: var(--drive-detail-column-width);
-  border-color: color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
+  border-color: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 10%, transparent);
   background-color: var(--docs-collab-sidebar-panel-wash);
 }
 
