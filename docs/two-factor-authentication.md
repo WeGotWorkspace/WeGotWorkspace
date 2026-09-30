@@ -4,7 +4,7 @@ Two-factor authentication is optional until an admin requires it.
 
 ## Turn it on
 
-Open Settings → Security and choose Turn on. Enter your account password, scan the QR code with an authenticator app, enter the 6-digit code, and save the recovery codes. Each recovery code works once. An existing session that must enroll asks for that password once before the QR code. Sign-in that already accepted the password reuses it for required setup.
+Open Settings → Security and choose Turn on. The pane then asks for one thing at a time: your account password, the QR code and a 6-digit code, then the recovery codes. Each recovery code works once. The home screen does not add a setup button. An existing session that must enroll asks for that password once before the QR code. Sign-in that already accepted the password reuses it for required setup.
 
 ## Calendar and contacts
 

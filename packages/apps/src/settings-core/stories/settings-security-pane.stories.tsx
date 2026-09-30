@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, screen, userEvent, within } from "storybook/test";
 import { MfaRequestError } from "@/lib/api/wgw/mfa-client";
 import { SettingsSecurityPane } from "@/settings-core/src/settings-security-pane";
 import { SettingsStoryScope } from "./settings-story-scope";
@@ -20,17 +20,41 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const account = {
+const enrolled = {
   enabled: true,
   required: false,
   recoveryCodesRemaining: 2,
   suggest: false,
 };
 
+export const Off: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    preview: {
+      account: {
+        enabled: false,
+        required: false,
+        recoveryCodesRemaining: 0,
+        suggest: false,
+      },
+      appPasswords: [],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Turn on" })).toBeVisible();
+    await expect(canvas.queryByLabelText("Password")).toBeNull();
+    await expect(canvas.queryByLabelText("Authenticator code")).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Turn on" }));
+    await expect(canvas.getByLabelText("Password")).toBeVisible();
+    await expect(canvas.queryByLabelText("Code from the app")).toBeNull();
+  },
+};
+
 export const RecoveryWarning: Story = {
   args: {
     preview: {
-      account,
+      account: enrolled,
       appPasswords: [],
     },
   },
@@ -39,7 +63,7 @@ export const RecoveryWarning: Story = {
 export const WaitForNextCode: Story = {
   args: {
     preview: {
-      account: { ...account, recoveryCodesRemaining: 10 },
+      account: { ...enrolled, recoveryCodesRemaining: 10 },
       appPasswords: [],
       onCreateAppPassword: async () => {
         throw new MfaRequestError("Wait for the next code.", 401, "totp_step_reused");
@@ -48,10 +72,11 @@ export const WaitForNextCode: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(canvas.getByLabelText("Name"), "Phone");
-    const codes = canvas.getAllByLabelText("Authenticator code");
-    await userEvent.type(codes[codes.length - 1]!, "123456");
     await userEvent.click(canvas.getByRole("button", { name: "Create app password" }));
-    await expect(canvas.getByRole("alert")).toHaveTextContent("Wait for the next code.");
+    const dialog = within(screen.getByRole("dialog", { name: "Create app password" }));
+    await userEvent.type(dialog.getByLabelText("Name"), "Phone");
+    await userEvent.type(dialog.getByLabelText("Authenticator code"), "123456");
+    await userEvent.click(dialog.getByRole("button", { name: "Create" }));
+    await expect(dialog.getByRole("alert")).toHaveTextContent("Wait for the next code.");
   },
 };

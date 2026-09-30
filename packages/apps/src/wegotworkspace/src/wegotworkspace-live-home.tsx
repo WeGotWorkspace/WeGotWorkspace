@@ -11,7 +11,6 @@ import {
   MOCK_HOME_STATE,
   type WeGotWorkspaceHomeState,
 } from "@/wegotworkspace/src/wegotworkspace-home-state";
-import { MfaSuggestionCard } from "@/wegotworkspace/src/mfa-suggestion-card";
 import { useWeGotWorkspaceLogout } from "@/wegotworkspace/src/wegotworkspace-story-logout";
 
 export function WeGotWorkspaceLiveHome() {
@@ -68,7 +67,6 @@ export function WeGotWorkspaceLiveHome() {
     <AppsHomeScreen
       apps={apps}
       className="min-h-dvh"
-      banner={<MfaSuggestionCard />}
       userDisplayName={homeState.userDisplayName}
       showUserMenu={homeState.showUserMenu}
       onLogout={onLogout}

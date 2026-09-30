@@ -134,7 +134,7 @@ Changing the account password revokes refresh tokens and bumps `session_generati
 
 App passwords are named secrets for calendar and contact clients. Create and revoke them under Settings → Security. After two-factor authentication is on, DAV and Meet Basic reject the account password and accept an app password. Users who have not enrolled can still use the account password on DAV.
 
-`GET /api/v1/me` includes `mfa.suggest` when the account has no authenticator and has not snoozed the prompt. `POST /api/v1/settings/totp/suggestion` snoozes that prompt for 30 days.
+`GET /api/v1/me` includes `mfa.suggest` when the account has no authenticator and has not snoozed the prompt. `POST /api/v1/settings/totp/suggestion` snoozes that prompt for 30 days. The apps home screen does not show a setup button; enrollment stays in Settings → Security.
 
 Lost the authenticator and the recovery codes? An admin can reset two-factor authentication for that user, or an operator can run:
 

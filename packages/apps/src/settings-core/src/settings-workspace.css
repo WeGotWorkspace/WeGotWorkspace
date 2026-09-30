@@ -215,6 +215,81 @@
   @apply absolute top-0 right-0;
 }
 
+/**
+ * Portaled security dialogs sit outside `.settings-workspace`.
+ * Repeat the settings accent so Button matches the settings shell.
+ */
+.settings-dialog-surface {
+  --workspace-accent: var(--color-we-got-sand);
+  --button-primary-bg: var(--workspace-accent);
+  --button-primary-fg: var(--color-we-got-dark);
+  --primary: var(--workspace-accent);
+  --primary-foreground: var(--color-we-got-dark);
+  --button-active-color: var(--workspace-accent-strong);
+  --field-label-color: var(--color-we-got-dark);
+}
+
+.settings-workspace .settings-security-pane {
+  @apply max-w-xl;
+}
+
+.settings-workspace .settings-security-pane__actions {
+  @apply flex flex-wrap gap-2;
+}
+
+.settings-workspace .settings-security-pane__alert,
+.settings-dialog-surface .settings-security-dialog__alert {
+  @apply mb-4 text-sm text-destructive;
+}
+
+.settings-workspace .settings-security-pane__note,
+.settings-dialog-surface .settings-security-dialog__note {
+  @apply mb-4 text-sm;
+  color: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
+}
+
+.settings-workspace .settings-security-pane__qr {
+  @apply mb-4;
+  width: 196px;
+  height: 196px;
+}
+
+.settings-workspace .settings-security-pane__secret,
+.settings-dialog-surface .settings-security-dialog__secret {
+  @apply mb-4 break-all font-mono text-sm;
+}
+
+.settings-workspace .settings-security-pane__codes,
+.settings-dialog-surface .settings-security-dialog__codes {
+  @apply mb-4 list-none p-0 font-mono text-sm;
+}
+
+.settings-workspace .settings-security-pane__saved {
+  @apply mb-4 flex items-center gap-2 text-sm;
+}
+
+.settings-workspace .settings-security-pane__passwords {
+  @apply mb-4;
+}
+
+.settings-workspace .settings-security-pane__password {
+  @apply flex items-center justify-between gap-3 py-3;
+}
+
+.settings-workspace .settings-security-pane__password + .settings-security-pane__password {
+  border-top: 1px solid color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
+}
+
+.settings-workspace .settings-security-pane__password-meta {
+  @apply text-xs;
+  color: color-mix(in oklch, var(--color-we-got-dark) 65%, transparent);
+}
+
+.settings-dialog-surface .settings-form-field,
+.settings-dialog-surface .ui-modal-body .settings-security-dialog__alert {
+  @apply mb-4;
+}
+
 /* Storybook scopes — mirror workspace chrome without inline presets */
 .settings-story-scope {
   min-height: 100dvh;

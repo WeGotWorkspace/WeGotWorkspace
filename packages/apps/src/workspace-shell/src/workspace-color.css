@@ -28,6 +28,7 @@
 :where(
   .admin-workspace,
   .settings-workspace,
+  .settings-dialog-surface,
   .notes-workspace,
   .mail-workspace,
   .tasks-workspace,
@@ -94,6 +95,7 @@
 :where(
   .admin-workspace,
   .settings-workspace,
+  .settings-dialog-surface,
   .notes-workspace,
   .mail-workspace,
   .tasks-workspace,
