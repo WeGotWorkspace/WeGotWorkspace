@@ -15,11 +15,22 @@ CHANNEL=docker DB=mariadb pnpm test:install-e2e
 
 `CHANNEL` is `zip` or `docker`. `DB` is `sqlite` or `mariadb`. Docker cells build `docker/install/Dockerfile.runtime` locally when `WGW_INSTALL_E2E_IMAGE` is unset. They never build `docker/install/Dockerfile`.
 
+## Upgrade from v0.1.99
+
+`pnpm test:upgrade-e2e` (`tools/e2e-upgrade.sh`) installs the published v0.1.99 image by manifest-list digest, seeds an admin, a second user, a calendar event, a note, a task, a drive file, and a contact, then recreates the container on the same volumes. Change the baseline with `WGW_UPGRADE_FROM_IMAGE` (digest form). The default digest is at the top of the script. The host port is ephemeral unless `WGW_E2E_UPGRADE_PORT` is set.
+
+Two current images are tested:
+
+- Every pull request runs `upgrade-e2e`. That job builds `docker/install/Dockerfile.upgrade-target` from `packages/api` and the front controller. Composer runs with `--no-dev --ignore-platform-reqs --no-scripts`, and the image does not install ext-imap. A green job means schema migrate and the seeded rows survived. It does not mean the release ZIP upgrades cleanly.
+- A push to `main` on installer paths also runs the install workflow's `upgrade` job. That job sets `WGW_UPGRADE_TO_IMAGE` to the candidate image built from the release ZIP.
+
+Verification uses `POST /api/v1/auth/token` and sends that JWT on JMAP `Calendar/get`, `CalendarEvent/get`, `Note/get`, `FileNode/get`, and `ContactCard/get`, and on `GET /tasks/items/{id}`. Tasks have no method in the JMAP capability registry, so the fixture uses the Tasks app's REST create and get. WebDAV `PROPFIND` and CalDAV/CardDAV `REPORT` use HTTP Basic, which is the DAV login. CalDAV reports cover the default calendar (`VEVENT`), `notes-general` (`VJOURNAL`), and `tasks-inbox` (`VTODO`). Chat and DM collections stay out of the fixture. Mail is not part of the fixture.
+
 `composer install` runs only when you set `WGW_INSTALL_E2E_DEV_COMPOSER=1` for a local tree that is not a release ZIP. CI never sets that flag.
 
 ## CI
 
-- Push to `main` on installer paths runs all four cells and does not block merge.
+- Push to `main` on installer paths runs all four cells and the candidate upgrade job. None of them block merge.
 - A tag runs `install-gate` (`zip-sqlite`) before publish, and `install-observe` (the other three) without blocking publish.
 - Promote a cell by editing the `RELEASE_GATE_CELLS` env in `.github/workflows/release.yml` after **2 consecutive** green runs on `main`, `workflow_dispatch`, or a tag. Observe cells are the other three, derived from that list. The list must not be empty (`zip-sqlite` stays in it); an empty list fails the workflow instead of skipping publish. A red run, including a red observe cell, resets that cell.
 - The first-run installer does not verify `manifest.sig`. An unsigned ZIP on `main` can still complete the wizard. The updater does require a signature, and tag builds fail if the signing key or `manifest.sig` is missing.
