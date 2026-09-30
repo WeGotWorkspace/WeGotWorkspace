@@ -134,7 +134,7 @@ Setup, CI wiring, and maintainer checklist: [storybook/chromatic.md](../storyboo
 ## Out of scope for this gate
 
 - **Live-tier stories** (`Live …`) — manual smoke only; also excluded from Chromatic snapshots.
-- **Apps Playwright e2e** — mock-tier smoke runs in CI job `apps-e2e` (`pnpm test:apps-e2e`), outside this done gate. Phase 1 loads mock-tier Storybook stories (e.g. `Features/Workspace` login shell). Reuse a running Storybook with `WGW_APPS_E2E_NO_SERVER=1` when `pnpm dev:storybook` is already up. Live-tier specs use `playwright.live.config.mjs` and stay out of CI.
+- **Apps Playwright e2e** — mock-tier smoke runs in CI job `apps-e2e` (`pnpm test:apps-e2e`), outside this done gate. Phase 1 loads mock-tier Storybook stories (e.g. `Features/Workspace` login shell). Reuse a running Storybook with `WGW_APPS_E2E_NO_SERVER=1` when `pnpm dev:storybook` is already up. Live-tier specs use `playwright.live.config.mjs` and run nightly from `.github/workflows/nightly-live-e2e.yml`. They stay out of pull-request CI and out of this done gate.
 - **Chromatic** — optional CI job; enable with repo variable `CHROMATIC_ENABLED=true` and `CHROMATIC_PROJECT_TOKEN` secret (see `.github/workflows/ci.yml`).
 - **Full Storybook Vitest catalog** — run locally: `pnpm --filter @wgw/apps run test:storybook`.
 

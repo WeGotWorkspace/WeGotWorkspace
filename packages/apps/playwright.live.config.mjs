@@ -18,7 +18,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   timeout: 90_000,
   expect: { timeout: 20_000 },
-  reporter: process.env.CI ? "github" : "list",
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL,
     storageState: authFile,
@@ -39,7 +39,9 @@ export default defineConfig({
           cwd: path.join(packageRoot, "..", "api"),
         },
         {
-          command: `bash -lc "cd ${repoRoot} && php packages/api/artisan wgw:dev-install && tools/with-root-env.sh -- pnpm run dev:app"`,
+          // Non-login shell so CI keeps setup-node and setup-php on PATH.
+          // `dev:app` is an @wgw/apps script; the repo root package has none.
+          command: `bash -c "cd ${repoRoot} && php packages/api/artisan wgw:dev-install && pnpm --filter @wgw/apps run dev:app"`,
           url: baseURL,
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,

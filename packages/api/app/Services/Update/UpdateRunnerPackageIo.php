@@ -17,6 +17,7 @@ final class UpdateRunnerPackageIo
         private WgwInstallConfig $install,
         private ApiRuntimeEnvService $apiEnv,
         private UpdateRunnerFilesystem $files,
+        private ?string $publicKeyPath = null,
     ) {}
 
     public function bindRunner(UpdateRunner $runner): void
@@ -55,7 +56,7 @@ final class UpdateRunnerPackageIo
             throw new \RuntimeException('Could not write downloaded package.');
         }
         $meta = stream_get_meta_data($input);
-        $totalBytes = $this->runner()->parseContentLength($meta['wrapper_data'] ?? null);
+        $totalBytes = $this->runner()->parseContentLength($this->httpResponseHeaders($meta['wrapper_data'] ?? null));
         $downloadedBytes = 0;
         $lastProgressWriteAt = 0.0;
         $this->runner()->writeDownloadProgress($fromVersion, $toVersion, $downloadedBytes, $totalBytes);
@@ -115,7 +116,7 @@ final class UpdateRunnerPackageIo
         if (! function_exists('openssl_verify')) {
             throw new \RuntimeException('OpenSSL extension is required for signature verification.');
         }
-        $publicKeyPath = dirname(__DIR__, 3).'/resources/update/update-public-key.pem';
+        $publicKeyPath = $this->updatePublicKeyPath();
         if (! is_readable($publicKeyPath)) {
             throw new \RuntimeException('Missing update public key for signature verification.');
         }
@@ -131,6 +132,33 @@ final class UpdateRunnerPackageIo
         if ($ok !== 1) {
             throw new \RuntimeException('Release signature verification failed.');
         }
+    }
+
+    private function updatePublicKeyPath(): string
+    {
+        if (is_string($this->publicKeyPath) && trim($this->publicKeyPath) !== '') {
+            return trim($this->publicKeyPath);
+        }
+
+        return dirname(__DIR__, 3).'/resources/update/update-public-key.pem';
+    }
+
+    /**
+     * PHP's HTTP wrapper sets wrapper_data to the response header list.
+     * A user-space wrapper sets it to the wrapper object; that object may
+     * carry the same list on wrapper_data for tests.
+     */
+    private function httpResponseHeaders(mixed $wrapperData): mixed
+    {
+        if (is_array($wrapperData)) {
+            return $wrapperData;
+        }
+        if (! is_object($wrapperData) || ! property_exists($wrapperData, 'wrapper_data')) {
+            return null;
+        }
+        $headers = $wrapperData->wrapper_data;
+
+        return is_array($headers) ? $headers : null;
     }
 
     /**
