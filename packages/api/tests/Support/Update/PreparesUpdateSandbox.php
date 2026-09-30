@@ -6,6 +6,8 @@ namespace Tests\Support\Update;
 
 use App\Models\AppUpdateHistory;
 use App\Services\Update\UpdateOperationsService;
+use App\Services\Update\UpdateRunner;
+use App\Services\Update\UpdateRunnerPackageIo;
 use App\Services\Update\UpdateStateStore;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
@@ -28,6 +30,9 @@ trait PreparesUpdateSandbox
 
     protected ?UpdateReleaseFixture $releaseFixture = null;
 
+    /** @var list<string> */
+    private array $modeLockedPaths = [];
+
     protected function bootUpdateSandbox(): void
     {
         $this->scratch = sys_get_temp_dir().'/wgw-update-'.uniqid('', true);
@@ -49,13 +54,17 @@ trait PreparesUpdateSandbox
         config([
             'wgw.install_channel' => 'zip',
             'wgw.update_feed_url' => self::FEED_URL,
-            'wgw.update_public_key_path' => $this->releaseFixture->publicKeyPath,
         ]);
+        $this->app->when(UpdateRunnerPackageIo::class)
+            ->needs('$publicKeyPath')
+            ->give($this->releaseFixture->publicKeyPath);
         foreach ([
             WgwStorage::class,
             StoragePaths::class,
             UpdateStateStore::class,
             UpdateOperationsService::class,
+            UpdateRunner::class,
+            UpdateRunnerPackageIo::class,
             AppVersion::class,
         ] as $abstract) {
             $this->app->forgetInstance($abstract);
@@ -164,15 +173,34 @@ trait PreparesUpdateSandbox
         return $path;
     }
 
+    protected function skipWhenRootIgnoresModeBits(): void
+    {
+        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $this->markTestSkipped('chmod cannot deny writes to the root user.');
+        }
+    }
+
     protected function lockInstallRoot(): void
     {
-        if (! chmod($this->installRoot, 0555)) {
-            $this->fail('Could not make the install root read-only.');
+        $this->lockPath($this->installRoot);
+    }
+
+    protected function lockPath(string $path): void
+    {
+        if (! chmod($path, 0555)) {
+            $this->fail('Could not make '.$path.' read-only.');
         }
+        $this->modeLockedPaths[] = $path;
     }
 
     protected function unlockInstallRoot(): void
     {
+        foreach ($this->modeLockedPaths as $path) {
+            if (is_dir($path) || is_file($path)) {
+                chmod($path, 0775);
+            }
+        }
+        $this->modeLockedPaths = [];
         if ($this->installRoot !== '' && is_dir($this->installRoot)) {
             chmod($this->installRoot, 0775);
         }

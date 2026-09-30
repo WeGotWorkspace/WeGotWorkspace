@@ -12,12 +12,23 @@ final class FakeHttps
     /** @var array<string, string> */
     public static array $bodies = [];
 
+    /**
+     * Response header lines per URL, including Content-Length when a test
+     * needs the incomplete-download branch.
+     *
+     * @var array<string, list<string>>
+     */
+    public static array $headers = [];
+
     private static bool $installed = false;
 
     /** @var resource|null */
     private $buffer;
 
     public mixed $context = null;
+
+    /** @var list<string>|null */
+    public ?array $wrapper_data = null;
 
     public static function install(): void
     {
@@ -38,6 +49,7 @@ final class FakeHttps
         stream_wrapper_restore('https');
         self::$installed = false;
         self::$bodies = [];
+        self::$headers = [];
     }
 
     public function stream_open(string $path, string $mode, int $options, ?string &$opened_path): bool
@@ -52,6 +64,7 @@ final class FakeHttps
         fwrite($buffer, self::$bodies[$path]);
         rewind($buffer);
         $this->buffer = $buffer;
+        $this->wrapper_data = self::$headers[$path] ?? null;
 
         return true;
     }

@@ -121,6 +121,7 @@ final class UpdateFailureTest extends WgwDatabaseTestCase
 
     public function test_apply_failure_after_backup_keeps_archive_and_skips_file_rollback(): void
     {
+        $this->skipWhenRootIgnoresModeBits();
         $fixture = $this->releaseFixture;
         $this->assertNotNull($fixture);
         $this->publishRelease('0.2.0', $fixture->zip($this->releaseTree()));
@@ -155,6 +156,53 @@ final class UpdateFailureTest extends WgwDatabaseTestCase
         $this->assertLessThan($replaceAt, $backupAt);
         $this->assertStringContainsString('Automatic file rollback skipped', $log);
         $this->assertStringContainsString('database-only backups', $log);
+    }
+
+    /**
+     * A failure part-way through file replacement is not rolled back.
+     *
+     * applyPaths deletes and copies each release path in order. If a later
+     * path fails, earlier paths stay on the new release. That is intentional:
+     * the updater only archives the database and packages/api/.env, and that
+     * archive is the recovery point.
+     */
+    public function test_mid_swap_failure_leaves_partial_install_and_keeps_database_backup(): void
+    {
+        $this->skipWhenRootIgnoresModeBits();
+        $fixture = $this->releaseFixture;
+        $this->assertNotNull($fixture);
+        $this->publishRelease('0.2.0', $fixture->zip($this->releaseTree()));
+        $this->operations()->check();
+
+        $appsDir = $this->installRoot.'/packages/apps';
+        $this->withBackupDatabase(function (\PDO $pdo) use ($appsDir): void {
+            $this->seedCanary();
+            $this->lockPath($appsDir);
+            try {
+                $this->operations()->apply(['version' => '0.2.0']);
+                $this->fail('Expected a later path to fail after earlier paths were replaced.');
+            } catch (\RuntimeException $e) {
+                $this->assertStringContainsString('not writable', $e->getMessage());
+            } finally {
+                $this->unlockInstallRoot();
+            }
+
+            $this->assertHistory($pdo, 'failed', 'not writable');
+            $zips = $this->backupZips();
+            $this->assertCount(1, $zips);
+            $this->assertBackupTakenBeforeFileSwap($zips[0], $pdo);
+        });
+
+        $this->assertUpdaterIdle();
+        $this->assertStringContainsString('new-index', (string) file_get_contents($this->installRoot.'/index.php'));
+        $this->assertSame("0.2.0\n", file_get_contents($this->installRoot.'/VERSION'));
+        $this->assertSame("apps-old\n", file_get_contents($appsDir.'/marker.txt'));
+        $this->assertStringContainsString(
+            'LOCAL_MARKER=keep-me',
+            (string) file_get_contents($this->installRoot.'/packages/api/.env'),
+        );
+        $this->assertStringContainsString('Automatic file rollback skipped', $this->logText());
+        $this->assertStringContainsString('database-only backups', $this->logText());
     }
 
     public function test_unavailable_feed_records_error_without_partial_state(): void

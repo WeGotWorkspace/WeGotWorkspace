@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Update;
 
+use App\Services\Installer\ApiRuntimeEnvService;
 use App\Services\Update\UpdateRunner;
+use App\Services\Update\UpdateRunnerFilesystem;
 use App\Services\Update\UpdateRunnerPackageIo;
 use App\Services\Update\UpdateStateStore;
 use App\Storage\WgwStorage;
+use App\Support\WgwInstallConfig;
 use Tests\Support\Update\FakeHttps;
 use Tests\Support\Update\TempTree;
 use Tests\Support\Update\UpdateReleaseFixture;
@@ -27,7 +30,7 @@ final class UpdateRunnerPackageIoTest extends TestCase
         mkdir($this->scratch.'/data', 0775, true);
         $this->fixture = UpdateReleaseFixture::generate($this->scratch.'/keys');
         WgwTestDisks::refresh($this->scratch.'/data');
-        config(['wgw.update_public_key_path' => $this->fixture->publicKeyPath]);
+        $this->bindPublicKey($this->fixture->publicKeyPath);
         FakeHttps::install();
         foreach ([WgwStorage::class, UpdateStateStore::class, UpdateRunner::class, UpdateRunnerPackageIo::class] as $abstract) {
             $this->app->forgetInstance($abstract);
@@ -63,16 +66,15 @@ final class UpdateRunnerPackageIoTest extends TestCase
 
     public function test_signature_rejects_missing_key_invalid_encoding_and_bad_signature(): void
     {
-        $io = $this->packages();
-        config(['wgw.update_public_key_path' => $this->scratch.'/missing.pem']);
+        $missing = $this->packagesWithKey($this->scratch.'/missing.pem');
         try {
-            $io->verifyChecksumSignature('abc', base64_encode('x'));
+            $missing->verifyChecksumSignature('abc', base64_encode('x'));
             $this->fail('Expected a missing public key to fail.');
         } catch (\RuntimeException $e) {
             $this->assertSame('Missing update public key for signature verification.', $e->getMessage());
         }
 
-        config(['wgw.update_public_key_path' => $this->fixture?->publicKeyPath]);
+        $io = $this->packagesWithKey($this->fixture?->publicKeyPath);
         try {
             $io->verifyChecksumSignature('abc', '@@@');
             $this->fail('Expected an invalid signature encoding to fail.');
@@ -90,9 +92,14 @@ final class UpdateRunnerPackageIoTest extends TestCase
 
     public function test_default_public_key_path_is_the_packaged_key(): void
     {
-        config(['wgw.update_public_key_path' => '']);
+        $io = new UpdateRunnerPackageIo(
+            app(UpdateStateStore::class),
+            app(WgwInstallConfig::class),
+            app(ApiRuntimeEnvService::class),
+            app(UpdateRunnerFilesystem::class),
+        );
         try {
-            $this->packages()->verifyChecksumSignature('abc', base64_encode('not-the-signature'));
+            $io->verifyChecksumSignature('abc', base64_encode('not-the-signature'));
             $this->fail('Expected the packaged key to reject a bad signature.');
         } catch (\RuntimeException $e) {
             $this->assertSame('Release signature verification failed.', $e->getMessage());
@@ -165,6 +172,24 @@ final class UpdateRunnerPackageIoTest extends TestCase
         }
         $this->assertFileDoesNotExist($this->scratch.'/missing.zip');
 
+        $partialUrl = 'https://updates.test/partial.zip';
+        FakeHttps::$bodies[$partialUrl] = 'short';
+        FakeHttps::$headers[$partialUrl] = [
+            'HTTP/1.1 200 OK',
+            'Content-Length: 100',
+        ];
+        $partial = $this->scratch.'/partial.zip';
+        try {
+            $io->downloadPackage($partialUrl, $partial, '0.1.0', '0.2.0');
+            $this->fail('Expected an incomplete download to fail.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Downloaded package is incomplete.', $e->getMessage());
+        }
+        $this->assertFileDoesNotExist($partial);
+        $this->assertFileDoesNotExist($partial.'.part');
+        $progress = app(UpdateStateStore::class)->read();
+        $this->assertSame(100, $progress['download']['totalBytes']);
+
         app(UpdateStateStore::class)->requestCancel();
         try {
             $io->downloadPackage('https://updates.test/pkg.zip', $this->scratch.'/cancelled.zip', '0.1.0', '0.2.0');
@@ -191,5 +216,20 @@ final class UpdateRunnerPackageIoTest extends TestCase
         $this->assertInstanceOf(UpdateRunnerPackageIo::class, $packages);
 
         return $packages;
+    }
+
+    private function packagesWithKey(?string $path): UpdateRunnerPackageIo
+    {
+        $this->bindPublicKey($path);
+        foreach ([UpdateRunner::class, UpdateRunnerPackageIo::class] as $abstract) {
+            $this->app->forgetInstance($abstract);
+        }
+
+        return $this->packages();
+    }
+
+    private function bindPublicKey(?string $path): void
+    {
+        $this->app->when(UpdateRunnerPackageIo::class)->needs('$publicKeyPath')->give($path);
     }
 }
