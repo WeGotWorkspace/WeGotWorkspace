@@ -261,15 +261,15 @@ final class UnifiedSearchService
      */
     private function normalizeFilters(array $filters): array
     {
-        $categories = isset($filters['categories']) && is_array($filters['categories'])
+        $categories = isset($filters['categories'])
             ? array_values(array_unique(array_values(array_filter(
-                array_map(static fn (mixed $v): string => is_string($v) ? trim($v) : '', $filters['categories']),
+                array_map(static fn (string $v): string => trim($v), $filters['categories']),
                 static fn (string $v): bool => $v !== ''
             ))))
             : [];
-        $extensions = isset($filters['extensions']) && is_array($filters['extensions'])
+        $extensions = isset($filters['extensions'])
             ? array_values(array_unique(array_values(array_filter(
-                array_map(static fn (mixed $v): string => is_string($v) ? strtolower(trim($v)) : '', $filters['extensions']),
+                array_map(static fn (string $v): string => strtolower(trim($v)), $filters['extensions']),
                 static fn (string $v): bool => $v !== ''
             ))))
             : [];

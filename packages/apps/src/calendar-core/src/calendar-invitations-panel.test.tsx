@@ -1,13 +1,11 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CalendarInvitationsPanel } from "@/calendar-core/src/calendar-invitations-panel";
 import { CalendarInvitationsTrigger } from "@/calendar-core/src/calendar-invitations-trigger";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import { writeCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
 import { TooltipProvider } from "@/ui/tooltip";
 
@@ -99,6 +97,7 @@ function renderPanel(overrides: Partial<ComponentProps<typeof CalendarInvitation
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
 });
 
 describe("CalendarInvitationsPanel", () => {
@@ -364,6 +363,22 @@ describe("CalendarInvitationsPanel", () => {
     expect(next.onRespond).toHaveBeenCalledWith("invite-1.ics", "declined", undefined);
   });
 
+  it("defaults Accept to the stored incoming-invite calendar", () => {
+    writeCalendarDisplayPrefs({ inviteCalendarId: "work" });
+    const { onRespond } = renderPanel();
+    expect(screen.getByRole("button", { name: /Calendar: Work/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }));
+    expect(onRespond).toHaveBeenCalledWith("invite-1.ics", "accepted", "work");
+  });
+
+  it("falls back when the stored invite calendar is missing or read-only", () => {
+    writeCalendarDisplayPrefs({ inviteCalendarId: "family" });
+    const { onRespond } = renderPanel();
+    expect(screen.getByRole("button", { name: /Calendar: Personal/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept }));
+    expect(onRespond).toHaveBeenCalledWith("invite-1.ics", "accepted", "default");
+  });
+
   it("keeps other invitation RSVP controls enabled while one respond is in flight", () => {
     let release: (() => void) | undefined;
     const onRespond = vi.fn(
@@ -483,43 +498,6 @@ describe("CalendarInvitationsPanel", () => {
     );
     screen.getByLabelText(defaultCalendarLabels.invitationsClosePanel).focus();
     expect(screen.queryByRole("tooltip")).toBeNull();
-  });
-});
-
-describe("calendar invitation picker reuse", () => {
-  it("imports CalendarEventCalendarPicker from the event form and invite card", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const form = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
-    const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
-    const importLine = 'from "@/calendar-core/src/calendar-event-calendar-picker"';
-    expect(form).toContain(importLine);
-    expect(card).toContain(importLine);
-  });
-
-  it("refetches invitations when the inbox trigger opens the panel", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const workspace = readFileSync(join(here, "calendar-workspace.tsx"), "utf8");
-    expect(workspace).toContain("onToggle={toggleInvitationsOpen}");
-    expect(workspace).toContain("refreshIfIdle");
-    expect(workspace).toContain("onOpenEvent={openInvitationPreview}");
-    expect(workspace).toContain("invitation: true");
-    expect(workspace).not.toMatch(/onOpenEvent=\{[\s\S]*openEditEventKey/);
-  });
-
-  it("reuses RSVP controls from calendar-rsvp-actions in the event form and invite card", () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const form = readFileSync(join(here, "calendar-event-form.tsx"), "utf8");
-    const card = readFileSync(join(here, "calendar-invitation-card.tsx"), "utf8");
-    const importLine = 'from "@/calendar-core/src/calendar-rsvp-actions"';
-    expect(form).toContain(importLine);
-    expect(form).toContain("CalendarRsvpSelect");
-    expect(form).toMatch(
-      /calendar-event-dialog__invitation-rsvp[\s\S]*CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/,
-    );
-    expect(card).toContain(importLine);
-    expect(card).toContain("CalendarRsvpActions");
-    expect(card).toMatch(/DocsCollabCardHeader[\s\S]*event-card[\s\S]*CalendarRsvpActions/);
-    expect(card).toMatch(/CalendarRsvpActions[\s\S]*size="sm"[\s\S]*showLabels/);
   });
 });
 

@@ -10,6 +10,7 @@ use DateTimeZone;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\DateTimeParser;
+use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
 use Sabre\VObject\Recur\EventIterator;
 use Sabre\VObject\Recur\NoInstancesException;
 
@@ -65,14 +66,33 @@ final class CalendarSchedulingInviteHorizon
 
     private function effectiveEnd(VEvent $vevent, DateTimeZone $timeZone): DateTimeInterface
     {
-        $start = $vevent->DTSTART->getDateTime($timeZone);
+        $startProp = $vevent->DTSTART;
+        if (! $startProp instanceof IcsDateTime) {
+            throw new \InvalidArgumentException('VEVENT DTSTART is not a date-time.');
+        }
+        $start = $startProp->getDateTime($timeZone);
         if (isset($vevent->DTEND)) {
-            return $vevent->DTEND->getDateTime($timeZone);
+            $endProp = $vevent->DTEND;
+            if (! $endProp instanceof IcsDateTime) {
+                throw new \InvalidArgumentException('VEVENT DTEND is not a date-time.');
+            }
+            $end = $endProp->getDateTime($timeZone);
+
+            return $end;
         }
         if (isset($vevent->DURATION)) {
-            return $start->add(DateTimeParser::parseDuration((string) $vevent->DURATION));
+            $duration = $vevent->DURATION;
+            if (! $duration instanceof \Stringable) {
+                throw new \InvalidArgumentException('VEVENT DURATION is not a duration.');
+            }
+            $interval = DateTimeParser::parseDuration((string) $duration);
+            if (! $interval instanceof \DateInterval) {
+                throw new \InvalidArgumentException('VEVENT DURATION is not a duration.');
+            }
+
+            return $start->add($interval);
         }
-        if (! $vevent->DTSTART->hasTime()) {
+        if (! $startProp->hasTime()) {
             return $start->modify('+1 day');
         }
 

@@ -1,0 +1,115 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  CALENDAR_DISPLAY_PREFS_STORAGE_KEY,
+  calendarHourLabel,
+  calendarVisibleHoursLabel,
+  calendarWeekdayLabel,
+  parseCalendarDisplayPrefs,
+  readCalendarDisplayPrefs,
+  resolveCalendarWeekStart,
+  writeCalendarDisplayPrefs,
+  type CalendarDisplayPrefs,
+} from "@/lib/calendar-display-prefs";
+
+function clearStorage(): void {
+  if (typeof window !== "undefined" && window.localStorage) {
+    window.localStorage.clear();
+  }
+}
+
+const validPrefs: CalendarDisplayPrefs = {
+  timeZone: "Europe/Amsterdam",
+  weekStart: 7,
+  inviteCalendarId: "work",
+  visibleHours: 12,
+  visibleHoursStart: 8,
+};
+
+describe("parseCalendarDisplayPrefs", () => {
+  it("returns valid fields and drops unknown or invalid values", () => {
+    expect(parseCalendarDisplayPrefs(JSON.stringify(validPrefs))).toEqual(validPrefs);
+    expect(
+      parseCalendarDisplayPrefs(
+        JSON.stringify({
+          timeZone: "  UTC  ",
+          locale: "xx-XX",
+          weekStart: 8,
+          inviteCalendarId: "  ",
+          visibleHours: 0,
+          visibleHoursStart: 24,
+          extra: true,
+        }),
+      ),
+    ).toEqual({ timeZone: "UTC" });
+  });
+
+  it("returns {} for missing, corrupt, or empty payloads", () => {
+    expect(parseCalendarDisplayPrefs(null)).toEqual({});
+    expect(parseCalendarDisplayPrefs("")).toEqual({});
+    expect(parseCalendarDisplayPrefs("{")).toEqual({});
+    expect(parseCalendarDisplayPrefs("[]")).toEqual({});
+  });
+});
+
+describe("readCalendarDisplayPrefs / writeCalendarDisplayPrefs", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    clearStorage();
+  });
+
+  it("round-trips stored prefs", () => {
+    expect(writeCalendarDisplayPrefs(validPrefs)).toBe(true);
+    expect(window.localStorage.getItem(CALENDAR_DISPLAY_PREFS_STORAGE_KEY)).toBe(
+      JSON.stringify(validPrefs),
+    );
+    expect(readCalendarDisplayPrefs()).toEqual(validPrefs);
+  });
+
+  it("swallows storage failures and no-ops without window", () => {
+    vi.spyOn(window.localStorage, "getItem").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+    expect(readCalendarDisplayPrefs()).toEqual({});
+
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+    expect(writeCalendarDisplayPrefs(validPrefs)).toBe(false);
+
+    vi.stubGlobal("window", undefined);
+    expect(readCalendarDisplayPrefs()).toEqual({});
+    expect(writeCalendarDisplayPrefs(validPrefs)).toBe(false);
+  });
+});
+
+describe("resolveCalendarWeekStart", () => {
+  it("uses a stored weekday and otherwise the locale first day", () => {
+    expect(resolveCalendarWeekStart({ weekStart: 7 }, "nl-NL")).toBe(7);
+    expect(resolveCalendarWeekStart({}, "en-US")).toBe(getLocaleFirstDay("en-US"));
+  });
+});
+
+describe("calendarWeekdayLabel", () => {
+  it("names ISO weekdays in the display locale", () => {
+    expect(calendarWeekdayLabel(1, "en-US")).toMatch(/monday/i);
+    expect(calendarWeekdayLabel(7, "en-US")).toMatch(/sunday/i);
+  });
+});
+
+describe("calendarVisibleHoursLabel / calendarHourLabel", () => {
+  it("labels hour counts and clock hours", () => {
+    expect(calendarVisibleHoursLabel(1)).toBe("1 hour");
+    expect(calendarVisibleHoursLabel(12)).toBe("12 hours");
+    expect(calendarHourLabel(8, "en-US")).toMatch(/8/);
+    expect(calendarHourLabel(0, "en-US")).toMatch(/12|0/);
+  });
+});
+
+function getLocaleFirstDay(locale: string): number {
+  const localeInfo = new Intl.Locale(locale) as Intl.Locale & {
+    getWeekInfo?: () => { firstDay?: number };
+    weekInfo?: { firstDay?: number };
+  };
+  return localeInfo.getWeekInfo?.()?.firstDay ?? localeInfo.weekInfo?.firstDay ?? 1;
+}

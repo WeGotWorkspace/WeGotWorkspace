@@ -7,7 +7,20 @@ namespace App\Models;
 use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property string $id
+ * @property string $notification_id
+ * @property string $principal
+ * @property string $channel
+ * @property Carbon $due_at
+ * @property Carbon|null $acked_at
+ * @property Carbon|null $sent_at
+ * @property Carbon $created_at
+ */
 final class NotificationDelivery extends Model
 {
     use UsesWgwConnection;
@@ -50,6 +63,7 @@ final class NotificationDelivery extends Model
         'created_at' => 'datetime',
     ];
 
+    /** @return BelongsTo<Notification, $this> */
     public function notification(): BelongsTo
     {
         return $this->belongsTo(Notification::class, 'notification_id');

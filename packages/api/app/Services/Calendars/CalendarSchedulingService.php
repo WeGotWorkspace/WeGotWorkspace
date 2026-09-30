@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\VObject\Component\VCalendar;
+use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\ITip\Broker;
 use Sabre\VObject\ITip\ITipException;
 use Sabre\VObject\ITip\Message;
@@ -57,7 +58,7 @@ final class CalendarSchedulingService
             return $newIcs;
         }
         foreach ($this->brokerMessages($username, $newIcs, $oldIcs) as $message) {
-            $method = strtoupper((string) ($message->method ?? ''));
+            $method = strtoupper((string) ($message->method));
             if (in_array($method, ['REQUEST', 'CANCEL'], true) && $message->significantChange) {
                 return $this->incrementSequence($newIcs);
             }
@@ -98,7 +99,7 @@ final class CalendarSchedulingService
             return $event;
         }
         $principal = Principal::forUsername($username);
-        $name = trim((string) ($principal?->displayname ?? ''));
+        $name = trim((string) ($principal->displayname ?? ''));
         $event['participants'] = [
             'org' => [
                 '@type' => 'Participant',
@@ -180,6 +181,7 @@ final class CalendarSchedulingService
 
         $newIcs = $this->ensureOrganizerIcs($newIcs, $actorAddresses);
 
+        // Null new ICS is an organizer delete (Sabre Broker sends CANCEL). Null old ICS is a new invite.
         if (! $this->hasSingleEventUid($newIcs) || ! $this->hasSingleEventUid($oldIcs)) {
             return [];
         }
@@ -196,7 +198,7 @@ final class CalendarSchedulingService
 
     private function shouldDeliver(Message $message, ?string $oldIcs): bool
     {
-        $method = strtoupper((string) ($message->method ?? ''));
+        $method = strtoupper((string) ($message->method));
         if ($method === 'REQUEST' && $oldIcs !== null && trim($oldIcs) !== '' && ! $message->significantChange) {
             return false;
         }
@@ -266,6 +268,9 @@ final class CalendarSchedulingService
 
         $changed = false;
         foreach ($parsed->select('VEVENT') as $event) {
+            if (! $event instanceof VEvent) {
+                continue;
+            }
             if (isset($event->ORGANIZER) || ! isset($event->ATTENDEE)) {
                 continue;
             }
@@ -321,13 +326,13 @@ final class CalendarSchedulingService
 
     private function isOrganizerRequestToSelf(Message $message, Principal $recipient): bool
     {
-        $method = strtoupper((string) ($message->method ?? 'REQUEST'));
+        $method = strtoupper((string) ($message->method));
         if ($method !== '' && $method !== 'REQUEST') {
             return false;
         }
 
-        $organizerMailto = (string) ($message->sender ?? '');
-        $vevent = isset($message->message) ? ($message->message->VEVENT ?? null) : null;
+        $organizerMailto = (string) ($message->sender);
+        $vevent = $message->message->VEVENT ?? null;
         if ($vevent !== null && isset($vevent->ORGANIZER)) {
             $organizerMailto = (string) $vevent->ORGANIZER;
         }
@@ -348,7 +353,7 @@ final class CalendarSchedulingService
 
     private function deliverLocal(string $actorUsername, Message $message, string $principalUri): void
     {
-        $method = strtoupper((string) ($message->method ?? ''));
+        $method = strtoupper((string) ($message->method));
         if ($method === 'CANCEL') {
             $this->consumeCancel($actorUsername, $principalUri, $message);
 
@@ -364,9 +369,10 @@ final class CalendarSchedulingService
 
         $existing = $this->findEventByUid($principalUri, (string) $message->uid);
         $current = null;
-        if ($existing !== null) {
-            $raw = is_string($existing->calendardata) ? $existing->calendardata : (string) $existing->calendardata;
-            $current = Reader::read($raw);
+        if ($existing !== null && is_string($existing->calendardata) && $existing->calendardata !== '') {
+            $parsedCurrent = Reader::read($existing->calendardata);
+            // Null calendardata is not an existing calendar to merge.
+            $current = $parsedCurrent instanceof VCalendar ? $parsedCurrent : null;
         }
 
         $newObject = (new Broker)->processMessage($message, $current);
@@ -420,8 +426,12 @@ final class CalendarSchedulingService
             return;
         }
 
-        $raw = is_string($existing->calendardata) ? $existing->calendardata : (string) $existing->calendardata;
-        $current = Reader::read($raw);
+        $raw = is_string($existing->calendardata) && $existing->calendardata !== '' ? $existing->calendardata : null;
+        $current = null;
+        if ($raw !== null) {
+            $parsedCurrent = Reader::read($raw);
+            $current = $parsedCurrent instanceof VCalendar ? $parsedCurrent : null;
+        }
         $newObject = (new Broker)->processMessage($message, $current);
         $instance = $this->instanceForObject($principalUri, $existing);
         if ($instance === null) {
@@ -430,7 +440,7 @@ final class CalendarSchedulingService
 
         $caldav = $this->calBackend();
         $calendarId = [(int) $instance->calendarid, (int) $instance->id];
-        if ($this->isTentativeInviteCopy($raw, $principalUri) || $newObject === null) {
+        if (($raw !== null && $this->isTentativeInviteCopy($raw, $principalUri)) || $newObject === null) {
             $caldav->deleteCalendarObject($calendarId, (string) $existing->uri);
             $this->unindexPath($principalUri, (string) $instance->uri, (string) $existing->uri);
 
@@ -451,7 +461,7 @@ final class CalendarSchedulingService
         if ($copy === null) {
             return;
         }
-        $uid = trim((string) ($message->uid ?? ''));
+        $uid = trim((string) ($message->uid));
         $this->eventDispatch->fireMutation(
             $actorUsername,
             'calendar',
@@ -494,7 +504,7 @@ final class CalendarSchedulingService
         if ($copy === null) {
             return;
         }
-        $uid = trim((string) ($message->uid ?? ''));
+        $uid = trim((string) ($message->uid));
         $this->eventDispatch->fireMutation(
             $actorUsername,
             'calendar',

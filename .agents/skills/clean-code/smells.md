@@ -55,6 +55,14 @@ Scan **new or changed** `use*.ts(x)` files. Thresholds are handoff/merge blocker
 - [ ] **Optional fields on one type serving two shapes** (e.g. draft vs persisted anchor) — prefer discriminated unions.
 - [ ] **Test file line count ≫ orchestrator surface** — behavior may be covered but structure is untouchable; extract pure modules and test them directly ([testing/ui-architecture.md](../testing/ui-architecture.md)).
 
+## Source file size
+
+Counted trees are `packages/apps/src`, `tools/mcp-server/src`, and `packages/api/app`. A line is the same count the done-gate script uses, including a last line with no trailing newline. Tests, stories, declarations, mocks, fixtures, and `test-utils` are excluded by the script globs.
+
+A new counted source file over 800 lines is a merge block unless its baseline entry carries an approved reason. A baselined file is a merge block when its line count grows, or when it shrinks and the stored integer was not lowered. Split by responsibility into injected classes with their own unit tests. Traits that exist only to get a file under 800 lines are not a split.
+
+`pnpm ratchet:update` lowers a stored count or deletes a row that is now at or under 800 lines. It never raises a count and never adds a path. Adding a path is a manual edit with a reason in the third column. `pnpm ratchet:rebaseline` refreshes existing baseline counts after integrating main (may raise); do not use it on a feature PR to excuse growth. CI `check-growth` warns when a count rises or a new baseline row appears versus the PR base; raising the baseline requires code-owner review of `tools/file-size-baseline.tsv`. The existing hook limits below stay stricter for `use*.ts(x)`.
+
 ## Project-specific red flags
 
 - [ ] Legacy PHP patterns in `packages/api` (see `api/SKILL.md` forbidden list)

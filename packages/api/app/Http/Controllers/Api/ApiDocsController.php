@@ -140,7 +140,7 @@ HTML;
         return response()->json($this->openApiDocument->build($webBase));
     }
 
-    public function asset(string $asset): Response
+    public function asset(string $asset): JsonResponse|Response
     {
         $path = $this->resolveSwaggerAssetPath($asset);
         if (! is_readable($path)) {

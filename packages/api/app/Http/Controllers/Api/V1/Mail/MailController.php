@@ -115,9 +115,6 @@ final class MailController
     public function messageUpdateById(Request $request, string $messageId): JsonResponse
     {
         $body = $request->json()->all();
-        if (! is_array($body)) {
-            $body = [];
-        }
         $body = array_merge($this->messageQueryFromId($messageId, []), $body);
 
         return $this->json(fn () => $this->mail->patchMessage($this->username($request), $body));

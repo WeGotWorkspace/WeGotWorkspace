@@ -125,11 +125,11 @@ final class AdminGroupManagementService
 
     private function deleteAddressBookShares(string $principalUri): void
     {
-        $bookIds = Addressbook::query()
+        $bookIds = array_values(Addressbook::query()
             ->where('principaluri', $principalUri)
             ->pluck('id')
             ->map(static fn (mixed $id): int => (int) $id)
-            ->all();
+            ->all());
 
         $this->addressBookShares->deleteGrantsForGroupPrincipal($principalUri, $bookIds);
 

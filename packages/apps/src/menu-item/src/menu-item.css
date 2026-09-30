@@ -77,7 +77,7 @@
 }
 
 .sidebar-section .menu-item--surface-idle {
-  @apply font-semibold;
+  @apply font-medium;
   color: color-mix(in oklab, var(--color-we-got-dark) 75%, transparent);
 }
 
@@ -87,7 +87,7 @@
 
 /* Selected = outline icon-button--active wash/fg (parents publish --button-outline-*). */
 .sidebar-section .menu-item--surface-selected {
-  @apply font-semibold;
+  @apply font-medium;
   background-color: var(
     --button-outline-active-background,
     color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
@@ -100,7 +100,7 @@
 }
 
 .sidebar-section .menu-item--surface-drop {
-  @apply bg-[color-mix(in_oklab,var(--color-we-got-dark)_22%,transparent)] font-semibold text-[var(--color-we-got-dark)] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-we-got-dark)_35%,transparent)];
+  @apply bg-[color-mix(in_oklab,var(--color-we-got-dark)_22%,transparent)] font-medium text-[var(--color-we-got-dark)] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-we-got-dark)_35%,transparent)];
 }
 
 /* ----- Icon slot ----- */

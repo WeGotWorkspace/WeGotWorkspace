@@ -351,7 +351,7 @@ final class ChatChannelRepository
 
         $currentMap = [];
         foreach ($instances as $instance) {
-            $currentMap[(string) $instance->uri] = (int) ($instance->calendar?->synctoken ?? 1);
+            $currentMap[(string) $instance->uri] = (int) ($instance->calendar->synctoken ?? 1);
         }
         $created = [];
         $updated = [];
@@ -454,7 +454,7 @@ final class ChatChannelRepository
             ],
         };
 
-        $kind = $meta?->kind ?? ChatChannelMeta::KIND_CHANNEL;
+        $kind = $meta->kind ?? ChatChannelMeta::KIND_CHANNEL;
         $isDefault = $meta?->default_for_group !== null;
         if ($isDefault) {
             // Immutable like DMs (assertNotGroupDefault): surface that in the
@@ -493,7 +493,7 @@ final class ChatChannelRepository
     {
         $tokens = [];
         foreach ($this->accessibleChatInstances($username) as $instance) {
-            $tokens[(string) $instance->uri] = (string) (int) ($instance->calendar?->synctoken ?? 1);
+            $tokens[(string) $instance->uri] = (string) (int) ($instance->calendar->synctoken ?? 1);
         }
 
         return $tokens;
@@ -769,7 +769,7 @@ final class ChatChannelRepository
     private function nameDmShareeInstancesAfterOwner(CalendarInstance $owner, string $ownerUsername): void
     {
         $ownerPrincipal = Principal::forUsername($ownerUsername);
-        $ownerName = trim((string) ($ownerPrincipal?->displayname ?? '')) ?: $ownerUsername;
+        $ownerName = trim((string) ($ownerPrincipal->displayname ?? '')) ?: $ownerUsername;
 
         CalendarInstance::query()
             ->where('calendarid', (int) $owner->calendarid)
@@ -788,7 +788,7 @@ final class ChatChannelRepository
             ->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
             ->first(['principaluri']);
 
-        return (string) ($owner?->principaluri ?? $instance->principaluri);
+        return (string) ($owner->principaluri ?? $instance->principaluri);
     }
 
     /**
@@ -797,13 +797,13 @@ final class ChatChannelRepository
     private function usernamesForPrincipalUri(string $principalUri): array
     {
         if (str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)) {
-            return GroupMember::query()
+            return array_values(GroupMember::query()
                 ->join('principals as g', 'g.id', '=', 'groupmembers.principal_id')
                 ->join('principals as m', 'm.id', '=', 'groupmembers.member_id')
                 ->where('g.uri', $principalUri)
                 ->pluck('m.uri')
                 ->map(static fn (mixed $uri): string => str_replace('principals/', '', (string) $uri))
-                ->all();
+                ->all());
         }
         if (str_starts_with($principalUri, 'principals/')) {
             return [substr($principalUri, strlen('principals/'))];
@@ -846,7 +846,7 @@ final class ChatChannelRepository
     {
         $parts = [];
         foreach ($instances as $instance) {
-            $parts[] = (string) $instance->uri.':'.(int) ($instance->calendar?->synctoken ?? 1);
+            $parts[] = (string) $instance->uri.':'.(int) ($instance->calendar->synctoken ?? 1);
         }
 
         return (string) count($parts).':'.implode(',', $parts);

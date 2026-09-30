@@ -17,7 +17,7 @@ final class MailImapClient
      */
     public static function mailboxRef(array $imapCred): string
     {
-        $sec = $imapCred['security'] ?? 'ssl';
+        $sec = $imapCred['security'];
         $flag = match ($sec) {
             'starttls' => '/tls',
             'none' => '/notls',
@@ -198,8 +198,7 @@ final class MailImapClient
     }
 
     /**
-     * SEARCH with arbitrary AND criteria (e.g. {@code TEXT "…"}, {@code UNSEEN TEXT "…"}, {@code FLAGGED TEXT "…"}),
-     * then newest-first paging like {@see sortUidsNewestFirstPaged}.
+     * SEARCH with arbitrary AND criteria (e.g. {@code TEXT "…"}, {@code UNSEEN TEXT "…"}, {@code FLAGGED TEXT "…"}), then newest-first paging like {@see sortUidsNewestFirstPaged}.
      *
      * @return array{uids: list<int>, hasMore: bool}
      */
@@ -215,18 +214,13 @@ final class MailImapClient
         if (! @imap_reopen($conn, $ref.$mailbox)) {
             return ['uids' => [], 'hasMore' => false];
         }
-        $uids = false;
-        if (\PHP_VERSION_ID >= 80100) {
-            $charset = null;
-            if (extension_loaded('mbstring') && ! mb_check_encoding($imapAndCriteria, 'ASCII')) {
-                $charset = 'UTF-8';
-            }
-            $uids = $charset !== null
-                ? @imap_search($conn, $imapAndCriteria, \SE_UID, $charset)
-                : @imap_search($conn, $imapAndCriteria, \SE_UID);
-        } else {
-            $uids = @imap_search($conn, $imapAndCriteria, \SE_UID);
+        $charset = null;
+        if (extension_loaded('mbstring') && ! mb_check_encoding($imapAndCriteria, 'ASCII')) {
+            $charset = 'UTF-8';
         }
+        $uids = $charset !== null
+            ? @imap_search($conn, $imapAndCriteria, \SE_UID, $charset)
+            : @imap_search($conn, $imapAndCriteria, \SE_UID);
         if ($uids === false) {
             return ['uids' => [], 'hasMore' => false];
         }
@@ -245,7 +239,8 @@ final class MailImapClient
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @param  list<int|string>  $uids
+     * @return list<\stdClass>
      */
     public static function fetchOverviews(Connection $conn, array $uids): array
     {
@@ -257,8 +252,14 @@ final class MailImapClient
         if ($ov === false) {
             return [];
         }
+        $rows = [];
+        foreach ($ov as $row) {
+            if ($row instanceof \stdClass) {
+                $rows[] = $row;
+            }
+        }
 
-        return array_values($ov);
+        return $rows;
     }
 
     public static function msgnoFromUid(Connection $conn, int $uid): int
@@ -550,103 +551,6 @@ final class MailImapClient
         return rtrim($header, "\r\n")."\r\n\r\n".$body;
     }
 
-    /**
-     * @return array{plain: string, html: string}
-     */
-    private static function extractBodiesFromStructure(Connection $conn, int $msgno, object $st, string $prefix): array
-    {
-        if (! empty($st->parts)) {
-            $subtype = isset($st->subtype) ? strtolower((string) $st->subtype) : '';
-            if ($subtype === 'alternative') {
-                $plain = '';
-                $html = '';
-                foreach ($st->parts as $i => $p) {
-                    if (! is_object($p)) {
-                        continue;
-                    }
-                    $num = $prefix === '' ? (string) ($i + 1) : $prefix.'.'.($i + 1);
-                    $r = self::extractBodiesFromStructure($conn, $msgno, $p, $num);
-                    if ($r['plain'] !== '') {
-                        $plain = $r['plain'];
-                    }
-                    if ($r['html'] !== '') {
-                        $html = $r['html'];
-                    }
-                }
-
-                return ['plain' => $plain, 'html' => $html];
-            }
-            if ($subtype === 'related') {
-                $html = '';
-                $plainFromText = '';
-                $calendarPlain = '';
-                foreach ($st->parts as $i => $p) {
-                    if (! is_object($p)) {
-                        continue;
-                    }
-                    $num = $prefix === '' ? (string) ($i + 1) : $prefix.'.'.($i + 1);
-                    $psub = isset($p->subtype) ? strtolower((string) $p->subtype) : '';
-                    $r = self::extractBodiesFromStructure($conn, $msgno, $p, $num);
-                    if ($r['html'] !== '') {
-                        $html = $r['html'];
-                    }
-                    if ($psub === 'calendar') {
-                        if ($r['plain'] !== '') {
-                            $calendarPlain = $r['plain'];
-                        }
-
-                        continue;
-                    }
-                    if ($r['plain'] !== '') {
-                        $plainFromText = $r['plain'];
-                    }
-                }
-                if ($html !== '') {
-                    return ['plain' => $plainFromText, 'html' => $html];
-                }
-
-                return [
-                    'plain' => $plainFromText !== '' ? $plainFromText : $calendarPlain,
-                    'html' => '',
-                ];
-            }
-            foreach ($st->parts as $i => $p) {
-                if (! is_object($p)) {
-                    continue;
-                }
-                $num = $prefix === '' ? (string) ($i + 1) : $prefix.'.'.($i + 1);
-                $r = self::extractBodiesFromStructure($conn, $msgno, $p, $num);
-                if ($r['plain'] !== '' || $r['html'] !== '') {
-                    return $r;
-                }
-            }
-
-            return ['plain' => '', 'html' => ''];
-        }
-        $type = (int) ($st->type ?? 0);
-        $sub = isset($st->subtype) ? strtolower((string) $st->subtype) : '';
-        if ($type !== 0) {
-            return ['plain' => '', 'html' => ''];
-        }
-        $num = $prefix === '' ? '1' : $prefix;
-        $raw = imap_fetchbody($conn, $msgno, $num, \FT_PEEK);
-        if (! is_string($raw)) {
-            return ['plain' => '', 'html' => ''];
-        }
-        $decoded = self::decodeTransfer($raw, (int) ($st->encoding ?? 0));
-        if ($sub === 'plain') {
-            return ['plain' => $decoded, 'html' => ''];
-        }
-        if ($sub === 'html') {
-            return ['plain' => '', 'html' => $decoded];
-        }
-        if ($sub === 'calendar') {
-            return ['plain' => $decoded, 'html' => ''];
-        }
-
-        return ['plain' => '', 'html' => ''];
-    }
-
     private static function decodeTransfer(string $raw, int $encoding): string
     {
         return match ($encoding) {
@@ -725,11 +629,7 @@ final class MailImapClient
             return [];
         }
         $mime = self::mimeFromPartStructure($st);
-        $b64 = base64_encode($decoded);
-        if ($b64 === false) {
-            return [];
-        }
-        $dataUrl = 'data:'.$mime.';base64,'.$b64;
+        $dataUrl = 'data:'.$mime.';base64,'.base64_encode($decoded);
         $map = [];
         foreach (array_keys($normKeys) as $k) {
             $map[$k] = $dataUrl;
@@ -779,6 +679,8 @@ final class MailImapClient
 
     /**
      * Map HTML {@code cid:…} to a data URL; supports short refs ({@code cid:img1}) vs full Content-IDs ({@code <img1@host>}).
+     *
+     * @param  array<string, string>  $cidToDataUrl
      */
     private static function resolveCidToDataUrl(string $cidUri, array $cidToDataUrl): ?string
     {
@@ -935,22 +837,28 @@ final class MailImapClient
 
     public static function deleteUid(Connection $conn, int $uid): bool
     {
-        return @imap_delete($conn, (string) $uid, \FT_UID) && @imap_expunge($conn);
+        @imap_delete($conn, (string) $uid, \FT_UID);
+        @imap_expunge($conn);
+
+        return true;
     }
 
     public static function moveUid(Connection $conn, string $ref, int $uid, string $targetMailbox): bool
     {
-        // imap_mail_move expects a mailbox name (not the full "{host}…" ref).
-        // For non-ASCII mailbox names, use modified UTF-7 if available.
         $mb = $targetMailbox;
         if (function_exists('imap_utf7_encode')) {
             $enc = @imap_utf7_encode($targetMailbox);
-            if (is_string($enc) && $enc !== '') {
+            if ($enc !== '') {
                 $mb = $enc;
             }
         }
 
-        return imap_mail_move($conn, (string) $uid, $mb, \CP_UID) && imap_expunge($conn);
+        if (! imap_mail_move($conn, (string) $uid, $mb, \CP_UID)) {
+            return false;
+        }
+        imap_expunge($conn);
+
+        return true;
     }
 
     public static function reopenMailbox(Connection $conn, string $ref, string $mailbox): bool
@@ -978,7 +886,7 @@ final class MailImapClient
     public static function createMailbox(Connection $conn, string $ref, string $fullUtf8Path): bool
     {
         $enc = function_exists('imap_utf7_encode') ? @imap_utf7_encode($fullUtf8Path) : $fullUtf8Path;
-        if (! is_string($enc) || $enc === '') {
+        if ($enc === '') {
             $enc = $fullUtf8Path;
         }
 
@@ -996,11 +904,11 @@ final class MailImapClient
     public static function renameMailbox(Connection $conn, string $ref, string $oldUtf8Path, string $newUtf8Path): bool
     {
         $oldEnc = function_exists('imap_utf7_encode') ? @imap_utf7_encode($oldUtf8Path) : $oldUtf8Path;
-        if (! is_string($oldEnc) || $oldEnc === '') {
+        if ($oldEnc === '') {
             $oldEnc = $oldUtf8Path;
         }
         $newEnc = function_exists('imap_utf7_encode') ? @imap_utf7_encode($newUtf8Path) : $newUtf8Path;
-        if (! is_string($newEnc) || $newEnc === '') {
+        if ($newEnc === '') {
             $newEnc = $newUtf8Path;
         }
 
@@ -1014,7 +922,7 @@ final class MailImapClient
     {
         $fromHeader = trim($fromHeader);
         if (preg_match('/^(?:"([^"]*)"|([^<]+?))\s*<([^>]+)>$/u', $fromHeader, $m)) {
-            $name = trim($m[1] !== '' ? $m[1] : ($m[2] ?? ''), " \t\"'");
+            $name = trim($m[1] !== '' ? $m[1] : $m[2], " \t\"'");
             $email = trim($m[3]);
 
             return ['name' => $name !== '' ? self::decodeMime($name) : $email, 'email' => $email];
@@ -1066,9 +974,6 @@ final class MailImapClient
         $list = is_array($addrs) ? $addrs : [$addrs];
         $out = [];
         foreach ($list as $ent) {
-            if (! is_object($ent)) {
-                continue;
-            }
             $row = self::addressObjectToRow($ent);
             if ($row !== null) {
                 $out[] = $row;
@@ -1090,9 +995,6 @@ final class MailImapClient
             return [];
         }
         $parsed = @imap_rfc822_parse_adrlist($header, 'invalid.local');
-        if (! is_array($parsed)) {
-            return [];
-        }
         $out = [];
         foreach ($parsed as $ent) {
             if (! is_object($ent)) {

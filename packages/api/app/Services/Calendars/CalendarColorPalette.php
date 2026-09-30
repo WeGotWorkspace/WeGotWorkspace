@@ -98,9 +98,6 @@ final class CalendarColorPalette
     {
         $swatches = self::SWATCHES;
         $count = count($swatches);
-        if ($count < 2) {
-            return $swatches[0];
-        }
 
         $hash = 0;
         $length = strlen($seed);

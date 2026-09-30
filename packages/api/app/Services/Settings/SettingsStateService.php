@@ -25,8 +25,8 @@ final class SettingsStateService
     public function forUsername(string $username): array
     {
         $principal = Principal::forUsername($username);
-        $displayName = trim((string) ($principal?->displayname ?? ''));
-        $email = trim((string) ($principal?->email ?? ''));
+        $displayName = trim((string) ($principal->displayname ?? ''));
+        $email = trim((string) ($principal->email ?? ''));
 
         $mail = $this->mailCredentials->loadAccount($username) ?? ['imapUsername' => '', 'imapPassword' => ''];
         $cfg = WgwSettings::normalized();
@@ -40,7 +40,7 @@ final class SettingsStateService
             'groups' => $this->groups->groupsForUser($username),
             'mail' => [
                 'imapUsername' => $this->mailCredentials->effectiveImapUsername($username, $mail),
-                'imapHasPassword' => ((string) ($mail['imapPassword'] ?? '')) !== '',
+                'imapHasPassword' => ((string) $mail['imapPassword']) !== '',
             ],
             'mailServer' => [
                 'imapHost' => (string) ($cfg[WgwSettings::MAIL_IMAP_HOST] ?? ''),

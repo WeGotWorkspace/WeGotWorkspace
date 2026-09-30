@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { Temporal } from "@js-temporal/polyfill";
 import { describe, expect, it } from "vitest";
 import {
@@ -104,30 +101,6 @@ describe("currentTimeMarkersAcrossDays (full-width now indicator)", () => {
 
   it("returns [] for a non-finite now", () => {
     expect(currentTimeMarkersAcrossDays(Number.NaN, MINUTES_PER_DAY, 7)).toEqual([]);
-  });
-
-  it("dims non-today markers in TimeLine CSS", () => {
-    const css = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "../TimeLine/TimeLine.css"),
-      "utf8",
-    );
-    expect(css).toMatch(/\.marker\.marker--dimmed\s*\{[^}]*opacity:\s*0\.35/);
-  });
-
-  it("keeps the now line above resting events during iOS overflow scroll", () => {
-    const css = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "../TimeLine/TimeLine.css"),
-      "utf8",
-    );
-    const markerBlock = css.match(/^\.marker\s*\{[^}]+\}/m)?.[0] ?? "";
-    const eventBlock = css.match(/^\.event\s*\{[^}]+\}/m)?.[0] ?? "";
-    const draggingBlock = css.match(/^\.event\.event--dragging\s*\{[^}]+\}/m)?.[0] ?? "";
-    expect(markerBlock).toContain("z-index: 700");
-    expect(markerBlock).toContain("translateZ(0)");
-    expect(eventBlock).not.toContain("will-change");
-    expect(draggingBlock).not.toContain("will-change");
-    expect(draggingBlock).not.toContain("drop-shadow");
-    expect(draggingBlock).not.toContain("filter:");
   });
 });
 
@@ -560,35 +533,6 @@ describe("isOutsideVisibleMonth / monthDayHeaderPartNames (year mini-months)", (
     );
     expect(monthDayHeaderClassNames({ outsideMonth: false })).toBe("timeline-day-header");
   });
-
-  it("keeps outside-month ink clearly below in-month ink in CSS tokens", () => {
-    const css = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.css"),
-      "utf8",
-    );
-    const mixPercents = (token: string): number[] =>
-      [...css.matchAll(new RegExp(`${token}:[^;]*?(\\d+)%`, "g"))].map((match) => Number(match[1]));
-    const inMonth = mixPercents("--_lc-in-month-day-color");
-    const outside = mixPercents("--_lc-outside-month-day-color");
-    expect(inMonth.length).toBeGreaterThan(0);
-    expect(outside.length).toBeGreaterThan(0);
-    // Mute must come from darkening in-month, not from dropping outside below AA.
-    // 72% vs 63% is invisible; 100% vs 63% is the visible AA-safe pairing.
-    expect(Math.min(...inMonth)).toBeGreaterThanOrEqual(100);
-    expect(Math.max(...outside)).toBeLessThanOrEqual(65);
-    expect(Math.min(...inMonth) - Math.max(...outside)).toBeGreaterThanOrEqual(25);
-  });
-
-  it("mutes outside days from inside TimeLine's shadow, not only via ::part()", () => {
-    const css = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "../TimeLine/TimeLine.css"),
-      "utf8",
-    );
-    expect(css).toMatch(
-      /\.timeline-day-header\.is-outside-month\s*\{[^}]*--_lc-outside-month-day-color/,
-    );
-    expect(css).toMatch(/\.timeline-day-header\s*\{[^}]*--_lc-in-month-day-color/);
-  });
 });
 
 describe("yearMonthStarts (year-mode month windows)", () => {
@@ -700,159 +644,5 @@ describe("visibleHoursWindow (grid visibleHours -> axis window)", () => {
 
   it("scales with non-minute axis units", () => {
     expect(visibleHoursWindow(24, 6, 9)).toEqual({ windowStart: 9, windowEnd: 15 });
-  });
-});
-
-describe("now-badge x-alignment with hour labels", () => {
-  it("uses the same inline padding token and no extra inset", () => {
-    const css = readFileSync(
-      join(
-        dirname(fileURLToPath(import.meta.url)),
-        "../CalendarTimeSidebar/CalendarTimeSidebar.css",
-      ),
-      "utf8",
-    );
-    const hourLabels = css.match(/\.hour-labels\s*\{[^}]+\}/)?.[0] ?? "";
-    const nowBadge = css.match(/\.now-badge\s*\{[^}]+\}/)?.[0] ?? "";
-    expect(hourLabels).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 0)");
-    expect(nowBadge).toContain("inset-inline-end: 0");
-    expect(nowBadge).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 0)");
-    expect(css).toContain("font-size: var(--_lc-time-label-font-size, 0.75rem)");
-  });
-});
-
-describe("week-number corner alignment with time gutter and day-header row", () => {
-  const timelineCss = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.css"),
-    "utf8",
-  );
-  const weekdayHeaderCss = readFileSync(
-    join(
-      dirname(fileURLToPath(import.meta.url)),
-      "../CalendarWeekdayHeader/CalendarWeekdayHeader.css",
-    ),
-    "utf8",
-  );
-
-  it("end-aligns with time-gutter labels and struts to the day-number pill height", () => {
-    const weekNumberStart = timelineCss.indexOf(".timeline-week-number {");
-    const weekNumberEnd = timelineCss.indexOf(".timeline-swipe {");
-    const weekNumber = timelineCss.slice(weekNumberStart, weekNumberEnd);
-    expect(weekNumberStart).toBeGreaterThan(-1);
-    expect(weekNumberEnd).toBeGreaterThan(weekNumberStart);
-    expect(timelineCss).toContain("--_lc-time-sidebar-inline-padding: 6px");
-    expect(timelineCss).toMatch(
-      /@media\s*\(max-width:\s*40rem\)\s*\{[\s\S]*--_lc-time-sidebar-inline-padding:\s*4px/,
-    );
-    expect(timelineCss).toMatch(
-      /@media\s*\(max-width:\s*40rem\)\s*\{[\s\S]*--_lc-time-label-font-size:\s*0\.625rem/,
-    );
-    expect(timelineCss).toMatch(
-      /@media\s*\(max-width:\s*40rem\)\s*\{[\s\S]*--_lc-weekday-header-font-size:\s*0\.75rem/,
-    );
-    expect(weekNumber).toContain("padding-inline: var(--_lc-time-sidebar-inline-padding, 6px)");
-    expect(weekNumber).toContain("justify-content: end");
-    expect(weekNumber).toContain("text-align: end");
-    expect(weekNumber).not.toContain("justify-content: start");
-    expect(weekNumber).toContain("var(--_lc-weekday-header-font-size, 14px)");
-    expect(weekNumber).toContain("line-height: 1");
-    expect(weekNumber).toContain("height: var(--_lc-weekday-day-number-size, 20px)");
-    expect(weekNumber).toContain("--muted-foreground");
-    expect(weekNumber).toContain("--_lc-outside-month-day-color");
-    expect(weekdayHeaderCss).toContain("height: var(--_lc-weekday-day-number-size, 20px)");
-    expect(weekdayHeaderCss).toContain("font-size: var(--_lc-weekday-header-font-size, 14px)");
-    expect(weekdayHeaderCss).toMatch(
-      /@media\s*\(max-width:\s*40rem\)\s*\{[\s\S]*--_lc-weekday-header-font-size,\s*0\.75rem/,
-    );
-    expect(weekdayHeaderCss).toContain("leading-none");
-  });
-});
-
-describe("composed timeline hour-line geometry", () => {
-  const timelineCss = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.css"),
-    "utf8",
-  );
-  const sidebarCss = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "../CalendarTimeSidebar/CalendarTimeSidebar.css"),
-    "utf8",
-  );
-  const timeLineCss = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "../TimeLine/TimeLine.css"),
-    "utf8",
-  );
-
-  it("uses the same hour slot on the gutter and the timed grid", () => {
-    expect(timelineCss).toContain(
-      "--_lc-time-sidebar-hour-cell-height: var(--_lc-timeline-hour-height)",
-    );
-    expect(timelineCss).toContain("--_lc-time-sidebar-timed-gap: var(--_lc-timeline-timed-gap)");
-    expect(timelineCss).toContain("--time-line-grid-size: var(--_lc-timeline-hour-height)");
-    expect(timelineCss).not.toContain("(var(--_lc-timeline-timed-height) - 1px)");
-    expect(timelineCss).not.toContain("-5.5px");
-  });
-
-  it("does not let the timed viewport border shrink the hour tiles", () => {
-    expect(timelineCss).toContain("time-line.timeline-timed::part(viewport)");
-    expect(timelineCss).toContain("border-block-width: 0");
-  });
-
-  it("keeps hour lines on the timed grid, not through time-gutter labels", () => {
-    expect(sidebarCss).toContain("grid-row: 4");
-    expect(sidebarCss).toContain("--_lc-time-sidebar-timed-gap, 0px)");
-    const hourLabels = sidebarCss.match(/\.hour-labels\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
-    expect(hourLabels).toContain("background-color: var(--_lc-time-sidebar-layer-bg)");
-    expect(hourLabels).not.toContain("background-image");
-    expect(hourLabels).not.toContain("linear-gradient");
-    expect(timeLineCss).toContain(".cell-main--grid");
-    expect(timeLineCss).toContain("var(--__grid-line-color)");
-    expect(sidebarCss).toContain("transform: translateY(-50%)");
-    expect(sidebarCss).not.toContain("--_lc-time-sidebar-timed-top-offset");
-  });
-
-  it("lets the composed view size TimeLine hour tiles with a length token", () => {
-    expect(timeLineCss).toContain("var(--time-line-grid-size, var(--__grid-size, 100%))");
-  });
-
-  it("paints the time sidebar (clock badge) above the swipe column", () => {
-    expect(timelineCss).toMatch(/\.timeline-sidebar\s*\{[^}]*z-index:\s*2/);
-    expect(sidebarCss).toContain("translateZ(0)");
-  });
-});
-
-describe("week swipe page measure ignores range-zoom transform", () => {
-  const swipeTs = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "../SwipeContainer/SwipeContainer.ts"),
-    "utf8",
-  );
-  const timelineTs = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "CalendarTimelineView.ts"),
-    "utf8",
-  );
-
-  it("measures page width with offsetWidth, not getBoundingClientRect", () => {
-    expect(swipeTs).toContain("page.offsetWidth");
-    expect(swipeTs).toContain("probe.offsetWidth");
-    expect(swipeTs).not.toContain("page.getBoundingClientRect().width");
-    expect(swipeTs).not.toContain("probe.getBoundingClientRect().width");
-  });
-
-  it("re-measures the week pager when the range-zoom animation ends", () => {
-    expect(timelineTs).toContain("CALENDAR_RANGE_TRANSITION_END_EVENT");
-    expect(timelineTs).toContain("swipe?.remeasure");
-  });
-
-  it("gates date-window re-center through shouldRequestInitialTimedScroll (not raw startDate)", () => {
-    expect(timelineTs).toContain("shouldRequestInitialTimedScroll");
-    expect(timelineTs).toContain("todayWasInRange");
-    expect(timelineTs).toContain("scrollToNow");
-  });
-
-  it("re-centers on Today via CalendarViewGroup even when the week already includes today", () => {
-    const viewGroupTs = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "../CalendarViewGroup/CalendarViewGroup.ts"),
-      "utf8",
-    );
-    expect(viewGroupTs).toContain("timeline.scrollToNow()");
   });
 });

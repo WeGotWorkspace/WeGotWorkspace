@@ -76,7 +76,7 @@ final class MeetReservationService
         $createdBy = $this->normalizeActor($createdBy);
         $existing = $this->find($room);
         if ($existing instanceof MeetReservation) {
-            $existing->expires_at = $expiresAt;
+            $existing->expires_at = $expiresAt === null ? null : Carbon::instance($expiresAt);
             $existing->save();
 
             return $existing;
@@ -97,7 +97,7 @@ final class MeetReservationService
             return;
         }
 
-        $existing->expires_at = $expiresAt;
+        $existing->expires_at = $expiresAt === null ? null : Carbon::instance($expiresAt);
         $existing->save();
     }
 

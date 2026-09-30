@@ -7,10 +7,10 @@ namespace App\Services\Docs\Conversion;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarObject;
 use DateTimeImmutable;
-use DateTimeInterface;
 use DateTimeZone;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VJournal;
+use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
 use Sabre\VObject\Reader;
 
 /**
@@ -87,13 +87,13 @@ final class DocsThreadJournalConverter
         $kind = (string) ($message['kind'] ?? self::KIND_COMMENT);
         $journal->add('X-WGW-THREAD-KIND', $kind);
         $journal->add('X-WGW-ANCHOR-TEXT', (string) ($message['anchorText'] ?? ''));
-        if (isset($message['anchorFrom']) && is_int($message['anchorFrom'])) {
+        if (isset($message['anchorFrom'])) {
             $journal->add('X-WGW-ANCHOR-FROM', (string) $message['anchorFrom']);
         }
-        if (isset($message['anchorTo']) && is_int($message['anchorTo'])) {
+        if (isset($message['anchorTo'])) {
             $journal->add('X-WGW-ANCHOR-TO', (string) $message['anchorTo']);
         }
-        if (isset($message['anchorOccurrence']) && is_int($message['anchorOccurrence'])) {
+        if (isset($message['anchorOccurrence'])) {
             $journal->add('X-WGW-ANCHOR-OCCURRENCE', (string) $message['anchorOccurrence']);
         }
         $changeId = $message['changeId'] ?? null;
@@ -115,7 +115,7 @@ final class DocsThreadJournalConverter
 
         unset($journal->{'X-WGW-REACTIONS'});
         if ($reactions !== []) {
-            $journal->add('X-WGW-REACTIONS', json_encode(array_values($reactions), JSON_UNESCAPED_UNICODE));
+            $journal->add('X-WGW-REACTIONS', json_encode($reactions, JSON_UNESCAPED_UNICODE));
         }
 
         return $calendar->serialize();
@@ -243,7 +243,7 @@ final class DocsThreadJournalConverter
         if (! $calendar instanceof VCalendar) {
             throw new ApiHttpException(400, 'Invalid thread payload.', 'bad_request');
         }
-        foreach ($calendar->getComponents('VJOURNAL') as $component) {
+        foreach ($calendar->select('VJOURNAL') as $component) {
             if ($component instanceof VJournal) {
                 return [$calendar, $component];
             }
@@ -280,10 +280,10 @@ final class DocsThreadJournalConverter
             return null;
         }
         $prop = $journal->{$property};
-        if (method_exists($prop, 'getDateTime')) {
-            $dateTime = $prop->getDateTime();
-            if ($dateTime instanceof DateTimeInterface) {
-                return DateTimeImmutable::createFromInterface($dateTime)
+        if ($prop instanceof IcsDateTime) {
+            $dateTimes = $prop->getDateTimes();
+            if ($dateTimes !== []) {
+                return DateTimeImmutable::createFromInterface($dateTimes[0])
                     ->setTimezone(new DateTimeZone('UTC'))
                     ->format('Y-m-d\TH:i:s\Z');
             }

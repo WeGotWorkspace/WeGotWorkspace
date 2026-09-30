@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Laravel\Passport\Bridge\Client;
 use Laravel\Passport\Bridge\Scope;
 use Laravel\Passport\Bridge\User;
+use League\OAuth2\Server\Entities\ScopeEntityInterface;
 use League\OAuth2\Server\RequestTypes\AuthorizationRequest;
 use League\OAuth2\Server\RequestTypes\AuthorizationRequestInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -64,7 +65,7 @@ final class FilterMcpConsentScopes
     }
 
     /**
-     * @param  list<Scope>  $scopes
+     * @param  list<ScopeEntityInterface>  $scopes
      */
     private static function containsScope(array $scopes, string $id): bool
     {

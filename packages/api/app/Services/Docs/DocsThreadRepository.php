@@ -145,8 +145,8 @@ final class DocsThreadRepository
         $instance = $this->requirePoolForPath($path);
         $root = $this->requireRootOnPath($instance, $path, $rootUid);
 
-        $uid = DocsThreadJournalConverter::normalizeUlid((string) ($payload['id'] ?? ''));
-        $body = (string) ($payload['body'] ?? '');
+        $uid = DocsThreadJournalConverter::normalizeUlid((string) $payload['id']);
+        $body = (string) $payload['body'];
         if (trim($body) === '') {
             throw new ApiHttpException(400, 'body is required.', 'bad_request');
         }
@@ -235,7 +235,7 @@ final class DocsThreadRepository
 
     /**
      * @param  array{username: string, role: string}  $principal
-     * @param  array{resolved?: bool, archived?: bool, changeId?: string, anchorText?: string, anchorFrom?: int, anchorTo?: int}  $payload
+     * @param  array{resolved?: bool, archived?: bool, changeId?: string, anchorText?: string|null, anchorFrom?: int|null, anchorTo?: int|null}  $payload
      * @return array<string, mixed>
      */
     public function patch(array $principal, string $path, string $threadId, array $payload): array
@@ -243,7 +243,7 @@ final class DocsThreadRepository
         $path = $this->requireMutableDocPath($path, $principal);
         $instance = $this->requirePoolForPath($path);
 
-        $changeId = isset($payload['changeId']) && is_string($payload['changeId']) && $payload['changeId'] !== ''
+        $changeId = isset($payload['changeId']) && $payload['changeId'] !== ''
             ? $payload['changeId']
             : null;
         if ($changeId !== null) {
@@ -341,7 +341,7 @@ final class DocsThreadRepository
         $syncToken = $this->normalizeSyncToken($since);
         $changes = $this->calBackend()->getChangesForCalendar(
             [(int) $instance->calendarid, (int) $instance->id],
-            $syncToken,
+            $syncToken === null ? '0' : (string) $syncToken, // falsy token = Sabre initial sync
             1,
             self::CHANGES_PAGE_SIZE,
         );
@@ -586,8 +586,8 @@ final class DocsThreadRepository
             ];
         }
         usort($threads, static function (array $a, array $b): int {
-            return [(string) ($a['createdAt'] ?? ''), (string) ($a['id'] ?? '')]
-                <=> [(string) ($b['createdAt'] ?? ''), (string) ($b['id'] ?? '')];
+            return [(string) $a['createdAt'], (string) $a['id']]
+                <=> [(string) $b['createdAt'], (string) $b['id']];
         });
 
         return $threads;
@@ -721,13 +721,13 @@ final class DocsThreadRepository
         $result = [];
         $found = false;
         foreach ($reactions as $reaction) {
-            if (($reaction['emoji'] ?? null) !== $emoji) {
+            if ($reaction['emoji'] !== $emoji) {
                 $result[] = $reaction;
 
                 continue;
             }
             $found = true;
-            $authors = array_values(array_map('strval', $reaction['authors'] ?? []));
+            $authors = array_map('strval', $reaction['authors']);
             $authors = in_array($username, $authors, true)
                 ? array_values(array_diff($authors, [$username]))
                 : [...$authors, $username];

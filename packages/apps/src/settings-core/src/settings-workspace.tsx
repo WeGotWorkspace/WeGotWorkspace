@@ -12,12 +12,9 @@ import {
   type SettingsControllerState,
 } from "@/settings-core/src/use-settings-controller";
 import { useDocumentTitle } from "@/lib/document-title";
+import { reachabilityFromSettingsData } from "@/settings-core/src/settings-reachability";
+import { SettingsPanelHost } from "@/settings-core/src/settings-panel-host";
 import type { SettingsWorkspaceProps } from "@/settings-core/src/settings-workspace-props";
-import { SettingsOfflinePane } from "@/settings-core/src/settings-offline-pane";
-import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-pane";
-import { SettingsMailPane } from "@/settings-core/src/settings-mail-pane";
-import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
-import { SettingsProfilePane } from "@/settings-core/src/settings-profile-pane";
 import { cn } from "@/lib/utils";
 import "@/settings-core/src/settings-workspace.css";
 
@@ -52,6 +49,18 @@ export function SettingsWorkspace(props: SettingsWorkspaceProps) {
   );
 }
 
+function navItems(
+  controller: SettingsControllerState,
+  panels: SettingsControllerState["sidebarGroups"]["account"],
+): MenuItemProps[] {
+  return panels.map((candidate) => ({
+    label: candidate.label,
+    icon: candidate.icon,
+    selected: controller.section === candidate.id,
+    onClick: () => controller.selectSection(candidate.id),
+  }));
+}
+
 function Sidebar({
   controller,
   session,
@@ -61,12 +70,8 @@ function Sidebar({
   session: WorkspaceSession;
   onLogout?: () => void;
 }) {
-  const sidebarItems: MenuItemProps[] = controller.sections.map((candidate) => ({
-    label: candidate.label,
-    icon: candidate.icon,
-    selected: controller.section === candidate.id,
-    onClick: () => controller.selectSection(candidate.id),
-  }));
+  const accountItems = navItems(controller, controller.sidebarGroups.account);
+  const appsItems = navItems(controller, controller.sidebarGroups.apps);
 
   return (
     <AppSidebar
@@ -74,7 +79,8 @@ function Sidebar({
       open={controller.sidebarOpen}
       onCloseMobile={() => controller.setSidebarOpen(false)}
     >
-      <SidebarSection title="Account" items={sidebarItems} />
+      {accountItems.length > 0 ? <SidebarSection title="Account" items={accountItems} /> : null}
+      {appsItems.length > 0 ? <SidebarSection title="Apps" items={appsItems} /> : null}
     </AppSidebar>
   );
 }
@@ -91,19 +97,16 @@ function MainHeader({ controller }: { controller: SettingsControllerState }) {
 
 function MainContent({ controller }: { controller: SettingsControllerState }) {
   return (
-    <>
-      {controller.currentSection.id === "profile" ? (
-        <SettingsProfilePane profile={controller.profile} />
-      ) : null}
-      {controller.currentSection.id === "memberships" ? (
-        <SettingsMembershipsPane groups={controller.memberships} />
-      ) : null}
-      {controller.currentSection.id === "mail" ? <SettingsMailPane /> : null}
-      {controller.currentSection.id === "offline" ? <SettingsOfflinePane /> : null}
-      {controller.currentSection.id === "assistants" ? (
-        <SettingsAssistantsPane assistants={controller.assistants} />
-      ) : null}
-    </>
+    <SettingsPanelHost
+      panelId={controller.section}
+      ctx={reachabilityFromSettingsData({ mcpEnabled: controller.mcpEnabled })}
+      slices={{
+        profile: controller.profile,
+        mail: controller.mail,
+        assistants: controller.assistants,
+        memberships: controller.memberships,
+      }}
+    />
   );
 }
 

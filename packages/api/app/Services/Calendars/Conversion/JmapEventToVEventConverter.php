@@ -104,7 +104,11 @@ final class JmapEventToVEventConverter
      */
     private function appendSeriesVevents(VCalendar $calendar, array $event): void
     {
-        $this->populateVEvent($calendar->add('VEVENT', []), $event);
+        $master = $calendar->add('VEVENT', []);
+        if (! $master instanceof VEvent) {
+            return;
+        }
+        $this->populateVEvent($master, $event);
         $this->appendOverrideVevents($calendar, $event);
     }
 
@@ -132,6 +136,9 @@ final class JmapEventToVEventConverter
             }
 
             $overrideVevent = $calendar->add('VEVENT', []);
+            if (! $overrideVevent instanceof VEvent) {
+                continue;
+            }
             if (RecurrenceOverrideSupport::isExcludedOverride($patch)) {
                 RecurrenceOverrideSupport::populateExcludedOverrideVEvent(
                     $overrideVevent,
@@ -264,7 +271,7 @@ final class JmapEventToVEventConverter
         }
 
         if (isset($event['excludedRecurrenceDates']) && is_array($event['excludedRecurrenceDates']) && $event['excludedRecurrenceDates'] !== []) {
-            $values = ICalendarDateList::toIcsValues($event['excludedRecurrenceDates']);
+            $values = ICalendarDateList::toIcsValues(array_values($event['excludedRecurrenceDates']));
             if ($values !== []) {
                 $vevent->add('EXDATE', implode(',', $values));
             }

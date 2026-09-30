@@ -41,7 +41,7 @@ final class CalendarImipService
 
         $config = $this->mail->loadConfig();
         $capability = $this->resolver->capability($config);
-        if (! ($capability['canSubmit'] ?? false)) {
+        if (! $capability['canSubmit']) {
             return null;
         }
 

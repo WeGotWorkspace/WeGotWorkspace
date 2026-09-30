@@ -33,7 +33,7 @@ final class IcsToJmapTaskConverter
 
         /** @var list<VTodo> $components */
         $components = [];
-        foreach ($vobject->getComponents('VTODO') as $component) {
+        foreach ($vobject->select('VTODO') as $component) {
             if ($component instanceof VTodo) {
                 $components[] = $component;
             }
@@ -213,7 +213,7 @@ final class IcsToJmapTaskConverter
     {
         $alerts = [];
         $index = 0;
-        foreach ($todo->getComponents('VALARM') as $valarm) {
+        foreach ($todo->select('VALARM') as $valarm) {
             $alert = TaskConversionSupport::alertFromValarm($valarm);
             if ($alert !== null) {
                 $alerts['alert'.(++$index)] = $alert;

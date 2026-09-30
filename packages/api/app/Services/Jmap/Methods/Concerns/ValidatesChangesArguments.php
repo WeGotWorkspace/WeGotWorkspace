@@ -11,6 +11,9 @@ use App\Services\Jmap\JmapMethodException;
  */
 trait ValidatesChangesArguments
 {
+    /**
+     * @param  array<string, mixed>  $args
+     */
     private function sinceState(array $args): string
     {
         $sinceState = $args['sinceState'] ?? null;

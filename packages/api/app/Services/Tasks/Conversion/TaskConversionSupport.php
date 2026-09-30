@@ -6,6 +6,7 @@ namespace App\Services\Tasks\Conversion;
 
 use App\Services\VObject\ICalendarAlarmTrigger;
 use App\Services\VObject\ICalendarDateTime;
+use App\Services\VObject\VObjectScalar;
 use Sabre\VObject\Component;
 use Sabre\VObject\Component\VTodo;
 use Sabre\VObject\Property;
@@ -144,6 +145,7 @@ final class TaskConversionSupport
     }
 
     /**
+     * @param  array<string, mixed>  $task
      * @return array<string, mixed>
      */
     public static function normalizeTaskMapKeys(array $task): array
@@ -267,7 +269,7 @@ final class TaskConversionSupport
         if (isset($todo->ATTENDEE)) {
             foreach ($todo->ATTENDEE as $attendee) {
                 $id = 'att'.(++$index);
-                $partstat = isset($attendee['PARTSTAT']) ? strtolower((string) $attendee['PARTSTAT']) : null;
+                $partstat = isset($attendee['PARTSTAT']) ? strtolower(VObjectScalar::string($attendee['PARTSTAT'])) : null;
                 $entry = [
                     '@type' => 'Participant',
                     'name' => self::participantNameFromProperty($attendee),
@@ -565,7 +567,7 @@ final class TaskConversionSupport
     private static function participantNameFromProperty(Property $property): ?string
     {
         if (isset($property['CN'])) {
-            $name = trim((string) $property['CN']);
+            $name = trim(VObjectScalar::string($property['CN']));
             if ($name !== '') {
                 return $name;
             }

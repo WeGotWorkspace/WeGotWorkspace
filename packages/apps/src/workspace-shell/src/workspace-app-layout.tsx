@@ -1,9 +1,10 @@
-import { LogOut, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
 import { useInboxBadgePulseAttr } from "@/notifications-core/src/use-inbox-badge-pulse";
 import { SidebarLogo } from "@/sidebar-logo/src/sidebar-logo";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
+import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
 import "@/workspace-shell/src/workspace-app-layout.css";
 
@@ -150,6 +151,54 @@ export function WorkspaceUserFooter({
         onClick={handleLogout}
         variant="outline"
         size="md"
+      />
+    </div>
+  );
+}
+
+export type WorkspaceSidebarSettingsItem = {
+  label: string;
+  onClick: () => void;
+};
+
+type WorkspaceSidebarAccountFooterProps = {
+  session: WorkspaceSession;
+  onLogout?: () => void;
+  /** Optional second line under the display name. Defaults to username. */
+  detailLine?: string;
+  /** When omitted, the footer is avatar + logout only. */
+  settingsItem?: WorkspaceSidebarSettingsItem;
+};
+
+export function WorkspaceSidebarAccountFooter({
+  session,
+  onLogout,
+  detailLine,
+  settingsItem,
+}: WorkspaceSidebarAccountFooterProps) {
+  return (
+    <div className="workspace-sidebar-account-footer">
+      {settingsItem ? (
+        <div className="workspace-sidebar-account-footer__settings">
+          <button
+            type="button"
+            className="workspace-sidebar-account-footer__settings-button"
+            onClick={settingsItem.onClick}
+          >
+            <span className="workspace-sidebar-account-footer__settings-icon" aria-hidden>
+              <Settings className="size-4" />
+            </span>
+            <span className="workspace-sidebar-account-footer__settings-label">
+              {settingsItem.label}
+            </span>
+          </button>
+        </div>
+      ) : null}
+      <WorkspaceUserFooter
+        name={session.user.displayName}
+        initials={workspaceUserInitials(session.user)}
+        detailLine={detailLine ?? session.user.username}
+        onLogoutClick={onLogout}
       />
     </div>
   );

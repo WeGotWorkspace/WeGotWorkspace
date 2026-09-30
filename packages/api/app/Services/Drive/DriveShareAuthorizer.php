@@ -138,8 +138,8 @@ final class DriveShareAuthorizer
     public function resolvePathContext(string $virtualPath, array $principal): array
     {
         $path = $this->scope->normalize($virtualPath);
-        $username = strtolower(trim((string) ($principal['username'] ?? '')));
-        $role = strtolower(trim((string) ($principal['role'] ?? 'guest')));
+        $username = strtolower(trim((string) $principal['username']));
+        $role = strtolower(trim((string) $principal['role']));
 
         if ($role !== 'guest') {
             $groupSlugs = $this->groups->allowedGroupSlugs($username);
@@ -179,7 +179,7 @@ final class DriveShareAuthorizer
             }
 
             $sessionKey = substr($username, strlen('share:'));
-            if ($sessionKey === false || $sessionKey === '') {
+            if ($sessionKey === '') {
                 $this->deny();
             }
 

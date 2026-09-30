@@ -163,7 +163,7 @@ function wgw_resolve_testsuite_files(string $configPath, array $excludeSuites = 
 function wgw_partition_files(array $files, int $index, int $total): array
 {
     $out = [];
-    foreach (array_values($files) as $position => $file) {
+    foreach ($files as $position => $file) {
         if ($position % $total === $index - 1) {
             $out[] = $file;
         }

@@ -78,9 +78,9 @@ final class McpAuditLogger
         }
         $token = $user->currentAccessToken();
         $clientId = null;
-        if (is_object($token) && isset($token->oauth_client_id) && is_string($token->oauth_client_id) && $token->oauth_client_id !== '') {
+        if (isset($token->oauth_client_id) && is_string($token->oauth_client_id) && $token->oauth_client_id !== '') {
             $clientId = $token->oauth_client_id;
-        } elseif (is_object($token) && isset($token->client_id)) {
+        } elseif (isset($token->client_id)) {
             $clientId = (string) $token->client_id;
         }
         if ($clientId === null || $clientId === '') {

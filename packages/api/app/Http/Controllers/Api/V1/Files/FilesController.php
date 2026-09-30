@@ -175,9 +175,6 @@ final class FilesController
     {
         $path = $this->requirePath($request);
         $payload = $request->json()->all();
-        if (! is_array($payload)) {
-            $payload = [];
-        }
         $payload['room'] = $path;
         $request->json()->replace($payload);
 

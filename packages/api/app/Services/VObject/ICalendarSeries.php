@@ -12,9 +12,11 @@ use Sabre\VObject\Component;
 final class ICalendarSeries
 {
     /**
-     * @param  list<Component>  $components
-     * @param  (callable(Component, int): string)|null  $anonymousKey
-     * @return array<string, list<Component>>
+     * @template T of Component
+     *
+     * @param  list<T>  $components
+     * @param  (callable(T, int): string)|null  $anonymousKey
+     * @return array<string, list<T>>
      */
     public static function groupByUid(array $components, ?callable $anonymousKey = null): array
     {

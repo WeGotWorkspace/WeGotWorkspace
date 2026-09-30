@@ -9,6 +9,7 @@ use Pdo\Mysql;
  * PHP 8.5 deprecates PDO::MYSQL_ATTR_SSL_CA in favor of Pdo\Mysql::ATTR_SSL_CA.
  */
 if (! function_exists('wgw_mysql_pdo_options')) {
+    /** @return array<mixed> */
     function wgw_mysql_pdo_options(): array
     {
         if (! extension_loaded('pdo_mysql')) {

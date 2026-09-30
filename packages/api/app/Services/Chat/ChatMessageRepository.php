@@ -147,7 +147,7 @@ final class ChatMessageRepository
     }
 
     /**
-     * @param  array{id: string, body: string, parentId?: string|null}  $payload
+     * @param  array{id: string, body: string, parentId?: string|null, mentions?: mixed}  $payload
      * @return array{message: array<string, mixed>, created: bool}
      */
     public function create(string $username, string $channelId, array $payload): array
@@ -155,8 +155,8 @@ final class ChatMessageRepository
         $instance = $this->requireChannel($username, $channelId);
         $this->collectionAccess->assertCollectionWritable($instance, 'This channel is read-only.');
 
-        $uid = ChatMessageJournalConverter::normalizeUlid((string) ($payload['id'] ?? ''));
-        $body = (string) ($payload['body'] ?? '');
+        $uid = ChatMessageJournalConverter::normalizeUlid((string) $payload['id']);
+        $body = (string) $payload['body'];
         if (trim($body) === '') {
             throw new ApiHttpException(400, 'body is required.', 'bad_request');
         }
@@ -248,7 +248,10 @@ final class ChatMessageRepository
             $ics,
         );
 
-        return $this->presentSingle($object->fresh(), $instance);
+        $fresh = $object->fresh();
+
+        // The row was just written; fresh() is null only if it disappeared.
+        return $this->presentSingle($fresh instanceof CalendarObject ? $fresh : $object, $instance);
     }
 
     /**
@@ -321,7 +324,10 @@ final class ChatMessageRepository
             );
         });
 
-        return $this->presentSingle($object->fresh(), $instance);
+        $fresh = $object->fresh();
+
+        // The row was just written; fresh() is null only if it disappeared.
+        return $this->presentSingle($fresh instanceof CalendarObject ? $fresh : $object, $instance);
     }
 
     /**
@@ -446,13 +452,13 @@ final class ChatMessageRepository
         $result = [];
         $found = false;
         foreach ($reactions as $reaction) {
-            if (($reaction['emoji'] ?? null) !== $emoji) {
+            if ($reaction['emoji'] !== $emoji) {
                 $result[] = $reaction;
 
                 continue;
             }
             $found = true;
-            $authors = array_values(array_map('strval', $reaction['authors'] ?? []));
+            $authors = array_map('strval', $reaction['authors']);
             $authors = in_array($username, $authors, true)
                 ? array_values(array_diff($authors, [$username]))
                 : [...$authors, $username];
@@ -565,7 +571,7 @@ final class ChatMessageRepository
         }
         $mentioned = [];
         foreach ($mentions as $mention) {
-            $id = strtolower(trim((string) ($mention['id'] ?? '')));
+            $id = strtolower(trim((string) $mention['id']));
             if ($id === '' || $id === strtolower($authorUsername) || ! isset($rosterSet[$id])) {
                 continue;
             }
@@ -598,10 +604,10 @@ final class ChatMessageRepository
                     'recipients' => array_values($mentioned),
                     ...ChatMentionedNotify::eventData(
                         (string) $instance->uri,
-                        (string) ($postedData['channelKind'] ?? ChatChannelMeta::KIND_CHANNEL),
-                        (string) ($postedData['channelName'] ?? ''),
+                        (string) $postedData['channelKind'],
+                        (string) $postedData['channelName'],
                         $authorUsername,
-                        (string) ($postedData['actor'] ?? $authorUsername),
+                        (string) $postedData['actor'],
                         $body,
                         $messageUid,
                         array_values($mentioned),

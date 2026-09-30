@@ -6,6 +6,7 @@ namespace App\Services\Calendars;
 
 use App\Models\CalendarInstance;
 use App\Models\CalendarShareDismissal;
+use Illuminate\Database\Eloquent\Collection;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
@@ -20,11 +21,11 @@ final class CalendarShareVisibility
      */
     public function dismissedCalendarIds(string $username): array
     {
-        return CalendarShareDismissal::query()
+        return array_values(CalendarShareDismissal::query()
             ->where('username', $username)
             ->pluck('calendarid')
             ->map(static fn (mixed $id): int => (int) $id)
-            ->all();
+            ->all());
     }
 
     public function isDismissed(string $username, int $calendarId): bool
@@ -49,10 +50,10 @@ final class CalendarShareVisibility
     }
 
     /**
-     * @param  iterable<int, CalendarInstance>  $instances
-     * @return iterable<int, CalendarInstance>
+     * @param  Collection<int, CalendarInstance>  $instances
+     * @return Collection<int, CalendarInstance>
      */
-    public function rejectDismissedSharees(string $username, $instances)
+    public function rejectDismissedSharees(string $username, Collection $instances): Collection
     {
         $ids = $this->dismissedCalendarIds($username);
         if ($ids === []) {

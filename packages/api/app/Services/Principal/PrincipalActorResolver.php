@@ -23,13 +23,13 @@ final class PrincipalActorResolver
     {
         /** @var array{username: string, role: string}|null $principal */
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        if (is_array($principal) && ($principal['username'] ?? '') !== '') {
+        if (is_array($principal) && $principal['username'] !== '') {
             return (string) $principal['username'];
         }
 
         $realm = (string) config('wgw.auth_realm', 'SabreDAV');
         $username = $this->auth->tryAuthenticatedUsername($request, $realm);
-        if ($username === null || $username === '') {
+        if ($username === null) {
             throw new PrincipalResponseException(401, [
                 'error' => 'auth_required',
                 'message' => 'Sign in to join the workspace presence room.',

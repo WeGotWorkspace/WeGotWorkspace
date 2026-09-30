@@ -11,6 +11,7 @@ use DateTimeInterface;
 use DateTimeZone;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VJournal;
+use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
 use Sabre\VObject\Reader;
 
 /**
@@ -69,23 +70,20 @@ final class ChatMessageJournalConverter
             $journal->add('RELATED-TO', self::normalizeUlid($parentId));
         }
         $mentions = $message['mentions'] ?? [];
-        if (is_array($mentions) && $mentions !== []) {
+        if ($mentions !== []) {
             $normalized = [];
             foreach ($mentions as $mention) {
-                if (! is_array($mention) || ! is_string($mention['id'] ?? null)) {
-                    continue;
-                }
-                $id = strtolower(trim((string) $mention['id']));
+                $id = strtolower(trim($mention['id']));
                 if ($id === '') {
                     continue;
                 }
-                $display = isset($mention['displayName']) && is_string($mention['displayName'])
+                $display = isset($mention['displayName'])
                     ? trim($mention['displayName'])
                     : $id;
                 $normalized[] = ['id' => $id, 'displayName' => $display !== '' ? $display : $id];
             }
             if ($normalized !== []) {
-                $journal->add('X-WGW-MENTIONS', json_encode(array_values($normalized), JSON_UNESCAPED_UNICODE));
+                $journal->add('X-WGW-MENTIONS', json_encode($normalized, JSON_UNESCAPED_UNICODE));
             }
         }
         $journal->SEQUENCE = 0;
@@ -141,7 +139,7 @@ final class ChatMessageJournalConverter
 
         unset($journal->{'X-WGW-REACTIONS'});
         if ($reactions !== []) {
-            $journal->add('X-WGW-REACTIONS', json_encode(array_values($reactions), JSON_UNESCAPED_UNICODE));
+            $journal->add('X-WGW-REACTIONS', json_encode($reactions, JSON_UNESCAPED_UNICODE));
         }
 
         return $calendar->serialize();
@@ -242,7 +240,7 @@ final class ChatMessageJournalConverter
         if (! $calendar instanceof VCalendar) {
             throw new ApiHttpException(400, 'Invalid message payload.', 'bad_request');
         }
-        foreach ($calendar->getComponents('VJOURNAL') as $component) {
+        foreach ($calendar->select('VJOURNAL') as $component) {
             if ($component instanceof VJournal) {
                 return [$calendar, $component];
             }
@@ -267,10 +265,10 @@ final class ChatMessageJournalConverter
             return null;
         }
         $prop = $journal->{$property};
-        if (method_exists($prop, 'getDateTime')) {
-            $dateTime = $prop->getDateTime();
-            if ($dateTime instanceof DateTimeInterface) {
-                return $this->formatUtc($dateTime);
+        if ($prop instanceof IcsDateTime) {
+            $dateTimes = $prop->getDateTimes();
+            if ($dateTimes !== []) {
+                return $this->formatUtc($dateTimes[0]);
             }
         }
 

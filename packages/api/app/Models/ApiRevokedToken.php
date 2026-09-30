@@ -7,6 +7,13 @@ namespace App\Models;
 use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * @property string $jti
+ * @property int $expires_at
+ * @property int $created_at
+ */
 final class ApiRevokedToken extends Model
 {
     use UsesWgwConnection;

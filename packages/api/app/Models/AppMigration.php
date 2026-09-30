@@ -10,6 +10,10 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Legacy schema version audit ({@code app_migrations}) on upgraded installs.
  * Active migration tracking uses Laravel's {@code migrations} table on {@code wgw}.
+ *
+ * @property int $version
+ * @property string $name
+ * @property string $applied_at
  */
 final class AppMigration extends Model
 {

@@ -20,7 +20,7 @@ class PublicHostResolver
         $aRecords = @gethostbynamel($host);
         if (is_array($aRecords)) {
             foreach ($aRecords as $ip) {
-                if (is_string($ip) && $ip !== '') {
+                if ($ip !== '') {
                     $ips[] = $ip;
                 }
             }
@@ -28,7 +28,7 @@ class PublicHostResolver
         $aaaa = @dns_get_record($host, DNS_AAAA);
         if (is_array($aaaa)) {
             foreach ($aaaa as $row) {
-                if (is_array($row) && isset($row['ipv6']) && is_string($row['ipv6']) && $row['ipv6'] !== '') {
+                if (isset($row['ipv6']) && is_string($row['ipv6']) && $row['ipv6'] !== '') {
                     $ips[] = $row['ipv6'];
                 }
             }

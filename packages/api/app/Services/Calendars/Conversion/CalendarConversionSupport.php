@@ -70,7 +70,7 @@ final class CalendarConversionSupport
         }
 
         $interval = $startDt->diff($endDt);
-        if ($interval->invert === 1 || ! is_int($interval->days) || $interval->days < 0) {
+        if ($interval->invert === 1 || $interval->days < 0) {
             return null;
         }
 
@@ -139,6 +139,7 @@ final class CalendarConversionSupport
 
     /**
      * @param  array<string, mixed>  $event
+     * @param  array<string, mixed>  $existing
      * @return array<string, mixed>
      */
     public static function normalizeEventMapKeys(array $event, ?array $existing = null): array
@@ -163,13 +164,12 @@ final class CalendarConversionSupport
                     continue;
                 }
                 if (! isset($entry['@type'])) {
-                    $entry['@type'] = match ($mapKey) {
+                    $entry['@type'] = [
                         'locations' => 'Location',
                         'participants' => 'Participant',
                         'alerts' => 'Alert',
                         'links' => 'Link',
-                        default => null,
-                    };
+                    ][$mapKey];
                 }
                 $normalized[(string) $id] = $entry;
             }
@@ -186,6 +186,7 @@ final class CalendarConversionSupport
         return $event;
     }
 
+    /** @param array<string, mixed> $event */
     public static function deriveTitle(array $event): string
     {
         if (isset($event['title']) && is_string($event['title']) && trim($event['title']) !== '') {

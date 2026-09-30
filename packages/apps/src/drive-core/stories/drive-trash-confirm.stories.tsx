@@ -8,7 +8,7 @@ import {
   DRIVE_TRASH_UI_PATH,
   normalizeApiVirtualPath,
 } from "@/drive-core/src/drive-path-utils";
-import { resolveDriveFileApiPath, resolveTrashName } from "@/drive-core/src/drive-batch-utils";
+import { resolveDriveFileApiPath, resolveFreeName } from "@/drive-core/src/drive-batch-utils";
 import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 import { DriveWorkspaceModals } from "@/drive-core/src/drive-workspace-modals";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
@@ -26,7 +26,7 @@ function trashRenameExpectation() {
   return {
     from: resolveDriveFileApiPath(sample, username, TRASH_GROUP_ROOTS),
     destination: apiPathFromUiPath(DRIVE_TRASH_UI_PATH, username, TRASH_GROUP_ROOTS),
-    to: resolveTrashName(sample.title, new Set<string>()),
+    to: resolveFreeName(sample.title, new Set<string>()),
   };
 }
 

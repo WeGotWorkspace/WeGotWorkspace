@@ -35,7 +35,7 @@ final class CalendarRsvpNotify
      */
     public static function fromITipMessage(string $inviteeUsername, Message $message): ?array
     {
-        $uid = trim((string) ($message->uid ?? ''));
+        $uid = trim((string) ($message->uid));
         if ($uid === '') {
             return null;
         }
@@ -138,7 +138,7 @@ final class CalendarRsvpNotify
             return 'Someone';
         }
         $principal = Principal::forUsername($trimmed);
-        $name = trim((string) ($principal?->displayname ?? ''));
+        $name = trim((string) ($principal->displayname ?? ''));
 
         return $name !== '' ? $name : $trimmed;
     }
@@ -158,7 +158,7 @@ final class CalendarRsvpNotify
         if ($vevent === null || ! isset($vevent->ATTENDEE)) {
             return '';
         }
-        $sender = strtolower(trim((string) ($message->sender ?? '')));
+        $sender = strtolower(trim((string) ($message->sender)));
         foreach ($vevent->ATTENDEE as $attendee) {
             $href = strtolower(trim((string) $attendee));
             if ($sender !== '' && $href !== $sender && ! str_ends_with($href, $sender)) {
@@ -182,9 +182,6 @@ final class CalendarRsvpNotify
 
     private static function vevent(Message $message): ?VEvent
     {
-        if (! isset($message->message)) {
-            return null;
-        }
         $vevent = $message->message->VEVENT ?? null;
 
         return $vevent instanceof VEvent ? $vevent : null;

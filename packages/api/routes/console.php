@@ -26,6 +26,7 @@ use App\Services\Notify\AlertDueScheduler;
 use App\Services\Notify\VapidPushService;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
 use App\Services\Tasks\InboxTaskListProvisioner;
+use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 
@@ -41,19 +42,19 @@ Artisan::command('wgw:schema-migrate', function (WgwSchemaMigrator $migrator): i
     if ($after === $before) {
         $this->info("WGW schema already at version {$after}.");
 
-        return self::SUCCESS;
+        return Command::SUCCESS;
     }
 
     $this->info("WGW schema migrated {$before} → {$after}.");
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Apply pending database/migrations/wgw migrations on the wgw connection');
 
 Artisan::command('wgw:jwt-keys', function (InstallerJwtKeyGenerator $jwtKeys): int {
     $jwtKeys->ensureKeys();
     $this->info('JWT signing keys are ready under the install data directory (wgw-content/keys/).');
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Create RSA JWT signing keys for local dev when missing (idempotent)');
 
 Artisan::command('wgw:dev-install', function (DevInstallBootstrap $bootstrap): int {
@@ -65,19 +66,19 @@ Artisan::command('wgw:dev-install', function (DevInstallBootstrap $bootstrap): i
         $this->info('Local dev install already present — skipped.');
     }
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Bootstrap packages/api/.env WGW_* keys, SQLite, and admin user for Docker-free dev/preview (idempotent)');
 
 Artisan::command('wgw:config-migrate', function (WgwConfigMigrator $migrator): int {
     if (! $migrator->migrateIfNeeded()) {
         $this->info('No legacy wgw-config.php found — nothing to migrate.');
 
-        return self::SUCCESS;
+        return Command::SUCCESS;
     }
 
     $this->info('Migrated wgw-config.php to packages/api/.env (backup kept, legacy file removed).');
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('One-shot migration from legacy wgw-config.php to WGW_* keys in packages/api/.env');
 
 Artisan::command('wgw:install', function (ProductionInstallBootstrap $bootstrap): int {
@@ -86,13 +87,13 @@ Artisan::command('wgw:install', function (ProductionInstallBootstrap $bootstrap)
     } catch (RuntimeException $e) {
         $this->error($e->getMessage());
 
-        return self::FAILURE;
+        return Command::FAILURE;
     }
 
     return match ($result) {
-        'installed' => tap(self::SUCCESS, fn () => $this->info('Headless install complete.')),
-        'skipped' => tap(self::SUCCESS, fn () => $this->info('Already installed — skipped.')),
-        'incomplete' => tap(self::SUCCESS, fn () => $this->comment('Install env incomplete or headless disabled — wizard will run.')),
+        'installed' => tap(Command::SUCCESS, fn () => $this->info('Headless install complete.')),
+        'skipped' => tap(Command::SUCCESS, fn () => $this->info('Already installed — skipped.')),
+        'incomplete' => tap(Command::SUCCESS, fn () => $this->comment('Install env incomplete or headless disabled — wizard will run.')),
     };
 })->purpose('Production headless install when WGW_INSTALL_HEADLESS=1 and required WGW_INSTALL_* vars are set');
 
@@ -104,7 +105,7 @@ Artisan::command('wgw:contacts:sanitize-group-member-uris', function (GroupMembe
         $result['updated'],
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Repair macOS-corrupt group member URIs in stored contact vCards');
 
 Artisan::command('wgw:tasks:provision-inbox', function (InboxTaskListProvisioner $provisioner): int {
@@ -116,7 +117,7 @@ Artisan::command('wgw:tasks:provision-inbox', function (InboxTaskListProvisioner
         $result['skipped'],
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Ensure each user has a VTODO-only Inbox task list (idempotent)');
 
 Artisan::command('wgw:tasks:migrate-default-vtodos', function (DefaultMixedCalendarMigrator $migrator): int {
@@ -129,7 +130,7 @@ Artisan::command('wgw:tasks:migrate-default-vtodos', function (DefaultMixedCalen
         $result['skipped'],
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Move VTODOs from mixed default calendars into Inbox and strip VTODO from default (idempotent)');
 
 Artisan::command('wgw:calendars:migrate-default-colors', function (DefaultCalendarColorMigrator $migrator): int {
@@ -141,7 +142,7 @@ Artisan::command('wgw:calendars:migrate-default-colors', function (DefaultCalend
         $result['skipped'],
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Assign distinct colors to provisioned calendars still on the shared default (idempotent)');
 
 Artisan::command('wgw:calendars:provision-collections', function (UserCalendarCollectionsProvisioner $provisioner): int {
@@ -160,7 +161,7 @@ Artisan::command('wgw:calendars:provision-collections', function (UserCalendarCo
         $groups['skipped'],
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Provision home/work VEVENT calendars, VTODO lists, VJOURNAL notebooks, and group collections (idempotent)');
 
 Artisan::command('wgw:contacts:provision-address-books', function (AddressBookProvisioner $provisioner): int {
@@ -179,7 +180,7 @@ Artisan::command('wgw:contacts:provision-address-books', function (AddressBookPr
         $groups['skipped'],
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Provision one address book per user and group principal (idempotent)');
 
 Artisan::command('wgw:notes:migrate-files', function (NotesFileMigrator $migrator): int {
@@ -197,7 +198,7 @@ Artisan::command('wgw:notes:migrate-files', function (NotesFileMigrator $migrato
         $this->line($notice);
     }
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('One-way import of Drive .notes markdown into VJOURNAL notebooks');
 
 Artisan::command('wgw:notes:strip-event-journals', function (EventCalendarJournalStripper $stripper): int {
@@ -210,12 +211,18 @@ Artisan::command('wgw:notes:strip-event-journals', function (EventCalendarJourna
         $result['skipped'],
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Strip VJOURNAL from event calendars and move stray journals into notes-general (idempotent)');
 
 Artisan::command('wgw:calendars:seed-dev {--force} {--username=} {--profile=}', function (DevCalendarEventSeeder $seeder): int {
-    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
-    $profile = strtolower(trim((string) ($this->option('profile') ?: DevCalendarEventCatalog::PROFILE_FULL)));
+    $rawName = $this->option('username');
+    if (! is_string($rawName) || $rawName === '') {
+        $fromEnv = getenv('WGW_DEV_USERNAME');
+        $rawName = is_string($fromEnv) && $fromEnv !== '' ? $fromEnv : 'admin';
+    }
+    $username = strtolower(trim($rawName));
+    $rawProfile = $this->option('profile');
+    $profile = strtolower(trim(is_string($rawProfile) && $rawProfile !== '' ? $rawProfile : DevCalendarEventCatalog::PROFILE_FULL));
     if ($profile === '') {
         $profile = DevCalendarEventCatalog::PROFILE_FULL;
     }
@@ -225,7 +232,7 @@ Artisan::command('wgw:calendars:seed-dev {--force} {--username=} {--profile=}', 
     } catch (RuntimeException $e) {
         $this->error($e->getMessage());
 
-        return self::FAILURE;
+        return Command::FAILURE;
     }
 
     $this->info(sprintf(
@@ -238,12 +245,18 @@ Artisan::command('wgw:calendars:seed-dev {--force} {--username=} {--profile=}', 
         (string) config('database.connections.wgw.database'),
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Seed hundreds of local-dev calendar events for the admin user (idempotent; --force recreates)');
 
 Artisan::command('wgw:notes:seed-dev {--force} {--username=} {--profile=}', function (DevNoteSeeder $seeder): int {
-    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
-    $profile = strtolower(trim((string) ($this->option('profile') ?: DevNoteCatalog::PROFILE_FULL)));
+    $rawName = $this->option('username');
+    if (! is_string($rawName) || $rawName === '') {
+        $fromEnv = getenv('WGW_DEV_USERNAME');
+        $rawName = is_string($fromEnv) && $fromEnv !== '' ? $fromEnv : 'admin';
+    }
+    $username = strtolower(trim($rawName));
+    $rawProfile = $this->option('profile');
+    $profile = strtolower(trim(is_string($rawProfile) && $rawProfile !== '' ? $rawProfile : DevNoteCatalog::PROFILE_FULL));
     if ($profile === '') {
         $profile = DevNoteCatalog::PROFILE_FULL;
     }
@@ -253,7 +266,7 @@ Artisan::command('wgw:notes:seed-dev {--force} {--username=} {--profile=}', func
     } catch (RuntimeException $e) {
         $this->error($e->getMessage());
 
-        return self::FAILURE;
+        return Command::FAILURE;
     }
 
     $this->info(sprintf(
@@ -268,12 +281,18 @@ Artisan::command('wgw:notes:seed-dev {--force} {--username=} {--profile=}', func
         (string) config('database.connections.wgw.database'),
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Seed ~1000 local-dev VJOURNAL notes for the admin user (idempotent; --force recreates)');
 
 Artisan::command('wgw:contacts:seed-dev {--force} {--username=} {--profile=} {--count=}', function (DevContactSeeder $seeder): int {
-    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
-    $profile = strtolower(trim((string) ($this->option('profile') ?: DevContactCatalog::PROFILE_FULL)));
+    $rawName = $this->option('username');
+    if (! is_string($rawName) || $rawName === '') {
+        $fromEnv = getenv('WGW_DEV_USERNAME');
+        $rawName = is_string($fromEnv) && $fromEnv !== '' ? $fromEnv : 'admin';
+    }
+    $username = strtolower(trim($rawName));
+    $rawProfile = $this->option('profile');
+    $profile = strtolower(trim(is_string($rawProfile) && $rawProfile !== '' ? $rawProfile : DevContactCatalog::PROFILE_FULL));
     if ($profile === '') {
         $profile = DevContactCatalog::PROFILE_FULL;
     }
@@ -283,7 +302,7 @@ Artisan::command('wgw:contacts:seed-dev {--force} {--username=} {--profile=} {--
         if (! is_string($countOption) || ! ctype_digit($countOption)) {
             $this->error('Contacts seed count must be a positive integer.');
 
-            return self::FAILURE;
+            return Command::FAILURE;
         }
         $count = (int) $countOption;
     }
@@ -293,7 +312,7 @@ Artisan::command('wgw:contacts:seed-dev {--force} {--username=} {--profile=} {--
     } catch (RuntimeException $e) {
         $this->error($e->getMessage());
 
-        return self::FAILURE;
+        return Command::FAILURE;
     }
 
     $this->info(sprintf(
@@ -306,12 +325,18 @@ Artisan::command('wgw:contacts:seed-dev {--force} {--username=} {--profile=} {--
         (string) config('database.connections.wgw.database'),
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Seed local-dev vCard contacts for the admin user (idempotent; --force recreates; --profile=large or --count=)');
 
 Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', function (DevSeedRunner $runner): int {
-    $username = strtolower(trim((string) ($this->option('username') ?: (getenv('WGW_DEV_USERNAME') ?: 'admin'))));
-    $profile = strtolower(trim((string) ($this->option('profile') ?: 'full')));
+    $rawName = $this->option('username');
+    if (! is_string($rawName) || $rawName === '') {
+        $fromEnv = getenv('WGW_DEV_USERNAME');
+        $rawName = is_string($fromEnv) && $fromEnv !== '' ? $fromEnv : 'admin';
+    }
+    $username = strtolower(trim($rawName));
+    $rawProfile = $this->option('profile');
+    $profile = strtolower(trim(is_string($rawProfile) && $rawProfile !== '' ? $rawProfile : 'full'));
     if ($profile === '') {
         $profile = 'full';
     }
@@ -326,12 +351,12 @@ Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', f
     } catch (RuntimeException $e) {
         $this->error($e->getMessage());
 
-        return self::FAILURE;
+        return Command::FAILURE;
     }
 
     foreach ($results as $result) {
         $extra = '';
-        if (isset($result['extra']) && is_array($result['extra'])) {
+        if (isset($result['extra'])) {
             foreach ($result['extra'] as $key => $value) {
                 $extra .= sprintf(', %s %d', $key, $value);
             }
@@ -350,7 +375,7 @@ Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', f
 
     $this->info(sprintf('Dev seed complete [%s].', (string) config('database.connections.wgw.database')));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Shared local-dev seeder: calendars, notes, and contacts (pass app names to limit; --force recreates)');
 
 Artisan::command('wgw:jmap:filenodes-reindex', function (JmapFileNodeIndexService $index): int {
@@ -362,14 +387,14 @@ Artisan::command('wgw:jmap:filenodes-reindex', function (JmapFileNodeIndexServic
         $result['pruned'],
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Backfill/reconcile the JMAP FileNode index against the drive (existing node ids are kept)');
 
 Artisan::command('wgw:meet:sweep-reservations', function (MeetReservationService $reservations): int {
     $deleted = $reservations->sweepExpiredNeverActivated();
     $this->info(sprintf('Deleted %d never-activated expired Meet reservation(s).', $deleted));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Prune never-activated Meet reservations whose expiresAt is past (null expiry is skipped)');
 
 Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobGarbageCollector $collector): int {
@@ -380,26 +405,26 @@ Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobGarbageCollector $collec
         $result['retained'],
     ));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Delete expired, unreferenced JMAP envelope blobs (domain references are never collected)');
 
 Artisan::command('wgw:notify:due-alarms', function (AlertDueScheduler $scheduler): int {
     $fired = $scheduler->scan();
     $this->info(sprintf('Dispatched %d due alert event(s).', $fired));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Scan VALARM display alarms that are due and fire WorkspaceEvents (idempotent)');
 
 Artisan::command('wgw:notify:vapid-sweep', function (VapidPushService $push): int {
     $sent = $push->sweepDue();
     $this->info(sprintf('Swept VAPID fallback; sent %d payload(s).', $sent));
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Send Web Push for local deliveries that were not acked in the 20s local-ack window');
 
 Artisan::command('wgw:vapid-keys', function (InstallerVapidKeyGenerator $vapid): int {
     $vapid->ensureKeys();
     $this->info('VAPID keys are ready under the install data directory (wgw-content/keys/).');
 
-    return self::SUCCESS;
+    return Command::SUCCESS;
 })->purpose('Create VAPID keys for Web Push when missing (idempotent)');

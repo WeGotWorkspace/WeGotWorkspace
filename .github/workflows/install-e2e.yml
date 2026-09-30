@@ -18,6 +18,9 @@ on:
       - "packages/apps/src/login-core/**"
       - "tools/build-wegotworkspace-release.mjs"
       - "tools/e2e-install-matrix.sh"
+      - "tools/e2e-upgrade.sh"
+      - "tools/upgrade-e2e/**"
+      - "docker/install/Dockerfile.upgrade-target"
       - "tools/ghcr-delete-old-candidates.sh"
       - "package.json"
       - ".github/workflows/install-e2e.yml"
@@ -46,8 +49,33 @@ jobs:
       cells: '["zip-sqlite","zip-mariadb","docker-sqlite","docker-mariadb"]'
       image: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.amd64_digest }}
 
+  upgrade:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upgrade v0.1.99 onto the candidate image
+        env:
+          WGW_UPGRADE_TO_IMAGE: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.amd64_digest }}
+        run: bash tools/e2e-upgrade.sh
+
   cleanup:
-    needs: [prepare, cells]
+    needs: [prepare, cells, upgrade]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 15

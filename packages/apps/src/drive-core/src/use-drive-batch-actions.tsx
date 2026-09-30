@@ -1,20 +1,71 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { FolderInput, Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
+import { useAppToast } from "@/hooks/use-app-toast";
 import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
+import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import type { BeginOptimisticUpdateFn } from "@/hooks/use-entity-batch-actions";
 import {
   ensureTrashFolder,
   listTrashEntryNames,
   reloadDriveFolderListing,
+  restoreCompletedDriveMoves,
+  restoredDriveNamesMessage,
   resolveDriveFileApiPath,
-  resolveTrashName,
+  resolveFreeName,
+  unrestoredDriveFilesMessage,
+  type DriveRestoreMove,
 } from "@/drive-core/src/drive-batch-utils";
 import { apiPathFromUiPath, DRIVE_TRASH_UI_PATH } from "@/drive-core/src/drive-path-utils";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 
 type QueueMutation = (args: DeferredApiWriteArgs) => void;
+
+/** A failed folder reload is not a failed batch. The renames already reached the server. */
+async function refreshOpenFolderAfterBatch(
+  refresh: (signal?: AbortSignal) => Promise<void>,
+  signal: AbortSignal,
+): Promise<void> {
+  try {
+    await refresh(signal);
+  } catch (error) {
+    console.error("Drive folder refresh failed", error);
+  }
+}
+
+async function finishDriveRestore(input: {
+  operations: DriveAPIOperations;
+  moves: readonly DriveRestoreMove[];
+  completedKeys: ReadonlySet<string>;
+  username: string;
+  groupRoots: Set<string>;
+  folderPath: string;
+  setFiles: Dispatch<SetStateAction<DriveFile[]>>;
+  show: (message: string) => void;
+  showError: (message: string) => void;
+}): Promise<void> {
+  try {
+    const { restored, failures } = await restoreCompletedDriveMoves({
+      operations: input.operations,
+      moves: input.moves,
+      completedKeys: input.completedKeys,
+      username: input.username,
+      groupRoots: input.groupRoots,
+    });
+    const restoredMessage = restoredDriveNamesMessage(restored);
+    if (restoredMessage) input.show(restoredMessage);
+    if (failures > 0) input.showError(unrestoredDriveFilesMessage(failures));
+  } finally {
+    await reloadDriveFolderListing(
+      input.operations,
+      input.folderPath,
+      input.username,
+      input.groupRoots,
+      input.setFiles,
+    );
+  }
+}
 
 type MoveSnapshot = {
   file: DriveFile;
@@ -64,6 +115,7 @@ export function useDriveBatchActions({
   view,
   viewType,
 }: UseDriveBatchActionsArgs) {
+  const { show, showError } = useAppToast();
   const clearSelectionForIds = useCallback(
     (ids: string[]) => {
       setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
@@ -91,49 +143,6 @@ export function useDriveBatchActions({
     [currentUsername, groupRootNames, operations, setFiles, view],
   );
 
-  const runImmediateDriveBatch = useCallback(
-    ({
-      key,
-      toastMessage,
-      icon,
-      undoToastMessage,
-      rollback,
-      execute,
-      revert,
-    }: {
-      key: string;
-      toastMessage: string;
-      icon: React.ReactNode;
-      undoToastMessage: string;
-      rollback: () => void;
-      execute: (signal: AbortSignal) => Promise<void>;
-      revert?: () => Promise<void>;
-    }) => {
-      let completed = false;
-      const undo = () => {
-        rollback();
-        if (completed && operations && revert) {
-          void revert().catch(() => undefined);
-        }
-      };
-
-      runQueuedBatchAction({
-        queueMutation,
-        key,
-        toastMessage,
-        icon,
-        undoToastMessage,
-        execute: async (signal) => {
-          await execute(signal);
-          completed = true;
-        },
-        rollback: undo,
-        executeImmediately: true,
-      });
-    },
-    [operations, queueMutation],
-  );
-
   const moveToTrash = useCallback(
     (ids: string[]) => {
       if (ids.length === 0) return;
@@ -146,6 +155,7 @@ export function useDriveBatchActions({
       }));
       const previousFiles = files;
       const previousSelectedIds = selectedIds;
+      const trashedNameById = new Map<string, string>();
 
       setFiles((prev) =>
         prev.map((file) =>
@@ -155,6 +165,7 @@ export function useDriveBatchActions({
       clearSelectionForIds(ids);
 
       runImmediateDriveBatch({
+        queueMutation,
         key: `drive:trash:${ids.slice().sort().join(",")}`,
         toastMessage: `Moved ${ids.length} to Trash`,
         icon: <Trash2 className="size-4" />,
@@ -164,7 +175,7 @@ export function useDriveBatchActions({
           setSelectedIds(previousSelectedIds);
           if (previousSelectedIds.length > 0) setSelectionMode(true);
         },
-        execute: async (signal) => {
+        execute: async (signal, markCompleted) => {
           if (!operations) return;
           await ensureTrashFolder(operations, currentUsername, groupRootNames, signal);
           const destination = apiPathFromUiPath(
@@ -175,30 +186,41 @@ export function useDriveBatchActions({
           const trashNames = await listTrashEntryNames(operations, destination, signal);
           for (const file of rows) {
             const from = resolveDriveFileApiPath(file, currentUsername, groupRootNames);
-            const to = resolveTrashName(file.title, trashNames);
+            const to = resolveFreeName(file.title, trashNames);
             trashNames.add(to);
+            trashedNameById.set(file.id, to);
             await operations.renameItem({ destination, from, to }, { signal });
+            markCompleted(file.id);
           }
-          await refreshOpenFolder(signal);
+          await refreshOpenFolderAfterBatch(refreshOpenFolder, signal);
         },
-        revert: async () => {
+        revert: async (completedKeys) => {
           if (!operations) return;
-          for (const { file, previousParent } of snapshots) {
-            const from = resolveDriveFileApiPath(
-              { ...file, parent: DRIVE_TRASH_UI_PATH },
-              currentUsername,
-              groupRootNames,
-            );
-            const destination = apiPathFromUiPath(previousParent, currentUsername, groupRootNames);
-            await operations.renameItem({ destination, from, to: file.title });
-          }
-          await reloadDriveFolderListing(
+          await finishDriveRestore({
             operations,
-            view.type === "folder" ? view.path : "My Drive",
-            currentUsername,
-            groupRootNames,
+            completedKeys,
+            username: currentUsername,
+            groupRoots: groupRootNames,
+            folderPath: view.type === "folder" ? view.path : "My Drive",
             setFiles,
-          );
+            show,
+            showError,
+            moves: snapshots.map(({ file, previousParent }) => ({
+              id: file.id,
+              title: file.title,
+              previousParent,
+              from: resolveDriveFileApiPath(
+                {
+                  ...file,
+                  apiPath: undefined,
+                  parent: DRIVE_TRASH_UI_PATH,
+                  title: trashedNameById.get(file.id) ?? file.title,
+                },
+                currentUsername,
+                groupRootNames,
+              ),
+            })),
+          });
         },
       });
     },
@@ -208,12 +230,14 @@ export function useDriveBatchActions({
       files,
       groupRootNames,
       operations,
+      queueMutation,
       refreshOpenFolder,
-      runImmediateDriveBatch,
       selectedIds,
       setFiles,
       setSelectedIds,
       setSelectionMode,
+      show,
+      showError,
       view,
     ],
   );
@@ -231,6 +255,7 @@ export function useDriveBatchActions({
       clearSelectionForIds(ids);
 
       runImmediateDriveBatch({
+        queueMutation,
         key: `drive:delete:${ids.slice().sort().join(",")}`,
         toastMessage: `Deleted ${ids.length} file${ids.length === 1 ? "" : "s"}`,
         icon: <Trash2 className="size-4" />,
@@ -246,7 +271,7 @@ export function useDriveBatchActions({
             resolveDriveFileApiPath(file, currentUsername, groupRootNames),
           );
           await operations.deleteItems(paths, { signal });
-          await refreshOpenFolder(signal);
+          await refreshOpenFolderAfterBatch(refreshOpenFolder, signal);
         },
       });
     },
@@ -256,8 +281,8 @@ export function useDriveBatchActions({
       files,
       groupRootNames,
       operations,
+      queueMutation,
       refreshOpenFolder,
-      runImmediateDriveBatch,
       selectedIds,
       setFiles,
       setSelectedIds,
@@ -341,46 +366,44 @@ export function useDriveBatchActions({
       });
 
       runImmediateDriveBatch({
+        queueMutation,
         key: `drive:move:${parent}:${ids.slice().sort().join(",")}`,
         toastMessage: `Moved ${ids.length} to ${parent.split("/").pop()}`,
         icon: <FolderInput className="size-4" />,
         undoToastMessage: "Move undone.",
         rollback,
-        execute: async (signal) => {
+        execute: async (signal, markCompleted) => {
           if (!operations) return;
           const destination = apiPathFromUiPath(parent, currentUsername, groupRootNames);
           for (const file of rows) {
             const from = resolveDriveFileApiPath(file, currentUsername, groupRootNames);
             await operations.renameItem({ destination, from, to: file.title }, { signal });
+            markCompleted(file.id);
           }
-          await refreshOpenFolder(signal);
+          await refreshOpenFolderAfterBatch(refreshOpenFolder, signal);
         },
-        revert: async () => {
+        revert: async (completedKeys) => {
           if (!operations) return;
-          for (const { file, previousParent } of snapshots) {
-            const from = resolveDriveFileApiPath(
-              { ...file, parent },
-              currentUsername,
-              groupRootNames,
-            );
-            const restoreDestination = apiPathFromUiPath(
-              previousParent,
-              currentUsername,
-              groupRootNames,
-            );
-            await operations.renameItem({
-              destination: restoreDestination,
-              from,
-              to: file.title,
-            });
-          }
-          await reloadDriveFolderListing(
+          await finishDriveRestore({
             operations,
-            view.type === "folder" ? view.path : "My Drive",
-            currentUsername,
-            groupRootNames,
+            completedKeys,
+            username: currentUsername,
+            groupRoots: groupRootNames,
+            folderPath: view.type === "folder" ? view.path : "My Drive",
             setFiles,
-          );
+            show,
+            showError,
+            moves: snapshots.map(({ file, previousParent }) => ({
+              id: file.id,
+              title: file.title,
+              previousParent,
+              from: resolveDriveFileApiPath(
+                { ...file, apiPath: undefined, parent },
+                currentUsername,
+                groupRootNames,
+              ),
+            })),
+          });
         },
       });
     },
@@ -390,9 +413,11 @@ export function useDriveBatchActions({
       files,
       groupRootNames,
       operations,
+      queueMutation,
       refreshOpenFolder,
-      runImmediateDriveBatch,
       setFiles,
+      show,
+      showError,
       view,
     ],
   );

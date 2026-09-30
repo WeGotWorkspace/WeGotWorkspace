@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Temporal } from "@js-temporal/polyfill";
 
 const navigate = vi.fn(async (_opts?: unknown) => undefined);
 const historyFlush = vi.fn();
@@ -138,7 +139,7 @@ describe("useCalendarRouteSync", () => {
 
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/$view/$date",
-      params: { view: "week", date: todayISODate() },
+      params: { view: "week", date: todayISODate(Temporal.Now.timeZoneId()) },
       search: {},
       replace: true,
     });
@@ -153,7 +154,7 @@ describe("useCalendarRouteSync", () => {
 
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/list/$view/$date",
-      params: { view: "month", date: todayISODate() },
+      params: { view: "month", date: todayISODate(Temporal.Now.timeZoneId()) },
       search: {},
       replace: true,
     });
@@ -167,7 +168,7 @@ describe("useCalendarRouteSync", () => {
 
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/$view/$date",
-      params: { view: "month", date: todayISODate() },
+      params: { view: "month", date: todayISODate(Temporal.Now.timeZoneId()) },
       search: {},
       replace: true,
     });
@@ -184,7 +185,7 @@ describe("useCalendarRouteSync", () => {
     expect(result.current.initialPresentation).toBe("list");
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/list/$view/$date",
-      params: { view: "week", date: todayISODate() },
+      params: { view: "week", date: todayISODate(Temporal.Now.timeZoneId()) },
       search: {},
       replace: true,
     });
@@ -299,7 +300,7 @@ describe("useCalendarRouteSync", () => {
     expect(result.current.initialSearchQuery).toBe("standup");
     expect(navigate).toHaveBeenCalledWith({
       to: "/calendar/$view/$date",
-      params: { view: "month", date: todayISODate() },
+      params: { view: "month", date: todayISODate(Temporal.Now.timeZoneId()) },
       search: { q: "standup" },
       replace: true,
     });

@@ -1,4 +1,5 @@
 import { enabledAddressBookIds } from "@/contacts-core/src/contacts-addressbook-color";
+import { resolveDefaultCreateAddressBook } from "@/contacts-core/src/contacts-addressbook-write";
 import {
   findBirthAnniversary,
   mapEntriesSorted,
@@ -81,9 +82,7 @@ export function newContactMapId(): string {
     return crypto.randomUUID();
   }
   const randomFromCrypto = fromCryptoRandomValues();
-  if (randomFromCrypto) {
-    return randomFromCrypto;
-  }
+  if (randomFromCrypto) return randomFromCrypto;
   contactIdCounter += 1;
   return `contact-${Date.now().toString(36)}-${contactIdCounter.toString(36)}`;
 }
@@ -112,10 +111,8 @@ export function resolveCreateAddressBookIds(
       }) ?? bookIds[0];
     if (preferred) return { [preferred]: true };
   }
-  const defaultBook = addressBooks.find((book) => book.isDefault) ?? addressBooks[0];
-  if (!defaultBook) {
-    throw new Error("No address book available for create");
-  }
+  const defaultBook = resolveDefaultCreateAddressBook(addressBooks);
+  if (!defaultBook) throw new Error("No address book available for create");
   return { [defaultBook.id]: true };
 }
 
@@ -126,9 +123,8 @@ export function canCreateContactInView(
   selectedGroup?: Pick<ContactCard, "addressBookIds"> | null,
   hasOperations = false,
 ): boolean {
-  if (view.startsWith("group:")) {
+  if (view.startsWith("group:"))
     return canWriteContactGroup(selectedGroup, addressBooks, hasOperations);
-  }
   if (view.startsWith("book:")) {
     const book = addressBooks.find((row) => row.id === view.slice("book:".length));
     return book != null && book.myRights?.mayWrite !== false;

@@ -8,6 +8,7 @@ use App\Models\McpAuditEvent;
 use App\Models\User;
 use Laravel\Passport\Client;
 use Laravel\Passport\Passport;
+use Laravel\Passport\Token;
 
 final class McpGrantService
 {
@@ -87,7 +88,7 @@ final class McpGrantService
         return true;
     }
 
-    private function grantIsActive(object $token): bool
+    private function grantIsActive(Token $token): bool
     {
         $expiresAt = $token->getAttribute('expires_at');
         if ($expiresAt === null || $expiresAt > now()) {
@@ -116,9 +117,8 @@ final class McpGrantService
 
     private function originFromRedirects(Client $client): string
     {
-        $uris = $client->redirect_uris;
-        $first = is_array($uris) ? ($uris[0] ?? '') : '';
-        if (! is_string($first) || $first === '') {
+        $first = $client->redirect_uris[0] ?? '';
+        if ($first === '') {
             return '';
         }
 

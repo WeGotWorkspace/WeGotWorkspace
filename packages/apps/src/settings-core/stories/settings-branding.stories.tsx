@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createBrandingStoryMeta } from "@/branding-playground";
 import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
+import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
 import { SettingsWorkspace } from "@/settings-core/src/settings-workspace";
+
+registerBuiltinSettings();
 
 const brandingMeta = createBrandingStoryMeta({
   appId: "settings",

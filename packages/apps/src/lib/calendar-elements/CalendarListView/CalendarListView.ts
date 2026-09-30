@@ -6,6 +6,7 @@ import { CalendarViewBase } from "../CalendarViewBase/CalendarViewBase.js";
 import "../EventCard/EventCard.js";
 import type { CalendarEvent as EventInput } from "@/lib/calendar-engine";
 import { resolvedDataEnd } from "../domain/events-api/eventMapBridge.js";
+import { eventOccurrenceInDisplayZone } from "../utils/event-display-time.js";
 import { renderCalendarIcon } from "../icons/CalendarIcon.js";
 import {
   isCalendarEventException,
@@ -230,8 +231,8 @@ export class CalendarListView extends CalendarViewBase {
     });
 
     for (const [id, event] of renderedEvents.entries()) {
-      const start = this.#toPlainDateTime(event.data.start);
-      const end = this.#toPlainDateTime(resolvedDataEnd(event.data));
+      const start = this.#toDisplayDateTime(event);
+      const end = this.#toDisplayEnd(event);
       if (Temporal.PlainDateTime.compare(end, start) <= 0) continue;
       if (!this.#eventOverlapsRange(start, end, rangeStart, rangeEndExclusive)) continue;
       this.#pushEventDays(grouped, id, event, rangeStart, rangeEndExclusive);
@@ -247,8 +248,8 @@ export class CalendarListView extends CalendarViewBase {
     rangeStart?: Temporal.PlainDate,
     rangeEndExclusive?: Temporal.PlainDate,
   ) {
-    const start = this.#toPlainDateTime(event.data.start);
-    const end = this.#toPlainDateTime(resolvedDataEnd(event.data));
+    const start = this.#toDisplayDateTime(event);
+    const end = this.#toDisplayEnd(event);
     if (Temporal.PlainDateTime.compare(end, start) <= 0) return;
 
     const eventStartDate = start.toPlainDate();
@@ -412,8 +413,12 @@ export class CalendarListView extends CalendarViewBase {
     );
   }
 
-  #toPlainDateTime(value: Temporal.PlainDateTime): Temporal.PlainDateTime {
-    return value;
+  #toDisplayDateTime(event: EventInput): Temporal.PlainDateTime {
+    return eventOccurrenceInDisplayZone(event.data.start, event.data, this.timezone);
+  }
+
+  #toDisplayEnd(event: EventInput): Temporal.PlainDateTime {
+    return eventOccurrenceInDisplayZone(resolvedDataEnd(event.data), event.data, this.timezone);
   }
 
   #isAllDayEvent(event: EventInput): boolean {

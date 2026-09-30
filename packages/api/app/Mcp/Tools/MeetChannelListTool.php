@@ -53,7 +53,7 @@ final class MeetChannelListTool extends WgwMcpTool
         ];
     }
 
-    protected function requiredScope(): ?string
+    protected function requiredScope(): string
     {
         return McpScopes::MEET_READ;
     }
@@ -63,7 +63,7 @@ final class MeetChannelListTool extends WgwMcpTool
         return 'read';
     }
 
-    protected function target(Request $request): array|string|null
+    protected function target(Request $request): array
     {
         return [
             'channelId' => (string) $request->get('channelId', ''),

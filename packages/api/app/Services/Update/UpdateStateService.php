@@ -23,6 +23,7 @@ final class UpdateStateService
         return $this->runner->getState();
     }
 
+    /** @return array<mixed> */
     public function deleteBackup(string $name): array
     {
         $name = $this->ensureBackupName($name);

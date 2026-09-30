@@ -89,6 +89,7 @@ final class StoragePaths
         return '';
     }
 
+    /** @param list<string> $groupSlugs */
     public function isPathAllowed(string $path, string $username, array $groupSlugs, bool $forWrite): bool
     {
         $normalized = $this->normalizeVirtualPath($path);
@@ -97,7 +98,7 @@ final class StoragePaths
         }
 
         $segments = explode('/', ltrim($normalized, '/'));
-        $first = $segments[0] ?? '';
+        $first = $segments[0];
         if ($first === 'users') {
             if (count($segments) === 1) {
                 return ! $forWrite;

@@ -72,6 +72,10 @@ final class TaskRepository
         return ['list' => $tasks];
     }
 
+    /**
+     * @param  array<string, mixed>  $filter
+     * @return array<string, mixed>
+     */
     public function query(string $username, array $filter, ?int $limit = null): array
     {
         $taskListId = $filter['inTaskList'] ?? null;
@@ -119,6 +123,7 @@ final class TaskRepository
         return ['ids' => $ids, 'total' => $total];
     }
 
+    /** @return array<string, mixed> */
     public function show(string $username, string $taskId): array
     {
         $located = $this->findOwnedTask($username, $taskId);
@@ -585,16 +590,6 @@ final class TaskRepository
         }
 
         return $uris;
-    }
-
-    private function findOwnedInstance(string $username, string $taskListId): ?CalendarInstance
-    {
-        return CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $this->principalUri($username))
-            ->where('uri', $taskListId)
-            ->whereHas('calendar', fn ($query) => $query->supportsVtodo())
-            ->first();
     }
 
     private function findObjectInCalendar(int $calendarId, string $objectUri): ?CalendarObject

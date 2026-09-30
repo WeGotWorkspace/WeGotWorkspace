@@ -35,6 +35,9 @@ jobs:
       - name: Build and typecheck MCP server
         run: pnpm exec turbo run build typecheck --filter=@wgw/mcp-server
 
+      - name: File-size ratchet
+        run: node tools/file-size-ratchet.mjs check tools/mcp-server/src
+
   api-quality:
     if: >-
       github.event_name != 'push' ||
@@ -88,8 +91,15 @@ jobs:
           cp packages/api/.env.example packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
 
-      # Shard 1 also runs greenfield-guard + the Architecture suite; later
-      # shards run only their round-robin slice of unit/feature/storage tests.
+      # origin/main is the ceiling for the PHPStan baseline sum. A depth-1
+      # checkout of the PR head does not include that ref. Pin the refspec
+      # so the update does not depend on the remote's default fetch mapping.
+      - name: Fetch main for the PHPStan baseline shrink check
+        run: git fetch --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+
+      # Shard 1 also runs the file-size ratchet, greenfield-guard, PHPStan
+      # level 8, and the Architecture suite; later shards run only their
+      # round-robin slice of unit/feature/storage tests.
       - name: API quality gate (shard ${{ matrix.shard }}/2)
         env:
           DONE_GATE_SHARD: ${{ matrix.shard }}/2
@@ -102,6 +112,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Plan-structure lint diffs against origin/main. Depth 1 leaves
+          # that ref missing and the check would pass on an empty diff.
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v6.1.0
 
@@ -139,12 +153,80 @@ jobs:
             pnpm --filter @wgw/apps exec playwright install chromium
           fi
 
+      - name: File-size baseline growth
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --depth=1 origin "$BASE_SHA"
+          # Call node directly: `pnpm run … -- <sha>` forwards a literal `--` as argv.
+          node tools/file-size-ratchet.mjs check-growth "$BASE_SHA"
+
       - name: Apps quality gate
         env:
           # Local pre-push skips unit + jsdom. CI runs both; jsdom shards
           # pool themselves from CPU and memory (see jsdom-concurrency.mjs).
           APPS_DONE_GATE_FULL: "1"
         run: pnpm run ci:quality:apps
+
+  # Mock-tier Playwright against a Storybook build. The Chromatic job also
+  # builds storybook-static, but only when CHROMATIC_ENABLED is set, and it
+  # skips merge_group. Building here keeps apps-e2e independent so it can be
+  # a required check. Live-app specs stay on playwright.live.config.mjs
+  # and run from nightly-live-e2e.yml (not this pull-request workflow).
+  apps-e2e:
+    if: >-
+      github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6.1.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install JS workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-chromium-
+
+      - name: Install Playwright Chromium
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != 'true' ]; then
+            pnpm --filter @wgw/apps exec playwright install chromium --with-deps
+          else
+            pnpm --filter @wgw/apps exec playwright install chromium
+          fi
+
+      - name: Build Storybook
+        working-directory: packages/apps
+        run: pnpm exec storybook build --output-dir storybook-static
+
+      - name: Mock-tier Playwright
+        working-directory: packages/apps
+        env:
+          WGW_APPS_E2E_STATIC: "1"
+        run: pnpm exec playwright test
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: apps-e2e-traces
+          path: packages/apps/test-results
+          if-no-files-found: ignore
 
   build:
     needs: [api-quality, apps-quality]
@@ -197,6 +279,50 @@ jobs:
 
       - name: Build (Turbo JS, then Composer prune and sync)
         run: pnpm run build
+
+  # v0.1.99 → this SHA with seeded users, calendars, notes, tasks, drive files, and contacts.
+  # Pull requests and the merge queue only. Pushes to main use the install
+  # workflow's upgrade job, which targets the candidate release image.
+  upgrade-e2e:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v6
+        with:
+          path: ~/.composer/cache
+          key: upgrade-e2e-composer-${{ hashFiles('packages/api/composer.lock') }}
+          restore-keys: |
+            upgrade-e2e-composer-
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # buildx type=gha reads ACTIONS_RUNTIME_TOKEN and ACTIONS_CACHE_URL.
+      # The runner injects those into action steps only, so export them
+      # before the shell step that runs docker buildx.
+      - uses: crazy-max/ghaction-github-runtime@v3
+
+      - name: Upgrade v0.1.99 to this revision
+        env:
+          WGW_UPGRADE_DOCKER_CACHE: gha
+        run: bash tools/e2e-upgrade.sh
 
   chromatic:
     if: >-
@@ -369,7 +495,13 @@ jobs:
           if-no-files-found: error
 
   apps-coverage:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # A pull request runs this job only while it carries run-apps-coverage.
+    # Triggers stay unchanged: a labeled event would share the CI concurrency
+    # group and cancel the pull request's required checks.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'run-apps-coverage'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     concurrency:
@@ -408,13 +540,13 @@ jobs:
             echo "no jsdom coverage blobs" >&2
             exit 1
           fi
-          if ! pnpm exec vitest --merge-reports=.vitest-reports --coverage.enabled --coverage.reporter=lcov,json-summary --coverage.reportsDirectory=coverage; then
+          if ! pnpm exec vitest --merge-reports=.vitest-reports --coverage.enabled --coverage.reporter=lcov --coverage.reporter=json-summary --coverage.reportsDirectory=coverage; then
             echo "Combined merge failed; writing separate unit and jsdom reports."
             mkdir -p .vitest-reports-unit .vitest-reports-jsdom
             cp .vitest-reports/blob-unit.json .vitest-reports-unit/
             find .vitest-reports -name 'blob-jsdom-*.json' -exec cp {} .vitest-reports-jsdom/ \;
-            pnpm exec vitest --merge-reports=.vitest-reports-unit --coverage.enabled --coverage.reporter=lcov,json-summary --coverage.reportsDirectory=coverage/unit
-            pnpm exec vitest --merge-reports=.vitest-reports-jsdom --coverage.enabled --coverage.reporter=lcov,json-summary --coverage.reportsDirectory=coverage/jsdom
+            pnpm exec vitest --merge-reports=.vitest-reports-unit --coverage.enabled --coverage.reporter=lcov --coverage.reporter=json-summary --coverage.reportsDirectory=coverage/unit
+            pnpm exec vitest --merge-reports=.vitest-reports-jsdom --coverage.enabled --coverage.reporter=lcov --coverage.reporter=json-summary --coverage.reportsDirectory=coverage/jsdom
           fi
 
       - uses: actions/upload-artifact@v7
@@ -422,3 +554,150 @@ jobs:
           name: vitest-coverage
           path: packages/apps/coverage
           if-no-files-found: error
+
+      # Fallback only. The default reporter in the job log is the diagnosis.
+      # One shard blob is about 18 MB, so 54 shards plus unit is about 1 GB.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: vitest-reports
+          path: packages/apps/.vitest-reports
+          if-no-files-found: ignore
+          retention-days: 3
+
+  coverage-ratchet:
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [api-coverage, apps-coverage]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Download API coverage
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          name: phpunit-clover
+          path: packages/api/build/logs
+
+      - name: Download apps coverage
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          name: vitest-coverage
+          path: packages/apps/coverage
+
+      - name: Check coverage ratchet
+        id: check
+        run: |
+          set +e
+          # One run. JSON on stdout, human text on stderr. tee waits before the step exits.
+          node tools/coverage-ratchet.mjs check --json > coverage-ratchet.json 2> >(tee coverage-ratchet.txt >&2)
+          CODE=$?
+          wait
+          set -e
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+          if [[ $CODE -eq 2 ]]; then
+            echo "Baseline proposal"
+          elif [[ $CODE -eq 0 ]]; then
+            echo "Coverage stable"
+          elif [[ $CODE -eq 1 ]]; then
+            echo "Coverage ratchet check failed"
+          else
+            echo "Coverage ratchet check failed with exit $CODE"
+            exit "$CODE"
+          fi
+
+      - name: Report coverage regression
+        if: steps.check.outputs.exit_code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          gh label create coverage-regression --color d73a4a --description "Coverage regression on main" --force
+
+          ISSUE_NUMBER=$(gh issue list --label "coverage-regression" --state open --json number --jq '.[0].number // empty')
+
+          # Quoted pieces only. The saved report is appended as data, so backticks
+          # and $(...) in the check output are not command substitutions.
+          BODY_FILE=$(mktemp)
+          DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          {
+            printf '%s\n' "## Coverage Regression Detected" ""
+            printf '%s\n' "**Run:** ${{ github.run_id }}"
+            printf '%s\n' "**Commit:** ${{ github.sha }}"
+            printf '%s\n' "**Date:** ${DATE}" ""
+            printf '%s\n' '```'
+            cat coverage-ratchet.txt
+            printf '%s\n' '```' ""
+            printf '%s\n' "Coverage per package can only go up. Please investigate and fix the regression."
+          } > "$BODY_FILE"
+
+          if [[ -n "$ISSUE_NUMBER" ]]; then
+            gh issue comment "$ISSUE_NUMBER" --body-file "$BODY_FILE"
+            echo "Commented on existing issue #$ISSUE_NUMBER"
+          else
+            gh issue create \
+              --title "Coverage regression detected on main" \
+              --label "coverage-regression" \
+              --body-file "$BODY_FILE"
+            echo "Opened new coverage-regression issue"
+          fi
+
+          exit 1
+
+      - name: Propose baseline increase
+        if: steps.check.outputs.exit_code == '2'
+        run: |
+          set -euo pipefail
+
+          node tools/coverage-ratchet.mjs update
+
+          {
+            echo "## Coverage Baseline Proposal"
+            echo ""
+            echo "Existing keys stay at max(baseline, current). A drop is not written into the baseline."
+            echo ""
+
+            if jq -e '.increases | length > 0' coverage-ratchet.json >/dev/null; then
+              echo "**Increases:**"
+              echo ""
+              echo "| Package | From | To |"
+              echo "|---------|------|-----|"
+              jq -r '.increases[] | "| `" + .pkg + "` | " + (.from | tostring) + "% | " + (.to | tostring) + "% |"' coverage-ratchet.json
+              echo ""
+            fi
+
+            if jq -e '.proposals | length > 0' coverage-ratchet.json >/dev/null; then
+              echo "**New packages:**"
+              echo ""
+              echo "| Package | Coverage |"
+              echo "|---------|----------|"
+              jq -r '.proposals[] | "| `" + .pkg + "` | " + (.pct | tostring) + "% |"' coverage-ratchet.json
+              echo ""
+            fi
+
+            if jq -e '.missing | length > 0' coverage-ratchet.json >/dev/null; then
+              echo "**Baseline keys absent from the report:**"
+              echo ""
+              jq -r '.missing[] | "- `" + . + "`"' coverage-ratchet.json
+              echo ""
+            fi
+
+            echo "Download the \`coverage-baseline-proposal\` artifact and commit it to \`tools/coverage-baseline.json\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload baseline proposal
+        if: steps.check.outputs.exit_code == '2'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-baseline-proposal
+          path: tools/coverage-baseline.json

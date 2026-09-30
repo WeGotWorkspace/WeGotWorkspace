@@ -44,10 +44,10 @@ final class FileNodeMapper
     {
         $starredPaths = $this->starredPathsFor((string) $principal['username']);
 
-        return array_values(array_map(
+        return array_map(
             fn (JmapFileNode $node): array => $this->toFileNode($node, $principal, $starredPaths),
             $nodes,
-        ));
+        );
     }
 
     /**
@@ -159,7 +159,7 @@ final class FileNodeMapper
         $mayShare = (bool) ($rights['mayShare'] ?? false);
         // REST note-path rights stay view|edit (no structure) for shares.
         // FileNode/set still needs owner/member structure on their `.notes` tree.
-        $username = (string) ($principal['username'] ?? '');
+        $username = (string) $principal['username'];
         if (
             $this->paths->isNotePath($virtual)
             && $username !== ''

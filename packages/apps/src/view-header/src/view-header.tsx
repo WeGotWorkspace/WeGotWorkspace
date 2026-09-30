@@ -103,7 +103,7 @@ export function ViewHeader({
                 {titlePrefix ? (
                   <div className="view-header__title-prefix">{titlePrefix}</div>
                 ) : null}
-                <h2 className="view-header__title">
+                <h2 className="view-header__title" tabIndex={-1}>
                   {compactTitle ? (
                     <>
                       <span className="view-header__title-full">{title}</span>

@@ -7,6 +7,7 @@ namespace App\Services\Search;
 use App\Models\CalendarObject;
 use App\Models\Card;
 use App\Storage\WgwStorage;
+use Illuminate\Support\Facades\Log;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VCard;
 use Sabre\VObject\Reader;
@@ -101,9 +102,9 @@ final class SearchIndexerService
         $segments = explode('/', $key);
         $owner = null;
         $group = null;
-        if (($segments[0] ?? '') === 'users' && isset($segments[1])) {
+        if ($segments[0] === 'users' && isset($segments[1])) {
             $owner = $segments[1];
-        } elseif (($segments[0] ?? '') === 'groups' && isset($segments[1])) {
+        } elseif ($segments[0] === 'groups' && isset($segments[1])) {
             $group = $segments[1];
         }
         $isDirectory = $disk->directoryExists($key);
@@ -136,8 +137,8 @@ final class SearchIndexerService
             $this->store->delete('note', $key);
         }
         $category = $isDirectory ? 'folder' : ($isNotePath ? 'note' : $this->categoryForExtension($extension));
-        $size = $isDirectory ? 0 : (int) ($disk->size($key) ?? 0);
-        $modified = (int) ($disk->lastModified($key) ?? time());
+        $size = $isDirectory ? 0 : (int) $disk->size($key);
+        $modified = (int) $disk->lastModified($key);
         $indexedText = $this->readFileBodyForIndexing($key, $extension, $size, $isDirectory, $isNotePath);
         $body = $indexedText['body'];
         $frontmatter = $indexedText['frontmatter'];
@@ -168,7 +169,7 @@ final class SearchIndexerService
             'metadata' => $metadata,
         ];
         $tokens = [
-            'title' => $this->tokens->tokenize((string) ($document['title'] ?? $name)),
+            'title' => $this->tokens->tokenize((string) $document['title']),
             'meta' => $this->tokens->tokenize(
                 trim($category.' '.$extension.' /'.$key.' '.($frontmatter ?? ''))
             ),
@@ -210,8 +211,19 @@ final class SearchIndexerService
             return;
         }
 
-        $raw = is_string($row->calendardata) ? $row->calendardata : (string) $row->calendardata;
+        if (! is_string($row->calendardata)) {
+            Log::warning('Skipping calendar object with null calendardata.', [
+                'principal' => $principal,
+                'calendarUri' => $calendarUri,
+                'objectUri' => $objectUri,
+            ]);
+
+            return;
+        }
+
+        $raw = $row->calendardata;
         $parsed = $this->extractCalendarSearchPayload($raw);
+        $calendarName = $row->getAttribute('calendar_name');
         $document = [
             'source_subtype' => is_string($row->componenttype) ? strtolower($row->componenttype) : 'calendar',
             'owner_username' => $principal,
@@ -225,7 +237,7 @@ final class SearchIndexerService
             'metadata' => [
                 'principal' => $principal,
                 'calendarUri' => $calendarUri,
-                'calendarName' => is_string($row->calendar_name) ? $row->calendar_name : null,
+                'calendarName' => is_string($calendarName) ? $calendarName : null,
                 'objectUri' => $objectUri,
                 'componentType' => $row->componenttype,
                 'firstOccurrence' => $row->firstoccurence,
@@ -233,7 +245,7 @@ final class SearchIndexerService
             ],
         ];
         $tokens = [
-            'title' => $this->tokens->tokenize((string) ($document['title'] ?? '')),
+            'title' => $this->tokens->tokenize((string) $document['title']),
             'meta' => $this->tokens->tokenize(
                 implode(' ', [
                     (string) ($parsed['location'] ?? ''),
@@ -297,6 +309,7 @@ final class SearchIndexerService
             implode(' ', $parsed['address'] ?? []),
         ];
 
+        $bookName = $row->getAttribute('book_name');
         $document = [
             'owner_username' => $principal,
             'title' => $title,
@@ -309,7 +322,7 @@ final class SearchIndexerService
             'metadata' => [
                 'principal' => $principal,
                 'addressBookUri' => $bookUri,
-                'addressBookName' => is_string($row->book_name) ? $row->book_name : null,
+                'addressBookName' => is_string($bookName) ? $bookName : null,
                 'cardUri' => $cardUri,
                 'firstName' => $parsed['firstName'] ?? null,
                 'lastName' => $parsed['lastName'] ?? null,
@@ -430,7 +443,7 @@ final class SearchIndexerService
         }
 
         $raw = $this->storage->files()->get($key);
-        if ($raw === '') {
+        if (! is_string($raw) || $raw === '') {
             return ['body' => null, 'frontmatter' => null];
         }
 
@@ -501,11 +514,8 @@ final class SearchIndexerService
             return [$raw, null];
         }
 
-        $block = (string) ($matches[0] ?? '');
-        $frontmatter = trim((string) ($matches[1] ?? ''));
-        if ($block === '') {
-            return [$raw, $frontmatter !== '' ? $frontmatter : null];
-        }
+        $block = (string) $matches[0];
+        $frontmatter = trim((string) $matches[1]);
 
         return [substr($raw, strlen($block)) ?: '', $frontmatter !== '' ? $frontmatter : null];
     }
@@ -530,7 +540,7 @@ final class SearchIndexerService
         $header = trim(substr($normalized, 0, $idx));
         $body = substr($normalized, $idx + strlen($token));
 
-        return [$body === false ? '' : $body, $header !== '' ? $header : null];
+        return [$body, $header !== '' ? $header : null];
     }
 
     private function isHiddenPath(string $key): bool
@@ -560,7 +570,7 @@ final class SearchIndexerService
             return null;
         }
 
-        $value = trim((string) ($matches[1] ?? ''));
+        $value = trim((string) $matches[1]);
         if ($value === '') {
             return null;
         }
@@ -619,7 +629,7 @@ final class SearchIndexerService
     }
 
     /**
-     * @return array{title?: string, body?: string, location?: string, organizer?: string, attendees?: list<string>, categories?: list<string>}
+     * @return array{title?: string|null, body?: string, location?: string|null, organizer?: string|null, attendees?: list<string>, categories?: list<string>}
      */
     private function extractCalendarSearchPayload(string $raw): array
     {
@@ -674,17 +684,17 @@ final class SearchIndexerService
 
     /**
      * @return array{
-     *   fullName?: string,
-     *   firstName?: string,
-     *   lastName?: string,
+     *   fullName?: string|null,
+     *   firstName?: string|null,
+     *   lastName?: string|null,
      *   emails?: list<string>,
      *   phones?: list<string>,
-     *   organization?: string,
-     *   title?: string,
-     *   note?: string,
+     *   organization?: string|null,
+     *   title?: string|null,
+     *   note?: string|null,
      *   address?: list<string>,
-     *   city?: string,
-     *   country?: string
+     *   city?: string|null,
+     *   country?: string|null
      * }
      */
     private function extractCardSearchPayload(string $raw): array

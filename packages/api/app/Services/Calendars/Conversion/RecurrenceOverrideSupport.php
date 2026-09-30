@@ -29,7 +29,7 @@ final class RecurrenceOverrideSupport
         $series = [];
         foreach (ICalendarSeries::groupByUid(
             $vevents,
-            static fn (VEvent $vevent): string => ICalendarUid::fromSeed((string) $vevent->serialize()),
+            static fn (VEvent $vevent, int $index): string => ICalendarUid::fromSeed($vevent->serialize()),
         ) as $group) {
             ['masters' => $masters, 'overrides' => $overrides] = ICalendarSeries::partitionMastersAndOverrides($group);
 

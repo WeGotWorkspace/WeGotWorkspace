@@ -13,6 +13,7 @@ final class ChatDmOpenRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         // Shape only — semantic checks (self, groups, unknown users) live in

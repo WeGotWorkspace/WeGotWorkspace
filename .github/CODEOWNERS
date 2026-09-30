@@ -1,0 +1,4 @@
+# Changes to the file-size baseline need review from a code owner.
+# CI check-growth only warns when a count rises or a row is added.
+/.github/CODEOWNERS @woutervroege
+tools/file-size-baseline.tsv @woutervroege

@@ -18,8 +18,6 @@ use Sabre\HTTP\ResponseInterface;
  */
 final class PropIdEnsuringPlugin extends ServerPlugin
 {
-    private Server $server;
-
     private bool $reentrant = false;
 
     public function __construct(
@@ -30,7 +28,6 @@ final class PropIdEnsuringPlugin extends ServerPlugin
 
     public function initialize(Server $server): void
     {
-        $this->server = $server;
         foreach (['PUT', 'PATCH', 'GET'] as $method) {
             $server->on('afterMethod:'.$method, [$this, 'afterCardMethod']);
         }
@@ -60,9 +57,6 @@ final class PropIdEnsuringPlugin extends ServerPlugin
         }
 
         $card = $this->cardBackend->getCard($location['addressBookId'], $location['cardUri']);
-        if ($card === null) {
-            return;
-        }
 
         $raw = is_string($card['carddata'] ?? null) ? $card['carddata'] : (string) ($card['carddata'] ?? '');
         if ($raw === '') {
@@ -72,14 +66,20 @@ final class PropIdEnsuringPlugin extends ServerPlugin
         $this->sanitizeAndPersistCard($location['addressBookId'], $location['cardUri'], $raw, true);
     }
 
+    /** @param array<string, mixed> $location */
     private function afterCardGet(array $location, ResponseInterface $response): void
     {
-        $raw = (string) $response->getBody();
+        $body = $response->getBody();
+        if (is_string($body)) {
+            $raw = $body;
+        } elseif (is_resource($body)) {
+            $contents = stream_get_contents($body);
+            $raw = is_string($contents) ? $contents : '';
+        } else {
+            $raw = '';
+        }
         if ($raw === '') {
             $card = $this->cardBackend->getCard($location['addressBookId'], $location['cardUri']);
-            if ($card === null) {
-                return;
-            }
             $raw = is_string($card['carddata'] ?? null) ? $card['carddata'] : (string) ($card['carddata'] ?? '');
         }
         if ($raw === '') {

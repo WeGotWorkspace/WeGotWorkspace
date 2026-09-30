@@ -130,9 +130,9 @@ Restart `pnpm dev` or `pnpm preview` after changing ports. Single-worktree setup
 
 **Edit the same worktree you run `pnpm dev` in.** Git worktrees share history but not working files — each clone has its own `packages/apps/src/`. Saving in one worktree does not affect Vite running in another.
 
-## UI smoke e2e (Playwright, optional)
+## UI smoke e2e (Playwright)
 
-Phase 1 loads mock-tier Storybook stories — no live API required:
+Mock-tier specs load Storybook stories — no live API. CI job `apps-e2e` runs them against a Storybook static build.
 
 ```bash
 pnpm test:apps-e2e
@@ -144,7 +144,15 @@ Starts Storybook on **:6006** (`pnpm dev:storybook`, or a Storybook you already 
 WGW_APPS_E2E_NO_SERVER=1 pnpm test:apps-e2e
 ```
 
-Not part of `pnpm test:apps-done-gate` or CI yet (see [apps-done-gate.md](../.agents/skills/testing/apps-done-gate.md)).
+Live-app specs drive the real API (`playwright.live.config.mjs`). Run them locally with:
+
+```bash
+pnpm --filter @wgw/apps test:e2e:live
+```
+
+The same five specs run nightly in `.github/workflows/nightly-live-e2e.yml` (03:00 UTC, plus manual `workflow_dispatch`). That workflow is not a pull-request check.
+
+This smoke is not part of `pnpm test:apps-done-gate` (see [apps-done-gate.md](../.agents/skills/testing/apps-done-gate.md)).
 
 ## Mental model
 

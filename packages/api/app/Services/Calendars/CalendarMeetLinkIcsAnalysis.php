@@ -10,6 +10,7 @@ use App\Services\Calendars\Conversion\RecurrenceOverrideSupport;
 use App\Services\VObject\ICalendarDateTime;
 use DateInterval;
 use DateTimeImmutable;
+use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Reader;
 
@@ -40,6 +41,9 @@ final class CalendarMeetLinkIcsAnalysis
             return [];
         }
 
+        if (! $document instanceof VCalendar) {
+            return [];
+        }
         $vevents = CalendarConversionSupport::veventsFromCalendar($document);
         $rooms = [];
         foreach (RecurrenceOverrideSupport::groupRecurrenceSeries($vevents) as $series) {
@@ -59,9 +63,6 @@ final class CalendarMeetLinkIcsAnalysis
             }
 
             foreach ($series['overrides'] as $override) {
-                if (! $override instanceof VEvent) {
-                    continue;
-                }
                 $href = LocationConversionSupport::conferenceHrefFromVEvent($override);
                 $code = $href !== null ? $this->hrefs->parseWgwRoom($href) : null;
                 if ($code === null || $code === $masterCode) {
@@ -85,6 +86,9 @@ final class CalendarMeetLinkIcsAnalysis
         try {
             $document = Reader::read($ics);
         } catch (\Throwable) {
+            return null;
+        }
+        if (! $document instanceof VCalendar) {
             return null;
         }
         $vevent = CalendarConversionSupport::primaryVEvent($document);

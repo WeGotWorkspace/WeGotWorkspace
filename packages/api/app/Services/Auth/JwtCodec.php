@@ -30,21 +30,21 @@ final class JwtCodec
     {
         $now = time();
         $iat = (int) ($claims['iat'] ?? $now);
-        $exp = (int) ($claims['exp'] ?? ($now + 3600));
-        $sub = (string) ($claims['sub'] ?? '');
-        $role = (string) ($claims['role'] ?? '');
+        $exp = (int) $claims['exp'];
+        $sub = (string) $claims['sub'];
+        $role = (string) $claims['role'];
         $issuedAt = (new \DateTimeImmutable)->setTimestamp($iat);
         $expiresAt = (new \DateTimeImmutable)->setTimestamp($exp);
 
         $config = self::configuration($cfg);
         $token = $config->builder()
             ->withHeader('kid', $cfg['kid'])
-            ->issuedBy($cfg['issuer'])
-            ->permittedFor($cfg['audience'])
+            ->issuedBy(self::nonEmpty($cfg['issuer']))
+            ->permittedFor(self::nonEmpty($cfg['audience']))
             ->issuedAt($issuedAt)
             ->canOnlyBeUsedAfter($issuedAt)
             ->expiresAt($expiresAt)
-            ->relatedTo($sub)
+            ->relatedTo(self::nonEmpty($sub))
             ->identifiedBy(bin2hex(random_bytes(16)))
             ->withClaim('role', $role)
             ->getToken($config->signer(), $config->signingKey());
@@ -65,6 +65,9 @@ final class JwtCodec
     public static function validate(string $token, array $cfg): ?array
     {
         try {
+            if ($token === '') {
+                return null;
+            }
             $config = self::configuration($cfg);
             $parsed = $config->parser()->parse($token);
             if (! $parsed instanceof Token\Plain) {
@@ -76,8 +79,8 @@ final class JwtCodec
             $constraints = [
                 new SignedWith($config->signer(), $config->verificationKey()),
                 new LooseValidAt(self::clock()),
-                new IssuedBy($cfg['issuer']),
-                new PermittedFor($cfg['audience']),
+                new IssuedBy(self::nonEmpty($cfg['issuer'])),
+                new PermittedFor(self::nonEmpty($cfg['audience'])),
             ];
             if (! $config->validator()->validate($parsed, ...$constraints)) {
                 return null;
@@ -136,9 +139,21 @@ final class JwtCodec
     {
         return Configuration::forAsymmetricSigner(
             new Sha256,
-            InMemory::plainText($cfg['privateKey']),
-            InMemory::plainText($cfg['publicKey'])
+            InMemory::plainText(self::nonEmpty($cfg['privateKey'])),
+            InMemory::plainText(self::nonEmpty($cfg['publicKey']))
         );
+    }
+
+    /**
+     * @return non-empty-string
+     */
+    private static function nonEmpty(string $value): string
+    {
+        if ($value === '') {
+            throw new \InvalidArgumentException('Expected a non-empty string.');
+        }
+
+        return $value;
     }
 
     private static function clock(): ClockInterface

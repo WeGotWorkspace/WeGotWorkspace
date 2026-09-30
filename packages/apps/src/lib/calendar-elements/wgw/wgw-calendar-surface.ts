@@ -20,11 +20,15 @@ import { filterVisibleCalendarEventsKeepingOverlay } from "@/calendar-core/src/c
  */
 export class WgwCalendarSurface extends LitElement {
   static styles = css`
+    /* Must match styles/host-font.css (Lit css\`\` cannot @import that sheet). */
     :host {
       display: flex;
       flex-direction: column;
       flex: 1;
       min-height: 0;
+      --font-sans: var(--font-we-got-sans);
+      --default-font-family: var(--font-we-got-sans);
+      font-family: var(--font-sans);
     }
     calendar-view-group {
       flex: 1;
@@ -39,6 +43,9 @@ export class WgwCalendarSurface extends LitElement {
       startDate: { type: String, attribute: "start-date" },
       weekStart: { type: Number, attribute: "week-start" },
       timezone: { type: String },
+      visibleHours: { type: Number, attribute: "visible-hours" },
+      visibleHoursStart: { type: Number, attribute: "visible-hours-start" },
+      lang: { type: String },
       selectedCalendarId: { type: String, attribute: false },
       events: { attribute: false },
       taskDueMarkers: { attribute: false },
@@ -53,6 +60,8 @@ export class WgwCalendarSurface extends LitElement {
   startDate = "";
   weekStart = 1;
   timezone?: string;
+  visibleHours?: number;
+  visibleHoursStart?: number;
   selectedCalendarId?: string;
   events: EventsMap = new Map();
   /** Render-only Tasks due markers; merged after calendar visibility filter. */
@@ -119,7 +128,10 @@ export class WgwCalendarSurface extends LitElement {
         presentation=${this.presentation}
         start-date=${this.startDate}
         week-start=${this.weekStart}
-        timezone=${this.timezone ?? ""}
+        .timezone=${this.timezone}
+        .visibleHours=${this.visibleHours}
+        .visibleHoursStart=${this.visibleHoursStart}
+        lang=${this.lang ?? ""}
         selected-calendar-id=${this.selectedCalendarId ?? ""}
         .pendingCreateIntent=${this.pendingCreateIntent}
         .selectedEventKey=${this.selectedEventKey}

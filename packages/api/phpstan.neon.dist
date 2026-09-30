@@ -1,0 +1,36 @@
+# PHPStan level 8 (Larastan) for packages/api.
+#
+# The committed baseline (phpstan-baseline.neon) may only shrink.
+# scripts/phpstan-baseline-shrink.php fails the done gate when the sum of
+# `count:` is higher than on origin/main. Do not regenerate the file to
+# clear new findings. CI also fails on any finding that is not already in
+# the baseline. When a finding is fixed, delete its baseline entry in that
+# pull request (remove the entry, or lower its count).
+#
+# tests/ is intentionally outside `paths`. Tables created through
+# $this->wgw() in database/migrations/wgw are invisible to Larastan.
+# Declare each column with @property (see App\Models\User and
+# packages/api/docs/sql-schema.md).
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 8
+    # Sabre components expose arbitrary iCalendar/vCard children via __get/__set.
+    universalObjectCratesClasses:
+        - Sabre\VObject\Component
+    stubFiles:
+        - stubs/phpstan/SabreVObject.php
+        - stubs/phpstan/SabreITipBroker.php
+        - stubs/phpstan/PassportClient.php
+    paths:
+        - app
+        - bootstrap
+        - config
+        - database
+        - routes
+        - scripts
+    excludePaths:
+        - bootstrap/cache/*
+    reportUnmatchedIgnoredErrors: true

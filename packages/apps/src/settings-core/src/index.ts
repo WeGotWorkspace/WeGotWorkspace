@@ -16,10 +16,17 @@ export type {
   SettingsMailCredentials,
   SettingsMailServer,
   SettingsMcpGrant,
+  BuiltinPanelId,
+  SettingsPanelId,
   SettingsSection,
   SettingsUIData,
   SettingsUser,
 } from "./settings-types";
+export { BUILTIN_PANEL_IDS } from "./settings-types";
+export { registerBuiltinSettings } from "./register-builtin-settings";
+export { useWorkspaceAppSettingsEntry } from "./use-workspace-app-settings-entry";
+export { WorkspaceAppSettingsFooter } from "./workspace-app-settings-footer";
+export { notifySettingsSliceSaved, subscribeSettingsSliceSaved } from "./settings-slice-saved";
 export {
   settingsProfileFormSchema,
   type SettingsProfileFormValues,

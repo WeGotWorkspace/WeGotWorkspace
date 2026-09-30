@@ -50,7 +50,7 @@ final class McpOAuthLoginRedirect
         }
 
         $parts = parse_url($intended);
-        if (! is_array($parts) || ! isset($parts['host']) || ! is_string($parts['host'])) {
+        if (! isset($parts['host'])) {
             return self::AUTHORIZE_PATH;
         }
         if (strcasecmp($parts['host'], $request->getHost()) !== 0) {
@@ -58,10 +58,10 @@ final class McpOAuthLoginRedirect
         }
 
         $path = (string) ($parts['path'] ?? self::AUTHORIZE_PATH);
-        $query = isset($parts['query']) && is_string($parts['query']) && $parts['query'] !== ''
+        $query = isset($parts['query']) && $parts['query'] !== ''
             ? '?'.$parts['query']
             : '';
-        $fragment = isset($parts['fragment']) && is_string($parts['fragment']) && $parts['fragment'] !== ''
+        $fragment = isset($parts['fragment']) && $parts['fragment'] !== ''
             ? '#'.$parts['fragment']
             : '';
 
