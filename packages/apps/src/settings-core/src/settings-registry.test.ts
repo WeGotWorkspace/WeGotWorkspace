@@ -71,14 +71,22 @@ describe("settings-registry", () => {
     ]);
     expect(nav.map((panel) => panel.id)).not.toContain("mail");
     expect(nav.map((panel) => panel.id)).not.toContain("notifications");
-    expect(panelForApp("mail", {})).toBeUndefined();
+    expect(getSettingsPanel("notifications")).toBeUndefined();
+    expect(panelForApp("mail", {})).toMatchObject({
+      id: "mail",
+      appId: "mail",
+      showInNav: false,
+    });
     expect(panelForApp("calendar", {})?.id).toBe("calendar");
     expect(panelForApp("tasks", {})?.id).toBe("tasks");
     expect(panelForApp("contacts", {})?.id).toBe("contacts");
     expect(panelForApp("notes", {})?.id).toBe("notes");
     expect(panelForApp("drive", {})).toBeUndefined();
-    expect(getSettingsPanel("mail")?.id).toBe("mail");
-    expect(getSettingsPanel("mail")?.showInNav).toBe(false);
+    expect(getSettingsPanel("mail")).toMatchObject({
+      id: "mail",
+      appId: "mail",
+      showInNav: false,
+    });
   });
 
   it("returns the same test-only dual-placement slice from two panel queries", () => {
