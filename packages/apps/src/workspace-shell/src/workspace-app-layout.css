@@ -79,20 +79,20 @@
 }
 
 .workspace-sidebar-account-footer__settings-button {
-  @apply flex w-full min-w-0 items-center gap-2 text-left;
-  min-height: var(--control-height-md, 2.25rem);
-  color: var(
-    --workspace-user-footer-text-color,
-    color-mix(in oklab, var(--color-we-got-dark) 70%, transparent)
-  );
+  @apply relative flex w-full min-w-0 items-center gap-2 rounded text-left text-sm font-medium;
+  min-height: var(--app-sidebar-item-height, var(--control-height-md, 2.25rem));
+  /* Same glyph inset as collection / menu rows so the icon column lines up. */
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
+  border: 1px solid transparent;
   background-color: transparent;
-  border-radius: var(--control-radius);
+  color: color-mix(in oklab, var(--color-we-got-dark) 75%, transparent);
 }
 
 .workspace-sidebar-account-footer__settings-button:hover {
+  color: var(--button-outline-hover-color, var(--button-outline-color, var(--color-we-got-dark)));
   background-color: var(
-    --workspace-user-footer-link-hover-bg,
-    color-mix(in oklch, var(--color-we-got-dark) 10%, transparent)
+    --button-outline-hover-background,
+    var(--app-sidebar-item-hover-bg, color-mix(in oklab, var(--color-we-got-dark) 8%, transparent))
   );
 }
 
@@ -102,13 +102,14 @@
 }
 
 .workspace-sidebar-account-footer__settings-icon {
-  @apply flex shrink-0 items-center justify-center;
-  width: var(--control-height-md, 2.25rem);
-  height: var(--control-height-md, 2.25rem);
+  @apply inline-flex shrink-0 items-center justify-center self-center;
+  width: 1rem;
+  min-width: 1rem;
+  height: 1rem;
 }
 
 .workspace-sidebar-account-footer__settings-label {
-  @apply min-w-0 truncate text-sm font-medium;
+  @apply min-w-0 truncate;
 }
 
 /*

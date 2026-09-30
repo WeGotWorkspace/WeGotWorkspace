@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
+import { Folder } from "lucide-react";
+import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { WorkspaceAppSwitcher } from "@/workspace-app-switcher/src/workspace-app-switcher";
@@ -12,6 +14,7 @@ import {
   WorkspaceSidebarToggle,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
+import "@/workspace-shell/src/workspace-color.css";
 
 const namedSession = {
   ...mockWorkspaceSession,
@@ -71,13 +74,40 @@ export const Default: Story = {
 };
 
 export const AccountFooterWithSettings: Story = {
+  parameters: {
+    layout: "fullscreen",
+    routerPath: "/calendar",
+  },
   render: () => (
-    <div className="w-64 border">
-      <WorkspaceSidebarAccountFooter
-        session={namedSession}
-        settingsItem={{ label: "Settings", onClick: () => {} }}
-        onLogout={() => {}}
-      />
+    <div className="h-dvh" style={{ ["--workspace-accent" as string]: "var(--color-we-got-sand)" }}>
+      <AppSidebar
+        open
+        onCloseMobile={() => {}}
+        footer={
+          <WorkspaceSidebarAccountFooter
+            session={namedSession}
+            settingsItem={{ label: "Settings", onClick: () => {} }}
+            onLogout={() => {}}
+          />
+        }
+      >
+        <SidebarSection
+          title="Calendars"
+          items={[
+            {
+              label: "Personal",
+              icon: <Folder className="size-4" />,
+              selected: true,
+              onClick: () => {},
+            },
+            {
+              label: "Work",
+              icon: <Folder className="size-4" />,
+              onClick: () => {},
+            },
+          ]}
+        />
+      </AppSidebar>
     </div>
   ),
   play: async ({ canvasElement }) => {
