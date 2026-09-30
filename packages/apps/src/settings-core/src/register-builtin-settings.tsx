@@ -69,7 +69,7 @@ export function registerBuiltinSettings(): void {
     description: "IMAP & SMTP credentials",
     icon: <MailIcon className="size-3.5" />,
     group: "apps",
-    appId: "mail",
+    showInNav: false,
   });
   registerPanel({
     id: "calendar",

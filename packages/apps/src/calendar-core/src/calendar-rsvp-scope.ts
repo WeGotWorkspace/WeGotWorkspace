@@ -59,7 +59,7 @@ export function rsvpRecurrenceIdForEvent(args: {
     return toLocalRecurrenceId(args.editorRecurrenceId, allDay, args.event?.start);
   }
   if (args.event && eventIsRecurringSeries(args.event)) {
-    const today = todayISODate();
+    const today = todayISODate(Temporal.Now.timeZoneId());
     const range = rangeToPlainDateTimeStrings({
       start: Temporal.PlainDate.from(today),
       end: Temporal.PlainDate.from(today).add({ days: 90 }),

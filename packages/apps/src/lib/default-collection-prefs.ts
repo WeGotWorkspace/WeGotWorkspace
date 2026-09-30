@@ -117,19 +117,10 @@ export function useDefaultCollectionId(app: DefaultCollectionApp): string | unde
 
   useEffect(() => {
     const refresh = () => setCollectionId(readDefaultCollectionId(app));
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== DEFAULT_COLLECTION_STORAGE_KEYS[app]) return;
-      refresh();
-    };
-    window.addEventListener("storage", onStorage);
-    const stop = subscribeSettingsSliceSaved((event) => {
+    return subscribeSettingsSliceSaved((event) => {
       if (event.panelId !== app) return;
       refresh();
     });
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      stop();
-    };
   }, [app]);
 
   return collectionId;

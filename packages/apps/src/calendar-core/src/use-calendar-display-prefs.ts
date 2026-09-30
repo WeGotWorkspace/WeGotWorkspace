@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import {
-  CALENDAR_DISPLAY_PREFS_STORAGE_KEY,
   readCalendarDisplayPrefs,
   resolveCalendarWeekStart,
   type CalendarDisplayPrefs,
@@ -12,7 +11,6 @@ import { subscribeSettingsSliceSaved } from "@/settings-core/src/settings-slice-
 export type CalendarDisplayResolved = {
   locale: string;
   timeZone: string;
-  timezone: string;
   weekStart: number;
   inviteCalendarId?: string;
 };
@@ -28,7 +26,6 @@ export function resolveCalendarDisplay(
   return {
     locale,
     timeZone,
-    timezone: timeZone,
     weekStart,
     ...(inviteCalendarId ? { inviteCalendarId } : {}),
   };
@@ -39,19 +36,10 @@ export function useCalendarDisplayPrefs(): CalendarDisplayResolved {
 
   useEffect(() => {
     const refresh = () => setPrefs(readCalendarDisplayPrefs());
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== CALENDAR_DISPLAY_PREFS_STORAGE_KEY) return;
-      refresh();
-    };
-    window.addEventListener("storage", onStorage);
-    const stop = subscribeSettingsSliceSaved((event) => {
+    return subscribeSettingsSliceSaved((event) => {
       if (event.panelId !== "calendar") return;
       refresh();
     });
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      stop();
-    };
   }, []);
 
   return useMemo(() => resolveCalendarDisplay(prefs), [prefs]);

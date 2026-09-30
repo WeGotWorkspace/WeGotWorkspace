@@ -18,7 +18,7 @@ vi.mock("@/settings-core/src/settings-slice-saved", async () => {
   };
 });
 
-describe("useSettingsMailForm onSaved", () => {
+describe("useSettingsMailForm save", () => {
   beforeEach(() => {
     vi.mocked(notifySettingsSliceSaved).mockClear();
   });
@@ -27,7 +27,7 @@ describe("useSettingsMailForm onSaved", () => {
     vi.clearAllMocks();
   });
 
-  it("emits notifySettingsSliceSaved after a successful mail save", async () => {
+  it("saves mail credentials without emitting notifySettingsSliceSaved", async () => {
     const bootstrap = createSettingsAppBootstrap();
     const saveMail = vi.fn(async () => bootstrap.data);
     const { result } = renderHook(() =>
@@ -47,9 +47,6 @@ describe("useSettingsMailForm onSaved", () => {
     });
 
     expect(saveMail).toHaveBeenCalled();
-    expect(notifySettingsSliceSaved).toHaveBeenCalledWith({
-      panelId: "mail",
-      sliceId: "mail-accounts",
-    });
+    expect(notifySettingsSliceSaved).not.toHaveBeenCalled();
   });
 });

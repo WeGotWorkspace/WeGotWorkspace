@@ -52,6 +52,21 @@ export function displayOccurrenceInEventZone(
   return wallClockInTimeZone(wall, displayTimeZone, event.timeZone);
 }
 
+/** Apply a display-zone move delta, then convert both edges back into the event zone. */
+export function movedOccurrenceInEventZone(
+  event: EventDisplayTimeFields & {
+    displayStart: Temporal.PlainDateTime;
+    displayEnd: Temporal.PlainDateTime;
+  },
+  delta: { days?: number; seconds?: number },
+  displayTimeZone: string,
+): { start: Temporal.PlainDateTime; end: Temporal.PlainDateTime } {
+  return {
+    start: displayOccurrenceInEventZone(event.displayStart.add(delta), event, displayTimeZone),
+    end: displayOccurrenceInEventZone(event.displayEnd.add(delta), event, displayTimeZone),
+  };
+}
+
 export function padRangeForDisplayZone(range: {
   start: Temporal.PlainDateTime;
   end: Temporal.PlainDateTime;

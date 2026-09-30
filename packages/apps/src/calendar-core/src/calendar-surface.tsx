@@ -70,8 +70,6 @@ export type CalendarSurfaceProps = {
   locale?: string;
   timezone?: string;
   weekStart?: number;
-  visibleHours?: number;
-  visibleHoursStart?: number;
   /** Ask Only-this / This-and-future (delete also offers All instances). */
   requestRecurrenceScope?: (
     request: RecurrenceScopeRequest,
@@ -120,8 +118,6 @@ export function CalendarSurface({
   locale,
   timezone,
   weekStart,
-  visibleHours,
-  visibleHoursStart,
   requestRecurrenceScope,
   onRecurrenceFutureDelete,
   onRecurrenceFutureUpdate,
@@ -165,8 +161,6 @@ export function CalendarSurface({
     host.lang = locale ?? "";
     host.timezone = timezone;
     if (weekStart != null) host.weekStart = weekStart;
-    host.visibleHours = visibleHours;
-    host.visibleHoursStart = visibleHoursStart;
   }, [
     view,
     presentation,
@@ -182,8 +176,6 @@ export function CalendarSurface({
     locale,
     timezone,
     weekStart,
-    visibleHours,
-    visibleHoursStart,
   ]);
 
   useEffect(() => {

@@ -167,7 +167,7 @@ export function useCalendarController({
 
   const [view, setView] = useState<CalendarViewId>(initialView ?? DEFAULT_CALENDAR_VIEW);
   const [presentation, setPresentationState] = useState<CalendarPresentation>(initialPresentation);
-  const [anchor, setAnchorState] = useState<string>(initialAnchor ?? todayISODate());
+  const [anchor, setAnchorState] = useState<string>(initialAnchor ?? todayISODate(timeZone));
   const viewRef = useRef(view);
   viewRef.current = view;
   const presentationRef = useRef(presentation);
@@ -180,7 +180,7 @@ export function useCalendarController({
   const lastInitialRouteKeyRef = useRef(
     calendarRouteKey({
       view: initialView ?? DEFAULT_CALENDAR_VIEW,
-      date: initialAnchor ?? todayISODate(),
+      date: initialAnchor ?? todayISODate(timeZone),
       presentation: initialPresentation,
       searchQuery: searchQueryRef.current,
     }),
@@ -261,7 +261,7 @@ export function useCalendarController({
   useEffect(() => {
     const incoming: CalendarRouteState = {
       view: initialView ?? DEFAULT_CALENDAR_VIEW,
-      date: initialAnchor ?? todayISODate(),
+      date: initialAnchor ?? todayISODate(timeZone),
       presentation: initialPresentation,
       searchQuery: normalizeCalendarSearchQuery(initialSearchQuery),
     };

@@ -4,6 +4,7 @@ import {
   dateTimesOverlapRange,
   displayOccurrenceInEventZone,
   eventOccurrenceInDisplayZone,
+  movedOccurrenceInEventZone,
   padRangeForDisplayZone,
   wallClockInTimeZone,
 } from "./event-display-time.js";
@@ -47,6 +48,19 @@ describe("eventOccurrenceInDisplayZone", () => {
     expect(
       displayOccurrenceInEventZone(display, { timeZone: "UTC" }, "America/New_York").toString(),
     ).toBe(utcNine.toString());
+  });
+});
+
+describe("movedOccurrenceInEventZone", () => {
+  it("converts a display-zone drag back into a different event zone", () => {
+    const event = {
+      displayStart: Temporal.PlainDateTime.from("2026-09-29T19:00:00"),
+      displayEnd: Temporal.PlainDateTime.from("2026-09-29T20:00:00"),
+      timeZone: "Pacific/Auckland",
+    };
+    const next = movedOccurrenceInEventZone(event, { seconds: 3600 }, "America/Los_Angeles");
+    expect(next.start.toString()).toBe("2026-09-30T16:00:00");
+    expect(next.end.toString()).toBe("2026-09-30T17:00:00");
   });
 });
 

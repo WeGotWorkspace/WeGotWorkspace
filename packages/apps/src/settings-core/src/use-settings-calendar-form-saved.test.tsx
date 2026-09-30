@@ -59,4 +59,19 @@ describe("useSettingsCalendarForm onSaved", () => {
       sliceId: "calendar-display",
     });
   });
+
+  it("throws and does not notify when localStorage.setItem fails", async () => {
+    vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+    const { result } = renderHook(() => useSettingsCalendarForm());
+
+    await expect(
+      act(async () => {
+        result.current.form.setValue("timeZone", "Europe/Amsterdam", { shouldDirty: true });
+        await result.current.saveDisplay();
+      }),
+    ).rejects.toThrow("Could not save Calendar settings");
+    expect(notifySettingsSliceSaved).not.toHaveBeenCalled();
+  });
 });

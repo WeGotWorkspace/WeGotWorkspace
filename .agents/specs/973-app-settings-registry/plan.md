@@ -61,7 +61,7 @@ None — every choice for this work is made.
 - **id:** `registry-host`
 - **Skill:** workspace, apps-ui
 - **Inputs:** this spec
-- **Done when:** named ctx; `registerBuiltinSettings()`; reset clears builtin flag; slice+panel `reachable`; Settings nav from registry; Mail under Apps
+- **Done when:** named ctx; `registerBuiltinSettings()`; reset clears builtin flag; slice+panel `reachable`; Settings nav from registry; Mail hidden from Apps nav
 - **Verify with:** `pnpm --dir packages/apps test -- src/settings-core/src/settings-registry.test.ts src/settings-core/src/settings-section.test.ts src/settings-core/src/use-settings-sidebar-model.test.tsx src/settings-core/src/settings-app-route-click.test.tsx`
 - **Parallel with:** none
 
@@ -70,8 +70,8 @@ None — every choice for this work is made.
 - **id:** `dialog-footer`
 - **Skill:** workspace, apps-ui
 - **Inputs:** Chunk A
-- **Done when:** providers at SPA shell; Mail dialog; dismiss vs navigate focus; onSaved notify; product workspaces pass `appId`; empty apps hide the row
-- **Verify with:** RTL Mail footer + dialog + both focus paths; Notes footer negative
+- **Done when:** providers at SPA shell; local panes open offline; Mail hides the footer row; dismiss vs navigate focus; product workspaces pass `appId`; empty apps hide the row
+- **Verify with:** RTL Calendar footer + dialog + both focus paths; Mail and Drive footer negative
 - **Parallel with:** none
 
 ### Chunk C: Stories + tests

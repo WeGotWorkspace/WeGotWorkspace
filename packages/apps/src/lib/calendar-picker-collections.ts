@@ -3,7 +3,7 @@ import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { JmapCalendarsClient, type JmapCalendar } from "@/lib/jmap-client";
 import type { CalendarPickerCalendar } from "@/lib/calendar-event-calendar-picker";
 import { shareRightsAllowWrite } from "@/share-ui/collection-share";
-import { connectWgwJmapClient } from "@/lib/wgw-jmap-session";
+import { calendarJmapClient } from "@/lib/api/wgw/calendar";
 
 /** Mock-tier writable calendars — same ids/names as the Calendar story bootstrap. */
 export const MOCK_CALENDAR_PICKER_COLLECTIONS: CalendarPickerCalendar[] = [
@@ -20,11 +20,12 @@ function toPickerCalendar(calendar: JmapCalendar): CalendarPickerCalendar {
   };
 }
 
-/** Writable-aware calendar list for the Settings invite picker. Does not import calendar-core. */
+/** Writable-aware calendar list for the Settings invite picker. Reuses `calendarJmapClient`. */
 export async function loadCalendarPickerCollections(): Promise<CalendarPickerCalendar[]> {
   if (!wgwLiveApiEnabled()) return MOCK_CALENDAR_PICKER_COLLECTIONS;
   try {
-    const client = await connectWgwJmapClient();
+    const client = calendarJmapClient();
+    if (!client.isConnected) await client.connect();
     const calendars = new JmapCalendarsClient(client);
     const get = await calendars.getCalendars(client.primaryAccountId());
     return get.list.map(toPickerCalendar);

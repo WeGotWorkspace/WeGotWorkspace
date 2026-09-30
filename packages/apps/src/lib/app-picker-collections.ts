@@ -3,14 +3,10 @@ import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { listTaskLists } from "@/lib/api/wgw/tasks";
 import type { CalendarPickerCalendar } from "@/lib/calendar-event-calendar-picker";
 import type { DefaultCollectionApp } from "@/lib/default-collection-prefs";
-import {
-  JmapContactsClient,
-  JmapNotesClient,
-  type JmapAddressBook,
-  type JmapNotebook,
-} from "@/lib/jmap-client";
+import { JmapNotesClient, type JmapAddressBook, type JmapNotebook } from "@/lib/jmap-client";
 import { shareRightsAllowWrite } from "@/share-ui/collection-share";
-import { connectWgwJmapClient } from "@/lib/wgw-jmap-session";
+import { connectedContacts } from "@/lib/api/wgw/contacts";
+import { notesJmapClient } from "@/lib/api/wgw/notes-jmap";
 
 const ADDRESS_BOOK_DOT_COLORS = [
   "#ea8c72",
@@ -88,14 +84,14 @@ async function loadLiveTasks(): Promise<CalendarPickerCalendar[]> {
 }
 
 async function loadLiveContacts(): Promise<CalendarPickerCalendar[]> {
-  const client = await connectWgwJmapClient();
-  const contacts = new JmapContactsClient(client);
-  const get = await contacts.getAddressBooks(client.primaryAccountId());
+  const { contacts, accountId } = await connectedContacts();
+  const get = await contacts.getAddressBooks(accountId);
   return get.list.filter((book) => book.isSharee !== true).map(toAddressBookPicker);
 }
 
 async function loadLiveNotes(): Promise<CalendarPickerCalendar[]> {
-  const client = await connectWgwJmapClient();
+  const client = notesJmapClient();
+  if (!client.isConnected) await client.connect();
   const notes = new JmapNotesClient(client);
   const get = await notes.getNotebooks(client.primaryAccountId());
   return get.list.filter((notebook) => notebook.isSharee !== true).map(toNotebookPicker);

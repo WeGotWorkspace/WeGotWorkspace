@@ -28,12 +28,12 @@ Register a reachable Calendar panel under Settings → Apps. The same pane opens
 ## Technical constraints
 
 - `settings-core` must not import `calendar-core`. Shared timezone list, display-prefs helpers, and the calendar color picker live in `packages/apps/src/lib/`.
-- Storage follows `calendar-view-prefs` (device `localStorage`, swallow quota / private-mode failures).
-- Empty timezone = device default. Calendar labels follow the browser locale until workspace i18n exists. A previously stored locale is preserved on save but has no pane control.
+- Storage follows `calendar-view-prefs` (device `localStorage`). Writes return false on quota / private-mode failures so the form shows an error toast instead of “saved”.
+- Empty timezone = device default. Calendar labels follow the browser locale until workspace i18n exists. A previously stored `locale` key is ignored on read and stripped on write.
 - Empty week start = browser first weekday (`getLocaleWeekInfo`, Monday when unknown). Day-starts-on offers browser default, Monday, and Sunday (Google/Apple-style). Stored ISO 1–7 still applies if present.
 - Timed events convert from `data.timeZone` into the display IANA zone at render time; all-day and floating wall clocks stay put. Engine storage keeps original wall clocks. Card labels use the converted display times.
-- Empty default calendar id = writable `isDefault` / first writable collection. Settings trigger shows color + calendar name.
-- After save, `notifySettingsSliceSaved({ panelId: "calendar", sliceId: "calendar-display" })` so a mounted Calendar workspace refreshes without reload.
+- Empty default calendar id = writable `isDefault` / first writable collection. Settings trigger shows color + calendar name. A stored id that is missing or not writable falls back to the first writable calendar; the Settings pane marks the form dirty with that fallback.
+- After save, `notifySettingsSliceSaved({ panelId: "calendar", sliceId: "calendar-display" })` so a mounted Calendar workspace refreshes without reload. Other tabs fire a `storage` event that is re-emitted into the same bus.
 - Do not export `SettingsCalendarPane` from `settings-core` `index.ts`; add a Storybook story.
 - Do not grow baselined `use-calendar-controller.ts` or `calendar-workspace.tsx`.
 - `openPanel("calendar")` is a `BuiltinPanelId`. Footer already uses `appId="calendar"`.
@@ -53,7 +53,7 @@ Owner request during implementation (issue body-hash unchanged; `gh issue edit` 
 ## Edge cases
 
 - Stored IANA id not in the curated list still appears in the timezone select
-- `registerBuiltinSettings()` remains idempotent; Calendar sits next to Mail under Apps
+- `registerBuiltinSettings()` remains idempotent; Calendar sits under Apps (Mail is hidden from nav)
 - jsdom without `Intl.Locale.getWeekInfo` falls back to Monday (1)
 - Cross-midnight zoned events stay visible after converting into the display zone
 - A stored week start other than Monday/Sunday still appears in the select until changed

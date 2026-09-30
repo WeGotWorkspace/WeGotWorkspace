@@ -7,7 +7,7 @@ Technical translation of Task #973. Dual-home settings: Settings app catalog plu
 
 ## Goal
 
-A compile-time contribution registry in `settings-core` drives Settings nav and a shared `SettingsPanelHost`. Product workspaces get a Settings row above the avatar that opens that app’s panel in a dialog. Mail IMAP (already live in Settings) is the first app panel. Empty apps hide the row.
+A compile-time contribution registry in `settings-core` drives Settings nav and a shared `SettingsPanelHost`. Product workspaces get a Settings row above the avatar that opens that app’s panel in a dialog. Mail IMAP is a callout-only pane at `/settings/mail` (hidden from nav and the Mail workspace footer). Empty apps hide the row.
 
 ## Non-goals
 
@@ -44,4 +44,5 @@ A compile-time contribution registry in `settings-core` drives Settings nav and 
 - `resetSettingsRegistryForTests` clears the builtin-registered flag
 - Dismiss restores focus to the footer Settings control
 - Open in Settings discards dirty state and must not restore focus to the unmounted opener
-- Mail save emits `notifySettingsSliceSaved`; no mail-core subscriber in this Task
+- Mail is hidden from Settings nav and the Mail workspace Settings row; `/settings/mail` still renders the callout
+- Mail save does not emit `notifySettingsSliceSaved`

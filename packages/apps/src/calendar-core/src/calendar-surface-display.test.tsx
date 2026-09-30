@@ -36,7 +36,7 @@ describe("CalendarSurface display prefs", () => {
     cleanup();
   });
 
-  it("mirrors locale, timezone, weekStart, and visible hours onto the Lit host", async () => {
+  it("mirrors locale, timezone, and weekStart onto the Lit host", async () => {
     render(
       <CalendarSurface
         view="week"
@@ -46,8 +46,6 @@ describe("CalendarSurface display prefs", () => {
         locale="nl-NL"
         timezone="Europe/Amsterdam"
         weekStart={1}
-        visibleHours={8}
-        visibleHoursStart={9}
       />,
     );
 
@@ -57,8 +55,7 @@ describe("CalendarSurface display prefs", () => {
       expect(host!.lang).toBe("nl-NL");
       expect(host!.timezone).toBe("Europe/Amsterdam");
       expect(host!.weekStart).toBe(1);
-      expect(host!.visibleHours).toBe(8);
-      expect(host!.visibleHoursStart).toBe(9);
     });
+    expect("visibleHours" in (host as object)).toBe(false);
   });
 });

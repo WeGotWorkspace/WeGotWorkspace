@@ -3,7 +3,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useRunWithAppToast } from "@/hooks/use-run-with-app-toast";
-import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
 import {
   settingsMailFormSchema,
   settingsMailFormToRequest,
@@ -55,7 +54,6 @@ export function useSettingsMailForm({
           ...values,
           imapPassword: "",
         });
-        notifySettingsSliceSaved({ panelId: "mail", sliceId: "mail-accounts" });
       },
       {
         success: "Mail credentials saved",

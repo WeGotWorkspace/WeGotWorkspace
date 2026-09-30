@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_COLLECTION_STORAGE_KEYS,
   parseDefaultCollectionPrefs,
@@ -61,5 +61,32 @@ describe("default-collection-prefs", () => {
       notifySettingsSliceSaved({ panelId: "tasks", sliceId: "tasks-default-collection" });
     });
     expect(result.current).toBe("work");
+  });
+
+  it("refreshes useDefaultCollectionId after a storage event for the tasks key", () => {
+    window.localStorage.clear();
+    const { result } = renderHook(() => useDefaultCollectionId("tasks"));
+    expect(result.current).toBeUndefined();
+    window.localStorage.setItem(
+      DEFAULT_COLLECTION_STORAGE_KEYS.tasks,
+      JSON.stringify({ collectionId: "inbox" }),
+    );
+    act(() => {
+      const storageEvent = new Event("storage");
+      Object.defineProperty(storageEvent, "key", {
+        value: DEFAULT_COLLECTION_STORAGE_KEYS.tasks,
+      });
+      window.dispatchEvent(storageEvent);
+    });
+    expect(result.current).toBe("inbox");
+  });
+
+  it("returns false when localStorage.setItem throws", () => {
+    window.localStorage.clear();
+    const setItem = vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+    expect(writeDefaultCollectionPrefs("tasks", { collectionId: "work" })).toBe(false);
+    setItem.mockRestore();
   });
 });

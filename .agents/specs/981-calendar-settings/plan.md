@@ -46,7 +46,7 @@ None — every choice for this work is made.
 
 ## Invariants
 
-- Mail remains under Apps. A missing Calendar slice would hide Calendar, not Mail. Proof: `path: packages/apps/src/settings-core/src/settings-registry.test.ts` assertion `keeps Mail under Apps`.
+- Calendar remains under Apps. Mail stays off nav; `/settings/mail` still explains unshipped mailbox login. Proof: `path: packages/apps/src/settings-core/src/settings-registry.test.ts` assertion `keeps Calendar, Tasks, Contacts, and Notes under Apps`
 - After chunk A, existing view-prefs `localStorage` key is untouched. Proof: `path: packages/apps/src/calendar-core/src/calendar-view-prefs.test.tsx`
 - After chunk B, `/settings/mail` still explains unshipped mailbox login. Proof: `path: packages/apps/src/settings-core/src/settings-app-route-click.test.tsx` assertion `explains a direct mailbox-login link`
 - After chunk C, CalendarSurface tests that omit display props keep the Lit Monday `weekStart` default. Proof: `path: packages/apps/src/calendar-core/src/calendar-surface-view-echo.test.tsx`
@@ -76,7 +76,7 @@ None — every choice for this work is made.
 - **id:** `calendar-pane`
 - **Skill:** workspace, storybook
 - **Inputs:** Chunk A
-- **Done when:** `calendar` panel + `calendar-display` slice; rhf+zod pane; save notifies; stories; Apps nav is Mail then Calendar
+- **Done when:** `calendar` panel + `calendar-display` slice; rhf+zod pane; save notifies; stories; Apps nav is Calendar (Mail hidden)
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/settings-core/src/settings-registry.test.ts src/settings-core/src/use-settings-sidebar-model.test.tsx src/settings-core/src/use-settings-calendar-form-saved.test.tsx src/settings-core/src/settings-calendar-pane.test.tsx src/settings-core/src/settings-dialog-footer.test.tsx`
 - **Parallel with:** none
 
@@ -92,6 +92,6 @@ None — every choice for this work is made.
 ## Test plan
 
 - [ ] Vitest for prefs parse/write, week-start resolve, form save bus
-- [ ] Registry/nav/dialog stories: Mail + Calendar, no Notifications
+- [ ] Registry/nav/dialog stories: Calendar under Apps, Mail hidden, no Notifications
 - [ ] Controller/surface: locale, timezone, weekStart after notify; zoned events shift on the grid
 - [ ] Local apps done gate before push

@@ -45,4 +45,19 @@ describe("useSettingsDefaultCollectionForm onSaved", () => {
       sliceId: "tasks-default-collection",
     });
   });
+
+  it("throws and does not notify when localStorage.setItem fails", async () => {
+    vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+    const { result } = renderHook(() => useSettingsDefaultCollectionForm("tasks"));
+
+    await expect(
+      act(async () => {
+        result.current.form.setValue("collectionId", "work", { shouldDirty: true });
+        await result.current.saveDisplay();
+      }),
+    ).rejects.toThrow("Could not save Tasks settings");
+    expect(notifySettingsSliceSaved).not.toHaveBeenCalled();
+  });
 });

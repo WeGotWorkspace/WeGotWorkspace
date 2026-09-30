@@ -60,23 +60,25 @@ describe("settings-registry", () => {
     expect(panelsForNav({ mcpEnabled: true }).map((panel) => panel.id)).toContain("assistants");
   });
 
-  it("keeps Mail, Calendar, Tasks, Contacts, and Notes under Apps with no production Notifications panel", () => {
+  it("keeps Calendar, Tasks, Contacts, and Notes under Apps with no Mail nav and no production Notifications panel", () => {
     registerBuiltinSettings();
     const nav = panelsForNav({});
     expect(nav.filter((panel) => panel.group === "apps").map((panel) => panel.id)).toEqual([
-      "mail",
       "calendar",
       "tasks",
       "contacts",
       "notes",
     ]);
+    expect(nav.map((panel) => panel.id)).not.toContain("mail");
     expect(nav.map((panel) => panel.id)).not.toContain("notifications");
-    expect(panelForApp("mail", {})?.id).toBe("mail");
+    expect(panelForApp("mail", {})).toBeUndefined();
     expect(panelForApp("calendar", {})?.id).toBe("calendar");
     expect(panelForApp("tasks", {})?.id).toBe("tasks");
     expect(panelForApp("contacts", {})?.id).toBe("contacts");
     expect(panelForApp("notes", {})?.id).toBe("notes");
     expect(panelForApp("drive", {})).toBeUndefined();
+    expect(getSettingsPanel("mail")?.id).toBe("mail");
+    expect(getSettingsPanel("mail")?.showInNav).toBe(false);
   });
 
   it("returns the same test-only dual-placement slice from two panel queries", () => {

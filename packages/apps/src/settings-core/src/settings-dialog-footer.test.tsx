@@ -143,7 +143,7 @@ describe("settings dialog and in-app footer", () => {
     resetSettingsRegistryForTests();
   });
 
-  it("shows Settings above the avatar for Mail and opens the Mail pane", async () => {
+  it("hides the Settings row for Mail", async () => {
     const bootstrap = createMailAppBootstrap();
     await renderHosted(
       <MailWorkspace
@@ -155,20 +155,7 @@ describe("settings dialog and in-app footer", () => {
       />,
     );
 
-    const settingsButton = footerSettingsButton();
-    expect(settingsButton).toBeTruthy();
-    settingsButton!.focus();
-    fireEvent.click(settingsButton!);
-
-    expect(await screen.findByRole("heading", { name: "Mail" })).toBeTruthy();
-    expect(screen.getByText(/does not read a mailbox/i)).toBeTruthy();
-    const footer = document.querySelector(".ui-modal-footer");
-    expect(footer).toBeInstanceOf(HTMLElement);
-    expect(
-      within(footer as HTMLElement).getByRole("button", { name: "Open in Settings" }),
-    ).toBeTruthy();
-    expect(within(footer as HTMLElement).getByRole("button", { name: "Cancel" })).toBeTruthy();
-    expect(within(footer as HTMLElement).queryByRole("button", { name: "Save" })).toBeNull();
+    expect(footerSettingsButton()).toBeNull();
   });
 
   it("opens Calendar in the dialog from the footer", async () => {
@@ -212,7 +199,9 @@ describe("settings dialog and in-app footer", () => {
   });
 
   it("restores focus to the footer Settings control on dismiss", async () => {
-    await renderHosted(<WorkspaceAppSettingsFooter appId="mail" session={mockWorkspaceSession} />);
+    await renderHosted(
+      <WorkspaceAppSettingsFooter appId="calendar" session={mockWorkspaceSession} />,
+    );
     const settingsButton = footerSettingsButton();
     expect(settingsButton).toBeTruthy();
     settingsButton!.focus();
@@ -226,7 +215,9 @@ describe("settings dialog and in-app footer", () => {
   });
 
   it("does not restore focus to an unmounted opener after Open in Settings", async () => {
-    await renderHosted(<WorkspaceAppSettingsFooter appId="mail" session={mockWorkspaceSession} />);
+    await renderHosted(
+      <WorkspaceAppSettingsFooter appId="calendar" session={mockWorkspaceSession} />,
+    );
     const settingsButton = footerSettingsButton();
     expect(settingsButton).toBeTruthy();
     settingsButton!.focus();
@@ -239,7 +230,7 @@ describe("settings dialog and in-app footer", () => {
         ".workspace-app-layout__main-header .view-header__title",
       );
       expect(heading).toBeInstanceOf(HTMLElement);
-      expect(heading?.textContent).toContain("Mail");
+      expect(heading?.textContent).toContain("Calendar");
       expect(document.activeElement).toBe(heading);
     });
     expect(footerSettingsButton()).toBeNull();

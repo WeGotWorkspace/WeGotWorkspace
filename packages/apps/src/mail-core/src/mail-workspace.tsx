@@ -9,7 +9,7 @@ import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
-import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
+import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { MailDetailView } from "@/mail-core/src/mail-detail-view";
 import { MailComposeView } from "@/mail-core/src/mail-compose-view";
 import { createComposeAttachment } from "@/mail-core/src/mail-compose-utils";
@@ -158,14 +158,7 @@ export function MailWorkspace({
           <AppSidebar
             open={c.sidebarOpen}
             onCloseMobile={c.closeSidebar}
-            footer={
-              <WorkspaceAppSettingsFooter
-                appId="mail"
-                session={session}
-                onLogout={onLogout}
-                onBeforeOpen={() => closeSidebarOnMobile(c.closeSidebar)}
-              />
-            }
+            footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
             primaryButton={
               <Button
                 label="Compose"

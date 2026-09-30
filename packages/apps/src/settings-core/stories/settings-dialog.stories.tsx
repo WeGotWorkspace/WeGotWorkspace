@@ -27,17 +27,15 @@ const meta: Meta<typeof WorkspaceAppSettingsFooter> = {
 export default meta;
 type Story = StoryObj<typeof WorkspaceAppSettingsFooter>;
 
-export const MailPanel: Story = {
+export const HiddenForMail: Story = {
   args: {
     appId: "mail",
     session: namedSession,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Settings" }));
-    const body = within(canvasElement.ownerDocument.body);
-    await expect(body.findByRole("heading", { name: "Mail" })).resolves.toBeTruthy();
-    await expect(body.findByText(/does not read a mailbox/i)).resolves.toBeTruthy();
+    await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
+    await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
   },
 };
 

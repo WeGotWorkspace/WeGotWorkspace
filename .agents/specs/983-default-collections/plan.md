@@ -45,7 +45,7 @@ None — every choice for this work is made.
 
 ## Invariants
 
-- Mail and Calendar remain under Apps. Proof: `path: packages/apps/src/settings-core/src/settings-registry.test.ts` assertion `keeps Mail and Calendar under Apps`.
+- Calendar remains under Apps (Mail is hidden from nav). Proof: `path: packages/apps/src/settings-core/src/settings-registry.test.ts` assertion `keeps Calendar, Tasks, Contacts, and Notes under Apps`.
 - After chunk A, existing view-prefs keys are untouched. Proof: `path: packages/apps/src/lib/default-collection-prefs.test.tsx`
 - After chunk C, a list/book/notebook sidebar view still creates into that collection. Proof: existing `book:work` / `nb:Ideas` / `list:` tests plus new preferred-id cases.
 - Drive still hides the Settings row. Proof: `path: packages/apps/src/settings-core/stories/settings-dialog.stories.tsx` HiddenForDrive.
@@ -75,7 +75,7 @@ None — every choice for this work is made.
 - **id:** `collection-panes`
 - **Skill:** workspace, storybook
 - **Inputs:** Chunk A
-- **Done when:** tasks/contacts/notes panels + slices; rhf pane; save notifies; stories; Apps nav is Mail, Calendar, Tasks, Contacts, Notes; Drive hides the footer row
+- **Done when:** tasks/contacts/notes panels + slices; rhf pane; save notifies; stories; Apps nav is Calendar, Tasks, Contacts, Notes; Drive hides the footer row
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/settings-core/src/settings-registry.test.ts src/settings-core/src/settings-default-collection-pane.test.tsx src/settings-core/src/use-settings-default-collection-form-saved.test.tsx src/settings-core/src/settings-dialog-footer.test.tsx`
 - **Parallel with:** none
 
@@ -91,6 +91,6 @@ None — every choice for this work is made.
 ## Test plan
 
 - [ ] Vitest for prefs parse/write and picker mock lists
-- [ ] Registry/nav/dialog: Mail + Calendar + Tasks + Contacts + Notes; Drive hidden
+- [ ] Registry/nav/dialog: Calendar + Tasks + Contacts + Notes; Mail and Drive hidden
 - [ ] Create-target helpers honor stored ids only on All
 - [ ] Local apps done gate before push

@@ -34,6 +34,8 @@ export type SettingsPanel = {
   reachable?: (ctx: SettingsReachabilityContext) => boolean;
   /** Profile, memberships, and assistants read the Settings API. Local panes skip it. */
   needsSettingsApi?: boolean;
+  /** When false, omit from Settings sidebar. Footer still uses `appId` when set. */
+  showInNav?: boolean;
 };
 
 const panels = new Map<SettingsPanelId, SettingsPanel>();
@@ -90,7 +92,9 @@ export function slicesFor(
 }
 
 export function panelsForNav(ctx: SettingsReachabilityContext): SettingsPanel[] {
-  return [...panels.values()].filter((panel) => panelIsVisible(panel, ctx));
+  return [...panels.values()].filter(
+    (panel) => panel.showInNav !== false && panelIsVisible(panel, ctx),
+  );
 }
 
 export function panelForApp(
