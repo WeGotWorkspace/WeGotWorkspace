@@ -29,6 +29,8 @@ export class CalendarViewGroup extends CalendarViewBase {
   /** Direction for the next view swap; cleared in `performUpdate`. */
   #pendingRangeZoom: CalendarRangeZoomDirection | null = null;
   weekStart?: number;
+  visibleHours?: number;
+  visibleHoursStart?: number;
   #daysPerWeekStored = 7;
   snapInterval = 15;
   rtl = false;
@@ -56,6 +58,8 @@ export class CalendarViewGroup extends CalendarViewBase {
         dispatchChangeEvent: { composed: true },
       },
       weekStart: { type: Number, attribute: "week-start", reflect: true },
+      visibleHours: { type: Number, attribute: "visible-hours" },
+      visibleHoursStart: { type: Number, attribute: "visible-hours-start" },
       daysPerWeek: {
         type: Number,
         attribute: "days-per-week",
@@ -338,6 +342,8 @@ export class CalendarViewGroup extends CalendarViewBase {
         .rtl=${this.rtl}
         .lang=${this.lang}
         .timezone=${this.timezone}
+        .visibleHours=${this.visibleHours}
+        .visibleHoursStart=${this.visibleHoursStart}
         .currentTime=${this.pinnedCurrentTime}
         .snapInterval=${this.snapInterval}
         .selectedCalendarId=${this.selectedCalendarId}

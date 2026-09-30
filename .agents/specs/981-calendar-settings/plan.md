@@ -4,7 +4,7 @@ Derived from [spec.md](./spec.md). Sequential chunks. Source Task #981.
 
 ## Goal
 
-Device-local Calendar display prefs (timezone, day starts on, default calendar) in Settings and the in-app dialog, wired into the grid.
+Device-local Calendar display prefs (timezone, day starts on, visible hours, default calendar) in Settings and the in-app dialog, wired into the grid.
 
 ## Budget
 
@@ -20,7 +20,7 @@ See [spec.md](./spec.md).
 - Device-local view prefs pattern. `path: packages/apps/src/calendar-core/src/calendar-view-prefs.ts:1`
 - Lit surface already has `timezone` and `weekStart`. `path: packages/apps/src/lib/calendar-elements/wgw/wgw-calendar-surface.ts:44`
 - Timeline already has `visibleHours` / `visibleHoursStart`. `path: packages/apps/src/lib/calendar-elements/CalendarTimelineView/CalendarTimelineView.ts:197`
-- View-group day/week timeline does not forward `visibleHoursStart`. `path: packages/apps/src/lib/calendar-elements/CalendarViewGroup/CalendarViewGroup.ts:345`
+- View-group day/week timeline forwards `visibleHours` and `visibleHoursStart`. `path: packages/apps/src/lib/calendar-elements/CalendarViewGroup/CalendarViewGroup.ts:345`
 - Controller locale is `resolveLocale(undefined)` once. `path: packages/apps/src/calendar-core/src/use-calendar-controller.ts:190`
 
 ## Considered
@@ -85,13 +85,13 @@ None — every choice for this work is made.
 - **id:** `grid-wiring`
 - **Skill:** workspace
 - **Inputs:** Chunk A
-- **Done when:** controller subscribes to calendar slice saves; locale/timezone/weekStart reach Lit; zoned events convert into the display zone; new timed events use the chosen zone; viewDateRange honors weekStart
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/calendar-core/src/use-calendar-display-prefs.test.tsx src/calendar-core/src/calendar-event-model.test.ts src/calendar-core/src/calendar-surface-display.test.tsx src/calendar-core/src/calendar-editor-model.test.ts src/lib/calendar-elements/CalendarViewGroup/CalendarViewGroup.day-week.test.ts`
+- **Done when:** controller subscribes to calendar slice saves; locale/timezone/weekStart/visibleHours reach Lit; zoned events convert into the display zone; new timed events use the chosen zone; viewDateRange honors weekStart
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/calendar-core/src/use-calendar-display-prefs.test.tsx src/calendar-core/src/calendar-event-model.test.ts src/calendar-core/src/calendar-surface-display.test.tsx src/calendar-core/src/calendar-editor-model.test.ts src/lib/calendar-elements/CalendarViewGroup/CalendarViewGroup.visible-hours.test.tsx`
 - **Parallel with:** chunk B
 
 ## Test plan
 
 - [ ] Vitest for prefs parse/write, week-start resolve, form save bus
 - [ ] Registry/nav/dialog stories: Calendar under Apps, Mail hidden, no Notifications
-- [ ] Controller/surface: locale, timezone, weekStart after notify; zoned events shift on the grid
+- [ ] Controller/surface: locale, timezone, weekStart, visibleHours after notify; zoned events shift on the grid
 - [ ] Local apps done gate before push

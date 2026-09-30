@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { resolveLocale } from "@/lib/calendar-elements/utils/Locale";
 import {
+  isCalendarVisibleHours,
+  isCalendarVisibleHoursStart,
   readCalendarDisplayPrefs,
   resolveCalendarWeekStart,
   type CalendarDisplayPrefs,
@@ -13,6 +15,8 @@ export type CalendarDisplayResolved = {
   timeZone: string;
   weekStart: number;
   inviteCalendarId?: string;
+  visibleHours?: number;
+  visibleHoursStart?: number;
 };
 
 export function resolveCalendarDisplay(
@@ -23,11 +27,22 @@ export function resolveCalendarDisplay(
   const weekStart = resolveCalendarWeekStart(stored, locale);
   const timeZone = defaultTimedEventTimeZone(stored.timeZone);
   const inviteCalendarId = stored.inviteCalendarId?.trim();
+  const visibleHours = isCalendarVisibleHours(stored.visibleHours)
+    ? stored.visibleHours
+    : undefined;
+  const visibleHoursStart =
+    visibleHours != null &&
+    visibleHours < 24 &&
+    isCalendarVisibleHoursStart(stored.visibleHoursStart)
+      ? stored.visibleHoursStart
+      : undefined;
   return {
     locale,
     timeZone,
     weekStart,
     ...(inviteCalendarId ? { inviteCalendarId } : {}),
+    ...(visibleHours != null ? { visibleHours } : {}),
+    ...(visibleHoursStart != null ? { visibleHoursStart } : {}),
   };
 }
 

@@ -163,8 +163,8 @@ export function useCalendarController({
 }: UseCalendarControllerOptions) {
   const L = useMemo(() => (labels ? mergeCalendarLabels(labels) : defaultCalendarLabels), [labels]);
   const { show, showError } = useAppToast();
-  const { locale, timeZone, weekStart } = useCalendarDisplayPrefs();
-
+  const { locale, timeZone, weekStart, visibleHours, visibleHoursStart } =
+    useCalendarDisplayPrefs();
   const [view, setView] = useState<CalendarViewId>(initialView ?? DEFAULT_CALENDAR_VIEW);
   const [presentation, setPresentationState] = useState<CalendarPresentation>(initialPresentation);
   const [anchor, setAnchorState] = useState<string>(initialAnchor ?? todayISODate(timeZone));
@@ -1419,7 +1419,7 @@ export function useCalendarController({
     deleteCalendarEvent,
     L,
     locale,
-    surfaceDisplay: { locale, timezone: timeZone, weekStart },
+    surfaceDisplay: { locale, timezone: timeZone, weekStart, visibleHours, visibleHoursStart },
     view,
     selectView,
     presentation,

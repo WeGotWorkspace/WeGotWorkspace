@@ -31,6 +31,18 @@ describe("useCalendarDisplayPrefs", () => {
     expect(result.current.timeZone).toBe("America/New_York");
     expect(result.current.weekStart).toBe(7);
     expect(result.current.inviteCalendarId).toBe("work");
+    expect(result.current.visibleHours).toBeUndefined();
+    expect(result.current.visibleHoursStart).toBeUndefined();
+  });
+
+  it("resolves stored visibleHours zoom and start", () => {
+    writeCalendarDisplayPrefs({
+      visibleHours: 10,
+      visibleHoursStart: 7,
+    });
+    const { result } = renderHook(() => useCalendarDisplayPrefs());
+    expect(result.current.visibleHours).toBe(10);
+    expect(result.current.visibleHoursStart).toBe(7);
   });
 
   it("uses the device zone and locale week start when prefs are unset", () => {
@@ -46,7 +58,12 @@ describe("useCalendarDisplayPrefs", () => {
     const { result } = renderHook(() => useCalendarDisplayPrefs());
     expect(result.current.timeZone).toBe("Europe/Berlin");
 
-    writeCalendarDisplayPrefs({ timeZone: "Asia/Tokyo", weekStart: 1 });
+    writeCalendarDisplayPrefs({
+      timeZone: "Asia/Tokyo",
+      weekStart: 1,
+      visibleHours: 12,
+      visibleHoursStart: 8,
+    });
     act(() => {
       notifySettingsSliceSaved({ panelId: "mail", sliceId: "mail-accounts" });
     });
@@ -57,6 +74,8 @@ describe("useCalendarDisplayPrefs", () => {
     });
     expect(result.current.timeZone).toBe("Asia/Tokyo");
     expect(result.current.weekStart).toBe(1);
+    expect(result.current.visibleHours).toBe(12);
+    expect(result.current.visibleHoursStart).toBe(8);
   });
 
   it("refreshes after a storage event for the calendar prefs key", () => {

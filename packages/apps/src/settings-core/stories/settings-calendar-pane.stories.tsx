@@ -27,6 +27,7 @@ export const Display: Story = {
     });
     const timezone = canvas.getByRole("combobox", { name: "Timezone" });
     const weekStart = canvas.getByRole("combobox", { name: "Day starts on" });
+    const visibleHours = canvas.getByRole("combobox", { name: "Visible hours" });
     await expect(calendarTrigger.textContent).toContain("Personal");
     await expect(
       calendarTrigger.compareDocumentPosition(timezone) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -34,7 +35,11 @@ export const Display: Story = {
     await expect(
       timezone.compareDocumentPosition(weekStart) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    await expect(
+      weekStart.compareDocumentPosition(visibleHours) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     await expect(canvas.queryByRole("combobox", { name: "Language" })).toBeNull();
+    await expect(canvas.queryByRole("combobox", { name: "Starts at" })).toBeNull();
     await expect(canvas.queryByRole("combobox", { name: /working hours/i })).toBeNull();
   },
 };

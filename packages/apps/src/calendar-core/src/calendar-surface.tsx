@@ -70,6 +70,10 @@ export type CalendarSurfaceProps = {
   locale?: string;
   timezone?: string;
   weekStart?: number;
+  /** Day/week grid zoom: hours that fill the viewport. Unset = default hour height. */
+  visibleHours?: number;
+  /** First visible hour when `visibleHours` is set and today is out of range. */
+  visibleHoursStart?: number;
   /** Ask Only-this / This-and-future (delete also offers All instances). */
   requestRecurrenceScope?: (
     request: RecurrenceScopeRequest,
@@ -118,6 +122,8 @@ export function CalendarSurface({
   locale,
   timezone,
   weekStart,
+  visibleHours,
+  visibleHoursStart,
   requestRecurrenceScope,
   onRecurrenceFutureDelete,
   onRecurrenceFutureUpdate,
@@ -161,6 +167,8 @@ export function CalendarSurface({
     host.lang = locale ?? "";
     host.timezone = timezone;
     if (weekStart != null) host.weekStart = weekStart;
+    host.visibleHours = visibleHours;
+    host.visibleHoursStart = visibleHoursStart;
   }, [
     view,
     presentation,
@@ -176,6 +184,8 @@ export function CalendarSurface({
     locale,
     timezone,
     weekStart,
+    visibleHours,
+    visibleHoursStart,
   ]);
 
   useEffect(() => {

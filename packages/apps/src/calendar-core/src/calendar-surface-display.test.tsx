@@ -36,7 +36,33 @@ describe("CalendarSurface display prefs", () => {
     cleanup();
   });
 
-  it("mirrors locale, timezone, and weekStart onto the Lit host", async () => {
+  it("mirrors locale, timezone, weekStart, and visibleHours onto the Lit host", async () => {
+    render(
+      <CalendarSurface
+        view="week"
+        presentation="grid"
+        startDate="2033-01-12"
+        events={new Map()}
+        locale="nl-NL"
+        timezone="Europe/Amsterdam"
+        weekStart={1}
+        visibleHours={12}
+        visibleHoursStart={8}
+      />,
+    );
+
+    const host = document.querySelector("wgw-calendar-surface") as WgwCalendarSurface | null;
+    expect(host).toBeTruthy();
+    await waitFor(() => {
+      expect(host!.lang).toBe("nl-NL");
+      expect(host!.timezone).toBe("Europe/Amsterdam");
+      expect(host!.weekStart).toBe(1);
+      expect(host!.visibleHours).toBe(12);
+      expect(host!.visibleHoursStart).toBe(8);
+    });
+  });
+
+  it("leaves visibleHours unset when omitted", async () => {
     render(
       <CalendarSurface
         view="week"
@@ -52,10 +78,9 @@ describe("CalendarSurface display prefs", () => {
     const host = document.querySelector("wgw-calendar-surface") as WgwCalendarSurface | null;
     expect(host).toBeTruthy();
     await waitFor(() => {
-      expect(host!.lang).toBe("nl-NL");
-      expect(host!.timezone).toBe("Europe/Amsterdam");
       expect(host!.weekStart).toBe(1);
     });
-    expect("visibleHours" in (host as object)).toBe(false);
+    expect(host!.visibleHours).toBeUndefined();
+    expect(host!.visibleHoursStart).toBeUndefined();
   });
 });

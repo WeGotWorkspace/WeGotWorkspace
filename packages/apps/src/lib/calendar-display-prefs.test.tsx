@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CALENDAR_DISPLAY_PREFS_STORAGE_KEY,
+  calendarHourLabel,
+  calendarVisibleHoursLabel,
   calendarWeekdayLabel,
   parseCalendarDisplayPrefs,
   readCalendarDisplayPrefs,
@@ -19,6 +21,8 @@ const validPrefs: CalendarDisplayPrefs = {
   timeZone: "Europe/Amsterdam",
   weekStart: 7,
   inviteCalendarId: "work",
+  visibleHours: 12,
+  visibleHoursStart: 8,
 };
 
 describe("parseCalendarDisplayPrefs", () => {
@@ -31,6 +35,8 @@ describe("parseCalendarDisplayPrefs", () => {
           locale: "xx-XX",
           weekStart: 8,
           inviteCalendarId: "  ",
+          visibleHours: 0,
+          visibleHoursStart: 24,
           extra: true,
         }),
       ),
@@ -88,6 +94,15 @@ describe("calendarWeekdayLabel", () => {
   it("names ISO weekdays in the display locale", () => {
     expect(calendarWeekdayLabel(1, "en-US")).toMatch(/monday/i);
     expect(calendarWeekdayLabel(7, "en-US")).toMatch(/sunday/i);
+  });
+});
+
+describe("calendarVisibleHoursLabel / calendarHourLabel", () => {
+  it("labels hour counts and clock hours", () => {
+    expect(calendarVisibleHoursLabel(1)).toBe("1 hour");
+    expect(calendarVisibleHoursLabel(12)).toBe("12 hours");
+    expect(calendarHourLabel(8, "en-US")).toMatch(/8/);
+    expect(calendarHourLabel(0, "en-US")).toMatch(/12|0/);
   });
 });
 

@@ -43,6 +43,8 @@ export class WgwCalendarSurface extends LitElement {
       startDate: { type: String, attribute: "start-date" },
       weekStart: { type: Number, attribute: "week-start" },
       timezone: { type: String },
+      visibleHours: { type: Number, attribute: "visible-hours" },
+      visibleHoursStart: { type: Number, attribute: "visible-hours-start" },
       lang: { type: String },
       selectedCalendarId: { type: String, attribute: false },
       events: { attribute: false },
@@ -58,6 +60,8 @@ export class WgwCalendarSurface extends LitElement {
   startDate = "";
   weekStart = 1;
   timezone?: string;
+  visibleHours?: number;
+  visibleHoursStart?: number;
   selectedCalendarId?: string;
   events: EventsMap = new Map();
   /** Render-only Tasks due markers; merged after calendar visibility filter. */
@@ -125,6 +129,8 @@ export class WgwCalendarSurface extends LitElement {
         start-date=${this.startDate}
         week-start=${this.weekStart}
         .timezone=${this.timezone}
+        .visibleHours=${this.visibleHours}
+        .visibleHoursStart=${this.visibleHoursStart}
         lang=${this.lang ?? ""}
         selected-calendar-id=${this.selectedCalendarId ?? ""}
         .pendingCreateIntent=${this.pendingCreateIntent}

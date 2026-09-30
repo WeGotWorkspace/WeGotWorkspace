@@ -45,6 +45,8 @@ describe("useSettingsCalendarForm onSaved", () => {
       result.current.form.setValue("timeZone", "Europe/Amsterdam", { shouldDirty: true });
       result.current.form.setValue("weekStart", "7", { shouldDirty: true });
       result.current.form.setValue("inviteCalendarId", "work", { shouldDirty: true });
+      result.current.form.setValue("visibleHours", "12", { shouldDirty: true });
+      result.current.form.setValue("visibleHoursStart", "8", { shouldDirty: true });
       await result.current.saveDisplay();
     });
 
@@ -54,11 +56,15 @@ describe("useSettingsCalendarForm onSaved", () => {
       timeZone: "Europe/Amsterdam",
       weekStart: 7,
       inviteCalendarId: "work",
+      visibleHours: 12,
+      visibleHoursStart: 8,
     });
     expect(readCalendarDisplayPrefs()).toEqual({
       timeZone: "Europe/Amsterdam",
       weekStart: 7,
       inviteCalendarId: "work",
+      visibleHours: 12,
+      visibleHoursStart: 8,
     });
     expect(notifySettingsSliceSaved).toHaveBeenCalledWith({
       panelId: "calendar",
