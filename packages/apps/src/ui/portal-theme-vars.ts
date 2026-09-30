@@ -162,10 +162,14 @@ export function bridgePortalThemeFromOpenTrigger(content: HTMLElement): void {
 }
 
 /**
- * Nearest dialog paper, otherwise the main column. Portaled option lists do
- * not inherit that surface, so paint it onto the menu.
+ * App-switch menus match the left rail. Otherwise the nearest dialog paper,
+ * then the main column. Portaled option lists do not inherit that surface.
  */
 export function portaledSurfaceElement(source: Element): HTMLElement | null {
+  if (source.closest(".app-switch-button__trigger")) {
+    const sidebar = source.closest(".app-sidebar");
+    if (sidebar instanceof HTMLElement) return sidebar;
+  }
   const surface = source.closest(".overlay-paper, .workspace-app-layout__main");
   return surface instanceof HTMLElement ? surface : null;
 }

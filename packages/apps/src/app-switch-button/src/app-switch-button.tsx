@@ -73,6 +73,7 @@ export const AppSwitchButton = memo(function AppSwitchButton({
     // Home / Workspace lockup is not a product app — nothing is current, and every
     // product entry must remain navigable (do not treat the fallback `current` as selected).
     checked: !isWorkspaceContext && app.id === current.id,
+    selected: !isWorkspaceContext && app.id === current.id,
     onClick: () => {
       if (disabled) return;
       if (!isWorkspaceContext && app.id === current.id) return;

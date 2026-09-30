@@ -190,6 +190,29 @@ describe("portal-theme-vars", () => {
     expect(dialogMenu.style.backgroundColor).toBe("rgb(255, 248, 228)");
   });
 
+  it("paints the app-switch menu with the sidebar fill", () => {
+    const sidebar = document.createElement("aside");
+    sidebar.className = "app-sidebar";
+    sidebar.style.backgroundColor = "rgb(255, 242, 243)";
+    const trigger = document.createElement("button");
+    trigger.className = "app-switch-button__trigger";
+    trigger.dataset.state = "open";
+    sidebar.append(trigger);
+    const main = document.createElement("div");
+    main.className = "workspace-app-layout__main";
+    main.style.backgroundColor = "rgb(255, 251, 246)";
+    document.body.append(sidebar, main);
+
+    expect(portaledSurfaceElement(trigger)).toBe(sidebar);
+
+    const menu = document.createElement("div");
+    menu.id = "app-switch-menu";
+    trigger.setAttribute("aria-controls", menu.id);
+    document.body.append(menu);
+    bridgePortalThemeFromOpenTrigger(menu);
+    expect(menu.style.backgroundColor).toBe("rgb(255, 242, 243)");
+  });
+
   it("overwrites seed washes with concrete colors when the engine resolves them", () => {
     const source = document.createElement("div");
     // Hex washes resolve even in jsdom (no color-mix required).
