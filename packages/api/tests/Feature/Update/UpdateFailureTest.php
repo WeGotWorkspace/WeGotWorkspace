@@ -162,9 +162,10 @@ final class UpdateFailureTest extends WgwDatabaseTestCase
      * A failure part-way through file replacement is not rolled back.
      *
      * applyPaths deletes and copies each release path in order. If a later
-     * path fails, earlier paths stay on the new release. That is intentional:
-     * the updater only archives the database and packages/api/.env, and that
-     * archive is the recovery point.
+     * path fails, earlier paths stay on the new release. VERSION is not one
+     * of those paths: it is written only after the swap succeeds, so check()
+     * still reports the update and the admin can retry. Recovery of the
+     * database is the backup archive.
      */
     public function test_mid_swap_failure_leaves_partial_install_and_keeps_database_backup(): void
     {
@@ -195,7 +196,7 @@ final class UpdateFailureTest extends WgwDatabaseTestCase
 
         $this->assertUpdaterIdle();
         $this->assertStringContainsString('new-index', (string) file_get_contents($this->installRoot.'/index.php'));
-        $this->assertSame("0.2.0\n", file_get_contents($this->installRoot.'/VERSION'));
+        $this->assertSame("0.1.0\n", file_get_contents($this->installRoot.'/VERSION'));
         $this->assertSame("apps-old\n", file_get_contents($appsDir.'/marker.txt'));
         $this->assertStringContainsString(
             'LOCAL_MARKER=keep-me',
@@ -203,6 +204,15 @@ final class UpdateFailureTest extends WgwDatabaseTestCase
         );
         $this->assertStringContainsString('Automatic file rollback skipped', $this->logText());
         $this->assertStringContainsString('database-only backups', $this->logText());
+
+        $store = app(UpdateStateStore::class);
+        $persisted = $store->read();
+        $persisted['last_check_at'] = date('c', time() - 30);
+        $store->write($persisted);
+        $checked = $this->operations()->check();
+        $this->assertSame('0.1.0', $checked['installedVersion']);
+        $this->assertTrue($checked['updateAvailable']);
+        $this->assertSame('0.2.0', $checked['latest']['version']);
     }
 
     public function test_unavailable_feed_records_error_without_partial_state(): void

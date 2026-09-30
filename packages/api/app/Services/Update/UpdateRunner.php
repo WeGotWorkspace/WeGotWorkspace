@@ -294,10 +294,12 @@ final class UpdateRunner
         $backupBaseName = $this->backups->buildBackupBaseName($beforeVersion, $targetVersion);
         $backupDir = $this->store->absolutePath($this->store->backupDir()).'/'.$backupBaseName;
         $backupArchivePath = $this->store->absolutePath($this->store->backupDir()).'/'.$backupBaseName.'.zip';
+        // VERSION is written only after applyPaths() succeeds. Copying it here
+        // would publish the new version while a later path can still fail, and
+        // check() would then report that no update is available.
         $replacePaths = [
             'index.php',
             'bootstrap',
-            'VERSION',
             'wgw-config.sample.php',
             'packages/api',
             'packages/apps',
