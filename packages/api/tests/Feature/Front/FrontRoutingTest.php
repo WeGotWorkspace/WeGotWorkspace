@@ -214,6 +214,10 @@ final class FrontRoutingTest extends TestCase
         $this->get('/pwa-icons/settings-180.png?v='.$version['version'])
             ->assertOk()
             ->assertHeader('Content-Type', 'image/png');
+
+        $this->get('/manifests/settings.webmanifest?v='.$version['version'])
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/manifest+json; charset=utf-8');
     }
 
     public function test_inbox_chime_path_serves_shell_asset(): void
