@@ -4,7 +4,6 @@ import { normalizeWgwApiBaseUrl } from "@/lib/api/wgw/wgw-api-runtime";
 import { WgwApiRuntimeProvider } from "@/lib/api/wgw/wgw-api-runtime-provider";
 import { MeetCallProvider } from "@/meet-core/src/meet-call-provider";
 import { PresenceProvider } from "@/presence-core/src/presence-provider";
-import { MfaSetupGate } from "@/login-core/src/mfa-setup-gate";
 import { WeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-router";
 
 export function resolveProductionApiBaseUrl(): string {
@@ -29,7 +28,6 @@ export function WeGotWorkspaceApp() {
         {/* Live-only: workspace presence mesh for authenticated members. */}
         <PresenceProvider>
           <WeGotWorkspaceRouter mode="live" history={history} />
-          <MfaSetupGate />
         </PresenceProvider>
       </MeetCallProvider>
     </WgwApiRuntimeProvider>

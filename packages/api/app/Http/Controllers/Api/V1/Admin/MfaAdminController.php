@@ -6,15 +6,12 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
-use App\Http\Requests\Api\V1\AdminMfaEnforcementRequest;
 use App\Http\Requests\Api\V1\AdminMfaResetRequest;
-use App\Models\AppSetting;
 use App\Models\User;
 use App\Services\Auth\MfaReauth;
 use App\Services\Auth\MfaSessionReissue;
 use App\Services\Auth\RecoveryCodeService;
 use App\Services\Auth\UserMfaService;
-use App\Services\Settings\SettingKeys;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -26,24 +23,6 @@ final class MfaAdminController
         private MfaSessionReissue $sessionReissue,
         private RecoveryCodeService $recoveryCodes,
     ) {}
-
-    public function updateEnforcement(AdminMfaEnforcementRequest $request): JsonResponse
-    {
-        $admin = $this->username($request);
-        $required = (bool) $request->validated()['required'];
-        if ($required && ! $this->mfa->isEnabled($admin)) {
-            throw new ApiHttpException(
-                422,
-                'Turn on your own authenticator before requiring it.',
-                'admin_mfa_required',
-            );
-        }
-
-        $this->reauth->assert($admin, null, (string) $request->validated()['code']);
-        AppSetting::setValue(SettingKeys::AUTH_MFA_REQUIRED, $required);
-
-        return response()->json(['required' => $required]);
-    }
 
     public function reset(AdminMfaResetRequest $request, string $username): JsonResponse
     {

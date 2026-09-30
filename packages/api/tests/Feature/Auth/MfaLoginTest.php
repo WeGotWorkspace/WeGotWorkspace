@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
-use App\Models\AppSetting;
 use App\Models\AuthChallenge;
 use App\Models\User;
 use App\Models\UserMfa;
@@ -128,7 +127,7 @@ final class MfaLoginTest extends WgwDatabaseTestCase
             ->assertJsonPath('code', 'throttled');
     }
 
-    public function test_totp_challenge_expires_at_five_minutes_and_setup_lasts_fifteen(): void
+    public function test_totp_challenge_expires_at_five_minutes_and_replace_lasts_fifteen(): void
     {
         $secret = $this->enableTotp();
         Carbon::setTestNow(Carbon::parse('2026-09-29 12:00:00'));
@@ -136,17 +135,14 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         Carbon::setTestNow(Carbon::parse('2026-09-29 12:05:01'));
         $this->verify($challenge, $this->otp($secret))->assertUnauthorized();
 
-        UserMfa::query()->where('username', 'alice')->delete();
-        AppSetting::setValue('auth_mfa_required', true);
+        $codes = app(RecoveryCodeService::class)->replaceAll('alice');
         Carbon::setTestNow(Carbon::parse('2026-09-29 13:00:00'));
-        $setup = $this->login()->assertJsonPath('status', 'mfa_setup_required');
-        $setupId = (string) $setup->json('challenge');
+        $replaceId = (string) $this->login()->assertJsonPath('status', 'mfa_required')->json('challenge');
+        $this->verify($replaceId, $codes[0], recovery: true)->assertJsonPath('status', 'mfa_replace_required');
         Carbon::setTestNow(Carbon::parse('2026-09-29 13:06:00'));
-        $this->postJson('/api/v1/auth/mfa-challenges/'.$setupId.'/totp', [
-            'password' => 'secret',
-        ])->assertOk();
+        $this->postJson('/api/v1/auth/mfa-challenges/'.$replaceId.'/totp')->assertOk();
         Carbon::setTestNow(Carbon::parse('2026-09-29 13:15:01'));
-        $this->postJson('/api/v1/auth/mfa-challenges/'.$setupId.'/totp')->assertUnauthorized();
+        $this->postJson('/api/v1/auth/mfa-challenges/'.$replaceId.'/totp')->assertUnauthorized();
     }
 
     public function test_recovery_code_starts_replacement_and_cannot_be_reused(): void

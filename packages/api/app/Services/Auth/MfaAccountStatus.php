@@ -8,7 +8,6 @@ final class MfaAccountStatus
 {
     public function __construct(
         private UserMfaService $mfa,
-        private MfaEnforcement $enforcement,
         private RecoveryCodeService $recoveryCodes,
     ) {}
 
@@ -24,7 +23,7 @@ final class MfaAccountStatus
 
         return [
             'enabled' => $enabled,
-            'required' => $this->enforcement->isRequired(),
+            'required' => false,
             'recovery_codes_remaining' => $enabled ? $this->recoveryCodes->remaining($username) : 0,
             'suggest' => ! $enabled && ! $snoozed,
         ];

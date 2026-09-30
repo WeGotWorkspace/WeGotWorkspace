@@ -8,7 +8,6 @@ use App\Http\Middleware\BindMcpPublicOrigin;
 use App\Http\Middleware\EnsureCalendarsEnabled;
 use App\Http\Middleware\EnsureContactsEnabled;
 use App\Http\Middleware\EnsureMcpEnabled;
-use App\Http\Middleware\EnsureMfaCompliance;
 use App\Http\Middleware\EnsureTasksEnabled;
 use App\Http\Middleware\FilterMcpConsentScopes;
 use App\Http\Middleware\McpCors;
@@ -56,7 +55,6 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'wgw.auth' => AuthenticateWgwApi::class,
-            'wgw.mfa' => EnsureMfaCompliance::class,
             'wgw.role' => RequireWgwRole::class,
             'wgw.contacts' => EnsureContactsEnabled::class,
             'wgw.calendars' => EnsureCalendarsEnabled::class,

@@ -119,14 +119,13 @@ TOTP is opt-in. `POST /api/v1/auth/token` still returns `access_token` and `refr
 | --- | --- |
 | `ok` | Tokens are in the body. |
 | `mfa_required` | Password matched. Send the authenticator `code` or a `recovery_code` to `POST /api/v1/auth/mfa-challenges/{challenge}/verification`. |
-| `mfa_setup_required` | An admin requires two-factor authentication and this account has not enrolled. |
 | `mfa_replace_required` | A recovery code was accepted. Confirm a new authenticator before any tokens are issued. |
 
 Challenge bodies include `client`: `spa` for `POST /api/v1/auth/token`, or `oauth` for assistant login. An `oauth` challenge is finished on `POST /oauth/session` with `{challenge, code}` or `{challenge, recovery_code}` (and `{challenge, code, password}` when confirming setup). That request signs in the web session Passport needs. The API verification route refuses an `oauth` challenge.
 
 A recovery code at login does not return tokens. It starts authenticator replacement. Confirming that replacement, or turning two-factor authentication on in Settings, signs out other sessions and returns a new token pair.
 
-Turning two-factor authentication on requires the account password before the QR code is shown, and again when the authenticator code is confirmed. Sign-in that already accepted that password reuses it for a required setup challenge. A setup challenge cannot replace an authenticator that is already on.
+Turning two-factor authentication on in Settings requires the account password before the QR code is shown, and again when the authenticator code is confirmed. Confirming that setup is refused when an authenticator is already on.
 
 Failed account-password checks on enrollment and app-password creation share the sign-in rate limit. A successful check clears that user-and-IP counter. The password is compared exactly, including spaces at either end.
 
@@ -134,16 +133,14 @@ Changing the account password revokes refresh tokens and bumps `session_generati
 
 App passwords are named secrets for calendar and contact clients. Create and revoke them under Settings → Security. After two-factor authentication is on, DAV and Meet Basic reject the account password and accept an app password. Users who have not enrolled can still use the account password on DAV.
 
-`GET /api/v1/me` includes `mfa.suggest` when the account has no authenticator and has not snoozed the prompt. `POST /api/v1/settings/totp/suggestion` snoozes that prompt for 30 days. The apps home screen does not show a setup button; enrollment stays in Settings → Security.
+`GET /api/v1/me` includes `mfa.required` as false. `mfa.suggest` is true when the account has no authenticator and has not snoozed the prompt. `POST /api/v1/settings/totp/suggestion` snoozes that prompt for 30 days. The apps home screen does not show a setup button; enrollment stays in Settings → Security.
 
 Lost the authenticator and the recovery codes? An admin can reset two-factor authentication for that user, or an operator can run:
 
 ```bash
 php artisan wgw:mfa:reset {username}
-php artisan wgw:mfa:enforce on
-php artisan wgw:mfa:enforce off
 ```
 
-The CLI commands do not ask for an authenticator code. The HTTP enforcement route does, and it refuses to turn the requirement on until that admin has enrolled.
+The CLI command does not ask for an authenticator code. The HTTP reset route does. There is no workspace-wide requirement to enroll.
 
 Ten failed authenticator or recovery codes for one username, including codes sent as re-authentication on an existing session, lock that username for an hour. A correct code does not clear the lock. Each login challenge also stops after five failures, and a correct code after that cap is refused. The sign-in screen says "Lost access? Ask your admin." See [Two-factor authentication](../../../docs/two-factor-authentication.md).

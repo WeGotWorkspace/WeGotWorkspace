@@ -1,5 +1,8 @@
 import { useEffect, useId, useState } from "react";
-import { Button } from "@/button/src/button";
+import { Copy } from "lucide-react";
+import { Button, IconButton } from "@/button/src/button";
+import { useAppToast } from "@/hooks/use-app-toast";
+import { copyShareText } from "@/share-ui/share-path-utils";
 import { Card } from "@/card/src/card";
 import type { TotpWizardSource } from "@/lib/api/wgw/mfa-client";
 import { MfaRequestError } from "@/lib/api/wgw/mfa-client";
@@ -285,12 +288,7 @@ function CodesStep({
         ))}
       </ul>
       <div className="settings-security-pane__actions">
-        <Button
-          type="button"
-          variant="outline"
-          label="Copy"
-          onClick={() => void navigator.clipboard?.writeText(text)}
-        />
+        <RecoveryCodesCopyButton text={text} />
         <Button
           type="button"
           variant="outline"
@@ -311,6 +309,25 @@ function CodesStep({
         <Button type="button" label="Done" disabled={!saved} onClick={onDone} />
       </div>
     </div>
+  );
+}
+
+export function RecoveryCodesCopyButton({ text }: { text: string }) {
+  const { showSuccess, showError } = useAppToast();
+  return (
+    <IconButton
+      type="button"
+      label="Copy recovery codes"
+      icon={<Copy className="size-3.5" aria-hidden />}
+      variant="outline"
+      onClick={() => {
+        void (async () => {
+          const copied = await copyShareText(text);
+          if (copied) showSuccess("Recovery codes copied");
+          else showError("Could not copy recovery codes");
+        })();
+      }}
+    />
   );
 }
 

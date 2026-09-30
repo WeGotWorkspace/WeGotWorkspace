@@ -319,15 +319,6 @@ export async function regenerateRecoveryCodes(code: string): Promise<string[]> {
   return recoveryCodesFrom(await readMfaPayload(res));
 }
 
-export async function updateMfaEnforcement(required: boolean, code: string): Promise<void> {
-  const res = await wgwFetch("/admin/mfa-enforcement", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ required, code }),
-  });
-  await readMfaPayload(res);
-}
-
 export async function resetUserMfa(
   username: string,
   code: string,

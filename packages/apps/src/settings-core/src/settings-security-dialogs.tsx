@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { Button } from "@/button/src/button";
+import { RecoveryCodesCopyButton } from "@/settings-core/src/settings-security-setup";
 import { MfaRequestError } from "@/lib/api/wgw/mfa-client";
 import { applyTotpPaste, digitsOnly } from "@/login-core/src/totp-format";
 import {
@@ -192,12 +193,16 @@ function DialogBody({
             <p className="settings-security-dialog__secret">{request.password}</p>
           )}
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              label="Copy"
-              onClick={() => void navigator.clipboard?.writeText(reveal)}
-            />
+            {request.purpose === "codes-ready" ? (
+              <RecoveryCodesCopyButton text={reveal} />
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                label="Copy"
+                onClick={() => void navigator.clipboard?.writeText(reveal)}
+              />
+            )}
             <Button type="button" label="Done" onClick={onClose} />
           </DialogFooter>
         </>

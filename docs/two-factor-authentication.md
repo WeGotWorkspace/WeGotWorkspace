@@ -1,10 +1,10 @@
 # Two-factor authentication
 
-Two-factor authentication is optional until an admin requires it.
+Two-factor authentication is opt-in for each user. An administrator cannot require it for the workspace.
 
-## Turn it on
+## Turn it on or off
 
-Open Settings → Security and choose Turn on. The pane then asks for one thing at a time: your account password, the QR code and a 6-digit code, then the recovery codes. Each recovery code works once. The home screen does not add a setup button. An existing session that must enroll asks for that password once before the QR code. Sign-in that already accepted the password reuses it for required setup.
+Open Settings → Security. The two-factor switch starts setup when it is off, and asks for an authenticator code before turning it off. Setup asks for one thing at a time: your account password, the QR code and a 6-digit code, then the recovery codes. Each recovery code works once. Copy them with the copy icon. The home screen does not add a setup button. Sign-in that already accepted the password reuses it when a recovery code starts authenticator replacement.
 
 ## Calendar and contacts
 
@@ -17,7 +17,3 @@ At sign-in, choose "Use a recovery code". That signs you into a one-time setup f
 If you have no recovery codes left, ask an administrator to reset two-factor authentication for your account. The sign-in screen says "Lost access? Ask your admin."
 
 Ten wrong authenticator or recovery codes in an hour lock sign-in for that hour, including a later correct code.
-
-## When an admin requires it
-
-You can keep using the apps you already have open only until the server asks you to enroll. Sign-in and Settings → Security are available so you can finish setup. Calendar and contact apps that already use your account password keep working until you enroll.

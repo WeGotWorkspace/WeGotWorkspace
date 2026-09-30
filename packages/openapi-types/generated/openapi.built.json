@@ -19517,50 +19517,6 @@
                 "x-wgw-access": "user"
             }
         },
-        "/admin/mfa-enforcement": {
-            "put": {
-                "tags": [
-                    "Admin"
-                ],
-                "summary": "Require TOTP for interactive sign-in. The caller must already have TOTP.",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "required": [
-                                    "required",
-                                    "code"
-                                ],
-                                "properties": {
-                                    "required": {
-                                        "type": "boolean"
-                                    },
-                                    "code": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Updated"
-                    },
-                    "422": {
-                        "description": "Caller has no authenticator"
-                    }
-                },
-                "x-wgw-access": "admin"
-            }
-        },
         "/admin/users/{username}/mfa-resets": {
             "post": {
                 "tags": [

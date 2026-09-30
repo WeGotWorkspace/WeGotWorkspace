@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import { Card } from "@/card/src/card";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
@@ -20,8 +20,7 @@ import { AdminMfaCodeDialog } from "@/admin-core/src/admin-mfa-dialogs";
 import { isProtectedGroup } from "@/admin-core/src/admin-workspace-utils";
 import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
-import { fetchMfaAccount, resetUserMfa, updateMfaEnforcement } from "@/lib/api/wgw/mfa-client";
-import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
+import { resetUserMfa } from "@/lib/api/wgw/mfa-client";
 
 export type AdminUsersPaneProps = {
   controller: AdminControllerState;
@@ -33,9 +32,6 @@ export type AdminUsersPaneProps = {
   onEditGroup: (groupId: string) => void;
   onDeleteGroup: (groupId: string) => void;
   mfaPolicy?: {
-    required: boolean;
-    callerEnabled: boolean;
-    onEnforce: (required: boolean, code: string) => void;
     onReset: (username: string, code: string) => void;
   };
 };
@@ -66,26 +62,8 @@ export function AdminUsersPane({
 }: AdminUsersPaneProps) {
   const [pendingEnabled, setPendingEnabled] = useState<PendingEnabledChange | null>(null);
   const [userFilter, setUserFilter] = useState<"all" | "without-2fa">("all");
-  const [livePolicy, setLivePolicy] = useState<{
-    required: boolean;
-    callerEnabled: boolean;
-  } | null>(null);
-  const [enforceOpen, setEnforceOpen] = useState<boolean | null>(null);
   const [resetUser, setResetUser] = useState<string | null>(null);
   const knowsMfa = controller.users.some((user) => typeof user.mfaEnabled === "boolean");
-  const policy = mfaPolicy ?? livePolicy;
-
-  useEffect(() => {
-    if (mfaPolicy || !wgwLiveApiEnabled()) return;
-    let cancelled = false;
-    void fetchMfaAccount().then((account) => {
-      if (cancelled || !account) return;
-      setLivePolicy({ required: account.required, callerEnabled: account.enabled });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [mfaPolicy]);
 
   const visibleUsers =
     userFilter === "without-2fa"
@@ -94,19 +72,6 @@ export function AdminUsersPane({
 
   return (
     <>
-      {policy ? (
-        <Card title="Two-factor authentication">
-          {policy.callerEnabled ? (
-            <Button
-              type="button"
-              label={policy.required ? "Stop requiring 2FA" : "Require 2FA"}
-              onClick={() => setEnforceOpen(!policy.required)}
-            />
-          ) : (
-            <a href="/settings/security">Set up two-factor authentication before requiring it.</a>
-          )}
-        </Card>
-      ) : null}
       <Card
         title="Users"
         action={
@@ -181,7 +146,7 @@ export function AdminUsersPane({
                   >
                     <KeyRound className="size-4" />
                   </IconActionButton>
-                  {policy && user.mfaEnabled ? (
+                  {user.mfaEnabled ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -233,31 +198,6 @@ export function AdminUsersPane({
         </ul>
       </Card>
 
-      <AdminMfaCodeDialog
-        open={enforceOpen !== null}
-        title={
-          enforceOpen
-            ? "Require two-factor authentication?"
-            : "Stop requiring two-factor authentication?"
-        }
-        description="Enter a current code from your authenticator app."
-        confirmLabel={enforceOpen ? "Require 2FA" : "Stop requiring"}
-        username={controller.currentUser}
-        onOpenChange={(next) => {
-          if (!next) setEnforceOpen(null);
-        }}
-        onConfirm={(code) => {
-          const required = enforceOpen === true;
-          setEnforceOpen(null);
-          if (mfaPolicy) {
-            mfaPolicy.onEnforce(required, code);
-            return;
-          }
-          void updateMfaEnforcement(required, code).then(() => {
-            setLivePolicy((current) => (current ? { ...current, required } : current));
-          });
-        }}
-      />
       <AdminMfaCodeDialog
         open={resetUser !== null}
         title={`Reset 2FA for ${resetUser ?? "this user"}?`}

@@ -4,16 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
-use App\Models\AppSetting;
 use App\Models\Principal;
 use App\Models\User;
 use App\Models\UserMfa;
 use App\Services\Auth\AdminRoleResolver;
-use App\Services\Auth\MfaEnforcement;
 use App\Services\Auth\RecoveryCodeService;
 use App\Services\Auth\TotpService;
 use App\Services\Auth\UserMfaService;
-use App\Services\Settings\SettingKeys;
 use App\Support\WgwSettings;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -76,31 +73,18 @@ final class MfaEnforcementTest extends WgwDatabaseTestCase
         parent::tearDown();
     }
 
-    public function test_enforcement_blocks_user_routes_and_leaves_me_open(): void
+    public function test_me_reports_two_factor_as_optional(): void
     {
         $token = $this->issueBearerTokenFor('bob');
-        AppSetting::setValue(SettingKeys::AUTH_MFA_REQUIRED, true);
 
         $this->withBearer($token)->getJson('/api/v1/me')
             ->assertOk()
-            ->assertJsonPath('mfa.required', true)
+            ->assertJsonPath('mfa.required', false)
             ->assertJsonPath('mfa.enabled', false)
             ->assertJsonPath('mfa.suggest', true);
 
         $this->flushHeaders();
-        $this->withBearer($token)->getJson('/api/v1/workspace/state')
-            ->assertForbidden()
-            ->assertJsonPath('code', 'mfa_setup_required');
-    }
-
-    public function test_enforce_without_own_totp_is_rejected(): void
-    {
-        $token = $this->issueBearerTokenFor('alice');
-
-        $this->withBearer($token)->putJson('/api/v1/admin/mfa-enforcement', [
-            'required' => true,
-            'code' => '123456',
-        ])->assertStatus(422)->assertJsonPath('code', 'admin_mfa_required');
+        $this->withBearer($token)->getJson('/api/v1/workspace/state')->assertOk();
     }
 
     public function test_enable_reissues_the_session_and_matches_the_plugin_cookie_path(): void
@@ -209,21 +193,15 @@ final class MfaEnforcementTest extends WgwDatabaseTestCase
         unset($_COOKIE['sabre_ui_auth']);
     }
 
-    public function test_artisan_enforce_and_reset(): void
+    public function test_artisan_reset_removes_the_authenticator(): void
     {
         $this->enableTotp('bob');
         $generation = (int) User::query()->where('username', 'bob')->value('session_generation');
-
-        Artisan::call('wgw:mfa:enforce', ['state' => 'on']);
-        $this->assertTrue(app(MfaEnforcement::class)->isRequired());
 
         Artisan::call('wgw:mfa:reset', ['username' => 'bob']);
         $this->assertFalse(app(UserMfaService::class)->isEnabled('bob'));
         $this->assertSame(0, app(RecoveryCodeService::class)->remaining('bob'));
         $this->assertGreaterThan($generation, (int) User::query()->where('username', 'bob')->value('session_generation'));
-
-        Artisan::call('wgw:mfa:enforce', ['state' => 'off']);
-        $this->assertFalse(app(MfaEnforcement::class)->isRequired());
     }
 
     public function test_profile_password_change_revokes_refresh_tokens(): void

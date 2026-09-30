@@ -3,6 +3,7 @@ import { Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import { Card } from "@/card/src/card";
 import { CardRow } from "@/card/src/card-row";
+import { Switch } from "@/ui/switch";
 import {
   createAppPassword,
   disableTotp,
@@ -108,6 +109,19 @@ export function SettingsSecurityPane({ preview }: SettingsSecurityPaneProps) {
             ? "An authenticator app is required when you sign in."
             : "Add an authenticator app. Calendar and contact apps keep using app passwords."
         }
+        action={
+          <Switch
+            checked={enabled}
+            aria-label="Two-factor authentication"
+            onCheckedChange={(next) => {
+              if (next) {
+                setSetup(true);
+                return;
+              }
+              setDialog({ purpose: "disable" });
+            }}
+          />
+        }
       >
         {enabled ? (
           <>
@@ -136,21 +150,9 @@ export function SettingsSecurityPane({ preview }: SettingsSecurityPaneProps) {
                 label="Replace recovery codes"
                 onClick={() => setDialog({ purpose: "codes" })}
               />
-              {shown.required ? null : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  label="Turn off"
-                  onClick={() => setDialog({ purpose: "disable" })}
-                />
-              )}
             </div>
           </>
-        ) : (
-          <div className="settings-security-pane__actions">
-            <Button type="button" label="Turn on" onClick={() => setSetup(true)} />
-          </div>
-        )}
+        ) : null}
       </Card>
 
       <Card

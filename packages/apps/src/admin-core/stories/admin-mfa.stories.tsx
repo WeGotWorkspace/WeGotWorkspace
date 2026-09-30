@@ -49,9 +49,6 @@ function MfaUsers({ callerEnabled }: { callerEnabled: boolean }) {
       onEditGroup={() => undefined}
       onDeleteGroup={() => undefined}
       mfaPolicy={{
-        required: false,
-        callerEnabled,
-        onEnforce: () => undefined,
         onReset: () => undefined,
       }}
     />
@@ -72,18 +69,19 @@ const meta = {
 export default meta;
 type Story = StoryObj;
 
-export const EnforceNeedsSixDigits: Story = {
+export const ResetNeedsSixDigits: Story = {
   render: () => <MfaUsers callerEnabled />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await userEvent.click(canvas.getByRole("button", { name: "Require 2FA" }));
+    await expect(canvas.queryByRole("button", { name: "Require 2FA" })).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Reset 2FA" }));
     const dialog = await body.findByRole("alertdialog");
-    const confirm = within(dialog).getByRole("button", { name: "Require 2FA" });
+    const confirm = within(dialog).getByRole("button", { name: "Reset 2FA" });
     await expect(confirm).toBeDisabled();
-    await userEvent.type(within(dialog).getByLabelText("Authenticator code"), "12345");
+    await userEvent.type(within(dialog).getByLabelText("Authenticator code"), "123456");
     await expect(confirm).toBeDisabled();
-    await userEvent.type(within(dialog).getByLabelText("Authenticator code"), "6");
+    await userEvent.type(within(dialog).getByLabelText("Type alice to confirm"), "alice");
     await expect(confirm).toBeEnabled();
   },
 };
@@ -92,9 +90,10 @@ export const AdminWithoutTotp: Story = {
   render: () => <MfaUsers callerEnabled={false} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(
-      canvas.getByRole("link", { name: /Set up two-factor authentication/ }),
-    ).toBeVisible();
     await expect(canvas.queryByRole("button", { name: "Require 2FA" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Reset 2FA" })).toBeNull();
+    await expect(
+      canvas.queryByRole("link", { name: /Set up two-factor authentication/ }),
+    ).toBeNull();
   },
 };

@@ -42,10 +42,11 @@ export const Off: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("button", { name: "Turn on" })).toBeVisible();
+    const toggle = canvas.getByRole("switch", { name: "Two-factor authentication" });
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
     await expect(canvas.queryByLabelText("Password")).toBeNull();
     await expect(canvas.queryByLabelText("Authenticator code")).toBeNull();
-    await userEvent.click(canvas.getByRole("button", { name: "Turn on" }));
+    await userEvent.click(toggle);
     await expect(canvas.getByLabelText("Password")).toBeVisible();
     await expect(canvas.queryByLabelText("Code from the app")).toBeNull();
   },

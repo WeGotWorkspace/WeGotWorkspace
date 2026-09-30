@@ -17,7 +17,6 @@ final class AuthChallengeService
 
     public function __construct(
         private UserMfaService $mfa,
-        private MfaEnforcement $enforcement,
     ) {}
 
     /**
@@ -32,13 +31,6 @@ final class AuthChallengeService
                 'status' => 'mfa_required',
                 'challenge' => $this->issue($username, 'totp', $client),
                 'methods' => ['totp', 'recovery'],
-                'client' => $client,
-            ];
-        }
-        if ($this->enforcement->isRequired()) {
-            return [
-                'status' => 'mfa_setup_required',
-                'challenge' => $this->issue($username, 'totp_setup', $client),
                 'client' => $client,
             ];
         }
