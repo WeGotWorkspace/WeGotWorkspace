@@ -254,7 +254,8 @@ async function runPool(entries, concurrency) {
  * @returns {Array<{ label: string, args: string[] }>}
  */
 /**
- * Per-shard coverage argv. `blob` is a Vitest test reporter. Each child gets
+ * Per-shard coverage argv. `default` prints failures to the child stdout.
+ * `blob` is the Vitest test reporter the merge step reads. Each child gets
  * its own reports directory because v8 coverage clears `reportsDirectory/.tmp`
  * on start (`clean: true`).
  *
@@ -264,6 +265,7 @@ async function runPool(entries, concurrency) {
 export function coverageVitestArgs(shardId) {
   return [
     "--coverage",
+    "--reporter=default",
     "--reporter=blob",
     `--outputFile=.vitest-reports/blob-${shardId}.json`,
     `--coverage.reportsDirectory=.coverage-shards/${shardId}`,
