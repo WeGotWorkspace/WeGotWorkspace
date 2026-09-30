@@ -450,7 +450,13 @@ jobs:
           if-no-files-found: error
 
   apps-coverage:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # A pull request runs this job only while it carries run-apps-coverage.
+    # Triggers stay unchanged: a labeled event would share the CI concurrency
+    # group and cancel the pull request's required checks.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'run-apps-coverage'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     concurrency:
@@ -503,6 +509,16 @@ jobs:
           name: vitest-coverage
           path: packages/apps/coverage
           if-no-files-found: error
+
+      # Fallback only. The default reporter in the job log is the diagnosis.
+      # One shard blob is about 18 MB, so 54 shards plus unit is about 1 GB.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: vitest-reports
+          path: packages/apps/.vitest-reports
+          if-no-files-found: ignore
+          retention-days: 3
 
   coverage-ratchet:
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
