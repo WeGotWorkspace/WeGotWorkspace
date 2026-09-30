@@ -294,10 +294,12 @@ final class UpdateRunner
         $backupBaseName = $this->backups->buildBackupBaseName($beforeVersion, $targetVersion);
         $backupDir = $this->store->absolutePath($this->store->backupDir()).'/'.$backupBaseName;
         $backupArchivePath = $this->store->absolutePath($this->store->backupDir()).'/'.$backupBaseName.'.zip';
+        // VERSION is written only after applyPaths() succeeds. Copying it here
+        // would publish the new version while a later path can still fail, and
+        // check() would then report that no update is available.
         $replacePaths = [
             'index.php',
             'bootstrap',
-            'VERSION',
             'wgw-config.sample.php',
             'packages/api',
             'packages/apps',
@@ -363,6 +365,10 @@ final class UpdateRunner
             $this->store->appendLog('Update failed: '.$e->getMessage());
             $didStartFileSwap = self::didStartApplyingFiles();
             if ($didStartFileSwap) {
+                // Intentional. Paths are replaced in order and not restored.
+                // A later path can fail after earlier paths already match the
+                // new release. Recovery is the database backup taken before
+                // the swap, plus packages/api/.env inside that archive.
                 $this->store->appendLog(
                     'Automatic file rollback skipped: updater is configured for database-only backups.'
                 );

@@ -61,6 +61,32 @@ final class ApiPackageLocalPreservationTest extends TestCase
         $this->assertSame('payload', file_get_contents($sessionDir.'/sess_abc'));
     }
 
+    public function test_gitignore_only_directory_is_not_preserved(): void
+    {
+        $sessionDir = $this->apiRoot.'/storage/framework/sessions';
+        mkdir($sessionDir, 0775, true);
+        file_put_contents($sessionDir.'/.gitignore', "*\n");
+
+        $snap = (new ApiPackageLocalPreservation)->snapshot($this->apiRoot);
+
+        $this->assertArrayNotHasKey('storage/framework/sessions', $snap['dirs']);
+        $this->assertNull($snap['tempBase']);
+    }
+
+    public function test_cleanup_snapshot_removes_temp_copies(): void
+    {
+        file_put_contents($this->apiRoot.'/.env', "APP_KEY=secret\n");
+
+        $preservation = new ApiPackageLocalPreservation;
+        $snap = $preservation->snapshot($this->apiRoot);
+        $tmp = $snap['files']['.env'];
+        $this->assertFileExists($tmp);
+
+        $preservation->cleanupSnapshot($snap);
+
+        $this->assertFileDoesNotExist($tmp);
+    }
+
     private function rmTree(string $dir): void
     {
         $items = scandir($dir);
