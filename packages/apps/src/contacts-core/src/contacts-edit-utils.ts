@@ -82,9 +82,7 @@ export function newContactMapId(): string {
     return crypto.randomUUID();
   }
   const randomFromCrypto = fromCryptoRandomValues();
-  if (randomFromCrypto) {
-    return randomFromCrypto;
-  }
+  if (randomFromCrypto) return randomFromCrypto;
   contactIdCounter += 1;
   return `contact-${Date.now().toString(36)}-${contactIdCounter.toString(36)}`;
 }
