@@ -52,7 +52,6 @@ describe("useSettingsController MCP kill-switch", () => {
       "offline",
     ]);
     expect(result.current.sidebarGroups.apps.map((section) => section.id)).toEqual([
-      "mail",
       "calendar",
       "tasks",
       "contacts",
