@@ -144,11 +144,13 @@ Starts Storybook on **:6006** (`pnpm dev:storybook`, or a Storybook you already 
 WGW_APPS_E2E_NO_SERVER=1 pnpm test:apps-e2e
 ```
 
-Live-app specs stay local:
+Live-app specs drive the real API (`playwright.live.config.mjs`). Run them locally with:
 
 ```bash
 pnpm --filter @wgw/apps test:e2e:live
 ```
+
+The same five specs run nightly in `.github/workflows/nightly-live-e2e.yml` (03:00 UTC, plus manual `workflow_dispatch`). That workflow is not a pull-request check.
 
 This smoke is not part of `pnpm test:apps-done-gate` (see [apps-done-gate.md](../.agents/skills/testing/apps-done-gate.md)).
 

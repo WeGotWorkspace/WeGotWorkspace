@@ -172,7 +172,8 @@ jobs:
   # Mock-tier Playwright against a Storybook build. The Chromatic job also
   # builds storybook-static, but only when CHROMATIC_ENABLED is set, and it
   # skips merge_group. Building here keeps apps-e2e independent so it can be
-  # a required check. Live-app specs stay on playwright.live.config.mjs.
+  # a required check. Live-app specs stay on playwright.live.config.mjs
+  # and run from nightly-live-e2e.yml (not this pull-request workflow).
   apps-e2e:
     if: >-
       github.event_name != 'push' ||
