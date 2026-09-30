@@ -14,10 +14,19 @@ afterEach(() => {
 });
 
 describe("CalendarEventCalendarPicker", () => {
-  it("defaults to the preferred writable calendar", () => {
+  it("defaults to the preferred writable calendar, else the default collection", () => {
     expect(defaultPickerCalendarId(calendars, "default")).toBe("default");
     expect(defaultPickerCalendarId(calendars, "missing")).toBe("default");
     expect(defaultPickerCalendarId(calendars, "family")).toBe("default");
+    expect(
+      defaultPickerCalendarId(
+        [
+          { id: "work", name: "Work", color: "#0ea5e9" },
+          { id: "home", name: "Home", color: "#22c55e", isDefault: true },
+        ],
+        "gone",
+      ),
+    ).toBe("home");
   });
 
   it("uses the event-dialog swatch trigger", () => {
