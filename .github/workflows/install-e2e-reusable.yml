@@ -19,7 +19,7 @@ jobs:
   cells:
     if: inputs.cells != '' && inputs.cells != '[]'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: read
@@ -31,36 +31,25 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
-        if: matrix.cell != 'upgrade-from-v0.1.99'
         with:
           php-version: "8.3"
           extensions: ctype, dom, iconv, imap, json, mbstring, pdo, pdo_mysql, pdo_sqlite, simplexml, zip
           coverage: none
 
       - uses: pnpm/action-setup@v6.1.0
-        if: matrix.cell != 'upgrade-from-v0.1.99'
 
       - uses: actions/setup-node@v7
-        if: matrix.cell != 'upgrade-from-v0.1.99'
         with:
           node-version: "24"
           cache: pnpm
 
-      - uses: actions/setup-node@v7
-        if: matrix.cell == 'upgrade-from-v0.1.99'
-        with:
-          node-version: "24"
-
       - name: Install JS workspace
-        if: matrix.cell != 'upgrade-from-v0.1.99'
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright
-        if: matrix.cell != 'upgrade-from-v0.1.99'
         run: pnpm --filter @wgw/api-e2e exec playwright install chromium --with-deps
 
       - name: Download the release ZIP
-        if: matrix.cell != 'upgrade-from-v0.1.99'
         uses: actions/download-artifact@v8
         with:
           name: wegotworkspace-deploy-zip
@@ -73,18 +62,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run install cell
-        if: matrix.cell != 'upgrade-from-v0.1.99'
         env:
           CHANNEL: ${{ startsWith(matrix.cell, 'docker') && 'docker' || 'zip' }}
           DB: ${{ endsWith(matrix.cell, 'mariadb') && 'mariadb' || 'sqlite' }}
           WGW_INSTALL_E2E_IMAGE: ${{ inputs.image }}
         run: bash tools/e2e-install-matrix.sh
-
-      - name: Run upgrade cell
-        if: matrix.cell == 'upgrade-from-v0.1.99'
-        env:
-          WGW_UPGRADE_TO_IMAGE: ${{ inputs.image }}
-        run: bash tools/e2e-upgrade-from-v0.1.99.sh
 
       - name: Job summary
         if: always()

@@ -349,7 +349,8 @@ async function verify() {
     "c1",
   ]]);
   const eventList = methodBody(events, "CalendarEvent/get").list ?? [];
-  if (!eventList.some((event) => event.title === manifest.eventTitle || event.id === manifest.eventId)) {
+  const event = eventList.find((item) => item.id === manifest.eventId);
+  if (!event || event.title !== manifest.eventTitle) {
     fail("CalendarEvent/get lost the seeded event", methodBody(events, "CalendarEvent/get"));
   }
 

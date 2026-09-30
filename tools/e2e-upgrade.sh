@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
-# Install ghcr.io/...:0.1.99, seed users/calendars/drive/contacts, swap the
-# container to the current tree, and check the data over JWT and WebDAV.
+# Install a published baseline image, seed users/calendars/drive/contacts, swap
+# the container to the current tree, and check the data over JWT and WebDAV.
 # Set WGW_UPGRADE_TO_IMAGE to skip the local current-branch image build
-# (the install-e2e matrix passes the candidate digest).
+# (the install-e2e upgrade job passes the candidate digest).
+#
+# Baseline is the manifest-list digest of
+# ghcr.io/wegotworkspace/wegotworkspace:0.1.99. Override with
+# WGW_UPGRADE_FROM_IMAGE (keep the digest form). Composer and Alpine pins are
+# index digests too.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-FROM_IMAGE="${WGW_UPGRADE_FROM_IMAGE:-ghcr.io/wegotworkspace/wegotworkspace:0.1.99}"
+FROM_IMAGE="${WGW_UPGRADE_FROM_IMAGE:-ghcr.io/wegotworkspace/wegotworkspace@sha256:a06f9c66512a737b156bd571905deebe589810c8193ec911c1b28e76cb679fa0}"
+COMPOSER_IMAGE="${WGW_UPGRADE_COMPOSER_IMAGE:-composer@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac}"
+ALPINE_IMAGE="${WGW_UPGRADE_ALPINE_IMAGE:-alpine@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6}"
 TO_IMAGE="${WGW_UPGRADE_TO_IMAGE:-}"
-PORT="${WGW_E2E_UPGRADE_PORT:-18092}"
 ADMIN_USER="${WGW_E2E_ADMIN_USER:-admin}"
 ADMIN_PASS="${WGW_E2E_ADMIN_PASS:-longpassword99}"
 ADMIN_EMAIL="${WGW_E2E_ADMIN_EMAIL:-admin@e2e.test}"
@@ -23,6 +29,7 @@ VOL_CONFIG="wgw-upgrade-config-${SUFFIX}"
 WEB_NAME="wgw-upgrade-web-${SUFFIX}"
 STAGE=""
 WORK=""
+PORT=""
 
 cleanup() {
   local status=$?
@@ -39,7 +46,7 @@ cleanup() {
   fi
   docker volume rm "$VOL_CONTENT" "$VOL_STORAGE" "$VOL_CONFIG" >/dev/null 2>&1 || true
   if [[ -n "$STAGE" && -d "$STAGE" ]]; then
-    rm -rf "$STAGE" 2>/dev/null || docker run --rm -v "$STAGE:/stage" alpine:3 rm -rf /stage || true
+    rm -rf "$STAGE" 2>/dev/null || docker run --rm -v "$STAGE:/stage" "$ALPINE_IMAGE" rm -rf /stage || true
   fi
   if [[ -n "$WORK" && -d "$WORK" ]]; then
     rm -rf "$WORK" 2>/dev/null || true
@@ -60,6 +67,14 @@ wait_until() {
   done
   echo "Timed out after 60 attempts: ${label}" >&2
   return 1
+}
+
+pick_port() {
+  if [[ -n "${WGW_E2E_UPGRADE_PORT:-}" ]]; then
+    echo "$WGW_E2E_UPGRADE_PORT"
+    return
+  fi
+  node -e 'const s=require("net").createServer();s.listen(0,"127.0.0.1",()=>{process.stdout.write(String(s.address().port));s.close()})'
 }
 
 stage_current_tree() {
@@ -87,24 +102,32 @@ stage_current_tree() {
     "$ROOT/docker/install/wgw-install-migrate.sh" \
     "$ROOT/docker/install/wgw-install-seed-config.sh" \
     "$STAGE/install/"
+  local composer_cache="${WGW_UPGRADE_COMPOSER_CACHE:-${HOME}/.composer/cache}"
+  mkdir -p "$composer_cache"
   echo "Installing Composer dependencies for the upgrade image"
   docker run --rm \
     --user "$(id -u):$(id -g)" \
     -e COMPOSER_HOME=/tmp/composer \
+    -e COMPOSER_CACHE_DIR=/tmp/composer-cache \
+    -v "${composer_cache}:/tmp/composer-cache" \
     -v "$STAGE/tree/packages/api:/app" \
     -w /app \
-    composer:2 \
+    "$COMPOSER_IMAGE" \
     install --no-dev --no-interaction --prefer-dist --no-scripts --ignore-platform-reqs
 }
 
 build_current_image() {
   stage_current_tree
-  local build=(docker build -f "$ROOT/docker/install/Dockerfile.upgrade-target" -t "$LOCAL_TAG")
   if [[ "${WGW_UPGRADE_DOCKER_CACHE:-}" == "gha" ]]; then
-    build+=(--cache-from type=gha --cache-to type=gha,mode=max)
+    docker buildx build --load \
+      --cache-from type=gha \
+      --cache-to type=gha,mode=max \
+      -f "$ROOT/docker/install/Dockerfile.upgrade-target" \
+      -t "$LOCAL_TAG" \
+      "$STAGE"
+  else
+    docker build -f "$ROOT/docker/install/Dockerfile.upgrade-target" -t "$LOCAL_TAG" "$STAGE"
   fi
-  build+=("$STAGE")
-  "${build[@]}"
   TO_IMAGE="$LOCAL_TAG"
 }
 
@@ -154,6 +177,8 @@ stop_web() {
 
 command -v node >/dev/null
 command -v docker >/dev/null
+PORT="$(pick_port)"
+echo "Upgrade e2e on 127.0.0.1:${PORT}"
 
 echo "Pulling ${FROM_IMAGE}"
 docker pull "$FROM_IMAGE"
@@ -174,7 +199,7 @@ MANIFEST="$WORK/manifest.json"
 run_migrator "$FROM_IMAGE"
 start_web "$FROM_IMAGE"
 BASE="http://127.0.0.1:${PORT}"
-if ! wait_until "v0.1.99 health" curl -fsS "${BASE}/api/v1/health"; then
+if ! wait_until "baseline health" curl -fsS "${BASE}/api/v1/health"; then
   docker logs "$WEB_NAME" >&2 || true
   exit 1
 fi
@@ -194,4 +219,4 @@ if ! wait_until "upgraded health" curl -fsS "${BASE}/api/v1/health"; then
   exit 1
 fi
 node "$ROOT/tools/upgrade-e2e/integrity.mjs" verify
-echo "v0.1.99 → current upgrade kept users, calendars, drive files, and contacts"
+echo "Baseline → current upgrade kept users, calendars, drive files, and contacts"
