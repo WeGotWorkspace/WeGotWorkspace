@@ -9,7 +9,6 @@ use DateTimeInterface;
 use DateTimeZone;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
-use Sabre\VObject\DateTimeParser;
 use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
 use Sabre\VObject\Recur\EventIterator;
 use Sabre\VObject\Recur\NoInstancesException;
@@ -72,25 +71,10 @@ final class CalendarSchedulingInviteHorizon
         }
         $start = $startProp->getDateTime($timeZone);
         if (isset($vevent->DTEND)) {
-            $endProp = $vevent->DTEND;
-            if (! $endProp instanceof IcsDateTime) {
-                throw new \InvalidArgumentException('VEVENT DTEND is not a date-time.');
-            }
-            $end = $endProp->getDateTime($timeZone);
-
-            return $end;
+            return $vevent->DTEND->getDateTime($timeZone);
         }
         if (isset($vevent->DURATION)) {
-            $duration = $vevent->DURATION;
-            if (! $duration instanceof \Stringable) {
-                throw new \InvalidArgumentException('VEVENT DURATION is not a duration.');
-            }
-            $interval = DateTimeParser::parseDuration((string) $duration);
-            if (! $interval instanceof \DateInterval) {
-                throw new \InvalidArgumentException('VEVENT DURATION is not a duration.');
-            }
-
-            return $start->add($interval);
+            return $start->add($vevent->DURATION->getDateInterval());
         }
         if (! $startProp->hasTime()) {
             return $start->modify('+1 day');

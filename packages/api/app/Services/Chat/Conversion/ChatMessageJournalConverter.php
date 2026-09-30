@@ -63,6 +63,9 @@ final class ChatMessageJournalConverter
             'UID' => self::normalizeUlid((string) $message['id']),
             'DTSTAMP' => $createdAt->setTimezone(new DateTimeZone('UTC')),
         ]);
+        if (! $journal instanceof VJournal) {
+            throw new \LogicException('Expected a VJOURNAL component.');
+        }
         $journal->DESCRIPTION = $body;
         $journal->add('X-WGW-AUTHOR', (string) $message['author']);
         $parentId = $message['parentId'] ?? null;
