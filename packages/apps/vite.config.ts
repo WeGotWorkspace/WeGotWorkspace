@@ -65,6 +65,8 @@ export default defineConfig(({ mode }) => {
         // navigateFallback stays unset so the dev precache is empty.
         devOptions: { enabled: true, type: "module" },
         injectManifest: {
+          // No webmanifest. The document requests `/manifests/{app}.webmanifest?v=`,
+          // so an unversioned precache entry would never match.
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,mp3}"],
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         },

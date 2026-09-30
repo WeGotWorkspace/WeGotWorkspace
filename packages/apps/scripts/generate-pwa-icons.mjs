@@ -9,7 +9,7 @@
  *   - `public/app-icons/{app}.svg` — copied verbatim for in-app UI
  *   - `public/app-icons/home-pwa.svg` — `/` favicon only; not the in-app suite mark
  *   - `public/pwa-icons/{app}-{180,192,512}.png` — opaque PNG-24
- *   - `public/pwa-icons/{app}-512-maskable.png` — same artwork at 80%, padded
+ *   - `public/pwa-icons/{app}-512-maskable.png` — artwork on the inscribed square, padded with the SVG background
  *   - `public/manifests/{app}.webmanifest` — PNG icons only, when the file exists
  *
  * WebKit uses `<link rel="apple-touch-icon">` when that link is in the document
@@ -31,8 +31,9 @@
  * `home.svg` stays the in-app suite mark.
  *
  * SVG rasterization uses `rsvg-convert` (librsvg). ImageMagick 6's SVG renderer
- * drops `clip-path` glyphs. ImageMagick (`magick`, or `convert` on ImageMagick 6)
- * only flattens to opaque PNG-24 and builds the maskable canvas.
+ * drops `clip-path` glyphs. ImageMagick 7 (`magick`) only flattens to opaque
+ * PNG-24 and builds the maskable canvas. Do not call `convert`: on Windows that
+ * name is the filesystem tool.
  */
 import { execFileSync } from "node:child_process";
 import {
@@ -82,9 +83,11 @@ const INSTALL_APPS = [...WORKSPACE_APPS, ...SHELL_APPS];
 const RASTER_SIZES = [180, 192, 512];
 /**
  * Android's maskable safe zone is a circle with diameter 80% of the icon.
- * These tiles draw glyphs to the edges, so scaling to 80% (410px) still puts
- * that artwork outside the circle. The largest square inside the circle is
- * `diameter / sqrt(2)`.
+ * Header bands and edge-cut glyphs (calendar, mail, contacts, drive, meet)
+ * leave that circle if the tile is only scaled to 80%. The largest square
+ * inside the circle is `diameter / sqrt(2)` (~289px). That square floats on
+ * the tile background. A larger maskable icon needs its own source; this
+ * generator keeps the one full-bleed SVG and accepts the float.
  */
 const MASKABLE_CANVAS = 512;
 const MASKABLE_ART_SIZE = Math.floor((MASKABLE_CANVAS * 0.8) / Math.SQRT2);
@@ -121,8 +124,8 @@ function resolveBinary(bins, hint) {
 
 function resolveMagick() {
   return resolveBinary(
-    ["magick", "convert"],
-    "ImageMagick is required (`magick` or `convert`) to flatten install PNGs.",
+    ["magick"],
+    "ImageMagick 7 is required (`magick`) to flatten install PNGs. Do not use `convert`: on Windows that name is the filesystem tool.",
   );
 }
 
@@ -160,20 +163,17 @@ function rasterizePng(rasterSvg, size, dest) {
   rmSync(raw, { force: true });
 }
 
-/** Sample a few pixels inward so a flattened transparent corner cannot become the pad color. */
-function inwardBackground(pngPath) {
-  const raw = execFileSync(magick, [pngPath, "-format", "%[hex:p{8,8}]", "info:"], {
-    encoding: "utf8",
-  }).trim();
-  const hex = raw.replace(/^#/, "").slice(0, 6);
-  if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
-    throw new Error(`Could not sample a background color from ${pngPath} (got ${raw})`);
+function maskablePad(app, peeledMarkup) {
+  const fill = assertFullBleedSquare(app, peeledMarkup);
+  if (!/^#[0-9a-fA-F]{6}$/.test(fill)) {
+    throw new Error(
+      `${app}: maskable pad must be a 6-digit hex fill after rasterization (got ${fill})`,
+    );
   }
-  return `#${hex}`;
+  return fill;
 }
 
-function writeMaskable(sourcePng, dest) {
-  const background = inwardBackground(sourcePng);
+function writeMaskable(sourcePng, dest, background) {
   execFileSync(
     magick,
     [
@@ -270,12 +270,14 @@ for (const app of ALL_APPS) {
   }
 
   if (INSTALL_APPS.includes(app)) {
+    const peeled = svgForRasterization(rasterMarkup);
+    const pad = maskablePad(app, peeled);
     const rasterSvg = join(pwaDir, `.${app}-raster.svg`);
-    writeFileSync(rasterSvg, svgForRasterization(rasterMarkup));
+    writeFileSync(rasterSvg, peeled);
     for (const size of RASTER_SIZES) {
       rasterizePng(rasterSvg, size, join(pwaDir, `${app}-${size}.png`));
     }
-    writeMaskable(join(pwaDir, `${app}-512.png`), join(pwaDir, `${app}-512-maskable.png`));
+    writeMaskable(join(pwaDir, `${app}-512.png`), join(pwaDir, `${app}-512-maskable.png`), pad);
     rmSync(rasterSvg, { force: true });
     writeManifestIcons(app);
   }

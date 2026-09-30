@@ -162,17 +162,28 @@ describe("PWA icon artwork", () => {
     }
   });
 
-  it("keeps maskable glyphs inside the 80% safe-zone circle", () => {
+  it("pads maskable icons with the SVG background and keeps glyphs inside the safe circle", () => {
     const maskable = readdirSync(pwaDir).filter((name) => name.endsWith("-512-maskable.png"));
     expect(maskable.length).toBeGreaterThan(0);
     const radius = (MASKABLE_CANVAS * SAFE_DIAMETER_RATIO) / 2 + CIRCLE_RADIUS_SLACK;
     const center = (MASKABLE_CANVAS - 1) / 2;
 
     for (const name of maskable) {
+      const app = name.slice(0, -"-512-maskable.png".length);
+      const sourceName = app === "home" ? "home-pwa.svg" : `${app}.svg`;
+      const markup = readFileSync(join(sourceDir, sourceName), "utf8");
+      const fill = assertFullBleedSquare(app, svgForRasterization(markup));
+      const hex = /^#([0-9a-fA-F]{6})$/.exec(fill);
+      expect(hex, `${app} background fill`).not.toBeNull();
+      const background = [0, 2, 4].map((offset) =>
+        Number.parseInt(hex[1].slice(offset, offset + 2), 16),
+      );
+
       const { width, height, rgba } = decodePng(join(pwaDir, name));
       expect(width).toBe(MASKABLE_CANVAS);
       expect(height).toBe(MASKABLE_CANVAS);
-      const background = [rgba[0], rgba[1], rgba[2]];
+      expect([rgba[0], rgba[1], rgba[2]], `${name} pixel (0,0)`).toEqual(background);
+
       const outside = [];
       for (let y = 0; y < height; y += 1) {
         for (let x = 0; x < width; x += 1) {
