@@ -115,7 +115,7 @@ final class UpdateRunnerPackageIo
         if (! function_exists('openssl_verify')) {
             throw new \RuntimeException('OpenSSL extension is required for signature verification.');
         }
-        $publicKeyPath = dirname(__DIR__, 3).'/resources/update/update-public-key.pem';
+        $publicKeyPath = $this->updatePublicKeyPath();
         if (! is_readable($publicKeyPath)) {
             throw new \RuntimeException('Missing update public key for signature verification.');
         }
@@ -131,6 +131,16 @@ final class UpdateRunnerPackageIo
         if ($ok !== 1) {
             throw new \RuntimeException('Release signature verification failed.');
         }
+    }
+
+    private function updatePublicKeyPath(): string
+    {
+        $configured = config('wgw.update_public_key_path');
+        if (is_string($configured) && trim($configured) !== '') {
+            return trim($configured);
+        }
+
+        return dirname(__DIR__, 3).'/resources/update/update-public-key.pem';
     }
 
     /**

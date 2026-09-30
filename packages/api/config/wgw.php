@@ -11,6 +11,8 @@ return [
     'install_root' => env('WGW_APP_ROOT'),
     'data_dir' => env('WGW_DATA_DIR'),
     'update_feed_url' => env('WGW_UPDATE_FEED_URL', UpdateFeedDefaults::MANIFEST_URL),
+    /** PEM used to verify release checksum signatures. Empty uses the packaged key. */
+    'update_public_key_path' => env('WGW_UPDATE_PUBLIC_KEY_PATH'),
 
     /**
      * JMAP envelope blob store (RFC 8620 §6). maxSizeUpload is advertised on
