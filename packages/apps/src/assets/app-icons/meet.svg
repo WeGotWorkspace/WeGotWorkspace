@@ -1,6 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 270 271">
-<rect width="270" height="270" fill="var(--wai-bg, #ffffff)" transform="matrix(0 1 1 0 0 0)"/>
-<path fill="var(--wai-fg, var(--color-we-got-sand, #ba9689))" d="M270 46.027c0-25.405-20.595-46-46-46H46c-25.405 0-46 20.595-46 46v133c0 25.405 20.595 46 46 46h179c24.853 0 45-20.148 45-45zm-104 179h-62v33.029c0 10.691 12.926 16.045 20.485 8.485z"/>
-<rect width="179" height="21.163" fill="var(--wai-bg, #ffffff)" rx="10.581" transform="matrix(-1 0 0 1 225 76.027)"/>
-<rect width="89" height="21" fill="var(--wai-bg, #ffffff)" rx="10.5" transform="matrix(-1 0 0 1 135 128.414)"/>
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
+<rect width="60" height="60" fill="var(--wai-bg, var(--color-we-got-soft, #fff5e9))"/>
+<path fill="var(--wai-fg, var(--color-we-got-sand, #ba9689))" d="M60 39.206c0 5.412-4.477 9.8-10 9.8H36.952l-9.311 10.08C25.94 60.927 23 59.645 23 57.062v-8.056H10.223C4.577 49.006 0 44.52 0 38.988V0h60z"/>
+<path fill="var(--wai-bg, var(--color-we-got-soft, #fff5e9))" d="M27.64 27c1.304 0 2.36.895 2.36 2s-1.056 2-2.36 2H12.36c-1.304 0-2.36-.895-2.36-2s1.056-2 2.36-2zm19.996-11C48.94 16 50 16.895 50 18s-1.059 2-2.364 2H12.364C11.058 20 10 19.105 10 18s1.059-2 2.364-2z"/>
 </svg>

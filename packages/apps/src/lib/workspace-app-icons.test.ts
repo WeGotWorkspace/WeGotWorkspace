@@ -54,15 +54,14 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
     const notes = WORKSPACE_APP_ICON_INLINE.notes;
     const contacts = WORKSPACE_APP_ICON_INLINE.contacts;
 
-    expect(notes).toContain('d="M0 45C0 20.147');
+    expect(notes).toContain('d="M28 45a2 2 0');
     expect(notes).toContain("#ffc800");
-    expect(notes).toContain("#ffffff");
-    expect(notes).not.toContain('d="M45 201c0-24.853');
-    expect(contacts).toContain('d="M45 201c0-24.853');
-    expect(contacts).toContain('cx="135"');
+    expect(notes).toContain("#fff5e9");
+    expect(notes).not.toContain("44.868");
+    expect(contacts).toContain("44.868");
     expect(contacts).toContain("#a3c4e8");
-    expect(contacts).toContain("#ffffff");
-    expect(contacts).not.toContain('d="M0 45C0 20.147');
+    expect(contacts).toContain("#fff5e9");
+    expect(contacts).not.toContain('d="M28 45a2 2 0');
     expect(contacts).not.toContain('d="M256 280C284.719');
   });
 });

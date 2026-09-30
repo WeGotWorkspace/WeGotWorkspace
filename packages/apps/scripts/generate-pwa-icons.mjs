@@ -23,8 +23,8 @@
  *
  * Switch-trigger inversion uses the same SVG with `--wai-*` CSS vars (see workspace-app-icon.css).
  * Brand fills nest a `--color-we-got-*` token inside that fallback. Rasterization
- * peels both layers down to the hex (see pwa-icon-raster.mjs). White has no brand
- * token and stays `#ffffff`.
+ * peels both layers down to the hex (see pwa-icon-raster.mjs). Cream is
+ * `--color-we-got-soft`. White has no brand token and stays `#ffffff`.
  *
  * SVG rasterization uses `rsvg-convert` (librsvg). ImageMagick 6's SVG renderer
  * drops `clip-path` glyphs. ImageMagick (`magick`, or `convert` on ImageMagick 6)

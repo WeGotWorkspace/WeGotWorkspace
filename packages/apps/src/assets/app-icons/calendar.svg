@@ -1,10 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 270 270">
-<rect width="270" height="270" fill="var(--wai-bg, var(--color-we-got-prince, #962fa8))"/>
-<path fill="var(--wai-fg, #ffffff)" d="M0 45C0 20.147 20.147 0 45 0h180c24.853 0 45 20.147 45 45v13H0z"/>
-<rect width="45" height="45" x="179" y="93" fill="var(--wai-fg, #ffffff)" rx="22.5"/>
-<rect width="45" height="45" x="112" y="93" fill="var(--wai-fg, #ffffff)" rx="22.5"/>
-<rect width="45" height="45" x="45" y="93" fill="var(--wai-fg, #ffffff)" rx="22.5"/>
-<rect width="45" height="45" x="179" y="174" fill="var(--wai-fg, #ffffff)" rx="22.5"/>
-<rect width="45" height="45" x="112" y="174" fill="var(--wai-fg, #ffffff)" rx="22.5"/>
-<rect width="45" height="45" x="45" y="174" fill="var(--wai-fg, #ffffff)" rx="22.5"/>
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 61">
+<rect width="60" height="60" y=".033" fill="var(--wai-bg, var(--color-we-got-prince, #962fa8))"/>
+<rect width="60" height="13" fill="var(--wai-fg, var(--color-we-got-soft, #fff5e9))"/>
+<path fill="var(--wai-fg, var(--color-we-got-soft, #fff5e9))" d="M15 40.002a5 5 0 1 1-.001 10.001A5 5 0 0 1 15 40.002m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 30 40.002m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 45 40.002M15 23a5 5 0 1 1-.001 10.001A5 5 0 0 1 15 23m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 30 23m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 45 23"/>
 </svg>

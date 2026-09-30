@@ -1,7 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 270" fill="none">
-<rect width="270" height="270" fill="var(--wai-bg, #0045ff)"/>
-<rect width="179" height="21.163" x="45" y="97.612" fill="var(--wai-fg, #ffffff)" rx="10.581"/>
-<rect width="90" height="21.163" x="45" y="202.837" fill="var(--wai-fg, #ffffff)" rx="10.581"/>
-<rect width="179" height="21" x="45" y="45" fill="var(--wai-fg, #ffffff)" rx="10.5"/>
-<rect width="179" height="21.163" x="45" y="150.225" fill="var(--wai-fg, #ffffff)" rx="10.581"/>
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
+<rect width="60" height="60" y=".033" fill="var(--wai-bg, var(--color-we-got-blue, #0045ff))"/>
+<path fill="var(--wai-fg, var(--color-we-got-soft, #fff5e9))" d="M28 46a2 2 0 1 1 0 4H12a2 2 0 1 1 0-4zm20-9a2 2 0 1 1 0 4H12a2 2 0 1 1 0-4zm0-9a2 2 0 1 1 0 4H12a2 2 0 1 1 0-4zm0-9a2 2 0 1 1 0 4H12a2 2 0 1 1 0-4zm0-9a2 2 0 1 1 0 4H12a2 2 0 1 1 0-4z"/>
 </svg>
