@@ -62,6 +62,7 @@ export const CalendarPanel: Story = {
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.findByRole("heading", { name: "Calendar" })).resolves.toBeTruthy();
     await expect(body.findByRole("combobox", { name: "Timezone" })).resolves.toBeTruthy();
+    await expect(body.findByRole("combobox", { name: "Week starts on" })).resolves.toBeTruthy();
     await expect(body.findByRole("combobox", { name: "Visible hours" })).resolves.toBeTruthy();
     await expect(body.queryByRole("combobox", { name: "Day starts on" })).toBeNull();
     const footer = canvasElement.ownerDocument.querySelector(".ui-modal-footer");

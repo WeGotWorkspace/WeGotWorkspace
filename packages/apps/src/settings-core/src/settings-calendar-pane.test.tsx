@@ -11,9 +11,10 @@ afterEach(() => {
 });
 
 describe("SettingsCalendarPane", () => {
-  it("renders default calendar first, then timezone and visible hours, without day-start or placeholder copy", async () => {
+  it("renders default calendar, timezone, week start, and visible hours, without day-start or placeholder copy", async () => {
     render(<SettingsCalendarPane />);
     expect(screen.getByRole("combobox", { name: "Timezone" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Week starts on" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Visible hours" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: "Day starts on" })).toBeNull();
@@ -24,12 +25,16 @@ describe("SettingsCalendarPane", () => {
       expect(trigger).toBeTruthy();
       expect(trigger.textContent).toContain("Personal");
       const timezone = screen.getByRole("combobox", { name: "Timezone" });
+      const weekStart = screen.getByRole("combobox", { name: "Week starts on" });
       const visibleHours = screen.getByRole("combobox", { name: "Visible hours" });
       expect(trigger.compareDocumentPosition(timezone) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
       );
+      expect(timezone.compareDocumentPosition(weekStart) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
       expect(
-        timezone.compareDocumentPosition(visibleHours) & Node.DOCUMENT_POSITION_FOLLOWING,
+        weekStart.compareDocumentPosition(visibleHours) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
       expect(visibleHours.textContent).toMatch(/12 hours/);
     });

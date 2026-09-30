@@ -169,6 +169,7 @@ describe("settings dialog and in-app footer", () => {
 
     expect(await screen.findByRole("heading", { name: "Calendar" })).toBeTruthy();
     expect(await screen.findByRole("combobox", { name: "Timezone" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Week starts on" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Visible hours" })).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: "Day starts on" })).toBeNull();
     expect(screen.queryByText("Display")).toBeNull();
