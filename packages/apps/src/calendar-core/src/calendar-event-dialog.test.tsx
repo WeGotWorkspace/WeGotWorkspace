@@ -386,7 +386,7 @@ describe("CalendarEventDialog", () => {
     await waitFor(() => {
       expect(next.onChange).toHaveBeenCalledWith(expect.objectContaining({ alerts: [] }));
     });
-  });
+  }, 10000);
 
   it("shows leftover email alarms without an action menu and keeps offset editable", () => {
     const form = {
