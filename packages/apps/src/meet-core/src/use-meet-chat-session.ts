@@ -62,23 +62,23 @@ export function useMeetChatSession({
   }, []);
 
   const sendChannel = useCallback(
-    async (payload: ChatSendPayload) => {
-      if (!selectedChannelId) return;
-      if (operations?.sendMessage) {
-        applyMessage(await operations.sendMessage(selectedChannelId, payload.body));
-        return;
-      }
-      applyMessage({
-        id: `local-${Date.now()}`,
-        channelId: selectedChannelId,
-        authorId: author.id,
-        authorName: author.displayName,
-        body: payload.body,
-        createdAt: Date.now(),
-        reactions: [],
-        mentions: payload.mentions,
-        previews: [],
-      });
+    async (payload: ChatSendPayload): Promise<ChatMessage | null> => {
+      if (!selectedChannelId) return null;
+      const saved = operations?.sendMessage
+        ? await operations.sendMessage(selectedChannelId, payload.body)
+        : {
+            id: `local-${Date.now()}`,
+            channelId: selectedChannelId,
+            authorId: author.id,
+            authorName: author.displayName,
+            body: payload.body,
+            createdAt: Date.now(),
+            reactions: [],
+            mentions: payload.mentions,
+            previews: [],
+          };
+      applyMessage(saved);
+      return saved;
     },
     [applyMessage, author, operations, selectedChannelId],
   );

@@ -64,15 +64,11 @@ export function buildLocalMeetChatLine(
   };
 }
 
-function channelThreadHasBody(channelMessages: readonly ChatMessage[], body: string): boolean {
-  return channelMessages.some((message) => message.body === body);
-}
-
 /**
  * Host channel collection + guest room-poll lines share one MeetChatColumn.
- * Signaling does not deliver a peer's own chat, so the local `isSelf` line is
- * the sender's live copy. Skip it only once `sendMessage` has already landed
- * that same text in the channel thread.
+ * Signaling does not deliver a peer's own chat. `sendChat` drops that local
+ * line once the channel send has saved it, so a line still here is a call
+ * with no channel, or a channel send that did not save.
  */
 export function mergeMeetRoomChatIntoChannel(
   channelMessages: ChatMessage[],
@@ -83,7 +79,6 @@ export function mergeMeetRoomChatIntoChannel(
   const ids = new Set(channelMessages.map((message) => message.id));
   const merged = [...channelMessages];
   for (const line of roomLines) {
-    if (line.isSelf && channelThreadHasBody(channelMessages, line.body)) continue;
     const message = meetChatLineToChannelMessage(line, channelId);
     if (ids.has(message.id)) continue;
     ids.add(message.id);
