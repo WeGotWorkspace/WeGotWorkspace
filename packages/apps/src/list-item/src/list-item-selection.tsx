@@ -28,10 +28,13 @@ export function ListSelectionProvider({
   const storeRef = useRef<ListSelectionStore | null>(null);
   if (!storeRef.current) storeRef.current = createListSelectionStore();
   const store = storeRef.current;
-  const selectionChanged = store.setState({ activeId, selectedIds, selectionMode });
+  // Version, not a boolean: consecutive selection updates all return true, and a
+  // boolean dep would notify only the first one. Memoized rows would stay stale.
+  store.setState({ activeId, selectedIds, selectionMode });
+  const version = store.getVersion();
   useLayoutEffect(() => {
-    if (selectionChanged) store.notify();
-  }, [selectionChanged, store]);
+    store.notify();
+  }, [version, store]);
   return (
     <ListSelectionStoreContext.Provider value={store}>
       {children}
@@ -39,10 +42,17 @@ export function ListSelectionProvider({
   );
 }
 
-export function useListItemHighlight(
-  id: string,
-  fallback: { isActive: boolean; isSelected: boolean; selectionMode: boolean },
-): { isActive: boolean; isSelected: boolean; selectionMode: boolean } {
+export type ListItemHighlight = {
+  isActive: boolean;
+  isSelected: boolean;
+};
+
+/**
+ * Active and selected state for one row. Selection mode is not part of this
+ * snapshot: inside a provider the list root owns it, and outside it the row
+ * prop does.
+ */
+export function useListItemHighlight(id: string, fallback: ListItemHighlight): ListItemHighlight {
   const store = useContext(ListSelectionStoreContext);
   const key = useSyncExternalStore(
     store ? store.subscribe : subscribeNoop,
@@ -53,8 +63,12 @@ export function useListItemHighlight(
   return {
     isActive: key.charAt(0) === "1",
     isSelected: key.charAt(1) === "1",
-    selectionMode: key.charAt(2) === "1",
   };
+}
+
+/** True when this row is painted by `ListSelectionProvider` rather than its own props. */
+export function useHasListSelectionStore(): boolean {
+  return useContext(ListSelectionStoreContext) != null;
 }
 
 function subscribeNoop(): () => void {

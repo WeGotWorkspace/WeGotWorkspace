@@ -71,8 +71,15 @@ function useMeetCallTabSignal(store: MeetCallStore): void {
   }, [store]);
 }
 
-export function MeetCallProvider({ children }: { children: ReactNode }) {
-  const storeRef = useRef<MeetCallStore | null>(null);
+export function MeetCallProvider({
+  children,
+  store: storeProp,
+}: {
+  children: ReactNode;
+  /** Suite tests pass the store they already filled. Production leaves this unset. */
+  store?: MeetCallStore;
+}) {
+  const storeRef = useRef<MeetCallStore | null>(storeProp ?? null);
   storeRef.current ??= createMeetCallStore();
   const store = storeRef.current;
 

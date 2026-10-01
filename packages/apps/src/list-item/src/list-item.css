@@ -22,6 +22,11 @@
   @apply pl-9 md:pl-11;
 }
 
+/* List root paints mode so memoized rows do not each re-render to show checkboxes. */
+[data-list-selection-mode="true"] .list-item__button {
+  @apply pl-9 md:pl-11;
+}
+
 .list-item__button[data-dragging="true"] {
   @apply opacity-40;
 }
@@ -54,6 +59,10 @@
 }
 
 .list-item__button[data-selection-mode="true"] .list-item__checkbox-wrap {
+  opacity: 1;
+}
+
+[data-list-selection-mode="true"] .list-item__checkbox-wrap {
   opacity: 1;
 }
 
