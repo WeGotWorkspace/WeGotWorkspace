@@ -58,7 +58,7 @@ describe("meet chat line", () => {
     });
   });
 
-  it("merges guest room-poll lines and keeps the sender's line until the channel thread has it", () => {
+  it("merges guest room-poll lines and always keeps the sender's own line", () => {
     const channel = meetChatLineToChannelMessage(
       buildLocalMeetChatLine("admin", "Admin", "from host", 1),
       "chat-test",
@@ -74,7 +74,7 @@ describe("meet chat line", () => {
       buildLocalMeetChatLine("admin", "Admin", "echo", 1),
       "chat-test",
     );
-    const deduped = mergeMeetRoomChatIntoChannel([alreadyLanded], [selfLine], "chat-test");
-    expect(deduped.map((row) => row.id)).toEqual([alreadyLanded.id]);
+    const repeated = mergeMeetRoomChatIntoChannel([alreadyLanded], [selfLine], "chat-test");
+    expect(repeated.map((row) => row.body)).toEqual(["echo", "echo"]);
   });
 });
