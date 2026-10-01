@@ -46,7 +46,7 @@ final class NoteMarkdownCodec
                 continue;
             }
             if ($key === 'tags') {
-                $tags = $this->normalizeTags(explode(',', $value));
+                $tags = NoteTag::normalizeStored(explode(',', $value));
 
                 continue;
             }
@@ -75,6 +75,7 @@ final class NoteMarkdownCodec
      */
     public function serialize(string $title, array $tags, string $body, ?string $updated = null): string
     {
+        $tags = NoteTag::normalizeStored($tags);
         $lines = [
             'title: '.trim(str_replace("\n", ' ', $title)),
             'tags: '.implode(', ', $tags),
@@ -213,21 +214,6 @@ final class NoteMarkdownCodec
      */
     public function normalizeTags(mixed $value): array
     {
-        if (! is_array($value)) {
-            return [];
-        }
-        $out = [];
-        foreach ($value as $tag) {
-            if (! is_string($tag)) {
-                continue;
-            }
-            $normalized = strtolower(trim(str_replace(["\r", "\n"], ' ', $tag)));
-            if ($normalized === '') {
-                continue;
-            }
-            $out[$normalized] = true;
-        }
-
-        return array_keys($out);
+        return NoteTag::normalizeList($value);
     }
 }

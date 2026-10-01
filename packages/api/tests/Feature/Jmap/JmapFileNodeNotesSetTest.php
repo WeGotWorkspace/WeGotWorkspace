@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jmap;
 
+use App\Services\Jmap\FileNodes\FileNodeSetError;
+use App\Services\Jmap\FileNodes\FileNodeSetService;
+use App\Services\Notes\NoteMarkdownCodec;
 use App\Storage\WgwStorage;
 use Tests\Support\DriveTestFixtures;
 use Tests\Support\InteractsWithFileNodeJmap;
@@ -99,6 +102,35 @@ final class JmapFileNodeNotesSetTest extends WgwDatabaseTestCase
             ['FileNode/set', ['accountId' => 'bob', 'destroy' => [$created['id']], 'onDestroyRemoveChildren' => true], 'c4'],
         ])->assertOk()->assertJsonPath('methodResponses.0.1.destroyed.0', $created['id']);
         $this->assertFalse($disk->directoryExists('users/bob/.notes/Specs'));
+    }
+
+    public function test_title_only_update_keeps_legacy_markdown_tags(): void
+    {
+        $markdown = "title: Legacy tags\ntags: v2, focus\n----\nkept";
+        $compose = new \ReflectionMethod(app(FileNodeSetService::class), 'composeNoteMarkdown');
+        $rewritten = $compose->invoke(app(FileNodeSetService::class), 'welcome.md', ['title' => 'Renamed'], $markdown);
+
+        $codec = new NoteMarkdownCodec;
+        [$title, $tags, $body] = $codec->parse($rewritten, 'welcome');
+        $this->assertSame('Renamed', $title);
+        $this->assertSame(['v2', 'focus'], $tags);
+        $this->assertSame('kept', $body);
+
+        try {
+            $compose->invoke(app(FileNodeSetService::class), 'welcome.md', ['tags' => ['a,b']], $markdown);
+            $this->fail('A new tag outside a-z and hyphen should be rejected.');
+        } catch (FileNodeSetError $error) {
+            $this->assertSame('invalidProperties', $error->shape['type']);
+        }
+
+        $kept = $compose->invoke(
+            app(FileNodeSetService::class),
+            'welcome.md',
+            ['tags' => ['v2', 'focus', 'new-tag']],
+            $markdown,
+        );
+        [, $keptTags] = $codec->parse($kept, 'welcome');
+        $this->assertSame(['v2', 'focus', 'new-tag'], $keptTags);
     }
 
     public function test_set_rejects_note_patch_on_non_note_files(): void

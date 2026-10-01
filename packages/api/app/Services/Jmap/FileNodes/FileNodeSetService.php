@@ -11,6 +11,7 @@ use App\Services\Drive\DocAttachmentsService;
 use App\Services\Drive\DriveStarService;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Notes\NoteMarkdownCodec;
+use App\Services\Notes\NoteTag;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
@@ -629,7 +630,17 @@ final class FileNodeSetService
             $out['title'] = $note['title'];
         }
         if (array_key_exists('tags', $note)) {
-            $out['tags'] = $this->codec->normalizeTags($note['tags']);
+            if (! is_array($note['tags'])) {
+                throw new FileNodeSetError($this->invalidProperties('note.tags must be an array.', ['note']));
+            }
+            $tags = [];
+            foreach ($note['tags'] as $tag) {
+                if (! is_string($tag)) {
+                    throw new FileNodeSetError($this->invalidProperties('note.tags must be an array of strings.', ['note']));
+                }
+                $tags[] = $tag;
+            }
+            $out['tags'] = $tags;
         }
 
         return $out;
@@ -662,7 +673,15 @@ final class FileNodeSetService
                 $title = $note['title'] !== '' ? $note['title'] : $fallback;
             }
             if (array_key_exists('tags', $note)) {
-                $tags = $note['tags'];
+                $submitted = $note['tags'];
+                $merged = NoteTag::mergeForUpdate($submitted, $tags);
+                if ($merged !== NoteTag::normalizeStored($submitted)) {
+                    throw new FileNodeSetError($this->invalidProperties(
+                        'A tag may only use letters a-z and hyphen.',
+                        ['note'],
+                    ));
+                }
+                $tags = $merged;
             }
         }
 

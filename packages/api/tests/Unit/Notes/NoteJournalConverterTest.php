@@ -70,4 +70,69 @@ final class NoteJournalConverterTest extends TestCase
         $this->assertSame('Only title', $merged['title']);
         $this->assertSame('', $merged['body']);
     }
+
+    public function test_tags_are_limited_to_lowercase_letters_and_hyphen(): void
+    {
+        $converter = new NoteJournalConverter;
+        $ics = $converter->toIcs([
+            'id' => 'n-tags',
+            'title' => 'Tagged',
+            'body' => '',
+            'categories' => ['Focus', 'plan-ning', 'plan,ning', 'v2'],
+        ]);
+
+        $note = $converter->fromIcs($ics, 'n-tags');
+        $this->assertSame(['focus', 'plan-ning'], $note['categories']);
+
+        $patched = $converter->mergeIntoIcs($ics, [
+            'categories' => ['focus', 'a,b', 'kept-tag'],
+        ]);
+        $this->assertSame(
+            ['focus', 'kept-tag'],
+            $converter->fromIcs($patched, 'n-tags')['categories'],
+        );
+    }
+
+    public function test_from_ics_splits_each_categories_property(): void
+    {
+        $ics = implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'BEGIN:VJOURNAL',
+            'UID:n-parts',
+            'SUMMARY:Parts',
+            'CATEGORIES:focus, Work',
+            'CATEGORIES:plan-ning',
+            'END:VJOURNAL',
+            'END:VCALENDAR',
+            '',
+        ]);
+
+        $note = (new NoteJournalConverter)->fromIcs($ics, 'n-parts');
+        $this->assertSame(['focus', 'work', 'plan-ning'], $note['categories']);
+    }
+
+    public function test_merge_keeps_a_legacy_tag_only_when_the_patch_includes_it(): void
+    {
+        $converter = new NoteJournalConverter;
+        $ics = implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'BEGIN:VJOURNAL',
+            'UID:n-legacy',
+            'SUMMARY:Legacy',
+            'CATEGORIES:v2,focus',
+            'END:VJOURNAL',
+            'END:VCALENDAR',
+            '',
+        ]);
+
+        $this->assertSame(['v2', 'focus'], $converter->fromIcs($ics, 'n-legacy')['categories']);
+
+        $omitted = $converter->mergeIntoIcs($ics, ['categories' => ['focus', 'new-tag']]);
+        $this->assertSame(['focus', 'new-tag'], $converter->fromIcs($omitted, 'n-legacy')['categories']);
+
+        $kept = $converter->mergeIntoIcs($ics, ['categories' => ['v2', 'focus', 'new-tag']]);
+        $this->assertSame(['v2', 'focus', 'new-tag'], $converter->fromIcs($kept, 'n-legacy')['categories']);
+    }
 }

@@ -15,6 +15,7 @@ use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Mcp\McpScopes;
 use App\Services\Notes\NotebookRepository;
+use App\Services\Notes\NoteRepository;
 use Laravel\Passport\Passport;
 use Tests\Support\ConfiguresMcp;
 use Tests\Support\SeedsWgwIdentity;
@@ -137,6 +138,74 @@ final class McpNotesToolsTest extends WgwDatabaseTestCase
                 'title' => 'Nope',
             ])
             ->assertHasErrors(['Notebook not found']);
+    }
+
+    public function test_note_write_rejects_tags_outside_a_z_and_hyphen(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+        Passport::actingAs($user, [McpScopes::NOTES_WRITE], 'api', $client);
+
+        WorkspaceServer::actingAs($user, 'api')
+            ->tool(NoteWriteTool::class, [
+                'action' => 'create',
+                'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+                'title' => 'Bad tag',
+                'categories' => ['Q3 planning'],
+            ])
+            ->assertHasErrors(['A tag may only use letters a-z and hyphen.']);
+
+        WorkspaceServer::actingAs($user, 'api')
+            ->tool(NoteWriteTool::class, [
+                'action' => 'create',
+                'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+                'title' => 'Good tag',
+                'categories' => ['Focus'],
+            ])
+            ->assertOk()
+            ->assertSee('focus');
+    }
+
+    public function test_note_write_update_keeps_a_stored_legacy_tag(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+        Passport::actingAs($user, [McpScopes::NOTES_WRITE], 'api', $client);
+
+        $created = app(NoteRepository::class)->create('bob', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Legacy tags',
+            'categories' => ['v2', 'focus'],
+        ], allowStoredTags: true);
+        $noteId = (string) $created['id'];
+
+        WorkspaceServer::actingAs($user, 'api')
+            ->tool(NoteWriteTool::class, [
+                'action' => 'update',
+                'noteId' => $noteId,
+                'categories' => ['v2', 'focus', 'new-tag'],
+            ])
+            ->assertOk()
+            ->assertSee('v2')
+            ->assertSee('new-tag');
+
+        WorkspaceServer::actingAs($user, 'api')
+            ->tool(NotebookWriteTool::class, ['action' => 'create', 'name' => 'Dest'])
+            ->assertOk();
+        $dest = $this->notebookIdNamed('bob', 'Dest');
+
+        WorkspaceServer::actingAs($user, 'api')
+            ->tool(NoteWriteTool::class, [
+                'action' => 'update',
+                'noteId' => $noteId,
+                'notebookId' => $dest,
+                'categories' => ['v2', 'a,b'],
+            ])
+            ->assertHasErrors(['A tag may only use letters a-z and hyphen.']);
+
+        $note = app(NoteRepository::class)->show('bob', $noteId);
+        $this->assertSame(CalendarCollectionUris::NOTE_GENERAL, $note['notebookId']);
+        $this->assertSame(['v2', 'focus', 'new-tag'], $note['categories']);
     }
 
     public function test_notebook_share_round_trip_and_acl(): void

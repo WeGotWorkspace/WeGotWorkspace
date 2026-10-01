@@ -129,6 +129,13 @@ export type TagGroupProps = {
   allowCreate?: boolean;
   /** Called with an existing item `id`, or a newly typed label when creating. */
   onAddTag?: (idOrLabel: string) => void;
+  /**
+   * When set, a newly typed label must pass before it can be created.
+   * Existing suggestions stay selectable.
+   */
+  acceptTag?: (value: string) => boolean;
+  /** Shown under the input when a newly typed label fails `acceptTag`. */
+  rejectHint?: string;
   /** Called with the item `id` (label when tags are strings). */
   onRemoveTag?: (id: string) => void;
   addPlaceholder?: string;
@@ -157,6 +164,7 @@ function buildTagSuggestions(
   appliedIds: ReadonlySet<string>,
   appliedLabels: ReadonlySet<string>,
   allowCreate: boolean,
+  acceptTag?: (value: string) => boolean,
 ): TagSuggestion[] {
   const trimmed = query.trim();
   const q = trimmed.toLowerCase();
@@ -172,7 +180,12 @@ function buildTagSuggestions(
 
   const exactMatch = suggestions.some((item) => item.label.toLowerCase() === q);
   const canCreate =
-    allowCreate && !!trimmed && !exactMatch && !appliedIds.has(trimmed) && !appliedLabels.has(q);
+    allowCreate &&
+    !!trimmed &&
+    !exactMatch &&
+    !appliedIds.has(trimmed) &&
+    !appliedLabels.has(q) &&
+    (acceptTag?.(trimmed) ?? true);
   if (canCreate) {
     filtered.push({ id: `create:${trimmed}`, itemId: trimmed, label: trimmed, create: true });
   }
@@ -183,6 +196,8 @@ function TagAddField({
   suggestions,
   appliedTags,
   allowCreate,
+  acceptTag,
+  rejectHint,
   placeholder,
   ariaLabel,
   onConfirm,
@@ -191,18 +206,34 @@ function TagAddField({
   suggestions: TagItem[];
   appliedTags: TagItem[];
   allowCreate: boolean;
+  acceptTag?: (value: string) => boolean;
+  rejectHint?: string;
   placeholder: string;
   ariaLabel: string;
   onConfirm: (idOrLabel: string) => void;
   onCancel: () => void;
 }) {
   const listId = useId();
+  const hintId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
   const appliedIds = new Set(appliedTags.map((item) => item.id));
   const appliedLabels = new Set(appliedTags.map((item) => item.label.toLowerCase()));
-  const options = buildTagSuggestions(query, suggestions, appliedIds, appliedLabels, allowCreate);
+  const options = buildTagSuggestions(
+    query,
+    suggestions,
+    appliedIds,
+    appliedLabels,
+    allowCreate,
+    acceptTag,
+  );
+  const trimmedQuery = query.trim();
+  const rejected =
+    acceptTag != null &&
+    trimmedQuery !== "" &&
+    !acceptTag(trimmedQuery) &&
+    !suggestions.some((item) => item.id === trimmedQuery);
   const showList = options.length > 0;
   const activeOption = options[highlight] ?? null;
 
@@ -216,8 +247,12 @@ function TagAddField({
 
   const commit = (idOrLabel: string) => {
     const value = idOrLabel.trim();
-    if (!value || appliedIds.has(value)) {
+    if (!value || appliedIds.has(value) || appliedLabels.has(value.toLowerCase())) {
       onCancel();
+      return;
+    }
+    const existing = suggestions.some((item) => item.id === value);
+    if (!existing && acceptTag && !acceptTag(value)) {
       return;
     }
     onConfirm(value);
@@ -266,6 +301,8 @@ function TagAddField({
         aria-expanded={showList}
         aria-controls={listId}
         aria-autocomplete="list"
+        aria-invalid={rejected || undefined}
+        aria-describedby={rejected && rejectHint ? hintId : undefined}
         aria-activedescendant={activeOption ? `${listId}-${activeOption.id}` : undefined}
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={onKeyDown}
@@ -273,6 +310,11 @@ function TagAddField({
           if (!query.trim()) onCancel();
         }}
       />
+      {rejected && rejectHint ? (
+        <p id={hintId} className="tag-group__hint">
+          {rejectHint}
+        </p>
+      ) : null}
       {showList ? (
         <ul id={listId} className="tag-group__suggestions" role="listbox" aria-label={ariaLabel}>
           {options.map((option, index) => {
@@ -308,6 +350,8 @@ export function TagGroup({
   readonly = true,
   suggestions = [],
   allowCreate = true,
+  acceptTag,
+  rejectHint,
   onAddTag,
   onRemoveTag,
   addPlaceholder = "Add tag…",
@@ -353,6 +397,8 @@ export function TagGroup({
           suggestions={suggestionItems}
           appliedTags={items}
           allowCreate={allowCreate}
+          acceptTag={acceptTag}
+          rejectHint={rejectHint}
           placeholder={addPlaceholder}
           ariaLabel={addAriaLabel}
           onConfirm={(idOrLabel) => {

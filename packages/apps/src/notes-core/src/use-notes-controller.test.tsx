@@ -123,6 +123,69 @@ describe("useNotesController bootstrap sync", () => {
     expect(result.current.notes.find((note) => note.id === "note-1")?.tags).toEqual(["focus"]);
   });
 
+  it("rejects a note tag outside a-z and hyphen", () => {
+    const data: NotesUIData = {
+      notes: [{ ...localNote, id: "note-1", tags: [] }],
+      notebooks: ["Drafts"],
+      tags: [],
+    };
+
+    const { result } = renderHook(() => useNotesController({ data, listLoading: false }));
+
+    clickSelect(result, "note-1");
+    act(() => {
+      result.current.toggleNoteTag("note-1", "plan,ning");
+    });
+    expect(result.current.active?.tags).toEqual([]);
+
+    act(() => {
+      result.current.toggleNoteTag("note-1", "Plan-ning");
+    });
+    expect(result.current.active?.tags).toEqual(["plan-ning"]);
+  });
+
+  it("does not remove a tag when addNoteTag repeats it in a different case", () => {
+    const data: NotesUIData = {
+      notes: [{ ...localNote, id: "note-1", tags: ["work"] }],
+      notebooks: ["Drafts"],
+      tags: ["work"],
+    };
+
+    const { result } = renderHook(() => useNotesController({ data, listLoading: false }));
+
+    clickSelect(result, "note-1");
+    act(() => {
+      result.current.addNoteTag("note-1", "Work");
+    });
+    expect(result.current.active?.tags).toEqual(["work"]);
+
+    act(() => {
+      result.current.addNoteTag("note-1", "focus");
+    });
+    expect(result.current.active?.tags).toEqual(["work", "focus"]);
+  });
+
+  it("removes a legacy tag and a mixed-case tag by the stored label", () => {
+    const data: NotesUIData = {
+      notes: [{ ...localNote, id: "note-1", tags: ["v2", "Work"] }],
+      notebooks: ["Drafts"],
+      tags: ["v2", "Work"],
+    };
+
+    const { result } = renderHook(() => useNotesController({ data, listLoading: false }));
+
+    clickSelect(result, "note-1");
+    act(() => {
+      result.current.toggleNoteTag("note-1", "v2");
+    });
+    expect(result.current.active?.tags).toEqual(["Work"]);
+
+    act(() => {
+      result.current.toggleNoteTag("note-1", "Work");
+    });
+    expect(result.current.active?.tags).toEqual([]);
+  });
+
   it("updates active.tags when toggleNoteTag removes a tag", () => {
     const data: NotesUIData = {
       notes: [{ ...localNote, id: "note-1", tags: ["focus", "draft"] }],
