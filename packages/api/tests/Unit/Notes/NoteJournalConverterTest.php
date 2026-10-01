@@ -70,4 +70,26 @@ final class NoteJournalConverterTest extends TestCase
         $this->assertSame('Only title', $merged['title']);
         $this->assertSame('', $merged['body']);
     }
+
+    public function test_tags_are_limited_to_lowercase_letters_and_hyphen(): void
+    {
+        $converter = new NoteJournalConverter;
+        $ics = $converter->toIcs([
+            'id' => 'n-tags',
+            'title' => 'Tagged',
+            'body' => '',
+            'categories' => ['Focus', 'plan-ning', 'plan,ning', 'v2'],
+        ]);
+
+        $note = $converter->fromIcs($ics, 'n-tags');
+        $this->assertSame(['focus', 'plan-ning'], $note['categories']);
+
+        $patched = $converter->mergeIntoIcs($ics, [
+            'categories' => ['focus', 'a,b', 'kept-tag'],
+        ]);
+        $this->assertSame(
+            ['focus', 'kept-tag'],
+            $converter->fromIcs($patched, 'n-tags')['categories'],
+        );
+    }
 }

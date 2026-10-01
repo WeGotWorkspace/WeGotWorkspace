@@ -78,6 +78,29 @@ describe("TagGroup inline add", () => {
     expect(onAddTag).not.toHaveBeenCalled();
   });
 
+  it("does not create a tag outside the accepted character set", () => {
+    const onAddTag = vi.fn();
+    const acceptTag = (value: string) => /^[a-z-]+$/.test(value.trim().toLowerCase());
+    renderTagGroup(
+      <TagGroup
+        tags={[]}
+        readonly={false}
+        suggestions={[]}
+        onAddTag={onAddTag}
+        acceptTag={acceptTag}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    const input = screen.getByRole("combobox", { name: "Add tag" });
+    fireEvent.change(input, { target: { value: "plan,ning" } });
+
+    expect(screen.queryByRole("option", { name: "Create “plan,ning”" })).toBeNull();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onAddTag).not.toHaveBeenCalled();
+    expect(screen.getByRole("combobox", { name: "Add tag" })).toBeTruthy();
+  });
+
   it("creates a new tag from the typed string", () => {
     const onAddTag = vi.fn();
     renderTagGroup(

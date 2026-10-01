@@ -58,6 +58,16 @@ describe("notes-note-utils", () => {
     expect(normalizeTag("  focus  ")).toBe("focus");
   });
 
+  it("accepts only a-z and hyphen, and lowercases letters", () => {
+    expect(normalizeTag("  Plan-ning  ")).toBe("plan-ning");
+    expect(normalizeTag("plan,ning")).toBe("");
+    expect(normalizeTag("plan ning")).toBe("");
+    expect(normalizeTag("plan_ning")).toBe("");
+    expect(normalizeTag("v2")).toBe("");
+    expect(normalizeTag("café")).toBe("");
+    expect(normalizeTag(",")).toBe("");
+  });
+
   it("computes plain text and word count from markdown body", () => {
     expect(plainTextFromBody(sampleNote.body)).toContain("Title");
     expect(computeWordCount(sampleNote.body)).toBeGreaterThan(0);
