@@ -139,7 +139,7 @@ export async function claimDirectoryEntryName(
   return name;
 }
 
-export type RestoredDriveName = { title: string; to: string };
+export type RestoredDriveName = { id: string; title: string; to: string };
 
 export function restoredDriveNamesMessage(
   restored: readonly RestoredDriveName[],
@@ -174,9 +174,17 @@ export async function restoreCompletedDriveMoves(input: {
   completedKeys: ReadonlySet<string>;
   username: string;
   groupRoots: Set<string>;
-}): Promise<{ restored: RestoredDriveName[]; failures: number }> {
+}): Promise<{
+  restored: RestoredDriveName[];
+  failures: number;
+  failedIds: string[];
+  /** Final name for every completed file the server put back, including an unchanged title. */
+  restoredToById: Map<string, string>;
+}> {
   const takenByDirectory = new Map<string, Set<string>>();
   const restored: RestoredDriveName[] = [];
+  const failedIds: string[] = [];
+  const restoredToById = new Map<string, string>();
   let failures = 0;
   for (const move of input.moves) {
     if (!input.completedKeys.has(move.id)) continue;
@@ -189,13 +197,15 @@ export async function restoreCompletedDriveMoves(input: {
         takenByDirectory,
       );
       await input.operations.renameItem({ destination, from: move.from, to });
-      if (to !== move.title) restored.push({ title: move.title, to });
+      restoredToById.set(move.id, to);
+      if (to !== move.title) restored.push({ id: move.id, title: move.title, to });
     } catch (error) {
       failures += 1;
+      failedIds.push(move.id);
       console.error("Drive batch restore failed", error);
     }
   }
-  return { restored, failures };
+  return { restored, failures, failedIds, restoredToById };
 }
 
 export async function ensureTrashFolder(

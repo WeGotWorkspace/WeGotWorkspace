@@ -8,6 +8,7 @@ import {
   captureOfflineDocsTrashSnapshot,
   undoOfflineDocsTrash,
 } from "@/lib/offline/docs/docs-hybrid-operations";
+import { removeOutboxMutationsForDocsPath } from "@/lib/offline/docs/docs-outbox-flush";
 import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
 
 const queueMutation = vi.fn();
@@ -35,6 +36,14 @@ vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {
   return {
     ...actual,
     readBrowserOnline: vi.fn(() => true),
+  };
+});
+
+vi.mock("@/lib/offline/docs/docs-outbox-flush", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/offline/docs/docs-outbox-flush")>();
+  return {
+    ...actual,
+    removeOutboxMutationsForDocsPath: vi.fn(async () => undefined),
   };
 });
 
@@ -488,7 +497,7 @@ describe("useDocsHomeActions", () => {
     });
 
     await act(async () => {
-      queued?.undo();
+      queued?.onError?.();
     });
 
     await waitFor(() =>
@@ -498,10 +507,16 @@ describe("useDocsHomeActions", () => {
         to: "A.md",
       }),
     );
-    const restores = operations.renameItem.mock.calls.filter(
-      (call) => call[0].destination === "/users/alice",
-    );
-    expect(restores).toEqual([
+    const restores = () =>
+      operations.renameItem.mock.calls.filter((call) => call[0].destination === "/users/alice");
+    expect(restores()).toEqual([
+      [{ destination: "/users/alice", from: "/users/alice/.Trash/A.md", to: "A.md" }],
+    ]);
+
+    await act(async () => {
+      queued?.undo();
+    });
+    expect(restores()).toEqual([
       [{ destination: "/users/alice", from: "/users/alice/.Trash/A.md", to: "A.md" }],
     ]);
     expect(reload).toHaveBeenCalled();
@@ -562,6 +577,84 @@ describe("useDocsHomeActions", () => {
     );
     expect(showToast).toHaveBeenCalledWith("Restored “B.md” as “B 2.md”");
     expect(reload).toHaveBeenCalled();
+  });
+
+  it("writes offline caches at the free name after a taken title is restored", async () => {
+    const operations = createMockOperations();
+    operations.listAllDirectoryEntries.mockImplementation(async (directory: string) => {
+      if (directory === "/users/alice") return [listedFile("/users/alice/B.md")];
+      return [];
+    });
+    const { result } = renderActions(operations, vi.fn(), { offlineUsername: "alice" });
+
+    act(() => result.current.onTrash(FILES[1]!));
+    act(() => result.current.confirmTrash());
+
+    const queued = queueMutation.mock.calls[0]?.[0];
+    await act(async () => {
+      await queued?.execute(new AbortController().signal);
+    });
+    await act(async () => {
+      queued?.undo();
+    });
+
+    await waitFor(() =>
+      expect(undoOfflineDocsTrash).toHaveBeenCalledWith(
+        "alice",
+        expect.objectContaining({
+          apiPath: "/users/alice/B 2.md",
+          listingResult: expect.objectContaining({
+            sourceKey: "users/alice/B 2.md",
+            title: "B 2.md",
+          }),
+          availability: expect.objectContaining({ id: "users/alice/B 2.md" }),
+        }),
+      ),
+    );
+    expect(removeOutboxMutationsForDocsPath).toHaveBeenCalledWith("alice", "/users/alice/B.md");
+    const outboxOrder = vi.mocked(removeOutboxMutationsForDocsPath).mock.invocationCallOrder[0];
+    const cacheOrder = vi.mocked(undoOfflineDocsTrash).mock.invocationCallOrder[0];
+    expect(outboxOrder).toBeLessThan(cacheOrder);
+  });
+
+  it("does not restore offline caches for a file whose server restore failed", async () => {
+    const operations = createMockOperations();
+    const data = {} as DriveUIData;
+    operations.listAllDirectoryEntries.mockImplementation(async (directory: string) => {
+      if (directory === "/users/alice") return [listedFile("/users/alice/B.md")];
+      return [];
+    });
+    operations.renameItem.mockImplementation(
+      async (input: { destination: string; from: string }) => {
+        if (input.destination.endsWith("/.Trash")) return data;
+        if (input.from.endsWith("/.Trash/A.md")) throw new Error("restore failed");
+        return data;
+      },
+    );
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { result } = renderActions(operations, vi.fn(), { offlineUsername: "alice" });
+
+    act(() => result.current.requestDeleteSelected(FILES.map((entry) => entry.id)));
+    act(() => result.current.confirmTrash());
+
+    const queued = queueMutation.mock.calls[0]?.[0];
+    await act(async () => {
+      await queued?.execute(new AbortController().signal);
+    });
+    await act(async () => {
+      queued?.undo();
+    });
+
+    await waitFor(() => expect(undoOfflineDocsTrash).toHaveBeenCalledTimes(1));
+    expect(undoOfflineDocsTrash).toHaveBeenCalledWith(
+      "alice",
+      expect.objectContaining({ apiPath: "/users/alice/B 2.md" }),
+    );
+    expect(undoOfflineDocsTrash).not.toHaveBeenCalledWith(
+      "alice",
+      expect.objectContaining({ apiPath: "/users/alice/A.md" }),
+    );
+    consoleError.mockRestore();
   });
 
   it("reports several renamed restores in one toast", async () => {
