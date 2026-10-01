@@ -43,7 +43,7 @@ vi.mock("@/lib/offline/docs/docs-outbox-flush", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/offline/docs/docs-outbox-flush")>();
   return {
     ...actual,
-    removeOutboxMutationsForDocsPath: vi.fn(async () => undefined),
+    removeOutboxMutationsForDocsPath: vi.fn(async () => false),
   };
 });
 
@@ -615,6 +615,36 @@ describe("useDocsHomeActions", () => {
     const outboxOrder = vi.mocked(removeOutboxMutationsForDocsPath).mock.invocationCallOrder[0];
     const cacheOrder = vi.mocked(undoOfflineDocsTrash).mock.invocationCallOrder[0];
     expect(outboxOrder).toBeLessThan(cacheOrder);
+  });
+
+  it("undoes a still-queued trash locally when the browser is online again", async () => {
+    vi.mocked(removeOutboxMutationsForDocsPath).mockResolvedValueOnce(true);
+    const operations = createMockOperations();
+    const { result } = renderActions(operations, vi.fn(), { offlineUsername: "alice" });
+
+    act(() => result.current.onTrash(FILES[1]!));
+    act(() => result.current.confirmTrash());
+
+    const queued = queueMutation.mock.calls[0]?.[0];
+    await act(async () => {
+      await queued?.execute(new AbortController().signal);
+    });
+
+    await act(async () => {
+      queued?.undo();
+    });
+
+    await waitFor(() =>
+      expect(undoOfflineDocsTrash).toHaveBeenCalledWith(
+        "alice",
+        expect.objectContaining({ apiPath: "/users/alice/B.md" }),
+      ),
+    );
+    const restores = operations.renameItem.mock.calls.filter(
+      (call) => call[0].from.includes("/.Trash/") && call[0].destination === "/users/alice",
+    );
+    expect(restores).toEqual([]);
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 
   it("does not restore offline caches for a file whose server restore failed", async () => {

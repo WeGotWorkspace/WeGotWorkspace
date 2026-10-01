@@ -5,6 +5,7 @@ import {
   type DocsTrashUndoSnapshot,
 } from "@/lib/offline/docs/docs-hybrid-operations";
 import { removeOutboxMutationsForDocsPath } from "@/lib/offline/docs/docs-outbox-flush";
+import { renamedDocsSearchResult } from "@/lib/offline/docs-listing-offline-store";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import {
@@ -31,16 +32,14 @@ function snapshotOnRestoredPath(
 ): DocsTrashUndoSnapshot {
   const { destination } = parentAndName(snapshot.apiPath);
   const apiPath = normalizeApiVirtualPath(destination === "/" ? `/${to}` : `${destination}/${to}`);
-  const sourceKey = apiPath.replace(/^\/+/, "");
+  const listingResult = renamedDocsSearchResult(snapshot.listingResult, apiPath);
   return {
     ...snapshot,
     apiPath,
-    listingResult: {
-      ...snapshot.listingResult,
-      sourceKey,
-      title: to,
-    },
-    availability: snapshot.availability ? { ...snapshot.availability, id: sourceKey } : undefined,
+    listingResult,
+    availability: snapshot.availability
+      ? { ...snapshot.availability, id: listingResult.sourceKey }
+      : undefined,
   };
 }
 
@@ -48,7 +47,8 @@ function snapshotOnRestoredPath(
  * Put completed trash moves back. A taken original title uses the next free name.
  * One restore error does not stop the rest, and the home list reloads either way.
  * Online, the server rename finishes before offline caches are written, and only
- * at the path that rename used.
+ * at the path that rename used. A trash still sitting in the outbox never reached
+ * the server: that entry is dropped and the original snapshot is restored.
  */
 export async function revertDocsHomeTrash(input: {
   operations: DriveAPIOperations;
@@ -71,11 +71,18 @@ export async function revertDocsHomeTrash(input: {
       return;
     }
 
-    await clearCompletedTrashOutbox(input);
+    const queuedLocally = await takeQueuedLocalTrashes(input);
+    await undoCompletedOfflineSnapshots(input, (snapshot, id) =>
+      queuedLocally.has(id) ? snapshot : undefined,
+    );
 
+    const serverCompleted = new Set(
+      [...input.completedKeys].filter((id) => !queuedLocally.has(id)),
+    );
     const trashDirectory = apiPathFromUiPath(DRIVE_TRASH_UI_PATH, input.username, input.groupRoots);
     const moves: DriveRestoreMove[] = [];
     for (const file of input.rows) {
+      if (!serverCompleted.has(file.id)) continue;
       const trashedName = input.trashedNameById.get(file.id);
       if (!trashedName) continue;
       moves.push({
@@ -88,7 +95,7 @@ export async function revertDocsHomeTrash(input: {
     const { restored, failures, restoredToById } = await restoreCompletedDriveMoves({
       operations: input.operations,
       moves,
-      completedKeys: input.completedKeys,
+      completedKeys: serverCompleted,
       username: input.username,
       groupRoots: input.groupRoots,
     });
@@ -106,20 +113,27 @@ export async function revertDocsHomeTrash(input: {
   }
 }
 
-async function clearCompletedTrashOutbox(input: {
+/** Ids whose trash was still queued, so the file never reached the server. */
+async function takeQueuedLocalTrashes(input: {
   offlineUsername: string | null;
   offlineSnapshots: readonly DocsHomeTrashOfflineSnapshot[];
   completedKeys: ReadonlySet<string>;
-}): Promise<void> {
-  if (!input.offlineUsername) return;
+}): Promise<Set<string>> {
+  const queuedLocally = new Set<string>();
+  if (!input.offlineUsername) return queuedLocally;
   for (const entry of input.offlineSnapshots) {
     if (!input.completedKeys.has(entry.id)) continue;
     try {
-      await removeOutboxMutationsForDocsPath(input.offlineUsername, entry.snapshot.apiPath);
+      const removedTrash = await removeOutboxMutationsForDocsPath(
+        input.offlineUsername,
+        entry.snapshot.apiPath,
+      );
+      if (removedTrash) queuedLocally.add(entry.id);
     } catch (error) {
       console.error("Docs home trash undo failed", error);
     }
   }
+  return queuedLocally;
 }
 
 async function undoCompletedOfflineSnapshots(

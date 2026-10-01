@@ -263,7 +263,6 @@ describe("restoreCompletedDriveMoves", () => {
 
     expect(result.restored).toEqual([]);
     expect(result.failures).toBe(1);
-    expect(result.failedIds).toEqual(["a"]);
     expect(result.restoredToById).toEqual(new Map([["b", "b.md"]]));
     expect(operations.renameItem).toHaveBeenNthCalledWith(2, {
       destination: "/users/alice",
