@@ -386,6 +386,47 @@ PHP);
         }
     }
 
+    public function test_update_preserves_existing_owner_and_group(): void
+    {
+        if (! function_exists('posix_geteuid') || posix_geteuid() !== 0) {
+            $this->markTestSkipped('Preserving another uid requires root.');
+        }
+
+        $owner = posix_getpwnam('www-data') ?: posix_getpwnam('nobody');
+        $group = posix_getpwnam('nobody') ?: $owner;
+        if (! is_array($owner) || ! is_array($group)) {
+            $this->markTestSkipped('No unprivileged account is available to chown the fixture.');
+        }
+
+        $uid = (int) $owner['uid'];
+        $gid = (int) $group['gid'];
+        if ($uid === 0) {
+            $this->markTestSkipped('The alternate account is root.');
+        }
+
+        $path = $this->apiRoot.'/.env';
+        file_put_contents($path, "APP_KEY=base64:YQ==\n");
+        $this->assertTrue(chmod($path, 0600));
+        $this->assertTrue(chown($path, $uid));
+        $this->assertTrue(chgrp($path, $gid));
+        clearstatcache(true, $path);
+        $this->assertSame($uid, fileowner($path));
+        $this->assertSame($gid, filegroup($path));
+        $this->assertNotSame(posix_geteuid(), $uid);
+
+        $wrote = (new EnvFileWriter)->update(
+            $path,
+            static fn (string $content): string => $content."APP_URL=http://127.0.0.1:18080\n",
+        );
+
+        $this->assertTrue($wrote);
+        clearstatcache(true, $path);
+        $this->assertSame($uid, fileowner($path));
+        $this->assertSame($gid, filegroup($path));
+        $this->assertSame(0600, fileperms($path) & 0777);
+        $this->assertStringContainsString('APP_URL=http://127.0.0.1:18080', (string) file_get_contents($path));
+    }
+
     public function test_ensure_strips_invalid_dotenv_lines(): void
     {
         file_put_contents($this->apiRoot.'/.env', "APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\nreply@example.com\n");
