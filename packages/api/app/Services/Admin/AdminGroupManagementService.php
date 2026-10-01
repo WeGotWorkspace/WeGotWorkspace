@@ -56,6 +56,7 @@ final class AdminGroupManagementService
         // groups that predate the feature or were seeded outside this service.
         $this->chatDefaults->ensureForGroupSlugs([$slug]);
         $this->addressBooks->ensureForGroupPrincipal($uri, $name);
+        $this->ensureGroupFilesDirectory($slug);
 
         return $uri;
     }
@@ -105,7 +106,7 @@ final class AdminGroupManagementService
         $principal->delete();
 
         $slug = basename(str_replace('\\', '/', $uri));
-        $groupFiles = rtrim($this->paths->dataDir(), '/').'/files/groups/'.$slug;
+        $groupFiles = $this->groupFilesDirectory($slug);
         if (is_dir($groupFiles)) {
             $this->deleteDirectory($groupFiles);
         }
@@ -169,6 +170,22 @@ final class AdminGroupManagementService
         }
 
         return AdminConstants::GROUP_PREFIX.$this->normalizeSlug($groupSlug);
+    }
+
+    private function ensureGroupFilesDirectory(string $slug): void
+    {
+        $path = $this->groupFilesDirectory($slug);
+        if (is_dir($path)) {
+            return;
+        }
+        if (! @mkdir($path, 0775, true) && ! is_dir($path)) {
+            throw new \RuntimeException('Could not create group files directory for '.$slug.'.');
+        }
+    }
+
+    private function groupFilesDirectory(string $slug): string
+    {
+        return rtrim($this->paths->dataDir(), '/').'/files/groups/'.$slug;
     }
 
     private function deleteDirectory(string $path): void
