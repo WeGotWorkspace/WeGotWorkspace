@@ -45,7 +45,6 @@ let accessToken: string | null = null;
 let refreshToken: string | null = null;
 let accessExpiresAt: number | null = null;
 let refreshExpiresAt: number | null = null;
-let storageHydrated = false;
 let refreshPromise: Promise<boolean> | null = null;
 let refreshFailureCount = 0;
 let refreshFailureWindowStartedAt: number | null = null;
@@ -106,14 +105,12 @@ function readTokensFromStorage(): void {
 }
 
 function hydrateTokensFromStorage(): void {
-  if (storageHydrated) return;
-  storageHydrated = true;
+  // Another tab rotates tokens in localStorage; memory must not keep the old refresh token.
   readTokensFromStorage();
 }
 
 function reloadTokensFromStorage(): void {
-  storageHydrated = true;
-  readTokensFromStorage();
+  hydrateTokensFromStorage();
 }
 
 function persistTokens(): void {
@@ -245,7 +242,6 @@ export function clearWgwSession(reason: WgwSessionClearReason): void {
   refreshToken = null;
   accessExpiresAt = null;
   refreshExpiresAt = null;
-  storageHydrated = true;
   resetRefreshFailures();
   refreshRejectedByAuth = false;
   persistTokens();
@@ -293,7 +289,6 @@ function applyTokens(tokens: TokenResponse): void {
   refreshToken = tokens.refresh_token;
   accessExpiresAt = resolveAccessExpiresAt(tokens);
   refreshExpiresAt = resolveRefreshExpiresAt(tokens);
-  storageHydrated = true;
   persistTokens();
   resetRefreshFailures();
   refreshRejectedByAuth = false;
@@ -521,10 +516,7 @@ export function wgwOAuthSessionUrl(): string {
   return "/oauth/session";
 }
 
-/**
- * Establish the Laravel web session Passport `/oauth/authorize` requires.
- * SPA JWT in localStorage does not count.
- */
+/** Laravel web session for Passport `/oauth/authorize`. The SPA JWT is not that session. */
 export async function wgwEstablishMcpWebSession(
   username: string,
   password: string,
@@ -685,21 +677,24 @@ async function wgwTryRefresh(): Promise<boolean> {
 
   refreshPromise = withAuthRefreshLock(async () => {
     hydrateTokensFromStorage();
-    if (!refreshToken) return false;
+    if (accessToken && !isAccessTokenExpired()) return true;
+    if (!refreshToken || wgwIsGuestSession()) return false;
     if (!readBrowserOnline()) return false;
-
     if (isRefreshTokenExpired()) {
       clearWgwSession("refresh_expired");
       return false;
     }
 
+    const presented = refreshToken;
     try {
-      const res = await postJson("/auth/refresh", { refresh_token: refreshToken });
+      const res = await postJson("/auth/refresh", { refresh_token: presented });
       const tokens = await readTokenResponse(res);
       applyTokens(tokens);
       return true;
     } catch (error) {
       if (error instanceof AuthHttpError && (error.status === 401 || error.status === 403)) {
+        hydrateTokensFromStorage();
+        if (refreshToken !== presented && accessToken && !isAccessTokenExpired()) return true;
         refreshRejectedByAuth = true;
         clearWgwSession("401_online");
         return false;
@@ -1003,7 +998,6 @@ export function resetWgwSessionStateForTests(): void {
   refreshToken = null;
   accessExpiresAt = null;
   refreshExpiresAt = null;
-  storageHydrated = false;
   refreshPromise = null;
   resetRefreshFailures();
   refreshRejectedByAuth = false;

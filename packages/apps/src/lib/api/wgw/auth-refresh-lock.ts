@@ -1,5 +1,6 @@
 const REFRESH_LOCK_KEY = "wgw.api.refresh.lock";
 const REFRESH_CHANNEL = "wgw-auth-refresh";
+const WEB_LOCK_NAME = "wgw-auth-refresh";
 const STALE_LOCK_TIMEOUT_MS = 30_000;
 const WAIT_POLL_MS = 250;
 
@@ -164,6 +165,12 @@ async function withCrossTabLock(task: () => Promise<boolean>): Promise<boolean> 
   }
 }
 
+function requestWebLock(task: () => Promise<boolean>): Promise<boolean> | null {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (!locks || typeof locks.request !== "function") return null;
+  return locks.request(WEB_LOCK_NAME, { mode: "exclusive" }, () => task());
+}
+
 /**
  * Coalesce refresh calls in-tab and coordinate lock ownership across tabs.
  * Returns `false` when another tab performed the refresh.
@@ -172,7 +179,8 @@ export function withAuthRefreshLock(task: () => Promise<boolean>): Promise<boole
   if (inTabRefreshPromise) {
     return inTabRefreshPromise;
   }
-  inTabRefreshPromise = withCrossTabLock(task).finally(() => {
+  const locked = requestWebLock(task) ?? withCrossTabLock(task);
+  inTabRefreshPromise = locked.finally(() => {
     inTabRefreshPromise = null;
   });
   return inTabRefreshPromise;
