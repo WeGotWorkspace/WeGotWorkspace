@@ -193,6 +193,41 @@ final class WgwInstallEnv
         ];
     }
 
+    /**
+     * Password to use for a wizard database payload.
+     *
+     * The public installer state never includes the password. A fresh Docker
+     * install skips the database screen and posts an empty password for the
+     * server named by WGW_INSTALL_DB_*. Use that env password only when the
+     * host, port, database, and user all match, so the secret is not sent to
+     * a different server. A non-empty submitted password is kept as-is.
+     *
+     * @param  array<string, mixed>  $db
+     */
+    public function passwordForSubmittedDatabase(array $db): string
+    {
+        $submitted = (string) ($db['mysql_password'] ?? '');
+        if ($submitted !== '' || ($db['driver'] ?? '') !== 'mysql') {
+            return $submitted;
+        }
+
+        $configured = $this->dbConfig('mysql');
+        if ($configured === null) {
+            return '';
+        }
+
+        $sameServer = (string) ($configured['mysql_host'] ?? '') === (string) ($db['mysql_host'] ?? '')
+            && (int) ($configured['mysql_port'] ?? 0) === (int) ($db['mysql_port'] ?? 0)
+            && (string) ($configured['mysql_db'] ?? '') === (string) ($db['mysql_db'] ?? '')
+            && (string) ($configured['mysql_user'] ?? '') === (string) ($db['mysql_user'] ?? '');
+
+        if (! $sameServer) {
+            return '';
+        }
+
+        return (string) ($configured['mysql_password'] ?? '');
+    }
+
     private function resolveBaseUri(string $webBase, bool $requireExplicit): ?string
     {
         $explicit = $this->configString('base_uri');

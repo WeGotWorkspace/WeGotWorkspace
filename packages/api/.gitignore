@@ -1,6 +1,8 @@
 /vendor
 /node_modules
 .env
+.env.lock
+.env.tmp.*
 .env.backup
 .env.bak*
 .phpunit.cache

@@ -585,7 +585,7 @@ final class InstallerWizardService
             ];
         }
 
-        return [
+        $db = [
             'driver' => 'mysql',
             'mysql_host' => trim((string) ($payload['mysql_host'] ?? '127.0.0.1')),
             'mysql_port' => (int) ($payload['mysql_port'] ?? 3306),
@@ -593,6 +593,9 @@ final class InstallerWizardService
             'mysql_user' => trim((string) ($payload['mysql_user'] ?? '')),
             'mysql_password' => (string) ($payload['mysql_password'] ?? ''),
         ];
+        $db['mysql_password'] = $this->installEnv->passwordForSubmittedDatabase($db);
+
+        return $db;
     }
 
     /**
