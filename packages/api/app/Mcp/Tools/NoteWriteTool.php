@@ -8,6 +8,7 @@ use App\Services\Auth\AdminRoleResolver;
 use App\Services\Mcp\McpAuditLogger;
 use App\Services\Mcp\McpScopes;
 use App\Services\Notes\NoteRepository;
+use App\Services\Notes\NoteTag;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -107,6 +108,13 @@ final class NoteWriteTool extends WgwMcpTool
             $categories = $request->get('categories');
             if ($categories !== null && ! is_array($categories)) {
                 throw new \InvalidArgumentException('categories must be an array.');
+            }
+            if (is_array($categories)) {
+                foreach ($categories as $tag) {
+                    if (! is_string($tag) || ! NoteTag::isValid(strtolower(trim($tag)))) {
+                        throw new \InvalidArgumentException('A tag may only use letters a-z and hyphen.');
+                    }
+                }
             }
             $payload['categories'] = $categories;
         }

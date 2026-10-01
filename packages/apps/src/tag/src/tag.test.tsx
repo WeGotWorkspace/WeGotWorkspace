@@ -101,6 +101,32 @@ describe("TagGroup inline add", () => {
     expect(screen.getByRole("combobox", { name: "Add tag" })).toBeTruthy();
   });
 
+  it("shows a hint when a typed tag is rejected", () => {
+    const onAddTag = vi.fn();
+    const acceptTag = (value: string) => /^[a-z-]+$/.test(value.trim().toLowerCase());
+    renderTagGroup(
+      <TagGroup
+        tags={[]}
+        readonly={false}
+        suggestions={[]}
+        onAddTag={onAddTag}
+        acceptTag={acceptTag}
+        rejectHint="Use letters a–z and -"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    const input = screen.getByRole("combobox", { name: "Add tag" });
+    fireEvent.change(input, { target: { value: "plan ning" } });
+
+    const hint = screen.getByText("Use letters a–z and -");
+    expect(hint.id).toBeTruthy();
+    expect(input.getAttribute("aria-describedby")).toBe(hint.id);
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onAddTag).not.toHaveBeenCalled();
+  });
+
   it("creates a new tag from the typed string", () => {
     const onAddTag = vi.fn();
     renderTagGroup(

@@ -20,9 +20,11 @@ import {
   createNoteSaveDebouncer,
   filterVisibleNotes,
   mapNotesWithBodyMarkdown,
+  isValidNewTag,
   mergeCreatedNotePreservingLocalOptimistic,
   normalizeTag,
   noteAllowsTagAssignment,
+  noteTagToggle,
   noteAfterNotebookMove,
   notesViewAfterNotebookMove,
   notesViewForCreate,
@@ -472,7 +474,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const assignTagToNotes = useCallback(
     (ids: string[], rawTag: string) => {
       const tag = normalizeTag(rawTag);
-      if (!tag) return;
+      if (!isValidNewTag(tag)) return;
       const assignableIds = ids.filter((id) => {
         const note = notes.find((row) => row.id === id);
         return note ? noteAllowsTagAssignment(note, true) : false;
@@ -565,7 +567,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const renameTag = useCallback(
     (oldName: string, newName: string) => {
       const value = normalizeTag(newName);
-      if (!value || (value !== oldName && tags.includes(value))) return;
+      if (!isValidNewTag(value) || (value !== oldName && tags.includes(value))) return;
       const changedRows = notes
         .filter((note) => note.tags.includes(oldName))
         .map((note) => ({
@@ -662,26 +664,24 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
 
   const toggleNoteTag = useCallback(
     (noteId: string, rawTag: string) => {
-      const tag = normalizeTag(rawTag);
-      if (!tag) return;
       const before = notes.find((note) => note.id === noteId);
       if (!before || !noteAllowsTagAssignment(before, true)) return;
-      const has = before.tags.includes(tag);
-      const added = !has;
+      const toggled = noteTagToggle(before.tags, rawTag);
+      if (!toggled) return;
       const editedAt = new Date().toISOString();
       const updated = {
         ...before,
-        tags: has ? before.tags.filter((current) => current !== tag) : [...before.tags, tag],
+        tags: toggled.tags,
         date: editedAt,
       };
       setNotes((prev) => prev.map((note) => (note.id === noteId ? updated : note)));
       persistOptimisticNote(updated, true);
-      const toastMessage = added ? `Added ${tag}` : `Removed ${tag}`;
+      const toastMessage = toggled.added ? `Added ${toggled.label}` : `Removed ${toggled.label}`;
       const rollback = () => {
         setNotes((prev) => prev.map((note) => (note.id === noteId ? before : note)));
       };
       queueMutation({
-        key: `notes:tag-toggle:${noteId}:${tag}`,
+        key: `notes:tag-toggle:${noteId}:${toggled.label}`,
         toastMessage,
         icon: <Tag className="size-4" />,
         execute: async (signal) => {
@@ -697,7 +697,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         },
         undo: rollback,
         onError: rollback,
-        undoToastMessage: added ? "Tag assignment undone." : "Tag removal undone.",
+        undoToastMessage: toggled.added ? "Tag assignment undone." : "Tag removal undone.",
       });
     },
     [

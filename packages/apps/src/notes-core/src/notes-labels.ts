@@ -29,6 +29,8 @@ export type NotesUILabels = {
   /** Overflow item on the sidebar segmented New control. */
   addNotebook: string;
   addTag: string;
+  /** Shown when a newly typed tag is outside a-z and hyphen. */
+  tagCharsetHint: string;
   listSelected: (count: number) => string;
   listItems: (count: number) => string;
   emptyList: string;
@@ -139,6 +141,7 @@ export const defaultNotesLabels: NotesUILabels = {
   titlePlaceholder: "Title",
   addNotebook: "Create notebook",
   addTag: "New tag",
+  tagCharsetHint: "Use letters a–z and -",
   listSelected: (count) => `${count} Selected`,
   listItems: (count) => `${count} Items`,
   emptyList: "No items",

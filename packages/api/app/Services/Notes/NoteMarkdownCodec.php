@@ -23,7 +23,7 @@ final class NoteMarkdownCodec
     /**
      * @return array{0: string, 1: list<string>, 2: string, 3: string|null}
      */
-    public function parse(string $markdown, string $fallbackTitle): array
+    public function parse(string $markdown, string $fallbackTitle, bool $keepLegacyTags = false): array
     {
         $normalized = str_replace(["\r\n", "\r"], "\n", $markdown);
         $token = "\n----\n";
@@ -46,7 +46,10 @@ final class NoteMarkdownCodec
                 continue;
             }
             if ($key === 'tags') {
-                $tags = $this->normalizeTags(explode(',', $value));
+                $rawTags = explode(',', $value);
+                $tags = $keepLegacyTags
+                    ? NoteTag::normalizeStored($rawTags)
+                    : $this->normalizeTags($rawTags);
 
                 continue;
             }

@@ -67,7 +67,7 @@ final class NotesFileMigrator
             }
 
             $fallback = pathinfo($parsed['filename'], PATHINFO_FILENAME);
-            [$title, $tags, $body] = $this->codec->parse($markdown, $fallback);
+            [$title, $tags, $body] = $this->codec->parse($markdown, $fallback, true);
             if ($this->codec->isPlaceholderTitle($title, $fallback)) {
                 $title = '';
             }
@@ -103,7 +103,7 @@ final class NotesFileMigrator
                     'body' => $body,
                     'categories' => $tags,
                     'status' => $parsed['archived'] ? 'CANCELLED' : null,
-                ]);
+                ], allowStoredTags: true);
                 $pathToUid[$virtualPath] = is_string($created['id'] ?? null)
                     ? (string) $created['id']
                     : $uid;

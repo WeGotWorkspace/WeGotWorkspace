@@ -144,6 +144,27 @@ describe("useNotesController bootstrap sync", () => {
     expect(result.current.active?.tags).toEqual(["plan-ning"]);
   });
 
+  it("removes a legacy tag and a mixed-case tag by the stored label", () => {
+    const data: NotesUIData = {
+      notes: [{ ...localNote, id: "note-1", tags: ["v2", "Work"] }],
+      notebooks: ["Drafts"],
+      tags: ["v2", "Work"],
+    };
+
+    const { result } = renderHook(() => useNotesController({ data, listLoading: false }));
+
+    clickSelect(result, "note-1");
+    act(() => {
+      result.current.toggleNoteTag("note-1", "v2");
+    });
+    expect(result.current.active?.tags).toEqual(["Work"]);
+
+    act(() => {
+      result.current.toggleNoteTag("note-1", "Work");
+    });
+    expect(result.current.active?.tags).toEqual([]);
+  });
+
   it("updates active.tags when toggleNoteTag removes a tag", () => {
     const data: NotesUIData = {
       notes: [{ ...localNote, id: "note-1", tags: ["focus", "draft"] }],

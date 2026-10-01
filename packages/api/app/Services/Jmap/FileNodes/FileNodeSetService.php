@@ -10,6 +10,7 @@ use App\Services\Drive\DocAttachmentPaths;
 use App\Services\Drive\DocAttachmentsService;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Notes\NoteMarkdownCodec;
+use App\Services\Notes\NoteTag;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
@@ -624,6 +625,17 @@ final class FileNodeSetService
             $out['title'] = $note['title'];
         }
         if (array_key_exists('tags', $note)) {
+            if (! is_array($note['tags'])) {
+                throw new FileNodeSetError($this->invalidProperties('note.tags must be an array.', ['note']));
+            }
+            foreach ($note['tags'] as $tag) {
+                if (! is_string($tag) || ! NoteTag::isValid(strtolower(trim($tag)))) {
+                    throw new FileNodeSetError($this->invalidProperties(
+                        'A tag may only use letters a-z and hyphen.',
+                        ['note'],
+                    ));
+                }
+            }
             $out['tags'] = $this->codec->normalizeTags($note['tags']);
         }
 

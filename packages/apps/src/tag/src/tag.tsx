@@ -134,6 +134,8 @@ export type TagGroupProps = {
    * Existing suggestions stay selectable.
    */
   acceptTag?: (value: string) => boolean;
+  /** Shown under the input when a newly typed label fails `acceptTag`. */
+  rejectHint?: string;
   /** Called with the item `id` (label when tags are strings). */
   onRemoveTag?: (id: string) => void;
   addPlaceholder?: string;
@@ -195,6 +197,7 @@ function TagAddField({
   appliedTags,
   allowCreate,
   acceptTag,
+  rejectHint,
   placeholder,
   ariaLabel,
   onConfirm,
@@ -204,12 +207,14 @@ function TagAddField({
   appliedTags: TagItem[];
   allowCreate: boolean;
   acceptTag?: (value: string) => boolean;
+  rejectHint?: string;
   placeholder: string;
   ariaLabel: string;
   onConfirm: (idOrLabel: string) => void;
   onCancel: () => void;
 }) {
   const listId = useId();
+  const hintId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -297,6 +302,7 @@ function TagAddField({
         aria-controls={listId}
         aria-autocomplete="list"
         aria-invalid={rejected || undefined}
+        aria-describedby={rejected && rejectHint ? hintId : undefined}
         aria-activedescendant={activeOption ? `${listId}-${activeOption.id}` : undefined}
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={onKeyDown}
@@ -304,6 +310,11 @@ function TagAddField({
           if (!query.trim()) onCancel();
         }}
       />
+      {rejected && rejectHint ? (
+        <p id={hintId} className="tag-group__hint">
+          {rejectHint}
+        </p>
+      ) : null}
       {showList ? (
         <ul id={listId} className="tag-group__suggestions" role="listbox" aria-label={ariaLabel}>
           {options.map((option, index) => {
@@ -340,6 +351,7 @@ export function TagGroup({
   suggestions = [],
   allowCreate = true,
   acceptTag,
+  rejectHint,
   onAddTag,
   onRemoveTag,
   addPlaceholder = "Add tag…",
@@ -386,6 +398,7 @@ export function TagGroup({
           appliedTags={items}
           allowCreate={allowCreate}
           acceptTag={acceptTag}
+          rejectHint={rejectHint}
           placeholder={addPlaceholder}
           ariaLabel={addAriaLabel}
           onConfirm={(idOrLabel) => {

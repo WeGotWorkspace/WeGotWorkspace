@@ -139,6 +139,32 @@ final class McpNotesToolsTest extends WgwDatabaseTestCase
             ->assertHasErrors(['Notebook not found']);
     }
 
+    public function test_note_write_rejects_tags_outside_a_z_and_hyphen(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+        Passport::actingAs($user, [McpScopes::NOTES_WRITE], 'api', $client);
+
+        WorkspaceServer::actingAs($user, 'api')
+            ->tool(NoteWriteTool::class, [
+                'action' => 'create',
+                'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+                'title' => 'Bad tag',
+                'categories' => ['Q3 planning'],
+            ])
+            ->assertHasErrors(['A tag may only use letters a-z and hyphen.']);
+
+        WorkspaceServer::actingAs($user, 'api')
+            ->tool(NoteWriteTool::class, [
+                'action' => 'create',
+                'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+                'title' => 'Good tag',
+                'categories' => ['Focus'],
+            ])
+            ->assertOk()
+            ->assertSee('focus');
+    }
+
     public function test_notebook_share_round_trip_and_acl(): void
     {
         $bob = $this->mcpUser('bob');

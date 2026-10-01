@@ -40,8 +40,8 @@ import { useNotesController } from "@/notes-core/src/use-notes-controller";
 import {
   noteAllowsTagAssignment,
   noteListTitle,
+  isValidNewTag,
   noteShowsTags,
-  normalizeTag,
 } from "@/notes-core/src/notes-note-utils";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import { resolveNotesEditorEditable } from "@/notes-core/src/notes-collab-permissions";
@@ -659,7 +659,8 @@ export function NotesWorkspace({
                 }
                 tags={active.tags}
                 availableTags={tags}
-                acceptTag={(label) => normalizeTag(label) !== ""}
+                acceptTag={isValidNewTag}
+                rejectHint={L.tagCharsetHint}
                 showTags={activeShowsTags}
                 onTagAdd={
                   activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined

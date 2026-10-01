@@ -23,7 +23,7 @@ final class NoteJournalConverter
     /**
      * @param  array<string, mixed>  $note
      */
-    public function toIcs(array $note): string
+    public function toIcs(array $note, bool $allowStoredTags = false): string
     {
         $body = is_string($note['body'] ?? null) ? $note['body'] : '';
         $this->assertBodySize($body);
@@ -43,7 +43,9 @@ final class NoteJournalConverter
         if ($body !== '') {
             $journal->DESCRIPTION = $body;
         }
-        $categories = NoteTag::normalizeList($note['categories'] ?? []);
+        $categories = $allowStoredTags
+            ? NoteTag::normalizeStored($note['categories'] ?? [])
+            : NoteTag::normalizeList($note['categories'] ?? []);
         if ($categories !== []) {
             $journal->CATEGORIES = $categories;
         }
@@ -103,8 +105,8 @@ final class NoteJournalConverter
             }
         }
         if (array_key_exists('categories', $patch) && is_array($patch['categories'])) {
+            $categories = NoteTag::mergeForUpdate($patch['categories'], $this->categoryParts($journal));
             unset($journal->CATEGORIES);
-            $categories = NoteTag::normalizeList($patch['categories']);
             if ($categories !== []) {
                 $journal->CATEGORIES = $categories;
             }
@@ -181,13 +183,7 @@ final class NoteJournalConverter
         $uid = isset($journal->UID) ? (string) $journal->UID : $fallbackUid;
         $title = isset($journal->SUMMARY) ? (string) $journal->SUMMARY : null;
         $body = isset($journal->DESCRIPTION) ? (string) $journal->DESCRIPTION : '';
-        $categories = [];
-        if (isset($journal->CATEGORIES)) {
-            foreach ($journal->CATEGORIES as $category) {
-                $categories = array_merge($categories, $category->getParts());
-            }
-        }
-        $categories = NoteTag::normalizeList($categories);
+        $categories = NoteTag::normalizeStored($this->categoryParts($journal));
         $status = isset($journal->STATUS) ? strtoupper((string) $journal->STATUS) : null;
         if ($status !== 'CANCELLED' && $status !== 'FINAL') {
             $status = null;
@@ -206,6 +202,47 @@ final class NoteJournalConverter
         }
 
         return $note;
+    }
+
+    /**
+     * Tags already stored on a journal, lowercased, including legacy values.
+     *
+     * @return list<string>
+     */
+    public function storedCategories(string $ics): array
+    {
+        $categories = $this->fromIcs($ics, '')['categories'] ?? [];
+        if (! is_array($categories)) {
+            return [];
+        }
+        $out = [];
+        foreach ($categories as $tag) {
+            if (is_string($tag)) {
+                $out[] = $tag;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function categoryParts(VJournal $journal): array
+    {
+        if (! isset($journal->CATEGORIES)) {
+            return [];
+        }
+        $parts = [];
+        foreach ($journal->CATEGORIES as $category) {
+            foreach ($category->getParts() as $part) {
+                if (is_string($part)) {
+                    $parts[] = $part;
+                }
+            }
+        }
+
+        return $parts;
     }
 
     /**

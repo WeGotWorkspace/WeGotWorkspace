@@ -14,7 +14,9 @@ import {
   mergeBootstrapNotesPreservingOptimistic,
   mergeCreatedNotePreservingLocalOptimistic,
   normalizeNoteBodyMarkdown,
+  isValidNewTag,
   normalizeTag,
+  noteTagsAfterToggle,
   noteAllowsTagAssignment,
   isPlaceholderNoteListLabel,
   noteHasListableBody,
@@ -54,18 +56,32 @@ const sampleNote: Note = {
 };
 
 describe("notes-note-utils", () => {
-  it("normalizes tags by trimming whitespace", () => {
+  it("normalizes tags by trimming and lowercasing", () => {
     expect(normalizeTag("  focus  ")).toBe("focus");
+    expect(normalizeTag("  Plan-ning  ")).toBe("plan-ning");
+    expect(normalizeTag("Work")).toBe("work");
+    expect(normalizeTag("v2")).toBe("v2");
+    expect(normalizeTag("plan,ning")).toBe("plan,ning");
   });
 
-  it("accepts only a-z and hyphen, and lowercases letters", () => {
-    expect(normalizeTag("  Plan-ning  ")).toBe("plan-ning");
-    expect(normalizeTag("plan,ning")).toBe("");
-    expect(normalizeTag("plan ning")).toBe("");
-    expect(normalizeTag("plan_ning")).toBe("");
-    expect(normalizeTag("v2")).toBe("");
-    expect(normalizeTag("café")).toBe("");
-    expect(normalizeTag(",")).toBe("");
+  it("accepts a new tag only when it is letters a-z and hyphen", () => {
+    expect(isValidNewTag("  Plan-ning  ")).toBe(true);
+    expect(isValidNewTag("plan,ning")).toBe(false);
+    expect(isValidNewTag("plan ning")).toBe(false);
+    expect(isValidNewTag("plan_ning")).toBe(false);
+    expect(isValidNewTag("v2")).toBe(false);
+    expect(isValidNewTag("café")).toBe(false);
+    expect(isValidNewTag(",")).toBe(false);
+    expect(isValidNewTag("   ")).toBe(false);
+  });
+
+  it("removes a stored tag by its raw label and rejects an invalid add", () => {
+    expect(noteTagsAfterToggle(["v2", "Work"], "v2")).toEqual(["Work"]);
+    expect(noteTagsAfterToggle(["v2", "Work"], "Work")).toEqual(["v2"]);
+    expect(noteTagsAfterToggle(["v2", "Work"], "work")).toEqual(["v2"]);
+    expect(noteTagsAfterToggle(["focus"], "plan,ning")).toBeNull();
+    expect(noteTagsAfterToggle(["focus"], "Plan-ning")).toEqual(["focus", "plan-ning"]);
+    expect(noteTagsAfterToggle(["focus"], "v2")).toBeNull();
   });
 
   it("computes plain text and word count from markdown body", () => {

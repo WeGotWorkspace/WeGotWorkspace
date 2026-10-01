@@ -108,7 +108,7 @@ final class NoteRepository
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    public function create(string $username, array $payload): array
+    public function create(string $username, array $payload, bool $allowStoredTags = false): array
     {
         $notebookId = is_string($payload['notebookId'] ?? null) ? $payload['notebookId'] : '';
         $instance = $this->notebooks->findAccessibleNotebook($username, $notebookId);
@@ -129,7 +129,7 @@ final class NoteRepository
             'categories' => is_array($payload['categories'] ?? null) ? $payload['categories'] : [],
             'status' => $payload['status'] ?? null,
         ];
-        $ics = $this->converter->toIcs($note);
+        $ics = $this->converter->toIcs($note, $allowStoredTags);
         $objectUri = $uid.'.ics';
 
         try {
@@ -198,6 +198,9 @@ final class NoteRepository
         unset($fieldPatch['notebookId']);
         if ($fieldPatch !== []) {
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+            if (array_key_exists('categories', $fieldPatch) && is_array($fieldPatch['categories'])) {
+                $this->assertNewCategoriesAllowed($raw, array_values($fieldPatch['categories']));
+            }
             $ics = $this->converter->mergeIntoIcs($raw, $fieldPatch);
             try {
                 $this->calBackend()->updateCalendarObject(
@@ -474,6 +477,21 @@ final class NoteRepository
         );
 
         return $note;
+    }
+
+    /**
+     * A new tag must match {@see NoteTag::PATTERN}. A tag already on the note
+     * is allowed through so the next edit does not delete it.
+     *
+     * @param  list<mixed>  $submitted
+     */
+    private function assertNewCategoriesAllowed(string $ics, array $submitted): void
+    {
+        $existing = $this->converter->storedCategories($ics);
+        $normalized = NoteTag::normalizeStored($submitted);
+        if (NoteTag::mergeForUpdate($submitted, $existing) !== $normalized) {
+            throw new ApiHttpException(400, 'A tag may only use letters a-z and hyphen.', 'bad_request');
+        }
     }
 
     /**

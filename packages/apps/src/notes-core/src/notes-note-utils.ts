@@ -8,6 +8,14 @@ import { compareNotesDesc } from "@/notes-core/src/notes-date-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
 import { autofillNoteTitle } from "@/notes-core/src/notes-title-autofill";
+import { normalizeTag } from "@/notes-core/src/note-tag";
+
+export {
+  isValidNewTag,
+  normalizeTag,
+  noteTagToggle,
+  noteTagsAfterToggle,
+} from "@/notes-core/src/note-tag";
 
 export function persistBestEffort(promise: Promise<unknown>, onGone?: () => void, noteId?: string) {
   promise.catch((error) => {
@@ -167,14 +175,6 @@ export function noteListTitle(
     return text.length <= NOTE_LIST_TITLE_MAX ? text : `${text.slice(0, NOTE_LIST_TITLE_MAX - 1)}…`;
   }
   return "Untitled note";
-}
-
-const NOTE_TAG_PATTERN = /^[a-z-]+$/;
-
-/** Trim, lowercase, and keep letters a-z and hyphen. Anything else is rejected. */
-export function normalizeTag(value: string): string {
-  const normalized = value.trim().toLowerCase();
-  return NOTE_TAG_PATTERN.test(normalized) ? normalized : "";
 }
 
 type NoteShareAudienceFields = Pick<

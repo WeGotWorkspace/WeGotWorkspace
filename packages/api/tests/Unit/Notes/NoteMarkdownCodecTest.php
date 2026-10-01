@@ -29,6 +29,18 @@ final class NoteMarkdownCodecTest extends TestCase
         $this->assertSame(['focus'], $tags);
     }
 
+    public function test_parse_keeps_legacy_tags_only_when_asked(): void
+    {
+        $codec = new NoteMarkdownCodec;
+        $raw = "title: Legacy\ntags: v2, Focus\n----\nbody";
+
+        [, $strict] = $codec->parse($raw, 'fallback');
+        $this->assertSame(['focus'], $strict);
+
+        [, $legacy] = $codec->parse($raw, 'fallback', true);
+        $this->assertSame(['v2', 'focus'], $legacy);
+    }
+
     public function test_round_trip_markdown(): void
     {
         $codec = new NoteMarkdownCodec;
