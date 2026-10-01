@@ -29,6 +29,11 @@ export type ActionBarAction = {
    * (e.g. Delete → `button--severity-danger`).
    */
   severity?: ButtonSeverity;
+  /**
+   * Stay inline on a wide bar. On a small screen (collection detail overlay,
+   * max-width 767px) hide the button and list the action in the overflow menu.
+   */
+  collapseOnNarrow?: boolean;
 };
 
 export type ActionBarRightLeadingPlacement = "start" | "after-first";
@@ -71,16 +76,26 @@ export type ActionBarProps = {
   className?: string;
 };
 
-function splitInlineAndOverflow(
+function partitionActions(
   actions: ActionBarAction[],
   collapseActions: boolean,
-): { inline: ActionBarAction[]; overflow: ActionBarAction[] } {
-  if (!collapseActions || actions.length <= ACTION_BAR_MAX_INLINE_ACTIONS) {
-    return { inline: actions, overflow: [] };
+): { inline: ActionBarAction[]; menu: ActionBarAction[]; menuNarrowOnly: boolean } {
+  if (!collapseActions) {
+    return { inline: actions, menu: [], menuNarrowOnly: false };
   }
+  const inline =
+    actions.length <= ACTION_BAR_MAX_INLINE_ACTIONS
+      ? actions
+      : actions.slice(0, ACTION_BAR_MAX_INLINE_ACTIONS);
+  const countOverflow =
+    actions.length <= ACTION_BAR_MAX_INLINE_ACTIONS
+      ? []
+      : actions.slice(ACTION_BAR_MAX_INLINE_ACTIONS);
+  const narrowOverflow = inline.filter((action) => action.collapseOnNarrow);
   return {
-    inline: actions.slice(0, ACTION_BAR_MAX_INLINE_ACTIONS),
-    overflow: actions.slice(ACTION_BAR_MAX_INLINE_ACTIONS),
+    inline,
+    menu: [...countOverflow, ...narrowOverflow],
+    menuNarrowOnly: countOverflow.length === 0 && narrowOverflow.length > 0,
   };
 }
 
@@ -102,6 +117,7 @@ function renderActionItems(actions: ActionBarAction[]) {
               aria-pressed={action.active}
               className={cn(
                 "action-bar__action--labeled",
+                action.collapseOnNarrow && "action-bar__action--collapse-narrow",
                 action.active && ICON_BUTTON_ACTIVE_CLASSNAME,
               )}
             />
@@ -121,6 +137,7 @@ function renderActionItems(actions: ActionBarAction[]) {
         icon={action.icon}
         size="md"
         variant="outline"
+        className={cn(action.collapseOnNarrow && "action-bar__action--collapse-narrow")}
       />
     );
   });
@@ -128,6 +145,16 @@ function renderActionItems(actions: ActionBarAction[]) {
 
 function renderRightLeading(rightLeading: ReactNode) {
   return <div className="action-bar__right-leading">{rightLeading}</div>;
+}
+
+function renderActionRow(actions: ActionBarAction[]) {
+  if (actions.length === 0) return null;
+  const collapseRow = actions.every((action) => action.collapseOnNarrow);
+  return (
+    <div className={cn("action-bar__row", collapseRow && "action-bar__row--collapse-narrow")}>
+      {renderActionItems(actions)}
+    </div>
+  );
 }
 
 function renderRightInlineWithLeading({
@@ -143,18 +170,16 @@ function renderRightInlineWithLeading({
   if (placement === "after-first" && inline.length > 0 && leading != null) {
     return (
       <>
-        <div className="action-bar__row">{renderActionItems(inline.slice(0, 1))}</div>
+        {renderActionRow(inline.slice(0, 1))}
         {leading}
-        {inline.length > 1 ? (
-          <div className="action-bar__row">{renderActionItems(inline.slice(1))}</div>
-        ) : null}
+        {inline.length > 1 ? renderActionRow(inline.slice(1)) : null}
       </>
     );
   }
   return (
     <>
       {placement === "start" ? leading : null}
-      <div className="action-bar__row">{renderActionItems(inline)}</div>
+      {renderActionRow(inline)}
       {placement === "after-first" ? leading : null}
     </>
   );
@@ -216,10 +241,8 @@ export function ActionBar({
   const hasLeftActions = (leftActions?.length ?? 0) > 0;
   const hasRightActions = (rightActions?.length ?? 0) > 0;
   const hasRightChrome = hasRightActions || right != null || rightLeading != null;
-  const leftSplit = hasLeftActions ? splitInlineAndOverflow(leftActions!, collapseActions) : null;
-  const rightSplit = hasRightActions
-    ? splitInlineAndOverflow(rightActions!, collapseActions)
-    : null;
+  const leftSplit = hasLeftActions ? partitionActions(leftActions!, collapseActions) : null;
+  const rightSplit = hasRightActions ? partitionActions(rightActions!, collapseActions) : null;
 
   return (
     <nav className={cn("action-bar", !collapseActions && "action-bar--expanded", className)}>
@@ -236,14 +259,14 @@ export function ActionBar({
       ) : null}
       {leftSplit ? (
         <div className="action-bar__left">
-          <div className="action-bar__row">{renderActionItems(leftSplit.inline)}</div>
-          {leftSplit.overflow.length > 0
+          {renderActionRow(leftSplit.inline)}
+          {leftSplit.menu.length > 0
             ? renderCompactDropdown(
-                leftSplit.overflow,
+                leftSplit.menu,
                 leftMenuLabel,
                 leftMenuIcon,
                 "start",
-                "action-bar__menu",
+                cn("action-bar__menu", leftSplit.menuNarrowOnly && "action-bar__menu--narrow"),
               )
             : null}
         </div>
@@ -260,13 +283,13 @@ export function ActionBar({
                 rightLeading,
                 placement: rightLeadingPlacement,
               })}
-              {rightSplit.overflow.length > 0
+              {rightSplit.menu.length > 0
                 ? renderCompactDropdown(
-                    rightSplit.overflow,
+                    rightSplit.menu,
                     rightMenuLabel,
                     rightMenuIcon,
                     "end",
-                    "action-bar__menu",
+                    cn("action-bar__menu", rightSplit.menuNarrowOnly && "action-bar__menu--narrow"),
                   )
                 : null}
             </>

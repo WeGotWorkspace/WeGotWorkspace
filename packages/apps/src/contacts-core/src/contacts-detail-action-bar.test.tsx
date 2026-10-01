@@ -78,6 +78,9 @@ describe("ContactsDetailActionBar", () => {
     expect(edit.className).toContain("action-bar__action--labeled");
     expect(buttons[1].textContent).not.toContain(defaultContactsLabels.downloadVCard);
     expect(buttons[2].textContent).not.toContain(defaultContactsLabels.delete);
+    expect(buttons[1].className).toContain("action-bar__action--collapse-narrow");
+    expect(buttons[2].className).toContain("action-bar__action--collapse-narrow");
+    expect(container.querySelector(".action-bar__menu--narrow")).toBeTruthy();
   });
 
   it("pins edit before the address-book switcher and washes delete with severity-danger", () => {
@@ -97,7 +100,9 @@ describe("ContactsDetailActionBar", () => {
     expect(rightChildren[1]).toContain("action-bar__right-leading");
     expect(rightChildren[2]).toContain("action-bar__row");
 
-    const buttons = within(right as HTMLElement).getAllByRole("button");
+    const buttons = within(right as HTMLElement)
+      .getAllByRole("button")
+      .filter((button) => !button.closest(".action-bar__menu"));
     expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
       defaultContactsLabels.edit,
       defaultContactsLabels.downloadVCard,
@@ -143,6 +148,36 @@ describe("ContactsDetailActionBar", () => {
     fireEvent.click(actions.getByRole("button", { name: defaultContactsLabels.edit }));
 
     expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("puts download and delete in the overflow menu and keeps them working", () => {
+    const onDownload = vi.fn();
+    const onDelete = vi.fn();
+    const { container } = renderActionBar({ onDownload, onDelete });
+    const menu = container.querySelector(".action-bar__menu--narrow");
+    expect(menu).toBeTruthy();
+
+    const trigger = menu!.querySelector("button") as HTMLButtonElement;
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    fireEvent.click(
+      within(screen.getByRole("menu", { name: "More actions" })).getByRole("button", {
+        name: defaultContactsLabels.downloadVCard,
+      }),
+    );
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    fireEvent.click(
+      within(screen.getByRole("menu", { name: "More actions" })).getByRole("button", {
+        name: defaultContactsLabels.delete,
+      }),
+    );
+
+    expect(onDownload).toHaveBeenCalledOnce();
+    expect(onDelete).toHaveBeenCalledOnce();
+    expect(
+      screen.getByRole("button", { name: defaultContactsLabels.edit }).className,
+    ).not.toContain("action-bar__action--collapse-narrow");
   });
 
   it("shows save and cancel actions in create mode", () => {
