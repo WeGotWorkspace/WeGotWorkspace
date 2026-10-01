@@ -66,7 +66,7 @@ wait_until() {
   return 1
 }
 
-scheduler_user_in() {
+compose_scheduler_user() {
   local compose="$1"
   awk '
     /^  scheduler:/ { in_s=1; next }
@@ -78,17 +78,25 @@ scheduler_user_in() {
       found=1
       exit
     }
-    END { if (!found) print "root" }
+    END { if (!found) exit 1 }
   ' "$compose"
 }
 
 prime_scheduler_file_cache() {
   local cid="$1"
+  local dev="$ROOT/docker/install/docker-compose.yml"
+  local release="$ROOT/docker/install/docker-compose.release.yml"
   local dev_user release_user
-  dev_user="$(scheduler_user_in "$ROOT/docker/install/docker-compose.yml")"
-  release_user="$(scheduler_user_in "$ROOT/docker/install/docker-compose.release.yml")"
+  if ! dev_user="$(compose_scheduler_user "$dev")"; then
+    echo "scheduler user: is missing in ${dev}" >&2
+    return 1
+  fi
+  if ! release_user="$(compose_scheduler_user "$release")"; then
+    echo "scheduler user: is missing in ${release}" >&2
+    return 1
+  fi
   if [[ "$dev_user" != "$release_user" ]]; then
-    echo "scheduler user differs: docker-compose.yml=${dev_user} docker-compose.release.yml=${release_user}" >&2
+    echo "scheduler user differs: ${dev} has ${dev_user}, ${release} has ${release_user}" >&2
     return 1
   fi
   echo "Priming installer file cache as scheduler user ${dev_user}"
