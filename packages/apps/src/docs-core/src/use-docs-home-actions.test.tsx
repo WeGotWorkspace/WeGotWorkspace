@@ -12,6 +12,10 @@ import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
 
 const queueMutation = vi.fn();
 const undoLatest = vi.fn(() => false);
+const { showToast, showErrorToast } = vi.hoisted(() => ({
+  showToast: vi.fn(),
+  showErrorToast: vi.fn(),
+}));
 
 vi.mock("@/hooks/use-queued-mutation", () => ({
   useQueuedMutation: () => ({ queueMutation, undoLatest }),
@@ -19,10 +23,10 @@ vi.mock("@/hooks/use-queued-mutation", () => ({
 
 vi.mock("@/hooks/use-app-toast", () => ({
   useAppToast: () => ({
-    show: vi.fn(),
+    show: showToast,
     dismiss: vi.fn(),
     showSuccess: vi.fn(),
-    showError: vi.fn(),
+    showError: showErrorToast,
   }),
 }));
 
@@ -84,6 +88,18 @@ type MockOperations = DriveAPIOperations & {
   createFolder: ReturnType<typeof vi.fn>;
   listAllDirectoryEntries: ReturnType<typeof vi.fn>;
 };
+
+function listedFile(path: string, name = path.split("/").pop() ?? path) {
+  return {
+    name,
+    path,
+    type: "file" as const,
+    size: 1,
+    time: 0,
+    permissions: 0,
+    myRights: fullDriveMyRights,
+  };
+}
 
 function createMockOperations(starredPaths: string[] = []): MockOperations {
   const data = {} as DriveUIData;
@@ -415,17 +431,10 @@ describe("useDocsHomeActions", () => {
 
   it("undo uses unique trash path when a same-named file already exists in Trash", async () => {
     const operations = createMockOperations();
-    operations.listAllDirectoryEntries = vi.fn(async () => [
-      {
-        name: "B.md",
-        path: "/users/alice/.Trash/B.md",
-        type: "file" as const,
-        size: 1,
-        time: 0,
-        permissions: 0,
-        myRights: fullDriveMyRights,
-      },
-    ]);
+    operations.listAllDirectoryEntries = vi.fn(async (directory: string) => {
+      if (directory === "/users/alice/.Trash") return [listedFile("/users/alice/.Trash/B.md")];
+      return [];
+    });
     const data = {} as DriveUIData;
     operations.renameItem.mockResolvedValueOnce(data).mockResolvedValueOnce(data);
     const reload = vi.fn();
@@ -459,6 +468,143 @@ describe("useDocsHomeActions", () => {
         to: "B.md",
       }),
     );
+  });
+
+  it("undo restores files already moved to Trash when a later rename throws", async () => {
+    const operations = createMockOperations();
+    const data = {} as DriveUIData;
+    operations.renameItem
+      .mockResolvedValueOnce(data)
+      .mockRejectedValueOnce(new Error("rename failed"));
+    const reload = vi.fn();
+    const { result } = renderActions(operations, reload);
+
+    act(() => result.current.requestDeleteSelected(FILES.map((entry) => entry.id)));
+    act(() => result.current.confirmTrash());
+
+    const queued = queueMutation.mock.calls[0]?.[0];
+    await act(async () => {
+      await expect(queued?.execute(new AbortController().signal)).rejects.toThrow("rename failed");
+    });
+
+    await act(async () => {
+      queued?.undo();
+    });
+
+    await waitFor(() =>
+      expect(operations.renameItem).toHaveBeenCalledWith({
+        destination: "/users/alice",
+        from: "/users/alice/.Trash/A.md",
+        to: "A.md",
+      }),
+    );
+    const restores = operations.renameItem.mock.calls.filter(
+      (call) => call[0].destination === "/users/alice",
+    );
+    expect(restores).toEqual([
+      [{ destination: "/users/alice", from: "/users/alice/.Trash/A.md", to: "A.md" }],
+    ]);
+    expect(reload).toHaveBeenCalled();
+  });
+
+  it("restores a trashed file under a free name when the original title is taken", async () => {
+    const operations = createMockOperations();
+    operations.listAllDirectoryEntries.mockImplementation(async (directory: string) => {
+      if (directory === "/users/alice") return [listedFile("/users/alice/B.md")];
+      return [];
+    });
+    const reload = vi.fn();
+    const { result } = renderActions(operations, reload);
+
+    act(() => result.current.onTrash(FILES[1]!));
+    act(() => result.current.confirmTrash());
+
+    const queued = queueMutation.mock.calls[0]?.[0];
+    await act(async () => {
+      await queued?.execute(new AbortController().signal);
+    });
+    await act(async () => {
+      queued?.undo();
+    });
+
+    await waitFor(() =>
+      expect(operations.renameItem).toHaveBeenLastCalledWith({
+        destination: "/users/alice",
+        from: "/users/alice/.Trash/B.md",
+        to: "B 2.md",
+      }),
+    );
+    expect(showToast).toHaveBeenCalledWith("Restored “B.md” as “B 2.md”");
+    expect(reload).toHaveBeenCalled();
+  });
+
+  it("reports several renamed restores in one toast", async () => {
+    const operations = createMockOperations();
+    operations.listAllDirectoryEntries.mockImplementation(async (directory: string) => {
+      if (directory === "/users/alice") {
+        return [listedFile("/users/alice/A.md"), listedFile("/users/alice/B.md")];
+      }
+      return [];
+    });
+    const { result } = renderActions(operations);
+
+    act(() => result.current.requestDeleteSelected(FILES.map((entry) => entry.id)));
+    act(() => result.current.confirmTrash());
+
+    const queued = queueMutation.mock.calls[0]?.[0];
+    await act(async () => {
+      await queued?.execute(new AbortController().signal);
+    });
+    await act(async () => {
+      queued?.undo();
+    });
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledTimes(1));
+    expect(showToast).toHaveBeenCalledWith("Restored 2 files under a new name");
+  });
+
+  it("keeps later restores when one fails, reports the failure, and reloads", async () => {
+    const operations = createMockOperations();
+    const data = {} as DriveUIData;
+    operations.listAllDirectoryEntries.mockImplementation(async (directory: string) => {
+      if (directory === "/users/alice") return [listedFile("/users/alice/B.md")];
+      return [];
+    });
+    operations.renameItem.mockImplementation(
+      async (input: { destination: string; from: string }) => {
+        if (input.destination.endsWith("/.Trash")) return data;
+        if (input.from.endsWith("/.Trash/A.md")) throw new Error("restore failed");
+        return data;
+      },
+    );
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const reload = vi.fn();
+    const { result } = renderActions(operations, reload);
+
+    act(() => result.current.requestDeleteSelected(FILES.map((entry) => entry.id)));
+    act(() => result.current.confirmTrash());
+
+    const queued = queueMutation.mock.calls[0]?.[0];
+    await act(async () => {
+      await queued?.execute(new AbortController().signal);
+    });
+    const reloadsBeforeUndo = reload.mock.calls.length;
+
+    await act(async () => {
+      queued?.undo();
+    });
+
+    await waitFor(() =>
+      expect(operations.renameItem).toHaveBeenLastCalledWith({
+        destination: "/users/alice",
+        from: "/users/alice/.Trash/B.md",
+        to: "B 2.md",
+      }),
+    );
+    expect(showToast).toHaveBeenCalledWith("Restored “B.md” as “B 2.md”");
+    expect(showErrorToast).toHaveBeenCalledWith("Couldn't restore 1 file");
+    expect(reload.mock.calls.length).toBeGreaterThan(reloadsBeforeUndo);
+    consoleError.mockRestore();
   });
 
   it("skips server revert on undo when offline-only trash never reached the server", async () => {
