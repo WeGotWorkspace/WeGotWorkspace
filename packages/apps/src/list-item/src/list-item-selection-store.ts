@@ -4,11 +4,14 @@ export type ListSelectionState = {
   selectionMode: boolean;
 };
 
+/**
+ * Active and selected bits only. Selection mode is painted from the list root
+ * (`data-list-selection-mode`) so entering multi-select does not re-render every row.
+ */
 export function listItemHighlightKey(state: ListSelectionState, id: string): string {
   const active = state.activeId === id ? "1" : "0";
   const selected = state.selectedIds.includes(id) ? "1" : "0";
-  const mode = state.selectionMode ? "1" : "0";
-  return `${active}${selected}${mode}`;
+  return `${active}${selected}`;
 }
 
 function sameSelectedIds(a: readonly string[], b: readonly string[]): boolean {
@@ -23,6 +26,7 @@ export function createListSelectionStore() {
     selectedIds: [],
     selectionMode: false,
   };
+  let version = 0;
   const listeners = new Set<() => void>();
 
   return {
@@ -35,6 +39,9 @@ export function createListSelectionStore() {
     getState(): ListSelectionState {
       return state;
     },
+    getVersion(): number {
+      return version;
+    },
     highlightKey(id: string): string {
       return listItemHighlightKey(state, id);
     },
@@ -46,6 +53,7 @@ export function createListSelectionStore() {
       ) {
         return false;
       }
+      version += 1;
       state = {
         activeId: next.activeId,
         selectedIds: next.selectedIds,

@@ -29,6 +29,7 @@ final class SabreWebdavFrontTest extends WgwDatabaseTestCase
         $factory = $this->app->make(SabreServerFactory::class);
         $server = $factory->create();
         $this->assertSame('/', $server->getBaseUri());
+        $this->assertNotNull($server->getPlugin('drive-star-path'));
 
         $this->assertTrue($this->app->make(AppPaths::class)->isInstalled());
     }

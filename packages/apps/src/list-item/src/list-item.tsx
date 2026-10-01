@@ -7,7 +7,10 @@ import {
   LeadingActions,
 } from "react-swipeable-list";
 import { useListItemEventDelegation } from "@/list-item/src/list-item-delegation";
-import { useListItemHighlight } from "@/list-item/src/list-item-selection";
+import {
+  useHasListSelectionStore,
+  useListItemHighlight,
+} from "@/list-item/src/list-item-selection";
 import { LIST_ITEM_LONG_PRESS_DELAY_MS } from "@/list-item/src/use-delegated-list-item-events";
 import "./list-item.css";
 
@@ -124,7 +127,8 @@ export function ListItem({
 }: ListItemProps) {
   const entityId = itemId ?? id;
   const delegated = useListItemEventDelegation();
-  const highlight = useListItemHighlight(entityId, { isActive, isSelected, selectionMode });
+  const hasSelectionStore = useHasListSelectionStore();
+  const highlight = useListItemHighlight(entityId, { isActive, isSelected });
   const palette = { ...defaultTheme, ...theme };
   const themeVars = theme ? themeToCssVars(palette) : undefined;
   const bodyContent = text || (!title ? emptyText : null);
@@ -168,7 +172,7 @@ export function ListItem({
       data-list-item-id={entityId}
       data-active={highlight.isActive ? "true" : "false"}
       data-selected={highlight.isSelected ? "true" : "false"}
-      data-selection-mode={highlight.selectionMode ? "true" : "false"}
+      {...(hasSelectionStore ? {} : { "data-selection-mode": selectionMode ? "true" : "false" })}
       data-dragging={isDragging ? "true" : "false"}
       onClick={
         delegated

@@ -6,6 +6,7 @@ import "@/floating-action-bar/src/floating-action-bar.css";
 import { MeetCircleToggle } from "@/meet-core/src/meet-circle-toggle";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
+import { meetCallPeerMicOn } from "@/meet-core/src/meet-call-spotlight";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import {
   meetCallMiniPlayerVisible,
@@ -13,6 +14,8 @@ import {
 } from "@/meet-core/src/meet-call-resume";
 import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { resolveMeetMiniPlayerPreview } from "@/meet-core/src/meet-mini-player-subject";
+import { useMeetSpeechLevels } from "@/meet-core/src/use-meet-speech-levels";
 import {
   meetClampMiniPlayerPosition,
   meetMiniPlayerDragExceededThreshold,
@@ -67,7 +70,50 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
     onMeetPath: pathname.startsWith("/meet"),
     callUiParked: snapshot.callUiParked,
   });
-  const showVideo = visible && snapshot.videoOn && !snapshot.screenOn;
+  const selfId = snapshot.selfId ?? "self";
+  const levels = useMeetSpeechLevels(
+    [
+      {
+        id: selfId,
+        stream: store.localStreamRef.current,
+        enabled: snapshot.micOn,
+      },
+      ...snapshot.participants.map((peer) => ({
+        id: peer.id,
+        stream: peer.stream,
+        enabled: meetCallPeerMicOn(peer),
+      })),
+    ],
+    visible,
+  );
+  const previousSubjectIdRef = useRef<string | null>(null);
+  const preview = visible
+    ? resolveMeetMiniPlayerPreview({
+        self: {
+          id: selfId,
+          name: snapshot.displayName.trim() || "You",
+          level: snapshot.micOn ? (levels[selfId] ?? 0) : 0,
+          videoOn: snapshot.videoOn,
+          screenOn: snapshot.screenOn,
+          stream: store.localStreamRef.current,
+        },
+        peers: snapshot.participants.map((peer) => ({
+          id: peer.id,
+          name: peer.name,
+          level: meetCallPeerMicOn(peer) ? (levels[peer.id] ?? 0) : 0,
+          stream: peer.stream,
+          remoteMedia: peer.remoteMedia,
+          disclosedMedia: peer.disclosedMedia,
+        })),
+        previousId: previousSubjectIdRef.current,
+      })
+    : null;
+  const previewId = preview?.id ?? null;
+  useEffect(() => {
+    previousSubjectIdRef.current = visible ? previewId : null;
+  }, [previewId, visible]);
+  const showVideo = preview?.showVideo === true;
+  const previewStream = showVideo ? (preview?.stream ?? null) : null;
   const remoteAudioPeers = visible
     ? snapshot.participants.flatMap((peer) =>
         remoteParticipantHasAudio(peer.stream) ? [{ id: peer.id, stream: peer.stream }] : [],
@@ -75,14 +121,18 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
     : [];
 
   useEffect(() => {
-    if (!showVideo) return;
     const node = videoRef.current;
-    if (!node) return;
-    node.srcObject = store.localStreamRef.current;
+    if (!node || !previewStream) return;
+    node.srcObject = previewStream;
+    const onAddTrack = () => {
+      node.srcObject = previewStream;
+    };
+    previewStream.addEventListener("addtrack", onAddTrack);
     return () => {
+      previewStream.removeEventListener("addtrack", onAddTrack);
       node.srcObject = null;
     };
-  }, [showVideo, store]);
+  }, [previewStream]);
 
   useEffect(() => {
     if (!visible || !snapshot.startedAt) return;
@@ -224,9 +274,22 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
         aria-label={meetLabels.returnToCall}
       >
         {showVideo ? (
-          <video ref={videoRef} autoPlay muted playsInline className="meet-mini-player__video" />
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className={cn(
+              "meet-mini-player__video",
+              preview?.mirrored && "meet-mini-player__video--mirrored",
+            )}
+          />
         ) : (
-          <UserAvatar displayName={snapshot.displayName || "You"} compact size="md" />
+          <UserAvatar
+            displayName={preview?.name || snapshot.displayName || "You"}
+            compact
+            size="md"
+          />
         )}
       </button>
       <div className="meet-mini-player__info">
