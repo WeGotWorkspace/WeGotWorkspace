@@ -52,6 +52,9 @@
 
 .meet-mini-player__video {
   @apply h-full w-full object-cover;
+}
+
+.meet-mini-player__video--mirrored {
   transform: scaleX(-1);
 }
 
