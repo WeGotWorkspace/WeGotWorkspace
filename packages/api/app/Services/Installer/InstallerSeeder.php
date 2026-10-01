@@ -83,7 +83,7 @@ final class InstallerSeeder
             ['uri' => AdminConstants::ADMIN_GROUP_URI],
             ['email' => null, 'displayname' => 'Administrators'],
         );
-        $this->groupFiles->ensureForSlug('administrators');
+        $this->groupFiles->ensureForSlug(substr(AdminConstants::ADMIN_GROUP_URI, strlen(AdminConstants::GROUP_PREFIX)));
         $member = Principal::query()->where('uri', $memberPrincipalUri)->first();
         if ($member === null) {
             return;
