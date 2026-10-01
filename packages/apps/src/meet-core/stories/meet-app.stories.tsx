@@ -332,7 +332,6 @@ export const CallFullscreen: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(meetLabels.meetInChannel("#design"))).toBeInTheDocument();
     await expect(canvas.getByText(meetLabels.chatInChannel("#design"))).toBeInTheDocument();
-    await expect(canvas.getByText(meetLabels.speaking)).toBeInTheDocument();
     await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.collapseCall })).toBeInTheDocument();

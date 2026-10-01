@@ -21,7 +21,7 @@ export function MeetCircleToggle({ on, onClick, OnIcon, OffIcon, label }: MeetCi
       icon={<Icon />}
       size="md"
       variant="outline"
-      active={on}
+      severity={on ? undefined : "danger"}
       aria-pressed={on}
     />
   );

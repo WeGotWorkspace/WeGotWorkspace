@@ -5,7 +5,8 @@
 }
 
 .chat-reaction-bar__reaction {
-  @apply inline-flex h-6 items-center gap-1 rounded-full border px-1.5 text-xs transition-colors;
+  @apply inline-flex h-6 items-center gap-1 border px-1.5 text-xs transition-colors;
+  border-radius: var(--control-radius);
   border-color: var(--chat-border, color-mix(in oklab, var(--color-we-got-dark) 10%, transparent));
   background-color: var(
     --chat-reaction-bg,
@@ -23,7 +24,10 @@
 
 .chat-reaction-bar__reaction[data-reacted="true"] {
   border-color: color-mix(in oklab, var(--chat-accent, #1d4ed8) 35%, transparent);
-  background-color: color-mix(in oklab, var(--chat-accent, #1d4ed8) 10%, transparent);
+  background-color: var(
+    --chat-reaction-selected-bg,
+    color-mix(in oklab, var(--chat-accent, #1d4ed8) 10%, transparent)
+  );
   color: color-mix(in oklab, var(--chat-accent, #1d4ed8) 88%, var(--color-we-got-dark));
 }
 

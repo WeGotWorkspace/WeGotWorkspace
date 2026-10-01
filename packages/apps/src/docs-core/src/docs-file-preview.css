@@ -25,7 +25,7 @@
   --docs-file-preview-tile-page-width: 8.5in;
   --docs-file-preview-tile-scale: 1;
   @apply overflow-hidden pointer-events-none;
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
 }
 
 .docs-file-preview__tile-scale {

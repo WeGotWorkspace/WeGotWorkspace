@@ -98,6 +98,92 @@ function docsSidebarOverrideCss(
 `;
 }
 
+/** Addon localStorage. Untouched rows equal `initialCustomProperties`. */
+export const BRANDING_CSSPROPS_STORAGE_KEY = "addon-cssprops";
+
+export type AddonCsspropsStore = {
+  customProperties?: Record<string, Record<string, string>>;
+  initialCustomProperties?: Record<string, Record<string, string>>;
+};
+
+/** Same cascade form, so `#fff` and `oklch(from #fff l c h)` count as one value. */
+export function brandingCsspropEquals(a: string, b: string): boolean {
+  return brandColorForCascade(a.trim()) === brandColorForCascade(b.trim());
+}
+
+/**
+ * Tokens the canvas may paint over `*-workspace.css`.
+ *
+ * The workspace stylesheet is the source of truth. Parameter defaults are the
+ * panel's starting point, not a second theme: they are omitted here. A body
+ * value counts only when it differs from that default. A stored row that still
+ * equals its saved initial value is an old default, not an edit, so it is
+ * omitted too.
+ */
+export function csspropValuesForPaint(
+  entries: CsspropSeedEntry[],
+  body: CSSStyleDeclaration = typeof document === "undefined"
+    ? ({} as CSSStyleDeclaration)
+    : document.body.style,
+  store: AddonCsspropsStore | null = null,
+  storyId: string | null = null,
+): Record<string, string> {
+  const custom = storyId ? store?.customProperties?.[storyId] : undefined;
+  const initial = storyId ? store?.initialCustomProperties?.[storyId] : undefined;
+  const paint: Record<string, string> = {};
+  for (const { key, value: seed } of entries) {
+    const stored = custom?.[key];
+    const initialValue = initial?.[key];
+    const untouchedStaleDefault =
+      stored !== undefined &&
+      initialValue !== undefined &&
+      brandingCsspropEquals(stored, initialValue) &&
+      !brandingCsspropEquals(stored, seed);
+    const fromBody = body.getPropertyValue?.(`--${key}`)?.trim() ?? "";
+    const chosen = untouchedStaleDefault ? seed : fromBody || seed;
+    if (brandingCsspropEquals(chosen, seed)) continue;
+    paint[`--${key}`] = chosen;
+  }
+  return paint;
+}
+
+/**
+ * Move untouched addon rows onto the current parameter defaults.
+ * Rows the user changed (`custom` ≠ `initial`) stay put.
+ */
+export function reconcileUntouchedCsspropDefaults(
+  store: AddonCsspropsStore,
+  storyId: string,
+  entries: CsspropSeedEntry[],
+): { store: AddonCsspropsStore; changed: boolean } {
+  const custom = store.customProperties?.[storyId];
+  const initial = store.initialCustomProperties?.[storyId];
+  if (!custom || !initial) return { store, changed: false };
+
+  let changed = false;
+  const nextCustom = { ...custom };
+  const nextInitial = { ...initial };
+  for (const { key, value } of entries) {
+    const stored = custom[key];
+    const initialValue = initial[key];
+    if (stored === undefined || initialValue === undefined) continue;
+    if (!brandingCsspropEquals(stored, initialValue)) continue;
+    if (brandingCsspropEquals(stored, value)) continue;
+    nextCustom[key] = value;
+    nextInitial[key] = value;
+    changed = true;
+  }
+  if (!changed) return { store, changed: false };
+  return {
+    changed: true,
+    store: {
+      ...store,
+      customProperties: { ...store.customProperties, [storyId]: nextCustom },
+      initialCustomProperties: { ...store.initialCustomProperties, [storyId]: nextInitial },
+    },
+  };
+}
+
 /**
  * Resolve cssprop map for the playground: live `document.body` values from
  * `@ljcl/storybook-addon-cssprops` win; otherwise parameter defaults.
@@ -133,11 +219,11 @@ export function syncBrandingCsspropsToRoot(
 }
 
 /**
- * Build workspace override CSS with **concrete** token values (not `inherit`).
+ * Build workspace override CSS for tokens the designer changed.
  *
- * `inherit` wiped production `*-workspace.css` defaults whenever the ancestor
- * chain had no value (Canvas cssprops panel cleanup / Docs body without seeds).
- * Concrete overrides keep CTAs branded even when `document.body` has no cssprops.
+ * An empty `values` map emits no workspace rule, so `*-workspace.css` paints.
+ * `inherit` is never used: it wiped production defaults when the ancestor
+ * chain had no value.
  */
 export function buildBrandingWorkspaceOverrideCss(
   workspaceClass: string,
@@ -151,27 +237,55 @@ export function buildBrandingWorkspaceOverrideCss(
     .join("\n");
 
   const waiDecls = sidebarSwitchTriggerWaiDecls(workspaceClass, values);
+  const workspaceRule = decls
+    ? `.branding-playground-root .${workspaceClass} {\n${decls}\n}\n`
+    : "";
 
-  return `
-.branding-playground-root .${workspaceClass} {
-${decls}
-}
-${
-  waiDecls
-    ? `.branding-playground-root .${workspaceClass} .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger svg {
+  return `${workspaceRule}${
+    waiDecls
+      ? `.branding-playground-root .${workspaceClass} .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger svg {
 ${waiDecls}
 }
 `
-    : ""
+      : ""
+  }${docsSidebarOverrideCss(workspaceClass, fullAccentSidebar)}`;
 }
-${docsSidebarOverrideCss(workspaceClass, fullAccentSidebar)}
-`;
+
+function brandingStoryId(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("id");
+}
+
+function readAddonCsspropsStore(): AddonCsspropsStore | null {
+  if (typeof localStorage === "undefined") return null;
+  const raw = localStorage.getItem(BRANDING_CSSPROPS_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as AddonCsspropsStore;
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeAddonCsspropsStore(store: AddonCsspropsStore): void {
+  const serialized = JSON.stringify(store);
+  localStorage.setItem(BRANDING_CSSPROPS_STORAGE_KEY, serialized);
+  const parentWindow = window.parent;
+  if (!parentWindow || parentWindow === window) return;
+  parentWindow.dispatchEvent(
+    new StorageEvent("storage", {
+      key: BRANDING_CSSPROPS_STORAGE_KEY,
+      newValue: serialized,
+      storageArea: localStorage,
+    }),
+  );
 }
 
 /**
  * Keep playground-root cssprops in sync with body (addon) + parameter defaults.
- * Observes body `style` so Canvas panel setAttribute / removeAttribute still
- * drives live edits without leaving workspace tokens empty.
+ * Observes body `style` so Canvas panel cleanup still drives live edits.
  */
 function BrandingCsspropRootSync({
   entries,
@@ -190,8 +304,19 @@ function BrandingCsspropRootSync({
     if (typeof document === "undefined") return;
 
     const sync = () => {
-      const next = resolveBrandingCsspropValues(entriesRef.current);
-      onValuesRef.current(next);
+      const storyId = brandingStoryId();
+      const store = readAddonCsspropsStore();
+      if (storyId && store) {
+        const next = reconcileUntouchedCsspropDefaults(store, storyId, entriesRef.current);
+        if (next.changed) writeAddonCsspropsStore(next.store);
+      }
+      const paint = csspropValuesForPaint(
+        entriesRef.current,
+        document.body.style,
+        readAddonCsspropsStore(),
+        storyId,
+      );
+      onValuesRef.current(paint);
     };
     sync();
 
@@ -219,10 +344,13 @@ function BrandingPlaygroundShell({
   children: ReactNode;
 }): ReactNode {
   const [csspropValues, setCsspropValues] = useState(() => {
-    if (typeof document === "undefined") {
-      return Object.fromEntries(entries.map(({ key, value }) => [`--${key}`, value]));
-    }
-    return resolveBrandingCsspropValues(entries);
+    if (typeof document === "undefined") return {};
+    return csspropValuesForPaint(
+      entries,
+      document.body.style,
+      readAddonCsspropsStore(),
+      brandingStoryId(),
+    );
   });
 
   const onCsspropValues = (next: Record<string, string>) => {
@@ -261,9 +389,9 @@ function BrandingPlaygroundShell({
 }
 
 /**
- * Wraps a mock workspace so cssprops win over workspace CSS defaults (via
- * concrete overrides on `.branding-playground-root .${workspaceClass}` +
- * switch-trigger SVG), and wires icon overrides.
+ * Wraps a mock workspace. `*-workspace.css` paints the theme. The CSS props
+ * panel overrides a token only after it changes; untouched defaults are not
+ * written onto the workspace. Icon preset swaps stay on the decorator.
  */
 export const BrandingWorkspaceDecorator: Decorator = (Story, context) => {
   const branding = context.parameters.brandingPlayground as

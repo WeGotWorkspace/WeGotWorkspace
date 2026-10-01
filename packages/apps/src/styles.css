@@ -4,8 +4,10 @@
 @import "../public/fonts/fonts.css";
 
 @theme inline {
-  /* Brand / system face primitives (no role). */
+  /* Brand / system face primitives (no role).
+   * UI sans is Plus Jakarta Sans. Large sans headlines use We Got Sans. */
   --font-we-got-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-we-got-headline: "We Got Sans", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-we-got-serif: "We Got Serif", serif;
   --font-we-got-mono: "JetBrains Mono", ui-monospace, monospace;
   --font-we-got-mark: "Bebas Neue", ui-sans-serif, system-ui, sans-serif;

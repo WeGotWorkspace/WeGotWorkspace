@@ -1270,7 +1270,6 @@ export function MeetWorkspace({
                       }
                       size="md"
                       variant="outline"
-                      showTooltip={false}
                       onClick={() => openEdit(selected)}
                     />
                   ) : null}

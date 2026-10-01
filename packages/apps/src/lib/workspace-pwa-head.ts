@@ -15,7 +15,7 @@ export const WORKSPACE_PWA_ICON_CACHE_VERSION = pwaIconCacheVersion.version;
 
 /**
  * Installed window chrome for every suite PWA (`theme_color`, `background_color`,
- * and the `theme-color` meta). Same hex as `--color-we-got-sand` / `--workspace-accent`.
+ * and the `theme-color` meta). Same hex as `--color-we-got-sand`. UI accents use Dark.
  * Launcher tiles stay on `WORKSPACE_APP_ACCENT`.
  */
 export const WORKSPACE_PWA_THEME_COLOR = "#ba9689";

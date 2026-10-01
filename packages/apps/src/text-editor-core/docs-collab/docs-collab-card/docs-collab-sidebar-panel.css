@@ -9,12 +9,15 @@
  * overlay matches docked chrome without Docs/Calendar forks.
  */
 .docs-collab-sidebar-panel-drawer {
-  --docs-collab-sidebar-panel-wash-recipe: color-mix(
-    in oklab,
-    var(--workspace-accent, var(--color-we-got-dark)) 10%,
-    var(--color-we-got-soft)
-  );
-  --docs-collab-sidebar-panel-wash: var(--docs-collab-sidebar-panel-wash-recipe);
+  /*
+   * Portaled under document.body, so the workspace rail does not inherit.
+   * Republish the default sidebar fill (5% icon into white). Product drawers
+   * set `--wai-bg` so Tasks/Notes percentages stay on their own hosts.
+   */
+  --sidebar-bg: color-mix(in oklch, var(--wai-bg, var(--color-we-got-dark)) 5%, #fff);
+  --app-sidebar-bg: var(--sidebar-bg);
+  --sidebar-on: var(--color-we-got-dark);
+  --docs-collab-sidebar-panel-wash: var(--app-sidebar-bg);
   background-color: var(--docs-collab-sidebar-panel-wash);
 
   /*
@@ -50,21 +53,12 @@
    */
   --docs-collab-sidebar-panel-padding-x: 1rem;
   /*
-   * Side-panel wash language (Calendar invitations source of truth):
-   * 10% product accent on cream. Workspaces may publish
-   * --docs-collab-sidebar-panel-wash; the recipe below is the fallback.
-   * Washed panels set --docs-collab-sidebar-panel-bg to that wash.
-   * Cream-only rails (Meet) leave --docs-collab-sidebar-panel-bg unset.
+   * Right docks use the left sidebar fill. `--app-sidebar-bg` is published on
+   * the workspace host, so a docked panel inherits it. Meet's chat rail sets
+   * `--docs-collab-sidebar-panel-bg` to the paper instead.
    */
-  --docs-collab-sidebar-panel-wash-recipe: color-mix(
-    in oklab,
-    var(--workspace-accent, var(--color-we-got-dark)) 10%,
-    var(--color-we-got-soft)
-  );
-  background-color: var(
-    --docs-collab-sidebar-panel-bg,
-    var(--docs-surface, var(--color-we-got-soft))
-  );
+  --docs-collab-sidebar-panel-bg: var(--app-sidebar-bg, var(--sidebar-bg));
+  background-color: var(--docs-collab-sidebar-panel-bg);
   color: var(--docs-collab-sidebar-panel-color, var(--docs-text, var(--color-we-got-dark)));
 }
 
@@ -86,11 +80,7 @@
     --docs-collab-sidebar-panel-border-color,
     color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
   );
-  /* Solid when washed; frosted cream when bg is unset. */
-  background-color: var(
-    --docs-collab-sidebar-panel-bg,
-    color-mix(in oklab, var(--docs-surface, var(--color-we-got-soft)) 72%, transparent)
-  );
+  background-color: var(--docs-collab-sidebar-panel-bg, var(--app-sidebar-bg, var(--sidebar-bg)));
   backdrop-filter: blur(8px);
 }
 

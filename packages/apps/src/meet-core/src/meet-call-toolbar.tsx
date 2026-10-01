@@ -12,7 +12,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/ui/alert-dialog";
+import "@/floating-action-bar/src/floating-action-bar.css";
 import type { MeetCallKnocker } from "@/meet-core/src/meet-call-knock";
+import { MeetCircleToggle } from "@/meet-core/src/meet-circle-toggle";
 import { MeetDevicePopover } from "@/meet-core/src/meet-device-popover";
 import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
 import { isDisplayCaptureSupported } from "@/meet-core/src/meet-display-capture";
@@ -85,96 +87,85 @@ export function MeetCallToolbar({
 }: MeetCallToolbarProps) {
   const shareAvailable = canShareScreen ?? isDisplayCaptureSupported();
   return (
-    <div className="meet-workspace__toolbar">
-      <div className="meet-workspace__toolbar-inner">
+    <div className="meet-workspace__toolbar floating-action-bar">
+      <MeetCircleToggle
+        on={micOn}
+        onClick={onToggleMic}
+        OnIcon={Mic}
+        OffIcon={MicOff}
+        label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
+      />
+      <MeetCircleToggle
+        on={videoOn}
+        onClick={onToggleVideo}
+        OnIcon={Video}
+        OffIcon={VideoOff}
+        label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
+      />
+      {shareAvailable || screenOn ? (
         <IconButton
-          onClick={onToggleMic}
-          icon={micOn ? <Mic /> : <MicOff />}
-          label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
+          onClick={onToggleScreenShare}
+          icon={<MonitorUp />}
+          label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
           size="md"
           variant="outline"
-          active={micOn}
-          aria-pressed={micOn}
+          active={screenOn}
+          aria-pressed={screenOn}
         />
+      ) : null}
+      <MeetDevicePopover
+        cameras={cameras}
+        microphones={microphones}
+        speakers={speakers}
+        camera={activeCamera}
+        microphone={activeMic}
+        speaker={activeSpeaker}
+        onCamera={onCameraChange}
+        onMicrophone={onMicrophoneChange}
+        onSpeaker={onSpeakerChange}
+      />
+      {extraActions}
+      {onAdmitKnocker && onDenyKnocker ? (
+        <MeetKnockBadge knockers={knockers} onAdmit={onAdmitKnocker} onDeny={onDenyKnocker} />
+      ) : null}
+      <span className="floating-action-bar__spacer" aria-hidden />
+      {confirmExit ? (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <IconButton icon={<PhoneOff />} label={callExitLabel} size="md" variant="destructive" />
+          </AlertDialogTrigger>
+          <AlertDialogContent className="meet-call-dialog">
+            <AlertDialogHeader className="meet-call-dialog__header">
+              <AlertDialogTitle>{callExitTitle}</AlertDialogTitle>
+              <AlertDialogDescription>{callExitDescription}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="meet-call-dialog__footer">
+              <AlertDialogCancel asChild>
+                <Button variant="outline" className="meet-call-dialog__cancel">
+                  {meetLabels.cancel}
+                </Button>
+              </AlertDialogCancel>
+              <AlertDialogAction asChild>
+                <Button
+                  variant="destructive"
+                  className="meet-call-dialog__confirm"
+                  onClick={onConfirmExit}
+                >
+                  {callExitLabel}
+                </Button>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : (
         <IconButton
-          onClick={onToggleVideo}
-          icon={videoOn ? <Video /> : <VideoOff />}
-          label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
+          onClick={onConfirmExit}
+          icon={<PhoneOff />}
+          label={callExitLabel}
           size="md"
-          variant="outline"
-          active={videoOn}
-          aria-pressed={videoOn}
+          variant="destructive"
         />
-        {shareAvailable || screenOn ? (
-          <IconButton
-            onClick={onToggleScreenShare}
-            icon={<MonitorUp />}
-            label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
-            size="md"
-            variant="outline"
-            active={screenOn}
-            aria-pressed={screenOn}
-          />
-        ) : null}
-        <MeetDevicePopover
-          cameras={cameras}
-          microphones={microphones}
-          speakers={speakers}
-          camera={activeCamera}
-          microphone={activeMic}
-          speaker={activeSpeaker}
-          onCamera={onCameraChange}
-          onMicrophone={onMicrophoneChange}
-          onSpeaker={onSpeakerChange}
-        />
-        {extraActions}
-        {onAdmitKnocker && onDenyKnocker ? (
-          <MeetKnockBadge knockers={knockers} onAdmit={onAdmitKnocker} onDeny={onDenyKnocker} />
-        ) : null}
-        <div className="meet-workspace__toolbar-divider" aria-hidden />
-        {confirmExit ? (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <IconButton
-                icon={<PhoneOff />}
-                label={callExitLabel}
-                size="md"
-                variant="destructive"
-              />
-            </AlertDialogTrigger>
-            <AlertDialogContent className="meet-call-dialog">
-              <AlertDialogHeader className="meet-call-dialog__header">
-                <AlertDialogTitle>{callExitTitle}</AlertDialogTitle>
-                <AlertDialogDescription>{callExitDescription}</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="meet-call-dialog__footer">
-                <AlertDialogCancel asChild>
-                  <Button variant="outline" className="meet-call-dialog__cancel">
-                    {meetLabels.cancel}
-                  </Button>
-                </AlertDialogCancel>
-                <AlertDialogAction asChild>
-                  <Button
-                    variant="destructive"
-                    className="meet-call-dialog__confirm"
-                    onClick={onConfirmExit}
-                  >
-                    {callExitLabel}
-                  </Button>
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ) : (
-          <IconButton
-            onClick={onConfirmExit}
-            icon={<PhoneOff />}
-            label={callExitLabel}
-            size="md"
-            variant="destructive"
-          />
-        )}
-      </div>
+      )}
     </div>
   );
 }

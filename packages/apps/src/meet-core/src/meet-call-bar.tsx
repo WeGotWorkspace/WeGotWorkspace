@@ -12,7 +12,9 @@ import {
   meetCallBarShownCount,
 } from "@/meet-core/src/meet-call-bar-roster";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { MeetCircleToggle } from "@/meet-core/src/meet-circle-toggle";
 import { MeetPeerTile } from "@/meet-core/src/meet-peer-tile";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
 
@@ -126,12 +128,20 @@ export function MeetCallBar({
           <ul className="meet-call-bar__avatars">
             {roster.map((person) => (
               <li key={person.id}>
-                <UserAvatar
-                  displayName={person.name}
-                  compact
-                  size="md"
-                  color={avatarColorForUserId(person.id)}
-                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <UserAvatar
+                        displayName={person.name}
+                        ariaLabel={person.name}
+                        compact
+                        size="md"
+                        color={avatarColorForUserId(person.id)}
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{person.name}</TooltipContent>
+                </Tooltip>
               </li>
             ))}
           </ul>
@@ -150,23 +160,19 @@ export function MeetCallBar({
         ) : null}
         {joined ? (
           <div className="meet-call-bar__actions">
-            <IconButton
-              label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
-              icon={micOn ? <Mic /> : <MicOff />}
-              size="md"
-              variant="outline"
-              active={micOn}
-              aria-pressed={micOn}
+            <MeetCircleToggle
+              on={micOn}
               onClick={onToggleMic}
+              OnIcon={Mic}
+              OffIcon={MicOff}
+              label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
             />
-            <IconButton
-              label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
-              icon={videoOn ? <Video /> : <VideoOff />}
-              size="md"
-              variant="outline"
-              active={videoOn}
-              aria-pressed={videoOn}
+            <MeetCircleToggle
+              on={videoOn}
               onClick={onToggleVideo}
+              OnIcon={Video}
+              OffIcon={VideoOff}
+              label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
             />
             <MeetDevicePopover
               cameras={cameras}

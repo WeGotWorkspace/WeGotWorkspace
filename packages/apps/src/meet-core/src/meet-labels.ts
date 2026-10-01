@@ -190,8 +190,6 @@ export const meetLabels = {
   meetInChannel: (name: string) => `Meet in ${name}`,
   chatInChannel: (name: string) => `Chat — ${name}`,
   speaking: "Speaking",
-  camerasOffAudioOnly: "Cameras off — audio only",
-  startingCamera: "Starting camera...",
   typingOne: (name: string) => `${name} is typing…`,
   typingTwo: (first: string, second: string) => `${first} and ${second} are typing…`,
   typingMany: (count: number) => `${count} people are typing…`,

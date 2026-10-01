@@ -153,19 +153,14 @@ export function MeetPeerTile({
               showRemoteVideo && !remoteVideoOk && "meet-peer-tile__stream--hidden",
             )}
           />
-          {showRemoteVideo && showAvatarFill ? (
-            <div className="meet-peer-tile__fill">
-              {avatar}
-              {identity}
-            </div>
-          ) : null}
         </div>
-      ) : (
+      ) : null}
+      {showAvatarFill ? (
         <div className="meet-peer-tile__fill">
           {avatar}
           {identity}
         </div>
-      )}
+      ) : null}
       {canToggleMute ? (
         <button
           type="button"

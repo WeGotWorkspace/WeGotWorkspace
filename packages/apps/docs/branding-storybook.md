@@ -74,19 +74,19 @@ Two panels:
 | `iconPreset` | Quick A/B: keep **current**, swap another app’s SVG, or choose **custom** |
 | `svgMarkup`  | Paste exported SVG when `iconPreset` is **custom**                        |
 
-Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs cream-mix wash.
+Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs the Soft rail.
 
 ### CSS props (colors)
 
-| Category    | Tokens                                                                   | Purpose                                      |
-| ----------- | ------------------------------------------------------------------------ | -------------------------------------------- |
-| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                             | We Got Soft and We Got Dark                  |
-| App chrome  | `--workspace-accent`, optional `--app-sidebar-bg`, `--app-sidebar-color` | Primary / CTA / badge; sidebar; nav on-color |
-| Icon layers | `--wai-bg`, `--wai-fg`                                                   | Switch-trigger SVG fills                     |
+| Category    | Tokens                                                                                                                    | Purpose                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                                                                              | We Got Soft and We Got Dark                                                                                   |
+| App chrome  | `--workspace-accent`, `--workspace-surface`, `--sidebar-bg`, `--sidebar-on`, `--button-primary-bg`, `--button-primary-fg` | Accent (Dark); app paper; sidebar fill (5% icon into white); ink for text, borders, and icons; primary button |
+| Icon layers | `--wai-bg`, `--wai-fg`                                                                                                    | Switch-trigger SVG fills                                                                                      |
 
-**Accent vs `--wai-*`:** accent drives workspace chrome (the shared sidebar rail, buttons, badges). `--wai-*` only recolors the switch-trigger mark layers. Change accent for “the app feels different”; change `--wai-*` when the lockup icon itself needs a new palette.
+**Accent vs `--wai-*`:** `--workspace-accent` is We Got Dark and drives checks, badges, and outline glyphs. `--sidebar-bg` is `color-mix(in oklch, var(--wai-bg) 5%, #fff)`, the sidebar fill. Tasks use 20% and Notes use 15%. Row hover and focus mix Sand into that fill. Outline washes use `--sidebar-bg`. `--sidebar-on` (Dark) is the ink for text, borders, and icons. App paper is `--workspace-surface`, a very light tint of Soft. Themes paints the same `*-workspace.css` as the app. The primary button follows that app's icon (`--wai-bg` / `--wai-fg`), except Drive (brat fill, Dark label), Meet (Sand fill, Dark label), and Notes (yellow fill, Dark label). A CSS custom property in the panel overrides a token only after you change it.
 
-**Defaults match production UI**, not the PWA/home-tile swatch. Calendar, Tasks, and Meet use a different `--workspace-accent` in `*-workspace.css` than `WORKSPACE_APP_ACCENT` (tile theme). The sidebar rail is one 12% recipe in `workspace-color.css`. `--wai-*` comes from the same workspace CSS. `iconPreset` defaults to **current** (that app’s real mark).
+**Defaults match production chrome**, not the PWA/home-tile swatch. Every app’s `--workspace-accent` is Dark, which differs from per-app `WORKSPACE_APP_ACCENT` (tile theme). The panel lists the same tokens the workspace CSS sets; the canvas keeps that CSS until a control changes. `iconPreset` defaults to **current** (that app’s real mark).
 
 ### WCAG AA ratios (resolved brand hex / Soft)
 

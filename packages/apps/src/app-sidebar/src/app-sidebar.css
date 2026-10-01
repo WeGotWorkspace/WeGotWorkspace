@@ -27,12 +27,14 @@
   @apply fixed sidebar:static z-40 inset-y-0 left-0 shrink-0 flex h-dvh min-h-0 w-64 flex-col self-stretch border-r shadow-2xl sidebar:h-full sidebar:min-h-0 sidebar:shadow-none transition-[translate,margin,border-width] overflow-hidden will-change-transform;
   transition-duration: var(--panel-overlay-duration);
   transition-timing-function: var(--panel-overlay-ease);
-  background-color: var(--app-sidebar-bg, var(--color-we-got-soft));
+  background-color: var(--app-sidebar-bg, var(--sidebar-bg, var(--color-we-got-soft)));
   border-color: var(
     --app-sidebar-border-color,
-    color-mix(in oklab, var(--color-we-got-dark) 15%, transparent)
+    color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 15%, transparent)
   );
-  color: var(--app-sidebar-color, var(--color-we-got-dark));
+  color: var(--app-sidebar-color, var(--sidebar-on, var(--color-we-got-dark)));
+  --switch-off-bg: color-mix(in oklch, var(--sidebar-on) 18%, var(--sidebar-bg));
+  --switch-on-bg: var(--sidebar-on);
   /*
    * Safe area is padding, so the sidebar fill runs under the status bar and
    * home indicator while the header and footer keep today's inset.
@@ -66,7 +68,7 @@
     color-mix(
       in oklab,
       var(--button-active-color, var(--workspace-accent, var(--color-we-got-dark))) 70%,
-      var(--color-we-got-dark)
+      var(--sidebar-on, var(--color-we-got-dark))
     )
   );
 }
@@ -119,7 +121,7 @@
    */
   --button-outline-border-color: var(
     --app-sidebar-border-color,
-    color-mix(in oklab, var(--color-we-got-dark) 15%, transparent)
+    color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 15%, transparent)
   );
   /*
    * Remap ink to sidebar icon chrome so the bell glyph matches the app-switch
@@ -128,7 +130,7 @@
    */
   --color-we-got-dark: var(
     --sidebar-logo-close-button-color,
-    var(--app-sidebar-color, var(--color-we-got-dark))
+    var(--app-sidebar-color, var(--sidebar-on, var(--color-we-got-dark)))
   );
   --button-outline-color: var(--color-we-got-dark);
   --button-outline-hover-color: var(--color-we-got-dark);

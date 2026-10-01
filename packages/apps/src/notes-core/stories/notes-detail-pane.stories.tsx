@@ -138,14 +138,14 @@ export const Editable: Story = {
     ).toBe("");
     const accentProbe = document.createElement("span");
     accentProbe.style.color = "var(--workspace-accent)";
-    const sandProbe = document.createElement("span");
-    sandProbe.style.color = "var(--color-we-got-sand)";
+    const darkProbe = document.createElement("span");
+    darkProbe.style.color = "var(--color-we-got-dark)";
     workspace!.appendChild(accentProbe);
-    workspace!.appendChild(sandProbe);
-    expect(getComputedStyle(accentProbe).color).toBe(getComputedStyle(sandProbe).color);
+    workspace!.appendChild(darkProbe);
+    expect(getComputedStyle(accentProbe).color).toBe(getComputedStyle(darkProbe).color);
     expect(getComputedStyle(accentProbe).color).not.toBe("rgb(0, 0, 0)");
     accentProbe.remove();
-    sandProbe.remove();
+    darkProbe.remove();
   },
 };
 

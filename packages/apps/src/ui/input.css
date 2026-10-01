@@ -326,10 +326,9 @@ input.input:focus-visible:not(:read-only),
 }
 
 /**
- * Select item states — quiet cream-surface washes (14/18/24), not sidebar chip
- * saturation (40/55/65 via `--button-outline-*`). Accent + fg still come from
- * portaled `--workspace-accent` / `--button-*-color` via `bridgePortalThemeVars`.
- * Soft washes: shared `workspace-menu-item-sst.css` (`--menu-item-*`).
+ * Select item states — same 8/12/16 accent-into-paper washes as outline buttons.
+ * Accent + fg still come from portaled tokens via `bridgePortalThemeVars`.
+ * Washes: shared `workspace-menu-item-sst.css` (`--menu-item-*`).
  */
 .select-ui__item {
   @apply relative flex w-full cursor-default select-none items-center py-1.5 pl-2 pr-8 text-sm outline-none transition-colors;
@@ -340,7 +339,11 @@ input.input:focus-visible:not(:read-only),
 .select-ui__item:focus {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(in oklab, var(--workspace-accent, var(--color-we-got-dark)) 14%, transparent)
+    color-mix(
+      in oklab,
+      var(--workspace-accent, var(--color-we-got-dark)) 8%,
+      var(--workspace-surface, #fff)
+    )
   );
   color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
 }
@@ -350,8 +353,8 @@ input.input:focus-visible:not(:read-only),
     --menu-item-selected-background,
     color-mix(
       in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 18%,
-      var(--color-we-got-soft)
+      var(--workspace-accent, var(--color-we-got-dark)) 12%,
+      var(--workspace-surface, #fff)
     )
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));
@@ -363,8 +366,8 @@ input.input:focus-visible:not(:read-only),
     --menu-item-selected-hover-background,
     color-mix(
       in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 24%,
-      var(--color-we-got-soft)
+      var(--workspace-accent, var(--color-we-got-dark)) 16%,
+      var(--workspace-surface, #fff)
     )
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));

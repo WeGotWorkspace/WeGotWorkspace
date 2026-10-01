@@ -1,15 +1,12 @@
-import { type ReactNode, useCallback, useState } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useState } from "react";
 import { MessageSquare, Minimize2, Video } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { meetCallBarMeta } from "@/meet-core/src/meet-call-bar";
 import { MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
 import { defaultMeetCallChatOpen } from "@/meet-core/src/meet-call-chat-panel";
 import {
-  meetCallGivenName,
-  meetCallPeerCameraOn,
+  meetCallGridColumns,
   meetCallPeerScreenSharing,
-  meetCallStripPeers,
-  pickMeetCallSpotlight,
   type MeetCallSpotlightPeer,
 } from "@/meet-core/src/meet-call-spotlight";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
@@ -45,14 +42,8 @@ function selfPeer(
   };
 }
 
-function tileCaption(
-  peer: MeetCallSpotlightPeer,
-  isSelf: boolean,
-  videoOn: boolean,
-): string | undefined {
+function tileCaption(peer: MeetCallSpotlightPeer, isSelf: boolean): string | undefined {
   if (!isSelf && meetCallPeerScreenSharing(peer)) return meetLabels.presenting;
-  if (isSelf && videoOn && !peer.stream) return meetLabels.startingCamera;
-  if (!meetCallPeerCameraOn(peer)) return meetLabels.camerasOffAudioOnly;
   return undefined;
 }
 
@@ -103,15 +94,9 @@ export function MeetCallExpanded({
     void room.controller.leave();
     // Both paths reset the same session state; the double leave is idempotent.
   }, [onLeave, room.controller]);
-  const spotlight = sharing
-    ? {
-        id: "screen",
-        name: meetLabels.presenting,
-        stream: room.controller.screenPreviewStream,
-        disclosedMedia: { camera: true, mic: true, screen: true },
-      }
-    : pickMeetCallSpotlight(remotes, self);
-  const strip = meetCallStripPeers(spotlight, remotes, self);
+  const peers = [self, ...remotes];
+  const gridCount = peers.length + (sharing ? 1 : 0);
+  const gridColumns = meetCallGridColumns(gridCount);
   const title = channelTitle ? meetLabels.meetInChannel(channelTitle) : meetLabels.productName;
   const collapseButton = onCollapse ? (
     <IconButton
@@ -161,58 +146,38 @@ export function MeetCallExpanded({
           </div>
         ) : (
           <div className="meet-call-stage__body">
-            <div className="meet-call-stage__spotlight">
-              {sharing && !room.controller.screenPreviewStream ? (
-                <div className="meet-call-stage__screen-fallback">{meetLabels.sharingScreen}</div>
-              ) : sharing && room.controller.screenPreviewStream ? (
-                <MeetStreamVideo
-                  stream={room.controller.screenPreviewStream}
-                  muted
-                  className="meet-call-stage__screen"
-                />
-              ) : (
-                <MeetPeerTile
-                  name={spotlight.name}
-                  stream={spotlight.stream ?? null}
-                  userId={spotlight.id}
-                  muted={spotlight.id === self.id}
-                  spotlight
-                  speaking={
-                    !sharing && spotlight.id !== self.id && !meetCallPeerScreenSharing(spotlight)
-                  }
-                  caption={tileCaption(
-                    spotlight,
-                    spotlight.id === self.id,
-                    room.controller.videoOn,
+            <ul
+              className="meet-call-stage__grid"
+              data-count={gridCount}
+              data-columns={gridColumns}
+              style={{ "--meet-call-grid-columns": gridColumns } as CSSProperties}
+            >
+              {sharing ? (
+                <li className="meet-call-stage__grid-item meet-call-stage__grid-item--screen">
+                  {room.controller.screenPreviewStream ? (
+                    <MeetStreamVideo
+                      stream={room.controller.screenPreviewStream}
+                      muted
+                      className="meet-call-stage__screen"
+                    />
+                  ) : (
+                    <div className="meet-call-stage__screen-fallback">
+                      {meetLabels.sharingScreen}
+                    </div>
                   )}
-                  remoteMedia={spotlight.remoteMedia}
-                  disclosedMedia={spotlight.disclosedMedia}
-                  micOn={spotlight.id === self.id ? room.controller.micOn : undefined}
-                  onToggleMic={spotlight.id === self.id ? room.controller.toggleMic : undefined}
-                  onMuteParticipant={
-                    spotlight.id === self.id || !room.hasSignedInIdentity
-                      ? undefined
-                      : (muted) => void room.controller.mutePeer(spotlight.id, muted)
-                  }
-                />
-              )}
-            </div>
-            <ul className="meet-call-stage__strip">
-              {strip.map((peer) => {
+                </li>
+              ) : null}
+              {peers.map((peer) => {
                 const isSelf = peer.id === self.id;
                 return (
-                  <li key={peer.id} className="meet-call-stage__strip-item">
+                  <li key={peer.id} className="meet-call-stage__grid-item">
                     <MeetPeerTile
                       name={peer.name}
                       stream={peer.stream ?? null}
                       userId={peer.id}
                       muted={isSelf}
-                      compact
-                      caption={
-                        isSelf && room.controller.videoOn && !peer.stream
-                          ? meetLabels.startingCamera
-                          : undefined
-                      }
+                      spotlight={gridCount === 1}
+                      caption={tileCaption(peer, isSelf)}
                       remoteMedia={peer.remoteMedia}
                       disclosedMedia={
                         isSelf
@@ -227,9 +192,6 @@ export function MeetCallExpanded({
                           : (muted) => void room.controller.mutePeer(peer.id, muted)
                       }
                     />
-                    <p className="meet-call-stage__strip-caption">
-                      {isSelf ? meetLabels.youLabel : meetCallGivenName(peer.name)}
-                    </p>
                   </li>
                 );
               })}

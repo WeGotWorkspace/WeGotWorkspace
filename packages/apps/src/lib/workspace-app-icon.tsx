@@ -16,7 +16,7 @@ export type WorkspaceAppIconVariant = "default" | "switch-trigger" | "tile";
 type WorkspaceAppIconProps = {
   appId: WorkspaceAppId;
   className?: string;
-  /** `switch-trigger` inverts colors for the app-switch lockup; `tile` fills the home grid cell. */
+  /** `switch-trigger` inverts colors for the app-switch lockup; `tile` inlines the home-grid SVG. */
   variant?: WorkspaceAppIconVariant;
 };
 
@@ -96,6 +96,19 @@ export const WorkspaceAppIcon = memo(function WorkspaceAppIcon({
         className={cn("workspace-app-icon--switch-trigger shrink-0", className)}
         // Same SVG source as default; CSS vars on `.workspace-app-icon--switch-trigger svg` invert layers.
         dangerouslySetInnerHTML={overrideHtml ?? WORKSPACE_APP_SWITCH_TRIGGER_HTML[appId]}
+      />
+    );
+  }
+
+  // Home launcher tiles inline the SVG so they can use the same `--wai-*` pair
+  // as that app's sidebar switch icon.
+  if (variant === "tile" && overrideHtml == null) {
+    return (
+      <span
+        aria-hidden
+        data-app-id={appId}
+        className={cn("workspace-app-icon--tile block shrink-0", className)}
+        dangerouslySetInnerHTML={WORKSPACE_APP_SWITCH_TRIGGER_HTML[appId]}
       />
     );
   }

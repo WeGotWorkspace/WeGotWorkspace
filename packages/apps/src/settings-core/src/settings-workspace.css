@@ -12,55 +12,65 @@
  * Import only from {@link SettingsWorkspace}.
  */
 .settings-workspace {
-  --workspace-accent: var(--color-we-got-sand);
+  --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-main-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(in oklch, var(--color-we-got-dark) 12%, transparent);
-  --app-sidebar-color: var(--color-we-got-dark);
-  --sidebar-logo-close-button-color: var(--color-we-got-dark);
-  --sidebar-badge-fg: var(--workspace-accent);
-  --workspace-user-footer-link-hover-bg: color-mix(
+  --app-sidebar-border-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 10%,
+    var(--sidebar-on, var(--color-we-got-dark)) 12%,
     transparent
   );
-  --workspace-user-footer-text-color: var(--color-we-got-dark);
+  --app-sidebar-color: var(--sidebar-on, var(--color-we-got-dark));
+  --sidebar-logo-close-button-color: var(--sidebar-on, var(--color-we-got-dark));
+  --sidebar-badge-fg: #ffffff;
+  --workspace-user-footer-link-hover-bg: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 10%,
+    transparent
+  );
+  --workspace-user-footer-text-color: var(--sidebar-on, var(--color-we-got-dark));
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 80%,
+    var(--sidebar-on, var(--color-we-got-dark)) 80%,
     var(--color-we-got-soft)
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 10%,
+    var(--sidebar-on, var(--color-we-got-dark)) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 85%,
+    var(--sidebar-on, var(--color-we-got-dark)) 85%,
     var(--color-we-got-soft)
   );
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--color-we-got-dark) 6%, transparent);
-  --field-label-color: var(--color-we-got-dark);
+  --workspace-user-footer-link-bg: color-mix(
+    in oklch,
+    var(--sidebar-on, var(--color-we-got-dark)) 6%,
+    transparent
+  );
+  --field-label-color: var(--sidebar-on, var(--color-we-got-dark));
 
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  --wai-bg: var(--color-we-got-dark);
+  --wai-fg: var(--color-we-got-soft);
+  --button-primary-bg: var(--wai-bg);
+  --button-primary-fg: var(--wai-fg);
   --primary: var(--workspace-accent);
-  --primary-foreground: var(--color-we-got-dark);
+  --primary-foreground: #ffffff;
 
   /* Outline header chrome (cream main); sidebar inherits ink-on-tint SST. */
   --button-active-color: var(--workspace-accent-strong);
   --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--workspace-accent) 14%, transparent);
+  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--workspace-accent) 18%,
+    var(--sidebar-bg) 18%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--workspace-accent) 24%,
+    var(--sidebar-bg) 24%,
     var(--workspace-surface)
   );
 
@@ -76,46 +86,45 @@
  */
 .settings-workspace .view-header {
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--color-we-got-dark);
+  --button-outline-color: var(--sidebar-on, var(--color-we-got-dark));
   --button-outline-hover-color: var(--workspace-accent-strong);
 }
 
 .settings-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: #ffffff;
+  background-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 .settings-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: #ffffff;
-  --wai-fg: var(--color-we-got-dark);
+  --wai-bg: var(--color-we-got-dark);
+  --wai-fg: var(--color-we-got-soft);
 }
 
 .settings-workspace .app-sidebar__scroll {
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--color-we-got-dark);
+  /* Primary fill inherits the workspace (`--button-primary-*`). */
   /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--color-we-got-dark);
+  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 .settings-workspace .app-sidebar__footer {
-  --workspace-user-footer-text-color: var(--color-we-got-dark);
+  --workspace-user-footer-text-color: var(--sidebar-on, var(--color-we-got-dark));
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 80%,
+    var(--sidebar-on, var(--color-we-got-dark)) 80%,
     var(--color-we-got-soft)
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 10%,
+    var(--sidebar-on, var(--color-we-got-dark)) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 85%,
+    var(--sidebar-on, var(--color-we-got-dark)) 85%,
     var(--color-we-got-soft)
   );
 }
@@ -161,7 +170,8 @@
 }
 
 .settings-workspace .settings-group-list > li + li {
-  border-top: 1px solid color-mix(in oklch, var(--color-we-got-dark) 10%, transparent);
+  border-top: 1px solid
+    color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 10%, transparent);
 }
 
 .settings-workspace .settings-group-row {
@@ -171,10 +181,10 @@
 .settings-workspace .settings-group-avatar {
   --user-avatar-bg: var(--workspace-accent);
   --user-avatar-fg: #ffffff;
-  --user-avatar-label-color: var(--color-we-got-dark);
+  --user-avatar-label-color: var(--sidebar-on, var(--color-we-got-dark));
   --user-avatar-subtitle-color: color-mix(
     in oklch,
-    var(--color-we-got-dark) 80%,
+    var(--sidebar-on, var(--color-we-got-dark)) 80%,
     var(--color-we-got-soft)
   );
 }
@@ -224,12 +234,12 @@
 .settings-workspace .settings-assistants-pane__grant-name {
   @apply m-0 text-4xl font-normal leading-none;
   font-family: var(--font-serif);
-  color: var(--color-we-got-dark);
+  color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 .settings-workspace .settings-assistants-pane__grant-origin {
   @apply m-0 text-base font-normal leading-normal;
-  color: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
+  color: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 72%, transparent);
 }
 
 .settings-workspace .settings-assistants-pane__grant-revoke {

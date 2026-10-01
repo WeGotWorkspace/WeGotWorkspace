@@ -31,7 +31,8 @@
 }
 
 .installer__hero-noun {
-  @apply font-sans font-semibold not-italic;
+  /* Display sans. Chrome and body copy stay on `font-sans` (Plus Jakarta Sans). */
+  @apply font-we-got-headline font-semibold not-italic;
 }
 
 .installer__dots {

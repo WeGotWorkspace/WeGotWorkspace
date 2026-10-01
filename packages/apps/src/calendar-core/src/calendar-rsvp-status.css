@@ -57,12 +57,12 @@
 .calendar-invitees-status-mark--pending,
 .calendar-invitees-status-mark--delegated {
   /* Dark on white/transparent — no gray wash. */
-  --tag-fg: var(--color-we-got-dark);
+  --tag-fg: var(--sidebar-on, var(--color-we-got-dark));
   --tag-bg: transparent;
-  --user-chip-fg: var(--color-we-got-dark);
+  --user-chip-fg: var(--sidebar-on, var(--color-we-got-dark));
   --user-chip-bg: transparent;
   --user-chip-border: var(
     --control-border-color,
-    color-mix(in oklab, var(--color-we-got-dark) 22%, transparent)
+    color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 22%, transparent)
   );
 }
