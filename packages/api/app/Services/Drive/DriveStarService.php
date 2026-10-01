@@ -9,7 +9,10 @@ use App\Storage\StoragePaths;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
-final class DriveStarService
+/**
+ * Not final so a feature test can fail the prefix sync and prove the write still succeeds.
+ */
+class DriveStarService
 {
     public function __construct(private StoragePaths $paths) {}
 
@@ -86,7 +89,7 @@ final class DriveStarService
         }
     }
 
-    private function rewritePathPrefixWithin(string $fromPath, string $toPath): int
+    protected function rewritePathPrefixWithin(string $fromPath, string $toPath): int
     {
         $from = $this->paths->normalizeVirtualPath($fromPath);
         $to = $this->paths->normalizeVirtualPath($toPath);
@@ -159,7 +162,7 @@ final class DriveStarService
         }
     }
 
-    private function deletePathPrefixWithin(string $path): int
+    protected function deletePathPrefixWithin(string $path): int
     {
         $path = $this->paths->normalizeVirtualPath($path);
         if ($path === '/') {

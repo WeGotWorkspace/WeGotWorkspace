@@ -7,8 +7,12 @@ namespace Tests\Feature\Drive;
 use App\Dav\Server\DriveStarPathPlugin;
 use App\Models\DriveStarredItem;
 use App\Services\Drive\DriveService;
+use App\Services\Drive\DriveStarService;
 use App\Services\Jmap\JmapCapabilities;
+use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Testing\TestResponse;
 use Sabre\HTTP\Request as SabreRequest;
 use Sabre\HTTP\Response as SabreResponse;
@@ -218,6 +222,57 @@ final class FilesStarPathTest extends WgwDatabaseTestCase
         $this->assertSame([], $this->starredPaths($token));
         $this->seedPrivateFile('bob', 'B/doc-renamed.txt', 'replacement');
         $this->assertSame([], $this->starredPaths($token));
+    }
+
+    public function test_star_sync_failure_still_renames_and_deletes_the_file(): void
+    {
+        /** @var list<MessageLogged> $logged */
+        $logged = [];
+        Log::listen(function (MessageLogged $event) use (&$logged): void {
+            $logged[] = $event;
+        });
+        $this->app->instance(DriveStarService::class, new class(app(StoragePaths::class)) extends DriveStarService
+        {
+            protected function rewritePathPrefixWithin(string $fromPath, string $toPath): int
+            {
+                throw new \RuntimeException('star rewrite failed');
+            }
+
+            protected function deletePathPrefixWithin(string $path): int
+            {
+                throw new \RuntimeException('star delete failed');
+            }
+        });
+
+        $path = $this->seedPrivateFile('bob', 'report.txt', 'still here');
+        $renamed = '/users/bob/report-renamed.txt';
+
+        $this->assertSame('Renamed', app(DriveService::class)->renameItem(
+            $this->drivePrincipal('bob'),
+            '/users/bob',
+            $path,
+            'report-renamed.txt',
+        ));
+        $this->assertSame('still here', app(WgwStorage::class)->files()->get('users/bob/report-renamed.txt'));
+        $this->assertFalse(app(WgwStorage::class)->files()->fileExists('users/bob/report.txt'));
+
+        $this->assertSame('Deleted', app(DriveService::class)->deleteItems(
+            $this->drivePrincipal('bob'),
+            [['path' => $renamed]],
+        ));
+        $this->assertFalse(app(WgwStorage::class)->files()->fileExists('users/bob/report-renamed.txt'));
+
+        $starFailures = array_values(array_filter(
+            $logged,
+            static fn (MessageLogged $event): bool => $event->level === 'warning'
+                && $event->message === 'drive_star_sync_failed',
+        ));
+        $this->assertSame(['rewrite', 'delete'], array_map(
+            static fn (MessageLogged $event): string => (string) ($event->context['op'] ?? ''),
+            $starFailures,
+        ));
+        $this->assertSame('star rewrite failed', $starFailures[0]->context['error'] ?? null);
+        $this->assertSame('star delete failed', $starFailures[1]->context['error'] ?? null);
     }
 
     public function test_webdav_move_and_delete_rewrite_star_rows(): void
