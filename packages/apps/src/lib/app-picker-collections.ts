@@ -38,6 +38,7 @@ function toAddressBookPicker(book: JmapAddressBook): CalendarPickerCalendar {
     name: addressBookPickerName(book),
     color: hashDotColor(book.id),
     mayWrite: book.myRights ? shareRightsAllowWrite(book.myRights) : true,
+    isDefault: book.isDefault === true || book.id === "default",
   };
 }
 
@@ -49,27 +50,56 @@ export function toNotebookPicker(notebook: JmapNotebook): CalendarPickerCalendar
     mayWrite: notebook.myRights
       ? shareRightsAllowWrite(notebook.myRights)
       : notebook.isSharee !== true,
+    isDefault: notebook.isDefault === true || notebook.role === "general",
   };
 }
 
 /** Mock-tier writable collections — same ids as the product story bootstraps. */
 export const MOCK_APP_PICKER_COLLECTIONS: Record<DefaultCollectionApp, CalendarPickerCalendar[]> = {
   tasks: [
-    { id: "inbox", name: "Inbox", color: "#6366f1" },
+    { id: "inbox", name: "Inbox", color: "#6366f1", isDefault: true },
     { id: "default", name: "Personal", color: "#6366f1" },
     { id: "work", name: "Work", color: "#f59e0b" },
   ],
   contacts: [
-    { id: "default", name: "Personal", color: hashDotColor("default") },
+    { id: "default", name: "Personal", color: hashDotColor("default"), isDefault: true },
     { id: "work", name: "Work", color: hashDotColor("work") },
   ],
   notes: [
-    { id: "The Journal", name: "The Journal", color: "#14b8a6" },
+    { id: "The Journal", name: "The Journal", color: "#14b8a6", isDefault: true },
     { id: "Field Observations", name: "Field Observations", color: "#0ea5e9" },
     { id: "Drafts", name: "Drafts", color: "#f59e0b" },
     { id: "Published", name: "Published", color: "#8b5cf6" },
   ],
 };
+
+function isOwnedTaskDefault(list: {
+  id: string;
+  role?: string | null;
+  isDefault?: boolean;
+  isSharee?: boolean;
+}): boolean {
+  if (list.isSharee === true) return false;
+  if (list.isDefault === true || list.role === "inbox") return true;
+  return list.id === "inbox" || list.id === "tasks-inbox";
+}
+
+/** Shown before the live list returns so production does not paint an empty control. */
+const LIVE_APP_PICKER_DEFAULT: Record<DefaultCollectionApp, CalendarPickerCalendar> = {
+  tasks: { id: "tasks-inbox", name: "Inbox", color: "#6366f1", isDefault: true },
+  contacts: {
+    id: "default",
+    name: "Personal",
+    color: hashDotColor("default"),
+    isDefault: true,
+  },
+  notes: { id: "General", name: "General", color: "#14b8a6", isDefault: true },
+};
+
+export function initialAppPickerCollections(app: DefaultCollectionApp): CalendarPickerCalendar[] {
+  if (!wgwLiveApiEnabled()) return MOCK_APP_PICKER_COLLECTIONS[app];
+  return [LIVE_APP_PICKER_DEFAULT[app]];
+}
 
 async function loadLiveTasks(): Promise<CalendarPickerCalendar[]> {
   const lists = await listTaskLists();
@@ -80,6 +110,7 @@ async function loadLiveTasks(): Promise<CalendarPickerCalendar[]> {
       name: list.name,
       color: list.color?.trim() || hashDotColor(list.id),
       mayWrite: list.myRights?.mayWriteAll !== false,
+      isDefault: isOwnedTaskDefault(list),
     }));
 }
 
@@ -112,12 +143,12 @@ export async function loadAppPickerCollections(
 }
 
 export function useAppPickerCollections(app: DefaultCollectionApp): CalendarPickerCalendar[] {
-  const [collections, setCollections] = useState<CalendarPickerCalendar[]>([]);
+  const [collections, setCollections] = useState(() => initialAppPickerCollections(app));
 
   useEffect(() => {
     let cancelled = false;
     void loadAppPickerCollections(app).then((next) => {
-      if (!cancelled) setCollections(next);
+      if (!cancelled && next.length > 0) setCollections(next);
     });
     return () => {
       cancelled = true;

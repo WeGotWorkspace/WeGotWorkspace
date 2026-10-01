@@ -15,6 +15,8 @@ export type CalendarPickerCalendar = {
   name: string;
   color: string;
   mayWrite?: boolean;
+  /** Owned product default (Inbox, Personal, General, or the default calendar). */
+  isDefault?: boolean;
 };
 
 export type CalendarPickerMenuItemProps = {
@@ -68,6 +70,7 @@ export function writableCalendarsForPicker(
   return calendars.filter((calendar) => calendar.mayWrite !== false);
 }
 
+/** Owned default collection when the stored id is missing or no longer writable. */
 export function defaultPickerCalendarId(
   calendars: CalendarPickerCalendar[],
   preferredId?: string,
@@ -76,7 +79,7 @@ export function defaultPickerCalendarId(
   if (preferredId && writable.some((calendar) => calendar.id === preferredId)) {
     return preferredId;
   }
-  return writable[0]?.id ?? "";
+  return writable.find((calendar) => calendar.isDefault === true)?.id ?? writable[0]?.id ?? "";
 }
 
 /** Event-dialog calendar switcher — reused on invitation cards and Calendar settings. */

@@ -7,9 +7,22 @@ import { calendarJmapClient } from "@/lib/api/wgw/calendar";
 
 /** Mock-tier writable calendars — same ids/names as the Calendar story bootstrap. */
 export const MOCK_CALENDAR_PICKER_COLLECTIONS: CalendarPickerCalendar[] = [
-  { id: "default", name: "Personal", color: "#6366f1" },
+  { id: "default", name: "Personal", color: "#6366f1", isDefault: true },
   { id: "work", name: "Work", color: "#0ea5e9" },
 ];
+
+/** Provisioned personal calendar, shown until Calendar/get returns. */
+const LIVE_CALENDAR_PICKER_DEFAULT: CalendarPickerCalendar = {
+  id: "default",
+  name: "Calendar",
+  color: "#6366f1",
+  isDefault: true,
+};
+
+export function initialCalendarPickerCollections(): CalendarPickerCalendar[] {
+  if (!wgwLiveApiEnabled()) return MOCK_CALENDAR_PICKER_COLLECTIONS;
+  return [LIVE_CALENDAR_PICKER_DEFAULT];
+}
 
 function toPickerCalendar(calendar: JmapCalendar): CalendarPickerCalendar {
   return {
@@ -17,6 +30,7 @@ function toPickerCalendar(calendar: JmapCalendar): CalendarPickerCalendar {
     name: calendar.name,
     color: calendar.color ?? "#6366f1",
     mayWrite: calendar.myRights ? shareRightsAllowWrite(calendar.myRights) : true,
+    isDefault: calendar.isDefault === true || calendar.id === "default",
   };
 }
 
@@ -35,12 +49,12 @@ export async function loadCalendarPickerCollections(): Promise<CalendarPickerCal
 }
 
 export function useCalendarPickerCollections(): CalendarPickerCalendar[] {
-  const [calendars, setCalendars] = useState<CalendarPickerCalendar[]>([]);
+  const [calendars, setCalendars] = useState(() => initialCalendarPickerCollections());
 
   useEffect(() => {
     let cancelled = false;
     void loadCalendarPickerCollections().then((next) => {
-      if (!cancelled) setCalendars(next);
+      if (!cancelled && next.length > 0) setCalendars(next);
     });
     return () => {
       cancelled = true;
