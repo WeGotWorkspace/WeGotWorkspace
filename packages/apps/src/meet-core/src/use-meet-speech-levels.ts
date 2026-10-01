@@ -113,9 +113,14 @@ export function useMeetSpeechLevels(
     };
 
     const intervalId = window.setInterval(tick, MEET_MINI_PLAYER_LEVEL_SAMPLE_MS);
-    void context.resume().then(() => {
-      if (!cancelled) tick();
-    });
+    void context
+      .resume()
+      .then(() => {
+        if (!cancelled) tick();
+      })
+      .catch(() => {
+        // Autoplay policy can reject resume. The interval still samples if the context starts.
+      });
 
     return () => {
       cancelled = true;

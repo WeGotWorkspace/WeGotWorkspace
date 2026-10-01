@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MeetCallMiniPlayer } from "@/meet-core/src/meet-call-mini-player";
-import { MeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
+import { MeetCallProvider } from "@/meet-core/src/meet-call-provider";
 import { createMeetCallStore, type MeetCallStore } from "@/meet-core/src/meet-call-store";
 import type { MeetRemotePeer } from "@/meet-core/src/meet-call-types";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -119,9 +119,9 @@ async function renderMiniPlayer(store: MeetCallStore) {
   const rootRoute = createRootRoute({
     component: () => (
       <TooltipProvider>
-        <MeetCallStoreContext.Provider value={store}>
+        <MeetCallProvider store={store}>
           <Outlet />
-        </MeetCallStoreContext.Provider>
+        </MeetCallProvider>
       </TooltipProvider>
     ),
   });

@@ -87,7 +87,6 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
     visible,
   );
   const previousSubjectIdRef = useRef<string | null>(null);
-  if (!visible) previousSubjectIdRef.current = null;
   const preview = visible
     ? resolveMeetMiniPlayerPreview({
         self: {
@@ -109,7 +108,10 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
         previousId: previousSubjectIdRef.current,
       })
     : null;
-  if (preview) previousSubjectIdRef.current = preview.id;
+  const previewId = preview?.id ?? null;
+  useEffect(() => {
+    previousSubjectIdRef.current = visible ? previewId : null;
+  }, [previewId, visible]);
   const showVideo = preview?.showVideo === true;
   const previewStream = showVideo ? (preview?.stream ?? null) : null;
   const remoteAudioPeers = visible

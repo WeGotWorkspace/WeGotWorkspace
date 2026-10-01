@@ -3,7 +3,7 @@ import { createMeetCallBroadcast } from "@/meet-core/src/meet-call-broadcast";
 import { createMeetCallStore, type MeetCallStore } from "@/meet-core/src/meet-call-store";
 import { sendMeetLeaveBeacon } from "@/meet-core/src/meet-leave-beacon";
 
-export const MeetCallStoreContext = createContext<MeetCallStore | null>(null);
+const MeetCallStoreContext = createContext<MeetCallStore | null>(null);
 
 /**
  * Suite-level call store, when mounted above the router (live app). Null in
@@ -71,8 +71,15 @@ function useMeetCallTabSignal(store: MeetCallStore): void {
   }, [store]);
 }
 
-export function MeetCallProvider({ children }: { children: ReactNode }) {
-  const storeRef = useRef<MeetCallStore | null>(null);
+export function MeetCallProvider({
+  children,
+  store: storeProp,
+}: {
+  children: ReactNode;
+  /** Suite tests pass the store they already filled. Production leaves this unset. */
+  store?: MeetCallStore;
+}) {
+  const storeRef = useRef<MeetCallStore | null>(storeProp ?? null);
   storeRef.current ??= createMeetCallStore();
   const store = storeRef.current;
 

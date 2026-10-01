@@ -3,11 +3,12 @@ import { shouldMirrorMeetStream } from "@/meet-core/src/meet-stream-mirror";
 /** Smoothed speech level (0–1) that counts as talking. */
 export const MEET_MINI_PLAYER_SPEECH_ON = 0.2;
 /**
- * Local mic must clear the loudest speaking remote by this much before the
- * preview leaves that peer. Room echo often makes the local meter slightly
- * louder than the person actually talking.
+ * Someone must clear the current subject by this much before the preview
+ * switches. Stops the card flipping every sample when two people talk over
+ * each other, and keeps room echo on the local mic from stealing a remote
+ * speaker.
  */
-export const MEET_MINI_PLAYER_SELF_MARGIN = 0.15;
+export const MEET_MINI_PLAYER_SWITCH_MARGIN = 0.15;
 
 export type MeetMiniPlayerCandidate = {
   id: string;
@@ -46,12 +47,13 @@ export type MeetMiniPlayerPreview = {
 /**
  * Who the mini-player previews.
  *
- * The loudest candidate at or above the speech threshold wins. A remote peer
- * wins a tie, and the local user must be clearly louder before they replace
- * a speaking remote peer. When nobody is above the threshold, the previous
- * subject stays while they remain in the call, so a pause does not flip the
- * preview back to the local user. With no history, a remote peer is shown
- * ahead of the local user.
+ * While the current subject is still at or above the speech threshold, they
+ * stay until someone else clears them by {@link MEET_MINI_PLAYER_SWITCH_MARGIN}.
+ * A remote peer wins a tie, and the local user must be clearly louder than a
+ * speaking remote before they take an empty preview. When nobody is above the
+ * threshold, the previous subject stays while they remain in the call, so a
+ * pause does not flip the preview back to the local user. With no history, a
+ * remote peer is shown ahead of the local user.
  */
 export function pickMeetMiniPlayerSubject(
   candidates: readonly MeetMiniPlayerCandidate[],
@@ -59,19 +61,32 @@ export function pickMeetMiniPlayerSubject(
 ): MeetMiniPlayerCandidate | null {
   if (candidates.length === 0) return null;
 
+  const previous = previousId
+    ? candidates.find((candidate) => candidate.id === previousId)
+    : undefined;
   const speaking = candidates.filter((candidate) => candidate.level >= MEET_MINI_PLAYER_SPEECH_ON);
-  if (speaking.length > 0) {
-    const heard = speaking.filter((candidate) => !localEcho(candidate, speaking));
-    const pool = heard.length > 0 ? heard : speaking;
-    return pool.reduce((best, candidate) => louderCandidate(best, candidate));
+
+  if (previous && previous.level >= MEET_MINI_PLAYER_SPEECH_ON) {
+    const challengers = speaking.filter(
+      (candidate) =>
+        candidate.id !== previous.id &&
+        candidate.level >= previous.level + MEET_MINI_PLAYER_SWITCH_MARGIN,
+    );
+    if (challengers.length === 0) return previous;
+    return loudestHeard(challengers);
   }
 
-  if (previousId) {
-    const previous = candidates.find((candidate) => candidate.id === previousId);
-    if (previous) return previous;
-  }
+  if (speaking.length > 0) return loudestHeard(speaking);
+
+  if (previous) return previous;
 
   return candidates.find((candidate) => !candidate.isSelf) ?? candidates[0] ?? null;
+}
+
+function loudestHeard(pool: readonly MeetMiniPlayerCandidate[]): MeetMiniPlayerCandidate {
+  const heard = pool.filter((candidate) => !localEcho(candidate, pool));
+  const usable = heard.length > 0 ? heard : pool;
+  return usable.reduce((best, candidate) => louderCandidate(best, candidate));
 }
 
 function localEcho(
@@ -87,7 +102,7 @@ function localEcho(
     null as number | null,
   );
   if (loudestRemote === null) return false;
-  return candidate.level < loudestRemote + MEET_MINI_PLAYER_SELF_MARGIN;
+  return candidate.level < loudestRemote + MEET_MINI_PLAYER_SWITCH_MARGIN;
 }
 
 function louderCandidate(
@@ -101,6 +116,10 @@ function louderCandidate(
   return candidate.id < best.id ? candidate : best;
 }
 
+/**
+ * Preview model for the mini-player. A silent screen share does not take the
+ * card: the full stage spotlights a share, and this card follows who is talking.
+ */
 export function resolveMeetMiniPlayerPreview(input: {
   self: MeetMiniPlayerPreviewSelf;
   peers: readonly MeetMiniPlayerPreviewPeer[];
@@ -149,10 +168,11 @@ export function resolveMeetMiniPlayerPreview(input: {
 }
 
 function remotePreviewHasVideo(peer: MeetMiniPlayerPreviewPeer): boolean {
-  if (!peer.stream) return false;
+  const tracks = peer.stream?.getVideoTracks() ?? [];
+  if (tracks.length === 0) return false;
   const disclosed = peer.disclosedMedia;
   if (disclosed) return disclosed.camera || disclosed.screen === true;
   if (peer.remoteMedia?.camera === false) return false;
-  const track = peer.stream.getVideoTracks()[0];
+  const track = tracks[0];
   return !!track && track.readyState === "live" && track.enabled !== false;
 }

@@ -88,6 +88,16 @@ describe("pickMeetMiniPlayerSubject", () => {
     expect(picked?.id).toBe("self");
   });
 
+  it("holds the current remote until another peer is clearly louder", () => {
+    const felix = { id: "felix", name: "Felix Bauer", level: 0.45, isSelf: false };
+    const maya = { id: "maya", name: "Maya Lindqvist", level: 0.5, isSelf: false };
+    const self = { id: "self", name: "Demo User", level: 0, isSelf: true };
+    expect(pickMeetMiniPlayerSubject([self, felix, maya], "felix")?.id).toBe("felix");
+    expect(pickMeetMiniPlayerSubject([self, felix, { ...maya, level: 0.7 }], "felix")?.id).toBe(
+      "maya",
+    );
+  });
+
   it("keeps the previous speaker through silence and drops them after they leave", () => {
     const candidates = [
       { id: "self", name: "Demo User", level: 0, isSelf: true },
@@ -163,6 +173,32 @@ describe("resolveMeetMiniPlayerPreview", () => {
     expect(preview?.name).toBe("Demo User");
   });
 
+  it("keeps the preview on one remote while the other is only slightly louder", () => {
+    const felixStream = streamOf([track("audio"), track("video", "felix")]);
+    const mayaStream = streamOf([track("audio"), track("video", "maya")]);
+    const held = resolveMeetMiniPlayerPreview({
+      self,
+      peers: [
+        peer("felix", "Felix Bauer", 0.46, { stream: felixStream }),
+        peer("maya", "Maya Lindqvist", 0.5, { stream: mayaStream }),
+      ],
+      previousId: "felix",
+    });
+    expect(held?.id).toBe("felix");
+    expect(held?.stream).toBe(felixStream);
+
+    const taken = resolveMeetMiniPlayerPreview({
+      self,
+      peers: [
+        peer("felix", "Felix Bauer", 0.4, { stream: felixStream }),
+        peer("maya", "Maya Lindqvist", 0.7, { stream: mayaStream }),
+      ],
+      previousId: "felix",
+    });
+    expect(taken?.id).toBe("maya");
+    expect(taken?.stream).toBe(mayaStream);
+  });
+
   it("shows the talking peer's name without video when their camera is off", () => {
     const preview = resolveMeetMiniPlayerPreview({
       self,
@@ -179,6 +215,21 @@ describe("resolveMeetMiniPlayerPreview", () => {
       name: "Felix Bauer",
       showVideo: false,
     });
+  });
+
+  it("waits for a video track when the camera is announced but not attached yet", () => {
+    const audioOnly = streamOf([track("audio")]);
+    const preview = resolveMeetMiniPlayerPreview({
+      self,
+      peers: [
+        peer("felix", "Felix Bauer", 0.8, {
+          stream: audioOnly,
+          disclosedMedia: { camera: true, mic: true },
+        }),
+      ],
+      previousId: null,
+    });
+    expect(preview?.showVideo).toBe(false);
   });
 
   it("shows an unmirrored video when the talking peer is sharing their screen", () => {
