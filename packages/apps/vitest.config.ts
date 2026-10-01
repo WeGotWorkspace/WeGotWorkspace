@@ -101,7 +101,13 @@ export default defineConfig({
           browser: {
             enabled: true,
             headless: true,
-            provider: playwright(),
+            // Avoid Chromium /dev/shm OOM crashes that surface as Vitest
+            // "Browser connection was closed" drops in CI (#1037).
+            provider: playwright({
+              launch: {
+                args: ["--disable-dev-shm-usage"],
+              },
+            }),
             instances: [{ browser: "chromium" }],
           },
         },
