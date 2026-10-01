@@ -185,11 +185,12 @@ export function useDriveBatchActions({
           );
           const trashNames = await listTrashEntryNames(operations, destination, signal);
           for (const file of rows) {
+            signal.throwIfAborted();
             const from = resolveDriveFileApiPath(file, currentUsername, groupRootNames);
             const to = resolveFreeName(file.title, trashNames);
             trashNames.add(to);
             trashedNameById.set(file.id, to);
-            await operations.renameItem({ destination, from, to }, { signal });
+            await operations.renameItem({ destination, from, to }, { refreshState: false });
             markCompleted(file.id);
           }
           await refreshOpenFolderAfterBatch(refreshOpenFolder, signal);
@@ -376,8 +377,12 @@ export function useDriveBatchActions({
           if (!operations) return;
           const destination = apiPathFromUiPath(parent, currentUsername, groupRootNames);
           for (const file of rows) {
+            signal.throwIfAborted();
             const from = resolveDriveFileApiPath(file, currentUsername, groupRootNames);
-            await operations.renameItem({ destination, from, to: file.title }, { signal });
+            await operations.renameItem(
+              { destination, from, to: file.title },
+              { refreshState: false },
+            );
             markCompleted(file.id);
           }
           await refreshOpenFolderAfterBatch(refreshOpenFolder, signal);

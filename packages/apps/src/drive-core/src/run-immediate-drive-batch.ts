@@ -11,8 +11,9 @@ export type ImmediateDriveBatchArgs = {
   undoToastMessage: string;
   rollback: () => void;
   /**
-   * Rename files one at a time. Call `markCompleted` after each rename that reached the server
-   * so undo can revert those files when a later rename throws.
+   * Rename files one at a time. A rename that has been sent must settle, and `markCompleted`
+   * must be called for every rename the server applied, so undo can revert those files when a
+   * later rename throws.
    */
   execute: (signal: AbortSignal, markCompleted: (key: string) => void) => Promise<void>;
   /**
@@ -52,8 +53,8 @@ export function runImmediateDriveBatch({
     if (undone) return;
     undone = true;
     rollback();
-    // A rename can still resolve after abort. Revert only once execute has
-    // settled so that markCompleted is part of this undo (#965).
+    // Revert after execute settles; execute never aborts a rename it has already
+    // sent, so every rename the server applied is marked.
     if (executeSettled) revertCompleted();
   };
 
