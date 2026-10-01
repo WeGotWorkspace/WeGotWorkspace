@@ -199,7 +199,7 @@ final class ApiRuntimeEnvService
     {
         if (is_link($envPath)) {
             $link = readlink($envPath);
-            if (is_string($link) && $link !== '') {
+            if (is_string($link)) {
                 if (str_starts_with($link, '/')) {
                     return $link;
                 }
