@@ -106,9 +106,9 @@ final class SabreServerFactory
         $server->addPlugin($authPlugin);
         $server->addPlugin(new WebdavWriteGuardPlugin);
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
-        $server->addPlugin(new DriveShareMovePlugin($this->driveShares));
         $server->addPlugin(new FileNodeIndexPlugin($this->fileNodeIndex, $this->docAttachments));
         $server->addPlugin(new EventDispatchPlugin($this->eventDispatch));
+        $server->addPlugin(new DriveShareMovePlugin($this->driveShares));
         $locksPath = rtrim($this->install->dataDir(), '/').'/webdav-locks.dat';
         $server->addPlugin(new Locks\Plugin(new Locks\Backend\File($locksPath)));
         if ((bool) ($cfg[WgwSettings::BROWSER_PLUGIN] ?? true)) {

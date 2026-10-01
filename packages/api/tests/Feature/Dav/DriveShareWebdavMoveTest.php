@@ -119,17 +119,17 @@ final class DriveShareWebdavMoveTest extends WgwDatabaseTestCase
 
     public function test_share_rewrite_failure_still_returns_created_and_moves_file_node(): void
     {
-        $dav = 'Basic '.base64_encode('bob:secret');
-        $this->dav($dav, 'PUT', '/files/users/bob/report.docx', 'body')->assertSuccessful();
-
-        $before = app(FileNodeIndexService::class)->liveByKey('users/bob/report.docx');
-        $this->assertNotNull($before);
-
         $shares = $this->createMock(DriveShareService::class);
         $shares->expects($this->once())
             ->method('rewritePathPrefix')
             ->willThrowException(new \RuntimeException('database is locked'));
         $this->app->instance(DriveShareService::class, $shares);
+
+        $dav = 'Basic '.base64_encode('bob:secret');
+        $this->dav($dav, 'PUT', '/files/users/bob/report.docx', 'body')->assertSuccessful();
+
+        $before = app(FileNodeIndexService::class)->liveByKey('users/bob/report.docx');
+        $this->assertNotNull($before);
 
         $this->dav($dav, 'MOVE', '/files/users/bob/report.docx', null, [
             'HTTP_DESTINATION' => '/files/users/bob/saved.docx',

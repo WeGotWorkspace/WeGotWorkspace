@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
-final class DriveShareService
+class DriveShareService
 {
     private const GUEST_JWT_TTL_SECONDS = 3600;
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Dav\Server;
 
 use App\Services\Drive\DriveShareService;
+use Illuminate\Support\Facades\Log;
 use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
 use Sabre\HTTP\RequestInterface;
@@ -12,7 +13,7 @@ use Sabre\HTTP\ResponseInterface;
 
 /**
  * Rewrites drive_shares.path after a successful WebDAV MOVE so member and
- * public grants follow the file, matching DriveService::renameItem.
+ * public grants follow the file, like DriveService::renameItem does.
  */
 final class DriveShareMovePlugin extends ServerPlugin
 {
@@ -35,11 +36,37 @@ final class DriveShareMovePlugin extends ServerPlugin
 
         $from = $this->shareVirtualPath((string) $request->getPath());
         $to = $this->shareVirtualPath($this->destinationDavPath($request));
-        if ($from === null || $to === null) {
+        if ($from === null || $to === null || $this->isSwapTempName($to)) {
             return;
         }
 
-        $this->shares->rewritePathPrefix($from, $to);
+        try {
+            $this->shares->rewritePathPrefix($from, $to);
+        } catch (\Throwable $e) {
+            Log::error('drive_share_move_rewrite_failed', [
+                'from' => $from,
+                'to' => $to,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Office and editor save swaps rename the real file onto a temp name.
+     * Rewriting the grant onto that name drops it when the temp file is deleted.
+     */
+    private function isSwapTempName(string $virtualPath): bool
+    {
+        $name = basename($virtualPath);
+        if ($name === '' || $name === '.' || $name === '..') {
+            return false;
+        }
+
+        return str_starts_with($name, '~')
+            || str_ends_with($name, '.tmp')
+            || str_starts_with($name, '.~lock.')
+            || str_ends_with($name, '~')
+            || str_starts_with($name, '.#');
     }
 
     private function destinationDavPath(RequestInterface $request): string
