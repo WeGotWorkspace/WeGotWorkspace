@@ -507,6 +507,32 @@ describe("useDocsHomeActions", () => {
     expect(reload).toHaveBeenCalled();
   });
 
+  it("undo restores offline caches only for files that reached Trash", async () => {
+    const operations = createMockOperations();
+    const data = {} as DriveUIData;
+    operations.renameItem
+      .mockResolvedValueOnce(data)
+      .mockRejectedValueOnce(new Error("rename failed"));
+    const { result } = renderActions(operations, vi.fn(), { offlineUsername: "alice" });
+
+    act(() => result.current.requestDeleteSelected(FILES.map((entry) => entry.id)));
+    act(() => result.current.confirmTrash());
+
+    const queued = queueMutation.mock.calls[0]?.[0];
+    await act(async () => {
+      await expect(queued?.execute(new AbortController().signal)).rejects.toThrow("rename failed");
+    });
+    await act(async () => {
+      queued?.undo();
+    });
+
+    await waitFor(() => expect(undoOfflineDocsTrash).toHaveBeenCalledTimes(1));
+    expect(undoOfflineDocsTrash).toHaveBeenCalledWith(
+      "alice",
+      expect.objectContaining({ apiPath: "/users/alice/A.md" }),
+    );
+  });
+
   it("restores a trashed file under a free name when the original title is taken", async () => {
     const operations = createMockOperations();
     operations.listAllDirectoryEntries.mockImplementation(async (directory: string) => {
