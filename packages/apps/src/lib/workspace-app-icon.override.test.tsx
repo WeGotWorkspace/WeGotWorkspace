@@ -37,6 +37,16 @@ describe("WorkspaceAppIconOverrideProvider", () => {
     expect(trigger?.innerHTML).not.toContain("var(--wai-bg, var(--color-we-got-red, #de4b0e))");
   });
 
+  it("inlines the home tile and keeps the artwork's own fill variables", () => {
+    const { container } = render(<WorkspaceAppIcon appId="mail" variant="tile" />);
+    const tile = container.querySelector(".workspace-app-icon--tile");
+    expect(tile?.tagName).toBe("SPAN");
+    expect(tile?.querySelector("svg")).toBeTruthy();
+    expect(tile?.querySelector("img")).toBeNull();
+    expect(tile?.innerHTML).toContain("var(--wai-bg, var(--color-we-got-red, #de4b0e))");
+    expect(tile?.innerHTML).toContain("var(--wai-fg, var(--color-we-got-soft, #fff5e9))");
+  });
+
   it("uses a data URL for default/tile variants when svgMarkup is provided", () => {
     const { container } = render(
       <WorkspaceAppIconOverrideProvider svgMarkup={OVERRIDE_MARKUP}>

@@ -27,6 +27,56 @@ html:has(.apps-home-screen) {
   background-color: var(--color-we-got-soft);
 }
 
+/**
+ * Same `--wai-bg` / `--wai-fg` pair as each app's sidebar switch icon
+ * (`app-sidebar__header` … `workspace-app-icon--switch-trigger svg`).
+ */
+.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="admin"],
+.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="settings"] {
+  --wai-bg: var(--color-we-got-dark);
+  --wai-fg: var(--color-we-got-soft);
+}
+
+.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="calendar"] {
+  --wai-bg: var(--color-we-got-prince);
+  --wai-fg: #ffffff;
+}
+
+.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="contacts"] {
+  --wai-bg: var(--color-we-got-sky);
+  --wai-fg: var(--color-we-got-dark);
+}
+
+.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="docs"] {
+  --wai-bg: var(--color-we-got-blue);
+  --wai-fg: #ffffff;
+}
+
+.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="drive"] {
+  --wai-bg: var(--color-we-got-dark);
+  --wai-fg: var(--color-we-got-brat);
+}
+
+.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="mail"] {
+  --wai-bg: var(--color-we-got-red);
+  --wai-fg: #ffffff;
+}
+
+.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="meet"] {
+  --wai-bg: var(--color-we-got-soft);
+  --wai-fg: var(--color-we-got-sand);
+}
+
+.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="notes"] {
+  --wai-bg: var(--color-we-got-yellow);
+  --wai-fg: #ffffff;
+}
+
+.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="tasks"] {
+  --wai-bg: var(--color-we-got-pink);
+  --wai-fg: var(--color-we-got-dark);
+}
+
 /** Home grid tile — 128px base, 160px from `sm` (+25%); radius is CSS-only (SVG stays square). */
 .apps-home-screen__tile-icon {
   --workspace-app-icon-radius: calc(100% / 6);

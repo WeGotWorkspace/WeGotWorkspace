@@ -11,6 +11,10 @@
   border-radius: var(--workspace-app-icon-radius);
 }
 
+.workspace-app-icon--tile svg {
+  @apply block size-full;
+}
+
 /**
  * Switch trigger lockup: `--app-sidebar-color` background + `--workspace-accent` artwork.
  * The same vector SVG as the default icon is inlined; `--wai-*` vars remap layers for inversion.
