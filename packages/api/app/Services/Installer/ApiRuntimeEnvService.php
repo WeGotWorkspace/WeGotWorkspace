@@ -20,6 +20,10 @@ final class ApiRuntimeEnvService
         'bootstrap/cache',
     ];
 
+    public function __construct(
+        private EnvFileWriter $envFiles = new EnvFileWriter,
+    ) {}
+
     public function apiPackageRoot(string $installRoot): ?string
     {
         $root = rtrim(str_replace('\\', '/', $installRoot), '/').'/packages/api';
@@ -144,20 +148,11 @@ final class ApiRuntimeEnvService
     }
 
     /**
-     * Same lock and atomic replace as InstallerEnvWriter::patchEnvFile.
-     *
-     * The mutator returns null when the file should stay unchanged.
-     * A write failure stays false so a request can still boot.
-     *
      * @param  callable(string): ?string  $mutator
      */
     private function updateEnvFile(string $envPath, callable $mutator): bool
     {
-        try {
-            return (new EnvFileWriter)->update($envPath, $mutator);
-        } catch (\RuntimeException) {
-            return false;
-        }
+        return $this->envFiles->update($envPath, $mutator);
     }
 
     public static function guessRequestAppUrl(): ?string

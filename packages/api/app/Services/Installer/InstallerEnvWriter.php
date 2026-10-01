@@ -14,6 +14,7 @@ final class InstallerEnvWriter
     public function __construct(
         private AppPaths $paths,
         private ApiRuntimeEnvService $apiEnv,
+        private EnvFileWriter $envFiles = new EnvFileWriter,
     ) {}
 
     /**
@@ -46,17 +47,21 @@ final class InstallerEnvWriter
             copy(dirname($envPath).'/.env.example', $envPath);
         }
 
-        (new EnvFileWriter)->update($envPath, static function (string $content) use ($pairs): ?string {
-            $next = $content;
-            foreach ($pairs as $key => $value) {
-                if ($value === null) {
-                    continue;
+        try {
+            $this->envFiles->rewrite($envPath, static function (string $content) use ($pairs): ?string {
+                $original = $content;
+                foreach ($pairs as $key => $value) {
+                    if ($value === null) {
+                        continue;
+                    }
+                    $content = WgwApiEnvFile::setLine($content, $key, $value);
                 }
-                $next = WgwApiEnvFile::setLine($next, $key, $value);
-            }
 
-            return $next === $content ? null : $next;
-        });
+                return $content === $original ? null : $content;
+            });
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException('Could not write packages/api/.env', 0, $e);
+        }
     }
 
     public function envPath(): string
