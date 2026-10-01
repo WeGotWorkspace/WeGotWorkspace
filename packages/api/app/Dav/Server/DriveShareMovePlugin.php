@@ -6,6 +6,7 @@ namespace App\Dav\Server;
 
 use App\Services\Drive\DriveShareService;
 use Illuminate\Support\Facades\Log;
+use Sabre\DAV\ICollection;
 use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
 use Sabre\HTTP\RequestInterface;
@@ -34,9 +35,14 @@ final class DriveShareMovePlugin extends ServerPlugin
             return;
         }
 
+        $server = $this->server;
+        $destDavPath = $this->destinationDavPath($request);
         $from = $this->shareVirtualPath((string) $request->getPath());
-        $to = $this->shareVirtualPath($this->destinationDavPath($request));
-        if ($from === null || $to === null || $this->isSwapTempName($to)) {
+        $to = $this->shareVirtualPath($destDavPath);
+        if ($from === null || $to === null || $server === null) {
+            return;
+        }
+        if (! $server->tree->getNodeForPath($destDavPath) instanceof ICollection && $this->isSwapTempName($to)) {
             return;
         }
 

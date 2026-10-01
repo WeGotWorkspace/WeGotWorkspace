@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dav;
 
-use App\Services\Drive\DriveShareService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Support\WgwSettings;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -119,17 +119,16 @@ final class DriveShareWebdavMoveTest extends WgwDatabaseTestCase
 
     public function test_share_rewrite_failure_still_returns_created_and_moves_file_node(): void
     {
-        $shares = $this->createMock(DriveShareService::class);
-        $shares->expects($this->once())
-            ->method('rewritePathPrefix')
-            ->willThrowException(new \RuntimeException('database is locked'));
-        $this->app->instance(DriveShareService::class, $shares);
-
         $dav = 'Basic '.base64_encode('bob:secret');
         $this->dav($dav, 'PUT', '/files/users/bob/report.docx', 'body')->assertSuccessful();
 
         $before = app(FileNodeIndexService::class)->liveByKey('users/bob/report.docx');
         $this->assertNotNull($before);
+
+        // Sessions and grants reference drive_shares, so the children go first.
+        Schema::connection('wgw')->dropIfExists('drive_share_sessions');
+        Schema::connection('wgw')->dropIfExists('drive_share_grants');
+        Schema::connection('wgw')->dropIfExists('drive_shares');
 
         $this->dav($dav, 'MOVE', '/files/users/bob/report.docx', null, [
             'HTTP_DESTINATION' => '/files/users/bob/saved.docx',
@@ -207,6 +206,42 @@ final class DriveShareWebdavMoveTest extends WgwDatabaseTestCase
             'office lock' => ['.~lock.report.docx#'],
             'backup tilde' => ['report.docx~'],
             'emacs lock' => ['.#report.docx'],
+        ];
+    }
+
+    #[DataProvider('tempNamedFolderDestinations')]
+    public function test_temp_named_folder_move_rewrites_share_path(string $destinationName): void
+    {
+        $dav = 'Basic '.base64_encode('bob:secret');
+        $this->dav($dav, 'MKCOL', '/files/users/bob/shared')->assertSuccessful();
+
+        $owner = $this->issueBearerTokenFor('bob');
+        $this->withBearer($owner)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared',
+            'kind' => 'member',
+            'defaultAccess' => 'edit',
+            'shareWith' => ['alice' => ['access' => 'edit']],
+        ])->assertOk();
+
+        $this->dav($dav, 'MOVE', '/files/users/bob/shared', null, [
+            'HTTP_DESTINATION' => '/files/users/bob/'.rawurlencode($destinationName),
+        ])->assertSuccessful();
+
+        $this->withBearer($owner)
+            ->getJson('/api/v1/files/shares?path='.urlencode('/users/bob/'.$destinationName))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.path', '/users/bob/'.$destinationName)
+            ->assertJsonPath('data.0.shareWith.alice.access', 'edit');
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function tempNamedFolderDestinations(): array
+    {
+        return [
+            'tilde folder' => ['~archive'],
         ];
     }
 
