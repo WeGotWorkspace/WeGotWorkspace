@@ -103,6 +103,106 @@ final class ApiRuntimeEnvServiceTest extends TestCase
         $this->assertSame("APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n", file_get_contents($this->apiRoot.'/.env'));
     }
 
+    public function test_ensure_rewrites_symlink_target_without_dropping_keys(): void
+    {
+        $volume = sys_get_temp_dir().'/wgw-env-vol-'.uniqid('', true);
+        mkdir($volume, 0775, true);
+        $body = "APP_KEY=\nAPP_URL=http://localhost\nWGW_INSTALL_DB_DRIVER=mysql\nWGW_INSTALL_DB_HOST=db\n";
+        file_put_contents($volume.'/api.env', $body);
+        symlink($volume.'/api.env', $this->apiRoot.'/.env');
+
+        try {
+            $result = (new ApiRuntimeEnvService)->ensureAtApiRoot($this->apiRoot, 'http://127.0.0.1:18080');
+
+            $this->assertTrue(is_link($this->apiRoot.'/.env'));
+            $this->assertTrue($result['generatedKey']);
+            $this->assertTrue($result['patchedUrl']);
+            $written = (string) file_get_contents($volume.'/api.env');
+            $this->assertMatchesRegularExpression('/^APP_KEY=base64:/m', $written);
+            $this->assertStringContainsString('APP_URL=http://127.0.0.1:18080', $written);
+            $this->assertStringContainsString('WGW_INSTALL_DB_DRIVER=mysql', $written);
+            $this->assertStringContainsString('WGW_INSTALL_DB_HOST=db', $written);
+        } finally {
+            @unlink($volume.'/api.env.lock');
+            @unlink($volume.'/api.env');
+            @rmdir($volume);
+        }
+    }
+
+    public function test_concurrent_ensure_never_exposes_a_partial_env_file(): void
+    {
+        $lines = [
+            'APP_NAME=Laravel',
+            'APP_KEY=',
+            'APP_URL=http://localhost',
+            'WGW_INSTALL_DB_DRIVER=mysql',
+            'WGW_INSTALL_DB_HOST=db',
+            'WGW_INSTALL_CHANNEL=docker',
+        ];
+        // Large enough that the old open-truncate-write window is observable.
+        // A fresh Docker install lost every key except APP_KEY and APP_URL.
+        for ($n = 0; $n < 4000; $n++) {
+            $lines[] = 'WGW_PAD_'.$n.'='.str_repeat('x', 40);
+        }
+        $body = implode("\n", $lines)."\n";
+        file_put_contents($this->apiRoot.'/.env', $body);
+
+        $worker = tempnam(sys_get_temp_dir(), 'wgw-env-worker-');
+        $this->assertNotFalse($worker);
+        file_put_contents($worker, <<<'PHP'
+<?php
+require $argv[1];
+$service = new App\Services\Installer\ApiRuntimeEnvService;
+for ($i = 0; $i < 25; $i++) {
+    $service->ensureAtApiRoot($argv[2], 'http://127.0.0.1:18080');
+}
+PHP);
+
+        $autoload = dirname(__DIR__, 3).'/vendor/autoload.php';
+        $envPath = $this->apiRoot.'/.env';
+        $sawEmpty = 0;
+        $sawMissing = 0;
+        $proc = proc_open(
+            [PHP_BINARY, $worker, $autoload, $this->apiRoot],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+        );
+        $this->assertIsResource($proc);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        try {
+            $deadline = microtime(true) + 8;
+            do {
+                $status = proc_get_status($proc);
+                clearstatcache(true, $envPath);
+                $content = @file_get_contents($envPath);
+                if (! is_string($content) || $content === '') {
+                    $sawEmpty++;
+                } elseif (! str_contains($content, 'WGW_INSTALL_DB_DRIVER=mysql') || ! str_contains($content, 'WGW_PAD_3999=')) {
+                    $sawMissing++;
+                }
+                if (! $status['running']) {
+                    break;
+                }
+            } while (microtime(true) < $deadline);
+        } finally {
+            $exit = proc_close($proc);
+            @unlink($worker);
+        }
+
+        $this->assertSame(0, $exit);
+        $this->assertSame(0, $sawEmpty);
+        $this->assertSame(0, $sawMissing);
+
+        $env = (string) file_get_contents($envPath);
+        $this->assertMatchesRegularExpression('/^APP_KEY=base64:[A-Za-z0-9+\/=]+$/m', $env);
+        $this->assertStringContainsString('WGW_INSTALL_DB_HOST=db', $env);
+        $this->assertStringContainsString('WGW_INSTALL_CHANNEL=docker', $env);
+        $this->assertStringContainsString('APP_URL=http://127.0.0.1:18080', $env);
+        $this->assertGreaterThan(strlen($body), strlen($env));
+    }
+
     public function test_ensure_strips_invalid_dotenv_lines(): void
     {
         file_put_contents($this->apiRoot.'/.env', "APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\nreply@example.com\n");

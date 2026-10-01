@@ -70,7 +70,39 @@ final class WgwInstallEnvTest extends TestCase
         $this->assertSame('admin', $defaults['admin_username'] ?? null);
         $this->assertSame('admin@example.test', $defaults['admin_email'] ?? null);
         $this->assertArrayNotHasKey('admin_password', $defaults);
+        $this->assertArrayNotHasKey('mysql_password', $defaults['db']);
         $this->assertTrue(app(WgwInstallEnv::class)->hasDatabaseFromEnv());
+    }
+
+    public function test_omitted_mysql_password_uses_env_only_for_the_same_server(): void
+    {
+        $this->setInstallConfig([
+            'db_driver' => 'mysql',
+            'db_host' => 'db',
+            'db_port' => '3306',
+            'db_database' => 'wgw',
+            'db_user' => 'wgw',
+            'db_password' => 'secret',
+        ]);
+
+        $env = app(WgwInstallEnv::class);
+        $matching = [
+            'driver' => 'mysql',
+            'mysql_host' => 'db',
+            'mysql_port' => 3306,
+            'mysql_db' => 'wgw',
+            'mysql_user' => 'wgw',
+            'mysql_password' => '',
+        ];
+        $this->assertSame('secret', $env->passwordForSubmittedDatabase($matching));
+
+        $typed = $matching;
+        $typed['mysql_password'] = 'typed-secret';
+        $this->assertSame('typed-secret', $env->passwordForSubmittedDatabase($typed));
+
+        $otherHost = $matching;
+        $otherHost['mysql_host'] = 'evil.example';
+        $this->assertSame('', $env->passwordForSubmittedDatabase($otherHost));
     }
 
     public function test_has_database_from_env_is_false_without_driver(): void
