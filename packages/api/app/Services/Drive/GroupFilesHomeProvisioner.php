@@ -17,10 +17,6 @@ final class GroupFilesHomeProvisioner
 
     public function ensureForSlug(string $slug): void
     {
-        if (preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/', $slug) !== 1) {
-            throw new \InvalidArgumentException('Group slug must be 2–63 characters: lowercase letters, digits, underscore, or hyphen.');
-        }
-
         $path = $this->pathForSlug($slug);
         if (is_dir($path)) {
             return;
@@ -50,7 +46,7 @@ final class GroupFilesHomeProvisioner
             ->pluck('uri')
             ->each(function (mixed $uri) use (&$scanned, &$created, &$skipped): void {
                 $slug = substr((string) $uri, strlen(AdminConstants::GROUP_PREFIX));
-                if (preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/', $slug) !== 1) {
+                if (! $this->isDriveSegment($slug)) {
                     return;
                 }
 
@@ -71,5 +67,17 @@ final class GroupFilesHomeProvisioner
     public function pathForSlug(string $slug): string
     {
         return rtrim($this->paths->dataDir(), '/').'/files/groups/'.$slug;
+    }
+
+    /**
+     * True when the remainder of a group URI is one files/groups segment.
+     */
+    private function isDriveSegment(string $slug): bool
+    {
+        return $slug !== ''
+            && $slug !== '.'
+            && $slug !== '..'
+            && ! str_contains($slug, '/')
+            && ! str_contains($slug, '\\');
     }
 }
