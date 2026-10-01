@@ -26,7 +26,7 @@ Keep **three** surfaces — do not invent a fourth roadmap tracker:
 | Surface | What | Browse |
 |---------|------|--------|
 | **1. Product** | Goals (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project | Status columns Identified → Adopted → Fulfilled |
-| **2. Delivery** | Epics / Tasks / Bugs (`type:epic`, `type:task`, GitHub type **Bug**) — implementable work under Goals | Issue filters below; **not** on the Product Project |
+| **2. Delivery** | Epics / Tasks / Chores / Bugs (`type:epic`, `type:task`, and `type:chore` use GitHub type **Task**; bugs use GitHub type **Bug**) — implementable work under Goals | Issue filters below; **not** on the Product Project |
 | **3. Release targets & eng packing** | GitHub **milestones** (`v0.9`, `v1.0`, …) | Soft release target on Goals; pack Epics/Tasks/Bugs for a release train |
 
 ### Milestones on Goals (and delivery)
@@ -99,6 +99,8 @@ Engineering release packing remains the **milestone filter** on delivery issues 
 | Chore | `type:chore` | No | Optional |
 | Bug | GitHub type **Bug** (+ `needs-triage`) | No | Yes (release packing) |
 | Area | `area:*` (mail, drive, docs, …) | On Goals (and optionally delivery) | Groups siblings; not a Goal parent |
+
+GitHub issue type is **Feature** for a Goal, **Task** for an Epic, Task, or Chore, and **Bug** for a bug report. The kind label stays `type:epic` or `type:chore`.
 
 Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `goal.yml`, `epic.yml`, `task.yml`, `chore.yml` (maintainers only), `bug-report.yml` (plus specialized `dast-finding.yml`). Blank issues are disabled. Externals use Discussions + bugs; maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
 

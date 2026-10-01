@@ -1,6 +1,6 @@
 name: "[Maintainers only] Chore"
 description: Maintainers only — eng chore, debt, or tracker. Externals: use Discussions or Bug report.
-title: "[Chore] "
+type: Task
 labels:
   - type:chore
 body:
@@ -11,6 +11,7 @@ body:
         for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
 
         Use for eng debt, trackers, and maintainer chores that are **not** a product Goal.
+        Do not start the title with `[Chore]`. The GitHub issue type is Task; the label stays `type:chore`.
         Prefer **Task** when work needs implementable AC under an Epic/Goal and a `feat/` spec.
         **Write the entire issue in English**, even if the conversation that produced it was in another language.
 
