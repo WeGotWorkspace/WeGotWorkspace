@@ -72,6 +72,9 @@
   --checkbox-checked-border: var(--workspace-accent);
   --checkbox-checked-fg: #ffffff;
   --switch-on-bg: var(--workspace-accent);
+  /* Selected / open list row: same wash as Drive and Docs tiles. */
+  --list-item-selected-bg: var(--drive-item-selected-background);
+  --list-item-active-bg: var(--drive-item-selected-background);
 
   /* Outline action language for header + collection sidebar + action-bar. */
   --button-active-color: var(--workspace-accent-strong);

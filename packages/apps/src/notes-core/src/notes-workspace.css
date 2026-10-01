@@ -101,14 +101,13 @@
    */
   --app-sidebar-item-selected-color: var(--sidebar-on, var(--color-we-got-dark));
   /*
-   * Open / selected list row: same fill as `.app-sidebar` (`--app-sidebar-bg` →
-   * `--app-sidebar-bg`). Not a second accent wash, not `--workspace-accent`, not
-   * the notebook sheet tint.
+   * Open / selected list row: same wash as Drive and Docs tiles
+   * (`--drive-item-selected-background` in workspace-color.css).
    */
-  --list-item-selected-bg: var(--app-sidebar-bg);
-  --list-item-active-bg: var(--app-sidebar-bg);
-  /* Soft yellow fill needs ink check (white on yellow fails WCAG UI 3:1). */
-  --list-item-checkbox-icon-color: var(--sidebar-on, var(--color-we-got-dark));
+  --list-item-selected-bg: var(--drive-item-selected-background);
+  --list-item-active-bg: var(--drive-item-selected-background);
+  /* Checked fill is Dark (`--color-emerald`). White glyph, same as Drive. */
+  --list-item-checkbox-icon-color: #ffffff;
   --checkbox-border-color: color-mix(
     in oklch,
     var(--sidebar-on, var(--color-we-got-dark)) 30%,

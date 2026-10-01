@@ -79,6 +79,17 @@
   --workspace-root-bg: var(--workspace-surface);
   --workspace-main-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
+  /*
+   * Selected list and tile wash on the main paper. Drive and Docs tiles,
+   * and Notes and Contacts rows, read this one mix so they cannot drift.
+   * 6.6% accent into `--workspace-surface` (oklab) matches the sidebar
+   * selected step's lightness drop. Sand and the sidebar fill stay on the rail.
+   */
+  --drive-item-selected-background: color-mix(
+    in oklab,
+    var(--workspace-accent, var(--color-we-got-dark)) 6.6%,
+    var(--workspace-surface)
+  );
 
   /*
    * Shared field wash — same dark-into-paper recipe as login/installer
