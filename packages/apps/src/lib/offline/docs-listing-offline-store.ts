@@ -139,7 +139,7 @@ export function buildOfflineDocsSearchResult(apiPath: string): WgwUnifiedSearchR
   };
 }
 
-function renamedDocsSearchResult(
+export function renamedDocsSearchResult(
   existing: WgwUnifiedSearchResult | undefined,
   toApiPath: string,
 ): WgwUnifiedSearchResult {

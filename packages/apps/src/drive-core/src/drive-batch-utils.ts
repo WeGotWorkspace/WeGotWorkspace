@@ -174,9 +174,15 @@ export async function restoreCompletedDriveMoves(input: {
   completedKeys: ReadonlySet<string>;
   username: string;
   groupRoots: Set<string>;
-}): Promise<{ restored: RestoredDriveName[]; failures: number }> {
+}): Promise<{
+  restored: RestoredDriveName[];
+  failures: number;
+  /** Final name for every completed file the server put back, including an unchanged title. */
+  restoredToById: Map<string, string>;
+}> {
   const takenByDirectory = new Map<string, Set<string>>();
   const restored: RestoredDriveName[] = [];
+  const restoredToById = new Map<string, string>();
   let failures = 0;
   for (const move of input.moves) {
     if (!input.completedKeys.has(move.id)) continue;
@@ -189,13 +195,14 @@ export async function restoreCompletedDriveMoves(input: {
         takenByDirectory,
       );
       await input.operations.renameItem({ destination, from: move.from, to });
+      restoredToById.set(move.id, to);
       if (to !== move.title) restored.push({ title: move.title, to });
     } catch (error) {
       failures += 1;
       console.error("Drive batch restore failed", error);
     }
   }
-  return { restored, failures };
+  return { restored, failures, restoredToById };
 }
 
 export async function ensureTrashFolder(

@@ -261,7 +261,9 @@ describe("restoreCompletedDriveMoves", () => {
       ],
     });
 
-    expect(result).toEqual({ restored: [], failures: 1 });
+    expect(result.restored).toEqual([]);
+    expect(result.failures).toBe(1);
+    expect(result.restoredToById).toEqual(new Map([["b", "b.md"]]));
     expect(operations.renameItem).toHaveBeenNthCalledWith(2, {
       destination: "/users/alice",
       from: "/users/alice/.Trash/b.md",

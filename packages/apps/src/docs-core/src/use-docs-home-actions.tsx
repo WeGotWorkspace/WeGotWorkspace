@@ -3,14 +3,14 @@ import { Download, Pencil, Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import { useQueuedMutation } from "@/hooks/use-queued-mutation";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { readBrowserOnline } from "@/lib/offline/core/browser-online";
-import {
-  captureOfflineDocsTrashSnapshot,
-  type DocsTrashUndoSnapshot,
-  undoOfflineDocsTrash,
-} from "@/lib/offline/docs/docs-hybrid-operations";
+import { captureOfflineDocsTrashSnapshot } from "@/lib/offline/docs/docs-hybrid-operations";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import type { DriveFile } from "@/drive-core/src/drive-models";
+import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
+import {
+  revertDocsHomeTrash,
+  type DocsHomeTrashOfflineSnapshot,
+} from "@/docs-core/src/docs-home-trash-undo";
 import {
   ensureTrashFolder,
   listTrashEntryNames,
@@ -25,12 +25,6 @@ import { parentAndName } from "@/lib/files/api-path";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
 
 const WRITE_QUEUE_DELAY_MS = 2500;
-
-type DocsTrashMoveSnapshot = {
-  file: DriveFile;
-  /** Actual server path under `.Trash` (may differ from title when names collide). */
-  trashPath: string;
-};
 
 export type DocsHomeRenameState = { id: string; extension: string };
 export type DocsHomeMoveState = { ids: string[] };
@@ -317,38 +311,10 @@ export function useDocsHomeActions({
       return;
     }
 
-    let completed = false;
-    let offlineSnapshots: DocsTrashUndoSnapshot[] = [];
-    let trashSnapshots: DocsTrashMoveSnapshot[] = [];
+    const trashedNameById = new Map<string, string>();
+    let offlineSnapshots: DocsHomeTrashOfflineSnapshot[] = [];
 
-    const revertTrash = async () => {
-      if (offlineUsername && offlineSnapshots.length > 0) {
-        for (const snapshot of offlineSnapshots) {
-          await undoOfflineDocsTrash(offlineUsername, snapshot);
-        }
-      }
-      if (readBrowserOnline() && trashSnapshots.length > 0) {
-        for (const { file, trashPath } of trashSnapshots) {
-          try {
-            const destination = apiPathFromUiPath(file.parent, username, groupRootNames);
-            await operations.renameItem({ destination, from: trashPath, to: file.title });
-          } catch {
-            // Offline-only trash never reached server trash; local undo above is enough.
-          }
-        }
-      }
-      reload();
-      onAvailabilityChanged?.();
-    };
-
-    const undo = () => {
-      rollbackUi();
-      if (completed) {
-        void revertTrash().catch(() => undefined);
-      }
-    };
-
-    runQueuedBatchAction({
+    runImmediateDriveBatch({
       queueMutation,
       key: `docs:trash:${ids.slice().sort().join(",")}`,
       toastMessage:
@@ -357,32 +323,45 @@ export function useDocsHomeActions({
           : `Moved ${rows.length} files to Trash`,
       icon: <Trash2 className="size-4" />,
       undoToastMessage: "Move to trash undone.",
-      rollback: undo,
-      executeImmediately: true,
-      execute: async (signal) => {
+      rollback: rollbackUi,
+      execute: async (signal, markCompleted) => {
         if (offlineUsername) {
           offlineSnapshots = await Promise.all(
-            rows.map((file) => captureOfflineDocsTrashSnapshot(offlineUsername, file.apiPath!)),
+            rows.map(async (file) => ({
+              id: file.id,
+              snapshot: await captureOfflineDocsTrashSnapshot(offlineUsername, file.apiPath!),
+            })),
           );
         }
         await ensureTrashFolder(operations, username, groupRootNames, signal);
         const destination = apiPathFromUiPath(DRIVE_TRASH_UI_PATH, username, groupRootNames);
         const trashNames = await listTrashEntryNames(operations, destination, signal);
-        trashSnapshots = [];
         for (const file of rows) {
           const apiPath = normalizeApiVirtualPath(file.apiPath!);
           const to = resolveFreeName(file.title, trashNames);
           trashNames.add(to);
+          trashedNameById.set(file.id, to);
           await operations.renameItem({ destination, from: apiPath, to }, { signal });
-          trashSnapshots.push({
-            file,
-            trashPath: normalizeApiVirtualPath(`${destination}/${to}`),
-          });
+          markCompleted(file.id);
         }
-        completed = true;
         reload();
         onAvailabilityChanged?.();
       },
+      revert: (completedKeys) =>
+        revertDocsHomeTrash({
+          operations,
+          rows,
+          trashedNameById,
+          completedKeys,
+          username,
+          groupRoots: groupRootNames,
+          offlineUsername,
+          offlineSnapshots,
+          show,
+          showError,
+          reload,
+          onAvailabilityChanged,
+        }),
     });
   }, [
     closeDelete,
@@ -394,6 +373,8 @@ export function useDocsHomeActions({
     operations,
     queueMutation,
     reload,
+    show,
+    showError,
     username,
   ]);
 
