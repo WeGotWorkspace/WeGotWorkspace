@@ -42,7 +42,7 @@ final class DriveShareMovePlugin extends ServerPlugin
         if ($from === null || $to === null || $server === null) {
             return;
         }
-        if (! $server->tree->getNodeForPath($destDavPath) instanceof ICollection && $this->isSwapTempName($to)) {
+        if ($this->isSwapTempName($to) && ! $this->isCollection($server, $destDavPath)) {
             return;
         }
 
@@ -54,6 +54,19 @@ final class DriveShareMovePlugin extends ServerPlugin
                 'to' => $to,
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * A failed lookup is treated as a file so a missing destination cannot
+     * fail a MOVE that already finished.
+     */
+    private function isCollection(Server $server, string $davPath): bool
+    {
+        try {
+            return $server->tree->getNodeForPath($davPath) instanceof ICollection;
+        } catch (\Throwable) {
+            return false;
         }
     }
 
