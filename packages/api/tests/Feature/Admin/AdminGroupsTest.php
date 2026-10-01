@@ -38,6 +38,7 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
             'principaluri' => 'principals/groups/support-team',
             'uri' => 'notes-support-team',
         ], 'wgw');
+        $this->assertTrue(is_dir($this->adminDataDirectory().'/files/groups/support-team'));
 
         $this->withBearer($token)
             ->patchJson('/api/v1/admin/groups/support-team', [
@@ -54,6 +55,17 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
         $bob = collect($state->json('users'))->firstWhere('username', 'bob');
         $this->assertIsArray($bob);
         $this->assertContains('principals/groups/support-team', $bob['groups']);
+
+        $groupListing = $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/files/children?path=/groups')
+            ->assertOk();
+        $groupNames = array_column((array) $groupListing->json('data.files'), 'name');
+        $this->assertContains('support-team', $groupNames);
+
+        $groupHome = $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/files/children?path=/groups/support-team')
+            ->assertOk();
+        $this->assertSame([], $groupHome->json('data.files'));
 
         $this->withBearer($token)
             ->deleteJson('/api/v1/admin/groups/support-team')
