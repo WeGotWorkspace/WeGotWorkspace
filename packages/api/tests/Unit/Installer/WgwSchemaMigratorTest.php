@@ -139,6 +139,10 @@ final class WgwSchemaMigratorTest extends TestCase
         // Format-at-edge notify facts; without this column NotifyListener inserts are
         // swallowed by EventDispatch and chat/docs/calendar inbox rows never appear.
         $this->assertTrue(Schema::connection('wgw')->hasColumn('notifications', 'data'));
+        $starIndexes = collect(Schema::connection('wgw')->getIndexes('drive_starred_items'))
+            ->pluck('name')
+            ->all();
+        $this->assertContains('idx_drive_starred_path', $starIndexes);
     }
 
     private static function legacyAppMigrationVersion(\PDO $pdo): int

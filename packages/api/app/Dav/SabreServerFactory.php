@@ -13,6 +13,7 @@ use App\Dav\Server\AppUserFilesHomeCollection;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
 use App\Dav\Server\ChatHiddenCalendarBackend;
+use App\Dav\Server\DriveStarPathPlugin;
 use App\Dav\Server\EventDispatchPlugin;
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Dav\Server\GroupFilesPrincipalCollection;
@@ -25,8 +26,10 @@ use App\Services\Chat\ChatCollectionUris;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
 use App\Services\Drive\DocAttachmentsService;
+use App\Services\Drive\DriveStarService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Search\SearchIndexerService;
+use App\Storage\StoragePaths;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +47,8 @@ final class SabreServerFactory
         private SearchIndexerService $searchIndexer,
         private FileNodeIndexService $fileNodeIndex,
         private DocAttachmentsService $docAttachments,
+        private DriveStarService $stars,
+        private StoragePaths $paths,
         private CalendarMeetLinkWriteHook $meetLinkHook,
         private EventDispatch $eventDispatch,
     ) {}
@@ -104,6 +109,7 @@ final class SabreServerFactory
         $server->addPlugin(new WebdavWriteGuardPlugin);
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
         $server->addPlugin(new FileNodeIndexPlugin($this->fileNodeIndex, $this->docAttachments));
+        $server->addPlugin(new DriveStarPathPlugin($this->stars, $this->paths));
         $server->addPlugin(new EventDispatchPlugin($this->eventDispatch));
         $locksPath = rtrim($this->install->dataDir(), '/').'/webdav-locks.dat';
         $server->addPlugin(new Locks\Plugin(new Locks\Backend\File($locksPath)));
