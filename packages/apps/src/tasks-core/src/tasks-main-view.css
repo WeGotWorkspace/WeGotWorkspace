@@ -291,6 +291,11 @@
 
 .tasks-main-view__composer-due-time-row {
   @apply flex flex-wrap items-center gap-2;
+  /* Match the composer field chips (32px, 12px type), not a taller md control. */
+  --control-height-md: var(--control-height-sm, 2rem);
+  --input-height: var(--control-height-sm, 2rem);
+  --input-font-size: 0.75rem;
+  --input-font-size-md: 0.75rem;
 }
 
 .tasks-main-view__composer-due-time {
@@ -299,6 +304,40 @@
 
 .tasks-main-view__composer-due-timezone {
   @apply min-w-0 flex-1;
+}
+
+/* Phone: keep the timed-due row inside the viewport. Desktop stays one line. */
+@media (max-width: 767px) {
+  .overlay-paper.tasks-main-view__composer-due-popover {
+    box-sizing: border-box;
+    width: auto;
+    max-width: calc(100vw - 2rem);
+  }
+
+  .tasks-main-view__composer-due-timezone {
+    flex: 0 1 auto;
+    width: auto;
+    max-width: 100%;
+  }
+
+  .tasks-main-view__composer-due-time,
+  .tasks-main-view__composer-due-time-row > .button {
+    flex: 0 0 auto;
+    max-width: 100%;
+  }
+
+  .tasks-main-view__composer-due-popover .tasks-main-view__composer-due-time,
+  .tasks-main-view__composer-due-popover .tasks-main-view__composer-due-timezone,
+  .tasks-main-view__composer-due-popover .tasks-main-view__composer-due-time-row > .button {
+    box-sizing: border-box;
+    height: var(--control-height-sm, 2rem);
+    min-height: var(--control-height-sm, 2rem);
+    max-height: var(--control-height-sm, 2rem);
+    padding-block: 0;
+    /* Beat the mobile 1rem floor on inputs and select triggers. */
+    font-size: 0.75rem !important;
+    line-height: 1rem;
+  }
 }
 
 .tasks-main-view__composer-due-clear {
@@ -416,17 +455,44 @@
   }
 }
 
+/*
+ * Phone: same sm height (32px) and 12px label on buttons and dropdowns.
+ * Width stays with the label; chips wrap in the existing flex row.
+ * Add task stays hug-content at that height.
+ */
+@media (max-width: 767px) {
+  .select-trigger.tasks-main-view__composer-select,
+  .tasks-main-view__composer-meta > button.tasks-main-view__composer-select,
+  .tasks-main-view__composer-select.tasks-main-view__remind-button {
+    box-sizing: border-box;
+    width: auto;
+    --control-height-md: var(--control-height-sm, 2rem);
+    --input-height: var(--control-height-sm, 2rem);
+    height: var(--control-height-sm, 2rem);
+    min-height: var(--control-height-sm, 2rem);
+    max-height: var(--control-height-sm, 2rem);
+    padding-block: 0;
+    padding-inline: 0.375rem;
+    gap: 0.25rem;
+    /* Beat the mobile 1rem floor on `.select-trigger` so dropdowns match buttons. */
+    font-size: 0.75rem !important;
+    line-height: 1rem;
+    color: var(--select-trigger-color, var(--button-outline-color, var(--color-we-got-dark)));
+  }
+
+  .tasks-main-view__add-submit {
+    --control-height-md: var(--control-height-sm, 2rem);
+  }
+}
+
 .tasks-main-view__composer-actions {
   @apply mt-2 flex w-full justify-start gap-2;
 }
 
-.tasks-main-view__add-submit.button--variant-primary {
-  background-color: var(--workspace-accent);
-  color: var(--button-primary-fg, var(--color-we-got-dark));
-}
-
-.tasks-main-view__add-submit.button--variant-primary:hover {
-  opacity: 0.9;
+/* Dark primary for this submit only. Sidebar New task keeps the pink icon pair. */
+.tasks-main-view__add-submit {
+  --button-primary-bg: var(--workspace-accent, var(--color-we-got-dark));
+  --button-primary-fg: #ffffff;
 }
 
 .tasks-edit-dialog__content {

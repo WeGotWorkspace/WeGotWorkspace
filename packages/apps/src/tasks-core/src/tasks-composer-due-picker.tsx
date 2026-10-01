@@ -92,7 +92,11 @@ export function TasksComposerDuePicker({
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="tasks-main-view__composer-due-popover w-auto p-0">
+      <PopoverContent
+        align="start"
+        collisionPadding={16}
+        className="tasks-main-view__composer-due-popover w-auto p-0"
+      >
         <Calendar
           mode="single"
           selected={selectedDate}
