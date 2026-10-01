@@ -38,6 +38,7 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
             'principaluri' => 'principals/groups/support-team',
             'uri' => 'notes-support-team',
         ], 'wgw');
+        $this->assertTrue(is_dir($this->adminDataDirectory().'/files/groups/support-team'));
 
         $this->withBearer($token)
             ->patchJson('/api/v1/admin/groups/support-team', [
@@ -54,6 +55,17 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
         $bob = collect($state->json('users'))->firstWhere('username', 'bob');
         $this->assertIsArray($bob);
         $this->assertContains('principals/groups/support-team', $bob['groups']);
+
+        $groupListing = $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/files/children?path=/groups')
+            ->assertOk();
+        $groupNames = array_column((array) $groupListing->json('data.files'), 'name');
+        $this->assertContains('support-team', $groupNames);
+
+        $groupHome = $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/files/children?path=/groups/support-team')
+            ->assertOk();
+        $this->assertSame([], $groupHome->json('data.files'));
 
         $this->withBearer($token)
             ->deleteJson('/api/v1/admin/groups/support-team')
@@ -112,5 +124,33 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
         )->firstWhere('username', 'bob');
         $this->assertIsArray($bob);
         $this->assertContains('principals/groups/editors', $bob['groups']);
+    }
+
+    public function test_create_fails_without_a_principal_when_the_data_directory_is_read_only(): void
+    {
+        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $this->markTestSkipped('chmod cannot deny writes to the root user.');
+        }
+
+        $files = $this->adminDataDirectory().'/files';
+        if (! chmod($files, 0555)) {
+            $this->fail('Could not make the data files directory read-only.');
+        }
+
+        try {
+            $this->withBearer($this->adminBearerToken())
+                ->postJson('/api/v1/admin/groups', [
+                    'name' => 'read-only-team',
+                    'displayName' => 'Read Only Team',
+                ])
+                ->assertServerError();
+
+            $this->assertDatabaseMissing('principals', [
+                'uri' => 'principals/groups/read-only-team',
+            ], 'wgw');
+            $this->assertFalse(is_dir($files.'/groups/read-only-team'));
+        } finally {
+            chmod($files, 0775);
+        }
     }
 }
