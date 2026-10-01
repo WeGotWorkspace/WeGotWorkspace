@@ -215,6 +215,7 @@ final class DriveService
             throw new \RuntimeException('Rename failed.');
         }
         $this->shares->rewritePathPrefix($fromPath, $toPath);
+        $this->stars->rewritePathPrefix($fromPath, $toPath);
         $this->search->deleteDavPath('files/'.$fromKey);
         $this->search->indexFileStorageKey($toKey);
         if ($disk->directoryExists($toKey)) {
@@ -241,16 +242,16 @@ final class DriveService
             $this->authorizer->assertMayManageStructure($path, $principal);
             $key = $this->paths->virtualToStorageKey($path);
             $docIds = $this->docAttachments->docNodeIdsForDestroyKey($key);
-            if ($disk->directoryExists($key)) {
-                $disk->deleteDirectory($key);
+            if ($disk->directoryExists($key) || $disk->exists($key)) {
+                if ($disk->directoryExists($key)) {
+                    $disk->deleteDirectory($key);
+                } else {
+                    $disk->delete($key);
+                }
                 $this->search->deleteDavPath('files/'.$key);
                 $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDelete($key));
                 $this->syncDocsThreads(fn () => $this->docsThreads->dropPath($path));
-            } elseif ($disk->exists($key)) {
-                $disk->delete($key);
-                $this->search->deleteDavPath('files/'.$key);
-                $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDelete($key));
-                $this->syncDocsThreads(fn () => $this->docsThreads->dropPath($path));
+                $this->stars->deletePathPrefix($path);
             }
             $this->docAttachments->destroyDocsBestEffort($docIds);
         }
@@ -423,7 +424,6 @@ final class DriveService
         return $this->streamDownload($virtual);
     }
 
-    /** @param array{username: string, role: string} $principal */
     /**
      * @param  array{username: string, role: string}  $principal
      */

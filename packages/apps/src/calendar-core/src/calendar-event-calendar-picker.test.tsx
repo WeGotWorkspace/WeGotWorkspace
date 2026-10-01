@@ -20,6 +20,16 @@ describe("CalendarEventCalendarPicker", () => {
     expect(defaultPickerCalendarId(calendars, "family")).toBe("default");
   });
 
+  it("prefers the owned default when it is not the first writable row", () => {
+    const lists = [
+      { id: "work", name: "Work", color: "#f59e0b" },
+      { id: "inbox", name: "Inbox", color: "#6366f1", isDefault: true },
+    ];
+    expect(defaultPickerCalendarId(lists)).toBe("inbox");
+    expect(defaultPickerCalendarId(lists, "work")).toBe("work");
+    expect(defaultPickerCalendarId(lists, "missing")).toBe("inbox");
+  });
+
   it("uses the event-dialog swatch trigger", () => {
     render(
       <CalendarEventCalendarPicker

@@ -673,6 +673,45 @@ export const SearchMatches: Story = {
 export const SearchNoMatch: Story = {
   tags: ["vitest-ci"],
   args: searchBootstrap,
+  decorators: [
+    (Story) => (
+      <div className="calendar-search-no-match-frame">
+        {/* Workspace height and flex come from @apply, which this Storybook
+            Vite config does not compile. The frame supplies that shell so the
+            empty-state rules under test can be measured. */}
+        <style>
+          {`.calendar-search-no-match-frame { display: flex; height: 800px; }
+            /* .workspace-columns is a row (h-dvh) in the app. Column here would
+               turn the invitations dock's 23rem flex-basis into height. */
+            .calendar-search-no-match-frame .calendar-workspace {
+              display: flex;
+              flex-direction: row;
+              align-items: stretch;
+              width: 100%;
+              height: 800px;
+              min-height: 0;
+            }
+            .calendar-search-no-match-frame .workspace-app-layout__main,
+            .calendar-search-no-match-frame .workspace-app-layout__main-scroll,
+            .calendar-search-no-match-frame .workspace-app-layout__main-content,
+            .calendar-search-no-match-frame .calendar-main,
+            .calendar-search-no-match-frame .calendar-search-results--empty {
+              display: flex;
+              flex: 1 1 auto;
+              flex-direction: column;
+              min-width: 0;
+              min-height: 0;
+            }
+            .calendar-search-no-match-frame .app-sidebar,
+            .calendar-search-no-match-frame .app-sidebar__scrim { display: none; }
+            .calendar-search-no-match-frame .workspace-app-layout__panel[data-open="false"] {
+              margin-right: calc(-1 * var(--calendar-invitations-column-width, 23rem));
+            }`}
+        </style>
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.type(calendarSearchField(canvasElement), "zzzz-no-such-event");
@@ -681,6 +720,15 @@ export const SearchNoMatch: Story = {
         const list = canvasElement.querySelector("calendar-list-view");
         const body = list?.shadowRoot?.querySelector(".collection-state__body");
         expect(body?.textContent).toBe(defaultCalendarLabels.searchNoMatch);
+        const state = list?.shadowRoot?.querySelector(".collection-state");
+        const view = canvasElement.querySelector(".calendar-search-results__scroller");
+        if (!(state instanceof HTMLElement) || !(view instanceof HTMLElement)) {
+          throw new Error("search empty state view not ready");
+        }
+        expectHorizontallyCentered(state, view);
+        const stateBox = state.getBoundingClientRect();
+        const viewBox = view.getBoundingClientRect();
+        expect(stateBox.top).toBeGreaterThan(viewBox.top + viewBox.height * 0.25);
       },
       { timeout: 3000 },
     );
@@ -809,6 +857,14 @@ export const SearchClearImmediate: Story = {
   },
 };
 
+function expectHorizontallyCentered(state: HTMLElement, view: HTMLElement) {
+  const stateBox = state.getBoundingClientRect();
+  const viewBox = view.getBoundingClientRect();
+  const stateMid = stateBox.left + stateBox.width / 2;
+  const viewMid = viewBox.left + viewBox.width / 2;
+  expect(Math.abs(stateMid - viewMid)).toBeLessThanOrEqual(2);
+}
+
 function labeledTodayButton(root: ParentNode): HTMLButtonElement {
   const button = root.querySelector(".calendar-header-today");
   if (!(button instanceof HTMLButtonElement)) {
@@ -818,6 +874,7 @@ function labeledTodayButton(root: ParentNode): HTMLButtonElement {
 }
 
 export const Empty: Story = {
+  tags: ["vitest-ci"],
   args: {
     data: { calendars: bootstrap.data.calendars, events: [] },
     session: bootstrap.session,
@@ -828,9 +885,16 @@ export const Empty: Story = {
   },
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      expect(queryDeep(canvasElement, ".collection-state__body")?.textContent).toBe(
+      const state = queryDeep(canvasElement, ".collection-state");
+      const view = canvasElement.querySelector(".calendar-main");
+      if (!(state instanceof HTMLElement) || !(view instanceof HTMLElement)) {
+        throw new Error("list empty state not ready");
+      }
+      expect(state.querySelector(".collection-state__body")?.textContent).toBe(
         defaultCalendarLabels.noEventsInRange,
       );
+      expect(view.getBoundingClientRect().width).toBeGreaterThan(44 * 16);
+      expectHorizontallyCentered(state, view);
     });
     await expect(queryDeep(canvasElement, ".collection-state__icon")).toBeTruthy();
   },
