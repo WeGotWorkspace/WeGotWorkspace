@@ -36,11 +36,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #c98a1f;
+  color: var(--color-warning);
 }
 
 .note-detail-view__pending-sync .loading-spinner {
-  color: #c98a1f;
+  color: var(--color-warning);
 }
 
 /* Soft wash lives on shared `.docs-collab-presence-chrome`; Notes only sets accent. */

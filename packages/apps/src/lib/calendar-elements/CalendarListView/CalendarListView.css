@@ -16,6 +16,9 @@
   @apply box-border w-full min-h-full;
   /* Workspace floating search overlays the bottom; inherit scroll-end room. */
   padding-bottom: var(--_lc-list-end-pad, 0px);
+  /* Embedded host is height:auto. The search scroller stretches it and sets
+     --_lc-list-shell-flex so this shell fills the host. */
+  flex: var(--_lc-list-shell-flex, 0 0 auto);
   /* Cap the agenda column on wide panes so event-details (≤24rem editable)
      can sit in the end gutter without covering list rows. Timeline/grid views
      do not use this shell. Workspace may override --_lc-list-max-inline-size. */
@@ -33,6 +36,15 @@
       calc(100% - var(--_lc-list-details-gutter, 26rem))
     );
   }
+}
+
+/* No rows, so the details gutter does not apply. Beats both column caps above.
+   Plain flex so the collection-state spacers run when @apply is not compiled. */
+.agenda-shell:has(> .collection-state) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-inline-size: 100%;
 }
 
 .agenda-day {

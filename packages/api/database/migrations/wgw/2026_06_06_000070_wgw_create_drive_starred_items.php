@@ -20,6 +20,10 @@ return new class extends WgwMigration
             $table->unsignedBigInteger('created_at');
             $table->primary(['username', 'path']);
             $table->index('username', 'idx_drive_starred_user');
+            // Full path index: prefix rewrite is `path = ? OR path LIKE 'prefix/%'`.
+            // varchar(512) utf8mb4 is 2048 bytes, under the 3072-byte InnoDB limit
+            // (same as drive_shares.path). A 191-char prefix would miss longer paths.
+            $table->index('path', 'idx_drive_starred_path');
         });
     }
 

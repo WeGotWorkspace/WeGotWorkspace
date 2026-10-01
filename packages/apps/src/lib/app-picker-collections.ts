@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { listTaskLists } from "@/lib/api/wgw/tasks";
 import type { CalendarPickerCalendar } from "@/lib/calendar-event-calendar-picker";
-import type { DefaultCollectionApp } from "@/lib/default-collection-prefs";
+import { readDefaultCollectionId, type DefaultCollectionApp } from "@/lib/default-collection-prefs";
 import { JmapNotesClient, type JmapAddressBook, type JmapNotebook } from "@/lib/jmap-client";
 import { shareRightsAllowWrite } from "@/share-ui/collection-share";
 import { connectedContacts } from "@/lib/api/wgw/contacts";
@@ -38,6 +38,7 @@ function toAddressBookPicker(book: JmapAddressBook): CalendarPickerCalendar {
     name: addressBookPickerName(book),
     color: hashDotColor(book.id),
     mayWrite: book.myRights ? shareRightsAllowWrite(book.myRights) : true,
+    isDefault: book.isDefault ?? book.id === "default",
   };
 }
 
@@ -49,27 +50,55 @@ export function toNotebookPicker(notebook: JmapNotebook): CalendarPickerCalendar
     mayWrite: notebook.myRights
       ? shareRightsAllowWrite(notebook.myRights)
       : notebook.isSharee !== true,
+    isDefault: notebook.isDefault ?? notebook.role === "general",
   };
 }
 
 /** Mock-tier writable collections — same ids as the product story bootstraps. */
 export const MOCK_APP_PICKER_COLLECTIONS: Record<DefaultCollectionApp, CalendarPickerCalendar[]> = {
   tasks: [
-    { id: "inbox", name: "Inbox", color: "#6366f1" },
+    { id: "inbox", name: "Inbox", color: "#6366f1", isDefault: true },
     { id: "default", name: "Personal", color: "#6366f1" },
     { id: "work", name: "Work", color: "#f59e0b" },
   ],
   contacts: [
-    { id: "default", name: "Personal", color: hashDotColor("default") },
+    { id: "default", name: "Personal", color: hashDotColor("default"), isDefault: true },
     { id: "work", name: "Work", color: hashDotColor("work") },
   ],
   notes: [
-    { id: "The Journal", name: "The Journal", color: "#14b8a6" },
+    { id: "The Journal", name: "The Journal", color: "#14b8a6", isDefault: true },
     { id: "Field Observations", name: "Field Observations", color: "#0ea5e9" },
     { id: "Drafts", name: "Drafts", color: "#f59e0b" },
     { id: "Published", name: "Published", color: "#8b5cf6" },
   ],
 };
+
+function taskListIsDefault(list: { id: string; isDefault?: boolean | null }): boolean {
+  return list.isDefault ?? (list.id === "inbox" || list.id === "tasks-inbox");
+}
+
+/**
+ * Shown before the live list returns when the user has no saved id, or the
+ * saved id is already this row. Any other saved id stays hidden until the list loads.
+ */
+const LIVE_APP_PICKER_DEFAULT: Record<DefaultCollectionApp, CalendarPickerCalendar> = {
+  tasks: { id: "tasks-inbox", name: "Inbox", color: "#6366f1", isDefault: true },
+  contacts: {
+    id: "default",
+    name: "Personal",
+    color: hashDotColor("default"),
+    isDefault: true,
+  },
+  notes: { id: "General", name: "General", color: "#14b8a6", isDefault: true },
+};
+
+export function initialAppPickerCollections(app: DefaultCollectionApp): CalendarPickerCalendar[] {
+  if (!wgwLiveApiEnabled()) return MOCK_APP_PICKER_COLLECTIONS[app];
+  const seed = LIVE_APP_PICKER_DEFAULT[app];
+  const savedId = readDefaultCollectionId(app);
+  if (savedId && savedId !== seed.id) return [];
+  return [seed];
+}
 
 async function loadLiveTasks(): Promise<CalendarPickerCalendar[]> {
   const lists = await listTaskLists();
@@ -80,6 +109,7 @@ async function loadLiveTasks(): Promise<CalendarPickerCalendar[]> {
       name: list.name,
       color: list.color?.trim() || hashDotColor(list.id),
       mayWrite: list.myRights?.mayWriteAll !== false,
+      isDefault: taskListIsDefault(list),
     }));
 }
 
@@ -111,18 +141,31 @@ export async function loadAppPickerCollections(
   }
 }
 
-export function useAppPickerCollections(app: DefaultCollectionApp): CalendarPickerCalendar[] {
-  const [collections, setCollections] = useState<CalendarPickerCalendar[]>([]);
+export type AppPickerCollectionsState = {
+  collections: CalendarPickerCalendar[];
+  /** False while a live list is still in flight. Mock mode is loaded immediately. */
+  loaded: boolean;
+};
+
+export function useAppPickerCollections(app: DefaultCollectionApp): AppPickerCollectionsState {
+  const [collections, setCollections] = useState(() => initialAppPickerCollections(app));
+  const [loaded, setLoaded] = useState(() => !wgwLiveApiEnabled());
 
   useEffect(() => {
     let cancelled = false;
+    if (wgwLiveApiEnabled()) {
+      setCollections(initialAppPickerCollections(app));
+      setLoaded(false);
+    }
     void loadAppPickerCollections(app).then((next) => {
-      if (!cancelled) setCollections(next);
+      if (cancelled) return;
+      setCollections(next);
+      setLoaded(true);
     });
     return () => {
       cancelled = true;
     };
   }, [app]);
 
-  return collections;
+  return { collections, loaded };
 }

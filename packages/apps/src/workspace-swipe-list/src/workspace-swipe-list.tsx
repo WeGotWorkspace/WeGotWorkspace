@@ -57,14 +57,19 @@ export function WorkspaceSwipeList({
     children
   );
 
+  const list = (
+    <div
+      className="workspace-swipe-list"
+      data-list-selection-mode={selectionMode ? "true" : "false"}
+      {...(delegate ? listProps : {})}
+    >
+      {body}
+    </div>
+  );
   const framed = delegate ? (
-    <ListItemEventDelegationContext.Provider value>
-      <div className="workspace-swipe-list" {...listProps}>
-        {body}
-      </div>
-    </ListItemEventDelegationContext.Provider>
+    <ListItemEventDelegationContext.Provider value>{list}</ListItemEventDelegationContext.Provider>
   ) : (
-    body
+    list
   );
 
   return (
