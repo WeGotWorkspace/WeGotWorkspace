@@ -47,12 +47,6 @@
   --file-drop-overlay-card-color: var(--workspace-accent);
   --drive-detail-tag-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);
   --drive-detail-tag-fg: var(--workspace-accent);
-  /* Alias for DocsCollabSidebarPanel wash (detail panel = 10% accent, not the nav rail). */
-  --docs-collab-sidebar-panel-wash: color-mix(
-    in oklch,
-    var(--workspace-accent) 10%,
-    var(--workspace-surface)
-  );
   /* Same flex-dock pattern as Calendar invitations / Docs review. */
   --drive-detail-column-width: 22rem;
   --workspace-panel-width: var(--drive-detail-column-width);
@@ -185,7 +179,7 @@
 .drive-workspace .drive-main-pane__breadcrumbs {
   @apply px-4 md:px-6 shrink-0;
   padding-block: 1rem;
-  background-color: color-mix(in oklch, var(--workspace-accent) 7%, var(--workspace-surface));
+  background-color: var(--button-outline-hover-background);
   border-bottom: 1px solid color-mix(in oklch, var(--workspace-accent) 12%, transparent);
   --path-breadcrumb-lead-color: var(--workspace-accent);
   --path-breadcrumb-lead-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);
@@ -259,7 +253,7 @@
   width: var(--drive-detail-column-width);
   max-width: var(--drive-detail-column-width);
   border-color: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 10%, transparent);
-  background-color: var(--docs-collab-sidebar-panel-wash);
+  background-color: var(--app-sidebar-bg, var(--sidebar-bg));
 }
 
 .drive-workspace .drive-workspace__detail-panel[data-open="false"] {

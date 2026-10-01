@@ -49,12 +49,6 @@
   --workspace-chrome-footer-padding-y: var(--docs-format-chrome-padding-y);
   --workspace-chrome-footer-border: var(--docs-border);
 
-  /* Review dock stays a light accent wash — not the saturated nav rail. */
-  --docs-collab-sidebar-panel-wash: color-mix(
-    in oklch,
-    var(--workspace-accent) 10%,
-    var(--workspace-surface)
-  );
   --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
   --wai-bg: var(--color-we-got-blue);
@@ -419,8 +413,7 @@
   @apply flex min-h-0 flex-col border-l;
   width: var(--docs-comments-column-width);
   border-color: var(--docs-border);
-  /* Match DocsCollabSidebarPanel wash (not solid --app-sidebar-bg tint). */
-  background-color: var(--docs-collab-sidebar-panel-wash);
+  background-color: var(--app-sidebar-bg, var(--sidebar-bg));
 }
 
 .docs-workspace__editor .text-editor--view-source .text-editor__source {

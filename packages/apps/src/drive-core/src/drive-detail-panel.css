@@ -8,16 +8,12 @@
 .drive-detail-panel-drawer {
   --side-drawer-width: 22rem;
   --workspace-accent: var(--color-we-got-dark);
-  --workspace-accent: var(--workspace-accent);
+  --wai-bg: var(--color-we-got-dark);
 }
 
 .drive-detail-panel {
   @apply min-w-0 max-w-full overflow-hidden;
-  --docs-collab-sidebar-panel-bg: var(
-    --docs-collab-sidebar-panel-wash,
-    var(--docs-collab-sidebar-panel-wash-recipe, var(--color-we-got-soft))
-  );
-  --docs-collab-sidebar-panel-color: var(--color-we-got-dark);
+  --docs-collab-sidebar-panel-color: var(--sidebar-on, var(--color-we-got-dark));
   --docs-collab-sidebar-panel-border-color: color-mix(
     in oklab,
     var(--color-we-got-dark) 8%,
