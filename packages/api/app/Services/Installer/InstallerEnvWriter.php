@@ -14,6 +14,7 @@ final class InstallerEnvWriter
     public function __construct(
         private AppPaths $paths,
         private ApiRuntimeEnvService $apiEnv,
+        private EnvFileWriter $envFiles = new EnvFileWriter,
     ) {}
 
     /**
@@ -46,35 +47,20 @@ final class InstallerEnvWriter
             copy(dirname($envPath).'/.env.example', $envPath);
         }
 
-        $fh = fopen($envPath, 'c+');
-        if ($fh === false) {
-            throw new \RuntimeException('Could not write packages/api/.env');
-        }
-
         try {
-            if (! flock($fh, LOCK_EX)) {
-                throw new \RuntimeException('Could not lock packages/api/.env');
-            }
-            rewind($fh);
-            $content = (string) stream_get_contents($fh);
-            $original = $content;
-            foreach ($pairs as $key => $value) {
-                if ($value === null) {
-                    continue;
+            $this->envFiles->rewrite($envPath, static function (string $content) use ($pairs): ?string {
+                $original = $content;
+                foreach ($pairs as $key => $value) {
+                    if ($value === null) {
+                        continue;
+                    }
+                    $content = WgwApiEnvFile::setLine($content, $key, $value);
                 }
-                $content = WgwApiEnvFile::setLine($content, $key, $value);
-            }
-            if ($content !== $original) {
-                rewind($fh);
-                if (ftruncate($fh, 0) === false || fwrite($fh, $content) === false) {
-                    throw new \RuntimeException('Could not write packages/api/.env');
-                }
-                fflush($fh);
-            }
-            @chmod($envPath, 0600);
-        } finally {
-            flock($fh, LOCK_UN);
-            fclose($fh);
+
+                return $content === $original ? null : $content;
+            });
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException('Could not write packages/api/.env', 0, $e);
         }
     }
 

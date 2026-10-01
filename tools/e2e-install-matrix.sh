@@ -66,11 +66,9 @@ wait_until() {
   return 1
 }
 
-prime_scheduler_file_cache() {
-  local cid="$1"
-  local compose="$ROOT/docker/install/docker-compose.yml"
-  local user
-  user="$(awk '
+compose_scheduler_user() {
+  local compose="$1"
+  awk '
     /^  scheduler:/ { in_s=1; next }
     in_s && /^  [^ ]/ { in_s=0 }
     in_s && /^    user:/ {
@@ -80,12 +78,30 @@ prime_scheduler_file_cache() {
       found=1
       exit
     }
-    END { if (!found) print "root" }
-  ' "$compose")"
-  echo "Priming installer file cache as scheduler user ${user}"
-  docker exec -u "$user" "$cid" \
-    php /var/www/html/packages/api/artisan schedule:run --no-interaction \
-    || true
+    END { if (!found) exit 1 }
+  ' "$compose"
+}
+
+prime_scheduler_file_cache() {
+  local cid="$1"
+  local dev="$ROOT/docker/install/docker-compose.yml"
+  local release="$ROOT/docker/install/docker-compose.release.yml"
+  local dev_user release_user
+  if ! dev_user="$(compose_scheduler_user "$dev")"; then
+    echo "scheduler user: is missing in ${dev}" >&2
+    return 1
+  fi
+  if ! release_user="$(compose_scheduler_user "$release")"; then
+    echo "scheduler user: is missing in ${release}" >&2
+    return 1
+  fi
+  if [[ "$dev_user" != "$release_user" ]]; then
+    echo "scheduler user differs: ${dev} has ${dev_user}, ${release} has ${release_user}" >&2
+    return 1
+  fi
+  echo "Priming installer file cache as scheduler user ${dev_user}"
+  docker exec -u "$dev_user" "$cid" \
+    php /var/www/html/packages/api/artisan schedule:run --no-interaction
 }
 
 require_vendor() {
