@@ -7,7 +7,7 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 | Surface | Issues | Notes |
 |---------|--------|-------|
 | Product | `type:goal` on [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) | Status = Identified → Adopted → Fulfilled |
-| Delivery | `type:epic` / `type:task` (GitHub type **Task**) / GitHub type **Bug** | Implementable work; **not** on Product Project |
+| Delivery | `type:epic` / `type:task` / `type:chore` (GitHub type **Task**) / GitHub type **Bug** | Implementable work; **not** on Product Project |
 | Release targets & eng packing | GitHub milestones | Soft target on Goals; `v0.9` / `v1.0` also pack Epics/Tasks/Bugs |
 
 **Milestones may attach to Goals** (soft release target for when we aim to fulfill). Still OK on Epics/Tasks/Bugs for eng packing. Far-horizon Goals stay `Identified` or `Adopted` until product marks Fulfilled — **milestone ≠ Fulfilled**. Eng progress is on child issues — Goal Status stays **Adopted** while building.
@@ -30,9 +30,9 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 1. **English:** title and body in English (Goals, Epics, Tasks, Chores, Bugs, and every comment). Prompt language does not matter.
 2. **Classify:** Goal | Epic | Task | Chore | Bug
 3. **Goal** → **one** fulfillable user outcome; product language (Outcome / Who / Success looks like / Non-goals); GitHub issue type **Feature** and label `type:goal` + `area:*`; add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) at Status **Identified** (draft; **no milestone**). **Adopted** + optional milestone only when committing to a release (≠ Fulfilled); **no** Goal parent; never sole `fixes #` / never `Source:` for `spec.md`. When product marks **Fulfilled**, close the issue (`completed`) and leave Status Fulfilled on the board.
-4. **Epic** → label `type:epic` (no GitHub issue type); **required** parent Goal; **not** on Product Project (even when parented under a Goal); milestone OK for release packing
+4. **Epic** → GitHub issue type **Task** and label `type:epic`; **required** parent Goal; **not** on Product Project (even when parented under a Goal); milestone OK for release packing
 5. **Task** → GitHub issue type **Task** and label `type:task`; parent Epic or Goal; implementable `- [ ]` AC; **not** on Product Project; milestone OK for release packing
-6. **Chore / bug** → `type:chore` or `bug-report.yml` (GitHub issue type **Bug**); no Goal required; **not** on Product Project. Security/DAST: `dast-finding.yml`. Bugs may take a milestone; chores usually do not compete as roadmap
+6. **Chore** → GitHub issue type **Task** and label `type:chore`. **Bug** → `bug-report.yml` (GitHub issue type **Bug**); no Goal required; **not** on Product Project. Security/DAST: `dast-finding.yml`. Bugs may take a milestone; chores usually do not compete as roadmap. Do not replace an existing Bug type.
 7. Prefer templates under [`.github/ISSUE_TEMPLATE/`](../../../.github/ISSUE_TEMPLATE/) — [`goal.yml`](../../../.github/ISSUE_TEMPLATE/goal.yml), [`epic.yml`](../../../.github/ISSUE_TEMPLATE/epic.yml), [`task.yml`](../../../.github/ISSUE_TEMPLATE/task.yml), [`chore.yml`](../../../.github/ISSUE_TEMPLATE/chore.yml), [`bug-report.yml`](../../../.github/ISSUE_TEMPLATE/bug-report.yml) (or `gh issue create --template`). Specialized: [`dast-finding.yml`](../../../.github/ISSUE_TEMPLATE/dast-finding.yml)
 8. `feat/` closes **Task/Epic**; `spec.md` `Source:` from that issue — **not** a Goal
 
@@ -41,12 +41,12 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 | Kind | Label | GitHub issue type | Parent | Product Project? | Milestone? | Spec `Source:`? |
 |------|-------|------------------|--------|------------------|------------|-----------------|
 | Goal | `type:goal` (+ `area:*`) | **Feature** | — (never another Goal) | Yes | Yes (soft target) | Never |
-| Epic | `type:epic` | — | Goal required | No | Yes (packing) | Yes (delivery) |
+| Epic | `type:epic` | **Task** | Goal required | No | Yes (packing) | Yes (delivery) |
 | Task | `type:task` | **Task** | Epic or Goal | No | Yes (packing) | Yes (delivery) |
-| Chore | `type:chore` | — | Optional | No | Optional | Usually no `feat/` |
+| Chore | `type:chore` | **Task** | Optional | No | Optional | Usually no `feat/` |
 | Bug | `needs-triage` | **Bug** | Optional | No | Yes (packing) | Usually no `feat/` |
 
-Titles do **not** repeat the kind. Do not prefix a title with `[Goal]`, `[Task]`, `[Epic]`, or `[Chore]`. Templates omit that prefix. [`.github/workflows/normalize-issue-shape.yml`](../../../.github/workflows/normalize-issue-shape.yml) sets Feature on `type:goal` and Task on `type:task` when the type is missing, and strips those prefixes.
+Titles do **not** repeat the kind. Do not prefix a title with `[Goal]`, `[Task]`, `[Epic]`, or `[Chore]`. Templates omit that prefix. [`.github/workflows/normalize-issue-shape.yml`](../../../.github/workflows/normalize-issue-shape.yml) sets Feature on `type:goal` and Task on `type:task`, `type:epic`, and `type:chore` when the type is missing, leaves an existing Bug type in place, and strips those prefixes.
 
 ## Offline / hybrid sync
 

@@ -1,5 +1,6 @@
 name: "[Maintainers only] Epic"
 description: Maintainers only — engineering epic under a parent Goal. Externals: use Discussions or Bug report.
+type: Task
 labels:
   - type:epic
 body:
@@ -10,7 +11,7 @@ body:
         for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
 
         Epics are **engineering** work under a product Goal. Link the parent Goal.
-        Do not start the title with `[Epic]`. The label is `type:epic`.
+        Do not start the title with `[Epic]`. The GitHub issue type is Task; the label stays `type:epic`.
         **Write the entire issue in English**, even if the conversation that produced it was in another language.
         Do not put epics on the Product roadmap Project.
 
