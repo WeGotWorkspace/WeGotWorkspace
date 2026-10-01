@@ -9,8 +9,9 @@ namespace App\Services\Installer;
  *
  * Install requests and the installer wizard both patch this file. Separate locks
  * let one writer replace the other's DB_* lines or APP_KEY. The temp file is
- * owner-only before rename(), so the password and APP_KEY are never published
- * as a world-readable .env.
+ * owner-only before it is filled, so the password and APP_KEY are never
+ * published as a world-readable .env. rename() keeps the previous owner and
+ * group when the file already exists.
  */
 final class EnvFileWriter
 {
@@ -55,11 +56,13 @@ final class EnvFileWriter
             }
 
             $tmp = $target.'.tmp.'.bin2hex(random_bytes(4));
-            if (file_put_contents($tmp, $next, LOCK_EX) === false) {
+            try {
+                $this->writeOwnerOnly($tmp, $next);
+            } catch (\RuntimeException $e) {
                 @unlink($tmp);
-                throw new \RuntimeException('Could not write '.$envPath);
+                throw new \RuntimeException('Could not write '.$envPath, 0, $e);
             }
-            $this->restrictToOwner($tmp);
+            $this->keepExistingOwner($tmp, $target);
             if (! rename($tmp, $target)) {
                 @unlink($tmp);
                 throw new \RuntimeException('Could not write '.$envPath);
@@ -69,6 +72,56 @@ final class EnvFileWriter
         } finally {
             flock($lock, LOCK_UN);
             fclose($lock);
+        }
+    }
+
+    /**
+     * Create the temp file empty, restrict it, then write. Contents never sit
+     * on disk under the process umask.
+     */
+    private function writeOwnerOnly(string $tmp, string $contents): void
+    {
+        $out = fopen($tmp, 'x');
+        if ($out === false) {
+            throw new \RuntimeException('Could not create temporary env file');
+        }
+        $this->restrictToOwner($tmp);
+
+        try {
+            $offset = 0;
+            $length = strlen($contents);
+            while ($offset < $length) {
+                $wrote = fwrite($out, substr($contents, $offset));
+                if ($wrote === false || $wrote === 0) {
+                    throw new \RuntimeException('Could not write temporary env file');
+                }
+                $offset += $wrote;
+            }
+            if (! fflush($out)) {
+                throw new \RuntimeException('Could not write temporary env file');
+            }
+        } finally {
+            fclose($out);
+        }
+    }
+
+    /**
+     * rename() creates a new inode owned by this process. Copy the previous
+     * owner first so a root artisan command does not leave .env as root:root
+     * mode 0600, which www-data cannot read.
+     */
+    private function keepExistingOwner(string $tmp, string $target): void
+    {
+        if (! is_file($target)) {
+            return;
+        }
+        $owner = fileowner($target);
+        $group = filegroup($target);
+        if (is_int($owner)) {
+            @chown($tmp, $owner);
+        }
+        if (is_int($group)) {
+            @chgrp($tmp, $group);
         }
     }
 

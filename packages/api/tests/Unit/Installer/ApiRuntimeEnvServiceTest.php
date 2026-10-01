@@ -260,6 +260,41 @@ PHP);
         }
     }
 
+    /**
+     * As root, the file is given to www-data or nobody first. rename() would
+     * otherwise leave it owned by root, mode 0600, which the web user cannot read.
+     */
+    public function test_rewrite_keeps_the_existing_owner_and_group(): void
+    {
+        $env = $this->apiRoot.'/.env';
+        file_put_contents($env, "APP_KEY=\nAPP_URL=http://localhost\n");
+        chmod($env, 0600);
+
+        $owner = fileowner($env);
+        $group = filegroup($env);
+        $this->assertNotFalse($owner);
+        $this->assertNotFalse($group);
+
+        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $other = posix_getpwnam('www-data') ?: posix_getpwnam('nobody');
+            if (is_array($other)) {
+                $this->assertTrue(chown($env, (int) $other['uid']));
+                $this->assertTrue(chgrp($env, (int) $other['gid']));
+                $owner = (int) $other['uid'];
+                $group = (int) $other['gid'];
+                clearstatcache(true, $env);
+            }
+        }
+
+        (new ApiRuntimeEnvService)->ensureAtApiRoot($this->apiRoot, 'http://127.0.0.1:18080');
+
+        clearstatcache(true, $env);
+        $this->assertSame($owner, fileowner($env));
+        $this->assertSame($group, filegroup($env));
+        $this->assertSame(0600, $this->mode($env));
+        $this->assertMatchesRegularExpression('/^APP_KEY=base64:/m', (string) file_get_contents($env));
+    }
+
     public function test_ensure_restricts_env_to_owner_read_write(): void
     {
         file_put_contents($this->apiRoot.'/.env', "APP_KEY=\nAPP_URL=http://localhost\n");
