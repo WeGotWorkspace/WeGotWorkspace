@@ -186,6 +186,64 @@ describe("wgw auth refresh behavior", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("uses a newer session another tab stored instead of refreshing the rotated token", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 120),
+      refreshToken: "refresh-rotated",
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 14 * 24 * 60 * 60_000,
+    });
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+
+    const freshAccess = makeJwt(Math.floor(Date.now() / 1_000) + 3_600);
+    installSession({
+      accessToken: freshAccess,
+      refreshToken: "refresh-current",
+      accessExpiresAt: Date.now() + 50 * 60_000,
+      refreshExpiresAt: Date.now() + 14 * 24 * 60 * 60_000,
+    });
+    const fetchMock = vi.fn(async () => new Response("should-not-refresh", { status: 500 }));
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await expect(wgwEnsureFreshAccessToken()).resolves.toBe(freshAccess);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe("refresh-current");
+  });
+
+  it("keeps a session another tab stored when this tab's refresh is rejected", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 120),
+      refreshToken: "refresh-rotated",
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 14 * 24 * 60 * 60_000,
+    });
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+
+    const freshAccess = makeJwt(Math.floor(Date.now() / 1_000) + 3_600);
+    const fetchMock = vi.fn(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        expect(JSON.parse(String(init?.body))).toEqual({ refresh_token: "refresh-rotated" });
+        installSession({
+          accessToken: freshAccess,
+          refreshToken: "refresh-current",
+          accessExpiresAt: Date.now() + 50 * 60_000,
+          refreshExpiresAt: Date.now() + 14 * 24 * 60 * 60_000,
+        });
+        return new Response(JSON.stringify({ error: "Invalid refresh token." }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("unexpected", { status: 500 });
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await expect(wgwEnsureFreshAccessToken()).resolves.toBe(freshAccess);
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe("refresh-current");
+  });
+
   it("reloads storage after another tab refreshes during lock wait", async () => {
     vi.useFakeTimers();
     installSession({
