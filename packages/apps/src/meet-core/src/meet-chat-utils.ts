@@ -1,3 +1,9 @@
+/** Test seam; the chime keeps no shared context until the knock fix lands. */
+export function resetMeetKnockSoundForTests(): void {}
+
+/** Test seam; a user gesture does not unlock the chime yet. */
+export function primeMeetKnockSound(): void {}
+
 export function playMeetKnockSound() {
   const AudioCtx =
     window.AudioContext ||
