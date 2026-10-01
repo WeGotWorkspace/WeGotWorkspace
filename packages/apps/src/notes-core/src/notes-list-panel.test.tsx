@@ -202,6 +202,40 @@ describe("NotesListPanel selection paint", () => {
     expect(row!.getAttribute("data-active")).toBe("true");
     expect(row!.getAttribute("data-selected")).toBe("true");
   });
+
+  it("paints each selected note before activeId catches up", () => {
+    const second = { ...baseNote, id: "n-2", excerpt: "Second", body: ["Second"] };
+    const third = { ...baseNote, id: "n-3", excerpt: "Third", body: ["Third"] };
+    const notes = [baseNote, second, third];
+    const { container, rerender } = render(
+      <ListHarness notes={notes} selectedIds={[baseNote.id]} activeId="" />,
+    );
+    expect(
+      container
+        .querySelector(`[data-list-item-id="${baseNote.id}"]`)!
+        .getAttribute("data-selected"),
+    ).toBe("true");
+    expect(
+      container.querySelector(`[data-list-item-id="${baseNote.id}"]`)!.getAttribute("data-active"),
+    ).toBe("false");
+
+    rerender(<ListHarness notes={notes} selectedIds={[baseNote.id, second.id]} activeId="" />);
+    expect(
+      container.querySelector(`[data-list-item-id="${second.id}"]`)!.getAttribute("data-selected"),
+    ).toBe("true");
+    expect(
+      container
+        .querySelector("[data-list-selection-mode]")!
+        .getAttribute("data-list-selection-mode"),
+    ).toBe("true");
+
+    rerender(
+      <ListHarness notes={notes} selectedIds={[baseNote.id, second.id, third.id]} activeId="" />,
+    );
+    expect(
+      container.querySelector(`[data-list-item-id="${third.id}"]`)!.getAttribute("data-selected"),
+    ).toBe("true");
+  });
 });
 
 describe("NotesListPanel tags", () => {

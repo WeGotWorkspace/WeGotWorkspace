@@ -58,6 +58,14 @@ describe("ListItem", () => {
     expect(getByRole("button").getAttribute("data-list-item-id")).toBe("note-1");
   });
 
+  it("sets data-selection-mode from the prop when there is no selection store", () => {
+    const { getByRole, rerender } = render(<ListItem {...baseProps} selectionMode />);
+    expect(getByRole("button").getAttribute("data-selection-mode")).toBe("true");
+
+    rerender(<ListItem {...baseProps} selectionMode={false} />);
+    expect(getByRole("button").getAttribute("data-selection-mode")).toBe("false");
+  });
+
   it("keeps standalone click handlers when the list parent does not delegate", () => {
     const onClick = vi.fn();
     const { getByRole } = render(<ListItem {...baseProps} onClick={onClick} />);
