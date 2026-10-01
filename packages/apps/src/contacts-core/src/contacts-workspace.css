@@ -48,7 +48,7 @@
     transparent
   );
 
-  --contacts-pending-sync-color: #c98a1f;
+  --contacts-pending-sync-color: var(--color-warning);
   --contacts-swipe-delete-color: #dc2626;
   --contacts-swipe-remove-color: var(--workspace-accent);
   --contacts-detail-title-font-family: var(--font-serif);

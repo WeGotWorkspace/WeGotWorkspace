@@ -37,7 +37,7 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `collab_messages` | `App\Models\CollabMessage` | Collab signaling messages |
 | `search_documents` | `App\Models\SearchDocument` | Unified search index documents |
 | `search_terms` | `App\Models\SearchTerm` | Search token weights (FK → `search_documents`) |
-| `drive_starred_items` | `App\Models\DriveStarredItem` | Per-user starred drive paths |
+| `drive_starred_items` | `App\Models\DriveStarredItem` | Per-user starred drive paths. `idx_drive_starred_path` covers prefix rewrite and delete (`path` / `path/%`) so those updates are not a full-table lock. |
 | `calendar_rsvp_tokens` | `App\Models\CalendarRsvpToken` | Public iMIP RSVP tokens (`token_hash` SHA-256, event uid + attendee mailto + expiry) |
 | `calendar_subscriptions` | `App\Models\CalendarSubscription` | Live ICS/webcal subscriptions (owner username + personal calendar uri + normalized source URL) |
 | `calendar_feed_tokens` | `App\Models\CalendarFeedToken` | Published ICS/webcal feed tokens (`token_hash` SHA-256; `token_cipher` Laravel-encrypted with APP_KEY so the owner URL can be re-shown — not hash-only like RSVP) |

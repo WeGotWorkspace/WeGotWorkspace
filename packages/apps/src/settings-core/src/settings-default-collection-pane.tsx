@@ -14,16 +14,16 @@ import { FormSaveActionRow } from "@/ui/form-save-action-row";
 
 export function SettingsDefaultCollectionPane({ app }: { app: DefaultCollectionApp }) {
   const { form, saveDisplay, meta } = useSettingsDefaultCollectionForm(app);
-  const collections = useAppPickerCollections(app);
+  const { collections, loaded } = useAppPickerCollections(app);
   const fieldLabel = meta.fieldLabel;
   const collectionWatch = form.watch("collectionId");
   useEffect(() => {
-    if (collections.length === 0) return;
+    if (!loaded || collections.length === 0) return;
     const resolved = defaultPickerCalendarId(collections, collectionWatch || undefined);
     if (collectionWatch && resolved && resolved !== collectionWatch) {
       form.setValue("collectionId", resolved, { shouldDirty: true });
     }
-  }, [collections, collectionWatch, form]);
+  }, [collections, collectionWatch, form, loaded]);
 
   return (
     <Form {...form}>
