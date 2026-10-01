@@ -10,6 +10,8 @@ namespace App\Services\Installer;
  * InstallerEnvWriter and ApiRuntimeEnvService both call this. They take the
  * same lock and the same rename, so one cannot drop the other's APP_KEY or
  * DB_* lines. The temp file is mode 0600 before rename, and so is the result.
+ * An existing target keeps its owner and group, because rename() would
+ * otherwise create an inode owned by this process.
  */
 final class EnvFileWriter
 {
@@ -59,6 +61,17 @@ final class EnvFileWriter
                 throw new \RuntimeException('Could not write packages/api/.env');
             }
             fclose($out);
+            if (is_file($target)) {
+                // Succeeds only as root. @ leaves shared hosting on the same user.
+                $owner = fileowner($target);
+                $group = filegroup($target);
+                if (is_int($owner)) {
+                    @chown($tmp, $owner);
+                }
+                if (is_int($group)) {
+                    @chgrp($tmp, $group);
+                }
+            }
             if (! rename($tmp, $target)) {
                 @unlink($tmp);
                 throw new \RuntimeException('Could not write packages/api/.env');
