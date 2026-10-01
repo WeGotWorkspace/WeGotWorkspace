@@ -49,6 +49,15 @@ describe("loadAppPickerCollections", () => {
         isSharee: false,
       }),
     ).toMatchObject({ id: "General", name: "General", isDefault: true });
+    expect(
+      toNotebookPicker({
+        id: "notes-general",
+        name: "Renamed",
+        role: "general",
+        isDefault: false,
+        isSharee: false,
+      }).isDefault,
+    ).toBe(false);
   });
 
   it("seeds the provisioned default before a production list returns", () => {
@@ -91,5 +100,25 @@ describe("loadAppPickerCollections", () => {
     expect(loaded.map((row) => row.id)).toEqual(["work", "tasks-inbox"]);
     expect(loaded.find((row) => row.id === "tasks-inbox")?.isDefault).toBe(true);
     expect(loaded.find((row) => row.id === "work")?.isDefault).toBe(false);
+  });
+
+  it("keeps a server isDefault false even when the id looks like a default", async () => {
+    vi.stubEnv("VITE_WGW_USE_LIVE_API", "1");
+    taskLists.current = [
+      {
+        id: "default",
+        name: "Group",
+        isDefault: false,
+        myRights: { mayWriteAll: true },
+      },
+      {
+        id: "tasks-inbox",
+        name: "Inbox",
+        myRights: { mayWriteAll: true },
+      },
+    ];
+    const loaded = await loadAppPickerCollections("tasks");
+    expect(loaded.find((row) => row.id === "default")?.isDefault).toBe(false);
+    expect(loaded.find((row) => row.id === "tasks-inbox")?.isDefault).toBe(true);
   });
 });

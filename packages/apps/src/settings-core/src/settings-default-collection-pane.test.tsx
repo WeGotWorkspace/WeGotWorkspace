@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { writeDefaultCollectionPrefs } from "@/lib/default-collection-prefs";
 import {
   SettingsContactsPane,
   SettingsNotesPane,
@@ -53,7 +54,7 @@ describe("SettingsDefaultCollectionPane", () => {
     ).toContain("The Journal");
   });
 
-  it("shows the owned task default before the live list returns and keeps it selectable", async () => {
+  it("shows the owned task default before the live list returns without marking the form dirty", async () => {
     let resolveLists!: (lists: unknown[]) => void;
     taskLists.current = new Promise((resolve) => {
       resolveLists = resolve;
@@ -87,15 +88,53 @@ describe("SettingsDefaultCollectionPane", () => {
     const trigger = await screen.findByRole("button", { name: /Default list: Inbox/i });
     expect(trigger.textContent).toContain("Inbox");
     expect(screen.queryByRole("button", { name: /Default list: Work/i })).toBeNull();
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+  });
 
-    fireEvent.pointerDown(trigger);
-    fireEvent.click(trigger);
-    const inbox = await screen.findByRole("menuitem", { name: "Inbox" });
-    expect(screen.getByRole("menuitem", { name: "Work" })).toBeTruthy();
-    fireEvent.click(inbox);
+  it("keeps a saved task list while the live list is in flight and after it resolves", async () => {
+    writeDefaultCollectionPrefs("tasks", { collectionId: "tasks-work" });
+    let resolveLists!: (lists: unknown[]) => void;
+    taskLists.current = new Promise((resolve) => {
+      resolveLists = resolve;
+    });
+    liveApi.enabled = true;
+
+    render(<SettingsTasksPane />);
+
+    expect(screen.queryByRole("button", { name: /Default list:/i })).toBeNull();
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+
+    resolveLists([
+      {
+        id: "tasks-inbox",
+        name: "Inbox",
+        color: "#6366f1",
+        isDefault: true,
+        myRights: { mayWriteAll: true },
+      },
+      {
+        id: "tasks-work",
+        name: "Work",
+        color: "#f59e0b",
+        isDefault: false,
+        myRights: { mayWriteAll: true },
+      },
+    ]);
+
+    const trigger = await screen.findByRole("button", { name: /Default list: Work/i });
+    expect(trigger.textContent).toContain("Work");
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+  });
+
+  it("hides the task picker when the live list fails", async () => {
+    taskLists.current = Promise.reject(new Error("offline"));
+    liveApi.enabled = true;
+
+    render(<SettingsTasksPane />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
+      expect(screen.queryByRole("button", { name: /Default list:/i })).toBeNull();
     });
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
   });
 });

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { listTaskLists } from "@/lib/api/wgw/tasks";
 import type { CalendarPickerCalendar } from "@/lib/calendar-event-calendar-picker";
-import type { DefaultCollectionApp } from "@/lib/default-collection-prefs";
+import { readDefaultCollectionId, type DefaultCollectionApp } from "@/lib/default-collection-prefs";
 import { JmapNotesClient, type JmapAddressBook, type JmapNotebook } from "@/lib/jmap-client";
 import { shareRightsAllowWrite } from "@/share-ui/collection-share";
 import { connectedContacts } from "@/lib/api/wgw/contacts";
@@ -38,7 +38,7 @@ function toAddressBookPicker(book: JmapAddressBook): CalendarPickerCalendar {
     name: addressBookPickerName(book),
     color: hashDotColor(book.id),
     mayWrite: book.myRights ? shareRightsAllowWrite(book.myRights) : true,
-    isDefault: book.isDefault === true || book.id === "default",
+    isDefault: book.isDefault ?? book.id === "default",
   };
 }
 
@@ -50,7 +50,7 @@ export function toNotebookPicker(notebook: JmapNotebook): CalendarPickerCalendar
     mayWrite: notebook.myRights
       ? shareRightsAllowWrite(notebook.myRights)
       : notebook.isSharee !== true,
-    isDefault: notebook.isDefault === true || notebook.role === "general",
+    isDefault: notebook.isDefault ?? notebook.role === "general",
   };
 }
 
@@ -73,18 +73,14 @@ export const MOCK_APP_PICKER_COLLECTIONS: Record<DefaultCollectionApp, CalendarP
   ],
 };
 
-function isOwnedTaskDefault(list: {
-  id: string;
-  role?: string | null;
-  isDefault?: boolean;
-  isSharee?: boolean;
-}): boolean {
-  if (list.isSharee === true) return false;
-  if (list.isDefault === true || list.role === "inbox") return true;
-  return list.id === "inbox" || list.id === "tasks-inbox";
+function taskListIsDefault(list: { id: string; isDefault?: boolean | null }): boolean {
+  return list.isDefault ?? (list.id === "inbox" || list.id === "tasks-inbox");
 }
 
-/** Shown before the live list returns so production does not paint an empty control. */
+/**
+ * Shown before the live list returns when the user has no saved id, or the
+ * saved id is already this row. Any other saved id stays hidden until the list loads.
+ */
 const LIVE_APP_PICKER_DEFAULT: Record<DefaultCollectionApp, CalendarPickerCalendar> = {
   tasks: { id: "tasks-inbox", name: "Inbox", color: "#6366f1", isDefault: true },
   contacts: {
@@ -98,7 +94,10 @@ const LIVE_APP_PICKER_DEFAULT: Record<DefaultCollectionApp, CalendarPickerCalend
 
 export function initialAppPickerCollections(app: DefaultCollectionApp): CalendarPickerCalendar[] {
   if (!wgwLiveApiEnabled()) return MOCK_APP_PICKER_COLLECTIONS[app];
-  return [LIVE_APP_PICKER_DEFAULT[app]];
+  const seed = LIVE_APP_PICKER_DEFAULT[app];
+  const savedId = readDefaultCollectionId(app);
+  if (savedId && savedId !== seed.id) return [];
+  return [seed];
 }
 
 async function loadLiveTasks(): Promise<CalendarPickerCalendar[]> {
@@ -110,7 +109,7 @@ async function loadLiveTasks(): Promise<CalendarPickerCalendar[]> {
       name: list.name,
       color: list.color?.trim() || hashDotColor(list.id),
       mayWrite: list.myRights?.mayWriteAll !== false,
-      isDefault: isOwnedTaskDefault(list),
+      isDefault: taskListIsDefault(list),
     }));
 }
 
@@ -142,18 +141,31 @@ export async function loadAppPickerCollections(
   }
 }
 
-export function useAppPickerCollections(app: DefaultCollectionApp): CalendarPickerCalendar[] {
+export type AppPickerCollectionsState = {
+  collections: CalendarPickerCalendar[];
+  /** False while a live list is still in flight. Mock mode is loaded immediately. */
+  loaded: boolean;
+};
+
+export function useAppPickerCollections(app: DefaultCollectionApp): AppPickerCollectionsState {
   const [collections, setCollections] = useState(() => initialAppPickerCollections(app));
+  const [loaded, setLoaded] = useState(() => !wgwLiveApiEnabled());
 
   useEffect(() => {
     let cancelled = false;
+    if (wgwLiveApiEnabled()) {
+      setCollections(initialAppPickerCollections(app));
+      setLoaded(false);
+    }
     void loadAppPickerCollections(app).then((next) => {
-      if (!cancelled && next.length > 0) setCollections(next);
+      if (cancelled) return;
+      setCollections(next);
+      setLoaded(true);
     });
     return () => {
       cancelled = true;
     };
   }, [app]);
 
-  return collections;
+  return { collections, loaded };
 }

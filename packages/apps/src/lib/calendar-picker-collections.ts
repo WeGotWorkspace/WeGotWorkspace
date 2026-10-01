@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { JmapCalendarsClient, type JmapCalendar } from "@/lib/jmap-client";
 import type { CalendarPickerCalendar } from "@/lib/calendar-event-calendar-picker";
+import { readCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
 import { shareRightsAllowWrite } from "@/share-ui/collection-share";
 import { calendarJmapClient } from "@/lib/api/wgw/calendar";
 
@@ -11,7 +12,10 @@ export const MOCK_CALENDAR_PICKER_COLLECTIONS: CalendarPickerCalendar[] = [
   { id: "work", name: "Work", color: "#0ea5e9" },
 ];
 
-/** Provisioned personal calendar, shown until Calendar/get returns. */
+/**
+ * Provisioned personal calendar. Shown until Calendar/get returns when the
+ * user has no saved id, or the saved id is already this calendar.
+ */
 const LIVE_CALENDAR_PICKER_DEFAULT: CalendarPickerCalendar = {
   id: "default",
   name: "Calendar",
@@ -21,6 +25,8 @@ const LIVE_CALENDAR_PICKER_DEFAULT: CalendarPickerCalendar = {
 
 export function initialCalendarPickerCollections(): CalendarPickerCalendar[] {
   if (!wgwLiveApiEnabled()) return MOCK_CALENDAR_PICKER_COLLECTIONS;
+  const savedId = readCalendarDisplayPrefs().inviteCalendarId;
+  if (savedId && savedId !== LIVE_CALENDAR_PICKER_DEFAULT.id) return [];
   return [LIVE_CALENDAR_PICKER_DEFAULT];
 }
 
@@ -30,7 +36,7 @@ function toPickerCalendar(calendar: JmapCalendar): CalendarPickerCalendar {
     name: calendar.name,
     color: calendar.color ?? "#6366f1",
     mayWrite: calendar.myRights ? shareRightsAllowWrite(calendar.myRights) : true,
-    isDefault: calendar.isDefault === true || calendar.id === "default",
+    isDefault: calendar.isDefault ?? calendar.id === "default",
   };
 }
 
@@ -48,18 +54,31 @@ export async function loadCalendarPickerCollections(): Promise<CalendarPickerCal
   }
 }
 
-export function useCalendarPickerCollections(): CalendarPickerCalendar[] {
-  const [calendars, setCalendars] = useState(() => initialCalendarPickerCollections());
+export type CalendarPickerCollectionsState = {
+  collections: CalendarPickerCalendar[];
+  /** False while a live list is still in flight. Mock mode is loaded immediately. */
+  loaded: boolean;
+};
+
+export function useCalendarPickerCollections(): CalendarPickerCollectionsState {
+  const [collections, setCollections] = useState(() => initialCalendarPickerCollections());
+  const [loaded, setLoaded] = useState(() => !wgwLiveApiEnabled());
 
   useEffect(() => {
     let cancelled = false;
+    if (wgwLiveApiEnabled()) {
+      setCollections(initialCalendarPickerCollections());
+      setLoaded(false);
+    }
     void loadCalendarPickerCollections().then((next) => {
-      if (!cancelled && next.length > 0) setCalendars(next);
+      if (cancelled) return;
+      setCollections(next);
+      setLoaded(true);
     });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return calendars;
+  return { collections, loaded };
 }
