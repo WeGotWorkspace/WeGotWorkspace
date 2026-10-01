@@ -231,6 +231,61 @@ describe("useDriveBatchActions", () => {
     });
   });
 
+  it("does not rename the next file when undo arrives during the first trash rename", async () => {
+    const operations = createOperations();
+    let releaseRename: () => void = () => undefined;
+    const renameGate = new Promise<void>((resolve) => {
+      releaseRename = resolve;
+    });
+    let forwardRename = true;
+    vi.mocked(operations.renameItem).mockImplementation(async () => {
+      if (forwardRename) {
+        forwardRename = false;
+        await renameGate;
+      }
+      return EMPTY_DRIVE_UI;
+    });
+    const { result } = renderActions({
+      operations,
+      liveQueue: true,
+      files: [driveFile(), driveFile({ id: "other", title: "other.md" })],
+      selectedIds: [NOTES_ID, "other"],
+    });
+
+    act(() => result.current.moveToTrash([NOTES_ID, "other"]));
+    await vi.waitFor(() => {
+      expect(operations.renameItem).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      result.current.undoLatest();
+    });
+    releaseRename();
+
+    await vi.waitFor(() => {
+      expect(vi.mocked(operations.renameItem).mock.calls.map((call) => call[0])).toEqual([
+        {
+          destination: "/users/alice/.Trash",
+          from: "/users/alice/notes.md",
+          to: "notes.md",
+        },
+        {
+          destination: "/users/alice",
+          from: "/users/alice/.Trash/notes.md",
+          to: "notes.md",
+        },
+      ]);
+    });
+    expect(operations.renameItem).toHaveBeenCalledTimes(2);
+    expect(
+      vi
+        .mocked(operations.renameItem)
+        .mock.calls.some(
+          (call) => call[0].from.includes("other") || call[0].to.startsWith("other"),
+        ),
+    ).toBe(false);
+  });
+
   it("renames into Trash on execute and renames back when undo follows a finished move", async () => {
     const operations = createOperations();
     const { result } = renderActions({ operations });
