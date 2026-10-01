@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   meetCallGivenName,
+  meetCallGridColumns,
   meetCallPeerCameraOn,
   meetCallPeerScreenSharing,
   meetCallStripPeers,
@@ -45,6 +46,21 @@ describe("pickMeetCallSpotlight", () => {
 
   it("gives a remote screen share the spotlight over a speaking peer", () => {
     expect(pickMeetCallSpotlight([felix, presenter], self)).toEqual(presenter);
+  });
+});
+
+describe("meetCallGridColumns", () => {
+  it("maps a single person to fullscreen and grows by square bands", () => {
+    expect(meetCallGridColumns(0)).toBe(1);
+    expect(meetCallGridColumns(1)).toBe(1);
+    expect(meetCallGridColumns(2)).toBe(2);
+    expect(meetCallGridColumns(3)).toBe(2);
+    expect(meetCallGridColumns(4)).toBe(2);
+    expect(meetCallGridColumns(5)).toBe(3);
+    expect(meetCallGridColumns(9)).toBe(3);
+    expect(meetCallGridColumns(10)).toBe(4);
+    expect(meetCallGridColumns(16)).toBe(4);
+    expect(meetCallGridColumns(17)).toBe(5);
   });
 });
 

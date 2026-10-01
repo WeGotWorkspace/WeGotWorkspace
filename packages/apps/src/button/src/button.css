@@ -156,6 +156,12 @@
   color: var(--button-severity-color);
 }
 
+/* Off toggles (aria-pressed false) show the same danger wash at rest, not only on hover. */
+.button.button--variant-outline.button--severity-danger[aria-pressed="false"] {
+  color: var(--button-severity-color);
+  background-color: var(--button-severity-hover-background);
+}
+
 .button--severity-danger:hover,
 .button--severity-danger:focus-visible {
   color: var(--button-severity-color);

@@ -93,4 +93,34 @@ describe("MeetPeerTile mute", () => {
     expect(screen.queryByRole("button", { name: meetLabels.unmuteParticipant })).toBeNull();
     expect(screen.queryByRole("button", { name: meetLabels.mute })).toBeNull();
   });
+
+  it("keeps the camera-off initial visible when an audio stream is still attached", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(() => Promise.resolve());
+    const track = {
+      kind: "audio",
+      readyState: "live",
+      enabled: true,
+      muted: false,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    };
+    const stream = {
+      getTracks: () => [track],
+      getVideoTracks: () => [],
+      getAudioTracks: () => [track],
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    } as unknown as MediaStream;
+    renderTile({
+      name: "Admin",
+      stream,
+      disclosedMedia: { camera: false, mic: true },
+      spotlight: true,
+    });
+
+    const mark = screen.getByRole("img", { name: "Admin avatar" });
+    expect(mark.textContent).toBe("A");
+    expect(mark.closest(".meet-peer-tile__fill")).not.toBeNull();
+    expect(mark.closest(".sr-only")).toBeNull();
+  });
 });

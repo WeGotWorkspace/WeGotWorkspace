@@ -1,24 +1,37 @@
 @import "../../styles.css" reference;
 
 /*
- * Floating mini-player shown outside /meet during an active call. Renders in the
- * app shell (outside .meet-workspace), so it carries its own tokens with dark
- * call-surface fallbacks, mirroring the meet-pip look.
+ * Placement only. Chrome (fill, radius, shadow, padding, border) comes from
+ * `.floating-action-bar` + `.floating-action-bar--dark`.
  */
-.meet-mini-player {
-  @apply fixed z-50 flex w-80 touch-none select-none items-center gap-2 rounded-lg border p-2 shadow-xl;
-  background-color: var(--meet-mini-player-bg, rgb(24 24 27 / 0.96));
-  border-color: var(--meet-mini-player-border, rgb(255 255 255 / 0.22));
-  color: var(--meet-mini-player-fg, rgb(255 255 255 / 0.92));
-  --button-ghost-color: var(--meet-mini-player-fg, rgb(255 255 255 / 0.92));
+.meet-mini-player.floating-action-bar {
+  @apply fixed z-50 w-80 touch-none select-none;
+  left: auto;
+  transform: none;
   cursor: grab;
+  --button-active-color: var(--workspace-accent-strong);
+  --button-outline-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent) 20%,
+    var(--workspace-surface)
+  );
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--workspace-accent) 26%,
+    var(--workspace-surface)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklab,
+    var(--workspace-accent) 32%,
+    var(--workspace-surface)
+  );
 }
 
-.meet-mini-player:not(.meet-mini-player--moved) {
+.meet-mini-player.floating-action-bar:not(.meet-mini-player--moved) {
   @apply bottom-4 right-4;
 }
 
-.meet-mini-player--moved {
+.meet-mini-player.floating-action-bar.meet-mini-player--moved {
   @apply bottom-auto right-auto;
 }
 
@@ -29,8 +42,12 @@
 
 .meet-mini-player__preview {
   @apply relative flex h-12 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md;
-  background-color: var(--meet-mini-player-preview-bg, rgb(0 0 0 / 0.55));
+  background-color: color-mix(in oklab, #000 35%, var(--color-we-got-dark));
   cursor: inherit;
+}
+
+.meet-mini-player__preview .user-avatar__mark {
+  color: var(--color-we-got-brat);
 }
 
 .meet-mini-player__video {
@@ -48,7 +65,7 @@
 
 .meet-mini-player__meta {
   @apply truncate text-[11px] tabular-nums;
-  color: var(--meet-mini-player-muted, rgb(255 255 255 / 0.65));
+  color: color-mix(in oklab, currentColor 65%, transparent);
 }
 
 .meet-mini-player__actions {
@@ -56,7 +73,11 @@
   cursor: auto;
 }
 
-.meet-mini-player .meet-mini-player__media-off,
-.meet-mini-player .meet-mini-player__hang-up {
-  color: var(--meet-mini-player-danger, rgb(248 113 113));
+/* Dark bar: off mic/camera keeps the danger fill, but the glyph stays white. */
+.meet-mini-player .button.button--variant-outline.button--severity-danger[aria-pressed="false"],
+.meet-mini-player
+  .button.button--variant-outline.button--severity-danger[aria-pressed="false"]:hover,
+.meet-mini-player
+  .button.button--variant-outline.button--severity-danger[aria-pressed="false"]:focus-visible {
+  color: #ffffff;
 }

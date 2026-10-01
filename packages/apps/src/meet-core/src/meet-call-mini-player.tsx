@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Maximize2, Mic, MicOff, PhoneOff, Video, VideoOff } from "lucide-react";
 import { IconButton } from "@/button/src/button";
+import "@/floating-action-bar/src/floating-action-bar.css";
+import { MeetCircleToggle } from "@/meet-core/src/meet-circle-toggle";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
@@ -194,7 +196,7 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
     <div
       ref={rootRef}
       className={cn(
-        "meet-mini-player",
+        "meet-mini-player floating-action-bar floating-action-bar--dark",
         position && "meet-mini-player--moved",
         dragging && "meet-mini-player--dragging",
       )}
@@ -236,21 +238,19 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
         <span className="meet-mini-player__meta">{meta}</span>
       </div>
       <div className="meet-mini-player__actions">
-        <IconButton
+        <MeetCircleToggle
+          on={snapshot.micOn}
           onClick={() => store.toggleMicRef.current?.()}
-          icon={snapshot.micOn ? <Mic /> : <MicOff />}
+          OnIcon={Mic}
+          OffIcon={MicOff}
           label={snapshot.micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
-          size="md"
-          variant="ghost"
-          className={snapshot.micOn ? undefined : "meet-mini-player__media-off"}
         />
-        <IconButton
+        <MeetCircleToggle
+          on={snapshot.videoOn}
           onClick={() => store.toggleVideoRef.current?.()}
-          icon={snapshot.videoOn ? <Video /> : <VideoOff />}
+          OnIcon={Video}
+          OffIcon={VideoOff}
           label={snapshot.videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
-          size="md"
-          variant="ghost"
-          className={snapshot.videoOn ? undefined : "meet-mini-player__media-off"}
         />
         <IconButton
           onClick={returnToCall}
@@ -264,8 +264,7 @@ function MeetCallMiniPlayerCard({ store }: { store: MeetCallStore }) {
           icon={<PhoneOff />}
           label={meetLabels.hangUp}
           size="md"
-          variant="ghost"
-          className="meet-mini-player__hang-up"
+          variant="destructive"
         />
       </div>
     </div>
