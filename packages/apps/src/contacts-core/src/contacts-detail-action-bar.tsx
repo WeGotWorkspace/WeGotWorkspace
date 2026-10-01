@@ -104,6 +104,7 @@ export function ContactsDetailActionBar({
             icon: <Pencil className="size-4" />,
             active: editMode,
             showLabel: true,
+            iconOnlyOnNarrow: true,
           },
         ]
       : []),

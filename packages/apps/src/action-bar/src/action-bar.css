@@ -59,6 +59,16 @@
   .action-bar__menu--narrow {
     @apply inline-flex;
   }
+
+  .action-bar__action--icon-narrow.button {
+    @apply shrink-0 p-0;
+    width: var(--control-height-md, 2.25rem);
+    min-width: var(--control-height-md, 2.25rem);
+  }
+
+  .action-bar__action--icon-narrow > .button__label {
+    @apply hidden;
+  }
 }
 
 @media (max-width: 767px) {
@@ -69,6 +79,16 @@
 
   .action-bar__menu--narrow {
     @apply inline-flex;
+  }
+
+  .action-bar__action--icon-narrow.button {
+    @apply shrink-0 p-0;
+    width: var(--control-height-md, 2.25rem);
+    min-width: var(--control-height-md, 2.25rem);
+  }
+
+  .action-bar__action--icon-narrow > .button__label {
+    @apply hidden;
   }
 }
 

@@ -74,8 +74,11 @@ describe("ContactsDetailActionBar", () => {
     ]);
 
     const edit = buttons[0];
+    expect(edit.getAttribute("aria-label")).toBe(defaultContactsLabels.edit);
     expect(edit.textContent).toContain(defaultContactsLabels.edit);
+    expect(edit.querySelector(".button__label")?.textContent).toBe(defaultContactsLabels.edit);
     expect(edit.className).toContain("action-bar__action--labeled");
+    expect(edit.className).toContain("action-bar__action--icon-narrow");
     expect(buttons[1].textContent).not.toContain(defaultContactsLabels.downloadVCard);
     expect(buttons[2].textContent).not.toContain(defaultContactsLabels.delete);
     expect(buttons[1].className).toContain("action-bar__action--collapse-narrow");

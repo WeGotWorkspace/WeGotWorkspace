@@ -25,6 +25,12 @@ export type ActionBarAction = {
   /** When true, render icon + visible label (Button) instead of icon-only IconButton. */
   showLabel?: boolean;
   /**
+   * With `showLabel`, keep the visible label on a wide bar and drop it on a
+   * small screen (same 767px cutoff as `collapseOnNarrow`). The accessible
+   * name stays `aria-label`.
+   */
+  iconOnlyOnNarrow?: boolean;
+  /**
    * Destructive outline wash on the inline IconButton and overflow menu item
    * (e.g. Delete → `button--severity-danger`).
    */
@@ -117,6 +123,7 @@ function renderActionItems(actions: ActionBarAction[]) {
               aria-pressed={action.active}
               className={cn(
                 "action-bar__action--labeled",
+                action.iconOnlyOnNarrow && "action-bar__action--icon-narrow",
                 action.collapseOnNarrow && "action-bar__action--collapse-narrow",
                 action.active && ICON_BUTTON_ACTIVE_CLASSNAME,
               )}

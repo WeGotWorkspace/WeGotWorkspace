@@ -152,7 +152,14 @@ describe("ActionBar", () => {
         rightLeading={<span data-testid="leading-slot">Book</span>}
         rightLeadingPlacement="after-first"
         rightActions={[
-          { id: "edit", label: "Edit", icon: <Reply />, onClick: vi.fn(), showLabel: true },
+          {
+            id: "edit",
+            label: "Edit",
+            icon: <Reply />,
+            onClick: vi.fn(),
+            showLabel: true,
+            iconOnlyOnNarrow: true,
+          },
           {
             id: "download",
             label: "Download",
@@ -176,9 +183,11 @@ describe("ActionBar", () => {
     const deleteButton = screen.getByRole("button", { name: "Delete" });
     expect(download.className).toContain("action-bar__action--collapse-narrow");
     expect(deleteButton.className).toContain("action-bar__action--collapse-narrow");
-    expect(screen.getByRole("button", { name: "Edit" }).className).not.toContain(
-      "action-bar__action--collapse-narrow",
-    );
+    const edit = screen.getByRole("button", { name: "Edit" });
+    expect(edit.getAttribute("aria-label")).toBe("Edit");
+    expect(edit.className).toContain("action-bar__action--icon-narrow");
+    expect(edit.className).not.toContain("action-bar__action--collapse-narrow");
+    expect(edit.querySelector(".button__label")?.textContent).toBe("Edit");
 
     const narrowMenu = container.querySelector(".action-bar__menu--narrow");
     expect(narrowMenu).toBeTruthy();
