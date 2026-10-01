@@ -169,8 +169,12 @@ export function noteListTitle(
   return "Untitled note";
 }
 
+const NOTE_TAG_PATTERN = /^[a-z-]+$/;
+
+/** Trim, lowercase, and keep letters a-z and hyphen. Anything else is rejected. */
 export function normalizeTag(value: string): string {
-  return value.trim();
+  const normalized = value.trim().toLowerCase();
+  return NOTE_TAG_PATTERN.test(normalized) ? normalized : "";
 }
 
 type NoteShareAudienceFields = Pick<

@@ -41,6 +41,7 @@ import {
   noteAllowsTagAssignment,
   noteListTitle,
   noteShowsTags,
+  normalizeTag,
 } from "@/notes-core/src/notes-note-utils";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import { resolveNotesEditorEditable } from "@/notes-core/src/notes-collab-permissions";
@@ -658,6 +659,7 @@ export function NotesWorkspace({
                 }
                 tags={active.tags}
                 availableTags={tags}
+                acceptTag={(label) => normalizeTag(label) !== ""}
                 showTags={activeShowsTags}
                 onTagAdd={
                   activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined

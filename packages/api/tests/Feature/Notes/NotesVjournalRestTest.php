@@ -75,6 +75,26 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         $this->assertSame('#ec4899', $row['color']);
     }
 
+    public function test_create_and_patch_keep_only_a_z_and_hyphen_tags(): void
+    {
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Tagged',
+            'categories' => ['Focus', 'plan-ning', 'plan,ning', 'v2'],
+        ])->assertCreated();
+        $created->assertJsonPath('categories', ['focus', 'plan-ning']);
+
+        $id = (string) $created->json('id');
+        $etag = (string) ($created->headers->get('ETag') ?? $created->json('etag'));
+
+        $this->asBob()->withHeaders(['If-Match' => $etag])
+            ->patchJson('/api/v1/notes/items/'.$id, [
+                'categories' => ['focus', 'a,b', 'kept-tag'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('categories', ['focus', 'kept-tag']);
+    }
+
     public function test_create_and_get_note_by_uid_when_uri_differs(): void
     {
         $uid = 'foreign-uid-'.bin2hex(random_bytes(4));

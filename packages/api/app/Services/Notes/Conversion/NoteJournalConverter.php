@@ -7,6 +7,7 @@ namespace App\Services\Notes\Conversion;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarObject;
+use App\Services\Notes\NoteTag;
 use App\Services\VObject\ICalendarDateTime;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -42,9 +43,9 @@ final class NoteJournalConverter
         if ($body !== '') {
             $journal->DESCRIPTION = $body;
         }
-        $categories = $note['categories'] ?? [];
-        if (is_array($categories) && $categories !== []) {
-            $journal->CATEGORIES = array_values(array_map('strval', $categories));
+        $categories = NoteTag::normalizeList($note['categories'] ?? []);
+        if ($categories !== []) {
+            $journal->CATEGORIES = $categories;
         }
         $status = $note['status'] ?? null;
         if ($status === 'CANCELLED' || $status === 'FINAL') {
@@ -103,8 +104,9 @@ final class NoteJournalConverter
         }
         if (array_key_exists('categories', $patch) && is_array($patch['categories'])) {
             unset($journal->CATEGORIES);
-            if ($patch['categories'] !== []) {
-                $journal->CATEGORIES = array_values(array_map('strval', $patch['categories']));
+            $categories = NoteTag::normalizeList($patch['categories']);
+            if ($categories !== []) {
+                $journal->CATEGORIES = $categories;
             }
         }
         if (array_key_exists('status', $patch)) {
@@ -182,9 +184,10 @@ final class NoteJournalConverter
         $categories = [];
         if (isset($journal->CATEGORIES)) {
             foreach ($journal->CATEGORIES as $category) {
-                $categories[] = (string) $category;
+                $categories = array_merge($categories, $category->getParts());
             }
         }
+        $categories = NoteTag::normalizeList($categories);
         $status = isset($journal->STATUS) ? strtoupper((string) $journal->STATUS) : null;
         if ($status !== 'CANCELLED' && $status !== 'FINAL') {
             $status = null;
