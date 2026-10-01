@@ -66,6 +66,28 @@ wait_until() {
   return 1
 }
 
+prime_scheduler_file_cache() {
+  local cid="$1"
+  local compose="$ROOT/docker/install/docker-compose.yml"
+  local user
+  user="$(awk '
+    /^  scheduler:/ { in_s=1; next }
+    in_s && /^  [^ ]/ { in_s=0 }
+    in_s && /^    user:/ {
+      val=$2
+      gsub(/"/, "", val)
+      print val
+      found=1
+      exit
+    }
+    END { if (!found) print "root" }
+  ' "$compose")"
+  echo "Priming installer file cache as scheduler user ${user}"
+  docker exec -u "$user" "$cid" \
+    php /var/www/html/packages/api/artisan schedule:run --no-interaction \
+    || true
+}
+
 require_vendor() {
   local tree="$1"
   if [[ -f "${tree}/packages/api/vendor/autoload.php" ]]; then
@@ -167,6 +189,11 @@ else
     docker logs "$APP_CID" >&2 || true
     exit 1
   fi
+  # The production compose scheduler shares this volume. Running it as that
+  # user creates the file cache before account creation. As root, the cache
+  # directory is not writable by Apache and POST /api/v1/installer/action
+  # (action=install) returns HTTP 500.
+  prime_scheduler_file_cache "$APP_CID"
 fi
 
 export WGW_API_E2E_NO_SERVER=1

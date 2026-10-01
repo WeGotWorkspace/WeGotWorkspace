@@ -206,7 +206,26 @@ final class WgwInstallEnv
      */
     public function passwordForSubmittedDatabase(array $db): string
     {
-        return (string) ($db['mysql_password'] ?? '');
+        $submitted = (string) ($db['mysql_password'] ?? '');
+        if ($submitted !== '' || ($db['driver'] ?? '') !== 'mysql') {
+            return $submitted;
+        }
+
+        $configured = $this->dbConfig('mysql');
+        if ($configured === null) {
+            return '';
+        }
+
+        $sameServer = (string) ($configured['mysql_host'] ?? '') === (string) ($db['mysql_host'] ?? '')
+            && (int) ($configured['mysql_port'] ?? 0) === (int) ($db['mysql_port'] ?? 0)
+            && (string) ($configured['mysql_db'] ?? '') === (string) ($db['mysql_db'] ?? '')
+            && (string) ($configured['mysql_user'] ?? '') === (string) ($db['mysql_user'] ?? '');
+
+        if (! $sameServer) {
+            return '';
+        }
+
+        return (string) ($configured['mysql_password'] ?? '');
     }
 
     private function resolveBaseUri(string $webBase, bool $requireExplicit): ?string

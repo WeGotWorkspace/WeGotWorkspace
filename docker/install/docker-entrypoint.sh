@@ -32,7 +32,7 @@ fi
 
 mkdir -p \
   "${INSTALL_ROOT}/wgw-content" \
-  "${API_ROOT}/storage/framework/cache" \
+  "${API_ROOT}/storage/framework/cache/data" \
   "${API_ROOT}/storage/framework/sessions" \
   "${API_ROOT}/storage/framework/views" \
   "${API_ROOT}/storage/logs" \
