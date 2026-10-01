@@ -66,10 +66,21 @@ describe("pickMeetMiniPlayerSubject", () => {
     expect(picked?.id).toBe("felix");
   });
 
-  it("picks the louder local user over a quieter remote peer", () => {
+  it("keeps a speaking remote peer when the local meter is only slightly louder", () => {
     const picked = pickMeetMiniPlayerSubject(
       [
-        { id: "self", name: "Demo User", level: 0.41, isSelf: true },
+        { id: "self", name: "Demo User", level: 0.5, isSelf: true },
+        { id: "felix", name: "Felix Bauer", level: 0.4, isSelf: false },
+      ],
+      null,
+    );
+    expect(picked?.id).toBe("felix");
+  });
+
+  it("picks the local user when they are clearly louder than the remote peer", () => {
+    const picked = pickMeetMiniPlayerSubject(
+      [
+        { id: "self", name: "Demo User", level: 0.9, isSelf: true },
         { id: "felix", name: "Felix Bauer", level: 0.4, isSelf: false },
       ],
       null,
