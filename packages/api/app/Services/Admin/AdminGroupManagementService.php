@@ -174,12 +174,23 @@ final class AdminGroupManagementService
 
     private function ensureGroupFilesDirectory(string $slug): void
     {
+        $this->assertGroupFilesSlug($slug);
         $path = $this->groupFilesDirectory($slug);
         if (is_dir($path)) {
             return;
         }
         if (! @mkdir($path, 0775, true) && ! is_dir($path)) {
             throw new \RuntimeException('Could not create group files directory for '.$slug.'.');
+        }
+    }
+
+    /**
+     * Same path-segment rule as a user home (`files/users/{username}`).
+     */
+    private function assertGroupFilesSlug(string $slug): void
+    {
+        if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/', $slug)) {
+            throw new \InvalidArgumentException('Group slug must be 2–63 characters: lowercase letters, digits, underscore, or hyphen.');
         }
     }
 
