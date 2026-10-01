@@ -6,8 +6,11 @@
 
 .chat-composer__card {
   @apply flex min-w-0 max-w-full cursor-text flex-col overflow-hidden rounded-xl border;
-  border-color: var(--chat-border, color-mix(in oklab, var(--color-we-got-dark) 14%, transparent));
-  background-color: var(--chat-surface, var(--color-we-got-soft));
+  border-color: var(
+    --chat-border,
+    color-mix(in oklab, var(--workspace-accent, var(--color-we-got-dark)) 12%, transparent)
+  );
+  background-color: var(--workspace-surface, var(--chat-surface, var(--color-we-got-soft)));
 }
 
 .chat-composer__card :is(button, a, [role="button"], [role="option"], [role="listbox"]) {
