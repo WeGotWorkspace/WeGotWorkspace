@@ -42,10 +42,17 @@ export function ListSelectionProvider({
   );
 }
 
-export function useListItemHighlight(
-  id: string,
-  fallback: { isActive: boolean; isSelected: boolean; selectionMode: boolean },
-): { isActive: boolean; isSelected: boolean; selectionMode: boolean } {
+export type ListItemHighlight = {
+  isActive: boolean;
+  isSelected: boolean;
+};
+
+/**
+ * Active and selected state for one row. Selection mode is not part of this
+ * snapshot: inside a provider the list root owns it, and outside it the row
+ * prop does.
+ */
+export function useListItemHighlight(id: string, fallback: ListItemHighlight): ListItemHighlight {
   const store = useContext(ListSelectionStoreContext);
   const key = useSyncExternalStore(
     store ? store.subscribe : subscribeNoop,
@@ -56,10 +63,12 @@ export function useListItemHighlight(
   return {
     isActive: key.charAt(0) === "1",
     isSelected: key.charAt(1) === "1",
-    // Mode chrome is on the list root. Keeping it out of the row snapshot
-    // avoids re-rendering every row when multi-select starts.
-    selectionMode: false,
   };
+}
+
+/** True when this row is painted by `ListSelectionProvider` rather than its own props. */
+export function useHasListSelectionStore(): boolean {
+  return useContext(ListSelectionStoreContext) != null;
 }
 
 function subscribeNoop(): () => void {

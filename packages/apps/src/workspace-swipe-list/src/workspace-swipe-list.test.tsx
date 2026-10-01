@@ -9,7 +9,6 @@ function SelectionProbe({ id, onRender }: { id: string; onRender: (id: string) =
   const highlight = useListItemHighlight(id, {
     isActive: false,
     isSelected: false,
-    selectionMode: false,
   });
   return <span data-probe={id} data-selected={highlight.isSelected ? "true" : "false"} />;
 }
@@ -114,6 +113,22 @@ describe("WorkspaceSwipeList event delegation", () => {
 
     expect(container.querySelector("[data-probe='b']")?.getAttribute("data-selected")).toBe("true");
     expect(renders).toEqual(["b"]);
+    expect(
+      container
+        .querySelector("[data-list-selection-mode]")
+        ?.getAttribute("data-list-selection-mode"),
+    ).toBe("true");
+  });
+
+  it("leaves row selection mode to the list root", () => {
+    const { container } = render(
+      <WorkspaceSwipeList isTouch={false} selectionMode activeId="" selectedIds={["a"]}>
+        {row("a", "Ada")}
+      </WorkspaceSwipeList>,
+    );
+    const button = screen.getByRole("button", { name: /Ada/i });
+    expect(button.hasAttribute("data-selection-mode")).toBe(false);
+    expect(button.getAttribute("data-selected")).toBe("true");
     expect(
       container
         .querySelector("[data-list-selection-mode]")
