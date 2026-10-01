@@ -8,6 +8,7 @@ import { MeetGuestChannel, meetGuestChannelPhase } from "@/meet-core/src/meet-gu
 import { meetGuestInviteChannel } from "@/meet-core/src/meet-guest-invite-channel";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { useMeetAPI } from "@/meet-core/src/use-meet-api";
+import { useMeetKnockChime } from "@/meet-core/src/use-meet-knock-chime";
 import { useMeetRouteSync } from "@/meet-core/src/use-meet-route-sync";
 import {
   useMeetWorkspaceShell,
@@ -74,6 +75,12 @@ function MeetGuestChannelLive({
     buildCallLink,
     onRoomChange,
   });
+  // Signed-in visitors still chime from the lobby shell. Guests do not, so
+  // the in-call chime lives here for anyone already in the guest call.
+  useMeetKnockChime(
+    shell.controller.knockers.length,
+    shell.inCall && !shell.lobby.hasSignedInIdentity,
+  );
   const invite = meetGuestInviteChannel({
     channels: data.channels,
     invitedRoom,

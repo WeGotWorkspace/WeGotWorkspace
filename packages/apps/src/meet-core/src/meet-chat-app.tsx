@@ -48,6 +48,7 @@ import { useMeetChatAPI } from "@/meet-core/src/use-meet-chat-api";
 import { useMeetChannelReadMarker } from "@/meet-core/src/use-meet-channel-read-marker";
 import { useMeetChannelTyping } from "@/meet-core/src/use-meet-channel-typing";
 import { useMeetChatCall } from "@/meet-core/src/use-meet-chat-call";
+import { useMeetKnockChime } from "@/meet-core/src/use-meet-knock-chime";
 import { useMeetNowClock } from "@/meet-core/src/use-meet-now-clock";
 import { mergeMeetCallLive } from "@/meet-core/src/meet-call-stage-layout";
 import { useMeetChannelCallActivity } from "@/meet-core/src/use-meet-channel-call-activity";
@@ -174,6 +175,7 @@ function MeetChatLiveWorkspace({
       meetOperations,
       chatOperations,
     });
+  useMeetKnockChime(callStageRoom.controller.knockers.length, callStageRoom.controller.inCall);
   const joinedUnmappedAdHoc = Boolean(
     joinedRoomCode &&
     meetIsAdHocMeetingId(joinedRoomCode) &&
