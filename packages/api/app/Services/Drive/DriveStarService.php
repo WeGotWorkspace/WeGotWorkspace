@@ -7,6 +7,7 @@ namespace App\Services\Drive;
 use App\Models\DriveStarredItem;
 use App\Storage\StoragePaths;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Log;
 
 final class DriveStarService
 {
@@ -70,9 +71,22 @@ final class DriveStarService
      * removed first, so a leftover row cannot attach to the item that now
      * occupies that path. created_at stays with the row that moved.
      *
-     * @return int number of star rows moved
+     * A failure is logged and does not fail the move that already landed on disk.
+     *
+     * @return int number of star rows moved, or 0 when the sync was skipped or failed
      */
     public function rewritePathPrefix(string $fromPath, string $toPath): int
+    {
+        try {
+            return $this->rewritePathPrefixWithin($fromPath, $toPath);
+        } catch (\Throwable $e) {
+            $this->logStarSyncFailure('rewrite', $fromPath, $toPath, $e);
+
+            return 0;
+        }
+    }
+
+    private function rewritePathPrefixWithin(string $fromPath, string $toPath): int
     {
         $from = $this->paths->normalizeVirtualPath($fromPath);
         $to = $this->paths->normalizeVirtualPath($toPath);
@@ -130,9 +144,22 @@ final class DriveStarService
     /**
      * Remove star rows at $path and anything nested under it, for every user.
      *
-     * @return int number of star rows removed
+     * A failure is logged and does not fail the delete that already landed on disk.
+     *
+     * @return int number of star rows removed, or 0 when the sync was skipped or failed
      */
     public function deletePathPrefix(string $path): int
+    {
+        try {
+            return $this->deletePathPrefixWithin($path);
+        } catch (\Throwable $e) {
+            $this->logStarSyncFailure('delete', $path, null, $e);
+
+            return 0;
+        }
+    }
+
+    private function deletePathPrefixWithin(string $path): int
     {
         $path = $this->paths->normalizeVirtualPath($path);
         if ($path === '/') {
@@ -186,8 +213,19 @@ final class DriveStarService
 
     private function isHiddenBrowsePath(string $virtualPath): bool
     {
+        // `.Trash` is intentionally not excluded: trash is a move, so the star follows and comes back on restore.
         return $this->isHiddenNotesPath($virtualPath)
             || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath);
+    }
+
+    private function logStarSyncFailure(string $op, string $from, ?string $to, \Throwable $e): void
+    {
+        Log::warning('drive_star_sync_failed', [
+            'op' => $op,
+            'from' => $from,
+            'to' => $to,
+            'error' => $e->getMessage(),
+        ]);
     }
 
     private function isHiddenNotesPath(string $virtualPath): bool
