@@ -17,6 +17,10 @@ final class GroupFilesHomeProvisioner
 
     public function ensureForSlug(string $slug): void
     {
+        if (! $this->isDriveSegment($slug)) {
+            throw new \InvalidArgumentException('Invalid group slug for drive home.');
+        }
+
         $path = $this->pathForSlug($slug);
         if (is_dir($path)) {
             return;

@@ -54,6 +54,19 @@ final class GroupFilesHomeProvisionerTest extends WgwDatabaseTestCase
         $this->assertSame(2, $second['skipped']);
     }
 
+    public function test_ensure_for_slug_rejects_a_path_outside_one_segment(): void
+    {
+        $provisioner = app(GroupFilesHomeProvisioner::class);
+
+        try {
+            $provisioner->ensureForSlug('nested/nope');
+            $this->fail('A multi-segment slug must not create a drive home.');
+        } catch (\InvalidArgumentException) {
+            $this->assertFalse(is_dir($this->dataDir.'/files/groups/nested'));
+            $this->assertFalse(is_dir($this->dataDir.'/files/groups/nope'));
+        }
+    }
+
     public function test_installer_seed_creates_administrators_drive(): void
     {
         app(InstallerSeeder::class)->seed(
