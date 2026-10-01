@@ -1,7 +1,7 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
-import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
+import { STALE_LOCK_TIMEOUT_MS, withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
 import { decodeJwtExp, decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 
@@ -46,6 +46,7 @@ let refreshToken: string | null = null;
 let accessExpiresAt: number | null = null;
 let refreshExpiresAt: number | null = null;
 let refreshPromise: Promise<boolean> | null = null;
+let storageWriteFailed = false;
 let refreshFailureCount = 0;
 let refreshFailureWindowStartedAt: number | null = null;
 let refreshRejectedByAuth = false;
@@ -88,7 +89,7 @@ function hasSessionStorage(): boolean {
 }
 
 function readTokensFromStorage(): void {
-  if (!hasWindowStorage()) return;
+  if (!hasWindowStorage() || storageWriteFailed) return;
   try {
     accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
     refreshToken = window.localStorage.getItem(REFRESH_TOKEN_KEY);
@@ -102,15 +103,6 @@ function readTokensFromStorage(): void {
   } catch {
     // Ignore storage failures and keep in-memory fallback.
   }
-}
-
-function hydrateTokensFromStorage(): void {
-  // Another tab rotates tokens in localStorage; memory must not keep the old refresh token.
-  readTokensFromStorage();
-}
-
-function reloadTokensFromStorage(): void {
-  hydrateTokensFromStorage();
 }
 
 function persistTokens(): void {
@@ -128,8 +120,9 @@ function persistTokens(): void {
     } else {
       window.localStorage.removeItem(REFRESH_EXPIRES_AT_KEY);
     }
+    storageWriteFailed = false;
   } catch {
-    // Ignore storage failures and keep in-memory fallback.
+    storageWriteFailed = true;
   }
 }
 
@@ -247,12 +240,17 @@ export function clearWgwSession(reason: WgwSessionClearReason): void {
   persistTokens();
 }
 
-async function postJson(path: string, body: unknown, auth?: string): Promise<Response> {
+async function postJson(
+  path: string,
+  body: unknown,
+  auth?: string,
+  signal?: AbortSignal,
+): Promise<Response> {
   const base = wgwApiBaseUrl();
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (auth) headers.Authorization = `Bearer ${auth}`;
-  return fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+  return fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal });
 }
 
 async function readTokenResponse(res: Response): Promise<TokenResponse> {
@@ -300,13 +298,13 @@ function applyTokens(tokens: TokenResponse): void {
 
 /** True when the stored refresh token marks a public share guest session. */
 export function wgwIsGuestSession(): boolean {
-  hydrateTokensFromStorage();
+  readTokensFromStorage();
   return refreshToken === WGW_GUEST_REFRESH_TOKEN;
 }
 
 /** True when access + refresh tokens are present (localStorage or memory). */
 export function wgwHasAuthenticatedSession(): boolean {
-  hydrateTokensFromStorage();
+  readTokensFromStorage();
   return Boolean(accessToken && refreshToken);
 }
 
@@ -454,12 +452,12 @@ export async function wgwCompleteLogoutNavigation(): Promise<WgwLogoutNavigation
 
 /** Current in-memory/storage access token, if available. */
 export function wgwCurrentAccessToken(): string | null {
-  hydrateTokensFromStorage();
+  readTokensFromStorage();
   return accessToken;
 }
 
 export function isAccessTokenExpired(marginSec = 180): boolean {
-  hydrateTokensFromStorage();
+  readTokensFromStorage();
   if (!accessToken) return true;
   if (accessExpiresAt === null) {
     accessExpiresAt = readAccessExpiryFromJwt(accessToken);
@@ -469,7 +467,7 @@ export function isAccessTokenExpired(marginSec = 180): boolean {
 }
 
 export function isRefreshTokenExpired(): boolean {
-  hydrateTokensFromStorage();
+  readTokensFromStorage();
   if (!refreshToken) return true;
   if (refreshExpiresAt === null) return false;
   return isExpiredAt(refreshExpiresAt, 0);
@@ -619,7 +617,7 @@ async function assertOkResponse(res: Response): Promise<void> {
 }
 
 export async function wgwLogout(): Promise<void> {
-  hydrateTokensFromStorage();
+  readTokensFromStorage();
   setLoggedOutMarker(true);
   try {
     if (refreshToken || accessToken) {
@@ -638,7 +636,7 @@ export async function wgwLogout(): Promise<void> {
 
 /** Obtain tokens using `VITE_WGW_DEV_USERNAME` / `VITE_WGW_DEV_PASSWORD` (local `.env.local` only). */
 export async function wgwEnsureSession(): Promise<void> {
-  hydrateTokensFromStorage();
+  readTokensFromStorage();
   if (accessToken && !isAccessTokenExpired()) return;
 
   if (wgwIsGuestSession()) {
@@ -671,13 +669,13 @@ export async function wgwEnsureSession(): Promise<void> {
   await wgwLoginWithCredentials(username.trim(), password);
 }
 
-async function wgwTryRefresh(): Promise<boolean> {
+async function wgwTryRefresh(rejectedAccessToken?: string): Promise<boolean> {
   if (!refreshToken || wgwIsGuestSession()) return false;
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = withAuthRefreshLock(async () => {
-    hydrateTokensFromStorage();
-    if (accessToken && !isAccessTokenExpired()) return true;
+    readTokensFromStorage();
+    if (accessToken && accessToken !== rejectedAccessToken && !isAccessTokenExpired()) return true;
     if (!refreshToken || wgwIsGuestSession()) return false;
     if (!readBrowserOnline()) return false;
     if (isRefreshTokenExpired()) {
@@ -687,14 +685,13 @@ async function wgwTryRefresh(): Promise<boolean> {
 
     const presented = refreshToken;
     try {
-      const res = await postJson("/auth/refresh", { refresh_token: presented });
+      const signal = AbortSignal.timeout(STALE_LOCK_TIMEOUT_MS);
+      const res = await postJson("/auth/refresh", { refresh_token: presented }, undefined, signal);
       const tokens = await readTokenResponse(res);
       applyTokens(tokens);
       return true;
     } catch (error) {
       if (error instanceof AuthHttpError && (error.status === 401 || error.status === 403)) {
-        hydrateTokensFromStorage();
-        if (refreshToken !== presented && accessToken && !isAccessTokenExpired()) return true;
         refreshRejectedByAuth = true;
         clearWgwSession("401_online");
         return false;
@@ -713,8 +710,8 @@ async function wgwTryRefresh(): Promise<boolean> {
   }).then((didRefresh) => {
     if (didRefresh) return true;
     // Another tab owned the lock and may have updated tokens while we waited.
-    reloadTokensFromStorage();
-    return Boolean(accessToken && !isAccessTokenExpired());
+    readTokensFromStorage();
+    return Boolean(accessToken && accessToken !== rejectedAccessToken && !isAccessTokenExpired());
   });
 
   try {
@@ -804,7 +801,8 @@ export async function wgwFetch(path: string, init: RequestInit = {}): Promise<Re
 
   let res = await doOnce(accessToken!);
   if (res.status === 401) {
-    const ok = await wgwTryRefresh();
+    const tokenUsed = accessToken!;
+    const ok = await wgwTryRefresh(tokenUsed);
     if (ok && accessToken) res = await doOnce(accessToken);
   }
   return res;
@@ -905,7 +903,7 @@ function wgwGuestPrincipalFromAccessToken(token: string): WorkspaceSession {
 }
 
 export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
-  hydrateTokensFromStorage();
+  readTokensFromStorage();
   if (wgwIsGuestSession()) {
     if (!accessToken) {
       throw new Error("Share session expired. Open the link again.");
@@ -993,12 +991,14 @@ export async function wgwEnsurePluginSession(sessionApiPath: string): Promise<vo
   }
 }
 
-export function resetWgwSessionStateForTests(): void {
+export function resetWgwSessionStateForTests(keepTokens = false): void {
+  refreshPromise = null;
+  if (keepTokens) return;
   accessToken = null;
   refreshToken = null;
   accessExpiresAt = null;
   refreshExpiresAt = null;
-  refreshPromise = null;
+  storageWriteFailed = false;
   resetRefreshFailures();
   refreshRejectedByAuth = false;
 }

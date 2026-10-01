@@ -1,7 +1,7 @@
 const REFRESH_LOCK_KEY = "wgw.api.refresh.lock";
 const REFRESH_CHANNEL = "wgw-auth-refresh";
 const WEB_LOCK_NAME = "wgw-auth-refresh";
-const STALE_LOCK_TIMEOUT_MS = 30_000;
+export const STALE_LOCK_TIMEOUT_MS = 30_000;
 const WAIT_POLL_MS = 250;
 
 type RefreshLockRecord = {
@@ -178,7 +178,8 @@ function runInWebLock(locks: LockManager, task: () => Promise<boolean>): Promise
 
 /**
  * Coalesce refresh calls in-tab and coordinate lock ownership across tabs.
- * Returns `false` when another tab performed the refresh.
+ * A waiting Web Locks tab runs the task itself after the previous holder releases.
+ * The localStorage fallback returns false when another tab held the lock.
  */
 export function withAuthRefreshLock(task: () => Promise<boolean>): Promise<boolean> {
   if (inTabRefreshPromise) {
