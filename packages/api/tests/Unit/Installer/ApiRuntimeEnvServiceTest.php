@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Installer;
 
 use App\Services\Installer\ApiRuntimeEnvService;
+use App\Services\Installer\EnvFileWriter;
 use App\Support\WgwApiEnvFile;
 use PHPUnit\Framework\TestCase;
 
@@ -318,9 +319,13 @@ PHP);
                     $sawPartial++;
                 }
                 foreach (glob($this->apiRoot.'/.env.tmp.*') ?: [] as $tmp) {
+                    $mode = @fileperms($tmp);
+                    $size = @filesize($tmp);
+                    if ($mode === false || $size === false) {
+                        continue;
+                    }
                     $sawTemp++;
-                    $mode = fileperms($tmp);
-                    if ($mode !== false && ($mode & 0777) !== 0600 && filesize($tmp) > 0) {
+                    if (($mode & 0777) !== 0600 && $size > 0) {
                         $sawLooseTemp++;
                     }
                 }
@@ -354,6 +359,31 @@ PHP);
         $this->assertStringContainsString('WGW_INSTALL_DB_DRIVER=mysql', $env);
         $this->assertStringContainsString('WGW_PAD_3999=', $env);
         $this->assertSame(0600, fileperms($envPath) & 0777);
+    }
+
+    public function test_writer_creates_the_target_of_a_dangling_symlink(): void
+    {
+        $volume = sys_get_temp_dir().'/wgw-env-dangling-'.uniqid('', true);
+        mkdir($volume, 0775, true);
+        $target = $volume.'/api.env';
+        symlink($target, $this->apiRoot.'/.env');
+
+        try {
+            $wrote = (new EnvFileWriter)->update(
+                $this->apiRoot.'/.env',
+                static fn (string $content): string => "APP_KEY=base64:YQ==\nAPP_URL=http://localhost\n",
+            );
+
+            $this->assertTrue($wrote);
+            $this->assertTrue(is_link($this->apiRoot.'/.env'));
+            $this->assertFileExists($target);
+            $this->assertSame(0600, fileperms($target) & 0777);
+            $this->assertStringContainsString('APP_KEY=base64:YQ==', (string) file_get_contents($target));
+        } finally {
+            @unlink($volume.'/api.env.lock');
+            @unlink($target);
+            @rmdir($volume);
+        }
     }
 
     public function test_ensure_strips_invalid_dotenv_lines(): void

@@ -46,36 +46,17 @@ final class InstallerEnvWriter
             copy(dirname($envPath).'/.env.example', $envPath);
         }
 
-        $fh = fopen($envPath, 'c+');
-        if ($fh === false) {
-            throw new \RuntimeException('Could not write packages/api/.env');
-        }
-
-        try {
-            if (! flock($fh, LOCK_EX)) {
-                throw new \RuntimeException('Could not lock packages/api/.env');
-            }
-            rewind($fh);
-            $content = (string) stream_get_contents($fh);
-            $original = $content;
+        (new EnvFileWriter)->update($envPath, static function (string $content) use ($pairs): ?string {
+            $next = $content;
             foreach ($pairs as $key => $value) {
                 if ($value === null) {
                     continue;
                 }
-                $content = WgwApiEnvFile::setLine($content, $key, $value);
+                $next = WgwApiEnvFile::setLine($next, $key, $value);
             }
-            if ($content !== $original) {
-                rewind($fh);
-                if (ftruncate($fh, 0) === false || fwrite($fh, $content) === false) {
-                    throw new \RuntimeException('Could not write packages/api/.env');
-                }
-                fflush($fh);
-            }
-            @chmod($envPath, 0600);
-        } finally {
-            flock($fh, LOCK_UN);
-            fclose($fh);
-        }
+
+            return $next === $content ? null : $next;
+        });
     }
 
     public function envPath(): string

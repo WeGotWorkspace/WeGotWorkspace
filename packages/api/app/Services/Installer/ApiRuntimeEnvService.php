@@ -144,71 +144,20 @@ final class ApiRuntimeEnvService
     }
 
     /**
-     * Rewrite packages/api/.env without exposing a partial file.
-     *
-     * Fresh Docker installs serve many PHP requests at once. Each one may
-     * fill APP_KEY and APP_URL. A truncate-then-write lets another request
-     * boot with an empty APP_KEY (HTTP 500) and can persist that fragment.
-     * The lock serializes writers. rename() replaces the real file, including
-     * when .env is a symlink onto the config volume.
+     * Same lock and atomic replace as InstallerEnvWriter::patchEnvFile.
      *
      * The mutator returns null when the file should stay unchanged.
+     * A write failure stays false so a request can still boot.
      *
      * @param  callable(string): ?string  $mutator
      */
     private function updateEnvFile(string $envPath, callable $mutator): bool
     {
-        $target = $this->envWriteTarget($envPath);
-        $lockPath = $target.'.lock';
-        $lock = fopen($lockPath, 'c');
-        if ($lock === false) {
+        try {
+            return (new EnvFileWriter)->update($envPath, $mutator);
+        } catch (\RuntimeException) {
             return false;
         }
-        @chmod($lockPath, 0666);
-
-        try {
-            if (! flock($lock, LOCK_EX)) {
-                return false;
-            }
-            $content = is_file($target) ? (string) file_get_contents($target) : '';
-            $next = $mutator($content);
-            if (! is_string($next) || $next === $content) {
-                return false;
-            }
-
-            $tmp = $target.'.tmp.'.bin2hex(random_bytes(4));
-            if (file_put_contents($tmp, $next, LOCK_EX) === false) {
-                @unlink($tmp);
-
-                return false;
-            }
-            if (! rename($tmp, $target)) {
-                @unlink($tmp);
-
-                return false;
-            }
-
-            return true;
-        } finally {
-            flock($lock, LOCK_UN);
-            fclose($lock);
-        }
-    }
-
-    private function envWriteTarget(string $envPath): string
-    {
-        if (is_link($envPath)) {
-            $link = readlink($envPath);
-            if (is_string($link)) {
-                if (str_starts_with($link, '/')) {
-                    return $link;
-                }
-
-                return dirname($envPath).'/'.$link;
-            }
-        }
-
-        return $envPath;
     }
 
     public static function guessRequestAppUrl(): ?string
