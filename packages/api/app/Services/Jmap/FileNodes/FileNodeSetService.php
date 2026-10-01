@@ -8,6 +8,7 @@ use App\Events\EventDispatch;
 use App\Models\JmapFileNode;
 use App\Services\Drive\DocAttachmentPaths;
 use App\Services\Drive\DocAttachmentsService;
+use App\Services\Drive\DriveStarService;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Notes\NoteMarkdownCodec;
 use App\Services\Search\BestEffortSearchIndexSync;
@@ -71,6 +72,7 @@ final class FileNodeSetService
         private readonly SearchIndexerService $search,
         private readonly BestEffortSearchIndexSync $searchSync,
         private readonly DocAttachmentsService $docAttachments,
+        private readonly DriveStarService $stars,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -199,6 +201,7 @@ final class FileNodeSetService
         }
         $this->index->recordDelete($key);
         $this->syncSearchDelete($key);
+        $this->stars->deletePathPrefix($key);
         $this->docAttachments->destroyDocsBestEffort($docIds);
     }
 
@@ -371,6 +374,7 @@ final class FileNodeSetService
                 $node = $this->index->recordMove($fromKey, $toKey) ?? $node;
                 $this->syncSearchMove($fromKey, $toKey);
                 $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
+                $this->stars->rewritePathPrefix($fromKey, $toKey);
             }
         }
 
@@ -439,6 +443,7 @@ final class FileNodeSetService
         if (! $this->storage->files()->move($fromKey, $toKey)) {
             throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Could not store the attachment.']);
         }
+        $this->stars->rewritePathPrefix($fromKey, $toKey);
 
         return $this->index->recordMove($fromKey, $toKey) ?? $node;
     }

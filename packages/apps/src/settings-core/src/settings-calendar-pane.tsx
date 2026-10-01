@@ -31,7 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
  */
 export function SettingsCalendarPane() {
   const { form, saveDisplay } = useSettingsCalendarForm();
-  const calendars = useCalendarPickerCollections();
+  const { collections: calendars, loaded: calendarsLoaded } = useCalendarPickerCollections();
   const uiLocale = resolveLocale(undefined);
   const deviceZone = Temporal.Now.timeZoneId();
   const timeZoneWatch = form.watch("timeZone");
@@ -39,12 +39,12 @@ export function SettingsCalendarPane() {
   const visibleHoursWatch = form.watch("visibleHours");
   const inviteWatch = form.watch("inviteCalendarId");
   useEffect(() => {
-    if (calendars.length === 0) return;
+    if (!calendarsLoaded || calendars.length === 0) return;
     const resolved = defaultPickerCalendarId(calendars, inviteWatch || undefined);
     if (inviteWatch && resolved && resolved !== inviteWatch) {
       form.setValue("inviteCalendarId", resolved, { shouldDirty: true });
     }
-  }, [calendars, form, inviteWatch]);
+  }, [calendars, calendarsLoaded, form, inviteWatch]);
   const localeDefaultWeekday = resolveCalendarWeekStart({}, uiLocale);
   const weekStartDays = useMemo(() => {
     const days = [...CALENDAR_WEEK_START_CHOICES];
