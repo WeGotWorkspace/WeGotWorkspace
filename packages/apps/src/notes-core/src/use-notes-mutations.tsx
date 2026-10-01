@@ -663,17 +663,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   );
 
   const toggleNoteTag = useCallback(
-    (noteId: string, rawTag: string) => {
+    (noteId: string, rawTag: string, mode: "toggle" | "add" = "toggle") => {
       const before = notes.find((note) => note.id === noteId);
       if (!before || !noteAllowsTagAssignment(before, true)) return;
-      const toggled = noteTagToggle(before.tags, rawTag);
+      const toggled = noteTagToggle(before.tags, rawTag, mode);
       if (!toggled) return;
-      const editedAt = new Date().toISOString();
-      const updated = {
-        ...before,
-        tags: toggled.tags,
-        date: editedAt,
-      };
+      const updated = { ...before, tags: toggled.tags, date: new Date().toISOString() };
       setNotes((prev) => prev.map((note) => (note.id === noteId ? updated : note)));
       persistOptimisticNote(updated, true);
       const toastMessage = toggled.added ? `Added ${toggled.label}` : `Removed ${toggled.label}`;
@@ -710,6 +705,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       setNotes,
       waitForInFlightCreate,
     ],
+  );
+  const addNoteTag = useCallback(
+    (noteId: string, rawTag: string) => toggleNoteTag(noteId, rawTag, "add"),
+    [toggleNoteTag],
   );
 
   const updateNote = useCallback(
@@ -976,6 +975,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     deleteNotebook,
     deleteTag,
     toggleNoteTag,
+    addNoteTag,
     updateNote,
     applyLocalBodyMarkdown,
     createNote,

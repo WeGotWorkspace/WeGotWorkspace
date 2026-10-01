@@ -130,6 +130,7 @@ export function useNotesController({
     deleteNotebook: mutations.deleteNotebook,
     deleteTag: mutations.deleteTag,
     toggleNoteTag: mutations.toggleNoteTag,
+    addNoteTag: mutations.addNoteTag,
     updateNote: mutations.updateNote,
     applyLocalBodyMarkdown: mutations.applyLocalBodyMarkdown,
   };

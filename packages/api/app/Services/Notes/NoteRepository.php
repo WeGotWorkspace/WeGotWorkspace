@@ -179,6 +179,10 @@ final class NoteRepository
 
         $instance = $located['instance'];
         $object = $located['object'];
+        if (array_key_exists('categories', $patch) && is_array($patch['categories'])) {
+            $storedIcs = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+            $this->assertNewCategoriesAllowed($storedIcs, array_values($patch['categories']));
+        }
 
         if (array_key_exists('notebookId', $patch) && is_string($patch['notebookId']) && $patch['notebookId'] !== '') {
             $destination = $this->notebooks->findAccessibleNotebook($username, $patch['notebookId']);
@@ -198,9 +202,6 @@ final class NoteRepository
         unset($fieldPatch['notebookId']);
         if ($fieldPatch !== []) {
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-            if (array_key_exists('categories', $fieldPatch) && is_array($fieldPatch['categories'])) {
-                $this->assertNewCategoriesAllowed($raw, array_values($fieldPatch['categories']));
-            }
             $ics = $this->converter->mergeIntoIcs($raw, $fieldPatch);
             try {
                 $this->calBackend()->updateCalendarObject(

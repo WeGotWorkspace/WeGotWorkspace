@@ -101,6 +101,20 @@ describe("TagGroup inline add", () => {
     expect(screen.getByRole("combobox", { name: "Add tag" })).toBeTruthy();
   });
 
+  it("does not add a tag the note already has in a different case", () => {
+    const onAddTag = vi.fn();
+    renderTagGroup(
+      <TagGroup tags={["work"]} readonly={false} suggestions={[]} onAddTag={onAddTag} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    const input = screen.getByRole("combobox", { name: "Add tag" });
+    fireEvent.change(input, { target: { value: "Work" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onAddTag).not.toHaveBeenCalled();
+  });
+
   it("shows a hint when a typed tag is rejected", () => {
     const onAddTag = vi.fn();
     const acceptTag = (value: string) => /^[a-z-]+$/.test(value.trim().toLowerCase());

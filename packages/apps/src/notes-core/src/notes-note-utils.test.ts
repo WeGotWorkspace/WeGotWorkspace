@@ -16,6 +16,7 @@ import {
   normalizeNoteBodyMarkdown,
   isValidNewTag,
   normalizeTag,
+  noteTagsAfterAdd,
   noteTagsAfterToggle,
   noteAllowsTagAssignment,
   isPlaceholderNoteListLabel,
@@ -73,6 +74,12 @@ describe("notes-note-utils", () => {
     expect(isValidNewTag("café")).toBe(false);
     expect(isValidNewTag(",")).toBe(false);
     expect(isValidNewTag("   ")).toBe(false);
+  });
+
+  it("does not add a tag that is already stored in a different case", () => {
+    expect(noteTagsAfterAdd(["work"], "Work")).toBeNull();
+    expect(noteTagsAfterAdd(["work"], "focus")).toEqual(["work", "focus"]);
+    expect(noteTagsAfterAdd([], "v2")).toBeNull();
   });
 
   it("removes a stored tag by its raw label and rejects an invalid add", () => {

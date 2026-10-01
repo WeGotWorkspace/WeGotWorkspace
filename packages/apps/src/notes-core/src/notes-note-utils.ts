@@ -14,6 +14,7 @@ export {
   isValidNewTag,
   normalizeTag,
   noteTagToggle,
+  noteTagsAfterAdd,
   noteTagsAfterToggle,
 } from "@/notes-core/src/note-tag";
 

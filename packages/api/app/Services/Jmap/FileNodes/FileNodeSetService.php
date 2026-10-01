@@ -628,15 +628,14 @@ final class FileNodeSetService
             if (! is_array($note['tags'])) {
                 throw new FileNodeSetError($this->invalidProperties('note.tags must be an array.', ['note']));
             }
+            $tags = [];
             foreach ($note['tags'] as $tag) {
-                if (! is_string($tag) || ! NoteTag::isValid(strtolower(trim($tag)))) {
-                    throw new FileNodeSetError($this->invalidProperties(
-                        'A tag may only use letters a-z and hyphen.',
-                        ['note'],
-                    ));
+                if (! is_string($tag)) {
+                    throw new FileNodeSetError($this->invalidProperties('note.tags must be an array of strings.', ['note']));
                 }
+                $tags[] = $tag;
             }
-            $out['tags'] = $this->codec->normalizeTags($note['tags']);
+            $out['tags'] = $tags;
         }
 
         return $out;
@@ -669,7 +668,15 @@ final class FileNodeSetService
                 $title = $note['title'] !== '' ? $note['title'] : $fallback;
             }
             if (array_key_exists('tags', $note)) {
-                $tags = $note['tags'];
+                $submitted = $note['tags'];
+                $merged = NoteTag::mergeForUpdate($submitted, $tags);
+                if ($merged !== NoteTag::normalizeStored($submitted)) {
+                    throw new FileNodeSetError($this->invalidProperties(
+                        'A tag may only use letters a-z and hyphen.',
+                        ['note'],
+                    ));
+                }
+                $tags = $merged;
             }
         }
 

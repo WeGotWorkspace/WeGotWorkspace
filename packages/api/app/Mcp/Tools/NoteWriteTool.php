@@ -72,7 +72,7 @@ final class NoteWriteTool extends WgwMcpTool
             return $this->json($this->notes->delete($username, $noteId, null, null, false));
         }
 
-        $payload = $this->notePayload($request);
+        $payload = $this->notePayload($request, $action === 'create');
         if ($action === 'create') {
             $notebookId = trim((string) $request->get('notebookId', ''));
             if ($notebookId === '') {
@@ -93,7 +93,7 @@ final class NoteWriteTool extends WgwMcpTool
     /**
      * @return array<string, mixed>
      */
-    private function notePayload(Request $request): array
+    private function notePayload(Request $request, bool $strictNewTags): array
     {
         $payload = [];
         foreach (['title', 'body', 'notebookId'] as $key) {
@@ -111,7 +111,7 @@ final class NoteWriteTool extends WgwMcpTool
             }
             if (is_array($categories)) {
                 foreach ($categories as $tag) {
-                    if (! is_string($tag) || ! NoteTag::isValid(strtolower(trim($tag)))) {
+                    if (! is_string($tag) || ($strictNewTags && ! NoteTag::isValid(strtolower(trim($tag))))) {
                         throw new \InvalidArgumentException('A tag may only use letters a-z and hyphen.');
                     }
                 }

@@ -67,7 +67,7 @@ final class NotesFileMigrator
             }
 
             $fallback = pathinfo($parsed['filename'], PATHINFO_FILENAME);
-            [$title, $tags, $body] = $this->codec->parse($markdown, $fallback, true);
+            [$title, $tags, $body] = $this->codec->parse($markdown, $fallback);
             if ($this->codec->isPlaceholderTitle($title, $fallback)) {
                 $title = '';
             }

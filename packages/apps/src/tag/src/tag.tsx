@@ -247,7 +247,7 @@ function TagAddField({
 
   const commit = (idOrLabel: string) => {
     const value = idOrLabel.trim();
-    if (!value || appliedIds.has(value)) {
+    if (!value || appliedIds.has(value) || appliedLabels.has(value.toLowerCase())) {
       onCancel();
       return;
     }

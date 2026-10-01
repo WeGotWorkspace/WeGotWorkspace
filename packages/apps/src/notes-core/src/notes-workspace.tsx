@@ -207,6 +207,7 @@ export function NotesWorkspace({
     toggleArchive,
     openDeleteConfirm,
     toggleNoteTag,
+    addNoteTag,
     applyLocalBodyMarkdown,
     updateNote,
     groups,
@@ -658,12 +659,12 @@ export function NotesWorkspace({
                   noteReadOnly ? undefined : (title) => updateNote(active.id, { title })
                 }
                 tags={active.tags}
-                availableTags={tags}
+                availableTags={tags.filter(isValidNewTag)}
                 acceptTag={isValidNewTag}
                 rejectHint={L.tagCharsetHint}
                 showTags={activeShowsTags}
                 onTagAdd={
-                  activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined
+                  activeAllowsTagAssignment ? (tag) => addNoteTag(active.id, tag) : undefined
                 }
                 onTagRemove={
                   activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined

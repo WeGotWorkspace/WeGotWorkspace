@@ -29,12 +29,25 @@ export function noteTagsAfterToggle(tags: readonly string[], rawTag: string): st
   return [...tags, normalized];
 }
 
-/** Toggle plus the label used in toasts. Null when a new tag is rejected. */
+/** Add result. Null when the tag is invalid or already on the note, any case. */
+export function noteTagsAfterAdd(tags: readonly string[], rawTag: string): string[] | null {
+  const trimmed = rawTag.trim();
+  if (!isValidNewTag(trimmed)) return null;
+  const normalized = normalizeTag(trimmed);
+  if (tags.some((current) => current === trimmed || normalizeTag(current) === normalized)) {
+    return null;
+  }
+  return [...tags, normalized];
+}
+
+/** Toggle or add, plus the label used in toasts. Null when nothing should change. */
 export function noteTagToggle(
   tags: readonly string[],
   rawTag: string,
+  mode: "toggle" | "add" = "toggle",
 ): { tags: string[]; added: boolean; label: string } | null {
-  const nextTags = noteTagsAfterToggle(tags, rawTag);
+  const nextTags =
+    mode === "add" ? noteTagsAfterAdd(tags, rawTag) : noteTagsAfterToggle(tags, rawTag);
   if (!nextTags) return null;
   const added = nextTags.length > tags.length;
   const label = added ? (nextTags[nextTags.length - 1] ?? rawTag.trim()) : rawTag.trim();

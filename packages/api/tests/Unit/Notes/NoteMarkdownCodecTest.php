@@ -24,21 +24,18 @@ final class NoteMarkdownCodecTest extends TestCase
             $codec->normalizeTags([' Focus ', 'plan-ning', 'plan,ning', 'v2', 'plan ning']),
         );
 
-        $raw = $codec->serialize('Title', ['plan,ning', 'focus'], 'Body');
+        $raw = $codec->serialize('Title', ['v2', 'Focus'], 'Body');
         [, $tags] = $codec->parse($raw, 'fallback');
-        $this->assertSame(['focus'], $tags);
+        $this->assertSame(['v2', 'focus'], $tags);
     }
 
-    public function test_parse_keeps_legacy_tags_only_when_asked(): void
+    public function test_parse_keeps_legacy_tags(): void
     {
         $codec = new NoteMarkdownCodec;
         $raw = "title: Legacy\ntags: v2, Focus\n----\nbody";
 
-        [, $strict] = $codec->parse($raw, 'fallback');
-        $this->assertSame(['focus'], $strict);
-
-        [, $legacy] = $codec->parse($raw, 'fallback', true);
-        $this->assertSame(['v2', 'focus'], $legacy);
+        [, $tags] = $codec->parse($raw, 'fallback');
+        $this->assertSame(['v2', 'focus'], $tags);
     }
 
     public function test_round_trip_markdown(): void

@@ -38,7 +38,7 @@ final class NotePatchRequest extends FormRequest
             if (! is_array($categories)) {
                 return;
             }
-            $existing = array_fill_keys($this->storedCategories(), true);
+            $existing = null;
             foreach ($categories as $index => $tag) {
                 if (! is_string($tag)) {
                     continue;
@@ -46,6 +46,7 @@ final class NotePatchRequest extends FormRequest
                 if (preg_match(NoteTag::INPUT_PATTERN, $tag) === 1) {
                     continue;
                 }
+                $existing ??= array_fill_keys($this->storedCategories(), true);
                 $normalized = strtolower(trim($tag));
                 if ($normalized !== '' && isset($existing[$normalized])) {
                     continue;
