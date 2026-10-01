@@ -391,8 +391,28 @@
   @apply min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto;
 }
 
+.calendar-workspace .calendar-search-results--empty .calendar-search-results__scroller {
+  @apply flex flex-col;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .calendar-workspace .calendar-search-results__agenda {
   @apply block w-full;
+}
+
+/* Embedded host is height:auto. Stretch it so --_lc-list-shell-flex can fill the shell.
+   Plain flex mirrors @apply: Storybook play does not load the Vite Tailwind plugin. */
+.calendar-workspace .calendar-search-results--empty .calendar-search-results__agenda {
+  @apply flex min-h-0 w-full flex-1 flex-col;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  --_lc-list-shell-flex: 1 1 auto;
 }
 
 /*
