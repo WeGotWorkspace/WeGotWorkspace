@@ -52,9 +52,11 @@ export type ActionBarProps = {
   /** Back arrow for stacked mobile detail; close (X) for side panels and dialogs. */
   backIcon?: "back" | "close";
   /**
-   * When false, always render every action inline (no More menu).
-   * When true (default), overflow kicks in only when a side has more than
-   * {@link ACTION_BAR_MAX_INLINE_ACTIONS} actions (first N inline, rest in More).
+   * When false, always render every action inline (no More menu) and ignore
+   * `collapseOnNarrow`, so those buttons stay on screen.
+   * When true (default), actions past {@link ACTION_BAR_MAX_INLINE_ACTIONS}
+   * move into the More menu. Actions marked `collapseOnNarrow` stay inline on
+   * a wide bar and join the menu below 768px.
    */
   collapseActions?: boolean;
   /** Preferred API: action descriptors rendered by ActionBar with compact dropdown behavior. */
@@ -82,12 +84,21 @@ export type ActionBarProps = {
   className?: string;
 };
 
-function partitionActions(
-  actions: ActionBarAction[],
-  collapseActions: boolean,
-): { inline: ActionBarAction[]; menu: ActionBarAction[]; menuNarrowOnly: boolean } {
+type ActionBarSplit = {
+  inline: ActionBarAction[];
+  /** Count overflow. Shown at every width unless a narrow menu also exists. */
+  wideMenu: ActionBarAction[];
+  /** Small-screen menu. Original order: count overflow and `collapseOnNarrow`. */
+  narrowMenu: ActionBarAction[];
+};
+
+function partitionActions(actions: ActionBarAction[], collapseActions: boolean): ActionBarSplit {
   if (!collapseActions) {
-    return { inline: actions, menu: [], menuNarrowOnly: false };
+    return {
+      inline: actions.map((action) => ({ ...action, collapseOnNarrow: false })),
+      wideMenu: [],
+      narrowMenu: [],
+    };
   }
   const inline =
     actions.length <= ACTION_BAR_MAX_INLINE_ACTIONS
@@ -97,12 +108,25 @@ function partitionActions(
     actions.length <= ACTION_BAR_MAX_INLINE_ACTIONS
       ? []
       : actions.slice(ACTION_BAR_MAX_INLINE_ACTIONS);
-  const narrowOverflow = inline.filter((action) => action.collapseOnNarrow);
-  return {
-    inline,
-    menu: [...countOverflow, ...narrowOverflow],
-    menuNarrowOnly: countOverflow.length === 0 && narrowOverflow.length > 0,
-  };
+  const hasNarrow = inline.some((action) => action.collapseOnNarrow);
+  if (countOverflow.length > 0 && hasNarrow) {
+    return {
+      inline,
+      wideMenu: countOverflow,
+      narrowMenu: actions.filter(
+        (action, index) =>
+          index >= ACTION_BAR_MAX_INLINE_ACTIONS || Boolean(action.collapseOnNarrow),
+      ),
+    };
+  }
+  if (hasNarrow) {
+    return {
+      inline,
+      wideMenu: [],
+      narrowMenu: inline.filter((action) => action.collapseOnNarrow),
+    };
+  }
+  return { inline, wideMenu: countOverflow, narrowMenu: [] };
 }
 
 function renderActionItems(actions: ActionBarAction[]) {
@@ -192,6 +216,44 @@ function renderRightInlineWithLeading({
   );
 }
 
+function renderSideMenus({
+  wideMenu,
+  narrowMenu,
+  label,
+  icon,
+  align,
+}: {
+  wideMenu: ActionBarAction[];
+  narrowMenu: ActionBarAction[];
+  label: string;
+  icon: ReactNode;
+  align: "start" | "end";
+}) {
+  const both = wideMenu.length > 0 && narrowMenu.length > 0;
+  return (
+    <>
+      {wideMenu.length > 0
+        ? renderCompactDropdown(
+            wideMenu,
+            label,
+            icon,
+            align,
+            cn("action-bar__menu", both && "action-bar__menu--wide"),
+          )
+        : null}
+      {narrowMenu.length > 0
+        ? renderCompactDropdown(
+            narrowMenu,
+            label,
+            icon,
+            align,
+            "action-bar__menu action-bar__menu--narrow",
+          )
+        : null}
+    </>
+  );
+}
+
 function renderCompactDropdown(
   actions: ActionBarAction[],
   label: string,
@@ -267,15 +329,13 @@ export function ActionBar({
       {leftSplit ? (
         <div className="action-bar__left">
           {renderActionRow(leftSplit.inline)}
-          {leftSplit.menu.length > 0
-            ? renderCompactDropdown(
-                leftSplit.menu,
-                leftMenuLabel,
-                leftMenuIcon,
-                "start",
-                cn("action-bar__menu", leftSplit.menuNarrowOnly && "action-bar__menu--narrow"),
-              )
-            : null}
+          {renderSideMenus({
+            wideMenu: leftSplit.wideMenu,
+            narrowMenu: leftSplit.narrowMenu,
+            label: leftMenuLabel,
+            icon: leftMenuIcon,
+            align: "start",
+          })}
         </div>
       ) : left != null ? (
         <div className="action-bar__left">{left}</div>
@@ -290,15 +350,13 @@ export function ActionBar({
                 rightLeading,
                 placement: rightLeadingPlacement,
               })}
-              {rightSplit.menu.length > 0
-                ? renderCompactDropdown(
-                    rightSplit.menu,
-                    rightMenuLabel,
-                    rightMenuIcon,
-                    "end",
-                    cn("action-bar__menu", rightSplit.menuNarrowOnly && "action-bar__menu--narrow"),
-                  )
-                : null}
+              {renderSideMenus({
+                wideMenu: rightSplit.wideMenu,
+                narrowMenu: rightSplit.narrowMenu,
+                label: rightMenuLabel,
+                icon: rightMenuIcon,
+                align: "end",
+              })}
             </>
           ) : (
             <>

@@ -73,7 +73,9 @@ describe("ActionBar", () => {
     expect(within(row as HTMLElement).getByRole("button", { name: "Star" })).toBeTruthy();
     expect(within(row as HTMLElement).queryByRole("button", { name: "Archive" })).toBeNull();
 
-    expect(container.querySelector(".action-bar__menu")).toBeTruthy();
+    expect(container.querySelectorAll(".action-bar__menu")).toHaveLength(1);
+    expect(container.querySelector(".action-bar__menu--narrow")).toBeNull();
+    expect(container.querySelector(".action-bar__menu--wide")).toBeNull();
     expect(screen.getByRole("button", { name: "More actions" })).toBeTruthy();
   });
 
@@ -94,6 +96,24 @@ describe("ActionBar", () => {
     const row = container.querySelector(".action-bar__row");
     expect(row).toBeInstanceOf(HTMLElement);
     expect(within(row as HTMLElement).getAllByRole("button")).toHaveLength(4);
+  });
+
+  it("keeps collapseOnNarrow actions inline when collapseActions is false", () => {
+    const { container } = renderBar(
+      <ActionBar
+        collapseActions={false}
+        rightActions={[
+          { id: "a", label: "A", icon: <Reply />, onClick: vi.fn(), collapseOnNarrow: true },
+          { id: "b", label: "B", icon: <Forward />, onClick: vi.fn(), collapseOnNarrow: true },
+        ]}
+      />,
+    );
+
+    expect(container.querySelector(".action-bar__menu")).toBeNull();
+    expect(container.querySelector(".action-bar__action--collapse-narrow")).toBeNull();
+    expect(container.querySelector(".action-bar__row--collapse-narrow")).toBeNull();
+    expect(screen.getByRole("button", { name: "A" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "B" })).toBeTruthy();
   });
 
   it("applies severity-danger wash to inline destructive IconButtons", () => {
@@ -213,4 +233,60 @@ describe("ActionBar", () => {
     expect(onDownload).toHaveBeenCalledOnce();
     expect(onDelete).toHaveBeenCalledOnce();
   });
+
+  it("splits count overflow and collapseOnNarrow into wide and narrow menus", () => {
+    const { container } = renderBar(
+      <ActionBar
+        rightActions={[
+          { id: "reply", label: "Reply", icon: <Reply />, onClick: vi.fn() },
+          {
+            id: "forward",
+            label: "Forward",
+            icon: <Forward />,
+            onClick: vi.fn(),
+            collapseOnNarrow: true,
+          },
+          { id: "star", label: "Star", icon: <Star />, onClick: vi.fn() },
+          { id: "archive", label: "Archive", icon: <Archive />, onClick: vi.fn() },
+          { id: "trash", label: "Trash", icon: <Trash2 />, onClick: vi.fn() },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Forward" }).className).toContain(
+      "action-bar__action--collapse-narrow",
+    );
+    expect(screen.getByRole("button", { name: "Reply" }).className).not.toContain(
+      "action-bar__action--collapse-narrow",
+    );
+
+    const wide = container.querySelector(".action-bar__menu--wide");
+    const narrow = container.querySelector(".action-bar__menu--narrow");
+    expect(wide).toBeTruthy();
+    expect(narrow).toBeTruthy();
+    expect(wide!.className).not.toContain("action-bar__menu--narrow");
+    expect(narrow!.className).not.toContain("action-bar__menu--wide");
+
+    const wideTrigger = wide!.querySelector("button") as HTMLButtonElement;
+    fireEvent.pointerDown(wideTrigger);
+    fireEvent.click(wideTrigger);
+    const wideMenu = screen.getByRole("menu", { name: "More actions" });
+    expect(menuItemNames(wideMenu)).toEqual(["Archive", "Trash"]);
+    fireEvent.keyDown(wideMenu, { key: "Escape" });
+
+    const narrowTrigger = narrow!.querySelector("button") as HTMLButtonElement;
+    fireEvent.pointerDown(narrowTrigger);
+    fireEvent.click(narrowTrigger);
+    expect(menuItemNames(screen.getByRole("menu", { name: "More actions" }))).toEqual([
+      "Forward",
+      "Archive",
+      "Trash",
+    ]);
+  });
 });
+
+function menuItemNames(menu: HTMLElement): string[] {
+  return within(menu)
+    .getAllByRole("button")
+    .map((button) => button.getAttribute("aria-label") ?? button.textContent?.trim() ?? "");
+}

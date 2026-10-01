@@ -39,7 +39,11 @@
   @apply inline-flex;
 }
 
-/* Wide bars keep these actions inline. The menu exists only for small screens. */
+/*
+ * Wide bars keep collapseOnNarrow actions inline. `--narrow` is the small-screen
+ * menu. When count overflow and collapseOnNarrow both apply, `--wide` holds only
+ * the count overflow and is hidden below the breakpoint.
+ */
 .action-bar__menu--narrow {
   @apply hidden;
 }
@@ -58,6 +62,10 @@
 
   .action-bar__menu--narrow {
     @apply inline-flex;
+  }
+
+  .action-bar__menu--wide {
+    @apply hidden;
   }
 
   .action-bar__action--icon-narrow.button {
@@ -79,6 +87,10 @@
 
   .action-bar__menu--narrow {
     @apply inline-flex;
+  }
+
+  .action-bar__menu--wide {
+    @apply hidden;
   }
 
   .action-bar__action--icon-narrow.button {

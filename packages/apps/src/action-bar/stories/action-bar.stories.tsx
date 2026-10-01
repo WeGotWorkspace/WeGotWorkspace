@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Archive, Forward, Reply, Star, Trash2 } from "lucide-react";
+import { Archive, Download, Forward, Pencil, Reply, Star, Trash2 } from "lucide-react";
 import { ActionBar } from "../src/action-bar";
 
 const meta: Meta<typeof ActionBar> = {
@@ -9,7 +9,7 @@ const meta: Meta<typeof ActionBar> = {
     docs: {
       description: {
         component:
-          "Mobile back control uses outline Button chrome (same quiet border as peer actions). The More (`…`) menu appears only when a side has more than three actions (first three stay inline).",
+          "Mobile back control uses outline Button chrome (same quiet border as peer actions). Actions past the first three move into the More (`…`) menu. Actions marked collapseOnNarrow stay inline on a wide bar and move into that menu below 768px.",
       },
     },
   },
@@ -76,5 +76,50 @@ export const CustomOverflowIcons: Story = {
   args: {
     ...OverflowWhenMoreThanThree.args,
     rightMenuIcon: <Star />,
+  },
+};
+
+export const CollapseOnNarrow: Story = {
+  name: "Collapse on narrow",
+  globals: {
+    viewport: { value: "mobile1", isRotated: false },
+  },
+  args: {
+    onBack: () => {},
+    backLabel: "Contacts",
+    rightActions: [
+      {
+        id: "edit",
+        label: "Edit",
+        onClick: () => {},
+        icon: <Pencil />,
+        showLabel: true,
+        iconOnlyOnNarrow: true,
+      },
+      {
+        id: "download",
+        label: "Download",
+        onClick: () => {},
+        icon: <Download />,
+        collapseOnNarrow: true,
+      },
+      {
+        id: "delete",
+        label: "Delete",
+        onClick: () => {},
+        icon: <Trash2 />,
+        severity: "danger",
+        collapseOnNarrow: true,
+      },
+    ],
+    rightMenuLabel: "More actions",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Small-screen viewport. Download and Delete leave the bar and appear in More. Edit keeps its pencil and drops the visible label; the accessible name stays Edit.",
+      },
+    },
   },
 };
