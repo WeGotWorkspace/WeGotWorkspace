@@ -18,8 +18,14 @@
   padding-bottom: var(--_lc-list-end-pad, 0px);
   /* Cap the agenda column on wide panes so event-details (≤24rem editable)
      can sit in the end gutter without covering list rows. Timeline/grid views
-     do not use this shell. Workspace may override --_lc-list-max-inline-size. */
+     do not use this shell. Workspace may override --_lc-list-max-inline-size.
+     Search empty state sets --_lc-list-shell-flex so this shell fills a flex host. */
+  flex: var(--_lc-list-shell-flex, 0 0 auto);
   max-inline-size: min(100%, var(--_lc-list-max-inline-size, 28rem));
+}
+
+.agenda-shell:has(> .collection-state) > .collection-state {
+  @apply max-w-full;
 }
 
 /* When the list pane can host cards + an editable details popover (~24rem +
