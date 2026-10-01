@@ -805,12 +805,12 @@ export function MeetWorkspace({
     },
     [chat.react, notifyChatError],
   );
-
   const onSendChannel = useCallback(
     (payload: ChatSendPayload) => {
-      void chat.sendChannel(payload).catch(notifyChatError);
+      const persisted = chat.sendChannel(payload);
+      void persisted.catch(notifyChatError);
       if (callStageRoom?.controller.inCall) {
-        void callStageRoom.controller.sendChat(payload.body);
+        void callStageRoom.controller.sendChat(payload.body, persisted);
       }
     },
     [callStageRoom, chat.sendChannel, notifyChatError],

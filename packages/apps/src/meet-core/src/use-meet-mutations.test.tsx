@@ -3,7 +3,9 @@
  */
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mergeMeetRoomChatIntoChannel, type MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import type { ChatMessage } from "@/meet-core/src/meet-types";
 import type { MeetCallSessionState } from "@/meet-core/src/use-meet-call-session";
 import { useMeetMutations } from "@/meet-core/src/use-meet-mutations";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
@@ -44,6 +46,28 @@ function createRoomStub(): MeetRoomState {
     peerNamesRef: { current: new Map([["peer-2", "Alex"]]) },
     setVideoOn: vi.fn(),
   } as unknown as MeetRoomState;
+}
+
+function trackChatMessages(room: MeetRoomState): () => MeetChatLine[] {
+  let lines: MeetChatLine[] = [];
+  room.setChatMessages = vi.fn((value) => {
+    lines = typeof value === "function" ? value(lines) : value;
+  }) as MeetRoomState["setChatMessages"];
+  return () => lines;
+}
+
+function savedChannelMessage(body: string): ChatMessage {
+  return {
+    id: "saved-1",
+    channelId: "chan-1",
+    authorId: "user-1",
+    authorName: "You",
+    body,
+    createdAt: 10,
+    reactions: [],
+    mentions: [],
+    previews: [],
+  };
 }
 
 function createSessionStub(operations?: {
@@ -314,5 +338,63 @@ describe("useMeetMutations mutePeer", () => {
 
     expect(chat).not.toHaveBeenCalled();
     expect(toastApi.show).not.toHaveBeenCalled();
+  });
+});
+
+describe("useMeetMutations sendChat", () => {
+  function renderSendChat() {
+    const room = createRoomStub();
+    const lines = trackChatMessages(room);
+    const chat = vi.fn().mockResolvedValue(undefined);
+    const session = createSessionStub({ chat });
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+    const rendered = renderHook(() =>
+      useMeetMutations({
+        room,
+        session,
+        canModerateKnocks: false,
+        leaveRef,
+        persistentCall: true,
+      }),
+    );
+    return { ...rendered, lines, chat };
+  }
+
+  it("removes the local line once the channel save resolves with a message", async () => {
+    const { result, lines } = renderSendChat();
+
+    await result.current.sendChat("hello", Promise.resolve(savedChannelMessage("hello")));
+
+    expect(lines()).toEqual([]);
+  });
+
+  it("keeps the local line when the channel save resolves null", async () => {
+    const { result, lines } = renderSendChat();
+
+    await result.current.sendChat("hello", Promise.resolve(null));
+
+    expect(lines().map((line) => line.body)).toEqual(["hello"]);
+  });
+
+  it("keeps the local line when the channel save rejects", async () => {
+    const { result, lines } = renderSendChat();
+    const persisted = Promise.reject(new Error("channel save failed"));
+
+    await result.current.sendChat("hello", persisted);
+    await persisted.catch(() => undefined);
+
+    expect(lines().map((line) => line.body)).toEqual(["hello"]);
+  });
+
+  it("does not restore the original text after the saved message is deleted", async () => {
+    const { result, lines } = renderSendChat();
+    const saved = savedChannelMessage("hello");
+    await result.current.sendChat("hello", Promise.resolve(saved));
+
+    const deleted = { ...saved, deletedAt: Date.now(), body: "", previews: [], mentions: [] };
+    const merged = mergeMeetRoomChatIntoChannel([deleted], lines(), "chan-1");
+
+    expect(merged.map((row) => row.body)).not.toContain("hello");
+    expect(merged).toEqual([deleted]);
   });
 });
