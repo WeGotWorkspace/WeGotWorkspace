@@ -484,39 +484,13 @@ describe("wgw auth refresh behavior", () => {
     }) as typeof fetch;
 
     await expect(wgwEnsureFreshAccessToken()).resolves.toBe(freshAccess);
-    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe("refresh-old");
+    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBeNull();
     setItem.mockRestore();
 
     const secondFetch = vi.fn(async () => new Response("should-not-refresh", { status: 500 }));
     globalThis.fetch = secondFetch as typeof fetch;
     await expect(wgwEnsureFreshAccessToken()).resolves.toBe(freshAccess);
     expect(secondFetch).not.toHaveBeenCalled();
-  });
-
-  it("keeps the session when auth refresh aborts on the stale-lock timeout", async () => {
-    installSession({
-      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
-      refreshToken: "refresh-hung",
-      accessExpiresAt: Date.now() - 60_000,
-      refreshExpiresAt: Date.now() + 30 * 60_000,
-    });
-    const timeout = vi
-      .spyOn(AbortSignal, "timeout")
-      .mockReturnValue(
-        AbortSignal.abort(
-          new DOMException("The operation was aborted due to timeout", "TimeoutError"),
-        ),
-      );
-    const fetchMock = vi.fn(async (_input, init) => {
-      if (init?.signal?.aborted) throw init.signal.reason;
-      return new Response("unexpected", { status: 500 });
-    });
-    globalThis.fetch = fetchMock as typeof fetch;
-
-    await expect(wgwEnsureFreshAccessToken()).rejects.toThrow("Missing auth session");
-    expect(timeout).toHaveBeenCalledWith(30_000);
-    expect(wgwHasAuthenticatedSession()).toBe(true);
-    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe("refresh-hung");
   });
 
   it("awaits in-flight refresh before reconnect flush", async () => {

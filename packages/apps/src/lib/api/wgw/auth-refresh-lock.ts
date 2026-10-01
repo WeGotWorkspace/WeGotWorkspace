@@ -1,7 +1,7 @@
 const REFRESH_LOCK_KEY = "wgw.api.refresh.lock";
 const REFRESH_CHANNEL = "wgw-auth-refresh";
 const WEB_LOCK_NAME = "wgw-auth-refresh";
-export const STALE_LOCK_TIMEOUT_MS = 30_000;
+const STALE_LOCK_TIMEOUT_MS = 30_000;
 const WAIT_POLL_MS = 250;
 
 type RefreshLockRecord = {

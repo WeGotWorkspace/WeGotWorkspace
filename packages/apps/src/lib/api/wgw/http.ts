@@ -1,7 +1,7 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
-import { STALE_LOCK_TIMEOUT_MS, withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
+import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
 import { decodeJwtExp, decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 
@@ -123,6 +123,11 @@ function persistTokens(): void {
     storageWriteFailed = false;
   } catch {
     storageWriteFailed = true;
+    try {
+      window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+    } catch {
+      // A failed removal still leaves memory authoritative for this tab.
+    }
   }
 }
 
@@ -240,17 +245,12 @@ export function clearWgwSession(reason: WgwSessionClearReason): void {
   persistTokens();
 }
 
-async function postJson(
-  path: string,
-  body: unknown,
-  auth?: string,
-  signal?: AbortSignal,
-): Promise<Response> {
+async function postJson(path: string, body: unknown, auth?: string): Promise<Response> {
   const base = wgwApiBaseUrl();
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (auth) headers.Authorization = `Bearer ${auth}`;
-  return fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal });
+  return fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
 }
 
 async function readTokenResponse(res: Response): Promise<TokenResponse> {
@@ -685,8 +685,7 @@ async function wgwTryRefresh(rejectedAccessToken?: string): Promise<boolean> {
 
     const presented = refreshToken;
     try {
-      const signal = AbortSignal.timeout(STALE_LOCK_TIMEOUT_MS);
-      const res = await postJson("/auth/refresh", { refresh_token: presented }, undefined, signal);
+      const res = await postJson("/auth/refresh", { refresh_token: presented });
       const tokens = await readTokenResponse(res);
       applyTokens(tokens);
       return true;
@@ -799,10 +798,10 @@ export async function wgwFetch(path: string, init: RequestInit = {}): Promise<Re
     return fetch(url, { ...requestInit, headers });
   };
 
-  let res = await doOnce(accessToken!);
+  const token = accessToken!;
+  let res = await doOnce(token);
   if (res.status === 401) {
-    const tokenUsed = accessToken!;
-    const ok = await wgwTryRefresh(tokenUsed);
+    const ok = await wgwTryRefresh(token);
     if (ok && accessToken) res = await doOnce(accessToken);
   }
   return res;
