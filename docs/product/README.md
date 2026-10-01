@@ -26,7 +26,7 @@ Keep **three** surfaces — do not invent a fourth roadmap tracker:
 | Surface | What | Browse |
 |---------|------|--------|
 | **1. Product** | Goals (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project | Status columns Identified → Adopted → Fulfilled |
-| **2. Delivery** | Epics / Tasks / Bugs (`type:epic`, `type:task`, GitHub type **Bug**) — implementable work under Goals | Issue filters below; **not** on the Product Project |
+| **2. Delivery** | Epics / Tasks / Bugs (`type:epic`, `type:task` with GitHub type **Task**, GitHub type **Bug**) — implementable work under Goals | Issue filters below; **not** on the Product Project |
 | **3. Release targets & eng packing** | GitHub **milestones** (`v0.9`, `v1.0`, …) | Soft release target on Goals; pack Epics/Tasks/Bugs for a release train |
 
 ### Milestones on Goals (and delivery)

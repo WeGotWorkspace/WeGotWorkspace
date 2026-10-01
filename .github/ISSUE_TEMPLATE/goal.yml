@@ -1,6 +1,6 @@
 name: "[Maintainers only] Goal"
 description: Maintainers only — product Goal (user outcome) for the Product roadmap. Externals: use Discussions.
-title: "[Goal] "
+type: Feature
 labels:
   - type:goal
 body:
@@ -12,6 +12,7 @@ body:
 
         Use this template for **one fulfillable user-facing outcome** (Goals), not engineering tasks.
         Titles should be verb outcomes — e.g. “Share Docs and Drive files with guests via a link”.
+        Do not start the title with `[Goal]`. The GitHub issue type is Feature; the label is `type:goal`.
         **Write the entire issue in English**, even if the conversation that produced it was in another language.
         **One Goal = one outcome** (fulfillable independently). Do not bundle multiple outcomes; do not parent a Goal under another Goal — group with `area:*` + milestone. Design language / suite consistency belongs in Non-goals (constraint), not as its own Goal.
 

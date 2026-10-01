@@ -1,6 +1,6 @@
 name: "[Maintainers only] Task"
 description: Maintainers only — delivery task with implementable AC. Externals: use Discussions or Bug report.
-title: "[Task] "
+type: Task
 labels:
   - type:task
 body:
@@ -11,6 +11,7 @@ body:
         for ideas, or a Bug report for defects. Issues filed via this template by non-maintainers are closed automatically.
 
         Tasks are **implementable** delivery work. Link a parent Epic or Goal.
+        Do not start the title with `[Task]`. The GitHub issue type is Task; the label is `type:task`.
         Acceptance criteria should be checkbox-ready (`- [ ]`) so agents and PRs can verify done.
         **Write the entire issue in English**, even if the conversation that produced it was in another language.
 
