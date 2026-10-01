@@ -6,22 +6,9 @@ export type MeetCallSpotlightPeer = {
   disclosedMedia?: { camera: boolean; mic: boolean; screen?: boolean } | null;
 };
 
-export function meetCallGivenName(name: string): string {
-  const [first] = name.trim().split(/\s+/);
-  return first || name;
-}
-
 /** Peer announced an active screen share (their video track carries the screen). */
 export function meetCallPeerScreenSharing(peer: MeetCallSpotlightPeer): boolean {
   return peer.disclosedMedia?.screen === true;
-}
-
-export function meetCallPeerCameraOn(peer: MeetCallSpotlightPeer): boolean {
-  // A screen share replaces the outbound video track, so the tile has live
-  // video to show even when the camera toggle is off.
-  if (peer.disclosedMedia) return peer.disclosedMedia.camera || peer.disclosedMedia.screen === true;
-  if (peer.remoteMedia) return peer.remoteMedia.camera;
-  return Boolean(peer.stream);
 }
 
 export function meetCallPeerMicOn(peer: MeetCallSpotlightPeer): boolean {
@@ -53,12 +40,4 @@ export function meetCallGridColumns(count: number): number {
   if (count <= 9) return 3;
   if (count <= 16) return 4;
   return Math.ceil(Math.sqrt(count));
-}
-
-export function meetCallStripPeers<T extends MeetCallSpotlightPeer>(
-  spotlight: T,
-  peers: readonly T[],
-  self: T,
-): T[] {
-  return [self, ...peers].filter((peer) => peer.id !== spotlight.id);
 }

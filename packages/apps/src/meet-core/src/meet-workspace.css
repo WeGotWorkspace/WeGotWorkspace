@@ -1509,6 +1509,11 @@
   @apply min-h-0 min-w-0;
 }
 
+/* Screen share keeps a full row; other tiles stay in the count-based columns. */
+.meet-call-stage__grid-item--screen {
+  grid-column: 1 / -1;
+}
+
 .meet-call-stage__grid .meet-peer-tile,
 .meet-call-stage__grid .meet-call-stage__screen,
 .meet-call-stage__grid .meet-call-stage__screen-fallback {

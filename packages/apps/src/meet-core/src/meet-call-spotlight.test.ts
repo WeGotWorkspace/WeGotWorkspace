@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  meetCallGivenName,
   meetCallGridColumns,
-  meetCallPeerCameraOn,
   meetCallPeerScreenSharing,
-  meetCallStripPeers,
   pickMeetCallSpotlight,
   type MeetCallSpotlightPeer,
 } from "@/meet-core/src/meet-call-spotlight";
@@ -61,33 +58,6 @@ describe("meetCallGridColumns", () => {
     expect(meetCallGridColumns(10)).toBe(4);
     expect(meetCallGridColumns(16)).toBe(4);
     expect(meetCallGridColumns(17)).toBe(5);
-  });
-});
-
-describe("meetCallStripPeers", () => {
-  it("keeps self and the other remotes, dropping the spotlight", () => {
-    expect(meetCallStripPeers(felix, [felix, maya], self).map((peer) => peer.id)).toEqual([
-      "self",
-      "maya",
-    ]);
-  });
-});
-
-describe("meetCallGivenName", () => {
-  it("uses the first token for strip captions", () => {
-    expect(meetCallGivenName("Maya Lindqvist")).toBe("Maya");
-    expect(meetCallGivenName("You")).toBe("You");
-  });
-});
-
-describe("meetCallPeerCameraOn", () => {
-  it("reads disclosed camera before a stream", () => {
-    expect(meetCallPeerCameraOn(felix)).toBe(false);
-    expect(meetCallPeerCameraOn({ id: "cam", name: "Cam", stream: {} as MediaStream })).toBe(true);
-  });
-
-  it("treats an announced screen share as live video even with the camera off", () => {
-    expect(meetCallPeerCameraOn(presenter)).toBe(true);
   });
 });
 

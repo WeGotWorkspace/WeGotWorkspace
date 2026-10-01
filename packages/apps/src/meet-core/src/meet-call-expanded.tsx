@@ -7,7 +7,6 @@ import { defaultMeetCallChatOpen } from "@/meet-core/src/meet-call-chat-panel";
 import {
   meetCallGridColumns,
   meetCallPeerScreenSharing,
-  pickMeetCallSpotlight,
   type MeetCallSpotlightPeer,
 } from "@/meet-core/src/meet-call-spotlight";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
@@ -43,13 +42,8 @@ function selfPeer(
   };
 }
 
-function tileCaption(
-  peer: MeetCallSpotlightPeer,
-  isSelf: boolean,
-  videoOn: boolean,
-): string | undefined {
+function tileCaption(peer: MeetCallSpotlightPeer, isSelf: boolean): string | undefined {
   if (!isSelf && meetCallPeerScreenSharing(peer)) return meetLabels.presenting;
-  if (isSelf && videoOn && !peer.stream) return meetLabels.startingCamera;
   return undefined;
 }
 
@@ -103,7 +97,6 @@ export function MeetCallExpanded({
   const peers = [self, ...remotes];
   const gridCount = peers.length + (sharing ? 1 : 0);
   const gridColumns = meetCallGridColumns(gridCount);
-  const featured = sharing ? null : pickMeetCallSpotlight(remotes, self);
   const title = channelTitle ? meetLabels.meetInChannel(channelTitle) : meetLabels.productName;
   const collapseButton = onCollapse ? (
     <IconButton
@@ -160,7 +153,7 @@ export function MeetCallExpanded({
               style={{ "--meet-call-grid-columns": gridColumns } as CSSProperties}
             >
               {sharing ? (
-                <li className="meet-call-stage__grid-item">
+                <li className="meet-call-stage__grid-item meet-call-stage__grid-item--screen">
                   {room.controller.screenPreviewStream ? (
                     <MeetStreamVideo
                       stream={room.controller.screenPreviewStream}
@@ -184,13 +177,7 @@ export function MeetCallExpanded({
                       userId={peer.id}
                       muted={isSelf}
                       spotlight={gridCount === 1}
-                      speaking={
-                        featured != null &&
-                        peer.id === featured.id &&
-                        !isSelf &&
-                        !meetCallPeerScreenSharing(peer)
-                      }
-                      caption={tileCaption(peer, isSelf, room.controller.videoOn)}
+                      caption={tileCaption(peer, isSelf)}
                       remoteMedia={peer.remoteMedia}
                       disclosedMedia={
                         isSelf
