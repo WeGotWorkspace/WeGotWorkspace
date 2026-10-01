@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Installer;
 
 use App\Services\Installer\ApiRuntimeEnvService;
+use App\Support\WgwApiEnvFile;
 use PHPUnit\Framework\TestCase;
 
 final class ApiRuntimeEnvServiceTest extends TestCase
@@ -201,6 +202,158 @@ PHP);
         $this->assertStringContainsString('WGW_INSTALL_CHANNEL=docker', $env);
         $this->assertStringContainsString('APP_URL=http://127.0.0.1:18080', $env);
         $this->assertGreaterThan(strlen($body), strlen($env));
+    }
+
+    public function test_ensure_leaves_env_mode_0600_and_lock_mode_0660(): void
+    {
+        $previous = umask(0);
+        try {
+            file_put_contents($this->apiRoot.'/.env', "APP_KEY=\nAPP_URL=http://localhost\nWGW_DB_PASSWORD=secret\n");
+            chmod($this->apiRoot.'/.env', 0666);
+
+            (new ApiRuntimeEnvService)->ensureAtApiRoot($this->apiRoot, 'https://files.example.test');
+
+            $this->assertSame(0600, fileperms($this->apiRoot.'/.env') & 0777);
+            $this->assertSame(0660, fileperms($this->apiRoot.'/.env.lock') & 0777);
+        } finally {
+            umask($previous);
+        }
+    }
+
+    public function test_ensure_follows_a_symlink_chain_to_the_real_file(): void
+    {
+        $volume = sys_get_temp_dir().'/wgw-env-chain-'.uniqid('', true);
+        mkdir($volume, 0775, true);
+        $body = "APP_KEY=\nAPP_URL=http://localhost\nWGW_INSTALL_DB_DRIVER=mysql\n";
+        file_put_contents($volume.'/api.env', $body);
+        symlink($volume.'/api.env', $volume.'/link1');
+        symlink($volume.'/link1', $this->apiRoot.'/.env');
+
+        try {
+            (new ApiRuntimeEnvService)->ensureAtApiRoot($this->apiRoot, 'http://127.0.0.1:18080');
+
+            $this->assertTrue(is_link($this->apiRoot.'/.env'));
+            $this->assertTrue(is_link($volume.'/link1'));
+            $written = (string) file_get_contents($volume.'/api.env');
+            $this->assertMatchesRegularExpression('/^APP_KEY=base64:/m', $written);
+            $this->assertStringContainsString('WGW_INSTALL_DB_DRIVER=mysql', $written);
+            $this->assertSame(0600, fileperms($volume.'/api.env') & 0777);
+        } finally {
+            @unlink($volume.'/api.env.lock');
+            @unlink($volume.'/api.env');
+            @unlink($volume.'/link1');
+            @rmdir($volume);
+        }
+    }
+
+    public function test_ensure_and_installer_env_writer_keep_each_others_keys(): void
+    {
+        $lines = [
+            'APP_NAME=Laravel',
+            'APP_KEY=',
+            'APP_URL=http://localhost',
+            'WGW_INSTALL_DB_DRIVER=mysql',
+        ];
+        for ($n = 0; $n < 4000; $n++) {
+            $lines[] = 'WGW_PAD_'.$n.'='.str_repeat('x', 40);
+        }
+        file_put_contents($this->apiRoot.'/.env', implode("\n", $lines)."\n");
+
+        $worker = tempnam(sys_get_temp_dir(), 'wgw-env-both-');
+        $this->assertNotFalse($worker);
+        file_put_contents($worker, <<<'PHP'
+<?php
+require $argv[1];
+$apiRoot = $argv[2];
+$env = $apiRoot.'/.env';
+if ($argv[3] === 'ensure') {
+    $service = new App\Services\Installer\ApiRuntimeEnvService;
+    for ($i = 0; $i < 20; $i++) {
+        $service->ensureAtApiRoot($apiRoot, 'http://127.0.0.1:18080');
+    }
+    exit(0);
+}
+$writer = (new ReflectionClass(App\Services\Installer\InstallerEnvWriter::class))->newInstanceWithoutConstructor();
+for ($i = 0; $i < 20; $i++) {
+    $writer->patchEnvFile($env, [
+        'WGW_DB_HOST' => 'db.example',
+        'WGW_DB_DATABASE' => 'wgw',
+        'WGW_DB_PASSWORD' => 'from-installer',
+    ]);
+}
+PHP);
+
+        $autoload = dirname(__DIR__, 3).'/vendor/autoload.php';
+        $envPath = $this->apiRoot.'/.env';
+        $procs = [];
+        $sawEmpty = 0;
+        $sawPartial = 0;
+        $sawLooseTemp = 0;
+        $sawTemp = 0;
+        try {
+            foreach (['ensure', 'patch'] as $mode) {
+                $procs[] = proc_open(
+                    [PHP_BINARY, $worker, $autoload, $this->apiRoot, $mode],
+                    [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                    $pipes,
+                );
+                $this->assertIsResource($procs[array_key_last($procs)]);
+                fclose($pipes[1]);
+                fclose($pipes[2]);
+            }
+
+            $deadline = microtime(true) + 8;
+            do {
+                $running = false;
+                foreach ($procs as $proc) {
+                    if (proc_get_status($proc)['running']) {
+                        $running = true;
+                    }
+                }
+                clearstatcache();
+                $content = @file_get_contents($envPath);
+                if (! is_string($content) || $content === '') {
+                    $sawEmpty++;
+                } elseif (! str_contains($content, 'WGW_PAD_3999=')) {
+                    $sawPartial++;
+                }
+                foreach (glob($this->apiRoot.'/.env.tmp.*') ?: [] as $tmp) {
+                    $sawTemp++;
+                    $mode = fileperms($tmp);
+                    if ($mode !== false && ($mode & 0777) !== 0600 && filesize($tmp) > 0) {
+                        $sawLooseTemp++;
+                    }
+                }
+                if (! $running) {
+                    break;
+                }
+            } while (microtime(true) < $deadline);
+        } finally {
+            $exits = [];
+            foreach ($procs as $proc) {
+                if (is_resource($proc)) {
+                    $exits[] = proc_close($proc);
+                }
+            }
+            @unlink($worker);
+        }
+
+        foreach ($exits as $exit) {
+            $this->assertSame(0, $exit);
+        }
+        $this->assertSame(0, $sawEmpty);
+        $this->assertSame(0, $sawPartial);
+        $this->assertSame(0, $sawLooseTemp);
+        $this->assertGreaterThan(0, $sawTemp);
+
+        $env = (string) file_get_contents($envPath);
+        $this->assertMatchesRegularExpression('/^APP_KEY=base64:[A-Za-z0-9+\/=]+$/m', $env);
+        $this->assertSame('db.example', WgwApiEnvFile::readValue($env, 'WGW_DB_HOST'));
+        $this->assertSame('wgw', WgwApiEnvFile::readValue($env, 'WGW_DB_DATABASE'));
+        $this->assertSame('from-installer', WgwApiEnvFile::readValue($env, 'WGW_DB_PASSWORD'));
+        $this->assertStringContainsString('WGW_INSTALL_DB_DRIVER=mysql', $env);
+        $this->assertStringContainsString('WGW_PAD_3999=', $env);
+        $this->assertSame(0600, fileperms($envPath) & 0777);
     }
 
     public function test_ensure_strips_invalid_dotenv_lines(): void
