@@ -38,17 +38,15 @@ Excluded from this list on purpose:
 
 ## Status / destructive still as raw hex
 
-| File                        | Hex                                    | Recommendation                                                                   |
-| --------------------------- | -------------------------------------- | -------------------------------------------------------------------------------- |
-| `calendar-rsvp-status.css`  | `#3a8f5a`, `#b14242`                   | **semantic alias** → `--color-success` / `--color-error`                         |
-| `admin-panes.css`           | `#c98a1f` (tag wash)                   | **semantic alias** → `--color-warning`                                           |
-| `docs-workspace.css`        | `#c98a1f` (busy meta tag)              | **semantic alias** → `--color-warning`                                           |
-| `note-text-editor-body.css` | `#c98a1f`                              | **semantic alias** → `--color-warning`                                           |
-| `button.css` / Meet         | `#dc2626` (`--color-red-500` fallback) | **semantic alias** → `--color-error` (do not reuse We Got Red)                   |
-| `contacts-workspace.css`    | `#dc2626` (swipe delete)               | **semantic alias** → `--color-error`                                             |
-| `callout.css`               | `#1a1a18` (info/neutral)               | **keep** for now (callout-info stays neutral; `--color-info` is Sky when needed) |
-| `text-editor.css`           | `#b14242` (danger menu fallback)       | **semantic alias** → `--color-error`                                             |
-| `installer.css`             | `#15803d`, `#b45309`                   | **semantic alias** → success / warning                                           |
+| File                       | Hex                                    | Recommendation                                                                   |
+| -------------------------- | -------------------------------------- | -------------------------------------------------------------------------------- |
+| `calendar-rsvp-status.css` | `#3a8f5a`, `#b14242`                   | **semantic alias** → `--color-success` / `--color-error`                         |
+| `admin-panes.css`          | `#c98a1f` (tag wash)                   | **semantic alias** → `--color-warning`                                           |
+| `button.css` / Meet        | `#dc2626` (`--color-red-500` fallback) | **semantic alias** → `--color-error` (do not reuse We Got Red)                   |
+| `contacts-workspace.css`   | `#dc2626` (swipe delete)               | **semantic alias** → `--color-error`                                             |
+| `callout.css`              | `#1a1a18` (info/neutral)               | **keep** for now (callout-info stays neutral; `--color-info` is Sky when needed) |
+| `text-editor.css`          | `#b14242` (danger menu fallback)       | **semantic alias** → `--color-error`                                             |
+| `installer.css`            | `#15803d`, `#b45309`                   | **semantic alias** → success / warning                                           |
 
 ## Avatar / chip / presence palettes
 

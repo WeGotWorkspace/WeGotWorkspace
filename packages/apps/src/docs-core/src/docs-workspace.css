@@ -245,11 +245,11 @@
 }
 
 .docs-workspace .workspace-detail-footer__meta-tag--busy {
-  --tag-fg: #c98a1f;
+  --tag-fg: var(--color-warning);
 }
 
 .docs-workspace .workspace-detail-footer__meta-tag--busy .loading-spinner {
-  color: #c98a1f;
+  color: var(--color-warning);
 }
 
 /* Soft wash on shared `.docs-collab-presence-chrome`; Docs only sets accent. */

@@ -1,7 +1,7 @@
 @import "../../../styles.css" reference;
 
 .offline-status-indicator {
-  --offline-status-indicator-accent: #c98a1f;
+  --offline-status-indicator-accent: var(--color-warning);
   --offline-status-indicator-bg: color-mix(
     in oklab,
     var(--offline-status-indicator-accent) 16%,
