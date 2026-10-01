@@ -493,7 +493,7 @@
 /* Semantic offline status — not themed via workspace accent remaps. */
 .drive-workspace .drive-offline-badge {
   --drive-offline-badge-available: #22c55e;
-  --drive-offline-badge-pending: #d97706;
+  --drive-offline-badge-pending: var(--color-warning);
   @apply inline-block size-2 shrink-0 rounded-full;
   background-color: var(--drive-offline-badge-available);
 }
