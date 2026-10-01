@@ -90,7 +90,7 @@
     "input-otp": "^1.4.2",
     "lib0": "^0.2.117",
     "lit": "^3.3.3",
-    "lucide-react": "^0.575.0",
+    "lucide-react": "^1.48.0",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",
