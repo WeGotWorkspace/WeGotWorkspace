@@ -246,12 +246,10 @@ function NotesListRows({
   | "pendingNoteIds"
 >) {
   const multiSelect = selectionMode || selectedIds.length > 1;
+  // Selected ids go through the shared list store immediately. Active paint
+  // stays blank unless this is the single open selection, so a leftover
+  // activeId cannot highlight a second row.
   const paintActiveId = !multiSelect && selectedIds.includes(activeId) ? activeId : "";
-  const paintSelectedIds = multiSelect
-    ? selectedIds
-    : selectedIds.includes(activeId)
-      ? [activeId]
-      : [];
 
   const rows = useMemo(
     () =>
@@ -379,7 +377,7 @@ function NotesListRows({
     <WorkspaceSwipeList
       isTouch={isTouch}
       activeId={paintActiveId}
-      selectedIds={paintSelectedIds}
+      selectedIds={selectedIds}
       selectionMode={multiSelect}
       onItemClick={handleSelect}
       onItemLongPress={enterSelectionFor}

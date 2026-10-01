@@ -28,10 +28,13 @@ export function ListSelectionProvider({
   const storeRef = useRef<ListSelectionStore | null>(null);
   if (!storeRef.current) storeRef.current = createListSelectionStore();
   const store = storeRef.current;
-  const selectionChanged = store.setState({ activeId, selectedIds, selectionMode });
+  // Version, not a boolean: consecutive selection updates all return true, and a
+  // boolean dep would notify only the first one. Memoized rows would stay stale.
+  store.setState({ activeId, selectedIds, selectionMode });
+  const version = store.getVersion();
   useLayoutEffect(() => {
-    if (selectionChanged) store.notify();
-  }, [selectionChanged, store]);
+    store.notify();
+  }, [version, store]);
   return (
     <ListSelectionStoreContext.Provider value={store}>
       {children}
@@ -53,7 +56,9 @@ export function useListItemHighlight(
   return {
     isActive: key.charAt(0) === "1",
     isSelected: key.charAt(1) === "1",
-    selectionMode: key.charAt(2) === "1",
+    // Mode chrome is on the list root. Keeping it out of the row snapshot
+    // avoids re-rendering every row when multi-select starts.
+    selectionMode: false,
   };
 }
 
