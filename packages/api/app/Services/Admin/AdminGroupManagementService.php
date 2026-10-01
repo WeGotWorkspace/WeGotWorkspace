@@ -12,9 +12,9 @@ use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Chat\ChatGroupDefaultChannelProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
 use App\Services\Contacts\AddressBookShareInvites;
+use App\Services\Drive\GroupFilesHomeProvisioner;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Settings\GroupDirectoryService;
-use App\Support\AppPaths;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -29,7 +29,7 @@ final class AdminGroupManagementService
         private ChatGroupDefaultChannelProvisioner $chatDefaults,
         private AddressBookProvisioner $addressBooks,
         private AddressBookShareInvites $addressBookShares,
-        private AppPaths $paths,
+        private GroupFilesHomeProvisioner $groupFiles,
     ) {}
 
     public function create(string $slug, string $displayName): string
@@ -41,6 +41,7 @@ final class AdminGroupManagementService
             throw new \InvalidArgumentException('That group already exists.');
         }
 
+        $this->groupFiles->ensureForSlug($slug);
         $this->installerSeeder->ensureGroupsContainerPrincipal();
 
         Principal::query()->create([
@@ -56,7 +57,6 @@ final class AdminGroupManagementService
         // groups that predate the feature or were seeded outside this service.
         $this->chatDefaults->ensureForGroupSlugs([$slug]);
         $this->addressBooks->ensureForGroupPrincipal($uri, $name);
-        $this->ensureGroupFilesDirectory($slug);
 
         return $uri;
     }
@@ -106,7 +106,7 @@ final class AdminGroupManagementService
         $principal->delete();
 
         $slug = basename(str_replace('\\', '/', $uri));
-        $groupFiles = $this->groupFilesDirectory($slug);
+        $groupFiles = $this->groupFiles->pathForSlug($slug);
         if (is_dir($groupFiles)) {
             $this->deleteDirectory($groupFiles);
         }
@@ -170,33 +170,6 @@ final class AdminGroupManagementService
         }
 
         return AdminConstants::GROUP_PREFIX.$this->normalizeSlug($groupSlug);
-    }
-
-    private function ensureGroupFilesDirectory(string $slug): void
-    {
-        $this->assertGroupFilesSlug($slug);
-        $path = $this->groupFilesDirectory($slug);
-        if (is_dir($path)) {
-            return;
-        }
-        if (! @mkdir($path, 0775, true) && ! is_dir($path)) {
-            throw new \RuntimeException('Could not create group files directory for '.$slug.'.');
-        }
-    }
-
-    /**
-     * Same path-segment rule as a user home (`files/users/{username}`).
-     */
-    private function assertGroupFilesSlug(string $slug): void
-    {
-        if (! preg_match('/^[a-z0-9][a-z0-9_-]{1,62}$/', $slug)) {
-            throw new \InvalidArgumentException('Group slug must be 2–63 characters: lowercase letters, digits, underscore, or hyphen.');
-        }
-    }
-
-    private function groupFilesDirectory(string $slug): string
-    {
-        return rtrim($this->paths->dataDir(), '/').'/files/groups/'.$slug;
     }
 
     private function deleteDirectory(string $path): void

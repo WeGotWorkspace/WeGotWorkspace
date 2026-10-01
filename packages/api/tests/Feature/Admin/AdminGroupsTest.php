@@ -125,4 +125,32 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
         $this->assertIsArray($bob);
         $this->assertContains('principals/groups/editors', $bob['groups']);
     }
+
+    public function test_create_fails_without_a_principal_when_the_data_directory_is_read_only(): void
+    {
+        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $this->markTestSkipped('chmod cannot deny writes to the root user.');
+        }
+
+        $files = $this->adminDataDirectory().'/files';
+        if (! chmod($files, 0555)) {
+            $this->fail('Could not make the data files directory read-only.');
+        }
+
+        try {
+            $this->withBearer($this->adminBearerToken())
+                ->postJson('/api/v1/admin/groups', [
+                    'name' => 'read-only-team',
+                    'displayName' => 'Read Only Team',
+                ])
+                ->assertServerError();
+
+            $this->assertDatabaseMissing('principals', [
+                'uri' => 'principals/groups/read-only-team',
+            ], 'wgw');
+            $this->assertFalse(is_dir($files.'/groups/read-only-team'));
+        } finally {
+            chmod($files, 0775);
+        }
+    }
 }
