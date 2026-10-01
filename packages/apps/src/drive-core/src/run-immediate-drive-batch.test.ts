@@ -204,7 +204,6 @@ describe("runImmediateDriveBatch", () => {
     queued[0]?.undo?.();
     releaseRename();
     await pending;
-    queued[0]?.undo?.();
 
     expect(rolledBack).toBe(1);
     expect(reverted).toEqual([new Set(["early", "late"])]);
@@ -243,6 +242,45 @@ describe("runImmediateDriveBatch", () => {
     await pending;
 
     expect(reverted).toEqual([new Set(["late"])]);
+  });
+
+  it("reverts completed files when undo aborts execute", async () => {
+    const { queued, queueMutation } = captureQueue();
+    const reverted: Array<ReadonlySet<string>> = [];
+    let rolledBack = 0;
+    const controller = new AbortController();
+
+    runImmediateDriveBatch({
+      ...batch,
+      rollback: () => {
+        rolledBack += 1;
+      },
+      execute: async (signal, markCompleted) => {
+        markCompleted("early");
+        await new Promise<void>((_resolve, reject) => {
+          const abort = () => {
+            reject(new DOMException("AbortError", "AbortError"));
+          };
+          if (signal.aborted) {
+            abort();
+            return;
+          }
+          signal.addEventListener("abort", abort, { once: true });
+        });
+      },
+      revert: async (completedKeys) => {
+        reverted.push(completedKeys);
+      },
+      queueMutation,
+    });
+
+    const pending = queued[0]?.execute?.(controller.signal);
+    controller.abort();
+    queued[0]?.undo?.();
+    await pending?.catch(() => undefined);
+
+    expect(rolledBack).toBe(1);
+    expect(reverted).toEqual([new Set(["early"])]);
   });
 
   it("logs a failed server revert after local rollback", async () => {

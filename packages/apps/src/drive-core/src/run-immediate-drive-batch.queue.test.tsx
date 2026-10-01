@@ -14,6 +14,48 @@ vi.mock("@/hooks/use-app-toast", () => ({
 }));
 
 describe("runImmediateDriveBatch through useQueuedMutation", () => {
+  it("reverts a rename already marked when undo aborts the in-flight batch", async () => {
+    const onMutationError = vi.fn();
+    const { result } = renderHook(() => useQueuedMutation({ onMutationError }));
+    const reverted: Array<ReadonlySet<string>> = [];
+
+    act(() => {
+      runImmediateDriveBatch({
+        key: "drive:trash:notes",
+        toastMessage: "Moved 1 to Trash",
+        icon: null,
+        undoToastMessage: "Move to trash undone.",
+        rollback: () => undefined,
+        execute: async (signal, markCompleted) => {
+          markCompleted("early");
+          await new Promise<void>((_resolve, reject) => {
+            const abort = () => {
+              reject(new DOMException("AbortError", "AbortError"));
+            };
+            if (signal.aborted) {
+              abort();
+              return;
+            }
+            signal.addEventListener("abort", abort, { once: true });
+          });
+        },
+        revert: async (completedKeys) => {
+          reverted.push(completedKeys);
+        },
+        queueMutation: result.current.queueMutation,
+      });
+    });
+
+    act(() => {
+      result.current.undoLatest();
+    });
+
+    await vi.waitFor(() => {
+      expect(reverted).toEqual([new Set(["early"])]);
+    });
+    expect(onMutationError).not.toHaveBeenCalled();
+  });
+
   it("reverts once when the error handler runs and the user undoes again", async () => {
     const { result } = renderHook(() => useQueuedMutation({ onMutationError: () => undefined }));
     let rolledBack = 0;
