@@ -25,6 +25,14 @@ vi.mock("@/hooks/use-app-toast", () => ({
   useAppToast: () => toastApi,
 }));
 
+function renderChime(ids: readonly string[] = [], enabled = true) {
+  return renderHook(
+    ({ nextIds, nextEnabled }: { nextIds: readonly string[]; nextEnabled: boolean }) =>
+      useMeetKnockChime(nextIds, nextEnabled),
+    { initialProps: { nextIds: ids, nextEnabled: enabled } },
+  );
+}
+
 describe("useMeetKnockChime", () => {
   beforeEach(() => {
     playMeetKnockSound.mockClear();
@@ -32,51 +40,59 @@ describe("useMeetKnockChime", () => {
     toastApi.show.mockClear();
   });
 
-  it("plays once each time another person knocks while this peer is in the call", () => {
-    const { rerender } = renderHook(
-      ({ count, inCall }: { count: number; inCall: boolean }) => useMeetKnockChime(count, inCall),
-      { initialProps: { count: 0, inCall: true } },
-    );
+  it("plays once for each new knocker id while this peer is in the call", () => {
+    const { rerender } = renderChime([], true);
 
     expect(playMeetKnockSound).not.toHaveBeenCalled();
 
-    rerender({ count: 1, inCall: true });
+    rerender({ nextIds: ["a"], nextEnabled: true });
     expect(playMeetKnockSound).toHaveBeenCalledTimes(1);
     expect(toastApi.show).toHaveBeenCalledWith(meetLabels.someoneKnocking, { severity: "info" });
 
-    rerender({ count: 1, inCall: true });
+    rerender({ nextIds: ["a"], nextEnabled: true });
     expect(playMeetKnockSound).toHaveBeenCalledTimes(1);
 
-    rerender({ count: 2, inCall: true });
+    rerender({ nextIds: ["a", "b"], nextEnabled: true });
     expect(playMeetKnockSound).toHaveBeenCalledTimes(2);
   });
 
-  it("stays quiet for the person who is knocking, then chimes once they are in the call and someone is still waiting", () => {
-    const { rerender } = renderHook(
-      ({ count, inCall }: { count: number; inCall: boolean }) => useMeetKnockChime(count, inCall),
-      { initialProps: { count: 0, inCall: false } },
-    );
+  it("chimes when one knocker is admitted in the same poll that another knocks", () => {
+    const { rerender } = renderChime(["a"], true);
+    rerender({ nextIds: ["b"], nextEnabled: true });
+    expect(playMeetKnockSound).toHaveBeenCalledTimes(2);
+  });
 
-    rerender({ count: 1, inCall: false });
+  it("stays quiet for the person who is knocking", () => {
+    const { rerender } = renderChime([], false);
+    rerender({ nextIds: ["self"], nextEnabled: false });
     expect(playMeetKnockSound).not.toHaveBeenCalled();
+  });
 
-    rerender({ count: 1, inCall: true });
+  it("chimes again for the same knocker after leaving and rejoining", () => {
+    const { rerender } = renderChime([], true);
+    rerender({ nextIds: ["a"], nextEnabled: true });
     expect(playMeetKnockSound).toHaveBeenCalledTimes(1);
+
+    rerender({ nextIds: [], nextEnabled: false });
+    rerender({ nextIds: ["a"], nextEnabled: true });
+    expect(playMeetKnockSound).toHaveBeenCalledTimes(2);
   });
 
   it("does not chime when a knocker is admitted", () => {
-    const { rerender } = renderHook(
-      ({ count, inCall }: { count: number; inCall: boolean }) => useMeetKnockChime(count, inCall),
-      { initialProps: { count: 0, inCall: true } },
-    );
+    const { rerender } = renderChime([], true);
+    rerender({ nextIds: ["a"], nextEnabled: true });
+    rerender({ nextIds: [], nextEnabled: true });
+    expect(playMeetKnockSound).toHaveBeenCalledTimes(1);
+  });
 
-    rerender({ count: 1, inCall: true });
-    rerender({ count: 0, inCall: true });
+  it("does not replay a knocker who is still waiting", () => {
+    const { rerender } = renderChime(["a"], true);
+    rerender({ nextIds: ["a"], nextEnabled: true });
     expect(playMeetKnockSound).toHaveBeenCalledTimes(1);
   });
 
   it("unlocks the chime on the next pointer or key so a later knock can play", () => {
-    renderHook(() => useMeetKnockChime(0, true));
+    renderChime([], true);
 
     window.dispatchEvent(new Event("pointerdown"));
     window.dispatchEvent(new Event("keydown"));

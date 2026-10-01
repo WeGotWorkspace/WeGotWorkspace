@@ -31,6 +31,8 @@ export type MeetCallSnapshot = {
   chatMessages: MeetChatLine[];
   waitingForAdmission: boolean;
   knockers: MeetKnocker[];
+  /** Signed-in member who can admit or deny. Guests stay false, so they never hear the chime. */
+  canModerateKnocks: boolean;
   endedMessage: string | null;
   /** Another browser tab reports an active call (BroadcastChannel signal). */
   remoteCallActive: boolean;
@@ -82,6 +84,7 @@ function createInitialSnapshot(): MeetCallSnapshot {
     chatMessages: [],
     waitingForAdmission: false,
     knockers: [],
+    canModerateKnocks: false,
     endedMessage: null,
     remoteCallActive: false,
     callUiParked: false,
@@ -286,6 +289,10 @@ export class MeetCallStore {
 
   setKnockers = (value: Updater<MeetKnocker[]>): void => {
     this.set("knockers", value);
+  };
+
+  setCanModerateKnocks = (value: boolean): void => {
+    this.set("canModerateKnocks", value);
   };
 
   setEndedMessage = (value: Updater<string | null>): void => {

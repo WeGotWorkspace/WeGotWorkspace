@@ -1,3 +1,6 @@
+/** Drop a resume that is still pending when the user finally clicks. */
+const KNOCK_CHIME_RESUME_BUDGET_MS = 1500;
+
 type AudioContextCtor = typeof AudioContext;
 
 type WebkitAudioWindow = Window & { webkitAudioContext?: AudioContextCtor };
@@ -35,10 +38,14 @@ export function resetMeetKnockSoundForTests(): void {
   });
 }
 
+function audioContextIsRunning(context: AudioContext): boolean {
+  return context.state === "running";
+}
+
 /** Resume during a click or keypress so a later knock is allowed to play. */
 export function primeMeetKnockSound(): void {
   const context = meetKnockAudioContext();
-  if (!context || context.state !== "suspended") return;
+  if (!context || audioContextIsRunning(context)) return;
   void context.resume().catch(() => {
     // Autoplay policy refused; the next gesture can try again.
   });
@@ -71,19 +78,21 @@ export function playMeetKnockSound(): void {
   const context = meetKnockAudioContext();
   if (!context) return;
   const start = () => {
-    if (context.state === "closed") return;
+    if (!audioContextIsRunning(context)) return;
     scheduleMeetKnockTones(context);
   };
-  if (context.state === "suspended") {
-    void context
-      .resume()
-      .then(() => {
-        if (context.state === "running") start();
-      })
-      .catch(() => {
-        // Stay silent when the browser still blocks audio.
-      });
+  if (audioContextIsRunning(context)) {
+    start();
     return;
   }
-  start();
+  const requestedAt = performance.now();
+  void context
+    .resume()
+    .then(() => {
+      if (performance.now() - requestedAt > KNOCK_CHIME_RESUME_BUDGET_MS) return;
+      start();
+    })
+    .catch(() => {
+      // Stay silent when the browser still blocks audio.
+    });
 }

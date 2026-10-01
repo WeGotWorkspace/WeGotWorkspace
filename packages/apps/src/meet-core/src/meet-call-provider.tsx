@@ -3,7 +3,7 @@ import { createMeetCallBroadcast } from "@/meet-core/src/meet-call-broadcast";
 import { createMeetCallStore, type MeetCallStore } from "@/meet-core/src/meet-call-store";
 import { sendMeetLeaveBeacon } from "@/meet-core/src/meet-leave-beacon";
 
-const MeetCallStoreContext = createContext<MeetCallStore | null>(null);
+export const MeetCallStoreContext = createContext<MeetCallStore | null>(null);
 
 /**
  * Suite-level call store, when mounted above the router (live app). Null in

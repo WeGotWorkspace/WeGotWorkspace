@@ -198,3 +198,22 @@ export const meetLabels = {
   threadBack: "Back to chat",
   participantsShort: (count: number) => `${count} in call`,
 } as const;
+
+export function meetCallExitCopy(mode: "end" | "leave"): {
+  label: string;
+  title: string;
+  description: string;
+} {
+  if (mode === "leave") {
+    return {
+      label: meetLabels.leaveCall,
+      title: meetLabels.leaveCallTitle,
+      description: meetLabels.leaveCallDescription,
+    };
+  }
+  return {
+    label: meetLabels.endCall,
+    title: meetLabels.endCallTitle,
+    description: meetLabels.endCallDescription,
+  };
+}

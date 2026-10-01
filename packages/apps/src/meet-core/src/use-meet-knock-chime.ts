@@ -4,12 +4,14 @@ import { playMeetKnockSound, primeMeetKnockSound } from "@/meet-core/src/meet-ch
 import { meetLabels } from "@/meet-core/src/meet-labels";
 
 /**
- * Chime when someone new is waiting to join and this peer is already in the
- * call. The person still knocking does not hear their own request.
+ * Chime when a knocker id appears that this peer has not already heard, and
+ * only while `enabled` (in the call and allowed to admit). Leaving the call
+ * forgets the ids so the next call chimes again.
  */
-export function useMeetKnockChime(knockerCount: number, inCall: boolean): void {
+export function useMeetKnockChime(knockerIds: readonly string[], enabled: boolean): void {
   const { show } = useAppToast();
-  const previousCountRef = useRef(0);
+  const seenRef = useRef(new Set<string>());
+  const idsKey = knockerIds.join("\u0000");
 
   useEffect(() => {
     const unlock = () => {
@@ -24,11 +26,15 @@ export function useMeetKnockChime(knockerCount: number, inCall: boolean): void {
   }, []);
 
   useEffect(() => {
-    if (!inCall) return;
-    if (knockerCount > previousCountRef.current) {
-      playMeetKnockSound();
-      show(meetLabels.someoneKnocking, { severity: "info" });
+    if (!enabled) {
+      seenRef.current = new Set();
+      return;
     }
-    previousCountRef.current = knockerCount;
-  }, [inCall, knockerCount, show]);
+    const ids = idsKey === "" ? [] : idsKey.split("\u0000");
+    const hasNewKnocker = ids.some((id) => !seenRef.current.has(id));
+    seenRef.current = new Set(ids);
+    if (!hasNewKnocker) return;
+    playMeetKnockSound();
+    show(meetLabels.someoneKnocking, { severity: "info" });
+  }, [enabled, idsKey, show]);
 }

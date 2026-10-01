@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { MeetControllerState } from "@/meet-core/src/meet-controller-state";
 import {
@@ -7,9 +7,8 @@ import {
   selectedMeetDeviceOptionId,
 } from "@/meet-core/src/meet-device-utils";
 import { useMeetInviteProbe } from "@/meet-core/src/use-meet-invite-probe";
-import { meetLabels } from "@/meet-core/src/meet-labels";
+import { meetCallExitCopy, meetLabels } from "@/meet-core/src/meet-labels";
 import { meetCallExitMode } from "@/meet-core/src/meet-route-search";
-import { playMeetKnockSound } from "@/meet-core/src/meet-chat-utils";
 import type { MeetAPIOperations, MeetUIData } from "@/meet-core/src/meet-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useMeetController } from "@/meet-core/src/use-meet-controller";
@@ -50,7 +49,6 @@ export function useMeetWorkspaceShell({
   const [draft, setDraft] = useState("");
   const [speakerId, setSpeakerId] = useState("default");
   const [knockDots, setKnockDots] = useState(1);
-  const previousKnockerCountRef = useRef(0);
 
   const hasSignedInIdentity = Boolean(session.user.username?.trim() || session.user.email?.trim());
   const displayName = controller.displayName || session.user.displayName || "Guest";
@@ -70,30 +68,13 @@ export function useMeetWorkspaceShell({
   const showWaitingForHostScreen = inJoinFlow && inviteState === "waiting-for-host";
   const showInviteErrorScreen = inJoinFlow && inviteState === "error";
 
-  const callExitMode = meetCallExitMode(isJoinRoute, hasSignedInIdentity);
-  const callExitLabel = callExitMode === "leave" ? meetLabels.leaveCall : meetLabels.endCall;
-  const callExitTitle =
-    callExitLabel === meetLabels.leaveCall ? meetLabels.leaveCallTitle : meetLabels.endCallTitle;
-  const callExitDescription =
-    callExitLabel === meetLabels.leaveCall
-      ? meetLabels.leaveCallDescription
-      : meetLabels.endCallDescription;
+  const callExit = meetCallExitCopy(meetCallExitMode(isJoinRoute, hasSignedInIdentity));
 
   useEffect(() => {
     if (!waitingForAdmission) return;
     const id = window.setInterval(() => setKnockDots((dots) => (dots % 3) + 1), 500);
     return () => window.clearInterval(id);
   }, [waitingForAdmission]);
-
-  useEffect(() => {
-    if (!hasSignedInIdentity) return;
-    const previous = previousKnockerCountRef.current;
-    if (controller.knockers.length > previous) {
-      playMeetKnockSound();
-      toast.show(meetLabels.someoneKnocking, { severity: "info" });
-    }
-    previousKnockerCountRef.current = controller.knockers.length;
-  }, [controller.knockers.length, hasSignedInIdentity, toast]);
 
   useEffect(() => {
     if (
@@ -183,9 +164,9 @@ export function useMeetWorkspaceShell({
       participantCount,
       chatOpen,
       onToggleChat: () => setChatOpen((open) => !open),
-      callExitLabel,
-      callExitTitle,
-      callExitDescription,
+      callExitLabel: callExit.label,
+      callExitTitle: callExit.title,
+      callExitDescription: callExit.description,
       cameras,
       microphones,
       speakers,

@@ -1,6 +1,7 @@
 import { HeadContent, Link, Outlet } from "@tanstack/react-router";
 import { OfflineStatusIndicator } from "@/lib/offline/offline-status-indicator";
 import { MeetCallMiniPlayer } from "@/meet-core/src/meet-call-mini-player";
+import { MeetKnockChime } from "@/meet-core/src/meet-knock-chime";
 import { NotificationsProvider } from "@/notifications-core/src/notifications-provider";
 import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
 import { SettingsDialogProvider } from "@/settings-core/src/settings-dialog-provider";
@@ -23,6 +24,7 @@ export function WeGotWorkspaceShell() {
             <Outlet />
             {/* Active-call card outside /meet; renders nothing without the suite call store. */}
             <MeetCallMiniPlayer />
+            <MeetKnockChime />
             <AppToaster />
           </NotificationsProvider>
         </SettingsDialogProvider>

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import { isDisplayCaptureSupported } from "@/meet-core/src/meet-display-capture";
@@ -34,6 +34,11 @@ export function useMeetController({
   // Suite-level store (live app): call + media survive route unmounts. Null in
   // mock/Storybook trees, where the per-mount fallbacks keep the old behavior.
   const callStore = useMeetCallStoreContext();
+  const canModerateKnocks = meetCanModerateKnocks(session);
+  // Leave the flag in place when Meet unmounts so a knock still chimes from the mini-player.
+  useEffect(() => {
+    callStore?.setCanModerateKnocks(canModerateKnocks);
+  }, [callStore, canModerateKnocks]);
   const localLeaveRef = useRef<
     null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)
   >(null);

@@ -14,7 +14,7 @@ type FakeOscillator = {
 };
 
 type FakeContext = {
-  state: AudioContextState;
+  state: string;
   currentTime: number;
   destination: Record<string, never>;
   resume: ReturnType<typeof vi.fn>;
@@ -22,14 +22,17 @@ type FakeContext = {
   createGain: ReturnType<typeof vi.fn>;
   createOscillator: ReturnType<typeof vi.fn>;
   oscillators: FakeOscillator[];
+  constructions: { count: number };
 };
 
-function installAudioContext(state: AudioContextState): FakeContext {
+function installAudioContext(state: string): FakeContext {
   const oscillators: FakeOscillator[] = [];
+  const constructions = { count: 0 };
   const ctx: FakeContext = {
     state,
     currentTime: 0,
     destination: {},
+    constructions,
     resume: vi.fn(async () => {
       ctx.state = "running";
     }),
@@ -59,14 +62,12 @@ function installAudioContext(state: AudioContextState): FakeContext {
 
   class FakeAudioContext {
     constructor() {
+      constructions.count += 1;
       return ctx;
     }
   }
 
-  vi.stubGlobal("window", {
-    AudioContext: FakeAudioContext,
-    setTimeout: globalThis.setTimeout.bind(globalThis),
-  });
+  vi.stubGlobal("window", { AudioContext: FakeAudioContext });
   return ctx;
 }
 
@@ -74,7 +75,7 @@ describe("playMeetKnockSound", () => {
   afterEach(() => {
     resetMeetKnockSoundForTests();
     vi.unstubAllGlobals();
-    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("schedules the two-tone chime on an already running context", () => {
@@ -92,7 +93,6 @@ describe("playMeetKnockSound", () => {
   });
 
   it("resumes a suspended context before scheduling the chime", async () => {
-    vi.useFakeTimers();
     const ctx = installAudioContext("suspended");
 
     playMeetKnockSound();
@@ -106,8 +106,39 @@ describe("playMeetKnockSound", () => {
     expect(ctx.close).not.toHaveBeenCalled();
   });
 
+  it("resumes an interrupted context before scheduling the chime", async () => {
+    const ctx = installAudioContext("interrupted");
+
+    playMeetKnockSound();
+
+    expect(ctx.resume).toHaveBeenCalledTimes(1);
+    await ctx.resume.mock.results[0]?.value;
+    expect(ctx.oscillators).toHaveLength(2);
+  });
+
+  it("does not play when resume resolves after the knock has gone stale", async () => {
+    const ctx = installAudioContext("suspended");
+    let finish = (): void => {};
+    ctx.resume.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = () => {
+            ctx.state = "running";
+            resolve();
+          };
+        }),
+    );
+    vi.spyOn(performance, "now").mockReturnValueOnce(1_000).mockReturnValue(3_000);
+
+    playMeetKnockSound();
+    finish();
+    await Promise.resolve();
+
+    expect(ctx.createOscillator).not.toHaveBeenCalled();
+  });
+
   it("does nothing when the browser has no audio context", () => {
-    vi.stubGlobal("window", { setTimeout: globalThis.setTimeout.bind(globalThis) });
+    vi.stubGlobal("window", {});
     expect(() => playMeetKnockSound()).not.toThrow();
     expect(() => primeMeetKnockSound()).not.toThrow();
   });
@@ -126,5 +157,23 @@ describe("primeMeetKnockSound", () => {
 
     expect(ctx.resume).toHaveBeenCalledTimes(1);
     expect(ctx.createOscillator).not.toHaveBeenCalled();
+  });
+
+  it("resumes an interrupted context", () => {
+    const ctx = installAudioContext("interrupted");
+
+    primeMeetKnockSound();
+
+    expect(ctx.resume).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses one audio context for a later chime", () => {
+    const ctx = installAudioContext("running");
+
+    primeMeetKnockSound();
+    playMeetKnockSound();
+
+    expect(ctx.constructions.count).toBe(1);
+    expect(ctx.oscillators).toHaveLength(2);
   });
 });
