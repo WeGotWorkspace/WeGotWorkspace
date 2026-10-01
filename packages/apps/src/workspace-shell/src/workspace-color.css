@@ -63,9 +63,10 @@
    *
    * `--sidebar-on` is the ink (Dark). Both tokens are set here, not on
    * `.app-sidebar`, so a Themes control on the workspace host inherits
-   * into the rail. `--wai-bg` is set on the same workspace element.
+   * into the rail. Products set `--wai-bg` on the workspace. Portaled Meet
+   * dialogs do not, so the mix falls back to `--workspace-accent`.
    */
-  --sidebar-bg: color-mix(in oklch, var(--wai-bg) 5%, #fff);
+  --sidebar-bg: color-mix(in oklch, var(--wai-bg, var(--workspace-accent)) 5%, #fff);
   --sidebar-on: var(--color-we-got-dark);
   --workspace-surface: color-mix(in oklch, var(--color-we-got-soft) 40%, #fff);
   --popover: var(--workspace-surface);
@@ -117,10 +118,10 @@
 
   /*
    * Primary button follows the switch icon (`--wai-*`). Drive, Meet, and Notes
-   * redeclare the pair on their workspace class. Wai must be set on this
-   * element; the switch-trigger SVG does not inherit upward.
+   * redeclare the pair on their workspace class. Portaled Meet surfaces omit
+   * `--wai-bg`, so the fill falls back to `--workspace-accent`.
    */
-  --button-primary-bg: var(--wai-bg);
+  --button-primary-bg: var(--wai-bg, var(--workspace-accent));
   --button-primary-fg: var(--wai-fg);
 }
 

@@ -61,6 +61,15 @@ describe("createAppBrandingCssprops", () => {
   });
 });
 
+describe("brandingAppButtonPrimary", () => {
+  it("darkens mail primary so white labels clear AA", () => {
+    expect(brandingAppButtonPrimary("mail")).toEqual({
+      bg: "color-mix(in oklch, var(--wai-bg) 45%, var(--color-we-got-dark))",
+      fg: "var(--wai-fg)",
+    });
+  });
+});
+
 describe("defaultAppBrandingCssprops", () => {
   it.each(WORKSPACE_APP_IDS)(
     "documents cream, ink, accent, and production wai only for %s (no sidebar chrome)",

@@ -226,6 +226,12 @@ export function brandingAppButtonPrimary(appId: WorkspaceAppId): { bg: string; f
       return { bg: "var(--wai-fg)", fg: "var(--color-we-got-dark)" };
     case "notes":
       return { bg: "var(--wai-bg)", fg: "var(--color-we-got-dark)" };
+    case "mail":
+      // Raw We Got Red with white is ~4.1:1. Darken it so 14px labels clear AA.
+      return {
+        bg: "color-mix(in oklch, var(--wai-bg) 45%, var(--color-we-got-dark))",
+        fg: "var(--wai-fg)",
+      };
     default:
       return { bg: "var(--wai-bg)", fg: "var(--wai-fg)" };
   }

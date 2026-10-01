@@ -6,7 +6,8 @@
 /**
  * Mail product shell: cream main pane + orange sidebar tint from mail.svg tile
  * (`#de4b0e` — same hex as WORKSPACE_APP_ACCENT.mail).
- * Primary fills use accent with white fg. Strong is 32% accent → ink.
+ * Primary button and badges darken that red toward Dark so white labels clear AA.
+ * Strong is 32% accent → ink.
  * Sidebar row washes are the shared rail ladder in `workspace-color.css`.
  * Import only from {@link MailWorkspace}.
  */
@@ -81,14 +82,15 @@
     var(--sidebar-on, var(--color-we-got-dark)) 68%,
     transparent
   );
-  /* Primary fill is the mail icon (red + white). */
+  /* Switch mark stays the mail icon (red + white). */
   --wai-bg: var(--color-we-got-red);
   --wai-fg: #ffffff;
-  --button-primary-bg: var(--wai-bg);
+  /* White on raw We Got Red (~4.1:1) fails WCAG AA (4.5:1) for 14px labels. */
+  --button-primary-bg: color-mix(in oklch, var(--wai-bg) 45%, var(--color-we-got-dark));
   --button-primary-fg: var(--wai-fg);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
-  /* Selected nav count pills match the primary CTA (Dark + white). */
+  /* Selected nav count pills match the primary CTA (darkened red + white). */
   --sidebar-badge-bg: var(--button-primary-bg);
   --sidebar-badge-fg: var(--button-primary-fg);
 
@@ -217,10 +219,11 @@
   --workspace-accent: var(--color-we-got-dark);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  /* Primary fill is the mail icon (red + white). */
+  /* Switch mark stays the mail icon (red + white). */
   --wai-bg: var(--color-we-got-red);
   --wai-fg: #ffffff;
-  --button-primary-bg: var(--wai-bg);
+  /* White on raw We Got Red (~4.1:1) fails WCAG AA (4.5:1) for 14px labels. */
+  --button-primary-bg: color-mix(in oklch, var(--wai-bg) 45%, var(--color-we-got-dark));
   --button-primary-fg: var(--wai-fg);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
