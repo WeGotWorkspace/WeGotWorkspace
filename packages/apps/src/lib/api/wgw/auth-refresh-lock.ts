@@ -165,10 +165,15 @@ async function withCrossTabLock(task: () => Promise<boolean>): Promise<boolean> 
   }
 }
 
-function requestWebLock(task: () => Promise<boolean>): Promise<boolean> | null {
+function webLocks(): LockManager | null {
   const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
   if (!locks || typeof locks.request !== "function") return null;
-  return locks.request(WEB_LOCK_NAME, { mode: "exclusive" }, () => task());
+  return locks;
+}
+
+function runInWebLock(locks: LockManager, task: () => Promise<boolean>): Promise<boolean> {
+  // DOM typings infer the callback result as T, so a promised boolean becomes Promise<Promise<boolean>>.
+  return locks.request(WEB_LOCK_NAME, { mode: "exclusive" }, () => task()).then((value) => value);
 }
 
 /**
@@ -179,7 +184,8 @@ export function withAuthRefreshLock(task: () => Promise<boolean>): Promise<boole
   if (inTabRefreshPromise) {
     return inTabRefreshPromise;
   }
-  const locked = requestWebLock(task) ?? withCrossTabLock(task);
+  const locks = webLocks();
+  const locked = locks ? runInWebLock(locks, task) : withCrossTabLock(task);
   inTabRefreshPromise = locked.finally(() => {
     inTabRefreshPromise = null;
   });
