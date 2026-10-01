@@ -14,6 +14,7 @@ export function useMeetKnockChime(knockerIds: readonly string[], enabled: boolea
   const idsKey = knockerIds.join("\u0000");
 
   useEffect(() => {
+    if (!enabled) return;
     const unlock = () => {
       primeMeetKnockSound();
     };
@@ -23,7 +24,7 @@ export function useMeetKnockChime(knockerIds: readonly string[], enabled: boolea
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
     };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) {

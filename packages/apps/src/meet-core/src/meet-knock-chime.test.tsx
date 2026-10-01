@@ -3,8 +3,8 @@
  */
 import { act, render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
-import { createMeetCallStore, type MeetCallStore } from "@/meet-core/src/meet-call-store";
+import { MeetCallProvider, useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
+import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
 import { MeetKnockChime } from "@/meet-core/src/meet-knock-chime";
 
 const playMeetKnockSound = vi.hoisted(() => vi.fn());
@@ -23,12 +23,19 @@ vi.mock("@/hooks/use-app-toast", () => ({
   }),
 }));
 
-function renderChime(store: MeetCallStore) {
-  return render(
-    <MeetCallStoreContext.Provider value={store}>
-      <MeetKnockChime />
-    </MeetCallStoreContext.Provider>,
+function mountChime(): MeetCallStore {
+  let store: MeetCallStore | null = null;
+  function CaptureStore() {
+    store = useMeetCallStoreContext();
+    return <MeetKnockChime />;
+  }
+  render(
+    <MeetCallProvider>
+      <CaptureStore />
+    </MeetCallProvider>,
   );
+  if (!store) throw new Error("Meet call store missing");
+  return store;
 }
 
 describe("MeetKnockChime", () => {
@@ -42,24 +49,28 @@ describe("MeetKnockChime", () => {
   });
 
   it("stays silent for a guest who cannot admit", () => {
-    const store = createMeetCallStore();
-    store.setStatus("in-call");
-    store.setCanModerateKnocks(false);
-    renderChime(store);
+    const store = mountChime();
     act(() => {
+      store.setStatus("in-call");
+      store.setCanModerateKnocks(false);
       store.setKnockers([{ id: "a", name: "Ada" }]);
     });
     expect(playMeetKnockSound).not.toHaveBeenCalled();
   });
 
   it("chimes once for a new knocker and not again while that knocker is still waiting", () => {
-    const store = createMeetCallStore();
-    store.setStatus("in-call");
-    store.setCanModerateKnocks(true);
-    renderChime(store);
+    const store = mountChime();
+    act(() => {
+      store.setStatus("in-call");
+      store.setCanModerateKnocks(true);
+    });
 
     act(() => {
       store.setKnockers([{ id: "a", name: "Ada" }]);
+    });
+    expect(playMeetKnockSound).toHaveBeenCalledTimes(1);
+
+    act(() => {
       store.setElapsedSeconds(1);
     });
     expect(playMeetKnockSound).toHaveBeenCalledTimes(1);

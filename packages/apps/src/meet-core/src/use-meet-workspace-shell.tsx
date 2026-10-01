@@ -7,7 +7,7 @@ import {
   selectedMeetDeviceOptionId,
 } from "@/meet-core/src/meet-device-utils";
 import { useMeetInviteProbe } from "@/meet-core/src/use-meet-invite-probe";
-import { meetCallExitCopy, meetLabels } from "@/meet-core/src/meet-labels";
+import { meetLabels } from "@/meet-core/src/meet-labels";
 import { meetCallExitMode } from "@/meet-core/src/meet-route-search";
 import type { MeetAPIOperations, MeetUIData } from "@/meet-core/src/meet-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
@@ -68,7 +68,14 @@ export function useMeetWorkspaceShell({
   const showWaitingForHostScreen = inJoinFlow && inviteState === "waiting-for-host";
   const showInviteErrorScreen = inJoinFlow && inviteState === "error";
 
-  const callExit = meetCallExitCopy(meetCallExitMode(isJoinRoute, hasSignedInIdentity));
+  const callExitMode = meetCallExitMode(isJoinRoute, hasSignedInIdentity);
+  const callExitLabel = callExitMode === "leave" ? meetLabels.leaveCall : meetLabels.endCall;
+  const callExitTitle =
+    callExitLabel === meetLabels.leaveCall ? meetLabels.leaveCallTitle : meetLabels.endCallTitle;
+  const callExitDescription =
+    callExitLabel === meetLabels.leaveCall
+      ? meetLabels.leaveCallDescription
+      : meetLabels.endCallDescription;
 
   useEffect(() => {
     if (!waitingForAdmission) return;
@@ -164,9 +171,9 @@ export function useMeetWorkspaceShell({
       participantCount,
       chatOpen,
       onToggleChat: () => setChatOpen((open) => !open),
-      callExitLabel: callExit.label,
-      callExitTitle: callExit.title,
-      callExitDescription: callExit.description,
+      callExitLabel,
+      callExitTitle,
+      callExitDescription,
       cameras,
       microphones,
       speakers,

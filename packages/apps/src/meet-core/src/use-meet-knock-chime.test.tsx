@@ -91,9 +91,14 @@ describe("useMeetKnockChime", () => {
     expect(playMeetKnockSound).toHaveBeenCalledTimes(1);
   });
 
-  it("unlocks the chime on the next pointer or key so a later knock can play", () => {
-    renderChime([], true);
+  it("unlocks the chime on the next pointer or key only while it can play", () => {
+    const { rerender } = renderChime([], false);
 
+    window.dispatchEvent(new Event("pointerdown"));
+    window.dispatchEvent(new Event("keydown"));
+    expect(primeMeetKnockSound).not.toHaveBeenCalled();
+
+    rerender({ nextIds: [], nextEnabled: true });
     window.dispatchEvent(new Event("pointerdown"));
     window.dispatchEvent(new Event("keydown"));
     expect(primeMeetKnockSound).toHaveBeenCalledTimes(2);
