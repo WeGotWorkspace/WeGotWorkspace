@@ -167,6 +167,84 @@ describe("runImmediateDriveBatch", () => {
     expect(rolledBack).toBe(1);
   });
 
+  it("reverts a rename that resolves after undo", async () => {
+    const { queued, queueMutation } = captureQueue();
+    let releaseRename: () => void = () => undefined;
+    const renameGate = new Promise<void>((resolve) => {
+      releaseRename = resolve;
+    });
+    let markReached: () => void = () => undefined;
+    const reachedGate = new Promise<void>((resolve) => {
+      markReached = resolve;
+    });
+    const reverted: Array<ReadonlySet<string>> = [];
+    let rolledBack = 0;
+    const controller = new AbortController();
+
+    runImmediateDriveBatch({
+      ...batch,
+      rollback: () => {
+        rolledBack += 1;
+      },
+      execute: async (_signal, markCompleted) => {
+        markCompleted("early");
+        markReached();
+        await renameGate;
+        markCompleted("late");
+      },
+      revert: async (completedKeys) => {
+        reverted.push(completedKeys);
+      },
+      queueMutation,
+    });
+
+    const pending = queued[0]?.execute?.(controller.signal);
+    await reachedGate;
+    controller.abort();
+    queued[0]?.undo?.();
+    releaseRename();
+    await pending;
+    queued[0]?.undo?.();
+
+    expect(rolledBack).toBe(1);
+    expect(reverted).toEqual([new Set(["early", "late"])]);
+  });
+
+  it("reverts a rename that finishes after undo when none were complete", async () => {
+    const { queued, queueMutation } = captureQueue();
+    let releaseRename: () => void = () => undefined;
+    const renameGate = new Promise<void>((resolve) => {
+      releaseRename = resolve;
+    });
+    let markReached: () => void = () => undefined;
+    const reachedGate = new Promise<void>((resolve) => {
+      markReached = resolve;
+    });
+    const reverted: Array<ReadonlySet<string>> = [];
+
+    runImmediateDriveBatch({
+      ...batch,
+      rollback: () => undefined,
+      execute: async (_signal, markCompleted) => {
+        markReached();
+        await renameGate;
+        markCompleted("late");
+      },
+      revert: async (completedKeys) => {
+        reverted.push(completedKeys);
+      },
+      queueMutation,
+    });
+
+    const pending = queued[0]?.execute?.(new AbortController().signal);
+    await reachedGate;
+    queued[0]?.undo?.();
+    releaseRename();
+    await pending;
+
+    expect(reverted).toEqual([new Set(["late"])]);
+  });
+
   it("logs a failed server revert after local rollback", async () => {
     const { queued, queueMutation } = captureQueue();
     const error = new Error("revert failed");
