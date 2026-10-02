@@ -29,6 +29,20 @@ describe("MeetCallStore", () => {
     expect(store.getSnapshot().chatMessages).toEqual([]);
   });
 
+  it("records whether this peer can admit a knock", () => {
+    const store = createMeetCallStore();
+    const listener = vi.fn();
+    store.subscribe(listener);
+
+    expect(store.getSnapshot().canModerateKnocks).toBe(false);
+    store.setCanModerateKnocks(true);
+    expect(store.getSnapshot().canModerateKnocks).toBe(true);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    store.setCanModerateKnocks(true);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
   it("skips notifications when the value is unchanged", () => {
     const store = createMeetCallStore();
     const listener = vi.fn();
