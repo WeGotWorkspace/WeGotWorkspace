@@ -1,0 +1,391 @@
+{
+  "RtcNetClass": {
+    "type": "string",
+    "enum": [
+      "open",
+      "symmetric",
+      "udp-blocked",
+      "unknown"
+    ],
+    "description": "Network class the peer measured for itself before joining."
+  },
+  "RtcPeerCapability": {
+    "type": "string",
+    "enum": [
+      "bin",
+      "ice-batch",
+      "ticket",
+      "meet-dc",
+      "yjs-http",
+      "relay-jit",
+      "since-ack"
+    ],
+    "description": "Wire capability a peer advertises at join. Stored on the peer row and mirrored on rosters."
+  },
+  "RtcPeerAccess": {
+    "type": "string",
+    "enum": [
+      "read",
+      "comment",
+      "write"
+    ],
+    "description": "Collaboration rights computed by the server at join from the drive share rights. Fail-closed: a peer row without a server-written value reads as `read`."
+  },
+  "RtcRosterPeer": {
+    "type": "object",
+    "required": [
+      "id",
+      "name"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "user": {
+        "type": "string",
+        "description": "Username of the owning account. Collaboration and principal rosters always carry it; meeting rosters only when the polling actor is authenticated, so guests never see member usernames."
+      },
+      "access": {
+        "$ref": "#/components/schemas/RtcPeerAccess"
+      },
+      "caps": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RtcPeerCapability"
+        }
+      },
+      "net": {
+        "$ref": "#/components/schemas/RtcNetClass"
+      }
+    }
+  },
+  "RtcRoomLimits": {
+    "type": "object",
+    "description": "Server-side ceilings for the room, advertised on the meeting join response.",
+    "properties": {
+      "maxPeers": {
+        "type": "integer",
+        "description": "Peers allowed in the room (`MEET_MAX_PEERS`, default 4, clamped 2-15)."
+      },
+      "maxVideoHeight": {
+        "type": "integer",
+        "description": "Video profile ceiling in pixels. Populated by the meeting connectivity work."
+      },
+      "maxFramerateFps": {
+        "type": "integer",
+        "description": "Video profile ceiling in frames per second. Populated by the meeting connectivity work."
+      },
+      "maxBitrateKbps": {
+        "type": "integer",
+        "description": "Video profile ceiling in kilobits per second. Populated by the meeting connectivity work."
+      }
+    }
+  },
+  "RtcTurnCredentials": {
+    "type": "object",
+    "required": [
+      "urls",
+      "username",
+      "credential",
+      "ttl"
+    ],
+    "description": "Short-lived relay credentials in the TURN REST convention (coturn `use-auth-secret`). Issued only by the relay request, never at join and never by the room configuration endpoint.",
+    "properties": {
+      "urls": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "username": {
+        "type": "string",
+        "description": "`<unixExpiry>:<first 16 hex of sha1(actor marker)>`."
+      },
+      "credential": {
+        "type": "string",
+        "description": "`base64(HMAC-SHA1(turnSecret, username))`."
+      },
+      "ttl": {
+        "type": "integer",
+        "description": "Lifetime in seconds."
+      }
+    }
+  },
+  "RtcRoomConfiguration": {
+    "type": "object",
+    "required": [
+      "rtc"
+    ],
+    "properties": {
+      "rtc": {
+        "type": "object",
+        "required": [
+          "stunUrls",
+          "turnAvailable"
+        ],
+        "properties": {
+          "stunUrls": {
+            "type": "string",
+            "description": "Comma-separated STUN URLs."
+          },
+          "turnAvailable": {
+            "type": "boolean",
+            "description": "True when a relay secret is configured. Credentials are never part of this response."
+          }
+        }
+      }
+    }
+  },
+  "RtcJoinRequest": {
+    "type": "object",
+    "properties": {
+      "peerId": {
+        "type": "string",
+        "description": "Client-chosen peer id (meeting rooms). Collaboration and principal rooms get one from the server."
+      },
+      "name": {
+        "type": "string"
+      },
+      "net": {
+        "$ref": "#/components/schemas/RtcNetClass"
+      },
+      "caps": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RtcPeerCapability"
+        }
+      },
+      "browserId": {
+        "type": "string",
+        "description": "Opaque per-browser-profile token used to evict leftover peers from the same browser."
+      },
+      "sessionKey": {
+        "type": "string",
+        "description": "Guest session key from an earlier join."
+      }
+    }
+  },
+  "RtcJoinResponse": {
+    "type": "object",
+    "required": [
+      "peers"
+    ],
+    "properties": {
+      "peerId": {
+        "type": "string",
+        "description": "Server-assigned peer id (collaboration and principal rooms)."
+      },
+      "peers": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RtcRosterPeer"
+        }
+      },
+      "sessionKey": {
+        "type": "string",
+        "nullable": true,
+        "description": "Guest session key for meeting rooms."
+      },
+      "ticket": {
+        "type": "string",
+        "description": "Signed collaboration ticket a peer presents to the other peers in the mesh."
+      },
+      "rtc": {
+        "type": "object",
+        "properties": {
+          "limits": {
+            "$ref": "#/components/schemas/RtcRoomLimits"
+          }
+        }
+      }
+    }
+  },
+  "RtcMailboxMessage": {
+    "type": "object",
+    "required": [
+      "from",
+      "type"
+    ],
+    "properties": {
+      "id": {
+        "type": "integer",
+        "description": "Monotonic mailbox id. Present on channels that poll with a `since` cursor."
+      },
+      "from": {
+        "type": "string"
+      },
+      "to": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "offer",
+          "answer",
+          "ice",
+          "bye",
+          "chat",
+          "yjs",
+          "yjs-sv",
+          "relay-hint"
+        ],
+        "description": "`relay-hint` is server-inserted only: a client that sends it is answered with `bad_type`."
+      },
+      "payload": {}
+    }
+  },
+  "RtcPollResponse": {
+    "type": "object",
+    "required": [
+      "peers",
+      "messages",
+      "rosterSig"
+    ],
+    "properties": {
+      "peers": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RtcRosterPeer"
+        }
+      },
+      "messages": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RtcMailboxMessage"
+        }
+      },
+      "rosterSig": {
+        "type": "string",
+        "description": "Roster signature to echo as `?sig=` on the next poll."
+      },
+      "ticket": {
+        "type": "string",
+        "description": "Signed collaboration ticket, refreshed on every poll."
+      }
+    }
+  },
+  "RtcSendEventRequest": {
+    "type": "object",
+    "required": [
+      "to",
+      "type"
+    ],
+    "properties": {
+      "peerId": {
+        "type": "string",
+        "description": "Sending peer on collaboration and principal rooms."
+      },
+      "from": {
+        "type": "string",
+        "description": "Sending peer on meeting rooms."
+      },
+      "to": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "offer",
+          "answer",
+          "ice",
+          "bye",
+          "yjs",
+          "yjs-sv"
+        ]
+      },
+      "payload": {}
+    }
+  },
+  "RtcRelayRequest": {
+    "type": "object",
+    "required": [
+      "peerId",
+      "target",
+      "reason"
+    ],
+    "properties": {
+      "peerId": {
+        "type": "string",
+        "description": "Peer id owned by the calling actor."
+      },
+      "target": {
+        "type": "string",
+        "description": "Peer id in the room roster, or `*` when the reason is `precheck`."
+      },
+      "reason": {
+        "type": "string",
+        "enum": [
+          "precheck",
+          "timeout",
+          "failed"
+        ]
+      },
+      "net": {
+        "$ref": "#/components/schemas/RtcNetClass"
+      }
+    }
+  },
+  "RtcRelayResponse": {
+    "type": "object",
+    "required": [
+      "turn"
+    ],
+    "properties": {
+      "turn": {
+        "$ref": "#/components/schemas/RtcTurnCredentials"
+      }
+    }
+  },
+  "RtcSessionMetricReport": {
+    "type": "object",
+    "required": [
+      "channel"
+    ],
+    "description": "One session sample for the real-time health page. Fields map to `rtc_session_metrics`; the row carries no addresses, room names, or user ids.",
+    "properties": {
+      "channel": {
+        "type": "string",
+        "enum": [
+          "meet",
+          "collab"
+        ]
+      },
+      "joinMs": {
+        "type": "integer",
+        "description": "Milliseconds from join to the first connected peer (`join_ms`)."
+      },
+      "candidateType": {
+        "type": "string",
+        "enum": [
+          "host",
+          "srflx",
+          "prflx",
+          "relay"
+        ],
+        "description": "Winning candidate type (`candidate_type`)."
+      },
+      "failedPairs": {
+        "type": "integer",
+        "description": "Candidate pairs that never connected (`failed_pairs`)."
+      },
+      "iceRestarts": {
+        "type": "integer",
+        "description": "ICE restarts during the session (`ice_restarts`)."
+      },
+      "httpFallback": {
+        "type": "boolean",
+        "description": "Session fell back to HTTP transport (`http_fallback`)."
+      },
+      "pollRttMs": {
+        "type": "integer",
+        "description": "Median signaling poll round trip (`poll_rtt_ms`)."
+      },
+      "net": {
+        "$ref": "#/components/schemas/RtcNetClass"
+      }
+    }
+  }
+}
