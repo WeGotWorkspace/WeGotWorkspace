@@ -7,11 +7,6 @@ export type MeetChatLine = {
   body: string;
   ts: number;
   isSelf: boolean;
-  /**
-   * Signed-in peer. Their channel row uses the account principal as `authorId`.
-   * This line's `fromPeerId` is only the RTC id.
-   */
-  accountPeer?: boolean;
   /** Saved channel message this room line echoes. Members already have that row. */
   channelMessageId?: string;
 };
@@ -44,10 +39,9 @@ export function buildMeetChatLineFromPoll(
   body: string,
   selfPeerId: string,
   now = Date.now(),
-  id?: string,
 ): MeetChatLine {
   return {
-    id: id ?? createMeetChatLineId(fromPeerId),
+    id: createMeetChatLineId(fromPeerId),
     fromPeerId,
     fromName,
     body: body.trim(),
@@ -74,12 +68,11 @@ export function buildLocalMeetChatLine(
 
 /**
  * Host channel collection + guest room-poll lines share one MeetChatColumn.
- * A signed-in peer's room line uses the RTC peer id as `fromPeerId`. Mapping
- * that id through `authorId` paints a second avatar (color and presence are
- * keyed by author id) for a message the channel collection already delivers
- * under the account principal. Those lines stay in the call store so guests,
- * who have no channel collection, can still read them. An edit or delete
- * keeps the channel row.
+ * A copy of a saved channel message is marked with `channelMessageId` and
+ * skipped: members already have that row under the account principal. Every
+ * other room line is shown once — a guest, a signed-in person admitted from
+ * the lobby, or a channel send that did not save. Copies stay in the call
+ * store so guests, who have no channel collection, can still read them.
  */
 export function mergeMeetRoomChatIntoChannel(
   channelMessages: ChatMessage[],
@@ -90,7 +83,7 @@ export function mergeMeetRoomChatIntoChannel(
   const ids = new Set(channelMessages.map((message) => message.id));
   const merged = [...channelMessages];
   for (const line of roomLines) {
-    if (line.accountPeer || line.channelMessageId) continue;
+    if (line.channelMessageId) continue;
     const message = meetChatLineToChannelMessage(line, channelId);
     if (ids.has(message.id)) continue;
     ids.add(message.id);

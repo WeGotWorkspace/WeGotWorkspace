@@ -49,15 +49,22 @@ describe("meet channel chat echo", () => {
   });
 
   it("stores a parsed echo under the saved id and leaves plain text alone", () => {
-    expect(
-      meetPollChatLine("peer-2", "Ada", buildMeetChannelChatEcho("saved-1", "hello"), "self", 5),
-    ).toMatchObject({
-      id: "saved-1",
+    const echo = meetPollChatLine(
+      "peer-2",
+      "Ada",
+      buildMeetChannelChatEcho("saved-1", "hello"),
+      "self",
+      5,
+    );
+    expect(echo).toMatchObject({
       body: "hello",
       fromPeerId: "peer-2",
       isSelf: false,
       ts: 5,
+      channelMessageId: "saved-1",
     });
+    expect(echo.id).toMatch(/^peer-2-/);
+    expect(echo.id).not.toBe("saved-1");
 
     const plain = meetPollChatLine("peer-2", "Ada", "from guest", "self", 5);
     expect(plain.body).toBe("from guest");

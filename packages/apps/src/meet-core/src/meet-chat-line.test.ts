@@ -110,7 +110,7 @@ describe("meet chat line", () => {
     expect(mergeMeetRoomChatIntoChannel([deleted], [echo], "chat-test")).toEqual([deleted]);
   });
 
-  it("drops a signed-in peer line so the RTC id is not a second author", () => {
+  it("shows a room line that was never saved on the channel", () => {
     const saved: ChatMessage = {
       id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
       channelId: "chat-test",
@@ -122,20 +122,27 @@ describe("meet chat line", () => {
       mentions: [],
       previews: [],
     };
-    const twin: MeetChatLine = {
-      id: "PEERID-1710000000000-ab12",
+    const admitted: MeetChatLine = {
+      id: "VISITOR-1710000000000-ab12",
+      fromPeerId: "VISITOR",
+      fromName: "Visitor",
+      body: "from the lobby",
+      ts: 2,
+      isSelf: false,
+    };
+    const copy: MeetChatLine = {
+      id: "PEERID-1710000000000-cd34",
       fromPeerId: "PEERID",
       fromName: "Member",
       body: "ok",
-      ts: 2,
+      ts: 3,
       isSelf: false,
-      accountPeer: true,
+      channelMessageId: saved.id,
     };
-    const guestLine = buildMeetChatLineFromPoll("guest-1", "Ada", "from guest", "member", 3);
-    const merged = mergeMeetRoomChatIntoChannel([saved], [twin, guestLine], "chat-test");
+    const merged = mergeMeetRoomChatIntoChannel([saved], [admitted, copy], "chat-test");
 
-    expect(merged.map((row) => row.body)).toEqual(["ok", "from guest"]);
-    expect(merged.map((row) => row.authorId)).toEqual(["member", "guest-1"]);
+    expect(merged.map((row) => row.body)).toEqual(["ok", "from the lobby"]);
+    expect(merged.map((row) => row.id)).toEqual([saved.id, admitted.id]);
   });
 
   it("drops a channel echo even when its id is not the channel row", () => {

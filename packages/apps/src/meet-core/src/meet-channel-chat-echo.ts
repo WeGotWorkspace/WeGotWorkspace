@@ -5,7 +5,9 @@ import type { ChatMessage } from "@/meet-core/src/meet-types";
  * Room signaling echoes a saved channel message so guests, who only have
  * room lines, can read it. Members already receive that row through channel
  * sync, under the account principal. The echo is marked so the member column
- * does not paint it again with the RTC peer id as the author. The id is a
+ * skips that copy and does not paint the RTC peer id as a second author.
+ * The line itself keeps a generated id, so a caller-supplied id cannot collide
+ * with a channel row. The saved id is a
  * prefix because room text is truncated to 2000 characters; a trailing id
  * would be cut off a long body.
  */
@@ -39,17 +41,11 @@ export function meetPollChatLine(
   text: string,
   selfPeerId: string,
   now = Date.now(),
-  options?: { accountPeer?: boolean },
 ): MeetChatLine {
   const echo = parseMeetChannelChatEcho(text.trim());
-  const line = echo
-    ? buildMeetChatLineFromPoll(fromPeerId, fromName, echo.body, selfPeerId, now, echo.id)
-    : buildMeetChatLineFromPoll(fromPeerId, fromName, text, selfPeerId, now);
-  return {
-    ...line,
-    ...(echo ? { channelMessageId: echo.id } : {}),
-    ...(options?.accountPeer ? { accountPeer: true } : {}),
-  };
+  const line = buildMeetChatLineFromPoll(fromPeerId, fromName, echo?.body ?? text, selfPeerId, now);
+  if (!echo) return line;
+  return { ...line, channelMessageId: echo.id };
 }
 
 export async function meetRoomChatOutbound(

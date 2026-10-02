@@ -280,7 +280,7 @@ describe("useMeetPollHandler chat", () => {
     expect(line?.id).toMatch(/^peer-2-/);
   });
 
-  it("stores a channel echo under the saved message id", async () => {
+  it("marks a channel echo without using the saved id as the line id", async () => {
     const setChatMessages = vi.fn();
     const { handlePoll } = createPollHandler({ setChatMessages });
 
@@ -295,35 +295,16 @@ describe("useMeetPollHandler chat", () => {
       ],
     });
 
-    expect(appliedChatLines(setChatMessages)).toEqual([
-      expect.objectContaining({
-        id: "saved-1",
-        fromPeerId: "peer-2",
-        fromName: "Ada",
-        body: "hello",
-        isSelf: false,
-        channelMessageId: "saved-1",
-      }),
-    ]);
-  });
-
-  it("marks a room line from a signed-in peer", async () => {
-    const setChatMessages = vi.fn();
-    const { handlePoll } = createPollHandler({ setChatMessages });
-
-    await handlePoll({
-      peers: [{ id: "peer-2", name: "Member", account: true }],
-      messages: [{ from: "peer-2", type: "chat", payload: { text: "ok" } }],
+    const [line] = appliedChatLines(setChatMessages);
+    expect(line).toMatchObject({
+      fromPeerId: "peer-2",
+      fromName: "Ada",
+      body: "hello",
+      isSelf: false,
+      channelMessageId: "saved-1",
     });
-
-    expect(appliedChatLines(setChatMessages)).toEqual([
-      expect.objectContaining({
-        fromPeerId: "peer-2",
-        fromName: "Member",
-        body: "ok",
-        accountPeer: true,
-      }),
-    ]);
+    expect(line?.id).toMatch(/^peer-2-/);
+    expect(line?.id).not.toBe("saved-1");
   });
 });
 

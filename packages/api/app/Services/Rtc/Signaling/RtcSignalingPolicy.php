@@ -48,11 +48,6 @@ final readonly class RtcSignalingPolicy
         public bool $rosterIncludesOwner = false,
         /** Persist client `browserId` and evict same-browser leftovers on join (Meet only). */
         public bool $persistBrowserId = false,
-        /**
-         * Meet roster: `account: true` on signed-in peers (`u:` owner). Guest
-         * session markers stay off the roster so a call does not publish them.
-         */
-        public bool $rosterMarksAccount = false,
     ) {}
 
     public static function meet(): self
@@ -74,7 +69,6 @@ final readonly class RtcSignalingPolicy
             trimMessagesOnSend: false,
             requireLivePeersOnSend: false,
             persistBrowserId: true,
-            rosterMarksAccount: true,
         );
     }
 
