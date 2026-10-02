@@ -1,11 +1,12 @@
 import { useCallback, useEffect, type MutableRefObject } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
+import { meetRoomChatOutbound } from "@/meet-core/src/meet-channel-chat-echo";
+import { buildLocalMeetChatLine } from "@/meet-core/src/meet-chat-line";
 import {
   buildMeetControlMessage,
   encodeMeetKnockerName,
 } from "@/meet-core/src/meet-control-messages";
-import { buildLocalMeetChatLine } from "@/meet-core/src/meet-chat-line";
 import {
   MEET_AD_HOC_RESERVATION_TTL_MS,
   meetActorPrincipal,
@@ -314,23 +315,23 @@ export function useMeetMutations({
         text,
       );
       room.setChatMessages((prev) => [...prev, localLine]);
-      void persisted?.then(
-        (saved) => {
-          if (!saved) return;
-          room.setChatMessages((prev) => prev.filter((line) => line.id !== localLine.id));
-        },
-        () => undefined,
-      );
+      const outbound = await meetRoomChatOutbound(text, persisted);
+      if (outbound.saved) {
+        room.setChatMessages((prev) => prev.filter((line) => line.id !== localLine.id));
+      }
 
-      if (!operationsRef.current) return;
+      const roomCode = room.roomCodeRef.current;
+      if (!operationsRef.current || !roomCode) return;
       try {
         await operationsRef.current.chat({
-          room: room.roomCodeRef.current,
+          room: roomCode,
           from: me,
-          text,
+          text: outbound.text,
           sessionKey: meetRtc.getSessionKey() ?? undefined,
         });
       } catch (e) {
+        // The channel row is already saved. Guests miss this echo; members do not.
+        if (outbound.saved) return;
         room.setChatMessages((prev) => prev.filter((line) => line.id !== localLine.id));
         toast.showError(e instanceof Error ? e.message : meetLabels.couldNotSendMessage);
       }

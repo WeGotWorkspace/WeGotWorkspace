@@ -37,9 +37,10 @@ export function buildMeetChatLineFromPoll(
   body: string,
   selfPeerId: string,
   now = Date.now(),
+  id?: string,
 ): MeetChatLine {
   return {
-    id: createMeetChatLineId(fromPeerId),
+    id: id ?? createMeetChatLineId(fromPeerId),
     fromPeerId,
     fromName,
     body: body.trim(),
@@ -69,6 +70,9 @@ export function buildLocalMeetChatLine(
  * Signaling does not deliver a peer's own chat. `sendChat` drops that local
  * line once the channel send has saved it, so a line still here is a call
  * with no channel, or a channel send that did not save.
+ * A saved channel message is echoed on the room under that message id so
+ * guests can read it. The id is already in the channel collection, so the
+ * echo is not appended a second time. An edit or delete keeps the channel row.
  */
 export function mergeMeetRoomChatIntoChannel(
   channelMessages: ChatMessage[],
