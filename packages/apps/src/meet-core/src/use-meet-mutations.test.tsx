@@ -397,4 +397,54 @@ describe("useMeetMutations sendChat", () => {
     expect(merged.map((row) => row.body)).not.toContain("hello");
     expect(merged).toEqual([deleted]);
   });
+
+  it("posts plain room text when there is no channel save", async () => {
+    const { result, chat, lines } = renderSendChat();
+
+    await result.current.sendChat("hello");
+
+    expect(lines().map((line) => line.body)).toEqual(["hello"]);
+    expect(chat.mock.calls[0]?.[0]).toMatchObject({ text: "hello" });
+  });
+
+  it("posts plain room text when the channel save returns null", async () => {
+    const { result, chat } = renderSendChat();
+
+    await result.current.sendChat("hello", Promise.resolve(null));
+
+    expect(chat.mock.calls[0]?.[0]).toMatchObject({ text: "hello" });
+  });
+
+  it("posts plain room text when the channel save rejects", async () => {
+    const { result, chat } = renderSendChat();
+    const persisted = Promise.reject(new Error("channel save failed"));
+
+    await result.current.sendChat("hello", persisted);
+
+    expect(chat.mock.calls[0]?.[0]).toMatchObject({ text: "hello" });
+  });
+
+  it("posts the saved channel message id on the room copy", async () => {
+    const { result, chat } = renderSendChat();
+
+    await result.current.sendChat("hello", Promise.resolve(savedChannelMessage("hello")));
+
+    expect(chat).toHaveBeenCalledTimes(1);
+    expect(chat.mock.calls[0]?.[0]).toMatchObject({
+      room: "abc123",
+      from: "peer-1",
+      text: "__wgw_meet_channel_chat__:saved-1\nhello",
+    });
+  });
+
+  it("keeps the saved channel message when the room copy fails", async () => {
+    const { result, lines, chat } = renderSendChat();
+    chat.mockRejectedValueOnce(new Error("room down"));
+    toastApi.showError.mockClear();
+
+    await result.current.sendChat("hello", Promise.resolve(savedChannelMessage("hello")));
+
+    expect(lines()).toEqual([]);
+    expect(toastApi.showError).not.toHaveBeenCalled();
+  });
 });
