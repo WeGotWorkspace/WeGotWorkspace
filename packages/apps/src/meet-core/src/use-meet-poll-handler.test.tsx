@@ -4,6 +4,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import type { MeetKnocker } from "@/meet-core/src/meet-poll-roster";
@@ -29,6 +30,7 @@ function createPollHandler(
     setStatus?: ReturnType<typeof vi.fn>;
     setStartedAt?: ReturnType<typeof vi.fn>;
     setKnockers?: ReturnType<typeof vi.fn>;
+    setChatMessages?: ReturnType<typeof vi.fn>;
     updateJoinName?: ReturnType<typeof vi.fn>;
   } = {},
 ) {
@@ -45,6 +47,9 @@ function createPollHandler(
   const updateJoinName = overrides.updateJoinName ?? vi.fn().mockResolvedValue(undefined);
   const retryRoomPeerConnections = vi.fn();
   const setEndedMessage = vi.fn();
+  const setChatMessages = (overrides.setChatMessages ?? vi.fn()) as Dispatch<
+    SetStateAction<MeetChatLine[]>
+  >;
   const { result } = renderHook(() =>
     useMeetPollHandler({
       selfIdRef: { current: "self-1" },
@@ -66,7 +71,7 @@ function createPollHandler(
       setStatus,
       setStartedAt,
       setWaitingForAdmission,
-      setChatMessages: vi.fn(),
+      setChatMessages,
     }),
   );
   return {
@@ -77,6 +82,7 @@ function createPollHandler(
     setStatus,
     setEndedMessage,
     setKnockers,
+    setChatMessages,
     updateJoinName,
     retryRoomPeerConnections,
   };
@@ -245,6 +251,59 @@ describe("useMeetPollHandler admit", () => {
     expect(setWaitingForAdmission).toHaveBeenCalledWith(false);
     expect(setStatus).toHaveBeenCalledWith("in-call");
     expect(retryRoomPeerConnections).toHaveBeenCalledTimes(1);
+  });
+});
+
+function appliedChatLines(setChatMessages: ReturnType<typeof vi.fn>): MeetChatLine[] {
+  const update = setChatMessages.mock.calls.at(-1)?.[0] as
+    ((prev: MeetChatLine[]) => MeetChatLine[]) | undefined;
+  return update ? update([]) : [];
+}
+
+describe("useMeetPollHandler chat", () => {
+  it("keeps a guest room line under a new id", async () => {
+    const setChatMessages = vi.fn();
+    const { handlePoll } = createPollHandler({ setChatMessages });
+
+    await handlePoll({
+      peers: [{ id: "peer-2", name: "Ada" }],
+      messages: [{ from: "peer-2", type: "chat", payload: { text: "from guest" } }],
+    });
+
+    const [line] = appliedChatLines(setChatMessages);
+    expect(line).toMatchObject({
+      fromPeerId: "peer-2",
+      fromName: "Ada",
+      body: "from guest",
+      isSelf: false,
+    });
+    expect(line?.id).toMatch(/^peer-2-/);
+  });
+
+  it("stores a channel echo under the saved message id", async () => {
+    const setChatMessages = vi.fn();
+    const { handlePoll } = createPollHandler({ setChatMessages });
+
+    await handlePoll({
+      peers: [{ id: "peer-2", name: "Ada" }],
+      messages: [
+        {
+          from: "peer-2",
+          type: "chat",
+          payload: { text: "__wgw_meet_channel_chat__:saved-1\nhello" },
+        },
+      ],
+    });
+
+    expect(appliedChatLines(setChatMessages)).toEqual([
+      expect.objectContaining({
+        id: "saved-1",
+        fromPeerId: "peer-2",
+        fromName: "Ada",
+        body: "hello",
+        isSelf: false,
+      }),
+    ]);
   });
 });
 

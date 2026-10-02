@@ -4,7 +4,9 @@ import {
   buildMeetChatLineFromPoll,
   meetChatLineToChannelMessage,
   mergeMeetRoomChatIntoChannel,
+  type MeetChatLine,
 } from "@/meet-core/src/meet-chat-line";
+import type { ChatMessage } from "@/meet-core/src/meet-types";
 
 describe("meet chat line", () => {
   it("builds poll chat lines with self detection", () => {
@@ -76,5 +78,35 @@ describe("meet chat line", () => {
     );
     const repeated = mergeMeetRoomChatIntoChannel([alreadyLanded], [selfLine], "chat-test");
     expect(repeated.map((row) => row.body)).toEqual(["echo", "echo"]);
+  });
+
+  it("drops a room line that carries the saved channel message id", () => {
+    const saved: ChatMessage = {
+      id: "saved-1",
+      channelId: "chat-test",
+      authorId: "user-1",
+      authorName: "Ada",
+      body: "hello",
+      createdAt: 1,
+      reactions: [],
+      mentions: [],
+      previews: [],
+    };
+    const echo: MeetChatLine = {
+      id: "saved-1",
+      fromPeerId: "peer-2",
+      fromName: "Ada",
+      body: "hello",
+      ts: 2,
+      isSelf: false,
+    };
+    const edited = { ...saved, body: "hello world", editedAt: 3 };
+    const deleted = { ...saved, body: "", deletedAt: 4, previews: [], mentions: [] };
+
+    expect(mergeMeetRoomChatIntoChannel([saved], [echo], "chat-test")).toEqual([saved]);
+    expect(
+      mergeMeetRoomChatIntoChannel([edited], [echo], "chat-test").map((row) => row.body),
+    ).toEqual(["hello world"]);
+    expect(mergeMeetRoomChatIntoChannel([deleted], [echo], "chat-test")).toEqual([deleted]);
   });
 });
