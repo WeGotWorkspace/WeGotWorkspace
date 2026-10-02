@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
-import { flushDocsOutbox } from "@/lib/offline/docs/docs-outbox-flush";
+import {
+  flushDocsOutbox,
+  removeOutboxMutationsForDocsPath,
+} from "@/lib/offline/docs/docs-outbox-flush";
 
 const renameItem = vi.fn();
 const uploadFiles = vi.fn();
@@ -48,5 +51,39 @@ describe("flushDocsOutbox", () => {
     expect(result.flushed).toBe(0);
     expect(result.failed).toBe(1);
     expect(result.stateMismatches).toEqual(["users/alice/doc.md"]);
+  });
+
+  it("reports when removing a path drops a queued trash", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "trash-1",
+      domain: DOCS_DOMAIN,
+      op: "trash",
+      payload: JSON.stringify({
+        op: "trash",
+        from: "/users/alice/B.md",
+        destination: "/users/alice/.Trash",
+        to: "B.md",
+      }),
+    });
+
+    await expect(removeOutboxMutationsForDocsPath(username, "/users/alice/B.md")).resolves.toBe(
+      true,
+    );
+    await expect(removeOutboxMutationsForDocsPath(username, "/users/alice/B.md")).resolves.toBe(
+      false,
+    );
+  });
+
+  it("does not report a trash when the removed op is not trash", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "star-1",
+      domain: DOCS_DOMAIN,
+      op: "star",
+      payload: JSON.stringify({ op: "star", path: "/users/alice/B.md", starred: true }),
+    });
+
+    await expect(removeOutboxMutationsForDocsPath(username, "/users/alice/B.md")).resolves.toBe(
+      false,
+    );
   });
 });

@@ -7,6 +7,7 @@ namespace App\Services\Notes\Conversion;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarObject;
+use App\Services\Notes\NoteTag;
 use App\Services\VObject\ICalendarDateTime;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -22,7 +23,7 @@ final class NoteJournalConverter
     /**
      * @param  array<string, mixed>  $note
      */
-    public function toIcs(array $note): string
+    public function toIcs(array $note, bool $allowStoredTags = false): string
     {
         $body = is_string($note['body'] ?? null) ? $note['body'] : '';
         $this->assertBodySize($body);
@@ -42,9 +43,11 @@ final class NoteJournalConverter
         if ($body !== '') {
             $journal->DESCRIPTION = $body;
         }
-        $categories = $note['categories'] ?? [];
-        if (is_array($categories) && $categories !== []) {
-            $journal->CATEGORIES = array_values(array_map('strval', $categories));
+        $categories = $allowStoredTags
+            ? NoteTag::normalizeStored($note['categories'] ?? [])
+            : NoteTag::normalizeList($note['categories'] ?? []);
+        if ($categories !== []) {
+            $journal->CATEGORIES = $categories;
         }
         $status = $note['status'] ?? null;
         if ($status === 'CANCELLED' || $status === 'FINAL') {
@@ -102,9 +105,10 @@ final class NoteJournalConverter
             }
         }
         if (array_key_exists('categories', $patch) && is_array($patch['categories'])) {
+            $categories = NoteTag::mergeForUpdate($patch['categories'], $this->categoryParts($journal));
             unset($journal->CATEGORIES);
-            if ($patch['categories'] !== []) {
-                $journal->CATEGORIES = array_values(array_map('strval', $patch['categories']));
+            if ($categories !== []) {
+                $journal->CATEGORIES = $categories;
             }
         }
         if (array_key_exists('status', $patch)) {
@@ -179,12 +183,7 @@ final class NoteJournalConverter
         $uid = isset($journal->UID) ? (string) $journal->UID : $fallbackUid;
         $title = isset($journal->SUMMARY) ? (string) $journal->SUMMARY : null;
         $body = isset($journal->DESCRIPTION) ? (string) $journal->DESCRIPTION : '';
-        $categories = [];
-        if (isset($journal->CATEGORIES)) {
-            foreach ($journal->CATEGORIES as $category) {
-                $categories[] = (string) $category;
-            }
-        }
+        $categories = NoteTag::normalizeStored($this->categoryParts($journal));
         $status = isset($journal->STATUS) ? strtoupper((string) $journal->STATUS) : null;
         if ($status !== 'CANCELLED' && $status !== 'FINAL') {
             $status = null;
@@ -203,6 +202,47 @@ final class NoteJournalConverter
         }
 
         return $note;
+    }
+
+    /**
+     * Tags already stored on a journal, lowercased, including legacy values.
+     *
+     * @return list<string>
+     */
+    public function storedCategories(string $ics): array
+    {
+        $categories = $this->fromIcs($ics, '')['categories'] ?? [];
+        if (! is_array($categories)) {
+            return [];
+        }
+        $out = [];
+        foreach ($categories as $tag) {
+            if (is_string($tag)) {
+                $out[] = $tag;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function categoryParts(VJournal $journal): array
+    {
+        if (! isset($journal->CATEGORIES)) {
+            return [];
+        }
+        $parts = [];
+        foreach ($journal->CATEGORIES as $category) {
+            foreach ($category->getParts() as $part) {
+                if (is_string($part)) {
+                    $parts[] = $part;
+                }
+            }
+        }
+
+        return $parts;
     }
 
     /**

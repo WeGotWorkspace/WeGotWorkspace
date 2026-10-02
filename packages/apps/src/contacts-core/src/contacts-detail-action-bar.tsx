@@ -104,6 +104,7 @@ export function ContactsDetailActionBar({
             icon: <Pencil className="size-4" />,
             active: editMode,
             showLabel: true,
+            iconOnlyOnNarrow: true,
           },
         ]
       : []),
@@ -113,6 +114,7 @@ export function ContactsDetailActionBar({
       onClick: onDownload,
       icon: <Download className="size-4" />,
       disabled: editMode,
+      collapseOnNarrow: true,
     },
     {
       id: "delete",
@@ -120,6 +122,7 @@ export function ContactsDetailActionBar({
       onClick: onDelete,
       icon: <Trash2 className="size-4" />,
       severity: "danger" as const,
+      collapseOnNarrow: true,
     },
   ];
 

@@ -75,6 +75,80 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         $this->assertSame('#ec4899', $row['color']);
     }
 
+    public function test_create_and_patch_reject_tags_outside_a_z_and_hyphen(): void
+    {
+        $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Tagged',
+            'categories' => ['plan,ning'],
+        ])->assertStatus(400)->assertJsonPath('code', 'bad_request');
+
+        $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Tagged',
+            'categories' => ['a,b'],
+        ])->assertStatus(400)->assertJsonPath('code', 'bad_request');
+
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Tagged',
+            'categories' => ['Focus', 'plan-ning'],
+        ])->assertCreated();
+        $created->assertJsonPath('categories', ['focus', 'plan-ning']);
+
+        $id = (string) $created->json('id');
+        $etag = (string) ($created->headers->get('ETag') ?? $created->json('etag'));
+
+        $this->asBob()->withHeaders(['If-Match' => $etag])
+            ->patchJson('/api/v1/notes/items/'.$id, [
+                'categories' => ['focus', 'a,b'],
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('code', 'bad_request');
+
+        $this->asBob()->getJson('/api/v1/notes/items/'.$id)
+            ->assertOk()
+            ->assertJsonPath('categories', ['focus', 'plan-ning']);
+    }
+
+    public function test_legacy_categories_stay_visible_and_survive_only_when_the_patch_sends_them(): void
+    {
+        $uid = 'legacy-tags-'.bin2hex(random_bytes(4));
+        $this->seedJournalViaPdo(
+            $uid.'.ics',
+            $this->journalIcs($uid, 'Legacy', 'Body', 'CATEGORIES:v2,focus'),
+            $uid,
+        );
+
+        $note = $this->asBob()->getJson('/api/v1/notes/items/'.$uid)->assertOk();
+        $note->assertJsonPath('categories', ['v2', 'focus']);
+        $etag = (string) ($note->headers->get('ETag') ?? $note->json('etag'));
+
+        $this->asBob()->withHeaders(['If-Match' => $etag])
+            ->patchJson('/api/v1/notes/items/'.$uid, [
+                'categories' => ['focus', 'new-tag'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('categories', ['focus', 'new-tag']);
+
+        $keptUid = 'legacy-kept-'.bin2hex(random_bytes(4));
+        $this->seedJournalViaPdo(
+            $keptUid.'.ics',
+            $this->journalIcs($keptUid, 'Legacy kept', 'Body', 'CATEGORIES:v2,focus'),
+            $keptUid,
+        );
+        $kept = $this->asBob()->getJson('/api/v1/notes/items/'.$keptUid)->assertOk();
+        $kept->assertJsonPath('categories', ['v2', 'focus']);
+        $keptEtag = (string) ($kept->headers->get('ETag') ?? $kept->json('etag'));
+
+        $this->asBob()->withHeaders(['If-Match' => $keptEtag])
+            ->patchJson('/api/v1/notes/items/'.$keptUid, [
+                'categories' => ['v2', 'focus', 'new-tag'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('categories', ['v2', 'focus', 'new-tag']);
+    }
+
     public function test_create_and_get_note_by_uid_when_uri_differs(): void
     {
         $uid = 'foreign-uid-'.bin2hex(random_bytes(4));
@@ -445,8 +519,13 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         CalendarObject::query()->where('calendarid', (int) $row->calendarid)->where('uri', $uri)->update(['uid' => $uid]);
     }
 
-    private function journalIcs(string $uid, string $title, string $body): string
+    private function journalIcs(string $uid, string $title, string $body, ?string $extra = null): string
     {
-        return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//WGW//Notes//EN\r\nBEGIN:VJOURNAL\r\nUID:{$uid}\r\nDTSTAMP:20260828T120000Z\r\nSUMMARY:{$title}\r\nDESCRIPTION:{$body}\r\nEND:VJOURNAL\r\nEND:VCALENDAR\r\n";
+        $lines = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//WGW//Notes//EN\r\nBEGIN:VJOURNAL\r\nUID:{$uid}\r\nDTSTAMP:20260828T120000Z\r\nSUMMARY:{$title}\r\nDESCRIPTION:{$body}\r\n";
+        if ($extra !== null && $extra !== '') {
+            $lines .= $extra."\r\n";
+        }
+
+        return $lines."END:VJOURNAL\r\nEND:VCALENDAR\r\n";
     }
 }

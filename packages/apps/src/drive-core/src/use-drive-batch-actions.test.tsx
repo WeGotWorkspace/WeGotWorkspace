@@ -3,15 +3,16 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { showToast, showErrorToast } = vi.hoisted(() => ({
+const { showToast, showErrorToast, dismissToast } = vi.hoisted(() => ({
   showToast: vi.fn(() => "toast-1"),
   showErrorToast: vi.fn(() => "toast-err"),
+  dismissToast: vi.fn(),
 }));
 
 vi.mock("@/hooks/use-app-toast", () => ({
   useAppToast: () => ({
     show: showToast,
-    dismiss: vi.fn(),
+    dismiss: dismissToast,
     showSuccess: vi.fn(),
     showError: showErrorToast,
   }),
@@ -19,7 +20,7 @@ vi.mock("@/hooks/use-app-toast", () => ({
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-types";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
-import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
+import { useQueuedMutation, type DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 
 const USER = "alice";
@@ -100,6 +101,7 @@ function renderActions(options?: {
   starred?: Record<string, boolean>;
   selectedIds?: string[];
   files?: DriveFile[];
+  liveQueue?: boolean;
 }) {
   const viewType = options?.viewType ?? "folder";
   const view: ViewKey =
@@ -107,6 +109,7 @@ function renderActions(options?: {
   const initialSelected = options?.selectedIds ?? [NOTES_ID];
   const initialFiles = options?.files ?? [driveFile()];
   return renderHook(() => {
+    const live = useQueuedMutation({ onMutationError: () => undefined });
     const [files, setFiles] = useState<DriveFile[]>(initialFiles);
     const [selectedIds, setSelectedIds] = useState(initialSelected);
     const [selectionMode, setSelectionMode] = useState(initialSelected.length > 0);
@@ -128,7 +131,7 @@ function renderActions(options?: {
       currentUsername: USER,
       groupRootNames: new Set(),
       operations: options?.operations,
-      queueMutation,
+      queueMutation: options?.liveQueue ? live.queueMutation : queueMutation,
       beginOptimisticUpdate: ({ ids, updater }) => {
         const snapshot = files.filter((file) => ids.includes(file.id));
         setFiles((prev) => prev.map((file) => (ids.includes(file.id) ? updater(file) : file)));
@@ -145,7 +148,7 @@ function renderActions(options?: {
       view,
       viewType,
     });
-    return { files, selectedIds, selectionMode, starred, ...actions };
+    return { files, selectedIds, selectionMode, starred, undoLatest: live.undoLatest, ...actions };
   });
 }
 
@@ -184,6 +187,105 @@ describe("useDriveBatchActions", () => {
     expect(operations.renameItem).not.toHaveBeenCalled();
   });
 
+  it("restores a trash rename that resolves after undo", async () => {
+    const operations = createOperations();
+    let releaseRename: () => void = () => undefined;
+    const renameGate = new Promise<void>((resolve) => {
+      releaseRename = resolve;
+    });
+    let forwardRename = true;
+    vi.mocked(operations.renameItem).mockImplementation(async () => {
+      if (forwardRename) {
+        forwardRename = false;
+        await renameGate;
+      }
+      return EMPTY_DRIVE_UI;
+    });
+    const { result } = renderActions({ operations, liveQueue: true });
+
+    act(() => result.current.moveToTrash([NOTES_ID]));
+    await vi.waitFor(() => {
+      expect(operations.renameItem).toHaveBeenCalledTimes(1);
+    });
+    expect(operations.renameItem).toHaveBeenCalledWith(
+      {
+        destination: "/users/alice/.Trash",
+        from: "/users/alice/notes.md",
+        to: "notes.md",
+      },
+      { refreshState: false },
+    );
+
+    act(() => {
+      result.current.undoLatest();
+    });
+    releaseRename();
+
+    await vi.waitFor(() => {
+      expect(operations.renameItem).toHaveBeenCalledTimes(2);
+    });
+    expect(operations.renameItem).toHaveBeenLastCalledWith({
+      destination: "/users/alice",
+      from: "/users/alice/.Trash/notes.md",
+      to: "notes.md",
+    });
+  });
+
+  it("does not rename the next file when undo arrives during the first trash rename", async () => {
+    const operations = createOperations();
+    let releaseRename: () => void = () => undefined;
+    const renameGate = new Promise<void>((resolve) => {
+      releaseRename = resolve;
+    });
+    let forwardRename = true;
+    vi.mocked(operations.renameItem).mockImplementation(async () => {
+      if (forwardRename) {
+        forwardRename = false;
+        await renameGate;
+      }
+      return EMPTY_DRIVE_UI;
+    });
+    const { result } = renderActions({
+      operations,
+      liveQueue: true,
+      files: [driveFile(), driveFile({ id: "other", title: "other.md" })],
+      selectedIds: [NOTES_ID, "other"],
+    });
+
+    act(() => result.current.moveToTrash([NOTES_ID, "other"]));
+    await vi.waitFor(() => {
+      expect(operations.renameItem).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      result.current.undoLatest();
+    });
+    releaseRename();
+
+    await vi.waitFor(() => {
+      expect(vi.mocked(operations.renameItem).mock.calls.map((call) => call[0])).toEqual([
+        {
+          destination: "/users/alice/.Trash",
+          from: "/users/alice/notes.md",
+          to: "notes.md",
+        },
+        {
+          destination: "/users/alice",
+          from: "/users/alice/.Trash/notes.md",
+          to: "notes.md",
+        },
+      ]);
+    });
+    expect(operations.renameItem).toHaveBeenCalledTimes(2);
+    expect(
+      vi
+        .mocked(operations.renameItem)
+        .mock.calls.some(
+          (call) => call[0].from.includes("other") || call[0].to.startsWith("other"),
+        ),
+    ).toBe(false);
+  });
+
   it("renames into Trash on execute and renames back when undo follows a finished move", async () => {
     const operations = createOperations();
     const { result } = renderActions({ operations });
@@ -203,7 +305,7 @@ describe("useDriveBatchActions", () => {
         from: "/users/alice/notes.md",
         to: "notes.md",
       },
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      { refreshState: false },
     );
     expect(operations.changeDir).toHaveBeenCalledWith(
       "/users/alice",
@@ -242,7 +344,7 @@ describe("useDriveBatchActions", () => {
         from: "/users/alice/notes.md",
         to: "notes 2.md",
       },
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      { refreshState: false },
     );
 
     await act(async () => {
@@ -426,7 +528,7 @@ describe("useDriveBatchActions", () => {
         from: "/users/alice/notes.md",
         to: "notes.md",
       },
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      { refreshState: false },
     );
 
     await act(async () => {

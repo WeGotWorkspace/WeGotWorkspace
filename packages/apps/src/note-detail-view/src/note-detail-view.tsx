@@ -35,6 +35,10 @@ export type NoteDetailViewProps = {
   availableTags?: string[];
   /** Confirm a tag from the inline add field (existing or newly typed). */
   onTagAdd?: (label: string) => void;
+  /** When set, a newly typed tag must pass before it is added. */
+  acceptTag?: (label: string) => boolean;
+  /** Visible explanation when {@link acceptTag} rejects the typed value. */
+  rejectHint?: string;
   onTagRemove?: (label: string) => void;
   /**
    * When `false`, omit the tag group entirely (personal share recipients).
@@ -73,6 +77,8 @@ export function NoteDetailView({
   tags,
   availableTags,
   onTagAdd,
+  acceptTag,
+  rejectHint,
   onTagRemove,
   showTags = true,
   title = "",
@@ -135,6 +141,8 @@ export function NoteDetailView({
           tags={tags}
           readonly={tagsReadOnly}
           suggestions={availableTags}
+          acceptTag={acceptTag}
+          rejectHint={rejectHint}
           onAddTag={tagsReadOnly ? undefined : onTagAdd}
           onRemoveTag={tagsReadOnly ? undefined : onTagRemove}
         />

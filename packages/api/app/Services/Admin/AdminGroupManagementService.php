@@ -12,9 +12,9 @@ use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Chat\ChatGroupDefaultChannelProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
 use App\Services\Contacts\AddressBookShareInvites;
+use App\Services\Drive\GroupFilesHomeProvisioner;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Settings\GroupDirectoryService;
-use App\Support\AppPaths;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -29,7 +29,7 @@ final class AdminGroupManagementService
         private ChatGroupDefaultChannelProvisioner $chatDefaults,
         private AddressBookProvisioner $addressBooks,
         private AddressBookShareInvites $addressBookShares,
-        private AppPaths $paths,
+        private GroupFilesHomeProvisioner $groupFiles,
     ) {}
 
     public function create(string $slug, string $displayName): string
@@ -41,6 +41,7 @@ final class AdminGroupManagementService
             throw new \InvalidArgumentException('That group already exists.');
         }
 
+        $this->groupFiles->ensureForSlug($slug);
         $this->installerSeeder->ensureGroupsContainerPrincipal();
 
         Principal::query()->create([
@@ -105,7 +106,7 @@ final class AdminGroupManagementService
         $principal->delete();
 
         $slug = basename(str_replace('\\', '/', $uri));
-        $groupFiles = rtrim($this->paths->dataDir(), '/').'/files/groups/'.$slug;
+        $groupFiles = $this->groupFiles->pathForSlug($slug);
         if (is_dir($groupFiles)) {
             $this->deleteDirectory($groupFiles);
         }

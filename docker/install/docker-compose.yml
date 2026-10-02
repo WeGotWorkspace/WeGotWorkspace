@@ -80,7 +80,10 @@ services:
       retries: 12
       start_period: 40s
 
+  # Apache serves as www-data. A root scheduler creates storage/framework/cache/data
+  # mode 755, and the install action then returns HTTP 500 on Cache::put.
   scheduler:
+    user: "www-data:www-data"
     build:
       context: ../..
       dockerfile: docker/install/Dockerfile

@@ -66,7 +66,9 @@ export function buildLocalMeetChatLine(
 
 /**
  * Host channel collection + guest room-poll lines share one MeetChatColumn.
- * Skip local echoes (`isSelf`) — those already landed via `sendMessage`.
+ * Signaling does not deliver a peer's own chat. `sendChat` drops that local
+ * line once the channel send has saved it, so a line still here is a call
+ * with no channel, or a channel send that did not save.
  */
 export function mergeMeetRoomChatIntoChannel(
   channelMessages: ChatMessage[],
@@ -77,7 +79,6 @@ export function mergeMeetRoomChatIntoChannel(
   const ids = new Set(channelMessages.map((message) => message.id));
   const merged = [...channelMessages];
   for (const line of roomLines) {
-    if (line.isSelf) continue;
     const message = meetChatLineToChannelMessage(line, channelId);
     if (ids.has(message.id)) continue;
     ids.add(message.id);

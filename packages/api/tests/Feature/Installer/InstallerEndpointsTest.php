@@ -468,7 +468,7 @@ final class InstallerEndpointsTest extends TestCase
             'payload' => ['db_driver' => 'mysql'],
         ])->assertOk()->assertJsonPath('state.step', 'database');
 
-        // Env-backed payload mirrors WGW_INSTALL_DB_* (password still required on the wire).
+        // Env-backed payload mirrors WGW_INSTALL_DB_*. A typed password still wins.
         $this->postJson('/api/v1/installer/action', [
             'action' => 'database_next',
             'payload' => $mysql,
@@ -515,6 +515,84 @@ final class InstallerEndpointsTest extends TestCase
         $this->assertSame('mysqlenv@example.test', $stmt->fetchColumn());
         $stmt = $db->query('SELECT COUNT(*) FROM users');
         $this->assertSame('1', (string) $stmt->fetchColumn());
+    }
+
+    public function test_database_next_accepts_omitted_password_when_mysql_comes_from_env(): void
+    {
+        if (! InstallerMysqlTestDatabase::isAvailable()) {
+            $this->markTestSkipped(
+                'MySQL not available — run in api-mysql CI or set WGW_TEST_MYSQL_* against a local server.',
+            );
+        }
+
+        $this->mysqlInstallDatabase = InstallerMysqlTestDatabase::createIsolated();
+        $mysql = InstallerMysqlTestDatabase::installerPayload($this->mysqlInstallDatabase);
+
+        $this->setInstallConfig([
+            'db_driver' => 'mysql',
+            'db_host' => $mysql['mysql_host'],
+            'db_port' => (string) $mysql['mysql_port'],
+            'db_database' => $mysql['mysql_db'],
+            'db_user' => $mysql['mysql_user'],
+            'db_password' => $mysql['mysql_password'],
+        ]);
+
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'welcome_next',
+            'payload' => [],
+        ])->assertOk()->assertJsonPath('state.step', 'requirements');
+
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'requirements_check',
+            'payload' => ['db_driver' => 'mysql'],
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $advanced = $this->postJson('/api/v1/installer/action', [
+            'action' => 'database_next',
+            'payload' => [
+                'db_driver' => 'mysql',
+                'sqlite_path' => 'wgw-content/db.sqlite',
+                'mysql_host' => $mysql['mysql_host'],
+                'mysql_port' => $mysql['mysql_port'],
+                'mysql_db' => $mysql['mysql_db'],
+                'mysql_user' => $mysql['mysql_user'],
+                'mysql_password' => '',
+            ],
+        ]);
+
+        $advanced->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('state.step', 'site');
+        $this->assertArrayNotHasKey('mysql_password', (array) $advanced->json('state.db'));
+
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'site_next',
+            'payload' => $this->sitePayload(),
+        ])->assertOk()->assertJsonPath('state.step', 'account');
+
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'install',
+            'payload' => $this->installPayload([
+                'username' => 'omittedpw',
+                'email' => 'omittedpw@example.test',
+            ]),
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $admin = [
+            'host' => getenv('WGW_TEST_MYSQL_HOST') ?: '127.0.0.1',
+            'port' => (int) (getenv('WGW_TEST_MYSQL_PORT') ?: 3306),
+            'user' => getenv('WGW_TEST_MYSQL_USERNAME') ?: 'root',
+            'password' => getenv('WGW_TEST_MYSQL_PASSWORD') ?: '',
+        ];
+        $dsn = sprintf(
+            'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
+            $admin['host'],
+            $admin['port'],
+            $this->mysqlInstallDatabase,
+        );
+        $db = new \PDO($dsn, $admin['user'], $admin['password'], wgw_mysql_pdo_options());
+        $stmt = $db->query('SELECT username FROM users');
+        $this->assertSame('omittedpw', $stmt->fetchColumn());
     }
 
     /**

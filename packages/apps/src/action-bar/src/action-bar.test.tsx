@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Archive, Forward, Reply, Star, Trash2 } from "lucide-react";
@@ -73,7 +73,9 @@ describe("ActionBar", () => {
     expect(within(row as HTMLElement).getByRole("button", { name: "Star" })).toBeTruthy();
     expect(within(row as HTMLElement).queryByRole("button", { name: "Archive" })).toBeNull();
 
-    expect(container.querySelector(".action-bar__menu")).toBeTruthy();
+    expect(container.querySelectorAll(".action-bar__menu")).toHaveLength(1);
+    expect(container.querySelector(".action-bar__menu--narrow")).toBeNull();
+    expect(container.querySelector(".action-bar__menu--wide")).toBeNull();
     expect(screen.getByRole("button", { name: "More actions" })).toBeTruthy();
   });
 
@@ -94,6 +96,24 @@ describe("ActionBar", () => {
     const row = container.querySelector(".action-bar__row");
     expect(row).toBeInstanceOf(HTMLElement);
     expect(within(row as HTMLElement).getAllByRole("button")).toHaveLength(4);
+  });
+
+  it("keeps collapseOnNarrow actions inline when collapseActions is false", () => {
+    const { container } = renderBar(
+      <ActionBar
+        collapseActions={false}
+        rightActions={[
+          { id: "a", label: "A", icon: <Reply />, onClick: vi.fn(), collapseOnNarrow: true },
+          { id: "b", label: "B", icon: <Forward />, onClick: vi.fn(), collapseOnNarrow: true },
+        ]}
+      />,
+    );
+
+    expect(container.querySelector(".action-bar__menu")).toBeNull();
+    expect(container.querySelector(".action-bar__action--collapse-narrow")).toBeNull();
+    expect(container.querySelector(".action-bar__row--collapse-narrow")).toBeNull();
+    expect(screen.getByRole("button", { name: "A" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "B" })).toBeTruthy();
   });
 
   it("applies severity-danger wash to inline destructive IconButtons", () => {
@@ -143,4 +163,130 @@ describe("ActionBar", () => {
     ).toEqual(["Edit", "Download", "Delete"]);
     expect(screen.getByTestId("leading-slot")).toBeTruthy();
   });
+
+  it("lists collapseOnNarrow actions in a small-screen overflow menu", () => {
+    const onDownload = vi.fn();
+    const onDelete = vi.fn();
+    const { container } = renderBar(
+      <ActionBar
+        rightLeading={<span data-testid="leading-slot">Book</span>}
+        rightLeadingPlacement="after-first"
+        rightActions={[
+          {
+            id: "edit",
+            label: "Edit",
+            icon: <Reply />,
+            onClick: vi.fn(),
+            showLabel: true,
+            iconOnlyOnNarrow: true,
+          },
+          {
+            id: "download",
+            label: "Download",
+            icon: <Forward />,
+            onClick: onDownload,
+            collapseOnNarrow: true,
+          },
+          {
+            id: "delete",
+            label: "Delete",
+            icon: <Trash2 />,
+            onClick: onDelete,
+            severity: "danger",
+            collapseOnNarrow: true,
+          },
+        ]}
+      />,
+    );
+
+    const download = screen.getByRole("button", { name: "Download" });
+    const deleteButton = screen.getByRole("button", { name: "Delete" });
+    expect(download.className).toContain("action-bar__action--collapse-narrow");
+    expect(deleteButton.className).toContain("action-bar__action--collapse-narrow");
+    const edit = screen.getByRole("button", { name: "Edit" });
+    expect(edit.getAttribute("aria-label")).toBe("Edit");
+    expect(edit.className).toContain("action-bar__action--icon-narrow");
+    expect(edit.className).not.toContain("action-bar__action--collapse-narrow");
+    expect(edit.querySelector(".button__label")?.textContent).toBe("Edit");
+
+    const narrowMenu = container.querySelector(".action-bar__menu--narrow");
+    expect(narrowMenu).toBeTruthy();
+    const restRow = container.querySelector(".action-bar__row--collapse-narrow");
+    expect(restRow).toBeTruthy();
+    expect(within(restRow as HTMLElement).getByRole("button", { name: "Download" })).toBe(download);
+
+    const trigger = narrowMenu!.querySelector("button") as HTMLButtonElement;
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    const menu = screen.getByRole("menu", { name: "More actions" });
+    const downloadItem = within(menu).getByRole("button", { name: "Download" });
+    const deleteItem = within(menu).getByRole("button", { name: "Delete" });
+    expect(deleteItem.className).toContain("menu-item--severity-danger");
+    fireEvent.click(downloadItem);
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    fireEvent.click(
+      within(screen.getByRole("menu", { name: "More actions" })).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+    expect(onDownload).toHaveBeenCalledOnce();
+    expect(onDelete).toHaveBeenCalledOnce();
+  });
+
+  it("splits count overflow and collapseOnNarrow into wide and narrow menus", () => {
+    const { container } = renderBar(
+      <ActionBar
+        rightActions={[
+          { id: "reply", label: "Reply", icon: <Reply />, onClick: vi.fn() },
+          {
+            id: "forward",
+            label: "Forward",
+            icon: <Forward />,
+            onClick: vi.fn(),
+            collapseOnNarrow: true,
+          },
+          { id: "star", label: "Star", icon: <Star />, onClick: vi.fn() },
+          { id: "archive", label: "Archive", icon: <Archive />, onClick: vi.fn() },
+          { id: "trash", label: "Trash", icon: <Trash2 />, onClick: vi.fn() },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Forward" }).className).toContain(
+      "action-bar__action--collapse-narrow",
+    );
+    expect(screen.getByRole("button", { name: "Reply" }).className).not.toContain(
+      "action-bar__action--collapse-narrow",
+    );
+
+    const wide = container.querySelector(".action-bar__menu--wide");
+    const narrow = container.querySelector(".action-bar__menu--narrow");
+    expect(wide).toBeTruthy();
+    expect(narrow).toBeTruthy();
+    expect(wide!.className).not.toContain("action-bar__menu--narrow");
+    expect(narrow!.className).not.toContain("action-bar__menu--wide");
+
+    const wideTrigger = wide!.querySelector("button") as HTMLButtonElement;
+    fireEvent.pointerDown(wideTrigger);
+    fireEvent.click(wideTrigger);
+    const wideMenu = screen.getByRole("menu", { name: "More actions" });
+    expect(menuItemNames(wideMenu)).toEqual(["Archive", "Trash"]);
+    fireEvent.keyDown(wideMenu, { key: "Escape" });
+
+    const narrowTrigger = narrow!.querySelector("button") as HTMLButtonElement;
+    fireEvent.pointerDown(narrowTrigger);
+    fireEvent.click(narrowTrigger);
+    expect(menuItemNames(screen.getByRole("menu", { name: "More actions" }))).toEqual([
+      "Forward",
+      "Archive",
+      "Trash",
+    ]);
+  });
 });
+
+function menuItemNames(menu: HTMLElement): string[] {
+  return within(menu)
+    .getAllByRole("button")
+    .map((button) => button.getAttribute("aria-label") ?? button.textContent?.trim() ?? "");
+}

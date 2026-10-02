@@ -127,17 +127,22 @@ export function docsOutboxApiPath(row: OfflineOutboxRow): string | null {
   return normalizeDocsAvailabilityPath(payload.from);
 }
 
-/** Drop queued docs mutations for a path (e.g. cancel a pending create before trash). */
+/**
+ * Drop queued docs mutations for a path (e.g. cancel a pending create before trash).
+ * Returns whether a queued trash op was among them. That trash never reached the server.
+ */
 export async function removeOutboxMutationsForDocsPath(
   username: string,
   apiPath: string,
-): Promise<void> {
+): Promise<boolean> {
   const normalized = normalizeDocsAvailabilityPath(apiPath);
   const rows = await listOutboxMutationsForDomain(username, DOCS_DOMAIN);
+  let removedTrash = false;
   for (const row of rows) {
     const path = docsOutboxApiPath(row);
-    if (path === normalized) {
-      await removeOutboxMutation(username, row.id);
-    }
+    if (path !== normalized) continue;
+    if (parsePayload(row)?.op === "trash") removedTrash = true;
+    await removeOutboxMutation(username, row.id);
   }
+  return removedTrash;
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Services\Notes\NoteTag;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class NoteCreateRequest extends FormRequest
@@ -21,7 +22,7 @@ final class NoteCreateRequest extends FormRequest
             'title' => ['sometimes', 'nullable', 'string', 'max:1024'],
             'body' => ['sometimes', 'nullable', 'string'],
             'categories' => ['sometimes', 'array'],
-            'categories.*' => ['string', 'max:255'],
+            'categories.*' => ['string', 'max:255', 'regex:'.NoteTag::INPUT_PATTERN],
             'status' => ['sometimes', 'nullable', 'in:FINAL,CANCELLED'],
             // Accepted for back-compat only — NoteRepository always mints (Decision 7).
             'uid' => ['sometimes', 'string', 'max:200'],

@@ -103,7 +103,7 @@ final class NotesFileMigrator
                     'body' => $body,
                     'categories' => $tags,
                     'status' => $parsed['archived'] ? 'CANCELLED' : null,
-                ]);
+                ], allowStoredTags: true);
                 $pathToUid[$virtualPath] = is_string($created['id'] ?? null)
                     ? (string) $created['id']
                     : $uid;

@@ -40,6 +40,7 @@ import { useNotesController } from "@/notes-core/src/use-notes-controller";
 import {
   noteAllowsTagAssignment,
   noteListTitle,
+  isValidNewTag,
   noteShowsTags,
 } from "@/notes-core/src/notes-note-utils";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
@@ -206,6 +207,7 @@ export function NotesWorkspace({
     toggleArchive,
     openDeleteConfirm,
     toggleNoteTag,
+    addNoteTag,
     applyLocalBodyMarkdown,
     updateNote,
     groups,
@@ -657,10 +659,12 @@ export function NotesWorkspace({
                   noteReadOnly ? undefined : (title) => updateNote(active.id, { title })
                 }
                 tags={active.tags}
-                availableTags={tags}
+                availableTags={tags.filter(isValidNewTag)}
+                acceptTag={isValidNewTag}
+                rejectHint={L.tagCharsetHint}
                 showTags={activeShowsTags}
                 onTagAdd={
-                  activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined
+                  activeAllowsTagAssignment ? (tag) => addNoteTag(active.id, tag) : undefined
                 }
                 onTagRemove={
                   activeAllowsTagAssignment ? (tag) => toggleNoteTag(active.id, tag) : undefined

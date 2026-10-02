@@ -16,6 +16,28 @@ final class NoteMarkdownCodecTest extends TestCase
         $this->assertFalse($codec->isNoteFilename('._good.md'));
     }
 
+    public function test_normalize_tags_rejects_characters_outside_a_z_and_hyphen(): void
+    {
+        $codec = new NoteMarkdownCodec;
+        $this->assertSame(
+            ['focus', 'plan-ning'],
+            $codec->normalizeTags([' Focus ', 'plan-ning', 'plan,ning', 'v2', 'plan ning']),
+        );
+
+        $raw = $codec->serialize('Title', ['v2', 'Focus'], 'Body');
+        [, $tags] = $codec->parse($raw, 'fallback');
+        $this->assertSame(['v2', 'focus'], $tags);
+    }
+
+    public function test_parse_keeps_legacy_tags(): void
+    {
+        $codec = new NoteMarkdownCodec;
+        $raw = "title: Legacy\ntags: v2, Focus\n----\nbody";
+
+        [, $tags] = $codec->parse($raw, 'fallback');
+        $this->assertSame(['v2', 'focus'], $tags);
+    }
+
     public function test_round_trip_markdown(): void
     {
         $codec = new NoteMarkdownCodec;

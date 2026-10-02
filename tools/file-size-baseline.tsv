@@ -9,7 +9,7 @@ packages/apps/src/calendar-core/src/use-calendar-controller.ts	1489	grandfathere
 packages/apps/src/contacts-core/src/contacts-edit-utils.ts	884	grandfathered
 packages/apps/src/contacts-core/src/use-contacts-controller.tsx	1597	grandfathered
 packages/apps/src/drive-core/src/drive-browser.tsx	1054	grandfathered
-packages/apps/src/lib/api/wgw/http.ts	1010	grandfathered
+packages/apps/src/lib/api/wgw/http.ts	1003	grandfathered
 packages/apps/src/lib/calendar-elements/CalendarTimelineView/CalendarTimelineView.ts	2379	grandfathered
 packages/apps/src/lib/calendar-elements/CalendarViewBase/CalendarViewBase.ts	835	grandfathered
 packages/apps/src/lib/calendar-elements/EventCalendar/EventCalendar.ts	914	grandfathered

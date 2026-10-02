@@ -20,6 +20,10 @@ final class ApiRuntimeEnvService
         'bootstrap/cache',
     ];
 
+    public function __construct(
+        private EnvFileWriter $envFiles = new EnvFileWriter,
+    ) {}
+
     public function apiPackageRoot(string $installRoot): ?string
     {
         $root = rtrim(str_replace('\\', '/', $installRoot), '/').'/packages/api';
@@ -72,35 +76,14 @@ final class ApiRuntimeEnvService
 
     public function sanitizeInvalidEnvLines(string $envPath): bool
     {
-        $fh = fopen($envPath, 'c+');
-        if ($fh === false) {
-            return false;
-        }
-
-        try {
-            if (! flock($fh, LOCK_EX)) {
-                return false;
-            }
-            rewind($fh);
-            $content = stream_get_contents($fh);
-            if (! is_string($content) || $content === '') {
-                return false;
+        return $this->updateEnvFile($envPath, static function (string $content): ?string {
+            if ($content === '') {
+                return null;
             }
             $sanitized = WgwApiEnvFile::stripInvalidLines($content);
-            if ($sanitized === $content) {
-                return false;
-            }
-            rewind($fh);
-            if (ftruncate($fh, 0) === false || fwrite($fh, $sanitized) === false) {
-                return false;
-            }
-            fflush($fh);
 
-            return true;
-        } finally {
-            flock($fh, LOCK_UN);
-            fclose($fh);
-        }
+            return $sanitized === $content ? null : $sanitized;
+        });
     }
 
     public function seedEnvFromExampleIfMissing(string $apiRoot): bool
@@ -129,20 +112,19 @@ final class ApiRuntimeEnvService
 
     public function ensureAppKey(string $envPath): bool
     {
-        $content = is_readable($envPath) ? (string) file_get_contents($envPath) : '';
-        $appKey = WgwApiEnvFile::readValue($content, 'APP_KEY') ?? '';
-        if ($appKey !== '' && preg_match('/^base64:[A-Za-z0-9+\/=]+$/', $appKey) === 1) {
-            return false;
-        }
+        return $this->updateEnvFile($envPath, static function (string $content): ?string {
+            $appKey = WgwApiEnvFile::readValue($content, 'APP_KEY') ?? '';
+            if ($appKey !== '' && preg_match('/^base64:[A-Za-z0-9+\/=]+$/', $appKey) === 1) {
+                return null;
+            }
 
-        $key = 'base64:'.base64_encode(random_bytes(32));
-        if ($content === '' || ! WgwApiEnvFile::hasKey($content, 'APP_KEY')) {
-            $content = rtrim($content)."\nAPP_KEY={$key}\n";
-        } else {
-            $content = WgwApiEnvFile::setLine($content, 'APP_KEY', $key, quote: false);
-        }
+            $key = 'base64:'.base64_encode(random_bytes(32));
+            if ($content === '' || ! WgwApiEnvFile::hasKey($content, 'APP_KEY')) {
+                return rtrim($content)."\nAPP_KEY={$key}\n";
+            }
 
-        return file_put_contents($envPath, $content, LOCK_EX) !== false;
+            return WgwApiEnvFile::setLine($content, 'APP_KEY', $key, quote: false);
+        });
     }
 
     public function patchAppUrlIfUnset(string $envPath, ?string $appUrl): bool
@@ -151,18 +133,26 @@ final class ApiRuntimeEnvService
             return false;
         }
         $appUrl = rtrim(trim($appUrl), '/');
-        $content = (string) file_get_contents($envPath);
-        $current = WgwApiEnvFile::readValue($content, 'APP_URL') ?? '';
-        if ($current !== '' && $current !== 'http://localhost' && ! str_starts_with($current, 'http://127.0.0.1')) {
-            return false;
-        }
-        if (! WgwApiEnvFile::hasKey($content, 'APP_URL')) {
-            $content = rtrim($content)."\nAPP_URL={$appUrl}\n";
-        } else {
-            $content = WgwApiEnvFile::setLine($content, 'APP_URL', $appUrl, quote: false);
-        }
 
-        return file_put_contents($envPath, $content, LOCK_EX) !== false;
+        return $this->updateEnvFile($envPath, static function (string $content) use ($appUrl): ?string {
+            $current = WgwApiEnvFile::readValue($content, 'APP_URL') ?? '';
+            if ($current !== '' && $current !== 'http://localhost' && ! str_starts_with($current, 'http://127.0.0.1')) {
+                return null;
+            }
+            if (! WgwApiEnvFile::hasKey($content, 'APP_URL')) {
+                return rtrim($content)."\nAPP_URL={$appUrl}\n";
+            }
+
+            return WgwApiEnvFile::setLine($content, 'APP_URL', $appUrl, quote: false);
+        });
+    }
+
+    /**
+     * @param  callable(string): ?string  $mutator
+     */
+    private function updateEnvFile(string $envPath, callable $mutator): bool
+    {
+        return $this->envFiles->update($envPath, $mutator);
     }
 
     public static function guessRequestAppUrl(): ?string

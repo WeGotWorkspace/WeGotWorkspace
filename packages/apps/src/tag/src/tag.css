@@ -93,7 +93,12 @@
 }
 
 .tag-group__add {
-  @apply relative inline-flex min-w-0 items-center;
+  @apply relative inline-flex min-w-0 flex-wrap items-center;
+}
+
+.tag-group__hint {
+  @apply basis-full text-xs text-destructive;
+  margin-top: 0.25rem;
 }
 
 /* Idle “Add tag” and the add field share one type scale. */

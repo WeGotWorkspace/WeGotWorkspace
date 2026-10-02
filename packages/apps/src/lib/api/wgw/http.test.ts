@@ -7,6 +7,7 @@ import {
   wgwClearGuestShareAccess,
   wgwEnsureFreshAccessToken,
   wgwEnsureSession,
+  wgwFetch,
   wgwCompleteLogoutNavigation,
   wgwEstablishGuestShareSession,
   wgwFetchPrincipal,
@@ -96,6 +97,7 @@ afterEach(() => {
   resetWgwSessionStateForTests();
   window.localStorage.clear();
   window.sessionStorage.clear();
+  Reflect.deleteProperty(navigator, "locks");
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -184,6 +186,86 @@ describe("wgw auth refresh behavior", () => {
 
     await Promise.all([one, two]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses a newer session another tab stored instead of refreshing the rotated token", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 120),
+      refreshToken: "refresh-rotated",
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 14 * 24 * 60 * 60_000,
+    });
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+
+    const freshAccess = makeJwt(Math.floor(Date.now() / 1_000) + 3_600);
+    installSession({
+      accessToken: freshAccess,
+      refreshToken: "refresh-current",
+      accessExpiresAt: Date.now() + 50 * 60_000,
+      refreshExpiresAt: Date.now() + 14 * 24 * 60 * 60_000,
+    });
+    const fetchMock = vi.fn(async () => new Response("should-not-refresh", { status: 500 }));
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await expect(wgwEnsureFreshAccessToken()).resolves.toBe(freshAccess);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe("refresh-current");
+  });
+
+  it("refreshes after a 401 when the stored access token is still inside the client skew window", async () => {
+    const rejected = makeJwt(Math.floor(Date.now() / 1_000) + 3_600);
+    const renewed = makeJwt(Math.floor(Date.now() / 1_000) + 7_200);
+    installSession({
+      accessToken: rejected,
+      refreshToken: "refresh-old",
+      accessExpiresAt: Date.now() + 50 * 60_000,
+      refreshExpiresAt: Date.now() + 14 * 24 * 60 * 60_000,
+    });
+
+    const fetchMock = vi.fn(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        expect(JSON.parse(String(init?.body))).toEqual({ refresh_token: "refresh-old" });
+        return new Response(
+          JSON.stringify({
+            access_token: renewed,
+            refresh_token: "refresh-new",
+            expires_in: 3600,
+            refresh_expires_in: 1209600,
+            token_type: "Bearer",
+            username: "alice",
+            role: "user",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      const authorization = new Headers(init?.headers).get("Authorization");
+      if (authorization === `Bearer ${rejected}`) {
+        return new Response(JSON.stringify({ error: "unauthenticated" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (authorization === `Bearer ${renewed}`) {
+        return new Response(JSON.stringify({ username: "alice" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("unexpected", { status: 500 });
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const res = await wgwFetch("/me");
+    expect(res.status).toBe(200);
+    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe("refresh-new");
+    const refreshPosts = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).endsWith("/auth/refresh"),
+    );
+    expect(refreshPosts).toHaveLength(1);
+    const meCalls = fetchMock.mock.calls.filter((call) => String(call[0]).endsWith("/me"));
+    expect(meCalls).toHaveLength(2);
+    expect(new Headers(meCalls[1]?.[1]?.headers).get("Authorization")).toBe(`Bearer ${renewed}`);
   });
 
   it("reloads storage after another tab refreshes during lock wait", async () => {
@@ -287,6 +369,128 @@ describe("wgw auth refresh behavior", () => {
 
     await expect(wgwEnsureFreshAccessToken()).rejects.toThrow("Missing auth session");
     expect(wgwHasAuthenticatedSession()).toBe(false);
+  });
+
+  it("posts auth refresh once when a second call waits on the Web Locks mutex", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 120),
+      refreshToken: "refresh-old",
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 30 * 60_000,
+    });
+
+    let chain = Promise.resolve();
+    const request = vi.fn(
+      (_name: string, _options: LockOptions, callback: () => Promise<boolean>) => {
+        const run = chain.then(() => callback());
+        chain = run.then(
+          () => undefined,
+          () => undefined,
+        );
+        return run;
+      },
+    );
+    Object.defineProperty(navigator, "locks", {
+      configurable: true,
+      value: { request },
+    });
+
+    let releaseRefresh!: (value: Response) => void;
+    const refreshResponse = new Promise<Response>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    const freshAccess = makeJwt(Math.floor(Date.now() / 1_000) + 3_600);
+    const fetchMock = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) return refreshResponse;
+      return new Response("unexpected", { status: 500 });
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const first = wgwEnsureFreshAccessToken();
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    resetWgwSessionStateForTests(true);
+    resetAuthRefreshLockForTests();
+    const second = wgwEnsureFreshAccessToken();
+    await vi.waitFor(() => {
+      expect(request).toHaveBeenCalledTimes(2);
+    });
+
+    releaseRefresh(
+      new Response(
+        JSON.stringify({
+          access_token: freshAccess,
+          refresh_token: "refresh-new",
+          expires_in: 3600,
+          refresh_expires_in: 1209600,
+          token_type: "Bearer",
+          username: "alice",
+          role: "user",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(first).resolves.toBe(freshAccess);
+    await expect(second).resolves.toBe(freshAccess);
+    expect(request).toHaveBeenCalledWith(
+      "wgw-auth-refresh",
+      { mode: "exclusive" },
+      expect.any(Function),
+    );
+    const refreshPosts = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).endsWith("/auth/refresh"),
+    );
+    expect(refreshPosts).toHaveLength(1);
+  });
+
+  it("does not reload a rotated refresh token after a partial storage write", async () => {
+    const freshAccess = makeJwt(Math.floor(Date.now() / 1_000) + 3_600);
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 120),
+      refreshToken: "refresh-old",
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 30 * 60_000,
+    });
+    const realSetItem = Storage.prototype.setItem;
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+      this: Storage,
+      key: string,
+      value: string,
+    ) {
+      if (key === REFRESH_TOKEN_KEY) throw new Error("quota");
+      return realSetItem.call(this, key, value);
+    });
+    globalThis.fetch = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(
+          JSON.stringify({
+            access_token: freshAccess,
+            refresh_token: "refresh-new",
+            expires_in: 3600,
+            refresh_expires_in: 1209600,
+            token_type: "Bearer",
+            username: "alice",
+            role: "user",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response("unexpected", { status: 500 });
+    }) as typeof fetch;
+
+    await expect(wgwEnsureFreshAccessToken()).resolves.toBe(freshAccess);
+    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBeNull();
+    setItem.mockRestore();
+
+    const secondFetch = vi.fn(async () => new Response("should-not-refresh", { status: 500 }));
+    globalThis.fetch = secondFetch as typeof fetch;
+    await expect(wgwEnsureFreshAccessToken()).resolves.toBe(freshAccess);
+    expect(secondFetch).not.toHaveBeenCalled();
   });
 
   it("awaits in-flight refresh before reconnect flush", async () => {

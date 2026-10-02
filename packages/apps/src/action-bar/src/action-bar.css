@@ -39,6 +39,71 @@
   @apply inline-flex;
 }
 
+/*
+ * Wide bars keep collapseOnNarrow actions inline. `--narrow` is the small-screen
+ * menu. When count overflow and collapseOnNarrow both apply, `--wide` holds only
+ * the count overflow and is hidden below the breakpoint.
+ */
+.action-bar__menu--narrow {
+  @apply hidden;
+}
+
+/*
+ * Collection detail overlay (767px / just under 48rem), same cutoff as the
+ * mobile back control and Docs header actions. Container query tracks the
+ * workspace shell; the media query covers Storybook and browsers without
+ * container queries.
+ */
+@container workspace-columns (max-width: 47.999rem) {
+  .action-bar__action--collapse-narrow,
+  .action-bar__row--collapse-narrow {
+    @apply hidden;
+  }
+
+  .action-bar__menu--narrow {
+    @apply inline-flex;
+  }
+
+  .action-bar__menu--wide {
+    @apply hidden;
+  }
+
+  .action-bar__action--icon-narrow.button {
+    @apply shrink-0 p-0;
+    width: var(--control-height-md, 2.25rem);
+    min-width: var(--control-height-md, 2.25rem);
+  }
+
+  .action-bar__action--icon-narrow > .button__label {
+    @apply hidden;
+  }
+}
+
+@media (max-width: 767px) {
+  .action-bar__action--collapse-narrow,
+  .action-bar__row--collapse-narrow {
+    @apply hidden;
+  }
+
+  .action-bar__menu--narrow {
+    @apply inline-flex;
+  }
+
+  .action-bar__menu--wide {
+    @apply hidden;
+  }
+
+  .action-bar__action--icon-narrow.button {
+    @apply shrink-0 p-0;
+    width: var(--control-height-md, 2.25rem);
+    min-width: var(--control-height-md, 2.25rem);
+  }
+
+  .action-bar__action--icon-narrow > .button__label {
+    @apply hidden;
+  }
+}
+
 .action-bar__menu-trigger {
   @apply shrink-0;
 }

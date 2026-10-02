@@ -14,6 +14,7 @@ import { meetLabels } from "@/meet-core/src/meet-labels";
 import { sendMeetLeaveBeacon } from "@/meet-core/src/meet-leave-beacon";
 import { meetJoinAlreadyEngaged } from "@/meet-core/src/meet-join-reuse";
 import { createMeetPeerId, createMeetRoomCode } from "@/meet-core/src/meet-room-id";
+import type { ChatMessage } from "@/meet-core/src/meet-types";
 import type { MeetCallSessionState } from "@/meet-core/src/use-meet-call-session";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
 
@@ -301,7 +302,7 @@ export function useMeetMutations({
   }, [leave, meetRtc, operationsRef, room]);
 
   const sendChat = useCallback(
-    async (body: string) => {
+    async (body: string, persisted?: Promise<ChatMessage | null>) => {
       const text = body.trim();
       if (!text) return;
       const me = room.selfIdRef.current;
@@ -313,6 +314,13 @@ export function useMeetMutations({
         text,
       );
       room.setChatMessages((prev) => [...prev, localLine]);
+      void persisted?.then(
+        (saved) => {
+          if (!saved) return;
+          room.setChatMessages((prev) => prev.filter((line) => line.id !== localLine.id));
+        },
+        () => undefined,
+      );
 
       if (!operationsRef.current) return;
       try {

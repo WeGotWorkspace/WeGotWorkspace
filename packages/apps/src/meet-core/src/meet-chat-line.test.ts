@@ -58,15 +58,23 @@ describe("meet chat line", () => {
     });
   });
 
-  it("merges guest room-poll lines into the host channel thread", () => {
+  it("merges guest room-poll lines and always keeps the sender's own line", () => {
     const channel = meetChatLineToChannelMessage(
       buildLocalMeetChatLine("admin", "Admin", "from host", 1),
       "chat-test",
     );
     const guestLine = buildMeetChatLineFromPoll("guest-1", "Ada", "from guest", "admin", 2);
-    const selfEcho = buildLocalMeetChatLine("admin", "Admin", "echo", 3);
-    const merged = mergeMeetRoomChatIntoChannel([channel], [guestLine, selfEcho], "chat-test");
-    expect(merged.map((row) => row.body)).toEqual(["from host", "from guest"]);
+    const selfLine = buildLocalMeetChatLine("admin", "Admin", "echo", 3);
+    const merged = mergeMeetRoomChatIntoChannel([channel], [guestLine, selfLine], "chat-test");
+    expect(merged.map((row) => row.body)).toEqual(["from host", "from guest", "echo"]);
     expect(merged[1]?.channelId).toBe("chat-test");
+    expect(merged[2]?.authorId).toBe("admin");
+
+    const alreadyLanded = meetChatLineToChannelMessage(
+      buildLocalMeetChatLine("admin", "Admin", "echo", 1),
+      "chat-test",
+    );
+    const repeated = mergeMeetRoomChatIntoChannel([alreadyLanded], [selfLine], "chat-test");
+    expect(repeated.map((row) => row.body)).toEqual(["echo", "echo"]);
   });
 });

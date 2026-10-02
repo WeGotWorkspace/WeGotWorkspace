@@ -8,8 +8,10 @@ use App\Events\EventDispatch;
 use App\Models\JmapFileNode;
 use App\Services\Drive\DocAttachmentPaths;
 use App\Services\Drive\DocAttachmentsService;
+use App\Services\Drive\DriveStarService;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Notes\NoteMarkdownCodec;
+use App\Services\Notes\NoteTag;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
@@ -71,6 +73,7 @@ final class FileNodeSetService
         private readonly SearchIndexerService $search,
         private readonly BestEffortSearchIndexSync $searchSync,
         private readonly DocAttachmentsService $docAttachments,
+        private readonly DriveStarService $stars,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -199,6 +202,7 @@ final class FileNodeSetService
         }
         $this->index->recordDelete($key);
         $this->syncSearchDelete($key);
+        $this->stars->deletePathPrefix($key);
         $this->docAttachments->destroyDocsBestEffort($docIds);
     }
 
@@ -371,6 +375,7 @@ final class FileNodeSetService
                 $node = $this->index->recordMove($fromKey, $toKey) ?? $node;
                 $this->syncSearchMove($fromKey, $toKey);
                 $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
+                $this->stars->rewritePathPrefix($fromKey, $toKey);
             }
         }
 
@@ -439,6 +444,7 @@ final class FileNodeSetService
         if (! $this->storage->files()->move($fromKey, $toKey)) {
             throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Could not store the attachment.']);
         }
+        $this->stars->rewritePathPrefix($fromKey, $toKey);
 
         return $this->index->recordMove($fromKey, $toKey) ?? $node;
     }
@@ -624,7 +630,17 @@ final class FileNodeSetService
             $out['title'] = $note['title'];
         }
         if (array_key_exists('tags', $note)) {
-            $out['tags'] = $this->codec->normalizeTags($note['tags']);
+            if (! is_array($note['tags'])) {
+                throw new FileNodeSetError($this->invalidProperties('note.tags must be an array.', ['note']));
+            }
+            $tags = [];
+            foreach ($note['tags'] as $tag) {
+                if (! is_string($tag)) {
+                    throw new FileNodeSetError($this->invalidProperties('note.tags must be an array of strings.', ['note']));
+                }
+                $tags[] = $tag;
+            }
+            $out['tags'] = $tags;
         }
 
         return $out;
@@ -657,7 +673,15 @@ final class FileNodeSetService
                 $title = $note['title'] !== '' ? $note['title'] : $fallback;
             }
             if (array_key_exists('tags', $note)) {
-                $tags = $note['tags'];
+                $submitted = $note['tags'];
+                $merged = NoteTag::mergeForUpdate($submitted, $tags);
+                if ($merged !== NoteTag::normalizeStored($submitted)) {
+                    throw new FileNodeSetError($this->invalidProperties(
+                        'A tag may only use letters a-z and hyphen.',
+                        ['note'],
+                    ));
+                }
+                $tags = $merged;
             }
         }
 

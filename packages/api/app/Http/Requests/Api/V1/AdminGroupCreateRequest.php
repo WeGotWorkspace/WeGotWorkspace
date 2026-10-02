@@ -27,17 +27,21 @@ final class AdminGroupCreateRequest extends FormRequest
 
     public function slugValue(): string
     {
-        $slug = trim((string) ($this->input('slug') ?? ''));
+        $validated = $this->validated();
+
+        $slug = trim(is_string($validated['slug'] ?? null) ? $validated['slug'] : '');
         if ($slug !== '') {
             return $slug;
         }
 
-        $name = trim((string) ($this->input('name') ?? ''));
+        $name = trim(is_string($validated['name'] ?? null) ? $validated['name'] : '');
         if ($name !== '') {
             return $name;
         }
 
-        return trim((string) ($this->input('displayName') ?? ''));
+        $displayName = $validated['displayName'] ?? null;
+
+        return trim(is_string($displayName) ? $displayName : '');
     }
 
     public function displayNameValue(): string

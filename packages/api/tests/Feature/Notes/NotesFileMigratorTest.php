@@ -80,6 +80,24 @@ final class NotesFileMigratorTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('![img]', (string) $team['body']);
     }
 
+    public function test_imports_legacy_markdown_tags(): void
+    {
+        $disk = app(WgwStorage::class)->files();
+        $disk->put(
+            'users/bob/.notes/Drafts/legacy.md',
+            "title: Legacy tags\ntags: v2, focus\n----\nkept",
+        );
+
+        $this->assertSame(0, Artisan::call('wgw:notes:migrate-files'));
+
+        $notebooks = collect($this->asBob()->getJson('/api/v1/notes/notebooks')->assertOk()->json('list'));
+        $draftsId = (string) $notebooks->firstWhere('name', 'Drafts')['id'];
+        $items = collect($this->asBob()->getJson('/api/v1/notes/items?notebookId='.$draftsId)->assertOk()->json('list'));
+        $legacy = $items->firstWhere('title', 'Legacy tags');
+        $this->assertIsArray($legacy);
+        $this->assertSame(['v2', 'focus'], $legacy['categories']);
+    }
+
     private function asBob()
     {
         return $this->withBearer($this->issueBearerTokenFor('bob'));
