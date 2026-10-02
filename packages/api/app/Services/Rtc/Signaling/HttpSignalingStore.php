@@ -133,12 +133,12 @@ final class HttpSignalingStore
     }
 
     /**
-     * @return list<array{id: string, name: string, user?: string}>
+     * @return list<array{id: string, name: string, user?: string, account?: bool}>
      */
     public function peerList(string $room, string $selfId): array
     {
         $columns = ['peer_id as id', 'name'];
-        if ($this->policy->rosterIncludesOwner) {
+        if ($this->policy->rosterIncludesOwner || $this->policy->rosterMarksAccount) {
             $columns[] = 'owner_user';
         }
 
@@ -151,8 +151,15 @@ final class HttpSignalingStore
                     'id' => (string) $row->getAttribute('id'),
                     'name' => (string) $row->getAttribute('name'),
                 ];
+                $owner = (string) ($row->owner_user ?? '');
                 if ($this->policy->rosterIncludesOwner) {
-                    $peer['user'] = $this->ownerUsername((string) ($row->owner_user ?? ''));
+                    $username = $this->ownerUsername($owner);
+                    if ($username !== null) {
+                        $peer['user'] = $username;
+                    }
+                }
+                if ($this->policy->rosterMarksAccount && str_starts_with($owner, 'u:')) {
+                    $peer['account'] = true;
                 }
 
                 return $peer;
@@ -160,10 +167,18 @@ final class HttpSignalingStore
             ->all());
     }
 
-    /** Strip the `u:` owner marker so rosters carry the plain Sabre username. */
-    private function ownerUsername(string $ownerMarker): string
+    /**
+     * Plain username for an authenticated owner. Guest session markers (`g:`)
+     * are not usernames and must not appear on a roster.
+     */
+    private function ownerUsername(string $ownerMarker): ?string
     {
-        return str_starts_with($ownerMarker, 'u:') ? substr($ownerMarker, 2) : $ownerMarker;
+        if (! str_starts_with($ownerMarker, 'u:')) {
+            return null;
+        }
+        $username = substr($ownerMarker, 2);
+
+        return $username !== '' ? $username : null;
     }
 
     public function touchPeer(string $room, string $peerId, ?int $now = null): void
@@ -251,7 +266,7 @@ final class HttpSignalingStore
      * changed, a minimal `{unchanged: true}` marker is returned and payload building
      * (message fetch/delete, roster serialization) is skipped.
      *
-     * @return array{peers: list<array{id: string, name: string, user?: string}>, messages: list<array<string, mixed>>, rosterSig: string}|array{unchanged: true, rosterSig: string}
+     * @return array{peers: list<array{id: string, name: string, user?: string, account?: bool}>, messages: list<array<string, mixed>>, rosterSig: string}|array{unchanged: true, rosterSig: string}
      */
     public function poll(string $room, string $peerId, int $since = 0, ?string $knownRosterSig = null): array
     {
@@ -323,15 +338,16 @@ final class HttpSignalingStore
     }
 
     /**
-     * Signature over the visible roster (ids + names + optional owner, order-independent).
-     * `seen_at` is deliberately excluded — it changes on every poll touch.
+     * Signature over the visible roster (ids + names + optional owner and account
+     * mark, order-independent). `seen_at` is deliberately excluded — it changes
+     * on every poll touch.
      *
-     * @param  list<array{id: string, name: string, user?: string}>  $peers
+     * @param  list<array{id: string, name: string, user?: string, account?: bool}>  $peers
      */
     private function rosterSignature(array $peers): string
     {
         $parts = array_map(
-            static fn (array $peer): string => $peer['id']."\x1f".$peer['name']."\x1f".($peer['user'] ?? ''),
+            static fn (array $peer): string => $peer['id']."\x1f".$peer['name']."\x1f".($peer['user'] ?? '')."\x1f".(($peer['account'] ?? false) ? '1' : ''),
             $peers,
         );
         sort($parts, SORT_STRING);

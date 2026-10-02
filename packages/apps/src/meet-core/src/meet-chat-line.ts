@@ -7,6 +7,13 @@ export type MeetChatLine = {
   body: string;
   ts: number;
   isSelf: boolean;
+  /**
+   * Signed-in peer. Their channel row uses the account principal as `authorId`.
+   * This line's `fromPeerId` is only the RTC id.
+   */
+  accountPeer?: boolean;
+  /** Saved channel message this room line echoes. Members already have that row. */
+  channelMessageId?: string;
 };
 
 /** Guest in-channel rail uses MeetChatColumn; room poll lines are a thinner shape. */
@@ -67,12 +74,12 @@ export function buildLocalMeetChatLine(
 
 /**
  * Host channel collection + guest room-poll lines share one MeetChatColumn.
- * Signaling does not deliver a peer's own chat. `sendChat` drops that local
- * line once the channel send has saved it, so a line still here is a call
- * with no channel, or a channel send that did not save.
- * A saved channel message is echoed on the room under that message id so
- * guests can read it. The id is already in the channel collection, so the
- * echo is not appended a second time. An edit or delete keeps the channel row.
+ * A signed-in peer's room line uses the RTC peer id as `fromPeerId`. Mapping
+ * that id through `authorId` paints a second avatar (color and presence are
+ * keyed by author id) for a message the channel collection already delivers
+ * under the account principal. Those lines stay in the call store so guests,
+ * who have no channel collection, can still read them. An edit or delete
+ * keeps the channel row.
  */
 export function mergeMeetRoomChatIntoChannel(
   channelMessages: ChatMessage[],
@@ -83,6 +90,7 @@ export function mergeMeetRoomChatIntoChannel(
   const ids = new Set(channelMessages.map((message) => message.id));
   const merged = [...channelMessages];
   for (const line of roomLines) {
+    if (line.accountPeer || line.channelMessageId) continue;
     const message = meetChatLineToChannelMessage(line, channelId);
     if (ids.has(message.id)) continue;
     ids.add(message.id);

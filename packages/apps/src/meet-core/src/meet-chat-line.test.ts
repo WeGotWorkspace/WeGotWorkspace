@@ -109,4 +109,57 @@ describe("meet chat line", () => {
     ).toEqual(["hello world"]);
     expect(mergeMeetRoomChatIntoChannel([deleted], [echo], "chat-test")).toEqual([deleted]);
   });
+
+  it("drops a signed-in peer line so the RTC id is not a second author", () => {
+    const saved: ChatMessage = {
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      channelId: "chat-test",
+      authorId: "member",
+      authorName: "Member",
+      body: "ok",
+      createdAt: 1,
+      reactions: [],
+      mentions: [],
+      previews: [],
+    };
+    const twin: MeetChatLine = {
+      id: "PEERID-1710000000000-ab12",
+      fromPeerId: "PEERID",
+      fromName: "Member",
+      body: "ok",
+      ts: 2,
+      isSelf: false,
+      accountPeer: true,
+    };
+    const guestLine = buildMeetChatLineFromPoll("guest-1", "Ada", "from guest", "member", 3);
+    const merged = mergeMeetRoomChatIntoChannel([saved], [twin, guestLine], "chat-test");
+
+    expect(merged.map((row) => row.body)).toEqual(["ok", "from guest"]);
+    expect(merged.map((row) => row.authorId)).toEqual(["member", "guest-1"]);
+  });
+
+  it("drops a channel echo even when its id is not the channel row", () => {
+    const saved: ChatMessage = {
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      channelId: "chat-test",
+      authorId: "member",
+      authorName: "Member",
+      body: "ok",
+      createdAt: 1,
+      reactions: [],
+      mentions: [],
+      previews: [],
+    };
+    const echo: MeetChatLine = {
+      id: "PEERID-1710000000000-ab12",
+      fromPeerId: "PEERID",
+      fromName: "Member",
+      body: "ok",
+      ts: 2,
+      isSelf: false,
+      channelMessageId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    };
+
+    expect(mergeMeetRoomChatIntoChannel([saved], [echo], "chat-test")).toEqual([saved]);
+  });
 });

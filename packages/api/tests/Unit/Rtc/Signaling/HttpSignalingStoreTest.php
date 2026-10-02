@@ -119,11 +119,31 @@ final class HttpSignalingStoreTest extends TestCase
         $this->assertSame(['alice-old'], $deleted);
         $this->assertSame(
             [
-                ['id' => 'alice-phone', 'name' => 'Alice'],
-                ['id' => 'bob-peer', 'name' => 'Bob'],
+                ['id' => 'alice-phone', 'name' => 'Alice', 'account' => true],
+                ['id' => 'bob-peer', 'name' => 'Bob', 'account' => true],
             ],
             $store->peerList('room-a', 'alice-new'),
         );
+    }
+
+    public function test_meet_roster_marks_accounts_without_exposing_guest_sessions(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = time();
+        $store->upsertPeer('room-a', 'guest-peer', 'Ada', 'g:'.str_repeat('ab', 16), $now);
+        $store->upsertPeer('room-a', 'member-peer', 'Member', 'u:member', $now);
+
+        $byId = [];
+        foreach ($store->peerList('room-a', 'someone-else') as $peer) {
+            $byId[$peer['id']] = $peer;
+        }
+
+        $this->assertSame(
+            ['id' => 'member-peer', 'name' => 'Member', 'account' => true],
+            $byId['member-peer'],
+        );
+        $this->assertSame(['id' => 'guest-peer', 'name' => 'Ada'], $byId['guest-peer']);
+        $this->assertArrayNotHasKey('user', $byId['guest-peer']);
     }
 
     public function test_missing_peer_returns_unknown_peer_for_recovery(): void

@@ -302,6 +302,26 @@ describe("useMeetPollHandler chat", () => {
         fromName: "Ada",
         body: "hello",
         isSelf: false,
+        channelMessageId: "saved-1",
+      }),
+    ]);
+  });
+
+  it("marks a room line from a signed-in peer", async () => {
+    const setChatMessages = vi.fn();
+    const { handlePoll } = createPollHandler({ setChatMessages });
+
+    await handlePoll({
+      peers: [{ id: "peer-2", name: "Member", account: true }],
+      messages: [{ from: "peer-2", type: "chat", payload: { text: "ok" } }],
+    });
+
+    expect(appliedChatLines(setChatMessages)).toEqual([
+      expect.objectContaining({
+        fromPeerId: "peer-2",
+        fromName: "Member",
+        body: "ok",
+        accountPeer: true,
       }),
     ]);
   });

@@ -4,9 +4,10 @@ import type { ChatMessage } from "@/meet-core/src/meet-types";
 /**
  * Room signaling echoes a saved channel message so guests, who only have
  * room lines, can read it. Members already receive that row through channel
- * sync. The echo uses the saved message id so the live column's id merge
- * keeps one row. The id is a prefix because room text is truncated to 2000
- * characters; a trailing id would be cut off a long body.
+ * sync, under the account principal. The echo is marked so the member column
+ * does not paint it again with the RTC peer id as the author. The id is a
+ * prefix because room text is truncated to 2000 characters; a trailing id
+ * would be cut off a long body.
  */
 const CHANNEL_CHAT_ECHO_PREFIX = "__wgw_meet_channel_chat__:";
 
@@ -38,10 +39,17 @@ export function meetPollChatLine(
   text: string,
   selfPeerId: string,
   now = Date.now(),
+  options?: { accountPeer?: boolean },
 ): MeetChatLine {
   const echo = parseMeetChannelChatEcho(text.trim());
-  if (!echo) return buildMeetChatLineFromPoll(fromPeerId, fromName, text, selfPeerId, now);
-  return buildMeetChatLineFromPoll(fromPeerId, fromName, echo.body, selfPeerId, now, echo.id);
+  const line = echo
+    ? buildMeetChatLineFromPoll(fromPeerId, fromName, echo.body, selfPeerId, now, echo.id)
+    : buildMeetChatLineFromPoll(fromPeerId, fromName, text, selfPeerId, now);
+  return {
+    ...line,
+    ...(echo ? { channelMessageId: echo.id } : {}),
+    ...(options?.accountPeer ? { accountPeer: true } : {}),
+  };
 }
 
 export async function meetRoomChatOutbound(

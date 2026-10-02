@@ -176,10 +176,13 @@ export function useMeetPollHandler({
           }
           continue;
         }
-        const fromName = roster.find((peer) => peer.id === msg.from)?.name ?? "Peer";
+        const sender = roster.find((peer) => peer.id === msg.from);
+        const fromName = sender?.name ?? "Peer";
         setChatMessages((prev) => [
           ...prev,
-          meetPollChatLine(msg.from, fromName, text, selfPeerId),
+          meetPollChatLine(msg.from, fromName, text, selfPeerId, Date.now(), {
+            accountPeer: sender?.account === true,
+          }),
         ]);
       }
     },
