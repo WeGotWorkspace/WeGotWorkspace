@@ -420,6 +420,9 @@ const COMPACT_MONTH_CELL_MIN_ASPECT = 1.75;
 /** Virtual trigger height so a tall timed segment does not pin the popover to the grid floor. */
 const DETAILS_POPOVER_ANCHOR_MAX_HEIGHT = 40;
 
+/** Virtual trigger width so a full-width card still leaves room beside the popover. */
+const DETAILS_POPOVER_ANCHOR_MAX_WIDTH = 160; // tune: well under (viewport - popover) / 2
+
 function originLooksLikeMonthCell(origin: CalendarEventSelectionOrigin): boolean {
   return (
     origin.width > 0 &&
@@ -429,12 +432,20 @@ function originLooksLikeMonthCell(origin: CalendarEventSelectionOrigin): boolean
   );
 }
 
-/** Clicked-segment box for placement: keep width, clamp tall day-column cards to a compact head. */
+/**
+ * Placement box for the details popover. Clamp height so a tall segment does not
+ * pin the popover to the grid floor, and clamp width from the inline start so
+ * `side="right"` still has room when the card is as wide as the column.
+ */
 export function detailsPopoverAnchorOrigin(
   origin: CalendarEventSelectionOrigin,
+  dir: "ltr" | "rtl" = "ltr",
 ): CalendarEventSelectionOrigin {
-  if (origin.height <= DETAILS_POPOVER_ANCHOR_MAX_HEIGHT) return origin;
-  return { ...origin, height: DETAILS_POPOVER_ANCHOR_MAX_HEIGHT };
+  const height = Math.min(origin.height, DETAILS_POPOVER_ANCHOR_MAX_HEIGHT);
+  if (origin.width <= DETAILS_POPOVER_ANCHOR_MAX_WIDTH) return { ...origin, height };
+  const width = DETAILS_POPOVER_ANCHOR_MAX_WIDTH;
+  const left = dir === "rtl" ? origin.left + origin.width - width : origin.left;
+  return { ...origin, left, width, height };
 }
 
 /**

@@ -51,7 +51,7 @@ export type EventExceptionRequestDetail = {
   source: "move";
 };
 
-/** Viewport rect that places the details popover. Day view uses the painted time label. */
+/** Viewport rect of the event card that opened the details popover. */
 export type EventSelectionOriginRect = {
   left: number;
   top: number;
@@ -64,51 +64,11 @@ export type EventSelectionRequestDetail = EventKeyDetail & {
   origin?: EventSelectionOriginRect;
 };
 
-/**
- * Day-view timed cards are as wide as the day column. The edit popover prefers
- * the right side of that box and then opens outside the viewport. The painted
- * time label sits at the start of the card. Short cards hide
- * `.event-card-time-main` (container max-height 47px); `.event-card-compact-time`
- * is the label that remains.
- */
-const DAY_VIEW_SELECTION_ANCHORS = [".event-card-time-main", ".event-card-compact-time"] as const;
-
 export function eventSelectionOriginFromElement(
   target: EventTarget | null | undefined,
 ): EventSelectionOriginRect | undefined {
-  return dayViewSelectionOrigin(target) ?? originRect(target);
-}
-
-function originRect(target: EventTarget | null | undefined): EventSelectionOriginRect | undefined {
   if (!(target instanceof Element)) return undefined;
   const rect = target.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) return undefined;
   return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
-}
-
-function dayViewSelectionOrigin(
-  target: EventTarget | null | undefined,
-): EventSelectionOriginRect | undefined {
-  if (!(target instanceof Element) || target.tagName.toLowerCase() !== "event-card") {
-    return undefined;
-  }
-  if (!isInsideDayTimeline(target)) return undefined;
-  const root = target.shadowRoot;
-  if (!root) return undefined;
-  for (const selector of DAY_VIEW_SELECTION_ANCHORS) {
-    const origin = originRect(root.querySelector(selector));
-    if (origin) return origin;
-  }
-  return undefined;
-}
-
-function isInsideDayTimeline(card: Element): boolean {
-  const timelineRoot = card.getRootNode();
-  if (!(timelineRoot instanceof ShadowRoot)) return false;
-  const viewRoot = timelineRoot.host.getRootNode();
-  if (!(viewRoot instanceof ShadowRoot)) return false;
-  const view = viewRoot.host;
-  return (
-    view.tagName.toLowerCase() === "calendar-timeline-view" && view.getAttribute("mode") === "day"
-  );
 }

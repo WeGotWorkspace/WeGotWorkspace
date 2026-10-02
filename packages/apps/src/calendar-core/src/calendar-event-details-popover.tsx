@@ -206,7 +206,10 @@ export function CalendarEventDetailsPopover({
     );
   }
   const docked = !isMobile && detailsPopoverShouldDock(origin);
-  const placementOrigin = origin && !docked ? detailsPopoverAnchorOrigin(origin) : origin;
+  const placementDir =
+    typeof document !== "undefined" && document.documentElement.dir === "rtl" ? "rtl" : "ltr";
+  const placementOrigin =
+    origin && !docked ? detailsPopoverAnchorOrigin(origin, placementDir) : origin;
   const fallbackLeft = Math.round(globalThis.innerWidth / 2);
   const fallbackTop = Math.round(globalThis.innerHeight * 0.28);
   const anchorStyle = docked

@@ -544,7 +544,8 @@ describe("CalendarEventDetailsPopover", () => {
         ".calendar-event-details-popover__anchor",
       );
       expect(anchor).toBeInstanceOf(HTMLElement);
-      expect((anchor as HTMLElement).style.width).toBe("168px");
+      expect((anchor as HTMLElement).style.left).toBe("420px");
+      expect((anchor as HTMLElement).style.width).toBe("160px");
       expect((anchor as HTMLElement).style.height).toBe("40px");
     },
   );
