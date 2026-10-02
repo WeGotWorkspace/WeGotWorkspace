@@ -62,7 +62,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@commitlint/types": "^19.8.1",
+    "@commitlint/types": "^21.2.3",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.1",
     "concurrently": "^9.1.2",
