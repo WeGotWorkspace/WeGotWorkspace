@@ -11,6 +11,7 @@ import {
   tasksListTaskHref,
   type TaskDueOverlayMarker,
 } from "@/calendar-core/src/calendar-task-due-overlay";
+import { getLocaleDirection } from "@/lib/calendar-elements/utils/Locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
@@ -43,10 +44,8 @@ export function CalendarTaskDuePopover({
   const when = formatTaskDueOverlayWhen(marker.due, marker.allDay, locale);
   const href = tasksListTaskHref(marker.taskListId, marker.taskId);
   const docked = !isMobile && detailsPopoverShouldDock(origin);
-  const placementDir =
-    typeof document !== "undefined" && document.documentElement.dir === "rtl" ? "rtl" : "ltr";
   const placementOrigin =
-    origin && !docked ? detailsPopoverAnchorOrigin(origin, placementDir) : origin;
+    origin && !docked ? detailsPopoverAnchorOrigin(origin, getLocaleDirection(locale)) : origin;
   const fallbackLeft = Math.round(globalThis.innerWidth / 2);
   const fallbackTop = Math.round(globalThis.innerHeight * 0.28);
   const anchorStyle = docked

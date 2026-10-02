@@ -34,6 +34,7 @@ import type { CalendarMeetOperations } from "@/calendar-core/src/calendar-meet-l
 import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
 import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
+import { getLocaleDirection } from "@/lib/calendar-elements/utils/Locale";
 import {
   CalendarEventForm,
   type CalendarEventFormProps,
@@ -206,10 +207,8 @@ export function CalendarEventDetailsPopover({
     );
   }
   const docked = !isMobile && detailsPopoverShouldDock(origin);
-  const placementDir =
-    typeof document !== "undefined" && document.documentElement.dir === "rtl" ? "rtl" : "ltr";
   const placementOrigin =
-    origin && !docked ? detailsPopoverAnchorOrigin(origin, placementDir) : origin;
+    origin && !docked ? detailsPopoverAnchorOrigin(origin, getLocaleDirection(locale)) : origin;
   const fallbackLeft = Math.round(globalThis.innerWidth / 2);
   const fallbackTop = Math.round(globalThis.innerHeight * 0.28);
   const anchorStyle = docked

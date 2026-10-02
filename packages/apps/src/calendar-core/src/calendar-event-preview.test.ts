@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import { calendarEventsToEngineMap } from "@/calendar-core/src/calendar-event-model";
+import { getLocaleDirection } from "@/lib/calendar-elements/utils/Locale";
 import {
   detailsPopoverAnchorOrigin,
   detailsPopoverShouldDock,
@@ -399,7 +400,7 @@ describe("detailsPopoverAnchorOrigin", () => {
     {
       name: "wide RTL clamps from the right",
       origin: { left: 80, top: 140, width: 920, height: 36 },
-      dir: "rtl" as const,
+      dir: getLocaleDirection("ar"),
       expected: { left: 840, top: 140, width: 160, height: 36 },
     },
     {

@@ -550,6 +550,17 @@ describe("CalendarEventDetailsPopover", () => {
     },
   );
 
+  it("clamps a wide origin from the inline end for an RTL locale", { timeout: 10_000 }, () => {
+    const { container } = renderPopover({
+      locale: "ar",
+      origin: { left: 80, top: 140, width: 920, height: 36 },
+    });
+    const anchor = container.ownerDocument.querySelector(".calendar-event-details-popover__anchor");
+    expect(anchor).toBeInstanceOf(HTMLElement);
+    expect((anchor as HTMLElement).style.left).toBe("840px");
+    expect((anchor as HTMLElement).style.width).toBe("160px");
+  });
+
   it("shows a primary Join button in the footer with Delete", { timeout: 10_000 }, () => {
     const onJoinMeeting = vi.fn();
     const href = "https://workspace.example.com/meet/guest?room=h8y8-ewp6-al8n";

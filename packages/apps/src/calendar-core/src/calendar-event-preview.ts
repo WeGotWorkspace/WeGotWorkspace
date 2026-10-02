@@ -420,8 +420,8 @@ const COMPACT_MONTH_CELL_MIN_ASPECT = 1.75;
 /** Virtual trigger height so a tall timed segment does not pin the popover to the grid floor. */
 const DETAILS_POPOVER_ANCHOR_MAX_HEIGHT = 40;
 
-/** Virtual trigger width so a full-width card still leaves room beside the popover. */
-const DETAILS_POPOVER_ANCHOR_MAX_WIDTH = 160; // tune: well under (viewport - popover) / 2
+/** Popover is 20rem (320px); 160px leaves room on both sides from about a 640px viewport. */
+const DETAILS_POPOVER_ANCHOR_MAX_WIDTH = 160;
 
 function originLooksLikeMonthCell(origin: CalendarEventSelectionOrigin): boolean {
   return (
