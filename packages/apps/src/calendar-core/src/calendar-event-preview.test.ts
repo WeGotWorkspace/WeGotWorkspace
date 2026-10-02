@@ -383,14 +383,32 @@ describe("detailsPopoverShouldDock", () => {
 });
 
 describe("detailsPopoverAnchorOrigin", () => {
-  it("keeps a short card origin and clamps a tall segment to a compact head", () => {
-    const short = { left: 48, top: 96, width: 180, height: 36 };
-    expect(detailsPopoverAnchorOrigin(short)).toEqual(short);
-    expect(detailsPopoverAnchorOrigin({ left: 420, top: 160, width: 168, height: 420 })).toEqual({
-      left: 420,
-      top: 160,
-      width: 168,
-      height: 40,
-    });
+  it.each([
+    {
+      name: "narrow origin unchanged",
+      origin: { left: 48, top: 96, width: 120, height: 36 },
+      dir: "ltr" as const,
+      expected: { left: 48, top: 96, width: 120, height: 36 },
+    },
+    {
+      name: "wide LTR clamps from the left",
+      origin: { left: 80, top: 140, width: 920, height: 36 },
+      dir: "ltr" as const,
+      expected: { left: 80, top: 140, width: 160, height: 36 },
+    },
+    {
+      name: "wide RTL clamps from the right",
+      origin: { left: 80, top: 140, width: 920, height: 36 },
+      dir: "rtl" as const,
+      expected: { left: 840, top: 140, width: 160, height: 36 },
+    },
+    {
+      name: "height still clamped",
+      origin: { left: 420, top: 160, width: 168, height: 420 },
+      dir: "ltr" as const,
+      expected: { left: 420, top: 160, width: 160, height: 40 },
+    },
+  ])("$name", ({ origin, dir, expected }) => {
+    expect(detailsPopoverAnchorOrigin(origin, dir)).toEqual(expected);
   });
 });
