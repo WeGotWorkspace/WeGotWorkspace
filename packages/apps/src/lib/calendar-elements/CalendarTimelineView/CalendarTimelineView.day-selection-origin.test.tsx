@@ -125,14 +125,15 @@ describe("CalendarTimelineView day selection origin", { timeout: 15_000 }, () =>
     expect(selected()?.origin).toEqual(timeMainBox);
   });
 
-  it("anchors day-view Enter to the painted time label", async () => {
+  it.each([
+    ["Enter", "Enter"],
+    ["Space", " "],
+  ] as const)("anchors day-view %s to the painted time label", async (_label, key) => {
     const { el, card } = await mount("day");
     stubCardBoxes(card, { timeMain: timeMainBox });
     const selected = listenForSelection(el);
 
-    card.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
-    );
+    card.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
 
     expect(selected()?.origin).toEqual(timeMainBox);
   });
