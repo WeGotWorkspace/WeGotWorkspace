@@ -27,9 +27,6 @@ import {
   todaySidebarMeetingChannels,
 } from "@/meet-core/src/meet-calendar-meeting";
 import { useMeetNowClock } from "@/meet-core/src/use-meet-now-clock";
-import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
-import { meetCallBarShownCount, meetCallPreviewPeers } from "@/meet-core/src/meet-call-bar-roster";
-import { MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import {
   meetCallStatusEngaged,
@@ -37,7 +34,6 @@ import {
   meetResumeCallLayout,
   meetShouldSelectLiveCallOnBareMeet,
 } from "@/meet-core/src/meet-call-resume";
-import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 import { defaultMeetWorkspacePanelOpen } from "@/meet-core/src/meet-call-chat-panel";
 import { MeetCallStage, type MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import {
@@ -45,7 +41,6 @@ import {
   meetCallChromeVisible,
   meetCallHeaderStartVisible,
   meetCallInviteAction,
-  meetCallInviteStartOptions,
   meetCallIsActive,
   meetCallLiveAudioOnly,
   meetCallStageShowsStage,
@@ -74,8 +69,13 @@ import {
 import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
 import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";
 import type { MeetWorkspaceProps } from "@/meet-core/src/meet-workspace-props";
+import { MeetWorkspaceCallBar } from "@/meet-core/src/meet-workspace-call-bar";
 import { MeetWorkspaceDialogs } from "@/meet-core/src/meet-workspace-dialogs";
 import { MeetWorkspaceSidebar } from "@/meet-core/src/meet-workspace-sidebar";
+import {
+  MeetWorkspaceMainSurfaces,
+  MeetWorkspaceRailSurfaces,
+} from "@/meet-core/src/meet-workspace-surfaces";
 import { useMeetChannelActions } from "@/meet-core/src/use-meet-channel-actions";
 import { useMeetChannelDialogs } from "@/meet-core/src/use-meet-channel-dialogs";
 import "@/meet-core/src/meet-workspace.css";
@@ -773,30 +773,11 @@ export function MeetWorkspace({
             onBack={railShowsBack ? closeResolvedThread : undefined}
             backLabel={meetLabels.threadBack}
           >
-            <div className="meet-workspace__rail-surfaces">
-              <div
-                className={cn(
-                  "meet-workspace__rail-chat",
-                  railShowsThread && "meet-workspace__surface--parked",
-                )}
-                inert={railShowsThread || undefined}
-                aria-hidden={railShowsThread}
-              >
-                {railChat}
-              </div>
-              {threadContent ? (
-                <div
-                  className={cn(
-                    "meet-workspace__rail-thread",
-                    !railShowsThread && "meet-workspace__surface--parked",
-                  )}
-                  inert={!railShowsThread || undefined}
-                  aria-hidden={!railShowsThread}
-                >
-                  {threadContent}
-                </div>
-              ) : null}
-            </div>
+            <MeetWorkspaceRailSurfaces
+              showThread={railShowsThread}
+              chat={railChat}
+              thread={threadContent}
+            />
           </MeetWorkspaceRail>
         }
         sidebar={
@@ -874,119 +855,29 @@ export function MeetWorkspace({
           />
         }
         main={
-          conversationOpen || visitEngaged ? (
-            <div className="meet-workspace__surfaces">
-              <div
-                className={cn(
-                  "meet-workspace__chat-main",
-                  showExpandedStage && "meet-workspace__surface--parked",
-                )}
-                inert={showExpandedStage || undefined}
-                aria-hidden={showExpandedStage}
-              >
-                {/* Chunk-I knock chrome (chunk-H join policy): the compact bar
-                    swaps to a knock-wait banner while this user waits to be let
-                    in; joined members admit waiting guests from the action row. */}
-                {showKnockOrCallBar && callRoom?.controller.waitingForAdmission ? (
-                  <MeetCallKnockWaiting channelTitle={headerTitle} onCancel={visitCallToggle} />
-                ) : showKnockOrCallBar ? (
-                  <MeetCallBar
-                    elapsedLabel={showCallChrome ? (callRoom?.controller.elapsedLabel ?? "") : ""}
-                    selfId={
-                      showCallChrome
-                        ? (callRoom?.controller.selfId ?? session.user.username ?? "self")
-                        : (session.user.username ?? "self")
-                    }
-                    selfName={
-                      showCallChrome
-                        ? (callRoom?.displayName ?? session.user.displayName)
-                        : session.user.displayName
-                    }
-                    selfStream={
-                      showCallChrome ? (callRoom?.controller.getLocalStream() ?? null) : null
-                    }
-                    peers={
-                      showCallChrome
-                        ? (callRoom?.controller.peers ?? [])
-                        : meetCallPreviewPeers(
-                            selectedId ? (callParticipantsByChannel?.[selectedId] ?? []) : [],
-                            data.directory,
-                          )
-                    }
-                    participantCount={meetCallBarShownCount({
-                      joined: showCallChrome,
-                      participantCount: showCallChrome ? (callRoom?.participantCount ?? 0) : 0,
-                      peerCount: selectedId
-                        ? (callParticipantsByChannel?.[selectedId]?.length ?? 0)
-                        : 0,
-                    })}
-                    micOn={callRoom?.controller.micOn ?? true}
-                    videoOn={callRoom?.controller.videoOn ?? false}
-                    cameras={callRoom?.cameras ?? []}
-                    microphones={callRoom?.microphones ?? []}
-                    speakers={callRoom?.speakers ?? []}
-                    activeCamera={callRoom?.activeCamera ?? ""}
-                    activeMic={callRoom?.activeMic ?? ""}
-                    activeSpeaker={callRoom?.activeSpeaker ?? ""}
-                    onToggleMic={callRoom?.controller.toggleMic ?? (() => {})}
-                    onToggleVideo={callRoom?.controller.toggleVideo ?? (() => {})}
-                    onCameraChange={(id) => {
-                      const deviceId = meetDeviceIdForOption(callRoom?.cameras ?? [], id);
-                      if (!deviceId) return;
-                      void callRoom?.controller.switchCamera(deviceId);
-                    }}
-                    onMicrophoneChange={(id) => {
-                      const deviceId = meetDeviceIdForOption(callRoom?.microphones ?? [], id);
-                      if (!deviceId) return;
-                      void callRoom?.controller.switchMic(deviceId);
-                    }}
-                    onSpeakerChange={callRoom?.onSpeakerChange ?? (() => {})}
-                    onExpand={() => handleCallLayoutChange("fullscreen")}
-                    onLeave={visitCallToggle}
-                    onMuteParticipant={
-                      callRoom?.hasSignedInIdentity
-                        ? (peerId, muted) => void callRoom.controller.mutePeer(peerId, muted)
-                        : undefined
-                    }
-                    joined={showCallChrome}
-                    invite={callInvite}
-                    audioOnly={callAudioOnly}
-                    onInvite={() => onCallInvite(meetCallInviteStartOptions(callAudioOnly))}
-                    knockers={
-                      showCallChrome && callRoom?.hasSignedInIdentity
-                        ? callRoom.controller.knockers
-                        : []
-                    }
-                    onAdmitKnocker={
-                      showCallChrome && callRoom
-                        ? (peerId) => void callRoom.controller.admitKnocker(peerId)
-                        : undefined
-                    }
-                    onDenyKnocker={
-                      showCallChrome && callRoom
-                        ? (peerId) => void callRoom.controller.denyKnocker(peerId)
-                        : undefined
-                    }
-                  />
-                ) : null}
-                {conversationOpen ? resolvedChat : null}
-              </div>
-              {keepCallChrome ? (
-                <div
-                  className={cn(
-                    "meet-workspace__call-main",
-                    !showExpandedStage && "meet-workspace__surface--parked",
-                  )}
-                  inert={!showExpandedStage || undefined}
-                  aria-hidden={!showExpandedStage}
-                >
-                  {resolvedStage}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="meet-workspace__chat-empty">{meetLabels.emptyChannelMain}</div>
-          )
+          <MeetWorkspaceMainSurfaces
+            open={conversationOpen || visitEngaged}
+            showExpandedStage={showExpandedStage}
+            keepCallChrome={keepCallChrome}
+            callBar={
+              <MeetWorkspaceCallBar
+                visible={showKnockOrCallBar}
+                joined={showCallChrome}
+                room={callRoom}
+                channelTitle={headerTitle}
+                session={session}
+                previewPeerIds={selectedId ? (callParticipantsByChannel?.[selectedId] ?? []) : []}
+                directory={data.directory}
+                invite={callInvite}
+                audioOnly={callAudioOnly}
+                onExpand={() => handleCallLayoutChange("fullscreen")}
+                onLeave={visitCallToggle}
+                onInvite={onCallInvite}
+              />
+            }
+            chat={conversationOpen ? resolvedChat : null}
+            stage={resolvedStage}
+          />
         }
       />
       <MeetWorkspaceDialogs
