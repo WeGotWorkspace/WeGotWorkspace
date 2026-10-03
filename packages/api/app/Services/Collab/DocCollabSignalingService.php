@@ -12,6 +12,10 @@ use Illuminate\Http\Request;
 
 /**
  * HTTP signaling for docs WebRTC mesh.
+ *
+ * Contract C5: authorization runs on the canonical room (drive path or note UID),
+ * while the signaling tables are keyed by `CollabRoomPolicy::roomKey()` so any
+ * path length or character set fits `collab_peers.room` / `collab_messages.room`.
  */
 final class DocCollabSignalingService
 {
@@ -49,6 +53,7 @@ final class DocCollabSignalingService
             $ownerMarker = $this->actors->ownerMarker($principal['username']);
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
             $this->joinAuthorizer->assertMayJoin($room, $principal);
+            $roomKey = $this->rooms->roomKey($room);
             $name = mb_substr(trim((string) ($body['name'] ?? '')), 0, 64);
             if ($name === '') {
                 $this->fail('name_required');
@@ -56,17 +61,17 @@ final class DocCollabSignalingService
 
             $peerId = bin2hex(random_bytes(8));
             $now = time();
-            $this->store->deleteOwnedPeersExcept($room, $ownerMarker);
-            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, $now);
+            $this->store->deleteOwnedPeersExcept($roomKey, $ownerMarker);
+            $this->store->upsertPeer($roomKey, $peerId, $name, $ownerMarker, $now);
 
-            if ($this->store->countPeers($room) > self::MAX_PEERS_PER_ROOM) {
-                $this->store->deletePeer($room, $peerId);
+            if ($this->store->countPeers($roomKey) > self::MAX_PEERS_PER_ROOM) {
+                $this->store->deletePeer($roomKey, $peerId);
                 $this->fail('room_full', 409);
             }
 
             return [
                 'peerId' => $peerId,
-                'peers' => $this->store->peerList($room, $peerId),
+                'peers' => $this->store->peerList($roomKey, $peerId),
             ];
         });
     }
@@ -81,13 +86,13 @@ final class DocCollabSignalingService
             $this->store->pruneOldRows();
 
             $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
-            $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            $roomKey = $this->rooms->roomKey($this->rooms->cleanRoom($body['room'] ?? null));
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
-            $this->store->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
+            $this->store->assertPeerOwnedByActor($roomKey, $peerId, $ownerMarker);
 
             $knownRosterSig = is_string($body['sig'] ?? null) ? (string) $body['sig'] : null;
 
-            return $this->store->poll($room, $peerId, max(0, (int) ($body['since'] ?? 0)), $knownRosterSig);
+            return $this->store->poll($roomKey, $peerId, max(0, (int) ($body['since'] ?? 0)), $knownRosterSig);
         });
     }
 
@@ -101,13 +106,13 @@ final class DocCollabSignalingService
             $this->store->pruneOldRows();
 
             $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
-            $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            $roomKey = $this->rooms->roomKey($this->rooms->cleanRoom($body['room'] ?? null));
             $from = $this->store->readSendFrom($body);
             $to = $this->store->cleanPeer($body['to'] ?? null);
-            $this->store->assertPeerOwnedByActor($room, $from, $ownerMarker);
+            $this->store->assertPeerOwnedByActor($roomKey, $from, $ownerMarker);
 
             $type = (string) ($body['type'] ?? '');
-            $this->store->send($room, $from, $to, $type, $body['payload'] ?? null);
+            $this->store->send($roomKey, $from, $to, $type, $body['payload'] ?? null);
 
             return ['ok' => true];
         });
@@ -123,10 +128,10 @@ final class DocCollabSignalingService
             $this->store->pruneOldRows();
 
             $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
-            $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            $roomKey = $this->rooms->roomKey($this->rooms->cleanRoom($body['room'] ?? null));
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
-            $this->store->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
-            $this->store->leave($room, $peerId);
+            $this->store->assertPeerOwnedByActor($roomKey, $peerId, $ownerMarker);
+            $this->store->leave($roomKey, $peerId);
 
             return ['ok' => true];
         });
