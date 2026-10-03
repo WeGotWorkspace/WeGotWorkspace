@@ -8,6 +8,7 @@ import type { MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import type { MeetKnocker } from "@/meet-core/src/meet-poll-roster";
+import { shouldAcceptMeetOffer } from "@/meet-core/src/meet-rtc-peers";
 import { useMeetPollHandler } from "@/meet-core/src/use-meet-poll-handler";
 
 type CallStatus = "idle" | "preparing" | "waiting" | "in-call" | "failed";
@@ -26,6 +27,7 @@ vi.mock("@/hooks/use-app-toast", () => ({
 function createPollHandler(
   overrides: {
     waitingForAdmissionRef?: { current: boolean };
+    signalingRosterRef?: { current: Map<string, string> };
     setWaitingForAdmission?: ReturnType<typeof vi.fn>;
     setStatus?: ReturnType<typeof vi.fn>;
     setStartedAt?: ReturnType<typeof vi.fn>;
@@ -58,6 +60,7 @@ function createPollHandler(
       displayNameRef: { current: "Alex" },
       waitingForAdmissionRef: overrides.waitingForAdmissionRef ?? { current: false },
       rosterRef: { current: new Map() },
+      signalingRosterRef: overrides.signalingRosterRef ?? { current: new Map() },
       participantRosterDiffReadyRef: { current: true },
       peerNamesRef: { current: new Map() },
       peerDisclosedMediaRef: { current: new Map() },
@@ -305,6 +308,25 @@ describe("useMeetPollHandler chat", () => {
     });
     expect(line?.id).toMatch(/^peer-2-/);
     expect(line?.id).not.toBe("saved-1");
+  });
+});
+
+describe("useMeetPollHandler offer gate", () => {
+  it("records the knock rows the offer gate needs", async () => {
+    const signalingRosterRef = { current: new Map<string, string>() };
+    const { handlePoll } = createPollHandler({ signalingRosterRef });
+
+    await handlePoll({
+      peers: [
+        { id: "host-1", name: "Admin" },
+        { id: "knocker-1", name: "__wgw_knock__:Mallory" },
+      ],
+      messages: [],
+    });
+
+    expect(shouldAcceptMeetOffer(signalingRosterRef.current, "host-1")).toBe(true);
+    expect(shouldAcceptMeetOffer(signalingRosterRef.current, "knocker-1")).toBe(false);
+    expect(shouldAcceptMeetOffer(signalingRosterRef.current, "forged-1")).toBe(false);
   });
 });
 
