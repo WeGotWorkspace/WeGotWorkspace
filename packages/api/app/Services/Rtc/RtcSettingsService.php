@@ -90,9 +90,9 @@ final class RtcSettingsService
 
     public function forgetLegacyStaticCredentials(): void
     {
-        foreach ([self::LEGACY_TURN_USERNAME_KEY, self::LEGACY_TURN_CREDENTIAL_KEY] as $key) {
-            AppSetting::setValue($key, '');
-        }
+        AppSetting::query()
+            ->whereIn('name', [self::LEGACY_TURN_USERNAME_KEY, self::LEGACY_TURN_CREDENTIAL_KEY])
+            ->delete();
     }
 
     private function normalizeRtcUrls(mixed $value, string $defaultScheme): string
