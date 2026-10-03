@@ -32,6 +32,7 @@ final class DocCollabSignalingService
         private CollabJoinAuthorizer $joinAuthorizer,
         private RtcSettingsService $rtcSettingsService,
         private RtcRelayService $relays,
+        private CollabTicketIssuer $tickets,
     ) {
         $this->store = new HttpSignalingStore(RtcSignalingPolicy::collab());
     }
@@ -45,6 +46,30 @@ final class DocCollabSignalingService
             $this->actors->requireUsername($request);
 
             return $this->rtcSettingsService->publicSettings();
+        });
+    }
+
+    /**
+     * Everything a client needs before it dials: the ICE configuration and the
+     * public half of the ticket key, as a JWK with its `kid` so the client can
+     * cache it per key id. The payload is only served to an actor that may read
+     * the document — the room id alone is not a capability.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array{rtc: array{stunUrls: string, turnAvailable: bool}, collabTicket: array{kid: string, jwk: array<string, string>}}
+     */
+    public function configuration(Request $request, array $body): array
+    {
+        return $this->run(function () use ($request, $body): array {
+            $principal = $this->actors->requirePrincipal($request);
+            $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            $this->joinAuthorizer->assertMayJoin($room, $principal);
+            $jwk = $this->tickets->publicJwk();
+
+            return [
+                'rtc' => $this->rtcSettingsService->publicSettings(),
+                'collabTicket' => ['kid' => $jwk['kid'], 'jwk' => $jwk],
+            ];
         });
     }
 
@@ -64,7 +89,7 @@ final class DocCollabSignalingService
 
     /**
      * @param  array<string, mixed>  $body
-     * @return array{peerId: string, peers: list<array{id: string, name: string}>}
+     * @return array{peerId: string, peers: list<array{id: string, name: string}>, ticket: string}
      */
     public function join(Request $request, array $body): array
     {
@@ -83,6 +108,7 @@ final class DocCollabSignalingService
 
             $peerId = bin2hex(random_bytes(8));
             $now = time();
+            $access = $this->joinAuthorizer->accessFor($room, $principal);
             $this->store->deleteOwnedPeersExcept($roomKey, $ownerMarker);
             // The access right is computed here and nowhere else: the column
             // defaults to read, so a row that never saw this write cannot edit.
@@ -91,7 +117,7 @@ final class DocCollabSignalingService
             $this->store->upsertPeer($roomKey, $peerId, $name, $ownerMarker, $now, $this->readBrowserId($body), [
                 'caps' => RtcPeerCaps::encode($body['caps'] ?? null),
                 'net' => RtcNetClass::normalize($body['net'] ?? null),
-                'access' => $this->joinAuthorizer->accessFor($room, $principal),
+                'access' => $access,
             ]);
 
             if ($this->store->countPeers($roomKey) > self::MAX_PEERS_PER_ROOM) {
@@ -102,27 +128,46 @@ final class DocCollabSignalingService
             return [
                 'peerId' => $peerId,
                 'peers' => $this->store->peerList($roomKey, $peerId),
+                'ticket' => $this->tickets->issue($roomKey, $principal['username'], $peerId, $access, $now),
             ];
         });
     }
 
     /**
+     * Contract C2 refresh and revocation. The share grant is re-read on every
+     * poll, so losing access ends the live session instead of waiting out the
+     * peer timeout, and a downgrade reaches both the peer row and the ticket.
+     *
      * @param  array<string, mixed>  $body
-     * @return array{peers: list<array{id: string, name: string}>, messages: list<array<string, mixed>>, rosterSig: string}|array{unchanged: true, rosterSig: string}
+     * @return array{peers: list<array{id: string, name: string}>, messages: list<array<string, mixed>>, rosterSig: string, ticket: string}|array{unchanged: true, rosterSig: string}
      */
     public function poll(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRowsSampled();
 
-            $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
-            $roomKey = $this->rooms->roomKey($this->rooms->cleanRoom($body['room'] ?? null));
+            $principal = $this->actors->requirePrincipal($request);
+            $ownerMarker = $this->actors->ownerMarker($principal['username']);
+            $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            $roomKey = $this->rooms->roomKey($room);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             $this->store->assertPeerOwnedByActor($roomKey, $peerId, $ownerMarker);
 
+            $access = $this->reauthorize($room, $roomKey, $peerId, $principal);
             $knownRosterSig = is_string($body['sig'] ?? null) ? (string) $body['sig'] : null;
+            // A 204 carries no ticket, so the handover window at the start of
+            // every grid step answers in full instead.
+            if ($this->tickets->inHandoverWindow()) {
+                $knownRosterSig = null;
+            }
 
-            return $this->store->poll($roomKey, $peerId, max(0, (int) ($body['since'] ?? 0)), $knownRosterSig);
+            $result = $this->store->poll($roomKey, $peerId, max(0, (int) ($body['since'] ?? 0)), $knownRosterSig);
+            if (($result['unchanged'] ?? false) === true) {
+                return $result;
+            }
+            $result['ticket'] = $this->tickets->issue($roomKey, $principal['username'], $peerId, $access);
+
+            return $result;
         });
     }
 
@@ -135,11 +180,14 @@ final class DocCollabSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRowsSampled();
 
-            $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
-            $roomKey = $this->rooms->roomKey($this->rooms->cleanRoom($body['room'] ?? null));
+            $principal = $this->actors->requirePrincipal($request);
+            $ownerMarker = $this->actors->ownerMarker($principal['username']);
+            $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            $roomKey = $this->rooms->roomKey($room);
             $from = $this->store->readSendFrom($body);
             $to = $this->store->cleanPeer($body['to'] ?? null);
             $this->store->assertPeerOwnedByActor($roomKey, $from, $ownerMarker);
+            $this->reauthorize($room, $roomKey, $from, $principal);
 
             $type = (string) ($body['type'] ?? '');
             $this->store->send($roomKey, $from, $to, $type, $body['payload'] ?? null);
@@ -165,6 +213,30 @@ final class DocCollabSignalingService
 
             return ['ok' => true];
         });
+    }
+
+    /**
+     * Re-read the share grant for a peer that is already in the room. Losing
+     * read access ends the session with a 403 the client acts on; a narrowed
+     * right is written back to the peer row so the roster other peers read,
+     * and the ticket they verify, both follow the grant.
+     *
+     * @param  array{username: string, role: string}  $principal
+     * @return 'read'|'comment'|'write'
+     */
+    private function reauthorize(string $room, string $roomKey, string $peerId, array $principal): string
+    {
+        try {
+            $this->joinAuthorizer->assertMayJoin($room, $principal);
+        } catch (CollabResponseException $denied) {
+            $this->store->leave($roomKey, $peerId);
+            throw $denied;
+        }
+
+        $access = $this->joinAuthorizer->accessFor($room, $principal);
+        $this->store->rewriteAccess($roomKey, $peerId, $access);
+
+        return $access;
     }
 
     /**

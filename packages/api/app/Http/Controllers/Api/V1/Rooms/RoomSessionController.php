@@ -115,7 +115,7 @@ final class RoomSessionController
 
         return match ($decoded['channel']) {
             'meet' => response()->json(['rtc' => $this->meet->rtcSettings($request, $body)]),
-            'collab' => response()->json(['rtc' => $this->collab->rtcSettings($request)]),
+            'collab' => response()->json($this->collab->configuration($request, $body)),
             'principal' => response()->json(['rtc' => $this->principal->rtcSettings($request)]),
         };
     }
