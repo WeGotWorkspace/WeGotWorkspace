@@ -4,6 +4,12 @@ import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
 import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
 import type { PrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import type { RtcPeerDescriptor, RtcSettings } from "@/lib/rtc/types";
+import {
+  type DocsCollabAccess,
+  DocsCollabRosterTrust,
+  docsCollabAccessMayBroadcast,
+} from "@/text-editor-core/docs-collab/docs-collab-access";
+import { isDocumentBearingSyncMessage } from "@/text-editor-core/docs-collab/docs-collab-mesh-sync";
 import { DocsCollabPrincipalReuse } from "@/text-editor-core/docs-collab/docs-collab-principal-reuse";
 import type {
   DocsCollabMeshMessage,
@@ -55,6 +61,9 @@ export class DocsRtcSession {
   /** Collab peer ids that have appeared in a signaling roster while reused. */
   private readonly seenReusedRosterIds = new Set<string>();
 
+  /** Rights the server resolved, for direct data-channel peers and for us. */
+  private readonly trust = new DocsCollabRosterTrust();
+
   constructor(private readonly options: DocsRtcSessionOptions) {
     const binding = createDataBinding({
       label: DC_LABEL,
@@ -86,7 +95,16 @@ export class DocsRtcSession {
               from: remoteId,
             });
           }
-          this.emit({ ...msg, from: remoteId } as DocsCollabMeshMessage);
+          // A direct collab data channel takes its rights from the server
+          // roster — the peer's own claim is not part of the message.
+          this.emit({
+            ...msg,
+            from: remoteId,
+            trust: {
+              user: this.trust.userForPeerId(remoteId),
+              access: this.trust.accessForPeerId(remoteId),
+            },
+          } as DocsCollabMeshMessage);
         } catch {
           // ignore malformed payloads
         }
@@ -120,6 +138,7 @@ export class DocsRtcSession {
       shouldAcceptOffer: (from) => !this.reuse.shouldIgnoreOffer(from),
       onLinkChange: () => this.emit({ type: "link" }),
       onPollData: (data) => {
+        this.trust.remember(data.peers, this.mesh.getMyId());
         this.reuse.considerRoster(data.peers, this.mesh.getMyId());
         this.dropStaleReusedPeers(data.peers);
         this.gossipNewRosterPeers(data.peers);
@@ -234,14 +253,37 @@ export class DocsRtcSession {
     return this.getRoomPeerStatuses().filter((peer) => peer.link === "connected").length;
   }
 
+  /** Right the server resolved for this client, from its own roster row. */
+  myAccess(): DocsCollabAccess {
+    return this.trust.myAccess();
+  }
+
   broadcast(msg: DocsCollabMeshMessage): void {
+    if (this.isMutedDocumentUpdate(msg)) return;
     this.reuse.broadcast(msg);
     this.mesh.broadcastJson(msg);
   }
 
   sendTo(remoteId: string, msg: DocsCollabMeshMessage): void {
+    if (this.isMutedDocumentUpdate(msg)) return;
     if (this.reuse.sendTo(remoteId, msg)) return;
     this.mesh.sendJsonTo(remoteId, msg);
+  }
+
+  /**
+   * Transport guard behind the read-only UI: a viewer never puts a document
+   * update on the wire, so a tampered client cannot push one either. A sync
+   * step 1 still goes out — it only asks for state, which is what a viewer is
+   * here for. Awareness and roster gossip flow too; presence is not a change.
+   */
+  private isMutedDocumentUpdate(msg: DocsCollabMeshMessage): boolean {
+    if (msg.type !== "sync" || !isDocumentBearingSyncMessage(msg.u)) return false;
+    if (docsCollabAccessMayBroadcast(this.trust.myAccess())) return false;
+    rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "update-not-sent", {
+      access: this.trust.myAccess(),
+      reason: "reader",
+    });
+    return true;
   }
 
   async join(name: string): Promise<{ peerId: string; peers: DocsCollabMeshPeer[] }> {

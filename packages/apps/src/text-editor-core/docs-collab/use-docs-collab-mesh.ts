@@ -8,7 +8,7 @@ import {
   applyAwarenessUpdate,
   encodeFullAwarenessBroadcast,
   encodeSyncStep1,
-  handleSyncMessage,
+  handleGuardedSyncMessage,
 } from "./docs-collab-mesh-sync";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
@@ -170,11 +170,17 @@ export function useDocsCollabMesh({
       if (!ydoc || !awareness) return;
 
       if (msg.type === "sync" && Array.isArray(msg.u)) {
-        const reply = handleSyncMessage(msg.u, ydoc, MESH_ORIGIN);
+        const outcome = handleGuardedSyncMessage({
+          bytes: msg.u,
+          ydoc,
+          trust: msg.trust,
+          from: msg.from,
+          origin: MESH_ORIGIN,
+        });
         if (!isYDocEmpty(ydoc)) markDocReady();
-        if (reply) {
-          if (msg.from) refs.meshRef.current?.sendTo(msg.from, reply);
-          else refs.meshRef.current?.broadcast(reply);
+        if (outcome.kind === "reply") {
+          if (msg.from) refs.meshRef.current?.sendTo(msg.from, outcome.reply);
+          else refs.meshRef.current?.broadcast(outcome.reply);
         }
       }
       if (msg.type === "awareness" && Array.isArray(msg.u)) {
