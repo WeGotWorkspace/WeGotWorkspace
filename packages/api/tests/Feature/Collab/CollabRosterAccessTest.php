@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Collab;
 
 use App\Models\CollabPeer;
+use App\Models\RtcRelayEvent;
+use App\Services\Settings\SettingKeys;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\DriveTestFixtures;
 use Tests\Support\RoomTestHelper;
@@ -97,6 +99,49 @@ final class CollabRosterAccessTest extends WgwDatabaseTestCase
         $this->assertSame($browserId, $peer->browser_id);
         $this->assertSame('yjs-http,since-ack', $peer->caps);
         $this->assertSame('open', $peer->net);
+    }
+
+    public function test_the_relay_issues_credentials_and_hints_the_target_peer(): void
+    {
+        $this->setAppSettings([
+            SettingKeys::RTC_TURN_URL => 'turn:relay.example.test:3478',
+            SettingKeys::RTC_TURN_SECRET => 'north',
+        ]);
+        $this->share('edit');
+        $target = (string) $this->join($this->carolBearerToken(), 'Carol')->json('peerId');
+        $self = (string) $this->join($this->userBearerToken(), 'Bob')->json('peerId');
+
+        $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/rooms/'.$this->roomId().'/relay', [
+                'peerId' => $self,
+                'target' => $target,
+                'reason' => 'failed',
+            ])
+            ->assertOk()
+            ->assertJsonStructure(['turn' => ['urls', 'username', 'credential', 'ttl']]);
+
+        $this->assertTrue(
+            RtcRelayEvent::query()->where('channel', 'collab')->where('outcome', 'issued')->exists(),
+        );
+        $messages = $this->withBearer($this->carolBearerToken())
+            ->getJson('/api/v1/rooms/'.$this->roomId().'/events?peerId='.$target)
+            ->assertOk()
+            ->json('messages');
+        $this->assertSame('relay-hint', $messages[0]['type']);
+    }
+
+    public function test_the_relay_is_unavailable_without_a_secret(): void
+    {
+        $peerId = (string) $this->join($this->userBearerToken(), 'Bob')->json('peerId');
+
+        $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/rooms/'.$this->roomId().'/relay', [
+                'peerId' => $peerId,
+                'target' => '*',
+                'reason' => 'precheck',
+            ])
+            ->assertStatus(503)
+            ->assertJson(['error' => 'relay_unavailable']);
     }
 
     private function roomId(): string

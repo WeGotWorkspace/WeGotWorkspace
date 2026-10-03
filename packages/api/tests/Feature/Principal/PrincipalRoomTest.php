@@ -328,9 +328,18 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
             SettingKeys::RTC_STUN_URL => 'stun.example.test:3478',
         ]);
 
-        $this->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/configuration')
+        $this->withBearer($this->issueBearerTokenFor('alice'))
+            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/configuration')
             ->assertOk()
-            ->assertJsonPath('rtc.stunUrls', 'stun:stun.example.test:3478');
+            ->assertJsonPath('rtc.stunUrls', 'stun:stun.example.test:3478')
+            ->assertJsonPath('rtc.turnAvailable', false);
+    }
+
+    public function test_configuration_requires_an_actor(): void
+    {
+        $this->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/configuration')
+            ->assertUnauthorized()
+            ->assertJsonPath('error', 'auth_required');
     }
 
     private function joinWorkspace(string $token, string $name): string
