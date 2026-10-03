@@ -76,10 +76,12 @@ export function useMeetChatColumnProps({
   );
   const onSendChannel = useCallback(
     (payload: ChatSendPayload) => {
-      const persisted = chat.sendChannel(payload);
-      void persisted.catch(onError);
+      // The send hands back its echo id before the save settles, so the room
+      // copy goes out beside the channel write instead of behind it.
+      const send = chat.sendChannel(payload);
+      void send.saved.catch(onError);
       if (callRoom?.controller.inCall) {
-        void callRoom.controller.sendChat(payload.body, persisted);
+        void callRoom.controller.sendChat(payload.body, send);
       }
     },
     [callRoom, chat.sendChannel, onError],

@@ -1,13 +1,13 @@
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
-import { meetPollChatLine } from "@/meet-core/src/meet-channel-chat-echo";
-import { type MeetChatLine } from "@/meet-core/src/meet-chat-line";
+import { meetPollChatLine, type MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import { parseMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { completeMeetKnockAdmission } from "@/meet-core/src/meet-knock-admission";
 import {
   buildActiveMeetRoster,
+  buildMeetSignalingRoster,
   listKnockersFromRoster,
   listNewParticipantNames,
   type MeetKnocker,
@@ -31,6 +31,8 @@ export type UseMeetPollHandlerArgs = {
   displayNameRef: MutableRefObject<string>;
   waitingForAdmissionRef: MutableRefObject<boolean>;
   rosterRef: MutableRefObject<Map<string, string>>;
+  /** Raw roster for the offer gate — knock rows included. */
+  signalingRosterRef: MutableRefObject<Map<string, string>>;
   participantRosterDiffReadyRef: MutableRefObject<boolean>;
   peerNamesRef: MutableRefObject<Map<string, string>>;
   peerDisclosedMediaRef: MutableRefObject<
@@ -56,6 +58,7 @@ export function useMeetPollHandler({
   displayNameRef,
   waitingForAdmissionRef,
   rosterRef,
+  signalingRosterRef,
   participantRosterDiffReadyRef,
   peerNamesRef,
   peerDisclosedMediaRef,
@@ -78,6 +81,9 @@ export function useMeetPollHandler({
       const incoming = (poll.messages ?? []) as MeetPollMessage[];
       const selfPeerId = selfIdRef.current;
       if (!selfPeerId) return;
+
+      // Before the signals of this same poll are applied: the offer gate reads it.
+      signalingRosterRef.current = buildMeetSignalingRoster(roster);
 
       const pendingKnockers = listKnockersFromRoster(roster);
       setKnockers((prev) => {
@@ -196,6 +202,7 @@ export function useMeetPollHandler({
       roomCodeRef,
       rosterRef,
       selfIdRef,
+      signalingRosterRef,
       setChatMessages,
       setEndedMessage,
       setKnockers,
