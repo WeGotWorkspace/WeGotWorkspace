@@ -434,16 +434,33 @@ final class HttpSignalingStore
     }
 
     /**
-     * @return list<string>
+     * Peer rows in the room apart from one, with the display name: Meet reads
+     * the name to tell a waiting (knocking) row from a participant.
+     *
+     * @return list<array{id: string, name: string}>
      */
-    public function peerIdsInRoomExcept(string $room, string $exceptPeerId): array
+    public function peersInRoomExcept(string $room, string $exceptPeerId): array
     {
         return array_values($this->peerQuery()
             ->where('room', $room)
             ->where('peer_id', '!=', $exceptPeerId)
-            ->pluck('peer_id')
-            ->map(static fn ($id) => (string) $id)
+            ->get(['peer_id', 'name'])
+            ->map(static fn ($row): array => [
+                'id' => (string) $row->getAttribute('peer_id'),
+                'name' => (string) $row->getAttribute('name'),
+            ])
             ->all());
+    }
+
+    /** Display name on a peer row; null when there is no such row. */
+    public function peerName(string $room, string $peerId): ?string
+    {
+        $row = $this->peerQuery()
+            ->where('room', $room)
+            ->where('peer_id', $peerId)
+            ->first(['name']);
+
+        return $row === null ? null : (string) $row->getAttribute('name');
     }
 
     /**

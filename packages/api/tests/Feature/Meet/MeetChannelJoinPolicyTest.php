@@ -203,10 +203,22 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
             ->json('sessionKey');
         $this->sendChat('alice', 'g744-8kfg-adjz', 'peer-alice', 'the call is open')
             ->assertOk();
+        // Still knocking, so the room's chat stays out of reach (#1099).
         $this->flushHeaders()
             ->getJson('/api/v1/rooms/g744-8kfg-adjz/events?peerId=peer-reader&sessionKey='.$sessionKey)
             ->assertOk()
-            ->assertJsonPath('messages.0.payload.text', 'the call is open');
+            ->assertJsonPath('messages', [])
+            ->assertDontSee('the call is open');
+
+        $this->sendControl('alice', 'g744-8kfg-adjz', 'peer-alice', ['kind' => 'admit', 'peerId' => 'peer-reader'])
+            ->assertOk();
+        $this->guestJoin('g744-8kfg-adjz', 'peer-reader', 'Reader', $sessionKey)->assertOk();
+        $this->sendChat('alice', 'g744-8kfg-adjz', 'peer-alice', 'welcome in')
+            ->assertOk();
+        $this->flushHeaders()
+            ->getJson('/api/v1/rooms/g744-8kfg-adjz/events?peerId=peer-reader&sessionKey='.$sessionKey)
+            ->assertOk()
+            ->assertJsonPath('messages.1.payload.text', 'welcome in');
     }
 
     public function test_meeting_room_code_resolves_to_the_channel_acl(): void

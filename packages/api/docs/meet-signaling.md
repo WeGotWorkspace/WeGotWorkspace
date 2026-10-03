@@ -41,6 +41,12 @@ A call in a chat channel uses the deterministic room id = the channel collection
 
 `MAX_PEERS_PER_ROOM` (4) is unchanged and counts knocking peers too — a channel call fills up host slots and pending knockers alike.
 
+**The lobby is not the call** (#1099). As long as a peer row carries the knock name prefix (`__wgw_knock__:`), the server treats it as waiting, on every room kind:
+
+- `POST /rooms/{roomId}/events` with type `offer`, `answer`, or `ice` from that row is `forbidden` (403). Media negotiation is impossible until the knocker re-joins without the prefix, so a waiting peer can no longer be seen or heard before admission. `bye` still passes.
+- `POST /rooms/{roomId}/messages` skips knock rows in its fan-out, so room chat is unreadable while someone waits, channel echoes included. The one exception is the decision that ends the wait: an `admit` or `deny` control message is delivered to the knocker it names. Other control kinds (`end`, `mute`, `media`) stay inside the call.
+- A knocker may still *send* chat — that is how the `knock` control message reaches the hosts.
+
 **Same-browser leftovers.** Join accepts an optional `browserId` (32 hex, minted in `localStorage` as `wgw.rtc.browserId`). When present, other peers in the room with that id are evicted immediately — a reload or second tab on the same device replaces the ghost instead of showing two avatars. A second device has its own token and both peers stay. Omitting `browserId` (old clients, tests) keeps the previous behavior.
 
 ## Room kinds

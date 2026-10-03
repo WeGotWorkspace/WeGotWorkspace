@@ -16,6 +16,9 @@ final class MeetSignalingService
 
     private const MAX_PEERS_PER_ROOM = 4;
 
+    /** Send types that set up a media session, so the lobby may not use them. */
+    private const MEDIA_SEND_TYPES = ['offer', 'answer', 'ice'];
+
     private readonly HttpSignalingStore $store;
 
     public function __construct(
@@ -161,6 +164,7 @@ final class MeetSignalingService
             $this->store->assertPeerOwnedByActor($room, $from, $ownerMarker);
 
             $type = (string) ($body['type'] ?? '');
+            $this->assertNotWaitingInLobby($room, $from, $type);
             $this->store->send($room, $from, $to, $type, $body['payload'] ?? null);
 
             return ['ok' => true];
@@ -218,7 +222,7 @@ final class MeetSignalingService
                 $this->fail('payload_too_large', 413);
             }
 
-            $targets = $this->store->peerIdsInRoomExcept($room, $from);
+            $targets = $this->chatTargets($room, $from, $text);
 
             if ($targets === []) {
                 return ['ok' => true, 'delivered' => 0];
@@ -240,6 +244,53 @@ final class MeetSignalingService
 
             return ['ok' => true, 'delivered' => count($targets)];
         });
+    }
+
+    /**
+     * The lobby is not the call: a peer that is still knocking may not set up
+     * media. Without this the waiting side could offer straight to a member,
+     * whose browser answers, and be seen and heard before anyone admitted it.
+     * Dropping the knock name on re-join is what opens the path again.
+     */
+    private function assertNotWaitingInLobby(string $room, string $peerId, string $type): void
+    {
+        if (! in_array($type, self::MEDIA_SEND_TYPES, true)) {
+            return;
+        }
+        if (! $this->isKnockPeer($room, $peerId)) {
+            return;
+        }
+
+        $this->fail('forbidden', 403, 'Waiting to be admitted — the call cannot be joined yet.');
+    }
+
+    /**
+     * Chat fan-out leaves the lobby out, so room chat is unreadable while
+     * someone waits. The decision that ends that wait (`admit` / `deny`) does
+     * reach the knocker it names — that is how the waiting client learns.
+     *
+     * @return list<string>
+     */
+    private function chatTargets(string $room, string $from, string $text): array
+    {
+        $decidedPeerId = $this->channelJoinPolicy->lobbyDecisionPeerIdFromControlText($text);
+
+        $targets = [];
+        foreach ($this->store->peersInRoomExcept($room, $from) as $peer) {
+            $isKnocking = str_starts_with($peer['name'], self::KNOCK_NAME_PREFIX);
+            if (! $isKnocking || $peer['id'] === $decidedPeerId) {
+                $targets[] = $peer['id'];
+            }
+        }
+
+        return $targets;
+    }
+
+    private function isKnockPeer(string $room, string $peerId): bool
+    {
+        $name = $this->store->peerName($room, $peerId);
+
+        return $name !== null && str_starts_with($name, self::KNOCK_NAME_PREFIX);
     }
 
     /**
