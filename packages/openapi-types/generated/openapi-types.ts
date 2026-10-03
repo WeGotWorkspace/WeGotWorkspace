@@ -8314,8 +8314,10 @@ export interface components {
         AdminRtcSettings: {
             stunUrls: string;
             turnUrls: string;
-            turnUsername: string;
-            turnPassword: string;
+            /** @description Whether a TURN shared secret is stored. The secret itself is write-only and never returned. */
+            turnSecretSet: boolean;
+            /** @description Whether credentials from the removed static TURN username and password settings still exist. */
+            turnStaticCredentialsPresent: boolean;
         };
         AdminAppsSettings: {
             calendars: boolean;

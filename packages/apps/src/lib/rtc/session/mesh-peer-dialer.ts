@@ -1,4 +1,4 @@
-import { toRtcConfig, turnUrlCount } from "@/lib/rtc/config";
+import { toRtcConfig } from "@/lib/rtc/config";
 import { rtcSdpMeta } from "@/lib/rtc/log";
 import type { RtcSessionBinding } from "@/lib/rtc/session/bindings";
 import type { MeshPeerEntry, MeshPeerRegistry } from "@/lib/rtc/session/mesh-peer-registry";
@@ -32,7 +32,7 @@ export class MeshPeerDialer {
   private readonly turnConfigured: boolean;
 
   constructor(private readonly context: MeshPeerDialerContext) {
-    this.turnConfigured = turnUrlCount(context.rtcSettings) > 0;
+    this.turnConfigured = context.rtcSettings.turnAvailable;
   }
 
   /** `relay` only when the settings force it and TURN is actually configured. */

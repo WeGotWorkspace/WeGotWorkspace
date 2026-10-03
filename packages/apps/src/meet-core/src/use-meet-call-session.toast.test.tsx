@@ -116,9 +116,7 @@ describe("useMeetCallSession leave toast", () => {
         room,
         rtc: {
           stunUrls: "",
-          turnUrls: "",
-          turnUsername: "",
-          turnPassword: "",
+          turnAvailable: false,
           forceRelay: false,
         },
         isGuestSession: false,
@@ -140,9 +138,7 @@ describe("useMeetCallSession leave toast", () => {
         room,
         rtc: {
           stunUrls: "",
-          turnUrls: "",
-          turnUsername: "",
-          turnPassword: "",
+          turnAvailable: false,
           forceRelay: false,
         },
         isGuestSession: false,

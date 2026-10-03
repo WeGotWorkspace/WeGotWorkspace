@@ -734,18 +734,20 @@
                     "turnUrls": {
                         "type": "string"
                     },
-                    "turnUsername": {
-                        "type": "string"
+                    "turnSecretSet": {
+                        "type": "boolean",
+                        "description": "Whether a TURN shared secret is stored. The secret itself is write-only and never returned."
                     },
-                    "turnPassword": {
-                        "type": "string"
+                    "turnStaticCredentialsPresent": {
+                        "type": "boolean",
+                        "description": "Whether credentials from the removed static TURN username and password settings still exist."
                     }
                 },
                 "required": [
                     "stunUrls",
                     "turnUrls",
-                    "turnUsername",
-                    "turnPassword"
+                    "turnSecretSet",
+                    "turnStaticCredentialsPresent"
                 ]
             },
             "AdminAppsSettings": {

@@ -46,35 +46,45 @@ export function AdminRealtimeCollaborationPane({
             }}
           />
         </FormField>
-        <div className="grid md:grid-cols-2 gap-3">
-          <FormField htmlFor="admin-realtime-turn-username" label="TURN username">
-            <Input
-              id="admin-realtime-turn-username"
-              value={controller.settingsForm.turnUsername}
-              onChange={(event) => {
-                const value = event.target.value;
-                controller.setSettingsForm((prev) => ({
-                  ...prev,
-                  turnUsername: value,
-                }));
-              }}
+        <FormField htmlFor="admin-realtime-turn-secret" label="TURN shared secret">
+          <Input
+            id="admin-realtime-turn-secret"
+            variant="password"
+            autoComplete="new-password"
+            value={controller.settingsForm.turnSecret}
+            placeholder={
+              controller.settingsForm.turnSecretSet ? "Leave blank to keep the stored secret" : ""
+            }
+            onChange={(event) => {
+              const value = event.target.value;
+              controller.setSettingsForm((prev) => ({
+                ...prev,
+                turnSecret: value,
+              }));
+            }}
+          />
+        </FormField>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Optional. Turn this on when the Real-time health page shows people who can&apos;t connect.
+          The secret matches your TURN server&apos;s <code>use-auth-secret</code> setting. It is
+          currently <strong>{controller.settingsForm.turnSecretSet ? "set" : "not set"}</strong>; it
+          is never shown again after saving.
+        </p>
+        {controller.settingsForm.turnStaticCredentialsPresent ? (
+          <p className="mb-3 text-sm text-destructive">
+            This server still has a static TURN username and password from an older release. The
+            relay stays disabled until you enter a shared secret here, which also removes them.
+          </p>
+        ) : null}
+        {controller.settingsForm.turnSecretSet ? (
+          <div className="flex justify-start">
+            <Button
+              label="Clear stored TURN secret"
+              variant="outline"
+              onClick={() => void controller.actions.clearTurnSecret()}
             />
-          </FormField>
-          <FormField htmlFor="admin-realtime-turn-password" label="TURN password">
-            <Input
-              id="admin-realtime-turn-password"
-              variant="password"
-              value={controller.settingsForm.turnPassword}
-              onChange={(event) => {
-                const value = event.target.value;
-                controller.setSettingsForm((prev) => ({
-                  ...prev,
-                  turnPassword: value,
-                }));
-              }}
-            />
-          </FormField>
-        </div>
+          </div>
+        ) : null}
       </Card>
       <div className="flex justify-end">
         <Button

@@ -17,9 +17,7 @@ vi.mock("@/lib/rtc/telemetry/selected-pair", () => ({
 
 const RTC_SETTINGS: RtcSettings = {
   stunUrls: "",
-  turnUrls: "",
-  turnUsername: "",
-  turnPassword: "",
+  turnAvailable: false,
   forceRelay: false,
 };
 

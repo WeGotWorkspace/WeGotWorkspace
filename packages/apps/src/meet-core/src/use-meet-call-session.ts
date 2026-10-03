@@ -124,10 +124,8 @@ export function useMeetCallSession({
     debugRtc("controller-init", {
       rtcDebugEnabled: rtcDebugEnabledRef.current,
       stunCount: parseUrlList(rtc.stunUrls, "stun").length,
-      turnCount: parseUrlList(rtc.turnUrls, "turn").length,
       forceRelay: rtc.forceRelay,
-      turnUsernameConfigured: rtc.turnUsername.trim() !== "",
-      turnPasswordConfigured: rtc.turnPassword.trim() !== "",
+      turnAvailable: rtc.turnAvailable,
     });
   }, [debugRtc, rtc]);
 

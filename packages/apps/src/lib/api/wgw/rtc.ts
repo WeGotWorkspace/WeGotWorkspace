@@ -10,13 +10,12 @@ export type { RtcSettings };
 export type RtcIceSettings = Omit<RtcSettings, "forceRelay">;
 
 export function parseRtcSettingsPayload(payload: Record<string, unknown>): RtcIceSettings {
-  // Shared platform ICE settings (`GET /rooms/{roomId}/configuration`).
+  // Shared platform ICE settings (`GET /rooms/{roomId}/configuration`). Relay
+  // credentials are never part of this payload; they come from a relay request.
   const rtc = (payload.rtc ?? payload) as Record<string, unknown>;
   return {
     stunUrls: typeof rtc.stunUrls === "string" ? rtc.stunUrls : "",
-    turnUrls: typeof rtc.turnUrls === "string" ? rtc.turnUrls : "",
-    turnUsername: typeof rtc.turnUsername === "string" ? rtc.turnUsername : "",
-    turnPassword: typeof rtc.turnPassword === "string" ? rtc.turnPassword : "",
+    turnAvailable: rtc.turnAvailable === true,
   };
 }
 
@@ -55,8 +54,7 @@ export async function fetchRtcSettings(options?: {
       ok: true,
       status: res.status,
       forceRelay: settings.forceRelay,
-      turnUsernameConfigured: settings.turnUsername !== "",
-      turnPasswordConfigured: settings.turnPassword !== "",
+      turnAvailable: settings.turnAvailable,
     });
     return settings;
   } catch {

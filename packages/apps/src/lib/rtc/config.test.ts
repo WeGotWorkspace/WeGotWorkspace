@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { parseUrlList, toRtcConfig } from "@/lib/rtc/config";
-import type { RtcSettings } from "@/lib/rtc/types";
+import type { RtcSettings, TurnCredentials } from "@/lib/rtc/types";
 
 const baseSettings: RtcSettings = {
   stunUrls: "stun:stun.example.com:3478",
-  turnUrls: "turn:turn.example.com:3478?transport=udp",
-  turnUsername: "user",
-  turnPassword: "pass",
+  turnAvailable: true,
   forceRelay: false,
+};
+
+const turn: TurnCredentials = {
+  urls: ["turn:turn.example.com:3478?transport=udp"],
+  username: "1700000600:0123456789abcdef",
+  credential: "turn-credential-fixture",
+  ttl: 600,
 };
 
 describe("parseUrlList", () => {
@@ -26,22 +31,34 @@ describe("parseUrlList", () => {
 
 describe("toRtcConfig", () => {
   it("uses all transport with stun and turn when not forcing relay", () => {
-    const config = toRtcConfig(baseSettings, "direct");
+    const config = toRtcConfig(baseSettings, "direct", { turn });
     expect(config.iceTransportPolicy).toBe("all");
     expect(config.iceCandidatePoolSize).toBe(4);
     expect(config.iceServers).toHaveLength(2);
   });
 
   it("forces relay-only ice servers when mode is relay", () => {
-    const config = toRtcConfig(baseSettings, "relay");
+    const config = toRtcConfig(baseSettings, "relay", { turn });
     expect(config.iceTransportPolicy).toBe("relay");
     expect(config.iceCandidatePoolSize).toBe(0);
     expect(config.iceServers).toHaveLength(1);
     expect(config.iceServers?.[0]?.urls).toContain("turn:turn.example.com:3478?transport=udp");
   });
 
-  it("ignores forceRelay when turn urls are missing", () => {
-    const config = toRtcConfig({ ...baseSettings, turnUrls: "", forceRelay: true }, "direct");
+  it("carries the minted credentials onto the turn server", () => {
+    const config = toRtcConfig(baseSettings, "relay", { turn });
+    expect(config.iceServers?.[0]?.username).toBe(turn.username);
+    expect(config.iceServers?.[0]?.credential).toBe(turn.credential);
+  });
+
+  it("offers stun only until a relay request hands over credentials", () => {
+    const config = toRtcConfig(baseSettings, "direct");
+    expect(config.iceServers).toHaveLength(1);
+    expect(config.iceServers?.[0]?.urls).toEqual(["stun:stun.example.com:3478"]);
+  });
+
+  it("ignores forceRelay without credentials, so direct paths keep working", () => {
+    const config = toRtcConfig({ ...baseSettings, forceRelay: true }, "direct");
     expect(config.iceTransportPolicy).toBe("all");
     expect(config.iceServers).toHaveLength(1);
   });
