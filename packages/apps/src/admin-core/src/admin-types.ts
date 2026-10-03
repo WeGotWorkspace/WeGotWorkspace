@@ -81,8 +81,10 @@ export type AdminMailSettings = {
 export type AdminRtcSettings = {
   stunUrls: string;
   turnUrls: string;
-  turnUsername: string;
-  turnPassword: string;
+  /** The shared secret is write-only; admin only learns whether one exists. */
+  turnSecretSet: boolean;
+  /** Credentials left over from the removed static TURN fields. */
+  turnStaticCredentialsPresent: boolean;
 };
 
 export type AdminAppsSettings = {
@@ -224,7 +226,7 @@ export type AdminAPIOperations = {
   refreshState: (opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
   saveSettings: (
     values: Record<string, string | number | boolean | null>,
-    opts?: { signal?: AbortSignal; clearSmtpPassword?: boolean },
+    opts?: { signal?: AbortSignal; clearSmtpPassword?: boolean; clearTurnSecret?: boolean },
   ) => Promise<AdminUIData>;
   sendMailDeliveryTest: (opts?: { signal?: AbortSignal; to?: string }) => Promise<AdminUIData>;
   checkUpdates: (opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;

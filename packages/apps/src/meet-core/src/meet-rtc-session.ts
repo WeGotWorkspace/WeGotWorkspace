@@ -31,6 +31,8 @@ export type MeetRtcSessionOptions = {
   onPollData?: (data: HttpSignalingPollResult) => void | Promise<void>;
   shouldConnectToPeer?: (peer: RtcPeerDescriptor) => boolean;
   shouldHandleRtcSignals?: () => boolean;
+  /** Offer gate: a knocker or an id outside the roster is never answered. */
+  shouldAcceptOffer?: (from: string) => boolean;
   onPeerRemoved?: (remoteId: string, name: string, reason: "bye" | "roster") => void;
   onConnectionFailed?: (remoteId: string, name: string) => void;
   onPollError?: (error: unknown) => void;
@@ -61,6 +63,7 @@ export class MeetRtcSession {
       formatOutboundDescription: formatMeetOutboundDescription,
       shouldConnectToPeer: this.options.shouldConnectToPeer,
       shouldHandleRtcSignals: this.options.shouldHandleRtcSignals,
+      shouldAcceptOffer: this.options.shouldAcceptOffer,
       onPollData: this.options.onPollData,
       onPeerRemoved: this.options.onPeerRemoved,
       onConnectionFailed: this.options.onConnectionFailed,

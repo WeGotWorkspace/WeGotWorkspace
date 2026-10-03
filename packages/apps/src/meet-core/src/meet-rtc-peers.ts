@@ -14,3 +14,15 @@ export function shouldConnectMeetPeer(
   if (selfId && peer.id === selfId) return false;
   return decodeMeetKnockerName(peer.name) == null;
 }
+
+/**
+ * Meet offer gate: answer a roster row that is not knocking, nothing else. The
+ * server rejects `offer`, `answer`, and `ice` from the lobby, but a member's
+ * client must not lean on that alone — a forged offer, or one that races the
+ * roster, is ignored here too. An id the roster does not carry is not a peer.
+ */
+export function shouldAcceptMeetOffer(roster: ReadonlyMap<string, string>, from: string): boolean {
+  const name = roster.get(from);
+  if (name === undefined) return false;
+  return decodeMeetKnockerName(name) == null;
+}

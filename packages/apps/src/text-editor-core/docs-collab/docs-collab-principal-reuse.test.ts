@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import { rtcLog } from "@/lib/rtc/log";
 import { PrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import type { CollabReuseEnvelope } from "@/lib/rtc/session/collab-reuse-envelope";
+import type { RtcPeerDescriptor } from "@/lib/rtc/types";
 import {
   COLLAB_REUSE_ACK_TIMEOUT_MS,
   COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS,
@@ -143,12 +144,49 @@ describe("DocsCollabPrincipalReuse", () => {
       collabPeerId: "bbbbbbbbbbbbbbbb",
       payload: { type: "awareness", u: [1] },
     });
-    expect(messages).toEqual([{ type: "awareness", u: [1], from: "bbbbbbbbbbbbbbbb" }]);
+    expect(messages).toEqual([
+      {
+        type: "awareness",
+        u: [1],
+        from: "bbbbbbbbbbbbbbbb",
+        trust: { user: "wouter", access: "read" },
+      },
+    ]);
   });
 
-  it("acks an inbound open even before the collab poll lists the peer", () => {
+  /**
+   * The principal `workspace` room holds every signed-in account, so an `open`
+   * arriving on it proves nothing about document access. Acking one would hand
+   * the sender a `dc-open`, and the mesh answers that with the whole Y.Doc.
+   */
+  it("ignores an open from a user the collab roster does not list and sends no ack", () => {
     const { reuse, registry, registerAdminToWouter, opened, sent } = createHarness();
     registerAdminToWouter();
+
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "open",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+
+    expect(opened).toEqual([]);
+    expect(sent).not.toContainEqual(expect.objectContaining({ op: "ack" }));
+    expect(reuse.reusedLinkCount()).toBe(0);
+    expect(reuse.shouldSkipIce({ id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" })).toBe(
+      false,
+    );
+  });
+
+  it("acks an open once the collab roster lists the sender", () => {
+    const { reuse, registry, registerAdminToWouter, opened, sent } = createHarness();
+    registerAdminToWouter();
+    reuse.considerRoster(
+      [{ id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" }],
+      "aaaaaaaaaaaaaaaa",
+    );
 
     registry.receive("wouter", "prin-wouter", {
       v: 1,
@@ -163,9 +201,99 @@ describe("DocsCollabPrincipalReuse", () => {
     expect(sent).toContainEqual(
       expect.objectContaining({ op: "ack", collabPeerId: "aaaaaaaaaaaaaaaa" }),
     );
-    expect(reuse.shouldSkipIce({ id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" })).toBe(
-      true,
+  });
+
+  it("ignores data from a rostered user under a collab peer id somebody else owns", () => {
+    const { reuse, registry, registerAdminToWouter, messages } = createHarness();
+    registerAdminToWouter();
+    reuse.considerRoster(
+      [
+        { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" },
+        { id: "dddddddddddddddd", name: "Dave", user: "dave" },
+      ],
+      "aaaaaaaaaaaaaaaa",
     );
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "data",
+      collabPeerId: "dddddddddddddddd",
+      payload: { type: "awareness", u: [3] },
+    });
+
+    expect(messages.filter((msg) => msg.type === "awareness")).toEqual([]);
+  });
+
+  it("drops the reuse link when a revoked share takes the peer off the roster", () => {
+    const { reuse, registry, registerAdminToWouter } = createHarness();
+    registerAdminToWouter();
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    reuse.considerRoster([peer], "aaaaaaaaaaaaaaaa");
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+    expect(reuse.reusedLinkCount()).toBe(1);
+
+    reuse.considerRoster([], "aaaaaaaaaaaaaaaa");
+
+    expect(reuse.reusedLinkCount()).toBe(0);
+    expect(reuse.sendTo("bbbbbbbbbbbbbbbb", { type: "sync", u: [1] })).toBe(false);
+  });
+
+  it("carries the roster access along with a forwarded update", () => {
+    const { reuse, registry, registerAdminToWouter, messages } = createHarness();
+    registerAdminToWouter();
+    // `access` rides along on the wire; `RtcPeerDescriptor` does not name it.
+    reuse.considerRoster(
+      [
+        {
+          id: "bbbbbbbbbbbbbbbb",
+          name: "Wouter",
+          user: "wouter",
+          access: "comment",
+        } as RtcPeerDescriptor,
+      ],
+      "aaaaaaaaaaaaaaaa",
+    );
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "data",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      payload: { type: "sync", u: [2] },
+    });
+
+    expect(messages.at(-1)).toEqual({
+      type: "sync",
+      u: [2],
+      from: "bbbbbbbbbbbbbbbb",
+      trust: { user: "wouter", access: "comment" },
+    });
   });
 
   it("falls back to ICE after ack timeout", () => {
@@ -221,6 +349,7 @@ describe("DocsCollabPrincipalReuse", () => {
       type: "awareness",
       u: [2],
       from: "cccccccccccccccc",
+      trust: { user: "wouter", access: "read" },
     });
   });
 
@@ -457,7 +586,10 @@ describe("DocsCollabPrincipalReuse bidirectional Yjs over reused DC", () => {
         registry.receive("wouter", "prin-wouter", payload as CollabReuseEnvelope);
       },
     });
+    // Both sides poll the same room, so both rosters list the other peer —
+    // without that neither accepts a reuse envelope from the other.
     admin.considerRoster([{ id: WOUTER, name: "Wouter", user: "wouter" }], ADMIN);
+    wouter.considerRoster([{ id: ADMIN, name: "Admin", user: "admin" }], WOUTER);
     return { admin, wouter, adminMsgs, wouterMsgs };
   }
 

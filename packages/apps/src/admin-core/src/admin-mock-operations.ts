@@ -36,7 +36,7 @@ function cloneData(data: AdminUIData): AdminUIData {
 function applySettingsMap(
   data: AdminUIData,
   values: Record<string, string | number | boolean | null>,
-  opts?: { clearSmtpPassword?: boolean },
+  opts?: { clearSmtpPassword?: boolean; clearTurnSecret?: boolean },
 ): void {
   const readString = (key: string) => {
     const v = values[key];
@@ -68,10 +68,11 @@ function applySettingsMap(
   if (stunUrls !== undefined) data.rtc.stunUrls = stunUrls;
   const turnUrls = readString("rtc_turn_url");
   if (turnUrls !== undefined) data.rtc.turnUrls = turnUrls;
-  const turnUsername = readString("rtc_turn_username");
-  if (turnUsername !== undefined) data.rtc.turnUsername = turnUsername;
-  const turnPassword = readString("rtc_turn_credential");
-  if (turnPassword !== undefined) data.rtc.turnPassword = turnPassword;
+  const turnSecret = readString("rtc_turn_secret");
+  if (turnSecret !== undefined && turnSecret.trim() !== "") {
+    data.rtc.turnSecretSet = true;
+    data.rtc.turnStaticCredentialsPresent = false;
+  }
 
   const calendars = readBool("calendar_enabled");
   if (calendars !== undefined) data.apps.calendars = calendars;

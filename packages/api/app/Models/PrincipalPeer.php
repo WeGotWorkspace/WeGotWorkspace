@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $name
  * @property string $owner_user
  * @property int $seen_at
+ * @property string $caps
+ * @property string $net
  */
 final class PrincipalPeer extends Model
 {
@@ -32,6 +34,8 @@ final class PrincipalPeer extends Model
         'peer_id',
         'name',
         'owner_user',
+        'caps',
+        'net',
         'seen_at',
     ];
 }

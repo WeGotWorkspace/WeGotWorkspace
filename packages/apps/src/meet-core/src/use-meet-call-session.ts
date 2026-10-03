@@ -7,7 +7,7 @@ import type { RtcPeerDescriptor } from "@/lib/rtc/types";
 import type { MeetRemotePeer } from "@/meet-core/src/meet-call-types";
 import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import { shouldConnectMeetPeer } from "@/meet-core/src/meet-rtc-peers";
+import { shouldAcceptMeetOffer, shouldConnectMeetPeer } from "@/meet-core/src/meet-rtc-peers";
 import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
 import type { MeetAPIOperations, MeetRtcSettings } from "@/meet-core/src/meet-types";
 import { useMeetInboundMediaHints } from "@/meet-core/src/use-meet-inbound-media-hints";
@@ -61,6 +61,7 @@ export function useMeetCallSession({
     displayNameRef: room.displayNameRef,
     waitingForAdmissionRef: room.waitingForAdmissionRef,
     rosterRef: room.rosterRef,
+    signalingRosterRef: room.signalingRosterRef,
     participantRosterDiffReadyRef: room.participantRosterDiffReadyRef,
     peerNamesRef: room.peerNamesRef,
     peerDisclosedMediaRef: room.peerDisclosedMediaRef,
@@ -92,6 +93,10 @@ export function useMeetCallSession({
     shouldConnectToPeer: (peer: RtcPeerDescriptor) =>
       shouldConnectMeetPeer(peer, room.selfIdRef.current, room.waitingForAdmissionRef.current),
     shouldHandleRtcSignals: () => !room.waitingForAdmissionRef.current,
+    // The lobby is not the call: a knocker's offer is dropped here too, not
+    // only by the server, so a forged or racing one is never answered.
+    shouldAcceptOffer: (from: string) =>
+      shouldAcceptMeetOffer(room.signalingRosterRef.current, from),
     onPeerRemoved: (peerId, name) => {
       room.peerNamesRef.current.delete(peerId);
       room.peerInboundSampleRef.current.delete(peerId);
@@ -124,10 +129,8 @@ export function useMeetCallSession({
     debugRtc("controller-init", {
       rtcDebugEnabled: rtcDebugEnabledRef.current,
       stunCount: parseUrlList(rtc.stunUrls, "stun").length,
-      turnCount: parseUrlList(rtc.turnUrls, "turn").length,
       forceRelay: rtc.forceRelay,
-      turnUsernameConfigured: rtc.turnUsername.trim() !== "",
-      turnPasswordConfigured: rtc.turnPassword.trim() !== "",
+      turnAvailable: rtc.turnAvailable,
     });
   }, [debugRtc, rtc]);
 

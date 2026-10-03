@@ -24,6 +24,7 @@ use App\Services\Notes\EventCalendarJournalStripper;
 use App\Services\Notes\NotesFileMigrator;
 use App\Services\Notify\AlertDueScheduler;
 use App\Services\Notify\VapidPushService;
+use App\Services\Rtc\RtcHousekeepingService;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use Illuminate\Console\Command;
@@ -396,6 +397,18 @@ Artisan::command('wgw:meet:sweep-reservations', function (MeetReservationService
 
     return Command::SUCCESS;
 })->purpose('Prune never-activated Meet reservations whose expiresAt is past (null expiry is skipped)');
+
+Artisan::command('wgw:rtc:prune', function (RtcHousekeepingService $housekeeping): int {
+    $result = $housekeeping->sweep();
+    $this->info(sprintf(
+        'Pruned %d stale signaling peer(s); %d relay event(s); %d session metric(s).',
+        $result['peers'],
+        $result['relayEvents'],
+        $result['sessionMetrics'],
+    ));
+
+    return Command::SUCCESS;
+})->purpose('Sweep timed-out signaling peers and enforce 30-day retention on relay events and session metrics');
 
 Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobGarbageCollector $collector): int {
     $result = $collector->collect();

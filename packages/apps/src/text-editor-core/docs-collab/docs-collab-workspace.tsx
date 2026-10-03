@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Code2, MessageSquare, Printer, Share } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { docsLabels } from "@/docs-core/src/docs-labels";
@@ -33,8 +33,6 @@ import {
   shouldAutoOpenCommentsForThreads,
   useDocsCommentsLayout,
 } from "./use-docs-comments-layout";
-import { SideDrawer } from "@/ui/side-drawer";
-import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { TooltipProvider } from "@/ui/tooltip";
 import {
   AlertDialog,
@@ -51,16 +49,16 @@ import {
   getTrackChangesMode,
 } from "@/text-editor-core/src/text-editor-track-changes";
 import { TEXT_EDITOR_FORMAT_BAR_FULL } from "@/text-editor-core/src/text-editor-format-bar-config";
-import { printTextEditorSheet } from "@/text-editor-core/src/text-editor-print";
 import { detailFooterLastEditedTag } from "@/workspace-shell/src/detail-footer-last-edited-tag";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { DocsCollabEditor } from "./docs-collab-editor";
 import { DocsImagePickerDialog } from "./docs-image-picker-dialog";
 import { useDocsImageInsert } from "./use-docs-image-insert";
 import { DocsCollabSuggestControls } from "./docs-collab-suggest-controls";
+import { docsCollabHeaderActions } from "./docs-collab-header-actions";
 import { mergeCollabPresencePeers } from "./docs-collab-presence-peers";
 import { DocsCollabPresenceChrome } from "./docs-collab-presence-chrome";
-import { DocsCollabReviewPanel } from "./docs-collab-review/docs-collab-review-panel";
+import { useDocsCollabReviewSurfaces } from "./use-docs-collab-review-surfaces";
 import type { DocsCollabWireOperations } from "./docs-collab-wire";
 import { useDocsCollabAwarenessPresence } from "./use-docs-collab-awareness-presence";
 import { useDocsComments } from "./use-docs-comments";
@@ -73,15 +71,9 @@ import { createDocsThreadsMemory } from "./docs-threads-memory";
 import { docsThreadsPathFromRoom } from "./docs-threads-path";
 import { useDocsThreadsSource } from "./use-docs-threads-source";
 import { useDocsCollabFailedSync } from "./use-docs-collab-failed-sync";
+import { useDocsCollabUserName } from "./use-docs-collab-user-name";
+import { useDocsConflictResolution } from "./use-docs-conflict-resolution";
 import { DocsConflictDialog } from "./docs-conflict-dialog";
-import {
-  resolveDocsConflictKeepLocal,
-  resolveDocsConflictUseServer,
-} from "@/lib/offline/docs/docs-conflict-resolution";
-import {
-  reportDocsSyncConflicts,
-  setDocsSyncConflictListener,
-} from "@/lib/offline/docs/docs-sync-conflicts";
 import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
@@ -90,8 +82,6 @@ import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoi
 
 import "@/docs-core/src/docs-workspace.css";
 import "@/text-editor-core/docs-collab/docs-collab-review/docs-collab-review-panel.css";
-
-const USERNAME_PROMPT = "Your display name";
 
 export type DocsCollabWorkspaceProps = {
   /** When set (e.g. tests), skips the on-load `window.prompt`. */
@@ -127,13 +117,6 @@ function countWords(text: string): number {
   return trimmed.split(/\s+/).length;
 }
 
-function promptForUserName(): string | null {
-  const input = window.prompt(USERNAME_PROMPT);
-  if (input === null) return null;
-  const trimmed = input.trim();
-  return trimmed || null;
-}
-
 function defaultTitleFromRoom(room: string | undefined): string {
   const normalized = room?.trim().replace(/\/+$/, "");
   if (!normalized) return "document.md";
@@ -156,19 +139,7 @@ export function DocsCollabWorkspace({
   driveUsername,
   docApiPath,
 }: DocsCollabWorkspaceProps = {}) {
-  const [userName, setUserName] = useState<string | null>(() => userNameProp?.trim() || null);
-  const [promptDismissed, setPromptDismissed] = useState(false);
-
-  useLayoutEffect(() => {
-    if (userNameProp?.trim()) {
-      setUserName(userNameProp.trim());
-      return;
-    }
-    if (userName !== null || promptDismissed) return;
-    const name = promptForUserName();
-    setPromptDismissed(true);
-    if (name) setUserName(name);
-  }, [userNameProp, userName, promptDismissed]);
+  const { userName, promptDismissed } = useDocsCollabUserName(userNameProp);
 
   if (!userName) {
     return (
@@ -275,15 +246,6 @@ function DocsCollabWorkspaceInner({
     path: docPath ?? "/docs/test-together.md",
     poll: liveThreads,
   });
-  const [conflictOpen, setConflictOpen] = useState(false);
-  const [resolvingConflict, setResolvingConflict] = useState(false);
-
-  useEffect(() => {
-    setDocsSyncConflictListener((paths) => {
-      if (paths.includes(urls?.room ?? "")) setConflictOpen(true);
-    });
-    return () => setDocsSyncConflictListener(undefined);
-  }, [urls?.room]);
 
   const handleRetrySync = useCallback(() => {
     void saveNow().catch(() => undefined);
@@ -478,96 +440,33 @@ function DocsCollabWorkspaceInner({
 
   const reviewItemCount = openThreads.length + suggestions.length;
 
-  const reviewPanelContent = useMemo(
-    () => (
-      <DocsCollabReviewPanel
-        editor={editor}
-        onCloseMobile={handleReviewClose}
-        showCloseButton
-        labels={labels}
-        threads={commentThreads}
-        draftThread={draftThread}
-        suggestions={suggestions}
-        archivedSuggestions={archivedSuggestions}
-        currentUserId={session.user.username}
-        activeThreadId={activeThreadId}
-        activeChangeId={activeChangeId}
-        canMutateComments={permissions.canComment}
-        canReviewSuggestions={permissions.canReview}
-        onSelectThread={selectThread}
-        onAddReply={addReply}
-        onToggleReaction={toggleReaction}
-        onResolveThread={resolveThread}
-        onCancelDraft={cancelDraft}
-        onSelectSuggestion={selectSuggestion}
-        onAcceptSuggestion={acceptSuggestion}
-        onRejectSuggestion={rejectSuggestion}
-        onAddSuggestionReply={addSuggestionReply}
-        onToggleSuggestionReaction={toggleSuggestionReaction}
-      />
-    ),
-    [
-      acceptSuggestion,
-      activeChangeId,
-      activeThreadId,
-      addReply,
-      addSuggestionReply,
-      archivedSuggestions,
-      cancelDraft,
-      commentThreads,
-      draftThread,
-      editor,
-      handleReviewClose,
-      labels,
-      permissions.canComment,
-      permissions.canReview,
-      rejectSuggestion,
-      resolveThread,
-      selectSuggestion,
-      selectThread,
-      session.user.username,
-      suggestions,
-      toggleReaction,
-      toggleSuggestionReaction,
-    ],
-  );
-
-  const reviewSidebar = useMemo(
-    () =>
-      collabSession && !useCommentsDrawer ? (
-        <div
-          className="workspace-app-layout__panel docs-workspace__review-panel"
-          data-open={reviewPanelOpen ? "true" : "false"}
-          aria-hidden={!reviewPanelOpen}
-        >
-          {reviewPanelContent}
-        </div>
-      ) : null,
-    [collabSession, reviewPanelContent, reviewPanelOpen, useCommentsDrawer],
-  );
-
-  const reviewDrawer = useMemo(
-    () =>
-      collabSession && useCommentsDrawer ? (
-        <SideDrawer
-          open={reviewPanelOpen}
-          onClose={handleReviewClose}
-          title={labels.reviewSidebarTitle}
-          className={`${DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS} docs-collab-review-panel-drawer`}
-          contentClassName="docs-collab-review-panel-drawer__body"
-        >
-          {reviewPanelContent}
-        </SideDrawer>
-      ) : null,
-    [
-      collabSession,
-      handleReviewClose,
-      labels.reviewSidebarTitle,
-      reviewPanelContent,
-      reviewPanelOpen,
-      useCommentsDrawer,
-    ],
-  );
+  const { sidebar: reviewSidebar, drawer: reviewDrawer } = useDocsCollabReviewSurfaces({
+    active: Boolean(collabSession),
+    open: reviewPanelOpen,
+    useDrawer: useCommentsDrawer,
+    onClose: handleReviewClose,
+    editor,
+    labels,
+    threads: commentThreads,
+    draftThread,
+    suggestions,
+    archivedSuggestions,
+    currentUserId: session.user.username,
+    activeThreadId,
+    activeChangeId,
+    canMutateComments: permissions.canComment,
+    canReviewSuggestions: permissions.canReview,
+    onSelectThread: selectThread,
+    onAddReply: addReply,
+    onToggleReaction: toggleReaction,
+    onResolveThread: resolveThread,
+    onCancelDraft: cancelDraft,
+    onSelectSuggestion: selectSuggestion,
+    onAcceptSuggestion: acceptSuggestion,
+    onRejectSuggestion: rejectSuggestion,
+    onAddSuggestionReply: addSuggestionReply,
+    onToggleSuggestionReaction: toggleSuggestionReaction,
+  });
 
   const outline = useMemo(
     () => (showMarkdownOutline ? parseMarkdownOutline(markdown) : []),
@@ -623,29 +522,20 @@ function DocsCollabWorkspaceInner({
   const characterCount = markdown.length;
   const sourceLockedByCollab = Boolean(collabSession) && presencePeers.length > 0;
 
-  const handleConflictKeepLocal = useCallback(() => {
-    setResolvingConflict(true);
-    void resolveDocsConflictKeepLocal(saveNow)
-      .then(() => {
-        setConflictOpen(false);
-        reportDocsSyncConflicts([]);
-      })
-      .finally(() => setResolvingConflict(false));
-  }, [saveNow]);
+  const handleServerDocApplied = useCallback(() => {
+    if (editor) {
+      setMarkdown(getAcceptedTextEditorContent(editor, editorFormat));
+    }
+  }, [editor, editorFormat]);
 
-  const handleConflictUseServer = useCallback(() => {
-    const ydoc = collabSession?.ydoc;
-    if (!ydoc || !urls?.yjsUrl) return;
-    setResolvingConflict(true);
-    void resolveDocsConflictUseServer(ydoc, urls.yjsUrl, urls.authToken)
-      .then(() => {
-        setConflictOpen(false);
-        if (editor) {
-          setMarkdown(getAcceptedTextEditorContent(editor, editorFormat));
-        }
-      })
-      .finally(() => setResolvingConflict(false));
-  }, [collabSession?.ydoc, editor, editorFormat, urls?.authToken, urls?.yjsUrl]);
+  const conflict = useDocsConflictResolution({
+    room: urls?.room,
+    ydoc: collabSession?.ydoc ?? null,
+    yjsUrl: urls?.yjsUrl,
+    authToken: urls?.authToken,
+    saveNow,
+    onServerApplied: handleServerDocApplied,
+  });
 
   useEffect(() => {
     if (!sourceLockedByCollab || !viewSource) return;
@@ -723,41 +613,18 @@ function DocsCollabWorkspaceInner({
                       <DocsCollabSuggestControls editor={editor} disabled={viewSource} />
                     ) : undefined
                   }
-                  actions={[
-                    {
-                      id: "print",
-                      label: labels.print,
-                      icon: <Printer />,
-                      disabled: !editor || viewSource,
-                      onClick: () => printTextEditorSheet(editor),
-                    },
-                    ...(showShare && onShare
-                      ? [
-                          {
-                            id: "share",
-                            label: shareLabel ?? labels.share,
-                            icon: <Share />,
-                            className: "docs-workspace__share-button",
-                            onClick: onShare,
-                          },
-                        ]
-                      : []),
-                    {
-                      id: "view-source",
-                      label: sourceLockedByCollab
-                        ? "Source view is disabled while collaborating"
-                        : reviewPanelOpen
-                          ? "Source view is disabled while review is open"
-                          : viewSource
-                            ? labels.hideSource
-                            : labels.viewSource,
-                      icon: <Code2 />,
-                      active: viewSource,
-                      disabled: !editor || sourceLockedByCollab || reviewPanelOpen,
-                      className: cn(viewSource && "docs-workspace__source-toggle--active"),
-                      onClick: () => setViewSource((on) => !on),
-                    },
-                  ]}
+                  actions={docsCollabHeaderActions({
+                    labels,
+                    editor,
+                    viewSource,
+                    onToggleViewSource: () => setViewSource((on) => !on),
+                    sourceLockedByCollab,
+                    reviewPanelOpen,
+                    share:
+                      showShare && onShare
+                        ? { label: shareLabel ?? labels.share, onClick: onShare }
+                        : undefined,
+                  })}
                 />
               }
             />
@@ -843,13 +710,13 @@ function DocsCollabWorkspaceInner({
           onUploadFiles={imageInsert.onUploadFiles}
         />
         <DocsConflictDialog
-          open={conflictOpen}
+          open={conflict.open}
           documentTitle={resolvedDocumentTitle}
-          busy={resolvingConflict}
+          busy={conflict.busy}
           labels={labels}
-          onKeepLocal={handleConflictKeepLocal}
-          onUseServer={handleConflictUseServer}
-          onOpenChange={setConflictOpen}
+          onKeepLocal={conflict.keepLocal}
+          onUseServer={conflict.useServer}
+          onOpenChange={conflict.setOpen}
         />
         <AlertDialog open={sourceClosedDialogOpen} onOpenChange={setSourceClosedDialogOpen}>
           <AlertDialogContent>

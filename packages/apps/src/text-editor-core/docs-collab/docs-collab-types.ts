@@ -2,6 +2,7 @@ import type { MutableRefObject } from "react";
 import type { IndexeddbPersistence } from "y-indexeddb";
 import type * as awarenessProtocol from "y-protocols/awareness";
 import type * as Y from "yjs";
+import type { DocsCollabAccess } from "./docs-collab-access";
 import type { DocsCollabWireOperations } from "./docs-collab-wire";
 import type { DocsRtcSession } from "./docs-rtc-session";
 
@@ -12,12 +13,24 @@ export type DocsCollabPeerLinkState =
 
 export type DocsCollabMeshPeerStatus = DocsCollabMeshPeer & { link: DocsCollabPeerLinkState };
 
+/**
+ * Who the transport authenticated the sender as and what the server resolved
+ * they may change. Absent means untrusted, which the update guard reads as
+ * `read` — a sync message without it never reaches the document.
+ */
+export type DocsCollabSenderTrust = {
+  user: string;
+  access: DocsCollabAccess;
+};
+
 export type DocsCollabMeshMessage =
-  | { type: "sync"; u: number[]; from?: string }
+  | { type: "sync"; u: number[]; from?: string; trust?: DocsCollabSenderTrust }
   | { type: "awareness"; u: number[]; from?: string }
   /** Gossip discovery: a connected peer forwards newly joined room peers. */
   | { type: "peer-hint"; peers: DocsCollabMeshPeer[]; from?: string }
   | { type: "dc-open"; from: string }
+  /** The server refused the poll: read access is gone, leave the room. */
+  | { type: "forbidden" }
   | { type: "link" };
 
 export type DocsCollabTabSyncApi = {

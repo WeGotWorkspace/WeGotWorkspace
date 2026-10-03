@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Meet;
 
+use App\Services\Rtc\RtcRelayService;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
+use App\Services\Rtc\Signaling\RtcNetClass;
+use App\Services\Rtc\Signaling\RtcPeerCaps;
 use App\Services\Rtc\Signaling\RtcSignalingException;
 use App\Services\Rtc\Signaling\RtcSignalingPolicy;
 use Illuminate\Http\Request;
@@ -14,7 +17,11 @@ final class MeetSignalingService
 {
     private const KNOCK_NAME_PREFIX = '__wgw_knock__:';
 
-    private const MAX_PEERS_PER_ROOM = 4;
+    /** Mirrors MeetChannelJoinPolicy::CONTROL_MESSAGE_PREFIX (knock / admit / deny). */
+    private const CONTROL_TEXT_PREFIX = '__wgw_meet_control__:';
+
+    /** Send types that set up a media session, so the lobby may not use them. */
+    private const MEDIA_SEND_TYPES = ['offer', 'answer', 'ice'];
 
     private readonly HttpSignalingStore $store;
 
@@ -23,16 +30,84 @@ final class MeetSignalingService
         private RtcSettingsService $rtcSettingsService,
         private MeetReservationService $reservations,
         private MeetChannelJoinPolicy $channelJoinPolicy,
+        private RtcRelayService $relays,
     ) {
         $this->store = new HttpSignalingStore(RtcSignalingPolicy::meet());
     }
 
     /**
-     * @return array{stunUrls: string, turnUrls: string, turnUsername: string, turnPassword: string}
+     * ICE configuration for a room. Credentials are not part of it: an
+     * unauthenticated caller used to get working relay credentials here, so
+     * the endpoint now needs an account or a guest session and answers with a
+     * plain `turnAvailable` flag.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array{stunUrls: string, turnAvailable: bool}
      */
-    public function rtcSettings(): array
+    public function rtcSettings(Request $request, array $body = []): array
     {
-        return $this->rtcSettingsService->settings();
+        return $this->run(function () use ($request, $body): array {
+            $this->actors->requireActorMarker($request, $body);
+
+            return $this->rtcSettingsService->publicSettings();
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array{turn: array{urls: list<string>, username: string, credential: string, ttl: int}}
+     */
+    public function relay(Request $request, array $body): array
+    {
+        return $this->run(function () use ($request, $body): array {
+            $room = $this->cleanRoom($body['room'] ?? null);
+            $this->assertGuestMayEnter($this->actors->tryAuthenticatedUsername($request), $room);
+            $ownerMarker = $this->actors->requireActorMarker($request, $body);
+            $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
+
+            return $this->relays->issue(
+                $this->store,
+                'meet',
+                $room,
+                $ownerMarker,
+                $body,
+                $this->guestRelayDenied($room, $peerId, $ownerMarker),
+            );
+        });
+    }
+
+    /**
+     * Guest relay rules (contract C3): an admitted guest in a channel room or
+     * on a reserved code gets credentials, and on an unreserved ad-hoc code a
+     * guest gets them only while an authenticated member is in the room. A
+     * peer that is still knocking never does.
+     */
+    private function guestRelayDenied(string $room, string $peerId, string $ownerMarker): bool
+    {
+        if (str_starts_with($ownerMarker, 'u:')) {
+            return false;
+        }
+        if (str_starts_with((string) $this->store->peerName($room, $peerId), self::KNOCK_NAME_PREFIX)) {
+            return true;
+        }
+
+        $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
+        if ($channel !== null || $this->reservations->find($room) !== null) {
+            return ! $this->store->isPeerAdmitted($room, $peerId, $ownerMarker);
+        }
+
+        return ! $this->roomHasAuthenticatedPeer($room);
+    }
+
+    private function roomHasAuthenticatedPeer(string $room): bool
+    {
+        foreach ($this->store->peersInRoom($room) as $row) {
+            if (str_starts_with(is_string($row->owner_user ?? null) ? $row->owner_user : '', 'u:')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -42,7 +117,7 @@ final class MeetSignalingService
     public function roomStatus(array $body): array
     {
         return $this->run(function () use ($body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
             $room = $this->cleanRoom($body['room'] ?? null);
 
             return ['active' => $this->roomHasJoinablePeer($room)];
@@ -51,12 +126,12 @@ final class MeetSignalingService
 
     /**
      * @param  array<string, mixed>  $body
-     * @return array{peers: list<array{id: string, name: string}>, sessionKey: string|null}
+     * @return array{peers: list<array{id: string, name: string}>, sessionKey: string|null, rtc: array{limits: array{maxPeers: int}}}
      */
     public function join(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $username = $this->actors->tryAuthenticatedUsername($request);
             $room = $this->cleanRoom($body['room'] ?? null);
@@ -98,7 +173,11 @@ final class MeetSignalingService
             }
 
             $browserId = $this->readBrowserId($body);
-            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time(), $browserId);
+            $this->store->assertPeerIdFree($room, $peerId, $ownerMarker);
+            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time(), $browserId, [
+                'caps' => RtcPeerCaps::encode($body['caps'] ?? null),
+                'net' => RtcNetClass::normalize($body['net'] ?? null),
+            ]);
             if ($browserId !== null) {
                 $this->store->deletePeersForBrowser($room, $browserId, $peerId);
             }
@@ -111,14 +190,16 @@ final class MeetSignalingService
                 $this->reservations->markActivated($room, $username);
             }
 
-            if ($this->store->countPeers($room) > self::MAX_PEERS_PER_ROOM) {
+            $maxPeers = $this->rtcSettingsService->meetMaxPeers();
+            if ($this->store->countPeers($room) > $maxPeers) {
                 $this->store->deletePeer($room, $peerId);
                 $this->fail('room_full', 409);
             }
 
             return [
-                'peers' => $this->store->peerList($room, $peerId),
+                'peers' => $this->store->peerList($room, $peerId, $username !== null),
                 'sessionKey' => $guestSessionKey,
+                'rtc' => ['limits' => ['maxPeers' => $maxPeers]],
             ];
         });
     }
@@ -130,17 +211,24 @@ final class MeetSignalingService
     public function poll(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $room = $this->cleanRoom($body['room'] ?? null);
-            $this->assertGuestMayEnter($this->actors->tryAuthenticatedUsername($request), $room);
+            $username = $this->actors->tryAuthenticatedUsername($request);
+            $this->assertGuestMayEnter($username, $room);
             $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             $this->store->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
 
             $knownRosterSig = is_string($body['sig'] ?? null) ? (string) $body['sig'] : null;
 
-            return $this->store->poll($room, $peerId, max(0, (int) ($body['since'] ?? 0)), $knownRosterSig);
+            return $this->store->poll(
+                $room,
+                $peerId,
+                max(0, (int) ($body['since'] ?? 0)),
+                $knownRosterSig,
+                $username !== null,
+            );
         });
     }
 
@@ -151,7 +239,7 @@ final class MeetSignalingService
     public function send(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $room = $this->cleanRoom($body['room'] ?? null);
             $this->assertGuestMayEnter($this->actors->tryAuthenticatedUsername($request), $room);
@@ -161,6 +249,7 @@ final class MeetSignalingService
             $this->store->assertPeerOwnedByActor($room, $from, $ownerMarker);
 
             $type = (string) ($body['type'] ?? '');
+            $this->assertNotWaitingInLobby($room, $from, $type);
             $this->store->send($room, $from, $to, $type, $body['payload'] ?? null);
 
             return ['ok' => true];
@@ -174,7 +263,7 @@ final class MeetSignalingService
     public function leave(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $room = $this->cleanRoom($body['room'] ?? null);
@@ -193,7 +282,7 @@ final class MeetSignalingService
     public function chat(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $room = $this->cleanRoom($body['room'] ?? null);
             $this->assertGuestMayEnter($this->actors->tryAuthenticatedUsername($request), $room);
@@ -211,6 +300,7 @@ final class MeetSignalingService
                 $this->fail('not_in_room');
             }
 
+            $this->assertKnockSenderSendsControlOnly($room, $from, $text);
             $this->recordChannelAdmission($request, $room, $text);
 
             $payload = json_encode(['text' => $text], JSON_THROW_ON_ERROR);
@@ -218,7 +308,7 @@ final class MeetSignalingService
                 $this->fail('payload_too_large', 413);
             }
 
-            $targets = $this->store->peerIdsInRoomExcept($room, $from);
+            $targets = $this->chatTargets($room, $from, $text);
 
             if ($targets === []) {
                 return ['ok' => true, 'delivered' => 0];
@@ -240,6 +330,83 @@ final class MeetSignalingService
 
             return ['ok' => true, 'delivered' => count($targets)];
         });
+    }
+
+    /**
+     * The lobby is not the call: a knock row may announce itself (and send
+     * any other control payload that admittedPeerIdFromControlText and the
+     * meet-control prefix already classify) but must not post a visible
+     * room line. Same 403 family as media-from-lobby.
+     */
+    private function assertKnockSenderSendsControlOnly(string $room, string $from, string $text): void
+    {
+        if (! $this->isKnockPeer($room, $from)) {
+            return;
+        }
+        if ($this->isControlChatText($text)) {
+            return;
+        }
+
+        $this->fail('forbidden', 403, 'Waiting to be admitted — the call cannot be joined yet.');
+    }
+
+    /**
+     * Control text is the meet-control family: the prefix that
+     * admittedPeerIdFromControlText / lobbyDecisionPeerIdFromControlText
+     * already require (knock announcement, admit, deny, and the rest).
+     */
+    private function isControlChatText(string $text): bool
+    {
+        return str_starts_with($text, self::CONTROL_TEXT_PREFIX)
+            || $this->channelJoinPolicy->admittedPeerIdFromControlText($text) !== null
+            || $this->channelJoinPolicy->lobbyDecisionPeerIdFromControlText($text) !== null;
+    }
+
+    /**
+     * The lobby is not the call: a peer that is still knocking may not set up
+     * media. Without this the waiting side could offer straight to a member,
+     * whose browser answers, and be seen and heard before anyone admitted it.
+     * Dropping the knock name on re-join is what opens the path again.
+     */
+    private function assertNotWaitingInLobby(string $room, string $peerId, string $type): void
+    {
+        if (! in_array($type, self::MEDIA_SEND_TYPES, true)) {
+            return;
+        }
+        if (! $this->isKnockPeer($room, $peerId)) {
+            return;
+        }
+
+        $this->fail('forbidden', 403, 'Waiting to be admitted — the call cannot be joined yet.');
+    }
+
+    /**
+     * Chat fan-out leaves the lobby out, so room chat is unreadable while
+     * someone waits. The decision that ends that wait (`admit` / `deny`) does
+     * reach the knocker it names — that is how the waiting client learns.
+     *
+     * @return list<string>
+     */
+    private function chatTargets(string $room, string $from, string $text): array
+    {
+        $decidedPeerId = $this->channelJoinPolicy->lobbyDecisionPeerIdFromControlText($text);
+
+        $targets = [];
+        foreach ($this->store->peersInRoomExcept($room, $from) as $peer) {
+            $isKnocking = str_starts_with($peer['name'], self::KNOCK_NAME_PREFIX);
+            if (! $isKnocking || $peer['id'] === $decidedPeerId) {
+                $targets[] = $peer['id'];
+            }
+        }
+
+        return $targets;
+    }
+
+    private function isKnockPeer(string $room, string $peerId): bool
+    {
+        $name = $this->store->peerName($room, $peerId);
+
+        return $name !== null && str_starts_with($name, self::KNOCK_NAME_PREFIX);
     }
 
     /**

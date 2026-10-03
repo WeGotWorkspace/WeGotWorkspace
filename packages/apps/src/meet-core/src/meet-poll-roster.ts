@@ -20,6 +20,14 @@ export function listKnockersFromRoster(peers: MeetRosterPeer[]): MeetKnocker[] {
     .filter((peer): peer is MeetKnocker => peer !== null);
 }
 
+/**
+ * Every signaled roster row, knock names kept. `buildActiveMeetRoster` drops
+ * the lobby; the offer gate has to see it to tell a knocker from an unknown id.
+ */
+export function buildMeetSignalingRoster(peers: MeetRosterPeer[]): Map<string, string> {
+  return new Map(peers.map((peer) => [peer.id, peer.name]));
+}
+
 export function buildActiveMeetRoster(
   peers: MeetRosterPeer[],
   pendingKnockerIds: ReadonlySet<string>,

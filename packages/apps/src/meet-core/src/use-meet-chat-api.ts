@@ -60,9 +60,7 @@ export function useMeetChatAPI(source?: MeetChatApiSource) {
       defaultDisplayName: "Guest",
       rtc: {
         stunUrls: "",
-        turnUrls: "",
-        turnUsername: "",
-        turnPassword: "",
+        turnAvailable: false,
         forceRelay: false,
       },
       channels: [],

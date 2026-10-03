@@ -120,9 +120,7 @@ const DEFAULT_DATA: MeetUIData = {
   defaultDisplayName: "Demo User",
   rtc: {
     stunUrls: DEFAULT_PUBLIC_STUN_URLS_CSV,
-    turnUrls: "",
-    turnUsername: "",
-    turnPassword: "",
+    turnAvailable: false,
     forceRelay: false,
   },
   channels: DEMO_CHANNELS,

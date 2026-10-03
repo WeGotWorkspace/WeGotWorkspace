@@ -34,13 +34,12 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
         ])->assertUnauthorized();
     }
 
-    public function test_rtc_settings_returns_meet_ice_values_for_authenticated_user(): void
+    public function test_rtc_settings_returns_stun_urls_and_relay_flag_for_authenticated_user(): void
     {
         $this->setAppSettings([
             SettingKeys::RTC_STUN_URL => 'stun.example.test:3478,stuns:stun2.example.test:5349',
             SettingKeys::RTC_TURN_URL => 'turn.example.test:3478?transport=udp',
-            SettingKeys::RTC_TURN_USERNAME => 'rtc-user',
-            SettingKeys::RTC_TURN_CREDENTIAL => 'rtc-secret',
+            SettingKeys::RTC_TURN_SECRET => 'rtc-secret',
         ]);
 
         $token = $this->issueBearerTokenFor('alice');
@@ -48,10 +47,15 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
             ->getJson('/api/v1/rooms/'.$this->roomId().'/configuration')
             ->assertOk()
             ->assertJsonPath('rtc.stunUrls', 'stun:stun.example.test:3478, stuns:stun2.example.test:5349')
-            ->assertJsonPath('rtc.turnUrls', 'turn:turn.example.test:3478?transport=udp')
-            ->assertJsonPath('rtc.turnUsername', 'rtc-user')
-            ->assertJsonPath('rtc.turnPassword', 'rtc-secret')
-            ->assertJsonMissingPath('meet.forceRelay');
+            ->assertJsonPath('rtc.turnAvailable', true)
+            ->assertJsonMissingPath('rtc.turnUrls');
+    }
+
+    public function test_rtc_settings_require_authentication(): void
+    {
+        $this->getJson('/api/v1/rooms/'.$this->roomId().'/configuration')
+            ->assertUnauthorized()
+            ->assertJson(['error' => 'auth_required']);
     }
 
     public function test_two_users_exchange_signaling_messages(): void

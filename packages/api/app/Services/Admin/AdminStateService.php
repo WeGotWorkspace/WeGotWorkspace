@@ -7,6 +7,7 @@ namespace App\Services\Admin;
 use App\Models\AppSetting;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\Mcp\McpPublicOrigin;
+use App\Services\Rtc\RtcSettingsService;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Settings\SettingKeys;
 use App\Services\Update\UpdateStateService;
@@ -21,6 +22,7 @@ final class AdminStateService
         private UpdateStateService $updates,
         private MailDeliveryService $mailDelivery,
         private ApiUrlBuilder $urls,
+        private RtcSettingsService $rtcSettings,
     ) {}
 
     /**
@@ -65,7 +67,11 @@ final class AdminStateService
     }
 
     /**
-     * @return array{stunUrls: string, turnUrls: string, turnUsername: string, turnPassword: string}
+     * The relay secret is write-only: admin only ever learns whether one is
+     * set. Leftover static credentials from an older install no longer relay
+     * anything, so they are reported as a warning instead.
+     *
+     * @return array{stunUrls: string, turnUrls: string, turnSecretSet: bool, turnStaticCredentialsPresent: bool}
      */
     private function rtcSettings(): array
     {
@@ -87,8 +93,8 @@ final class AdminStateService
         return [
             'stunUrls' => $normalizeUrls(AppSetting::getValue(SettingKeys::RTC_STUN_URL, '')),
             'turnUrls' => $normalizeUrls(AppSetting::getValue(SettingKeys::RTC_TURN_URL, '')),
-            'turnUsername' => trim((string) AppSetting::getValue(SettingKeys::RTC_TURN_USERNAME, '')),
-            'turnPassword' => trim((string) AppSetting::getValue(SettingKeys::RTC_TURN_CREDENTIAL, '')),
+            'turnSecretSet' => $this->rtcSettings->turnSecret() !== '',
+            'turnStaticCredentialsPresent' => $this->rtcSettings->legacyStaticCredentialsPresent(),
         ];
     }
 }

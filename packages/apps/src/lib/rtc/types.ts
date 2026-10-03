@@ -9,18 +9,26 @@ export type IceMode = "direct" | "relay";
 
 export type RtcSettings = {
   stunUrls: string;
-  turnUrls: string;
-  turnUsername: string;
-  turnPassword: string;
+  /** Whether a relay is configured. The server never ships its credentials. */
+  turnAvailable: boolean;
   forceRelay: boolean;
 };
 
 export const DEFAULT_RTC_SETTINGS: RtcSettings = {
   stunUrls: "",
-  turnUrls: "",
-  turnUsername: "",
-  turnPassword: "",
+  turnAvailable: false,
   forceRelay: false,
+};
+
+/**
+ * Short-lived relay credentials, minted per actor by `POST /rooms/{id}/relay`.
+ * They expire after `ttl` seconds, so they are never cached beyond a session.
+ */
+export type TurnCredentials = {
+  urls: string[];
+  username: string;
+  credential: string;
+  ttl: number;
 };
 
 export type RtcSignalType = "offer" | "answer" | "ice" | "bye" | "chat" | string;

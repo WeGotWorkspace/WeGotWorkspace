@@ -26,8 +26,8 @@ export function useAdminAPI(source?: AdminApiSource) {
       rtc: {
         stunUrls: "",
         turnUrls: "",
-        turnUsername: "",
-        turnPassword: "",
+        turnSecretSet: false,
+        turnStaticCredentialsPresent: false,
       },
       apps: {
         calendars: true,

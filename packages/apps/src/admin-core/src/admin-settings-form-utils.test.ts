@@ -36,6 +36,25 @@ describe("adminSettingsFormToMap", () => {
     expect(form.mailDeliverySmtpHost).toBe(data.mail.smtpHost);
   });
 
+  it("never round-trips the TURN secret and omits it while the field is blank", () => {
+    const { data } = createAdminAppBootstrap();
+    const form = buildAdminSettingsFormState(data);
+    expect(form.turnSecret).toBe("");
+    const values = adminSettingsFormToMap(form);
+    expect(values).not.toHaveProperty("rtc_turn_secret");
+    expect(values).not.toHaveProperty("rtc_turn_username");
+    expect(values).not.toHaveProperty("rtc_turn_credential");
+  });
+
+  it("sends the TURN secret only when the administrator typed one", () => {
+    const { data } = createAdminAppBootstrap();
+    const values = adminSettingsFormToMap({
+      ...buildAdminSettingsFormState(data),
+      turnSecret: "  north  ",
+    });
+    expect(values.rtc_turn_secret).toBe("north");
+  });
+
   it("includes mcp_enabled from the form", () => {
     const { data } = createAdminAppBootstrap();
     const values = adminSettingsFormToMap(buildAdminSettingsFormState(data));

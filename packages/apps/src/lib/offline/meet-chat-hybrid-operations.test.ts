@@ -137,6 +137,31 @@ describe("createHybridMeetChatOperations", () => {
     expect(await listMeetChatOutbox(username)).toHaveLength(0);
   });
 
+  it("mints a client ULID the caller can hand to the room echo", async () => {
+    const operations = createHybridMeetChatOperations(username, author);
+
+    const id = operations.newMessageId!();
+
+    expect(isChatMessageUlid(id)).toBe(true);
+    expect(operations.newMessageId!()).not.toBe(id);
+  });
+
+  it("sends with the client ULID the caller already echoed", async () => {
+    vi.mocked(sendChatMessage).mockImplementation(async (_channelId, body) =>
+      wireMessage({ id: body.id, body: body.body }),
+    );
+    const operations = createHybridMeetChatOperations(username, author);
+    const id = operations.newMessageId!();
+
+    const saved = await operations.sendMessage!("chat-general", "hello world", { messageId: id });
+
+    expect(saved.id).toBe(id);
+    expect(sendChatMessage).toHaveBeenCalledWith(
+      "chat-general",
+      expect.objectContaining({ id, body: "hello world" }),
+    );
+  });
+
   it("queues sends offline as pending Dexie rows plus a send outbox op", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(false);
 
