@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Mic, Pencil, Video } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { IconButton } from "@/button/src/button";
@@ -51,22 +51,19 @@ import {
 } from "@/meet-core/src/meet-call-stage-layout";
 import { meetThreadRailShowsBack } from "@/meet-core/src/meet-thread-placement";
 import { MeetChatColumn } from "@/meet-core/src/meet-chat-column";
-import { mergeMeetRoomChatIntoChannel } from "@/meet-core/src/meet-chat-line";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import { ChatComposer } from "@/chat-ui/src/chat-composer";
-import { ChatThreadPanel } from "@/chat-ui/src/chat-thread-panel";
-import type { ChatMentionPrincipal } from "@/chat-ui/src/chat-types";
 import {
   findMeetDirectMessagePerson,
   meetDirectMessagePeople,
 } from "@/meet-core/src/meet-direct-messages";
-import type { ChatSendPayload } from "@/chat-ui/src/chat-types";
-import type { ChatMessage, MeetChannel } from "@/meet-core/src/meet-types";
+import type { MeetChannel } from "@/meet-core/src/meet-types";
 import {
   meetInitialCallLayoutForChannel,
   useMeetCallLayout,
 } from "@/meet-core/src/use-meet-call-layout";
+import { useMeetChatColumnProps } from "@/meet-core/src/use-meet-chat-column-props";
 import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
+import { useMeetThreadSurface } from "@/meet-core/src/use-meet-thread-surface";
 import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";
 import type { MeetWorkspaceProps } from "@/meet-core/src/meet-workspace-props";
 import { MeetWorkspaceCallBar } from "@/meet-core/src/meet-workspace-call-bar";
@@ -93,55 +90,6 @@ function meetVisitCallEngaged(
       callStageRoom.controller.status === "preparing"),
   );
 }
-
-const MeetWorkspaceThread = memo(function MeetWorkspaceThread({
-  parent,
-  replies,
-  currentUserId,
-  mentionPrincipals,
-  authorPresence,
-  onClose,
-  onSendReply,
-  onToggleReaction,
-  parentEditing = false,
-  parentEditComposer,
-  onCaughtUpChange,
-}: {
-  parent: NonNullable<MeetWorkspaceProps["threadMessage"]>;
-  replies: NonNullable<MeetWorkspaceProps["threadReplies"]>;
-  currentUserId: string;
-  mentionPrincipals: ChatMentionPrincipal[];
-  authorPresence?: MeetWorkspaceProps["data"]["authorPresence"];
-  onClose?: () => void;
-  onSendReply?: (parentId: string, body: string) => void;
-  onToggleReaction?: (messageId: string, emoji: string) => void;
-  parentEditing?: boolean;
-  parentEditComposer?: ReactNode;
-  onCaughtUpChange?: (caughtUp: boolean) => void;
-}) {
-  return (
-    <ChatThreadPanel
-      key={parent.id}
-      parent={parent}
-      replies={replies}
-      currentUserId={currentUserId}
-      title={meetLabels.threadTitle}
-      closeLabel={meetLabels.threadClose}
-      mentionPrincipals={mentionPrincipals}
-      authorPresence={authorPresence}
-      parentEditing={parentEditing}
-      parentEditComposer={parentEditComposer}
-      onClose={onClose}
-      onSend={onSendReply ? (payload) => onSendReply(parent.id, payload.body) : undefined}
-      onToggleReaction={onToggleReaction}
-      onCaughtUpChange={onCaughtUpChange}
-      actionsForMessage={(message) => {
-        if (message.id === parent.id) return undefined;
-        return [{ id: "react", onClick: () => undefined }];
-      }}
-    />
-  );
-});
 
 export function MeetWorkspace({
   data,
@@ -452,80 +400,29 @@ export function MeetWorkspace({
   }, [resolvedParent?.id]);
   const closeResolvedThread = onCloseThread ?? chat.closeThread;
   const openResolvedThread = onOpenThread ?? chat.openThread;
-  const sendThreadReply = useCallback(
-    (parentId: string, body: string) => {
-      if (onSendThreadReply) {
-        onSendThreadReply(parentId, body);
-        return;
-      }
-      void chat.sendThreadReply({ body, mentions: [] }).catch(notifyChatError);
-    },
-    [chat.sendThreadReply, notifyChatError, onSendThreadReply],
-  );
-  const onToggleThreadReaction = useCallback(
-    (messageId: string, emoji: string) => {
-      void chat.react(messageId, emoji).catch(notifyChatError);
-    },
-    [chat.react, notifyChatError],
-  );
-  const onSendChannel = useCallback(
-    (payload: ChatSendPayload) => {
-      const persisted = chat.sendChannel(payload);
-      void persisted.catch(notifyChatError);
-      if (callStageRoom?.controller.inCall) {
-        void callStageRoom.controller.sendChat(payload.body, persisted);
-      }
-    },
-    [callStageRoom, chat.sendChannel, notifyChatError],
-  );
-  const onReactChannel = useCallback(
-    (messageId: string, emoji: string) => {
-      void chat.react(messageId, emoji).catch(notifyChatError);
-    },
-    [chat.react, notifyChatError],
-  );
-  const onReplyChannel = useCallback(
-    (message: ChatMessage) => {
-      if (meetCallStageShowsStage(resolvedStageLayout)) setCallChatOpen(true);
-      openResolvedThread(message);
-    },
-    [openResolvedThread, resolvedStageLayout],
-  );
-  const onDeleteChannel = useCallback(
-    (messageId: string) => {
-      void chat.deleteMessage(messageId).catch(notifyChatError);
-    },
-    [chat.deleteMessage, notifyChatError],
-  );
-  const onCancelEdit = useCallback(() => {
-    chat.setEditingMessageId(null);
-  }, [chat.setEditingMessageId]);
-  const onSaveEdit = useCallback(
-    (messageId: string, payload: ChatSendPayload) => {
-      void chat.editMessage(messageId, payload).catch(notifyChatError);
-    },
-    [chat.editMessage, notifyChatError],
-  );
+  const expandCallChatPanel = useCallback(() => setCallChatOpen(true), []);
   const chatPlaceholder = selected
     ? meetChannelComposerPlaceholder(selected)
     : selectedDm
       ? meetLabels.dmComposer(selectedDm.displayName)
       : undefined;
-  const typingNames = useMemo(() => {
-    if (!selectedId) return [];
-    return (typingByChannel?.[selectedId] ?? [])
-      .filter((userId) => userId !== currentUserId)
-      .map(
-        (userId) =>
-          mentionPrincipals.find((principal) => principal.id === userId)?.displayName ?? userId,
-      );
-  }, [currentUserId, mentionPrincipals, selectedId, typingByChannel]);
-  const onComposerTypingForSelected = useCallback(
-    (typing: boolean) => {
-      if (selectedId) onComposerTyping?.(selectedId, typing);
-    },
-    [onComposerTyping, selectedId],
-  );
+  const chatWiring = useMeetChatColumnProps({
+    chat,
+    selectedId,
+    currentUserId,
+    mentionPrincipals,
+    authorPresence: data.authorPresence,
+    placeholder: chatPlaceholder,
+    typingByChannel,
+    onComposerTyping,
+    callRoom: callStageRoom,
+    liveCallChannelId,
+    stageLayout: resolvedStageLayout,
+    onOpenThread: openResolvedThread,
+    onExpandChatPanel: expandCallChatPanel,
+    onSendThreadReply,
+    onError: notifyChatError,
+  });
   const builtStage =
     callStageRoom != null ? (
       <MeetCallStage
@@ -541,42 +438,21 @@ export function MeetWorkspace({
     ) : null;
   const resolvedStage = externalStageOnSelected && callActive ? callStage : builtStage;
 
-  const threadCacheRef = useRef<{
-    parent: NonNullable<MeetWorkspaceProps["threadMessage"]>;
-    replies: NonNullable<MeetWorkspaceProps["threadReplies"]>;
-  } | null>(null);
-  if (resolvedParent) {
-    threadCacheRef.current = { parent: resolvedParent, replies: resolvedReplies };
-  }
-  const cachedThread = threadCacheRef.current;
-  const parentEditing = Boolean(cachedThread && chat.editingMessageId === cachedThread.parent.id);
-  const threadContent =
-    threadPanel ??
-    (cachedThread ? (
-      <MeetWorkspaceThread
-        parent={cachedThread.parent}
-        replies={cachedThread.replies}
-        currentUserId={currentUserId}
-        mentionPrincipals={mentionPrincipals}
-        authorPresence={data.authorPresence}
-        onClose={closeResolvedThread}
-        onSendReply={sendThreadReply}
-        onToggleReaction={onToggleThreadReaction}
-        parentEditing={parentEditing}
-        parentEditComposer={
-          parentEditing ? (
-            <ChatComposer
-              principals={mentionPrincipals}
-              initialContent={cachedThread.parent.body}
-              onSend={(payload) => onSaveEdit(cachedThread.parent.id, payload)}
-              onCancel={onCancelEdit}
-              hint={null}
-            />
-          ) : undefined
-        }
-        onCaughtUpChange={setThreadCaughtUp}
-      />
-    ) : null);
+  const threadContent = useMeetThreadSurface({
+    threadPanel,
+    parent: resolvedParent,
+    replies: resolvedReplies,
+    currentUserId,
+    mentionPrincipals,
+    authorPresence: data.authorPresence,
+    editingMessageId: chat.editingMessageId,
+    onClose: closeResolvedThread,
+    onSendReply: chatWiring.sendThreadReply,
+    onToggleReaction: chatWiring.onToggleThreadReaction,
+    onSaveEdit: chatWiring.onSaveEdit,
+    onCancelEdit: chatWiring.onCancelEdit,
+    onCaughtUpChange: setThreadCaughtUp,
+  });
   const threadVisible = Boolean(resolvedOpen && threadContent);
   const callToggle = onToggleCall ?? call.toggleCall;
   const visitCallToggle = visitOwnsLayout ? leaveVisitCall : callToggle;
@@ -632,50 +508,17 @@ export function MeetWorkspace({
     selectedId,
     selectedMeetingEvent?.id,
   ]);
-  const liveCallMessages = useMemo(
-    () =>
-      mergeMeetRoomChatIntoChannel(
-        chat.channelMessages,
-        callStageRoom?.controller.inCall ? callStageRoom.controller.chatMessages : [],
-        selectedId ?? liveCallChannelId ?? "call",
-      ),
-    [
-      callStageRoom?.controller.chatMessages,
-      callStageRoom?.controller.inCall,
-      chat.channelMessages,
-      liveCallChannelId,
-      selectedId,
-    ],
-  );
-  const chatColumnProps = {
-    messages: liveCallMessages,
-    currentUserId,
-    principals: mentionPrincipals,
-    authorPresence: data.authorPresence,
-    placeholder: chatPlaceholder,
-    onSend: onSendChannel,
-    onReact: onReactChannel,
-    onReply: onReplyChannel,
-    onDelete: onDeleteChannel,
-    editingMessageId: chat.editingMessageId,
-    onStartEdit: chat.setEditingMessageId,
-    onCancelEdit,
-    onSaveEdit,
-    typingNames,
-    onComposerTyping: onComposerTypingForSelected,
-  };
-  const builtChat = (
+  const resolvedChat = chatColumn ?? (
     <MeetChatColumn
       key={selectedId}
-      {...chatColumnProps}
+      {...chatWiring.chatColumnProps}
       onCaughtUpChange={showExpandedStage ? undefined : setChannelCaughtUp}
     />
   );
-  const resolvedChat = chatColumn ?? builtChat;
   const railChat = chatColumn ?? (
     <MeetChatColumn
       key={selectedId}
-      {...chatColumnProps}
+      {...chatWiring.chatColumnProps}
       onCaughtUpChange={showExpandedStage ? setChannelCaughtUp : undefined}
     />
   );
