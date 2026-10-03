@@ -15,8 +15,6 @@ packages/apps/src/lib/calendar-elements/CalendarViewBase/CalendarViewBase.ts	835
 packages/apps/src/lib/calendar-elements/EventCalendar/EventCalendar.ts	914	grandfathered
 packages/apps/src/lib/calendar-elements/TimeLine/TimeLine.ts	2318	grandfathered
 packages/apps/src/lib/calendar-elements/controllers/TimedEventInteractionController.ts	1145	grandfathered
-packages/apps/src/lib/rtc/session/peer-mesh.ts	1055	grandfathered
 packages/apps/src/meet-core/src/meet-workspace.tsx	1504	grandfathered
 packages/apps/src/notes-core/src/use-notes-mutations.tsx	989	grandfathered
-packages/apps/src/text-editor-core/docs-collab/docs-collab-workspace.tsx	873	grandfathered
 packages/apps/src/wegotworkspace/src/wegotworkspace-routes.tsx	853	grandfathered

@@ -1,5 +1,9 @@
 import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import { FollowerPresenceSession } from "@/presence-core/src/follower-presence-session";
+import {
+  toPresenceMeetFanoutEvent,
+  toPresenceNotifyHintEvent,
+} from "@/presence-core/src/presence-fanout-events";
 import type { PresenceJoinMode } from "@/presence-core/src/presence-join-timing";
 import type {
   PresenceChatMessage,
@@ -484,77 +488,14 @@ export class PresenceStore {
 
     if (!senderUsername || senderUsername === this.selfUsername) return;
 
-    if (envelope.kind === "channel-message") {
-      if (envelope.message.authorId !== senderUsername) return;
-      this.emitMeetFanout({
-        kind: "channel-message",
-        senderUsername,
-        message: envelope.message,
-      });
+    const fanout = toPresenceMeetFanoutEvent(envelope, senderUsername);
+    if (fanout) {
+      this.emitMeetFanout(fanout);
       return;
     }
 
-    if (envelope.kind === "channel-message-patch") {
-      this.emitMeetFanout({
-        kind: "channel-message-patch",
-        senderUsername,
-        id: envelope.id,
-        channel: envelope.channel,
-        body: envelope.body,
-        editedAt: envelope.editedAt,
-      });
-      return;
-    }
-
-    if (envelope.kind === "channel-message-destroy") {
-      this.emitMeetFanout({
-        kind: "channel-message-destroy",
-        senderUsername,
-        id: envelope.id,
-        channel: envelope.channel,
-      });
-      return;
-    }
-
-    if (envelope.kind === "channel-reaction") {
-      this.emitMeetFanout({
-        kind: "channel-reaction",
-        senderUsername,
-        messageId: envelope.messageId,
-        channel: envelope.channel,
-        emoji: envelope.emoji,
-        on: envelope.on,
-      });
-      return;
-    }
-
-    if (envelope.kind === "channel-changed") {
-      this.emitMeetFanout({
-        kind: "channel-changed",
-        senderUsername,
-        channel: envelope.channel,
-      });
-      return;
-    }
-
-    if (envelope.kind === "call-active") {
-      this.emitMeetFanout({
-        kind: "call-active",
-        senderUsername,
-        channel: envelope.channel,
-        active: envelope.active,
-        ...(envelope.audioOnly === true ? { audioOnly: true as const } : {}),
-      });
-      return;
-    }
-
-    if (envelope.kind === "notify-hint") {
-      this.emitNotifyHint({
-        kind: "notify-hint",
-        senderUsername,
-        ...(envelope.tag ? { tag: envelope.tag } : {}),
-      });
-    }
+    const hint = toPresenceNotifyHintEvent(envelope, senderUsername);
+    if (hint) this.emitNotifyHint(hint);
   }
 
   private emitMeetFanout(event: PresenceMeetFanoutEvent): void {
