@@ -81,19 +81,18 @@ final class CollabPathEncodingTest extends WgwDatabaseTestCase
 
         $this->withBearer($token)
             ->putJson($url, [
-                'markdown' => "# Café & co (v2)\n",
+                // No trailing newline: Laravel's TrimStrings middleware strips it.
+                'markdown' => '# Café & co (v2)',
                 'yjs' => [1, 2, 3, 255],
             ])
             ->assertOk()
             ->assertJsonPath('ok', true);
 
         $storage = app(WgwStorage::class)->files();
-        $this->assertSame("# Café & co (v2)\n", $storage->get(ltrim($path, '/')));
+        $this->assertSame('# Café & co (v2)', $storage->get(ltrim($path, '/')));
 
-        $this->withBearer($token)
-            ->get($url)
-            ->assertOk()
-            ->assertSeeText('# Café & co (v2)');
+        $reloaded = $this->withBearer($token)->get($url)->assertOk();
+        $this->assertSame('# Café & co (v2)', $reloaded->getContent());
 
         $this->withBearer($token)
             ->get($url.'&format=yjs')
