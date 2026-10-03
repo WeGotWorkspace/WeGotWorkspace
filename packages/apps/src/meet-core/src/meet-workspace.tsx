@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, Mic, Pencil, Video } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { IconButton } from "@/button/src/button";
 import { TooltipProvider } from "@/ui/tooltip";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
-import { ViewHeader } from "@/view-header/src/view-header";
-import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/document-title";
 import { filterSharePrincipals, sharePrincipalsFromDirectory } from "@/share-ui/collection-share";
@@ -29,8 +25,6 @@ import {
 import { useMeetNowClock } from "@/meet-core/src/use-meet-now-clock";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import {
-  meetCallStatusEngaged,
-  meetCallUiParkedOnWorkspaceUnmount,
   meetResumeCallLayout,
   meetShouldSelectLiveCallOnBareMeet,
 } from "@/meet-core/src/meet-call-resume";
@@ -63,11 +57,14 @@ import {
 } from "@/meet-core/src/use-meet-call-layout";
 import { useMeetChatColumnProps } from "@/meet-core/src/use-meet-chat-column-props";
 import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
+import { useMeetScheduledAutoJoin } from "@/meet-core/src/use-meet-scheduled-auto-join";
+import { useMeetSuiteCallParking } from "@/meet-core/src/use-meet-suite-call-parking";
 import { useMeetThreadSurface } from "@/meet-core/src/use-meet-thread-surface";
 import { MeetWorkspaceRail } from "@/meet-core/src/meet-workspace-rail";
 import type { MeetWorkspaceProps } from "@/meet-core/src/meet-workspace-props";
 import { MeetWorkspaceCallBar } from "@/meet-core/src/meet-workspace-call-bar";
 import { MeetWorkspaceDialogs } from "@/meet-core/src/meet-workspace-dialogs";
+import { MeetWorkspaceHeader } from "@/meet-core/src/meet-workspace-header";
 import { MeetWorkspaceSidebar } from "@/meet-core/src/meet-workspace-sidebar";
 import {
   MeetWorkspaceMainSurfaces,
@@ -130,7 +127,6 @@ export function MeetWorkspace({
 }: MeetWorkspaceProps) {
   const toast = useAppToast();
   const nowTick = useMeetNowClock();
-  const autoJoinedMeetingRef = useRef<string | null>(null);
   // Live operations reject on auth/validation errors (mock ops never throw);
   // surface those instead of leaking unhandled rejections.
   const notifyChatError = useCallback(
@@ -483,31 +479,16 @@ export function MeetWorkspace({
     },
     [call.startCall, markChannelMeetingLive, resolvedStageLayout, selectedId],
   );
-  const autoJoinSelectedIdRef = useRef(selectedId);
-  useEffect(() => {
-    if (autoJoinSelectedIdRef.current === selectedId) return;
-    autoJoinSelectedIdRef.current = selectedId;
-    autoJoinedMeetingRef.current = null;
-  }, [selectedId]);
-  useEffect(() => {
-    if (!selected || selected.kind !== "meeting" || !selectedId) return;
-    if (!scheduledWindowLive || resolvedCallActive) return;
-    if (liveCallChannelId && liveCallChannelId !== selectedId) return;
-    if (!operations?.startCall) return;
-    const key = `${selectedId}:${selectedMeetingEvent?.id ?? "window"}`;
-    if (autoJoinedMeetingRef.current === key) return;
-    autoJoinedMeetingRef.current = key;
-    onCallInvite();
-  }, [
-    liveCallChannelId,
-    onCallInvite,
-    operations?.startCall,
-    resolvedCallActive,
-    scheduledWindowLive,
+  useMeetScheduledAutoJoin({
     selected,
     selectedId,
-    selectedMeetingEvent?.id,
-  ]);
+    selectedMeetingEventId: selectedMeetingEvent?.id,
+    scheduledWindowLive,
+    callActive: resolvedCallActive,
+    liveCallChannelId,
+    startCall: operations?.startCall,
+    onJoin: onCallInvite,
+  });
   const resolvedChat = chatColumn ?? (
     <MeetChatColumn
       key={selectedId}
@@ -530,36 +511,15 @@ export function MeetWorkspace({
   const keepCallChrome = Boolean(resolvedStage && showCallChrome);
   const showKnockOrCallBar = showCallBar || keepCallChrome;
   const callRoom = callStageRoom;
-  // Mini-player handshake: while the live call's channel is not on screen the
-  // call is "parked" here, so the suite mini-player may show inside `/meet`.
-  // Null store (mock/Storybook trees) makes this a no-op.
-  const liveCallParked = Boolean(
-    liveCallChannelId && !(selectedId === liveCallChannelId && showCallChrome),
-  );
-  useEffect(() => {
-    suiteCallStore?.setCallUiParked(liveCallParked);
-  }, [liveCallParked, suiteCallStore]);
-  useEffect(() => {
-    if (!suiteCallStore || !liveCallChannelId) return;
-    if (selectedId !== liveCallChannelId) return;
-    if (!meetCallIsActive(call.callLayout)) return;
-    suiteCallStore.setCallUiLayout(call.callLayout);
-  }, [call.callLayout, liveCallChannelId, selectedId, suiteCallStore]);
-  useEffect(() => {
-    if (!suiteCallStore || !liveCallChannelId) return;
-    suiteCallStore.focusCallChannelRef.current = () => setSelectedId(liveCallChannelId);
-    return () => {
-      suiteCallStore.focusCallChannelRef.current = null;
-    };
-  }, [liveCallChannelId, suiteCallStore]);
-  useEffect(
-    () => () => {
-      if (!suiteCallStore) return;
-      const engaged = meetCallStatusEngaged(suiteCallStore.getSnapshot().status);
-      suiteCallStore.setCallUiParked(meetCallUiParkedOnWorkspaceUnmount(engaged));
-    },
-    [suiteCallStore],
-  );
+  useMeetSuiteCallParking({
+    suiteCallStore,
+    liveCallChannelId,
+    selectedId,
+    showCallChrome,
+    callLayout: call.callLayout,
+    callLayoutIsActive: meetCallIsActive(call.callLayout),
+    onFocusCallChannel: setSelectedId,
+  });
   const chatTitle = headerTitle ? meetLabels.chatInChannel(headerTitle) : meetLabels.chatTitle;
   const panelOpen = showExpandedStage ? callChatOpen : threadVisible;
   const railShowsThread = threadVisible;
@@ -647,54 +607,15 @@ export function MeetWorkspace({
           />
         }
         mainHeader={
-          <ViewHeader
+          <MeetWorkspaceHeader
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen((open) => !open)}
             title={headerTitle}
-            titlePrefix={
-              selected?.kind === "meeting" ? (
-                <CalendarDays className="meet-workspace__header-kind-icon" aria-hidden />
-              ) : null
-            }
-            actions={
-              conversationOpen ? (
-                <div className="meet-workspace__header-actions">
-                  {showHeaderStart ? (
-                    <SidebarSegmentedNewMenu
-                      className="meet-workspace__header-start"
-                      mainLabel={meetLabels.meet}
-                      menuLabel={meetLabels.startCallMenu}
-                      icon={<Video />}
-                      size="md"
-                      stretch={false}
-                      onMainAction={() => onCallInvite()}
-                      items={[
-                        {
-                          id: "audio-only",
-                          label: meetLabels.startAudioOnly,
-                          icon: <Mic aria-hidden />,
-                          onClick: () => onCallInvite({ video: false }),
-                        },
-                      ]}
-                    />
-                  ) : null}
-                  {selected ? (
-                    <IconButton
-                      className="meet-workspace__header-edit"
-                      icon={<Pencil />}
-                      label={
-                        selected.kind === "meeting"
-                          ? meetLabels.editMeeting
-                          : meetLabels.editChannel
-                      }
-                      size="md"
-                      variant="outline"
-                      onClick={() => dialogs.openEdit(selected)}
-                    />
-                  ) : null}
-                </div>
-              ) : null
-            }
+            selected={selected}
+            conversationOpen={conversationOpen}
+            showStart={showHeaderStart}
+            onStartCall={onCallInvite}
+            onEditChannel={dialogs.openEdit}
           />
         }
         main={
