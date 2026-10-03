@@ -17,6 +17,9 @@ final class MeetSignalingService
 {
     private const KNOCK_NAME_PREFIX = '__wgw_knock__:';
 
+    /** Mirrors MeetChannelJoinPolicy::CONTROL_MESSAGE_PREFIX (knock / admit / deny). */
+    private const CONTROL_TEXT_PREFIX = '__wgw_meet_control__:';
+
     /** Send types that set up a media session, so the lobby may not use them. */
     private const MEDIA_SEND_TYPES = ['offer', 'answer', 'ice'];
 
@@ -297,6 +300,7 @@ final class MeetSignalingService
                 $this->fail('not_in_room');
             }
 
+            $this->assertKnockSenderSendsControlOnly($room, $from, $text);
             $this->recordChannelAdmission($request, $room, $text);
 
             $payload = json_encode(['text' => $text], JSON_THROW_ON_ERROR);
@@ -326,6 +330,36 @@ final class MeetSignalingService
 
             return ['ok' => true, 'delivered' => count($targets)];
         });
+    }
+
+    /**
+     * The lobby is not the call: a knock row may announce itself (and send
+     * any other control payload that admittedPeerIdFromControlText and the
+     * meet-control prefix already classify) but must not post a visible
+     * room line. Same 403 family as media-from-lobby.
+     */
+    private function assertKnockSenderSendsControlOnly(string $room, string $from, string $text): void
+    {
+        if (! $this->isKnockPeer($room, $from)) {
+            return;
+        }
+        if ($this->isControlChatText($text)) {
+            return;
+        }
+
+        $this->fail('forbidden', 403, 'Waiting to be admitted — the call cannot be joined yet.');
+    }
+
+    /**
+     * Control text is the meet-control family: the prefix that
+     * admittedPeerIdFromControlText / lobbyDecisionPeerIdFromControlText
+     * already require (knock announcement, admit, deny, and the rest).
+     */
+    private function isControlChatText(string $text): bool
+    {
+        return str_starts_with($text, self::CONTROL_TEXT_PREFIX)
+            || $this->channelJoinPolicy->admittedPeerIdFromControlText($text) !== null
+            || $this->channelJoinPolicy->lobbyDecisionPeerIdFromControlText($text) !== null;
     }
 
     /**
