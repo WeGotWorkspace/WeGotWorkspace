@@ -1,5 +1,5 @@
 import { resolveRoomId } from "@/lib/rtc/room-id";
-import type { SignalingChannel } from "@/lib/rtc/types";
+import type { RtcPeerCap, SignalingChannel } from "@/lib/rtc/types";
 import { rtcLog } from "@/lib/rtc/log";
 
 export type HttpSignalingAuth = {
@@ -83,7 +83,23 @@ export type HttpSignalingClientOptions = {
   sendFromField?: "from" | "peerId";
   /** Meet: stable per-browser token so a reload evicts the leftover peer. */
   getBrowserId?: () => string | undefined;
+  /** Wire capabilities advertised at join (contract C8); the server gates behavior on them. */
+  caps?: RtcPeerCap[];
 };
+
+/**
+ * One hung request used to wedge the poll loop forever: `pollInFlight` stayed
+ * true and nothing rescheduled. Ten seconds is well above the slowest healthy
+ * poll and well below the peer timeout, so an aborted poll costs one cycle.
+ */
+const POLL_TIMEOUT_MS = 10_000;
+
+/** jsdom and older runtimes may not implement it; a missing timeout is not worth a crash. */
+function pollTimeoutSignal(): AbortSignal | undefined {
+  return typeof AbortSignal.timeout === "function"
+    ? AbortSignal.timeout(POLL_TIMEOUT_MS)
+    : undefined;
+}
 
 export class HttpSignalingClient {
   private readonly channel: SignalingChannel;
@@ -98,6 +114,8 @@ export class HttpSignalingClient {
 
   private readonly getBrowserId: (() => string | undefined) | undefined;
 
+  private readonly caps: RtcPeerCap[];
+
   constructor(options: HttpSignalingClientOptions) {
     this.channel = options.channel;
     this.apiBase = options.apiBase.replace(/\/$/, "");
@@ -105,6 +123,7 @@ export class HttpSignalingClient {
     this.getAuth = options.getAuth ?? (() => ({}));
     this.sendFromField = options.sendFromField ?? "from";
     this.getBrowserId = options.getBrowserId;
+    this.caps = options.caps ?? [];
   }
 
   private roomUrl(room: string, suffix: string): string {
@@ -179,6 +198,7 @@ export class HttpSignalingClient {
       name: input.name,
     };
     if (input.peerId) body.peerId = input.peerId;
+    if (this.caps.length > 0) body.caps = this.caps;
     const browserId = this.getBrowserId?.();
     if (browserId) body.browserId = browserId;
     const sessionKey = input.sessionKey ?? this.getAuth().sessionKey;
@@ -200,7 +220,11 @@ export class HttpSignalingClient {
 
     const url = `${this.roomUrl(input.room, "/events")}?${params.toString()}`;
     rtcLog({ channel: this.channel }, "signal-request", { action: "poll", requestUrl: url });
-    const res = await this.fetchImpl(url, { method: "GET", headers: this.headers() });
+    const res = await this.fetchImpl(url, {
+      method: "GET",
+      headers: this.headers(),
+      signal: pollTimeoutSignal(),
+    });
     if (res.status === 204) {
       rtcLog({ channel: this.channel }, "signal-response", {
         action: "poll",
