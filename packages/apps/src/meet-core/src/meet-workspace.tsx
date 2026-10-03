@@ -510,7 +510,6 @@ export function MeetWorkspace({
     (conversationOpen && meetCallBarVisible(resolvedStageLayout, meetingLive)) || visitEngaged;
   const keepCallChrome = Boolean(resolvedStage && showCallChrome);
   const showKnockOrCallBar = showCallBar || keepCallChrome;
-  const callRoom = callStageRoom;
   useMeetSuiteCallParking({
     suiteCallStore,
     liveCallChannelId,
@@ -627,7 +626,7 @@ export function MeetWorkspace({
               <MeetWorkspaceCallBar
                 visible={showKnockOrCallBar}
                 joined={showCallChrome}
-                room={callRoom}
+                room={callStageRoom}
                 channelTitle={headerTitle}
                 session={session}
                 previewPeerIds={selectedId ? (callParticipantsByChannel?.[selectedId] ?? []) : []}
