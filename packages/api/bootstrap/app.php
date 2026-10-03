@@ -48,6 +48,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('wgw:notify:due-alarms')->everyMinute()->withoutOverlapping();
         $schedule->command('wgw:notify:vapid-sweep')->everyMinute()->withoutOverlapping();
+        $schedule->command('wgw:rtc:prune')->hourly()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: [

@@ -17,6 +17,7 @@ final class SettingsController
         return response()->json($this->settings->save(
             $request->valueMap(),
             $request->shouldClearSmtpPassword(),
+            $request->shouldClearTurnSecret(),
         ));
     }
 }

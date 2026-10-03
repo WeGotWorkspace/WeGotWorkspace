@@ -46,8 +46,10 @@ final readonly class RtcSignalingPolicy
         public bool $requireLivePeersOnSend,
         /** Expose the peer's owner username (`owner_user` minus the `u:` marker) as `user` in rosters. */
         public bool $rosterIncludesOwner = false,
-        /** Persist client `browserId` and evict same-browser leftovers on join (Meet only). */
+        /** Persist the client `browserId` on the peer row. Meet also evicts same-browser leftovers on join. */
         public bool $persistBrowserId = false,
+        /** Carry the join-computed `access` right on the peer row and in rosters (collab only). */
+        public bool $rosterIncludesAccess = false,
     ) {}
 
     public static function meet(): self
@@ -57,7 +59,7 @@ final readonly class RtcSignalingPolicy
             messagesTable: 'meet_messages',
             peerModelClass: MeetPeer::class,
             messageModelClass: MeetMessage::class,
-            peerTimeoutSeconds: 600,
+            peerTimeoutSeconds: 60,
             messageRetentionSeconds: 600,
             maxMessagesPerRoom: null,
             pollMode: RtcSignalingPollMode::DeleteOnRead,
@@ -79,7 +81,7 @@ final readonly class RtcSignalingPolicy
             messagesTable: 'collab_messages',
             peerModelClass: CollabPeer::class,
             messageModelClass: CollabMessage::class,
-            peerTimeoutSeconds: 30,
+            peerTimeoutSeconds: 90,
             messageRetentionSeconds: 600,
             maxMessagesPerRoom: 1000,
             pollMode: RtcSignalingPollMode::SinceCursor,
@@ -91,6 +93,8 @@ final readonly class RtcSignalingPolicy
             trimMessagesOnSend: true,
             requireLivePeersOnSend: true,
             rosterIncludesOwner: true,
+            persistBrowserId: true,
+            rosterIncludesAccess: true,
         );
     }
 
