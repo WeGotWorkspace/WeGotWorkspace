@@ -142,6 +142,12 @@ export class MeetCallStore {
 
   readonly rosterRef: Ref<Map<string, string>> = { current: new Map() };
 
+  /**
+   * Raw signaling roster (ids → names as polled, knock names kept). `rosterRef`
+   * holds the admitted subset; the offer gate needs the knock rows as well.
+   */
+  readonly signalingRosterRef: Ref<Map<string, string>> = { current: new Map() };
+
   readonly peerInboundSampleRef: Ref<Map<string, PeerInboundSample>> = { current: new Map() };
 
   readonly peerMediaHintRef: Ref<Map<string, { camera: boolean; mic: boolean }>> = {
@@ -347,6 +353,7 @@ export class MeetCallStore {
 
   resetPeerMaps = (): void => {
     this.rosterRef.current = new Map();
+    this.signalingRosterRef.current = new Map();
     this.peerNamesRef.current = new Map();
     this.participantRosterDiffReadyRef.current = false;
     this.peerDisclosedMediaRef.current.clear();
