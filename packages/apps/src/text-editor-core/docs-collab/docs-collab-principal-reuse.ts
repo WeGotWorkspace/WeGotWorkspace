@@ -5,6 +5,7 @@ import {
   type PrincipalLinkRegistry,
 } from "@/lib/rtc/session/principal-link-registry";
 import type { RtcPeerDescriptor } from "@/lib/rtc/types";
+import { DocsCollabRosterTrust } from "@/text-editor-core/docs-collab/docs-collab-access";
 import type {
   DocsCollabMeshMessage,
   DocsCollabMeshPeer,
@@ -59,6 +60,12 @@ export type DocsCollabPrincipalReusePorts = {
  * Attaches a collab room onto live principal data channels (`collab-reuse`
  * envelopes). Call `considerRoster` from the collab poll callback *before*
  * `shouldConnectToPeer` so reuse-hit peers skip ICE.
+ *
+ * The principal `workspace` room holds every signed-in account, so an envelope
+ * arriving on it says nothing about document access. Nothing is accepted from a
+ * username the collab roster does not list: an unrostered `open` is dropped
+ * without an `ack`, so no `dc-open` fires and no Yjs state is ever sent. The
+ * roster also supplies the right that rides along with every forwarded update.
  */
 export class DocsCollabPrincipalReuse {
   private readonly room: string;
@@ -92,6 +99,8 @@ export class DocsCollabPrincipalReuse {
   /** Stale collab peer ids superseded by principal reuse for the same username. */
   private readonly supersededCollabPeerIds = new Set<string>();
 
+  private readonly trust = new DocsCollabRosterTrust();
+
   private lastRosterPeers: RtcPeerDescriptor[] = [];
 
   constructor(private readonly ports: DocsCollabPrincipalReusePorts) {
@@ -120,6 +129,8 @@ export class DocsCollabPrincipalReuse {
    */
   considerRoster(peers: RtcPeerDescriptor[], myId: string | null): void {
     this.lastRosterPeers = peers;
+    this.trust.remember(peers, myId);
+    this.dropUnrosteredPeers();
     this.dropDeadPrincipalLinks();
     for (const peer of peers) {
       if (!myId || peer.id === myId) continue;
@@ -241,6 +252,39 @@ export class DocsCollabPrincipalReuse {
     }
   }
 
+  /**
+   * A reuse envelope is only trustworthy when the collab roster lists the
+   * sender under the collab peer id the envelope claims. Both halves matter:
+   * the username proves document access, the peer id keeps a rostered account
+   * from speaking for somebody else's peer row.
+   */
+  private mayReuseWith(fromUsername: string, collabPeerId: string | undefined): boolean {
+    if (!this.trust.isRosteredUser(fromUsername)) {
+      this.logMiss(collabPeerId ?? fromUsername, "not-in-collab-roster", fromUsername);
+      return false;
+    }
+    if (collabPeerId && this.trust.isRosteredPeerId(collabPeerId)) {
+      if (this.trust.userForPeerId(collabPeerId) !== fromUsername) {
+        this.logMiss(collabPeerId, "peer-id-not-owned-by-sender", fromUsername);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** A share revoked mid-session drops off the roster; so does its reuse link. */
+  private dropUnrosteredPeers(): void {
+    for (const entry of [...this.reused.values()]) {
+      if (this.trust.isRosteredUser(entry.username)) continue;
+      this.log("reuse-miss", {
+        remoteId: entry.collabPeerId,
+        username: entry.username,
+        reason: "left-collab-roster",
+      });
+      this.dropPeer(entry.collabPeerId, true);
+    }
+  }
+
   private dropDeadPrincipalLinks(): void {
     for (const entry of [...this.reused.values()]) {
       if (this.registry.getLink(entry.principalPeerId)) continue;
@@ -313,6 +357,7 @@ export class DocsCollabPrincipalReuse {
     envelope: CollabReuseEnvelope,
   ): void {
     if (envelope.op === "open") {
+      if (!this.mayReuseWith(fromUsername, envelope.collabPeerId)) return;
       this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "open");
       const myId = this.ports.getMyCollabPeerId();
       if (!myId) return;
@@ -327,6 +372,7 @@ export class DocsCollabPrincipalReuse {
       return;
     }
     if (envelope.op === "ack") {
+      if (!this.mayReuseWith(fromUsername, envelope.collabPeerId)) return;
       this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "ack");
       return;
     }
@@ -345,15 +391,20 @@ export class DocsCollabPrincipalReuse {
       if (envelope.collabPeerId && myId && envelope.collabPeerId === myId) {
         return;
       }
-      const from =
-        envelope.collabPeerId ??
-        [...this.reused.values()].find((entry) => entry.username === fromUsername)?.collabPeerId;
-      if (!from || envelope.payload === undefined) return;
+      // Only a peer whose reuse handshake was accepted may push mesh traffic,
+      // and only under the collab peer id that handshake established.
+      const attached = [...this.reused.values()].find((entry) => entry.username === fromUsername);
+      if (!attached) return;
+      const from = envelope.collabPeerId ?? attached.collabPeerId;
+      if (from !== attached.collabPeerId) return;
+      if (!this.mayReuseWith(fromUsername, from)) return;
+      if (envelope.payload === undefined) return;
       const payload = envelope.payload;
       if (!payload || typeof payload !== "object") return;
       this.ports.onMessage({
         ...(payload as DocsCollabMeshMessage),
         from,
+        trust: { user: fromUsername, access: this.trust.accessForUser(fromUsername) },
       } as DocsCollabMeshMessage);
     }
   }

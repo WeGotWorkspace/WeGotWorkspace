@@ -108,6 +108,23 @@ final class HttpSignalingStore
         $this->policy->peerModelClass::upsert([$row], ['room', 'peer_id'], $update);
     }
 
+    /**
+     * Re-resolved access right for a live peer (contract C2 refresh). The value
+     * always comes from the share grant, so a downgrade reaches the roster the
+     * other peers read without waiting for a rejoin.
+     */
+    public function rewriteAccess(string $room, string $peerId, string $access): void
+    {
+        if (! $this->policy->rosterIncludesAccess) {
+            return;
+        }
+
+        $this->peerQuery()
+            ->where('room', $room)
+            ->where('peer_id', $peerId)
+            ->update(['access' => RtcPeerAccess::normalize($access)]);
+    }
+
     /** Measured network class, refreshed when a peer asks for a relay. */
     public function rememberNetClass(string $room, string $peerId, ?string $net): void
     {

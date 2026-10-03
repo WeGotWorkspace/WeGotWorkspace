@@ -4,6 +4,7 @@ import {
   PrincipalLinkRegistry,
   resetPrincipalLinkRegistryForTests,
 } from "@/lib/rtc/session/principal-link-registry";
+import { SYNC_STEP_1, SYNC_STEP_2, SYNC_UPDATE } from "./docs-collab-mesh-sync";
 import type { DocsCollabMeshMessage } from "./docs-collab-types";
 import { DocsRtcSession, parsePeerHintPeers } from "./docs-rtc-session";
 
@@ -15,11 +16,12 @@ type CapturedBinding = {
 
 type CapturedMeshOptions = {
   onPollData?: (data: {
-    peers: Array<{ id: string; name: string; user?: string }>;
+    peers: Array<{ id: string; name: string; user?: string; access?: string }>;
     messages: [];
   }) => void;
   shouldConnectToPeer?: (peer: { id: string; name: string; user?: string }) => boolean;
   shouldAcceptOffer?: (from: string) => boolean;
+  onPollError?: (error: unknown) => void;
 };
 
 const captured = vi.hoisted(() => ({
@@ -150,7 +152,101 @@ describe("DocsRtcSession gossip discovery", () => {
 
     captured.bindingOptions?.onMessage("p1", JSON.stringify({ type: "sync", u: [1, 2] }));
 
-    expect(seen).toEqual([{ type: "sync", u: [1, 2], from: "p1" }]);
+    expect(seen).toEqual([
+      { type: "sync", u: [1, 2], from: "p1", trust: { user: "", access: "read" } },
+    ]);
+  });
+
+  it("takes a direct peer's rights from the roster, not from the message", () => {
+    const session = createSession();
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "p1", name: "Carol", user: "carol", access: "comment" }],
+      messages: [],
+    });
+
+    captured.bindingOptions?.onMessage(
+      "p1",
+      JSON.stringify({ type: "sync", u: [2, 1], trust: { user: "bob", access: "write" } }),
+    );
+
+    expect(seen.at(-1)).toMatchObject({ trust: { user: "carol", access: "comment" } });
+  });
+
+  it("keeps a viewer from putting a document update on the wire", () => {
+    const session = createSession();
+    captured.meshOptions?.onPollData?.({
+      peers: [
+        { id: "me", name: "Self", user: "carol", access: "read" },
+        { id: "p1", name: "Bob", user: "bob", access: "write" },
+      ],
+      messages: [],
+    });
+    expect(session.myAccess()).toBe("read");
+
+    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2] });
+    session.sendTo("p1", { type: "sync", u: [SYNC_STEP_2, 1, 2] });
+    expect(captured.mesh.broadcastJson).not.toHaveBeenCalledWith({
+      type: "sync",
+      u: [SYNC_UPDATE, 1, 2],
+    });
+    expect(captured.mesh.sendJsonTo).not.toHaveBeenCalled();
+
+    // A step 1 only asks for state, which is the whole point of a viewer.
+    session.sendTo("p1", { type: "sync", u: [SYNC_STEP_1, 0] });
+    session.broadcast({ type: "awareness", u: [1] });
+    expect(captured.mesh.sendJsonTo).toHaveBeenCalledWith("p1", {
+      type: "sync",
+      u: [SYNC_STEP_1, 0],
+    });
+    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith({ type: "awareness", u: [1] });
+  });
+
+  it("ends the session and drops the reuse links when a poll comes back 403", () => {
+    const session = createSession();
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "carol", access: "write" }],
+      messages: [],
+    });
+    expect(session.myAccess()).toBe("write");
+
+    captured.meshOptions?.onPollError?.(new Error("Collab poll failed (403)"));
+
+    expect(seen).toContainEqual({ type: "forbidden" });
+    expect(session.myAccess()).toBe("read");
+  });
+
+  it("leaves a poll failure that is not a 403 alone", () => {
+    const session = createSession();
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "carol", access: "write" }],
+      messages: [],
+    });
+
+    captured.meshOptions?.onPollError?.(new Error("network down"));
+
+    expect(seen).not.toContainEqual({ type: "forbidden" });
+    expect(session.myAccess()).toBe("write");
+  });
+
+  it("lets an editor broadcast document updates", () => {
+    const session = createSession();
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "bob", access: "write" }],
+      messages: [],
+    });
+
+    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2] });
+
+    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith({
+      type: "sync",
+      u: [SYNC_UPDATE, 1, 2],
+    });
   });
 
   it("drops all listeners on clearMessageListeners", () => {
@@ -280,7 +376,7 @@ describe("DocsRtcSession principal reuse wiring", () => {
     expect(captured.mesh.sendJsonTo).toHaveBeenCalledWith(peer.id, { type: "sync", u: [7] });
 
     captured.bindingOptions?.onMessage(peer.id, JSON.stringify({ type: "sync", u: [8] }));
-    expect(seen).toContainEqual({ type: "sync", u: [8], from: peer.id });
+    expect(seen).toContainEqual(expect.objectContaining({ type: "sync", u: [8], from: peer.id }));
   });
 
   it("retries fresh ICE immediately when a reused principal link drops without a poll", () => {

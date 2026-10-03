@@ -8,7 +8,8 @@ import {
   applyAwarenessUpdate,
   encodeFullAwarenessBroadcast,
   encodeSyncStep1,
-  handleSyncMessage,
+  handleGuardedSyncMessage,
+  mayRelayGuardedOutcomeToTabs,
 } from "./docs-collab-mesh-sync";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
@@ -165,17 +166,36 @@ export function useDocsCollabMesh({
 
   const handleMeshMessage = useCallback(
     (msg: DocsCollabMeshMessage) => {
+      // Contract C2 revocation: the server refused the poll, so this account
+      // has lost read access. Leave rather than keep a stale live session.
+      if (msg.type === "forbidden") {
+        void leaveMeshAsFollower();
+        urls.onPersistForbidden?.();
+        return;
+      }
+
       const ydoc = refs.ydocRef.current;
       const awareness = refs.awarenessRef.current;
       if (!ydoc || !awareness) return;
 
+      // A follower tab applies what the leader relays without re-checking it,
+      // so a refused update must not be relayed either.
+      let mayRelayToTabs = true;
+
       if (msg.type === "sync" && Array.isArray(msg.u)) {
-        const reply = handleSyncMessage(msg.u, ydoc, MESH_ORIGIN);
+        const outcome = handleGuardedSyncMessage({
+          bytes: msg.u,
+          ydoc,
+          trust: msg.trust,
+          from: msg.from,
+          origin: MESH_ORIGIN,
+        });
         if (!isYDocEmpty(ydoc)) markDocReady();
-        if (reply) {
-          if (msg.from) refs.meshRef.current?.sendTo(msg.from, reply);
-          else refs.meshRef.current?.broadcast(reply);
+        if (outcome.kind === "reply") {
+          if (msg.from) refs.meshRef.current?.sendTo(msg.from, outcome.reply);
+          else refs.meshRef.current?.broadcast(outcome.reply);
         }
+        mayRelayToTabs = mayRelayGuardedOutcomeToTabs(outcome);
       }
       if (msg.type === "awareness" && Array.isArray(msg.u)) {
         applyAwarenessUpdate(msg.u, awareness, MESH_ORIGIN);
@@ -185,11 +205,12 @@ export function useDocsCollabMesh({
         sendAwarenessBroadcast(msg.from);
         trySeedFromFile();
       }
-      refs.tabSyncRef.current?.relayMeshMessage(msg);
+      if (mayRelayToTabs) refs.tabSyncRef.current?.relayMeshMessage(msg);
       refreshMeshUi();
       publishMeshStateToTabs();
     },
     [
+      leaveMeshAsFollower,
       markDocReady,
       publishMeshStateToTabs,
       refs,
@@ -197,6 +218,7 @@ export function useDocsCollabMesh({
       sendAwarenessBroadcast,
       sendSyncStep1,
       trySeedFromFile,
+      urls.onPersistForbidden,
     ],
   );
 
