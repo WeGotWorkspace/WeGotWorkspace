@@ -10,8 +10,9 @@ use Tests\Support\WgwDatabaseTestCase;
 
 /**
  * The lobby is not the call (#1099). A peer whose row still carries the knock
- * name prefix may not negotiate media, and room chat does not reach it — only
- * the `admit` / `deny` decision that names that knocker.
+ * name prefix may not negotiate media, may not post ordinary room chat, and
+ * does not receive room chat — only the `admit` / `deny` decision that names
+ * that knocker. Control text (the knock announcement) is still allowed out.
  */
 final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
 {
@@ -150,6 +151,31 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
             ->assertJsonPath('messages', []);
     }
 
+    public function test_knocking_peer_cannot_send_ordinary_chat(): void
+    {
+        $host = $this->guestJoin('host-peer', 'Host');
+        $member = $this->guestJoin('member-peer', 'Member');
+        $knocker = $this->guestJoin('knock-peer', self::KNOCK_PREFIX.'Visitor');
+
+        $this->postJson($this->meetRoomPath('/messages'), [
+            'from' => 'knock-peer',
+            'text' => 'payroll is on Friday',
+            'sessionKey' => $knocker['sessionKey'],
+        ])
+            ->assertForbidden()
+            ->assertJson(['error' => 'forbidden']);
+
+        $this->poll('host-peer', $host['sessionKey'])
+            ->assertOk()
+            ->assertJsonPath('messages', [])
+            ->assertDontSee('payroll is on Friday');
+
+        $this->poll('member-peer', $member['sessionKey'])
+            ->assertOk()
+            ->assertJsonPath('messages', [])
+            ->assertDontSee('payroll is on Friday');
+    }
+
     public function test_knocker_can_still_announce_the_knock_to_the_room(): void
     {
         $host = $this->guestJoin('host-peer', 'Host');
@@ -166,6 +192,27 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
         $this->poll('host-peer', $host['sessionKey'])
             ->assertOk()
             ->assertJsonPath('messages.0.from', 'knock-peer');
+    }
+
+    public function test_admitted_peer_can_send_ordinary_chat(): void
+    {
+        $host = $this->guestJoin('host-peer', 'Host');
+        $knocker = $this->guestJoin('knock-peer', self::KNOCK_PREFIX.'Visitor');
+
+        // Dropping the knock prefix is what ends the lobby for the send path.
+        $this->guestJoin('knock-peer', 'Visitor', $knocker['sessionKey']);
+
+        $this->postJson($this->meetRoomPath('/messages'), [
+            'from' => 'knock-peer',
+            'text' => 'hello from the floor',
+            'sessionKey' => $knocker['sessionKey'],
+        ])
+            ->assertOk()
+            ->assertJson(['ok' => true, 'delivered' => 1]);
+
+        $this->poll('host-peer', $host['sessionKey'])
+            ->assertOk()
+            ->assertJsonPath('messages.0.payload.text', 'hello from the floor');
     }
 
     private function poll(string $peerId, string $sessionKey): TestResponse
