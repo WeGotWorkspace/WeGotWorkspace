@@ -14,7 +14,10 @@ use Illuminate\Database\Eloquent\Model;
 
 enum RtcSignalingPollMode
 {
-    /** Return messages with id > since; keep rows until pruned. */
+    /**
+     * Return messages with id > since. Rows live until pruned, or — when the policy
+     * sets `sinceAckCap` — until the cursor acks them.
+     */
     case SinceCursor;
 
     /** Return undelivered messages and delete them after read. */
@@ -50,8 +53,22 @@ final readonly class RtcSignalingPolicy
         public bool $persistBrowserId = false,
         /** Carry the join-computed `access` right on the peer row and in rosters (collab only). */
         public bool $rosterIncludesAccess = false,
+        /**
+         * Capability that gates {@see RtcSignalingPollMode::SinceCursor}. When set, `since`
+         * is read as an ack: rows at or below it are deleted on poll, and a peer that does
+         * not advertise the capability falls back to delete-on-read, so an old cached client
+         * is not handed its whole mailbox on every poll. Null means the poll mode is
+         * unconditional and no row is deleted on poll.
+         */
+        public ?string $sinceAckCap = null,
     ) {}
 
+    /**
+     * Meet mailboxes are acked, not drained: a client that advertises `since-ack`
+     * polls with a cursor, so a lost response redelivers the offer, the chat line,
+     * or the `admit` instead of dropping it. Clients without the capability keep
+     * delete-on-read.
+     */
     public static function meet(): self
     {
         return new self(
@@ -62,7 +79,7 @@ final readonly class RtcSignalingPolicy
             peerTimeoutSeconds: 60,
             messageRetentionSeconds: 600,
             maxMessagesPerRoom: null,
-            pollMode: RtcSignalingPollMode::DeleteOnRead,
+            pollMode: RtcSignalingPollMode::SinceCursor,
             allowedSendTypes: ['offer', 'answer', 'ice', 'bye'],
             peerIdPattern: '/^[A-Za-z0-9_-]{4,64}$/',
             sendFromField: 'from',
@@ -71,6 +88,7 @@ final readonly class RtcSignalingPolicy
             trimMessagesOnSend: false,
             requireLivePeersOnSend: false,
             persistBrowserId: true,
+            sinceAckCap: RtcPeerCaps::SINCE_ACK,
         );
     }
 

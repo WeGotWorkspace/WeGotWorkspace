@@ -97,13 +97,15 @@ function asStubPeerConnection(pc: RTCPeerConnection): StubPeerConnection {
   return pc as unknown as StubPeerConnection;
 }
 
+type MockPollInput = { since?: number; sig?: string };
+
 function createMockSignaling(initialJoin: {
   peerId: string;
   peers?: Array<{ id: string; name: string; user?: string }>;
   sessionKey?: string | null;
 }) {
   const sends: Array<{ to: string; type: string; payload: unknown }> = [];
-  let pollHandler: (() => Promise<HttpSignalingPollResponse>) | null = null;
+  let pollHandler: ((input: MockPollInput) => Promise<HttpSignalingPollResponse>) | null = null;
 
   const client = {
     join: vi.fn(async (input: { peerId?: string; name: string }) => ({
@@ -111,8 +113,8 @@ function createMockSignaling(initialJoin: {
       peers: initialJoin.peers ?? [],
       sessionKey: initialJoin.sessionKey ?? null,
     })),
-    poll: vi.fn(async (_input?: unknown): Promise<HttpSignalingPollResponse> => {
-      if (pollHandler) return pollHandler();
+    poll: vi.fn(async (input?: unknown): Promise<HttpSignalingPollResponse> => {
+      if (pollHandler) return pollHandler((input ?? {}) as MockPollInput);
       return { peers: initialJoin.peers ?? [], messages: [] };
     }),
     send: vi.fn(async (input: { to: string; type: string; payload: unknown }) => {
@@ -125,7 +127,7 @@ function createMockSignaling(initialJoin: {
   return {
     client,
     sends,
-    setPollHandler(handler: () => Promise<HttpSignalingPollResponse>) {
+    setPollHandler(handler: (input: MockPollInput) => Promise<HttpSignalingPollResponse>) {
       pollHandler = handler;
     },
   };
@@ -1024,6 +1026,198 @@ describe("RtcPeerMesh principal roster cleanup", () => {
 
     expect(pcs.has("wouter-stale123")).toBe(false);
     expect(mesh.getRoomPeers().some((peer) => peer.id === "wouter-stale123")).toBe(false);
+    await mesh.leave();
+  });
+});
+
+/**
+ * The server only deletes what the cursor acks (#1086), so a row this client
+ * skips is redelivered forever and a row it acks without handling is lost.
+ */
+describe("RtcPeerMesh delivery cursor", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function pollSince(signaling: ReturnType<typeof createMockSignaling>): number | undefined {
+    const input = signaling.client.poll.mock.calls.at(-1)?.[0] as { since?: number } | undefined;
+    return input?.since;
+  }
+
+  it("acks chat and control rows, so no chat line is delivered twice", async () => {
+    const delivered: string[] = [];
+    const signaling = createMockSignaling({ peerId: "AAAAAAAAAA", peers: [] });
+    const { mesh } = meshWithStubPc(signaling.client, {
+      onPollData: (data) => {
+        for (const message of data.messages) {
+          delivered.push(String((message.payload as { text?: string }).text));
+        }
+      },
+    });
+
+    await mesh.join({ name: "Guest", peerId: "AAAAAAAAAA" });
+    const mailbox = [
+      { id: 4, from: "ZZZZZZZZZZ", type: "chat", payload: { text: "hello" } },
+      { id: 9, from: "ZZZZZZZZZZ", type: "chat", payload: { text: "__wgw_meet_control__:{}" } },
+    ];
+    signaling.setPollHandler(async (input) => ({
+      peers: [{ id: "ZZZZZZZZZZ", name: "Host" }],
+      messages: mailbox.filter((message) => message.id > (input.since ?? 0)),
+    }));
+
+    for (let poll = 0; poll < 3; poll += 1) {
+      await vi.advanceTimersByTimeAsync(poll === 0 ? 400 : 1200);
+      await flushAsyncWork();
+    }
+
+    // The cursor cleared both rows, control line included, after one delivery.
+    expect(delivered).toEqual(["hello", "__wgw_meet_control__:{}"]);
+    expect(pollSince(signaling)).toBe(9);
+    await mesh.leave();
+  });
+
+  it("acks while rtc signals are disabled, so a lobby guest is not resent its admit", async () => {
+    const onPollData = vi.fn();
+    const signaling = createMockSignaling({ peerId: "guest-1", peers: [] });
+    const { mesh } = meshWithStubPc(signaling.client, {
+      onPollData,
+      shouldConnectToPeer: () => false,
+      shouldHandleRtcSignals: () => false,
+    });
+
+    await mesh.join({ name: "__wgw_knock__:Ada", peerId: "guest-1" });
+    const admit = {
+      id: 12,
+      from: "host-1",
+      type: "chat",
+      payload: { text: '__wgw_meet_control__:{"kind":"admit","peerId":"guest-1"}' },
+    };
+    signaling.setPollHandler(async (input) => ({
+      peers: [{ id: "host-1", name: "Host" }],
+      messages: (input.since ?? 0) < admit.id ? [admit] : [],
+    }));
+
+    for (let poll = 0; poll < 3; poll += 1) {
+      await vi.advanceTimersByTimeAsync(poll === 0 ? 400 : 1200);
+      await flushAsyncWork();
+    }
+
+    // The waiting client handles no RTC signal, but it still acked the admit, so
+    // it was handed to the app exactly once (join poll + the one that carried it).
+    expect(pollSince(signaling)).toBe(12);
+    const admits = onPollData.mock.calls.filter((call) => call[0].messages.length > 0);
+    expect(admits).toHaveLength(1);
+    await mesh.leave();
+  });
+
+  it("re-polls the same cursor after a dropped response and handles the offer once", async () => {
+    const signaling = createMockSignaling({ peerId: "AAAAAAAAAA", peers: [] });
+    const { mesh } = meshWithStubPc(signaling.client, {
+      channel: "collab",
+      initiatorRule: "lowerId",
+      shouldConnectToPeer: () => false,
+      onPollError: vi.fn(),
+    });
+
+    await mesh.join({ name: "Guest", peerId: "AAAAAAAAAA" });
+
+    // A mailbox that only serves what the cursor has not acked, like the server.
+    const mailbox: HttpSignalingPollResult["messages"] = [
+      {
+        id: 5,
+        from: "ZZZZZZZZZZ",
+        type: "offer",
+        payload: {
+          type: "offer",
+          sdp: "v=0\r\no=-\r\ns=-\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n",
+        },
+      },
+    ];
+    const serveMailbox = async (input: MockPollInput): Promise<HttpSignalingPollResult> => ({
+      peers: [{ id: "ZZZZZZZZZZ", name: "Host" }],
+      messages: mailbox.filter((message) => (message.id ?? 0) > (input.since ?? 0)),
+    });
+
+    // The response carrying the offer never arrives.
+    signaling.setPollHandler(async () => {
+      throw new Error("network dropped");
+    });
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+    expect(pollSince(signaling)).toBe(0);
+    expect(signaling.sends.filter((send) => send.type === "answer")).toHaveLength(0);
+
+    // The cursor did not move, so the next poll gets the offer redelivered.
+    signaling.setPollHandler(serveMailbox);
+    await vi.advanceTimersByTimeAsync(1200);
+    await flushAsyncWork();
+
+    expect(signaling.sends.filter((send) => send.type === "answer")).toHaveLength(1);
+
+    // Acked now, so the same row is not served — nor answered — a second time.
+    await vi.advanceTimersByTimeAsync(1200);
+    await flushAsyncWork();
+    expect(pollSince(signaling)).toBe(5);
+    expect(signaling.sends.filter((send) => send.type === "answer")).toHaveLength(1);
+
+    await mesh.leave();
+  });
+
+  it("keeps polling after a poll is aborted mid-flight", async () => {
+    const onPollError = vi.fn();
+    const signaling = createMockSignaling({ peerId: "peer-a", peers: [] });
+    const { mesh } = meshWithStubPc(signaling.client, { onPollError });
+
+    await mesh.join({ name: "Host", peerId: "peer-a" });
+
+    // What AbortSignal.timeout(10_000) does to a hung request.
+    signaling.setPollHandler(async () => {
+      throw new DOMException("The operation was aborted.", "AbortError");
+    });
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+
+    expect(onPollError).toHaveBeenCalledTimes(1);
+    const pollsAfterAbort = signaling.client.poll.mock.calls.length;
+
+    // pollInFlight was released, so the loop is still alive.
+    signaling.setPollHandler(async () => ({ peers: [], messages: [] }));
+    await vi.advanceTimersByTimeAsync(1200);
+    await flushAsyncWork();
+
+    expect(signaling.client.poll.mock.calls.length).toBeGreaterThan(pollsAfterAbort);
+    await mesh.leave();
+  });
+
+  it("resets the cursor on leave so a fresh join starts from zero", async () => {
+    const signaling = createMockSignaling({ peerId: "peer-a", peers: [] });
+    const { mesh } = meshWithStubPc(signaling.client);
+
+    await mesh.join({ name: "Host", peerId: "peer-a" });
+    signaling.setPollHandler(async (input) => ({
+      peers: [],
+      messages:
+        (input.since ?? 0) < 21
+          ? [{ id: 21, from: "host-1", type: "chat", payload: { text: "hi" } }]
+          : [],
+    }));
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+    await vi.advanceTimersByTimeAsync(1200);
+    await flushAsyncWork();
+    expect(pollSince(signaling)).toBe(21);
+
+    await mesh.leave();
+    signaling.setPollHandler(async () => ({ peers: [], messages: [] }));
+    await mesh.join({ name: "Host", peerId: "peer-a" });
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+
+    expect(pollSince(signaling)).toBe(0);
     await mesh.leave();
   });
 });

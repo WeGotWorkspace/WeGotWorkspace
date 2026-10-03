@@ -7,6 +7,13 @@ export function signalingApiSegment(_channel: SignalingChannel): string {
 
 export type IceMode = "direct" | "relay";
 
+/**
+ * Wire capabilities a peer advertises at join (contract C8); must stay a subset
+ * of `RtcPeerCaps::KNOWN` on the server, which drops anything it does not know.
+ */
+export type RtcPeerCap =
+  "bin" | "ice-batch" | "ticket" | "meet-dc" | "yjs-http" | "relay-jit" | "since-ack";
+
 export type RtcSettings = {
   stunUrls: string;
   /** Whether a relay is configured. The server never ships its credentials. */

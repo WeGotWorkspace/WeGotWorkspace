@@ -35,10 +35,12 @@ export function createWgwSignalingFetch(): HttpSignalingFetch {
 }
 
 const CHANNEL_DEFAULTS: Partial<
-  Record<SignalingChannel, Pick<HttpSignalingClientOptions, "sendFromField">>
+  Record<SignalingChannel, Pick<HttpSignalingClientOptions, "sendFromField" | "caps">>
 > = {
   collab: { sendFromField: "peerId" },
-  meet: { sendFromField: "from" },
+  // `since-ack` opts this client into the acked meet mailbox: the server stops
+  // deleting rows on read, so a lost poll response is redelivered (#1086).
+  meet: { sendFromField: "from", caps: ["since-ack"] },
 };
 
 /** Shared HTTP signaling client for meet, docs, and future RTC apps. */
@@ -52,6 +54,7 @@ export function createRtcSignalingClient(
     fetchImpl: options.fetchImpl ?? createWgwSignalingFetch(),
     getAuth: options.getAuth ?? (() => ({})),
     sendFromField: options.sendFromField ?? channelDefaults.sendFromField ?? "from",
+    caps: channelDefaults.caps,
     getBrowserId: options.channel === "meet" ? readRtcBrowserId : undefined,
   });
 }
