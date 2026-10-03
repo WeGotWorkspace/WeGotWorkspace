@@ -243,6 +243,40 @@ describe("docs-collab-update-guard", () => {
     });
   });
 
+  /**
+   * The clone is the only expensive step, and it exists for the commenter
+   * check alone. On a megabyte of body an editor's keystroke has to stay in
+   * the same order of magnitude as a bare `Y.applyUpdate`, so a wide margin is
+   * enough to catch the clone creeping into the fast path.
+   */
+  it("does not clone the document for an editor update on a 1 MB doc", () => {
+    const { local, remote } = pair((doc) => {
+      doc.getText("bulk").insert(0, "x".repeat(1_100_000));
+    });
+    expect(Y.encodeStateAsUpdate(local).byteLength).toBeGreaterThan(1_000_000);
+
+    remote.getText("bulk").insert(0, "e");
+    const editorUpdate = diff(local, remote);
+    const editorStarted = performance.now();
+    expect(
+      applyGuardedRemoteUpdate({
+        doc: local,
+        update: editorUpdate,
+        access: "write",
+        senderUser: "bob",
+        origin: MESH,
+      }),
+    ).toEqual({ applied: true });
+    const editorMs = performance.now() - editorStarted;
+
+    const cloneStarted = performance.now();
+    const clone = new Y.Doc();
+    Y.applyUpdate(clone, Y.encodeStateAsUpdate(local));
+    const cloneMs = performance.now() - cloneStarted;
+
+    expect(editorMs).toBeLessThan(Math.max(cloneMs, 1));
+  });
+
   it("treats a root type the commenter invents as a body edit", () => {
     const { local, remote } = pair();
     remote.getMap("smuggled").set("k", "v");
