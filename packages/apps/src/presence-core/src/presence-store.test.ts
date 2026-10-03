@@ -232,6 +232,19 @@ describe("PresenceStore join timing", () => {
     await flushMicrotasks();
     expect(store.getSnapshot().status).toBe("error");
   });
+
+  it("records the join attempt when the presence join throws", async () => {
+    resetPrincipalLinkRegistryForTests();
+    const { session, store } = setup({ joinMode: "eager" });
+    session.failJoin = true;
+
+    store.start(SELF);
+    await flushMicrotasks();
+
+    // Collab waits PRINCIPAL_JOIN_WAIT_MS for this flag; a failed join must not
+    // leave every document stalled for the full timeout.
+    expect(getPrincipalLinkRegistry().hasPrincipalJoinAttempted()).toBe(true);
+  });
 });
 
 describe("PresenceStore roster", () => {
