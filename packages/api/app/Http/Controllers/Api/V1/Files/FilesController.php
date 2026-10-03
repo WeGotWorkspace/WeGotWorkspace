@@ -155,12 +155,14 @@ final class FilesController
 
         if ($request->query('format') === 'yjs') {
             $binary = $this->collabDocuments->getYjsBinary($request, $path);
+            // C7: a 204 means "no sidecar" and carries no entity tag.
             if ($binary === null) {
                 return response('', 204);
             }
 
             return response($binary, 200, [
                 'Content-Type' => 'application/octet-stream',
+                'ETag' => DocCollabDocumentService::sidecarEtag($binary),
             ]);
         }
 
@@ -178,7 +180,11 @@ final class FilesController
         $payload['room'] = $path;
         $request->json()->replace($payload);
 
-        return response()->json($this->collabDocuments->put($request, $payload));
+        $result = $this->collabDocuments->put($request, $payload);
+        $etag = $result['etag'];
+        $response = response()->json(['ok' => $result['ok']]);
+
+        return $etag === null ? $response : $response->header('ETag', $etag);
     }
 
     public function star(Request $request): JsonResponse

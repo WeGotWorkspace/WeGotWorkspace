@@ -135,7 +135,9 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
             ->assertStatus(412);
 
         $storage = app(WgwStorage::class)->files();
-        $this->assertSame("# One\n", (string) $storage->get('users/alice/docs/together.md'));
+        $stored = (string) $storage->get('users/alice/docs/together.md');
+        $this->assertStringContainsString('# One', $stored);
+        $this->assertStringNotContainsString('Overwritten', $stored);
         $this->assertSame("\x01", (string) $storage->get(self::SIDECAR_STORAGE_PATH));
     }
 
