@@ -39,6 +39,8 @@ const phpSignedTicket = [
 ].join("");
 
 const ROOM = "users/bob/workspace/plan.md";
+// The C5 digest of ROOM, not a credential. Naming it `*_KEY` makes the secret
+// scanner read the hex as an API key and fail the Secrets check.
 const ROOM_HASH = "f661e76eef72b008dcbbd68ee9d4c220c6134e43";
 const INSIDE_LIFETIME = 1_700_000_000;
 

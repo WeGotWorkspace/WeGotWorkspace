@@ -16,6 +16,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class CollabTicketCodecTest extends TestCase
 {
+    // A C5 room digest, not a credential. Naming it `*_KEY` makes the secret
+    // scanner read the hex as an API key and fail the Secrets check.
     private const ROOM_HASH = 'd0b3bd2f7a5f1b2c3d4e5f60718293a4b5c6d7e8';
 
     public function test_a_ticket_is_two_base64url_segments_joined_by_a_dot(): void
