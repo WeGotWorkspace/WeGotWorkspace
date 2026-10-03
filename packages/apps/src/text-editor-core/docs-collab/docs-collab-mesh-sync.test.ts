@@ -11,6 +11,7 @@ import {
   handleGuardedSyncMessage,
   handleSyncMessage,
   isDocumentBearingSyncMessage,
+  mayRelayGuardedOutcomeToTabs,
 } from "./docs-collab-mesh-sync";
 import { isYDocEmpty } from "./docs-collab-utils";
 
@@ -165,6 +166,31 @@ describe("handleGuardedSyncMessage", () => {
 
     expect(outcome).toEqual({ kind: "update", verdict: { applied: false, reason: "reader" } });
     expect(isYDocEmpty(local)).toBe(true);
+  });
+
+  it("keeps a refused update out of the relay to the other tabs", () => {
+    const local = new Y.Doc();
+    local.getXmlFragment("default");
+    const bytes = encodeUpdateBroadcast(Y.encodeStateAsUpdate(editedDoc("reader body")));
+
+    const refused = handleGuardedSyncMessage({
+      bytes,
+      ydoc: local,
+      trust: { user: "carol", access: "read" },
+    });
+    const accepted = handleGuardedSyncMessage({
+      bytes,
+      ydoc: local,
+      trust: { user: "bob", access: "write" },
+    });
+
+    expect(mayRelayGuardedOutcomeToTabs(refused)).toBe(false);
+    expect(mayRelayGuardedOutcomeToTabs(accepted)).toBe(true);
+    expect(
+      mayRelayGuardedOutcomeToTabs(
+        handleGuardedSyncMessage({ bytes: encodeSyncStep1(new Y.Doc()), ydoc: local }),
+      ),
+    ).toBe(true);
   });
 
   it("tells a state request apart from a message carrying content", () => {

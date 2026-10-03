@@ -98,6 +98,14 @@ export function handleGuardedSyncMessage(input: {
   };
 }
 
+/**
+ * A follower tab applies what the leader tab relays without re-checking it, so
+ * the leader only passes on an update the guard accepted.
+ */
+export function mayRelayGuardedOutcomeToTabs(outcome: GuardedSyncOutcome): boolean {
+  return outcome.kind !== "update" || outcome.verdict.applied;
+}
+
 export function applyAwarenessUpdate(
   updateBytes: number[],
   awareness: awarenessProtocol.Awareness,

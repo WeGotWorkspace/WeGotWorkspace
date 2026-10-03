@@ -9,6 +9,7 @@ import {
   encodeFullAwarenessBroadcast,
   encodeSyncStep1,
   handleGuardedSyncMessage,
+  mayRelayGuardedOutcomeToTabs,
 } from "./docs-collab-mesh-sync";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
@@ -169,6 +170,10 @@ export function useDocsCollabMesh({
       const awareness = refs.awarenessRef.current;
       if (!ydoc || !awareness) return;
 
+      // A follower tab applies what the leader relays without re-checking it,
+      // so a refused update must not be relayed either.
+      let mayRelayToTabs = true;
+
       if (msg.type === "sync" && Array.isArray(msg.u)) {
         const outcome = handleGuardedSyncMessage({
           bytes: msg.u,
@@ -182,6 +187,7 @@ export function useDocsCollabMesh({
           if (msg.from) refs.meshRef.current?.sendTo(msg.from, outcome.reply);
           else refs.meshRef.current?.broadcast(outcome.reply);
         }
+        mayRelayToTabs = mayRelayGuardedOutcomeToTabs(outcome);
       }
       if (msg.type === "awareness" && Array.isArray(msg.u)) {
         applyAwarenessUpdate(msg.u, awareness, MESH_ORIGIN);
@@ -191,7 +197,7 @@ export function useDocsCollabMesh({
         sendAwarenessBroadcast(msg.from);
         trySeedFromFile();
       }
-      refs.tabSyncRef.current?.relayMeshMessage(msg);
+      if (mayRelayToTabs) refs.tabSyncRef.current?.relayMeshMessage(msg);
       refreshMeshUi();
       publishMeshStateToTabs();
     },
