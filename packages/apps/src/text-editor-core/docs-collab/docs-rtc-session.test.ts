@@ -21,6 +21,7 @@ type CapturedMeshOptions = {
   }) => void;
   shouldConnectToPeer?: (peer: { id: string; name: string; user?: string }) => boolean;
   shouldAcceptOffer?: (from: string) => boolean;
+  onPollError?: (error: unknown) => void;
 };
 
 const captured = vi.hoisted(() => ({
@@ -200,6 +201,37 @@ describe("DocsRtcSession gossip discovery", () => {
       u: [SYNC_STEP_1, 0],
     });
     expect(captured.mesh.broadcastJson).toHaveBeenCalledWith({ type: "awareness", u: [1] });
+  });
+
+  it("ends the session and drops the reuse links when a poll comes back 403", () => {
+    const session = createSession();
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "carol", access: "write" }],
+      messages: [],
+    });
+    expect(session.myAccess()).toBe("write");
+
+    captured.meshOptions?.onPollError?.(new Error("Collab poll failed (403)"));
+
+    expect(seen).toContainEqual({ type: "forbidden" });
+    expect(session.myAccess()).toBe("read");
+  });
+
+  it("leaves a poll failure that is not a 403 alone", () => {
+    const session = createSession();
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "carol", access: "write" }],
+      messages: [],
+    });
+
+    captured.meshOptions?.onPollError?.(new Error("network down"));
+
+    expect(seen).not.toContainEqual({ type: "forbidden" });
+    expect(session.myAccess()).toBe("write");
   });
 
   it("lets an editor broadcast document updates", () => {

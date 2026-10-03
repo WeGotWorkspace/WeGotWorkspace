@@ -166,6 +166,14 @@ export function useDocsCollabMesh({
 
   const handleMeshMessage = useCallback(
     (msg: DocsCollabMeshMessage) => {
+      // Contract C2 revocation: the server refused the poll, so this account
+      // has lost read access. Leave rather than keep a stale live session.
+      if (msg.type === "forbidden") {
+        void leaveMeshAsFollower();
+        urls.onPersistForbidden?.();
+        return;
+      }
+
       const ydoc = refs.ydocRef.current;
       const awareness = refs.awarenessRef.current;
       if (!ydoc || !awareness) return;
@@ -202,6 +210,7 @@ export function useDocsCollabMesh({
       publishMeshStateToTabs();
     },
     [
+      leaveMeshAsFollower,
       markDocReady,
       publishMeshStateToTabs,
       refs,
@@ -209,6 +218,7 @@ export function useDocsCollabMesh({
       sendAwarenessBroadcast,
       sendSyncStep1,
       trySeedFromFile,
+      urls.onPersistForbidden,
     ],
   );
 

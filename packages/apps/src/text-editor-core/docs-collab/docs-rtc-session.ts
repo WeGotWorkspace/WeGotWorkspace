@@ -16,6 +16,7 @@ import type {
   DocsCollabMeshPeer,
   DocsCollabMeshPeerStatus,
 } from "@/text-editor-core/docs-collab/docs-collab-types";
+import { collabErrorStatus } from "@/text-editor-core/docs-collab/docs-collab-utils";
 
 const DC_LABEL = "collab";
 
@@ -137,6 +138,15 @@ export class DocsRtcSession {
       shouldConnectToPeer: (peer) => !this.reuse.shouldSkipIce(peer),
       shouldAcceptOffer: (from) => !this.reuse.shouldIgnoreOffer(from),
       onLinkChange: () => this.emit({ type: "link" }),
+      // Contract C2 revocation: the poll re-reads the share grant, so a 403
+      // means read access is gone. Drop the reuse links so the other peers
+      // stop treating this client as a collaborator, and tell the session.
+      onPollError: (error) => {
+        if (collabErrorStatus(error) !== 403) return;
+        this.trust.forget();
+        this.reuse.considerRoster([], this.mesh.getMyId());
+        this.emit({ type: "forbidden" });
+      },
       onPollData: (data) => {
         this.trust.remember(data.peers, this.mesh.getMyId());
         this.reuse.considerRoster(data.peers, this.mesh.getMyId());

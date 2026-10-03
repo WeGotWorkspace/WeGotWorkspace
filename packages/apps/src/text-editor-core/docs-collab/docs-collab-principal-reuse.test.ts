@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import { rtcLog } from "@/lib/rtc/log";
 import { PrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import type { CollabReuseEnvelope } from "@/lib/rtc/session/collab-reuse-envelope";
+import type { RtcPeerDescriptor } from "@/lib/rtc/types";
 import {
   COLLAB_REUSE_ACK_TIMEOUT_MS,
   COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS,
@@ -257,8 +258,16 @@ describe("DocsCollabPrincipalReuse", () => {
   it("carries the roster access along with a forwarded update", () => {
     const { reuse, registry, registerAdminToWouter, messages } = createHarness();
     registerAdminToWouter();
+    // `access` rides along on the wire; `RtcPeerDescriptor` does not name it.
     reuse.considerRoster(
-      [{ id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter", access: "comment" }],
+      [
+        {
+          id: "bbbbbbbbbbbbbbbb",
+          name: "Wouter",
+          user: "wouter",
+          access: "comment",
+        } as RtcPeerDescriptor,
+      ],
       "aaaaaaaaaaaaaaaa",
     );
     registry.receive("wouter", "prin-wouter", {

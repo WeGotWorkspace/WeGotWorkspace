@@ -50,6 +50,9 @@ export class DocsCollabRosterTrust {
     for (const peer of peers) {
       const entry: RosterEntry = {
         user: peer.user ?? "",
+        // The roster carries `access` on the wire and the signaling client
+        // passes the response through untouched, but `RtcPeerDescriptor` does
+        // not declare it yet, so it is read defensively and normalised.
         access: normalizeDocsCollabAccess((peer as { access?: unknown }).access),
       };
       this.byPeerId.set(peer.id, entry);
