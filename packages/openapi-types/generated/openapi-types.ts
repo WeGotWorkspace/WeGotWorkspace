@@ -3047,7 +3047,10 @@ export interface paths {
                     path: string;
                     format?: "markdown" | "yjs";
                 };
-                header?: never;
+                header?: {
+                    /** @description Entity tag from an earlier load. The server answers 304 when the document still matches. */
+                    "If-None-Match"?: string;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -3056,9 +3059,36 @@ export interface paths {
                 /** @description Document */
                 200: {
                     headers: {
+                        /** @description Entity tag of the stored document. */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Not modified — the document still matches `If-None-Match`. */
+                304: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description No read access to the path */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown path */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -3068,7 +3098,10 @@ export interface paths {
                 query: {
                     path: string;
                 };
-                header?: never;
+                header?: {
+                    /** @description Entity tag the client last loaded. The save is refused with 412 when the stored document moved on. */
+                    "If-Match"?: string;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -3077,9 +3110,47 @@ export interface paths {
                 /** @description Saved */
                 200: {
                     headers: {
+                        /** @description Entity tag of the stored document. */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description No write access to the path */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown path */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The stored document moved on — reload and merge */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `payload_too_large` */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -3666,10 +3737,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** RTC configuration */
+        /**
+         * RTC configuration
+         * @description STUN URLs and whether a relay is available. Requires an authenticated actor or a valid meeting guest `sessionKey`. Relay credentials are never returned here — ask `POST /rooms/{roomId}/relay` for them.
+         */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Meeting guest session key, for actors without an account. */
+                    sessionKey?: string;
+                };
                 header?: never;
                 path: {
                     roomId: string;
@@ -3678,12 +3755,32 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description OK */
+                /** @description ICE configuration */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["RtcRoomConfiguration"];
+                    };
+                };
+                /** @description `auth_required` */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many requests — per-actor room throttle */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -3720,12 +3817,14 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description OK */
+                /** @description Roster and mailbox */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["RtcPollResponse"];
+                    };
                 };
                 /** @description Nothing new — roster unchanged for the provided `sig` and no pending messages. */
                 204: {
@@ -3733,6 +3832,42 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Authentication required (`auth_required`) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Peer not owned by the calling actor */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown peer — refresh and join again */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many requests — per-actor room throttle */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -3747,14 +3882,74 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RtcSendEventRequest"];
+                };
+            };
             responses: {
-                /** @description OK */
+                /** @description Queued */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                /** @description `bad_type` or `invalid_peer` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Authentication required (`auth_required`) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Peer not owned by the calling actor */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown peer — refresh and join again */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `payload_too_large` */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many requests — per-actor room throttle */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -3785,12 +3980,68 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description OK */
+                /** @description Delivered */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                /** @description `empty_text` or `invalid_peer` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Authentication required (`auth_required`) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Guests cannot join this conversation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Chat is only supported in meeting rooms */
+                405: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `payload_too_large` */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many requests — per-actor room throttle */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -3809,7 +4060,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Join participant */
+        /**
+         * Join participant
+         * @description Join a meeting, collaboration, or principal room. The response never carries relay credentials: a peer asks for them with `POST /rooms/{roomId}/relay`.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -3819,14 +4073,74 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["RtcJoinRequest"];
+                };
+            };
             responses: {
-                /** @description OK */
+                /** @description Roster */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["RtcJoinResponse"];
+                    };
+                };
+                /** @description Invalid room, peer id, or name */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Authentication required (`auth_required`) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Guest or non-member refused */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Room not active */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `peer_id_taken` when the peer id belongs to another actor, `room_full` when the room is at `maxPeers` */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many requests — per-actor room throttle */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -3859,12 +4173,50 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description OK */
+                /** @description Left */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                /** @description Authentication required (`auth_required`) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Peer not owned by the calling actor */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown peer */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many requests — per-actor room throttle */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -7543,6 +7895,164 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rooms/{roomId}/relay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request relay credentials
+         * @description Mint short-lived TURN credentials for the calling peer and drop a `relay-hint` in the target's mailbox. Guests are served only once admitted, or while an authenticated member is in an unreserved ad-hoc room; a knocking peer is refused. Every request writes one `rtc_relay_events` row. Rate limit: 6 per minute per actor.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    roomId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RtcRelayRequest"];
+                };
+            };
+            responses: {
+                /** @description Relay credentials */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RtcRelayResponse"];
+                    };
+                };
+                /** @description `invalid_peer` or `invalid_reason` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `auth_required` */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `relay_denied` */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown peer or target */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many relay requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `relay_unavailable` — no relay secret configured */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rtc/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report a real-time session sample
+         * @description Anonymous telemetry for the real-time health page. The stored row has no addresses, room names, or user ids, and is pruned after 30 days.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RtcSessionMetricReport"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid sample */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many samples */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7804,8 +8314,10 @@ export interface components {
         AdminRtcSettings: {
             stunUrls: string;
             turnUrls: string;
-            turnUsername: string;
-            turnPassword: string;
+            /** @description Whether a TURN shared secret is stored. The secret itself is write-only and never returned. */
+            turnSecretSet: boolean;
+            /** @description Whether credentials from the removed static TURN username and password settings still exist. */
+            turnStaticCredentialsPresent: boolean;
         };
         AdminAppsSettings: {
             calendars: boolean;
@@ -11443,6 +11955,145 @@ export interface components {
         PushUnsubscribeRequest: {
             /** Format: uri */
             endpoint: string;
+        };
+        /**
+         * @description Network class the peer measured for itself before joining.
+         * @enum {string}
+         */
+        RtcNetClass: "open" | "symmetric" | "udp-blocked" | "unknown";
+        /**
+         * @description Wire capability a peer advertises at join. Stored on the peer row and mirrored on rosters.
+         * @enum {string}
+         */
+        RtcPeerCapability: "bin" | "ice-batch" | "ticket" | "meet-dc" | "yjs-http" | "relay-jit" | "since-ack";
+        /**
+         * @description Collaboration rights computed by the server at join from the drive share rights. Fail-closed: a peer row without a server-written value reads as `read`.
+         * @enum {string}
+         */
+        RtcPeerAccess: "read" | "comment" | "write";
+        RtcRosterPeer: {
+            id: string;
+            name: string;
+            /** @description Username of the owning account. Collaboration and principal rosters always carry it; meeting rosters only when the polling actor is authenticated, so guests never see member usernames. */
+            user?: string;
+            access?: components["schemas"]["RtcPeerAccess"];
+            caps?: components["schemas"]["RtcPeerCapability"][];
+            net?: components["schemas"]["RtcNetClass"];
+        };
+        /** @description Server-side ceilings for the room, advertised on the meeting join response. */
+        RtcRoomLimits: {
+            /** @description Peers allowed in the room (`MEET_MAX_PEERS`, default 4, clamped 2-15). */
+            maxPeers?: number;
+            /** @description Video profile ceiling in pixels. Populated by the meeting connectivity work. */
+            maxVideoHeight?: number;
+            /** @description Video profile ceiling in frames per second. Populated by the meeting connectivity work. */
+            maxFramerateFps?: number;
+            /** @description Video profile ceiling in kilobits per second. Populated by the meeting connectivity work. */
+            maxBitrateKbps?: number;
+        };
+        /** @description Short-lived relay credentials in the TURN REST convention (coturn `use-auth-secret`). Issued only by the relay request, never at join and never by the room configuration endpoint. */
+        RtcTurnCredentials: {
+            urls: string[];
+            /** @description `<unixExpiry>:<first 16 hex of sha1(actor marker)>`. */
+            username: string;
+            /** @description `base64(HMAC-SHA1(turnSecret, username))`. */
+            credential: string;
+            /** @description Lifetime in seconds. */
+            ttl: number;
+        };
+        RtcRoomConfiguration: {
+            rtc: {
+                /** @description Comma-separated STUN URLs. */
+                stunUrls: string;
+                /** @description True when a relay secret is configured. Credentials are never part of this response. */
+                turnAvailable: boolean;
+            };
+        };
+        RtcJoinRequest: {
+            /** @description Client-chosen peer id (meeting rooms). Collaboration and principal rooms get one from the server. */
+            peerId?: string;
+            name?: string;
+            net?: components["schemas"]["RtcNetClass"];
+            caps?: components["schemas"]["RtcPeerCapability"][];
+            /** @description Opaque per-browser-profile token used to evict leftover peers from the same browser. */
+            browserId?: string;
+            /** @description Guest session key from an earlier join. */
+            sessionKey?: string;
+        };
+        RtcJoinResponse: {
+            /** @description Server-assigned peer id (collaboration and principal rooms). */
+            peerId?: string;
+            peers: components["schemas"]["RtcRosterPeer"][];
+            /** @description Guest session key for meeting rooms. */
+            sessionKey?: string | null;
+            /** @description Signed collaboration ticket a peer presents to the other peers in the mesh. */
+            ticket?: string;
+            rtc?: {
+                limits?: components["schemas"]["RtcRoomLimits"];
+            };
+        };
+        RtcMailboxMessage: {
+            /** @description Monotonic mailbox id. Present on channels that poll with a `since` cursor. */
+            id?: number;
+            from: string;
+            to?: string;
+            /**
+             * @description `relay-hint` is server-inserted only: a client that sends it is answered with `bad_type`.
+             * @enum {string}
+             */
+            type: "offer" | "answer" | "ice" | "bye" | "chat" | "yjs" | "yjs-sv" | "relay-hint";
+            payload?: unknown;
+        };
+        RtcPollResponse: {
+            peers: components["schemas"]["RtcRosterPeer"][];
+            messages: components["schemas"]["RtcMailboxMessage"][];
+            /** @description Roster signature to echo as `?sig=` on the next poll. */
+            rosterSig: string;
+            /** @description Signed collaboration ticket, refreshed on every poll. */
+            ticket?: string;
+        };
+        RtcSendEventRequest: {
+            /** @description Sending peer on collaboration and principal rooms. */
+            peerId?: string;
+            /** @description Sending peer on meeting rooms. */
+            from?: string;
+            to: string;
+            /** @enum {string} */
+            type: "offer" | "answer" | "ice" | "bye" | "yjs" | "yjs-sv";
+            payload?: unknown;
+        };
+        RtcRelayRequest: {
+            /** @description Peer id owned by the calling actor. */
+            peerId: string;
+            /** @description Peer id in the room roster, or `*` when the reason is `precheck`. */
+            target: string;
+            /** @enum {string} */
+            reason: "precheck" | "timeout" | "failed";
+            net?: components["schemas"]["RtcNetClass"];
+        };
+        RtcRelayResponse: {
+            turn: components["schemas"]["RtcTurnCredentials"];
+        };
+        /** @description One session sample for the real-time health page. Fields map to `rtc_session_metrics`; the row carries no addresses, room names, or user ids. */
+        RtcSessionMetricReport: {
+            /** @enum {string} */
+            channel: "meet" | "collab";
+            /** @description Milliseconds from join to the first connected peer (`join_ms`). */
+            joinMs?: number;
+            /**
+             * @description Winning candidate type (`candidate_type`).
+             * @enum {string}
+             */
+            candidateType?: "host" | "srflx" | "prflx" | "relay";
+            /** @description Candidate pairs that never connected (`failed_pairs`). */
+            failedPairs?: number;
+            /** @description ICE restarts during the session (`ice_restarts`). */
+            iceRestarts?: number;
+            /** @description Session fell back to HTTP transport (`http_fallback`). */
+            httpFallback?: boolean;
+            /** @description Median signaling poll round trip (`poll_rtt_ms`). */
+            pollRttMs?: number;
+            net?: components["schemas"]["RtcNetClass"];
         };
     };
     responses: {

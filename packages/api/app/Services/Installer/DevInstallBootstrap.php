@@ -91,8 +91,7 @@ final class DevInstallBootstrap
                 SettingKeys::MAIL_SMTP_SECURITY => '',
                 SettingKeys::RTC_STUN_URL => '',
                 SettingKeys::RTC_TURN_URL => '',
-                SettingKeys::RTC_TURN_USERNAME => '',
-                SettingKeys::RTC_TURN_CREDENTIAL => '',
+                SettingKeys::RTC_TURN_SECRET => '',
             ],
         );
 

@@ -47,8 +47,7 @@ export type InstallerInstallPayload = {
   meet_enabled: boolean;
   rtc_stun_url: string;
   rtc_turn_url: string;
-  rtc_turn_username: string;
-  rtc_turn_credential: string;
+  rtc_turn_secret: string;
 };
 
 function installerApiBaseUrl(): string {

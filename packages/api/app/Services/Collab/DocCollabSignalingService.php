@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Collab;
 
+use App\Services\Rtc\RtcRelayService;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
+use App\Services\Rtc\Signaling\RtcNetClass;
+use App\Services\Rtc\Signaling\RtcPeerCaps;
 use App\Services\Rtc\Signaling\RtcSignalingException;
 use App\Services\Rtc\Signaling\RtcSignalingPolicy;
 use Illuminate\Http\Request;
@@ -28,16 +31,35 @@ final class DocCollabSignalingService
         private CollabRoomPolicy $rooms,
         private CollabJoinAuthorizer $joinAuthorizer,
         private RtcSettingsService $rtcSettingsService,
+        private RtcRelayService $relays,
     ) {
         $this->store = new HttpSignalingStore(RtcSignalingPolicy::collab());
     }
 
     /**
-     * @return array{stunUrls: string, turnUrls: string, turnUsername: string, turnPassword: string}
+     * @return array{stunUrls: string, turnAvailable: bool}
      */
-    public function rtcSettings(): array
+    public function rtcSettings(Request $request): array
     {
-        return $this->rtcSettingsService->settings();
+        return $this->run(function () use ($request): array {
+            $this->actors->requireUsername($request);
+
+            return $this->rtcSettingsService->publicSettings();
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array{turn: array{urls: list<string>, username: string, credential: string, ttl: int}}
+     */
+    public function relay(Request $request, array $body): array
+    {
+        return $this->run(function () use ($request, $body): array {
+            $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
+            $roomKey = $this->rooms->roomKey($this->rooms->cleanRoom($body['room'] ?? null));
+
+            return $this->relays->issue($this->store, 'collab', $roomKey, $ownerMarker, $body);
+        });
     }
 
     /**
@@ -47,7 +69,7 @@ final class DocCollabSignalingService
     public function join(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $principal = $this->actors->requirePrincipal($request);
             $ownerMarker = $this->actors->ownerMarker($principal['username']);
@@ -62,7 +84,15 @@ final class DocCollabSignalingService
             $peerId = bin2hex(random_bytes(8));
             $now = time();
             $this->store->deleteOwnedPeersExcept($roomKey, $ownerMarker);
-            $this->store->upsertPeer($roomKey, $peerId, $name, $ownerMarker, $now);
+            // The access right is computed here and nowhere else: the column
+            // defaults to read, so a row that never saw this write cannot edit.
+            // It is resolved from the canonical path, while the peer row lives
+            // under the hashed room key.
+            $this->store->upsertPeer($roomKey, $peerId, $name, $ownerMarker, $now, $this->readBrowserId($body), [
+                'caps' => RtcPeerCaps::encode($body['caps'] ?? null),
+                'net' => RtcNetClass::normalize($body['net'] ?? null),
+                'access' => $this->joinAuthorizer->accessFor($room, $principal),
+            ]);
 
             if ($this->store->countPeers($roomKey) > self::MAX_PEERS_PER_ROOM) {
                 $this->store->deletePeer($roomKey, $peerId);
@@ -83,7 +113,7 @@ final class DocCollabSignalingService
     public function poll(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
             $roomKey = $this->rooms->roomKey($this->rooms->cleanRoom($body['room'] ?? null));
@@ -103,7 +133,7 @@ final class DocCollabSignalingService
     public function send(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
             $roomKey = $this->rooms->roomKey($this->rooms->cleanRoom($body['room'] ?? null));
@@ -125,7 +155,7 @@ final class DocCollabSignalingService
     public function leave(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
             $roomKey = $this->rooms->roomKey($this->rooms->cleanRoom($body['room'] ?? null));
@@ -135,6 +165,19 @@ final class DocCollabSignalingService
 
             return ['ok' => true];
         });
+    }
+
+    /**
+     * Browser-profile token from the client. Invalid or missing values are
+     * stored as empty — eviction on it is a later Docs change.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private function readBrowserId(array $body): ?string
+    {
+        $raw = $body['browserId'] ?? null;
+
+        return is_string($raw) && preg_match('/^[a-f0-9]{32}$/', $raw) === 1 ? $raw : null;
     }
 
     /**

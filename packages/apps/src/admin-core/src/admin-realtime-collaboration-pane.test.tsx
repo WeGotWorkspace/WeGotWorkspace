@@ -3,16 +3,20 @@ import { afterEach, describe, expect, it } from "vitest";
 import { AdminRealtimeCollaborationPane } from "@/admin-core/src/admin-realtime-collaboration-pane";
 import { useAdminPaneStoryController } from "@/admin-core/stories/admin-pane-stories.harness";
 import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
+import type { AdminSettingsFormState } from "@/admin-core/src/admin-settings-form-utils";
 
 afterEach(() => {
   cleanup();
 });
 
-function RealtimePaneHarness() {
+function RealtimePaneHarness({ form }: { form?: Partial<AdminSettingsFormState> }) {
   const controller = useAdminPaneStoryController();
+  const patched = form
+    ? { ...controller, settingsForm: { ...controller.settingsForm, ...form } }
+    : controller;
   return (
     <AdminStoryScope>
-      <AdminRealtimeCollaborationPane controller={controller} />
+      <AdminRealtimeCollaborationPane controller={patched} />
     </AdminStoryScope>
   );
 }
@@ -29,12 +33,31 @@ describe("AdminRealtimeCollaborationPane", () => {
     fireEvent.change(turnUrls, { target: { value: "turn:typed.test:3478" } });
     expect(screen.getByDisplayValue("turn:typed.test:3478")).toBeTruthy();
 
-    const turnUsername = screen.getByLabelText("TURN username");
-    fireEvent.change(turnUsername, { target: { value: "typed-user" } });
-    expect(screen.getByDisplayValue("typed-user")).toBeTruthy();
-
-    const turnPassword = screen.getByLabelText("TURN password");
-    fireEvent.change(turnPassword, { target: { value: "typed-secret" } });
+    const turnSecret = screen.getByLabelText("TURN shared secret");
+    fireEvent.change(turnSecret, { target: { value: "typed-secret" } });
     expect(screen.getByDisplayValue("typed-secret")).toBeTruthy();
+  });
+
+  it("reports whether a secret is stored without ever showing it", () => {
+    const { unmount } = render(<RealtimePaneHarness form={{ turnSecretSet: false }} />);
+    expect(screen.getByText("not set")).toBeTruthy();
+    expect(screen.queryByText("Clear stored TURN secret")).toBeNull();
+    unmount();
+
+    render(<RealtimePaneHarness form={{ turnSecretSet: true }} />);
+    expect(screen.getByText("set")).toBeTruthy();
+    expect((screen.getByLabelText("TURN shared secret") as HTMLInputElement).value).toBe("");
+    expect(screen.getByLabelText("Clear stored TURN secret")).toBeTruthy();
+  });
+
+  it("warns while static credentials from an older release are still stored", () => {
+    const { unmount } = render(
+      <RealtimePaneHarness form={{ turnStaticCredentialsPresent: false }} />,
+    );
+    expect(screen.queryByText(/static TURN username and password/)).toBeNull();
+    unmount();
+
+    render(<RealtimePaneHarness form={{ turnStaticCredentialsPresent: true }} />);
+    expect(screen.getByText(/static TURN username and password/)).toBeTruthy();
   });
 });

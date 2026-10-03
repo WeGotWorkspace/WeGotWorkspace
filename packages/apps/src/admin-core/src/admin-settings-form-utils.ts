@@ -10,8 +10,9 @@ export type AdminSettingsFormState = {
   smtpSecurity: string;
   stunUrls: string;
   turnUrls: string;
-  turnUsername: string;
-  turnPassword: string;
+  turnSecret: string;
+  turnSecretSet: boolean;
+  turnStaticCredentialsPresent: boolean;
   calendars: boolean;
   contacts: boolean;
   sabreUi: boolean;
@@ -64,8 +65,9 @@ export function buildAdminSettingsFormState(
     smtpSecurity: normalizeSecurity(data.mail.smtpSecurity),
     stunUrls: data.rtc.stunUrls,
     turnUrls: data.rtc.turnUrls,
-    turnUsername: data.rtc.turnUsername,
-    turnPassword: data.rtc.turnPassword,
+    turnSecret: "",
+    turnSecretSet: data.rtc.turnSecretSet,
+    turnStaticCredentialsPresent: data.rtc.turnStaticCredentialsPresent,
     calendars: data.apps.calendars,
     contacts: data.apps.contacts,
     sabreUi: data.webdav.sabreUi,
@@ -101,8 +103,6 @@ export function adminSettingsFormToMap(
     mail_smtp_security: state.smtpSecurity,
     rtc_stun_url: state.stunUrls,
     rtc_turn_url: state.turnUrls,
-    rtc_turn_username: state.turnUsername,
-    rtc_turn_credential: state.turnPassword,
     calendar_enabled: state.calendars,
     contacts_enabled: state.contacts,
     browser_plugin: state.sabreUi,
@@ -119,6 +119,10 @@ export function adminSettingsFormToMap(
   };
   if (state.mailDeliverySmtpPassword.trim() !== "") {
     values.mail_delivery_smtp_password = state.mailDeliverySmtpPassword;
+  }
+  // Write-only: an untouched field must not wipe the stored secret.
+  if (state.turnSecret.trim() !== "") {
+    values.rtc_turn_secret = state.turnSecret.trim();
   }
   return values;
 }

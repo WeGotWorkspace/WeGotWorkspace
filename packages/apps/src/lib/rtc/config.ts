@@ -1,8 +1,10 @@
-import type { IceMode, RtcSettings } from "@/lib/rtc/types";
+import type { IceMode, RtcSettings, TurnCredentials } from "@/lib/rtc/types";
 
 export type ToRtcConfigOptions = {
   /** Pool size when not forcing relay (meet: 4, collab: 2). */
   iceCandidatePoolSize?: number;
+  /** Credentials from a relay request; without them there is no TURN server. */
+  turn?: TurnCredentials | null;
 };
 
 export function normalizeIceUrl(raw: string, defaultScheme: "stun" | "turn"): string {
@@ -19,10 +21,6 @@ export function parseUrlList(raw: string, defaultScheme: "stun" | "turn"): strin
     .filter((value) => value !== "");
 }
 
-export function turnUrlCount(settings: RtcSettings): number {
-  return parseUrlList(settings.turnUrls, "turn").length;
-}
-
 export function stunUrlCount(settings: RtcSettings): number {
   return parseUrlList(settings.stunUrls, "stun").length;
 }
@@ -32,29 +30,29 @@ export function toRtcConfig(
   mode: IceMode,
   options: ToRtcConfigOptions = {},
 ): RTCConfiguration {
-  const turnUrls = parseUrlList(settings.turnUrls, "turn");
+  const turn = options.turn ?? null;
+  const turnUrls = turn
+    ? turn.urls.map((url) => normalizeIceUrl(url, "turn")).filter((url) => url !== "")
+    : [];
+  // Relay-only transport is pointless without credentials to reach the relay.
   const forceRelay = (settings.forceRelay || mode === "relay") && turnUrls.length > 0;
   const stunUrls = parseUrlList(settings.stunUrls, "stun");
   const iceServers: RTCIceServer[] = [];
+  const turnServer: RTCIceServer | null =
+    turn && turnUrls.length > 0
+      ? { urls: [...new Set(turnUrls)], username: turn.username, credential: turn.credential }
+      : null;
 
   if (forceRelay) {
-    if (turnUrls.length > 0) {
-      iceServers.push({
-        urls: turnUrls,
-        username: settings.turnUsername || undefined,
-        credential: settings.turnPassword || undefined,
-      });
+    if (turnServer) {
+      iceServers.push(turnServer);
     }
   } else {
     if (stunUrls.length > 0) {
       iceServers.push({ urls: [...new Set(stunUrls)] });
     }
-    if (turnUrls.length > 0) {
-      iceServers.push({
-        urls: [...new Set(turnUrls)],
-        username: settings.turnUsername || undefined,
-        credential: settings.turnPassword || undefined,
-      });
+    if (turnServer) {
+      iceServers.push(turnServer);
     }
   }
 

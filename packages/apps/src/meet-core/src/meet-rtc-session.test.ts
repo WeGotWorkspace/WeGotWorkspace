@@ -6,9 +6,7 @@ import type { RtcSettings } from "@/lib/rtc/types";
 
 const RTC_SETTINGS: RtcSettings = {
   stunUrls: "",
-  turnUrls: "",
-  turnUsername: "",
-  turnPassword: "",
+  turnAvailable: false,
   forceRelay: false,
 };
 

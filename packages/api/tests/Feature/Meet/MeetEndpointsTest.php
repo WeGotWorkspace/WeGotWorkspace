@@ -153,26 +153,30 @@ final class MeetEndpointsTest extends WgwDatabaseTestCase
         $this->assertSame(['text' => 'Hello host'], $messages[0]['payload']);
     }
 
-    public function test_rtc_settings_endpoint_exposes_meet_ice_values(): void
+    public function test_rtc_settings_endpoint_exposes_stun_urls_and_relay_flag(): void
     {
         $this->setAppSettings([
             SettingKeys::RTC_STUN_URL => "one.example.org:3478, \nstun:two.example.org",
             SettingKeys::RTC_TURN_URL => "turn:one.example.org\nturn-two.example.org:3478?transport=udp",
-            SettingKeys::RTC_TURN_USERNAME => 'rtc-user',
-            SettingKeys::RTC_TURN_CREDENTIAL => 'rtc-pass',
+            SettingKeys::RTC_TURN_SECRET => 'relay-secret',
         ]);
 
-        $response = $this->getJson('/api/v1/rooms/'.self::ROOM_ID.'/configuration');
+        $sessionKey = (string) $this->postJson('/api/v1/rooms/'.self::ROOM_ID.'/participants', [
+            'peerId' => 'peer-alpha',
+            'name' => 'Guest One',
+        ])->json('sessionKey');
+
+        $response = $this->getJson(
+            '/api/v1/rooms/'.self::ROOM_ID.'/configuration?sessionKey='.$sessionKey,
+        );
 
         $response->assertOk();
         $response->assertJson([
             'rtc' => [
                 'stunUrls' => 'stun:one.example.org:3478, stun:two.example.org',
-                'turnUrls' => 'turn:one.example.org, turn:turn-two.example.org:3478?transport=udp',
-                'turnUsername' => 'rtc-user',
-                'turnPassword' => 'rtc-pass',
+                'turnAvailable' => true,
             ],
         ]);
-        $response->assertJsonMissing(['forceRelay' => true]);
+        $this->assertStringNotContainsString('relay-secret', $response->getContent() ?: '');
     }
 }

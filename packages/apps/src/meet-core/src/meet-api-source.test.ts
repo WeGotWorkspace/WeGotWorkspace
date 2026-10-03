@@ -38,9 +38,7 @@ const HOST_SESSION: WorkspaceSession = {
 };
 const RTC = {
   stunUrls: "",
-  turnUrls: "",
-  turnUsername: "",
-  turnPassword: "",
+  turnAvailable: false,
   forceRelay: false,
 };
 
