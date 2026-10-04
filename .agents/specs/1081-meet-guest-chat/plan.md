@@ -40,7 +40,9 @@ Considered: switching Meet onto `createDataBinding` — rejected because that bi
 
 | id | scope | verify |
 |----|--------|--------|
-| `meet-guest-chat` | Negotiated channel, cap, send path, dedupe, docs | `pnpm --dir packages/apps exec vitest run src/lib/rtc/session/meet-data-channel.test.ts src/lib/rtc/session/meet-room-chat.test.ts src/meet-core/src/meet-data-chat.test.ts` |
+| `meet-guest-chat` | Negotiated channel, cap, send path, dedupe, docs | `pnpm --dir packages/apps exec vitest run src/lib/rtc/session/meet-data-channel.test.ts src/lib/rtc/session/meet-room-chat.test.ts src/meet-core/src/meet-data-chat.test.ts src/meet-core/src/meet-rtc-sdp.test.ts` |
+
+Live (nightly, not a PR check): `pnpm --dir packages/apps exec playwright test --config playwright.live.config.mjs e2e/meet-guest-chat.spec.ts` with the apps dev server and API already up.
 
 ## Open decisions
 

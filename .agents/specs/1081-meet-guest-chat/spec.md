@@ -29,6 +29,7 @@ On every Meet peer connection, both sides open a negotiated data channel at cons
 ## Edge cases
 
 - A channel that is not open still produces one HTTP line.
+- With the channel open, the guest line arrives in under 300 ms. With the channel blocked, that line arrives once over HTTP.
 - The same ULID from a different peer is a different line.
 - Admit, and any other server-recorded control, is not applied from the data channel.
 - A member's channel row still hides the room copy once that row is saved, so the call does not show the line twice.

@@ -54,6 +54,38 @@ describe("sanitizeRtcSdp", () => {
     expect(out).not.toContain("AV1");
   });
 
+  it("drops retransmission payloads that point at a removed codec", () => {
+    const offer = [
+      "m=video 9 UDP/TLS/RTP/SAVPF 96 97 45 46",
+      "a=mid:1",
+      "a=rtpmap:96 VP8/90000",
+      "a=rtpmap:97 rtx/90000",
+      "a=fmtp:97 apt=96",
+      "a=rtpmap:45 AV1/90000",
+      "a=fmtp:45 level-idx=5;profile=0;tier=0",
+      "a=rtpmap:46 rtx/90000",
+      "a=fmtp:46 apt=45",
+    ].join("\n");
+    const out = sanitizeRtcSdp(offer, "chromium");
+    expect(out).toContain("a=rtpmap:97 rtx/90000");
+    expect(out).toContain("a=fmtp:97 apt=96");
+    expect(out).not.toContain("AV1");
+    expect(out).not.toContain("apt=45");
+    expect(out).not.toContain("a=rtpmap:46");
+    expect(out).toContain("m=video 9 UDP/TLS/RTP/SAVPF 96 97");
+  });
+
+  it("keeps ssrc lines on a unified-plan offer Chromium is parsing", () => {
+    const unified = [
+      "m=video 9 UDP/TLS/RTP/SAVPF 96",
+      "a=mid:1",
+      "a=ssrc:1047663390 msid:abc def",
+    ].join("\n");
+    const out = sanitizeRtcSdp(unified, "chromium");
+    expect(out).toContain("a=ssrc:1047663390 msid:abc def");
+    expect(out).toContain("a=mid:1");
+  });
+
   it("keeps RTX, RED, and Safari session lines for any other parser", () => {
     const out = sanitizeRtcSdp(SAMPLE, "other");
     expect(out).toContain("a=rtpmap:97 rtx/90000");
