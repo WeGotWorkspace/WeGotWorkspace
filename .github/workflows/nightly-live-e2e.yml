@@ -1,6 +1,6 @@
 name: Live E2E (Nightly)
 
-# Five existing live Playwright specs against the real API, SQLite, and Vite.
+# Live Playwright specs and the real-time chaos suite against the real API, SQLite, and Vite.
 # Not a pull-request check: schedule + manual dispatch only (issue #1022).
 # The live config boots host PHP on :9080 and Vite on :5173 (same path as `pnpm dev`).
 # There is no Slack or email secret in this repo. A failed run uploads traces and
@@ -89,6 +89,10 @@ jobs:
       - name: Run live e2e specs
         working-directory: packages/apps
         run: pnpm exec playwright test --config playwright.live.config.mjs
+
+      - name: Run real-time chaos specs
+        working-directory: packages/apps
+        run: pnpm exec playwright test --config playwright.chaos.config.mjs
 
       - name: Upload Playwright artifacts
         if: failure()

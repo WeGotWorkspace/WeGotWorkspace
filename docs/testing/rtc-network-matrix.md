@@ -25,6 +25,11 @@ Enable browser logging with `?rtcDebug=1` on meet or docs URLs. Logs use prefix 
 | N10 | Meet signaling API | `pnpm test:meet-api` | guest join/poll/leave on `/meet/*` return JSON |
 | N11 | Meet mesh smoke | Two tabs, same room, `?rtcDebug=1` | `[rtc][meet][…][pc-connected]`; inbound RTP bytes increase; remote tile shows A/V; outbound offer SDP includes `m=audio` and `m=video`; no `Illegal invocation` in console |
 | N12 | Guest meet control | Guest knock URL (no auth) → host admits | Guest reaches `in-call`; knock/admit chat control works; guest `sessionKey` on poll/chat; media presence toggles propagate |
+| N13 | iOS Safari remote audio | **Human-only.** Join a Meet call in iOS Safari | Remote audio stays silent until a user gesture, then plays |
+| N14 | Installed PWA camera | **Human-only.** Open the installed PWA in standalone mode and join a Meet call | Camera permission succeeds in standalone mode and local video shows |
+| N15 | Resume from background | **Human-only.** On iOS Safari and on the installed PWA, background a Meet call or Docs session, then return | The client polls immediately and restarts ICE; the call or document stays connected |
+
+N13–N15 are human-only. A person runs them before the v0.9 release. Do not assign that run to an agent.
 
 ## Shared hosting notes
 
