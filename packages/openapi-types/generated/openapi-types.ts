@@ -12018,6 +12018,26 @@ export interface components {
                 /** @description True when a relay secret is configured. Credentials are never part of this response. */
                 turnAvailable: boolean;
             };
+            /** @description Public half of the contract C2 ticket signing key. No private material is ever part of this response. */
+            collabTicket?: {
+                /** @description Key id the ticket header names. */
+                kid: string;
+                jwk: {
+                    /** @enum {string} */
+                    kty: "EC";
+                    /** @enum {string} */
+                    crv: "P-256";
+                    /** @description base64url, 32 bytes. */
+                    x: string;
+                    /** @description base64url, 32 bytes. */
+                    y: string;
+                    kid: string;
+                    /** @enum {string} */
+                    alg?: "ES256";
+                    /** @enum {string} */
+                    use?: "sig";
+                };
+            };
         };
         RtcJoinRequest: {
             /** @description Client-chosen peer id (meeting rooms). Collaboration and principal rooms get one from the server. */
