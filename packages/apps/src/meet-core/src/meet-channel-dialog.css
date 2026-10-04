@@ -12,11 +12,15 @@
   --workspace-accent-foreground: #ffffff;
   --workspace-brand: var(--color-we-got-soft);
   --workspace-brand-foreground: var(--color-we-got-sand);
-  --workspace-sidebar-surface: color-mix(in oklch, var(--workspace-brand) 5%, #fff);
+  --workspace-sidebar-surface: color-mix(
+    in oklch,
+    var(--workspace-brand) 5%,
+    var(--workspace-surface)
+  );
   --workspace-sidebar-surface-foreground: var(--workspace-surface-foreground);
   --color-emerald: var(--workspace-accent);
   --button-primary-bg: var(--workspace-brand-foreground);
-  --button-primary-fg: var(--color-we-got-dark);
+  --button-primary-fg: var(--workspace-accent-foreground);
   --button-active-color: var(--workspace-accent-strong);
   --primary: var(--workspace-accent);
   --primary-foreground: var(--workspace-accent-foreground);

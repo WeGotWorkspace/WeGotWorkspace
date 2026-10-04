@@ -157,7 +157,7 @@
       --button-outline-active-background,
       var(
         --button-outline-hover-background,
-        color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+        color-mix(in oklab, var(--workspace-surface-foreground) 8%, transparent)
       )
     )
   );
@@ -180,7 +180,7 @@
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 9999px;
-  box-shadow: 0 0 0 2px var(--user-avatar-presence-ring, var(--color-we-got-soft));
+  box-shadow: 0 0 0 2px var(--user-avatar-presence-ring, var(--workspace-surface));
 }
 
 .user-avatar__presence--online {
@@ -197,9 +197,9 @@
     0 0 0 1.5px
       var(
         --user-avatar-presence-offline-border,
-        color-mix(in oklab, var(--color-we-got-dark) 40%, transparent)
+        color-mix(in oklab, var(--workspace-surface-foreground) 40%, transparent)
       ),
-    0 0 0 2px var(--user-avatar-presence-ring, var(--color-we-got-soft));
+    0 0 0 2px var(--user-avatar-presence-ring, var(--workspace-surface));
 }
 
 .user-avatar__presence--standalone {
@@ -212,7 +212,7 @@
   border: 1.5px solid
     var(
       --user-avatar-presence-offline-border,
-      color-mix(in oklab, var(--color-we-got-dark) 40%, transparent)
+      color-mix(in oklab, var(--workspace-surface-foreground) 40%, transparent)
     );
 }
 
@@ -240,7 +240,7 @@ button.user-avatar__mark:hover {
         --button-outline-active-background,
         var(
           --button-outline-hover-background,
-          color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+          color-mix(in oklab, var(--workspace-surface-foreground) 8%, transparent)
         )
       )
     )
@@ -304,7 +304,7 @@ button.user-avatar__mark:hover {
 .user-avatar__name {
   @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm;
   line-height: var(--user-avatar-name-leading);
-  color: var(--user-avatar-label-color, var(--user-avatar-fg, var(--color-we-got-dark)));
+  color: var(--user-avatar-label-color, var(--user-avatar-fg, var(--workspace-surface-foreground)));
 }
 
 .user-avatar__name--emphasized {
@@ -316,6 +316,6 @@ button.user-avatar__mark:hover {
   line-height: var(--user-avatar-subtitle-leading);
   color: var(
     --user-avatar-subtitle-color,
-    color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
   );
 }

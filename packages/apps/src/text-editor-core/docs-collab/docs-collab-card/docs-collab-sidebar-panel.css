@@ -14,9 +14,9 @@
    * Republish the default sidebar fill (5% icon into white). Product drawers
    * set `--workspace-brand` so Tasks/Notes percentages stay on their own hosts.
    */
-  --sidebar-bg: color-mix(in oklch, var(--workspace-brand, var(--color-we-got-dark)) 5%, #fff);
+  --sidebar-bg: color-mix(in oklch, var(--workspace-brand) 5%, var(--workspace-surface));
   --app-sidebar-bg: var(--sidebar-bg);
-  --sidebar-on: var(--color-we-got-dark);
+  --sidebar-on: var(--workspace-sidebar-surface-foreground);
   --docs-collab-sidebar-panel-wash: var(--app-sidebar-bg);
   background-color: var(--docs-collab-sidebar-panel-wash);
 
@@ -24,10 +24,7 @@
    * Same accent→cream outline recipe as Docs/Calendar workspace roots +
    * `.view-header`. Optional `--workspace-accent-strong` override (Calendar).
    */
-  --docs-collab-sidebar-panel-accent-strong: var(
-    --workspace-accent-strong,
-    color-mix(in oklab, var(--workspace-accent, var(--color-we-got-dark)) 70%, #0f172a)
-  );
+  --docs-collab-sidebar-panel-accent-strong: var(--workspace-accent-strong);
   --button-active-color: var(--docs-collab-sidebar-panel-accent-strong);
 }
 
@@ -48,7 +45,10 @@
    */
   --docs-collab-sidebar-panel-bg: var(--app-sidebar-bg, var(--sidebar-bg));
   background-color: var(--docs-collab-sidebar-panel-bg);
-  color: var(--docs-collab-sidebar-panel-color, var(--docs-text, var(--color-we-got-dark)));
+  color: var(
+    --docs-collab-sidebar-panel-color,
+    var(--docs-text, var(--workspace-surface-foreground))
+  );
 }
 
 @media (min-width: 768px) {
@@ -67,7 +67,7 @@
   padding-inline: var(--docs-collab-sidebar-panel-padding-x);
   border-color: var(
     --docs-collab-sidebar-panel-border-color,
-    color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 8%, transparent)
   );
   background-color: var(--docs-collab-sidebar-panel-bg, var(--app-sidebar-bg, var(--sidebar-bg)));
   backdrop-filter: blur(8px);
@@ -106,7 +106,10 @@
 /* No extra horizontal inset — scroll already matches header title inset. */
 .docs-collab-sidebar-panel__empty {
   @apply text-sm;
-  color: var(--docs-muted, color-mix(in oklab, var(--color-we-got-dark) 65%, transparent));
+  color: var(
+    --docs-muted,
+    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
+  );
 }
 
 .docs-collab-sidebar-panel__list {

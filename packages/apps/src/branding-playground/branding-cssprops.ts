@@ -221,9 +221,13 @@ export const BRANDING_APP_WAI_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg:
  * Tasks and Notes use a stronger wash so pink and yellow still read.
  */
 export function brandingAppSidebarBg(appId: WorkspaceAppId): string {
-  if (appId === "tasks") return "color-mix(in oklch, var(--workspace-brand) 20%, #fff)";
-  if (appId === "notes") return "color-mix(in oklch, var(--workspace-brand) 15%, #fff)";
-  return "color-mix(in oklch, var(--workspace-brand) 5%, #fff)";
+  if (appId === "tasks") {
+    return "color-mix(in oklch, var(--workspace-brand) 20%, var(--workspace-surface))";
+  }
+  if (appId === "notes") {
+    return "color-mix(in oklch, var(--workspace-brand) 15%, var(--workspace-surface))";
+  }
+  return "color-mix(in oklch, var(--workspace-brand) 5%, var(--workspace-surface))";
 }
 
 /**
@@ -235,13 +239,13 @@ export function brandingAppButtonPrimary(appId: WorkspaceAppId): { bg: string; f
     case "drive":
       return { bg: "var(--workspace-brand-foreground)", fg: "var(--workspace-brand)" };
     case "meet":
-      return { bg: "var(--workspace-brand-foreground)", fg: "var(--color-we-got-dark)" };
+      return { bg: "var(--workspace-brand-foreground)", fg: "var(--workspace-accent-foreground)" };
     case "notes":
-      return { bg: "var(--workspace-brand)", fg: "var(--color-we-got-dark)" };
+      return { bg: "var(--workspace-brand)", fg: "var(--workspace-accent-foreground)" };
     case "mail":
       // Raw We Got Red with white is ~4.1:1. Darken it so 14px labels clear AA.
       return {
-        bg: "color-mix(in oklch, var(--workspace-brand) 45%, var(--color-we-got-dark))",
+        bg: "color-mix(in oklch, var(--workspace-brand) 45%, var(--workspace-surface-foreground))",
         fg: "var(--workspace-brand-foreground)",
       };
     default:

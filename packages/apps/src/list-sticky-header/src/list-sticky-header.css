@@ -11,11 +11,11 @@
   color: var(--list-sticky-header-color, light-dark(rgb(15 23 42 / 96%), rgb(255 255 255 / 95%)));
   background-color: var(
     --list-sticky-header-bg,
-    var(--workspace-root-bg, var(--color-we-got-soft))
+    var(--workspace-root-bg, var(--workspace-surface))
   );
   border-color: var(
     --list-sticky-header-border,
-    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent)
   );
 }
 

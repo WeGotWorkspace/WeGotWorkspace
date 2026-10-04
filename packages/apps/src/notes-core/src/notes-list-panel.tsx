@@ -347,7 +347,7 @@ function NotesListRows({
                     ? {
                         swipeRightAction: {
                           icon: <Archive className="size-5" />,
-                          color: "var(--color-we-got-dark)",
+                          color: "var(--workspace-accent)",
                           label: archived[note.id] ? L.swipeUnarchive : L.swipeArchive,
                           destructive: true,
                           onActivate: () => toggleArchive(note.id),

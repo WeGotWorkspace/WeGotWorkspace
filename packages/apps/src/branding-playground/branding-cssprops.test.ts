@@ -64,7 +64,7 @@ describe("createAppBrandingCssprops", () => {
 describe("brandingAppButtonPrimary", () => {
   it("darkens mail primary so white labels clear AA", () => {
     expect(brandingAppButtonPrimary("mail")).toEqual({
-      bg: "color-mix(in oklch, var(--workspace-brand) 45%, var(--color-we-got-dark))",
+      bg: "color-mix(in oklch, var(--workspace-brand) 45%, var(--workspace-surface-foreground))",
       fg: "var(--workspace-brand-foreground)",
     });
   });

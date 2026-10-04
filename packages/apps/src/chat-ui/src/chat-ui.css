@@ -2,20 +2,20 @@
 
 .chat-ui {
   font-family: var(--font-sans);
-  --chat-text: var(--color-we-got-dark, inherit);
-  --chat-author: var(--color-we-got-dark, inherit);
-  --chat-body: color-mix(in oklab, var(--color-we-got-dark) 88%, transparent);
-  --chat-muted: color-mix(in oklab, var(--color-we-got-dark) 45%, transparent);
-  --chat-replies: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
-  --chat-surface: var(--color-we-got-soft);
-  --chat-list-surface: var(--color-we-got-soft);
-  --chat-border: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
-  --chat-rule: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
+  --chat-text: var(--workspace-surface-foreground);
+  --chat-author: var(--workspace-surface-foreground);
+  --chat-body: color-mix(in oklab, var(--workspace-surface-foreground) 88%, transparent);
+  --chat-muted: color-mix(in oklab, var(--workspace-surface-foreground) 45%, transparent);
+  --chat-replies: color-mix(in oklab, var(--workspace-surface-foreground) 68%, transparent);
+  --chat-surface: var(--workspace-surface);
+  --chat-list-surface: var(--workspace-surface);
+  --chat-border: color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent);
+  --chat-rule: color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent);
   --chat-accent: #0e7490;
   --chat-hover: color-mix(in oklch, var(--workspace-accent) 8%, transparent);
   --chat-day-bg: var(--chat-list-surface);
-  --chat-action-surface: var(--color-we-got-soft);
-  --chat-reaction-bg: color-mix(in oklab, var(--color-we-got-dark) 4%, transparent);
+  --chat-action-surface: var(--workspace-surface);
+  --chat-reaction-bg: color-mix(in oklab, var(--workspace-surface-foreground) 4%, transparent);
   --user-avatar-presence-ring: var(--chat-list-surface);
   color: var(--chat-text);
 }

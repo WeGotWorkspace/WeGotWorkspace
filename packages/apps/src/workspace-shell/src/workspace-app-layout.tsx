@@ -97,11 +97,10 @@ export function WorkspaceSidebar({ open, children }: WorkspaceSidebarProps) {
           : "-translate-x-full w-72 sidebar:w-64 sidebar:-ml-64 sidebar:border-r-0"
       }`}
       style={{
-        backgroundColor:
-          "var(--workspace-sidebar-bg, var(--color-paper, var(--color-we-got-soft)))",
+        backgroundColor: "var(--workspace-sidebar-bg, var(--workspace-sidebar-surface))",
         borderColor:
-          "var(--workspace-sidebar-border-color, color-mix(in oklab, var(--color-we-got-dark) 15%, transparent))",
-        color: "var(--workspace-sidebar-color, var(--color-we-got-dark))",
+          "var(--workspace-sidebar-border-color, color-mix(in oklab, var(--workspace-surface-foreground) 15%, transparent))",
+        color: "var(--workspace-sidebar-color, var(--workspace-surface-foreground))",
       }}
     >
       {children}
@@ -113,7 +112,7 @@ export function WorkspaceBrandHeader({
   onCloseMobile,
   showAppSwitcher = true,
   appSwitcher,
-  closeButtonHoverClassName = "hover:bg-[color-mix(in_oklab,var(--color-we-got-dark)_8%,transparent)]",
+  closeButtonHoverClassName = "hover:bg-[color-mix(in_oklab,var(--workspace-surface-foreground)_8%,transparent)]",
 }: WorkspaceBrandHeaderProps) {
   return (
     <SidebarLogo

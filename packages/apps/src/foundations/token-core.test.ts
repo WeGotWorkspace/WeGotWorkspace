@@ -71,6 +71,25 @@ describe("workspace token core", () => {
     expect(leaks).toEqual([]);
   });
 
+  it("keeps brand primitives out of component paint (tier-2 and brand assignments only)", () => {
+    const CORE_ASSIGN =
+      /^\s*--workspace-(?:surface(?:-foreground)?|accent(?:-foreground)?|brand(?:-foreground)?|sidebar-surface(?:-foreground)?)\s*:/;
+    const STATUS_ASSIGN = /^\s*--meet-mark\s*:/;
+    const SKIP = new Set(["styles.css", "user-avatar/src/user-avatar.css"]);
+    const leaks: string[] = [];
+    for (const file of walkCss(srcRoot)) {
+      const rel = relative(srcRoot, file);
+      if (SKIP.has(rel) || rel.endsWith(".stories.css")) continue;
+      const css = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const [index, line] of css.split("\n").entries()) {
+        if (CORE_ASSIGN.test(line) || STATUS_ASSIGN.test(line)) continue;
+        const match = line.match(PRIMITIVE_REF);
+        if (match) leaks.push(`${rel}:${index + 1} ${match[0]})`);
+      }
+    }
+    expect(leaks).toEqual([]);
+  });
+
   it("does not grow a second outline-ladder recipe in product workspace sheets", () => {
     const offenders: string[] = [];
     for (const file of walkCss(srcRoot)) {

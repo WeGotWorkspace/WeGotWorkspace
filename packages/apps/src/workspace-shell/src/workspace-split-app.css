@@ -21,23 +21,23 @@
   --workspace-root-bg: var(--workspace-surface);
   --app-sidebar-border-color: color-mix(
     in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 15%,
+    var(--workspace-surface-foreground) 15%,
     transparent
   );
   --workspace-user-footer-text-color: color-mix(
     in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 80%,
+    var(--workspace-surface-foreground) 80%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
     in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 18%,
+    var(--workspace-surface-foreground) 18%,
     transparent
   );
-  --workspace-user-footer-link-color: var(--sidebar-on, var(--color-we-got-dark));
+  --workspace-user-footer-link-color: var(--workspace-surface-foreground);
   --workspace-user-footer-link-bg: color-mix(
     in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 10%,
+    var(--workspace-surface-foreground) 10%,
     transparent
   );
 
@@ -48,9 +48,5 @@
   --primary: #2f302c;
   --primary-foreground: #ffffff;
 
-  --field-label-color: color-mix(
-    in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 68%,
-    transparent
-  );
+  --field-label-color: color-mix(in oklab, var(--workspace-surface-foreground) 68%, transparent);
 }

@@ -4,7 +4,7 @@
 .docs-outline-sidebar__number {
   @apply block min-w-[2.75ch] text-xs tabular-nums;
   font-family: var(--font-mono);
-  color: color-mix(in oklch, var(--color-we-got-dark) 72%, transparent);
+  color: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
 }
 
 /* Parent `.menu-item__icon-slot` uses 0.65 opacity; that multiplies the whole

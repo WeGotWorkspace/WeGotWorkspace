@@ -147,7 +147,11 @@
   --workspace-accent-foreground: #ffffff;
   --workspace-brand: var(--workspace-accent);
   --workspace-brand-foreground: var(--workspace-accent-foreground);
-  --workspace-sidebar-surface: color-mix(in oklch, var(--workspace-brand) 5%, #fff);
+  --workspace-sidebar-surface: color-mix(
+    in oklch,
+    var(--workspace-brand) 5%,
+    var(--workspace-surface)
+  );
   --workspace-sidebar-surface-foreground: var(--workspace-surface-foreground);
 
   /* Compatibility aliases still read by product sheets. */
@@ -223,15 +227,19 @@
    */
   --control-radius-button-pill: var(--control-radius);
   /* Paper sheet — Docs letter surface + Notes detail card (see `.paper-sheet`). */
-  --paper-sheet-bg: oklch(1 0 0);
-  --sheet-shadow: 0 1px 2px #0000000a, 0 10px 30px -10px #0f172a1f;
+  --paper-sheet-bg: oklch(from var(--workspace-surface) calc(l + 0.045) c h);
+  --sheet-shadow:
+    0 1px 2px color-mix(in oklch, var(--workspace-surface-foreground) 4%, transparent),
+    0 10px 30px -10px color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
   /*
    * Panel overlay motion — AppSidebar mobile slide + SideDrawer/Sheet enter/exit.
    * Keep duration + easing in sync across left chrome and right drawers.
    */
   --panel-overlay-duration: 300ms;
   --panel-overlay-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --control-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 30px -10px rgba(15, 23, 42, 0.12);
+  --control-shadow:
+    0 1px 2px color-mix(in oklch, var(--workspace-surface-foreground) 4%, transparent),
+    0 10px 30px -10px color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
   /*
    * Fixed control height scale (not viewport-relative).
    * xs=28 / sm=32 / md=36 (default chrome + forms) / lg=40 / xl=44 (sidebar New).
@@ -272,8 +280,12 @@
   --workspace-accent-foreground: var(--color-we-got-dark);
   --workspace-brand: var(--color-we-got-sand);
   --workspace-brand-foreground: var(--color-we-got-dark);
-  --workspace-sidebar-surface: color-mix(in oklch, #fff 8%, var(--workspace-home-bg));
-  --workspace-sidebar-surface-foreground: #ffffff;
+  --workspace-sidebar-surface: color-mix(
+    in oklch,
+    var(--workspace-brand) 8%,
+    var(--workspace-surface)
+  );
+  --workspace-sidebar-surface-foreground: var(--workspace-surface-foreground);
 }
 
 @layer base {
@@ -282,7 +294,7 @@
   }
 
   html {
-    background-color: var(--color-we-got-dark);
+    background-color: var(--workspace-accent);
   }
 
   body {
@@ -353,15 +365,15 @@
 /* Editable contenteditable placeholder */
 [contenteditable="true"]:empty::before {
   content: attr(data-placeholder);
-  color: color-mix(in oklab, var(--color-we-got-dark) 35%, transparent);
+  color: color-mix(in oklab, var(--workspace-surface-foreground) 35%, transparent);
   pointer-events: none;
 }
 
 /* Neutral text selection inside notes (not the bright green default) */
 .notes-root [contenteditable="true"]::selection,
 .notes-root [contenteditable="true"] *::selection {
-  background-color: color-mix(in oklab, var(--color-we-got-dark) 18%, transparent);
-  color: var(--color-we-got-dark);
+  background-color: color-mix(in oklab, var(--workspace-surface-foreground) 18%, transparent);
+  color: var(--workspace-surface-foreground);
 }
 
 /*

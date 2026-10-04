@@ -9,9 +9,9 @@
   --user-avatar-bg: color-mix(
     in oklab,
     var(--contacts-book-color, var(--workspace-accent)) 24%,
-    var(--color-we-got-soft)
+    var(--workspace-surface)
   );
-  --user-avatar-fg: var(--color-we-got-dark);
+  --user-avatar-fg: var(--workspace-surface-foreground);
   /* Soft stroke matches `.user-avatar` palette tiles; width stays default 1px. */
   --user-avatar-border: color-mix(
     in oklab,

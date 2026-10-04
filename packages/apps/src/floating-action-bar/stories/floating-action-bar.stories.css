@@ -6,7 +6,11 @@
  */
 .floating-action-bar-story--drive {
   --workspace-accent: #10b981;
-  --button-active-color: color-mix(in oklab, var(--workspace-accent) 55%, var(--color-we-got-dark));
+  --button-active-color: color-mix(
+    in oklab,
+    var(--workspace-accent) 55%,
+    var(--workspace-surface-foreground)
+  );
 }
 
 .floating-action-bar-story--docs {

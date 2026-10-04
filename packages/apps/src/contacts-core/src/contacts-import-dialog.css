@@ -22,10 +22,10 @@
 
 .contacts-import-dialog__progress-track {
   @apply h-1.5 w-full overflow-hidden rounded-full;
-  background: color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 12%, transparent);
+  background: color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent);
 }
 
 .contacts-import-dialog__progress-fill {
   @apply h-full rounded-full;
-  background: var(--workspace-accent, var(--color-we-got-dark));
+  background: var(--workspace-accent, var(--workspace-accent));
 }

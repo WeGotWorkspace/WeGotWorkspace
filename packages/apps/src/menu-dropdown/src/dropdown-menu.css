@@ -21,11 +21,7 @@
   color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
   background-color: var(
     --menu-item-hover-background,
-    color-mix(
-      in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 8%,
-      var(--workspace-surface, #fff)
-    )
+    color-mix(in oklab, var(--workspace-accent) 8%, var(--workspace-surface))
   );
 }
 
@@ -55,11 +51,7 @@
   color: var(--button-active-color, var(--workspace-accent, inherit));
   background-color: var(
     --menu-item-selected-background,
-    color-mix(
-      in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 12%,
-      var(--workspace-surface, #fff)
-    )
+    color-mix(in oklab, var(--workspace-accent) 12%, var(--workspace-surface))
   );
 }
 
@@ -68,11 +60,7 @@
 .dropdown-menu-ui__item.menu-item--surface-selected:hover {
   background-color: var(
     --menu-item-selected-hover-background,
-    color-mix(
-      in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 16%,
-      var(--workspace-surface, #fff)
-    )
+    color-mix(in oklab, var(--workspace-accent) 16%, var(--workspace-surface))
   );
 }
 

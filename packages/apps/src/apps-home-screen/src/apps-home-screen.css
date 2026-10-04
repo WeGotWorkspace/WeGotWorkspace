@@ -2,20 +2,20 @@
 
 /** Shared suite home shell — brand cream surface with ink chrome. */
 .apps-home-screen {
-  background-color: var(--color-we-got-soft);
-  color: var(--color-we-got-dark);
-  --app-switch-label-color: var(--color-we-got-dark);
+  background-color: var(--workspace-surface);
+  color: var(--workspace-surface-foreground);
+  --app-switch-label-color: var(--workspace-surface-foreground);
   /* Same tagline mix surface as app sidebars (muted “we got” over lockup paper). */
-  --app-switch-lockup-bg: var(--color-we-got-soft);
+  --app-switch-lockup-bg: var(--workspace-surface);
   --workspace-shell-header-user-menu-bg: color-mix(
     in oklab,
-    var(--color-we-got-dark) 12%,
-    var(--color-we-got-soft)
+    var(--workspace-surface-foreground) 12%,
+    var(--workspace-surface)
   );
-  --workspace-shell-header-user-menu-fg: var(--color-we-got-dark);
+  --workspace-shell-header-user-menu-fg: var(--workspace-surface-foreground);
   --workspace-shell-header-user-menu-border: color-mix(
     in oklab,
-    var(--color-we-got-dark) 18%,
+    var(--workspace-surface-foreground) 18%,
     transparent
   );
   box-sizing: border-box;
@@ -24,7 +24,7 @@
 }
 
 html:has(.apps-home-screen) {
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
 }
 
 /**

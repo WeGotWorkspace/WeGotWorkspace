@@ -10,36 +10,36 @@
   --color-emerald: var(--workspace-accent);
   --app-sidebar-border-color: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 12%,
+    var(--workspace-surface-foreground) 12%,
     transparent
   );
-  --app-sidebar-color: var(--sidebar-on, var(--color-we-got-dark));
-  --sidebar-logo-close-button-color: var(--sidebar-on, var(--color-we-got-dark));
+  --app-sidebar-color: var(--workspace-surface-foreground);
+  --sidebar-logo-close-button-color: var(--workspace-surface-foreground);
   --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 10%,
+    var(--workspace-surface-foreground) 10%,
     transparent
   );
   --workspace-user-footer-text-color: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 70%,
+    var(--workspace-surface-foreground) 70%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 10%,
+    var(--workspace-surface-foreground) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 65%,
+    var(--workspace-surface-foreground) 65%,
     transparent
   );
   --workspace-user-footer-link-bg: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 6%,
+    var(--workspace-surface-foreground) 6%,
     transparent
   );
   --upload-progress-active-fill: var(--workspace-accent);
@@ -61,11 +61,7 @@
   --button-primary-fg: var(--workspace-brand);
   --button-active-color: var(--workspace-accent-strong);
   /* Section titles on the accent rail — slate muted fails AA; ink mix clears. */
-  --field-label-color: color-mix(
-    in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 72%,
-    transparent
-  );
+  --field-label-color: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
 }
 
 .drive-workspace .workspace-app-layout__main-scroll {
@@ -97,9 +93,9 @@
  * any shared switch-trigger remaps (do not recolor the folder mark).
  */
 .drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--sidebar-on, var(--color-we-got-dark));
-  --app-switch-icon-fg: var(--color-we-got-brat);
-  background-color: var(--sidebar-on, var(--color-we-got-dark));
+  --app-switch-icon-bg: var(--workspace-surface-foreground);
+  --app-switch-icon-fg: var(--workspace-brand-foreground);
+  background-color: var(--workspace-surface-foreground);
 }
 
 .drive-workspace
@@ -136,8 +132,8 @@
   padding: 0.875rem 1rem;
   background-color: var(--workspace-surface);
   box-shadow:
-    0 4px 24px color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 16%, transparent),
-    0 0 0 1px color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 8%, transparent);
+    0 4px 24px color-mix(in oklch, var(--workspace-surface-foreground) 16%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--workspace-surface-foreground) 8%, transparent);
 }
 
 @media (max-width: 767px) {
@@ -171,10 +167,10 @@
   --path-breadcrumb-lead-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);
   --path-breadcrumb-link-color: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 65%,
+    var(--workspace-surface-foreground) 65%,
     transparent
   );
-  --path-breadcrumb-current-color: var(--sidebar-on, var(--color-we-got-dark));
+  --path-breadcrumb-current-color: var(--workspace-surface-foreground);
   --path-breadcrumb-link-hover-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
 }
 
@@ -202,11 +198,7 @@
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(
-    in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 65%,
-    transparent
-  );
+  --field-label-color: color-mix(in oklch, var(--workspace-surface-foreground) 65%, transparent);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
@@ -228,7 +220,7 @@
   flex: 0 0 var(--drive-detail-column-width);
   width: var(--drive-detail-column-width);
   max-width: var(--drive-detail-column-width);
-  border-color: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 10%, transparent);
+  border-color: color-mix(in oklch, var(--workspace-surface-foreground) 10%, transparent);
   background-color: var(--app-sidebar-bg, var(--sidebar-bg));
 }
 

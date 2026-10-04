@@ -34,11 +34,15 @@
   --workspace-panel-width: var(--docs-comments-column-width);
   --docs-stat-tag-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
   /* Accent is already Dark, so chip ink stays Dark and clears AA on the cream footer. */
-  --docs-stat-tag-color: color-mix(in oklch, var(--workspace-accent) 40%, var(--color-we-got-dark));
-  --docs-text: var(--sidebar-on, var(--color-we-got-dark));
+  --docs-stat-tag-color: color-mix(
+    in oklch,
+    var(--workspace-accent) 40%,
+    var(--workspace-surface-foreground)
+  );
+  --docs-text: var(--workspace-surface-foreground);
   /* 72% clears WCAG AA on cream sidebar / footer wash; 65% failed outline nums. */
-  --docs-muted: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 72%, transparent);
-  --docs-border: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 12%, transparent);
+  --docs-muted: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
+  --docs-border: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
   /*
    * Shared horizontal inset for ViewHeader (`main-header`), format bar, and
    * detail footer — matches shell `p-4` / `md:p-6` (1rem → 1.5rem).
@@ -139,9 +143,9 @@
 
 /** Sidebar lockup: blue tile + white marks. UI accent is Dark. */
 .docs-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--color-we-got-blue);
-  --app-switch-icon-fg: #ffffff;
-  background-color: var(--color-we-got-blue);
+  --app-switch-icon-bg: var(--workspace-brand);
+  --app-switch-icon-fg: var(--workspace-brand-foreground);
+  background-color: var(--workspace-brand);
 }
 
 .docs-workspace
@@ -207,9 +211,9 @@
 /* Mute last-edited chip so it stays distinct from accent word/char stats. */
 .docs-workspace .workspace-detail-footer__meta-tag--edited {
   @apply shrink-0;
-  --tag-bg: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 6%, transparent);
+  --tag-bg: color-mix(in oklch, var(--workspace-surface-foreground) 6%, transparent);
   /* Match Notes: 72% clears AA on cream footer (~4.5:1); 65% was ~2.8:1. */
-  --tag-fg: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 72%, transparent);
+  --tag-fg: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
 }
 
 .docs-workspace .workspace-detail-footer__meta-tag--edited .tag {

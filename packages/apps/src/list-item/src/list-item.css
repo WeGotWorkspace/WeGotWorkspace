@@ -5,7 +5,7 @@
   background-color: var(--list-item-bg, var(--list-item-base-bg, transparent));
   border-color: var(
     --list-item-border-color,
-    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent)
   );
   outline-color: var(--list-item-accent-color, var(--color-emerald));
   /* Skip layout/paint for off-screen rows. `auto` keeps the last painted size;
@@ -68,7 +68,7 @@
 
 .list-item__checkbox {
   @apply inline-flex size-4 items-center justify-center rounded-[4px] border;
-  border-color: color-mix(in oklab, var(--color-we-got-dark) 30%, transparent);
+  border-color: color-mix(in oklab, var(--workspace-surface-foreground) 30%, transparent);
   background-color: transparent;
 }
 
@@ -106,7 +106,7 @@
   @apply text-sm font-semibold truncate min-w-0 font-sans;
   color: var(
     --list-item-body-color,
-    color-mix(in oklab, var(--color-we-got-dark) 68%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 68%, transparent)
   );
 }
 
@@ -118,14 +118,14 @@
   @apply text-xs tabular-nums;
   color: var(
     --list-item-muted-color,
-    color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
   );
 }
 
 .list-item__title {
   @apply text-base font-medium leading-tight tracking-tight truncate;
   font-family: var(--font-sans);
-  color: var(--list-item-title-color, var(--color-we-got-dark));
+  color: var(--list-item-title-color, var(--workspace-surface-foreground));
 }
 
 .list-item__title--in-header {
@@ -137,14 +137,14 @@
 }
 
 .list-item__title[data-empty="true"] {
-  color: color-mix(in oklab, var(--color-we-got-dark) 35%, transparent);
+  color: color-mix(in oklab, var(--workspace-surface-foreground) 35%, transparent);
 }
 
 .list-item__body {
   @apply text-sm leading-relaxed line-clamp-1 min-w-0;
   color: var(
     --list-item-body-color,
-    color-mix(in oklab, var(--color-we-got-dark) 68%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 68%, transparent)
   );
 }
 
@@ -161,7 +161,7 @@
   @apply shrink-0 text-xs tabular-nums;
   color: var(
     --list-item-muted-color,
-    color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
   );
 }
 

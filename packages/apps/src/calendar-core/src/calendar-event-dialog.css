@@ -18,7 +18,7 @@
   --workspace-accent-strong: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
-    var(--sidebar-on, var(--color-we-got-dark))
+    var(--workspace-surface-foreground)
   );
   --color-emerald: var(--workspace-accent);
   --workspace-brand: var(--color-we-got-prince);
@@ -28,22 +28,14 @@
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(
-    in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 68%,
-    transparent
-  );
+  --field-label-color: color-mix(in oklab, var(--workspace-surface-foreground) 68%, transparent);
   --card-title-icon-color: var(--workspace-accent);
   --card-panel-border-color: color-mix(
     in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 12%,
+    var(--workspace-surface-foreground) 12%,
     transparent
   );
-  --card-row-hover-bg: color-mix(
-    in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 5%,
-    transparent
-  );
+  --card-row-hover-bg: color-mix(in oklab, var(--workspace-surface-foreground) 5%, transparent);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   /* Desktop New event Dialog only — matches Dialog max-w-lg (~32rem). Editable
    * details popover keeps its own narrower token in details-popover.css. */
@@ -394,7 +386,7 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__recurrence-count-suffix {
-  color: color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 65%, transparent);
+  color: color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent);
   font-size: 0.875rem;
 }
 
