@@ -74,5 +74,6 @@ export function steadyPollDelayMs(
   if (isHiddenWithoutPeerConnections(snapshot)) {
     delay = Math.max(delay, HIDDEN_IDLE_POLL_INTERVAL_MS);
   }
+  if (intervals.maxDelayMs != null) delay = Math.min(delay, intervals.maxDelayMs);
   return delay;
 }

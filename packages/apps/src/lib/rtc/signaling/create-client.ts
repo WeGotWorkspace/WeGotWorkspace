@@ -38,7 +38,7 @@ const CHANNEL_DEFAULTS: Partial<
   Record<SignalingChannel, Pick<HttpSignalingClientOptions, "sendFromField" | "caps">>
 > = {
   // `bin` opts this client into chunked binary data-channel frames (#1093).
-  collab: { sendFromField: "peerId", caps: ["bin"] },
+  collab: { sendFromField: "peerId", caps: ["bin", "yjs-http", "relay-jit"] },
   principal: { caps: ["bin"] },
   // `since-ack` opts this client into the acked meet mailbox: the server stops
   // deleting rows on read, so a lost poll response is redelivered (#1086).

@@ -190,12 +190,24 @@ final class DocCollabSignalingService
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
             $roomKey = $this->rooms->roomKey($room);
             $from = $this->store->readSendFrom($body);
-            $to = $this->store->cleanPeer($body['to'] ?? null);
             $this->store->assertPeerOwnedByActor($roomKey, $from, $ownerMarker);
             $access = $this->reauthorize($room, $roomKey, $from, $principal);
 
             $type = (string) ($body['type'] ?? '');
-            $this->store->send($roomKey, $from, $to, $type, $body['payload'] ?? null);
+            if ($type === 'yjs' || $type === 'yjs-sv') {
+                (new CollabYjsMailbox)->deliver(
+                    $this->store,
+                    $roomKey,
+                    $from,
+                    $body['to'] ?? null,
+                    $type,
+                    $body['payload'] ?? null,
+                    $access,
+                );
+            } else {
+                $to = $this->store->cleanPeer($body['to'] ?? null);
+                $this->store->send($roomKey, $from, $to, $type, $body['payload'] ?? null);
+            }
 
             return ['ok' => true] + $this->store->pendingMailbox($roomKey, $from) + [
                 'ticket' => $this->tickets->issue($roomKey, $principal['username'], $from, $access),

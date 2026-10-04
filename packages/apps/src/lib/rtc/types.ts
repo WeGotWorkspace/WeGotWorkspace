@@ -68,6 +68,8 @@ export type RtcLinkState = "connected" | "connecting" | "failed" | "disconnected
 export type RtcPollIntervals = {
   connectingMs: number;
   steadyMs: number;
+  /** Hard ceiling. HTTP fallback uses this so idle and hidden backoff stay at or under 1s. */
+  maxDelayMs?: number;
 };
 
 export const DEFAULT_RTC_POLL_INTERVALS: RtcPollIntervals = {

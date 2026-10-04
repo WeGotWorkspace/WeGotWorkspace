@@ -375,8 +375,10 @@ export function useDocsCollabJoin({
       const tabSync = refs.tabSyncRef.current;
       if (tabSync) {
         tabSync.onLocalSync(encoded);
+        if (tabSync.isMeshLeader()) refs.meshRef.current?.noteLocalUpdate(update);
         return;
       }
+      refs.meshRef.current?.noteLocalUpdate(update);
       refs.meshRef.current?.broadcast({ type: "sync", u: encoded });
     });
 

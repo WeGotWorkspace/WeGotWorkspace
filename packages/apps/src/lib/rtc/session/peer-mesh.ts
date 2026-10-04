@@ -1,4 +1,5 @@
 import { rtcLog } from "@/lib/rtc/log";
+import { applyTurnOnPeerConnection } from "@/lib/rtc/session/apply-turn";
 import type { NetClass } from "@/lib/rtc/net-probe";
 import { netClassForJoin } from "@/lib/rtc/net-probe-session";
 import type { IceOutbound } from "@/lib/rtc/session/ice-batch";
@@ -22,6 +23,7 @@ import type {
   HttpSignalingJoinResult,
   HttpSignalingPollResult,
 } from "@/lib/rtc/signaling/http-client";
+import type { RelayReason } from "@/lib/rtc/session/relay-request";
 import { MeshPeerDialer } from "@/lib/rtc/session/mesh-peer-dialer";
 import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
 import { MeshPollLoop } from "@/lib/rtc/session/mesh-poll-loop";
@@ -48,6 +50,7 @@ import {
   type RtcLinkState,
   type RtcPeerDescriptor,
   type RtcPollIntervals,
+  type TurnCredentials,
 } from "@/lib/rtc/types";
 
 export type { InitiatorRule, RtcMeshVisibilityPort, RtcPeerMeshOptions, RtcPeerMeshPorts };
@@ -285,6 +288,48 @@ export class RtcPeerMesh {
 
   kickPoll(): void {
     this.schedulePoll(false);
+  }
+
+  /** Collab mailbox send (`yjs` / `yjs-sv`). Piggybacked rows still hit the poll. */
+  sendMailbox(to: string, type: string, payload: unknown): Promise<void> {
+    return this.sendSignal(to, type, payload);
+  }
+
+  localNetClass(): NetClass | undefined {
+    return this.localNet;
+  }
+
+  /**
+   * Put just-in-time TURN on the existing connection and dial again. Docs calls
+   * this after `requestRelay` returns credentials; Meet keeps its own timer.
+   */
+  retryPeerWithRelay(remoteId: string, turn: TurnCredentials): void {
+    const pc = this.peers.peerConnection(remoteId);
+    if (pc) {
+      applyTurnOnPeerConnection(
+        pc,
+        this.options.rtcSettings,
+        turn,
+        this.options.iceCandidatePoolSize,
+      );
+    }
+    this.retryRoomPeerConnections();
+  }
+
+  postRelay(body: {
+    target: string;
+    reason: RelayReason;
+    net?: NetClass;
+  }): Promise<{ turn: TurnCredentials }> {
+    if (!this.myId) return Promise.reject(new Error("not_joined"));
+    return this.options.signaling.relay({
+      room: this.options.room,
+      peerId: this.myId,
+      target: body.target,
+      reason: body.reason,
+      net: body.net,
+      sessionKey: this.sessionKey ?? undefined,
+    });
   }
 
   private removePeer(remoteId: string, reason: "bye" | "roster" | "local" = "local"): void {

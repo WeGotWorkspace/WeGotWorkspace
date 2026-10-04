@@ -3,7 +3,11 @@ import { createRtcSignalingClient } from "@/lib/rtc/signaling/create-client";
 import type { HttpSignalingFetch } from "@/lib/rtc/signaling/http-client";
 
 describe("createRtcSignalingClient caps", () => {
-  it("advertises bin on collab and principal join", async () => {
+  it("advertises bin on principal join and the docs caps on collab", async () => {
+    const expected = {
+      collab: ["bin", "yjs-http", "relay-jit"],
+      principal: ["bin"],
+    } as const;
     for (const channel of ["collab", "principal"] as const) {
       const fetchImpl = vi.fn<HttpSignalingFetch>(
         async () => new Response(JSON.stringify({ peerId: "p1", peers: [] }), { status: 200 }),
@@ -18,7 +22,7 @@ describe("createRtcSignalingClient caps", () => {
         string,
         unknown
       >;
-      expect(body.caps).toEqual(["bin"]);
+      expect(body.caps).toEqual(expected[channel]);
     }
   });
 
