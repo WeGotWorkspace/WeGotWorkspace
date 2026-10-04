@@ -18,6 +18,8 @@ import { MeetCircleToggle } from "@/meet-core/src/meet-circle-toggle";
 import { MeetDevicePopover } from "@/meet-core/src/meet-device-popover";
 import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
 import { isDisplayCaptureSupported } from "@/meet-core/src/meet-display-capture";
+import { MeetScreenShareControl } from "@/meet-core/src/meet-screen-share-control";
+import type { ScreenOptimize } from "@/meet-core/src/meet-video-sender";
 import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 
@@ -39,6 +41,10 @@ type MeetCallToolbarProps = {
   /** Instance ceiling is audio-only. The camera control stays off. */
   videoLocked?: boolean;
   onToggleScreenShare: () => void;
+  screenMode?: ScreenOptimize;
+  onStartScreenShare?: (mode: ScreenOptimize) => void;
+  onScreenOptimize?: (mode: ScreenOptimize) => void;
+  onStopScreenShare?: () => void;
   /**
    * Override getDisplayMedia feature detection. When false, Share screen is
    * omitted so the user is not offered a broken action.
@@ -47,6 +53,8 @@ type MeetCallToolbarProps = {
   onCameraChange: (optionId: string) => void;
   onMicrophoneChange: (optionId: string) => void;
   onSpeakerChange: (optionId: string) => void;
+  lowData?: boolean;
+  onLowDataChange?: (enabled: boolean) => void;
   onConfirmExit: () => void;
   /**
    * Ask before leaving. Guests get the confirmation (leaving may be hard to
@@ -77,10 +85,16 @@ export function MeetCallToolbar({
   onToggleVideo,
   videoLocked = false,
   onToggleScreenShare,
+  screenMode = "text",
+  onStartScreenShare,
+  onScreenOptimize,
+  onStopScreenShare,
   canShareScreen,
   onCameraChange,
   onMicrophoneChange,
   onSpeakerChange,
+  lowData,
+  onLowDataChange,
   onConfirmExit,
   confirmExit = true,
   extraActions,
@@ -112,15 +126,25 @@ export function MeetCallToolbar({
         label={videoLabel}
       />
       {shareAvailable || screenOn ? (
-        <IconButton
-          onClick={onToggleScreenShare}
-          icon={<MonitorUp />}
-          label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
-          size="md"
-          variant="outline"
-          active={screenOn}
-          aria-pressed={screenOn}
-        />
+        onStartScreenShare && onScreenOptimize && onStopScreenShare ? (
+          <MeetScreenShareControl
+            screenOn={screenOn}
+            screenMode={screenMode}
+            onStart={onStartScreenShare}
+            onOptimize={onScreenOptimize}
+            onStop={onStopScreenShare}
+          />
+        ) : (
+          <IconButton
+            onClick={onToggleScreenShare}
+            icon={<MonitorUp />}
+            label={screenOn ? meetLabels.stopSharing : meetLabels.shareScreen}
+            size="md"
+            variant="outline"
+            active={screenOn}
+            aria-pressed={screenOn}
+          />
+        )
       ) : null}
       <MeetDevicePopover
         cameras={cameras}
@@ -132,6 +156,8 @@ export function MeetCallToolbar({
         onCamera={onCameraChange}
         onMicrophone={onMicrophoneChange}
         onSpeaker={onSpeakerChange}
+        lowData={lowData}
+        onLowDataChange={onLowDataChange}
       />
       {extraActions}
       {onAdmitKnocker && onDenyKnocker ? (

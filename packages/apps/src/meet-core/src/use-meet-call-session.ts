@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { principalRoleFromToken } from "@/lib/api/wgw/principal-role";
+import { wgwCurrentAccessToken } from "@/lib/api/wgw/http";
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
-import { meetRelayCopy } from "@/meet-core/src/meet-relay-copy";
+import { presentMeetRelayOutcome } from "@/meet-core/src/meet-relay-present";
+import type { MeetRelayCopy } from "@/meet-core/src/meet-relay-copy";
 import { parseUrlList } from "@/lib/rtc/config";
 import { isRtcDebugEnabled } from "@/lib/rtc/debug";
 import { rtcLog } from "@/lib/rtc/log";
@@ -41,6 +44,8 @@ export function useMeetCallSession({
   const presence = usePresenceStoreContext();
   const cameraBlockedRef = useRef(false);
   const [cameraSendingDisabled, setCameraSendingDisabled] = useState(false);
+  const [relayBanner, setRelayBanner] = useState<MeetRelayCopy | null>(null);
+  const [relayTiles, setRelayTiles] = useState<Readonly<Record<string, string>>>({});
   const rtcDebugEnabledRef = useRef(isRtcDebugEnabled());
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
@@ -128,9 +133,22 @@ export function useMeetCallSession({
     onPeerConnected: () => {
       void announceMediaPresenceRef.current(room.micOnRef.current, room.videoOnRef.current);
     },
-    onRelayOutcome: (_remoteId, name, outcome) => {
-      const copy = meetRelayCopy({ audience: "affected", outcome: outcome.outcome, name });
-      if (copy) toast.show(copy.message, { severity: "warning" });
+    onRelayOutcome: (remoteId, name, outcome) => {
+      const selfId = room.selfIdRef.current;
+      const displayName = remoteId === selfId ? (room.displayNameRef.current ?? name) : name;
+      const presented = presentMeetRelayOutcome({
+        role: principalRoleFromToken(wgwCurrentAccessToken()),
+        selfId,
+        remoteId,
+        name: displayName,
+        outcome: outcome.outcome,
+      });
+      if (presented.toast) toast.show(presented.toast, { severity: "warning" });
+      if (presented.banner) setRelayBanner(presented.banner);
+      const tile = presented.tile;
+      if (tile) {
+        setRelayTiles((current) => ({ ...current, [tile.peerId]: tile.message }));
+      }
     },
     onVideoLimits: (limits) => {
       const blocked = limits.maxVideoProfile === "audio";
@@ -140,7 +158,7 @@ export function useMeetCallSession({
     },
   });
   meetRtcRef.current = meetRtc;
-  useMeetSendEncoding(meetRtc);
+  const { lowData, setLowData } = useMeetSendEncoding(meetRtc);
 
   useEffect(() => {
     if (!presence) return;
@@ -224,6 +242,10 @@ export function useMeetCallSession({
     unmuteMic,
     toggleVideo,
     toggleScreenShare,
+    screenMode,
+    startScreenShare,
+    setScreenOptimize,
+    stopScreenShare,
     switchMic,
     switchCamera,
     getLocalStream,
@@ -303,7 +325,15 @@ export function useMeetCallSession({
     toggleMic,
     toggleVideo,
     toggleScreenShare,
+    screenMode,
+    startScreenShare,
+    setScreenOptimize,
+    stopScreenShare,
     cameraSendingDisabled,
+    lowData,
+    setLowData,
+    relayBanner,
+    relayTiles,
     switchMic,
     switchCamera,
   };

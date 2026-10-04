@@ -89,6 +89,8 @@ export function MeetWorkspaceCallBar({
         void room?.controller.switchMic(deviceId);
       }}
       onSpeakerChange={room?.onSpeakerChange ?? (() => {})}
+      lowData={room?.controller.lowData ?? false}
+      onLowDataChange={room?.controller.setLowData}
       onExpand={onExpand}
       onLeave={onLeave}
       onMuteParticipant={

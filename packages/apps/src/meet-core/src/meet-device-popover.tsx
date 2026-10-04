@@ -25,6 +25,9 @@ type MeetDevicePopoverProps = {
   onCamera: (value: string) => void;
   onMicrophone: (value: string) => void;
   onSpeaker: (value: string) => void;
+  /** Device setting, persisted in local storage. Omitted outside a live call. */
+  lowData?: boolean;
+  onLowDataChange?: (enabled: boolean) => void;
   /** Storybook: start with the device menu open. */
   defaultOpen?: boolean;
 };
@@ -77,6 +80,8 @@ export function MeetDevicePopover({
   onCamera,
   onMicrophone,
   onSpeaker,
+  lowData,
+  onLowDataChange,
   defaultOpen,
 }: MeetDevicePopoverProps) {
   const [open, setOpen] = useState(Boolean(defaultOpen));
@@ -112,6 +117,26 @@ export function MeetDevicePopover({
           options={speakers}
           onValueChange={onSpeaker}
         />
+        {onLowDataChange ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup aria-label={meetLabels.lowDataMode}>
+              <DropdownMenuItem
+                asChild
+                className="dropdown-menu__item"
+                onSelect={() => onLowDataChange(!lowData)}
+              >
+                <MenuItem
+                  label={meetLabels.lowDataMode}
+                  checked={Boolean(lowData)}
+                  selected={Boolean(lowData)}
+                  className="dropdown-menu__menu-item"
+                  onClick={() => onLowDataChange(!lowData)}
+                />
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

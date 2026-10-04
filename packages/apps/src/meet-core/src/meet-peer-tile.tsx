@@ -33,6 +33,11 @@ type MeetPeerTileProps = {
    * Omitted for guests and self.
    */
   onMuteParticipant?: (muted: boolean) => void;
+  /**
+   * Low-data receive cap. The stream stays mounted so audio continues; the
+   * picture is replaced by the avatar.
+   */
+  hideVideo?: boolean;
 };
 
 export function MeetPeerTile({
@@ -49,6 +54,7 @@ export function MeetPeerTile({
   onToggleMic,
   onMuteParticipant,
   muted,
+  hideVideo = false,
 }: MeetPeerTileProps) {
   const toast = useAppToast();
   const { cameraRendering, micLive } = usePeerStreamPresence(stream);
@@ -69,9 +75,11 @@ export function MeetPeerTile({
 
   // A screen share replaces the peer's video track — render it even when the
   // camera toggle is announced as off.
-  const showRemoteVideo = !!(
-    stream && (disclosedMedia ? disclosedMedia.camera || disclosedMedia.screen : cameraFromTracks)
-  );
+  const showRemoteVideo =
+    !hideVideo &&
+    !!(
+      stream && (disclosedMedia ? disclosedMedia.camera || disclosedMedia.screen : cameraFromTracks)
+    );
   const isSelfMute = typeof onToggleMic === "function";
   const micLiveUi = isSelfMute
     ? Boolean(micOn)

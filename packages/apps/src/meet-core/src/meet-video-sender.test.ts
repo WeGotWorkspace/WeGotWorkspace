@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { effectiveSendProfile, type VideoLimits } from "@/meet-core/src/meet-video-sender";
+import {
+  effectiveSendProfile,
+  remoteVideoSuppressed,
+  type VideoLimits,
+} from "@/meet-core/src/meet-video-sender";
 
 const limits: VideoLimits = { maxVideoProfile: "p720", maxVideoProfileRelay: "p360" };
 
@@ -32,5 +36,15 @@ describe("effectiveSendProfile", () => {
     const direct = effectiveSendProfile({ remotePeers: 1, limits, relayed: false, lowData: false });
     expect(relayed).toBe("p360");
     expect(direct).toBe("p720");
+  });
+});
+
+describe("remoteVideoSuppressed", () => {
+  it("keeps video for the first two peers and avatars the rest", () => {
+    const ids = ["c", "a", "b"];
+    expect(remoteVideoSuppressed("a", ids, true)).toBe(false);
+    expect(remoteVideoSuppressed("b", ids, true)).toBe(false);
+    expect(remoteVideoSuppressed("c", ids, true)).toBe(true);
+    expect(remoteVideoSuppressed("c", ids, false)).toBe(false);
   });
 });

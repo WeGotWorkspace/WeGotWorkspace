@@ -13,6 +13,7 @@ import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import { MeetCallToolbar } from "@/meet-core/src/meet-call-toolbar";
 import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { remoteVideoSuppressed } from "@/meet-core/src/meet-video-sender";
 import { MeetPeerTile } from "@/meet-core/src/meet-peer-tile";
 import { MeetStreamVideo } from "@/meet-core/src/meet-stream-video";
 import { cn } from "@/lib/utils";
@@ -94,6 +95,7 @@ export function MeetCallExpanded({
     void room.controller.leave();
     // Both paths reset the same session state; the double leave is idempotent.
   }, [onLeave, room.controller]);
+  const remoteIds = remotes.map((peer) => peer.id);
   const peers = [self, ...remotes];
   const gridCount = peers.length + (sharing ? 1 : 0);
   const gridColumns = meetCallGridColumns(gridCount);
@@ -136,6 +138,36 @@ export function MeetCallExpanded({
           </div>
         </header>
 
+        {room.controller.relayBanner ? (
+          <div className="meet-call-stage__relay" role="status">
+            <p className="meet-call-stage__relay-message">{room.controller.relayBanner.message}</p>
+            {room.controller.relayBanner.setupHref ? (
+              <a
+                className="meet-call-stage__relay-link"
+                href={room.controller.relayBanner.setupHref}
+              >
+                {meetLabels.setUpRelay}
+              </a>
+            ) : null}
+            {room.controller.relayBanner.docsHref ? (
+              <a
+                className="meet-call-stage__relay-link"
+                href={room.controller.relayBanner.docsHref}
+              >
+                {meetLabels.relayDocs}
+              </a>
+            ) : null}
+            {room.controller.relayBanner.planHref ? (
+              <a
+                className="meet-call-stage__relay-link"
+                href={room.controller.relayBanner.planHref}
+              >
+                {meetLabels.relayPlan}
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+
         {waitingForAdmission ? (
           <div className="meet-call-stage__body">
             <MeetCallKnockWaiting
@@ -177,7 +209,7 @@ export function MeetCallExpanded({
                       userId={peer.id}
                       muted={isSelf}
                       spotlight={gridCount === 1}
-                      caption={tileCaption(peer, isSelf)}
+                      caption={room.controller.relayTiles[peer.id] ?? tileCaption(peer, isSelf)}
                       remoteMedia={peer.remoteMedia}
                       disclosedMedia={
                         isSelf
@@ -190,6 +222,10 @@ export function MeetCallExpanded({
                         isSelf || !room.hasSignedInIdentity
                           ? undefined
                           : (muted) => void room.controller.mutePeer(peer.id, muted)
+                      }
+                      hideVideo={
+                        !isSelf &&
+                        remoteVideoSuppressed(peer.id, remoteIds, room.controller.lowData)
                       }
                     />
                   </li>
@@ -217,6 +253,10 @@ export function MeetCallExpanded({
             onToggleVideo={room.controller.toggleVideo}
             videoLocked={room.controller.cameraSendingDisabled}
             onToggleScreenShare={() => void room.controller.toggleScreenShare()}
+            screenMode={room.controller.screenMode}
+            onStartScreenShare={(mode) => void room.controller.startScreenShare(mode)}
+            onScreenOptimize={(mode) => void room.controller.setScreenOptimize(mode)}
+            onStopScreenShare={() => void room.controller.stopScreenShare()}
             canShareScreen={room.controller.canShareScreen}
             onCameraChange={(id) => {
               const deviceId = meetDeviceIdForOption(room.cameras, id);
@@ -229,6 +269,8 @@ export function MeetCallExpanded({
               void room.controller.switchMic(deviceId);
             }}
             onSpeakerChange={room.onSpeakerChange}
+            lowData={room.controller.lowData}
+            onLowDataChange={room.controller.setLowData}
             knockers={knockers}
             onAdmitKnocker={(peerId) => void room.controller.admitKnocker(peerId)}
             onDenyKnocker={(peerId) => void room.controller.denyKnocker(peerId)}

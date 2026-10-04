@@ -39,4 +39,4 @@ The pair that required stripping is Safari (WebKit) against Chromium. Unit tests
 - Safari parsing a Chromium description strips RTX and Opus RED, and keeps those session lines.
 - H.265/HEVC, AV1, and VP9 are stripped for every parser. Inbound Opus fmtp gains `usedtx=1`.
 
-N0–N12 were not re-executed here. This environment has no second browser and no TURN server, so this note is not a pass of the manual matrix.
+N0–N12 were not re-executed on 2026-10-04, including the follow-up that wired send profiles, low data, and screen-share optimize. This environment has no second browser and no TURN server, so this note is not a pass of the manual matrix.

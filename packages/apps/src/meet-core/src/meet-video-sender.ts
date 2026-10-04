@@ -158,3 +158,13 @@ export async function applyPeerVideoSenders(
 export function lowDataVideoPeerIds(peerIds: readonly string[], limit = 2): Set<string> {
   return new Set([...peerIds].sort().slice(0, limit));
 }
+
+/** Everyone past the cap is an avatar tile. Audio on that tile stays. */
+export function remoteVideoSuppressed(
+  peerId: string,
+  remoteIds: readonly string[],
+  lowData: boolean,
+): boolean {
+  if (!lowData) return false;
+  return !lowDataVideoPeerIds(remoteIds).has(peerId);
+}
