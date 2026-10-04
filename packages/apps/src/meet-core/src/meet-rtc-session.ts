@@ -1,5 +1,6 @@
 import { createMediaBinding } from "@/lib/rtc/session/bindings";
 import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
+import { createMeshMeetRoomChat, type MeetRoomChatMessage } from "@/lib/rtc/session/meet-room-chat";
 import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
 import { toSessionDescriptionPayload } from "@/lib/rtc/session/sdp";
 import type { HttpSignalingFetch, HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
@@ -53,6 +54,8 @@ export type MeetRtcSessionOptions = {
   onRelayOutcome?: (remoteId: string, name: string, outcome: RelayRequestOutcome) => void;
   /** Join delivered `rtc.limits`. `audio` has already disabled camera sending. */
   onVideoLimits?: (limits: VideoLimits) => void;
+  /** Text from the negotiated Meet data channel. The sender is the remote peer id. */
+  onMeetData?: (remoteId: string, data: string) => void;
 };
 
 export class MeetRtcSession {
@@ -97,6 +100,7 @@ export class MeetRtcSession {
         this.options.onPeerConnected?.(remoteId);
       },
       onRelayOutcome: this.options.onRelayOutcome,
+      onMeetData: this.options.onMeetData,
       onLinkChange: () => {
         if (this.iceSettled()) this.scheduleEncodingRefresh();
         this.options.onLinkChange?.();
@@ -211,6 +215,13 @@ export class MeetRtcSession {
 
   kickPoll(): void {
     this.mesh?.kickPoll();
+  }
+
+  /** Chat on every open Meet data channel. HTTP stays with the caller. */
+  sendRoomChat(message: MeetRoomChatMessage): void {
+    const mesh = this.mesh;
+    if (!mesh) return;
+    createMeshMeetRoomChat(mesh).sendRoomChat(message);
   }
 
   async join(input: { room: string; peerId: string; name: string }): Promise<{

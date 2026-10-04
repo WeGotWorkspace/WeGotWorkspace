@@ -1,3 +1,4 @@
+import type { MeetDcChat } from "@/lib/rtc/session/meet-data-channel";
 import {
   meetRoomChatEchoBody,
   parseMeetChannelChatEcho,
@@ -13,6 +14,11 @@ export type MeetChatLine = {
   isSelf: boolean;
   /** Saved channel message this room line echoes. Members already have that row. */
   channelMessageId?: string;
+  /**
+   * Client ULID shared by the data channel and the room echo.
+   * Dedupe pairs this with `fromPeerId` — never the id on its own.
+   */
+  clientId?: string;
 };
 
 /** Guest in-channel rail uses MeetChatColumn; room poll lines are a thinner shape. */
@@ -69,7 +75,40 @@ export function meetPollChatLine(
   const echo = parseMeetChannelChatEcho(text.trim());
   const line = buildMeetChatLineFromPoll(fromPeerId, fromName, echo?.body ?? text, selfPeerId, now);
   if (!echo) return line;
-  return { ...line, channelMessageId: echo.id };
+  return { ...line, channelMessageId: echo.id, clientId: echo.id };
+}
+
+/** A data-channel chat line. `senderPeerId` is the connection, not a payload field. */
+export function meetDataChatLine(
+  senderPeerId: string,
+  fromName: string,
+  message: MeetDcChat,
+  selfPeerId: string,
+): MeetChatLine {
+  const line = buildMeetChatLineFromPoll(
+    senderPeerId,
+    fromName,
+    message.text,
+    selfPeerId,
+    message.ts,
+  );
+  return { ...line, clientId: message.id, channelMessageId: message.id, ts: message.ts };
+}
+
+/**
+ * Keep the first line for a (sender peer id, client ULID) pair.
+ * The same ULID from another peer is a different message.
+ */
+export function appendMeetRoomChatLine(lines: MeetChatLine[], line: MeetChatLine): MeetChatLine[] {
+  if (
+    line.clientId &&
+    lines.some(
+      (existing) => existing.clientId === line.clientId && existing.fromPeerId === line.fromPeerId,
+    )
+  ) {
+    return lines;
+  }
+  return [...lines, line];
 }
 
 export function buildLocalMeetChatLine(

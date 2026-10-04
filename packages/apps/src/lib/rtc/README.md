@@ -69,17 +69,17 @@ On `connectionState === "failed"`, initiator **recreates** the peer connection i
 
 These rules are enforced in product code and covered by unit tests under `session/peer-mesh.test.ts` and `meet-core/src/meet-rtc-session.test.ts`:
 
-| Topic          | Rule                                                                                               |
-| -------------- | -------------------------------------------------------------------------------------------------- |
-| A/V transport  | WebRTC media binding only (`createMediaBinding`)                                                   |
-| Chat + control | HTTP `POST /rooms/{roomId}/messages` → poll delivery; **not** data channels                        |
-| Signaling      | HTTP join / poll / send / leave on `/rooms/{roomId}/*`                                             |
-| Meet SDP       | **Sanitize inbound (remote) only** — never rewrite outbound/local SDP before `setLocalDescription` |
-| Guest tabs     | Unauthenticated `fetchImpl` + `sessionKey` on poll/send/chat                                       |
-| Initiator      | Meet uses `higherId` (lexicographically higher peer id sends the offer)                            |
-| Poll order     | `onPollData` runs before RTC signal handling (chat/control before offer/answer)                    |
-| Poll cursor    | `MeshSignalInbox` acks **every** delivered row — chat, control, and while RTC signals are off      |
-| Poll timeout   | `AbortSignal.timeout(10_000)`; an aborted poll reschedules like any other poll failure             |
+| Topic          | Rule                                                                                                             |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| A/V transport  | WebRTC media binding only (`createMediaBinding`)                                                                 |
+| Chat + control | Chat over the Meet data channel with HTTP as fallback and dedupe; admit and server-recorded control stay on HTTP |
+| Signaling      | HTTP join / poll / send / leave on `/rooms/{roomId}/*`                                                           |
+| Meet SDP       | **Sanitize inbound (remote) only** — never rewrite outbound/local SDP before `setLocalDescription`               |
+| Guest tabs     | Unauthenticated `fetchImpl` + `sessionKey` on poll/send/chat                                                     |
+| Initiator      | Meet uses `higherId` (lexicographically higher peer id sends the offer)                                          |
+| Poll order     | `onPollData` runs before RTC signal handling (chat/control before offer/answer)                                  |
+| Poll cursor    | `MeshSignalInbox` acks **every** delivered row — chat, control, and while RTC signals are off                    |
+| Poll timeout   | `AbortSignal.timeout(10_000)`; an aborted poll reschedules like any other poll failure                           |
 
 Run kernel tests:
 

@@ -1,7 +1,11 @@
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
-import { meetPollChatLine, type MeetChatLine } from "@/meet-core/src/meet-chat-line";
+import {
+  appendMeetRoomChatLine,
+  meetPollChatLine,
+  type MeetChatLine,
+} from "@/meet-core/src/meet-chat-line";
 import { parseMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { completeMeetKnockAdmission } from "@/meet-core/src/meet-knock-admission";
@@ -183,10 +187,9 @@ export function useMeetPollHandler({
           continue;
         }
         const fromName = roster.find((peer) => peer.id === msg.from)?.name ?? "Peer";
-        setChatMessages((prev) => [
-          ...prev,
-          meetPollChatLine(msg.from, fromName, text, selfPeerId),
-        ]);
+        setChatMessages((prev) =>
+          appendMeetRoomChatLine(prev, meetPollChatLine(msg.from, fromName, text, selfPeerId)),
+        );
       }
     },
     [
