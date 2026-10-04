@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Meet;
 
+use App\Models\Notification;
 use App\Models\RtcRelayEvent;
 use App\Services\Rtc\RtcTurnCredentialService;
 use App\Services\Settings\SettingKeys;
@@ -87,6 +88,14 @@ final class MeetRelayTest extends WgwDatabaseTestCase
             ->assertJson(['error' => 'relay_unavailable']);
 
         $this->assertRelayEvent('bob', 'precheck', 'unavailable');
+
+        $notice = Notification::query()->where('principal', 'alice')->sole();
+        $this->assertSame(
+            "1 people couldn't connect directly to a call or document today.",
+            $notice->title,
+        );
+        $this->assertSame('bob (Meet)', $notice->body);
+        $this->assertStringNotContainsString('symmetric', (string) json_encode($notice->data));
     }
 
     public function test_admitted_guest_gets_credentials_on_a_reserved_room(): void

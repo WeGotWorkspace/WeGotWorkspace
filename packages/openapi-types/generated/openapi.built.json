@@ -12197,6 +12197,137 @@
                         "$ref": "#/components/schemas/RtcNetClass"
                     }
                 }
+            },
+            "RtcRealtimeHealthWindow": {
+                "type": "object",
+                "required": [
+                    "samples",
+                    "joinP50Ms",
+                    "joinP95Ms",
+                    "relayPercent",
+                    "failedPairsPercent",
+                    "fallbackPercent",
+                    "pollP95Ms",
+                    "constrainedPercent",
+                    "byChannel"
+                ],
+                "properties": {
+                    "samples": {
+                        "type": "integer"
+                    },
+                    "joinP50Ms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "joinP95Ms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "relayPercent": {
+                        "type": "number"
+                    },
+                    "failedPairsPercent": {
+                        "type": "number"
+                    },
+                    "fallbackPercent": {
+                        "type": "number"
+                    },
+                    "pollP95Ms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "constrainedPercent": {
+                        "type": "number",
+                        "description": "Share of samples whose net class is symmetric or udp-blocked."
+                    },
+                    "byChannel": {
+                        "type": "object",
+                        "required": [
+                            "meet",
+                            "collab"
+                        ],
+                        "properties": {
+                            "meet": {
+                                "type": "integer"
+                            },
+                            "collab": {
+                                "type": "integer",
+                                "description": "Docs sessions. The wire name stays collab."
+                            }
+                        }
+                    }
+                }
+            },
+            "RtcRealtimeHealthDay": {
+                "type": "object",
+                "required": [
+                    "date",
+                    "issued",
+                    "unavailable",
+                    "denied"
+                ],
+                "properties": {
+                    "date": {
+                        "type": "string"
+                    },
+                    "issued": {
+                        "type": "integer"
+                    },
+                    "unavailable": {
+                        "type": "integer"
+                    },
+                    "denied": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "RtcRealtimeHealth": {
+                "type": "object",
+                "required": [
+                    "day",
+                    "week",
+                    "relayDays",
+                    "turnConfigured",
+                    "unavailablePeopleThisWeek",
+                    "callout",
+                    "retentionDays"
+                ],
+                "properties": {
+                    "day": {
+                        "$ref": "#/components/schemas/RtcRealtimeHealthWindow"
+                    },
+                    "week": {
+                        "$ref": "#/components/schemas/RtcRealtimeHealthWindow"
+                    },
+                    "relayDays": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RtcRealtimeHealthDay"
+                        }
+                    },
+                    "turnConfigured": {
+                        "type": "boolean"
+                    },
+                    "unavailablePeopleThisWeek": {
+                        "type": "integer"
+                    },
+                    "callout": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Set when TURN is not configured and someone could not connect directly this week."
+                    },
+                    "retentionDays": {
+                        "type": "integer"
+                    }
+                }
             }
         },
         "responses": {
@@ -20157,7 +20288,19 @@
                     "Rooms"
                 ],
                 "summary": "Report a real-time session sample",
-                "description": "Anonymous telemetry for the real-time health page. The stored row has no addresses, room names, or user ids, and is pruned after 30 days.",
+                "description": "Anonymous telemetry for the real-time health page. The caller is signed in or has a live guest session. The body is at most 8 KiB. The stored row has no addresses, room names, or user ids, and is pruned after 30 days.",
+                "parameters": [
+                    {
+                        "name": "sessionKey",
+                        "in": "query",
+                        "required": false,
+                        "description": "Live guest session (`g:` owner on a signaling peer). Omitted when the caller sends a bearer token. Never stored.",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{32}$"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -20173,7 +20316,17 @@
                         "description": "Accepted"
                     },
                     "400": {
-                        "description": "Invalid sample",
+                        "description": "Invalid sample, or a batch larger than 8 KiB",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Not signed in and no live guest session",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -20194,6 +20347,39 @@
                     }
                 },
                 "x-wgw-access": "guest"
+            }
+        },
+        "/admin/realtime-health": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Real-time health",
+                "description": "Join time, relay share, failed pairs, HTTP fallback, and poll RTT over 24 hours and 7 days, plus relay outcomes. No addresses, room names, or user ids. Samples are kept for 30 days.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Health windows",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RtcRealtimeHealth"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Not signed in"
+                    },
+                    "403": {
+                        "description": "Not an administrator"
+                    }
+                },
+                "x-wgw-access": "admin"
             }
         }
     }

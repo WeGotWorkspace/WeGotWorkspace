@@ -33,7 +33,10 @@ final class RtcRelayService
     /** Wildcard target for a precheck, which has no peer to hint yet. */
     private const ANY_TARGET = '*';
 
-    public function __construct(private RtcTurnCredentialService $credentials) {}
+    public function __construct(
+        private RtcTurnCredentialService $credentials,
+        private RtcDirectConnectNotifier $directConnect,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $body
@@ -116,5 +119,14 @@ final class RtcRelayService
             'reason' => $reason,
             'outcome' => $outcome,
         ]);
+        if ($outcome !== self::OUTCOME_UNAVAILABLE) {
+            return;
+        }
+        // The relay decision is already stored. Inbox delivery must not change it.
+        try {
+            $this->directConnect->notifyFromToday();
+        } catch (\Throwable) {
+            // The unavailable row is already stored. A notice failure stays off this response.
+        }
     }
 }
