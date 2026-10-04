@@ -66,6 +66,8 @@ vi.mock("@/meet-core/src/use-meet-rtc", () => ({
       getPeerIds: () => [],
       getMyId: () => "self-1",
       getSessionKey: () => null,
+      setEncodingPrefs: vi.fn(),
+      isCameraSendingDisabled: () => false,
     };
   },
 }));

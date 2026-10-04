@@ -30,3 +30,13 @@ Enable browser logging with `?rtcDebug=1` on meet or docs URLs. Logs use prefix 
 
 - Signaling is **HTTP poll only** (Apache + mod_php); no WebSocket daemon required.
 - TURN must be **external** (coturn on VPS); STUN-only is insufficient for ~20% of networks.
+
+## SDP sanitizer (2026-10-04)
+
+The pair that required stripping is Safari (WebKit) against Chromium. Unit tests in `meet-rtc-sdp.test.ts` cover it:
+
+- Chromium parsing a Safari description strips `a=extmap-allow-mixed`, `a=rtcp-rsize`, and plan-b `a=ssrc`, and keeps RTX and Opus RED.
+- Safari parsing a Chromium description strips RTX and Opus RED, and keeps those session lines.
+- H.265/HEVC, AV1, and VP9 are stripped for every parser. Inbound Opus fmtp gains `usedtx=1`.
+
+N0–N12 were not re-executed on 2026-10-04, including the follow-up that wired send profiles, low data, and screen-share optimize. This environment has no second browser and no TURN server, so this note is not a pass of the manual matrix.

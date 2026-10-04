@@ -8,6 +8,7 @@ use App\Models\AppSetting;
 use App\Services\MailDelivery\MailDeliverySettingsStore;
 use App\Services\Mcp\McpAuditLogger;
 use App\Services\Mcp\McpEnabled;
+use App\Services\Rtc\MeetVideoProfile;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Settings\SettingKeys;
 use App\Support\TimezoneNormalizer;
@@ -43,6 +44,12 @@ final class AdminSettingsService
             }
             if ($key === SettingKeys::RTC_STUN_URL || $key === SettingKeys::RTC_TURN_URL) {
                 $value = $this->normalizeRtcUrls($value);
+            }
+            if ($key === SettingKeys::MEET_MAX_VIDEO_PROFILE) {
+                $value = MeetVideoProfile::normalize($value, RtcSettingsService::DEFAULT_MAX_VIDEO_PROFILE);
+            }
+            if ($key === SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY) {
+                $value = MeetVideoProfile::normalize($value, RtcSettingsService::DEFAULT_MAX_VIDEO_PROFILE_RELAY);
             }
             AppSetting::setValue($key, $value);
             $saved[] = $key;

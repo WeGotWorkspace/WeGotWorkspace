@@ -85,6 +85,10 @@ export type AdminRtcSettings = {
   turnSecretSet: boolean;
   /** Credentials left over from the removed static TURN fields. */
   turnStaticCredentialsPresent: boolean;
+  /** Highest video profile any client on this instance may send. */
+  maxVideoProfile: string;
+  /** Highest video profile a sender may use while its pair is relayed. */
+  maxVideoProfileRelay: string;
 };
 
 export type AdminAppsSettings = {

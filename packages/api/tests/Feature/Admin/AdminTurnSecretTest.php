@@ -41,7 +41,14 @@ final class AdminTurnSecretTest extends WgwDatabaseTestCase
 
         $this->assertStringNotContainsString(self::SECRET, $response->getContent() ?: '');
         $this->assertSame(
-            ['stunUrls', 'turnUrls', 'turnSecretSet', 'turnStaticCredentialsPresent'],
+            [
+                'stunUrls',
+                'turnUrls',
+                'turnSecretSet',
+                'turnStaticCredentialsPresent',
+                'maxVideoProfile',
+                'maxVideoProfileRelay',
+            ],
             array_keys((array) $response->json('rtc')),
         );
         $response->assertJsonPath('rtc.turnSecretSet', true)

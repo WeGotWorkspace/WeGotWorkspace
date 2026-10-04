@@ -20,7 +20,7 @@ describe("MeetRtcSession SDP wiring", () => {
       "offer",
     );
     expect(inbound?.sdp).toBeDefined();
-    const sanitized = sanitizeRtcSdp(inbound!.sdp!);
+    const sanitized = sanitizeRtcSdp(inbound!.sdp!, "chromium");
     expect(sanitized).not.toContain("a=ssrc:");
     expect(sanitized).not.toContain("a=rtcp-rsize");
   });

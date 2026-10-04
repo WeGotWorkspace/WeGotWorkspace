@@ -1,6 +1,13 @@
-import { resolveRoomId } from "@/lib/rtc/room-id";
-import type { RtcPeerCap, SignalingChannel } from "@/lib/rtc/types";
 import { rtcLog } from "@/lib/rtc/log";
+import type { NetClass } from "@/lib/rtc/net-probe";
+import { resolveRoomId } from "@/lib/rtc/room-id";
+import type { RelayReason } from "@/lib/rtc/session/relay-request";
+import type {
+  RtcPeerCap,
+  RtcPeerDescriptor,
+  SignalingChannel,
+  TurnCredentials,
+} from "@/lib/rtc/types";
 
 export type HttpSignalingAuth = {
   bearerToken?: string;
@@ -13,12 +20,21 @@ export type HttpSignalingJoinInput = {
   peerId?: string;
   /** Guest re-join (admit rename) must keep the same owner marker. */
   sessionKey?: string;
+  /** Network class from the pre-check. Only the class, never an address. */
+  net?: NetClass;
+};
+
+export type HttpSignalingVideoLimits = {
+  maxPeers?: number;
+  maxVideoProfile?: string;
+  maxVideoProfileRelay?: string;
 };
 
 export type HttpSignalingJoinResult = {
   peerId?: string;
   sessionKey?: string | null;
-  peers: Array<{ id: string; name: string; user?: string; caps?: RtcPeerCap[] }>;
+  peers: RtcPeerDescriptor[];
+  rtc?: { limits?: HttpSignalingVideoLimits };
 };
 
 export type HttpSignalingPollInput = {
@@ -38,7 +54,7 @@ export type HttpSignalingPollMessage = {
 };
 
 export type HttpSignalingPollResult = {
-  peers: Array<{ id: string; name: string; user?: string; caps?: RtcPeerCap[] }>;
+  peers: RtcPeerDescriptor[];
   messages: HttpSignalingPollMessage[];
   /** Echo via `sig` on the next poll to opt into 204 "nothing new" responses. */
   rosterSig?: string;
@@ -198,6 +214,7 @@ export class HttpSignalingClient {
       name: input.name,
     };
     if (input.peerId) body.peerId = input.peerId;
+    if (input.net) body.net = input.net;
     if (this.caps.length > 0) body.caps = this.caps;
     const browserId = this.getBrowserId?.();
     if (browserId) body.browserId = browserId;
@@ -236,6 +253,28 @@ export class HttpSignalingClient {
     }
     const text = await res.text();
     return this.parseJsonResponse<HttpSignalingPollResult>(res, "poll", text);
+  }
+
+  /**
+   * `POST /rooms/{roomId}/relay`. Always sent when the caller needs a relay,
+   * including when the server will answer 503, so the need is recorded.
+   */
+  relay(input: {
+    room: string;
+    peerId: string;
+    target: string;
+    reason: RelayReason;
+    net?: NetClass;
+    sessionKey?: string;
+  }): Promise<{ turn: TurnCredentials }> {
+    const body: Record<string, unknown> = {
+      peerId: input.peerId,
+      target: input.target,
+      reason: input.reason,
+    };
+    if (input.net) body.net = input.net;
+    if (input.sessionKey) body.sessionKey = input.sessionKey;
+    return this.post("relay", this.roomUrl(input.room, "/relay"), this.withSessionKey(body));
   }
 
   send(input: HttpSignalingSendInput): Promise<unknown> {

@@ -8318,6 +8318,16 @@ export interface components {
             turnSecretSet: boolean;
             /** @description Whether credentials from the removed static TURN username and password settings still exist. */
             turnStaticCredentialsPresent: boolean;
+            /**
+             * @description Highest camera profile Meet may select. Clients still pick the profile automatically.
+             * @enum {string}
+             */
+            maxVideoProfile: "p720" | "p360" | "p270" | "p180" | "audio";
+            /**
+             * @description Highest camera profile a sender may use while its selected candidate pair is relayed. Clamped to maxVideoProfile.
+             * @enum {string}
+             */
+            maxVideoProfileRelay: "p720" | "p360" | "p270" | "p180" | "audio";
         };
         AdminAppsSettings: {
             calendars: boolean;

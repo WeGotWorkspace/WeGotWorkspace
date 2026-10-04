@@ -11,6 +11,7 @@ export type PeerConnectionListenerContext = {
   sendIceCandidate: (remoteId: string, candidate: RTCIceCandidateInit) => void;
   onConnected: (remoteId: string) => void;
   onFailure: (remoteId: string, entry: MeshPeerEntry) => void;
+  onIceState?: (remoteId: string, state: RTCIceConnectionState) => void;
   onLinkChange: () => void;
 };
 
@@ -78,6 +79,7 @@ export function wirePeerConnectionListeners(
     if (pc.iceConnectionState === "failed") {
       context.onFailure(remoteId, entry);
     }
+    context.onIceState?.(remoteId, pc.iceConnectionState);
     context.onLinkChange();
   };
 

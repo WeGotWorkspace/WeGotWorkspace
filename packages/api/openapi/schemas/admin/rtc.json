@@ -1,0 +1,35 @@
+{
+  "AdminRtcSettings": {
+    "type": "object",
+    "properties": {
+      "stunUrls": { "type": "string" },
+      "turnUrls": { "type": "string" },
+      "turnSecretSet": {
+        "type": "boolean",
+        "description": "Whether a TURN shared secret is stored. The secret itself is write-only and never returned."
+      },
+      "turnStaticCredentialsPresent": {
+        "type": "boolean",
+        "description": "Whether credentials from the removed static TURN username and password settings still exist."
+      },
+      "maxVideoProfile": {
+        "type": "string",
+        "enum": ["p720", "p360", "p270", "p180", "audio"],
+        "description": "Highest camera profile Meet may select. Clients still pick the profile automatically."
+      },
+      "maxVideoProfileRelay": {
+        "type": "string",
+        "enum": ["p720", "p360", "p270", "p180", "audio"],
+        "description": "Highest camera profile a sender may use while its selected candidate pair is relayed. Clamped to maxVideoProfile."
+      }
+    },
+    "required": [
+      "stunUrls",
+      "turnUrls",
+      "turnSecretSet",
+      "turnStaticCredentialsPresent",
+      "maxVideoProfile",
+      "maxVideoProfileRelay"
+    ]
+  }
+}

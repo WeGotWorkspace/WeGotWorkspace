@@ -38,6 +38,12 @@ final class SettingKeys
 
     public const MEET_MAX_PEERS = 'meet_max_peers';
 
+    /** Highest video profile any client on this instance may send. */
+    public const MEET_MAX_VIDEO_PROFILE = 'meet_max_video_profile';
+
+    /** Highest video profile a sender may use while its pair is relayed. */
+    public const MEET_MAX_VIDEO_PROFILE_RELAY = 'meet_max_video_profile_relay';
+
     public const MAIL_IMAP_HOST = 'mail_imap_host';
 
     public const MAIL_IMAP_PORT = 'mail_imap_port';
@@ -86,6 +92,8 @@ final class SettingKeys
             self::RTC_TURN_URL,
             self::RTC_TURN_SECRET,
             self::MEET_MAX_PEERS,
+            self::MEET_MAX_VIDEO_PROFILE,
+            self::MEET_MAX_VIDEO_PROFILE_RELAY,
             self::MAIL_IMAP_HOST,
             self::MAIL_IMAP_PORT,
             self::MAIL_IMAP_SECURITY,

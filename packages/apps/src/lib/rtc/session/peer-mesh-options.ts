@@ -1,4 +1,5 @@
 import type { RtcSessionBinding } from "@/lib/rtc/session/bindings";
+import type { RelayRequestOutcome } from "@/lib/rtc/session/relay-request";
 import type { HttpSignalingClient, HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
 import type {
   RtcPeerDescriptor,
@@ -60,6 +61,8 @@ export type RtcPeerMeshOptions = {
   onPeerConnected?: (remoteId: string) => void;
   /** A data-channel send threw. The caller should resync that peer. */
   onSendFailed?: (remoteId: string) => void;
+  /** Relay request finished. The Meet UI maps the outcome onto its copy. */
+  onRelayOutcome?: (remoteId: string, name: string, outcome: RelayRequestOutcome) => void;
   /** When false, inbound offers are dropped without creating a peer connection. */
   shouldAcceptOffer?: (from: string) => boolean;
 };

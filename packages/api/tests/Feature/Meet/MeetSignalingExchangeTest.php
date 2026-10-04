@@ -142,4 +142,66 @@ final class MeetSignalingExchangeTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJson(['ok' => true]);
     }
+
+    public function test_send_piggybacks_pending_messages_without_consuming_them(): void
+    {
+        $host = $this->guestJoin('host-peer', 'Host');
+        $guest = $this->guestJoin('guest-peer', 'Guest');
+
+        $offer = ['type' => 'offer', 'sdp' => 'v=0'];
+        $this->postJson($this->meetRoomPath('/events'), [
+            'from' => 'host-peer',
+            'to' => 'guest-peer',
+            'type' => 'offer',
+            'payload' => $offer,
+            'sessionKey' => $host['sessionKey'],
+        ])->assertOk();
+
+        $sent = $this->postJson($this->meetRoomPath('/events'), [
+            'from' => 'guest-peer',
+            'to' => 'host-peer',
+            'type' => 'answer',
+            'payload' => ['type' => 'answer', 'sdp' => 'v=0'],
+            'sessionKey' => $guest['sessionKey'],
+        ]);
+        $sent->assertOk()->assertJsonPath('ok', true);
+        $sent->assertJsonPath('messages.0.type', 'offer');
+        $sent->assertJsonPath('messages.0.payload', $offer);
+
+        $poll = $this->getJson($this->meetRoomPath('/events?peerId=guest-peer&sessionKey='.$guest['sessionKey']));
+        $poll->assertOk();
+        $poll->assertJsonPath('messages.0.type', 'offer');
+        $poll->assertJsonPath('messages.0.payload', $offer);
+    }
+
+    public function test_ice_payload_keeps_a_single_candidate_and_a_batch(): void
+    {
+        $host = $this->guestJoin('host-peer', 'Host');
+        $guest = $this->guestJoin('guest-peer', 'Guest');
+
+        $single = ['candidate' => 'candidate:1 1 udp 1 1.1.1.1 9 typ host', 'sdpMid' => '0'];
+        $batch = ['candidates' => [
+            ['candidate' => 'candidate:2 1 udp 1 1.1.1.1 9 typ host', 'sdpMid' => '0'],
+        ]];
+
+        $this->postJson($this->meetRoomPath('/events'), [
+            'from' => 'guest-peer',
+            'to' => 'host-peer',
+            'type' => 'ice',
+            'payload' => $single,
+            'sessionKey' => $guest['sessionKey'],
+        ])->assertOk();
+        $this->postJson($this->meetRoomPath('/events'), [
+            'from' => 'guest-peer',
+            'to' => 'host-peer',
+            'type' => 'ice',
+            'payload' => $batch,
+            'sessionKey' => $guest['sessionKey'],
+        ])->assertOk();
+
+        $poll = $this->getJson($this->meetRoomPath('/events?peerId=host-peer&sessionKey='.$host['sessionKey']));
+        $poll->assertOk();
+        $this->assertSame($single, $poll->json('messages.0.payload'));
+        $this->assertSame($batch, $poll->json('messages.1.payload'));
+    }
 }

@@ -154,6 +154,8 @@ export function mapWgwAdminStateToUI(
       turnUrls: state.rtc.turnUrls,
       turnSecretSet: state.rtc.turnSecretSet,
       turnStaticCredentialsPresent: state.rtc.turnStaticCredentialsPresent,
+      maxVideoProfile: state.rtc.maxVideoProfile,
+      maxVideoProfileRelay: state.rtc.maxVideoProfileRelay,
     },
     apps: {
       calendars: state.apps.calendars,

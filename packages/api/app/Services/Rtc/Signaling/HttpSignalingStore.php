@@ -409,6 +409,25 @@ final class HttpSignalingStore
     }
 
     /**
+     * Pending mailbox for the sender, same fields as a full poll, without
+     * deleting. A send response piggybacks this so the client can apply it
+     * immediately. Delete-on-read clients that ignore the extra fields still
+     * find the rows on their next poll.
+     *
+     * @return array{peers: list<array{id: string, name: string, user?: string, access?: string, caps?: list<string>, net?: string}>, messages: list<array{id: int, from: string, to: string, type: string, payload: mixed}>, rosterSig: string}
+     */
+    public function pendingMailbox(string $room, string $peerId, ?bool $withOwner = null): array
+    {
+        $peers = $this->peerList($room, $peerId, $withOwner);
+
+        return [
+            'peers' => $peers,
+            'messages' => $this->messagesSinceCursor($room, $peerId, 0),
+            'rosterSig' => $this->rosterSignature($peers),
+        ];
+    }
+
+    /**
      * Poll mode for one peer. A capability-gated policy ({@see RtcSignalingPolicy::$sinceAckCap})
      * only hands the cursor to peers that advertised it; everyone else — an old cached
      * client that never acks — keeps delete-on-read and so is not handed its whole

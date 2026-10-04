@@ -78,6 +78,8 @@ const DEFAULT_DATA: AdminUIData = {
     turnUrls: "",
     turnSecretSet: false,
     turnStaticCredentialsPresent: false,
+    maxVideoProfile: "p720",
+    maxVideoProfileRelay: "p360",
   },
   apps: {
     calendars: true,

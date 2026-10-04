@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { principalRoleFromToken } from "@/lib/api/wgw/principal-role";
+import { wgwCurrentAccessToken } from "@/lib/api/wgw/http";
+import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
+import { presentMeetRelayOutcome } from "@/meet-core/src/meet-relay-present";
+import type { MeetRelayCopy } from "@/meet-core/src/meet-relay-copy";
 import { parseUrlList } from "@/lib/rtc/config";
 import { isRtcDebugEnabled } from "@/lib/rtc/debug";
 import { rtcLog } from "@/lib/rtc/log";
@@ -14,6 +19,7 @@ import { useMeetInboundMediaHints } from "@/meet-core/src/use-meet-inbound-media
 import { useMeetLocalMedia } from "@/meet-core/src/use-meet-local-media";
 import { useMeetPollHandler } from "@/meet-core/src/use-meet-poll-handler";
 import { useMeetRtc } from "@/meet-core/src/use-meet-rtc";
+import { useMeetSendEncoding } from "@/meet-core/src/use-meet-send-encoding";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
 
 export type UseMeetCallSessionArgs = {
@@ -35,6 +41,11 @@ export function useMeetCallSession({
   callStore,
 }: UseMeetCallSessionArgs) {
   const toast = useAppToast();
+  const presence = usePresenceStoreContext();
+  const cameraBlockedRef = useRef(false);
+  const [cameraSendingDisabled, setCameraSendingDisabled] = useState(false);
+  const [relayBanner, setRelayBanner] = useState<MeetRelayCopy | null>(null);
+  const [relayTiles, setRelayTiles] = useState<Readonly<Record<string, string>>>({});
   const rtcDebugEnabledRef = useRef(isRtcDebugEnabled());
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
@@ -122,8 +133,40 @@ export function useMeetCallSession({
     onPeerConnected: () => {
       void announceMediaPresenceRef.current(room.micOnRef.current, room.videoOnRef.current);
     },
+    onRelayOutcome: (remoteId, name, outcome) => {
+      const selfId = room.selfIdRef.current;
+      const displayName = remoteId === selfId ? (room.displayNameRef.current ?? name) : name;
+      const presented = presentMeetRelayOutcome({
+        role: principalRoleFromToken(wgwCurrentAccessToken()),
+        selfId,
+        remoteId,
+        name: displayName,
+        outcome: outcome.outcome,
+      });
+      if (presented.toast) toast.show(presented.toast, { severity: "warning" });
+      if (presented.banner) setRelayBanner(presented.banner);
+      const tile = presented.tile;
+      if (tile) {
+        setRelayTiles((current) => ({ ...current, [tile.peerId]: tile.message }));
+      }
+    },
+    onVideoLimits: (limits) => {
+      const blocked = limits.maxVideoProfile === "audio";
+      cameraBlockedRef.current = blocked;
+      setCameraSendingDisabled(blocked);
+      if (blocked) room.setVideoOn(false);
+    },
   });
   meetRtcRef.current = meetRtc;
+  const { lowData, setLowData } = useMeetSendEncoding(meetRtc);
+
+  useEffect(() => {
+    if (!presence) return;
+    return presence.subscribeMeetJoinHint((hintRoom) => {
+      if (hintRoom !== room.roomCodeRef.current) return;
+      meetRtcRef.current?.kickPoll();
+    });
+  }, [presence, room.roomCodeRef]);
 
   useEffect(() => {
     debugRtc("controller-init", {
@@ -199,6 +242,10 @@ export function useMeetCallSession({
     unmuteMic,
     toggleVideo,
     toggleScreenShare,
+    screenMode,
+    startScreenShare,
+    setScreenOptimize,
+    stopScreenShare,
     switchMic,
     switchCamera,
     getLocalStream,
@@ -221,6 +268,7 @@ export function useMeetCallSession({
     setScreenOn: room.setScreenOn,
     setError: room.setError,
     announceMediaPresence,
+    cameraBlockedRef,
     micOnRef: room.micOnRef,
     videoOnRef: room.videoOnRef,
     screenOnRef: room.screenOnRef,
@@ -277,6 +325,15 @@ export function useMeetCallSession({
     toggleMic,
     toggleVideo,
     toggleScreenShare,
+    screenMode,
+    startScreenShare,
+    setScreenOptimize,
+    stopScreenShare,
+    cameraSendingDisabled,
+    lowData,
+    setLowData,
+    relayBanner,
+    relayTiles,
     switchMic,
     switchCamera,
   };

@@ -1,3 +1,5 @@
+import type { NetClass } from "@/lib/rtc/net-probe";
+
 export type SignalingChannel = "meet" | "collab" | "principal" | "chat" | "sheet" | "slides";
 
 /** REST collection segment for room session signaling (`/rooms/{roomId}/*`). */
@@ -53,8 +55,10 @@ export type RtcPeerDescriptor = {
   name: string;
   /** Sabre username of the peer's owner — collab and principal rooms (server-derived). */
   user?: string;
-  /** Capabilities the peer advertised at join. `bin` selects binary data-channel frames. */
+  /** Capabilities the peer advertised at join. `bin` selects binary data-channel frames. Mirrored on the roster. */
   caps?: RtcPeerCap[];
+  /** Network class the peer measured. Never an address. */
+  net?: NetClass;
 };
 
 export type RtcLinkState = "connected" | "connecting" | "failed" | "disconnected" | "closed";
