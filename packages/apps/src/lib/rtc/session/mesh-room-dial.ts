@@ -119,7 +119,7 @@ export function applyPeerHint(dial: MeshRoomDial, peers: readonly RtcPeerDescrip
       continue;
     }
     const identity = knownIdentities ? peerIdentityKey(peer, true) : null;
-    if (identity && knownIdentities.has(identity)) {
+    if (identity && knownIdentities?.has(identity)) {
       dial.log("peer-skipped", { remoteId: peer.id, reason: "stale-hint-identity" });
       dial.droppedGhostIds.add(peer.id);
       continue;
