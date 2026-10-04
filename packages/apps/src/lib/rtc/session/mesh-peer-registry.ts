@@ -27,6 +27,9 @@ export class MeshPeerRegistry {
 
   private readonly outbound = new Map<string, DataChannelOutbound>();
 
+  /** Roster caps recorded before the peer entry exists. Applied in `add`. */
+  private readonly announcedCaps = new Map<string, readonly string[]>();
+
   constructor(
     private readonly binding: RtcSessionBinding | undefined,
     private readonly onSendFailed?: (remoteId: string, error: unknown) => void,
@@ -45,6 +48,8 @@ export class MeshPeerRegistry {
   }
 
   add(remoteId: string, entry: MeshPeerEntry): void {
+    const announced = this.announcedCaps.get(remoteId);
+    if (announced !== undefined && entry.caps === undefined) entry.caps = announced;
     this.entries.set(remoteId, entry);
   }
 
@@ -114,9 +119,10 @@ export class MeshPeerRegistry {
   }
 
   rememberCaps(remoteId: string, caps: readonly string[] | undefined): void {
+    if (caps && caps.length > 0) this.announcedCaps.set(remoteId, caps);
+    else this.announcedCaps.delete(remoteId);
     const entry = this.entries.get(remoteId);
-    if (!entry) return;
-    entry.caps = caps;
+    if (entry) entry.caps = caps;
   }
 
   broadcastJson(message: unknown): void {
