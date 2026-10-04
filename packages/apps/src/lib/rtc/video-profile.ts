@@ -35,9 +35,7 @@ export const VIDEO_PROFILE_LABELS: Record<VideoProfile, string> = {
 };
 
 export function isVideoProfile(value: unknown): value is VideoProfile {
-  return (
-    typeof value === "string" && (VIDEO_PROFILES_RANKED as readonly string[]).includes(value)
-  );
+  return typeof value === "string" && (VIDEO_PROFILES_RANKED as readonly string[]).includes(value);
 }
 
 export function normalizeVideoProfile(value: unknown, fallback: VideoProfile): VideoProfile {

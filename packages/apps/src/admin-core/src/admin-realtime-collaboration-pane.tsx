@@ -117,8 +117,8 @@ export function AdminRealtimeCollaborationPane({
           </Select>
         </FormField>
         <p className="mb-3 text-sm text-muted-foreground">
-          The highest quality anyone on this server may send.{" "}
-          <strong>Audio only</strong> turns off camera sending entirely.
+          The highest quality anyone on this server may send. <strong>Audio only</strong> turns off
+          camera sending entirely.
         </p>
         <FormField
           htmlFor="admin-realtime-max-video-profile-relay"

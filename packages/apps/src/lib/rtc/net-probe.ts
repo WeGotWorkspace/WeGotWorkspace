@@ -26,7 +26,7 @@ export interface NetProbeOptions {
   createConnection?: (config: RTCConfiguration) => RTCPeerConnection;
 }
 
-interface Reflexive {
+export interface Reflexive {
   host: string;
   port: number;
 }
@@ -162,7 +162,7 @@ export async function probeNetClass(options: NetProbeOptions): Promise<NetClass>
     });
   } finally {
     try {
-      pc.close();
+      pc?.close();
     } catch {
       // A connection that never opened does not need closing.
     }
