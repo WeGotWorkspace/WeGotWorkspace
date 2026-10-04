@@ -741,13 +741,37 @@
                     "turnStaticCredentialsPresent": {
                         "type": "boolean",
                         "description": "Whether credentials from the removed static TURN username and password settings still exist."
+                    },
+                    "maxVideoProfile": {
+                        "type": "string",
+                        "enum": [
+                            "p720",
+                            "p360",
+                            "p270",
+                            "p180",
+                            "audio"
+                        ],
+                        "description": "Highest camera profile Meet may select. Clients still pick the profile automatically."
+                    },
+                    "maxVideoProfileRelay": {
+                        "type": "string",
+                        "enum": [
+                            "p720",
+                            "p360",
+                            "p270",
+                            "p180",
+                            "audio"
+                        ],
+                        "description": "Highest camera profile a sender may use while its selected candidate pair is relayed. Clamped to maxVideoProfile."
                     }
                 },
                 "required": [
                     "stunUrls",
                     "turnUrls",
                     "turnSecretSet",
-                    "turnStaticCredentialsPresent"
+                    "turnStaticCredentialsPresent",
+                    "maxVideoProfile",
+                    "maxVideoProfileRelay"
                 ]
             },
             "AdminAppsSettings": {

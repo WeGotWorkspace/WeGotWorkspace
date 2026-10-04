@@ -61,6 +61,12 @@ function isPublicIpv6(address: string): boolean {
   return !/^f[cd]/.test(lower);
 }
 
+/** `RTCIceCandidate.url` is the STUN server that produced the candidate. The DOM lib omits it. */
+function iceCandidateUrl(candidate: RTCIceCandidate): string {
+  const url = (candidate as RTCIceCandidate & { url?: string }).url;
+  return typeof url === "string" ? url : "";
+}
+
 function stunHost(url: string): string {
   return url.replace(/^stuns?:/, "").split(":")[0] ?? url;
 }
@@ -141,7 +147,7 @@ export async function probeNetClass(options: NetProbeOptions): Promise<NetClass>
         if (!parsed) return;
 
         if (parsed.type === "srflx" && isIpv4(parsed.address)) {
-          const host = stunHost(event.candidate.url ?? "");
+          const host = stunHost(iceCandidateUrl(event.candidate));
           reflexive.push({ host: host || `#${reflexive.length}`, port: parsed.port });
           if (reflexive.length >= hosts.length) {
             finish(classifyCandidates(reflexive, publicIpv6Seen, hosts.length));
