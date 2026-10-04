@@ -1,12 +1,7 @@
 {
   "RtcNetClass": {
     "type": "string",
-    "enum": [
-      "open",
-      "symmetric",
-      "udp-blocked",
-      "unknown"
-    ],
+    "enum": ["open", "symmetric", "udp-blocked", "unknown"],
     "description": "Network class the peer measured for itself before joining."
   },
   "RtcPeerCapability": {
@@ -24,19 +19,12 @@
   },
   "RtcPeerAccess": {
     "type": "string",
-    "enum": [
-      "read",
-      "comment",
-      "write"
-    ],
+    "enum": ["read", "comment", "write"],
     "description": "Collaboration rights computed by the server at join from the drive share rights. Fail-closed: a peer row without a server-written value reads as `read`."
   },
   "RtcRosterPeer": {
     "type": "object",
-    "required": [
-      "id",
-      "name"
-    ],
+    "required": ["id", "name"],
     "properties": {
       "id": {
         "type": "string"
@@ -86,12 +74,7 @@
   },
   "RtcTurnCredentials": {
     "type": "object",
-    "required": [
-      "urls",
-      "username",
-      "credential",
-      "ttl"
-    ],
+    "required": ["urls", "username", "credential", "ttl"],
     "description": "Short-lived relay credentials in the TURN REST convention (coturn `use-auth-secret`). Issued only by the relay request, never at join and never by the room configuration endpoint.",
     "properties": {
       "urls": {
@@ -116,16 +99,11 @@
   },
   "RtcRoomConfiguration": {
     "type": "object",
-    "required": [
-      "rtc"
-    ],
+    "required": ["rtc"],
     "properties": {
       "rtc": {
         "type": "object",
-        "required": [
-          "stunUrls",
-          "turnAvailable"
-        ],
+        "required": ["stunUrls", "turnAvailable"],
         "properties": {
           "stunUrls": {
             "type": "string",
@@ -191,9 +169,7 @@
   },
   "RtcJoinResponse": {
     "type": "object",
-    "required": [
-      "peers"
-    ],
+    "required": ["peers"],
     "properties": {
       "peerId": {
         "type": "string",
@@ -226,10 +202,7 @@
   },
   "RtcMailboxMessage": {
     "type": "object",
-    "required": [
-      "from",
-      "type"
-    ],
+    "required": ["from", "type"],
     "properties": {
       "id": {
         "type": "integer",
@@ -260,11 +233,7 @@
   },
   "RtcPollResponse": {
     "type": "object",
-    "required": [
-      "peers",
-      "messages",
-      "rosterSig"
-    ],
+    "required": ["peers", "messages", "rosterSig"],
     "properties": {
       "peers": {
         "type": "array",
@@ -290,10 +259,7 @@
   },
   "RtcSendEventRequest": {
     "type": "object",
-    "required": [
-      "to",
-      "type"
-    ],
+    "required": ["to", "type"],
     "properties": {
       "peerId": {
         "type": "string",
@@ -308,25 +274,14 @@
       },
       "type": {
         "type": "string",
-        "enum": [
-          "offer",
-          "answer",
-          "ice",
-          "bye",
-          "yjs",
-          "yjs-sv"
-        ]
+        "enum": ["offer", "answer", "ice", "bye", "yjs", "yjs-sv"]
       },
       "payload": {}
     }
   },
   "RtcRelayRequest": {
     "type": "object",
-    "required": [
-      "peerId",
-      "target",
-      "reason"
-    ],
+    "required": ["peerId", "target", "reason"],
     "properties": {
       "peerId": {
         "type": "string",
@@ -338,11 +293,7 @@
       },
       "reason": {
         "type": "string",
-        "enum": [
-          "precheck",
-          "timeout",
-          "failed"
-        ]
+        "enum": ["precheck", "timeout", "failed"]
       },
       "net": {
         "$ref": "#/components/schemas/RtcNetClass"
@@ -351,9 +302,7 @@
   },
   "RtcRelayResponse": {
     "type": "object",
-    "required": [
-      "turn"
-    ],
+    "required": ["turn"],
     "properties": {
       "turn": {
         "$ref": "#/components/schemas/RtcTurnCredentials"
@@ -362,17 +311,12 @@
   },
   "RtcSessionMetricReport": {
     "type": "object",
-    "required": [
-      "channel"
-    ],
+    "required": ["channel"],
     "description": "One session sample for the real-time health page. Fields map to `rtc_session_metrics`; the row carries no addresses, room names, or user ids.",
     "properties": {
       "channel": {
         "type": "string",
-        "enum": [
-          "meet",
-          "collab"
-        ]
+        "enum": ["meet", "collab"]
       },
       "joinMs": {
         "type": "integer",
@@ -380,12 +324,7 @@
       },
       "candidateType": {
         "type": "string",
-        "enum": [
-          "host",
-          "srflx",
-          "prflx",
-          "relay"
-        ],
+        "enum": ["host", "srflx", "prflx", "relay"],
         "description": "Winning candidate type (`candidate_type`)."
       },
       "failedPairs": {
@@ -407,6 +346,81 @@
       "net": {
         "$ref": "#/components/schemas/RtcNetClass"
       }
+    }
+  },
+  "RtcRealtimeHealthWindow": {
+    "type": "object",
+    "required": [
+      "samples",
+      "joinP50Ms",
+      "joinP95Ms",
+      "relayPercent",
+      "failedPairsPercent",
+      "fallbackPercent",
+      "pollP95Ms",
+      "constrainedPercent",
+      "byChannel"
+    ],
+    "properties": {
+      "samples": { "type": "integer" },
+      "joinP50Ms": { "type": ["integer", "null"] },
+      "joinP95Ms": { "type": ["integer", "null"] },
+      "relayPercent": { "type": "number" },
+      "failedPairsPercent": { "type": "number" },
+      "fallbackPercent": { "type": "number" },
+      "pollP95Ms": { "type": ["integer", "null"] },
+      "constrainedPercent": {
+        "type": "number",
+        "description": "Share of samples whose net class is symmetric or udp-blocked."
+      },
+      "byChannel": {
+        "type": "object",
+        "required": ["meet", "collab"],
+        "properties": {
+          "meet": { "type": "integer" },
+          "collab": {
+            "type": "integer",
+            "description": "Docs sessions. The wire name stays collab."
+          }
+        }
+      }
+    }
+  },
+  "RtcRealtimeHealthDay": {
+    "type": "object",
+    "required": ["date", "issued", "unavailable", "denied"],
+    "properties": {
+      "date": { "type": "string" },
+      "issued": { "type": "integer" },
+      "unavailable": { "type": "integer" },
+      "denied": { "type": "integer" }
+    }
+  },
+  "RtcRealtimeHealth": {
+    "type": "object",
+    "required": [
+      "day",
+      "week",
+      "relayDays",
+      "turnConfigured",
+      "unavailablePeopleThisWeek",
+      "callout",
+      "retentionDays"
+    ],
+    "properties": {
+      "day": { "$ref": "#/components/schemas/RtcRealtimeHealthWindow" },
+      "week": { "$ref": "#/components/schemas/RtcRealtimeHealthWindow" },
+      "relayDays": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/RtcRealtimeHealthDay" }
+      },
+      "turnConfigured": { "type": "boolean" },
+      "unavailablePeopleThisWeek": { "type": "integer" },
+      "callout": {
+        "type": ["string", "null"],
+        "description": "Set when TURN is not configured and someone could not connect directly this week."
+      },
+      "retentionDays": { "type": "integer" }
     }
   }
 }

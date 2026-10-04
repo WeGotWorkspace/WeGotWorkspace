@@ -57,11 +57,21 @@ final class RtcRoomRateLimiters
                 ->by(self::throttleKey($request)),
         );
 
-        RateLimiter::for(
-            self::METRICS,
-            static fn (Request $request): Limit => Limit::perMinute(self::METRIC_REPORTS_PER_MINUTE)
-                ->by(self::throttleKey($request)),
-        );
+        RateLimiter::for(self::METRICS, static function (Request $request): array {
+            // A guest session key is caller-chosen. Keying only on it lets one
+            // address mint a fresh budget per key. The address ceiling matches
+            // the per-actor ceiling so that minting cannot multiply inserts.
+            $actor = self::actorIdentity($request);
+            $address = 'ip:'.(string) $request->ip();
+            if ($actor === null) {
+                return [Limit::perMinute(self::METRIC_REPORTS_PER_MINUTE)->by($address)];
+            }
+
+            return [
+                Limit::perMinute(self::METRIC_REPORTS_PER_MINUTE)->by($actor),
+                Limit::perMinute(self::METRIC_REPORTS_PER_MINUTE)->by($address),
+            ];
+        });
     }
 
     private static function throttleKey(Request $request): string

@@ -26,6 +26,7 @@ export type MeshPollLoopContext = {
   shouldRecover: (error: unknown) => boolean;
   recover: () => Promise<void>;
   onPollError?: (error: unknown) => void;
+  onPollRoundTrip?: (elapsedMs: number) => void;
   isVisible: () => boolean;
   log: (event: string, details?: unknown) => void;
   scheduleTimeout: typeof setTimeout;
@@ -102,8 +103,10 @@ export class MeshPollLoop {
     const peerId = this.context.myId();
     if (!peerId || this.pollInFlight) return;
     this.pollInFlight = true;
+    const started = Date.now();
     try {
       const data = await this.context.poll({ ...this.context.pollInput(), peerId });
+      this.context.onPollRoundTrip?.(Math.max(0, Date.now() - started));
       if (isUnchangedPollResponse(data)) {
         this.context.log("poll-unchanged", { status: 204 });
         return;

@@ -3,6 +3,7 @@ export type AdminSection =
   | "mail"
   | "email-delivery"
   | "collaboration"
+  | "realtime-health"
   | "webdav"
   | "plugins"
   | "backups"

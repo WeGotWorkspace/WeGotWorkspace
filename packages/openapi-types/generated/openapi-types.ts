@@ -8005,11 +8005,14 @@ export interface paths {
         put?: never;
         /**
          * Report a real-time session sample
-         * @description Anonymous telemetry for the real-time health page. The stored row has no addresses, room names, or user ids, and is pruned after 30 days.
+         * @description Anonymous telemetry for the real-time health page. The caller is signed in or has a live guest session. The body is at most 8 KiB. The stored row has no addresses, room names, or user ids, and is pruned after 30 days.
          */
         post: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Live guest session (`g:` owner on a signaling peer). Omitted when the caller sends a bearer token. Never stored. */
+                    sessionKey?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -8027,8 +8030,17 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Invalid sample */
+                /** @description Invalid sample, or a batch larger than 8 KiB */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in and no live guest session */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -8047,6 +8059,59 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/realtime-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Real-time health
+         * @description Join time, relay share, failed pairs, HTTP fallback, and poll RTT over 24 hours and 7 days, plus relay outcomes. No addresses, room names, or user ids. Samples are kept for 30 days.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Health windows */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RtcRealtimeHealth"];
+                    };
+                };
+                /** @description Not signed in */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not an administrator */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -12124,6 +12189,38 @@ export interface components {
             /** @description Median signaling poll round trip (`poll_rtt_ms`). */
             pollRttMs?: number;
             net?: components["schemas"]["RtcNetClass"];
+        };
+        RtcRealtimeHealthWindow: {
+            samples: number;
+            joinP50Ms: number | null;
+            joinP95Ms: number | null;
+            relayPercent: number;
+            failedPairsPercent: number;
+            fallbackPercent: number;
+            pollP95Ms: number | null;
+            /** @description Share of samples whose net class is symmetric or udp-blocked. */
+            constrainedPercent: number;
+            byChannel: {
+                meet: number;
+                /** @description Docs sessions. The wire name stays collab. */
+                collab: number;
+            };
+        };
+        RtcRealtimeHealthDay: {
+            date: string;
+            issued: number;
+            unavailable: number;
+            denied: number;
+        };
+        RtcRealtimeHealth: {
+            day: components["schemas"]["RtcRealtimeHealthWindow"];
+            week: components["schemas"]["RtcRealtimeHealthWindow"];
+            relayDays: components["schemas"]["RtcRealtimeHealthDay"][];
+            turnConfigured: boolean;
+            unavailablePeopleThisWeek: number;
+            /** @description Set when TURN is not configured and someone could not connect directly this week. */
+            callout: string | null;
+            retentionDays: number;
         };
     };
     responses: {

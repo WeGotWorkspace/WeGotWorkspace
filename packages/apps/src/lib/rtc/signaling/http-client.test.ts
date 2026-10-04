@@ -218,4 +218,22 @@ describe("HttpSignalingClient", () => {
     await client.leave({ room: "docs/x.md", peerId: "aaaaaaaaaaaaaaaa" });
     expect(fetchImpl.mock.calls[0]?.[1]?.keepalive).toBe(true);
   });
+
+  it("posts a session sample to /rtc/metrics without the room name", async () => {
+    const fetchImpl = vi.fn<HttpSignalingFetch>(async () => new Response(null, { status: 202 }));
+    const client = new HttpSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+      getAuth: () => ({ bearerToken: "token-1", sessionKey: "a".repeat(32) }),
+    });
+    await client.reportSessionMetric({ channel: "meet", joinMs: 10 }, "b".repeat(32));
+    const [url, init] = fetchImpl.mock.calls[0] ?? [];
+    expect(url).toBe(`/api/v1/rtc/metrics?sessionKey=${"b".repeat(32)}`);
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ channel: "meet", joinMs: 10 });
+    expect(String(init?.headers && (init.headers as Record<string, string>).Authorization)).toBe(
+      "Bearer token-1",
+    );
+  });
 });

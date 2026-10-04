@@ -4,14 +4,25 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Services\Rtc\RtcSessionMetricIngest;
 use App\Services\Rtc\Signaling\RtcNetClass;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\ValidationException;
 
 final class RtcSessionMetricRequest extends FormRequest
 {
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (! app(RtcSessionMetricIngest::class)->bodyWithinLimit($this)) {
+            throw ValidationException::withMessages([
+                'body' => 'A metrics batch must be at most 8 KiB.',
+            ]);
+        }
     }
 
     /**
