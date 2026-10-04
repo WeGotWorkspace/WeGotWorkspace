@@ -18,13 +18,13 @@ import {
 } from "@/lib/rtc/session/mesh-room-dial";
 import type { MeshRoomDial } from "@/lib/rtc/session/mesh-room-dial";
 import { collapseStaleIdentityPeers } from "@/lib/rtc/session/stale-identity-peers";
-import {
-  isUnchangedPollResponse,
-  type HttpSignalingJoinResult,
-  type HttpSignalingPollResult,
+import type {
+  HttpSignalingJoinResult,
+  HttpSignalingPollResult,
 } from "@/lib/rtc/signaling/http-client";
 import { MeshPeerDialer } from "@/lib/rtc/session/mesh-peer-dialer";
 import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
+import { MeshPollLoop } from "@/lib/rtc/session/mesh-poll-loop";
 import { MeshSignalInbox } from "@/lib/rtc/session/mesh-signal-inbox";
 import { wirePeerConnectionListeners } from "@/lib/rtc/session/peer-connection-listeners";
 import {
@@ -34,11 +34,7 @@ import {
   type RtcPeerMeshOptions,
   type RtcPeerMeshPorts,
 } from "@/lib/rtc/session/peer-mesh-options";
-import {
-  hasStableCollabTopology,
-  steadyPollDelayMs,
-  type MeshPollCadenceSnapshot,
-} from "@/lib/rtc/session/poll-cadence";
+import type { MeshPollCadenceSnapshot } from "@/lib/rtc/session/poll-cadence";
 import {
   flushPendingIce,
   safeSetRemoteDescription,
@@ -64,8 +60,6 @@ export class RtcPeerMesh {
 
   private lastRoomPeers: RtcPeerDescriptor[] = [];
 
-  private lastLoggedPollDelayMs: number | null = null;
-
   private readonly droppedGhostIds = new Set<string>();
 
   private readonly peers: MeshPeerRegistry;
@@ -74,9 +68,7 @@ export class RtcPeerMesh {
 
   private readonly inbox: MeshSignalInbox;
 
-  private pollTimer: ReturnType<typeof setTimeout> | null = null;
-
-  private pollInFlight = false;
+  private readonly pollLoop: MeshPollLoop;
 
   private rejoinInFlight = false;
 
@@ -130,6 +122,30 @@ export class RtcPeerMesh {
     this.scheduleTimeout = options.ports?.setTimeout ?? setTimeout.bind(globalThis);
     this.cancelTimeout = options.ports?.clearTimeout ?? clearTimeout.bind(globalThis);
     this.visibility = options.ports?.visibility ?? defaultVisibilityPort();
+    this.pollLoop = new MeshPollLoop({
+      myId: () => this.myId,
+      poll: (input) => options.signaling.poll(input),
+      pollInput: () => ({
+        room: options.room,
+        since: this.inbox.cursor(),
+        sig: this.lastRosterSig ?? undefined,
+        sessionKey: this.sessionKey ?? undefined,
+      }),
+      setRosterSig: (sig) => {
+        this.lastRosterSig = sig;
+      },
+      onPoll: (data) => this.onPoll(data),
+      pollIntervals: () => this.pollIntervals(),
+      cadence: () => this.pollCadenceSnapshot(),
+      shouldRecover: (error) =>
+        Boolean(options.recoverOnUnknownPeer && this.isUnknownPeerError(error)),
+      recover: () => this.recoverUnknownPeer(),
+      onPollError: options.onPollError,
+      isVisible: () => this.visibility?.getState() === "visible",
+      log: (event, details) => this.log(event, details),
+      scheduleTimeout: this.scheduleTimeout,
+      cancelTimeout: this.cancelTimeout,
+    });
   }
 
   private log(event: string, details?: unknown): void {
@@ -443,29 +459,6 @@ export class RtcPeerMesh {
     dialListedRoomPeers(this.roomDial());
   }
 
-  private async pollOnce(): Promise<void> {
-    if (!this.myId || this.pollInFlight) return;
-    this.pollInFlight = true;
-    try {
-      const data = await this.options.signaling.poll({
-        room: this.options.room,
-        peerId: this.myId,
-        since: this.inbox.cursor(),
-        sig: this.lastRosterSig ?? undefined,
-        sessionKey: this.sessionKey ?? undefined,
-      });
-      if (isUnchangedPollResponse(data)) {
-        this.log("poll-unchanged", { status: 204 });
-        return;
-      }
-      this.log("poll-changed", { status: 200, peerCount: data.peers.length });
-      this.lastRosterSig = typeof data.rosterSig === "string" ? data.rosterSig : null;
-      await this.onPoll(data);
-    } finally {
-      this.pollInFlight = false;
-    }
-  }
-
   private pollCadenceSnapshot(): MeshPollCadenceSnapshot {
     return {
       channel: this.options.channel,
@@ -478,51 +471,12 @@ export class RtcPeerMesh {
     };
   }
 
-  private onVisibilityChange(): void {
-    if (!this.myId) return;
-    if (this.visibility?.getState() === "visible") {
-      this.log("visibility-poll-restore");
-      this.schedulePoll(false);
-      return;
-    }
-    // Reschedule so the hidden backoff (when applicable) kicks in without waiting a tick.
-    this.schedulePoll(true);
-  }
-
   private schedulePoll(steady = false): void {
-    if (!this.myId) return;
-    this.stopPolling();
-    const intervals = this.pollIntervals();
-    const cadence = this.pollCadenceSnapshot();
-    const delay = !steady ? intervals.connectingMs : steadyPollDelayMs(intervals, cadence);
-    if (this.lastLoggedPollDelayMs !== delay) {
-      this.lastLoggedPollDelayMs = delay;
-      this.log("poll-interval", {
-        delayMs: delay,
-        steady,
-        connectingMs: intervals.connectingMs,
-        idleCollab: hasStableCollabTopology(cadence),
-      });
-    }
-    this.pollTimer = this.scheduleTimeout(() => {
-      void this.pollOnce()
-        .catch((error) => {
-          if (this.options.recoverOnUnknownPeer && this.isUnknownPeerError(error)) {
-            void this.recoverUnknownPeer();
-            return;
-          }
-          this.log("poll-failed", { error });
-          this.options.onPollError?.(error);
-        })
-        .finally(() => this.schedulePoll(true));
-    }, delay);
+    this.pollLoop.schedule(steady);
   }
 
   stopPolling(): void {
-    if (this.pollTimer !== null) {
-      this.cancelTimeout(this.pollTimer);
-      this.pollTimer = null;
-    }
+    this.pollLoop.stop();
   }
 
   /**
@@ -599,7 +553,7 @@ export class RtcPeerMesh {
       roster: joined.peers.map((peer) => ({ id: peer.id, name: peer.name, user: peer.user })),
     });
     this.visibilityUnsubscribe ??=
-      this.visibility?.subscribe(() => this.onVisibilityChange()) ?? null;
+      this.visibility?.subscribe(() => this.pollLoop.onVisibilityChange()) ?? null;
     this.schedulePoll();
     await this.onPoll({ peers: joined.peers, messages: [] });
     this.installNetworkRecovery();
@@ -711,13 +665,13 @@ export class RtcPeerMesh {
 
   async leave(): Promise<void> {
     this.stopPolling();
+    this.pollLoop.release();
     this.networkUnsubscribe?.();
     this.networkUnsubscribe = null;
     this.iceOut?.dispose();
     this.recovery?.dispose();
     this.visibilityUnsubscribe?.();
     this.visibilityUnsubscribe = null;
-    this.pollInFlight = false;
     const peerId = this.myId;
     const sessionKey = this.sessionKey;
     this.myId = null;
@@ -739,6 +693,5 @@ export class RtcPeerMesh {
     this.lastRosterSig = null;
     this.lastRoomPeers = [];
     this.droppedGhostIds.clear();
-    this.lastLoggedPollDelayMs = null;
   }
 }
