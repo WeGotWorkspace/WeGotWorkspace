@@ -86,6 +86,43 @@ describe("loadBootstrapInParallel", () => {
     expect(sleep.mock.calls.map(([ms]) => ms)).toEqual([...SNAPSHOT_RETRY_DELAYS_MS]);
   });
 
+  // The room-level backoff has to engage on the first failure. Waiting for the
+  // retries to run out let a quick remount start a second round of requests.
+  it("reports every failed attempt as it happens", async () => {
+    const onAttemptFailed = vi.fn();
+
+    await loadBootstrapInParallel({
+      loadMarkdown: async () => {
+        throw new Error("Could not load document (500)");
+      },
+      fetchSnapshot: async () => {
+        throw new Error("Could not load snapshot (500)");
+      },
+      sleep: deferred,
+      onAttemptFailed,
+    });
+
+    // One markdown failure plus every snapshot attempt.
+    expect(onAttemptFailed).toHaveBeenCalledTimes(SNAPSHOT_RETRY_DELAYS_MS.length + 2);
+  });
+
+  it("abandons the retries once the join is no longer current", async () => {
+    const fetchSnapshot = vi.fn(async () => {
+      throw new Error("Could not load snapshot (500)");
+    });
+
+    const load = await loadBootstrapInParallel({
+      loadMarkdown: async () => "# Doc",
+      fetchSnapshot,
+      sleep: deferred,
+      isCurrent: () => false,
+      onAttemptFailed: () => undefined,
+    });
+
+    expect(load.snapshot.kind).toBe("failed");
+    expect(fetchSnapshot).toHaveBeenCalledTimes(1);
+  });
+
   it("stops retrying as soon as the snapshot loads", async () => {
     const update = Y.encodeStateAsUpdate(docWithText("server"));
     let attempts = 0;

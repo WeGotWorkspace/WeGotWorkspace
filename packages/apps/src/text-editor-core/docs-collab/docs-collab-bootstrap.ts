@@ -25,6 +25,16 @@ export type BootstrapLoadOptions = {
   fetchSnapshot: (() => Promise<YjsSnapshot>) | null;
   sleep?: (ms: number) => Promise<void>;
   retryDelaysMs?: readonly number[];
+  /**
+   * Abandons the retries once the join that started them is gone, so a torn
+   * down session stops hitting the server.
+   */
+  isCurrent?: () => boolean;
+  /**
+   * Reports every failed attempt as it happens. The room-level backoff must
+   * engage on the first failure, not only once the retries are exhausted.
+   */
+  onAttemptFailed?: (error: unknown) => void;
 };
 
 function defaultSleep(ms: number): Promise<void> {
@@ -33,21 +43,32 @@ function defaultSleep(ms: number): Promise<void> {
   });
 }
 
+type SnapshotRetryContext = {
+  sleep: (ms: number) => Promise<void>;
+  retryDelaysMs: readonly number[];
+  isCurrent: () => boolean;
+  onAttemptFailed: (error: unknown) => void;
+};
+
 async function loadSnapshotWithRetry(
   fetchSnapshot: () => Promise<YjsSnapshot>,
-  sleep: (ms: number) => Promise<void>,
-  retryDelaysMs: readonly number[],
+  { sleep, retryDelaysMs, isCurrent, onAttemptFailed }: SnapshotRetryContext,
 ): Promise<SnapshotOutcome> {
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt <= retryDelaysMs.length; attempt += 1) {
-    if (attempt > 0) await sleep(retryDelaysMs[attempt - 1]!);
+    if (attempt > 0) {
+      await sleep(retryDelaysMs[attempt - 1]!);
+      if (!isCurrent()) break;
+    }
     try {
       const snapshot = await fetchSnapshot();
       if (!snapshot.update) return { kind: "absent" };
       return { kind: "snapshot", update: snapshot.update, etag: snapshot.etag };
     } catch (error) {
       lastError = error;
+      onAttemptFailed(error);
+      if (!isCurrent()) break;
     }
   }
 
@@ -67,14 +88,24 @@ export async function loadBootstrapInParallel({
   fetchSnapshot,
   sleep = defaultSleep,
   retryDelaysMs = SNAPSHOT_RETRY_DELAYS_MS,
+  isCurrent = () => true,
+  onAttemptFailed = () => undefined,
 }: BootstrapLoadOptions): Promise<BootstrapLoad> {
   const [markdownResult, snapshot] = await Promise.all([
     loadMarkdown().then(
       (markdown) => ({ markdown, error: null as unknown }),
-      (error: unknown) => ({ markdown: "", error }),
+      (error: unknown) => {
+        onAttemptFailed(error);
+        return { markdown: "", error };
+      },
     ),
     fetchSnapshot
-      ? loadSnapshotWithRetry(fetchSnapshot, sleep, retryDelaysMs)
+      ? loadSnapshotWithRetry(fetchSnapshot, {
+          sleep,
+          retryDelaysMs,
+          isCurrent,
+          onAttemptFailed,
+        })
       : Promise.resolve<SnapshotOutcome>({ kind: "skipped" }),
   ]);
 

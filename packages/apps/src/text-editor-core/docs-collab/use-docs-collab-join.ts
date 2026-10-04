@@ -185,11 +185,15 @@ export function useDocsCollabJoin({
             ? urls.loadDocumentMarkdown(authToken)
             : loadMarkdown(urls.documentUrl, authToken),
         fetchSnapshot: urls.skipYjsSnapshot ? null : () => fetchYjsSnapshot(urls.yjsUrl, authToken),
+        // Teardown drops the doc it is loading into; stop retrying then.
+        isCurrent: () =>
+          isJoinGenerationCurrent(generation, refs.joinGenerationRef) &&
+          refs.ydocRef.current === ydoc,
+        onAttemptFailed: () => markRoomServerFailure(room),
       });
       if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
       if (load.markdownError) {
-        markRoomServerFailure(room);
         if (isCollabPreconditionFailed(load.markdownError)) {
           urls.onReconnectConflict?.();
           return;
@@ -199,9 +203,9 @@ export function useDocsCollabJoin({
 
       const snapshot = load.snapshot;
       // C7: the snapshot state is unknown, so seeding would risk a second copy.
-      // The room stays in backoff and the reconnect path retries the bootstrap.
+      // The room is already in backoff via onAttemptFailed; the reconnect path
+      // retries the bootstrap once that backoff expires.
       if (snapshot.kind === "failed") {
-        markRoomServerFailure(room);
         console.warn("[docs-collab] yjs load failed", snapshot.error);
         setDocStatus(DOC_STATUS_SNAPSHOT_UNAVAILABLE);
         return;
