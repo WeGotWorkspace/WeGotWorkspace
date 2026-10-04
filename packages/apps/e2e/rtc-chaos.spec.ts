@@ -32,6 +32,9 @@ import {
  * accented path (#1087), document over 200 KB (#1093), Meet video and 3s
  * recovery (#1094), dropped-poll admit (#1086).
  * Fixme: forced HTTP fallback (#1095).
+ *
+ * Offline merge, the accented path, and the large document waited on #1127.
+ * That fix landed in #1128, so those three scenarios already run.
  */
 
 test.describe.configure({ mode: "parallel" });
