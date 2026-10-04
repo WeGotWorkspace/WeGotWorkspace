@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { docsLabels } from "@/docs-core/src/docs-labels";
 import {
   getConnectivitySnapshot,
   resetConnectivityHubForTests,
@@ -266,7 +267,7 @@ describe("useDocsCollab offline lifecycle", () => {
 
     await waitForCollabSession(result);
     expect(mockJoin).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(result.current.status).toContain("Mesh"));
+    await waitFor(() => expect(result.current.status).toContain("Alex ·"));
   });
 
   it("reuses the lingering mesh session when remounting the same room within the grace", async () => {
@@ -298,7 +299,7 @@ describe("useDocsCollab offline lifecycle", () => {
     );
 
     await waitForCollabSession(second.result);
-    await waitFor(() => expect(second.result.current.status).toContain("Mesh"));
+    await waitFor(() => expect(second.result.current.status).toContain("Alex ·"));
     expect(mockJoin).toHaveBeenCalledTimes(1);
     expect(rtcMocks.mockLeave).not.toHaveBeenCalled();
   });
@@ -358,13 +359,13 @@ describe("useDocsCollab offline lifecycle", () => {
     await waitForCollabSession(result);
     expect(result.current.joined).toBe(true);
     expect(mockJoin).toHaveBeenCalledTimes(1);
-    expect(result.current.status).toBe("Connecting to mesh…");
+    expect(result.current.status).toBe(docsLabels.statusConnecting);
 
     await act(async () => {
       resolveJoin?.({ peers: [] });
     });
 
-    await waitFor(() => expect(result.current.status).toContain("Mesh"));
+    await waitFor(() => expect(result.current.status).toContain("Alex ·"));
   });
 
   it("marks pendingSync when server save fails while online", async () => {
@@ -452,7 +453,7 @@ describe("useDocsCollab offline lifecycle", () => {
     window.dispatchEvent(new Event("focus"));
 
     await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1), { timeout: 7000 });
-    await waitFor(() => expect(result.current.status).toContain("Mesh"), { timeout: 7000 });
+    await waitFor(() => expect(result.current.status).toContain("Alex ·"), { timeout: 7000 });
   }, 15_000);
 
   it("flushes pending save after reconnect", async () => {
@@ -505,7 +506,7 @@ describe("useDocsCollab offline lifecycle", () => {
     window.dispatchEvent(new Event("online"));
 
     await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1), { timeout: 5000 });
-    await waitFor(() => expect(result.current.status).toContain("Mesh"));
+    await waitFor(() => expect(result.current.status).toContain("Alex ·"));
   });
 
   it("rejoins mesh even when server backoff blocks collaboration GET", async () => {
@@ -542,7 +543,7 @@ describe("useDocsCollab offline lifecycle", () => {
     await waitFor(() => expect(mockJoin.mock.calls.length).toBeGreaterThan(joinsBeforeReconnect), {
       timeout: 7000,
     });
-    await waitFor(() => expect(result.current.status).toContain("Mesh"), { timeout: 7000 });
+    await waitFor(() => expect(result.current.status).toContain("Alex ·"), { timeout: 7000 });
   }, 15000);
 
   it("restarts mesh after reconnect when a stale session exists", async () => {

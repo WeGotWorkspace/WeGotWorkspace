@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { docsLabels } from "@/docs-core/src/docs-labels";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import type { DocsCollabMeshPeer } from "./docs-collab-types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
@@ -21,6 +22,14 @@ export function DocsCollabPresence({
 }: DocsCollabPresenceProps) {
   const connectingNames = connectingPeers.map((peer) => peer.name).join(", ");
   const warningNames = warningPeers.map((peer) => peer.name).join(", ");
+  const connectingSummary =
+    connectingPeers.length === 1
+      ? docsLabels.presenceConnectingOne
+      : docsLabels.presenceConnectingMany(connectingPeers.length);
+  const unreachableSummary =
+    warningPeers.length === 1
+      ? docsLabels.presenceUnreachableOne
+      : docsLabels.presenceUnreachableMany(warningPeers.length);
   return (
     <div className={cn("docs-collab-presence", className)} aria-label="Connected editors">
       <Tooltip>
@@ -57,17 +66,19 @@ export function DocsCollabPresence({
           <TooltipTrigger asChild>
             <span className="docs-collab-presence__chip docs-collab-presence__chip--overlap">
               <UserAvatar
-                displayName="Connecting"
+                displayName={docsLabels.presenceConnectingAvatar}
                 compact
                 size="xs"
                 fallback="..."
                 className="docs-collab-presence__avatar docs-collab-presence__avatar--connecting"
-                ariaLabel={`Connecting to ${connectingPeers.length} peer(s)`}
+                ariaLabel={connectingSummary}
               />
             </span>
           </TooltipTrigger>
           <TooltipContent>
-            {`Connecting to ${connectingPeers.length} peer(s)${connectingNames ? `: ${connectingNames}` : ""}`}
+            {connectingNames
+              ? docsLabels.presenceWithNames(connectingSummary, connectingNames)
+              : connectingSummary}
           </TooltipContent>
         </Tooltip>
       ) : null}
@@ -76,17 +87,19 @@ export function DocsCollabPresence({
           <TooltipTrigger asChild>
             <span className="docs-collab-presence__chip docs-collab-presence__chip--overlap">
               <UserAvatar
-                displayName="Connection warning"
+                displayName={docsLabels.presenceUnreachableAvatar}
                 compact
                 size="xs"
                 fallback="!"
                 className="docs-collab-presence__avatar docs-collab-presence__avatar--warning"
-                ariaLabel={`Could not connect to ${warningPeers.length} peer(s)`}
+                ariaLabel={unreachableSummary}
               />
             </span>
           </TooltipTrigger>
           <TooltipContent>
-            {`Could not connect to ${warningPeers.length} peer(s)${warningNames ? `: ${warningNames}` : ""}`}
+            {warningNames
+              ? docsLabels.presenceWithNames(unreachableSummary, warningNames)
+              : unreachableSummary}
           </TooltipContent>
         </Tooltip>
       ) : null}

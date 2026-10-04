@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
+import { docsLabels } from "@/docs-core/src/docs-labels";
 import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/browser-online";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
@@ -274,7 +275,7 @@ export function useDocsCollabJoin({
       if (refs.meshRef.current || meshJoinInFlightRef.current) return;
       meshJoinInFlightRef.current = true;
       setDocStatus((prev) => prev || "Connecting to collaborators…");
-      setStatus("Connecting to mesh…");
+      setStatus(docsLabels.statusConnecting);
       try {
         const meshPeers = await joinMesh(name, authToken);
         if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;

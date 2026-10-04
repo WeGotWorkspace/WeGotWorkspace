@@ -129,6 +129,31 @@ export const docsLabels = {
   suggestionsToggleHide: "Hide suggestions",
   suggestionsAccept: "Accept suggestion",
   suggestionsReject: "Reject suggestion",
+  /**
+   * The single real-time indicator. Deliberately free of transport vocabulary —
+   * no "mesh", "signaling", "ICE", "peer" or "TURN" may appear here.
+   */
+  statusLiveWith: (names: string) => `Live with ${names}`,
+  statusSaved: "Saved",
+  statusSaving: "Saving…",
+  statusOffline: "Offline – changes are kept on this device",
+  /** Stands in for `statusSyncingViaServer` until an HTTP fallback exists. */
+  statusChangesSyncWhenSaved: "Changes sync when saved",
+  /** Transient phases, only ever shown after a 1.5 s hold. */
+  statusConnecting: "Connecting…",
+  statusReconnecting: "Reconnecting…",
+  statusRejoining: "Rejoining…",
+  statusNamesPair: (first: string, second: string) => `${first} and ${second}`,
+  statusNamesOverflowOne: (names: string) => `${names} and 1 other`,
+  statusNamesOverflowMany: (names: string, count: number) => `${names} and ${count} others`,
+  /** Presence chrome, in people terms rather than connection terms. */
+  presenceConnectingOne: "Connecting to 1 person",
+  presenceConnectingMany: (count: number) => `Connecting to ${count} people`,
+  presenceWithNames: (summary: string, names: string) => `${summary}: ${names}`,
+  presenceConnectingAvatar: "Connecting",
+  presenceUnreachableOne: "Could not reach 1 person",
+  presenceUnreachableMany: (count: number) => `Could not reach ${count} people`,
+  presenceUnreachableAvatar: "Connection warning",
 } as const;
 
 export type DocsUILabels = typeof docsLabels;

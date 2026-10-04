@@ -25,6 +25,13 @@ import { isYDocEmpty, MESH_ORIGIN } from "./docs-collab-utils";
 
 export { PEER_FAILURE_WARNING_DELAY_MS } from "./docs-collab-mesh-warnings";
 
+/** Debug-shell summary. The document footer uses the calm indicator instead. */
+function docsCollabSessionStatus(name: string, people: number, connections: number): string {
+  const peopleLabel = people === 1 ? "1 person" : `${people} people`;
+  const connectionLabel = connections === 1 ? "1 connection" : `${connections} connections`;
+  return `${name} · ${peopleLabel} · ${connectionLabel}`;
+}
+
 type UseDocsCollabMeshOptions = {
   refs: DocsCollabSessionRefs;
   room: string;
@@ -72,7 +79,7 @@ export function useDocsCollabMesh({
       connectingPeers: pendingPeers,
       warningPeers: warning,
       linkCount: mesh.linkCount(),
-      status: `Mesh · ${mesh.getMyName()} · ${mesh.getMyId()?.slice(0, 8) ?? "—"}… · ${roomPeerStatuses.length} peer(s) in room · ${mesh.linkCount()} link(s)`,
+      status: docsCollabSessionStatus(mesh.getMyName(), roomPeerStatuses.length, mesh.linkCount()),
     };
   }, [refs]);
 
@@ -133,9 +140,7 @@ export function useDocsCollabMesh({
     setPeers(connectedPeers);
     setConnectingPeers(pendingPeers);
     setWarningPeers(warning);
-    setStatus(
-      `Mesh · ${mesh.getMyName()} · ${mesh.getMyId()?.slice(0, 8) ?? "—"}… · ${roomPeerStatuses.length} peer(s) in room · ${mesh.linkCount()} link(s)`,
-    );
+    setStatus(docsCollabSessionStatus(mesh.getMyName(), roomPeerStatuses.length, mesh.linkCount()));
   }, [refs]);
 
   const sendSyncStep1 = useCallback(
