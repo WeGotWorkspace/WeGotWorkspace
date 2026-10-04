@@ -170,6 +170,30 @@ describe("large Yjs state over a capped data channel", () => {
     expect(received).toEqual([JSON.stringify(message)]);
   });
 
+  it("frames the first sync when bin was announced before the peer entry existed", () => {
+    const received: string[] = [];
+    const channel = createCappedChannel();
+    const binding = createDataBinding({
+      label: "collab",
+      onMessage: (_remoteId, data) => {
+        received.push(data);
+      },
+    });
+    const pc = {
+      createDataChannel: () => channel,
+    } as unknown as RTCPeerConnection;
+    const attached = binding.attachInitiator(pc, "peer-b");
+    const registry = new MeshPeerRegistry(binding);
+    const message = { type: "sync", u: [1, 2, 3] };
+
+    registry.rememberCaps("peer-b", ["bin"]);
+    registry.add("peer-b", peerEntry(pc, attached));
+    registry.sendJsonTo("peer-b", message);
+
+    expect(channel.frames[0]).toBeInstanceOf(Uint8Array);
+    expect(received).toEqual([JSON.stringify(message)]);
+  });
+
   it("pauses above 1 MiB buffered and resumes on bufferedamountlow", () => {
     const received: string[] = [];
     const { registry, channel } = openPeer(received, ["bin"]);
@@ -207,6 +231,19 @@ describe("large Yjs state over a capped data channel", () => {
     );
   });
 });
+
+function peerEntry(pc: RTCPeerConnection, dataChannel: RTCDataChannel): MeshPeerEntry {
+  return {
+    name: "Bob",
+    pc,
+    mode: "direct",
+    relayFallbackTried: false,
+    initiator: true,
+    pendingIce: [],
+    signalSent: true,
+    dataChannel,
+  };
+}
 
 function openPeer(
   received: string[],
