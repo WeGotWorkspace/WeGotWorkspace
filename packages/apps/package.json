@@ -30,6 +30,7 @@
     "test:done-gate": "node scripts/done-gate.mjs",
     "test:e2e": "playwright test",
     "test:e2e:live": "playwright test --config playwright.live.config.mjs",
+    "test:e2e:chaos": "playwright test --config playwright.chaos.config.mjs",
     "test:e2e:ui": "playwright test --ui",
     "chromatic": "chromatic --build-script-name build-storybook",
     "test:watch": "vitest --project unit --project jsdom",
