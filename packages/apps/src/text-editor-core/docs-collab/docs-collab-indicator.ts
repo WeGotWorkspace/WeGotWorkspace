@@ -2,7 +2,32 @@ import { docsLabels, type DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsCollabConnectionPhase } from "@/text-editor-core/docs-collab/docs-collab-connection-phase";
 
 export type DocsCollabIndicatorKind =
-  "offline" | DocsCollabConnectionPhase | "saveOnly" | "saving" | "live" | "saved" | "idle";
+  | "offline"
+  | DocsCollabConnectionPhase
+  | "saveOnly"
+  | "saving"
+  | "live"
+  | "saved"
+  | "idle"
+  /** A docStatus the indicator does not model — passed through verbatim. */
+  | "message";
+
+/**
+ * The `docStatus` values the indicator now speaks for. Anything outside this set
+ * is an exceptional message (a failed snapshot, an unexpected error) that still
+ * owns the slot, because swallowing it would hide a real problem.
+ */
+const SUPERSEDED_DOC_STATUSES: ReadonlySet<string> = new Set([
+  "",
+  "Connecting to collaborators…",
+  "Reconnecting…",
+  "Rejoining…",
+  "Editing offline",
+]);
+
+export function indicatorSupersedesDocStatus(status: string): boolean {
+  return SUPERSEDED_DOC_STATUSES.has(status);
+}
 
 export type DocsCollabIndicatorInput = {
   online: boolean;

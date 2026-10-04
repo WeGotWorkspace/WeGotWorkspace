@@ -9,7 +9,6 @@ import {
   resolveDocsCollabFormatBarMode,
   resolveDocsCollabPermissions,
 } from "@/docs-core/src/docs-collab-permissions";
-import { DocsDocStatus } from "@/docs-core/src/docs-doc-status";
 import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { formatDocLastEdited } from "@/docs-core/src/docs-last-edited";
@@ -58,6 +57,8 @@ import { DocsCollabSuggestControls } from "./docs-collab-suggest-controls";
 import { docsCollabHeaderActions } from "./docs-collab-header-actions";
 import { mergeCollabPresencePeers } from "./docs-collab-presence-peers";
 import { DocsCollabPresenceChrome } from "./docs-collab-presence-chrome";
+import { DocsCollabStatusIndicator } from "./docs-collab-status-indicator";
+import { useDocsCollabStatusIndicator } from "./use-docs-collab-status-indicator";
 import { useDocsCollabReviewSurfaces } from "./use-docs-collab-review-surfaces";
 import type { DocsCollabWireOperations } from "./docs-collab-wire";
 import { useDocsCollabAwarenessPresence } from "./use-docs-collab-awareness-presence";
@@ -293,6 +294,15 @@ function DocsCollabWorkspaceInner({
   const showPendingSyncIndicator = pendingSync && (!online || failedSync);
   const pendingSyncLabel = failedSync ? labels.pendingSyncFailed : labels.pendingSync;
   const footerDocStatus = docStatus && !isToastDocStatus(docStatus) ? docStatus : "";
+  const statusIndicator = useDocsCollabStatusIndicator({
+    docStatus: footerDocStatus,
+    online,
+    pendingSync,
+    failedSync,
+    lastSavedAt,
+    liveNames: presencePeers.map((peer) => peer.name),
+    unreachableCount: warningPeers.length,
+  });
 
   const toastedDocStatusRef = useRef<string>("");
   useEffect(() => {
@@ -694,7 +704,7 @@ function DocsCollabWorkspaceInner({
                     })}
                   </>
                 }
-                end={footerDocStatus ? <DocsDocStatus status={footerDocStatus} /> : undefined}
+                end={<DocsCollabStatusIndicator indicator={statusIndicator} />}
               />
             </div>
           }
