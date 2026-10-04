@@ -25,7 +25,7 @@ import {
   decideServerStateAdoption,
   loadBootstrapInParallel,
 } from "./docs-collab-bootstrap";
-import { rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
+import { forgetSidecarEtag, rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import {
   canSeedFromFile,
   resolveBootstrapSeed,
@@ -152,6 +152,8 @@ export function useDocsCollabJoin({
     refs.joinedRoomRef.current = reset.joinedRoom;
     refs.authTokenRef.current = reset.authToken;
     clearDocsCollabSyncState(room);
+    // The sidecar may move on while the room is parked; re-learn it on rejoin.
+    forgetSidecarEtag(room);
     setSession(null);
     setJoined(false);
     resetMeshUi();
