@@ -147,6 +147,27 @@ export function sanitizeRtcSdp(sdp: string, parser: SdpParser = detectSdpParser(
     }
   }
 
+  // RTX that points at a dropped codec has to go too. A leftover apt= makes
+  // Chromium reject the video section when it applies the offer.
+  let droppedApt = true;
+  while (droppedApt) {
+    droppedApt = false;
+    for (const line of lines) {
+      const fmtp = line.match(/^a=fmtp:(\d+)\s+(.+)/);
+      if (!fmtp) continue;
+      const pt = Number(fmtp[1]);
+      if (dropPayloadTypes.has(pt)) continue;
+      const apt = fmtp[2]!.match(/(?:^|;)apt=(\d+)\b/)?.[1];
+      if (apt && dropPayloadTypes.has(Number(apt))) {
+        dropPayloadTypes.add(pt);
+        droppedApt = true;
+      }
+    }
+  }
+
+  // Plan B descriptions have no mid. Chromium rejects those ssrc lines.
+  // A unified-plan offer uses a=mid and keeps its ssrc lines.
+  const unifiedPlan = lines.some((line) => line.startsWith("a=mid:"));
   const filtered = lines
     .map((line) => (line.startsWith("a=fmtp:") ? rewriteFmtpLine(line, codecByPt) : line))
     .filter((line): line is string => {
@@ -158,6 +179,7 @@ export function sanitizeRtcSdp(sdp: string, parser: SdpParser = detectSdpParser(
       }
       if (
         parser === "chromium" &&
+        !unifiedPlan &&
         (line.startsWith("a=ssrc:") || line.startsWith("a=ssrc-group:"))
       ) {
         return false;

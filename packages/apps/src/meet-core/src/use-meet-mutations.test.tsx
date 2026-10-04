@@ -80,6 +80,7 @@ function createSessionStub(operations?: {
     leave: vi.fn().mockResolvedValue(undefined),
     join: vi.fn().mockResolvedValue(undefined),
     getSessionKey: vi.fn(() => null),
+    sendRoomChat: vi.fn(),
   };
   return {
     meetRtc,
@@ -359,11 +360,14 @@ describe("useMeetMutations sendChat", () => {
         persistentCall: true,
       }),
     );
-    return { ...rendered, lines, chat };
+    const meetRtc = session.meetRtc as typeof session.meetRtc & {
+      sendRoomChat: ReturnType<typeof vi.fn>;
+    };
+    return { ...rendered, lines, chat, meetRtc };
   }
 
   it("posts the room copy without waiting for the channel save", async () => {
-    const { result, chat, lines } = renderSendChat();
+    const { result, chat, lines, meetRtc } = renderSendChat();
 
     await result.current.sendChat("hello", {
       echoId: CLIENT_ULID,
@@ -376,7 +380,16 @@ describe("useMeetMutations sendChat", () => {
       from: "peer-1",
       text: `__wgw_meet_channel_chat__:${CLIENT_ULID}\nhello`,
     });
+    expect(meetRtc.sendRoomChat).toHaveBeenCalledWith({
+      id: CLIENT_ULID,
+      text: "hello",
+      ts: expect.any(Number),
+    });
+    expect(meetRtc.sendRoomChat.mock.invocationCallOrder[0]).toBeLessThan(
+      chat.mock.invocationCallOrder[0] ?? 0,
+    );
     expect(lines().map((line) => line.body)).toEqual(["hello"]);
+    expect(lines()[0]?.clientId).toBe(CLIENT_ULID);
   });
 
   it("posts the room copy when the channel save rejects", async () => {
@@ -394,14 +407,19 @@ describe("useMeetMutations sendChat", () => {
   });
 
   it("never puts a local placeholder id on the room copy", async () => {
-    const { result, chat } = renderSendChat();
+    const { result, chat, meetRtc } = renderSendChat();
 
     await result.current.sendChat("hello", {
       echoId: "local-1710000000000",
       saved: Promise.resolve(null),
     });
 
-    expect(chat.mock.calls[0]?.[0]).toMatchObject({ text: "hello" });
+    const frame = meetRtc.sendRoomChat.mock.calls[0]?.[0] as { id: string; text: string };
+    expect(frame.id).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
+    expect(frame.id).not.toContain("local-");
+    expect(chat.mock.calls[0]?.[0]).toMatchObject({
+      text: `__wgw_meet_channel_chat__:${frame.id}\nhello`,
+    });
   });
 
   it("removes the local line once the channel save resolves with a message", async () => {
@@ -440,13 +458,19 @@ describe("useMeetMutations sendChat", () => {
     expect(merged).toEqual([deleted]);
   });
 
-  it("posts plain room text when there is no channel save", async () => {
-    const { result, chat, lines } = renderSendChat();
+  it("mints one client id for a guest room line and posts it on both paths", async () => {
+    const { result, chat, lines, meetRtc } = renderSendChat();
 
     await result.current.sendChat("hello");
 
+    const frame = meetRtc.sendRoomChat.mock.calls[0]?.[0] as { id: string; text: string };
+    expect(frame).toMatchObject({ text: "hello" });
+    expect(frame.id).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
     expect(lines().map((line) => line.body)).toEqual(["hello"]);
-    expect(chat.mock.calls[0]?.[0]).toMatchObject({ text: "hello" });
+    expect(lines()[0]?.clientId).toBe(frame.id);
+    expect(chat.mock.calls[0]?.[0]).toMatchObject({
+      text: `__wgw_meet_channel_chat__:${frame.id}\nhello`,
+    });
   });
 
   it("keeps the saved channel message when the room copy fails", async () => {

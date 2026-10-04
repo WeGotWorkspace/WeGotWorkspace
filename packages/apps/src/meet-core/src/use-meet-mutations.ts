@@ -1,5 +1,7 @@
 import { useCallback, useEffect, type MutableRefObject } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { createChatMessageUlid } from "@/lib/offline/meet-chat/chat-ulid";
+import { sendRoomChat } from "@/lib/rtc/session/meet-room-chat";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import {
   meetRoomChatEchoId,
@@ -318,12 +320,12 @@ export function useMeetMutations({
       const roomCode = room.roomCodeRef.current;
       if (!me || !roomCode) return;
 
-      const echoId = meetRoomChatEchoId(channelSend?.echoId);
-      const localLine = buildLocalMeetChatLine(
-        me,
-        room.displayNameRef.current.trim() || "You",
-        text,
-      );
+      const echoId = meetRoomChatEchoId(channelSend?.echoId) ?? createChatMessageUlid();
+      const sentAt = Date.now();
+      const localLine = {
+        ...buildLocalMeetChatLine(me, room.displayNameRef.current.trim() || "You", text, sentAt),
+        clientId: echoId,
+      };
       room.setChatMessages((prev) => [...prev, localLine]);
       // The saved channel row takes over from the optimistic line. A save that
       // fails, returns nothing, or never settles leaves the line in place.
@@ -339,13 +341,19 @@ export function useMeetMutations({
           )
         : Promise.resolve(null);
 
-      if (!operationsRef.current) return;
+      const operations = operationsRef.current;
+      if (!operations) return;
       try {
-        await operationsRef.current.chat({
-          room: roomCode,
-          from: me,
-          text: echoId ? meetRoomChatEchoText(echoId, text) : text,
-          sessionKey: meetRtc.getSessionKey() ?? undefined,
+        await sendRoomChat({
+          dataPath: { sendRoomChat: (message) => meetRtc.sendRoomChat(message) },
+          message: { id: echoId, text, ts: sentAt },
+          postHttp: () =>
+            operations.chat({
+              room: roomCode,
+              from: me,
+              text: meetRoomChatEchoText(echoId, text),
+              sessionKey: meetRtc.getSessionKey() ?? undefined,
+            }),
         });
       } catch (e) {
         // A saved channel row still reaches members; only a message that landed

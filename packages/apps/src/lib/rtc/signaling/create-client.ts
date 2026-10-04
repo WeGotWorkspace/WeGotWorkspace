@@ -42,7 +42,7 @@ const CHANNEL_DEFAULTS: Partial<
   principal: { caps: ["bin"] },
   // `since-ack` opts this client into the acked meet mailbox: the server stops
   // deleting rows on read, so a lost poll response is redelivered (#1086).
-  meet: { sendFromField: "from", caps: ["since-ack", "ice-batch", "relay-jit"] },
+  meet: { sendFromField: "from", caps: ["since-ack", "ice-batch", "relay-jit", "meet-dc"] },
 };
 
 /** Shared HTTP signaling client for meet, docs, and future RTC apps. */

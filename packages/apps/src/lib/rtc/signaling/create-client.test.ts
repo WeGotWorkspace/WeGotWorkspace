@@ -22,6 +22,21 @@ describe("createRtcSignalingClient caps", () => {
     }
   });
 
+  it("advertises meet-dc on meet join", async () => {
+    const fetchImpl = vi.fn<HttpSignalingFetch>(
+      async () => new Response(JSON.stringify({ peerId: "p1", peers: [] }), { status: 200 }),
+    );
+    const client = createRtcSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+    });
+    await client.join({ room: "room-1", name: "Ada" });
+    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as { caps: string[] };
+    expect(body.caps).toContain("meet-dc");
+    expect(body.caps).toEqual(["since-ack", "ice-batch", "relay-jit", "meet-dc"]);
+  });
+
   it("sends the stored browser id on collab join", async () => {
     const store = new Map<string, string>([["wgw.rtc.browserId", "ab".repeat(16)]]);
     Object.defineProperty(globalThis, "localStorage", {

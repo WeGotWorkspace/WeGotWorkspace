@@ -36,6 +36,12 @@ function stubPeerConnection(): RTCPeerConnection {
     addIceCandidate: vi.fn(async () => {}),
     setConfiguration: vi.fn(),
     restartIce: vi.fn(),
+    createDataChannel: vi.fn(() => ({
+      binaryType: "blob",
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      close: vi.fn(),
+      send: vi.fn(),
+    })),
   };
   return pc as unknown as RTCPeerConnection;
 }
