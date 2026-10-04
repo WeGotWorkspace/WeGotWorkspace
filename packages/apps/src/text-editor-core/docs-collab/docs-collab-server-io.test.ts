@@ -171,7 +171,9 @@ describe("docs-collab-server-io", () => {
   });
 
   it("saveDocument sends no precondition when the sidecar state is unknown", async () => {
-    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response("{}", { status: 200 }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 

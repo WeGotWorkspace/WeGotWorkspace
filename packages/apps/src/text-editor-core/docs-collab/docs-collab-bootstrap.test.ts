@@ -70,7 +70,7 @@ describe("loadBootstrapInParallel", () => {
   // C7: a 5xx or a token race must never be read as "there is no snapshot",
   // because the caller would then seed a second copy of the markdown.
   it("retries a failing snapshot with backoff and never reports it absent", async () => {
-    const sleep = vi.fn(async () => undefined);
+    const sleep = vi.fn(async (_ms: number) => undefined);
     const fetchSnapshot = vi.fn(async () => {
       throw new Error("Could not load snapshot (500)");
     });
