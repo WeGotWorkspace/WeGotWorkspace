@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Dav\Server;
 
 use App\Dav\Storage\FlysystemAclCollection;
+use App\Dav\Storage\FlysystemFile;
 use Illuminate\Contracts\Filesystem\Filesystem;
-use Sabre\DAV;
 
 final class GroupSharedCollection extends FlysystemAclCollection
 {
@@ -26,19 +26,13 @@ final class GroupSharedCollection extends FlysystemAclCollection
         return GroupSharedAclHelper::aclForGroup($this->groupPrincipalUri);
     }
 
-    public function getChild($name): DAV\INode
+    protected function makeChildDirectory(string $key): self
     {
-        if ($name === '.' || $name === '..') {
-            throw new DAV\Exception\Forbidden('Permission denied to . and ..');
-        }
-        $key = $this->childKey($name);
-        if ($this->filesystem->directoryExists($key)) {
-            return new self($this->filesystem, $key, $this->groupPrincipalUri);
-        }
-        if ($this->filesystem->fileExists($key)) {
-            return new GroupSharedFile($this->filesystem, $key, $this->groupPrincipalUri);
-        }
+        return new self($this->filesystem, $key, $this->groupPrincipalUri);
+    }
 
-        throw new DAV\Exception\NotFound('File could not be located');
+    protected function makeChildFile(string $key): FlysystemFile
+    {
+        return new GroupSharedFile($this->filesystem, $key, $this->groupPrincipalUri);
     }
 }
