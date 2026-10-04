@@ -10,6 +10,7 @@ import {
 } from "@/lib/rtc/signaling/http-client";
 import { MeshPeerDialer } from "@/lib/rtc/session/mesh-peer-dialer";
 import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
+import { MeshSignalInbox } from "@/lib/rtc/session/mesh-signal-inbox";
 import { wirePeerConnectionListeners } from "@/lib/rtc/session/peer-connection-listeners";
 import {
   defaultVisibilityPort,
@@ -30,7 +31,6 @@ import {
 } from "@/lib/rtc/session/sdp";
 import {
   DEFAULT_RTC_POLL_INTERVALS,
-  sortRtcSignalMessages,
   type RtcLinkState,
   type RtcPeerDescriptor,
   type RtcPollIntervals,
@@ -48,8 +48,6 @@ export class RtcPeerMesh {
 
   private sessionKey: string | null = null;
 
-  private lastMsgId = 0;
-
   private lastRosterSig: string | null = null;
 
   private lastRoomPeers: RtcPeerDescriptor[] = [];
@@ -61,6 +59,8 @@ export class RtcPeerMesh {
   private readonly peers: MeshPeerRegistry;
 
   private readonly dialer: MeshPeerDialer;
+
+  private readonly inbox: MeshSignalInbox;
 
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -94,6 +94,14 @@ export class RtcPeerMesh {
       onRemoteSignalError: (remoteId, error) => this.handleRemoteSignalError(remoteId, error),
       removePeer: (remoteId) => this.removePeer(remoteId),
       wirePeerConnection: (remoteId, entry) => this.wirePcEvents(remoteId, entry),
+    });
+    this.inbox = new MeshSignalInbox({
+      shouldAcceptOffer: options.shouldAcceptOffer,
+      handleOffer: (from, peerName, payload) => this.handleOffer(from, peerName, payload),
+      handleAnswer: (from, payload) => this.handleAnswer(from, payload),
+      handleIce: (from, payload) => this.handleIce(from, payload),
+      handleBye: (from) => this.handleBye(from),
+      log: (event, details) => this.log(event, details),
     });
     this.scheduleTimeout = options.ports?.setTimeout ?? setTimeout.bind(globalThis);
     this.cancelTimeout = options.ports?.clearTimeout ?? clearTimeout.bind(globalThis);
@@ -356,12 +364,12 @@ export class RtcPeerMesh {
       }
     }
 
-    if (!this.rtcSignalsEnabled()) {
-      this.notifyLinkChange();
-      return;
+    if (this.rtcSignalsEnabled()) {
+      await this.inbox.applySignals(data);
     }
-
-    await this.applySignalMessages(data);
+    // Ack last, and for every row: a lobby guest handles no RTC signals but must
+    // still move its cursor, or the server keeps resending its `admit`.
+    this.inbox.ack(data.messages);
     this.notifyLinkChange();
   }
 
@@ -390,35 +398,6 @@ export class RtcPeerMesh {
     }
   }
 
-  private async applySignalMessages(data: HttpSignalingPollResult): Promise<void> {
-    const signals = sortRtcSignalMessages(
-      data.messages.filter((message) => message.type !== "chat"),
-    );
-    for (const message of signals) {
-      if (message.id !== undefined) {
-        this.lastMsgId = Math.max(this.lastMsgId, message.id);
-      }
-      const peerName = data.peers.find((peer) => peer.id === message.from)?.name ?? "Peer";
-      try {
-        if (message.type === "offer") {
-          if (this.options.shouldAcceptOffer && !this.options.shouldAcceptOffer(message.from)) {
-            this.log("offer-ignored", { from: message.from, reason: "should-accept-false" });
-            continue;
-          }
-          await this.handleOffer(message.from, peerName, message.payload);
-        } else if (message.type === "answer") {
-          await this.handleAnswer(message.from, message.payload);
-        } else if (message.type === "ice") {
-          await this.handleIce(message.from, message.payload);
-        } else if (message.type === "bye") {
-          await this.handleBye(message.from);
-        }
-      } catch (error) {
-        this.log("signal-handle-failed", { type: message.type, from: message.from, error });
-      }
-    }
-  }
-
   private async pollOnce(): Promise<void> {
     if (!this.myId || this.pollInFlight) return;
     this.pollInFlight = true;
@@ -426,7 +405,7 @@ export class RtcPeerMesh {
       const data = await this.options.signaling.poll({
         room: this.options.room,
         peerId: this.myId,
-        since: this.lastMsgId,
+        since: this.inbox.cursor(),
         sig: this.lastRosterSig ?? undefined,
         sessionKey: this.sessionKey ?? undefined,
       });
@@ -603,7 +582,7 @@ export class RtcPeerMesh {
     try {
       for (const id of this.peers.ids()) this.removePeer(id);
       this.myId = null;
-      this.lastMsgId = 0;
+      this.inbox.reset();
       this.lastRosterSig = null;
       const joined = await this.options.signaling.join({
         room: this.options.room,
@@ -720,7 +699,7 @@ export class RtcPeerMesh {
     for (const id of this.peers.ids()) this.removePeer(id);
     this.myName = "";
     this.sessionKey = null;
-    this.lastMsgId = 0;
+    this.inbox.reset();
     this.lastRosterSig = null;
     this.lastRoomPeers = [];
     this.droppedGhostIds.clear();

@@ -368,7 +368,8 @@ final class HttpSignalingStore
      * Poll roster + pending messages. When the caller echoes the roster signature of a
      * previous poll (`$knownRosterSig`) and neither the roster nor the peer's mailbox
      * changed, a minimal `{unchanged: true}` marker is returned and payload building
-     * (message fetch/delete, roster serialization) is skipped.
+     * (message fetch/delete, roster serialization) is skipped. The ack runs before that
+     * fast path, so a 204 still shrinks the mailbox.
      *
      * @return array{peers: list<array{id: string, name: string, user?: string}>, messages: list<array<string, mixed>>, rosterSig: string}|array{unchanged: true, rosterSig: string}
      */
@@ -381,6 +382,11 @@ final class HttpSignalingStore
     ): array {
         $this->touchPeer($room, $peerId);
 
+        $mode = $this->pollModeFor($room, $peerId);
+        if ($mode === RtcSignalingPollMode::SinceCursor && $this->policy->sinceAckCap !== null) {
+            $this->deleteAckedMessages($room, $peerId, $since);
+        }
+
         $peers = $this->peerList($room, $peerId, $withOwner);
         $rosterSig = $this->rosterSignature($peers);
 
@@ -388,62 +394,114 @@ final class HttpSignalingStore
             $knownRosterSig !== null
             && $knownRosterSig !== ''
             && hash_equals($rosterSig, $knownRosterSig)
-            && ! $this->hasPendingMessages($room, $peerId, $since)
+            && ! $this->hasPendingMessages($room, $peerId, $since, $mode)
         ) {
             return ['unchanged' => true, 'rosterSig' => $rosterSig];
         }
 
-        if ($this->policy->pollMode === RtcSignalingPollMode::SinceCursor) {
-            $query = $this->messageQuery()
-                ->where('room', $room)
-                ->where('to_peer', $peerId)
-                ->where('id', '>', max(0, $since))
-                ->orderBy('id');
+        return [
+            'peers' => $peers,
+            'messages' => $mode === RtcSignalingPollMode::SinceCursor
+                ? $this->messagesSinceCursor($room, $peerId, $since)
+                : $this->messagesDeletingOnRead($room, $peerId),
+            'rosterSig' => $rosterSig,
+        ];
+    }
 
-            $messages = [];
-            foreach ($query->get(['id', 'from_peer as from', 'to_peer as to', 'type', 'payload']) as $row) {
-                $decoded = json_decode((string) $row->getAttribute('payload'), true);
-                $messages[] = [
-                    'id' => (int) $row->getAttribute('id'),
-                    'from' => (string) $row->getAttribute('from'),
-                    'to' => (string) $row->getAttribute('to'),
-                    'type' => (string) $row->getAttribute('type'),
-                    'payload' => $decoded,
-                ];
-            }
+    /**
+     * Poll mode for one peer. A capability-gated policy ({@see RtcSignalingPolicy::$sinceAckCap})
+     * only hands the cursor to peers that advertised it; everyone else — an old cached
+     * client that never acks — keeps delete-on-read and so is not handed its whole
+     * mailbox on every poll. Mixed rooms therefore work for both.
+     */
+    private function pollModeFor(string $room, string $peerId): RtcSignalingPollMode
+    {
+        $cap = $this->policy->sinceAckCap;
+        if ($cap === null) {
+            return $this->policy->pollMode;
+        }
 
-            return [
-                'peers' => $peers,
-                'messages' => $messages,
-                'rosterSig' => $rosterSig,
+        $caps = $this->peerQuery()
+            ->where('room', $room)
+            ->where('peer_id', $peerId)
+            ->value('caps');
+
+        return RtcPeerCaps::has($caps, $cap)
+            ? $this->policy->pollMode
+            : RtcSignalingPollMode::DeleteOnRead;
+    }
+
+    /**
+     * `since` is an ack, not just a filter: everything the peer confirmed having read
+     * is dropped here, which is what lets the rows above the cursor be redelivered
+     * after a lost poll response.
+     */
+    private function deleteAckedMessages(string $room, string $peerId, int $since): void
+    {
+        if ($since <= 0) {
+            return;
+        }
+
+        $this->messageQuery()
+            ->where('room', $room)
+            ->where('to_peer', $peerId)
+            ->where('id', '<=', $since)
+            ->delete();
+    }
+
+    /**
+     * @return list<array{id: int, from: string, to: string, type: string, payload: mixed}>
+     */
+    private function messagesSinceCursor(string $room, string $peerId, int $since): array
+    {
+        $rows = $this->messageQuery()
+            ->where('room', $room)
+            ->where('to_peer', $peerId)
+            ->where('id', '>', max(0, $since))
+            ->orderBy('id')
+            ->get(['id', 'from_peer as from', 'to_peer as to', 'type', 'payload']);
+
+        $messages = [];
+        foreach ($rows as $row) {
+            $messages[] = [
+                'id' => (int) $row->getAttribute('id'),
+                'from' => (string) $row->getAttribute('from'),
+                'to' => (string) $row->getAttribute('to'),
+                'type' => (string) $row->getAttribute('type'),
+                'payload' => json_decode((string) $row->getAttribute('payload'), true),
             ];
         }
 
+        return $messages;
+    }
+
+    /**
+     * @return list<array{from: string, type: string, payload: mixed}>
+     */
+    private function messagesDeletingOnRead(string $room, string $peerId): array
+    {
         $rows = $this->messageQuery()
             ->where('room', $room)
             ->where('to_peer', $peerId)
             ->orderBy('id')
             ->get(['id', 'from_peer as from', 'type', 'payload']);
 
-        $messages = [];
-        if ($rows->isNotEmpty()) {
-            $ids = $rows->pluck('id')->all();
-            $this->messageQuery()->whereIn('id', $ids)->delete();
-            foreach ($rows as $row) {
-                $decoded = json_decode((string) $row->getAttribute('payload'), true);
-                $messages[] = [
-                    'from' => (string) $row->getAttribute('from'),
-                    'type' => (string) $row->getAttribute('type'),
-                    'payload' => $decoded,
-                ];
-            }
+        if ($rows->isEmpty()) {
+            return [];
         }
 
-        return [
-            'peers' => $peers,
-            'messages' => $messages,
-            'rosterSig' => $rosterSig,
-        ];
+        $this->messageQuery()->whereIn('id', $rows->pluck('id')->all())->delete();
+
+        $messages = [];
+        foreach ($rows as $row) {
+            $messages[] = [
+                'from' => (string) $row->getAttribute('from'),
+                'type' => (string) $row->getAttribute('type'),
+                'payload' => json_decode((string) $row->getAttribute('payload'), true),
+            ];
+        }
+
+        return $messages;
     }
 
     /**
@@ -471,13 +529,17 @@ final class HttpSignalingStore
         return sha1(implode("\x1e", $parts));
     }
 
-    private function hasPendingMessages(string $room, string $peerId, int $since): bool
-    {
+    private function hasPendingMessages(
+        string $room,
+        string $peerId,
+        int $since,
+        RtcSignalingPollMode $mode,
+    ): bool {
         $query = $this->messageQuery()
             ->where('room', $room)
             ->where('to_peer', $peerId);
 
-        if ($this->policy->pollMode === RtcSignalingPollMode::SinceCursor) {
+        if ($mode === RtcSignalingPollMode::SinceCursor) {
             $query->where('id', '>', max(0, $since));
         }
 

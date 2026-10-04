@@ -12,8 +12,11 @@ namespace App\Services\Rtc\Signaling;
  */
 final class RtcPeerCaps
 {
+    /** The peer acks delivered rows with `since`, so its mailbox survives a lost poll response. */
+    public const SINCE_ACK = 'since-ack';
+
     /** @var list<string> */
-    public const KNOWN = ['bin', 'ice-batch', 'ticket', 'meet-dc', 'yjs-http', 'relay-jit', 'since-ack'];
+    public const KNOWN = ['bin', 'ice-batch', 'ticket', 'meet-dc', 'yjs-http', 'relay-jit', self::SINCE_ACK];
 
     private const MAX_LENGTH = 190;
 
@@ -47,5 +50,10 @@ final class RtcPeerCaps
             array_map('trim', explode(',', $stored)),
             static fn (string $cap): bool => in_array($cap, self::KNOWN, true),
         ));
+    }
+
+    public static function has(mixed $stored, string $cap): bool
+    {
+        return in_array($cap, self::decode($stored), true);
     }
 }
