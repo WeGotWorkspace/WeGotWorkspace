@@ -85,4 +85,51 @@ final class RtcSettingsServiceTest extends WgwDatabaseTestCase
         $this->setAppSettings([SettingKeys::MEET_MAX_PEERS => '99']);
         $this->assertSame(15, $service->meetMaxPeers());
     }
+
+    public function test_max_video_profile_defaults_and_rejects_unknown_values(): void
+    {
+        $service = new RtcSettingsService;
+
+        $this->setAppSettings([SettingKeys::MEET_MAX_VIDEO_PROFILE => '']);
+        $this->assertSame('p720', $service->maxVideoProfile());
+
+        $this->setAppSettings([SettingKeys::MEET_MAX_VIDEO_PROFILE => 'p270']);
+        $this->assertSame('p270', $service->maxVideoProfile());
+
+        $this->setAppSettings([SettingKeys::MEET_MAX_VIDEO_PROFILE => 'p1080']);
+        $this->assertSame('p720', $service->maxVideoProfile());
+
+        $this->setAppSettings([SettingKeys::MEET_MAX_VIDEO_PROFILE => 'audio']);
+        $this->assertSame('audio', $service->maxVideoProfile());
+    }
+
+    public function test_relay_video_profile_defaults_and_never_exceeds_the_instance_maximum(): void
+    {
+        $service = new RtcSettingsService;
+
+        $this->setAppSettings([
+            SettingKeys::MEET_MAX_VIDEO_PROFILE => '',
+            SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY => '',
+        ]);
+        $this->assertSame('p360', $service->maxVideoProfileRelay());
+
+        $this->setAppSettings([
+            SettingKeys::MEET_MAX_VIDEO_PROFILE => 'p720',
+            SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY => 'p180',
+        ]);
+        $this->assertSame('p180', $service->maxVideoProfileRelay());
+
+        // A relay ceiling above the instance maximum is pulled back down to it.
+        $this->setAppSettings([
+            SettingKeys::MEET_MAX_VIDEO_PROFILE => 'p270',
+            SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY => 'p720',
+        ]);
+        $this->assertSame('p270', $service->maxVideoProfileRelay());
+
+        $this->setAppSettings([
+            SettingKeys::MEET_MAX_VIDEO_PROFILE => 'audio',
+            SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY => 'p360',
+        ]);
+        $this->assertSame('audio', $service->maxVideoProfileRelay());
+    }
 }

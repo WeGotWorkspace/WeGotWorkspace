@@ -24,6 +24,10 @@ final class RtcSettingsService
 
     public const MAX_MEET_MAX_PEERS = 15;
 
+    public const DEFAULT_MAX_VIDEO_PROFILE = MeetVideoProfile::P720;
+
+    public const DEFAULT_MAX_VIDEO_PROFILE_RELAY = MeetVideoProfile::P360;
+
     /**
      * Everything a client may know about the relay. Credentials are minted per
      * request by {@see RtcTurnCredentialService} and never appear here.
@@ -64,6 +68,45 @@ final class RtcSettingsService
         }
 
         return max(self::MIN_MEET_MAX_PEERS, min(self::MAX_MEET_MAX_PEERS, $value));
+    }
+
+    /**
+     * Highest profile any client on this instance may send. `audio` turns off
+     * camera sending for everyone.
+     */
+    public function maxVideoProfile(): string
+    {
+        return MeetVideoProfile::normalize(
+            AppSetting::getValue(SettingKeys::MEET_MAX_VIDEO_PROFILE, ''),
+            self::DEFAULT_MAX_VIDEO_PROFILE
+        );
+    }
+
+    /**
+     * Ceiling for a sender whose selected candidate pair is a relay. Clamped to
+     * the instance maximum, so relaying never buys better video than direct.
+     */
+    public function maxVideoProfileRelay(): string
+    {
+        $configured = MeetVideoProfile::normalize(
+            AppSetting::getValue(SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY, ''),
+            self::DEFAULT_MAX_VIDEO_PROFILE_RELAY
+        );
+
+        return MeetVideoProfile::clamp($configured, $this->maxVideoProfile());
+    }
+
+    /**
+     * The `rtc.limits` block of the Meet join response.
+     *
+     * @return array{maxVideoProfile: string, maxVideoProfileRelay: string}
+     */
+    public function videoLimits(): array
+    {
+        return [
+            'maxVideoProfile' => $this->maxVideoProfile(),
+            'maxVideoProfileRelay' => $this->maxVideoProfileRelay(),
+        ];
     }
 
     public function turnSecret(): string
