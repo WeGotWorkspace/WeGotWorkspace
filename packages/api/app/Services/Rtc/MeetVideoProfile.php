@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Rtc;
 
 /**
- * Video send profiles, best first. A profile caps resolution and bitrate;
- * `audio` sends no camera at all. Admin settings choose a ceiling, never an
- * exact profile — which profile a client sends stays automatic.
+ * Video send profiles. A profile caps resolution and bitrate; `AUDIO` sends no
+ * camera at all. Admin settings choose a ceiling, never an exact profile —
+ * which profile a client sends stays automatic.
  */
 final class MeetVideoProfile
 {
