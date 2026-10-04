@@ -9,6 +9,7 @@ import { requestRelay, type RelayRequestOutcome } from "@/lib/rtc/session/relay-
 import {
   DEFAULT_RTC_POLL_INTERVALS,
   type RtcPeerDescriptor,
+  type RtcPollIntervals,
   type RtcSettings,
 } from "@/lib/rtc/types";
 import {
@@ -102,7 +103,7 @@ export class DocsRtcSession {
   /** Rights the server resolved, for direct data-channel peers and for us. */
   private readonly trust = new DocsCollabRosterTrust();
 
-  private readonly pollIntervals = {
+  private readonly pollIntervals: RtcPollIntervals = {
     connectingMs: DEFAULT_RTC_POLL_INTERVALS.connectingMs,
     steadyMs: DEFAULT_RTC_POLL_INTERVALS.steadyMs,
   };
@@ -245,6 +246,8 @@ export class DocsRtcSession {
               this.pollIntervals.connectingMs,
               YJS_HTTP_POLL_MS,
             );
+            if (active) this.pollIntervals.maxDelayMs = YJS_HTTP_POLL_MS;
+            else delete this.pollIntervals.maxDelayMs;
             this.mesh.kickPoll();
           },
           getYDoc: () => options.getYDoc?.() ?? null,
