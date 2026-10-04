@@ -30,8 +30,7 @@ import {
  *
  * Live: concurrent seed and offline merge (#1089), viewer body (#1088),
  * accented path (#1087), document over 200 KB (#1093), Meet video and 3s
- * recovery (#1094), dropped-poll admit (#1086).
- * Fixme: forced HTTP fallback (#1095).
+ * recovery (#1094), dropped-poll admit (#1086), forced HTTP fallback (#1095).
  *
  * Offline merge, the accented path, and the large document waited on #1127.
  * That fix landed in #1128, so those three scenarios already run.
@@ -194,7 +193,7 @@ test("a document over 200 KB syncs", async ({ browser }) => {
   }
 });
 
-test.fixme("forced HTTP fallback syncs two editors (#1095)", async ({ browser }) => {
+test("forced HTTP fallback syncs two editors (#1095)", async ({ browser }) => {
   const token = uniqueId("http");
   const apiPath = `/users/admin/e2e-chaos-http-${uniqueId()}.md`;
   const sessions = await openUsers(browser, ["admin", "admin"]);

@@ -51,6 +51,7 @@ import { TEXT_EDITOR_FORMAT_BAR_FULL } from "@/text-editor-core/src/text-editor-
 import { detailFooterLastEditedTag } from "@/workspace-shell/src/detail-footer-last-edited-tag";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { DocsCollabEditor } from "./docs-collab-editor";
+import { DocsCollabRelayBanner } from "./docs-collab-relay-banner";
 import { DocsImagePickerDialog } from "./docs-image-picker-dialog";
 import { useDocsImageInsert } from "./use-docs-image-insert";
 import { DocsCollabSuggestControls } from "./docs-collab-suggest-controls";
@@ -220,6 +221,7 @@ function DocsCollabWorkspaceInner({
     lastSavedAt,
     pendingSync,
     failedSync,
+    relayBanner,
     saveNow,
     onMarkdownChange,
     registerMarkdownGetter,
@@ -641,6 +643,7 @@ function DocsCollabWorkspaceInner({
           }
           main={
             <div className="docs-workspace__editor">
+              {relayBanner ? <DocsCollabRelayBanner copy={relayBanner} /> : null}
               {collabSession ? (
                 <DocsCollabEditor
                   ydoc={collabSession.ydoc}

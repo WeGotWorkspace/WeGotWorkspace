@@ -1,5 +1,10 @@
 import { useCallback, useState } from "react";
-import { wgwHasAuthenticatedSession, wgwIsGuestSession } from "@/lib/api/wgw/http";
+import {
+  wgwCurrentAccessToken,
+  wgwHasAuthenticatedSession,
+  wgwIsGuestSession,
+} from "@/lib/api/wgw/http";
+import { principalRoleFromToken } from "@/lib/api/wgw/principal-role";
 import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
 import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
@@ -13,7 +18,8 @@ import {
 } from "./docs-collab-mesh-sync";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
-import { DocsRtcSession } from "./docs-rtc-session";
+import { docsRelayCopy, type DocsRelayCopy } from "./docs-relay-copy";
+import { DocsRtcSession, type DocsRelayNotice } from "./docs-rtc-session";
 import type {
   DocsCollabMeshMessage,
   DocsCollabMeshPeer,
@@ -52,6 +58,12 @@ export function useDocsCollabMesh({
   const [warningPeers, setWarningPeers] = useState<DocsCollabMeshPeer[]>([]);
   const [linkCount, setLinkCount] = useState(0);
   const [status, setStatus] = useState("Disconnected");
+  const [relayNotice, setRelayNotice] = useState<DocsRelayNotice | null>(null);
+  const relayBanner: DocsRelayCopy | null = docsRelayCopy({
+    role: principalRoleFromToken(wgwCurrentAccessToken()),
+    outcome: relayNotice?.outcome ?? null,
+    name: relayNotice?.name ?? "",
+  });
 
   const resetMeshUi = useCallback(() => {
     setPeers([]);
@@ -264,6 +276,8 @@ export function useDocsCollabMesh({
         authToken,
         rtcSettings:
           rtcSettings ?? applyRtcDebugOverrides({ ...DEFAULT_RTC_SETTINGS, forceRelay: false }),
+        getYDoc: () => refs.ydocRef.current,
+        onRelayNotice: setRelayNotice,
       });
       refs.meshRef.current = mesh;
       mesh.onMessage(handleMeshMessage);
@@ -290,6 +304,7 @@ export function useDocsCollabMesh({
     connectingPeers,
     warningPeers,
     linkCount,
+    relayBanner,
     status,
     setStatus,
     setConnectingPeers,
