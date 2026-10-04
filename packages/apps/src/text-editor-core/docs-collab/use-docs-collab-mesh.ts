@@ -205,10 +205,10 @@ export function useDocsCollabMesh({
       if (msg.type === "awareness" && Array.isArray(msg.u)) {
         applyAwarenessUpdate(msg.u, awareness, MESH_ORIGIN);
       }
-      if (msg.type === "dc-open" && msg.from) {
+      if ((msg.type === "dc-open" || msg.type === "resync") && msg.from) {
         sendSyncStep1(msg.from);
         sendAwarenessBroadcast(msg.from);
-        trySeedFromFile();
+        if (msg.type === "dc-open") trySeedFromFile();
       }
       if (mayRelayToTabs) refs.tabSyncRef.current?.relayMeshMessage(msg);
       refreshMeshUi();

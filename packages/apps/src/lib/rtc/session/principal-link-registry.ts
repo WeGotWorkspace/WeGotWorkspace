@@ -33,6 +33,8 @@ export class PrincipalLinkRegistry {
 
   private readonly linkOpenListeners = new Set<PrincipalLinkOpenListener>();
 
+  private readonly sendFailedListeners = new Set<(principalPeerId: string) => void>();
+
   private connectingUsernames = new Set<string>();
 
   private principalJoinAttempted = false;
@@ -119,6 +121,18 @@ export class PrincipalLinkRegistry {
     this.linkListeners.add(listener);
     return () => {
       this.linkListeners.delete(listener);
+    };
+  }
+
+  /** A principal data-channel send failed. Collab marks the attached peers for resync. */
+  markSendFailed(principalPeerId: string): void {
+    for (const listener of this.sendFailedListeners) listener(principalPeerId);
+  }
+
+  subscribeSendFailed(listener: (principalPeerId: string) => void): () => void {
+    this.sendFailedListeners.add(listener);
+    return () => {
+      this.sendFailedListeners.delete(listener);
     };
   }
 

@@ -106,8 +106,8 @@ export function pruneStalePrincipalTabs(
  * background tabs often stop timers under Chrome throttling while still open.
  *
  * Only when there is no known leader (cold start or after explicit handoff),
- * pick the lexicographically smallest non-stale tab id. Unlike docs-collab,
- * visibility must not bounce leadership.
+ * pick the lexicographically smallest non-stale tab id. Visibility must not
+ * bounce leadership.
  */
 export function electStickyLeaderTabId(
   tabs: ReadonlyMap<string, PrincipalTabPresence>,
@@ -123,7 +123,7 @@ export function electStickyLeaderTabId(
   return candidates[0]?.tabId ?? null;
 }
 
-/** Principal mesh keeps leadership across hide; docs-collab resigns — this is always false. */
+/** Principal mesh keeps leadership across hide. */
 export function shouldResignPrincipalOnHide(_isLeader: boolean, _visible: boolean): boolean {
   return false;
 }

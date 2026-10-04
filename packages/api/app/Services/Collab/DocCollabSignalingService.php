@@ -109,16 +109,21 @@ final class DocCollabSignalingService
             $peerId = bin2hex(random_bytes(8));
             $now = time();
             $access = $this->joinAuthorizer->accessFor($room, $principal);
-            $this->store->deleteOwnedPeersExcept($roomKey, $ownerMarker);
+            $browserId = $this->readBrowserId($body);
             // The access right is computed here and nowhere else: the column
             // defaults to read, so a row that never saw this write cannot edit.
             // It is resolved from the canonical path, while the peer row lives
             // under the hashed room key.
-            $this->store->upsertPeer($roomKey, $peerId, $name, $ownerMarker, $now, $this->readBrowserId($body), [
+            $this->store->upsertPeer($roomKey, $peerId, $name, $ownerMarker, $now, $browserId, [
                 'caps' => RtcPeerCaps::encode($body['caps'] ?? null),
                 'net' => RtcNetClass::normalize($body['net'] ?? null),
                 'access' => $access,
             ]);
+            // Evict this browser's leftover peer (reload), not the owner's other
+            // device. A laptop and a tablet keep distinct browser ids.
+            if ($browserId !== null) {
+                $this->store->deletePeersForBrowser($roomKey, $browserId, $peerId);
+            }
 
             if ($this->store->countPeers($roomKey) > self::MAX_PEERS_PER_ROOM) {
                 $this->store->deletePeer($roomKey, $peerId);
@@ -241,7 +246,7 @@ final class DocCollabSignalingService
 
     /**
      * Browser-profile token from the client. Invalid or missing values are
-     * stored as empty — eviction on it is a later Docs change.
+     * stored as empty and do not evict anyone.
      *
      * @param  array<string, mixed>  $body
      */

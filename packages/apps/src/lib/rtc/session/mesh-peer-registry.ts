@@ -1,4 +1,6 @@
 import type { RtcSessionBinding } from "@/lib/rtc/session/bindings";
+import { peerAdvertisesBin } from "@/lib/rtc/session/data-channel-frames";
+import { DataChannelOutbound } from "@/lib/rtc/session/data-channel-outbound";
 import type { IceMode, RtcLinkState } from "@/lib/rtc/types";
 
 export type MeshPeerEntry = {
@@ -11,6 +13,8 @@ export type MeshPeerEntry = {
   signalSent: boolean;
   remoteStream?: MediaStream;
   dataChannel?: RTCDataChannel | null;
+  /** Roster capabilities. `bin` selects binary framing on the data channel. */
+  caps?: readonly string[];
 };
 
 /**
@@ -21,7 +25,15 @@ export type MeshPeerEntry = {
 export class MeshPeerRegistry {
   private readonly entries = new Map<string, MeshPeerEntry>();
 
-  constructor(private readonly binding: RtcSessionBinding | undefined) {}
+  private readonly outbound = new Map<string, DataChannelOutbound>();
+
+  /** Roster caps recorded before the peer entry exists. Applied in `add`. */
+  private readonly announcedCaps = new Map<string, readonly string[]>();
+
+  constructor(
+    private readonly binding: RtcSessionBinding | undefined,
+    private readonly onSendFailed?: (remoteId: string, error: unknown) => void,
+  ) {}
 
   get size(): number {
     return this.entries.size;
@@ -36,6 +48,8 @@ export class MeshPeerRegistry {
   }
 
   add(remoteId: string, entry: MeshPeerEntry): void {
+    const announced = this.announcedCaps.get(remoteId);
+    if (announced !== undefined && entry.caps === undefined) entry.caps = announced;
     this.entries.set(remoteId, entry);
   }
 
@@ -55,6 +69,7 @@ export class MeshPeerRegistry {
     entry.dataChannel?.close();
     entry.pc.close();
     this.entries.delete(remoteId);
+    this.outbound.delete(remoteId);
     return entry.name;
   }
 
@@ -103,26 +118,36 @@ export class MeshPeerRegistry {
     return count;
   }
 
+  rememberCaps(remoteId: string, caps: readonly string[] | undefined): void {
+    if (caps && caps.length > 0) this.announcedCaps.set(remoteId, caps);
+    else this.announcedCaps.delete(remoteId);
+    const entry = this.entries.get(remoteId);
+    if (entry) entry.caps = caps;
+  }
+
   broadcastJson(message: unknown): void {
-    const raw = JSON.stringify(message);
-    for (const entry of this.entries.values()) {
-      if (entry.dataChannel?.readyState !== "open") continue;
-      try {
-        entry.dataChannel.send(raw);
-      } catch {
-        // ignore
-      }
-    }
+    for (const remoteId of this.entries.keys()) this.sendJsonTo(remoteId, message);
   }
 
   sendJsonTo(remoteId: string, message: unknown): void {
     const entry = this.entries.get(remoteId);
-    if (entry?.dataChannel?.readyState !== "open") return;
-    try {
-      entry.dataChannel.send(JSON.stringify(message));
-    } catch {
-      // ignore
-    }
+    const channel = entry?.dataChannel;
+    if (!channel || channel.readyState !== "open") return;
+    this.sender(remoteId, channel).sendJson(message, peerAdvertisesBin(entry.caps));
+  }
+
+  private sender(remoteId: string, channel: RTCDataChannel): DataChannelOutbound {
+    const existing = this.outbound.get(remoteId);
+    if (existing?.owns(channel)) return existing;
+    const created = new DataChannelOutbound(channel, (error) => this.failSend(remoteId, error));
+    this.outbound.set(remoteId, created);
+    return created;
+  }
+
+  private failSend(remoteId: string, error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn("[rtc] datachannel-send-failed", { remoteId, message });
+    this.onSendFailed?.(remoteId, error);
   }
 
   /** Replace the outbound track of every sender of `kind` that already has one. */

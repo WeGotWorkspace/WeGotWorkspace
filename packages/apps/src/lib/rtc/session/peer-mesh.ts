@@ -77,7 +77,11 @@ export class RtcPeerMesh {
   private visibilityUnsubscribe: (() => void) | null = null;
 
   constructor(private readonly options: RtcPeerMeshOptions) {
-    this.peers = new MeshPeerRegistry(options.binding);
+    this.peers = new MeshPeerRegistry(options.binding, (remoteId, error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.log("send-failed", { remoteId, message });
+      options.onSendFailed?.(remoteId);
+    });
     this.dialer = new MeshPeerDialer({
       channel: options.channel,
       rtcSettings: options.rtcSettings,
@@ -327,8 +331,13 @@ export class RtcPeerMesh {
     this.options.onConnectionFailed?.(remoteId, entry.name);
   }
 
+  /**
+   * Principal still collapses a reloaded tab into one peer. Collab does not:
+   * two devices of the same user are both live, and a same-browser reload is
+   * evicted by `browserId` on the server.
+   */
   private collapseIdentityOnPoll(): boolean {
-    return this.options.channel === "collab" || this.options.channel === "principal";
+    return this.options.channel === "principal";
   }
 
   private async onPoll(data: HttpSignalingPollResult): Promise<void> {
@@ -381,6 +390,7 @@ export class RtcPeerMesh {
       ? sortPrincipalDialPeers(this.lastRoomPeers, this.peers.ids(), this.droppedGhostIds)
       : this.lastRoomPeers;
     for (const peer of dialOrder) {
+      this.peers.rememberCaps(peer.id, peer.caps);
       if (this.options.shouldConnectToPeer && !this.options.shouldConnectToPeer(peer)) {
         this.log("peer-skipped", { remoteId: peer.id, reason: "should-connect-false" });
         continue;
@@ -534,12 +544,14 @@ export class RtcPeerMesh {
   applyPeerHint(peers: RtcPeerDescriptor[]): void {
     if (!this.myId || !this.rtcSignalsEnabled()) return;
     let awaitingRemoteOffer = false;
-    const allowNameFallback = this.collapseIdentityOnPoll();
-    const knownIdentities = new Set(
-      this.lastRoomPeers
-        .map((peer) => peerIdentityKey(peer, allowNameFallback))
-        .filter((key): key is string => key !== null),
-    );
+    const collapseSameUser = this.collapseIdentityOnPoll();
+    const knownIdentities = collapseSameUser
+      ? new Set(
+          this.lastRoomPeers
+            .map((peer) => peerIdentityKey(peer, true))
+            .filter((key): key is string => key !== null),
+        )
+      : null;
     for (const peer of peers) {
       if (peer.id === this.myId) {
         this.log("peer-skipped", { remoteId: peer.id, reason: "self" });
@@ -549,8 +561,8 @@ export class RtcPeerMesh {
         this.log("peer-skipped", { remoteId: peer.id, reason: "already-known" });
         continue;
       }
-      const identity = peerIdentityKey(peer, allowNameFallback);
-      if (identity && knownIdentities.has(identity)) {
+      const identity = knownIdentities ? peerIdentityKey(peer, true) : null;
+      if (identity && knownIdentities?.has(identity)) {
         this.log("peer-skipped", { remoteId: peer.id, reason: "stale-hint-identity" });
         this.droppedGhostIds.add(peer.id);
         continue;

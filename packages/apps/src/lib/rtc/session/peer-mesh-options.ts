@@ -58,6 +58,8 @@ export type RtcPeerMeshOptions = {
   onConnectionFailed?: (remoteId: string, name: string) => void;
   onPollError?: (error: unknown) => void;
   onPeerConnected?: (remoteId: string) => void;
+  /** A data-channel send threw. The caller should resync that peer. */
+  onSendFailed?: (remoteId: string) => void;
   /** When false, inbound offers are dropped without creating a peer connection. */
   shouldAcceptOffer?: (from: string) => boolean;
 };
