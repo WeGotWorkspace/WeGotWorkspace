@@ -18,6 +18,7 @@ type CapturedMeshOptions = {
   onPollData?: (data: {
     peers: Array<{ id: string; name: string; user?: string; access?: string }>;
     messages: [];
+    ticket?: string;
   }) => void;
   shouldConnectToPeer?: (peer: { id: string; name: string; user?: string }) => boolean;
   shouldAcceptOffer?: (from: string) => boolean;
@@ -64,6 +65,22 @@ function createSession(): DocsRtcSession {
     room: "docs/gossip-test.md",
     rtcSettings: DEFAULT_RTC_SETTINGS,
   });
+}
+
+/** Unsigned stand-in. `decodeCollabTicketPayload` does not check the signature. */
+function collabTicket(input: { peer: string; access: string }): string {
+  const json = JSON.stringify({
+    v: 1,
+    kid: "k",
+    room: "r",
+    user: "admin",
+    peer: input.peer,
+    access: input.access,
+    iat: 1,
+    exp: 9,
+  });
+  const body = btoa(json).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+  return `${body}.sig`;
 }
 
 function pollRoster(peers: Array<{ id: string; name: string }>): void {
@@ -252,6 +269,22 @@ describe("DocsRtcSession gossip discovery", () => {
 
     expect(seen).not.toContainEqual({ type: "forbidden" });
     expect(session.myAccess()).toBe("write");
+  });
+
+  it("learns its own write right from the poll ticket when the roster omits self", () => {
+    const session = createSession();
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "other", name: "Other", user: "member", access: "write" }],
+      messages: [],
+      ticket: collabTicket({ peer: "me", access: "write" }),
+    });
+
+    expect(session.myAccess()).toBe("write");
+    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2] });
+    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith({
+      type: "sync",
+      u: [SYNC_UPDATE, 1, 2],
+    });
   });
 
   it("lets an editor broadcast document updates", () => {
