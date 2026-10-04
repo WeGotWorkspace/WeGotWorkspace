@@ -8,7 +8,7 @@
 .calendar-invitations-panel-drawer {
   --side-drawer-width: 23rem;
   --workspace-accent: var(--color-we-got-dark);
-  --wai-bg: var(--color-we-got-prince);
+  --workspace-brand: var(--color-we-got-prince);
   --workspace-accent-strong: color-mix(
     in oklch,
     var(--workspace-accent) 32%,

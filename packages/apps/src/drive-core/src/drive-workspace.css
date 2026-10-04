@@ -55,23 +55,11 @@
    * Outline language for segmented / tile chrome outside the sidebar.
    * Sidebar row states are the shared rail ladder in `workspace-color.css`.
    */
-  --wai-bg: var(--color-we-got-dark);
-  --wai-fg: var(--color-we-got-brat);
-  --button-primary-bg: var(--wai-fg);
-  --button-primary-fg: var(--wai-bg);
+  --workspace-brand: var(--color-we-got-dark);
+  --workspace-brand-foreground: var(--color-we-got-brat);
+  --button-primary-bg: var(--workspace-brand-foreground);
+  --button-primary-fg: var(--workspace-brand);
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 40%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 55%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 65%,
-    var(--workspace-surface)
-  );
   /* Section titles on the accent rail — slate muted fails AA; ink mix clears. */
   --field-label-color: color-mix(
     in oklch,
@@ -90,8 +78,6 @@
 
 .drive-workspace .app-sidebar__scroll {
   /* Primary fill inherits the workspace (`--button-primary-*`). */
-  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 /*
@@ -99,15 +85,15 @@
  * Dark label.
  */
 .drive-workspace .app-sidebar__notifications {
-  --button-primary-bg: var(--wai-fg);
-  --button-primary-fg: var(--wai-bg);
+  --button-primary-bg: var(--workspace-brand-foreground);
+  --button-primary-fg: var(--workspace-brand);
   --notification-inbox-badge-bg: var(--workspace-accent);
   --notification-inbox-badge-fg: #ffffff;
 }
 
 /**
  * App switcher lockup: drive.svg literals (white tile / `#8ACE00` folder).
- * Pin both the lockup variables and `--wai-*` so artwork stays distinct from
+ * Pin both the lockup variables and `--workspace-brand*` so artwork stays distinct from
  * any shared switch-trigger remaps (do not recolor the folder mark).
  */
 .drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
@@ -120,8 +106,8 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-dark);
-  --wai-fg: var(--color-we-got-brat);
+  --workspace-brand: var(--color-we-got-dark);
+  --workspace-brand-foreground: var(--color-we-got-brat);
 }
 
 .drive-workspace .drive-main-pane {
@@ -199,16 +185,6 @@
 
 .drive-workspace .drive-main-header__actions {
   @apply flex items-center gap-2;
-  --button-outline-color: var(--sidebar-on, var(--color-we-got-dark));
-  --segmented-control-color: var(--button-outline-color);
-  --segmented-control-track-bg: transparent;
-  --segmented-control-track-border-color: var(
-    --button-outline-border-color,
-    var(--control-border-color)
-  );
-  --segmented-control-active-bg: var(--button-outline-active-background);
-  --segmented-control-active-fg: var(--button-active-color);
-  --segmented-control-active-shadow: none;
 }
 
 /**
@@ -219,10 +195,10 @@
   --workspace-accent: var(--color-we-got-dark);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  --wai-bg: var(--color-we-got-dark);
-  --wai-fg: var(--color-we-got-brat);
-  --button-primary-bg: var(--wai-fg);
-  --button-primary-fg: var(--wai-bg);
+  --workspace-brand: var(--color-we-got-dark);
+  --workspace-brand-foreground: var(--color-we-got-brat);
+  --button-primary-bg: var(--workspace-brand-foreground);
+  --button-primary-fg: var(--workspace-brand);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);

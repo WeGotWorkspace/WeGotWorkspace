@@ -28,16 +28,16 @@ export function sharedBrandingCssprops(): BrandingCsspropsMap {
   };
 }
 
-/** Switch-trigger `--wai-*` layers (document real workspace defaults per app). */
+/** Switch-trigger `--workspace-brand*` layers (document real workspace defaults per app). */
 export function waiBrandingCssprops(defaults: { bg: string; fg: string }): BrandingCsspropsMap {
   return {
-    "wai-bg": {
+    "workspace-brand": {
       value: defaults.bg,
-      description: 'Icon background layer (fill="var(--wai-bg, …)")',
+      description: 'Icon background layer (fill="var(--workspace-brand, …)")',
       category: "Icon layers",
       control: defaults.bg.startsWith("#") ? "color" : "text",
     },
-    "wai-fg": {
+    "workspace-brand-foreground": {
       value: defaults.fg,
       description: "Icon foreground / marks",
       category: "Icon layers",
@@ -83,16 +83,16 @@ export const BRANDING_APP_ACCENT_DEFAULTS: Record<WorkspaceAppId, string> = {
 
 /**
  * App paper from `workspace-color.css`. Very light tint of Soft — lighter than
- * the sidebar, which is the Soft primitive.
+ * the sidebar, which is the Soft primitive. The recipe lives on `:root` as
+ * `--workspace-surface` so portaled dialogs resolve the same paper.
  */
-export const BRANDING_WORKSPACE_SURFACE_DEFAULT =
-  "color-mix(in oklch, var(--color-we-got-soft) 40%, #fff)";
+export const BRANDING_WORKSPACE_SURFACE_DEFAULT = "var(--workspace-surface)";
 
 /**
  * Production `--app-sidebar-bg` from `workspace-color.css`.
- * The rail is We Got Soft. Row states mix Sand into that rail.
+ * The rail is a 5% brand wash into white unless a product overrides the mix.
  */
-export const BRANDING_APP_SIDEBAR_DEFAULT = "var(--color-we-got-soft)";
+export const BRANDING_APP_SIDEBAR_DEFAULT = "var(--workspace-sidebar-surface)";
 
 export const BRANDING_APP_SIDEBAR_DEFAULTS: Record<WorkspaceAppId, string> = {
   mail: BRANDING_APP_SIDEBAR_DEFAULT,
@@ -150,15 +150,27 @@ export function createAppBrandingCssprops(
       category: "App chrome",
       control: "text",
     },
-    "sidebar-bg": {
-      value: brandingAppSidebarBg(appId),
-      description: "Sidebar fill — icon color mixed into white. Tasks 20%, Notes 15%, others 5%.",
+    "workspace-surface-foreground": {
+      value: "var(--color-we-got-dark)",
+      description: "Ink on app paper.",
       category: "App chrome",
       control: "text",
     },
-    "sidebar-on": {
+    "workspace-accent-foreground": {
+      value: "#ffffff",
+      description: "Ink on the solid accent.",
+      category: "App chrome",
+      control: "text",
+    },
+    "workspace-sidebar-surface": {
+      value: brandingAppSidebarBg(appId),
+      description: "Sidebar fill — brand mixed into white. Tasks 20%, Notes 15%, others 5%.",
+      category: "App chrome",
+      control: "text",
+    },
+    "workspace-sidebar-surface-foreground": {
       value: "var(--color-we-got-dark)",
-      description: "Ink for text, borders, and icons.",
+      description: "Ink on the sidebar rail.",
       category: "App chrome",
       control: "text",
     },
@@ -209,9 +221,9 @@ export const BRANDING_APP_WAI_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg:
  * Tasks and Notes use a stronger wash so pink and yellow still read.
  */
 export function brandingAppSidebarBg(appId: WorkspaceAppId): string {
-  if (appId === "tasks") return "color-mix(in oklch, var(--wai-bg) 20%, #fff)";
-  if (appId === "notes") return "color-mix(in oklch, var(--wai-bg) 15%, #fff)";
-  return "color-mix(in oklch, var(--wai-bg) 5%, #fff)";
+  if (appId === "tasks") return "color-mix(in oklch, var(--workspace-brand) 20%, #fff)";
+  if (appId === "notes") return "color-mix(in oklch, var(--workspace-brand) 15%, #fff)";
+  return "color-mix(in oklch, var(--workspace-brand) 5%, #fff)";
 }
 
 /**
@@ -221,24 +233,24 @@ export function brandingAppSidebarBg(appId: WorkspaceAppId): string {
 export function brandingAppButtonPrimary(appId: WorkspaceAppId): { bg: string; fg: string } {
   switch (appId) {
     case "drive":
-      return { bg: "var(--wai-fg)", fg: "var(--wai-bg)" };
+      return { bg: "var(--workspace-brand-foreground)", fg: "var(--workspace-brand)" };
     case "meet":
-      return { bg: "var(--wai-fg)", fg: "var(--color-we-got-dark)" };
+      return { bg: "var(--workspace-brand-foreground)", fg: "var(--color-we-got-dark)" };
     case "notes":
-      return { bg: "var(--wai-bg)", fg: "var(--color-we-got-dark)" };
+      return { bg: "var(--workspace-brand)", fg: "var(--color-we-got-dark)" };
     case "mail":
       // Raw We Got Red with white is ~4.1:1. Darken it so 14px labels clear AA.
       return {
-        bg: "color-mix(in oklch, var(--wai-bg) 45%, var(--color-we-got-dark))",
-        fg: "var(--wai-fg)",
+        bg: "color-mix(in oklch, var(--workspace-brand) 45%, var(--color-we-got-dark))",
+        fg: "var(--workspace-brand-foreground)",
       };
     default:
-      return { bg: "var(--wai-bg)", fg: "var(--wai-fg)" };
+      return { bg: "var(--workspace-brand)", fg: "var(--workspace-brand-foreground)" };
   }
 }
 
 /**
- * Convenience: shared cream/ink + accent + production `--wai-*` for a workspace app.
+ * Convenience: shared cream/ink + accent + production `--workspace-brand*` for a workspace app.
  *
  * Omits `--app-sidebar-bg` and `--app-sidebar-color` so the decorator cannot
  * wipe the Soft rail. `--sidebar-bg` and `--sidebar-on` are included because

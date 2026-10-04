@@ -98,12 +98,12 @@ Excluded from this list on purpose:
 
 ## Charts / swatches / icons
 
-| File                                    | Hex                                       | Recommendation                                 |
-| --------------------------------------- | ----------------------------------------- | ---------------------------------------------- |
-| `ui/chart.tsx`                          | Recharts `#ccc` / `#fff`                  | **keep** (third-party chart)                   |
-| `ui/swatch-color-picker.css`            | conic rainbow hexes                       | **keep** (picker UI)                           |
-| `app-icons/*.svg`, `public/app-icons/*` | brand hex fallbacks in `var(--wai-*, #…)` | **keep** (SVG fallbacks mirror primitives)     |
-| `reminders.svg`                         | `#f43f5e`                                 | **keep** or map if Reminders ships under Tasks |
+| File                                    | Hex                                                  | Recommendation                                 |
+| --------------------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
+| `ui/chart.tsx`                          | Recharts `#ccc` / `#fff`                             | **keep** (third-party chart)                   |
+| `ui/swatch-color-picker.css`            | conic rainbow hexes                                  | **keep** (picker UI)                           |
+| `app-icons/*.svg`, `public/app-icons/*` | brand hex fallbacks in `var(--workspace-brand*, #…)` | **keep** (SVG fallbacks mirror primitives)     |
+| `reminders.svg`                         | `#f43f5e`                                            | **keep** or map if Reminders ships under Tasks |
 
 ## App switch / branding defaults
 

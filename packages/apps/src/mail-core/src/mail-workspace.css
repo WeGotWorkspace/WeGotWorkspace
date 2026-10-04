@@ -83,11 +83,11 @@
     transparent
   );
   /* Switch mark stays the mail icon (red + white). */
-  --wai-bg: var(--color-we-got-red);
-  --wai-fg: #ffffff;
+  --workspace-brand: var(--color-we-got-red);
+  --workspace-brand-foreground: #ffffff;
   /* White on raw We Got Red (~4.1:1) fails WCAG AA (4.5:1) for 14px labels. */
-  --button-primary-bg: color-mix(in oklch, var(--wai-bg) 45%, var(--color-we-got-dark));
-  --button-primary-fg: var(--wai-fg);
+  --button-primary-bg: color-mix(in oklch, var(--workspace-brand) 45%, var(--color-we-got-dark));
+  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   /* Selected nav count pills match the primary CTA (darkened red + white). */
@@ -96,18 +96,6 @@
 
   /* Outline action language for header + collection sidebar rows. */
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 18%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 24%,
-    var(--workspace-surface)
-  );
 }
 
 /** App switcher lockup: mail.svg literals (`#de4b0e` tile / white flap). */
@@ -119,20 +107,13 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-red);
-  --wai-fg: #ffffff;
+  --workspace-brand: var(--color-we-got-red);
+  --workspace-brand-foreground: #ffffff;
 }
 
 /* Header outline chips stay on accent-strong; sidebar nav hover stays ink. */
 .mail-workspace .view-header {
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-}
-
-.mail-workspace .app-sidebar__scroll {
-  /* Primary fill inherits the workspace (`--button-primary-*`). */
-  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 .mail-workspace .mail-state-accent {
@@ -220,11 +201,11 @@
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
   /* Switch mark stays the mail icon (red + white). */
-  --wai-bg: var(--color-we-got-red);
-  --wai-fg: #ffffff;
+  --workspace-brand: var(--color-we-got-red);
+  --workspace-brand-foreground: #ffffff;
   /* White on raw We Got Red (~4.1:1) fails WCAG AA (4.5:1) for 14px labels. */
-  --button-primary-bg: color-mix(in oklch, var(--wai-bg) 45%, var(--color-we-got-dark));
-  --button-primary-fg: var(--wai-fg);
+  --button-primary-bg: color-mix(in oklch, var(--workspace-brand) 45%, var(--color-we-got-dark));
+  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);

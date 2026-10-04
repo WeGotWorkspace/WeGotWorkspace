@@ -62,10 +62,10 @@
     var(--sidebar-on, var(--color-we-got-dark)) 68%,
     transparent
   );
-  --wai-bg: var(--color-we-got-sky);
-  --wai-fg: var(--color-we-got-dark);
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-brand: var(--color-we-got-sky);
+  --workspace-brand-foreground: var(--color-we-got-dark);
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --checkbox-checked-bg: var(--workspace-accent);
@@ -78,18 +78,6 @@
 
   /* Outline action language for header + collection sidebar + action-bar. */
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 18%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 24%,
-    var(--workspace-surface)
-  );
 }
 
 /*
@@ -100,10 +88,10 @@
  */
 .contacts-workspace .workspace-detail-pane .action-bar,
 .contacts-workspace .workspace-detail-pane {
-  --wai-bg: var(--color-we-got-sky);
-  --wai-fg: var(--color-we-got-dark);
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-brand: var(--color-we-got-sky);
+  --workspace-brand-foreground: var(--color-we-got-dark);
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
 }
 
 /*
@@ -112,12 +100,6 @@
  */
 .contacts-workspace .action-bar .contacts-address-book-select.color-swatch-trigger {
   background-color: var(--workspace-surface);
-}
-
-.contacts-workspace .app-sidebar__scroll {
-  /* Primary fill inherits the workspace (`--button-primary-*`). */
-  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 /**
@@ -133,8 +115,8 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-sky);
-  --wai-fg: var(--color-we-got-dark);
+  --workspace-brand: var(--color-we-got-sky);
+  --workspace-brand-foreground: var(--color-we-got-dark);
 }
 
 .contacts-list-panel__loading {
@@ -508,10 +490,10 @@
 .contacts-dialog-surface {
   --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
-  --wai-bg: var(--color-we-got-sky);
-  --wai-fg: var(--color-we-got-dark);
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-brand: var(--color-we-got-sky);
+  --workspace-brand-foreground: var(--color-we-got-dark);
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);

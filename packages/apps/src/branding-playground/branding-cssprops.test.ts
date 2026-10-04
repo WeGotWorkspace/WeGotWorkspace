@@ -33,14 +33,14 @@ describe("BRANDING_APP_ACCENT_DEFAULTS", () => {
 describe("waiBrandingCssprops", () => {
   it("emits only bg/fg when optional layers are omitted (calendar production shape)", () => {
     const map = waiBrandingCssprops({ bg: "#ffbdc2", fg: "#962fa8" });
-    expect(Object.keys(map).sort()).toEqual(["wai-bg", "wai-fg"]);
-    expect(map["wai-bg"]?.value).toBe("#ffbdc2");
-    expect(map["wai-fg"]?.value).toBe("#962fa8");
+    expect(Object.keys(map).sort()).toEqual(["workspace-brand", "workspace-brand-foreground"]);
+    expect(map["workspace-brand"]?.value).toBe("#ffbdc2");
+    expect(map["workspace-brand-foreground"]?.value).toBe("#962fa8");
   });
 
   it("emits only bg and fg", () => {
     const map = waiBrandingCssprops({ bg: "#ffbdc2", fg: "#de4b0e" });
-    expect(Object.keys(map).sort()).toEqual(["wai-bg", "wai-fg"]);
+    expect(Object.keys(map).sort()).toEqual(["workspace-brand", "workspace-brand-foreground"]);
   });
 });
 
@@ -64,8 +64,8 @@ describe("createAppBrandingCssprops", () => {
 describe("brandingAppButtonPrimary", () => {
   it("darkens mail primary so white labels clear AA", () => {
     expect(brandingAppButtonPrimary("mail")).toEqual({
-      bg: "color-mix(in oklch, var(--wai-bg) 45%, var(--color-we-got-dark))",
-      fg: "var(--wai-fg)",
+      bg: "color-mix(in oklch, var(--workspace-brand) 45%, var(--color-we-got-dark))",
+      fg: "var(--workspace-brand-foreground)",
     });
   });
 });
@@ -79,17 +79,16 @@ describe("defaultAppBrandingCssprops", () => {
       expect(map["color-we-got-soft"]?.value).toBe("#fff5e9");
       expect(map["color-we-got-dark"]?.value).toBe("#003311");
       expect(map["workspace-accent"]?.value).toBe(BRANDING_APP_ACCENT_DEFAULTS[appId]);
-      expect(map["workspace-surface"]?.value).toBe(
-        "color-mix(in oklch, var(--color-we-got-soft) 40%, #fff)",
-      );
+      expect(map["workspace-surface"]?.value).toBe("var(--workspace-surface)");
+      expect(map["workspace-surface-foreground"]?.value).toBe("var(--color-we-got-dark)");
       expect(map["button-primary-bg"]?.value).toBe(brandingAppButtonPrimary(appId).bg);
       expect(map["button-primary-fg"]?.value).toBe(brandingAppButtonPrimary(appId).fg);
-      expect(map["sidebar-bg"]?.value).toBe(brandingAppSidebarBg(appId));
-      expect(map["sidebar-on"]?.value).toBe("var(--color-we-got-dark)");
+      expect(map["workspace-sidebar-surface"]?.value).toBe(brandingAppSidebarBg(appId));
+      expect(map["workspace-sidebar-surface-foreground"]?.value).toBe("var(--color-we-got-dark)");
       expect(map["app-sidebar-bg"]).toBeUndefined();
       expect(map["app-sidebar-color"]).toBeUndefined();
-      expect(map["wai-bg"]?.value).toBe(wai.bg);
-      expect(map["wai-fg"]?.value).toBe(wai.fg);
+      expect(map["workspace-brand"]?.value).toBe(wai.bg);
+      expect(map["workspace-brand-foreground"]?.value).toBe(wai.fg);
       expect(map["wai-detail"]).toBeUndefined();
       expect(map["wai-detail-muted"]).toBeUndefined();
       expect(map["wai-cutout"]).toBeUndefined();
@@ -102,7 +101,7 @@ describe("defaultAppBrandingCssprops", () => {
     const values = new Set(Object.values(BRANDING_APP_SIDEBAR_DEFAULTS));
     expect(values.size).toBe(1);
     const formula = BRANDING_APP_SIDEBAR_DEFAULTS.mail;
-    expect(formula).toBe("var(--color-we-got-soft)");
+    expect(formula).toBe("var(--workspace-sidebar-surface)");
     for (const appId of WORKSPACE_APP_IDS) {
       expect(BRANDING_APP_SIDEBAR_DEFAULTS[appId]).toBe(formula);
     }
@@ -190,11 +189,11 @@ describe("createBrandingStoryMeta defaults", () => {
     const cssprops = meta.parameters?.cssprops as Record<string, { value: string }>;
     expect(cssprops).not.toHaveProperty("app-sidebar-bg");
     expect(cssprops["workspace-accent"].value).toBe("var(--color-we-got-dark)");
-    expect(cssprops["button-primary-bg"].value).toBe("var(--wai-bg)");
-    expect(cssprops["button-primary-fg"].value).toBe("var(--wai-fg)");
+    expect(cssprops["button-primary-bg"].value).toBe("var(--workspace-brand)");
+    expect(cssprops["button-primary-fg"].value).toBe("var(--workspace-brand-foreground)");
     expect(cssprops["app-sidebar-color"]).toBeUndefined();
-    expect(cssprops["wai-bg"].value).toBe("#0045ff");
-    expect(cssprops["wai-fg"].value).toBe("#ffffff");
+    expect(cssprops["workspace-brand"].value).toBe("#0045ff");
+    expect(cssprops["workspace-brand-foreground"].value).toBe("#ffffff");
     expect(cssprops["wai-detail"]).toBeUndefined();
     expect(cssprops["wai-cutout"]).toBeUndefined();
   });
@@ -206,12 +205,12 @@ describe("createBrandingStoryMeta defaults", () => {
     });
     const cssprops = meta.parameters?.cssprops as Record<string, { value: string }>;
     expect(cssprops["workspace-accent"].value).toBe("var(--color-we-got-dark)");
-    expect(cssprops["button-primary-bg"].value).toBe("var(--wai-bg)");
-    expect(cssprops["button-primary-fg"].value).toBe("var(--wai-fg)");
+    expect(cssprops["button-primary-bg"].value).toBe("var(--workspace-brand)");
+    expect(cssprops["button-primary-fg"].value).toBe("var(--workspace-brand-foreground)");
     expect(cssprops["app-sidebar-bg"]).toBeUndefined();
     expect(cssprops["app-sidebar-color"]).toBeUndefined();
-    expect(cssprops["wai-bg"].value).toBe("#962fa8");
-    expect(cssprops["wai-fg"].value).toBe("#ffffff");
+    expect(cssprops["workspace-brand"].value).toBe("#962fa8");
+    expect(cssprops["workspace-brand-foreground"].value).toBe("#ffffff");
     expect(cssprops["wai-cutout"]).toBeUndefined();
   });
 
@@ -227,8 +226,10 @@ describe("createBrandingStoryMeta defaults", () => {
       expect(cssprops["workspace-accent"].value).toBe(BRANDING_APP_ACCENT_DEFAULTS[appId]);
       expect(cssprops["app-sidebar-bg"]).toBeUndefined();
       expect(cssprops["app-sidebar-color"]).toBeUndefined();
-      expect(cssprops["wai-bg"].value).toBe(BRANDING_APP_WAI_DEFAULTS[appId].bg);
-      expect(cssprops["wai-fg"].value).toBe(BRANDING_APP_WAI_DEFAULTS[appId].fg);
+      expect(cssprops["workspace-brand"].value).toBe(BRANDING_APP_WAI_DEFAULTS[appId].bg);
+      expect(cssprops["workspace-brand-foreground"].value).toBe(
+        BRANDING_APP_WAI_DEFAULTS[appId].fg,
+      );
     },
   );
 });

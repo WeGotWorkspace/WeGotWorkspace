@@ -65,40 +65,21 @@
     var(--sidebar-on, var(--color-we-got-dark)) 68%,
     transparent
   );
-  --wai-bg: var(--color-we-got-pink);
-  --wai-fg: var(--color-we-got-dark);
-  --sidebar-bg: color-mix(in oklch, var(--wai-bg) 20%, #fff);
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-brand: var(--color-we-got-pink);
+  --workspace-brand-foreground: var(--color-we-got-dark);
+  --workspace-sidebar-surface: color-mix(in oklch, var(--workspace-brand) 20%, #fff);
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
 
   /* Outline action language for header + collection sidebar rows. */
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 18%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 24%,
-    var(--workspace-surface)
-  );
 }
 
 /* Header outline chips stay on accent-strong; sidebar nav hover stays ink. */
 .tasks-workspace .view-header {
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-}
-
-.tasks-workspace .app-sidebar__scroll {
-  /* Primary fill inherits the workspace (`--button-primary-*`). */
-  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 /** App switcher lockup: tasks.svg literals (`#ffbdc2` tile, white marks). */
@@ -110,8 +91,8 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-pink);
-  --wai-fg: var(--color-we-got-dark);
+  --workspace-brand: var(--color-we-got-pink);
+  --workspace-brand-foreground: var(--color-we-got-dark);
 }
 
 /**
@@ -158,11 +139,11 @@
 .tasks-dialog-surface {
   --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
-  --wai-bg: var(--color-we-got-pink);
-  --wai-fg: var(--color-we-got-dark);
-  --sidebar-bg: color-mix(in oklch, var(--wai-bg) 20%, #fff);
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-brand: var(--color-we-got-pink);
+  --workspace-brand-foreground: var(--color-we-got-dark);
+  --workspace-sidebar-surface: color-mix(in oklch, var(--workspace-brand) 20%, #fff);
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);

@@ -1,35 +1,14 @@
 @import "../../styles.css" reference;
 
 /**
- * Shared workspace tint recipes (Layer 3).
+ * Shared workspace host aliases (Layer 3).
  *
- * Each product `*-workspace.css` imports this once (same pattern as
- * `workspace-split-app.css`), then only sets what differs:
- * - `--workspace-accent` → brand primitive
- * - `--wai-*` layers the switch mark actually uses
+ * Core pairs live on `:root` (`styles.css`). Interactive state lives in
+ * `workspace-derive.css`. This sheet only republishes old names onto the
+ * workspace / dialog hosts so existing callers keep resolving.
  *
- * Mixes use `color-mix(in oklch, …)` so tints follow OKLCH from Soft and Dark.
- *
- * Sidebar rail and row states are one recipe. There is no mix knob. The rail
- * fill is `--sidebar-bg`: 5% of the app icon (`--wai-bg`) mixed into white
- * (Tasks 20%, Notes 15%), published as `--app-sidebar-bg`. Hover / selected / selected-hover mix
- * 12 / 18 / 28 Sand into that fill. Main-area and dialog action washes use
- * `--workspace-accent` into `--workspace-surface`, not the sidebar tokens.
- * Text, borders, and icons use `--sidebar-on` (Dark). The main paper is `--workspace-surface`, a very
- * light tint of Soft. Checks and badges use `--workspace-accent`, which is
- * `--color-we-got-dark`. The primary button follows `--wai-*` on the same
- * element. Drive, Meet, and Notes redeclare that pair.
- * Those declarations also match `.app-sidebar`, so an ancestor override cannot
- * retune the painted rail. Product files do not redeclare the ladder.
- * Primary and input tokens stay off `.app-sidebar` — the primary button
- * follows the icon on the workspace, and New sits inside the sidebar.
- *
- * Defaults use `:where` (zero specificity). Every product file imports this
- * sheet, and the app loads every product, so a later copy of these rules used
- * to reset earlier product overrides (primary fg). Storybook loads one
- * product, so the product file won there and the two surfaces diverged.
- * Product class rules now win in both — except the sidebar rail, which is
- * owned on `.app-sidebar` itself.
+ * Defaults use `:where` (zero specificity). Products set `--workspace-brand`
+ * (and optional `--workspace-sidebar-surface` mix %) on their class.
  */
 :where(
   .admin-workspace,
@@ -53,82 +32,20 @@
   .drive-dialog-surface,
   .meet-channel-dialog,
   .meet-call-dialog,
-  /* Portaled under document.body — not a descendant of `.meet-workspace`. */
   .meet-device-popover
 ) {
-  /*
-   * App paper. A very light tint of Soft. Login, home, forgot-password,
-   * and the installer keep the Soft primitive. The sidebar fill is
-   * `--sidebar-bg` (5% `--wai-bg` into white), not this paper.
-   *
-   * `--sidebar-on` is the ink (Dark). Both tokens are set here, not on
-   * `.app-sidebar`, so a Themes control on the workspace host inherits
-   * into the rail. Products set `--wai-bg` on the workspace. Portaled Meet
-   * dialogs do not, so the mix falls back to `--workspace-accent`.
-   */
-  --sidebar-bg: color-mix(in oklch, var(--wai-bg, var(--workspace-accent)) 5%, #fff);
-  --sidebar-on: var(--color-we-got-dark);
-  --workspace-surface: color-mix(in oklch, var(--color-we-got-soft) 40%, #fff);
+  --sidebar-bg: var(--workspace-sidebar-surface);
+  --sidebar-on: var(--workspace-sidebar-surface-foreground);
   --popover: var(--workspace-surface);
   --color-popover: var(--workspace-surface);
-  --foreground: var(--sidebar-on);
-  --color-foreground: var(--sidebar-on);
-  --button-outline-color: var(--sidebar-on);
-  --field-label-color: var(--sidebar-on);
-  --sidebar-logo-close-button-color: var(--sidebar-on);
-  --control-border-color: color-mix(in oklch, var(--sidebar-on) 12%, transparent);
+  --foreground: var(--workspace-surface-foreground);
+  --color-foreground: var(--workspace-surface-foreground);
+  --sidebar-logo-close-button-color: var(--workspace-surface-foreground);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-main-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
-  /*
-   * Selected list and tile wash on the main paper. Drive and Docs tiles,
-   * and Notes and Contacts rows, read this one mix so they cannot drift.
-   * 6.6% accent into `--workspace-surface` (oklab) matches the sidebar
-   * selected step's lightness drop. Sand and the sidebar fill stay on the rail.
-   */
-  --drive-item-selected-background: color-mix(
-    in oklab,
-    var(--workspace-accent, var(--color-we-got-dark)) 6.6%,
-    var(--workspace-surface)
-  );
-
-  /*
-   * Shared field wash — same dark-into-paper recipe as login/installer
-   * (`6%` / `8%` Dark), mixed into `--workspace-surface` so fields sit on
-   * app paper the way auth fields sit on Soft. Login/installer keep Soft.
-   * `oklch` matches this sheet; auth still uses `oklab` on Soft.
-   */
-  --input-background: color-mix(in oklch, var(--color-we-got-dark) 6%, var(--workspace-surface));
-  --input-background-focus: color-mix(
-    in oklch,
-    var(--color-we-got-dark) 8%,
-    var(--workspace-surface)
-  );
-  --input-background-disabled: color-mix(
-    in oklch,
-    var(--color-we-got-dark) 4%,
-    var(--workspace-surface)
-  );
-
-  --workspace-accent-strong: color-mix(
-    in oklch,
-    var(--workspace-accent) 32%,
-    var(--color-we-got-dark)
-  );
-
-  /*
-   * Primary button follows the switch icon (`--wai-*`). Drive, Meet, and Notes
-   * redeclare the pair on their workspace class. Portaled Meet surfaces omit
-   * `--wai-bg`, so the fill falls back to `--workspace-accent`.
-   */
-  --button-primary-bg: var(--wai-bg, var(--workspace-accent));
-  --button-primary-fg: var(--wai-fg);
 }
 
-/*
- * Rail SST. Same workspace and dialog hosts as the sheet above, plus
- * `.app-sidebar`, so the painted sidebar does not inherit a product override.
- */
 :where(
   .admin-workspace,
   .settings-workspace,
@@ -154,24 +71,22 @@
   .meet-device-popover,
   .app-sidebar
 ) {
-  --app-sidebar-bg: var(--sidebar-bg);
-  --app-sidebar-border-color: color-mix(in oklch, var(--sidebar-on) 12%, transparent);
-  --app-sidebar-color: var(--sidebar-on);
+  --app-sidebar-bg: var(--workspace-sidebar-surface);
+  --app-sidebar-border-color: color-mix(
+    in oklch,
+    var(--workspace-sidebar-surface-foreground) 12%,
+    transparent
+  );
+  --app-sidebar-color: var(--workspace-sidebar-surface-foreground);
+}
 
-  /*
-   * Sand steps in oklch, base = the sidebar fill. Do not mix these into
-   * `--workspace-accent` — that token is the solid accent.
-   */
-  --app-sidebar-item-hover-bg: color-mix(in oklch, var(--color-we-got-sand) 12%, var(--sidebar-bg));
-  --app-sidebar-item-selected-bg: color-mix(
-    in oklch,
-    var(--color-we-got-sand) 18%,
-    var(--sidebar-bg)
-  );
-  --app-sidebar-item-selected-hover-bg: color-mix(
-    in oklch,
-    var(--color-we-got-sand) 28%,
-    var(--sidebar-bg)
-  );
-  --app-sidebar-item-selected-color: var(--sidebar-on);
+/*
+ * Sidebar is a scope, not a token family. Remap the generic pair so the
+ * derivation sheet paints rail states from sidebar surface / foreground.
+ */
+.app-sidebar,
+.docs-collab-sidebar-panel,
+.docs-collab-sidebar-panel-drawer {
+  --workspace-surface: var(--workspace-sidebar-surface);
+  --workspace-surface-foreground: var(--workspace-sidebar-surface-foreground);
 }

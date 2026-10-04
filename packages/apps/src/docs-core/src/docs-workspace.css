@@ -51,10 +51,10 @@
 
   --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
-  --wai-bg: var(--color-we-got-blue);
-  --wai-fg: #ffffff;
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-brand: var(--color-we-got-blue);
+  --workspace-brand-foreground: #ffffff;
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
   --checkbox-border-color: var(--workspace-accent);
   --checkbox-checked-bg: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
@@ -62,18 +62,6 @@
 
   /* Outline / header chrome: accent-strong for text-on-wash (not primary fills). */
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 18%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 24%,
-    var(--workspace-surface)
-  );
   /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24).
    * Nav item SST lives on `.app-sidebar__scroll` (black→sidebar, white on-color). */
 
@@ -91,8 +79,6 @@
  */
 .docs-workspace .view-header {
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--sidebar-on, var(--color-we-got-dark));
-  --button-outline-hover-color: var(--workspace-accent-strong);
 }
 
 /*
@@ -121,23 +107,11 @@
 :is(.docs-workspace, .docs-dialog-surface) .drive-workspace {
   --workspace-accent: inherit;
   --color-emerald: var(--workspace-accent);
-  --wai-bg: var(--color-we-got-blue);
-  --wai-fg: #ffffff;
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-brand: var(--color-we-got-blue);
+  --workspace-brand-foreground: #ffffff;
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 18%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 24%,
-    var(--workspace-surface)
-  );
   /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
@@ -174,13 +148,12 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-blue);
-  --wai-fg: #ffffff;
+  --workspace-brand: var(--color-we-got-blue);
+  --workspace-brand-foreground: #ffffff;
 }
 
 .docs-workspace__header-actions {
   @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
-  --button-outline-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 .docs-workspace__header-actions-leading {
@@ -297,10 +270,10 @@
   --workspace-accent: var(--color-we-got-dark);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  --wai-bg: var(--color-we-got-blue);
-  --wai-fg: #ffffff;
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-brand: var(--color-we-got-blue);
+  --workspace-brand-foreground: #ffffff;
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);

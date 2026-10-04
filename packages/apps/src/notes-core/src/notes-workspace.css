@@ -90,16 +90,9 @@
    * Primary fill is the notes icon yellow. Dark label clears AA on that fill.
    * Sidebar fill is a stronger yellow wash than the shared 5%.
    */
-  --wai-bg: var(--color-we-got-yellow);
-  --sidebar-bg: color-mix(in oklch, var(--wai-bg) 15%, #fff);
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--color-we-got-dark);
-  /*
-   * Row fills step accent into the rail (`workspace-color.css`). Yellow stays
-   * a light wash, so pin selected on-color to ink. Browsers without
-   * contrast-color() otherwise fall back to a dark-glyph mix that fails AA.
-   */
-  --app-sidebar-item-selected-color: var(--sidebar-on, var(--color-we-got-dark));
+  --workspace-brand: var(--color-we-got-yellow);
+  --workspace-brand-foreground: var(--color-we-got-dark);
+  --workspace-sidebar-surface: color-mix(in oklch, var(--workspace-brand) 15%, #fff);
   /*
    * Open / selected list row: same wash as Drive and Docs tiles
    * (`--drive-item-selected-background` in workspace-color.css).
@@ -176,18 +169,6 @@
    * wash. Selected-hover goes higher still (65%).
    */
   --button-active-color: var(--sidebar-on, var(--color-we-got-dark));
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 40%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 55%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 65%,
-    var(--workspace-surface)
-  );
 }
 
 /* Detail scroll shares the cream desk (card is the notebook sheet). */
@@ -292,18 +273,12 @@
   }
 }
 
-.notes-workspace .app-sidebar__scroll {
-  /* Primary fill inherits the workspace (`--button-primary-*`). */
-  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
-}
-
 /*
  * Bell lives in the header (sibling of scroll). Pin the unread badge to the
  * same pair as New note: yellow fill + Dark label.
  */
 .notes-workspace .app-sidebar__notifications {
-  --button-primary-bg: var(--wai-bg);
+  --button-primary-bg: var(--workspace-brand);
   --button-primary-fg: var(--color-we-got-dark);
   --notification-inbox-badge-bg: var(--workspace-accent);
   --notification-inbox-badge-fg: #ffffff;
@@ -311,7 +286,7 @@
 
 /**
  * App switcher lockup: notes.svg literals (`#ffc800` tile / white marks).
- * Default switch-trigger remaps `--wai-*`; pin them back to those hexes.
+ * Default switch-trigger remaps `--workspace-brand*`; pin them back to those hexes.
  */
 .notes-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: #ffc800;
@@ -322,8 +297,8 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-yellow);
-  --wai-fg: #ffffff;
+  --workspace-brand: var(--color-we-got-yellow);
+  --workspace-brand-foreground: #ffffff;
 }
 
 /**
@@ -337,10 +312,9 @@
 .notes-dialog-surface {
   --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
-  --wai-bg: var(--color-we-got-yellow);
-  --sidebar-bg: color-mix(in oklch, var(--wai-bg) 15%, #fff);
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--color-we-got-dark);
+  --workspace-brand: var(--color-we-got-yellow);
+  --workspace-brand-foreground: var(--color-we-got-dark);
+  --workspace-sidebar-surface: color-mix(in oklch, var(--workspace-brand) 15%, #fff);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
@@ -391,17 +365,6 @@
 .notes-workspace :is(.action-bar, .multi-selection-view__actions) {
   --button-active-color: var(--notes-detail-accent-strong);
   --button-outline-hover-color: var(--notes-detail-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 18%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 24%,
-    var(--workspace-surface)
-  );
 }
 
 .notes-workspace .note-detail-view__tag-group {

@@ -5,7 +5,7 @@
 @import "./calendar-event-dialog.css";
 
 /**
- * Calendar product shell: cream main pane, Sand sidebar wash, Dark solid
+ * Calendar product shell: cream main pane, brand-tinted sidebar rail, Dark solid
  * accents (today pill, primary CTA, checks). Tile accent stays pink `#ffbdc2`
  * (WORKSPACE_APP_ACCENT); UI accent and tile may diverge. Primary CTAs use
  * Dark with white glyphs. Import only from {@link CalendarWorkspace}.
@@ -67,27 +67,15 @@
   );
 
   --field-label-color: var(--sidebar-on, var(--color-we-got-dark));
-  --wai-bg: var(--color-we-got-prince);
-  --wai-fg: #ffffff;
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-brand: var(--color-we-got-prince);
+  --workspace-brand-foreground: #ffffff;
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
 
   /* Outline action language for header + collection sidebar rows. */
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 18%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 24%,
-    var(--workspace-surface)
-  );
 
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
      fills the viewport instead of the default centered 42rem measure. */
@@ -108,8 +96,6 @@
 
 .calendar-workspace .app-sidebar__scroll {
   /* Primary fill inherits the workspace (`--button-primary-*`), including Storybook controls. */
-  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 /** App switcher lockup: calendar.svg literals (`#962fa8` tile / white marks). */
@@ -123,8 +109,8 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-prince);
-  --wai-fg: #ffffff;
+  --workspace-brand: var(--color-we-got-prince);
+  --workspace-brand-foreground: #ffffff;
 }
 
 /*
@@ -135,20 +121,7 @@
  * Idle Week select + outline buttons share --button-outline-color (ink).
  */
 .calendar-workspace .view-header {
-  /* Soft `--control-radius` is global (styles.css); header only owns outline washes. */
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--sidebar-on, var(--color-we-got-dark));
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --select-trigger-color: var(--button-outline-color);
-  --segmented-control-color: var(--button-outline-color);
-  --segmented-control-track-bg: transparent;
-  --segmented-control-track-border-color: var(
-    --button-outline-border-color,
-    var(--control-border-color)
-  );
-  --segmented-control-active-bg: var(--button-outline-active-background);
-  --segmented-control-active-fg: var(--button-active-color);
-  --segmented-control-active-shadow: none;
 }
 
 /* Inbox is titleTrailing (row 1 end). Prev/next/Today is titleLeading (row 2 end). */

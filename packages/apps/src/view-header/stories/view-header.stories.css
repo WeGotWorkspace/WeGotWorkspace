@@ -7,7 +7,6 @@
  */
 .view-header-story-actions {
   --button-outline-color: var(--color-we-got-dark);
-  --button-outline-hover-background: color-mix(in oklab, var(--color-we-got-dark) 6%, transparent);
 }
 
 .view-header-story-surface {

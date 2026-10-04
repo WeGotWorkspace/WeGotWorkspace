@@ -99,8 +99,8 @@ describe("workspace PWA manifests", () => {
     const raw = readFileSync(join(manifestsDir, "home.webmanifest"), "utf8");
 
     expect(svg).toContain('viewBox="0 0 270 270"');
-    expect(svg).toContain('fill="var(--wai-bg, #1b1d3a)"');
-    expect(svg).toContain('fill="var(--wai-fg, #fff5e9)"');
+    expect(svg).toContain('fill="var(--workspace-brand, #1b1d3a)"');
+    expect(svg).toContain('fill="var(--workspace-brand-foreground, #fff5e9)"');
     expect(svg).not.toContain('width="60"');
     expect(svg).not.toContain("linearGradient");
     expect(install).toContain('viewBox="0 0 60 60"');

@@ -12,7 +12,7 @@ import settingsIcon from "@/assets/app-icons/settings.svg?raw";
 import tasksIcon from "@/assets/app-icons/tasks.svg?raw";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
 
-/** Inline SVG markup for switch-trigger recoloring via `--wai-*` CSS vars on the root `<svg>`. */
+/** Inline SVG markup for switch-trigger recoloring via `--workspace-brand*` on the root `<svg>`. */
 export const WORKSPACE_APP_ICON_INLINE: Record<WorkspaceAppId, string> = {
   admin: adminIcon,
   calendar: calendarIcon,
@@ -30,7 +30,7 @@ export function workspaceAppIconInlineMarkup(appId: WorkspaceAppId): string {
   return WORKSPACE_APP_ICON_INLINE[appId];
 }
 
-/** Suite / workspace home shell icon — same `--wai-*` vars as app icons. */
+/** Suite / workspace home shell icon — same `--workspace-brand*` vars as app icons. */
 export const WORKSPACE_HOME_ICON_INLINE = homeIcon;
 
 /** Future icons — same source files, not wired in the home grid yet. */

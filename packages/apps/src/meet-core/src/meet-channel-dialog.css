@@ -6,78 +6,54 @@
  * the same Soft paper on `.meet-call-dialog`.
  */
 .meet-channel-dialog {
+  --workspace-surface: color-mix(in oklch, var(--color-we-got-soft) 40%, #fff);
+  --workspace-surface-foreground: var(--color-we-got-dark);
   --workspace-accent: var(--color-we-got-dark);
-  --workspace-accent-strong: color-mix(
-    in oklch,
-    var(--workspace-accent) 32%,
-    var(--sidebar-on, var(--color-we-got-dark))
-  );
+  --workspace-accent-foreground: #ffffff;
+  --workspace-brand: var(--color-we-got-soft);
+  --workspace-brand-foreground: var(--color-we-got-sand);
+  --workspace-sidebar-surface: color-mix(in oklch, var(--workspace-brand) 5%, #fff);
+  --workspace-sidebar-surface-foreground: var(--workspace-surface-foreground);
   --color-emerald: var(--workspace-accent);
-  --wai-fg: var(--color-we-got-sand);
-  --button-primary-bg: var(--wai-fg);
+  --button-primary-bg: var(--workspace-brand-foreground);
   --button-primary-fg: var(--color-we-got-dark);
-  --button-outline-color: var(--sidebar-on, var(--color-we-got-dark));
-  --button-outline-border-color: color-mix(
-    in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 20%,
-    transparent
-  );
   --button-active-color: var(--workspace-accent-strong);
-  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
-  --field-label-color: color-mix(
-    in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 68%,
-    transparent
-  );
-  --foreground: var(--sidebar-on, var(--color-we-got-dark));
-  --color-foreground: var(--sidebar-on, var(--color-we-got-dark));
-  --muted-foreground: color-mix(
-    in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 65%,
-    transparent
-  );
+  --primary-foreground: var(--workspace-accent-foreground);
+  --field-label-color: color-mix(in oklab, var(--workspace-surface-foreground) 68%, transparent);
+  --foreground: var(--workspace-surface-foreground);
+  --color-foreground: var(--workspace-surface-foreground);
+  --muted-foreground: color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent);
   --background: var(--workspace-surface);
-  --input-background: color-mix(in oklch, var(--color-we-got-dark) 6%, var(--workspace-surface));
-  --input-background-focus: color-mix(
-    in oklch,
-    var(--color-we-got-dark) 8%,
-    var(--workspace-surface)
-  );
   --accent: color-mix(in oklch, var(--workspace-accent) 12%, var(--workspace-surface));
-  --accent-foreground: var(--sidebar-on, var(--color-we-got-dark));
+  --accent-foreground: var(--workspace-surface-foreground);
   --popover: var(--workspace-surface);
-  --popover-foreground: var(--sidebar-on, var(--color-we-got-dark));
-  --modal-title-foreground: var(--sidebar-on, var(--color-we-got-dark));
+  --popover-foreground: var(--workspace-surface-foreground);
+  --modal-title-foreground: var(--workspace-surface-foreground);
   --card-title-icon-color: var(--workspace-accent);
-  --card-title-color: var(--sidebar-on, var(--color-we-got-dark));
+  --card-title-color: var(--workspace-surface-foreground);
   --card-description-color: color-mix(
     in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 65%,
+    var(--workspace-surface-foreground) 65%,
     transparent
   );
   --card-panel-border-color: color-mix(
     in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 12%,
+    var(--workspace-surface-foreground) 12%,
     transparent
   );
   --card-surface-bg: transparent;
   --card-panel-bg: transparent;
-  --card-row-hover-bg: color-mix(
-    in oklab,
-    var(--sidebar-on, var(--color-we-got-dark)) 5%,
-    transparent
-  );
+  --card-row-hover-bg: color-mix(in oklab, var(--workspace-surface-foreground) 5%, transparent);
   background-color: var(--workspace-surface);
-  color: var(--sidebar-on, var(--color-we-got-dark));
-  border-color: color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 12%, transparent);
+  color: var(--workspace-surface-foreground);
+  border-color: color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent);
 }
 
 .meet-channel-dialog .share-access-card {
   --share-dialog-accent: var(--workspace-accent);
   --share-dialog-muted: var(--muted-foreground);
-  --share-dialog-tag-fg: var(--sidebar-on, var(--color-we-got-dark));
+  --share-dialog-tag-fg: var(--workspace-surface-foreground);
 }
 
 .meet-channel-dialog .field-label-row + .field-label-row {

@@ -52,27 +52,15 @@
   );
   --field-label-color: var(--sidebar-on, var(--color-we-got-dark));
 
-  --wai-bg: var(--color-we-got-dark);
-  --wai-fg: var(--color-we-got-soft);
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-brand: var(--color-we-got-dark);
+  --workspace-brand-foreground: var(--color-we-got-soft);
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
 
   /* Outline header chrome (cream main); sidebar inherits ink-on-tint SST. */
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 18%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 24%,
-    var(--workspace-surface)
-  );
 
   /*
    * Item washes live in `workspace-color.css` (accent stepped into the rail).
@@ -86,8 +74,6 @@
  */
 .settings-workspace .view-header {
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--sidebar-on, var(--color-we-got-dark));
-  --button-outline-hover-color: var(--workspace-accent-strong);
 }
 
 .settings-workspace
@@ -100,14 +86,8 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-dark);
-  --wai-fg: var(--color-we-got-soft);
-}
-
-.settings-workspace .app-sidebar__scroll {
-  /* Primary fill inherits the workspace (`--button-primary-*`). */
-  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
+  --workspace-brand: var(--color-we-got-dark);
+  --workspace-brand-foreground: var(--color-we-got-soft);
 }
 
 .settings-workspace .app-sidebar__footer {

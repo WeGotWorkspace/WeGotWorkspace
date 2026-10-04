@@ -1,0 +1,120 @@
+/**
+ * Tier 3 — one interactive ladder from the local surface / foreground pair.
+ *
+ * Custom properties inherit as specified `var()` expressions, so remapping
+ * `--workspace-surface` on `.app-sidebar` or `.meet-workspace` recomputes
+ * every wash below. Do not redeclare these on product sheets.
+ *
+ * Mix direction is foreground-into-surface so a dark scope inverts without
+ * a second recipe. Hover / active / active-hover = 8 / 12 / 16%.
+ */
+
+:where(
+  :root,
+  .app-sidebar,
+  .overlay-paper,
+  .workspace-app-layout__main,
+  .docs-collab-sidebar-panel,
+  .docs-collab-sidebar-panel-drawer,
+  .admin-workspace,
+  .settings-workspace,
+  .notes-workspace,
+  .mail-workspace,
+  .tasks-workspace,
+  .calendar-workspace,
+  .contacts-workspace,
+  .drive-workspace,
+  .docs-workspace,
+  .meet-workspace,
+  .admin-dialog-surface,
+  .mail-dialog-surface,
+  .mail-compose-dialog-surface,
+  .docs-dialog-surface,
+  .notes-dialog-surface,
+  .tasks-dialog-surface,
+  .calendar-dialog-surface,
+  .contacts-dialog-surface,
+  .drive-dialog-surface,
+  .meet-channel-dialog,
+  .meet-call-dialog,
+  .meet-device-popover,
+  .meet-dialog-surface,
+  .meet-popover-surface,
+  .meet-knock-badge__popover,
+  .meet-guest-channel__lobby,
+  .meet-call-bar,
+  .meet-call-stage,
+  .meet-call-expanded,
+  .share-dialog,
+  .share-access-card
+) {
+  --workspace-accent-strong: color-mix(
+    in oklch,
+    var(--workspace-accent) 32%,
+    var(--workspace-surface-foreground)
+  );
+
+  --control-border-color: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
+
+  --input-background: color-mix(
+    in oklch,
+    var(--workspace-surface-foreground) 6%,
+    var(--workspace-surface)
+  );
+  --input-background-focus: color-mix(
+    in oklch,
+    var(--workspace-surface-foreground) 8%,
+    var(--workspace-surface)
+  );
+  --input-background-disabled: color-mix(
+    in oklch,
+    var(--workspace-surface-foreground) 4%,
+    var(--workspace-surface)
+  );
+
+  --button-outline-color: var(--workspace-surface-foreground);
+  --button-outline-hover-color: var(--workspace-accent);
+  --button-outline-hover-background: color-mix(
+    in oklch,
+    var(--workspace-surface-foreground) 8%,
+    var(--workspace-surface)
+  );
+  --button-outline-active-background: color-mix(
+    in oklch,
+    var(--workspace-surface-foreground) 12%,
+    var(--workspace-surface)
+  );
+  --button-outline-active-hover-background: color-mix(
+    in oklch,
+    var(--workspace-surface-foreground) 16%,
+    var(--workspace-surface)
+  );
+  --button-active-color: var(--workspace-accent);
+  --button-ghost-hover-background: var(--button-outline-hover-background);
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
+
+  --menu-item-hover-background: var(--button-outline-hover-background);
+  --menu-item-selected-background: var(--button-outline-active-background);
+  --menu-item-selected-hover-background: var(--button-outline-active-hover-background);
+
+  --segmented-control-color: var(--button-outline-color);
+  --segmented-control-hover-color: var(--button-outline-hover-color);
+  --segmented-control-active-bg: var(--button-outline-active-background);
+  --segmented-control-active-fg: var(--button-active-color);
+
+  --switch-off-bg: color-mix(
+    in oklch,
+    var(--workspace-surface-foreground) 18%,
+    var(--workspace-surface)
+  );
+  --switch-on-bg: var(--workspace-accent);
+
+  --field-label-color: var(--workspace-surface-foreground);
+
+  --drive-item-selected-background: color-mix(
+    in oklch,
+    var(--workspace-accent) 6.6%,
+    var(--workspace-surface)
+  );
+}

@@ -26,23 +26,31 @@ export const COLOR_SEMANTIC = [
 ] as const;
 
 /**
- * Shared workspace component contract (`workspace-color.css` + switch-trigger
- * `--wai-*`). Resolved under a demo host; per-app accents live in Themes.
+ * Tier 2 workspace pairs (`styles.css` `:root`). Components mix these;
+ * products assign primitives into them. Per-app remaps live in Themes.
+ */
+export const COLOR_CORE_TOKENS = [
+  "--workspace-surface",
+  "--workspace-surface-foreground",
+  "--workspace-accent",
+  "--workspace-accent-foreground",
+  "--workspace-sidebar-surface",
+  "--workspace-sidebar-surface-foreground",
+  "--workspace-brand",
+  "--workspace-brand-foreground",
+] as const;
+
+/**
+ * Shared workspace component contract derived from the core pairs.
  */
 export const COLOR_COMPONENT_CONTRACT = [
-  "--workspace-accent",
+  ...COLOR_CORE_TOKENS,
   "--workspace-accent-strong",
   "--app-sidebar-bg",
   "--app-sidebar-color",
   "--app-sidebar-border-color",
-  "--app-sidebar-item-hover-bg",
-  "--app-sidebar-item-selected-bg",
-  "--app-sidebar-item-selected-hover-bg",
-  "--app-sidebar-item-selected-color",
   "--button-primary-bg",
   "--button-primary-fg",
-  "--wai-bg",
-  "--wai-fg",
 ] as const;
 
 /** Brand / system face primitives. */

@@ -2,6 +2,7 @@
 @source "../src";
 @import "tw-animate-css";
 @import "../public/fonts/fonts.css";
+@import "./workspace-shell/src/workspace-derive.css";
 
 @theme inline {
   /* Brand / system face primitives (no role).
@@ -122,43 +123,86 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-highlight-amber: var(--highlight-amber);
   --color-highlight-amber-border: var(--highlight-amber-border);
+  --color-workspace-surface: var(--workspace-surface);
+  --color-workspace-surface-foreground: var(--workspace-surface-foreground);
+  --color-workspace-accent: var(--workspace-accent);
+  --color-workspace-accent-foreground: var(--workspace-accent-foreground);
+  --color-workspace-sidebar-surface: var(--workspace-sidebar-surface);
+  --color-workspace-sidebar-surface-foreground: var(--workspace-sidebar-surface-foreground);
+  --color-workspace-brand: var(--workspace-brand);
+  --color-workspace-brand-foreground: var(--workspace-brand-foreground);
 }
 
 :root {
   --radius: 0.625rem;
-  /* Cream surfaces use `--color-we-got-soft` (Soft). This oklch is the shadcn --background token. */
-  --background: oklch(0.968 0.007 80.7);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(0.968 0.007 80.7);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(0.968 0.007 80.7);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
+  /*
+   * Tier 2 — four surface/foreground pairs. Components and product sheets mix
+   * these, never `--color-we-got-*`. A scope remaps the generic pair
+   * (`.app-sidebar` → sidebar, `.meet-workspace` → dark) and the derivation
+   * sheet recomputes state washes from whatever resolves locally.
+   */
+  --workspace-surface: color-mix(in oklch, var(--color-we-got-soft) 40%, #fff);
+  --workspace-surface-foreground: var(--color-we-got-dark);
+  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent-foreground: #ffffff;
+  --workspace-brand: var(--workspace-accent);
+  --workspace-brand-foreground: var(--workspace-accent-foreground);
+  --workspace-sidebar-surface: color-mix(in oklch, var(--workspace-brand) 5%, #fff);
+  --workspace-sidebar-surface-foreground: var(--workspace-surface-foreground);
+
+  /* Compatibility aliases still read by product sheets. */
+  --sidebar-bg: var(--workspace-sidebar-surface);
+  --sidebar-on: var(--workspace-sidebar-surface-foreground);
+
+  /* shadcn / Tailwind `bg-*` utilities resolve to the same four pairs. */
+  --background: var(--workspace-surface);
+  --foreground: var(--workspace-surface-foreground);
+  --card: var(--workspace-surface);
+  --card-foreground: var(--workspace-surface-foreground);
+  --popover: var(--workspace-surface);
+  --popover-foreground: var(--workspace-surface-foreground);
+  --primary: var(--workspace-accent);
+  --primary-foreground: var(--workspace-accent-foreground);
+  --secondary: color-mix(
+    in oklch,
+    var(--workspace-surface-foreground) 6%,
+    var(--workspace-surface)
+  );
+  --secondary-foreground: var(--workspace-surface-foreground);
+  --muted: color-mix(in oklch, var(--workspace-surface-foreground) 6%, var(--workspace-surface));
+  --muted-foreground: color-mix(
+    in oklch,
+    var(--workspace-surface-foreground) 55%,
+    var(--workspace-surface)
+  );
+  --accent: color-mix(in oklch, var(--workspace-surface-foreground) 6%, var(--workspace-surface));
+  --accent-foreground: var(--workspace-surface-foreground);
   --destructive: var(--color-error);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --destructive-foreground: var(--workspace-accent-foreground);
+  --border: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
+  --input: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
+  --ring: color-mix(in oklch, var(--workspace-surface-foreground) 40%, transparent);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --sidebar: var(--workspace-sidebar-surface);
+  --sidebar-foreground: var(--workspace-sidebar-surface-foreground);
+  --sidebar-primary: var(--workspace-accent);
+  --sidebar-primary-foreground: var(--workspace-accent-foreground);
+  --sidebar-accent: color-mix(
+    in oklch,
+    var(--workspace-sidebar-surface-foreground) 8%,
+    var(--workspace-sidebar-surface)
+  );
+  --sidebar-accent-foreground: var(--workspace-sidebar-surface-foreground);
+  --sidebar-border: color-mix(
+    in oklch,
+    var(--workspace-sidebar-surface-foreground) 12%,
+    transparent
+  );
+  --sidebar-ring: color-mix(in oklch, var(--workspace-sidebar-surface-foreground) 40%, transparent);
   /*
    * Shared form / chrome radius (soft 6px). Global default — Button, IconButton,
    * Input, Select, SegmentedControl, ColorSwatchTrigger, LocaleDatePicker all
@@ -168,7 +212,7 @@
    * True capsules use `--control-radius-pill` (Switch, badges) explicitly.
    */
   --control-radius: 0.375rem;
-  --control-border-color: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
+  --control-border-color: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
   --input-shadow: none;
   /* Capsule chips: metadata labels, count badges, switches — not ordinary controls. */
   --control-radius-pill: 9999px;
@@ -214,42 +258,22 @@
   --input-font-size-lg: 1rem;
   --input-font-size-xl: 1rem;
   /* Switch off track + pending UserChip wash — one shared gray. */
-  --switch-off-bg: color-mix(in oklab, var(--color-we-got-dark) 18%, var(--color-we-got-soft));
+  --switch-off-bg: color-mix(
+    in oklch,
+    var(--workspace-surface-foreground) 18%,
+    var(--workspace-surface)
+  );
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --workspace-surface: var(--workspace-home-bg);
+  --workspace-surface-foreground: #ffffff;
+  --workspace-accent: #ffffff;
+  --workspace-accent-foreground: var(--color-we-got-dark);
+  --workspace-brand: var(--color-we-got-sand);
+  --workspace-brand-foreground: var(--color-we-got-dark);
+  --workspace-sidebar-surface: color-mix(in oklch, #fff 8%, var(--workspace-home-bg));
+  --workspace-sidebar-surface-foreground: #ffffff;
 }
 
 @layer base {
@@ -289,7 +313,7 @@
   html.pwa-standalone,
   html.pwa-standalone body {
     min-height: 100lvh;
-    background-color: var(--color-we-got-soft, #fff5e9);
+    background-color: var(--workspace-sidebar-surface);
   }
 
   html.pwa-standalone .workspace-columns,

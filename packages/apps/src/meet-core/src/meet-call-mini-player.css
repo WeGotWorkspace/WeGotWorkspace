@@ -10,21 +10,6 @@
   transform: none;
   cursor: grab;
   --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 20%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 26%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 32%,
-    var(--workspace-surface)
-  );
 }
 
 .meet-mini-player.floating-action-bar:not(.meet-mini-player--moved) {

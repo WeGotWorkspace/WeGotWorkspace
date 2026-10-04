@@ -21,10 +21,10 @@
     var(--sidebar-on, var(--color-we-got-dark))
   );
   --color-emerald: var(--workspace-accent);
-  --wai-bg: var(--color-we-got-prince);
-  --wai-fg: #ffffff;
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-brand: var(--color-we-got-prince);
+  --workspace-brand-foreground: #ffffff;
+  --button-primary-bg: var(--workspace-brand);
+  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);

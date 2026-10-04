@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
-<rect width="60" height="60" fill="var(--wai-bg, var(--color-we-got-sky, #a3c4e8))"/>
-<path fill="var(--wai-fg, var(--color-we-got-soft, #fff5e9))" d="M39.944 35C45.498 35 50 39.418 50 44.868V60H10V44.868C10 39.418 14.502 35 20.056 35zM30 10c5.523 0 10 4.477 10 10s-4.477 10-10 10-10-4.477-10-10 4.477-10 10-10"/>
+<rect width="60" height="60" fill="var(--workspace-brand, var(--color-we-got-sky, #a3c4e8))"/>
+<path fill="var(--workspace-brand-foreground, var(--color-we-got-soft, #fff5e9))" d="M39.944 35C45.498 35 50 39.418 50 44.868V60H10V44.868C10 39.418 14.502 35 20.056 35zM30 10c5.523 0 10 4.477 10 10s-4.477 10-10 10-10-4.477-10-10 4.477-10 10-10"/>
 </svg>

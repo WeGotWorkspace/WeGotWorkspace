@@ -17,7 +17,7 @@ const brandingMeta = createBrandingStoryMeta({
         component:
           "Designer branding for suite home: cream/ink (and `--workspace-home-bg`) via cssprops, " +
           "home icon SVG slot (`iconPreset` / `svgMarkup` → `WorkspaceHomeIcon` used by BrandLockup), " +
-          "and the dashboard tile grid. The suite mark does not use `--wai-*` layers by default — " +
+          "and the dashboard tile grid. The suite mark does not use `--workspace-brand*` layers by default — " +
           "paste custom SVG with fixed fills or `var(--color-we-got-soft)` / `var(--color-we-got-dark)` as needed.",
       },
     },

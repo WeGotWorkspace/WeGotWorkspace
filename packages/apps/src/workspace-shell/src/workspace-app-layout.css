@@ -3,7 +3,7 @@
 .workspace-columns {
   @apply flex h-dvh w-full overflow-hidden relative;
   font-family: var(--font-sans);
-  background-color: var(--workspace-root-bg, var(--color-we-got-soft));
+  background-color: var(--workspace-root-bg, var(--workspace-surface));
   container: workspace-columns / inline-size;
 }
 
@@ -14,33 +14,7 @@
    * sidebar panel (z-40). Same pattern Calendar/Meet already applied per-product.
    */
   @apply relative isolate flex min-w-0 flex-1 flex-col;
-  background-color: var(--workspace-main-bg, var(--color-we-got-soft));
-  /*
-   * Main-area action controls. Washes are accent into the paper, not the
-   * sidebar fill (`--sidebar-bg`) or sidebar ink (`--sidebar-on`).
-   */
-  --button-outline-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 8%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 12%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 16%,
-    var(--workspace-surface)
-  );
-  --button-outline-hover-color: var(--workspace-accent);
-  --button-ghost-hover-background: var(--button-outline-hover-background);
-  --menu-item-hover-background: var(--button-outline-hover-background);
-  --menu-item-selected-background: var(--button-outline-active-background);
-  --menu-item-selected-hover-background: var(--button-outline-active-hover-background);
-  --switch-off-bg: color-mix(in oklch, var(--workspace-accent) 18%, var(--workspace-surface));
-  --switch-on-bg: var(--workspace-accent);
+  background-color: var(--workspace-main-bg, var(--workspace-surface));
 }
 
 /*
@@ -61,7 +35,7 @@
   @apply shrink-0 border-b p-4 md:p-6;
   border-color: var(
     --workspace-main-header-border-color,
-    color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 10%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent)
   );
 }
 
@@ -80,11 +54,11 @@
   padding-inline: var(--app-sidebar-padding-x, 1rem);
   color: var(
     --workspace-user-footer-text-color,
-    color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 70%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 70%, transparent)
   );
   border-color: var(
     --workspace-user-footer-border-color,
-    color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 10%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent)
   );
 }
 
@@ -100,7 +74,7 @@
   @apply border-t py-2;
   border-color: var(
     --workspace-user-footer-border-color,
-    color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 10%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent)
   );
 }
 
@@ -111,20 +85,17 @@
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
   border: 1px solid transparent;
   background-color: transparent;
-  color: color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 75%, transparent);
+  color: color-mix(in oklab, var(--workspace-surface-foreground) 75%, transparent);
 }
 
 .workspace-sidebar-account-footer__settings-button:hover {
   color: var(
     --button-outline-hover-color,
-    var(--button-outline-color, var(--sidebar-on, var(--color-we-got-dark)))
+    var(--button-outline-color, var(--workspace-surface-foreground))
   );
   background-color: var(
     --button-outline-hover-background,
-    var(
-      --app-sidebar-item-hover-bg,
-      color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 8%, transparent)
-    )
+    color-mix(in oklab, var(--workspace-surface-foreground) 8%, var(--workspace-surface))
   );
 }
 
@@ -163,7 +134,7 @@
   @apply absolute -right-0.5 -top-0.5 size-2 rounded-full;
   background-color: var(
     --notification-inbox-badge-bg,
-    var(--button-primary-bg, var(--color-we-got-dark))
+    var(--button-primary-bg, var(--workspace-brand))
   );
 }
 
@@ -227,12 +198,12 @@
 .workspace-app-layout__user-footer .user-avatar {
   --user-avatar-label-color: var(
     --workspace-user-footer-text-color,
-    color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 70%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 70%, transparent)
   );
   /* 72% clears WCAG AA on cream sidebar wash (~4.5:1); 65% was ~4.45:1. */
   --user-avatar-subtitle-color: var(
     --workspace-user-footer-subtitle-color,
-    color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 72%, transparent)
+    color-mix(in oklab, var(--workspace-surface-foreground) 72%, transparent)
   );
   /*
    * Accent wash on the sidebar surface, same family as nav item tints.
@@ -241,13 +212,13 @@
   --user-avatar-bg: color-mix(
     in oklch,
     var(--workspace-accent) 16%,
-    var(--app-sidebar-bg, var(--workspace-surface, var(--color-we-got-soft)))
+    var(--app-sidebar-bg, var(--workspace-sidebar-surface))
   );
-  --user-avatar-fg: var(--sidebar-on, var(--color-we-got-dark));
+  --user-avatar-fg: var(--workspace-surface-foreground);
   --user-avatar-border: color-mix(in oklch, var(--workspace-accent) 28%, transparent);
   --user-avatar-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 22%,
-    var(--app-sidebar-bg, var(--workspace-surface, var(--color-we-got-soft)))
+    var(--app-sidebar-bg, var(--workspace-sidebar-surface))
   );
 }
