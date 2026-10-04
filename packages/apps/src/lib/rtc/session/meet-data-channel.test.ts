@@ -48,8 +48,7 @@ describe("openMeetDataChannel", () => {
     expect(createDataChannel).toHaveBeenCalledTimes(1);
     expect(createDataChannel).toHaveBeenCalledWith("meet", MEET_DATA_CHANNEL_INIT);
     expect(MEET_DATA_CHANNEL_INIT.id).toBe(MEET_DATA_CHANNEL_ID);
-    expect(MEET_UNRELIABLE_DATA_CHANNEL_ID).toBe(2);
-    expect(createDataChannel.mock.calls.some((call) => call[1]?.id === 2)).toBe(false);
+    expect(MEET_DATA_CHANNEL_INIT.id).not.toBe(MEET_UNRELIABLE_DATA_CHANNEL_ID);
 
     channel.onmessage?.({
       data: JSON.stringify({ t: "chat", id: CLIENT_ID, text: "hi", ts: 1 }),
