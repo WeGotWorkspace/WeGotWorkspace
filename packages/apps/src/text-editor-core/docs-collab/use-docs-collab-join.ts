@@ -14,7 +14,18 @@ import {
   markRoomServerSuccess,
   roomServerAllowed,
 } from "./docs-collab-room-backoff";
-import { loadMarkdown, loadYjsSnapshot, saveDocument } from "./docs-collab-server-io";
+import {
+  fetchYjsSnapshot,
+  loadMarkdown,
+  loadYjsSnapshot,
+  saveDocument,
+} from "./docs-collab-server-io";
+import {
+  adoptServerSnapshot,
+  decideServerStateAdoption,
+  loadBootstrapInParallel,
+} from "./docs-collab-bootstrap";
+import { rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import {
   canSeedFromFile,
   resolveBootstrapSeed,
@@ -23,6 +34,7 @@ import {
 import {
   DOC_STATUS_LOADED_SHARED_DOCUMENT,
   DOC_STATUS_RESTORED_WORKING_VERSION,
+  DOC_STATUS_SNAPSHOT_UNAVAILABLE,
 } from "./docs-collab-status";
 import type { DocsCollabSession, DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
 import {
@@ -153,9 +165,11 @@ export function useDocsCollabJoin({
     async (authToken: string | undefined): Promise<boolean> => {
       const ydoc = refs.ydocRef.current;
       if (!ydoc) return false;
-      return loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
+      const snapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
+      rememberSidecarEtag(room, snapshot.etag);
+      return snapshot.applied;
     },
-    [refs, urls.yjsUrl],
+    [refs, room, urls.yjsUrl],
   );
 
   const applyServerBootstrap = useCallback(
@@ -163,31 +177,52 @@ export function useDocsCollabJoin({
       const ydoc = refs.ydocRef.current;
       if (!ydoc || !isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
-      let markdown = "";
-      let hadSnapshot = false;
-      try {
-        markdown = urls.loadDocumentMarkdown
-          ? await urls.loadDocumentMarkdown(authToken)
-          : await loadMarkdown(urls.documentUrl, authToken);
-      } catch (error) {
+      const load = await loadBootstrapInParallel({
+        loadMarkdown: () =>
+          urls.loadDocumentMarkdown
+            ? urls.loadDocumentMarkdown(authToken)
+            : loadMarkdown(urls.documentUrl, authToken),
+        fetchSnapshot: urls.skipYjsSnapshot ? null : () => fetchYjsSnapshot(urls.yjsUrl, authToken),
+      });
+      if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
+
+      if (load.markdownError) {
         markRoomServerFailure(room);
-        if (isCollabPreconditionFailed(error)) {
+        if (isCollabPreconditionFailed(load.markdownError)) {
           urls.onReconnectConflict?.();
           return;
         }
-        console.warn("[docs-collab] markdown load failed", error);
+        console.warn("[docs-collab] markdown load failed", load.markdownError);
       }
-      if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
-      if (!urls.skipYjsSnapshot) {
-        try {
-          hadSnapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
-        } catch (error) {
-          markRoomServerFailure(room);
-          console.warn("[docs-collab] yjs load failed", error);
+
+      const snapshot = load.snapshot;
+      // C7: the snapshot state is unknown, so seeding would risk a second copy.
+      // The room stays in backoff and the reconnect path retries the bootstrap.
+      if (snapshot.kind === "failed") {
+        markRoomServerFailure(room);
+        console.warn("[docs-collab] yjs load failed", snapshot.error);
+        setDocStatus(DOC_STATUS_SNAPSHOT_UNAVAILABLE);
+        return;
+      }
+
+      if (snapshot.kind === "snapshot") {
+        const adoption = decideServerStateAdoption({
+          hasServerSnapshot: true,
+          pendingServerSave: refs.pendingServerSaveRef.current,
+        });
+        if (adoption === "adopt-server") {
+          adoptServerSnapshot(ydoc, snapshot.update, SERVER_ORIGIN);
+        } else {
+          Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
         }
+        rememberSidecarEtag(room, snapshot.etag);
+        refs.seedDoneRef.current = true;
+      } else if (snapshot.kind === "absent") {
+        rememberSidecarEtag(room, null);
       }
-      if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
-      if (hadSnapshot) refs.seedDoneRef.current = true;
+
+      const hadSnapshot = snapshot.kind === "snapshot";
+      const markdown = load.markdown;
       if (hadSnapshot || markdown) {
         markRoomServerSuccess(room);
       }
@@ -431,14 +466,16 @@ export function useDocsCollabJoin({
     let saved = false;
     if (getMd && ydoc) {
       try {
-        await saveDocument(
+        const etag = await saveDocument(
           urls.documentUrl,
           getMd(),
           ydoc,
           urls.room,
           refs.authTokenRef.current,
           urls.documentSaveMethod ?? "POST",
+          sidecarPrecondition(room),
         );
+        rememberSidecarEtag(room, etag);
         saved = true;
       } catch {
         // ignore

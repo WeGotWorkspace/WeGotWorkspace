@@ -14,13 +14,14 @@ import {
   shouldMarkPendingWhenUnsaved,
 } from "./docs-collab-save-queue";
 import { DOC_STATUS_NOTE_TOO_LARGE } from "./docs-collab-status";
+import { rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
-import { docSignature, isCollabPayloadTooLarge, SERVER_ORIGIN } from "./docs-collab-utils";
-
-function isServerDivergenceError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /\((409|412)\)/.test(message) || /precondition failed/i.test(message);
-}
+import {
+  docSignature,
+  isCollabPayloadTooLarge,
+  isServerDivergenceError,
+  SERVER_ORIGIN,
+} from "./docs-collab-utils";
 
 export const PENDING_SERVER_SAVE_KEY = "pendingServerSave";
 
@@ -116,14 +117,16 @@ export function useDocsCollabSave({
           await urls.persistMarkdown(markdown, refs.authTokenRef.current);
           return;
         }
-        await saveDocument(
+        const etag = await saveDocument(
           urls.documentUrl,
           markdown,
           ydoc,
           urls.room,
           refs.authTokenRef.current,
           urls.documentSaveMethod === "PATCH" ? "PUT" : (urls.documentSaveMethod ?? "POST"),
+          sidecarPrecondition(room),
         );
+        rememberSidecarEtag(room, etag);
       };
 
       try {
@@ -135,22 +138,25 @@ export function useDocsCollabSave({
           getConnectivitySnapshot()
         ) {
           conflictRemergeAttemptedRef.current = true;
-          const merged = await loadYjsSnapshot(
+          const reload = await loadYjsSnapshot(
             urls.yjsUrl,
             ydoc,
             refs.authTokenRef.current,
             SERVER_ORIGIN,
           );
-          if (merged) {
+          rememberSidecarEtag(room, reload.etag);
+          if (reload.applied) {
             const remergedMarkdown = getMd();
-            await saveDocument(
+            const etag = await saveDocument(
               urls.documentUrl,
               remergedMarkdown,
               ydoc,
               urls.room,
               refs.authTokenRef.current,
               urls.documentSaveMethod ?? "POST",
+              sidecarPrecondition(room),
             );
+            rememberSidecarEtag(room, etag);
           } else {
             throw firstError;
           }

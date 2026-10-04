@@ -5,9 +5,11 @@ import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { docsCollabRoomKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
+import { loadBootstrapInParallel } from "@/text-editor-core/docs-collab/docs-collab-bootstrap";
+import { rememberSidecarEtag } from "@/text-editor-core/docs-collab/docs-collab-etag";
 import {
+  fetchYjsSnapshot,
   loadMarkdown,
-  loadYjsSnapshot,
 } from "@/text-editor-core/docs-collab/docs-collab-server-io";
 import {
   collabDocumentFormat,
@@ -78,20 +80,23 @@ export async function hydrateDocsCollabForOffline({
     if (getConnectivitySnapshot()) {
       const resolvedAuthToken =
         authToken !== undefined ? authToken : ((await wgwEnsureFreshAccessToken()) ?? undefined);
-      let markdown = "";
-      let hadSnapshot = false;
-      try {
-        markdown = await loadMarkdown(urls.documentUrl, resolvedAuthToken);
-      } catch {
-        // Continue with any local IDB state.
+      const load = await loadBootstrapInParallel({
+        loadMarkdown: () => loadMarkdown(urls.documentUrl, resolvedAuthToken),
+        fetchSnapshot: () => fetchYjsSnapshot(urls.yjsUrl, resolvedAuthToken),
+      });
+
+      if (load.snapshot.kind === "snapshot") {
+        Y.applyUpdate(ydoc, load.snapshot.update, SERVER_ORIGIN);
+        rememberSidecarEtag(room, load.snapshot.etag);
+      } else if (load.snapshot.kind === "absent") {
+        rememberSidecarEtag(room, null);
       }
-      try {
-        hadSnapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, resolvedAuthToken, SERVER_ORIGIN);
-      } catch {
-        // Continue with markdown seed fallback.
-      }
-      if (!hadSnapshot && isYDocEmpty(ydoc) && markdown) {
-        applyContentSeedToYDoc(ydoc, markdown, documentFormat);
+
+      // C7: seed only when the server confirmed there is no sidecar. A failed
+      // snapshot load leaves the local state alone rather than duplicating it.
+      const maySeed = load.snapshot.kind === "absent" || load.snapshot.kind === "skipped";
+      if (maySeed && isYDocEmpty(ydoc) && load.markdown) {
+        applyContentSeedToYDoc(ydoc, load.markdown, documentFormat);
       }
     } else if (isYDocEmpty(ydoc)) {
       throw new Error("Go online once to download this document for offline use.");
