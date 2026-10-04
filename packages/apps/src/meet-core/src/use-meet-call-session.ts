@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
+import { meetRelayCopy } from "@/meet-core/src/meet-relay-copy";
 import { parseUrlList } from "@/lib/rtc/config";
 import { isRtcDebugEnabled } from "@/lib/rtc/debug";
 import { rtcLog } from "@/lib/rtc/log";
@@ -35,6 +37,7 @@ export function useMeetCallSession({
   callStore,
 }: UseMeetCallSessionArgs) {
   const toast = useAppToast();
+  const presence = usePresenceStoreContext();
   const rtcDebugEnabledRef = useRef(isRtcDebugEnabled());
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
@@ -122,8 +125,20 @@ export function useMeetCallSession({
     onPeerConnected: () => {
       void announceMediaPresenceRef.current(room.micOnRef.current, room.videoOnRef.current);
     },
+    onRelayOutcome: (_remoteId, name, outcome) => {
+      const copy = meetRelayCopy({ audience: "affected", outcome: outcome.outcome, name });
+      if (copy) toast.show(copy.message, { severity: "warning" });
+    },
   });
   meetRtcRef.current = meetRtc;
+
+  useEffect(() => {
+    if (!presence) return;
+    return presence.subscribeMeetJoinHint((hintRoom) => {
+      if (hintRoom !== room.roomCodeRef.current) return;
+      meetRtcRef.current?.kickPoll();
+    });
+  }, [presence, room.roomCodeRef]);
 
   useEffect(() => {
     debugRtc("controller-init", {

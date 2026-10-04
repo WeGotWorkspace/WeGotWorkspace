@@ -94,6 +94,8 @@ export class PresenceStore {
 
   private readonly notifyHintListeners = new Set<(event: PresenceNotifyHintEvent) => void>();
 
+  private readonly meetJoinHintListeners = new Set<(room: string) => void>();
+
   private session: PresenceMeshSession | null = null;
 
   private followerSession: FollowerPresenceSession | null = null;
@@ -184,6 +186,14 @@ export class PresenceStore {
     this.notifyHintListeners.add(listener);
     return () => {
       this.notifyHintListeners.delete(listener);
+    };
+  };
+
+  /** Meet join hints. The call polls only when the room matches. */
+  subscribeMeetJoinHint = (listener: (room: string) => void): (() => void) => {
+    this.meetJoinHintListeners.add(listener);
+    return () => {
+      this.meetJoinHintListeners.delete(listener);
     };
   };
 
@@ -475,6 +485,13 @@ export class PresenceStore {
         ts: envelope.ts,
         isSelf: false,
       });
+      return;
+    }
+
+    if (envelope.kind === "meet-join-hint") {
+      if (senderUsername && senderUsername !== this.selfUsername) {
+        for (const listener of this.meetJoinHintListeners) listener(envelope.room);
+      }
       return;
     }
 

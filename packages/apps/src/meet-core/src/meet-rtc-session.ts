@@ -4,7 +4,10 @@ import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
 import { toSessionDescriptionPayload } from "@/lib/rtc/session/sdp";
 import type { HttpSignalingFetch, HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
 import type { RtcPeerDescriptor, RtcSettings } from "@/lib/rtc/types";
+import { announceMeetJoin } from "@/meet-core/src/meet-join-hint";
 import { sanitizeRtcSdp } from "@/meet-core/src/meet-rtc-sdp";
+import { videoLimitsFromJoin, type VideoLimits } from "@/meet-core/src/meet-video-sender";
+import type { RelayRequestOutcome } from "@/lib/rtc/session/relay-request";
 
 function formatMeetInboundDescription(
   payload: unknown,
@@ -37,10 +40,13 @@ export type MeetRtcSessionOptions = {
   onConnectionFailed?: (remoteId: string, name: string) => void;
   onPollError?: (error: unknown) => void;
   onPeerConnected?: (remoteId: string) => void;
+  onRelayOutcome?: (remoteId: string, name: string, outcome: RelayRequestOutcome) => void;
 };
 
 export class MeetRtcSession {
   private mesh: RtcPeerMesh | null = null;
+
+  private limits: VideoLimits | null = null;
 
   constructor(private readonly options: MeetRtcSessionOptions) {}
 
@@ -69,6 +75,7 @@ export class MeetRtcSession {
       onConnectionFailed: this.options.onConnectionFailed,
       onPollError: this.options.onPollError,
       onPeerConnected: this.options.onPeerConnected,
+      onRelayOutcome: this.options.onRelayOutcome,
       onLinkChange: this.options.onLinkChange,
     });
   }
@@ -97,6 +104,14 @@ export class MeetRtcSession {
     return this.mesh?.getPeerIds() ?? [];
   }
 
+  getLimits(): VideoLimits | null {
+    return this.limits;
+  }
+
+  kickPoll(): void {
+    this.mesh?.kickPoll();
+  }
+
   async join(input: { room: string; peerId: string; name: string }): Promise<{
     peerId: string;
     peers: RtcPeerDescriptor[];
@@ -105,6 +120,8 @@ export class MeetRtcSession {
     if (this.mesh) await this.leave();
     this.mesh = this.createMesh(input.room);
     const joined = await this.mesh.join({ name: input.name, peerId: input.peerId });
+    this.limits = videoLimitsFromJoin(joined.limits);
+    announceMeetJoin(input.room, joined.peers);
     return joined;
   }
 

@@ -3,7 +3,7 @@ import { rtcSdpMeta } from "@/lib/rtc/log";
 import type { RtcSessionBinding } from "@/lib/rtc/session/bindings";
 import type { MeshPeerEntry, MeshPeerRegistry } from "@/lib/rtc/session/mesh-peer-registry";
 import { logSelectedPairTelemetry } from "@/lib/rtc/telemetry/selected-pair";
-import type { IceMode, RtcSettings, SignalingChannel } from "@/lib/rtc/types";
+import type { IceMode, RtcSettings, SignalingChannel, TurnCredentials } from "@/lib/rtc/types";
 
 /** What the dialer needs from the mesh that owns the peer registry. */
 export type MeshPeerDialerContext = {
@@ -31,8 +31,15 @@ export type MeshPeerDialerContext = {
 export class MeshPeerDialer {
   private readonly turnConfigured: boolean;
 
+  private turn: TurnCredentials | null = null;
+
   constructor(private readonly context: MeshPeerDialerContext) {
     this.turnConfigured = context.rtcSettings.turnAvailable;
+  }
+
+  /** Credentials from a relay request, applied to peer connections created after this. */
+  setTurn(turn: TurnCredentials | null): void {
+    this.turn = turn;
   }
 
   /** `relay` only when the settings force it and TURN is actually configured. */
@@ -151,6 +158,7 @@ export class MeshPeerDialer {
   private makePc(remoteId: string, mode: IceMode): RTCPeerConnection {
     const config = toRtcConfig(this.context.rtcSettings, mode, {
       iceCandidatePoolSize: this.context.iceCandidatePoolSize,
+      turn: this.turn,
     });
     this.context.log("pc-created", {
       remoteId,

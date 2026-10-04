@@ -12,6 +12,8 @@ export type MeshSignalInboxPorts = {
   handleAnswer: (from: string, payload: unknown) => Promise<void>;
   handleIce: (from: string, payload: unknown) => Promise<void>;
   handleBye: (from: string) => Promise<void>;
+  /** Server hint that the other side asked for a relay. Poll, do not tear down. */
+  handleRelayHint?: (from: string) => void;
   log: (event: string, details?: unknown) => void;
 };
 
@@ -29,6 +31,8 @@ export type MeshSignalInboxPorts = {
 export class MeshSignalInbox {
   private lastMsgId = 0;
 
+  private readonly seenIds = new Set<number>();
+
   constructor(private readonly ports: MeshSignalInboxPorts) {}
 
   /** The `since` value to poll with: everything at or below it is acked. */
@@ -38,6 +42,24 @@ export class MeshSignalInbox {
 
   reset(): void {
     this.lastMsgId = 0;
+    this.seenIds.clear();
+  }
+
+  /**
+   * Messages this inbox has not delivered yet. Ids are claimed immediately so a
+   * send that piggybacks the same rows cannot apply them twice.
+   */
+  claim(messages: HttpSignalingPollMessage[]): HttpSignalingPollMessage[] {
+    const fresh: HttpSignalingPollMessage[] = [];
+    for (const message of messages) {
+      if (typeof message.id === "number") {
+        if (this.seenIds.has(message.id) || message.id <= this.lastMsgId) continue;
+        this.seenIds.add(message.id);
+        if (message.id > this.lastMsgId) this.lastMsgId = message.id;
+      }
+      fresh.push(message);
+    }
+    return fresh;
   }
 
   ack(messages: HttpSignalingPollMessage[]): void {
@@ -90,6 +112,10 @@ export class MeshSignalInbox {
     }
     if (message.type === "bye") {
       await this.ports.handleBye(message.from);
+      return;
+    }
+    if (message.type === "relay-hint") {
+      this.ports.handleRelayHint?.(message.from);
     }
   }
 }

@@ -41,6 +41,7 @@ export type CreateRtcSessionOptions = {
   onConnectionFailed?: RtcPeerMeshOptions["onConnectionFailed"];
   onPollError?: RtcPeerMeshOptions["onPollError"];
   onPeerConnected?: RtcPeerMeshOptions["onPeerConnected"];
+  onRelayOutcome?: RtcPeerMeshOptions["onRelayOutcome"];
   onUnknownPeer?: RtcPeerMeshOptions["onUnknownPeer"];
   onSendFailed?: RtcPeerMeshOptions["onSendFailed"];
 };
@@ -85,6 +86,7 @@ export function createRtcSession(options: CreateRtcSessionOptions): RtcPeerMesh 
     onConnectionFailed: options.onConnectionFailed,
     onPollError: options.onPollError,
     onPeerConnected: options.onPeerConnected,
+    onRelayOutcome: options.onRelayOutcome,
     onUnknownPeer: options.onUnknownPeer,
     onSendFailed: options.onSendFailed,
   });
