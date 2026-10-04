@@ -39,6 +39,8 @@ type UseMeetLocalMediaArgs = {
   setScreenOn: (value: boolean | ((prev: boolean) => boolean)) => void;
   setError: (value: string | null) => void;
   announceMediaPresence: (mic: boolean, camera: boolean, screen?: boolean) => Promise<void>;
+  /** Instance ceiling `audio`: the camera must stay off. */
+  cameraBlockedRef?: MutableRefObject<boolean>;
   micOnRef: MutableRefObject<boolean>;
   videoOnRef: MutableRefObject<boolean>;
   screenOnRef: MutableRefObject<boolean>;
@@ -55,6 +57,7 @@ export function useMeetLocalMedia({
   setScreenOn,
   setError,
   announceMediaPresence,
+  cameraBlockedRef,
   micOnRef,
   videoOnRef,
   screenOnRef: _screenOnRef,
@@ -105,9 +108,11 @@ export function useMeetLocalMedia({
     [meetRtc],
   );
 
+  const cameraAllowed = useCallback(() => cameraBlockedRef?.current !== true, [cameraBlockedRef]);
+
   const ensureLocalMedia = useCallback(async () => {
     const mic = micOnRef.current;
-    const video = videoOnRef.current;
+    const video = videoOnRef.current && cameraAllowed();
     if (localStreamRef.current) {
       if (video && localStreamRef.current.getVideoTracks().length === 0) {
         const updated = await navigator.mediaDevices.getUserMedia({
@@ -140,6 +145,7 @@ export function useMeetLocalMedia({
     await refreshDeviceList();
     return stream;
   }, [
+    cameraAllowed,
     cameraTrackRef,
     localStreamRef,
     micOnRef,
@@ -195,6 +201,7 @@ export function useMeetLocalMedia({
 
   const toggleVideo = useCallback(() => {
     setVideoOn((prev) => {
+      if (!prev && !cameraAllowed()) return prev;
       const next = !prev;
       if (next && (localStreamRef.current?.getVideoTracks().length ?? 0) === 0) {
         void ensureLocalMedia().then((stream) => {
@@ -209,7 +216,14 @@ export function useMeetLocalMedia({
       void announceMediaPresence(micOnRef.current, next);
       return next;
     });
-  }, [announceMediaPresence, ensureLocalMedia, localStreamRef, micOnRef, setVideoOn]);
+  }, [
+    announceMediaPresence,
+    cameraAllowed,
+    ensureLocalMedia,
+    localStreamRef,
+    micOnRef,
+    setVideoOn,
+  ]);
 
   const toggleScreenShare = useCallback(async () => {
     if (screenOn) {

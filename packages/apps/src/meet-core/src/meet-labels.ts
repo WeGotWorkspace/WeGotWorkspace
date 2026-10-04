@@ -181,6 +181,7 @@ export const meetLabels = {
   disableAudio: "Disable audio",
   enableVideo: "Enable video",
   disableVideo: "Disable video",
+  cameraDisabledByAdmin: "Camera is off for this workspace",
   meetingStarted: "Meeting started",
   inCallCount: (count: number) => `${count} in call`,
   expandCall: "Expand call",

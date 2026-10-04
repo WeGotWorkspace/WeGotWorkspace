@@ -215,6 +215,7 @@ export function MeetCallExpanded({
             activeSpeaker={room.activeSpeaker}
             onToggleMic={room.controller.toggleMic}
             onToggleVideo={room.controller.toggleVideo}
+            videoLocked={room.controller.cameraSendingDisabled}
             onToggleScreenShare={() => void room.controller.toggleScreenShare()}
             canShareScreen={room.controller.canShareScreen}
             onCameraChange={(id) => {

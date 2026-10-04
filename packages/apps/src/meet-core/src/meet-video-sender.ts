@@ -22,6 +22,11 @@ export const DEFAULT_VIDEO_LIMITS: VideoLimits = {
   maxVideoProfileRelay: "p360",
 };
 
+/** Instance ceiling `audio` means this client must not send a camera. */
+export function cameraMaxProfileIsAudio(limits: VideoLimits): boolean {
+  return limits.maxVideoProfile === "audio";
+}
+
 export function videoLimitsFromJoin(value: unknown): VideoLimits {
   if (!value || typeof value !== "object") return DEFAULT_VIDEO_LIMITS;
   const limits = (

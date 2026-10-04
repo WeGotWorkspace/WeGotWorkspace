@@ -112,6 +112,7 @@ export function useMeetController({
     toggleVideo: callSession.toggleVideo,
     setVideoOn: room.setVideoOn,
     toggleScreenShare: callSession.toggleScreenShare,
+    cameraSendingDisabled: callSession.cameraSendingDisabled,
     canShareScreen: isDisplayCaptureSupported(),
     switchMic: callSession.switchMic,
     switchCamera: callSession.switchCamera,

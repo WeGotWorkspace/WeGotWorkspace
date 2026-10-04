@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
 import { meetRelayCopy } from "@/meet-core/src/meet-relay-copy";
@@ -16,6 +16,7 @@ import { useMeetInboundMediaHints } from "@/meet-core/src/use-meet-inbound-media
 import { useMeetLocalMedia } from "@/meet-core/src/use-meet-local-media";
 import { useMeetPollHandler } from "@/meet-core/src/use-meet-poll-handler";
 import { useMeetRtc } from "@/meet-core/src/use-meet-rtc";
+import { useMeetSendEncoding } from "@/meet-core/src/use-meet-send-encoding";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
 
 export type UseMeetCallSessionArgs = {
@@ -38,6 +39,8 @@ export function useMeetCallSession({
 }: UseMeetCallSessionArgs) {
   const toast = useAppToast();
   const presence = usePresenceStoreContext();
+  const cameraBlockedRef = useRef(false);
+  const [cameraSendingDisabled, setCameraSendingDisabled] = useState(false);
   const rtcDebugEnabledRef = useRef(isRtcDebugEnabled());
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
@@ -129,8 +132,15 @@ export function useMeetCallSession({
       const copy = meetRelayCopy({ audience: "affected", outcome: outcome.outcome, name });
       if (copy) toast.show(copy.message, { severity: "warning" });
     },
+    onVideoLimits: (limits) => {
+      const blocked = limits.maxVideoProfile === "audio";
+      cameraBlockedRef.current = blocked;
+      setCameraSendingDisabled(blocked);
+      if (blocked) room.setVideoOn(false);
+    },
   });
   meetRtcRef.current = meetRtc;
+  useMeetSendEncoding(meetRtc);
 
   useEffect(() => {
     if (!presence) return;
@@ -236,6 +246,7 @@ export function useMeetCallSession({
     setScreenOn: room.setScreenOn,
     setError: room.setError,
     announceMediaPresence,
+    cameraBlockedRef,
     micOnRef: room.micOnRef,
     videoOnRef: room.videoOnRef,
     screenOnRef: room.screenOnRef,
@@ -292,6 +303,7 @@ export function useMeetCallSession({
     toggleMic,
     toggleVideo,
     toggleScreenShare,
+    cameraSendingDisabled,
     switchMic,
     switchCamera,
   };

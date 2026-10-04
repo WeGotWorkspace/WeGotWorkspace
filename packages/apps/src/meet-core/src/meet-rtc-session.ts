@@ -6,7 +6,17 @@ import type { HttpSignalingFetch, HttpSignalingPollResult } from "@/lib/rtc/sign
 import type { RtcPeerDescriptor, RtcSettings } from "@/lib/rtc/types";
 import { announceMeetJoin } from "@/meet-core/src/meet-join-hint";
 import { sanitizeRtcSdp } from "@/meet-core/src/meet-rtc-sdp";
-import { videoLimitsFromJoin, type VideoLimits } from "@/meet-core/src/meet-video-sender";
+import {
+  applyMeetSendEncodings,
+  cameraSendingDisabled,
+  DEFAULT_ENCODING_PREFS,
+  type MeetEncodingPrefs,
+} from "@/meet-core/src/meet-send-encoding";
+import {
+  videoLimitsFromJoin,
+  DEFAULT_VIDEO_LIMITS,
+  type VideoLimits,
+} from "@/meet-core/src/meet-video-sender";
 import type { RelayRequestOutcome } from "@/lib/rtc/session/relay-request";
 
 function formatMeetInboundDescription(
@@ -41,12 +51,20 @@ export type MeetRtcSessionOptions = {
   onPollError?: (error: unknown) => void;
   onPeerConnected?: (remoteId: string) => void;
   onRelayOutcome?: (remoteId: string, name: string, outcome: RelayRequestOutcome) => void;
+  /** Join delivered `rtc.limits`. `audio` has already disabled camera sending. */
+  onVideoLimits?: (limits: VideoLimits) => void;
 };
 
 export class MeetRtcSession {
   private mesh: RtcPeerMesh | null = null;
 
   private limits: VideoLimits | null = null;
+
+  private encoding: MeetEncodingPrefs = { ...DEFAULT_ENCODING_PREFS };
+
+  private encodingRunning = false;
+
+  private encodingDirty = false;
 
   constructor(private readonly options: MeetRtcSessionOptions) {}
 
@@ -74,10 +92,93 @@ export class MeetRtcSession {
       onPeerRemoved: this.options.onPeerRemoved,
       onConnectionFailed: this.options.onConnectionFailed,
       onPollError: this.options.onPollError,
-      onPeerConnected: this.options.onPeerConnected,
+      onPeerConnected: (remoteId) => {
+        this.scheduleEncodingRefresh();
+        this.options.onPeerConnected?.(remoteId);
+      },
       onRelayOutcome: this.options.onRelayOutcome,
-      onLinkChange: this.options.onLinkChange,
+      onLinkChange: () => {
+        if (this.iceSettled()) this.scheduleEncodingRefresh();
+        this.options.onLinkChange?.();
+      },
     });
+  }
+
+  /** True when a selected pair can be read. Re-checked after every ICE restart. */
+  private iceSettled(): boolean {
+    return this.peerConnections().some((pc) => {
+      const ice = pc.iceConnectionState;
+      return ice === "connected" || ice === "completed";
+    });
+  }
+
+  private peerConnections(): RTCPeerConnection[] {
+    const mesh = this.mesh;
+    if (!mesh) return [];
+    return mesh.getPeerIds().flatMap((id) => {
+      const pc = mesh.getPeerConnection(id);
+      return pc ? [pc] : [];
+    });
+  }
+
+  private remotePeerCount(): number {
+    const mesh = this.mesh;
+    if (!mesh) return 0;
+    const selfId = mesh.getMyId();
+    return mesh.getPeerIds().filter((id) => id !== selfId).length;
+  }
+
+  private disableLocalCameraIfRequired(): void {
+    if (!cameraSendingDisabled(this.limits)) return;
+    const screenId = this.encoding.screenTrackId;
+    for (const track of this.options.getLocalStream()?.getVideoTracks() ?? []) {
+      if (screenId && track.id === screenId) continue;
+      track.enabled = false;
+    }
+  }
+
+  /**
+   * Coalesce overlapping stats reads. `setParameters` does not renegotiate,
+   * so a low-data or relay change never creates an offer.
+   */
+  scheduleEncodingRefresh(): void {
+    this.encodingDirty = true;
+    if (this.encodingRunning) return;
+    this.encodingRunning = true;
+    void this.drainEncodingRefresh();
+  }
+
+  private async drainEncodingRefresh(): Promise<void> {
+    try {
+      while (this.encodingDirty) {
+        this.encodingDirty = false;
+        const connections = this.peerConnections();
+        if (connections.length === 0) continue;
+        try {
+          await applyMeetSendEncodings(
+            connections,
+            this.remotePeerCount(),
+            this.limits ?? DEFAULT_VIDEO_LIMITS,
+            this.encoding,
+          );
+        } catch {
+          // A sender that is not ready yet is applied again on the next connect.
+        }
+      }
+    } finally {
+      this.encodingRunning = false;
+      if (this.encodingDirty) this.scheduleEncodingRefresh();
+    }
+  }
+
+  setEncodingPrefs(partial: Partial<MeetEncodingPrefs>): void {
+    this.encoding = { ...this.encoding, ...partial };
+    this.disableLocalCameraIfRequired();
+    this.scheduleEncodingRefresh();
+  }
+
+  isCameraSendingDisabled(): boolean {
+    return cameraSendingDisabled(this.limits);
   }
 
   getMesh(): RtcPeerMesh | null {
@@ -121,6 +222,9 @@ export class MeetRtcSession {
     this.mesh = this.createMesh(input.room);
     const joined = await this.mesh.join({ name: input.name, peerId: input.peerId });
     this.limits = videoLimitsFromJoin(joined.limits);
+    this.disableLocalCameraIfRequired();
+    this.options.onVideoLimits?.(this.limits);
+    this.scheduleEncodingRefresh();
     announceMeetJoin(input.room, joined.peers);
     return joined;
   }
@@ -139,6 +243,7 @@ export class MeetRtcSession {
 
   async replaceVideoTrack(track: MediaStreamTrack): Promise<void> {
     await this.mesh?.replaceVideoTrack(track);
+    this.scheduleEncodingRefresh();
   }
 
   async leave(opts?: { sendBye?: boolean }): Promise<void> {

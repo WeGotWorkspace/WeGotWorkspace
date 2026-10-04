@@ -36,6 +36,8 @@ type MeetCallToolbarProps = {
   activeSpeaker: string;
   onToggleMic: () => void;
   onToggleVideo: () => void;
+  /** Instance ceiling is audio-only. The camera control stays off. */
+  videoLocked?: boolean;
   onToggleScreenShare: () => void;
   /**
    * Override getDisplayMedia feature detection. When false, Share screen is
@@ -73,6 +75,7 @@ export function MeetCallToolbar({
   activeSpeaker,
   onToggleMic,
   onToggleVideo,
+  videoLocked = false,
   onToggleScreenShare,
   canShareScreen,
   onCameraChange,
@@ -86,6 +89,11 @@ export function MeetCallToolbar({
   onDenyKnocker,
 }: MeetCallToolbarProps) {
   const shareAvailable = canShareScreen ?? isDisplayCaptureSupported();
+  const videoLabel = videoLocked
+    ? meetLabels.cameraDisabledByAdmin
+    : videoOn
+      ? meetLabels.disableVideo
+      : meetLabels.enableVideo;
   return (
     <div className="meet-workspace__toolbar floating-action-bar">
       <MeetCircleToggle
@@ -96,11 +104,12 @@ export function MeetCallToolbar({
         label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
       />
       <MeetCircleToggle
-        on={videoOn}
+        on={videoLocked ? false : videoOn}
         onClick={onToggleVideo}
         OnIcon={Video}
         OffIcon={VideoOff}
-        label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
+        disabled={videoLocked}
+        label={videoLabel}
       />
       {shareAvailable || screenOn ? (
         <IconButton
