@@ -116,6 +116,31 @@ final class MeetJoinHardeningTest extends WgwDatabaseTestCase
         ])->assertOk()->assertJsonPath('rtc.limits.maxPeers', 8);
     }
 
+    public function test_join_advertises_the_video_ceilings(): void
+    {
+        $this->postJson($this->meetRoomPath('/participants'), [
+            'peerId' => 'alice-peer',
+            'name' => 'Alice',
+        ])->assertOk()
+            ->assertJsonPath('rtc.limits.maxVideoProfile', 'p720')
+            ->assertJsonPath('rtc.limits.maxVideoProfileRelay', 'p360');
+    }
+
+    public function test_join_clamps_the_relay_ceiling_to_the_instance_ceiling(): void
+    {
+        $this->setAppSettings([
+            SettingKeys::MEET_MAX_VIDEO_PROFILE => 'p270',
+            SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY => 'p720',
+        ]);
+
+        $this->postJson($this->meetRoomPath('/participants'), [
+            'peerId' => 'alice-peer',
+            'name' => 'Alice',
+        ])->assertOk()
+            ->assertJsonPath('rtc.limits.maxVideoProfile', 'p270')
+            ->assertJsonPath('rtc.limits.maxVideoProfileRelay', 'p270');
+    }
+
     public function test_the_peer_ceiling_is_clamped_and_enforced(): void
     {
         $this->setAppSettings([SettingKeys::MEET_MAX_PEERS => '2']);

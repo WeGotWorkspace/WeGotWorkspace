@@ -126,7 +126,7 @@ final class MeetSignalingService
 
     /**
      * @param  array<string, mixed>  $body
-     * @return array{peers: list<array{id: string, name: string}>, sessionKey: string|null, rtc: array{limits: array{maxPeers: int}}}
+     * @return array{peers: list<array{id: string, name: string}>, sessionKey: string|null, rtc: array{limits: array{maxPeers: int, maxVideoProfile: string, maxVideoProfileRelay: string}}}
      */
     public function join(Request $request, array $body): array
     {
@@ -199,7 +199,10 @@ final class MeetSignalingService
             return [
                 'peers' => $this->store->peerList($room, $peerId, $username !== null),
                 'sessionKey' => $guestSessionKey,
-                'rtc' => ['limits' => ['maxPeers' => $maxPeers]],
+                'rtc' => ['limits' => [
+                    'maxPeers' => $maxPeers,
+                    ...$this->rtcSettingsService->videoLimits(),
+                ]],
             ];
         });
     }
