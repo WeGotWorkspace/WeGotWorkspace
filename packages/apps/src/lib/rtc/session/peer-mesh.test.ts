@@ -41,6 +41,7 @@ type StubPeerConnection = {
   setLocalDescription: ReturnType<typeof vi.fn>;
   setRemoteDescription: ReturnType<typeof vi.fn>;
   addIceCandidate: ReturnType<typeof vi.fn>;
+  createDataChannel: ReturnType<typeof vi.fn>;
 };
 
 function createStubPeerConnection(offerSdp?: string): RTCPeerConnection {
@@ -88,6 +89,14 @@ function createStubPeerConnection(offerSdp?: string): RTCPeerConnection {
       if (desc.type === "answer") this.signalingState = "stable";
     }),
     addIceCandidate: vi.fn(async () => {}),
+    createDataChannel: vi.fn((label: string, init?: RTCDataChannelInit) => ({
+      label,
+      id: init?.id,
+      readyState: "connecting",
+      binaryType: "blob",
+      close: vi.fn(),
+      send: vi.fn(),
+    })),
   };
 
   return pc as unknown as RTCPeerConnection;
@@ -1226,5 +1235,42 @@ describe("RtcPeerMesh delivery cursor", () => {
 
     expect(pollSince(signaling)).toBe(0);
     await mesh.leave();
+  });
+
+  it("opens the negotiated meet channel when either side builds a peer connection", async () => {
+    const init = { negotiated: true, id: 1, ordered: true };
+    const offerSdp = "v=0\r\no=-\r\ns=-\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n";
+
+    const hostSignaling = createMockSignaling({
+      peerId: "ZZZZZZZZZZ",
+      peers: [{ id: "AAAAAAAAAA", name: "Guest" }],
+    });
+    const host = meshWithStubPc(hostSignaling.client);
+    await host.mesh.join({ name: "Host", peerId: "ZZZZZZZZZZ" });
+    await flushAsyncWork();
+    const offerPc = [...host.pcs.values()][0];
+    expect(offerPc?.createDataChannel).toHaveBeenCalledTimes(1);
+    expect(offerPc?.createDataChannel).toHaveBeenCalledWith("meet", init);
+    await host.mesh.leave();
+
+    const guestSignaling = createMockSignaling({ peerId: "AAAAAAAAAA", peers: [] });
+    const guest = meshWithStubPc(guestSignaling.client);
+    await guest.mesh.join({ name: "Guest", peerId: "AAAAAAAAAA" });
+    guestSignaling.setPollHandler(async () => ({
+      peers: [{ id: "ZZZZZZZZZZ", name: "Host" }],
+      messages: [
+        {
+          from: "ZZZZZZZZZZ",
+          type: "offer",
+          payload: { type: "offer", sdp: offerSdp },
+        },
+      ],
+    }));
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+    const answerPc = [...guest.pcs.values()][0];
+    expect(answerPc?.createDataChannel).toHaveBeenCalledTimes(1);
+    expect(answerPc?.createDataChannel).toHaveBeenCalledWith("meet", init);
+    await guest.mesh.leave();
   });
 });

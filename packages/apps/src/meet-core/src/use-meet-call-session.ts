@@ -10,6 +10,7 @@ import { isRtcDebugEnabled } from "@/lib/rtc/debug";
 import { rtcLog } from "@/lib/rtc/log";
 import type { RtcPeerDescriptor } from "@/lib/rtc/types";
 import type { MeetRemotePeer } from "@/meet-core/src/meet-call-types";
+import { acceptMeetDataChat } from "@/meet-core/src/meet-data-chat";
 import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { shouldAcceptMeetOffer, shouldConnectMeetPeer } from "@/meet-core/src/meet-rtc-peers";
@@ -132,6 +133,15 @@ export function useMeetCallSession({
     },
     onPeerConnected: () => {
       void announceMediaPresenceRef.current(room.micOnRef.current, room.videoOnRef.current);
+    },
+    onMeetData: (remoteId, raw) => {
+      acceptMeetDataChat({
+        remoteId,
+        raw,
+        selfPeerId: room.selfIdRef.current,
+        peerNames: room.peerNamesRef.current,
+        setChatMessages: room.setChatMessages,
+      });
     },
     onRelayOutcome: (remoteId, name, outcome) => {
       const selfId = room.selfIdRef.current;

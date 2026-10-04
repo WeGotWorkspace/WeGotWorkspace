@@ -65,4 +65,6 @@ export type RtcPeerMeshOptions = {
   onRelayOutcome?: (remoteId: string, name: string, outcome: RelayRequestOutcome) => void;
   /** When false, inbound offers are dropped without creating a peer connection. */
   shouldAcceptOffer?: (from: string) => boolean;
+  /** Text from the negotiated Meet data channel. The sender is the remote peer id. */
+  onMeetData?: (remoteId: string, data: string) => void;
 };

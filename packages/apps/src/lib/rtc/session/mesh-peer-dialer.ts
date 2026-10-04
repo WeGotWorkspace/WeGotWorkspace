@@ -1,6 +1,7 @@
 import { toRtcConfig } from "@/lib/rtc/config";
 import { rtcSdpMeta } from "@/lib/rtc/log";
 import type { RtcSessionBinding } from "@/lib/rtc/session/bindings";
+import { openMeetDataChannel } from "@/lib/rtc/session/meet-data-channel";
 import type { MeshPeerEntry, MeshPeerRegistry } from "@/lib/rtc/session/mesh-peer-registry";
 import { logSelectedPairTelemetry } from "@/lib/rtc/telemetry/selected-pair";
 import type { IceMode, RtcSettings, SignalingChannel, TurnCredentials } from "@/lib/rtc/types";
@@ -21,6 +22,8 @@ export type MeshPeerDialerContext = {
   onRemoteSignalError: (remoteId: string, error: unknown) => void;
   removePeer: (remoteId: string) => void;
   wirePeerConnection: (remoteId: string, entry: MeshPeerEntry) => void;
+  /** Text from the negotiated Meet channel. Absent on collab and principal. */
+  onMeetData?: (remoteId: string, data: string) => void;
 };
 
 /**
@@ -64,7 +67,7 @@ export class MeshPeerDialer {
       initiator,
       pendingIce: [],
       signalSent: false,
-      dataChannel: null,
+      dataChannel: this.openMeetChannel(pc, remoteId),
     };
     this.context.peers.add(remoteId, entry);
     this.context.wirePeerConnection(remoteId, entry);
@@ -168,6 +171,14 @@ export class MeshPeerDialer {
     return this.context.createPeerConnection(config);
   }
 
+  /** Negotiated Meet chat channel, created with the peer connection. Collab keeps its own binding. */
+  private openMeetChannel(pc: RTCPeerConnection, remoteId: string): RTCDataChannel | null {
+    if (this.context.channel !== "meet") return null;
+    return openMeetDataChannel(pc, (data) => {
+      this.context.onMeetData?.(remoteId, data);
+    });
+  }
+
   private attachBinding(remoteId: string, pc: RTCPeerConnection, initiator: boolean): void {
     const binding = this.context.binding;
     const entry = this.context.peers.get(remoteId);
@@ -176,6 +187,7 @@ export class MeshPeerDialer {
       entry.remoteStream = binding.attach(pc, remoteId);
       return;
     }
+    if (this.context.channel === "meet") return;
     if (initiator) {
       entry.dataChannel = binding.attachInitiator(pc, remoteId);
       return;
