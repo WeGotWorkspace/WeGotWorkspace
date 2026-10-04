@@ -55,6 +55,8 @@ export type RtcPeerDescriptor = {
   name: string;
   /** Sabre username of the peer's owner — collab and principal rooms (server-derived). */
   user?: string;
+  /** Collaboration right the server wrote on the roster. Absent reads as `read`. */
+  access?: "read" | "comment" | "write";
   /** Capabilities the peer advertised at join. `bin` selects binary data-channel frames. Mirrored on the roster. */
   caps?: RtcPeerCap[];
   /** Network class the peer measured. Never an address. */

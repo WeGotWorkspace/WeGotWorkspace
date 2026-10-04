@@ -35,6 +35,8 @@ export type HttpSignalingJoinResult = {
   sessionKey?: string | null;
   peers: RtcPeerDescriptor[];
   rtc?: { limits?: HttpSignalingVideoLimits };
+  /** Signed collaboration ticket for this peer. Collaboration rooms only. */
+  ticket?: string;
 };
 
 export type HttpSignalingPollInput = {
@@ -58,6 +60,8 @@ export type HttpSignalingPollResult = {
   messages: HttpSignalingPollMessage[];
   /** Echo via `sig` on the next poll to opt into 204 "nothing new" responses. */
   rosterSig?: string;
+  /** Fresh collaboration ticket when the server refreshed it. */
+  ticket?: string;
 };
 
 /** 204 "nothing new" poll response: roster unchanged and no pending messages. */
@@ -287,6 +291,29 @@ export class HttpSignalingClient {
     };
     if (input.sessionKey) body.sessionKey = input.sessionKey;
     return this.post("send", this.roomUrl(input.room, "/events"), this.withSessionKey(body));
+  }
+
+  /**
+   * `POST /rtc/metrics`. The sample is the contract allow-list. The room id
+   * stays in the signaling URLs and is not copied onto this request.
+   */
+  async reportSessionMetric(
+    sample: Record<string, unknown>,
+    sessionKey?: string | null,
+  ): Promise<void> {
+    const params = new URLSearchParams();
+    const key = sessionKey ?? this.getAuth().sessionKey;
+    if (key) params.set("sessionKey", key);
+    const query = params.toString();
+    const root = this.apiBase.replace(/\/[^/]+$/, "");
+    const url = `${root}/rtc/metrics${query ? `?${query}` : ""}`;
+    const res = await this.fetchImpl(url, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(sample),
+      keepalive: true,
+    });
+    await res.text().catch(() => "");
   }
 
   leave(input: HttpSignalingLeaveInput): Promise<unknown> {

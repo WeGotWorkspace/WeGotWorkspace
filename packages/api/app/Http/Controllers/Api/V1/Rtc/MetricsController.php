@@ -5,22 +5,27 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Rtc;
 
 use App\Http\Requests\Api\V1\RtcSessionMetricRequest;
+use App\Services\Rtc\RtcSessionMetricIngest;
 use Illuminate\Http\JsonResponse;
 
 /**
  * Ingest for anonymous real-time session samples.
  *
- * The contract and the `rtc_session_metrics` table ship with the signaling
- * hardening so clients have a stable endpoint, but the row is written together
- * with the real-time health page that reads it (#1096). Until then a valid
- * sample is accepted and dropped: reporting clients must not have to treat the
- * health page as a hard dependency.
+ * A signed-in account or a live guest session may report. The stored row is
+ * the allow-list on `rtc_session_metrics`: no address, room name, or user id.
  */
 final class MetricsController
 {
-    public function __invoke(RtcSessionMetricRequest $request): JsonResponse
+    public function __invoke(RtcSessionMetricRequest $request, RtcSessionMetricIngest $ingest): JsonResponse
     {
-        $request->validated();
+        if (! $ingest->actorMayReport($request)) {
+            return response()->json([
+                'error' => 'Sign in or re-open the guest join link to report a session.',
+                'code' => 'unauthorized',
+            ], 401);
+        }
+
+        $ingest->store($request->validated());
 
         return response()->json(null, 202);
     }

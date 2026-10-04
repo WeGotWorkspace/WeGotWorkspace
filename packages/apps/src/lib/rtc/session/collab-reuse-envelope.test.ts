@@ -44,6 +44,23 @@ describe("collab-reuse envelope", () => {
     expect(parseCollabReuseEnvelope(serializeCollabReuseEnvelope(data))).toEqual(data);
   });
 
+  it("passes a non-empty ticket through and drops an empty one", () => {
+    const open = {
+      v: 1 as const,
+      kind: "collab-reuse" as const,
+      room: "/groups/administrators/team-notes.md",
+      op: "open" as const,
+      collabPeerId: "aaaaaaaaaaaaaaaa",
+      name: "Admin",
+      ticket: "header.signature",
+    };
+    expect(parseCollabReuseEnvelope(serializeCollabReuseEnvelope(open))).toEqual(open);
+    const emptied = parseCollabReuseEnvelope(JSON.stringify({ ...open, ticket: "" }));
+    expect(emptied?.ticket).toBeUndefined();
+    const numeric = parseCollabReuseEnvelope(JSON.stringify({ ...open, ticket: 4 }));
+    expect(numeric?.ticket).toBeUndefined();
+  });
+
   it("rejects malformed payloads and presence envelopes", () => {
     expect(parseCollabReuseEnvelope("not json")).toBeNull();
     expect(parseCollabReuseEnvelope("42")).toBeNull();

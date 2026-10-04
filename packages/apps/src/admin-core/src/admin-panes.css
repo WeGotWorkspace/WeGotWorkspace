@@ -276,6 +276,40 @@
   color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
+:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health {
+  @apply flex flex-col gap-4;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__lead {
+  @apply mb-3 text-sm;
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__windows {
+  @apply grid gap-4;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__callout {
+  @apply rounded-md px-3 py-3 text-sm;
+  background: color-mix(in oklab, #c98a1f 16%, var(--color-we-got-soft));
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__stats {
+  @apply grid gap-2 text-sm;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__stats dt {
+  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__relay {
+  @apply w-full text-sm;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__relay th {
+  @apply text-left font-medium;
+}
+
 :is(.admin-workspace, .admin-dialog-surface) .admin-mcp-pane__endpoint {
   @apply mt-4;
 }

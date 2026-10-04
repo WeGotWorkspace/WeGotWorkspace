@@ -44,6 +44,7 @@ import {
 } from "@/lib/rtc/session/peer-mesh-options";
 import type { MeshPollCadenceSnapshot } from "@/lib/rtc/session/poll-cadence";
 import { toSessionDescriptionPayload } from "@/lib/rtc/session/sdp";
+import { SessionMetricsReporter } from "@/lib/rtc/telemetry/session-metrics-reporter";
 import {
   DEFAULT_RTC_POLL_INTERVALS,
   type RtcLinkState,
@@ -91,6 +92,8 @@ export class RtcPeerMesh {
 
   private visibilityUnsubscribe: (() => void) | null = null;
 
+  private readonly metrics: SessionMetricsReporter;
+
   constructor(private readonly options: RtcPeerMeshOptions) {
     this.peers = new MeshPeerRegistry(options.binding, (remoteId, error) => {
       const message = error instanceof Error ? error.message : String(error);
@@ -128,6 +131,18 @@ export class RtcPeerMesh {
     this.scheduleTimeout = options.ports?.setTimeout ?? setTimeout.bind(globalThis);
     this.cancelTimeout = options.ports?.clearTimeout ?? clearTimeout.bind(globalThis);
     this.visibility = options.ports?.visibility ?? defaultVisibilityPort();
+    const reportSessionMetric = options.signaling.reportSessionMetric?.bind(options.signaling);
+    this.metrics = new SessionMetricsReporter({
+      channel: options.channel,
+      post:
+        typeof options.signaling.reportSessionMetric === "function"
+          ? reportSessionMetric
+          : undefined,
+      sessionKey: () => this.sessionKey,
+      net: () => this.localNet,
+      schedule: this.scheduleTimeout,
+      cancel: this.cancelTimeout,
+    });
     this.pollLoop = new MeshPollLoop({
       myId: () => this.myId,
       poll: (input) => options.signaling.poll(input),
@@ -147,6 +162,7 @@ export class RtcPeerMesh {
         Boolean(options.recoverOnUnknownPeer && this.isUnknownPeerError(error)),
       recover: () => this.recoverUnknownPeer(),
       onPollError: options.onPollError,
+      onPollRoundTrip: (elapsedMs) => this.metrics.notePollRtt(elapsedMs),
       isVisible: () => this.visibility?.getState() === "visible",
       log: (event, details) => this.log(event, details),
       scheduleTimeout: this.scheduleTimeout,
@@ -339,6 +355,7 @@ export class RtcPeerMesh {
       onConnected: (id) => {
         this.recovery?.onConnected(id);
         this.options.onPeerConnected?.(id);
+        void this.metrics.noteConnected(entry.pc);
       },
       onIceState: (id, state) => {
         if (state === "disconnected") this.recovery?.onDisconnected(id);
@@ -379,6 +396,8 @@ export class RtcPeerMesh {
   }
 
   private handleConnectionFailed(remoteId: string, entry: MeshPeerEntry): void {
+    this.metrics.noteFailedPair();
+    if (this.options.channel === "collab") this.metrics.noteHttpFallback();
     if (this.options.channel === "principal") {
       this.droppedGhostIds.add(remoteId);
       this.removePeer(remoteId, "roster");
@@ -531,7 +550,7 @@ export class RtcPeerMesh {
       this.myId = joined.peerId ?? previousPeerId ?? null;
       await this.prepareRelay();
       if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
-      await this.onPoll({ peers: joined.peers, messages: [] });
+      await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
       this.log("peer-recover-success", { previousPeerId, peerId: this.myId });
     } catch (error) {
       this.log("peer-recover-error", { previousPeerId, error });
@@ -550,6 +569,7 @@ export class RtcPeerMesh {
     this.myName = input.name.trim();
     if (!this.myName) throw new Error("Display name is required");
     this.log("join-request", { room: this.options.room, name: this.myName });
+    this.metrics.begin();
     const joined = await this.signalingJoin(input.peerId);
     this.myId = joined.peerId ?? input.peerId ?? null;
     if (!this.myId) throw new Error("Signaling join did not return peerId");
@@ -563,7 +583,7 @@ export class RtcPeerMesh {
     this.visibilityUnsubscribe ??=
       this.visibility?.subscribe(() => this.pollLoop.onVisibilityChange()) ?? null;
     this.schedulePoll();
-    await this.onPoll({ peers: joined.peers, messages: [] });
+    await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
     this.installNetworkRecovery();
     return {
       peerId: this.myId,
@@ -618,6 +638,7 @@ export class RtcPeerMesh {
       kickPoll: () => this.schedulePoll(false),
       log: (event, details) => this.log(event, details),
       sessionKey: () => this.sessionKey,
+      onIceRestart: () => this.metrics.noteIceRestart(),
     };
   }
 
@@ -650,7 +671,7 @@ export class RtcPeerMesh {
     if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
     // Same-peer rename (admit): refresh roster and dial now — do not wait for
     // the next poll, which may already be on the idle interval.
-    await this.onPoll({ peers: joined.peers, messages: [] });
+    await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
   }
 
   async sendByeToAll(): Promise<void> {
@@ -672,6 +693,7 @@ export class RtcPeerMesh {
   }
 
   async leave(): Promise<void> {
+    this.metrics.flush();
     this.stopPolling();
     this.pollLoop.release();
     this.networkUnsubscribe?.();

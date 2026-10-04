@@ -12,6 +12,7 @@ import {
   type RtcPollIntervals,
   type RtcSettings,
 } from "@/lib/rtc/types";
+import type { PublishedCollabTicket } from "@/lib/api/wgw/rtc";
 import {
   type DocsCollabAccess,
   DocsCollabRosterTrust,
@@ -32,7 +33,11 @@ import type {
   DocsCollabMeshPeer,
   DocsCollabMeshPeerStatus,
 } from "@/text-editor-core/docs-collab/docs-collab-types";
-import { decodeCollabTicketPayload } from "@/text-editor-core/docs-collab/docs-collab-ticket";
+import {
+  createCollabTicketKeyCache,
+  decodeCollabTicketPayload,
+  type DocsCollabTicketJwk,
+} from "@/text-editor-core/docs-collab/docs-collab-ticket";
 import { collabErrorStatus } from "@/text-editor-core/docs-collab/docs-collab-utils";
 
 const DC_LABEL = "collab";
@@ -71,11 +76,33 @@ export type DocsRelayNotice = {
   outcome: RelayRequestOutcome["outcome"];
 };
 
+/** Public JWK from room configuration, or null when the publication is incomplete. */
+function collabJwkFromPublication(
+  published: PublishedCollabTicket | undefined,
+): DocsCollabTicketJwk | null {
+  if (!published) return null;
+  const { jwk, kid } = published;
+  if (jwk.kty !== "EC" || jwk.crv !== "P-256" || jwk.kid !== kid || jwk.x === "" || jwk.y === "") {
+    return null;
+  }
+  return {
+    kty: jwk.kty,
+    crv: jwk.crv,
+    x: jwk.x,
+    y: jwk.y,
+    kid: jwk.kid,
+    alg: jwk.alg,
+    use: jwk.use,
+  };
+}
+
 export type DocsRtcSessionOptions = {
   apiBase: string;
   room: string;
   authToken?: string;
   rtcSettings: RtcSettings;
+  /** Public C2 key from room configuration. Absent on older servers. */
+  collabTicket?: PublishedCollabTicket;
   /** Injected in tests; the live app uses the suite-level singleton. */
   reuseRegistry?: PrincipalLinkRegistry;
   getYDoc?: () => import("yjs").Doc | null;
@@ -115,6 +142,12 @@ export class DocsRtcSession {
   private rosterPeers: RtcPeerDescriptor[] = [];
 
   private readonly http: DocsCollabHttpSync | null;
+
+  /** Latest ticket from join or poll, sent on reuse `open` and `ack`. */
+  private ownTicket: string | undefined;
+
+  /** Outbound tickets stay off the wire until a published JWK can verify them. */
+  private readonly sendTicket: boolean;
 
   constructor(private readonly options: DocsRtcSessionOptions) {
     this.httpOnlyUntilRelay = options.rtcSettings.forceRelay && !options.rtcSettings.turnAvailable;
@@ -166,6 +199,13 @@ export class DocsRtcSession {
       onClose: () => this.emit({ type: "link" }),
     });
 
+    const publishedJwk = collabJwkFromPublication(options.collabTicket);
+    this.sendTicket = publishedJwk !== null;
+    const resolveTicketKey = publishedJwk
+      ? createCollabTicketKeyCache(async (kid) => (kid === publishedJwk.kid ? publishedJwk : null))
+      : async () => null;
+    if (publishedJwk) void resolveTicketKey(publishedJwk.kid);
+
     this.reuse = new DocsCollabPrincipalReuse({
       room: options.room,
       registry: options.reuseRegistry,
@@ -180,6 +220,8 @@ export class DocsRtcSession {
       onLinkChange: () => this.emit({ type: "link" }),
       onMessage: (msg) => this.handleReuseMeshMessage(msg),
       onSendFailed: (remoteId) => this.emit({ type: "resync", from: remoteId }),
+      resolveTicketKey,
+      getOwnTicket: () => (this.sendTicket ? this.ownTicket : undefined),
     });
 
     this.mesh = createRtcSession({
@@ -262,12 +304,13 @@ export class DocsRtcSession {
   /**
    * Join and poll responses carry this client's ticket. The roster omits self,
    * so without this the broadcast mute stays at the default `read` and an
-   * editor never puts a document update on the wire.
+   * editor never puts a document update on the wire. The same string rides
+   * on outbound reuse `open` and `ack` once a JWK was published.
    */
-  private noteOwnAccessFromPoll(data: unknown): void {
-    if (!data || typeof data !== "object") return;
-    const ticket = (data as { ticket?: unknown }).ticket;
-    if (typeof ticket !== "string" || ticket === "") return;
+  private noteOwnAccessFromPoll(data: { ticket?: string }): void {
+    const ticket = data.ticket;
+    if (!ticket) return;
+    this.ownTicket = ticket;
     const payload = decodeCollabTicketPayload(ticket);
     if (!payload) return;
     const myPeerId = this.mesh.getMyId();
