@@ -237,7 +237,7 @@ final class MeetSignalingService
 
     /**
      * @param  array<string, mixed>  $body
-     * @return array{ok: true}
+     * @return array{ok: true, peers: list<array<string, mixed>>, messages: list<array<string, mixed>>, rosterSig: string}
      */
     public function send(Request $request, array $body): array
     {
@@ -245,7 +245,8 @@ final class MeetSignalingService
             $this->store->pruneOldRowsSampled();
 
             $room = $this->cleanRoom($body['room'] ?? null);
-            $this->assertGuestMayEnter($this->actors->tryAuthenticatedUsername($request), $room);
+            $username = $this->actors->tryAuthenticatedUsername($request);
+            $this->assertGuestMayEnter($username, $room);
             $ownerMarker = $this->actors->requireActorMarker($request, $body);
             $from = $this->store->readSendFrom($body);
             $to = $this->store->cleanPeer($body['to'] ?? null);
@@ -255,7 +256,7 @@ final class MeetSignalingService
             $this->assertNotWaitingInLobby($room, $from, $type);
             $this->store->send($room, $from, $to, $type, $body['payload'] ?? null);
 
-            return ['ok' => true];
+            return ['ok' => true] + $this->store->pendingMailbox($room, $from, $username !== null);
         });
     }
 

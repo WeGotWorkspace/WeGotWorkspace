@@ -178,7 +178,7 @@ final class DocCollabSignalingService
 
     /**
      * @param  array<string, mixed>  $body
-     * @return array{ok: true}
+     * @return array{ok: true, peers: list<array<string, mixed>>, messages: list<array<string, mixed>>, rosterSig: string, ticket: string}
      */
     public function send(Request $request, array $body): array
     {
@@ -192,12 +192,14 @@ final class DocCollabSignalingService
             $from = $this->store->readSendFrom($body);
             $to = $this->store->cleanPeer($body['to'] ?? null);
             $this->store->assertPeerOwnedByActor($roomKey, $from, $ownerMarker);
-            $this->reauthorize($room, $roomKey, $from, $principal);
+            $access = $this->reauthorize($room, $roomKey, $from, $principal);
 
             $type = (string) ($body['type'] ?? '');
             $this->store->send($roomKey, $from, $to, $type, $body['payload'] ?? null);
 
-            return ['ok' => true];
+            return ['ok' => true] + $this->store->pendingMailbox($roomKey, $from) + [
+                'ticket' => $this->tickets->issue($roomKey, $principal['username'], $from, $access),
+            ];
         });
     }
 

@@ -128,7 +128,7 @@ final class PrincipalSignalingService
 
     /**
      * @param  array<string, mixed>  $body
-     * @return array{ok: true}
+     * @return array{ok: true, peers: list<array<string, mixed>>, messages: list<array<string, mixed>>, rosterSig: string}
      */
     public function send(Request $request, array $body): array
     {
@@ -144,7 +144,7 @@ final class PrincipalSignalingService
             $type = (string) ($body['type'] ?? '');
             $this->store->send($room, $from, $to, $type, $body['payload'] ?? null);
 
-            return ['ok' => true];
+            return ['ok' => true] + $this->store->pendingMailbox($room, $from);
         });
     }
 
