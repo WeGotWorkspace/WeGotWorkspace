@@ -35,6 +35,20 @@ export function colorForName(name: string): string {
   return COLORS[Math.abs(hash) % COLORS.length]!;
 }
 
+/**
+ * Carries the HTTP status alongside the message. The server reports a refused
+ * save as `precondition_failed`, which leaves no status in the parsed message.
+ */
+export class CollabHttpError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "CollabHttpError";
+    this.status = status;
+  }
+}
+
 export function collabErrorStatus(error: unknown): number | undefined {
   if (error && typeof error === "object" && "status" in error) {
     const status = (error as { status?: unknown }).status;
@@ -50,6 +64,14 @@ export function isCollabPreconditionFailed(error: unknown): boolean {
   if (collabErrorStatus(error) === 412) return true;
   const message = error instanceof Error ? error.message : String(error);
   return /precondition failed/i.test(message);
+}
+
+/** 409 / 412 — the stored document moved on; reload, merge, and save again. */
+export function isServerDivergenceError(error: unknown): boolean {
+  const status = collabErrorStatus(error);
+  if (status === 409 || status === 412) return true;
+  const message = error instanceof Error ? error.message : String(error);
+  return /precondition[ _]failed/i.test(message);
 }
 
 /** 413 / markdown cap — permanent; do not exponential-backoff. */
@@ -78,7 +100,8 @@ export function isRemoteUpdateOrigin(
   return false;
 }
 
-function hashString(value: string): number {
+/** FNV-1a, 32-bit. Stable across clients and releases — seeding depends on it. */
+export function hash32(value: string): number {
   let hash = 2166136261;
   for (let i = 0; i < value.length; i += 1) {
     hash ^= value.charCodeAt(i);
@@ -95,6 +118,6 @@ function bytesToHex(bytes: Uint8Array): string {
 
 export function docSignature(markdown: string, ydoc: Y.Doc): string {
   const vectorHex = bytesToHex(Y.encodeStateVector(ydoc));
-  const markdownHash = hashString(markdown).toString(16);
+  const markdownHash = hash32(markdown).toString(16);
   return `${markdown.length}:${markdownHash}:${vectorHex}`;
 }

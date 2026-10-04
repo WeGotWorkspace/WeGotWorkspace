@@ -81,8 +81,16 @@ final class DocCollabDocumentService
     }
 
     /**
+     * Contract C7: the sidecar entity tag is the sha1 of the stored bytes.
+     */
+    public static function sidecarEtag(string $sidecarBytes): string
+    {
+        return '"'.sha1($sidecarBytes).'"';
+    }
+
+    /**
      * @param  array<string, mixed>  $body
-     * @return array{ok: true}
+     * @return array{ok: true, etag: string|null}
      */
     public function put(Request $request, array $body): array
     {
@@ -94,6 +102,9 @@ final class DocCollabDocumentService
         }
 
         $disk = $this->storage->files();
+        $sidecarKey = $this->paths->virtualToStorageKey($this->yjsSidecarPath($virtual));
+        $this->assertSidecarPrecondition($request, $sidecarKey);
+
         if ($hasMarkdown) {
             if (! is_string($body['markdown'])) {
                 $this->fail('invalid_markdown');
@@ -124,10 +135,68 @@ final class DocCollabDocumentService
             if (strlen($bytes) > self::MAX_YJS_BYTES) {
                 $this->fail('yjs_too_large', 413);
             }
-            $disk->put($this->paths->virtualToStorageKey($this->yjsSidecarPath($virtual)), $bytes);
+            $disk->put($sidecarKey, $bytes);
         }
 
-        return ['ok' => true];
+        return ['ok' => true, 'etag' => $this->storedSidecarEtag($sidecarKey)];
+    }
+
+    /**
+     * C7: `If-Match` must name the stored sidecar, `If-None-Match: *` requires
+     * there to be none. A request carrying neither is accepted, for old clients.
+     */
+    private function assertSidecarPrecondition(Request $request, string $sidecarKey): void
+    {
+        $ifMatch = trim((string) $request->headers->get('If-Match', ''));
+        $ifNoneMatch = trim((string) $request->headers->get('If-None-Match', ''));
+        if ($ifMatch === '' && $ifNoneMatch === '') {
+            return;
+        }
+
+        $stored = $this->storedSidecarEtag($sidecarKey);
+        if ($ifNoneMatch === '*' && $stored !== null) {
+            $this->fail('precondition_failed', 412);
+        }
+        if ($ifMatch !== '' && ! $this->etagSatisfies($ifMatch, $stored)) {
+            $this->fail('precondition_failed', 412);
+        }
+    }
+
+    private function storedSidecarEtag(string $sidecarKey): ?string
+    {
+        $disk = $this->storage->files();
+        if (! $disk->fileExists($sidecarKey)) {
+            return null;
+        }
+
+        $contents = $disk->get($sidecarKey);
+        if (! is_string($contents) || $contents === '') {
+            return null;
+        }
+
+        return self::sidecarEtag($contents);
+    }
+
+    private function etagSatisfies(string $header, ?string $stored): bool
+    {
+        if ($stored === null) {
+            return false;
+        }
+        if ($header === '*') {
+            return true;
+        }
+
+        foreach (explode(',', $header) as $candidate) {
+            $candidate = trim($candidate);
+            if (str_starts_with($candidate, 'W/')) {
+                $candidate = substr($candidate, 2);
+            }
+            if ($candidate !== '' && $candidate === $stored) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function yjsSidecarPath(string $documentVirtualPath): string

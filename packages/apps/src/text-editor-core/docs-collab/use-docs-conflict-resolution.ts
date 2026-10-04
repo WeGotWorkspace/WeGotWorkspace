@@ -64,13 +64,13 @@ export function useDocsConflictResolution({
   const useServer = useCallback(() => {
     if (!ydoc || !yjsUrl) return;
     setBusy(true);
-    void resolveDocsConflictUseServer(ydoc, yjsUrl, authToken)
+    void resolveDocsConflictUseServer(ydoc, yjsUrl, authToken, room)
       .then(() => {
         setOpen(false);
         onServerApplied();
       })
       .finally(() => setBusy(false));
-  }, [authToken, onServerApplied, ydoc, yjsUrl]);
+  }, [authToken, onServerApplied, room, ydoc, yjsUrl]);
 
   return { open, setOpen, busy, keepLocal, useServer };
 }

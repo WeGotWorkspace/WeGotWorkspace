@@ -10,6 +10,7 @@ import {
 } from "@/text-editor-core/src/text-editor-content";
 import { createTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
 import { DocsCollabEditor } from "./docs-collab-editor";
+import { seedClientId } from "./docs-collab-seed";
 
 const SEED_ORIGIN = "seed";
 
@@ -32,6 +33,9 @@ export function applyContentSeedToYDoc(
   format: TextEditorContentFormat = "markdown",
 ): void {
   const temp = new Y.Doc();
+  // Identical content must yield identical items, or two clients that both
+  // bootstrap an unsidecarred document keep each other's copy (#1089).
+  temp.clientID = seedClientId(format, content);
   const tempEditor = new Editor({
     extensions: [
       StarterKit.configure({ undoRedo: false, link: false, underline: false }),
