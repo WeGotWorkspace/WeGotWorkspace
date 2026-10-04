@@ -57,6 +57,7 @@ export function createRtcSignalingClient(
     getAuth: options.getAuth ?? (() => ({})),
     sendFromField: options.sendFromField ?? channelDefaults.sendFromField ?? "from",
     caps: channelDefaults.caps,
-    getBrowserId: options.channel === "meet" ? readRtcBrowserId : undefined,
+    getBrowserId:
+      options.channel === "meet" || options.channel === "collab" ? readRtcBrowserId : undefined,
   });
 }

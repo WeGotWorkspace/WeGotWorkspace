@@ -756,7 +756,7 @@ describe("RtcPeerMesh", () => {
     await mesh.leave();
   });
 
-  it("drops a same-user ghost and offers to the new peer id", async () => {
+  it("keeps both peer ids when the same user joins from two browsers", async () => {
     const signaling = createMockSignaling({
       peerId: "aaaaaaaaaaaaaaaa",
       peers: [{ id: "z1cef2020cc59fb1", name: "Wouter", user: "wouter" }],
@@ -782,14 +782,19 @@ describe("RtcPeerMesh", () => {
     await vi.advanceTimersByTimeAsync(400);
     await flushAsyncWork();
 
-    expect(mesh.getRoomPeers().map((peer) => peer.id)).toEqual(["z7e0deadbeef0001"]);
+    expect(
+      mesh
+        .getRoomPeers()
+        .map((peer) => peer.id)
+        .sort(),
+    ).toEqual(["z1cef2020cc59fb1", "z7e0deadbeef0001"]);
     expect(signaling.sends.some((s) => s.type === "offer" && s.to === "z7e0deadbeef0001")).toBe(
       true,
     );
     await mesh.leave();
   });
 
-  it("does not dial a hinted peer that shares an identity already on the roster", async () => {
+  it("dials a hinted peer when the same user is already on the roster", async () => {
     const signaling = createMockSignaling({
       peerId: "aaaaaaaaaaaaaaaa",
       peers: [{ id: "b7e0deadbeef0001", name: "Wouter", user: "wouter" }],
@@ -803,11 +808,13 @@ describe("RtcPeerMesh", () => {
     await flushAsyncWork();
     const offersAfterJoin = signaling.sends.filter((s) => s.type === "offer").length;
 
-    mesh.applyPeerHint([{ id: "a1cef2020cc59fb1", name: "Wouter", user: "wouter" }]);
+    mesh.applyPeerHint([{ id: "c0ffee0000000001", name: "Wouter", user: "wouter" }]);
     await flushAsyncWork();
 
-    expect(signaling.sends.filter((s) => s.type === "offer").length).toBe(offersAfterJoin);
-    expect(signaling.sends.some((s) => s.to === "a1cef2020cc59fb1")).toBe(false);
+    expect(signaling.sends.filter((s) => s.type === "offer").length).toBeGreaterThan(
+      offersAfterJoin,
+    );
+    expect(signaling.sends.some((s) => s.to === "c0ffee0000000001")).toBe(true);
     await mesh.leave();
   });
 

@@ -353,6 +353,29 @@ describe("DocsCollabPrincipalReuse", () => {
     });
   });
 
+  it("keeps the first device when the same user joins from a second browser", () => {
+    const { reuse, registry, registerAdminToWouter } = createHarness();
+    registerAdminToWouter();
+    const laptop = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    const tablet = { id: "cccccccccccccccc", name: "Wouter", user: "wouter" };
+    reuse.considerRoster([laptop], "aaaaaaaaaaaaaaaa");
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: laptop.id,
+      name: "Wouter",
+    });
+
+    reuse.considerRoster([laptop, tablet], "aaaaaaaaaaaaaaaa");
+
+    expect(reuse.sendTo(laptop.id, { type: "sync", u: [1] })).toBe(true);
+    expect(reuse.extraPeers().map((peer) => peer.id)).toContain(laptop.id);
+    expect(reuse.shouldIgnoreOffer(tablet.id)).toBe(true);
+    expect(reuse.shouldSkipIce(tablet)).toBe(true);
+  });
+
   it("falls back to fresh ICE silently when a reused principal link disappears", () => {
     const { reuse, registry, registerAdminToWouter } = createHarness();
     registerAdminToWouter();
