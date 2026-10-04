@@ -116,6 +116,7 @@ export class RtcPeerMesh {
       onRemoteSignalError: (remoteId, error) => this.handleRemoteSignalError(remoteId, error),
       removePeer: (remoteId) => this.removePeer(remoteId),
       wirePeerConnection: (remoteId, entry) => this.wirePcEvents(remoteId, entry),
+      onMeetData: (remoteId, data) => this.options.onMeetData?.(remoteId, data),
     });
     this.inbox = new MeshSignalInbox({
       shouldAcceptOffer: options.shouldAcceptOffer,
