@@ -7,6 +7,7 @@ namespace App\Services\Admin;
 use App\Models\AppSetting;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\Mcp\McpPublicOrigin;
+use App\Services\Rtc\MeetVideoProfile;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Settings\SettingKeys;
@@ -71,7 +72,7 @@ final class AdminStateService
      * set. Leftover static credentials from an older install no longer relay
      * anything, so they are reported as a warning instead.
      *
-     * @return array{stunUrls: string, turnUrls: string, turnSecretSet: bool, turnStaticCredentialsPresent: bool}
+     * @return array{stunUrls: string, turnUrls: string, turnSecretSet: bool, turnStaticCredentialsPresent: bool, maxVideoProfile: string, maxVideoProfileRelay: string}
      */
     private function rtcSettings(): array
     {
@@ -95,6 +96,13 @@ final class AdminStateService
             'turnUrls' => $normalizeUrls(AppSetting::getValue(SettingKeys::RTC_TURN_URL, '')),
             'turnSecretSet' => $this->rtcSettings->turnSecret() !== '',
             'turnStaticCredentialsPresent' => $this->rtcSettings->legacyStaticCredentialsPresent(),
+            'maxVideoProfile' => $this->rtcSettings->maxVideoProfile(),
+            // The stored relay value, not the clamped one: admin edits what it
+            // set, and the clamp belongs to what the client is served.
+            'maxVideoProfileRelay' => MeetVideoProfile::normalize(
+                AppSetting::getValue(SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY, ''),
+                RtcSettingsService::DEFAULT_MAX_VIDEO_PROFILE_RELAY
+            ),
         ];
     }
 }
