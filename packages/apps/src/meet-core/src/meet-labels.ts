@@ -187,7 +187,7 @@ export const meetLabels = {
   lowDataMode: "Low data mode",
   lowDataModeHint: "Send a smaller picture. Show video from at most two people.",
   setUpRelay: "Set up",
-  relayDocs: "TURN setup",
+  relayDocs: "Relay setup",
   relayPlan: "Plan",
   meetingStarted: "Meeting started",
   inCallCount: (count: number) => `${count} in call`,
