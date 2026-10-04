@@ -149,7 +149,7 @@ export const docsLabels = {
   /** Presence chrome, in people terms rather than connection terms. */
   presenceConnectingOne: "Connecting to 1 person",
   presenceConnectingMany: (count: number) => `Connecting to ${count} people`,
-  presenceConnectingNamed: (summary: string, names: string) => `${summary}: ${names}`,
+  presenceWithNames: (summary: string, names: string) => `${summary}: ${names}`,
   presenceConnectingAvatar: "Connecting",
   presenceUnreachableOne: "Could not reach 1 person",
   presenceUnreachableMany: (count: number) => `Could not reach ${count} people`,

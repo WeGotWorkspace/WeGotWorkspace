@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import {
   wgwAwaitSessionRefreshForReconnect,
@@ -101,7 +102,7 @@ export function useDocsCollabReconnect({
       if (existingMesh) await existingMesh.leave();
       if (!isReconnectGenerationCurrent(generation, refs.reconnectGenerationRef)) return;
 
-      setStatus("Connecting to mesh…");
+      setStatus(docsLabels.statusConnecting);
       const meshPeers = await joinMesh(name, authToken);
       if (!isReconnectGenerationCurrent(generation, refs.reconnectGenerationRef)) return;
       setConnectingPeers(meshPeers);

@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { docsLabels } from "@/docs-core/src/docs-labels";
 import {
   getConnectivitySnapshot,
   resetConnectivityHubForTests,
@@ -358,7 +359,7 @@ describe("useDocsCollab offline lifecycle", () => {
     await waitForCollabSession(result);
     expect(result.current.joined).toBe(true);
     expect(mockJoin).toHaveBeenCalledTimes(1);
-    expect(result.current.status).toBe("Connecting to mesh…");
+    expect(result.current.status).toBe(docsLabels.statusConnecting);
 
     await act(async () => {
       resolveJoin?.({ peers: [] });
