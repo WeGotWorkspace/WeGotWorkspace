@@ -1,7 +1,7 @@
-import { rtcLog, rtcSdpMeta } from "@/lib/rtc/log";
+import { rtcLog } from "@/lib/rtc/log";
 import type { NetClass } from "@/lib/rtc/net-probe";
 import { netClassForJoin } from "@/lib/rtc/net-probe-session";
-import { icePayloadCandidates, type IceOutbound } from "@/lib/rtc/session/ice-batch";
+import type { IceOutbound } from "@/lib/rtc/session/ice-batch";
 import type { IceRecovery } from "@/lib/rtc/session/ice-recovery";
 import {
   bindNetworkRecovery,
@@ -25,6 +25,12 @@ import type {
 import { MeshPeerDialer } from "@/lib/rtc/session/mesh-peer-dialer";
 import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
 import { MeshPollLoop } from "@/lib/rtc/session/mesh-poll-loop";
+import {
+  acceptMeshAnswer,
+  acceptMeshIce,
+  acceptMeshOffer,
+  type MeshSdpExchange,
+} from "@/lib/rtc/session/mesh-sdp-exchange";
 import { MeshSignalInbox } from "@/lib/rtc/session/mesh-signal-inbox";
 import { wirePeerConnectionListeners } from "@/lib/rtc/session/peer-connection-listeners";
 import {
@@ -35,11 +41,7 @@ import {
   type RtcPeerMeshPorts,
 } from "@/lib/rtc/session/peer-mesh-options";
 import type { MeshPollCadenceSnapshot } from "@/lib/rtc/session/poll-cadence";
-import {
-  flushPendingIce,
-  safeSetRemoteDescription,
-  toSessionDescriptionPayload,
-} from "@/lib/rtc/session/sdp";
+import { toSessionDescriptionPayload } from "@/lib/rtc/session/sdp";
 import {
   DEFAULT_RTC_POLL_INTERVALS,
   type RtcLinkState,
@@ -112,9 +114,10 @@ export class RtcPeerMesh {
     });
     this.inbox = new MeshSignalInbox({
       shouldAcceptOffer: options.shouldAcceptOffer,
-      handleOffer: (from, peerName, payload) => this.handleOffer(from, peerName, payload),
-      handleAnswer: (from, payload) => this.handleAnswer(from, payload),
-      handleIce: (from, payload) => this.handleIce(from, payload),
+      handleOffer: (from, peerName, payload) =>
+        acceptMeshOffer(this.sdpExchange(), from, peerName, payload),
+      handleAnswer: (from, payload) => acceptMeshAnswer(this.sdpExchange(), from, payload),
+      handleIce: (from, payload) => acceptMeshIce(this.sdpExchange(), from, payload),
       handleBye: (from) => this.handleBye(from),
       handleRelayHint: () => this.schedulePoll(false),
       log: (event, details) => this.log(event, details),
@@ -307,59 +310,19 @@ export class RtcPeerMesh {
     });
   }
 
-  private async handleOffer(from: string, peerName: string, payload: unknown): Promise<void> {
-    this.log("offer-received", { from, ...rtcSdpMeta(payload) });
-    const sdp = this.formatInbound(payload, "offer");
-    if (!sdp) return;
-    const entry = this.peers.get(from) ?? this.dialer.createEntry(from, peerName, false);
-    if (entry.pc.signalingState !== "stable") {
-      try {
-        await entry.pc.setLocalDescription({ type: "rollback" });
-      } catch {
-        // Ignore rollback failures on incompatible states.
-      }
-    }
-    await safeSetRemoteDescription(entry.pc, sdp);
-    await flushPendingIce(entry.pc, entry.pendingIce);
-    const answer = await entry.pc.createAnswer();
-    const formatted = this.formatOutbound(answer);
-    await entry.pc.setLocalDescription(formatted);
-    try {
-      await this.sendSignal(from, "answer", entry.pc.localDescription);
-    } catch (error) {
-      this.handleRemoteSignalError(from, error);
-      return;
-    }
-    entry.signalSent = true;
-    this.recovery?.onSignaled(from);
-    this.log("answer-sent", { to: from, ...rtcSdpMeta(entry.pc.localDescription) });
-  }
-
-  private async handleAnswer(from: string, payload: unknown): Promise<void> {
-    this.log("answer-received", { from, ...rtcSdpMeta(payload) });
-    const entry = this.peers.get(from);
-    if (!entry) return;
-    const sdp = this.formatInbound(payload, "answer");
-    if (!sdp) return;
-    if (entry.pc.signalingState === "stable") return;
-    await safeSetRemoteDescription(entry.pc, sdp);
-    await flushPendingIce(entry.pc, entry.pendingIce);
-  }
-
-  private async handleIce(from: string, payload: unknown): Promise<void> {
-    const entry = this.peers.get(from);
-    if (!entry) return;
-    for (const candidate of icePayloadCandidates(payload)) {
-      if (!entry.pc.remoteDescription) {
-        entry.pendingIce.push(candidate);
-        continue;
-      }
-      try {
-        await entry.pc.addIceCandidate(candidate);
-      } catch {
-        if (!entry.pc.remoteDescription) entry.pendingIce.push(candidate);
-      }
-    }
+  private sdpExchange(): MeshSdpExchange {
+    return {
+      getPeer: (id) => this.peers.get(id),
+      createEntry: (id, name, initiator) => this.dialer.createEntry(id, name, initiator),
+      formatInbound: (payload, fallbackType) => this.formatInbound(payload, fallbackType),
+      formatOutbound: (description) => this.formatOutbound(description),
+      sendSignal: (to, type, payload) => this.sendSignal(to, type, payload),
+      onSignalError: (id, error) => this.handleRemoteSignalError(id, error),
+      onSignaled: (id) => {
+        this.recovery?.onSignaled(id);
+      },
+      log: (event, details) => this.log(event, details),
+    };
   }
 
   private async handleBye(from: string): Promise<void> {
